@@ -1,0 +1,68 @@
+[
+  {
+    "repository": "https://github.com/jacobfv/symbolic-ai-models",
+    "commit": "328a6025b0baf072f97ace439c23840510101487",
+    "commit_date": "2026-09-07T17:19:00-07:00",
+    "local_checkout": "/tmp/computerworld-sources/symbolic-ai-models"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthetic-computer-environment",
+    "commit": "88c5bed768d6e3811a8e26d2dd2f117ec8b5103c",
+    "commit_date": "2026-08-11T16:58:02-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthetic-computer-environment"
+  },
+  {
+    "repository": "https://github.com/commandagi/synthex",
+    "commit": "6c8d624d72e8e0a19869fe8546668ce9e4b2f3a8",
+    "commit_date": "2026-07-09T18:15:32-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthex"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthux.git",
+    "commit": "81f2f320012f4e2724ca469bebec99193d395e79",
+    "commit_date": "2026-06-08T12:58:42-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthux"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthux-calendar-mock.git",
+    "commit": "9333e1de4168a92f5219a5aa721f460c58959825",
+    "commit_date": "2026-05-27T12:56:02-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthux-calendar-mock"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthux-docs-mock.git",
+    "commit": "6ca552c8aa705efa0eebb46ee13d0e6ed02a23f3",
+    "commit_date": "2026-05-27T12:26:00-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthux-docs-mock"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthux-github-mock.git",
+    "commit": "595dbdef57e3080952f5c0bd9625156d2323edf9",
+    "commit_date": "2026-05-27T12:47:42-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthux-github-mock"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthux-jira-mock.git",
+    "commit": "f367004040a4d9ed9f3f014383d777a4a9a66f43",
+    "commit_date": "2026-05-27T12:56:02-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthux-jira-mock"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthux-mail-mock.git",
+    "commit": "a25f2601e350d04ad6b6bb293a25c20f9b72b7d6",
+    "commit_date": "2026-05-27T12:56:02-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthux-mail-mock"
+  },
+  {
+    "repository": "https://github.com/jacobfv/synthux-slack-mock.git",
+    "commit": "378b8c819e2605f93d36960729d5310dc2b1b25a",
+    "commit_date": "2026-05-27T12:47:44-07:00",
+    "local_checkout": "/tmp/computerworld-sources/synthux-slack-mock"
+  },
+  {
+    "repository": "https://github.com/jacobfv/typed-crystallization-networks",
+    "commit": "018c9ce9286fa4961292fe1e024b49fcd7e2dd7f",
+    "commit_date": "2026-09-11T08:52:07-07:00",
+    "local_checkout": "/tmp/computerworld-sources/typed-crystallization-networks"
+  }
+]
