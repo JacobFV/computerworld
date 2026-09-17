@@ -1,0 +1,141 @@
+{
+  "ok": true,
+  "devices": [
+    {
+      "id": "alice-mac",
+      "profile": "virtual-macos-golden-gate",
+      "home": {
+        "width": 960,
+        "height": 640,
+        "rgbaBytes": 2457600,
+        "deterministic": true,
+        "pixelChecksum": "55a60249",
+        "renderMilliseconds": 1,
+        "nodes": 113
+      },
+      "window": {
+        "width": 960,
+        "height": 640,
+        "rgbaBytes": 2457600,
+        "deterministic": true,
+        "pixelChecksum": "3d62c1f3",
+        "renderMilliseconds": 1,
+        "nodes": 145
+      },
+      "nativeBrowserAddress": true,
+      "offsetPageHitTest": true,
+      "terminalKeyboard": true,
+      "snapshotFork": true,
+      "windowControls": true
+    },
+    {
+      "id": "bob-windows",
+      "profile": "virtual-windows-11",
+      "home": {
+        "width": 960,
+        "height": 640,
+        "rgbaBytes": 2457600,
+        "deterministic": true,
+        "pixelChecksum": "9ce7ac16",
+        "renderMilliseconds": 0.5999999940395355,
+        "nodes": 119
+      },
+      "window": {
+        "width": 960,
+        "height": 640,
+        "rgbaBytes": 2457600,
+        "deterministic": true,
+        "pixelChecksum": "9f81b385",
+        "renderMilliseconds": 0.30000001192092896,
+        "nodes": 154
+      },
+      "nativeBrowserAddress": true,
+      "offsetPageHitTest": true,
+      "terminalKeyboard": true,
+      "snapshotFork": true,
+      "windowControls": true
+    },
+    {
+      "id": "carol-ubuntu",
+      "profile": "virtual-ubuntu-24",
+      "home": {
+        "width": 960,
+        "height": 640,
+        "rgbaBytes": 2457600,
+        "deterministic": true,
+        "pixelChecksum": "9c5bff1c",
+        "renderMilliseconds": 0.19999998807907104,
+        "nodes": 106
+      },
+      "window": {
+        "width": 960,
+        "height": 640,
+        "rgbaBytes": 2457600,
+        "deterministic": true,
+        "pixelChecksum": "32a11497",
+        "renderMilliseconds": 0.20000001788139343,
+        "nodes": 145
+      },
+      "nativeBrowserAddress": true,
+      "offsetPageHitTest": true,
+      "terminalKeyboard": true,
+      "snapshotFork": true,
+      "windowControls": true
+    },
+    {
+      "id": "alice-phone",
+      "profile": "virtual-ios-18",
+      "home": {
+        "width": 390,
+        "height": 780,
+        "rgbaBytes": 1216800,
+        "deterministic": true,
+        "pixelChecksum": "7c731dd7",
+        "renderMilliseconds": 1.2999999821186066,
+        "nodes": 126
+      },
+      "window": {
+        "width": 390,
+        "height": 780,
+        "rgbaBytes": 1216800,
+        "deterministic": true,
+        "pixelChecksum": "822570af",
+        "renderMilliseconds": 0.5999999940395355,
+        "nodes": 132
+      },
+      "nativeBrowserAddress": true,
+      "offsetPageHitTest": true,
+      "terminalKeyboard": true,
+      "snapshotFork": true,
+      "windowControls": false
+    },
+    {
+      "id": "bob-android",
+      "profile": "virtual-android-12",
+      "home": {
+        "width": 390,
+        "height": 780,
+        "rgbaBytes": 1216800,
+        "deterministic": true,
+        "pixelChecksum": "ac786f3d",
+        "renderMilliseconds": 0.9000000059604645,
+        "nodes": 125
+      },
+      "window": {
+        "width": 390,
+        "height": 780,
+        "rgbaBytes": 1216800,
+        "deterministic": true,
+        "pixelChecksum": "5be174f",
+        "renderMilliseconds": 0.19999998807907104,
+        "nodes": 132
+      },
+      "nativeBrowserAddress": true,
+      "offsetPageHitTest": true,
+      "terminalKeyboard": true,
+      "snapshotFork": true,
+      "windowControls": false
+    }
+  ],
+  "networkRequestsDuringEpisode": 0
+}
