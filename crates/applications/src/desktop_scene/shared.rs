@@ -23,6 +23,7 @@ pub struct ShellOptions {
     pub installed_apps: Vec<String>,
     pub panel: Option<String>,
     pub search: String,
+    pub hover: Option<(i32, i32)>,
 }
 pub struct ShellContext<'a> {
     pub theme: DesktopTheme,
@@ -36,8 +37,12 @@ pub struct ShellContext<'a> {
     pub installed_apps: &'a [String],
     pub panel: Option<&'a str>,
     pub search: &'a str,
+    pub hover: Option<(i32, i32)>,
 }
 impl ShellContext<'_> {
+    pub fn hovered(&self, rect: Rect) -> bool {
+        self.hover.is_some_and(|(x, y)| rect.contains(x, y))
+    }
     pub fn installed(&self, id: &str) -> bool {
         self.installed_apps.is_empty() || self.installed_apps.iter().any(|a| a == id)
     }

@@ -180,6 +180,7 @@ pub fn render_desktop_with_options(
         installed_apps: &options.installed_apps,
         panel: options.panel.as_deref(),
         search: &options.search,
+        hover: options.hover,
     };
     let mut p = Painter::new(width, height);
     background(&mut p, &ctx);
@@ -249,6 +250,13 @@ fn browser_bar(p: &mut Painter, c: &ShellContext, w: &WindowView) {
     ] {
         let x = r.x + 8 + i * 29;
         let y = r.y + 8;
+        if c.hovered(Rect::new(x, y, 26, 26)) {
+            p.box_(
+                Rect::new(x, y, 26, 26),
+                cw_scene::Color::rgb(222, 225, 230),
+                5,
+            );
+        }
         p.region(
             Rect::new(x, y, 26, 26),
             &w.action(&format!("content:{action}")),
