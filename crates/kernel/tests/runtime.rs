@@ -350,3 +350,59 @@ fn queued_request_cannot_reach_stopped_service() {
     assert!(r.take_response(&id).is_err());
     assert_eq!(r.service_state("counter").unwrap()["count"], 0);
 }
+#[test]
+fn rejected_external_completions_release_tokens_and_record_only_validated_failures() {
+    let mut d = definition();
+    d.network.gateway.allow_host = true;
+    d.network.gateway.host_allowlist = vec!["public.example".into()];
+    d.network.gateway.allowed_cidrs = vec!["203.0.113.0/24".into()];
+    d.network.gateway.sources = vec!["a".into()];
+    d.network.gateway.schemes = vec!["https".into()];
+    d.network.gateway.ports = vec![443];
+    d.network.gateway.timeout_us = 10;
+    d.network.gateway.max_response_bytes = 4;
+    let mut registry = Registry::new();
+    registry.register(Counter).unwrap();
+    registry.register(Relay).unwrap();
+    let mut runtime = Runtime::new(d, 8, registry).unwrap();
+    for (elapsed, response, expected_code) in [
+        (11, HttpResponse::text(200, "late"), "timeout"),
+        (0, HttpResponse::text(200, "oversized body"), "denied"),
+        (0, HttpResponse::text(600, "bad"), "invalid"),
+        (0, HttpResponse::text(99, "bad"), "invalid"),
+    ] {
+        let effect = runtime
+            .begin_external(
+                "a",
+                "alice",
+                HttpRequest::get("https://public.example/"),
+                vec!["203.0.113.8".into()],
+            )
+            .unwrap();
+        assert!(runtime.try_snapshot().is_err());
+        runtime.advance(elapsed).unwrap();
+        runtime.complete_external(&effect, Ok(response)).unwrap();
+        let checkpoint = runtime.try_snapshot().unwrap();
+        assert_eq!(
+            runtime.take_response(&effect.id).unwrap_err().code,
+            expected_code
+        );
+        // Portable restore retains the validated failure without a live adapter token.
+        runtime
+            .restore(&Snapshot::from_json(&checkpoint.to_json().unwrap()).unwrap())
+            .unwrap();
+        assert_eq!(
+            runtime.take_response(&effect.id).unwrap_err().code,
+            expected_code
+        );
+        let event = runtime.events().last().unwrap();
+        assert_eq!(event.kind, "external.completed");
+        assert_eq!(event.data["response"]["Err"]["code"], expected_code);
+        assert!(!serde_json::to_string(&event.data)
+            .unwrap()
+            .contains("oversized body"));
+        assert!(runtime
+            .complete_external(&effect, Ok(HttpResponse::text(200, "dup")))
+            .is_err());
+    }
+}

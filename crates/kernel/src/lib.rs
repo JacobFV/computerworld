@@ -486,6 +486,11 @@ impl Runtime {
             .is_ok_and(|r| r.body.len() > live.effect.authorization.max_response_bytes)
         {
             Err(SimError::denied("host response exceeds byte budget"))
+        } else if result
+            .as_ref()
+            .is_ok_and(|r| !(100..=599).contains(&r.status))
+        {
+            Err(SimError::invalid("host response has invalid HTTP status"))
         } else {
             result
         };
