@@ -10,8 +10,7 @@
     "rss_bytes": 186179584,
     "note": "Persistent SCE runtime; default tracing. SCE VFS persists through host filesystem. Samples exclude initialization and disposal.",
     "cpu_affinity": 19,
-    "measurement_window": "quiet, no concurrent project builds/tests",
-    "source_core_revision": "af208d1"
+    "measurement_window": "quiet, no concurrent project builds/tests"
   },
   "results": [
     {
