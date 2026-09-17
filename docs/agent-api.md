@@ -25,7 +25,7 @@ checked before dispatch. Batches are ordered sequences, not atomic transactions.
 | `browser.v1` | Navigation, history, fields and element interaction |
 | `application.v1` | Launch/focus/close application windows and registered app events |
 | `keyboard.v1` | `type` text and `key` input |
-| `pointer.v1` | `click` at scene coordinates and viewport dimensions |
+| `pointer.v1` | `click`, `down`, `move`, `up`, `cancel`, `double_click` at scene coordinates and viewport dimensions |
 
 Native callers can register additional `ActionFamily` implementations and
 `ObservationChannel` implementations through the environment owner API. Grants
@@ -44,6 +44,26 @@ contains the local working directory, not a world inspector. `browser.v1` includ
 the page, URL and fields. `semantic.v1` or `pixels.v1` is required to request a
 scene/render; selecting `pixels.v1` authorizes rendering but does not automatically
 rasterize every step.
+
+For complete Python and JavaScript input loops, see [programmatic computer use](programmatic-computer-use.md).
+Pointer input uses the current scene viewport, transformed local bounds, world-space
+clips and z-order; it does not bypass hit testing by accepting semantic target IDs.
+Drag and resize are down/move/up sequences. Window controls are namespaced as
+`window:<id>:<operation>`, and child content as `window:<id>:content:<target>`.
+Scenes expose all retained nodes, including occluded ones; select a visible point
+and refresh the scene after layout changes. Move outcomes may include a cursor hint.
+
+`application.v1/launch` takes `{"kind":"terminal"}` (or another installed app),
+optionally `argument`, and returns a window ID. `focus`/`close` take `{"window":id}`.
+`keyboard.v1/type` takes `{"text":"..."}` and `key` takes `{"key":"Enter"}`.
+Browser launch and browser controls require `browser.v1` as well as app access.
+Installed apps are part of the capability surface: a GUI terminal can run commands
+through keyboard input even when direct terminal-tool access is not granted.
+
+Scene/render select the session's focused machine, initially the first granted
+machine; actions select their target machine. Separate sessions can drive separate
+monitors concurrently in an owner-controlled loop. The bindings are synchronous;
+parallel workers should own independent runtime instances.
 
 Only owners should call inspection, global trajectory, snapshot export or create
 new grants. Keep task rewards/private predicates in the evaluator layer. Examples

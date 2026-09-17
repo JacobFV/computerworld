@@ -13,6 +13,9 @@ Requires Rust 1.88 or newer to build (verified with Rust 1.97.1).
 ## Start here
 
 ```sh
+git clone https://github.com/JacobFV/computerworld.git
+cd computerworld
+
 # Native examples and tests
 cargo run --release --example company
 cargo run --example custom-service
@@ -49,6 +52,7 @@ python3 -m venv .venv
 . .venv/bin/activate
 pip install .                 # build native extension; Rust toolchain required
 python examples/python/smoke.py
+python examples/python/computer_interaction.py
 ```
 
 Alternatively install a built wheel from `target/wheels/`; wheel consumers need
@@ -78,6 +82,7 @@ rustup target add wasm32-unknown-unknown
 # Install the wasm-bindgen-cli version matching Cargo.lock (currently 0.2.128).
 cargo install wasm-bindgen-cli --version 0.2.128 --locked
 bash scripts/build-wasm.sh
+node examples/javascript/computer-interaction.mjs
 node examples/browser/build.mjs
 python3 -m http.server 8000
 ```
@@ -124,6 +129,7 @@ shared chat, browser discovery and service debugging.
 | Architecture and crate boundaries | [Architecture](docs/architecture.md) |
 | World/topology schema and custom worlds | [Schema](docs/world-schema.md), [custom world](docs/custom-world.md) |
 | Native / Python / Wasm interfaces | [Rust](docs/native.md), [Python](docs/python.md), [Wasm](docs/wasm.md) |
+| Programmatic computer interaction | [Python/JavaScript guide and demos](docs/programmatic-computer-use.md) |
 | Agent actions, observations and evaluation | [Agent API](docs/agent-api.md) |
 | Application and service extensions | [App SDK](docs/application-sdk.md), [service SDK](docs/service-sdk.md) |
 | Authoring examples | [Custom app](docs/custom-application.md), [custom service](docs/custom-service.md) |
@@ -146,7 +152,7 @@ node scripts/test-browser.mjs     # actual Chromium, episode networking blocked
 
 Semantic fidelity is intentionally bounded: documented POSIX/PowerShell subsets,
 synthetic Git HTTP rather than packfile compatibility, native pages rather than
-arbitrary HTML/JS, fixed-cell text rather than full browser typography. Unsupported
+arbitrary HTML/JS, bundled deterministic UI fonts rather than full browser typography. Unsupported
 operations fail explicitly. Native extensions are trusted code; restricted API
 handles prevent accidental state leakage, not hostile memory access in the same
 process. Detailed supported behavior and limitations are documented per subsystem.
@@ -154,6 +160,6 @@ process. Detailed supported behavior and limitations are documented per subsyste
 The [investigation reports](research/sources.json) pin all eleven predecessor
 repositories. Their strongest semantics and regression lessons informed this
 independently implemented Rust workspace; no predecessor runtime is required.
-Bundled font attribution is in `crates/render/assets/FONT-LICENSE.txt`.
+Bundled asset and font attribution is in [the render asset notices](crates/render/assets/README.md).
 
 The [native desktop GUI](docs/desktop-gui.md) documents OS profiles, functional window/app controls, deterministic rendering and current fidelity limits. [Source research](research/desktop-visuals.md) traces the recovered visual patterns.

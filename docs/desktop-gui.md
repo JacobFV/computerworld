@@ -1,86 +1,105 @@
 # Native OS desktop presentation
 
-The OS shell and application views are Rust scene projections. The browser console
-only transfers RGBA frames, scales coordinates and forwards input. Native, Wasm
-and Python users see the same pixels, hit regions and snapshot state.
+OS shells and application views are Rust scene projections. The browser console
+transfers RGBA frames, scales coordinates and forwards input. Native, Wasm and
+Python consumers use the same state, scene contracts and renderer; programmatic
+interaction does not require the console. See the [Python/JavaScript guide and runnable demos](programmatic-computer-use.md).
 
 ## Profiles
 
-The browser example includes these explicitly opted-in profiles:
+The browser example opts into these profiles:
 
 | Profile ID | Presentation |
 |---|---|
-| `virtual-macos-golden-gate` | Menu bar, coastal wallpaper, traffic-light window controls, centered dock |
-| `virtual-windows-11` | Blue wallpaper, right-side window controls, centered taskbar and Start launcher |
-| `virtual-ubuntu-24` | Aubergine wallpaper, dark top bar, left launcher and Activities grid |
-| `virtual-ios-18` | Status bar/island, widget, rounded-square app icons, bottom dock and Home indicator |
-| `virtual-android-12` | Material-style clock/search layout, circular accents, app launcher and system navigation |
+| `virtual-macos-golden-gate` | Coastal wallpaper, menu bar, traffic lights, centered dock, Finder-style file views |
+| `virtual-windows-11` | Blue bloom wallpaper, caption controls, centered taskbar, Start/search, Explorer-style file views |
+| `virtual-ubuntu-24` | Noble Numbat wallpaper, GNOME-style top bar, left dock, Activities and Nautilus-style file views |
+| `virtual-ios-18` | Island/status area, widgets, rounded-square icons, dock, full-screen apps and app library |
+| `virtual-android-12` | Material-style clock/search, circular icons, app drawer, full-screen apps and navigation controls |
 
-A world author defines ordinary `OsProfile` values with those IDs and chooses
-appropriate filesystem family/home/shell fields. Existing generic profiles keep
-their original rendering. Alternatively, `world.metadata.desktop_themes` maps
-computer IDs to theme names. A browser-only actor without `application.v1` retains
-a content-only browser scene, even on a graphical profile.
+Define ordinary `OsProfile` values with these IDs and suitable filesystem family,
+home and shell fields. Existing generic profiles retain their original rendering.
+Alternatively, map computer IDs to themes without changing the OS substrate:
 
 ```json
 {"metadata":{"desktop_themes":{"workstation":"virtual-windows-11"}}}
 ```
 
-The original three desktop implementations and SynthUX's desktop submodules were
-inspected again before this change. [Visual archaeology](../research/desktop-visuals.md)
-records exact paths and revisions. We recovered OS-specific chrome proportions,
-launcher/work-area hierarchy and focus/minimize/restore behavior. No third-party
-wallpaper or icon bundle was copied. Wallpaper and icons are original deterministic
-scene geometry; mobile shells are new implementations, not recovered predecessor code.
+A browser-only actor without `application.v1` receives a content-only browser
+scene, including on graphical profiles. Desktop dimensions are caller-selected;
+the console uses 960×640 desktops and 390×780 phones.
 
-## Interaction
+[Visual archaeology](../research/desktop-visuals.md) and the [overhaul reference review](../research/desktop-fidelity-references.md)
+record predecessor paths and official visual references. Original generated
+wallpapers and platform-inspired icon assets are bundled alongside the attributed
+Ubuntu wallpaper and Yaru icons. See [asset provenance and licensing](../crates/render/assets/README.md).
+No desktop asset requires a runtime network request.
 
-The shell exposes semantic hit regions for app launch, launcher, close, minimize,
-maximize, Home, task switching and browser back/forward/reload/address entry.
-Applications include native terminal output/input, filesystem navigation, an editor
-with cursor-follow scrolling and Save, and a browser whose content comes from the
-synthetic network. The console's **Expand desktop** enlarges the selected device;
-auxiliary tools remain below the screen.
+## Window and application interaction
 
-`application.v1` accepts `home`, `launcher`, `minimize`, `maximize`, `switcher`,
-`focus`, `close` and `launch`. `pointer.v1/click` hits the same shell controls in
-pixel or structured scenes. `keyboard.v1` supplies text/keys; Alt+Tab cycles apps,
-Escape returns Home, and the focused native address field accepts URL text and
-Enter. These transitions are serialized with actor session state. Installed-app
-and capability checks apply to launcher clicks as well as direct actions.
+Desktop applications occupy stacked, clipped windows with preserved state. Pointer
+down/move/up on a title bar moves a window; edge/corner regions resize it. Window
+controls minimize, maximize/restore and close. Title-bar double-click toggles
+maximize, and dragging to supported screen edges snaps a window. Focus and stacking
+order determine which window receives input. Browser windows keep independent
+navigation state. Window geometry, focus, panels and pointer capture are included
+in session snapshots.
 
-Browser content nodes retain their semantic IDs but have scene transforms and
-clips describing their window placement. Structured clients must apply each node's
-transform when turning local bounds into pixel coordinates. They must not assume
-that an application occupies the whole display.
+Native applications include terminal output/input, filesystem navigation and file
+lists, and an editor with Save. Browser applications obtain supported pages through
+simulated DNS, networking and HTTP. Configured service app aliases open independent
+browser windows for mail, documents, calendar or chat; these remain ordinary world
+services, not special kernel concepts. Alias definitions live in
+`metadata.desktop_apps` and require an installed app plus browser/app grants.
+
+Launchers, search, task switching and platform panels expose semantic hit regions.
+Mobile profiles implement Home, recent apps and supported vertical swipes for
+launcher/control panels. Mobile apps are full-screen, not movable desktop windows.
+Installed-app and capability checks apply to visible launcher actions and direct
+API calls alike. Unsupported decorative app controls are marked disabled.
+
+`application.v1` supports `home`, `launcher`, `minimize`, `maximize`, `switcher`,
+`focus`, `close` and `launch`. Pointer operations include `click`, `down`, `move`,
+`up`, `cancel` and `double_click`; always supply the matching viewport dimensions.
+Keyboard type/key events target the focused control. The console's **Expand desktop**
+enlarges the selected monitor; controls below it are host visualization tools.
+
+Window interactions use `window:<id>:drag`, `window:<id>:resize:<direction>`,
+`window:<id>:maximize`, and related names. Child content is namespaced under
+`window:<id>:content:`. Nodes retain local bounds, transforms and scene-space clips;
+clients must account for these and occlusion when choosing pointer coordinates.
+The [programmatic guide](programmatic-computer-use.md#pointer-coordinates-windows-and-gestures)
+explains exact transforms and event sequences.
 
 ## Rendering and fidelity
 
-`RoundedBox` provides deterministic antialiased corners/borders and matching rounded
-hit testing. `UiText` uses bundled DejaVu Sans with proportional advances; `Text`
-retains the original monospace rendering and golden hash. No host fonts, DOM layout,
-wall-clock time or external asset requests participate in simulation rendering.
-UI glyphs/masks are cached; the console updates the selected monitor preview from
-the same rendered frame instead of rasterizing every idle device after every key.
+Compact scenes separate state, layout, primitives and rasterization. Structured
+clients can request semantics without rasterizing. Rounded rectangles, soft shadows,
+proportional regular/bold UI text and bundled asset images provide the shell visuals.
+Original monospace `Text` remains available. Immutable decoded asset backing is
+shared within a runtime process, with caches for glyphs, scaled resources and shadow
+masks. No host fonts, DOM layout or wall-clock animation participates in rendering.
 
-These are recognizable, interactive synthetic OS shells, not pixel-perfect vendor
-replicas or real operating systems. Current application views are deliberately
-small; synthetic websites still use the native structured-page layout. There is
-one foreground application view per device, with switching to preserved background
-app state. Arbitrary window drag/resize, overlapping live app surfaces, Control
-Center/settings panels, native mobile SDKs, camera/phone functionality and third-party
-native applications are not implemented.
+These are interactive synthetic OS presentations, not actual vendor operating
+systems or pixel-perfect replicas. Bundled fonts differ from vendor system fonts;
+system panels and native apps implement deliberately bounded behavior. Native mobile
+SDKs, phone/camera hardware, arbitrary third-party binaries and arbitrary website
+HTML/JavaScript are not implemented. Rendering detail does not imply those features.
 
 ## Verification
 
-- `scripts/test-desktops.mjs`: real Chromium, all five profiles, native address entry,
-  transformed webpage clicks, terminal keys, min/max/restore/close/Home, snapshots,
-  deterministic distinct frames and zero network requests after bootstrap.
-- `crates/computerworld/tests/desktop.rs`: native shell integration and actor/install
-  isolation.
-- `crates/render/tests/wasm-gui.cjs`: native/Wasm golden and incremental raster parity.
-- Node/Python portable desktop checkpoint and 960×640 RGBA equality verified.
+- `scripts/test-desktop-overhaul.mjs`: actual Chromium pointer drag/resize, stacking,
+  window controls, mobile gestures, service launchers and screenshots.
+- `scripts/test-desktops.mjs`: profile interaction, transformed browser clicks,
+  keyboard input, snapshots and offline operation.
+- `crates/computerworld/tests/desktop.rs` and `desktop_extensions.rs`: shell behavior,
+  actor/install isolation and configured service apps.
+- `crates/render/tests/wasm-gui.cjs`: native/Wasm raster parity.
+- `scripts/smoke-desktop-pixels.cjs` plus `examples/python/desktop_pixels.py`: portable
+  Node/Python desktop checkpoints and RGBA comparisons.
+- [Programmatic interaction demos](programmatic-computer-use.md): reusable external
+  Python/JavaScript usage, snapshot branches and cross-binding comparisons.
 
-Screenshots and reproducible results live in `artifacts/desktop-*.png` and
-`artifacts/desktop-verification.json`. Per-frame timings there are browser smoke
-measurements, not replacements for the pinned benchmark methodology.
+Verification scripts are reproducible checks; current execution results and timings
+belong in generated artifacts/final reports, not implied by the existence of a test.
+Per-frame browser smoke timings do not replace the pinned benchmark methodology.
