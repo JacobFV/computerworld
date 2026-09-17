@@ -1,0 +1,23 @@
+{
+  "wasm": {
+    "bytes": 17167179,
+    "gzip_bytes": 12251636,
+    "sha256": "1699636ce2019cb0bd28e1a22aa6150785df9027c0250b4476349b21f5ce5e87"
+  },
+  "python_wheel": {
+    "bytes": 13678748,
+    "sha256": "c016827e843a7b850936a5f57f034efc33cb1981d9c71de5a458fb75e7508512",
+    "path": "target/python-wheel/computerworld-0.1.0-cp312-cp312-manylinux_2_34_aarch64.whl"
+  },
+  "notices_verified": [
+    "FONT-LICENSE.txt",
+    "YARU-COPYRIGHT.txt",
+    "UBUNTU-WALLPAPER-COPYRIGHT.txt",
+    "README.md"
+  ],
+  "packages_verified": [
+    "pkg/web",
+    "pkg/node",
+    "target/python-wheel/computerworld-0.1.0-cp312-cp312-manylinux_2_34_aarch64.whl"
+  ]
+}

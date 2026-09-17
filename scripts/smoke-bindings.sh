@@ -9,3 +9,5 @@ python -m pip install --force-reinstall --no-index --find-links target/python-wh
 mkdir -p target/binding-checks
 node scripts/smoke-node.cjs target/binding-checks/wasm.json
 python examples/python/smoke.py target/binding-checks/wasm.json
+node scripts/smoke-desktop-pixels.cjs target/binding-checks/desktop.json
+python examples/python/desktop_pixels.py target/binding-checks/desktop.json

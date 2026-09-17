@@ -13,4 +13,8 @@ module-name = "computerworld"
 include = [
   { path = "worlds/**/*", format = "sdist" },
   { path = "examples/native/**/*", format = "sdist" },
+  { path = "crates/render/assets/FONT-LICENSE.txt", format = "wheel" },
+  { path = "crates/render/assets/YARU-COPYRIGHT.txt", format = "wheel" },
+  { path = "crates/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt", format = "wheel" },
+  { path = "crates/render/assets/README.md", format = "wheel" },
 ]
