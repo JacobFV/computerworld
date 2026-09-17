@@ -1,12 +1,12 @@
 {
   "wasm": {
-    "bytes": 17167179,
-    "gzip_bytes": 12251636,
-    "sha256": "1699636ce2019cb0bd28e1a22aa6150785df9027c0250b4476349b21f5ce5e87"
+    "bytes": 17165529,
+    "gzip_bytes": 12254195,
+    "sha256": "8534c129f7884db16d4bed94f8917f140baa4fe2c87f43e8e4e6d69dc9f2c45a"
   },
   "python_wheel": {
-    "bytes": 13678748,
-    "sha256": "c016827e843a7b850936a5f57f034efc33cb1981d9c71de5a458fb75e7508512",
+    "bytes": 13683421,
+    "sha256": "e0c126686937e2ee02bf609f55343ec1b2940e9cdc6759d09997db3fd1d2ffc3",
     "path": "target/python-wheel/computerworld-0.1.0-cp312-cp312-manylinux_2_34_aarch64.whl"
   },
   "notices_verified": [
@@ -19,5 +19,13 @@
     "pkg/web",
     "pkg/node",
     "target/python-wheel/computerworld-0.1.0-cp312-cp312-manylinux_2_34_aarch64.whl"
-  ]
+  ],
+  "programmatic_demo": {
+    "stateHash": "8388e2d8d67f28737d0bb5ec5e16c8e029675a74bc6ba4e48dd24aca52451a00",
+    "pixelHash": "523b1e4fc52f9e3e2238c195b05b7a33fef2e33ec0980be870aa8da4b480d788",
+    "steps": 11,
+    "width": 960,
+    "height": 640
+  },
+  "cross_language_demo_parity": true
 }

@@ -1,0 +1,20 @@
+{
+  "output": "/home/brandonin/Documents/computerworld/target/javascript-demo",
+  "stateHash": "8388e2d8d67f28737d0bb5ec5e16c8e029675a74bc6ba4e48dd24aca52451a00",
+  "pixelHash": "523b1e4fc52f9e3e2238c195b05b7a33fef2e33ec0980be870aa8da4b480d788",
+  "steps": 11,
+  "replay": true,
+  "fork": true
+}
+
+{
+  "output": "/home/brandonin/Documents/computerworld/target/python-demo",
+  "stateHash": "8388e2d8d67f28737d0bb5ec5e16c8e029675a74bc6ba4e48dd24aca52451a00",
+  "pixelHash": "523b1e4fc52f9e3e2238c195b05b7a33fef2e33ec0980be870aa8da4b480d788",
+  "steps": 11,
+  "width": 960,
+  "height": 640,
+  "replay": true,
+  "fork": true,
+  "crossLanguageParity": true
+}
