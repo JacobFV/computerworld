@@ -1,0 +1,118 @@
+name: release-candidates
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: 'Full 40-character source commit on main to build and verify (before tagging)'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: source
+        name: Validate immutable source
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          git cat-file -e "$SOURCE_COMMIT^{commit}"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
+          echo "commit=$SOURCE_COMMIT" >> "$GITHUB_OUTPUT"
+  python:
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            manylinux: '2014'
+          - os: macos-14
+            target: aarch64-apple-darwin
+            manylinux: auto
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            manylinux: auto
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.os == 'macos-14' && 'arm64' || 'x64' }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --locked --out target/release-wheels
+      - name: Install candidate wheel in a fresh environment and run real computer interaction
+        run: python scripts/package-release-smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-${{ matrix.target }}
+          path: target/release-wheels/*.whl
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-evidence-${{ matrix.target }}
+          path: target/release-python-evidence/*.json
+  wasm:
+    needs: source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install lockfile-matched wasm-bindgen CLI
+        run: |
+          BINDGEN_VERSION=$(python -c 'import tomllib; d=tomllib.load(open("Cargo.lock","rb")); print(next(p["version"] for p in d["package"] if p["name"] == "wasm-bindgen"))')
+          cargo install wasm-bindgen-cli --version "$BINDGEN_VERSION" --locked
+      - run: bash scripts/build-wasm.sh
+      - run: node examples/browser/build.mjs
+      - run: python scripts/package-release.py
+      - name: Test the packaged Node binding outside the source tree
+        run: |
+          mkdir -p target/release-unpacked
+          tar -xzf target/release-assets/*-wasm-node.tar.gz -C target/release-unpacked
+          node target/release-unpacked/*/examples/javascript/computer-interaction.mjs --output target/release-node-evidence
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/test-browser.mjs
+      - run: node scripts/test-desktops.mjs
+      - run: node scripts/test-desktop-overhaul.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-and-browser-release-assets
+          path: target/release-assets/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wasm-browser-release-evidence
+          path: |
+            target/release-node-evidence/*.json
+            artifacts/*verification.json
