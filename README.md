@@ -10,6 +10,19 @@ static assets. Python calls the Rust runtime directly; Node is not required.
 
 Requires Rust 1.88 or newer to build (verified with Rust 1.97.1).
 
+## Versioned alpha release
+
+[v0.1.0-alpha.1](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.1)
+is the first prerelease for technical early adopters. Download compatible Python
+wheels or browser/Node Wasm bundles from its release assets; no Rust build is needed
+to consume those binaries. Python names the same version `0.1.0a1`.
+
+APIs, world schemas and checkpoints may change between alpha releases. Pin the
+version and retain your world/seed/action sequence. See [release notes](docs/releases/v0.1.0-alpha.1.md),
+[Python installation](docs/python.md), [JavaScript installation](docs/wasm.md) and
+[verification policy](docs/releasing.md). Packages are not published to PyPI, npm
+or crates.io by this release.
+
 ## Start here
 
 ```sh
@@ -55,9 +68,9 @@ python examples/python/smoke.py
 python examples/python/computer_interaction.py
 ```
 
-Alternatively install a built wheel from `target/wheels/`; wheel consumers need
-neither Rust nor Node. Registry publication is separate; these instructions use
-this checkout's package.
+Alternatively install a compatible wheel from the GitHub release or a local build
+in `target/wheels/`; wheel consumers need neither Rust nor Node. See the
+[Python guide](docs/python.md) for pinned installation and version checks.
 
 ```python
 import json

@@ -1,12 +1,39 @@
 # Python binding
 
 Python uses a PyO3 extension containing the canonical Rust runtime. No Node,
-Chromium or simulation server is required. Package publication to PyPI is separate;
-the following commands install this source checkout. A Rust toolchain is required
-to build, but consumers of a compatible prebuilt wheel need only Python 3.9+.
+Chromium or simulation server is required. CPython 3.9+ is supported by the abi3
+binding. A compatible prebuilt wheel needs no Rust toolchain.
+
+## Install the prerelease wheel
+
+Download the wheel matching your operating system/architecture from
+[v0.1.0-alpha.1](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.1).
+The listed assets determine available platforms. Python's package version is
+`0.1.0a1`; this is the same engine release. Verify its checksum using the accompanying
+`SHA256SUMS` before installation. There is no PyPI publication yet.
 
 ```sh
-git clone https://github.com/JacobFV/computerworld.git
+python -m venv .venv
+# Linux/macOS: source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install ./computerworld-0.1.0a1-<matching-wheel-tags>.whl
+python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
+# Expected: 0.1.0a1 0.1.0-alpha.1
+```
+
+Replace the example wheel filename with the actual downloaded filename. Wheels
+contain the runtime, not an implicit company world. Download the tagged source
+archive for example world definitions and runnable Python demos, or supply your
+own definition. API and checkpoint compatibility may change between alpha releases;
+keep the exact version with your episode records.
+
+## Build from source
+
+A Rust toolchain is required for this path. Use the release tag for a reproducible
+checkout (omit `--branch` to work on current development instead):
+
+```sh
+git clone --branch v0.1.0-alpha.1 https://github.com/JacobFV/computerworld.git
 cd computerworld
 python3 -m venv .venv
 . .venv/bin/activate

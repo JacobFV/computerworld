@@ -3,12 +3,54 @@
 Node and browser clients run the same canonical Rust runtime compiled to Wasm.
 They receive generated JavaScript classes and ordinary objects, not raw-memory
 management APIs. There is no separate JavaScript simulator. npm publication is
-separate; use the generated packages from this checkout today.
+separate; this prerelease is distributed through GitHub assets.
 
-## Build and run
+## Install a pinned bundle
+
+Download from [v0.1.0-alpha.1](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.1)
+and verify the accompanying `SHA256SUMS`. Choose:
+
+- `computerworld-0.1.0-alpha.1-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
+- `computerworld-0.1.0-alpha.1-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
+- `computerworld-0.1.0-alpha.1-browser-demo.zip`: complete static interactive console.
+
+Each archive has a top-level directory matching its filename without the archive
+extension. Runtime bundles include `worlds/`, example code, `release.json` with
+source/version metadata, and required notices. Keep the module, `.wasm` file and
+notices together when copying them into an application. No Rust, wasm-bindgen or
+npm installation is needed to use the downloaded bundle.
+
+For Node:
 
 ```sh
-git clone https://github.com/JacobFV/computerworld.git
+tar -xzf computerworld-0.1.0-alpha.1-wasm-node.tar.gz
+cd computerworld-0.1.0-alpha.1-wasm-node
+node -e "console.log(require('./computerworld.js').engineVersion())"
+# Expected: 0.1.0-alpha.1
+node examples/javascript/computer-interaction.mjs --output ./demo-output
+```
+
+For a browser, unpack the web bundle and import its root module:
+
+```js
+import init, {World, engineVersion} from './computerworld.js';
+await init();
+console.log(engineVersion()); // 0.1.0-alpha.1
+// Supply your own world definition, or load a bundled worlds/ JSON file.
+const world = new World(definition, 7);
+```
+
+Serve these files through a static HTTP server rather than opening `file://`.
+For the complete console, unzip the browser-demo archive, enter its top-level
+directory, run `python -m http.server 8000`, and open `http://localhost:8000/`.
+The server serves static assets only. After bootstrap the simulated episode needs
+no network backend. APIs and checkpoint formats may change between alpha releases;
+do not mix wrapper/Wasm files from different versions.
+
+## Build and run from source
+
+```sh
+git clone --branch v0.1.0-alpha.1 https://github.com/JacobFV/computerworld.git
 cd computerworld
 rustup target add wasm32-unknown-unknown
 # Match Cargo.lock; currently 0.2.128.
