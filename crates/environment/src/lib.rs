@@ -2031,8 +2031,9 @@ mod application_tests {
             .iter()
             .find(|n| n.interaction.as_deref() == Some("read"))
             .unwrap();
-        let x = node.bounds.x + 1;
-        let y = node.bounds.y + 1;
+        // Rounded controls intentionally exclude the rectangular corner.
+        let x = node.bounds.x + node.bounds.width as i32 / 2;
+        let y = node.bounds.y + node.bounds.height as i32 / 2;
         let clicked = e
             .step(
                 &id,

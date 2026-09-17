@@ -2,7 +2,10 @@
 use cw_protocol::{
     HttpRequest, HttpResponse, Page, PageAction, PageElement, Result, SimError, PAGE_MEDIA_TYPE,
 };
-use cw_scene::{text_cell, wrap_text, Color, Node, Primitive, Rect, Scene, Semantic};
+#[cfg(test)]
+use cw_scene::Primitive;
+use cw_scene::Scene;
+mod page_scene;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -766,166 +769,7 @@ pub fn layout_page_with_images(
     height: u32,
     scroll_y: i32,
 ) -> Scene {
-    let mut scene = Scene::new(width, height);
-    let mut y = 16i32.saturating_sub(scroll_y);
-    let id = 1u64;
-    let mut title = Node::text(
-        id,
-        Rect::new(16, y, width.saturating_sub(32), 28),
-        &page.title,
-        20,
-        Color::rgb(20, 32, 52),
-    );
-    title.semantic = Some(Semantic {
-        role: "heading".into(),
-        label: page.title.clone(),
-        ..Semantic::default()
-    });
-    scene.nodes.push(title);
-    y = y.saturating_add(40);
-    let mut used_ids = std::collections::BTreeSet::from([0u64, 1u64]);
-    walk(&page.elements, &mut |element| {
-        // Semantic IDs yield stable primitive identities across insertions and text
-        // changes; paired IDs distinguish control backgrounds from text runs.
-        let mut hash = 0xcbf29ce484222325u64;
-        for byte in element_id(element).bytes() {
-            hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
-        }
-        // Keep IDs exactly representable in JavaScript Number as well as Rust.
-        const NODE_ID_MASK: u64 = (1u64 << 53) - 2;
-        let mut id = hash & NODE_ID_MASK;
-        while used_ids.contains(&id) {
-            id = id.wrapping_add(2) & NODE_ID_MASK;
-        }
-        used_ids.insert(id);
-        used_ids.insert(id + 1);
-        if let PageElement::Image {
-            id: element_id,
-            alt,
-            width: image_width,
-            height: image_height,
-            ..
-        } = element
-        {
-            if let Some(asset) = images.get(element_id) {
-                let draw_width = if *image_width == 0 {
-                    asset.width
-                } else {
-                    *image_width
-                }
-                .min(width.saturating_sub(32));
-                let draw_height = if *image_height == 0 {
-                    asset.height
-                } else {
-                    *image_height
-                }
-                .min(4096);
-                let mut node = Node::new(
-                    id,
-                    Rect::new(16, y, draw_width, draw_height),
-                    Primitive::Image {
-                        width: asset.width,
-                        height: asset.height,
-                        rgba: asset.rgba.clone(),
-                    },
-                );
-                node.semantic = Some(Semantic {
-                    role: "img".into(),
-                    label: alt.clone(),
-                    ..Semantic::default()
-                });
-                node.clip = Some(Rect::new(0, 0, width, height));
-                scene.nodes.push(node);
-                y = y.saturating_add(draw_height as i32).saturating_add(8);
-                return;
-            }
-        }
-        let (text, size, interaction, role, value) = match element {
-            PageElement::Heading { text, level, .. } => (
-                text.clone(),
-                if *level <= 1 { 20 } else { 16 },
-                None,
-                "heading",
-                None,
-            ),
-            PageElement::Text { text, .. } => (text.clone(), 14, None, "text", None),
-            PageElement::Link { id, text, .. } => {
-                (text.clone(), 14, Some(id.clone()), "link", None)
-            }
-            PageElement::Button { id, text, .. } => {
-                (text.clone(), 14, Some(id.clone()), "button", None)
-            }
-            PageElement::Input {
-                id, label, value, ..
-            } => {
-                let value = fields.get(id).unwrap_or(value).clone();
-                (
-                    format!("{label}: {value}"),
-                    14,
-                    Some(id.clone()),
-                    "textbox",
-                    Some(value),
-                )
-            }
-            PageElement::Image { alt, .. } => (format!("[image: {alt}]"), 14, None, "img", None),
-            PageElement::Group { .. } | PageElement::Form { .. } => return,
-        };
-        let (cell, line) = text_cell(size);
-        let lines = wrap_text(&text, (width.saturating_sub(48) / cell).max(1) as usize);
-        let h = (lines.len() as u32).saturating_mul(line).saturating_add(12);
-        let bounds = Rect::new(16, y, width.saturating_sub(32), h);
-        if interaction.is_some() {
-            let mut bg = Node::rectangle(
-                id,
-                bounds,
-                if role == "textbox" {
-                    Color::rgb(244, 247, 252)
-                } else {
-                    Color::rgb(228, 237, 252)
-                },
-            );
-            bg.interaction = interaction.clone();
-            bg.semantic = Some(Semantic {
-                role: role.into(),
-                label: text.clone(),
-                value: value.clone(),
-                focusable: true,
-                ..Semantic::default()
-            });
-            scene.nodes.push(bg);
-            id += 1;
-        }
-        let mut node = Node::text(
-            id,
-            Rect::new(
-                22,
-                y.saturating_add(6),
-                width.saturating_sub(44),
-                h.saturating_sub(12),
-            ),
-            lines.join("\n"),
-            size,
-            if role == "link" {
-                Color::rgb(25, 78, 178)
-            } else {
-                Color::rgb(25, 32, 45)
-            },
-        );
-        node.interaction = interaction;
-        node.semantic = Some(Semantic {
-            role: role.into(),
-            label: text,
-            value,
-            focusable: node.interaction.is_some(),
-            ..Semantic::default()
-        });
-        node.clip = Some(Rect::new(0, 0, width, height));
-        scene.nodes.push(node);
-        y = y
-            .saturating_add(h.min(i32::MAX as u32) as i32)
-            .saturating_add(8);
-    });
-    scene
+    page_scene::layout(page, fields, images, width, height, scroll_y)
 }
 
 #[cfg(test)]
