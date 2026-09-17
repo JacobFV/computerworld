@@ -39,6 +39,7 @@ struct Mask {
     width: u32,
     height: u32,
     alpha: Vec<u8>,
+    spans: Vec<(u32, u32, u32)>,
 }
 /// Cache limits bound resident text memory across arbitrary navigation histories.
 pub struct Renderer {
@@ -104,11 +105,11 @@ impl Renderer {
         &self.frame
     }
     fn allocate(&mut self, scene: &Scene) {
-        let len = (scene.width as u64) * (scene.height as u64) * 4;
+        let len = (scene.width as u128) * (scene.height as u128) * 4;
         assert!(
             scene.width <= i32::MAX as u32
                 && scene.height <= i32::MAX as u32
-                && len <= cw_scene::MAX_PIXELS * 4,
+                && len <= cw_scene::MAX_PIXELS as u128 * 4,
             "frame exceeds dimension safety limit; call try_render for untrusted scenes"
         );
         self.frame.width = scene.width;
@@ -120,7 +121,9 @@ impl Renderer {
         if let Some(g) = self.glyphs.get(&(c, size)) {
             return g.clone();
         }
-        if self.glyphs.len() >= 8192 {
+        if self.glyphs.len() >= 8192
+            || self.glyphs.values().map(|g| g.alpha.len()).sum::<usize>() > 8 * 1024 * 1024
+        {
             self.glyphs.clear()
         }
         let (metrics, alpha) = self.font.rasterize(c, size as f32);
@@ -134,7 +137,12 @@ impl Renderer {
             return mask.clone();
         }
         if self.texts.len() >= 128
-            || self.texts.values().map(|m| m.alpha.len()).sum::<usize>() > 16 * 1024 * 1024
+            || self
+                .texts
+                .values()
+                .map(|m| m.alpha.len() + m.spans.len() * 12)
+                .sum::<usize>()
+                > 16 * 1024 * 1024
         {
             self.texts.clear()
         }
@@ -144,12 +152,14 @@ impl Renderer {
                 width: 0,
                 height: 0,
                 alpha: Vec::new(),
+                spans: Vec::new(),
             });
         }
         let mut mask = Mask {
             width,
             height,
             alpha: vec![0; len as usize],
+            spans: Vec::new(),
         };
         let size = size.clamp(1, 256);
         let (cell, line_height) = text_cell(size);
@@ -178,14 +188,32 @@ impl Renderer {
                 }
             }
         }
+        for y in 0..height {
+            let mut x = 0;
+            while x < width {
+                while x < width && mask.alpha[(y * width + x) as usize] == 0 {
+                    x += 1
+                }
+                let start = x;
+                while x < width && mask.alpha[(y * width + x) as usize] != 0 {
+                    x += 1
+                }
+                if start < x {
+                    mask.spans.push((y, start, x));
+                }
+            }
+        }
         let mask = Arc::new(mask);
-        self.texts.insert(key, mask.clone());
+        if mask.alpha.len() + mask.spans.len() * 12 <= 16 * 1024 * 1024 {
+            self.texts.insert(key, mask.clone());
+        }
         mask
     }
     fn paint(&mut self, scene: &Scene, damage: &[Rect]) {
         let viewport = Rect::new(0, 0, scene.width, scene.height);
         let nodes = scene.ordered_nodes();
-        for damage in damage {
+        let damage = normalize_damage(damage, viewport);
+        for damage in &damage {
             let Some(area) = damage.intersection(viewport) else {
                 continue;
             };
@@ -221,6 +249,46 @@ impl Renderer {
     }
     fn paint_node(&mut self, node: &Node, area: Rect, text: Option<&Mask>) {
         let identity = node.transform == Transform::default();
+        if identity {
+            if let (Primitive::Text { color, .. }, Some(mask)) = (&node.primitive, text) {
+                for &(row, start, end) in &mask.spans {
+                    let y = node.bounds.y as i64 + row as i64;
+                    if y < area.y as i64 || y >= area.y as i64 + area.height as i64 {
+                        continue;
+                    }
+                    let left = (node.bounds.x as i64 + start as i64).max(area.x as i64);
+                    let right =
+                        (node.bounds.x as i64 + end as i64).min(area.x as i64 + area.width as i64);
+                    for x in left..right {
+                        let alpha = mask.alpha
+                            [(row * mask.width) as usize + (x - node.bounds.x as i64) as usize];
+                        let color = Color(
+                            color.0,
+                            color.1,
+                            color.2,
+                            mul_alpha(mul_alpha(color.3, alpha), node.opacity),
+                        );
+                        if color.3 == 0 {
+                            continue;
+                        }
+                        let i = ((y as u32 * self.frame.width + x as u32) * 4) as usize;
+                        blend(&mut self.frame.rgba[i..i + 4], color);
+                        self.stats.painted_pixels += 1;
+                    }
+                }
+                return;
+            }
+            if let Primitive::Box {
+                fill, border: None, ..
+            } = &node.primitive
+            {
+                if fill.3 == 255 && node.opacity == 255 {
+                    self.clear(area, *fill);
+                    self.stats.painted_pixels += area.width as u64 * area.height as u64;
+                    return;
+                }
+            }
+        }
         for y in area.y..area.y + area.height as i32 {
             for x in area.x..area.x + area.width as i32 {
                 let p = if identity {
@@ -307,6 +375,41 @@ impl Renderer {
             }
         }
     }
+}
+// Coalesce redundant old/new damage and contiguous rectangles before rasterization.
+// Extra pixels inside a merged bounding rectangle are safe to repaint. Restrict
+// merging to cases where that rectangle costs no more than the two inputs.
+fn normalize_damage(input: &[Rect], viewport: Rect) -> Vec<Rect> {
+    let mut rects: Vec<_> = input
+        .iter()
+        .filter_map(|r| r.intersection(viewport))
+        .collect();
+    rects.sort_by_key(|r| (r.y, r.x, r.height, r.width));
+    rects.dedup();
+    let mut i = 0;
+    while i < rects.len() {
+        let mut j = i + 1;
+        while j < rects.len() {
+            let a = rects[i];
+            let b = rects[j];
+            let x = a.x.min(b.x);
+            let y = a.y.min(b.y);
+            let right = (a.x as i64 + a.width as i64).max(b.x as i64 + b.width as i64);
+            let bottom = (a.y as i64 + a.height as i64).max(b.y as i64 + b.height as i64);
+            let merged = Rect::new(x, y, (right - x as i64) as u32, (bottom - y as i64) as u32);
+            if merged.width as u64 * merged.height as u64
+                <= a.width as u64 * a.height as u64 + b.width as u64 * b.height as u64
+            {
+                rects[i] = merged;
+                rects.remove(j);
+                j = i + 1;
+            } else {
+                j += 1
+            }
+        }
+        i += 1;
+    }
+    rects
 }
 fn mul_alpha(a: u8, b: u8) -> u8 {
     ((a as u32 * b as u32 + 127) / 255) as u8
