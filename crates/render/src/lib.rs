@@ -1,5 +1,7 @@
 //! Deterministic portable CPU compositor. No browser, GPU, host font or clock.
 //! A renderer owns disposable glyph/text caches and a retained RGBA framebuffer.
+mod assets;
+pub use assets::ASSET_IDS;
 use cw_scene::{text_cell, wrap_text, Color, Damage, Node, Primitive, Rect, Scene, Transform};
 use fontdue::{Font, FontSettings};
 use serde::{Deserialize, Serialize};
@@ -47,8 +49,11 @@ struct Mask {
 pub struct Renderer {
     font: Font,
     ui_font: Option<Font>,
-    glyphs: BTreeMap<(bool, char, u16), Arc<Glyph>>,
-    texts: BTreeMap<(bool, String, u16, u32, u32), Arc<Mask>>,
+    bold_font: Option<Font>,
+    glyphs: BTreeMap<(u8, char, u16), Arc<Glyph>>,
+    texts: BTreeMap<(u8, String, u16, u32, u32), Arc<Mask>>,
+    assets: BTreeMap<(String, u32, u32), Arc<Frame>>,
+    shadows: BTreeMap<(u32, u32, u32, u32), Arc<Mask>>,
     frame: Frame,
     revision: Option<u64>,
     pub stats: RenderStats,
@@ -64,8 +69,11 @@ impl Renderer {
             font: Font::from_bytes(FONT_BYTES, FontSettings::default())
                 .expect("bundled font is valid"),
             ui_font: None,
+            bold_font: None,
             glyphs: BTreeMap::new(),
             texts: BTreeMap::new(),
+            assets: BTreeMap::new(),
+            shadows: BTreeMap::new(),
             frame: Frame::default(),
             revision: None,
             stats: RenderStats::default(),
@@ -120,7 +128,7 @@ impl Renderer {
         self.frame.height = scene.height;
         self.frame.rgba.resize(len as usize, 0);
     }
-    fn glyph(&mut self, c: char, size: u16, ui: bool) -> Arc<Glyph> {
+    fn glyph(&mut self, c: char, size: u16, ui: u8) -> Arc<Glyph> {
         let size = size.clamp(1, 256);
         if let Some(g) = self.glyphs.get(&(ui, c, size)) {
             return g.clone();
@@ -130,7 +138,15 @@ impl Renderer {
         {
             self.glyphs.clear()
         }
-        let font = if ui {
+        let font = if ui == 2 {
+            self.bold_font.get_or_insert_with(|| {
+                Font::from_bytes(
+                    include_bytes!("../assets/DejaVuSans-Bold.ttf") as &[u8],
+                    FontSettings::default(),
+                )
+                .expect("bundled bold font is valid")
+            })
+        } else if ui > 0 {
             self.ui_font.get_or_insert_with(|| {
                 Font::from_bytes(UI_FONT_BYTES, FontSettings::default())
                     .expect("bundled UI font is valid")
@@ -143,7 +159,7 @@ impl Renderer {
         self.glyphs.insert((ui, c, size), glyph.clone());
         glyph
     }
-    fn text(&mut self, text: &str, size: u16, width: u32, height: u32, ui: bool) -> Arc<Mask> {
+    fn text(&mut self, text: &str, size: u16, width: u32, height: u32, ui: u8) -> Arc<Mask> {
         let key = (ui, text.to_owned(), size, width, height);
         if let Some(mask) = self.texts.get(&key) {
             return mask.clone();
@@ -174,7 +190,7 @@ impl Renderer {
             spans: Vec::new(),
         };
         let size = size.clamp(1, 256);
-        if ui {
+        if ui > 0 {
             // Quantized 1/64-pixel advances avoid cumulative platform floating-point
             // layout drift. Raster positions and line spacing are integer pixels.
             let mut pen = 0i64;
@@ -192,7 +208,7 @@ impl Renderer {
                 if baseline - size as i64 >= height as i64 {
                     break;
                 }
-                let g = self.glyph(if c == '\t' { ' ' } else { c }, size, true);
+                let g = self.glyph(if c == '\t' { ' ' } else { c }, size, ui);
                 let advance =
                     (g.metrics.advance_width * 64.0 + 0.5) as i64 * if c == '\t' { 4 } else { 1 };
                 if pen > 0 && pen + advance > width as i64 * 64 {
@@ -225,7 +241,7 @@ impl Renderer {
                     break;
                 }
                 for (col, c) in line.chars().enumerate() {
-                    let g = self.glyph(c, size, false);
+                    let g = self.glyph(c, size, 0);
                     let x = col as i64 * cell as i64 + g.metrics.xmin as i64;
                     let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
                     for gy in 0..g.metrics.height {
@@ -284,14 +300,85 @@ impl Renderer {
                 }
                 let text = match &node.primitive {
                     Primitive::Text { text, size, .. } => {
-                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, false))
+                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, 0))
+                    }
+                    Primitive::UiTextBold { text, size, .. } => {
+                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, 2))
                     }
                     Primitive::UiText { text, size, .. } => {
-                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, true))
+                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, 1))
                     }
                     _ => None,
                 };
-                self.paint_node(node, area, text.as_deref());
+                let asset = if let Primitive::AssetImage { asset } = &node.primitive {
+                    let key = (asset.clone(), node.bounds.width, node.bounds.height);
+                    if !self.assets.contains_key(&key) {
+                        if let Some(frame) = assets::decode(asset) {
+                            // Antialias small icon resources once at their displayed size.
+                            // Wallpapers remain shared at source size; avoid large copies.
+                            let frame = if frame.width <= 256
+                                && frame.height <= 256
+                                && node.bounds.width > 0
+                                && node.bounds.height > 0
+                                && node.bounds.width as u64 * node.bounds.height as u64 <= 262_144
+                            {
+                                Arc::new(resample_icon(
+                                    &frame,
+                                    node.bounds.width,
+                                    node.bounds.height,
+                                ))
+                            } else {
+                                frame
+                            };
+                            if self.assets.len() >= 256
+                                || self
+                                    .assets
+                                    .iter()
+                                    .filter(|((id, _, _), _)| id.starts_with("icon/"))
+                                    .map(|(_, f)| f.rgba.len())
+                                    .sum::<usize>()
+                                    > 8 * 1024 * 1024
+                            {
+                                self.assets.clear();
+                            }
+                            self.assets.insert(key.clone(), frame);
+                        }
+                    }
+                    self.assets.get(&key).cloned()
+                } else {
+                    None
+                };
+                let shadow = if node.bounds.width as u64 * node.bounds.height as u64
+                    > cw_scene::MAX_PIXELS
+                {
+                    None
+                } else if let Primitive::Shadow { radius, blur, .. } = &node.primitive {
+                    let key = (
+                        node.bounds.width,
+                        node.bounds.height,
+                        *radius,
+                        (*blur).min(128),
+                    );
+                    if !self.shadows.contains_key(&key) {
+                        if self.shadows.values().map(|m| m.alpha.len()).sum::<usize>()
+                            > 8 * 1024 * 1024
+                        {
+                            self.shadows.clear();
+                        }
+                        self.shadows
+                            .insert(key, Arc::new(shadow_mask(key.0, key.1, key.2, key.3)));
+                    }
+                    self.shadows.get(&key).cloned()
+                } else {
+                    None
+                };
+                self.paint_node(
+                    node,
+                    area,
+                    text.as_deref(),
+                    asset.as_deref(),
+                    shadow.as_deref(),
+                );
             }
         }
         self.stats.frames += 1;
@@ -307,11 +394,22 @@ impl Renderer {
             }
         }
     }
-    fn paint_node(&mut self, node: &Node, area: Rect, text: Option<&Mask>) {
+    fn paint_node(
+        &mut self,
+        node: &Node,
+        area: Rect,
+        text: Option<&Mask>,
+        asset: Option<&Frame>,
+        shadow: Option<&Mask>,
+    ) {
         let identity = node.transform == Transform::default();
         if identity {
-            if let (Primitive::Text { color, .. } | Primitive::UiText { color, .. }, Some(mask)) =
-                (&node.primitive, text)
+            if let (
+                Primitive::Text { color, .. }
+                | Primitive::UiText { color, .. }
+                | Primitive::UiTextBold { color, .. },
+                Some(mask),
+            ) = (&node.primitive, text)
             {
                 for &(row, start, end) in &mask.spans {
                     let y = node.bounds.y as i64 + row as i64;
@@ -440,7 +538,9 @@ impl Renderer {
                             )
                         }
                     }
-                    Primitive::Text { color, .. } | Primitive::UiText { color, .. } => {
+                    Primitive::Text { color, .. }
+                    | Primitive::UiText { color, .. }
+                    | Primitive::UiTextBold { color, .. } => {
                         let Some(mask) = text else { continue };
                         if local_x >= mask.width as i64 || local_y >= mask.height as i64 {
                             continue;
@@ -448,6 +548,20 @@ impl Renderer {
                         let a =
                             mask.alpha[local_y as usize * mask.width as usize + local_x as usize];
                         Color(color.0, color.1, color.2, mul_alpha(color.3, a))
+                    }
+                    Primitive::Shadow { color, .. } => {
+                        let Some(mask) = shadow else { continue };
+                        let alpha =
+                            mask.alpha[local_y as usize * mask.width as usize + local_x as usize];
+                        Color(color.0, color.1, color.2, mul_alpha(color.3, alpha))
+                    }
+                    Primitive::AssetImage { .. } => {
+                        let Some(frame) = asset else { continue };
+                        let sx = local_x as u64 * frame.width as u64 / node.bounds.width as u64;
+                        let sy = local_y as u64 * frame.height as u64 / node.bounds.height as u64;
+                        let i = ((sy * frame.width as u64 + sx) * 4) as usize;
+                        let p = &frame.rgba[i..i + 4];
+                        Color(p[0], p[1], p[2], p[3])
                     }
                     Primitive::Image {
                         width,
@@ -770,11 +884,11 @@ mod tests {
     #[test]
     fn ui_proportional_advances_clipping_and_cache() {
         let mut renderer = Renderer::new();
-        let narrow = renderer.text("iiii", 20, 180, 30, true);
-        let wide = renderer.text("WWWW", 20, 180, 30, true);
+        let narrow = renderer.text("iiii", 20, 180, 30, 1);
+        let wide = renderer.text("WWWW", 20, 180, 30, 1);
         let right = |mask: &Mask| mask.spans.iter().map(|s| s.2).max().unwrap();
         assert!(right(&wide) > right(&narrow) * 2);
-        let cached = renderer.text("iiii", 20, 180, 30, true);
+        let cached = renderer.text("iiii", 20, 180, 30, 1);
         assert!(Arc::ptr_eq(&narrow, &cached));
         let mut scene = Scene::new(80, 30);
         let mut label = Node::ui_text(
@@ -866,5 +980,196 @@ mod properties {
                 prop_assert_eq!(incremental,full);
             }
         }
+    }
+}
+
+/// Three separable integer box passes approximate a Gaussian without host math.
+fn shadow_mask(width: u32, height: u32, radius: u32, blur: u32) -> Mask {
+    let mut alpha = vec![0; width as usize * height as usize];
+    let inner_w = width.saturating_sub(blur * 2);
+    let inner_h = height.saturating_sub(blur * 2);
+    for y in 0..height {
+        for x in 0..width {
+            alpha[(y * width + x) as usize] = rounded_coverage(
+                x as i64 - blur as i64,
+                y as i64 - blur as i64,
+                inner_w,
+                inner_h,
+                radius,
+            );
+        }
+    }
+    let r = blur.div_ceil(3) as usize;
+    if r > 0 && width > 0 && height > 0 {
+        let mut tmp = vec![0; alpha.len()];
+        for _ in 0..3 {
+            for y in 0..height as usize {
+                let row = y * width as usize;
+                let mut sum = (0..=r.min(width as usize - 1))
+                    .map(|x| alpha[row + x] as u32)
+                    .sum::<u32>();
+                for x in 0..width as usize {
+                    tmp[row + x] = ((sum + r as u32) / (r as u32 * 2 + 1)) as u8;
+                    if x >= r {
+                        sum -= alpha[row + x - r] as u32;
+                    }
+                    if x + r + 1 < width as usize {
+                        sum += alpha[row + x + r + 1] as u32;
+                    }
+                }
+            }
+            for x in 0..width as usize {
+                let mut sum = (0..=r.min(height as usize - 1))
+                    .map(|y| tmp[y * width as usize + x] as u32)
+                    .sum::<u32>();
+                for y in 0..height as usize {
+                    alpha[y * width as usize + x] = ((sum + r as u32) / (r as u32 * 2 + 1)) as u8;
+                    if y >= r {
+                        sum -= tmp[(y - r) * width as usize + x] as u32;
+                    }
+                    if y + r + 1 < height as usize {
+                        sum += tmp[(y + r + 1) * width as usize + x] as u32;
+                    }
+                }
+            }
+        }
+    }
+    Mask {
+        width,
+        height,
+        alpha,
+        spans: Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod desktop_asset_tests {
+    use super::*;
+
+    #[test]
+    fn bundled_assets_decode_and_share_across_world_renderers() {
+        for id in ASSET_IDS {
+            let frame = assets::decode(id).expect(id);
+            assert!(frame.width > 0 && frame.height > 0, "{id}");
+            assert_eq!(
+                frame.rgba.len(),
+                frame.width as usize * frame.height as usize * 4
+            );
+            assert!(Arc::ptr_eq(&frame, &assets::decode(id).unwrap()));
+        }
+        assert!(Arc::ptr_eq(
+            &assets::decode("icon/ios/editor").unwrap(),
+            &assets::decode("icon/ios/docs").unwrap()
+        ));
+        assert!(assets::decode("https://example.org/image.png").is_none());
+        assert!(assets::decode("/etc/passwd").is_none());
+    }
+
+    #[test]
+    fn assets_shadows_bold_are_deterministic_and_incremental() {
+        let mut scene = Scene::new(160, 120);
+        scene.nodes.push(Node::asset(
+            1,
+            Rect::new(0, 0, 160, 120),
+            "wallpaper/windows",
+        ));
+        scene.nodes.push(Node::new(
+            2,
+            Rect::new(20, 15, 120, 90),
+            Primitive::Shadow {
+                color: Color(0, 0, 0, 140),
+                radius: 10,
+                blur: 12,
+            },
+        ));
+        scene.nodes.push(Node::rounded_rectangle(
+            3,
+            Rect::new(32, 27, 96, 66),
+            Color::WHITE,
+            10,
+        ));
+        scene.nodes.push(Node::asset(
+            4,
+            Rect::new(40, 40, 30, 30),
+            "icon/windows/files",
+        ));
+        scene.nodes.push(Node::ui_text_bold(
+            5,
+            Rect::new(74, 40, 50, 30),
+            "Files",
+            13,
+            Color::BLACK,
+        ));
+        let first = Renderer::new().render(&scene);
+        let mut renderer = Renderer::new();
+        assert_eq!(first, renderer.render(&scene));
+        scene.nodes[4] = Node::ui_text_bold(5, Rect::new(74, 40, 50, 30), "Open", 13, Color::BLACK);
+        let incremental = renderer
+            .render_incremental(
+                &scene,
+                &Damage {
+                    rects: vec![Rect::new(74, 40, 50, 30)],
+                },
+            )
+            .clone();
+        assert_eq!(incremental, Renderer::new().render(&scene));
+        assert_eq!(renderer.shadows.len(), 1);
+        assert_eq!(renderer.assets.len(), 2);
+    }
+
+    #[test]
+    fn shadow_is_soft_symmetric_and_bounded() {
+        let mask = shadow_mask(80, 60, 6, 9);
+        let at = |x: usize, y: usize| mask.alpha[y * 80 + x];
+        assert!(at(40, 30) > at(40, 4));
+        assert!(at(40, 4) > 0);
+        for y in 0..60 {
+            for x in 0..80 {
+                assert_eq!(at(x, y), at(79 - x, y));
+            }
+        }
+    }
+}
+
+/// Fixed-point bilinear sampling of premultiplied colors avoids dark alpha fringes.
+fn resample_icon(source: &Frame, width: u32, height: u32) -> Frame {
+    let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
+    for y in 0..height {
+        let sy = (((2 * y as i64 + 1) * source.height as i64 * 256) / (2 * height as i64) - 128)
+            .clamp(0, (source.height as i64 - 1) * 256);
+        let y0 = (sy / 256) as u32;
+        let y1 = (y0 + 1).min(source.height - 1);
+        let fy = sy as u64 % 256;
+        for x in 0..width {
+            let sx = (((2 * x as i64 + 1) * source.width as i64 * 256) / (2 * width as i64) - 128)
+                .clamp(0, (source.width as i64 - 1) * 256);
+            let x0 = (sx / 256) as u32;
+            let x1 = (x0 + 1).min(source.width - 1);
+            let fx = sx as u64 % 256;
+            let mut a = 0u64;
+            let mut c = [0u64; 3];
+            for (px, py, weight) in [
+                (x0, y0, (256 - fx) * (256 - fy)),
+                (x1, y0, fx * (256 - fy)),
+                (x0, y1, (256 - fx) * fy),
+                (x1, y1, fx * fy),
+            ] {
+                let i = ((py * source.width + px) * 4) as usize;
+                let alpha = source.rgba[i + 3] as u64 * weight;
+                a += alpha;
+                for (channel, total) in c.iter_mut().enumerate() {
+                    *total += source.rgba[i + channel] as u64 * alpha;
+                }
+            }
+            for total in c {
+                rgba.push((total + a / 2).checked_div(a).unwrap_or(0) as u8);
+            }
+            rgba.push(((a + 32768) / 65536) as u8);
+        }
+    }
+    Frame {
+        width,
+        height,
+        rgba,
     }
 }

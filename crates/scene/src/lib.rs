@@ -151,10 +151,23 @@ pub enum Primitive {
         color: Color,
         size: u16,
     },
+    UiTextBold {
+        text: String,
+        color: Color,
+        size: u16,
+    },
     Text {
         text: String,
         color: Color,
         size: u16,
+    },
+    /// Stable bundled resource identifier. No host paths or network fetches.
+    AssetImage { asset: String },
+    /// Soft rounded shadow; bounds include `blur` pixels of padding on every side.
+    Shadow {
+        color: Color,
+        radius: u32,
+        blur: u32,
     },
     Image {
         width: u32,
@@ -215,6 +228,15 @@ impl Node {
             opacity: 255,
         }
     }
+    pub fn asset(id: u64, bounds: Rect, asset: impl Into<String>) -> Self {
+        Self::new(
+            id,
+            bounds,
+            Primitive::AssetImage {
+                asset: asset.into(),
+            },
+        )
+    }
     pub fn text(id: u64, bounds: Rect, text: impl Into<String>, size: u16, color: Color) -> Self {
         Self::new(
             id,
@@ -237,6 +259,23 @@ impl Node {
             id,
             bounds,
             Primitive::UiText {
+                text: text.into(),
+                color,
+                size,
+            },
+        )
+    }
+    pub fn ui_text_bold(
+        id: u64,
+        bounds: Rect,
+        text: impl Into<String>,
+        size: u16,
+        color: Color,
+    ) -> Self {
+        Self::new(
+            id,
+            bounds,
+            Primitive::UiTextBold {
                 text: text.into(),
                 color,
                 size,
@@ -625,5 +664,38 @@ mod properties {
             },
         ));
         assert_eq!(s.validate(), Err(SceneError::ImageSize));
+    }
+}
+
+#[cfg(test)]
+mod desktop_contract_tests {
+    use super::*;
+    #[test]
+    fn asset_shadow_and_bold_contracts_round_trip_without_bitmap_payloads() {
+        let mut scene = Scene::new(400, 300);
+        scene
+            .nodes
+            .push(Node::asset(1, Rect::new(0, 0, 400, 300), "wallpaper/macos"));
+        scene.nodes.push(Node::new(
+            2,
+            Rect::new(20, 20, 300, 200),
+            Primitive::Shadow {
+                color: Color(0, 0, 0, 90),
+                radius: 12,
+                blur: 18,
+            },
+        ));
+        scene.nodes.push(Node::ui_text_bold(
+            3,
+            Rect::new(40, 40, 100, 24),
+            "Finder",
+            14,
+            Color::BLACK,
+        ));
+        let json = serde_json::to_string(&scene).unwrap();
+        assert!(json.len() < 1500);
+        assert!(!json.contains("rgba"));
+        assert_eq!(scene, serde_json::from_str(&json).unwrap());
+        scene.validate().unwrap();
     }
 }

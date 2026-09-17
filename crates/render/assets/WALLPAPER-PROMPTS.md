@@ -1,0 +1,12 @@
+# Original wallpaper prompts
+
+Mode: built-in `image_gen.imagegen`, five independent generations. No reference
+images, no copied vendor assets. Output PNGs copied from the tool's generated
+images directory into this crate. Four are embedded; the generated Ubuntu image
+is retained as an alternative while the licensed official Numbat asset is used.
+
+- **macos**: Original ultra high quality desktop wallpaper. Photorealistic aerial California coastal headlands above blue Pacific, evening sunlight, rolling golden hills in foreground lower third, quiet turquoise coves, deep ultramarine sea and hazy blue horizon upper half. Wide landscape 16:10. Professional drone landscape photograph, rich natural detail, no buildings no text no logos no computer UI. For an OS desktop background.
+- **windows**: Original premium desktop wallpaper. Photorealistic 3D sculpture of luminous flowing blue silk folded into a sweeping central petal rosette, fine soft pleats, electric cobalt and ice blue light, midnight blue spacious background, sophisticated physically rendered translucent material, subtle volumetric lighting. Wide 16:10 desktop composition, no text no logos no UI. Original arrangement, not an exact copy of any existing wallpaper.
+- **ubuntu-original-generated**: Original premium Ubuntu-like desktop wallpaper. Beautiful abstract layered flowing organic curves, deep aubergine violet at top right, vibrant purple middle, warm sunset orange glowing in bottom left. Elegant sculptural paper wave relief with soft light and shadows, sparse clean composition, polished gradient depth, wide landscape 16:10. No logos, no text, no animals, no UI.
+- **ios**: Original premium mobile phone wallpaper portrait 9:19.5. Sculptural translucent glass ribbons sweeping in broad graceful arcs, frosted lavender and pale blue bands crossing into intense indigo lower area, warm blush peach glow at upper left, luminous soft gradient light, precise luxury product render, generous calm center, smooth realistic depth. No text no icons no logos no UI.
+- **android**: Original premium mobile phone wallpaper portrait 9:19.5. Macro photograph of a delicate pale coral pink protea flower with sculptural petals in bottom right half, soft muted sage green background, warm cream sunlight, elegant botanical detail, subtle shadows and natural fine textures, generous calm negative space upper third, editorial product-quality photography. No text no icons no logos no UI.

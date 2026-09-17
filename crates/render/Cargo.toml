@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 cw-scene = { path = "../scene" }
+png = "0.17"
 fontdue = "=0.9.3"
 serde.workspace = true
 
