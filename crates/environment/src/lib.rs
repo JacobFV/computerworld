@@ -1,6 +1,10 @@
 //! Capability-filtered actor interfaces above the canonical kernel.
 //! Owner inspection and snapshots are deliberately separate from actor observations.
-use cw_applications::desktop_scene::{content_rect, render_shell, DesktopTheme};
+mod desktop_extensions;
+use cw_applications::desktop_scene::{
+    render_desktop_with_options, window_content_rect_for_kind, work_area, DesktopTheme,
+    ShellOptions, WindowView,
+};
 use cw_applications::{AppState, DesktopState};
 use cw_browser::BrowserState;
 use cw_kernel::Runtime;
@@ -15,6 +19,10 @@ use std::sync::Arc;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MachineSession {
     pub browser: BrowserState,
+    #[serde(default)]
+    pub browser_windows: BTreeMap<u64, BrowserState>,
+    #[serde(default)]
+    pub active_browser_window: Option<u64>,
     pub desktop: DesktopState,
     pub terminal: Value,
     pub focused_input: Option<String>,
@@ -24,11 +32,20 @@ pub struct MachineSession {
     pub custom_page: Option<Page>,
     #[serde(default)]
     pub address_focused: bool,
+    #[serde(default)]
+    pub touch_start: Option<(i32, i32)>,
+    #[serde(default)]
+    pub pointer_position: Option<(i32, i32)>,
+    /// Press identity remains stable even if focusing changes the taskbar action.
+    #[serde(default)]
+    pub pointer_press: Option<(String, cw_scene::Rect)>,
 }
 impl Default for MachineSession {
     fn default() -> Self {
         Self {
             browser: BrowserState::default(),
+            browser_windows: BTreeMap::new(),
+            active_browser_window: None,
             desktop: DesktopState::default(),
             terminal: Value::Null,
             focused_input: None,
@@ -37,6 +54,9 @@ impl Default for MachineSession {
             active_app: None,
             custom_page: None,
             address_focused: false,
+            touch_start: None,
+            pointer_position: None,
+            pointer_press: None,
         }
     }
 }
@@ -506,13 +526,27 @@ impl Environment {
             ("application.v1", "event") => self.custom_event(id, machine, actor, p),
             ("application.v1", "launch") => {
                 let requested = string(p, "kind")?;
+                let alias = self.desktop_alias(id, machine, requested)?;
                 let canonical = match requested {
                     "text_editor" => "editor",
                     "file_manager" => "files",
                     other => other,
                 };
+                if canonical == "browser"
+                    && !self
+                        .session(id)?
+                        .config
+                        .actions
+                        .iter()
+                        .any(|family| family == "browser.v1")
+                {
+                    return Err(SimError::denied(
+                        "browser application interaction is not permitted",
+                    ));
+                }
                 let computer = self.runtime.computer(machine)?;
-                if !computer.application_available(requested)
+                if alias.is_none()
+                    && !computer.application_available(requested)
                     && !computer.application_available(canonical)
                 {
                     return Err(SimError::not_found("application is not installed"));
@@ -525,18 +559,37 @@ impl Environment {
                 self.machine_mut(id, machine)?.browser_visible = false;
                 self.machine_mut(id, machine)?.address_focused = false;
                 self.machine_mut(id, machine)?.focused_input = None;
-                let kind = string(p, "kind")?;
-                let arg = p.get("argument").and_then(Value::as_str).unwrap_or("");
+                let kind = if alias.is_some() {
+                    "browser"
+                } else {
+                    requested
+                };
+                let arg = alias
+                    .as_ref()
+                    .map(|a| a.url.as_str())
+                    .unwrap_or_else(|| p.get("argument").and_then(Value::as_str).unwrap_or(""));
                 let (window, effects) = self
                     .machine_mut(id, machine)?
                     .desktop
                     .launch(kind, arg)
                     .map_err(SimError::invalid)?;
+                let empty_argument = arg.is_empty();
+                if let Some(alias) = alias {
+                    let w = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .windows
+                        .get_mut(&window)
+                        .unwrap();
+                    w.app_id = alias.id;
+                    w.title = alias.label;
+                }
+                self.sync_desktop_visibility(id, machine)?;
                 self.effects(id, machine, actor, effects)?;
                 if kind == "browser" && self.desktop_theme(id, machine).is_some() {
                     let state = self.machine_mut(id, machine)?;
                     state.browser_visible = true;
-                    state.address_focused = arg.is_empty();
+                    state.address_focused = empty_argument;
                 }
                 Ok(json!({"window":window}))
             }
@@ -562,6 +615,9 @@ impl Environment {
                 Ok(Value::Null)
             }
             ("keyboard.v1", "type") => {
+                if self.desktop_panel_text(id, machine, string(p, "text")?)? {
+                    return Ok(Value::Null);
+                }
                 if self.machine_mut(id, machine)?.active_app.is_some() {
                     return self.custom_event(id, machine, actor, &json!({"kind":"text","data":p}));
                 }
@@ -583,6 +639,9 @@ impl Environment {
             }
             ("keyboard.v1", "key") => {
                 let key = string(p, "key")?;
+                if self.desktop_panel_key(id, machine, actor, key)? {
+                    return Ok(Value::Null);
+                }
                 if matches!(key, "Meta" | "Super" | "Meta+Space" | "Ctrl+Escape")
                     && self.desktop_theme(id, machine).is_some()
                 {
@@ -631,15 +690,17 @@ impl Environment {
                 self.effects(id, machine, actor, effects)?;
                 Ok(Value::Null)
             }
-            ("pointer.v1", "click") => {
+            ("pointer.v1", "click" | "down" | "move" | "up" | "cancel" | "double_click") => {
                 let x = p
                     .get("x")
                     .and_then(integer_i64)
-                    .ok_or_else(|| SimError::invalid("x required"))? as i32;
+                    .ok_or_else(|| SimError::invalid("x required"))?
+                    .clamp(-32768, 32768) as i32;
                 let y = p
                     .get("y")
                     .and_then(integer_i64)
-                    .ok_or_else(|| SimError::invalid("y required"))? as i32;
+                    .ok_or_else(|| SimError::invalid("y required"))?
+                    .clamp(-32768, 32768) as i32;
                 let width = p
                     .get("width")
                     .and_then(integer_u64)
@@ -650,11 +711,204 @@ impl Environment {
                     .and_then(integer_u64)
                     .unwrap_or(768)
                     .min(8192) as u32;
+                self.machine_mut(id, machine)?.pointer_position = Some((x, y));
+                let released_press = if action.op == "up" {
+                    self.machine_mut(id, machine)?.pointer_press.take()
+                } else {
+                    None
+                };
+                if matches!(action.op.as_str(), "down" | "cancel") {
+                    self.machine_mut(id, machine)?.pointer_press = None;
+                }
+                let theme = self.desktop_theme(id, machine);
+                let area = theme.map(|theme| work_area(theme, width, height));
+                let mobile = matches!(theme, Some(DesktopTheme::Ios | DesktopTheme::Android));
+                if mobile && action.op == "down" {
+                    self.machine_mut(id, machine)?.touch_start = Some((x, y));
+                }
+                if action.op == "cancel" {
+                    self.machine_mut(id, machine)?.touch_start = None;
+                }
+                if mobile && action.op == "up" {
+                    if let Some((start_x, start_y)) =
+                        self.machine_mut(id, machine)?.touch_start.take()
+                    {
+                        let dy = y - start_y;
+                        if dy.abs() > 70 && dy.abs() > (x - start_x).abs() {
+                            let state = &self.session(id)?.machines[machine];
+                            let target = if dy > 0 && start_y < 80 {
+                                Some("shell:control-center")
+                            } else if dy < 0 && state.desktop.focused.is_none() {
+                                Some("shell:launcher")
+                            } else if dy < 0 && start_y > height as i32 - 90 {
+                                Some(if dy < -(height as i32 / 3) {
+                                    "shell:overview"
+                                } else {
+                                    "shell:home"
+                                })
+                            } else {
+                                None
+                            };
+                            if let Some(target) = target {
+                                return self.shell_action(id, machine, actor, target);
+                            }
+                        }
+                    }
+                }
+                if action.op == "down" && p.get("button").and_then(integer_u64) == Some(2) {
+                    return self.shell_action(id, machine, actor, "shell:panel:context");
+                }
+                if action.op == "cancel" {
+                    self.machine_mut(id, machine)?.desktop.pointer_capture = None;
+                    return Ok(Value::Null);
+                }
+                if let Some(area) = area {
+                    if matches!(action.op.as_str(), "move" | "up") {
+                        let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                        let captured = if action.op == "move" {
+                            desktop.pointer_move(x, y, area)
+                        } else {
+                            desktop.pointer_up(x, y, area)
+                        }
+                        .map_err(SimError::invalid)?;
+                        if captured {
+                            let cursor = self.session(id)?.machines[machine]
+                                .desktop
+                                .pointer_capture
+                                .as_ref()
+                                .map(|capture| cursor_for_target(&capture.operation, true))
+                                .unwrap_or("default");
+                            return Ok(json!({"cursor":cursor}));
+                        }
+                    }
+                }
                 let scene = self.scene(id, width, height)?;
-                let target = scene
-                    .hit_test(x, y)
-                    .and_then(|n| n.interaction.clone())
-                    .ok_or_else(|| SimError::not_found("interaction"))?;
+                if action.op == "move" {
+                    return Ok(
+                        json!({"cursor":scene.hit_test(x,y).and_then(|n|n.interaction.as_deref()).map(|target|cursor_for_target(target,false)).unwrap_or("default")}),
+                    );
+                }
+                let mut target = if action.op == "up" {
+                    let Some((target, bounds)) = released_press else {
+                        return Ok(Value::Null);
+                    };
+                    if !bounds.contains(x, y) {
+                        return Ok(Value::Null);
+                    }
+                    target
+                } else {
+                    let Some(node) = scene.hit_test(x, y) else {
+                        return Ok(Value::Null);
+                    };
+                    let Some(target) = node.interaction.clone() else {
+                        return Ok(Value::Null);
+                    };
+                    if action.op == "down" {
+                        self.machine_mut(id, machine)?.pointer_press =
+                            Some((target.clone(), node.transform.bounds(node.bounds)));
+                    }
+                    target
+                };
+                let custom_prefix = format!("window:{}:content:", u64::MAX);
+                if self.session(id)?.machines[machine].active_app.is_some()
+                    && target.starts_with(&custom_prefix)
+                {
+                    if action.op == "down" {
+                        return Ok(Value::Null);
+                    }
+                    return self.custom_event(id,machine,actor,&json!({"kind":"click","target":target.trim_start_matches(&custom_prefix),"data":p}));
+                }
+                if self.session(id)?.machines[machine].active_app.is_some()
+                    && target.starts_with(&format!("window:{}:", u64::MAX))
+                {
+                    if action.op == "down" {
+                        return Ok(Value::Null);
+                    }
+                    if target.ends_with(":close") || target.ends_with(":minimize") {
+                        self.machine_mut(id, machine)?.active_app = None;
+                        self.machine_mut(id, machine)?.custom_page = None;
+                    }
+                    return Ok(Value::Null);
+                }
+                if let Some(namespaced) = target.strip_prefix("window:") {
+                    let (window, operation) = namespaced
+                        .split_once(':')
+                        .ok_or_else(|| SimError::invalid("invalid window interaction"))?;
+                    let window: u64 = window
+                        .parse()
+                        .map_err(|_| SimError::invalid("invalid window id"))?;
+                    let operation = operation.to_owned();
+                    if !self
+                        .session(id)?
+                        .config
+                        .actions
+                        .iter()
+                        .any(|family| family == "application.v1")
+                    {
+                        return Err(SimError::denied("application interaction is not permitted"));
+                    }
+                    self.machine_mut(id, machine)?
+                        .desktop
+                        .focus(window)
+                        .map_err(SimError::invalid)?;
+                    self.sync_desktop_visibility(id, machine)?;
+                    let area = area
+                        .ok_or_else(|| SimError::invalid("window interaction requires desktop"))?;
+                    if action.op == "down" {
+                        if !mobile && (operation == "drag" || operation.starts_with("resize:")) {
+                            self.machine_mut(id, machine)?
+                                .desktop
+                                .pointer_down(window, &operation, x, y, area)
+                                .map_err(SimError::invalid)?;
+                        }
+                        return Ok(Value::Null);
+                    }
+                    if operation == "drag" && action.op == "double_click" {
+                        self.machine_mut(id, machine)?
+                            .desktop
+                            .maximize(window, area)
+                            .map_err(SimError::invalid)?;
+                        return Ok(Value::Null);
+                    }
+                    match operation.as_str() {
+                        "maximize" => {
+                            self.machine_mut(id, machine)?
+                                .desktop
+                                .maximize(window, area)
+                                .map_err(SimError::invalid)?;
+                            return Ok(Value::Null);
+                        }
+                        "minimize" => {
+                            self.machine_mut(id, machine)?
+                                .desktop
+                                .minimize(window)
+                                .map_err(SimError::invalid)?;
+                            self.sync_desktop_visibility(id, machine)?;
+                            return Ok(Value::Null);
+                        }
+                        "close" => {
+                            self.machine_mut(id, machine)?
+                                .desktop
+                                .close(window)
+                                .map_err(SimError::invalid)?;
+                            self.sync_desktop_visibility(id, machine)?;
+                            return Ok(Value::Null);
+                        }
+                        "focus" | "drag" => return Ok(Value::Null),
+                        resize if resize.starts_with("resize:") => return Ok(Value::Null),
+                        content => {
+                            target = content
+                                .strip_prefix("content:")
+                                .ok_or_else(|| SimError::invalid("unknown window interaction"))?
+                                .to_owned();
+                        }
+                    }
+                } else if action.op == "down" {
+                    return Ok(Value::Null);
+                }
+                if action.op == "double_click" {
+                    return Ok(Value::Null);
+                }
                 if target.starts_with("shell:") {
                     return self.shell_action(id, machine, actor, &target);
                 }
@@ -716,6 +970,15 @@ impl Environment {
         }
     }
     fn browser_action(&mut self, id: &str, actor: &str, a: &ActionEnvelope) -> Result<Value> {
+        if !self
+            .session(id)?
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "browser.v1")
+        {
+            return Err(SimError::denied("browser interaction is not permitted"));
+        }
         let themed = self.desktop_theme(id, &a.machine).is_some();
         let runtime = &mut self.runtime;
         let machine = Arc::make_mut(&mut self.sessions)
@@ -730,7 +993,8 @@ impl Environment {
                 .desktop
                 .windows
                 .values()
-                .find(|w| matches!(w.state, AppState::Browser { .. }))
+                .filter(|w| matches!(w.state, AppState::Browser { .. }))
+                .max_by_key(|w| (machine.desktop.focused == Some(w.id), w.id))
                 .map(|w| w.id)
             {
                 machine.desktop.focus(window).map_err(SimError::invalid)?;
@@ -740,6 +1004,19 @@ impl Environment {
                     .launch("browser", "")
                     .map_err(SimError::invalid)?;
             }
+        }
+        if themed && machine.active_browser_window != machine.desktop.focused {
+            if let Some(previous) = machine.active_browser_window {
+                machine
+                    .browser_windows
+                    .insert(previous, std::mem::take(&mut machine.browser));
+            }
+            machine.browser = machine
+                .desktop
+                .focused
+                .and_then(|window| machine.browser_windows.remove(&window))
+                .unwrap_or_default();
+            machine.active_browser_window = machine.desktop.focused;
         }
         machine.active_app = None;
         machine.custom_page = None;
@@ -918,6 +1195,30 @@ impl Environment {
             .focused
             .and_then(|id| state.desktop.windows.get(&id))
             .is_some_and(|w| matches!(w.state, AppState::Browser { .. }));
+        if state.browser_visible {
+            let target = state.desktop.focused;
+            if state.active_browser_window != target {
+                if let Some(previous) = state.active_browser_window {
+                    state
+                        .browser_windows
+                        .insert(previous, std::mem::take(&mut state.browser));
+                }
+                state.browser = target
+                    .and_then(|window| state.browser_windows.remove(&window))
+                    .unwrap_or_default();
+                state.active_browser_window = target;
+            }
+        }
+        state
+            .browser_windows
+            .retain(|window, _| state.desktop.windows.contains_key(window));
+        if state
+            .active_browser_window
+            .is_some_and(|window| !state.desktop.windows.contains_key(&window))
+        {
+            state.active_browser_window = None;
+            state.browser = BrowserState::default();
+        }
         state.address_focused = false;
         state.active_app = None;
         state.custom_page = None;
@@ -939,8 +1240,13 @@ impl Environment {
         {
             return Err(SimError::denied("application interaction is not permitted"));
         }
+        if let Some(result) = self.desktop_panel_action(id, machine, actor, target)? {
+            return Ok(result);
+        }
         if let Some(kind) = target.strip_prefix("shell:launch:") {
-            if !self.runtime.computer(machine)?.application_available(kind) {
+            if self.desktop_alias(id, machine, kind)?.is_none()
+                && !self.runtime.computer(machine)?.application_available(kind)
+            {
                 return Err(SimError::not_found("application is not installed"));
             }
             let existing = self.session(id)?.machines[machine]
@@ -948,13 +1254,15 @@ impl Environment {
                 .windows
                 .values()
                 .find(|window| {
-                    matches!(
-                        (&window.state, kind),
-                        (AppState::Browser { .. }, "browser")
-                            | (AppState::Terminal { .. }, "terminal")
-                            | (AppState::Editor { .. }, "editor")
-                            | (AppState::Files { .. }, "files")
-                    )
+                    window.app_id == kind
+                        || (window.app_id.is_empty()
+                            && matches!(
+                                (&window.state, kind),
+                                (AppState::Browser { .. }, "browser")
+                                    | (AppState::Terminal { .. }, "terminal")
+                                    | (AppState::Editor { .. }, "editor")
+                                    | (AppState::Files { .. }, "files")
+                            ))
                 })
                 .map(|window| window.id);
             if let Some(window) = existing {
@@ -999,7 +1307,12 @@ impl Environment {
                 return Ok(Value::Null);
             }
             "shell:maximize" => {
-                state.desktop.maximized = !state.desktop.maximized;
+                if let Some(window) = state.desktop.focused {
+                    state
+                        .desktop
+                        .maximize(window, cw_scene::Rect::new(0, 28, 1024, 660))
+                        .map_err(SimError::invalid)?;
+                }
                 return Ok(Value::Null);
             }
             "shell:home" => state.desktop.home(),
@@ -1052,68 +1365,87 @@ impl Environment {
             .get(&s.focused_machine)
             .ok_or_else(|| SimError::denied("machine unavailable"))?;
         if let Some(theme) = self.desktop_theme(id, &s.focused_machine) {
-            let rect = content_rect(theme, width, height, m.desktop.maximized);
-            let visible =
-                m.browser_visible || m.active_app.is_some() || m.desktop.focused.is_some();
-            let page = self.project_page(&s.config.actor, &s.focused_machine, m)?;
-            let content = visible.then(|| {
-                if m.browser_visible {
-                    m.browser.scene(rect.width.max(1), rect.height.max(1))
-                } else if let Some(window) = m
-                    .desktop
-                    .focused
-                    .and_then(|id| m.desktop.windows.get(&id))
-                    .filter(|_| m.active_app.is_none())
-                {
+            let area = work_area(theme, width, height);
+            let mut views = Vec::new();
+            for window_id in m.desktop.ordered_windows() {
+                let window = &m.desktop.windows[&window_id];
+                let rect = m.desktop.effective_frame(window_id, area);
+                let kind = match &window.state {
+                    AppState::Browser { .. } => "browser",
+                    AppState::Files { .. } => "files",
+                    AppState::Editor { .. } => "editor",
+                    AppState::Terminal { .. } => "terminal",
+                };
+                let content_rect = window_content_rect_for_kind(theme, rect, kind);
+                let content = if kind == "browser" {
+                    let browser = if m.active_browser_window == Some(window_id) {
+                        &m.browser
+                    } else {
+                        m.browser_windows.get(&window_id).unwrap_or(&m.browser)
+                    };
+                    browser.scene(content_rect.width.max(1), content_rect.height.max(1))
+                } else {
                     cw_applications::desktop_scene::app_content(
                         &window.state,
                         theme,
-                        rect.width.max(1),
-                        rect.height.max(1),
+                        content_rect.width.max(1),
+                        content_rect.height.max(1),
                     )
+                };
+                let title = if let AppState::Browser { address } = &window.state {
+                    format!("{} — {}", window.title, address)
                 } else {
-                    cw_browser::layout_page(
+                    window.title.clone()
+                };
+                views.push(WindowView {
+                    id: window_id,
+                    title,
+                    kind: kind.into(),
+                    rect,
+                    focused: m.desktop.focused == Some(window_id),
+                    maximized: window.maximized,
+                    minimized: window.minimized,
+                    content: Some(content),
+                });
+            }
+            if m.active_app.is_some() {
+                let page = self.project_page(&s.config.actor, &s.focused_machine, m)?;
+                let rect = area;
+                let inner = window_content_rect_for_kind(theme, rect, "custom");
+                views.push(WindowView {
+                    id: u64::MAX,
+                    title: page.title.clone(),
+                    kind: "custom".into(),
+                    rect,
+                    focused: true,
+                    maximized: true,
+                    minimized: false,
+                    content: Some(cw_browser::layout_page(
                         &page,
                         &BTreeMap::new(),
-                        rect.width.max(1),
-                        rect.height.max(1),
+                        inner.width.max(1),
+                        inner.height.max(1),
                         0,
-                    )
-                }
-            });
-            let title = if m.browser_visible {
-                let address = if m.address_focused {
-                    m.desktop
-                        .focused
-                        .and_then(|id| m.desktop.windows.get(&id))
-                        .and_then(|w| {
-                            if let AppState::Browser { address } = &w.state {
-                                Some(address.as_str())
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or("")
-                } else {
-                    m.browser.url().unwrap_or("")
-                };
-                format!("Browser — {address}")
-            } else {
-                m.desktop
-                    .focused
-                    .and_then(|id| m.desktop.windows.get(&id))
-                    .map(|w| w.title.clone())
-                    .unwrap_or(page.title)
-            };
-            return Ok(render_shell(
+                    )),
+                });
+            }
+            return Ok(render_desktop_with_options(
                 theme,
                 width,
                 height,
                 self.runtime.tick(),
-                &title,
-                content,
                 m.desktop.launcher_open,
-                m.desktop.maximized,
+                views,
+                ShellOptions {
+                    installed_apps: self
+                        .desktop_catalog(id, &s.focused_machine)
+                        .into_iter()
+                        .map(|app| app.id)
+                        .collect(),
+                    panel: m.desktop.panel.clone(),
+                    search: m.desktop.search.clone(),
+                    hover: m.pointer_position,
+                },
             ));
         }
         Ok(if m.browser_visible {
@@ -1128,6 +1460,27 @@ impl Environment {
             )
         })
     }
+}
+fn cursor_for_target(target: &str, captured: bool) -> &'static str {
+    if let Some(edge) = target.rsplit_once("resize:").map(|(_, edge)| edge) {
+        return match edge {
+            "n" | "s" => "ns-resize",
+            "e" | "w" => "ew-resize",
+            "ne" | "sw" => "nesw-resize",
+            "nw" | "se" => "nwse-resize",
+            _ => "default",
+        };
+    }
+    if target == "drag" || target.ends_with(":drag") {
+        return if captured { "grabbing" } else { "grab" };
+    }
+    if target.ends_with("editor-text")
+        || target.ends_with("terminal-input")
+        || target.ends_with("shell:address")
+    {
+        return "text";
+    }
+    "pointer"
 }
 fn page_has_input(page: Option<&Page>, id: &str) -> bool {
     fn scan(elements: &[PageElement], id: &str) -> bool {
@@ -1509,6 +1862,74 @@ impl Environment {
                     return Err(SimError::invalid("invalid browser checkpoint"));
                 }
                 m.browser.validate_assets()?;
+                for (window, browser) in &m.browser_windows {
+                    if !m
+                        .desktop
+                        .windows
+                        .get(window)
+                        .is_some_and(|w| matches!(w.state, AppState::Browser { .. }))
+                        || browser.tabs.is_empty()
+                        || browser.active >= browser.tabs.len()
+                        || browser
+                            .tabs
+                            .iter()
+                            .any(|t| !t.history.is_empty() && t.position >= t.history.len())
+                    {
+                        return Err(SimError::invalid("invalid background browser checkpoint"));
+                    }
+                    browser.validate_assets()?;
+                }
+                if m.desktop
+                    .stacking
+                    .iter()
+                    .any(|id| !m.desktop.windows.contains_key(id))
+                    || m.desktop
+                        .stacking
+                        .iter()
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .len()
+                        != m.desktop.stacking.len()
+                {
+                    return Err(SimError::invalid("invalid window stacking"));
+                }
+                if m.desktop
+                    .focused
+                    .is_some_and(|id| !m.desktop.windows.get(&id).is_some_and(|w| !w.minimized))
+                {
+                    return Err(SimError::invalid("invalid window focus"));
+                }
+                for window in m.desktop.windows.values() {
+                    for frame in [window.frame, window.restored_frame].into_iter().flatten() {
+                        if frame.width == 0
+                            || frame.height == 0
+                            || frame.width > 32768
+                            || frame.height > 32768
+                            || frame.x.unsigned_abs() > 32768
+                            || frame.y.unsigned_abs() > 32768
+                        {
+                            return Err(SimError::invalid("invalid window geometry"));
+                        }
+                    }
+                }
+                if let Some(capture) = &m.desktop.pointer_capture {
+                    if !m.desktop.windows.contains_key(&capture.window)
+                        || !matches!(
+                            capture.operation.as_str(),
+                            "drag"
+                                | "resize:n"
+                                | "resize:ne"
+                                | "resize:e"
+                                | "resize:se"
+                                | "resize:s"
+                                | "resize:sw"
+                                | "resize:w"
+                                | "resize:nw"
+                        )
+                    {
+                        return Err(SimError::invalid("invalid pointer capture"));
+                    }
+                }
+
                 for instance in m.registered.instances.values() {
                     if self.app_registry.application(&instance.kind)?.version() != instance.version
                     {
@@ -1634,5 +2055,244 @@ mod application_tests {
         let snap = e.snapshot();
         e.restore(&snap).unwrap();
         assert_eq!(e.state_hash().unwrap(), state);
+    }
+}
+
+#[cfg(test)]
+mod window_interaction_tests {
+    use super::*;
+    fn desktop() -> (Environment, String) {
+        let definition = WorldDefinition::from_json(r#"{"id":"windows","profiles":[{"id":"virtual-macos-golden-gate","family":"macos"}],"computers":[{"id":"a","profile":"virtual-macos-golden-gate","address":"10.0.0.1","user":"alice","installed_apps":["terminal","editor","browser","files"]}]}"#).unwrap();
+        let mut env =
+            Environment::new(Runtime::new(definition, 42, cw_sdk::Registry::new()).unwrap());
+        let id = env
+            .environment(EnvironmentConfig::desktop("alice", "a"))
+            .unwrap();
+        (env, id)
+    }
+    fn action(env: &mut Environment, id: &str, family: &str, op: &str, p: Value) -> Value {
+        let result = env
+            .step(id, vec![ActionEnvelope::new(family, op, "a", p)])
+            .unwrap();
+        assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes);
+        serde_json::to_value(&result.outcomes[0]).unwrap()
+    }
+    fn position(env: &Environment, id: &str, target: &str) -> (i32, i32) {
+        let scene = env.scene(id, 1200, 800).unwrap();
+        let node = scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some(target))
+            .unwrap_or_else(|| panic!("missing {target}"));
+        (
+            node.bounds.x + node.bounds.width as i32 / 2,
+            node.bounds.y + node.bounds.height as i32 / 2,
+        )
+    }
+    fn pointer(env: &mut Environment, id: &str, op: &str, x: i32, y: i32) {
+        action(
+            env,
+            id,
+            "pointer.v1",
+            op,
+            json!({"x":x,"y":y,"width":1200,"height":800}),
+        );
+    }
+    #[test]
+    fn real_scene_drag_resize_and_minimize_restore_preserve_other_window() {
+        let (mut env, id) = desktop();
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "launch",
+            json!({"kind":"terminal"}),
+        );
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "launch",
+            json!({"kind":"editor"}),
+        );
+        let area = work_area(DesktopTheme::Macos, 1200, 800);
+        let before = env.session(&id).unwrap().machines["a"]
+            .desktop
+            .effective_frame(1, area);
+        let (x, y) = position(&env, &id, "window:1:drag");
+        pointer(&mut env, &id, "down", x, y);
+        pointer(&mut env, &id, "move", x + 40, y + 20);
+        let snapshot = env.snapshot();
+        pointer(&mut env, &id, "up", x + 40, y + 20);
+        assert_eq!(
+            env.session(&id).unwrap().machines["a"]
+                .desktop
+                .effective_frame(1, area)
+                .x,
+            before.x + 40
+        );
+        let hash = env.state_hash().unwrap();
+        env.restore(&snapshot).unwrap();
+        pointer(&mut env, &id, "up", x + 40, y + 20);
+        assert_eq!(env.state_hash().unwrap(), hash);
+        let (x, y) = position(&env, &id, "window:1:resize:se");
+        pointer(&mut env, &id, "down", x, y);
+        pointer(&mut env, &id, "up", x - 50, y - 50);
+        assert_eq!(
+            env.session(&id).unwrap().machines["a"]
+                .desktop
+                .effective_frame(1, area)
+                .width,
+            before.width - 50
+        );
+        let (x, y) = position(&env, &id, "window:1:maximize");
+        pointer(&mut env, &id, "down", x, y);
+        pointer(&mut env, &id, "up", x, y);
+        assert!(env.session(&id).unwrap().machines["a"].desktop.windows[&1].maximized);
+        assert!(!env.session(&id).unwrap().machines["a"].desktop.windows[&0].maximized);
+        let (x, y) = position(&env, &id, "window:1:minimize");
+        pointer(&mut env, &id, "click", x, y);
+        assert_eq!(
+            env.session(&id).unwrap().machines["a"].desktop.focused,
+            Some(0)
+        );
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "focus",
+            json!({"window":1}),
+        );
+        assert!(env.session(&id).unwrap().machines["a"].desktop.windows[&1].maximized);
+    }
+    #[test]
+    fn taskbar_press_keeps_original_target_when_focus_changes_release_scene() {
+        let definition=WorldDefinition::from_json(r#"{"id":"desktop","profiles":[{"id":"virtual-windows-11","family":"windows"}],"computers":[{"id":"a","profile":"virtual-windows-11","address":"10.0.0.1","user":"alice","installed_apps":["terminal","editor"]}]}"#).unwrap();
+        let mut env =
+            Environment::new(Runtime::new(definition, 42, cw_sdk::Registry::new()).unwrap());
+        let id = env
+            .environment(EnvironmentConfig::desktop("alice", "a"))
+            .unwrap();
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "launch",
+            json!({"kind":"terminal"}),
+        );
+        action(&mut env, &id, "application.v1", "minimize", json!({}));
+        let (x, y) = position(&env, &id, "window:0:focus");
+        pointer(&mut env, &id, "down", x, y);
+        assert!(!env.session(&id).unwrap().machines["a"].desktop.windows[&0].minimized);
+        let snapshot = env.snapshot();
+        assert_eq!(
+            env.scene(&id, 1200, 800)
+                .unwrap()
+                .hit_test(x, y)
+                .unwrap()
+                .interaction
+                .as_deref(),
+            Some("window:0:minimize")
+        );
+        pointer(&mut env, &id, "up", x, y);
+        assert!(!env.session(&id).unwrap().machines["a"].desktop.windows[&0].minimized);
+        env.restore(&snapshot).unwrap();
+        pointer(&mut env, &id, "up", x, y);
+        assert!(!env.session(&id).unwrap().machines["a"].desktop.windows[&0].minimized);
+        pointer(&mut env, &id, "down", x, y);
+        pointer(&mut env, &id, "up", 0, 0);
+        assert!(
+            !env.session(&id).unwrap().machines["a"].desktop.windows[&0].minimized,
+            "releasing outside a taskbar button cancels its press"
+        );
+        pointer(&mut env, &id, "down", x, y);
+        pointer(&mut env, &id, "up", x, y);
+        assert!(env.session(&id).unwrap().machines["a"].desktop.windows[&0].minimized);
+    }
+    #[test]
+    fn mobile_swipes_home_drawer_overview_and_shade_are_serialized_actions() {
+        let definition = WorldDefinition::from_json(r#"{"id":"phone","profiles":[{"id":"virtual-ios-18","family":"linux"}],"computers":[{"id":"a","profile":"virtual-ios-18","address":"10.0.0.1","user":"alice","installed_apps":["terminal","editor","browser","files"]}]}"#).unwrap();
+        let mut env =
+            Environment::new(Runtime::new(definition, 42, cw_sdk::Registry::new()).unwrap());
+        let id = env
+            .environment(EnvironmentConfig::desktop("alice", "a"))
+            .unwrap();
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "launch",
+            json!({"kind":"editor"}),
+        );
+        pointer(&mut env, &id, "down", 600, 760);
+        pointer(&mut env, &id, "up", 600, 620);
+        assert_eq!(
+            env.session(&id).unwrap().machines["a"].desktop.focused,
+            None
+        );
+        pointer(&mut env, &id, "down", 600, 650);
+        pointer(&mut env, &id, "up", 600, 450);
+        assert!(
+            env.session(&id).unwrap().machines["a"]
+                .desktop
+                .launcher_open
+        );
+        pointer(&mut env, &id, "down", 600, 20);
+        pointer(&mut env, &id, "up", 600, 200);
+        assert_eq!(
+            env.session(&id).unwrap().machines["a"]
+                .desktop
+                .panel
+                .as_deref(),
+            Some("quick")
+        );
+    }
+    #[test]
+    fn independent_browser_windows_keep_separate_history_and_storage() {
+        let (mut env, id) = desktop();
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "launch",
+            json!({"kind":"browser"}),
+        );
+        env.machine_mut(&id, "a")
+            .unwrap()
+            .browser
+            .tab_mut()
+            .fields
+            .insert("first".into(), "value".into());
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "launch",
+            json!({"kind":"browser"}),
+        );
+        assert!(!env
+            .machine_mut(&id, "a")
+            .unwrap()
+            .browser
+            .tab()
+            .fields
+            .contains_key("first"));
+        action(
+            &mut env,
+            &id,
+            "application.v1",
+            "focus",
+            json!({"window":0}),
+        );
+        assert_eq!(
+            env.machine_mut(&id, "a")
+                .unwrap()
+                .browser
+                .tab()
+                .fields
+                .get("first")
+                .map(String::as_str),
+            Some("value")
+        );
     }
 }

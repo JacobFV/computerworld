@@ -66,21 +66,21 @@ fn desktop_shell_lifecycle_is_interactive_and_snapshotted() {
     let opened = world.scene(&actor, 960, 640).unwrap();
     assert_ne!(home, opened);
     let snapshot = world.snapshot();
-    click(&mut world, &actor, "shell:minimize");
-    click(&mut world, &actor, "shell:launch:terminal");
+    click(&mut world, &actor, "window:0:minimize");
+    click(&mut world, &actor, "window:0:focus");
     assert_eq!(world.scene(&actor, 960, 640).unwrap(), opened);
-    click(&mut world, &actor, "shell:maximize");
+    click(&mut world, &actor, "window:0:maximize");
     assert_ne!(world.scene(&actor, 960, 640).unwrap(), opened);
     world.restore(&snapshot).unwrap();
     assert_eq!(world.scene(&actor, 960, 640).unwrap(), opened);
-    click(&mut world, &actor, "shell:close");
+    click(&mut world, &actor, "window:0:close");
     assert_eq!(world.scene(&actor, 960, 640).unwrap(), home);
 }
 #[test]
 fn desktop_browser_address_and_page_hit_targets_use_canonical_network() {
     let (mut world, actor) = world("virtual-macos-golden-gate");
     click(&mut world, &actor, "shell:launch:browser");
-    click(&mut world, &actor, "shell:address");
+    click(&mut world, &actor, "window:0:content:shell:address");
     action(
         &mut world,
         &actor,
@@ -100,9 +100,9 @@ fn desktop_browser_address_and_page_hit_targets_use_canonical_network() {
         .nodes
         .iter()
         .find_map(|node| {
-            node.interaction
-                .as_deref()
-                .filter(|id| !id.starts_with("shell:"))
+            node.interaction.as_deref().filter(|id| {
+                id.starts_with("window:0:content:") && !id.starts_with("window:0:content:shell:")
+            })
         })
         .expect("network response page has links")
         .to_owned();
@@ -160,27 +160,35 @@ fn desktop_launch_and_address_entry_respect_capabilities_and_installation() {
     let mut config = EnvironmentConfig::desktop("alice", "alice-mac");
     config.actions.retain(|family| family != "browser.v1");
     let actor = world.environment(config).unwrap();
-    click(&mut world, &actor, "shell:launch:browser");
-    action(
-        &mut world,
-        &actor,
-        "keyboard.v1",
-        "type",
-        json!({"text":"http://intranet.internal/"}),
-    );
-    let blocked = world
-        .step(
-            &actor,
-            vec![ActionEnvelope::new(
-                "keyboard.v1",
-                "key",
-                "alice-mac",
-                json!({"key":"Enter"}),
-            )],
-        )
-        .unwrap();
-    assert!(!blocked.outcomes[0].success);
-    assert_eq!(blocked.outcomes[0].error.as_ref().unwrap().code, "denied");
+    assert!(!world
+        .scene(&actor, 960, 640)
+        .unwrap()
+        .nodes
+        .iter()
+        .any(|node| node.interaction.as_deref() == Some("shell:launch:browser")));
+    assert!(!world
+        .scene(&actor, 960, 640)
+        .unwrap()
+        .nodes
+        .iter()
+        .any(|node| node.interaction.as_deref() == Some("shell:launch:editor")));
+    for (family, op, payload) in [
+        ("application.v1", "launch", json!({"kind":"browser"})),
+        (
+            "browser.v1",
+            "navigate",
+            json!({"url":"http://intranet.internal/"}),
+        ),
+    ] {
+        let blocked = world
+            .step(
+                &actor,
+                vec![ActionEnvelope::new(family, op, "alice-mac", payload)],
+            )
+            .unwrap();
+        assert!(!blocked.outcomes[0].success);
+        assert_eq!(blocked.outcomes[0].error.as_ref().unwrap().code, "denied");
+    }
     let launch = world
         .step(
             &actor,
