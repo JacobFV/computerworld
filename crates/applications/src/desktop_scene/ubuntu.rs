@@ -100,14 +100,11 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
                 8,
             );
         }
-        p.platform_icon(
-            Rect::new(12, y + 4, 44, 44),
-            "ubuntu",
-            kind,
-            &format!("shell:launch:{kind}"),
-            name,
-        );
-        p.region(dock_rect, &format!("shell:launch:{kind}"), name);
+        let action = running
+            .last()
+            .map_or_else(|| format!("shell:launch:{kind}"), |w| w.action("focus"));
+        p.platform_icon(Rect::new(12, y + 4, 44, 44), "ubuntu", kind, &action, name);
+        p.region(dock_rect, &action, name);
         if hovered && !ctx.launcher_open {
             let tip = Rect::new(78, y + 9, (name.len() as u32 * 7 + 24).max(72), 30);
             p.shadow(tip, 7);
@@ -569,5 +566,48 @@ mod tests {
                 Some(format!("window:42:{expected}").as_str())
             );
         }
+    }
+    #[test]
+    fn dock_restores_latest_running_window_and_launches_missing_apps() {
+        let windows = [7, 19].map(|id| WindowView {
+            id,
+            title: "Terminal".into(),
+            kind: "terminal".into(),
+            rect: Rect::new(120, 90, 600, 400),
+            focused: false,
+            maximized: false,
+            minimized: true,
+            content: None,
+        });
+        let ctx = ShellContext {
+            theme: DesktopTheme::Ubuntu,
+            width: 1024,
+            height: 768,
+            clock_us: 0,
+            title: "",
+            launcher_open: false,
+            active: false,
+            windows: &windows,
+            installed_apps: &[],
+            panel: None,
+            search: "",
+            hover: None,
+        };
+        let mut painter = Painter::new(1024, 768);
+        chrome(&mut painter, &ctx);
+        assert_eq!(
+            painter
+                .scene
+                .hit_test(32, 185)
+                .and_then(|n| n.interaction.as_deref()),
+            Some("window:19:focus")
+        );
+        assert_eq!(
+            painter
+                .scene
+                .hit_test(32, 68)
+                .and_then(|n| n.interaction.as_deref()),
+            Some("shell:launch:browser")
+        );
     }
 }
