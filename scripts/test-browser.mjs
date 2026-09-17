@@ -37,12 +37,14 @@ try {
     const definitions=d.definition;
     for(const c of definitions.computers){d.select(c.id);check(d.act('terminal.v1','execute',{command:'pwd'}).outcomes[0].success,`computer ${c.id} unavailable`);}
     d.select(definitions.computers[0].id);
+    for(const service of definitions.services){if(service.domains.length){const loaded=d.navigate(`http://${service.domains[0]}/`);check(loaded.outcomes[0].success,`service page ${service.id} failed: ${JSON.stringify(loaded.outcomes[0])}`);}}
     const site=definitions.services.find(s=>s.kind==='static-site')||definitions.services[0];
     const navigation=d.navigate(`http://${site.domains[0]}/`);check(navigation.outcomes[0].success,'synthetic navigation failed');
     const scene=d.env.scene(960,560);
     const link=scene.nodes.find(n=>n.interaction&&n.semantic?.role==='link');
     check(link,'site has no interactive link');
-    check(d.act('pointer.v1','click',{x:link.bounds.x+2,y:link.bounds.y+2,width:960,height:560}).outcomes[0].success,'Rust pointer hit testing failed');
+    const pointer=d.act('pointer.v1','click',{x:link.bounds.x+2,y:link.bounds.y+2,width:960,height:560});
+    check(pointer.outcomes[0].success,'Rust pointer hit testing failed: '+JSON.stringify({link,pointer}));
     check(d.act('application.v1','launch',{kind:'terminal'}).outcomes[0].success,'application launch failed');
     check(d.act('keyboard.v1','type',{text:'echo keyboard-wasm'}).outcomes[0].success,'keyboard input failed');
     check(d.act('keyboard.v1','key',{key:'Enter'}).outcomes[0].success,'keyboard execute failed');
@@ -55,6 +57,7 @@ try {
     d.refresh();return {computers:definitions.computers.length,services:definitions.services.length,events:events.length,rgbaBytes:a.length,stateHash:d.world.stateHash()};
   });
   await page.locator('#snapshot').click();await page.locator('#fork').click();await page.locator('#restore').click();await page.locator('#reset').click();
+  await page.evaluate(()=>{const d=window.computerworldDemo;const site=d.definition.services.find(s=>s.kind==='static-site');d.navigate(`http://${site.domains[0]}/`);});
   assert.deepEqual(requestsAfterBoot,[],'episode made browser network requests');assert.deepEqual(errors,[],'browser errors');
   await mkdir(resolve(root,'artifacts'),{recursive:true});await page.screenshot({path:resolve(root,'artifacts/browser-demo.png'),fullPage:true});
   console.log(JSON.stringify({ok:true,networkRequestsDuringEpisode:requestsAfterBoot.length,...report},null,2));

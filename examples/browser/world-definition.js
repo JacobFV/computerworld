@@ -35,8 +35,8 @@ export default {
       "address": "10.0.0.10",
       "user": "alice",
       "initial_files": {
-        "/home/alice/launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
-        "/home/alice/notes.txt": "Welcome alice. Start at http://intranet.internal/\n"
+        "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
+        "notes.txt": "Welcome alice. Start at http://intranet.internal/\n"
       },
       "installed_apps": [
         "terminal",
@@ -57,8 +57,8 @@ export default {
       "address": "10.0.0.11",
       "user": "bob",
       "initial_files": {
-        "/home/bob/launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
-        "/home/bob/notes.txt": "Welcome bob. Start at http://intranet.internal/\n"
+        "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
+        "notes.txt": "Welcome bob. Start at http://intranet.internal/\n"
       },
       "installed_apps": [
         "terminal",
@@ -79,8 +79,8 @@ export default {
       "address": "10.0.0.12",
       "user": "carol",
       "initial_files": {
-        "/home/carol/launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
-        "/home/carol/notes.txt": "Welcome carol. Start at http://intranet.internal/\n"
+        "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
+        "notes.txt": "Welcome carol. Start at http://intranet.internal/\n"
       },
       "installed_apps": [
         "terminal",
@@ -101,8 +101,8 @@ export default {
       "address": "10.0.0.13",
       "user": "admin",
       "initial_files": {
-        "/home/admin/launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
-        "/home/admin/notes.txt": "Welcome admin. Start at http://intranet.internal/\n"
+        "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
+        "notes.txt": "Welcome admin. Start at http://intranet.internal/\n"
       },
       "installed_apps": [
         "terminal",
@@ -123,8 +123,8 @@ export default {
       "address": "10.0.0.14",
       "user": "admin",
       "initial_files": {
-        "/home/admin/launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
-        "/home/admin/notes.txt": "Welcome admin. Start at http://intranet.internal/\n"
+        "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
+        "notes.txt": "Welcome admin. Start at http://intranet.internal/\n"
       },
       "installed_apps": [
         "terminal",

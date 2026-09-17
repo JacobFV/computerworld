@@ -2,9 +2,9 @@ import init, { World } from '../../pkg/web/computerworld.js';
 import definition from './world-definition.js';
 const $ = id => document.getElementById(id);
 const pretty = value => JSON.stringify(value, null, 2);
-let world, saved, machine, environments = new Map();
+let world, saved, machine, scrollY = 0, environments = new Map();
 const seed = 2026;
-const config = id => ({actor: `demo-${id}`,machines:[id],actions:['terminal.v1','browser.v1','keyboard.v1','pointer.v1','application.v1','filesystem.v1','http.v1'],observations:['terminal.v1','semantic.v1'],action_budget:1000000});
+const config = id => ({actor: definition.computers.find(computer => computer.id === id).user,machines:[id],actions:['terminal.v1','browser.v1','keyboard.v1','pointer.v1','application.v1','filesystem.v1','http.v1'],observations:['terminal.v1','semantic.v1','browser.v1'],action_budget:1000000});
 const env = () => environments.get(machine);
 function sessions() {
   for (const environment of environments.values()) environment.free();
@@ -14,8 +14,10 @@ function announce(text) { $('notice').textContent = text; }
 function refresh() {
   const observation = env().observe();
   $('observation').textContent = pretty(observation);
+  const browserUrl = observation.channels['browser.v1']?.[machine]?.url;
+  if (browserUrl) $('url').value = browserUrl;
   const terminal = observation.channels['terminal.v1']?.[machine];
-  if (terminal) $('terminal-output').textContent = terminal.stdout ?? pretty(terminal);
+  $('terminal-output').textContent = terminal ? (terminal.stdout ?? pretty(terminal)) : 'Terminal output appears here.';
   const frame = env().render(960, 560);
   const pixels = new Uint8ClampedArray(frame.rgba);
   $('screen').getContext('2d').putImageData(new ImageData(pixels, frame.width, frame.height),0,0);
@@ -34,7 +36,7 @@ function act(family, op, payload = {}) {
   refresh();
   return result;
 }
-function navigate(url) { $('url').value = url; return act('browser.v1','navigate',{url}); }
+function navigate(url) { scrollY = 0; $('url').value = url; return act('browser.v1','navigate',{url}); }
 function select(id) {
   machine = id;
   $('machine-name').textContent = `${id} · ${definition.computers.find(c => c.id === id).profile}`;
@@ -50,6 +52,7 @@ $('screen').onclick = protect(event => {
   act('pointer.v1','click',{x:Math.floor((event.clientX-bounds.left)*960/bounds.width),y:Math.floor((event.clientY-bounds.top)*560/bounds.height),width:960,height:560});
   $('screen').focus();
 });
+$('screen').addEventListener('wheel', protect(event => {event.preventDefault();scrollY=Math.max(0,scrollY+Math.round(event.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
 $('screen').onkeydown = protect(event => {
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.key === 'Tab') return;
