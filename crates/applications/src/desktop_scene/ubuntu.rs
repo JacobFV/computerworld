@@ -39,7 +39,11 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
     // GNOME 46's Activities control is a workspace pill, not a text menu.
     p.button(
         Rect::new(6, 3, 63, 26),
-        PANEL,
+        if ctx.hovered(Rect::new(6, 3, 63, 26)) {
+            Color::rgb(65, 65, 65)
+        } else {
+            PANEL
+        },
         13,
         "shell:launcher",
         "Activities / Show applications",
@@ -87,8 +91,14 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
             .iter()
             .filter(|w| w.kind == *kind)
             .collect::<Vec<_>>();
-        if running.iter().any(|w| w.focused && !w.minimized) {
-            p.box_(Rect::new(6, y - 2, 56, 56), Color(255, 255, 255, 28), 8);
+        let dock_rect = Rect::new(6, y - 2, 56, 56);
+        let hovered = ctx.hovered(dock_rect);
+        if hovered || running.iter().any(|w| w.focused && !w.minimized) {
+            p.box_(
+                dock_rect,
+                Color(255, 255, 255, if hovered { 48 } else { 28 }),
+                8,
+            );
         }
         p.platform_icon(
             Rect::new(12, y + 4, 44, 44),
@@ -97,6 +107,20 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
             &format!("shell:launch:{kind}"),
             name,
         );
+        p.region(dock_rect, &format!("shell:launch:{kind}"), name);
+        if hovered && !ctx.launcher_open {
+            let tip = Rect::new(78, y + 9, (name.len() as u32 * 7 + 24).max(72), 30);
+            p.shadow(tip, 7);
+            p.box_(tip, Color::rgb(42, 42, 42), 7);
+            p.text(
+                tip.x + 12,
+                tip.y + 8,
+                tip.width - 20,
+                name,
+                12,
+                Color::WHITE,
+            );
+        }
         for n in 0..running.len().min(3) {
             p.box_(Rect::new(1, y + 23 + n as i32 * 7, 4, 4), ORANGE, 2);
         }
@@ -105,7 +129,7 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
         let y = height - 62;
         p.button(
             Rect::new(6, y, 56, 54),
-            if ctx.launcher_open {
+            if ctx.launcher_open || ctx.hovered(Rect::new(6, y, 56, 54)) {
                 Color(255, 255, 255, 30)
             } else {
                 Color::TRANSPARENT
@@ -245,6 +269,11 @@ fn launcher(p: &mut Painter, ctx: &ShellContext<'_>) {
         if y + 94 > height {
             break;
         }
+        let tile = Rect::new(x + 4, y - 12, cell.saturating_sub(8) as u32, 112);
+        if ctx.hovered(tile) {
+            p.box_(tile, Color(255, 255, 255, 24), 12);
+        }
+        p.region(tile, &format!("shell:launch:{kind}"), name);
         p.platform_icon(
             Rect::new(x + (cell - 68) / 2, y, 68, 68),
             "ubuntu",
@@ -395,7 +424,7 @@ fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
     }
 }
 
-pub fn window_frame(p: &mut Painter, _ctx: &ShellContext<'_>, w: &WindowView) {
+pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let r = w.rect;
     let radius = if w.maximized { 0 } else { 12 };
     if !w.maximized {
@@ -457,7 +486,9 @@ pub fn window_frame(p: &mut Painter, _ctx: &ShellContext<'_>, w: &WindowView) {
         let cx = x - offset;
         p.button(
             Rect::new(cx, r.y + 9, 28, 28),
-            if action == "close" {
+            if ctx.hovered(Rect::new(cx, r.y + 9, 28, 28)) {
+                Color::rgb(199, 199, 199)
+            } else if action == "close" {
                 Color::rgb(217, 217, 217)
             } else {
                 header
@@ -520,6 +551,7 @@ mod tests {
             installed_apps: &[],
             panel: None,
             search: "",
+            hover: None,
         };
         let mut painter = Painter::new(1024, 768);
         window_frame(&mut painter, &ctx, &windows[0]);
