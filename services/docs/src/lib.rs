@@ -350,3 +350,38 @@ mod tests {
         assert_eq!(before, s);
     }
 }
+#[cfg(test)]
+mod browser_tests {
+    use super::*;
+    #[test]
+    fn native_form_changes_same_api_document() {
+        let context = ServiceContext {
+            actor: "alice".into(),
+            source: "workstation".into(),
+            tick: 100,
+            seed: 4,
+            instance: "docs".into(),
+        };
+        let mut state=DocsService.initialize(json!({"documents":{"plan":{"id":"plan","title":"Plan","owner":"alice","body":"before","revision":1}}}),&context).unwrap();
+        let mut browser = cw_browser::BrowserState::default();
+        let mut transport =
+            |request: HttpRequest| DocsService.handle(&mut state, &context, &request);
+        browser
+            .navigate("http://docs.internal/documents/plan", &mut transport)
+            .unwrap();
+        browser
+            .fill("edit-body", "updated through browser")
+            .unwrap();
+        browser.click("edit-submit", &mut transport).unwrap();
+        let response = DocsService
+            .handle(
+                &mut state,
+                &context,
+                &HttpRequest::get("http://docs.internal/api/documents/plan"),
+            )
+            .unwrap();
+        let document: Document = serde_json::from_slice(&response.body).unwrap();
+        assert_eq!(document.body, "updated through browser");
+        assert_eq!(document.revision, 2);
+    }
+}

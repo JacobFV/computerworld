@@ -2,7 +2,6 @@
 use cw_protocol::{HttpRequest, HttpResponse, Page, PageAction, PageElement, Result, SimError};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
 pub fn load<T: DeserializeOwned + Default>(value: &Value) -> Result<T> {
     if value.is_null() {
         Ok(T::default())
@@ -106,17 +105,21 @@ pub fn link(id: &str, text: impl Into<String>, url: impl Into<String>) -> PageEl
     }
 }
 pub fn form(id: &str, url: &str, fields: &[(&str, &str, &str)]) -> PageElement {
+    let action = PageAction {
+        method: "POST".into(),
+        url: url.into(),
+        fields: fields
+            .iter()
+            .map(|(key, _, _)| ((*key).into(), format!("${id}-{key}")))
+            .collect(),
+    };
     PageElement::Form {
         id: id.into(),
-        action: PageAction {
-            method: "POST".into(),
-            url: url.into(),
-            fields: BTreeMap::new(),
-        },
+        action: action.clone(),
         children: fields
             .iter()
-            .map(|(id, label, value)| PageElement::Input {
-                id: (*id).into(),
+            .map(|(key, label, value)| PageElement::Input {
+                id: format!("{id}-{key}"),
                 label: (*label).into(),
                 value: (*value).into(),
                 placeholder: String::new(),
@@ -124,11 +127,7 @@ pub fn form(id: &str, url: &str, fields: &[(&str, &str, &str)]) -> PageElement {
             .chain(std::iter::once(PageElement::Button {
                 id: format!("{id}-submit"),
                 text: "Submit".into(),
-                action: PageAction {
-                    method: "POST".into(),
-                    url: url.into(),
-                    fields: BTreeMap::new(),
-                },
+                action,
             }))
             .collect(),
     }
@@ -151,4 +150,31 @@ pub fn links(prefix: &str, text: &str) -> Vec<PageElement> {
                 .then(|| link(&format!("{prefix}-link-{i}"), url, url))
         })
         .collect()
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn forms_have_scoped_controls_and_wire_names() {
+        let first = form("one", "/save", &[("title", "Title", "")]);
+        let second = form("two", "/save", &[("title", "Title", "")]);
+        let PageElement::Form {
+            action, children, ..
+        } = first
+        else {
+            panic!()
+        };
+        assert_eq!(action.fields["title"], "$one-title");
+        let PageElement::Input { id, .. } = &children[0] else {
+            panic!()
+        };
+        assert_eq!(id, "one-title");
+        let PageElement::Form { children, .. } = second else {
+            panic!()
+        };
+        let PageElement::Input { id, .. } = &children[0] else {
+            panic!()
+        };
+        assert_eq!(id, "two-title");
+    }
 }

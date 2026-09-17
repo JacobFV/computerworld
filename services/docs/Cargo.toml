@@ -10,3 +10,6 @@ cw-sdk = { path = "../../crates/sdk" }
 serde.workspace = true
 serde_json.workspace = true
 cw-service-common = { path = "../common" }
+
+[dev-dependencies]
+cw-browser = { path = "../../crates/browser" }
