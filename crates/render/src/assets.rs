@@ -228,7 +228,7 @@ fn decode_png(id: &str) -> Option<Frame> {
     match info.color_type {
         png::ColorType::Rgba => rgba.extend_from_slice(raw),
         png::ColorType::Rgb => {
-            for p in raw.chunks_exact(3) {
+            for p in raw.as_chunks::<3>().0 {
                 rgba.extend_from_slice(&[p[0], p[1], p[2], 255]);
             }
         }
@@ -238,7 +238,7 @@ fn decode_png(id: &str) -> Option<Frame> {
             }
         }
         png::ColorType::GrayscaleAlpha => {
-            for p in raw.chunks_exact(2) {
+            for p in raw.as_chunks::<2>().0 {
                 rgba.extend_from_slice(&[p[0], p[0], p[0], p[1]]);
             }
         }

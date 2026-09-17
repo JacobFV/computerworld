@@ -389,7 +389,10 @@ impl Renderer {
         let pixel = [c.0, c.1, c.2, c.3];
         for y in area.y as u32..area.y as u32 + area.height {
             let start = ((y * self.frame.width + area.x as u32) * 4) as usize;
-            for dst in self.frame.rgba[start..start + area.width as usize * 4].chunks_exact_mut(4) {
+            for dst in self.frame.rgba[start..start + area.width as usize * 4]
+                .as_chunks_mut::<4>()
+                .0
+            {
                 dst.copy_from_slice(&pixel)
             }
         }

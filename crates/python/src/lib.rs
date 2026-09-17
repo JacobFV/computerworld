@@ -166,6 +166,11 @@ impl Environment {
 }
 #[pymodule]
 fn computerworld(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add(
+        "__version__",
+        env!("CARGO_PKG_VERSION").replace("-alpha.", "a"),
+    )?;
+    m.add("engine_version", env!("CARGO_PKG_VERSION"))?;
     m.add_class::<World>()?;
     m.add_class::<Environment>()?;
     m.add_class::<Snapshot>()?;

@@ -349,3 +349,9 @@ impl Default for JsSceneRenderer {
         Self::new()
     }
 }
+
+/// Version of the canonical engine embedded in this binding.
+#[wasm_bindgen(js_name = engineVersion)]
+pub fn engine_version() -> String {
+    env!("CARGO_PKG_VERSION").to_owned()
+}
