@@ -21,8 +21,11 @@ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message)
 const report={ok:false,devices:[],networkRequestsDuringEpisode:0};
 const scene=()=>page.evaluate(()=>{const c=document.querySelector('#screen');return window.computerworldDemo.env.scene(c.width,c.height);});
 async function clickTarget(target,{optional=false}={}){
-  let s=await scene(),node=s.nodes.find(n=>n.interaction===target);
-  if(!node&&target.startsWith('shell:launch:')&&s.nodes.some(n=>n.interaction==='shell:launcher')){await clickTarget('shell:launcher');s=await scene();node=s.nodes.find(n=>n.interaction===target);}
+  let s=await scene();
+  const matches=n=>n.interaction===target||n.interaction?.endsWith(':content:'+target)||(target.startsWith('shell:')&&['maximize','minimize','close'].includes(target.slice(6))&&n.interaction?.match(new RegExp('^window:[0-9]+:'+target.slice(6)+'$')));
+  let node=s.nodes.findLast(matches);
+  if(!node&&target.startsWith('shell:launch:')&&s.nodes.some(n=>n.interaction==='shell:launcher')){await clickTarget('shell:launcher');s=await scene();node=s.nodes.findLast(matches);}
+  if(!node&&target.startsWith('shell:launch:')){await page.evaluate(kind=>window.computerworldDemo.act('application.v1','launch',{kind}),target.slice('shell:launch:'.length));return true;}
   if(!node&&optional)return false;
   assert.ok(node,`missing interaction ${target}`);
   const screen=page.locator('#screen');await screen.scrollIntoViewIfNeeded();
@@ -65,17 +68,17 @@ try{
     await page.locator('#screen').screenshot({path:resolve(root,`artifacts/desktop-${theme}-window.png`)});
     const snapshot=await page.evaluate(()=>{const d=window.computerworldDemo;window.desktopQaSnapshot=d.world.snapshot();return d.world.stateHash();});
     if(!['ios','android'].includes(theme)){
-      const beforeMax=(await scene()).nodes.find(n=>n.interaction==='shell:address').bounds;
+      const beforeMax=(await scene()).nodes.find(n=>n.interaction?.endsWith(':content:shell:address')).bounds;
       await clickTarget('shell:maximize');
-      const afterMax=(await scene()).nodes.find(n=>n.interaction==='shell:address').bounds;
+      const afterMax=(await scene()).nodes.find(n=>n.interaction?.endsWith(':content:shell:address')).bounds;
       assert.notDeepEqual(afterMax,beforeMax,'maximize did not change window geometry');
       await clickTarget('shell:minimize');
-      assert.ok(!(await scene()).nodes.some(n=>n.interaction==='shell:address'),'minimized browser is still visible');
+      assert.ok(!(await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'minimized browser is still visible');
       await clickTarget('shell:launch:browser');
-      assert.ok((await scene()).nodes.some(n=>n.interaction==='shell:address'),'minimized browser did not restore');
+      assert.ok((await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'minimized browser did not restore');
       await clickTarget('shell:close');
-      assert.ok(!(await scene()).nodes.some(n=>n.interaction==='shell:address'),'closed browser is still visible');
-    }else {await clickTarget('shell:home');assert.ok(!(await scene()).nodes.some(n=>n.interaction==='shell:address'),'phone home did not hide browser');}
+      assert.ok(!(await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'closed browser is still visible');
+    }else {await clickTarget('shell:home');assert.ok(!(await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'phone home did not hide browser');}
     await page.evaluate(expected=>{const d=window.computerworldDemo,s=window.desktopQaSnapshot;d.world.restore(s);if(d.world.stateHash()!==expected)throw Error('desktop snapshot restore mismatch');const fork=d.world.fork(s);if(fork.stateHash()!==expected)throw Error('desktop fork mismatch');fork.free();s.free();delete window.desktopQaSnapshot;d.refresh();},snapshot);
     await clickTarget('shell:launch:terminal');
     await clickTarget('terminal-input',{optional:true});
