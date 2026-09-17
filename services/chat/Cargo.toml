@@ -1,0 +1,12 @@
+[package]
+name = "cw-service-chat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cw-protocol = { path = "../../crates/protocol" }
+cw-sdk = { path = "../../crates/sdk" }
+serde.workspace = true
+serde_json.workspace = true
+cw-service-common = { path = "../common" }
