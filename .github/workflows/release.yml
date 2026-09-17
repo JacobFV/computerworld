@@ -101,7 +101,13 @@ jobs:
           node target/release-unpacked/*/examples/javascript/computer-interaction.mjs --output target/release-node-evidence
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - run: node scripts/test-browser.mjs
+      - name: Execute the archived standalone browser demo offline
+        run: |
+          python -c "from pathlib import Path; import zipfile; zipfile.ZipFile(next(Path('target/release-assets').glob('*-browser-demo.zip'))).extractall('target/release-unpacked')"
+          DEMO_ROOT=$(find target/release-unpacked -maxdepth 1 -type d -name '*-browser-demo')
+          mkdir -p "$DEMO_ROOT/scripts"
+          cp scripts/test-browser.mjs "$DEMO_ROOT/scripts/test-browser.mjs"
+          node "$DEMO_ROOT/scripts/test-browser.mjs"
       - run: node scripts/test-desktops.mjs
       - run: node scripts/test-desktop-overhaul.mjs
       - uses: actions/upload-artifact@v4
