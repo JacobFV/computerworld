@@ -82,7 +82,7 @@ node examples/browser/build.mjs
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000/examples/browser/`. The server only supplies static assets; it executes
+Try the [private hosted world console](https://computerworld-console.jacobfv123.chatgpt.site), or open `http://localhost:8000/examples/browser/` locally. The server only supplies static assets; it executes
 no simulation. The world console shows all six device screens/consoles and actual network links, including a phone-sized interface. Add/remove devices, interact with their applications and peripherals, and save/restore/fork the live topology. [Browser demo instructions](examples/browser/README.md) include
 offline verification. The build also emits a Node package under `pkg/node`.
 
