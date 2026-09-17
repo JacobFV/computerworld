@@ -509,7 +509,7 @@ mod tests {
         let a = Renderer::new().render(&s);
         let b = Renderer::new().render(&s);
         assert_eq!(a, b);
-        assert!(a.rgba.iter().any(|v| *v == 255));
+        assert!(a.rgba.contains(&255));
         assert_eq!(
             format!("{:x}", Sha256::digest(&a.rgba)),
             "01455c4eaa6c1eca6900b545f69bba35ad9428fb66275a41df86268ae3595ec6"

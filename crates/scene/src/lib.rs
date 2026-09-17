@@ -387,6 +387,9 @@ pub struct ScenePatch {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "op", content = "value", rename_all = "snake_case")]
+// Upserts dominate frame updates. Keeping nodes inline avoids a separate allocation
+// and pointer chase for every patch operation in the renderer hot path.
+#[allow(clippy::large_enum_variant)]
 pub enum PatchOp {
     Upsert(Node),
     Remove(u64),
