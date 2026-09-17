@@ -1,6 +1,6 @@
-# Architecture proposal — awaiting approval
+# Architecture proposal — approved
 
-This is phase 2, not an implemented API. Read the [provenance matrix](provenance.md)
+Approved by the user on 2026-09-17. This preserves the phase-2 design; current APIs and verified limitations are documented in the implementation guides. Read the [provenance matrix](provenance.md)
 first. The proposed repository/package working name is **computerworld**. No
 registry name or remote repository has been reserved.
 

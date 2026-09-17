@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = ["crates/*", "services/*", "benchmarks/runner"]
+default-members = ["crates/computerworld"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.83"
+authors = ["Computerworld contributors"]
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+url = { version = "2", features = ["serde"] }
+proptest = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+[profile.dev]
+debug = 1

@@ -1,0 +1,38 @@
+[package]
+name = "computerworld"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Deterministic synthetic computer worlds with native, Wasm and Python interfaces"
+
+[features]
+default = ["render"]
+render = ["dep:cw-render"]
+
+[dependencies]
+cw-protocol = { path = "../protocol" }
+cw-sdk = { path = "../sdk" }
+cw-kernel = { path = "../kernel" }
+cw-environment = { path = "../environment" }
+cw-scene = { path = "../scene" }
+cw-render = { path = "../render", optional = true }
+cw-services = { path = "../services" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[[example]]
+name = "company"
+path = "../../examples/native/company.rs"
+
+[[example]]
+name = "custom-service"
+path = "../../examples/custom-service/echo.rs"
+
+[[example]]
+name = "custom-app"
+path = "../../examples/custom-app/counter.rs"

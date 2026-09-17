@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "unrelated-lab",
+  "profiles": [
+    {
+      "id": "lab-os",
+      "name": "Laboratory terminal",
+      "family": "linux",
+      "home": "/home/{user}",
+      "case_sensitive": true,
+      "shell": "posix"
+    }
+  ],
+  "computers": [
+    {
+      "id": "lab",
+      "profile": "lab-os",
+      "address": "192.0.2.10",
+      "user": "researcher",
+      "initial_files": {
+        "/home/researcher/input.txt": "7\n"
+      },
+      "installed_apps": [
+        "terminal"
+      ]
+    }
+  ],
+  "network": {
+    "nodes": [],
+    "links": [],
+    "dns": [],
+    "routes": [],
+    "gateway": {
+      "allow_local": true,
+      "allow_internet": false,
+      "allow_host": false
+    }
+  },
+  "services": [],
+  "metadata": {
+    "description": "An unrelated custom world with no company/service dependency"
+  }
+}

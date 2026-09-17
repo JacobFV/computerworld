@@ -1,0 +1,10 @@
+/target/
+/.venv/
+**/node_modules/
+**/__pycache__/
+*.pyc
+/dist/
+/pkg/
+*.so
+*.whl
+/benchmarks/results/local-*/

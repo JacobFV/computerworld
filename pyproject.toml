@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+[project]
+name = "computerworld"
+version = "0.1.0"
+requires-python = ">=3.9"
+description = "Deterministic synthetic computer worlds powered by one Rust runtime"
+license = { text = "MIT" }
+[tool.maturin]
+manifest-path = "crates/python/Cargo.toml"
+module-name = "computerworld"
+include = [
+  { path = "worlds/**/*", format = "sdist" },
+  { path = "examples/native/**/*", format = "sdist" },
+]

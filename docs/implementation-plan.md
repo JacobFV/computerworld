@@ -1,9 +1,8 @@
 # Parallel implementation and verification plan
 
-Status: proposed; execution starts only after architecture approval. The
+Status: approved on 2026-09-17; parallel implementation and verification in progress. The
 [architecture proposal](architecture-proposal.md) defines ownership and semantics.
-The user's explicit phase-2 approval gate is the only reason implementation has
-not begun. Investigation and documentation are already authorized and complete.
+The user approved full implementation after the phase-2 review. The milestones below are the acceptance plan, not a claim that each has already passed.
 
 ## Integration order and dependency DAG
 

@@ -1,0 +1,15 @@
+[package]
+name = "cw-services"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+cw-protocol = { path = "../protocol" }
+cw-sdk = { path = "../sdk" }
+cw-service-git = { path = "../../services/git" }
+cw-service-issues = { path = "../../services/issues" }
+cw-service-static-site = { path = "../../services/static-site" }
+cw-service-mail = { path = "../../services/mail" }
+cw-service-chat = { path = "../../services/chat" }
+cw-service-docs = { path = "../../services/docs" }
+cw-service-calendar = { path = "../../services/calendar" }

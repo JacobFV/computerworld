@@ -1,0 +1,10 @@
+[package]
+name = "cw-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cw-protocol = { path = "../protocol" }
+serde.workspace = true
+serde_json.workspace = true
