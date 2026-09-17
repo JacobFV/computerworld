@@ -1,0 +1,98 @@
+macos: 12 interaction checks passed
+windows: 13 interaction checks passed
+ubuntu: 13 interaction checks passed
+ios: 8 interaction checks passed
+android: 9 interaction checks passed
+{
+  "ok": true,
+  "devices": [
+    {
+      "id": "alice-mac",
+      "theme": "macos",
+      "checks": [
+        "real pointer window dragging at four positions",
+        "edge and corner resizing",
+        "maximize restores exact geometry",
+        "left and right drag snapping",
+        "per-window minimize and taskbar restore",
+        "overlapping independent windows focus and stack",
+        "independent browser window histories",
+        "snapshot and fork preserve full geometry and app state",
+        "mail state-backed service alias",
+        "calendar state-backed service alias",
+        "chat state-backed service alias",
+        "docs state-backed service alias"
+      ]
+    },
+    {
+      "id": "bob-windows",
+      "theme": "windows",
+      "checks": [
+        "native launcher opens",
+        "real pointer window dragging at four positions",
+        "edge and corner resizing",
+        "maximize restores exact geometry",
+        "left and right drag snapping",
+        "per-window minimize and taskbar restore",
+        "overlapping independent windows focus and stack",
+        "independent browser window histories",
+        "snapshot and fork preserve full geometry and app state",
+        "mail state-backed service alias",
+        "calendar state-backed service alias",
+        "chat state-backed service alias",
+        "docs state-backed service alias"
+      ]
+    },
+    {
+      "id": "carol-ubuntu",
+      "theme": "ubuntu",
+      "checks": [
+        "native launcher opens",
+        "real pointer window dragging at four positions",
+        "edge and corner resizing",
+        "maximize restores exact geometry",
+        "left and right drag snapping",
+        "per-window minimize and taskbar restore",
+        "overlapping independent windows focus and stack",
+        "independent browser window histories",
+        "snapshot and fork preserve full geometry and app state",
+        "mail state-backed service alias",
+        "calendar state-backed service alias",
+        "chat state-backed service alias",
+        "docs state-backed service alias"
+      ]
+    },
+    {
+      "id": "alice-phone",
+      "theme": "ios",
+      "checks": [
+        "native launcher opens",
+        "touch launcher and upward Home gesture",
+        "upward app drawer and downward system panel gestures",
+        "long upward recent applications gesture",
+        "mail state-backed service alias",
+        "calendar state-backed service alias",
+        "chat state-backed service alias",
+        "docs state-backed service alias"
+      ]
+    },
+    {
+      "id": "bob-android",
+      "theme": "android",
+      "checks": [
+        "native launcher opens",
+        "touch launcher and upward Home gesture",
+        "upward app drawer and downward system panel gestures",
+        "long upward recent applications gesture",
+        "mobile recent applications",
+        "mail state-backed service alias",
+        "calendar state-backed service alias",
+        "chat state-backed service alias",
+        "docs state-backed service alias"
+      ]
+    }
+  ],
+  "networkRequestsDuringEpisode": 0,
+  "visualAssessment": "Screenshots require reference review; no pixel-similarity score claimed for differing scenes.",
+  "browserErrors": []
+}

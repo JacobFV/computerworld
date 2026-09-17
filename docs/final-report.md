@@ -97,8 +97,8 @@ does not establish
 a universal renderer-only advantage over Chromium; the report retains contrary
 results and distinguishes layout, raster, encoding and capture costs.
 
-The final browser binding and topology build is 5,490,584 bytes raw / 1,664,137 gzip;
-its Python wheel is 2,945,242 bytes. Boundary performance was refreshed against this build.
+The earlier pre-overhaul browser binding and topology build was 5,490,584 bytes raw / 1,664,137 gzip;
+its Python wheel was 2,945,242 bytes. Boundary performance was refreshed against this build.
 Node/Python parity after dynamic topology changes passes with baseline state hash
 `bef75176ee710983e5605fda2cbe590727ece1d609b947c33411126debb035dd`.
 
@@ -116,8 +116,7 @@ hosts service definitions is rejected to prevent orphaned service placement;
 dynamic service migration/removal is not implemented.
 
 Pages are structured native descriptions. Arbitrary HTML/CSS/JavaScript execution
-and a real-browser compatibility backend are not implemented. Text uses bundled
-fixed-cell font rendering without full bidi/script shaping. The scene renderer
+and a real-browser compatibility backend are not implemented. Text uses bundled fixed-cell terminal and proportional UI fonts without full bidi/script shaping. The scene renderer
 supports useful deterministic primitives rather than full browser typography and
 compositing. Native extension handlers are trusted code, not a sandbox for untrusted
 plugins. The explicit native HTTP adapter is optional and is outside pure core.
@@ -131,3 +130,15 @@ separate release work; this workspace does not claim those guarantees.
 ## OS desktop follow-up
 
 Five native desktop/mobile shells now render and interact through the canonical Rust scene pipeline. The [desktop GUI notes](desktop-gui.md) describe profiles, controls, rendering and fidelity limits; [source archaeology](../research/desktop-visuals.md) identifies the recovered predecessor patterns. All five pass [offline browser verification](../artifacts/desktop-verification.json). The most recent acceptance suite passes 178 tests, with zero failures. Cross-language desktop checkpoint restoration reproduces identical semantic state and pixels. The performance table above remains the previously pinned benchmark run, not a new measurement of desktop-shell workloads.
+
+## Desktop overhaul and consumer examples
+
+Desktop windows now retain individual geometry, stacking, minimized/maximized/snap state, independent browser content and pointer capture. Dragging, eight resize handles, snap, restore and mobile navigation run inside Rust and survive snapshots. Five platform shells use shared decoded image assets, cached soft shadows and proportional UI typography. Structured service pages now provide native Mail/Documents/Chat/Calendar layouts while retaining their actual network state and actions.
+
+The new [Python and JavaScript walkthrough](programmatic-computer-use.md) runs equivalent persistent-session actions, exports observations/scenes/pixels/trajectories, restores snapshots, forks and verifies replay. Cross-language checks compare exact scene and pixel output. Repository publication is at https://github.com/JacobFV/computerworld; PyPI/npm releases remain separate work.
+
+The photographic assets materially increase the Wasm download: see the current [binding measurements](../artifacts/overhaul-bindings.json). The performance table above measures the earlier pinned workloads, not the new asset-rich shells. Desktop shells remain visual approximations: typography, mobile system panels, native settings and application breadth do not reproduce every real OS behavior.
+
+The final overhaul native verification passed **203 tests** and strict workspace Clippy. Python/Node examples reproduce identical state, scenes and pixels after 11 input actions. Current Wasm is 17,165,529 bytes raw / 12,254,195 gzip; the locally built Python wheel is 13,683,421 bytes. Asset/font copyright notices ship with both bindings. These are local verification results, not a claim of completed remote CI or published package registries.
+
+Browser verification also passes all five OS profiles: 55 overhaul interaction checks, the existing desktop suite and the world-console lifecycle suite, with zero outbound requests after boot. [Visual review](../artifacts/overhaul-visual-review.json) records remaining fidelity gaps separately from behavior checks.

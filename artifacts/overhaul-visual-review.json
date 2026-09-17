@@ -1,0 +1,17 @@
+{
+  "method": "Manual screenshot inspection against official vendor references listed in research/desktop-fidelity-references.md. Different scene contents and viewports preclude a meaningful pixel similarity percentage.",
+  "improvements": [
+    "All five home screens now have detailed raster wallpapers rather than flat geometric approximations.",
+    "System labels use bundled proportional typography; macOS dock, Windows taskbar, GNOME dash and mobile icon layouts have distinct geometry.",
+    "Desktop screenshots show independent overlapping windows, focused and unfocused controls, rounded frames and soft shadows.",
+    "Structured service pages use proportional typography, cards and sidebar layout instead of duplicated headings and monospace rows."
+  ],
+  "remaining_visible_gaps": [
+    "iOS Control Center is a generic clock/application list, not the real grouped connectivity and media surface.",
+    "Many application icons remain original generic symbols rather than exact platform icon artwork.",
+    "Proportional service text wraps using approximate widths and can split words awkwardly.",
+    "Service-backed Mail is a generic structured page, not a full native Apple Mail or Outlook reproduction.",
+    "Mobile application content and system panels omit many native controls and transitions."
+  ],
+  "conclusion": "Substantial visual and interaction improvement, not a pixel-perfect or photorealistic replica of every operating-system surface."
+}

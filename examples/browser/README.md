@@ -27,3 +27,9 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/path/to/chrome node 
 The browser test checks real Wasm execution, seven machines, eight sites, keyboard and pointer input, raster determinism, denied outbound access, dynamic phone/headless creation, isolated networking, service-host removal protection, topology snapshot/restore/fork/reset, and zero browser requests during the episode.
 
 Use the on-screen dock/taskbar/launcher to open apps, or use the auxiliary device controls below the screen. **Expand desktop** increases the selected display. Additional five-OS browser QA: `node scripts/test-desktops.mjs` with the same Playwright/Chrome environment variables.
+
+Desktop title bars support dragging and double-click maximize/restore. Window edges and corners resize; dragging to desktop edges snaps windows. Dock/taskbar items restore running applications. Phones support Home, recent-app, app-drawer and shade gestures. All input is interpreted by Rust.
+
+For agents and other applications, see [programmatic computer interaction](../../docs/programmatic-computer-use.md), the [JavaScript demo](../javascript/computer-interaction.mjs), and the [Python demo](../python/computer_interaction.py). These use the same canonical runtime without the console UI.
+
+Run `node scripts/test-desktop-overhaul.mjs` for the gesture/window regression suite. OS shells are synthetic approximations, not native OS executables or pixel-perfect reproductions.
