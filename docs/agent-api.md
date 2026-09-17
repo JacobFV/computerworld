@@ -27,8 +27,12 @@ checked before dispatch. Batches are ordered sequences, not atomic transactions.
 | `keyboard.v1` | `type` text and `key` input |
 | `pointer.v1` | `click` at scene coordinates and viewport dimensions |
 
-Native callers can register additional `ActionFamily` implementations. Grants
-select families; extensions must respect their scoped actor context.
+Native callers can register additional `ActionFamily` implementations and
+`ObservationChannel` implementations through the environment owner API. Grants
+select which families/channels an actor can use. These extensions are trusted
+code receiving runtime access; their implementations must enforce appropriate
+projection and access rules and must not leak privileged state. Their versions
+are part of the checkpoint compatibility boundary.
 `EnvironmentConfig::terminal` and `::desktop` are convenience presets, not
 separate simulators.
 
