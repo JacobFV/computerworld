@@ -1,0 +1,50 @@
+name: verify
+on:
+  push:
+  pull_request:
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy,rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: Swatinem/rust-cache@v2
+      - run: bash scripts/test-all.sh
+  bindings-and-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: Swatinem/rust-cache@v2
+      - name: Install matching wasm-bindgen and Python build tooling
+        run: |
+          BINDGEN_VERSION=$(python -c 'import tomllib; d=tomllib.load(open("Cargo.lock","rb")); print(next(p["version"] for p in d["package"] if p["name"] == "wasm-bindgen"))')
+          cargo install wasm-bindgen-cli --version "$BINDGEN_VERSION" --locked
+          python -m pip install maturin
+      - run: bash scripts/smoke-bindings.sh
+      - run: node examples/browser/build.mjs
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/test-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: binding-and-browser-evidence
+          path: |
+            target/binding-checks/
+            artifacts/browser-demo.png
+            artifacts/browser-verification.json
