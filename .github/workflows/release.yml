@@ -98,6 +98,7 @@ jobs:
         run: |
           mkdir -p target/release-unpacked
           tar -xzf target/release-assets/*-wasm-node.tar.gz -C target/release-unpacked
+          node -e "const fs=require('fs'); const path=require('path'); const dir=fs.readdirSync('target/release-unpacked').find(p=>p.endsWith('-wasm-node')); const root=path.resolve('target/release-unpacked',dir); const pkg=require(path.join(root,'package.json')); const wasm=require(path.join(root,'computerworld.js')); require('assert').strictEqual(wasm.engineVersion(),pkg.version); console.log('Wasm engine version:',wasm.engineVersion());"
           node target/release-unpacked/*/examples/javascript/computer-interaction.mjs --output target/release-node-evidence
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
