@@ -39,6 +39,14 @@ try {
     d.select(definitions.computers[0].id);
     const site=definitions.services.find(s=>s.kind==='static-site')||definitions.services[0];
     const navigation=d.navigate(`http://${site.domains[0]}/`);check(navigation.outcomes[0].success,'synthetic navigation failed');
+    const scene=d.env.scene(960,560);
+    const link=scene.nodes.find(n=>n.interaction&&n.semantic?.role==='link');
+    check(link,'site has no interactive link');
+    check(d.act('pointer.v1','click',{x:link.bounds.x+2,y:link.bounds.y+2,width:960,height:560}).outcomes[0].success,'Rust pointer hit testing failed');
+    check(d.act('application.v1','launch',{kind:'terminal'}).outcomes[0].success,'application launch failed');
+    check(d.act('keyboard.v1','type',{text:'echo keyboard-wasm'}).outcomes[0].success,'keyboard input failed');
+    check(d.act('keyboard.v1','key',{key:'Enter'}).outcomes[0].success,'keyboard execute failed');
+    check(JSON.stringify(d.env.observe()).includes('keyboard-wasm'),'keyboard terminal output missing');
     const denied=d.navigate('https://real-internet.invalid/');check(!denied.outcomes[0].success,'outbound network unexpectedly allowed');
     d.navigate(`http://${site.domains[0]}/`);
     const frame=d.env.render(960,560);const a=Array.from(frame.rgba);frame.free();const second=d.env.render(960,560);const b=second.rgba;check(a.length===960*560*4,'wrong frame size');check(a.every((v,i)=>v===b[i]),'render nondeterminism');check(new Set(a).size>3,'render appears blank');second.free();

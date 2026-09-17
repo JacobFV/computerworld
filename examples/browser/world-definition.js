@@ -357,7 +357,7 @@ export default {
               "bob"
             ],
             "subject": "Atlas launch checklist",
-            "body": "Review document launch at http://docs.internal/api/documents/launch. The release code is ATLAS-2026. Update the document after validating launch.txt, then tell #general. Follow OPS-1 at http://issues.internal/.",
+            "body": "Review document launch at http://docs.internal/documents/launch. The release code is ATLAS-2026. Update the document after validating launch.txt, then tell #general. Follow OPS-1 at http://issues.internal/.",
             "time": 0,
             "mailboxes": {
               "alice": {
@@ -429,7 +429,12 @@ export default {
             "body": "Find launch instructions in mail.internal. Project chat is general at chat.internal. Team calendar is calendar.internal. Public documentation: http://guide.example/.",
             "revision": 1,
             "history": [],
-            "comments": []
+            "comments": [],
+            "body_variants": [
+              "Northstar release review rotation: Alice leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/.",
+              "Northstar release review rotation: Bob leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/.",
+              "Northstar release review rotation: Carol leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/."
+            ]
           }
         }
       }
@@ -467,8 +472,21 @@ export default {
       ],
       "port": 80,
       "initial_state": {
-        "events": {},
-        "next_id": 0
+        "next_id": 1,
+        "events": {
+          "event-1": {
+            "id": "event-1",
+            "owner": "carol",
+            "title": "Atlas launch review",
+            "start": 3600000,
+            "end": 5400000,
+            "created": 0,
+            "attendees": {
+              "alice": "pending",
+              "bob": "pending"
+            }
+          }
+        }
       }
     },
     {

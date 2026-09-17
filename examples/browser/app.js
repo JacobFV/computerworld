@@ -42,6 +42,7 @@ function select(id) {
   refresh();
 }
 function protect(fn) { return (...args) => {try {return fn(...args);} catch(error) {announce(String(error)); console.error(error);}}; }
+document.querySelectorAll('[data-app]').forEach(button => button.onclick=protect(()=>act('application.v1','launch',{kind:button.dataset.app})));
 $('navigation').onsubmit = protect(event => {event.preventDefault();navigate($('url').value);});
 $('terminal').onsubmit = protect(event => {event.preventDefault();act('terminal.v1','execute',{command:$('command').value});$('command').value='';});
 $('screen').onclick = protect(event => {
