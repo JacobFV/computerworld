@@ -40,3 +40,8 @@ and RGBA bytes. `World` owns reset, snapshots, portable export/import, definitio
 trajectory, state hash and privileged inspection. Retain it in the harness;
 provide only the environment to actor code. Python values cross a thin serialized
 conversion boundary; there is no Python command/service implementation.
+
+The privileged world owner also supports `world.add_computer(computer, node, links)`
+and `world.remove_computer(id)`. These preserve other devices and service state;
+`world.definition()` returns the current blueprint. Actor environments do not expose
+these methods. See [device lifecycle and checkpoint rules](agent-api.md#owner-controlled-device-lifecycle).

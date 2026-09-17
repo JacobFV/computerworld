@@ -57,3 +57,9 @@ For seeds outside JavaScript's exact integer range, pass a decimal string.
 The owner uses `stateHash()`, `exportSnapshot()` and `importSnapshot(json)`.
 See the [demo instructions](../examples/browser/README.md) for browser execution
 and offline verification commands.
+
+The [world console](../examples/browser/README.md) visualizes all device screens,
+headless consoles, phone-sized views, peripherals and actual network links.
+`World.addComputer(computer, node, links)` and `World.removeComputer(id)` mutate the
+canonical runtime; `World.definition()` reads the current topology. These operations
+are deliberately unavailable on actor handles. See [owner lifecycle](agent-api.md#owner-controlled-device-lifecycle).

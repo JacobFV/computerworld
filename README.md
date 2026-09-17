@@ -8,6 +8,8 @@ The default simulator has no host filesystem, socket, subprocess, clock, entropy
 or network access. The browser demo runs entirely client-side after loading its
 static assets. Python calls the Rust runtime directly; Node is not required.
 
+Requires Rust 1.88 or newer to build (verified with Rust 1.97.1).
+
 ## Start here
 
 ```sh
@@ -81,7 +83,7 @@ python3 -m http.server 8000
 ```
 
 Open `http://localhost:8000/examples/browser/`. The server only supplies static assets; it executes
-no simulation. [Browser demo instructions](examples/browser/README.md) include
+no simulation. The world console shows all six device screens/consoles and actual network links, including a phone-sized interface. Add/remove devices, interact with their applications and peripherals, and save/restore/fork the live topology. [Browser demo instructions](examples/browser/README.md) include
 offline verification. The build also emits a Node package under `pkg/node`.
 
 ```javascript

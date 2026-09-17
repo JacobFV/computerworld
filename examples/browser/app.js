@@ -1,92 +1,160 @@
 import init, { World } from '../../pkg/web/computerworld.js';
-import definition from './world-definition.js';
+import initialDefinition from './world-definition.js';
 const $ = id => document.getElementById(id);
-const pretty = value => JSON.stringify(value, null, 2);
-let world, saved, machine, scrollY = 0, environments = new Map();
+const pretty = value => JSON.stringify(value, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2);
+let world, saved, machine, scrollY = 0, environments = new Map(), definition = initialDefinition;
+let presentations = {...initialDefinition.metadata?.device_presentations}, savedPresentation, savedSessions;
 const seed = 2026;
-const config = id => ({actor: definition.computers.find(computer => computer.id === id).user,machines:[id],actions:['terminal.v1','browser.v1','keyboard.v1','pointer.v1','application.v1','filesystem.v1','http.v1'],observations:['terminal.v1','semantic.v1','browser.v1'],action_budget:1000000});
+const kind = id => presentations[id] ?? (id.includes('server') ? 'server' : 'desktop');
+const dimensions = id => kind(id)==='phone' ? [390,720] : [960,560];
+const config = id => ({actor: definition.computers.find(c => c.id === id).user,machines:[id],actions:['terminal.v1','browser.v1','keyboard.v1','pointer.v1','application.v1','filesystem.v1','http.v1'],observations:['terminal.v1','semantic.v1','browser.v1'],action_budget:1000000});
 const env = () => environments.get(machine);
-function sessions() {
+function sessions(ids) {
   for (const environment of environments.values()) environment.free();
-  environments = new Map(definition.computers.map(c => [c.id, world.environment(config(c.id))]));
+  environments = new Map(definition.computers.map(c => [c.id, ids?.has(c.id) ? world.session(ids.get(c.id)) : world.environment(config(c.id))]));
 }
 function announce(text) { $('notice').textContent = text; }
+function protect(fn) { return (...args) => {try {return fn(...args);} catch(error) {announce(String(error));}}; }
+function paint(environment, canvas, width, height) {
+  const frame = environment.render(width,height);
+  canvas.width=width;canvas.height=height;
+  canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(frame.rgba),width,height),0,0);
+  frame.free();
+}
 function refresh() {
+  if (!env()) return;
   const observation = env().observe();
   $('observation').textContent = pretty(observation);
   const browserUrl = observation.channels['browser.v1']?.[machine]?.url;
   if (browserUrl) $('url').value = browserUrl;
   const terminal = observation.channels['terminal.v1']?.[machine];
-  $('terminal-output').textContent = terminal ? (terminal.stdout ?? pretty(terminal)) : 'Terminal output appears here.';
-  const frame = env().render(960, 560);
-  const pixels = new Uint8ClampedArray(frame.rgba);
-  $('screen').getContext('2d').putImageData(new ImageData(pixels, frame.width, frame.height),0,0);
-  frame.free();
+  $('terminal-output').textContent = terminal ? (terminal.stdout ?? pretty(terminal)) : 'Ready. Run a command or use the screen.';
+  paint(env(),$('screen'),...dimensions(machine));
+  for (const c of definition.computers) {
+    const card = [...document.querySelectorAll('[data-machine]')].find(el=>el.dataset.machine===c.id);
+    const e = environments.get(c.id);
+    if (!card || !e) continue;
+    if (kind(c.id)==='server') {
+      const t=e.observe().channels['terminal.v1']?.[c.id];
+      card.querySelector('pre').textContent=`${c.id}\n${c.address}\n> ${t?.stdout || 'Console ready\nNo display attached'}`;
+    } else paint(e,card.querySelector('canvas'),...dimensions(c.id));
+  }
   const events = world.trajectory();
   $('tick').textContent = events.length;
   $('event-count').textContent = `(${events.length})`;
   $('trajectory').textContent = pretty(events.slice(-100));
-  $('hash').textContent = world.stateHash().slice(0,12);
+  $('hash').textContent = world.stateHash().slice(0,16);
   return observation;
 }
 function act(family, op, payload = {}) {
   const result = env().step([{family,op,machine,payload}]);
   const failure = result.outcomes.find(outcome => !outcome.success);
-  announce(failure ? `${failure.error?.code}: ${failure.error?.message}` : `${family} / ${op} completed in the Rust runtime.`);
-  refresh();
-  return result;
+  announce(failure ? `${failure.error?.code}: ${failure.error?.message}` : `Updated ${machine}.`);
+  refresh();return result;
 }
 function navigate(url) { scrollY = 0; $('url').value = url; return act('browser.v1','navigate',{url}); }
 function select(id) {
-  machine = id;
-  $('machine-name').textContent = `${id} · ${definition.computers.find(c => c.id === id).profile}`;
-  document.querySelectorAll('[data-machine]').forEach(button => button.classList.toggle('active',button.dataset.machine === id));
-  refresh();
+  if(!environments.has(id)) return;
+  machine=id;scrollY=0;
+  const c=definition.computers.find(c=>c.id===id);
+  $('machine-name').textContent=id;
+  $('device-meta').textContent=`${kind(id)==='phone'?'Phone · ':kind(id)==='server'?'Headless · ':''}${definition.profiles.find(p=>p.id===c.profile)?.name ?? c.profile} · ${c.address} · ${c.user}`;
+  $('display-shell').className=`display-shell ${kind(id)}`;
+  $('screen').setAttribute('aria-label',kind(id)==='server'?`Remote console for ${id}`:`Interactive screen for ${id}`);
+  $('pointer-focus').textContent=kind(id)==='phone'?'☝ Touchscreen':'↖ Mouse';
+  const hosts=definition.services.some(s=>s.node===(c.node||c.id));
+  $('remove-device').disabled=hosts;
+  $('remove-device').title=hosts?'This computer hosts services; move those services before removing it.':'Remove selected computer';
+  $('navigation').hidden=kind(id)==='server';
+  document.querySelectorAll('[data-machine]').forEach(b=>{b.classList.toggle('active',b.dataset.machine===id);b.setAttribute('aria-pressed',String(b.dataset.machine===id));});
+  refresh();requestAnimationFrame(drawLinks);
 }
-function protect(fn) { return (...args) => {try {return fn(...args);} catch(error) {announce(String(error)); console.error(error);}}; }
-document.querySelectorAll('[data-app]').forEach(button => button.onclick=protect(()=>act('application.v1','launch',{kind:button.dataset.app})));
-$('navigation').onsubmit = protect(event => {event.preventDefault();navigate($('url').value);});
-$('terminal').onsubmit = protect(event => {event.preventDefault();act('terminal.v1','execute',{command:$('command').value});$('command').value='';});
-$('screen').onclick = protect(event => {
-  const bounds = event.currentTarget.getBoundingClientRect();
-  act('pointer.v1','click',{x:Math.floor((event.clientX-bounds.left)*960/bounds.width),y:Math.floor((event.clientY-bounds.top)*560/bounds.height),width:960,height:560});
-  $('screen').focus();
-});
-$('screen').addEventListener('wheel', protect(event => {event.preventDefault();scrollY=Math.max(0,scrollY+Math.round(event.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
-$('screen').onkeydown = protect(event => {
-  if (event.ctrlKey || event.metaKey || event.altKey) return;
-  if (event.key === 'Tab') return;
-  event.preventDefault();
-  act('keyboard.v1',event.key.length===1?'type':'key',event.key.length===1?{text:event.key}:{key:event.key});
-});
-$('snapshot').onclick = protect(() => {saved?.free();saved=world.snapshot();$('restore').disabled=false;$('fork').disabled=false;announce(`Snapshot saved: ${world.stateHash().slice(0,12)}.`);});
-$('restore').onclick = protect(() => {world.restore(saved);refresh();announce('World restored, including services, computers and actor sessions.');});
-$('fork').onclick = protect(() => {
-  const fork = world.fork(saved);
-  const ids = new Map([...environments].map(([computer, environment]) => [computer, environment.id]));
-  for (const environment of environments.values()) environment.free();
-  environments.clear();world.free();world=fork;
-  environments = new Map([...ids].map(([computer,id]) => [computer,world.session(id)]));refresh();announce('Now controlling an independent fork of the saved world.');
-});
-$('reset').onclick = protect(() => {world.reset(seed);refresh();announce(`World reset with seed ${seed}.`);});
+function drawLinks() {
+  const map=$('network-map'),scale=Number($('zoom').value)/100,base=map.getBoundingClientRect();
+  const elements=[...map.querySelectorAll('[data-node]')];
+  const positions=new Map(elements.map(el=>{const r=el.getBoundingClientRect();return [el.dataset.node,{x:(r.x-base.x+r.width/2)/scale,y:(r.y-base.y+r.height/2)/scale}];}));
+  $('links').replaceChildren();
+  for(const link of definition.network.links){const a=positions.get(link.from),b=positions.get(link.to);if(!a||!b)continue;
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',`M${a.x} ${a.y} C${a.x} ${(a.y+b.y)/2},${b.x} ${(a.y+b.y)/2},${b.x} ${b.y}`);
+    if(link.from===machine||link.to===machine)p.setAttribute('class','selected');
+    const title=document.createElementNS('http://www.w3.org/2000/svg','title');title.textContent=`${link.from} ${link.bidirectional?'↔':'→'} ${link.to} · ${link.latency_us} μs`;p.append(title);$('links').append(p);
+  }
+}
+function buildMap() {
+  definition=world.definition();
+  $('machines').replaceChildren();$('sites').replaceChildren();
+  for(const c of definition.computers){
+    const button=document.createElement('button');button.className=`device-card ${kind(c.id)}`;button.dataset.machine=c.id;button.dataset.node=c.node||c.id;button.setAttribute('aria-label',`Control ${c.id}, ${kind(c.id)}`);
+    const display=document.createElement('div');display.className='mini-screen';display.append(document.createElement(kind(c.id)==='server'?'pre':'canvas'));if(kind(c.id)==='server')display.firstChild.className='server-lines';
+    const foot=document.createElement('div');foot.className='monitor-foot';
+    const peripherals=document.createElement('div');peripherals.className='mini-peripherals';peripherals.textContent=kind(c.id)==='phone'?'Touch · text input':kind(c.id)==='server'?'● ●  Remote console':'⌨  ▰';
+    const title=document.createElement('span');title.className='card-title';title.textContent=c.id;
+    const subtitle=document.createElement('small');subtitle.textContent=`${c.profile} · ${c.address}`;
+    button.append(display,foot,peripherals,title,subtitle);button.onclick=protect(()=>select(c.id));$('machines').append(button);
+  }
+  const represented=new Set(definition.computers.map(c=>c.node||c.id));
+  for(const s of definition.services){
+    const node=definition.network.nodes.find(n=>n.id===s.node);
+    const b=document.createElement('button');b.className=`service-card ${node?.zone==='internet'?'public':''}`;
+    if(!represented.has(s.node)){b.dataset.node=s.node;represented.add(s.node);}
+    const title=document.createElement('strong');title.textContent=`◇ ${s.domains[0]??s.id}`;
+    const subtitle=document.createElement('small');subtitle.textContent=`${s.kind} · ${node?.zone==='internet'?'synthetic internet':s.node}`;
+    b.append(title,subtitle);b.onclick=protect(()=>navigate(`http://${s.domains[0]??node?.address}/`));$('sites').append(b);
+  }
+  $('device-count').textContent=definition.computers.length;$('service-count').textContent=definition.services.length;
+  $('topology-summary').textContent=`${definition.network.nodes.length} nodes · ${definition.network.links.length} links`;
+  requestAnimationFrame(drawLinks);
+}
+function nextIdentity() {let n=1;while(definition.computers.some(c=>c.id===`device-${n}`))n++;return `device-${n}`;}
+function openAdd() {
+  $('device-id').value=nextIdentity();$('form-error').textContent='';$('device-link').replaceChildren();
+  const isolated=document.createElement('option');isolated.value='';isolated.textContent='Isolated (no links)';$('device-link').append(isolated);
+  for(const n of definition.network.nodes){const o=document.createElement('option');o.value=n.id;o.textContent=`${n.id} · ${n.address}`;$('device-link').append(o);}
+  $('device-link').value=definition.network.nodes.find(n=>n.id==='app-server')?.id??definition.network.nodes[0]?.id??'';
+  $('device-dialog').showModal();
+}
+function addDevice({id,profile,user,type='desktop',connectTo='app-server'}) {
+  let octet=20;const used=new Set(definition.network.nodes.map(n=>n.address));while(used.has(`10.0.2.${octet}`)&&octet<255)octet++;
+  if(octet===255)throw Error('No address available in the demo subnet.');
+  const address=`10.0.2.${octet}`;
+  const computer={id,profile,address,user,initial_files:{'notes.txt':`Welcome ${user}.\nInternal site: http://intranet.internal/\n`},installed_apps:['terminal','browser','editor','files','desktop'],packages:['coreutils','git','curl']};
+  const node={id,address,zone:'local'};
+  const links=connectTo?[{from:connectTo,to:id,bidirectional:true,latency_us:10,loss_per_million:0}]:[];
+  world.addComputer(computer,node,links);presentations[id]=type;definition=world.definition();environments.set(id,world.environment(config(id)));
+  if(type==='server'){environments.get(id).step([{family:'application.v1',op:'launch',machine:id,payload:{kind:'terminal'}}]);}
+  buildMap();select(id);announce(`Added ${id}${connectTo?` connected to ${connectTo}`:' with no network links'}.`);
+}
+function removeDevice(id=machine) {
+  world.removeComputer(id);environments.get(id)?.free();environments.delete(id);delete presentations[id];buildMap();
+  if(definition.computers.length)select(definition.computers[0].id);
+  else {machine=undefined;$('screen').getContext('2d').clearRect(0,0,$('screen').width,$('screen').height);$('machine-name').textContent='No devices';$('device-meta').textContent='Add a device to begin.';$('remove-device').disabled=true;}
+  announce(`Removed ${id}. Other devices and services retain their state.`);
+}
+document.querySelectorAll('[data-app]').forEach(b=>b.onclick=protect(()=>{act('application.v1','launch',{kind:b.dataset.app});document.querySelectorAll('[data-app]').forEach(x=>x.classList.toggle('active',x===b));}));
+$('navigation').onsubmit=protect(e=>{e.preventDefault();navigate($('url').value);});
+$('terminal').onsubmit=protect(e=>{e.preventDefault();act('terminal.v1','execute',{command:$('command').value});$('command').value='';});
+$('screen').onclick=protect(e=>{const r=e.currentTarget.getBoundingClientRect(),[width,height]=dimensions(machine);act('pointer.v1','click',{x:Math.floor((e.clientX-r.left)*width/r.width),y:Math.floor((e.clientY-r.top)*height/r.height),width,height});$('screen').focus();});
+$('screen').addEventListener('wheel',protect(e=>{e.preventDefault();scrollY=Math.max(0,scrollY+Math.round(e.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
+$('screen').onkeydown=protect(e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.key==='Tab')return;e.preventDefault();act('keyboard.v1',e.key.length===1?'type':'key',e.key.length===1?{text:e.key}:{key:e.key});});
+$('keyboard-focus').onclick=()=>{$('text-entry').focus();announce('Text is sent to the focused field in the active application.');};
+$('typing').onsubmit=protect(e=>{e.preventDefault();act('keyboard.v1','type',{text:$('text-entry').value});$('text-entry').value='';});
+$('pointer-focus').onclick=()=>{$('screen').focus();announce(kind(machine)==='phone'?'Tap the screen to interact.':'Click the screen to interact.');};
+$('enter-key').onclick=protect(()=>act('keyboard.v1','key',{key:'Enter'}));$('back-key').onclick=protect(()=>act('keyboard.v1','key',{key:'Backspace'}));
+$('snapshot').onclick=protect(()=>{saved?.free();saved=world.snapshot();savedPresentation={...presentations};savedSessions=new Map([...environments].map(([id,e])=>[id,e.id]));$('restore').disabled=false;$('fork').disabled=false;announce('Saved devices, services, topology and actor sessions.');});
+function restored() {definition=world.definition();presentations={...savedPresentation};sessions(savedSessions);buildMap();select(environments.has(machine)?machine:definition.computers[0]?.id);}
+$('restore').onclick=protect(()=>{world.restore(saved);restored();announce('Restored saved world, including its devices and connections.');});
+$('fork').onclick=protect(()=>{const fork=world.fork(saved);world.free();world=fork;restored();announce('Now controlling an independent fork of the saved world.');});
+$('reset').onclick=protect(()=>{world.reset(seed);definition=world.definition();presentations={...initialDefinition.metadata?.device_presentations};sessions();buildMap();select(definition.computers[0]?.id);announce('Reset to the original world and seed 2026.');});
+$('add-device').onclick=openAdd;$('close-dialog').onclick=()=>$('device-dialog').close();
+$('device-kind').onchange=()=>{$('device-help').textContent=$('device-kind').value==='phone'?'A touch-sized synthetic computer using the chosen OS profile. This does not emulate Android or iOS.':$('device-kind').value==='server'?'A computer without a monitor, controlled through its remote console.':'An independent filesystem, processes and network identity.';};
+$('device-form').onsubmit=e=>{e.preventDefault();try{addDevice({id:$('device-id').value,profile:$('device-profile').value,user:$('device-user').value,type:$('device-kind').value,connectTo:$('device-link').value});$('device-dialog').close();}catch(error){$('form-error').textContent=String(error);}};
+$('remove-device').onclick=protect(()=>removeDevice());
+$('zoom').oninput=()=>{const value=Number($('zoom').value);$('zoom-label').value=`${value}%`;$('network-map').style.zoom=value/100;requestAnimationFrame(drawLinks);};
+new ResizeObserver(()=>requestAnimationFrame(drawLinks)).observe($('network-map'));
 try {
-  await init();
-  world = new World(definition, seed);
-  sessions();
-  for (const computer of definition.computers) {
-    const button = document.createElement('button');button.dataset.machine=computer.id;
-    button.textContent=computer.id;const subtitle=document.createElement('small');subtitle.textContent=computer.profile;button.append(subtitle);
-    button.onclick=protect(()=>select(computer.id));$('machines').append(button);
-  }
-  for (const service of definition.services) {
-    if (!service.domains.length) continue;
-    const button=document.createElement('button');button.textContent=service.domains[0];button.onclick=protect(()=>navigate(`http://${service.domains[0]}/`));$('sites').append(button);
-  }
-  select(definition.computers[0].id);
-  const first = definition.services.find(s => s.kind === 'static-site') ?? definition.services[0];
-  if (first?.domains.length) navigate(`http://${first.domains[0]}/`);
-  $('loading').hidden=true;$('status').textContent='Local runtime ready';
-  // Deliberate owner-only test/dev surface. It is never the handle given to an agent.
-  window.computerworldDemo = {get world(){return world;},get env(){return env();},get machine(){return machine;},select,act,navigate,refresh,definition};
-  window.demoReady=true;
-} catch(error) {$('loading').textContent=`Runtime could not start: ${error}`;$('status').textContent='Initialization failed';console.error(error);window.demoError=String(error);}
+  await init();world=new World(initialDefinition,seed);definition=world.definition();sessions();
+  for(const c of definition.computers){const server=kind(c.id)==='server';environments.get(c.id).step([{family:server?'application.v1':'browser.v1',op:server?'launch':'navigate',machine:c.id,payload:server?{kind:'terminal'}:{url:'http://intranet.internal/'}}]);}
+  buildMap();select(definition.computers[0].id);$('loading').hidden=true;$('status').textContent='● Running locally';
+  window.computerworldDemo={get world(){return world;},get env(){return env();},get machine(){return machine;},get definition(){return definition;},select,act,navigate,refresh,addDevice,removeDevice,buildMap};window.demoReady=true;
+} catch(error){$('loading').textContent=`Runtime could not start: ${error}`;$('status').textContent='Initialization failed';console.error(error);window.demoError=String(error);}

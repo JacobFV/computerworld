@@ -49,3 +49,32 @@ Only owners should call inspection, global trajectory, snapshot export or create
 new grants. Keep task rewards/private predicates in the evaluator layer. Examples
 should solve tasks using actor-visible actions rather than retrieving answers
 through owner inspection.
+
+## Owner-controlled device lifecycle
+
+The world owner can add/remove computers while keeping existing machines and services alive:
+
+```javascript
+world.addComputer(computerDefinition, networkNode, links);
+world.removeComputer('temporary-laptop');
+const currentBlueprint = world.definition();
+```
+
+Rust uses `World::add_computer(computer, node, links)` and
+`World::remove_computer(id)`; Python uses `world.add_computer(computer, node, links)`
+and `world.remove_computer(id)`. These are privileged owner operations, absent from
+actor environment handles. Definitions must refer to an existing OS profile and
+unique machine/node/address; links must refer to valid nodes. A newly added computer
+needs an explicitly granted actor session before agent access.
+
+Edits are atomic and rejected while continuations are pending. Removing a computer
+that hosts services is rejected rather than silently deleting service state. Removing
+other computers removes their node/links, revokes their actor grants, and repairs
+session focus. Existing files, services, process state and surviving transports are
+preserved. Full topology changes are present in owner events.
+
+Checkpoints include the original baseline and current topology. Restore/fork can
+recover removed computers and sessions; reset returns to the original blueprint.
+Portable snapshots remain constrained to the matching baseline. The browser console
+additionally saves its device-shape visualization metadata alongside its in-memory
+snapshot; these UI descriptors do not introduce another simulator implementation.

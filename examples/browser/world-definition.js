@@ -138,6 +138,27 @@ export default {
         "git",
         "curl"
       ]
+    },
+    {
+      "id": "alice-phone",
+      "profile": "ubuntu",
+      "address": "10.0.0.15",
+      "user": "alice",
+      "initial_files": {
+        "notes.txt": "Mobile notes\nRead http://mail.internal/ then update http://docs.internal/\n"
+      },
+      "installed_apps": [
+        "browser",
+        "terminal",
+        "files",
+        "editor",
+        "desktop"
+      ],
+      "packages": [
+        "coreutils",
+        "curl",
+        "git"
+      ]
     }
   ],
   "network": {
@@ -196,6 +217,11 @@ export default {
         "id": "guide-node",
         "address": "203.0.113.10",
         "zone": "internet"
+      },
+      {
+        "id": "alice-phone",
+        "address": "10.0.0.15",
+        "zone": "local"
       }
     ],
     "links": [
@@ -265,6 +291,13 @@ export default {
       {
         "from": "app-server",
         "to": "guide-node",
+        "bidirectional": true,
+        "latency_us": 10,
+        "loss_per_million": 0
+      },
+      {
+        "from": "app-server",
+        "to": "alice-phone",
         "bidirectional": true,
         "latency_us": 10,
         "loss_per_million": 0
@@ -666,6 +699,14 @@ export default {
       "carol",
       "admin"
     ],
-    "reference_version": 1
+    "reference_version": 1,
+    "device_presentations": {
+      "alice-mac": "desktop",
+      "bob-windows": "desktop",
+      "carol-ubuntu": "laptop",
+      "app-server": "server",
+      "git-server": "server",
+      "alice-phone": "phone"
+    }
   }
 };

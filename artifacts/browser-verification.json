@@ -1,9 +1,13 @@
 {
   "ok": true,
   "networkRequestsDuringEpisode": 0,
-  "computers": 5,
+  "computers": 6,
   "services": 8,
-  "events": 98,
+  "events": 129,
   "rgbaBytes": 2150400,
-  "stateHash": "b8e72ed0b8005dd0ff7784069c79c30e483fc3eb7217ecf9983a48926bded1ac"
+  "stateHash": "b0d187e33aafd34793e44938b5090a44697943dc4fbf15c0e0d060a6b1ab0e3a",
+  "liveDeviceLifecycle": true,
+  "headlessConsole": true,
+  "phoneTextInput": true,
+  "snapshotTopologyRestore": true
 }

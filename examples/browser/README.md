@@ -1,40 +1,27 @@
-# Fully client-side browser demo
+# World console
 
-This page imports the canonical Rust runtime compiled to Wasm. The canvas receives
-RGBA frames from that runtime; clicks and keys go back through actor actions.
-JavaScript only manages controls and copies pixels. Each computer has its own
-restricted actor session. The expandable event inspector uses a separate owner
-handle intentionally; do not give that handle to an untrusted agent.
-
-From the repository root:
+A fully client-side network console over the canonical Rust/Wasm runtime.
 
 ```sh
-./scripts/build-wasm.sh
+scripts/build-wasm.sh
 node examples/browser/build.mjs
 python3 -m http.server 8000
 ```
 
-Open http://localhost:8000/examples/browser/. Static hosting serves the HTML, JS,
-CSS and Wasm assets. After initialization, simulated episodes require no network
-access and no backend. The world definition is embedded by `build.mjs` from
-`worlds/company-2026/world.json` rather than fetched during simulation.
+Open http://localhost:8000/examples/browser/.
 
-Select a computer, open a synthetic domain, use the terminal, or click the rendered
-page. Save/restore snapshots, fork an independent world, and inspect the actor
-observation and packet/event trajectory below the display. The world owner can
-reset all computers and services together with the same seed.
+The overview shows six independently simulated devices: macOS and Windows desktops, an Ubuntu laptop, two headless servers and a phone-sized Ubuntu device. Eight services are reachable through the synthetic network. Links in the diagram come from the actual topology. Click a device to control it; its monitor, keyboard/text input, pointer/touch input, terminal and applications share the same Rust state. Server previews show console output rather than pretending to have physical monitors.
 
-## Verify actual browser execution
+**Add device** creates a real computer, filesystem, process namespace and network identity through `World.addComputer`. Choose an existing node to link it to, or leave it isolated. **Remove** preserves the remaining world. Service-hosting machines cannot be removed until their hosted services are moved; this demo does not provide service migration controls. Device shape/peripheral labels are visualization metadata, not hardware emulation. Phone screens run supported synthetic applications at390×720; they do not emulate Android/iOS.
+
+Save/restore/fork includes the live topology and actor sessions. Reset returns to the embedded blueprint and original seed. Everything after static boot works with browser networking blocked. There is no simulation server and no ambient outbound networking. State is local to the current tab; reload starts a new episode.
+
+The owner-only trace/observation inspector and `window.computerworldDemo` development handle are intentionally privileged. Agents should receive the restricted environment handle, never this owner console.
+
+Verification:
 
 ```sh
-npm install --prefix /tmp/computerworld-browser-tools playwright
-PLAYWRIGHT_MODULE=/tmp/computerworld-browser-tools/node_modules/playwright/index.mjs \
-CHROME_BIN=/usr/bin/google-chrome node scripts/test-browser.mjs
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/path/to/chrome node scripts/test-browser.mjs
 ```
 
-Alternatively install Playwright in the repository and its Chromium browser, then
-run `node scripts/test-browser.mjs`. The test denies all outbound requests and,
-after bootstrap, **all** browser requests. It exercises terminal actions, multiple
-computers, virtual website navigation, denied real URLs, snapshot/fork/replay,
-deterministic Rust pixels, actor capability separation and network trajectories.
-It writes `artifacts/browser-demo.png` for inspection.
+The browser test checks real Wasm execution, six machines, eight sites, keyboard and pointer input, raster determinism, denied outbound access, dynamic phone/headless creation, isolated networking, service-host removal protection, topology snapshot/restore/fork/reset, and zero browser requests during the episode.
