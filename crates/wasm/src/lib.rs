@@ -14,14 +14,89 @@ fn seed_value(value: JsValue) -> Result<u64, JsValue> {
     }
 }
 fn decode<T: DeserializeOwned>(v: JsValue) -> Result<T, JsValue> {
-    // JavaScript has one Number type. Deserialize through the canonical JSON
-    // boundary so integral payload values remain JSON integers, exactly like
-    // native/Python inputs (serde-wasm-bindgen's deserialize_any uses f64).
-    let json = js_sys::JSON::stringify(&v)?;
-    let text = json
-        .as_string()
-        .ok_or_else(|| error("expected a JSON value"))?;
-    serde_json::from_str(&text).map_err(error)
+    serde_json::from_value(decode_value(&v, 0)?).map_err(error)
+}
+/// Exact language conversion only: preserve JSON's integer semantics and reject
+/// JavaScript values that have no portable serialized counterpart.
+fn decode_value(value: &JsValue, depth: usize) -> Result<serde_json::Value, JsValue> {
+    use serde_json::{Number, Value};
+    if depth > 128 {
+        return Err(error("value exceeds maximum nesting depth 128"));
+    }
+    if value.is_null() {
+        return Ok(Value::Null);
+    }
+    if let Some(value) = value.as_bool() {
+        return Ok(Value::Bool(value));
+    }
+    if let Some(value) = value.as_string() {
+        return Ok(Value::String(value));
+    }
+    if value.is_bigint() {
+        let bigint = value.unchecked_ref::<js_sys::BigInt>();
+        let text = bigint
+            .to_string(10)?
+            .as_string()
+            .ok_or_else(|| error("invalid BigInt"))?;
+        let number = if text.starts_with('-') {
+            Number::from(text.parse::<i64>().map_err(error)?)
+        } else {
+            Number::from(text.parse::<u64>().map_err(error)?)
+        };
+        return Ok(Value::Number(number));
+    }
+    if let Some(value) = value.as_f64() {
+        if !value.is_finite() {
+            return Err(error("non-finite Number is not serializable"));
+        }
+        if value.fract() == 0.0 {
+            if value.abs() > 9_007_199_254_740_991.0 {
+                return Err(error(
+                    "unsafe integral Number; use BigInt for exact integers",
+                ));
+            }
+            return Ok(Value::Number(if value < 0.0 {
+                Number::from(value as i64)
+            } else {
+                Number::from(value as u64)
+            }));
+        }
+        return Ok(Value::Number(
+            Number::from_f64(value).ok_or_else(|| error("invalid Number"))?,
+        ));
+    }
+    if js_sys::Array::is_array(value) {
+        let array = value.unchecked_ref::<js_sys::Array>();
+        let mut values = Vec::with_capacity(array.length() as usize);
+        for index in 0..array.length() {
+            values.push(decode_value(
+                &js_sys::Reflect::get(value, &JsValue::from_f64(index.into()))?,
+                depth + 1,
+            )?);
+        }
+        return Ok(Value::Array(values));
+    }
+    if value.is_object() {
+        let prototype = js_sys::Reflect::get_prototype_of(value)?;
+        let plain_prototype = js_sys::Object::get_prototype_of(&js_sys::Object::new());
+        if !prototype.is_null() && !js_sys::Object::is(&prototype, &plain_prototype) {
+            return Err(error("expected a plain object or array"));
+        }
+        let mut values = serde_json::Map::new();
+        for key in js_sys::Reflect::own_keys(value)?.iter() {
+            let name = key
+                .as_string()
+                .ok_or_else(|| error("symbol keys are not serializable"))?;
+            values.insert(
+                name,
+                decode_value(&js_sys::Reflect::get(value, &key)?, depth + 1)?,
+            );
+        }
+        return Ok(Value::Object(values));
+    }
+    Err(error(
+        "undefined, functions and symbols are not serializable",
+    ))
 }
 fn encode<T: Serialize>(v: &T) -> Result<JsValue, JsValue> {
     encode_value(&serde_json::to_value(v).map_err(error)?)
@@ -133,6 +208,23 @@ impl JsWorld {
     }
     pub fn definition(&self) -> Result<JsValue, JsValue> {
         encode(self.inner.borrow().definition())
+    }
+    /// Owner-only topology mutation. Wiring is explicit; no implicit host access.
+    #[wasm_bindgen(js_name = addComputer)]
+    pub fn add_computer(
+        &self,
+        computer: JsValue,
+        node: JsValue,
+        links: JsValue,
+    ) -> Result<(), JsValue> {
+        self.inner
+            .borrow_mut()
+            .add_computer(decode(computer)?, decode(node)?, decode(links)?)
+            .map_err(error)
+    }
+    #[wasm_bindgen(js_name = removeComputer)]
+    pub fn remove_computer(&self, id: &str) -> Result<(), JsValue> {
+        self.inner.borrow_mut().remove_computer(id).map_err(error)
     }
     pub fn inspect(&self) -> Result<JsValue, JsValue> {
         encode(&self.inner.borrow().inspect())

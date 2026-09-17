@@ -39,6 +39,25 @@ if len(sys.argv)>1:
     assert wasm['hash'] == after_hash, (wasm['hash'],after_hash)
     imported.import_snapshot(wasm['snapshot'])
     assert imported.state_hash() == after_hash
+    imported.import_snapshot(wasm['topologyCheckpoint'])
+    assert imported.state_hash() == wasm['topologyHash']
+    assert any(c['id'] == 'test-phone' for c in imported.definition()['computers'])
+dynamic = World(definition,42)
+computer = dict(next(c for c in definition['computers'] if c['id']=='carol-ubuntu'),id='test-phone',node='test-phone',address='10.0.0.77')
+dynamic.add_computer(computer,dict(id='test-phone',address='10.0.0.77',zone='local'),[{'from':'test-phone','to':'alice-mac','bidirectional':True,'latency_us':0,'loss_per_million':0}])
+assert any(c['id']=='test-phone' for c in dynamic.definition()['computers'])
+phone = dynamic.environment(dict(config,actor=computer['user'],machines=['test-phone']))
+assert phone.step([dict(family='terminal.v1',op='execute',machine='test-phone',payload={'command':'echo mobile'})])['outcomes'][0]['success']
+topology_hash = dynamic.state_hash()
+topology_snapshot = dynamic.snapshot()
+dynamic.remove_computer('test-phone')
+assert not any(c['id']=='test-phone' for c in dynamic.definition()['computers'])
+dynamic.restore(topology_snapshot)
+assert dynamic.state_hash() == topology_hash
+if len(sys.argv)>1:
+    assert topology_hash == wasm['topologyHash']
+dynamic.reset(42)
+assert not any(c['id']=='test-phone' for c in dynamic.definition()['computers'])
 world.reset(42)
 assert world.state_hash() == initial_hash
 assert env.observe() == world.session(env.id).observe()

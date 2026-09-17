@@ -90,6 +90,20 @@ impl World {
     fn definition(&self, py: Python<'_>) -> PyResult<PyObject> {
         encode(py, self.inner.borrow().definition())
     }
+    fn add_computer(
+        &self,
+        computer: &Bound<'_, PyAny>,
+        node: &Bound<'_, PyAny>,
+        links: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        self.inner
+            .borrow_mut()
+            .add_computer(decode(computer)?, decode(node)?, decode(links)?)
+            .map_err(err)
+    }
+    fn remove_computer(&self, id: &str) -> PyResult<()> {
+        self.inner.borrow_mut().remove_computer(id).map_err(err)
+    }
     fn inspect(&self, py: Python<'_>) -> PyResult<PyObject> {
         encode(py, &self.inner.borrow().inspect())
     }
