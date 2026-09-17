@@ -61,7 +61,13 @@ fn fixture(w: u32, h: u32) -> Scene {
     }
     s
 }
+// Reject misleading debug timings while still allowing cargo test to compile the runner.
+#[allow(clippy::assertions_on_constants)]
 fn main() {
+    assert!(
+        !cfg!(debug_assertions),
+        "Benchmark binaries require --release"
+    );
     let count = std::env::var("BENCH_SAMPLES")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -108,6 +114,16 @@ fn main() {
             },
         );
     }
+    let cold_scene = fixture(1280, 720);
+    measure(
+        &mut results,
+        "raster.cold_1280x720",
+        count.min(30),
+        runs,
+        |_| {
+            black_box(Renderer::new().render(&cold_scene));
+        },
+    );
     for (w, h) in [(640, 480), (1280, 720), (1920, 1080)] {
         let mut renderer = Renderer::new();
         let s = fixture(w, h);

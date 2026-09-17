@@ -1,0 +1,34 @@
+{
+  "note": "RSS is Linux process resident memory, allocator retained pages included. Serial creation; no renderer allocation.",
+  "rows": [
+    {
+      "checksum": "a0f5e48b32ab6513fd19430cfc69cfe0bed490b17df7f364e8e00256865db4bc",
+      "count": 1,
+      "create_total_ns": 1007954,
+      "rss_after_drop": 4018176,
+      "rss_before": 2207744,
+      "rss_live": 3534848
+    },
+    {
+      "checksum": "a0f5e48b32ab6513fd19430cfc69cfe0bed490b17df7f364e8e00256865db4bc",
+      "count": 100,
+      "create_total_ns": 28705416,
+      "rss_after_drop": 23506944,
+      "rss_before": 4018176,
+      "rss_live": 23031808
+    },
+    {
+      "checksum": "a0f5e48b32ab6513fd19430cfc69cfe0bed490b17df7f364e8e00256865db4bc",
+      "count": 1000,
+      "create_total_ns": 246052294,
+      "rss_after_drop": 200626176,
+      "rss_before": 23506944,
+      "rss_live": 200146944
+    }
+  ],
+  "meta": {
+    "cpu_affinity": 19,
+    "measurement_window": "quiet, no concurrent project builds/tests",
+    "source_core_revision": "e626c55"
+  }
+}

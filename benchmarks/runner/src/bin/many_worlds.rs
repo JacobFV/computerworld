@@ -11,7 +11,13 @@ fn rss() -> u64 {
         .unwrap_or(0)
         * 1024
 }
+// Reject misleading debug timings while still allowing cargo test to compile the runner.
+#[allow(clippy::assertions_on_constants)]
 fn main() {
+    assert!(
+        !cfg!(debug_assertions),
+        "Benchmark binaries require --release"
+    );
     let definition = reference_world();
     let mut rows = vec![];
     for count in [1, 100, 1000] {

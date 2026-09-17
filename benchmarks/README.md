@@ -26,9 +26,9 @@ Native, bindings and browser runners:
 
 ```sh
 cargo build --release -p cw-benchmarks
-taskset -c 0 target/release/world
-taskset -c 0 target/release/cw-benchmarks
-taskset -c 0 target/release/many_worlds
+taskset -c 19 target/release/world
+taskset -c 19 target/release/cw-benchmarks
+taskset -c 19 target/release/many_worlds
 node benchmarks/bindings.mjs
 .venv/bin/python benchmarks/python_binding.py
 node benchmarks/browser-render.mjs
@@ -50,3 +50,25 @@ crates and runner into a disposable workspace, instrument the renderer copy,
 and use `profile.rs` as a binary. Instrumented timings identify stages; the
 uninstrumented release runner supplies final p50/p95. Never ship the instrumented
 renderer as the simulator.
+
+The recorded pre-optimization renderer is commit `2c530b1`; its original runner is
+in `c8396d6`. Rebuild it without reverting the workspace:
+
+```sh
+benchmarks/build-render-baseline.sh /tmp/computerworld-render-baseline
+RENDER_BASELINE_BINARY=/tmp/computerworld-render-baseline/target/release/cw-benchmarks benchmarks/run-all.sh
+```
+
+`run-all.sh` assumes current release binaries and both binding packages are already
+built, and must run in an exclusive measurement window. To measure a reset after
+mutation (mutation and postcondition check outside the timed region):
+
+```sh
+BENCH_FILTER=dirty BENCH_OUTPUT=benchmarks/results/native-dirty-reset.json taskset -c 19 target/release/world
+```
+
+The clean-reset row intentionally resets an already-reset environment. Do not
+substitute it for dirty-reset performance. `summarize.py` preserves per-run p50
+ranges and operation samples. `machine.py` captures executable, world, lockfile,
+font and Wasm artifact hashes. Linux RSS includes allocator-retained memory;
+Wasm linear memory is a high-water allocation and does not shrink on handle free.

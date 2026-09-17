@@ -1,0 +1,62 @@
+[
+  {
+    "iterations": 300,
+    "percent": 0,
+    "stages": {
+      "clear_ns": 23494245,
+      "frames": 300,
+      "glyph_cache_entries": 20,
+      "painted_pixels": 24312000,
+      "prepare_ns": 9219278,
+      "raster_ns": 693157360,
+      "sort_ns": 256442,
+      "text_cache_entries": 100
+    },
+    "wall_ns": 729107044
+  },
+  {
+    "iterations": 300,
+    "percent": 1,
+    "stages": {
+      "clear_ns": 164080,
+      "frames": 300,
+      "glyph_cache_entries": 24,
+      "painted_pixels": 428440,
+      "prepare_ns": 638613,
+      "raster_ns": 8532211,
+      "sort_ns": 23839,
+      "text_cache_entries": 16
+    },
+    "wall_ns": 12316590
+  },
+  {
+    "iterations": 300,
+    "percent": 10,
+    "stages": {
+      "clear_ns": 1638318,
+      "frames": 300,
+      "glyph_cache_entries": 24,
+      "painted_pixels": 4284400,
+      "prepare_ns": 1065386,
+      "raster_ns": 84135195,
+      "sort_ns": 24414,
+      "text_cache_entries": 16
+    },
+    "wall_ns": 95568902
+  },
+  {
+    "iterations": 300,
+    "percent": 100,
+    "stages": {
+      "clear_ns": 26339056,
+      "frames": 300,
+      "glyph_cache_entries": 24,
+      "painted_pixels": 42844000,
+      "prepare_ns": 9410913,
+      "raster_ns": 1057740955,
+      "sort_ns": 179527,
+      "text_cache_entries": 16
+    },
+    "wall_ns": 1200214241
+  }
+]

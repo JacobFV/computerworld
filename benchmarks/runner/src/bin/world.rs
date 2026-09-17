@@ -1,7 +1,13 @@
 use computerworld::{reference_world, ActionEnvelope, EnvironmentConfig, World};
 use serde_json::{json, Value};
 use std::{hint::black_box, time::Instant};
+// Reject misleading debug timings while still allowing cargo test to compile the runner.
+#[allow(clippy::assertions_on_constants)]
 fn main() {
+    assert!(
+        !cfg!(debug_assertions),
+        "Benchmark binaries require --release"
+    );
     let count = std::env::var("BENCH_SAMPLES")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -21,12 +27,18 @@ fn main() {
         "observe.structured",
         "scene.structured",
         "reset.same_seed",
+        "reset.dirty_same_seed",
         "snapshot.handle",
         "snapshot.fork",
         "snapshot.first_write",
         "snapshot.encode",
         "snapshot.decode",
     ] {
+        if let Ok(filter) = std::env::var("BENCH_FILTER") {
+            if !name.contains(&filter) {
+                continue;
+            }
+        }
         for run in 0..runs {
             let mut world = World::new(reference_world(), 2026).unwrap();
             let session = world
@@ -81,6 +93,16 @@ fn main() {
             };
             let mut samples = Vec::with_capacity(n);
             for i in 0..n + 100 {
+                if name == "reset.dirty_same_seed" {
+                    step(
+                        &mut world,
+                        vec![act(
+                            "filesystem.v1",
+                            "write",
+                            json!({"path":"/tmp/dirty-reset", "content":format!("mutation-{i}")}),
+                        )],
+                    );
+                }
                 let start = Instant::now();
                 match name {
                     "terminal.pwd" => step(
@@ -137,7 +159,7 @@ fn main() {
                     "scene.structured" => {
                         black_box(world.scene(&session, 1280, 720).unwrap());
                     }
-                    "reset.same_seed" => world.reset(2026).unwrap(),
+                    "reset.same_seed" | "reset.dirty_same_seed" => world.reset(2026).unwrap(),
                     "snapshot.handle" => {
                         black_box(world.snapshot());
                     }
@@ -162,6 +184,12 @@ fn main() {
                     _ => unreachable!(),
                 };
                 let elapsed = start.elapsed().as_nanos() as u64;
+                if name == "reset.dirty_same_seed" {
+                    assert!(world
+                        .runtime()
+                        .read_file("alice-mac", "/tmp/dirty-reset")
+                        .is_err());
+                }
                 if i >= 100 {
                     samples.push(elapsed)
                 }
