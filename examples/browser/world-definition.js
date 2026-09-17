@@ -26,12 +26,52 @@ export default {
       "home": "/home/{user}",
       "case_sensitive": true,
       "shell": "posix"
+    },
+    {
+      "id": "virtual-macos-golden-gate",
+      "name": "macOS · Golden Gate",
+      "family": "macos",
+      "home": "/Users/{user}",
+      "case_sensitive": false,
+      "shell": "posix"
+    },
+    {
+      "id": "virtual-windows-11",
+      "name": "Windows 11",
+      "family": "windows",
+      "home": "C:/Users/{user}",
+      "case_sensitive": false,
+      "shell": "powershell"
+    },
+    {
+      "id": "virtual-ubuntu-24",
+      "name": "Ubuntu 24",
+      "family": "linux",
+      "home": "/home/{user}",
+      "case_sensitive": true,
+      "shell": "posix"
+    },
+    {
+      "id": "virtual-ios-18",
+      "name": "iOS 18",
+      "family": "ios",
+      "home": "/var/mobile",
+      "case_sensitive": true,
+      "shell": "posix"
+    },
+    {
+      "id": "virtual-android-12",
+      "name": "Android 12",
+      "family": "android",
+      "home": "/data/user/{user}",
+      "case_sensitive": true,
+      "shell": "posix"
     }
   ],
   "computers": [
     {
       "id": "alice-mac",
-      "profile": "macos",
+      "profile": "virtual-macos-golden-gate",
       "address": "10.0.0.10",
       "user": "alice",
       "initial_files": {
@@ -53,7 +93,7 @@ export default {
     },
     {
       "id": "bob-windows",
-      "profile": "windows",
+      "profile": "virtual-windows-11",
       "address": "10.0.0.11",
       "user": "bob",
       "initial_files": {
@@ -75,7 +115,7 @@ export default {
     },
     {
       "id": "carol-ubuntu",
-      "profile": "ubuntu",
+      "profile": "virtual-ubuntu-24",
       "address": "10.0.0.12",
       "user": "carol",
       "initial_files": {
@@ -141,11 +181,32 @@ export default {
     },
     {
       "id": "alice-phone",
-      "profile": "ubuntu",
+      "profile": "virtual-ios-18",
       "address": "10.0.0.15",
       "user": "alice",
       "initial_files": {
-        "notes.txt": "Mobile notes\nRead http://mail.internal/ then update http://docs.internal/\n"
+        "notes.txt": "Mobile notes for alice\nRead http://mail.internal/ then update http://docs.internal/\n"
+      },
+      "installed_apps": [
+        "browser",
+        "terminal",
+        "files",
+        "editor",
+        "desktop"
+      ],
+      "packages": [
+        "coreutils",
+        "curl",
+        "git"
+      ]
+    },
+    {
+      "id": "bob-android",
+      "profile": "virtual-android-12",
+      "address": "10.0.0.16",
+      "user": "bob",
+      "initial_files": {
+        "notes.txt": "Mobile notes for bob\nRead http://mail.internal/ then update http://docs.internal/\n"
       },
       "installed_apps": [
         "browser",
@@ -221,6 +282,11 @@ export default {
       {
         "id": "alice-phone",
         "address": "10.0.0.15",
+        "zone": "local"
+      },
+      {
+        "id": "bob-android",
+        "address": "10.0.0.16",
         "zone": "local"
       }
     ],
@@ -298,6 +364,13 @@ export default {
       {
         "from": "app-server",
         "to": "alice-phone",
+        "bidirectional": true,
+        "latency_us": 10,
+        "loss_per_million": 0
+      },
+      {
+        "from": "app-server",
+        "to": "bob-android",
         "bidirectional": true,
         "latency_us": 10,
         "loss_per_million": 0
@@ -706,7 +779,8 @@ export default {
       "carol-ubuntu": "laptop",
       "app-server": "server",
       "git-server": "server",
-      "alice-phone": "phone"
+      "alice-phone": "phone",
+      "bob-android": "phone"
     }
   }
 };

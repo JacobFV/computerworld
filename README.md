@@ -83,7 +83,7 @@ python3 -m http.server 8000
 ```
 
 Try the [private hosted world console](https://computerworld-console.jacobfv123.chatgpt.site), or open `http://localhost:8000/examples/browser/` locally. The server only supplies static assets; it executes
-no simulation. The world console shows all six device screens/consoles and actual network links, including a phone-sized interface. Add/remove devices, interact with their applications and peripherals, and save/restore/fork the live topology. [Browser demo instructions](examples/browser/README.md) include
+no simulation. The world console shows all seven device screens/consoles and actual network links, including distinct macOS, Windows 11, Ubuntu 24, iOS 18 and Android 12-style shells. Add/remove devices, interact with their applications and peripherals, and save/restore/fork the live topology. [Browser demo instructions](examples/browser/README.md) include
 offline verification. The build also emits a Node package under `pkg/node`.
 
 ```javascript
@@ -155,3 +155,5 @@ The [investigation reports](research/sources.json) pin all eleven predecessor
 repositories. Their strongest semantics and regression lessons informed this
 independently implemented Rust workspace; no predecessor runtime is required.
 Bundled font attribution is in `crates/render/assets/FONT-LICENSE.txt`.
+
+The [native desktop GUI](docs/desktop-gui.md) documents OS profiles, functional window/app controls, deterministic rendering and current fidelity limits. [Source research](research/desktop-visuals.md) traces the recovered visual patterns.

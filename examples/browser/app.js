@@ -6,7 +6,7 @@ let world, saved, machine, scrollY = 0, environments = new Map(), definition = i
 let presentations = {...initialDefinition.metadata?.device_presentations}, savedPresentation, savedSessions;
 const seed = 2026;
 const kind = id => presentations[id] ?? (id.includes('server') ? 'server' : 'desktop');
-const dimensions = id => kind(id)==='phone' ? [390,720] : [960,560];
+const dimensions = id => kind(id)==='phone' ? [390,780] : [960,640];
 const config = id => ({actor: definition.computers.find(c => c.id === id).user,machines:[id],actions:['terminal.v1','browser.v1','keyboard.v1','pointer.v1','application.v1','filesystem.v1','http.v1'],observations:['terminal.v1','semantic.v1','browser.v1'],action_budget:1000000});
 const env = () => environments.get(machine);
 function sessions(ids) {
@@ -37,7 +37,11 @@ function refresh() {
     if (kind(c.id)==='server') {
       const t=e.observe().channels['terminal.v1']?.[c.id];
       card.querySelector('pre').textContent=`${c.id}\n${c.address}\n> ${t?.stdout || 'Console ready\nNo display attached'}`;
-    } else paint(e,card.querySelector('canvas'),...dimensions(c.id));
+    } else {
+      const preview=card.querySelector('canvas');
+      if(c.id===machine){preview.width=$('screen').width;preview.height=$('screen').height;preview.getContext('2d').drawImage($('screen'),0,0);preview.dataset.rendered='true';}
+      else if(!preview.dataset.rendered){paint(e,preview,...dimensions(c.id));preview.dataset.rendered='true';}
+    }
   }
   const events = world.trajectory();
   $('tick').textContent = events.length;
@@ -90,7 +94,7 @@ function buildMap() {
     const foot=document.createElement('div');foot.className='monitor-foot';
     const peripherals=document.createElement('div');peripherals.className='mini-peripherals';peripherals.textContent=kind(c.id)==='phone'?'Touch · text input':kind(c.id)==='server'?'● ●  Remote console':'⌨  ▰';
     const title=document.createElement('span');title.className='card-title';title.textContent=c.id;
-    const subtitle=document.createElement('small');subtitle.textContent=`${c.profile} · ${c.address}`;
+    const subtitle=document.createElement('small');subtitle.textContent=`${definition.profiles.find(p=>p.id===c.profile)?.name ?? c.profile} · ${c.address}`;
     button.append(display,foot,peripherals,title,subtitle);button.onclick=protect(()=>select(c.id));$('machines').append(button);
   }
   const represented=new Set(definition.computers.map(c=>c.node||c.id));
@@ -115,6 +119,7 @@ function openAdd() {
   $('device-dialog').showModal();
 }
 function addDevice({id,profile,user,type='desktop',connectTo='app-server'}) {
+  if(profile==='virtual-ios-18'||profile==='virtual-android-12')type='phone';
   let octet=20;const used=new Set(definition.network.nodes.map(n=>n.address));while(used.has(`10.0.2.${octet}`)&&octet<255)octet++;
   if(octet===255)throw Error('No address available in the demo subnet.');
   const address=`10.0.2.${octet}`;
@@ -132,11 +137,13 @@ function removeDevice(id=machine) {
   announce(`Removed ${id}. Other devices and services retain their state.`);
 }
 document.querySelectorAll('[data-app]').forEach(b=>b.onclick=protect(()=>{act('application.v1','launch',{kind:b.dataset.app});document.querySelectorAll('[data-app]').forEach(x=>x.classList.toggle('active',x===b));}));
+$('home-screen').onclick=protect(()=>act('application.v1','home'));
+$('expand-screen').onclick=()=>{const active=document.querySelector('.console-layout').classList.toggle('focused-device');$('expand-screen').textContent=active?'Show network':'Expand desktop';$('expand-screen').setAttribute('aria-expanded',String(active));requestAnimationFrame(drawLinks);};
 $('navigation').onsubmit=protect(e=>{e.preventDefault();navigate($('url').value);});
 $('terminal').onsubmit=protect(e=>{e.preventDefault();act('terminal.v1','execute',{command:$('command').value});$('command').value='';});
 $('screen').onclick=protect(e=>{const r=e.currentTarget.getBoundingClientRect(),[width,height]=dimensions(machine);act('pointer.v1','click',{x:Math.floor((e.clientX-r.left)*width/r.width),y:Math.floor((e.clientY-r.top)*height/r.height),width,height});$('screen').focus();});
 $('screen').addEventListener('wheel',protect(e=>{e.preventDefault();scrollY=Math.max(0,scrollY+Math.round(e.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
-$('screen').onkeydown=protect(e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.key==='Tab')return;e.preventDefault();act('keyboard.v1',e.key.length===1?'type':'key',e.key.length===1?{text:e.key}:{key:e.key});});
+$('screen').onkeydown=protect(e=>{if(e.key==='Tab'&&!e.altKey&&!e.metaKey)return;e.preventDefault();const prefix=e.metaKey?'Meta+':e.ctrlKey?'Ctrl+':e.altKey?'Alt+':'';const key=prefix+e.key;act('keyboard.v1',!prefix&&e.key.length===1?'type':'key',!prefix&&e.key.length===1?{text:e.key}:{key});});
 $('keyboard-focus').onclick=()=>{$('text-entry').focus();announce('Text is sent to the focused field in the active application.');};
 $('typing').onsubmit=protect(e=>{e.preventDefault();act('keyboard.v1','type',{text:$('text-entry').value});$('text-entry').value='';});
 $('pointer-focus').onclick=()=>{$('screen').focus();announce(kind(machine)==='phone'?'Tap the screen to interact.':'Click the screen to interact.');};
@@ -147,14 +154,15 @@ $('restore').onclick=protect(()=>{world.restore(saved);restored();announce('Rest
 $('fork').onclick=protect(()=>{const fork=world.fork(saved);world.free();world=fork;restored();announce('Now controlling an independent fork of the saved world.');});
 $('reset').onclick=protect(()=>{world.reset(seed);definition=world.definition();presentations={...initialDefinition.metadata?.device_presentations};sessions();buildMap();select(definition.computers[0]?.id);announce('Reset to the original world and seed 2026.');});
 $('add-device').onclick=openAdd;$('close-dialog').onclick=()=>$('device-dialog').close();
-$('device-kind').onchange=()=>{$('device-help').textContent=$('device-kind').value==='phone'?'A touch-sized synthetic computer using the chosen OS profile. This does not emulate Android or iOS.':$('device-kind').value==='server'?'A computer without a monitor, controlled through its remote console.':'An independent filesystem, processes and network identity.';};
+$('device-kind').onchange=()=>{if($('device-kind').value==='phone')$('device-profile').value='virtual-ios-18';else if($('device-kind').value==='server')$('device-profile').value='ubuntu';else $('device-profile').value='virtual-ubuntu-24';$('device-help').textContent=$('device-kind').value==='phone'?'A touch-driven home screen and applications using the chosen synthetic mobile OS profile.':$('device-kind').value==='server'?'A computer without a monitor, controlled through its remote console.':'An independent filesystem, processes and network identity.';};
+$('device-profile').onchange=()=>{if(['virtual-ios-18','virtual-android-12'].includes($('device-profile').value))$('device-kind').value='phone';};
 $('device-form').onsubmit=e=>{e.preventDefault();try{addDevice({id:$('device-id').value,profile:$('device-profile').value,user:$('device-user').value,type:$('device-kind').value,connectTo:$('device-link').value});$('device-dialog').close();}catch(error){$('form-error').textContent=String(error);}};
 $('remove-device').onclick=protect(()=>removeDevice());
 $('zoom').oninput=()=>{const value=Number($('zoom').value);$('zoom-label').value=`${value}%`;$('network-map').style.zoom=value/100;requestAnimationFrame(drawLinks);};
 new ResizeObserver(()=>requestAnimationFrame(drawLinks)).observe($('network-map'));
 try {
   await init();world=new World(initialDefinition,seed);definition=world.definition();sessions();
-  for(const c of definition.computers){const server=kind(c.id)==='server';environments.get(c.id).step([{family:server?'application.v1':'browser.v1',op:server?'launch':'navigate',machine:c.id,payload:server?{kind:'terminal'}:{url:'http://intranet.internal/'}}]);}
+  for(const c of definition.computers){if(kind(c.id)==='server')environments.get(c.id).step([{family:'application.v1',op:'launch',machine:c.id,payload:{kind:'terminal'}}]);}
   buildMap();select(definition.computers[0].id);$('loading').hidden=true;$('status').textContent='● Running locally';
   window.computerworldDemo={get world(){return world;},get env(){return env();},get machine(){return machine;},get definition(){return definition;},select,act,navigate,refresh,addDevice,removeDevice,buildMap};window.demoReady=true;
 } catch(error){$('loading').textContent=`Runtime could not start: ${error}`;$('status').textContent='Initialization failed';console.error(error);window.demoError=String(error);}

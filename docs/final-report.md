@@ -49,7 +49,7 @@ adapter. The [migration notes](migration.md) document that boundary.
 ## Completed verification evidence
 
 The final full `scripts/test-all.sh` [acceptance pass](../artifacts/acceptance.json)
-recorded **163 passing test executions** (160 workspace unit/integration/doc tests
+recorded **178 passing test executions** (160 workspace unit/integration/doc tests
 plus 3 optional native HTTP adapter tests), zero failures. The complete
 [acceptance log](../artifacts/acceptance.log) is retained. It completed formatting, pure-core dependency/host
 boundary checks, strict workspace Clippy and a release `wasm32-unknown-unknown`
@@ -70,8 +70,8 @@ matched the golden RGBA hash
 `01455c4eaa6c1eca6900b545f69bba35ad9428fb66275a41df86268ae3595ec6`.
 The native company, custom-service and custom-application examples ran successfully.
 
-The [browser console report](../artifacts/browser-verification.json) records six
-computers, eight services, 129 events and **zero host network requests during the
+The [browser console report](../artifacts/browser-verification.json) records seven
+computers, eight services, 109 events and **zero host network requests during the
 episode** after static assets were loaded. Real browser pointer/keyboard input,
 terminal execution, reset, checkpoint/fork, deterministic rendering and actor
 restrictions were exercised. A phone is added, browses and writes a file; removal,
@@ -127,3 +127,7 @@ Wasm service bundles, binary remote Git objects, richer typography, independentl
 packaged service crates and optional real-browser/task-harness adapters. Public
 package-registry publication and stable cross-version checkpoint migration are
 separate release work; this workspace does not claim those guarantees.
+
+## OS desktop follow-up
+
+Five native desktop/mobile shells now render and interact through the canonical Rust scene pipeline. The [desktop GUI notes](desktop-gui.md) describe profiles, controls, rendering and fidelity limits; [source archaeology](../research/desktop-visuals.md) identifies the recovered predecessor patterns. All five pass [offline browser verification](../artifacts/desktop-verification.json). The most recent acceptance suite passes 178 tests, with zero failures. Cross-language desktop checkpoint restoration reproduces identical semantic state and pixels. The performance table above remains the previously pinned benchmark run, not a new measurement of desktop-shell workloads.

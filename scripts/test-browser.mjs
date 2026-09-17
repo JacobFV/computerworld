@@ -43,7 +43,8 @@ try {
     const scene=d.env.scene(960,560);
     const link=scene.nodes.find(n=>n.interaction&&n.semantic?.role==='link');
     check(link,'site has no interactive link');
-    const pointer=d.act('pointer.v1','click',{x:link.bounds.x+2,y:link.bounds.y+2,width:960,height:560});
+    const t=link.transform,px=link.bounds.x+2,py=link.bounds.y+2;
+    const pointer=d.act('pointer.v1','click',{x:Math.floor((t.a*px+t.c*py)/1024)+t.tx,y:Math.floor((t.b*px+t.d*py)/1024)+t.ty,width:960,height:560});
     check(pointer.outcomes[0].success,'Rust pointer hit testing failed: '+JSON.stringify({link,pointer}));
     check(d.act('application.v1','launch',{kind:'terminal'}).outcomes[0].success,'application launch failed');
     check(d.act('keyboard.v1','type',{text:'echo keyboard-wasm'}).outcomes[0].success,'keyboard input failed');
@@ -97,8 +98,8 @@ try {
   await page.locator('#remove-device').click();
   await page.locator('#reset').click();
   assert.equal(await page.locator('[data-machine=qa-phone]').count(),0);
-  assert.equal(await page.locator('[data-machine]').count(),6);
-  assert.equal(await page.locator('#links path').count(),11);
+  assert.equal(await page.locator('[data-machine]').count(),7);
+  assert.equal(await page.locator('#links path').count(),12);
   await page.locator('[data-machine=alice-phone]').click();
   await page.locator('[data-app=terminal]').click();
   await page.locator('#text-entry').fill('echo touch-keyboard');

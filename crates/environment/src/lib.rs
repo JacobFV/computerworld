@@ -1,6 +1,7 @@
 //! Capability-filtered actor interfaces above the canonical kernel.
 //! Owner inspection and snapshots are deliberately separate from actor observations.
-use cw_applications::DesktopState;
+use cw_applications::desktop_scene::{content_rect, render_shell, DesktopTheme};
+use cw_applications::{AppState, DesktopState};
 use cw_browser::BrowserState;
 use cw_kernel::Runtime;
 use cw_protocol::*;
@@ -21,6 +22,8 @@ pub struct MachineSession {
     pub registered: cw_applications::RegisteredApplications,
     pub active_app: Option<String>,
     pub custom_page: Option<Page>,
+    #[serde(default)]
+    pub address_focused: bool,
 }
 impl Default for MachineSession {
     fn default() -> Self {
@@ -33,6 +36,7 @@ impl Default for MachineSession {
             registered: Default::default(),
             active_app: None,
             custom_page: None,
+            address_focused: false,
         }
     }
 }
@@ -519,6 +523,7 @@ impl Environment {
                 self.machine_mut(id, machine)?.active_app = None;
                 self.machine_mut(id, machine)?.custom_page = None;
                 self.machine_mut(id, machine)?.browser_visible = false;
+                self.machine_mut(id, machine)?.address_focused = false;
                 self.machine_mut(id, machine)?.focused_input = None;
                 let kind = string(p, "kind")?;
                 let arg = p.get("argument").and_then(Value::as_str).unwrap_or("");
@@ -528,7 +533,15 @@ impl Environment {
                     .launch(kind, arg)
                     .map_err(SimError::invalid)?;
                 self.effects(id, machine, actor, effects)?;
+                if kind == "browser" && self.desktop_theme(id, machine).is_some() {
+                    let state = self.machine_mut(id, machine)?;
+                    state.browser_visible = true;
+                    state.address_focused = arg.is_empty();
+                }
                 Ok(json!({"window":window}))
+            }
+            ("application.v1", "home" | "launcher" | "minimize" | "maximize" | "switcher") => {
+                self.shell_action(id, machine, actor, &format!("shell:{}", action.op))
             }
             ("application.v1", "focus" | "close") => {
                 self.machine_mut(id, machine)?.browser_visible = false;
@@ -545,6 +558,7 @@ impl Environment {
                     _ => d.close(window),
                 }
                 .map_err(SimError::invalid)?;
+                self.sync_desktop_visibility(id, machine)?;
                 Ok(Value::Null)
             }
             ("keyboard.v1", "type") => {
@@ -552,7 +566,12 @@ impl Environment {
                     return self.custom_event(id, machine, actor, &json!({"kind":"text","data":p}));
                 }
                 let text = string(p, "text")?;
-                if self.machine_mut(id, machine)?.browser_visible {
+                if self.machine_mut(id, machine)?.address_focused {
+                    self.machine_mut(id, machine)?
+                        .desktop
+                        .text(text)
+                        .map_err(SimError::invalid)?;
+                } else if self.machine_mut(id, machine)?.browser_visible {
                     self.machine_mut(id, machine)?.browser.text(text)?;
                 } else {
                     self.machine_mut(id, machine)?
@@ -563,6 +582,37 @@ impl Environment {
                 Ok(Value::Null)
             }
             ("keyboard.v1", "key") => {
+                let key = string(p, "key")?;
+                if matches!(key, "Meta" | "Super" | "Meta+Space" | "Ctrl+Escape")
+                    && self.desktop_theme(id, machine).is_some()
+                {
+                    return self.shell_action(id, machine, actor, "shell:launcher");
+                }
+                if key == "Alt+Tab" && self.desktop_theme(id, machine).is_some() {
+                    return self.shell_action(id, machine, actor, "shell:switcher");
+                }
+                if self.machine_mut(id, machine)?.address_focused {
+                    if key == "Enter"
+                        && !self
+                            .session(id)?
+                            .config
+                            .actions
+                            .iter()
+                            .any(|family| family == "browser.v1")
+                    {
+                        return Err(SimError::denied("browser navigation is not permitted"));
+                    }
+                    let effects = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .key(key)
+                        .map_err(SimError::invalid)?;
+                    self.effects(id, machine, actor, effects)?;
+                    if key == "Enter" {
+                        self.machine_mut(id, machine)?.address_focused = false;
+                    }
+                    return Ok(Value::Null);
+                }
                 if self.machine_mut(id, machine)?.active_app.is_some() {
                     return self.custom_event(id, machine, actor, &json!({"kind":"key","data":p}));
                 }
@@ -605,6 +655,10 @@ impl Environment {
                     .hit_test(x, y)
                     .and_then(|n| n.interaction.clone())
                     .ok_or_else(|| SimError::not_found("interaction"))?;
+                if target.starts_with("shell:") {
+                    return self.shell_action(id, machine, actor, &target);
+                }
+                self.machine_mut(id, machine)?.address_focused = false;
                 if self.machine_mut(id, machine)?.active_app.is_some() {
                     self.custom_event(
                         id,
@@ -662,12 +716,31 @@ impl Environment {
         }
     }
     fn browser_action(&mut self, id: &str, actor: &str, a: &ActionEnvelope) -> Result<Value> {
+        let themed = self.desktop_theme(id, &a.machine).is_some();
         let runtime = &mut self.runtime;
         let machine = Arc::make_mut(&mut self.sessions)
             .get_mut(id)
             .and_then(|s| s.machines.get_mut(&a.machine))
             .ok_or_else(|| SimError::denied("machine unavailable"))?;
         machine.browser_visible = true;
+        machine.address_focused = false;
+        machine.desktop.launcher_open = false;
+        if themed {
+            if let Some(window) = machine
+                .desktop
+                .windows
+                .values()
+                .find(|w| matches!(w.state, AppState::Browser { .. }))
+                .map(|w| w.id)
+            {
+                machine.desktop.focus(window).map_err(SimError::invalid)?;
+            } else {
+                machine
+                    .desktop
+                    .launch("browser", "")
+                    .map_err(SimError::invalid)?;
+            }
+        }
         machine.active_app = None;
         machine.custom_page = None;
         let mut http = |r| runtime.http(&a.machine, actor, r);
@@ -724,6 +797,15 @@ impl Environment {
             _ => return Err(SimError::invalid("unsupported browser operation")),
         };
         machine.focused_input = machine.browser.tab().focused.clone();
+        if let Some(window) = machine
+            .desktop
+            .focused
+            .and_then(|id| machine.desktop.windows.get_mut(&id))
+        {
+            if let AppState::Browser { address } = &mut window.state {
+                *address = machine.browser.url().unwrap_or("").to_string();
+            }
+        }
         Ok(serde_json::to_value(active_page(machine))?)
     }
     fn effects(
@@ -802,6 +884,156 @@ impl Environment {
         }
         Ok(())
     }
+    fn desktop_theme(&self, id: &str, machine: &str) -> Option<DesktopTheme> {
+        let session = self.session(id).ok()?;
+        if !session
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "application.v1")
+        {
+            return None;
+        }
+        let definition = self.runtime.definition();
+        let computer = definition
+            .computers
+            .iter()
+            .find(|computer| computer.id == machine)?;
+        let configured = definition
+            .metadata
+            .get("desktop_themes")
+            .and_then(|themes| themes.get(machine))
+            .and_then(Value::as_str);
+        // Presentation is opt-in, so adding OS chrome does not alter browser-only or
+        // legacy structured-app layouts and their coordinate contracts.
+        if configured.is_none() && !computer.profile.starts_with("virtual-") {
+            return None;
+        }
+        DesktopTheme::from_profile(configured.unwrap_or(&computer.profile))
+    }
+    fn sync_desktop_visibility(&mut self, id: &str, machine: &str) -> Result<()> {
+        let state = self.machine_mut(id, machine)?;
+        state.browser_visible = state
+            .desktop
+            .focused
+            .and_then(|id| state.desktop.windows.get(&id))
+            .is_some_and(|w| matches!(w.state, AppState::Browser { .. }));
+        state.address_focused = false;
+        state.active_app = None;
+        state.custom_page = None;
+        Ok(())
+    }
+    fn shell_action(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        target: &str,
+    ) -> Result<Value> {
+        if !self
+            .session(id)?
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "application.v1")
+        {
+            return Err(SimError::denied("application interaction is not permitted"));
+        }
+        if let Some(kind) = target.strip_prefix("shell:launch:") {
+            if !self.runtime.computer(machine)?.application_available(kind) {
+                return Err(SimError::not_found("application is not installed"));
+            }
+            let existing = self.session(id)?.machines[machine]
+                .desktop
+                .windows
+                .values()
+                .find(|window| {
+                    matches!(
+                        (&window.state, kind),
+                        (AppState::Browser { .. }, "browser")
+                            | (AppState::Terminal { .. }, "terminal")
+                            | (AppState::Editor { .. }, "editor")
+                            | (AppState::Files { .. }, "files")
+                    )
+                })
+                .map(|window| window.id);
+            if let Some(window) = existing {
+                self.machine_mut(id, machine)?
+                    .desktop
+                    .focus(window)
+                    .map_err(SimError::invalid)?;
+                self.sync_desktop_visibility(id, machine)?;
+                return Ok(json!({"window":window}));
+            }
+            return self.dispatch(
+                id,
+                actor,
+                &ActionEnvelope::new("application.v1", "launch", machine, json!({"kind":kind})),
+            );
+        }
+        if matches!(target, "shell:back" | "shell:forward" | "shell:reload") {
+            if !self
+                .session(id)?
+                .config
+                .actions
+                .iter()
+                .any(|family| family == "browser.v1")
+            {
+                return Err(SimError::denied("browser action is not permitted"));
+            }
+            return self.browser_action(
+                id,
+                actor,
+                &ActionEnvelope::new(
+                    "browser.v1",
+                    target.trim_start_matches("shell:"),
+                    machine,
+                    json!({}),
+                ),
+            );
+        }
+        let state = self.machine_mut(id, machine)?;
+        match target {
+            "shell:launcher" => {
+                state.desktop.launcher_open = !state.desktop.launcher_open;
+                return Ok(Value::Null);
+            }
+            "shell:maximize" => {
+                state.desktop.maximized = !state.desktop.maximized;
+                return Ok(Value::Null);
+            }
+            "shell:home" => state.desktop.home(),
+            "shell:minimize" => {
+                if let Some(window) = state.desktop.focused {
+                    state.desktop.minimize(window).map_err(SimError::invalid)?;
+                }
+            }
+            "shell:close" => {
+                if let Some(window) = state.desktop.focused {
+                    state.desktop.close(window).map_err(SimError::invalid)?;
+                }
+            }
+            "shell:switcher" => state.desktop.cycle().map_err(SimError::invalid)?,
+            "shell:address" => {
+                if state.browser_visible {
+                    state.address_focused = true;
+                    if let Some(window) = state
+                        .desktop
+                        .focused
+                        .and_then(|id| state.desktop.windows.get_mut(&id))
+                    {
+                        if let AppState::Browser { address } = &mut window.state {
+                            address.clear();
+                        }
+                    }
+                }
+                return Ok(Value::Null);
+            }
+            _ => return Err(SimError::invalid("unknown shell interaction")),
+        }
+        self.sync_desktop_visibility(id, machine)?;
+        Ok(Value::Null)
+    }
     pub fn scene(&self, id: &str, width: u32, height: u32) -> Result<Scene> {
         if width == 0 || height == 0 || u64::from(width) * u64::from(height) > 16_777_216 {
             return Err(SimError::invalid("invalid viewport"));
@@ -819,6 +1051,71 @@ impl Environment {
             .machines
             .get(&s.focused_machine)
             .ok_or_else(|| SimError::denied("machine unavailable"))?;
+        if let Some(theme) = self.desktop_theme(id, &s.focused_machine) {
+            let rect = content_rect(theme, width, height, m.desktop.maximized);
+            let visible =
+                m.browser_visible || m.active_app.is_some() || m.desktop.focused.is_some();
+            let page = self.project_page(&s.config.actor, &s.focused_machine, m)?;
+            let content = visible.then(|| {
+                if m.browser_visible {
+                    m.browser.scene(rect.width.max(1), rect.height.max(1))
+                } else if let Some(window) = m
+                    .desktop
+                    .focused
+                    .and_then(|id| m.desktop.windows.get(&id))
+                    .filter(|_| m.active_app.is_none())
+                {
+                    cw_applications::desktop_scene::app_content(
+                        &window.state,
+                        theme,
+                        rect.width.max(1),
+                        rect.height.max(1),
+                    )
+                } else {
+                    cw_browser::layout_page(
+                        &page,
+                        &BTreeMap::new(),
+                        rect.width.max(1),
+                        rect.height.max(1),
+                        0,
+                    )
+                }
+            });
+            let title = if m.browser_visible {
+                let address = if m.address_focused {
+                    m.desktop
+                        .focused
+                        .and_then(|id| m.desktop.windows.get(&id))
+                        .and_then(|w| {
+                            if let AppState::Browser { address } = &w.state {
+                                Some(address.as_str())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or("")
+                } else {
+                    m.browser.url().unwrap_or("")
+                };
+                format!("Browser — {address}")
+            } else {
+                m.desktop
+                    .focused
+                    .and_then(|id| m.desktop.windows.get(&id))
+                    .map(|w| w.title.clone())
+                    .unwrap_or(page.title)
+            };
+            return Ok(render_shell(
+                theme,
+                width,
+                height,
+                self.runtime.tick(),
+                &title,
+                content,
+                m.desktop.launcher_open,
+                m.desktop.maximized,
+            ));
+        }
         Ok(if m.browser_visible {
             m.browser.scene(width, height)
         } else {

@@ -38,3 +38,11 @@ uses the bundled font. Glyph/text-mask caches are bounded. The checked raster AP
 rejects frames above 16,777,216 pixels. Text has fixed-cell wrapping and fallback
 for unavailable glyphs; bidirectional layout and a shaping engine are outside the
 current contract.
+
+## OS desktop scenes
+
+The optional [native OS presentation](desktop-gui.md) composes application scenes
+with deterministic desktop/mobile chrome in Rust. `UiText` uses bundled proportional
+DejaVu Sans; `RoundedBox` supplies antialiased rounded surfaces with matching hit
+tests. Existing `Text` and its golden pixels remain unchanged. Application nodes
+can now have translated scene coordinates inside window content clips.

@@ -1,5 +1,7 @@
 //! Serializable desktop applications. Effects are requests to the environment,
 //! never ambient filesystem access or subprocess execution.
+pub mod desktop_scene;
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -55,12 +57,18 @@ pub struct Window {
     pub id: u64,
     pub title: String,
     pub state: AppState,
+    #[serde(default)]
+    pub minimized: bool,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DesktopState {
     pub windows: BTreeMap<u64, Window>,
     pub focused: Option<u64>,
     next_id: u64,
+    #[serde(default)]
+    pub launcher_open: bool,
+    #[serde(default)]
+    pub maximized: bool,
 }
 impl DesktopState {
     pub fn launch(&mut self, kind: &str, argument: &str) -> Result<(u64, Vec<AppEffect>), String> {
@@ -125,24 +133,67 @@ impl DesktopState {
                 id,
                 title: kind.into(),
                 state,
+                minimized: false,
             },
         );
         self.focused = Some(id);
+        self.launcher_open = false;
         Ok((id, effects))
     }
     pub fn focus(&mut self, id: u64) -> Result<(), String> {
         if !self.windows.contains_key(&id) {
             return Err("window not found".into());
         }
+        self.windows.get_mut(&id).unwrap().minimized = false;
         self.focused = Some(id);
+        self.launcher_open = false;
         Ok(())
     }
     pub fn close(&mut self, id: u64) -> Result<(), String> {
         self.windows.remove(&id).ok_or("window not found")?;
         if self.focused == Some(id) {
-            self.focused = self.windows.keys().next_back().copied();
+            self.focused = self
+                .windows
+                .values()
+                .rev()
+                .find(|w| !w.minimized)
+                .map(|w| w.id);
         }
         Ok(())
+    }
+    pub fn minimize(&mut self, id: u64) -> Result<(), String> {
+        self.windows
+            .get_mut(&id)
+            .ok_or("window not found")?
+            .minimized = true;
+        if self.focused == Some(id) {
+            self.focused = self
+                .windows
+                .values()
+                .rev()
+                .find(|w| !w.minimized)
+                .map(|w| w.id);
+        }
+        Ok(())
+    }
+    pub fn home(&mut self) {
+        for window in self.windows.values_mut() {
+            window.minimized = true;
+        }
+        self.focused = None;
+        self.launcher_open = false;
+    }
+    pub fn cycle(&mut self) -> Result<(), String> {
+        let ids: Vec<_> = self.windows.keys().copied().collect();
+        if ids.is_empty() {
+            return Ok(());
+        }
+        let next = self
+            .focused
+            .and_then(|id| ids.iter().position(|candidate| *candidate == id))
+            .map(|index| (index + 1) % ids.len())
+            .unwrap_or(0);
+        self.focus(ids[next])
     }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
         let window = self
@@ -443,6 +494,34 @@ impl DesktopState {
         if let Some(id) = target.strip_prefix("focus:") {
             self.focus(id.parse().map_err(|_| "invalid window ID")?)?;
             return Ok(vec![]);
+        }
+        if target == "editor-save" {
+            return self.key("Ctrl+s");
+        }
+        if matches!(target, "files-up" | "files-parent" | "files-root") {
+            let id = self.focused.ok_or("no focused window")?;
+            let window = self.windows.get_mut(&id).ok_or("window not found")?;
+            if let AppState::Files { path, .. } = &mut window.state {
+                *path = if target == "files-root" {
+                    "/".into()
+                } else {
+                    let parent = path
+                        .trim_end_matches('/')
+                        .rsplit_once('/')
+                        .map(|(parent, _)| parent)
+                        .unwrap_or("");
+                    if parent.is_empty() {
+                        "/".into()
+                    } else {
+                        parent.into()
+                    }
+                };
+                return Ok(vec![AppEffect::ListDirectory {
+                    window: id,
+                    path: path.clone(),
+                }]);
+            }
+            return Err("not a file manager".into());
         }
         if let Some(index) = target.strip_prefix("open:") {
             let index: usize = index.parse().map_err(|_| "invalid entry")?;

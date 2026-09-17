@@ -160,6 +160,7 @@ name = "cw-applications"
 version = "0.1.0"
 dependencies = [
  "cw-protocol",
+ "cw-scene",
  "cw-sdk",
  "serde",
  "serde_json",

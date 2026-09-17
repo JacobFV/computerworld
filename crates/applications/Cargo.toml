@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+cw-scene = { path = "../scene" }
 cw-protocol = { path = "../protocol" }
 cw-sdk = { path = "../sdk" }
 serde.workspace = true
