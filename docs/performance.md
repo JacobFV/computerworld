@@ -2,21 +2,23 @@
 
 Measured on September 17, 2026, Linux ARM64, Cortex-X925 CPU 19 (3.9 GHz
 maximum), Rust 1.97.1 release builds and Chrome 151. Native actor terminal steps
-cost **3.79 µs p50**, dirty resets **1.44 µs**, and warm 1280×720 frames **0.522 ms**.
+cost **3.84 µs p50**, dirty resets **1.52 µs**, and warm 1280×720 frames **0.522 ms**.
 
 The renderer optimization improved native full-frame p50 **3.11×** and
 100% patch rendering **7.21×**. Against a Chromium DOM, the format-matched custom
-PNG capture pipeline achieved **2.70× p50 / 1.81× p95** improvement. The proposed
+PNG capture pipeline achieved **2.74× p50 / 2.29× p95** improvement. The proposed
 3× predecessor capture target was **not met**. The same Chromium screenshot API
-on both representations produced essentially no speedup. We have not established
+on both representations was slower for canvas in this run. We have not established
 a general renderer-only speedup over Chromium.
 
 [Raw samples and summary](../benchmarks/results/summary.json),
-[machine and artifact hashes](../benchmarks/results/machine.json), and
+[final machine and artifact hashes](../benchmarks/results/machine.json),
+[initial renderer/native baseline hashes](../benchmarks/results/machine-baseline.json), and
 [commands](../benchmarks/README.md) accompany the report. Final refreshed bindings
 are measured, including the cached reset and exact integer conversion changes.
-Device-console work added after measurement is not included. These are results
-on one host, not universal hardware guarantees.
+The final device-lifecycle runtime is included; rendering the multi-device console
+itself is not a measured workload. These are results on one host, not universal
+hardware guarantees.
 
 ## Method
 
@@ -29,6 +31,10 @@ mean latency within a run. This does not treat batch averages as operation p95.
 
 Native runs are pinned to CPU 19 on this ARM64 host. Machine/compiler/browser,
 world, lockfile and font/bundle hashes are recorded in `results/machine.json`.
+`machine-baseline.json` retains the earlier measurement metadata for the native
+renderer before/after runs; the final lifecycle-runtime runs refresh native world,
+capacity, Node, Python and browser results. `native-dirty-reset.json` is the initial
+standalone reset experiment; the report uses the newer `native-world.json` row.
 Initialization, boundary conversion, scene construction, rasterization and PNG
 capture are distinct workloads. The native world runner measures the full actor
 boundary including outcome construction, observation projection and journaling.
@@ -43,24 +49,24 @@ and HTTP results are asserted to prevent no-op success from counting as work.
 
 | Workload | p50 | p95 |
 |---|---:|---:|
-| Terminal `pwd`, full actor step | 3.792 | 4.752 |
-| Terminal parse + pipe | 4.448 | 4.976 |
-| File write + read, two actor actions | 7.056 | 7.664 |
-| Virtual HTTP, full actor step | 15.041 | 16.960 |
-| Synthetic browser navigation through network | 23.280 | 26.560 |
-| Editor type + backspace, two actions | 4.224 | 5.136 |
-| Structured actor observation | 4.320 | 4.496 |
-| Browser scene / layout, no raster | 1.936 | 2.016 |
-| Already-clean same-seed reset | 0.096 | 0.112 |
-| Snapshot handle | 0.448 | 0.528 |
-| Fork from initial snapshot | 10.912 | 11.152 |
-| Fork + first file mutation | 19.408 | 19.696 |
-| Portable initial snapshot encode | 26.400 | 27.104 |
-| Portable initial snapshot decode | 103.360 | 106.368 |
+| Terminal `pwd`, full actor step | 3.840 | 4.752 |
+| Terminal parse + pipe | 4.448 | 4.912 |
+| File write + read, two actor actions | 7.168 | 7.744 |
+| Virtual HTTP, full actor step | 14.880 | 16.928 |
+| Synthetic browser navigation through network | 23.568 | 26.256 |
+| Editor type + backspace, two actions | 4.256 | 5.184 |
+| Structured actor observation | 4.448 | 4.624 |
+| Browser scene / layout, no raster | 2.016 | 2.080 |
+| Already-clean same-seed reset | 0.144 | 0.144 |
+| Snapshot handle | 0.464 | 0.528 |
+| Fork from initial snapshot | 16.545 | 16.896 |
+| Fork + first file mutation | 25.729 | 26.225 |
+| Portable initial snapshot encode | 32.800 | 34.529 |
+| Portable initial snapshot decode | 141.986 | 145.634 |
 
-A dirty same-seed reset is **1.440 µs p50 / 1.504 µs p95**. Every iteration mutates a file before the timer,
+A dirty same-seed reset is **1.520 µs p50 / 1.568 µs p95**. Every iteration mutates a file before the timer,
 then resets inside the timer and verifies the file disappeared after timing.
-The 0.096 µs clean-reset row intentionally measures an already-reset world;
+The 0.144 µs clean-reset row intentionally measures an already-reset world;
 it should not be presented as the cost of discarding a populated episode.
 Snapshot encode/decode rows use the initialized snapshot; populated trajectory
 size naturally increases portable serialization cost. Fork + first write includes
@@ -132,19 +138,19 @@ transport, not isolated compositor benchmarks.
 
 | Workload | p50 | p95 |
 |---|---:|---:|
-| DOM update + Chrome PNG capture | 33.518 | 51.437 |
-| Wasm full update + same Chrome PNG capture | 33.820 | 52.491 |
-| Wasm full update + canvas PNG export, two RPCs | 14.798 | 28.856 |
-| Wasm incremental update + PNG export, one RPC | 12.422 | 28.431 |
+| DOM update + Chrome PNG capture | 35.004 | 52.579 |
+| Wasm full update + same Chrome PNG capture | 44.671 | 53.737 |
+| Wasm full update + canvas PNG export, two RPCs | 15.195 | 26.865 |
+| Wasm incremental update + PNG export, one RPC | 12.786 | 22.980 |
 
-DOM mutation plus forced layout costs 5 / 40 / 345 µs p50 for 1% / 10% / 100%
-changes. Wasm patch + raster + full RGBA boundary copy costs 1.595 / 1.660 / 2.450 ms.
+DOM mutation plus forced layout costs 5 / 40 / 355 µs p50 for 1% / 10% / 100%
+changes. Wasm patch + raster + full RGBA boundary copy costs 1.675 / 1.800 / 2.560 ms.
 Those are different operations and are **not divided into a speedup ratio**.
 Browser timers are quantized; the smallest DOM result is near timer resolution.
 The RGBA-copy and canvas/export boundary is a remaining optimization target.
 
-The real predecessor mail visual fixture captures in 36.461 / 63.180 ms p50/p95.
-Its migrated geometry reconstruction captures in 49.975 / 54.612 ms. The latter
+The real predecessor mail visual fixture captures in 46.434 / 63.092 ms p50/p95.
+Its migrated geometry reconstruction captures in 50.915 / 74.317 ms. The latter
 uses per-character nodes to preserve predecessor positions, omits decorations and
 emoji fallback, and is not a faithful same-pixel screen. It does **not** establish
 a renderer speedup. Reviewed [DOM](../benchmarks/results/predecessor-mail.png) and
@@ -174,40 +180,40 @@ ratios would not isolate binding overhead.
 
 | Workload | p50 | p95 |
 |---|---:|---:|
-| Node Wasm terminal step | 12.816 | 15.376 |
-| Node Wasm ten-action batch | 67.456 | 99.697 |
-| Node Wasm observe | 1.344 | 1.568 |
-| Node Wasm already-clean reset | 0.256 | 0.288 |
-| Node Wasm snapshot handle | 1.008 | 1.296 |
-| Node Wasm fork | 18.336 | 19.200 |
+| Node Wasm terminal step | 13.408 | 42.817 |
+| Node Wasm ten-action batch | 67.425 | 77.184 |
+| Node Wasm observe | 1.472 | 3.696 |
+| Node Wasm already-clean reset | 0.352 | 0.384 |
+| Node Wasm snapshot handle | 0.960 | 1.233 |
+| Node Wasm fork | 26.352 | 28.752 |
 
 | Workload | p50 | p95 |
 |---|---:|---:|
-| Python terminal step | 8.096 | 8.640 |
-| Python ten-action batch | 43.825 | 48.336 |
-| Python observe | 1.280 | 1.344 |
-| Python already-clean reset | 0.240 | 0.256 |
-| Python snapshot handle | 0.656 | 0.704 |
-| Python fork | 11.424 | 11.712 |
+| Python terminal step | 7.936 | 8.480 |
+| Python ten-action batch | 42.849 | 59.136 |
+| Python observe | 1.280 | 1.360 |
+| Python already-clean reset | 0.256 | 0.288 |
+| Python snapshot handle | 0.672 | 0.720 |
+| Python fork | 16.896 | 17.296 |
 
-Actual Chrome Wasm terminal execution is **15 µs p50 / 20 µs p95** over 5,000
-steps. One cold Node module load/instantiation took **17.264 ms**; this is one
-observation, not a p50. Browser world construction warmed from 24.395 ms on the
-first run to 1.495–10.450 ms on later runs; five points do not establish a robust
+Actual Chrome Wasm terminal execution is **15 µs p50 / 35 µs p95** over 5,000
+steps. One cold Node module load/instantiation took **16.600 ms**; this is one
+observation, not a p50. Browser world construction warmed from 25.705 ms on the
+first run to 1.020–3.330 ms on later runs; five points do not establish a robust
 cold-start percentile.
 
 | Packaged artifact | Raw bytes | Gzip bytes |
 |---|---:|---:|
-| Browser Wasm, standard services + renderer/font | 5,444,132 | 1,651,674 |
-| Browser JS glue | 31,703 | 6,008 |
+| Browser Wasm, standard services + renderer/font | 5,490,584 | 1,664,137 |
+| Browser JS glue | 32,456 | 6,121 |
 | Bundled font, already embedded in Wasm | 343,140 | 203,155 |
 
 The font row is an accounting breakdown, not an additional required demo fetch.
-Browser linear memory grew from **19.0 MiB to 20.5625 MiB** across five
+Browser linear memory grew from **19 MiB to 20.56 MiB** across five
 create/1,100-step/free cycles; Wasm memory retains its high-water allocation after
 handles are freed. That is a bounded sample, not proof of zero growth over all
 workloads. Native 1 / 100 / 1,000 independent, unrendered company worlds occupied
-3.37 / 21.97 / 190.88 MiB RSS and took 1.01 / 28.71 / 246.05 ms total to create in
+3.42 / 27.34 / 244.68 MiB RSS and took 2.73 / 27.79 / 272.25 ms total to create in
 one serial trial each. RSS after dropping them retained allocator pages; no claim
 of OS page reclamation is made.
 

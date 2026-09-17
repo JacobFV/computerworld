@@ -1,7 +1,7 @@
 {
-  "revision": "af208d1ab51769d724c76311143071db04a691c7",
-  "worktree_status": "M Cargo.toml\n M README.md\n M benchmarks/README.md\n M benchmarks/bindings.mjs\n M benchmarks/browser-render.mjs\n M benchmarks/machine.py\n M benchmarks/predecessor.mjs\n M benchmarks/runner/src/bin/many_worlds.rs\n M benchmarks/runner/src/bin/world.rs\n M benchmarks/runner/src/main.rs\n M crates/wasm/src/lib.rs\n M docs/performance.md\n M scripts/smoke-node.cjs\n?? benchmarks/results/\n?? benchmarks/run-all.sh",
-  "diff_sha256": "b3f01ea5ef6776ab3df825218f81aa3636ff4c06e5462506610c6a335a7dbd63",
+  "revision": "de624a58fb6f76ca769aea98155b71505bec57e8",
+  "worktree_status": "M Cargo.toml\n M README.md\n M artifacts/browser-demo.png\n M benchmarks/results/browser-render.json\n M benchmarks/results/many-worlds.json\n M benchmarks/results/native-world.json\n M benchmarks/results/python.json\n M benchmarks/results/summary.json\n M benchmarks/results/wasm-node.json\n M examples/browser/README.md\n M examples/browser/app.js\n M examples/browser/build.mjs\n M examples/browser/index.html\n M examples/browser/style.css\n M examples/browser/world-definition.js\n M scripts/test-browser.mjs\n?? docs/final-report.md\n?? examples/browser/.openai/",
+  "diff_sha256": "b43df2163efae8c04664ca4d6dee085ca3ec05c1889d25abeb7feeb399419ea3",
   "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6",
   "kernel": {
     "system": "Linux",
@@ -12,8 +12,8 @@
     "processor": "aarch64"
   },
   "cpu": "Architecture:                            aarch64\nCPU op-mode(s):                          64-bit\nByte Order:                              Little Endian\nCPU(s):                                  20\nOn-line CPU(s) list:                     0-19\nVendor ID:                               ARM\nModel name:                              Cortex-X925\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      10\nSocket(s):                               1\nStepping:                                r0p1\nFrequency boost:                         disabled\nCPU(s) scaling MHz:                      100%\nCPU max MHz:                             3900.0000\nCPU min MHz:                             1378.0000\nBogoMIPS:                                2000.00\nFlags:                                   fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp sve2 sveaes svepmull svebitperm svesha3 svesm4 flagm2 frint svei8mm svebf16 i8mm bf16 dgh bti ecv afp wfxt\nModel name:                              Cortex-A725\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      10\nSocket(s):                               1\nStepping:                                r0p1\nCPU(s) scaling MHz:                      100%\nCPU max MHz:                             2808.0000\nCPU min MHz:                             338.0000\nBogoMIPS:                                2000.00\nFlags:                                   fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp sve2 sveaes svepmull svebitperm svesha3 svesm4 flagm2 frint svei8mm svebf16 i8mm bf16 dgh bti ecv afp wfxt\nL1d cache:                               1.3 MiB (20 instances)\nL1i cache:                               1.3 MiB (20 instances)\nL2 cache:                                25 MiB (20 instances)\nL3 cache:                                24 MiB (2 instances)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-19\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; CSV2, BHB\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected",
-  "affinity": "pid 3135643's current affinity list: 0-19",
-  "clock": "2026-09-17T10:45:27-07:00",
+  "affinity": "pid 3189765's current affinity list: 0-19",
+  "clock": "2026-09-17T10:55:01-07:00",
   "browser": "Google Chrome 151.0.7922.71",
   "assets": {
     "Cargo.lock": {
@@ -32,14 +32,14 @@
       "sha256": "c805f9436dbc268644c1d9584f01a601a653e028e08fd74b9b949f6cf8304d88"
     },
     "pkg/web/computerworld_bg.wasm": {
-      "bytes": 5444132,
-      "gzip_bytes": 1651674,
-      "sha256": "dcddfdb67a04e9072db79b03dcbbd0b6f6143274b1aef2d3fa85ade332646686"
+      "bytes": 5490584,
+      "gzip_bytes": 1664137,
+      "sha256": "f90dd666f55abf9efa799518a2c1dce27b98d4af60abfca375e275d1630ed0e8"
     },
     "pkg/web/computerworld.js": {
-      "bytes": 31703,
-      "gzip_bytes": 6008,
-      "sha256": "24b32f7b72a0e0c4faaff5f657d28bb4921a931af64f85db6f6093bfeb3336b7"
+      "bytes": 32456,
+      "gzip_bytes": 6121,
+      "sha256": "ab77efa275532afed136f0500dd6791773ba237b951aac7b513e10d8e7819406"
     },
     "benchmarks/runner/src/bin/world.rs": {
       "bytes": 8792,
@@ -62,9 +62,9 @@
       "sha256": "6bbfb424817276f01222df5da538825ec5dcad7e0ba4477f9589320819424579"
     },
     "target/release/world": {
-      "bytes": 6414888,
-      "gzip_bytes": 2443140,
-      "sha256": "73464bfe726d5f19a8d3f8b2f551b584cff2d1c0996a6c776c31bf1aa468dbdd"
+      "bytes": 6417552,
+      "gzip_bytes": 2449877,
+      "sha256": "df23de78db28bbf30a3bcf138090d7d5b69e86f8182c4fd0cf253559e81baa73"
     },
     "target/release/cw-benchmarks": {
       "bytes": 1093808,
@@ -72,9 +72,9 @@
       "sha256": "70333311cade7101d5c7feaacca7af804923fe390e230c71cead342d7a9d3779"
     },
     "target/release/many_worlds": {
-      "bytes": 2653584,
-      "gzip_bytes": 1066537,
-      "sha256": "5a2660bed5d6181e8a81d7d3b874d65033d6dc59a02a1f7b756ff26b4dac03c2"
+      "bytes": 2720408,
+      "gzip_bytes": 1074582,
+      "sha256": "19e7698a3107b5eb0391121a80c27e00409da87bdf640a17feabf88a2da9268b"
     }
   },
   "pinned_cpu_capacity": "1024",

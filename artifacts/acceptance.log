@@ -1,0 +1,546 @@
+Pure simulation crate boundaries passed.
+   Compiling cw-network v0.1.0 (/home/brandonin/Documents/computerworld/crates/network)
+   Compiling cw-kernel v0.1.0 (/home/brandonin/Documents/computerworld/crates/kernel)
+   Compiling cw-host-adapters v0.1.0 (/home/brandonin/Documents/computerworld/crates/host-adapters)
+   Compiling cw-environment v0.1.0 (/home/brandonin/Documents/computerworld/crates/environment)
+   Compiling computerworld v0.1.0 (/home/brandonin/Documents/computerworld/crates/computerworld)
+   Compiling cw-wasm v0.1.0 (/home/brandonin/Documents/computerworld/crates/wasm)
+   Compiling cw-benchmarks v0.1.0 (/home/brandonin/Documents/computerworld/benchmarks/runner)
+   Compiling cw-python v0.1.0 (/home/brandonin/Documents/computerworld/crates/python)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.49s
+     Running unittests src/lib.rs (target/debug/deps/computerworld-1a5079d73baa4d9b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/cw.rs (target/debug/deps/cw-7568533f9aeb3f56)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/behaviors.rs (target/debug/deps/behaviors-0922aaca51a329d7)
+
+running 20 tests
+test package_removal_and_installation_control_application_launch ... ok
+test computer_process_identifiers_are_local_namespaces ... ok
+test chat_messages_are_shared_by_authorized_users ... ok
+test admin_debugs_service_process_then_second_computer_reconnects ... ok
+test document_mutation_crosses_network_and_is_visible_to_second_computer ... ok
+test browser_discovers_services_through_received_links ... ok
+test local_files_are_isolated_and_actor_derives_new_file ... ok
+test browser_form_mutation_requires_other_client_refresh ... ok
+test structured_observation_contains_no_service_backing_state ... ok
+test git_push_then_clone_transfers_real_shared_files_between_machines ... ok
+test removing_service_link_changes_navigation_to_visible_error ... ok
+test undeclared_host_network_and_ungranted_machine_are_blocked ... ok
+test unrelated_world_runs_without_reference_services ... ok
+test recording_replays_same_actor_inputs_and_events ... ok
+test removing_service_host_is_atomic_and_multimachine_grants_shrink ... ok
+test snapshot_branch_and_portable_restore_preserve_future_behavior ... ok
+test live_devices_preserve_state_revoke_grants_and_restore_topology ... ok
+test seeds_choose_substantive_initialized_document_content ... ok
+test scene_hit_testing_drives_browser_and_rendering_is_deterministic ... ok
+test native_image_is_fetched_over_network_and_survives_portable_checkpoint ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_applications-17fa3ed843239201)
+
+running 4 tests
+test focus_tests::wrong_application_input_and_invalid_editor_cursor_rejected ... ok
+test tests::snapshot_restores_cursor_and_pending_edit ... ok
+test tests::unicode_editor_effects_and_focus ... ok
+test extension_tests::custom_application_state_and_failed_event_atomicity ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/main.rs (target/debug/deps/cw_benchmarks-391d79f42774f0d5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/many_worlds.rs (target/debug/deps/many_worlds-503ac830b6d0b937)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/world.rs (target/debug/deps/world-0afebdcc5bf497fd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_browser-067462fdcf49bd3a)
+
+running 8 tests
+test identity_tests::semantic_node_identity_survives_preceding_insertions ... ok
+test tests::rejected_navigation_does_not_destroy_received_page ... ok
+test tests::duplicate_ids_and_redirect_loops_rejected ... ok
+test tests::structured_layout_hit_test_and_keyboard ... ok
+test tests::links_forms_and_history_use_transport ... ok
+test image_tests::assets_use_transport_cache_and_checkpointed_history ... ok
+test tests::redirects_cookie_scope_storage_and_snapshot ... ok
+test image_tests::asset_origin_redirect_and_decode_errors_are_explicit ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_computer-8a10c148b5c32678)
+
+running 34 tests
+test git::security_tests::git_tree_paths_cannot_escape_or_overwrite_metadata ... ok
+test packages::tests::ranges ... ok
+test process::tests::orphan_reparent_and_snapshot ... ok
+test process::descriptor_tests::file_offsets_survive_snapshot ... ok
+test shell::advanced_tests::expansion_globs_arithmetic_and_regex ... ok
+test process::tests::lifecycle_ownership_and_resume ... ok
+test shell::advanced_tests::actor_cannot_read_private_file ... ok
+test shell::advanced_tests::ignores_do_not_hide_tracked_files ... ok
+test packages::tests::dependency_transaction ... ok
+test process::descriptor_tests::serializable_signal_dispositions ... ok
+test process::scheduler_tests::deadline_state_is_independent_of_clock_partition ... ok
+test process::scheduler_tests::rejects_invalid_imported_process_identity ... ok
+test shell::advanced_tests::sleep_uses_simulated_deadline ... ok
+test process::descriptor_tests::repeated_short_commands_do_not_accumulate_processes ... ok
+test shell::executable_tests::dialect_separates_commands_and_path_escapes ... ok
+test shell::final_semantic_tests::substitutions_preserve_local_scope_and_file_effects ... ok
+test vfs::tests::dangling_write_and_symlink_cycle_rename ... ok
+test shell::tests::quoting_pipes_and_redirect ... ok
+test vfs::authorization_tests::case_only_rename_updates_display_name ... ok
+test shell::executable_tests::package_script_runs_same_shell ... ok
+test shell::grammar_tests::heredocs_and_combined_redirect_are_lexical ... ok
+test vfs::authorization_tests::checked_mutations_and_sticky_directory ... ok
+test shell::grammar_tests::malformed_pipeline_reports_error ... ok
+test shell::final_semantic_tests::editing_pipeline_and_condition ... ok
+test shell::tests::git_history_is_content_addressed ... ok
+test vfs::tests::links_rename_and_fork ... ok
+test vfs::tests::windows_case_and_cycles ... ok
+test shell::signal_tests::ignored_signal_keeps_listener ... ok
+test shell::tests::short_circuit_and_variables ... ok
+test vfs::checkpoint_tests::rejects_missing_inode_in_checkpoint ... ok
+test shell::grammar_tests::blocking_sleep_advances_adapter ... ok
+test shell::executable_tests::recursive_script_is_bounded ... ok
+test vfs::tests::permissions_and_restore ... ok
+test vfs::tests::normalization_idempotent ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_determinism-7e12878943c5611c)
+
+running 4 tests
+test tests::checked_clock ... ok
+test tests::splitmix_golden ... ok
+test tests::scheduler_order_and_checkpoint ... ok
+test tests::streams_are_independent_and_portable ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_environment-1230aadda75ee893)
+
+running 6 tests
+test tests::uninstalled_application_is_rejected ... ok
+test tests::errors_cannot_reveal_private_plugin_details ... ok
+test tests::actor_grants_and_private_metadata ... ok
+test application_tests::custom_app_effects_pixels_hit_tests_and_private_state ... ok
+test tests::structured_observation_and_inspection_are_read_only ... ok
+test tests::snapshot_replay_and_fork ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_evaluation-34ccccf52322b946)
+
+running 1 test
+test tests::predicates_are_read_only ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_host_adapters-726caf23dcf5c6d5)
+
+running 2 tests
+test tests::replay_never_falls_back_or_consumes_mismatch ... ok
+test tests::refuses_host_override_and_byte_budget ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_kernel-85b00470efcf8c20)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-3735f80bd1811ba2)
+
+running 12 tests
+test failed_service_transition_rolls_back ... ok
+test process_deadlines_are_independent_of_advance_partition ... ok
+test machines_network_persistence_and_isolation ... ok
+test pending_snapshot_includes_service_commit_and_response_delivery ... ok
+test fork_reset_and_seed_initialization ... ok
+test rejected_external_completions_release_tokens_and_record_only_validated_failures ... ok
+test restore_rejects_other_blueprint ... ok
+test explicit_host_policy_and_stale_completion ... ok
+test colocated_process_controls_reachability_and_restart_preserves_state ... ok
+test queued_request_cannot_reach_stopped_service ... ok
+test service_effects_traverse_network_and_resume_timers ... ok
+test deterministic_commands_and_blocked_host ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_network-92c8ecfb34bb03cf)
+
+running 18 tests
+test tests::cache_ttl_and_cname_cycle ... ok
+test tests::datagram_timing_and_snapshot ... ok
+test tests::http_resolves_real_listener ... ok
+test tests::dns_roundtrip_precedes_http ... ok
+test tests::loopback_is_source_local ... ok
+test tests::no_links_requires_explicit_lan ... ok
+test tests::queued_delivery_rechecks_listener_lifecycle ... ok
+test tests::gateway_checks_every_address_and_redirect ... ok
+test tests::unknown_dns_never_escapes ... ok
+test tests::stream_delivery_is_timed_and_checkpointed ... ok
+test tests::stream_buffers_and_owner_cleanup ... ok
+test tests::disconnected_resolver_cannot_answer ... ok
+test tests::latency_and_directed_links ... ok
+test tests::literal_host_cannot_spoof_adapter_resolution ... ok
+test tests::deterministic_packet_loss ... ok
+test tests::local_and_internet_policy ... ok
+test tests::cidr_exact_matches_only_self ... ok
+test tests::denied_private_addresses_never_pass ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_protocol-472bfa2ebdcc9ca3)
+
+running 3 tests
+test tests::response_page_roundtrip ... ok
+test tests::unknown_schema_rejected ... ok
+test tests::default_gateway_cannot_escape ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/topology.rs (target/debug/deps/topology-9d1e43c8a8f54076)
+
+running 13 tests
+test computer_node_ownership_is_unique ... ok
+test page_versions_are_checked ... ok
+test dns_aliases_are_supported ... ok
+test unknown_optional_fields_are_forward_compatible ... ok
+test version_blocks_incompatible_definitions ... ok
+test route_requires_existing_nodes ... ok
+test service_dns_cannot_identify_another_node ... ok
+test dns_resolver_is_a_real_node ... ok
+test duplicate_page_targets_fail ... ok
+test arbitrary_modules_are_valid_schema ... ok
+test duplicate_ids_always_fail ... ok
+test malformed_addresses_are_rejected ... ok
+test reachable_definitions_roundtrip ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/lib.rs (target/debug/deps/computerworld-75f11876f8076646)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_render-a46387eb9588163f)
+
+running 6 tests
+test tests::structured_scene_does_not_load_font ... ok
+test tests::font_hash ... ok
+test tests::transforms_clips_images_paths ... ok
+test tests::incremental_equals_full ... ok
+test tests::deterministic ... ok
+test properties::moved_alpha_layers_incremental_equal_full ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_scene-849fe7a9eb446fce)
+
+running 6 tests
+test properties::hostile_image_size_returns_error_without_overflow ... ok
+test tests::inverse_clip_z ... ok
+test tests::patch_atomic ... ok
+test tests::rows_wrap ... ok
+test properties::intersection_is_commutative ... ok
+test properties::translated_points_round_trip ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_sdk-30c5025914506935)
+
+running 1 test
+test tests::duplicate_rejected_without_replacement ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_calendar-d2797e16e799b4d8)
+
+running 2 tests
+test tests::page_pure ... ok
+test tests::invitations_scope_time_and_restore ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_chat-86e918f841c9a27f)
+
+running 2 tests
+test tests::membership_messages_reactions_restore ... ok
+test tests::rendering_and_api_share_state ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_common-feffe1a38d5358e0)
+
+running 1 test
+test tests::forms_have_scoped_controls_and_wire_names ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_docs-65217dd4255a72de)
+
+running 3 tests
+test tests::revisions_permissions_and_restore ... ok
+test tests::seeded_initialization_and_pure_render ... ok
+test browser_tests::native_form_changes_same_api_document ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_git-43ec0175560c3cbc)
+
+running 4 tests
+test tests::invalid_object_push_is_atomic ... ok
+test tests::non_fast_forward_rejected ... ok
+test path_security_tests::reject_portable_path_escapes_atomically ... ok
+test tests::two_clients_clone_push_and_conflict ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_issues-ed6f78485a9627a1)
+
+running 3 tests
+test tests::scoped_ids_and_atomic_transitions ... ok
+test tests::reviews_do_not_close_pr ... ok
+test http_tests::two_clients_mutate_read_and_render_same_issue ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_mail-77d9a23a642b79e3)
+
+running 3 tests
+test tests::delivery_and_private_metadata ... ok
+test tests::sdk_authoritative_identity_restore_and_render_purity ... ok
+test tests::self_mail_both_folders_and_atomic_rejection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_service_static_site-c74e99dff1e29f8c)
+
+running 2 tests
+test assets_tests::native_image_response_is_served_over_http ... ok
+test tests::records_are_shared_and_rendered_from_same_state ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_services-c120fc714bfdc06c)
+
+running 1 test
+test tests::registry_has_independent_optional_services ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_trajectory-3d0b96de8bd79b30)
+
+running 1 test
+test tests::detects_tampering ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/cw_wasm-5a4b4055ff21f536)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests computerworld
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_applications
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_browser
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_computer
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_determinism
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_environment
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_evaluation
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_host_adapters
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_kernel
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_network
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_protocol
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_scene
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_sdk
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_calendar
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_chat
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_common
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_docs
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_git
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_issues
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_mail
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_service_static_site
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_services
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_trajectory
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cw_wasm
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling cw-network v0.1.0 (/home/brandonin/Documents/computerworld/crates/network)
+   Compiling cw-host-adapters v0.1.0 (/home/brandonin/Documents/computerworld/crates/host-adapters)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.11s
+     Running unittests src/lib.rs (target/debug/deps/cw_host_adapters-96702ba45589f307)
+
+running 3 tests
+test tests::refuses_host_override_and_byte_budget ... ok
+test tests::replay_never_falls_back_or_consumes_mismatch ... ok
+test native_tests::pins_address_preserves_host_and_does_not_follow_redirects ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests cw_host_adapters
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Checking cw-network v0.1.0 (/home/brandonin/Documents/computerworld/crates/network)
+    Checking cw-kernel v0.1.0 (/home/brandonin/Documents/computerworld/crates/kernel)
+    Checking cw-host-adapters v0.1.0 (/home/brandonin/Documents/computerworld/crates/host-adapters)
+    Checking cw-environment v0.1.0 (/home/brandonin/Documents/computerworld/crates/environment)
+    Checking computerworld v0.1.0 (/home/brandonin/Documents/computerworld/crates/computerworld)
+    Checking cw-benchmarks v0.1.0 (/home/brandonin/Documents/computerworld/benchmarks/runner)
+    Checking cw-python v0.1.0 (/home/brandonin/Documents/computerworld/crates/python)
+    Checking cw-wasm v0.1.0 (/home/brandonin/Documents/computerworld/crates/wasm)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.74s
+    Finished `release` profile [optimized] target(s) in 0.12s

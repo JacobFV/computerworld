@@ -1,0 +1,129 @@
+# Implementation and verification report
+
+Status: the canonical Rust implementation, offline multi-device console and live
+device lifecycle are implemented and verified. This report records the measured
+results and remaining fidelity limits. It is not a claim that every
+possible computer/browser behavior has been emulated.
+
+## Delivered architecture
+
+A modular Cargo workspace separates serializable contracts, deterministic
+clock/RNG/scheduler, computer state, synthetic network, service/application SDKs,
+scene construction/rasterization, actor interfaces, evaluator predicates and
+trajectories. `WorldDefinition` is generic data; the company ecosystem is a separate
+JSON package. Native Rust, wasm-bindgen and PyO3 consume the same runtime. The
+Python package does not start Node. Wasm runs without ambient host capabilities.
+
+The reference ecosystem exercises independent macOS, Windows and Ubuntu machines,
+eight service nodes, internal/public-looking DNS, mail delivery, shared documents,
+chat, calendars, Git transport, issues and network-served pages/assets. Kernel
+state persists across steps. Actor sessions have explicit grants; privileged world
+inspection belongs to the owner/evaluator interface, not actor observations.
+
+## Reuse, redesign and compatibility
+
+The [provenance matrix](provenance.md), [research reports](../research/) and
+[pinned revisions](../research/sources.json) record code/history evidence from all
+11 repositories. Reuse is primarily algorithms, causal behavior and regression
+cases, reexpressed in Rust rather than wholesale source copying.
+
+| Source | Preserved | Redesigned or dropped |
+|---|---|---|
+| synthetic-computer-environment | Generic topology, OS profiles, inode filesystem semantics, process ownership, package/Git invariants, DNS/routing/HTTP and egress authorization | In-memory serializable state instead of host disk; controlled scheduler; complete checkpoints; native app/page contract |
+| typed-crystallization-networks | Persistent sessions, deterministic IDs/time, reset semantics, actor/evaluator boundary | No vendored engine copy, global clock patch, policy representation or subprocess-per-step bridge |
+| synthux | Logical event causality, semantic service stores, input/visible-frame relationship | No threaded host HTTP world, disconnected browser fixtures or requested-action echoes |
+| Six standalone service mocks | Independent service addresses and useful endpoint/view workflows | Native service transitions and scenes; fill actual state gaps such as recipient delivery and shared edits |
+| synthex | Historical virtual-internet intent and later SynthUX integration | Early three-dictionary Internet stub contributes no working networking implementation |
+| symbolic-ai-models | Explicit environment/action/perception boundary | No neural/model/training architecture |
+
+The important downstream TCN change was not a newer complete computer substrate:
+53 of 62 compared TypeScript files match SCE after namespace normalization; six
+primarily substitute deterministic IDs. Persistent sessions, controlled time and
+observation/evaluator wrappers provide the substantial downstream boundary fixes.
+Those are explicit runtime/session contracts here.
+
+The new schema, checkpoints and native service APIs are not drop-in predecessor
+formats. JavaScript/Python extension implementations need a Rust port or explicit
+adapter. The [migration notes](migration.md) document that boundary.
+
+## Completed verification evidence
+
+The final full `scripts/test-all.sh` [acceptance pass](../artifacts/acceptance.json)
+recorded **163 passing test executions** (160 workspace unit/integration/doc tests
+plus 3 optional native HTTP adapter tests), zero failures. The complete
+[acceptance log](../artifacts/acceptance.log) is retained. It completed formatting, pure-core dependency/host
+boundary checks, strict workspace Clippy and a release `wasm32-unknown-unknown`
+build, including the final device-lifecycle changes.
+
+Behavior tests cover two-computer communication, DNS and HTTP, browser navigation
+through the network, mutations visible to other clients, blocked outbound access,
+filesystem/process isolation, seeded initialization, replay, portable checkpoints,
+fork isolation, actor/evaluator separation, event/packet traces, package lifecycle,
+service diagnosis, structured observations without rasterization, hit testing and
+deterministic direct rendering. Unit/property tests cover filesystem and protocol
+invariants, transport policy, scheduling, application dispatch and scene damage.
+
+[Node/Wasm and Python verification](../artifacts/bindings-verification.log) exercises
+cross-language checkpoint/hash parity, reset,
+fork and rendering against the same canonical runtime. Native/Wasm rendering
+matched the golden RGBA hash
+`01455c4eaa6c1eca6900b545f69bba35ad9428fb66275a41df86268ae3595ec6`.
+The native company, custom-service and custom-application examples ran successfully.
+
+The [browser console report](../artifacts/browser-verification.json) records six
+computers, eight services, 129 events and **zero host network requests during the
+episode** after static assets were loaded. Real browser pointer/keyboard input,
+terminal execution, reset, checkpoint/fork, deterministic rendering and actor
+restrictions were exercised. A phone is added, browses and writes a file; removal,
+topology checkpoint restoration and fork preserve state; a headless server runs
+terminal commands and observes blocked network access; phone text entry and Enter
+route to the simulator. The console shows network links, live monitor previews
+and device peripherals.
+
+## Performance
+
+The [performance report](performance.md) contains p50/p95, raw samples, artifact
+hashes, machine details and reproduction instructions. Final native measurements:
+terminal step 3.840/4.752 µs, synthetic HTTP 14.880/16.928 µs, dirty same-seed reset
+1.520/1.568 µs, snapshot handle 0.464/0.528 µs, fork 16.545/16.896 µs. Structured
+scene generation is 2.016/2.080 µs and requests no pixel work.
+
+Profiling and optimization improved the Rust renderer's full 1280×720 p50 by
+3.11× and 100% incremental patch by 7.21× relative to its initial implementation.
+The matched browser capture pipeline is 2.74× faster at p50 using incremental
+canvas PNG export than DOM plus screenshot. The same screenshot API is slower for
+canvas in the final run, and the approximate migrated mail scene is slower. This
+does not establish
+a universal renderer-only advantage over Chromium; the report retains contrary
+results and distinguishes layout, raster, encoding and capture costs.
+
+The final browser binding and topology build is 5,490,584 bytes raw / 1,664,137 gzip;
+its Python wheel is 2,945,242 bytes. Boundary performance was refreshed against this build.
+Node/Python parity after dynamic topology changes passes with baseline state hash
+`bef75176ee710983e5605fda2cbe590727ece1d609b947c33411126debb035dd`.
+
+## Current fidelity limits and next extensions
+
+The simulator executes documented shell/process/package subsets, not arbitrary
+host binaries or a full POSIX/Windows kernel. Transport is a causal synthetic
+stream/datagram/HTTP model, not a full TCP/IP stack. Git uses synthetic SHA-256 JSON
+object transport; local binary files are supported but remote transfer currently
+rejects unsupported binary content. OS profiles do not emulate native desktop APIs. Phone devices use the same
+synthetic application/runtime contracts and a touch-sized viewport; they do not
+emulate Android or iOS. Peripheral visualization represents input/display
+affordances rather than arbitrary hardware drivers. Removal of a computer that
+hosts service definitions is rejected to prevent orphaned service placement;
+dynamic service migration/removal is not implemented.
+
+Pages are structured native descriptions. Arbitrary HTML/CSS/JavaScript execution
+and a real-browser compatibility backend are not implemented. Text uses bundled
+fixed-cell font rendering without full bidi/script shaping. The scene renderer
+supports useful deterministic primitives rather than full browser typography and
+compositing. Native extension handlers are trusted code, not a sandbox for untrusted
+plugins. The explicit native HTTP adapter is optional and is outside pure core.
+
+Useful next extensions are incremental scene/binding transfer profiling, selective
+Wasm service bundles, binary remote Git objects, richer typography, independently
+packaged service crates and optional real-browser/task-harness adapters. Public
+package-registry publication and stable cross-version checkpoint migration are
+separate release work; this workspace does not claim those guarantees.

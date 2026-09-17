@@ -1,0 +1,26 @@
+   Compiling cw-network v0.1.0 (/home/brandonin/Documents/computerworld/crates/network)
+   Compiling cw-kernel v0.1.0 (/home/brandonin/Documents/computerworld/crates/kernel)
+   Compiling cw-environment v0.1.0 (/home/brandonin/Documents/computerworld/crates/environment)
+   Compiling computerworld v0.1.0 (/home/brandonin/Documents/computerworld/crates/computerworld)
+   Compiling cw-wasm v0.1.0 (/home/brandonin/Documents/computerworld/crates/wasm)
+    Finished `release` profile [optimized] target(s) in 26.35s
+📦 Including license file `LICENSE`
+🐍 Found CPython 3.12 at /home/brandonin/Documents/computerworld/.venv/bin/python3
+🔗 Found pyo3 bindings
+   Compiling cw-network v0.1.0 (/home/brandonin/Documents/computerworld/crates/network)
+   Compiling cw-kernel v0.1.0 (/home/brandonin/Documents/computerworld/crates/kernel)
+   Compiling cw-environment v0.1.0 (/home/brandonin/Documents/computerworld/crates/environment)
+   Compiling computerworld v0.1.0 (/home/brandonin/Documents/computerworld/crates/computerworld)
+   Compiling cw-python v0.1.0 (/home/brandonin/Documents/computerworld/crates/python)
+    Finished `release` profile [optimized] target(s) in 37.07s
+📦 Built wheel for CPython 3.12 to target/python-wheel/computerworld-0.1.0-cp312-cp312-manylinux_2_34_aarch64.whl
+Looking in links: target/python-wheel
+Processing ./target/python-wheel/computerworld-0.1.0-cp312-cp312-manylinux_2_34_aarch64.whl
+Installing collected packages: computerworld
+  Attempting uninstall: computerworld
+    Found existing installation: computerworld 0.1.0
+    Uninstalling computerworld-0.1.0:
+      Successfully uninstalled computerworld-0.1.0
+Successfully installed computerworld-0.1.0
+{"runtime":"wasm","hash":"bef75176ee710983e5605fda2cbe590727ece1d609b947c33411126debb035dd","rgba_bytes":307200}
+{"runtime": "python-rust", "hash": "bef75176ee710983e5605fda2cbe590727ece1d609b947c33411126debb035dd", "rgba_bytes": 307200}

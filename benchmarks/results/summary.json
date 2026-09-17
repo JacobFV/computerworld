@@ -4,44 +4,44 @@
     "name": "predecessor.mail_update_png_capture",
     "runs": 5,
     "count": 150,
-    "p50_ns": 36461281.999999985,
-    "p95_ns": 63180086.99999973,
-    "p50_min_ns": 35122188.99999971,
-    "p50_max_ns": 46198995.00000019,
-    "throughput_ops_s": 24.33207226772427
+    "p50_ns": 46434475.99999945,
+    "p95_ns": 63091838.00000028,
+    "p50_min_ns": 44810593.999998674,
+    "p50_max_ns": 48136280.00000017,
+    "throughput_ops_s": 21.801400923141095
   },
   {
     "file": "browser-render.json",
     "name": "browser_wasm.terminal_step",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 14999.985694885254,
-    "p95_ns": 20000.01072883606,
+    "p50_ns": 15000.015497207642,
+    "p95_ns": 34999.99642372131,
     "p50_min_ns": 14999.985694885254,
     "p50_max_ns": 20000.01072883606,
-    "throughput_ops_s": 37643.51586553303
+    "throughput_ops_s": 28914.269184869758
   },
   {
     "file": "browser-render.json",
     "name": "dom.update_layout_1_percent",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 5000.025033950806,
-    "p95_ns": 10000.020265579224,
+    "p50_ns": 4999.995231628418,
+    "p95_ns": 14999.985694885254,
     "p50_min_ns": 4999.995231628418,
     "p50_max_ns": 9999.990463256836,
-    "throughput_ops_s": 111731.84446834461
+    "throughput_ops_s": 107933.08165612468
   },
   {
     "file": "browser-render.json",
     "name": "wasm.patch_raster_copy_1_percent",
     "runs": 5,
     "count": 1000,
-    "p50_ns": 1595000.0286102295,
-    "p95_ns": 4995000.004768372,
-    "p50_min_ns": 1585000.0083446503,
-    "p50_max_ns": 1620000.0047683716,
-    "throughput_ops_s": 460.696803789417
+    "p50_ns": 1675000.011920929,
+    "p95_ns": 5915000.021457672,
+    "p50_min_ns": 1620000.0047683716,
+    "p50_max_ns": 1789999.9916553497,
+    "throughput_ops_s": 398.9467804577404
   },
   {
     "file": "browser-render.json",
@@ -49,98 +49,98 @@
     "runs": 5,
     "count": 5000,
     "p50_ns": 39999.99165534973,
-    "p95_ns": 54999.977350234985,
-    "p50_min_ns": 34999.99642372131,
-    "p50_max_ns": 49999.98211860657,
-    "throughput_ops_s": 16954.899943472705
+    "p95_ns": 60000.00238418579,
+    "p50_min_ns": 35000.0262260437,
+    "p50_max_ns": 50000.011920928955,
+    "throughput_ops_s": 15840.32947257174
   },
   {
     "file": "browser-render.json",
     "name": "wasm.patch_raster_copy_10_percent",
     "runs": 5,
     "count": 1000,
-    "p50_ns": 1659999.9964237213,
-    "p95_ns": 5189999.997615814,
-    "p50_min_ns": 1585000.0083446503,
-    "p50_max_ns": 1710000.0083446503,
-    "throughput_ops_s": 451.06507743344736
+    "p50_ns": 1800000.011920929,
+    "p95_ns": 5669999.986886978,
+    "p50_min_ns": 1715000.0035762787,
+    "p50_max_ns": 1835000.0083446503,
+    "throughput_ops_s": 383.6856847160608
   },
   {
     "file": "browser-render.json",
     "name": "dom.update_layout_100_percent",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 344999.9988079071,
-    "p95_ns": 625000,
-    "p50_min_ns": 344999.9988079071,
-    "p50_max_ns": 349999.9940395355,
-    "throughput_ops_s": 2052.7979633079426
+    "p50_ns": 355000.0190734863,
+    "p95_ns": 729999.9892711639,
+    "p50_min_ns": 350000.0238418579,
+    "p50_max_ns": 360000.01430511475,
+    "throughput_ops_s": 2007.911170725958
   },
   {
     "file": "browser-render.json",
     "name": "wasm.patch_raster_copy_100_percent",
     "runs": 5,
     "count": 1000,
-    "p50_ns": 2449999.988079071,
-    "p95_ns": 7864999.979734421,
-    "p50_min_ns": 2384999.990463257,
-    "p50_max_ns": 2460000.0083446503,
-    "throughput_ops_s": 314.28751041334317
+    "p50_ns": 2560000.002384186,
+    "p95_ns": 8000000,
+    "p50_min_ns": 2459999.978542328,
+    "p50_max_ns": 2580000.013113022,
+    "throughput_ops_s": 284.7056145198489
   },
   {
     "file": "browser-render.json",
     "name": "dom.update_png_capture",
     "runs": 5,
     "count": 150,
-    "p50_ns": 33518298.000002686,
-    "p95_ns": 51436723.99999923,
-    "p50_min_ns": 33404776.99999974,
-    "p50_max_ns": 33697433.999997884,
-    "throughput_ops_s": 27.28232115056405
+    "p50_ns": 35004176.99999889,
+    "p95_ns": 52579257.999997936,
+    "p50_min_ns": 34569422.000000484,
+    "p50_max_ns": 39421775.000002526,
+    "throughput_ops_s": 24.987595366386337
   },
   {
     "file": "browser-render.json",
     "name": "wasm.update_png_capture",
     "runs": 5,
     "count": 150,
-    "p50_ns": 33820330.99999899,
-    "p95_ns": 52490859.99999806,
-    "p50_min_ns": 33534588.000002258,
-    "p50_max_ns": 33914509.000002,
-    "throughput_ops_s": 25.39934597954082
+    "p50_ns": 44670676.00000155,
+    "p95_ns": 53737122.99999897,
+    "p50_min_ns": 34743168.00000088,
+    "p50_max_ns": 47031396.99999883,
+    "throughput_ops_s": 23.635514723162284
   },
   {
     "file": "browser-render.json",
     "name": "wasm_canvas_export.update_png_capture",
     "runs": 5,
     "count": 150,
-    "p50_ns": 14798219.999996945,
-    "p95_ns": 28855556.000002254,
-    "p50_min_ns": 14522650.999999315,
-    "p50_max_ns": 15207949.000003282,
-    "throughput_ops_s": 57.815035114009945
+    "p50_ns": 15194568.999999318,
+    "p95_ns": 26864937.9999988,
+    "p50_min_ns": 14669205.999998666,
+    "p50_max_ns": 15585292.000003392,
+    "throughput_ops_s": 59.693142624881524
   },
   {
     "file": "browser-render.json",
     "name": "wasm_canvas_incremental_export.update_png_capture",
     "runs": 5,
     "count": 150,
-    "p50_ns": 12421952.00000424,
-    "p95_ns": 28431426.00000283,
-    "p50_min_ns": 12179341.999995813,
-    "p50_max_ns": 12752881.000000343,
-    "throughput_ops_s": 66.75074694586391
+    "p50_ns": 12785927.999997512,
+    "p95_ns": 22979503.000002295,
+    "p50_min_ns": 12687062.999997579,
+    "p50_max_ns": 13032378.000003519,
+    "throughput_ops_s": 69.91017160488704
   },
   {
     "file": "browser-render.json",
     "name": "migrated_mail.update_png_capture",
     "runs": 5,
     "count": 150,
-    "p50_ns": 49975427.99999792,
-    "p95_ns": 54612011.000004716,
-    "p50_min_ns": 49944131.00000384,
-    "p50_max_ns": 50215508.00000114,
-    "throughput_ops_s": 20.02146402385418
+    "p50_ns": 50915232.99999972,
+    "p95_ns": 74316835.00000508,
+    "p50_min_ns": 50177196.00000419,
+    "p50_max_ns": 52331433.99999972,
+    "throughput_ops_s": 18.523275993274826
   },
   {
     "file": "native-dirty-reset.json",
@@ -158,11 +158,11 @@
     "name": "terminal.pwd",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 3792,
+    "p50_ns": 3840,
     "p95_ns": 4752,
-    "p50_min_ns": 3712,
-    "p50_max_ns": 5472,
-    "throughput_ops_s": 257097.6299969174
+    "p50_min_ns": 3728,
+    "p50_max_ns": 5600,
+    "throughput_ops_s": 252412.30439308472
   },
   {
     "file": "native-world.json",
@@ -170,142 +170,153 @@
     "runs": 5,
     "count": 5000,
     "p50_ns": 4448,
-    "p95_ns": 4976,
-    "p50_min_ns": 4368,
-    "p50_max_ns": 4464,
-    "throughput_ops_s": 219715.8020044233
+    "p95_ns": 4912,
+    "p50_min_ns": 4400,
+    "p50_max_ns": 4512,
+    "throughput_ops_s": 219875.0801719511
   },
   {
     "file": "native-world.json",
     "name": "filesystem.write_read",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 7056,
-    "p95_ns": 7664,
-    "p50_min_ns": 7008,
-    "p50_max_ns": 7136,
-    "throughput_ops_s": 140599.6349471078
+    "p50_ns": 7168,
+    "p95_ns": 7744,
+    "p50_min_ns": 7152,
+    "p50_max_ns": 7200,
+    "throughput_ops_s": 125163.80813389523
   },
   {
     "file": "native-world.json",
     "name": "network.http",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 15041,
-    "p95_ns": 16960,
-    "p50_min_ns": 14736,
-    "p50_max_ns": 26368,
-    "throughput_ops_s": 64672.18928359835
+    "p50_ns": 14880,
+    "p95_ns": 16928,
+    "p50_min_ns": 14817,
+    "p50_max_ns": 26561,
+    "throughput_ops_s": 60120.032048786685
   },
   {
     "file": "native-world.json",
     "name": "browser.navigate",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 23280,
-    "p95_ns": 26560,
-    "p50_min_ns": 23072,
-    "p50_max_ns": 23344,
-    "throughput_ops_s": 41610.90631841223
+    "p50_ns": 23568,
+    "p95_ns": 26256,
+    "p50_min_ns": 23472,
+    "p50_max_ns": 23681,
+    "throughput_ops_s": 41419.06178949482
   },
   {
     "file": "native-world.json",
     "name": "application.edit",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 4224,
-    "p95_ns": 5136,
-    "p50_min_ns": 4176,
-    "p50_max_ns": 4432,
-    "throughput_ops_s": 229426.52087987823
+    "p50_ns": 4256,
+    "p95_ns": 5184,
+    "p50_min_ns": 4192,
+    "p50_max_ns": 4448,
+    "throughput_ops_s": 224092.79951739375
   },
   {
     "file": "native-world.json",
     "name": "observe.structured",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 4320,
-    "p95_ns": 4496,
-    "p50_min_ns": 4272,
-    "p50_max_ns": 4368,
-    "throughput_ops_s": 229765.579369992
+    "p50_ns": 4448,
+    "p95_ns": 4624,
+    "p50_min_ns": 4400,
+    "p50_max_ns": 4496,
+    "throughput_ops_s": 223032.52416390125
   },
   {
     "file": "native-world.json",
     "name": "scene.structured",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 1936,
-    "p95_ns": 2016,
-    "p50_min_ns": 1936,
-    "p50_max_ns": 2000,
-    "throughput_ops_s": 512743.99563962506
+    "p50_ns": 2016,
+    "p95_ns": 2080,
+    "p50_min_ns": 1968,
+    "p50_max_ns": 2032,
+    "throughput_ops_s": 494286.5418626101
   },
   {
     "file": "native-world.json",
     "name": "reset.same_seed",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 96,
-    "p95_ns": 112,
-    "p50_min_ns": 96,
-    "p50_max_ns": 96,
-    "throughput_ops_s": 9673425.166382913
+    "p50_ns": 144,
+    "p95_ns": 144,
+    "p50_min_ns": 128,
+    "p50_max_ns": 144,
+    "throughput_ops_s": 7322627.651706539
+  },
+  {
+    "file": "native-world.json",
+    "name": "reset.dirty_same_seed",
+    "runs": 5,
+    "count": 5000,
+    "p50_ns": 1520,
+    "p95_ns": 1568,
+    "p50_min_ns": 1504,
+    "p50_max_ns": 1520,
+    "throughput_ops_s": 657260.3940801871
   },
   {
     "file": "native-world.json",
     "name": "snapshot.handle",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 448,
+    "p50_ns": 464,
     "p95_ns": 528,
-    "p50_min_ns": 432,
-    "p50_max_ns": 448,
-    "throughput_ops_s": 2202095.073252693
+    "p50_min_ns": 448,
+    "p50_max_ns": 464,
+    "throughput_ops_s": 2110599.6424644208
   },
   {
     "file": "native-world.json",
     "name": "snapshot.fork",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 10912,
-    "p95_ns": 11152,
-    "p50_min_ns": 10880,
-    "p50_max_ns": 10912,
-    "throughput_ops_s": 91270.06401225939
+    "p50_ns": 16545,
+    "p95_ns": 16896,
+    "p50_min_ns": 16480,
+    "p50_max_ns": 16672,
+    "throughput_ops_s": 60096.50416832358
   },
   {
     "file": "native-world.json",
     "name": "snapshot.first_write",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 19408,
-    "p95_ns": 19696,
-    "p50_min_ns": 19264,
-    "p50_max_ns": 19456,
-    "throughput_ops_s": 51376.45221964256
+    "p50_ns": 25729,
+    "p95_ns": 26225,
+    "p50_min_ns": 25617,
+    "p50_max_ns": 25824,
+    "throughput_ops_s": 38642.10558978537
   },
   {
     "file": "native-world.json",
     "name": "snapshot.encode",
     "runs": 5,
     "count": 1000,
-    "p50_ns": 26400,
-    "p95_ns": 27104,
-    "p50_min_ns": 26336,
-    "p50_max_ns": 26480,
-    "throughput_ops_s": 37687.55920480003
+    "p50_ns": 32800,
+    "p95_ns": 34529,
+    "p50_min_ns": 32705,
+    "p50_max_ns": 32881,
+    "throughput_ops_s": 28018.36996408325
   },
   {
     "file": "native-world.json",
     "name": "snapshot.decode",
     "runs": 5,
     "count": 1000,
-    "p50_ns": 103360,
-    "p95_ns": 106368,
-    "p50_min_ns": 103056,
-    "p50_max_ns": 103536,
-    "throughput_ops_s": 9643.597702277837
+    "p50_ns": 141986,
+    "p95_ns": 145634,
+    "p50_min_ns": 139282,
+    "p50_max_ns": 143826,
+    "throughput_ops_s": 6949.844087197748
   },
   {
     "file": "predecessor.json",
@@ -356,22 +367,22 @@
     "name": "python.terminal.step",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 8096,
-    "p95_ns": 8640,
-    "p50_min_ns": 8048,
-    "p50_max_ns": 9808,
-    "throughput_ops_s": 120477.41343667726
+    "p50_ns": 7936,
+    "p95_ns": 8480,
+    "p50_min_ns": 7904,
+    "p50_max_ns": 9824,
+    "throughput_ops_s": 121996.55164547119
   },
   {
     "file": "python.json",
     "name": "python.terminal.batch10",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 43825,
-    "p95_ns": 48336,
-    "p50_min_ns": 43200,
-    "p50_max_ns": 57072,
-    "throughput_ops_s": 22116.403586148303
+    "p50_ns": 42849,
+    "p95_ns": 59136,
+    "p50_min_ns": 42320,
+    "p50_max_ns": 56881,
+    "throughput_ops_s": 21957.17954758988
   },
   {
     "file": "python.json",
@@ -379,43 +390,43 @@
     "runs": 5,
     "count": 5000,
     "p50_ns": 1280,
-    "p95_ns": 1344,
-    "p50_min_ns": 1264,
+    "p95_ns": 1360,
+    "p50_min_ns": 1280,
     "p50_max_ns": 1296,
-    "throughput_ops_s": 779531.9845870937
+    "throughput_ops_s": 772209.7167148655
   },
   {
     "file": "python.json",
     "name": "python.reset",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 240,
-    "p95_ns": 256,
-    "p50_min_ns": 240,
-    "p50_max_ns": 240,
-    "throughput_ops_s": 4118582.219256843
+    "p50_ns": 256,
+    "p95_ns": 288,
+    "p50_min_ns": 256,
+    "p50_max_ns": 272,
+    "throughput_ops_s": 3752134.026227417
   },
   {
     "file": "python.json",
     "name": "python.snapshot",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 656,
-    "p95_ns": 704,
-    "p50_min_ns": 656,
+    "p50_ns": 672,
+    "p95_ns": 720,
+    "p50_min_ns": 672,
     "p50_max_ns": 672,
-    "throughput_ops_s": 1497070.9806264045
+    "throughput_ops_s": 1475611.8255531702
   },
   {
     "file": "python.json",
     "name": "python.fork",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 11424,
-    "p95_ns": 11712,
-    "p50_min_ns": 11392,
-    "p50_max_ns": 11456,
-    "throughput_ops_s": 87107.34621546455
+    "p50_ns": 16896,
+    "p95_ns": 17296,
+    "p50_min_ns": 16864,
+    "p50_max_ns": 16913,
+    "throughput_ops_s": 58841.964253035985
   },
   {
     "file": "render-after.json",
@@ -675,65 +686,65 @@
     "name": "wasm.terminal.step",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 12815.999999986616,
-    "p95_ns": 15376.000000003387,
-    "p50_min_ns": 12352.000000021235,
-    "p50_max_ns": 18687.999999997373,
-    "throughput_ops_s": 38301.75679050806
+    "p50_ns": 13407.999999969888,
+    "p95_ns": 42817.00000001365,
+    "p50_min_ns": 12991.999999997006,
+    "p50_max_ns": 18736.00000000408,
+    "throughput_ops_s": 36052.61114280907
   },
   {
     "file": "wasm-node.json",
     "name": "wasm.terminal.batch10",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 67455.99999999286,
-    "p95_ns": 99696.99999999194,
-    "p50_min_ns": 65984.00000007132,
-    "p50_max_ns": 81119.99999999853,
-    "throughput_ops_s": 13312.856562397295
+    "p50_ns": 67424.99999995744,
+    "p95_ns": 77183.99999998837,
+    "p50_min_ns": 67056.99999997705,
+    "p50_max_ns": 80512.99999999627,
+    "throughput_ops_s": 12965.421519013305
   },
   {
     "file": "wasm-node.json",
     "name": "wasm.observe",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 1344.0000000173313,
-    "p95_ns": 1568.0000000202199,
-    "p50_min_ns": 1344.0000000173313,
-    "p50_max_ns": 1424.0000000427244,
-    "throughput_ops_s": 645771.2316668828
+    "p50_ns": 1472.000000035223,
+    "p95_ns": 3695.9999999908177,
+    "p50_min_ns": 1359.9999999769352,
+    "p50_max_ns": 4336.000000080276,
+    "throughput_ops_s": 390385.736242164
   },
   {
     "file": "wasm-node.json",
     "name": "wasm.reset",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 256.00000003578316,
-    "p95_ns": 288.00000006867776,
-    "p50_min_ns": 256.00000003578316,
-    "p50_max_ns": 384.00000005367474,
-    "throughput_ops_s": 291660.748383731
+    "p50_ns": 352.00000002078013,
+    "p95_ns": 383.9999999399879,
+    "p50_min_ns": 287.9999999549909,
+    "p50_max_ns": 432.0000000461732,
+    "throughput_ops_s": 2632223.149335506
   },
   {
     "file": "wasm-node.json",
     "name": "wasm.snapshot",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 1008.0000000698419,
-    "p95_ns": 1296.0000000248328,
-    "p50_min_ns": 944.0000000040527,
-    "p50_max_ns": 1248.0000000323344,
-    "throughput_ops_s": 484373.8571803223
+    "p50_ns": 960.0000000773434,
+    "p95_ns": 1232.9999999565189,
+    "p50_min_ns": 944.0000001177395,
+    "p50_max_ns": 1215.9999999994398,
+    "throughput_ops_s": 711873.4801491117
   },
   {
     "file": "wasm-node.json",
     "name": "wasm.fork",
     "runs": 5,
     "count": 5000,
-    "p50_ns": 18336.00000009028,
-    "p95_ns": 19199.999999955253,
-    "p50_min_ns": 18160.00000007989,
-    "p50_max_ns": 19727.999999986423,
-    "throughput_ops_s": 37896.33215801483
+    "p50_ns": 26352.000000088083,
+    "p95_ns": 28751.99999994038,
+    "p50_min_ns": 26175.99999985032,
+    "p50_max_ns": 28399.9999999196,
+    "throughput_ops_s": 27124.96501218276
   }
 ]
