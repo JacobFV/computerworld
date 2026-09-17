@@ -23,12 +23,13 @@ try {
   booted=true;
   const report=await page.evaluate(()=>{
     const d=window.computerworldDemo;
+    const json = value => JSON.stringify(value, (_, v) => typeof v === "bigint" ? v.toString() : v);
     const check=(value,message)=>{if(!value)throw Error(message);};
     const initial=d.world.stateHash();
     const snapshot=d.world.snapshot();
     const command=d.act('terminal.v1','execute',{command:'echo offline-wasm'});
     check(command.outcomes[0].success,'terminal action failed');
-    check(JSON.stringify(command).includes('offline-wasm'),'terminal output missing');
+    check(json(command).includes('offline-wasm'),'terminal output missing');
     const changed=d.world.stateHash();check(changed!==initial,'action did not change state');
     d.world.restore(snapshot);check(d.world.stateHash()===initial,'snapshot state hash changed');
     const replay=d.act('terminal.v1','execute',{command:'echo offline-wasm'});
@@ -37,7 +38,7 @@ try {
     const definitions=d.definition;
     for(const c of definitions.computers){d.select(c.id);check(d.act('terminal.v1','execute',{command:'pwd'}).outcomes[0].success,`computer ${c.id} unavailable`);}
     d.select(definitions.computers[0].id);
-    for(const service of definitions.services){if(service.domains.length){const loaded=d.navigate(`http://${service.domains[0]}/`);check(loaded.outcomes[0].success,`service page ${service.id} failed: ${JSON.stringify(loaded.outcomes[0])}`);}}
+    for(const service of definitions.services){if(service.domains.length){const loaded=d.navigate(`http://${service.domains[0]}/`);check(loaded.outcomes[0].success,`service page ${service.id} failed: ${json(loaded.outcomes[0])}`);}}
     const site=definitions.services.find(s=>s.kind==='static-site')||definitions.services[0];
     const navigation=d.navigate(`http://${site.domains[0]}/`);check(navigation.outcomes[0].success,'synthetic navigation failed');
     const scene=d.env.scene(960,560);
@@ -45,11 +46,11 @@ try {
     check(link,'site has no interactive link');
     const t=link.transform,px=link.bounds.x+2,py=link.bounds.y+2;
     const pointer=d.act('pointer.v1','click',{x:Math.floor((t.a*px+t.c*py)/1024)+t.tx,y:Math.floor((t.b*px+t.d*py)/1024)+t.ty,width:960,height:560});
-    check(pointer.outcomes[0].success,'Rust pointer hit testing failed: '+JSON.stringify({link,pointer}));
+    check(pointer.outcomes[0].success,'Rust pointer hit testing failed: '+json({link,pointer}));
     check(d.act('application.v1','launch',{kind:'terminal'}).outcomes[0].success,'application launch failed');
     check(d.act('keyboard.v1','type',{text:'echo keyboard-wasm'}).outcomes[0].success,'keyboard input failed');
     check(d.act('keyboard.v1','key',{key:'Enter'}).outcomes[0].success,'keyboard execute failed');
-    check(JSON.stringify(d.env.observe()).includes('keyboard-wasm'),'keyboard terminal output missing');
+    check(json(d.env.observe()).includes('keyboard-wasm'),'keyboard terminal output missing');
     const denied=d.navigate('https://real-internet.invalid/');check(!denied.outcomes[0].success,'outbound network unexpectedly allowed');
     d.navigate(`http://${site.domains[0]}/`);
     const frame=d.env.render(960,560);const a=Array.from(frame.rgba);frame.free();const second=d.env.render(960,560);const b=second.rgba;check(a.length===960*560*4,'wrong frame size');check(a.every((v,i)=>v===b[i]),'render nondeterminism');check(new Set(a).size>3,'render appears blank');second.free();

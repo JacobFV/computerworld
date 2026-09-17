@@ -123,7 +123,7 @@ function addDevice({id,profile,user,type='desktop',connectTo='app-server'}) {
   let octet=20;const used=new Set(definition.network.nodes.map(n=>n.address));while(used.has(`10.0.2.${octet}`)&&octet<255)octet++;
   if(octet===255)throw Error('No address available in the demo subnet.');
   const address=`10.0.2.${octet}`;
-  const computer={id,profile,address,user,initial_files:{'notes.txt':`Welcome ${user}.\nInternal site: http://intranet.internal/\n`},installed_apps:['terminal','browser','editor','files','desktop'],packages:['coreutils','git','curl']};
+  const computer={id,profile,address,user,initial_files:{'notes.txt':`Welcome ${user}.\nInternal site: http://intranet.internal/\n`},installed_apps:['terminal','browser','editor','files','desktop',...(profile.startsWith('virtual-')?['mail','calendar','chat','docs']:[])],packages:['coreutils','git','curl']};
   const node={id,address,zone:'local'};
   const links=connectTo?[{from:connectTo,to:id,bidirectional:true,latency_us:10,loss_per_million:0}]:[];
   world.addComputer(computer,node,links);presentations[id]=type;definition=world.definition();environments.set(id,world.environment(config(id)));
@@ -141,7 +141,24 @@ $('home-screen').onclick=protect(()=>act('application.v1','home'));
 $('expand-screen').onclick=()=>{const active=document.querySelector('.console-layout').classList.toggle('focused-device');$('expand-screen').textContent=active?'Show network':'Expand desktop';$('expand-screen').setAttribute('aria-expanded',String(active));requestAnimationFrame(drawLinks);};
 $('navigation').onsubmit=protect(e=>{e.preventDefault();navigate($('url').value);});
 $('terminal').onsubmit=protect(e=>{e.preventDefault();act('terminal.v1','execute',{command:$('command').value});$('command').value='';});
-$('screen').onclick=protect(e=>{const r=e.currentTarget.getBoundingClientRect(),[width,height]=dimensions(machine);act('pointer.v1','click',{x:Math.floor((e.clientX-r.left)*width/r.width),y:Math.floor((e.clientY-r.top)*height/r.height),width,height});$('screen').focus();});
+let pointerGesture=null, queuedPointer=null, pointerFrame=0;
+function pointerCoordinates(e) {const r=$('screen').getBoundingClientRect(),[width,height]=dimensions(machine);return {x:Math.round((e.clientX-r.left)*width/r.width),y:Math.round((e.clientY-r.top)*height/r.height),width,height,button:e.button<0?0:e.button,pointer_type:e.pointerType||'mouse'};}
+function pointerStep(op,payload,full=false) {
+  const result=env().step([{family:'pointer.v1',op,machine,payload}]);
+  const failure=result.outcomes.find(outcome=>!outcome.success);
+  if(failure)announce(`${failure.error?.code}: ${failure.error?.message}`);
+  const cursor=result.outcomes[0]?.value?.cursor;if(cursor)$('screen').style.cursor=cursor;
+  if(full)refresh();else paint(env(),$('screen'),...dimensions(machine));
+  return result;
+}
+function flushPointer() {pointerFrame=0;if(queuedPointer&&env()){const p=queuedPointer;queuedPointer=null;if(p.machine===machine){delete p.machine;pointerStep('move',p);}}}
+$('screen').onpointerdown=protect(e=>{if(!env())return;e.preventDefault();$('screen').focus();$('screen').setPointerCapture(e.pointerId);pointerGesture={id:e.pointerId,machine};pointerStep('down',pointerCoordinates(e));});
+$('screen').onpointermove=protect(e=>{if(pointerGesture&&pointerGesture.id!==e.pointerId)return;if(!pointerGesture&&e.pointerType!=='mouse')return;queuedPointer={...pointerCoordinates(e),machine};if(!pointerFrame)pointerFrame=requestAnimationFrame(protect(flushPointer));});
+$('screen').onpointerup=protect(e=>{if(!pointerGesture||pointerGesture.id!==e.pointerId)return;if(pointerFrame)cancelAnimationFrame(pointerFrame);flushPointer();pointerStep('up',pointerCoordinates(e),true);pointerGesture=null;$('screen').releasePointerCapture(e.pointerId);});
+$('screen').onpointercancel=protect(e=>{if(!pointerGesture)return;if(pointerFrame)cancelAnimationFrame(pointerFrame);queuedPointer=null;pointerStep('cancel',pointerCoordinates(e),true);pointerGesture=null;});
+$('screen').ondblclick=protect(e=>{e.preventDefault();pointerStep('double_click',pointerCoordinates(e),true);});
+$('screen').oncontextmenu=e=>e.preventDefault();
+
 $('screen').addEventListener('wheel',protect(e=>{e.preventDefault();scrollY=Math.max(0,scrollY+Math.round(e.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
 $('screen').onkeydown=protect(e=>{if(e.key==='Tab'&&!e.altKey&&!e.metaKey)return;e.preventDefault();const prefix=e.metaKey?'Meta+':e.ctrlKey?'Ctrl+':e.altKey?'Alt+':'';const key=prefix+e.key;act('keyboard.v1',!prefix&&e.key.length===1?'type':'key',!prefix&&e.key.length===1?{text:e.key}:{key});});
 $('keyboard-focus').onclick=()=>{$('text-entry').focus();announce('Text is sent to the focused field in the active application.');};

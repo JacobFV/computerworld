@@ -83,7 +83,11 @@ export default {
         "browser",
         "editor",
         "files",
-        "desktop"
+        "desktop",
+        "mail",
+        "calendar",
+        "chat",
+        "docs"
       ],
       "packages": [
         "coreutils",
@@ -105,7 +109,11 @@ export default {
         "browser",
         "editor",
         "files",
-        "desktop"
+        "desktop",
+        "mail",
+        "calendar",
+        "chat",
+        "docs"
       ],
       "packages": [
         "coreutils",
@@ -127,7 +135,11 @@ export default {
         "browser",
         "editor",
         "files",
-        "desktop"
+        "desktop",
+        "mail",
+        "calendar",
+        "chat",
+        "docs"
       ],
       "packages": [
         "coreutils",
@@ -192,7 +204,11 @@ export default {
         "terminal",
         "files",
         "editor",
-        "desktop"
+        "desktop",
+        "mail",
+        "calendar",
+        "chat",
+        "docs"
       ],
       "packages": [
         "coreutils",
@@ -213,7 +229,11 @@ export default {
         "terminal",
         "files",
         "editor",
-        "desktop"
+        "desktop",
+        "mail",
+        "calendar",
+        "chat",
+        "docs"
       ],
       "packages": [
         "coreutils",
@@ -773,6 +793,36 @@ export default {
       "admin"
     ],
     "reference_version": 1,
+    "desktop_apps": [
+      {
+        "id": "mail",
+        "label": "Mail",
+        "kind": "browser",
+        "url": "http://mail.internal/",
+        "icon": "mail"
+      },
+      {
+        "id": "calendar",
+        "label": "Calendar",
+        "kind": "browser",
+        "url": "http://calendar.internal/",
+        "icon": "calendar"
+      },
+      {
+        "id": "chat",
+        "label": "Messages",
+        "kind": "browser",
+        "url": "http://chat.internal/",
+        "icon": "chat"
+      },
+      {
+        "id": "docs",
+        "label": "Documents",
+        "kind": "browser",
+        "url": "http://docs.internal/",
+        "icon": "docs"
+      }
+    ],
     "device_presentations": {
       "alice-mac": "desktop",
       "bob-windows": "desktop",
