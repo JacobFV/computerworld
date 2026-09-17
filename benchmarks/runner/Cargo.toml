@@ -1,0 +1,13 @@
+[package]
+name = "cw-benchmarks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+cw-scene = { path = "../../crates/scene" }
+cw-render = { path = "../../crates/render" }
+computerworld = { path = "../../crates/computerworld" }
