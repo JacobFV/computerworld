@@ -48,6 +48,23 @@ impl World {
     pub fn from_json(definition: &str, seed: u64) -> Result<Self> {
         Self::new(WorldDefinition::from_json(definition)?, seed)
     }
+    /// Add a synthetic computer with explicit identity and links. This grants no actor access.
+    pub fn add_computer(
+        &mut self,
+        computer: ComputerDefinition,
+        node: NetworkNode,
+        links: Vec<NetworkLink>,
+    ) -> Result<()> {
+        self.environment.add_computer(computer, node, links)?;
+        self.clear_renderer();
+        Ok(())
+    }
+    /// Remove a device and revoke its actor grants. Hosted services must be migrated first.
+    pub fn remove_computer(&mut self, id: &str) -> Result<()> {
+        self.environment.remove_computer(id)?;
+        self.clear_renderer();
+        Ok(())
+    }
     pub fn environment(&mut self, config: EnvironmentConfig) -> Result<String> {
         self.environment.environment(config)
     }

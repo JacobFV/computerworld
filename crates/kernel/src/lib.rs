@@ -78,6 +78,8 @@ pub struct Snapshot {
     version: u32,
     engine: String,
     definition: Arc<WorldDefinition>,
+    #[serde(default)]
+    baseline: Option<Arc<WorldDefinition>>,
     modules: BTreeMap<String, String>,
     state: Arc<State>,
     #[serde(default)]
@@ -99,9 +101,13 @@ impl Snapshot {
     pub fn tick(&self) -> u64 {
         self.state.clock.now()
     }
+    pub fn definition(&self) -> &WorldDefinition {
+        &self.definition
+    }
 }
 pub struct Runtime {
     definition: Arc<WorldDefinition>,
+    baseline: Arc<WorldDefinition>,
     registry: Registry,
     state: Arc<State>,
     initial: Arc<State>,
@@ -192,6 +198,7 @@ impl Runtime {
             events: Arc::new(vec![]),
         });
         Ok(Self {
+            baseline: Arc::new(definition.clone()),
             definition: Arc::new(definition),
             registry,
             modules,
@@ -203,6 +210,101 @@ impl Runtime {
     }
     pub fn definition(&self) -> &WorldDefinition {
         &self.definition
+    }
+    /// Owner-only topology edit. Existing computer/service state is retained.
+    /// Edits require drained continuations so in-flight routing is unambiguous.
+    pub fn add_computer(
+        &mut self,
+        computer: cw_protocol::ComputerDefinition,
+        node: cw_protocol::NetworkNode,
+        links: Vec<cw_protocol::NetworkLink>,
+    ) -> Result<()> {
+        if self.pending() != 0 {
+            return Err(SimError::invalid(
+                "drain pending work before editing topology",
+            ));
+        }
+        if computer.node_id() != node.id || computer.address != node.address {
+            return Err(SimError::invalid("computer and network identity differ"));
+        }
+        if self
+            .state
+            .network
+            .config
+            .nodes
+            .iter()
+            .any(|n| n.id == node.id)
+        {
+            return Err(SimError::invalid("network node already exists"));
+        }
+        let edit = json!({"computer":computer,"node":node,"links":links});
+        let mut definition = (*self.definition).clone();
+        definition.computers.push(computer.clone());
+        definition.network.nodes.push(node);
+        definition.network.links.extend(links);
+        definition.validate()?;
+        let instance =
+            Computer::from_definition(&computer, definition.profile(&computer.profile)?)?;
+        let mut network = (*self.state.network).clone();
+        network.reconfigure_topology(&definition)?;
+        let state = Arc::make_mut(&mut self.state);
+        state
+            .computers
+            .insert(computer.id.clone(), Arc::new(instance));
+        state.network = Arc::new(network);
+        self.definition = Arc::new(definition);
+        self.event("topology.computer_added", Some(&computer.id), None, edit);
+        Ok(())
+    }
+    /// Remove a computer and its network node; service hosts require migration first.
+    pub fn remove_computer(&mut self, id: &str) -> Result<()> {
+        if self.pending() != 0 {
+            return Err(SimError::invalid(
+                "drain pending work before editing topology",
+            ));
+        }
+        let computer = self
+            .definition
+            .computers
+            .iter()
+            .find(|c| c.id == id)
+            .ok_or_else(|| SimError::not_found("computer"))?;
+        let node = computer.node_id().to_owned();
+        let address = computer.address.clone();
+        if self.definition.services.iter().any(|s| s.node == node) {
+            return Err(SimError::invalid(
+                "migrate hosted services before removing computer",
+            ));
+        }
+        let mut definition = (*self.definition).clone();
+        definition.computers.retain(|c| c.id != id);
+        definition.network.nodes.retain(|n| n.id != node);
+        definition
+            .network
+            .links
+            .retain(|l| l.from != node && l.to != node);
+        definition
+            .network
+            .routes
+            .retain(|r| r.from != node && r.to != node && r.via.as_deref() != Some(node.as_str()));
+        definition
+            .network
+            .dns
+            .retain(|d| d.address != address && d.resolver.as_deref() != Some(&node));
+        definition.validate()?;
+        let mut network = (*self.state.network).clone();
+        network.reconfigure_topology(&definition)?;
+        let state = Arc::make_mut(&mut self.state);
+        state.computers.remove(id);
+        state.network = Arc::new(network);
+        self.definition = Arc::new(definition);
+        self.event(
+            "topology.computer_removed",
+            Some(id),
+            None,
+            json!({"node":node}),
+        );
+        Ok(())
     }
     pub fn seed(&self) -> u64 {
         self.state.determinism.seed()
@@ -273,6 +375,7 @@ impl Runtime {
             version: SNAPSHOT_VERSION,
             engine: ENGINE_VERSION.into(),
             definition: self.definition.clone(),
+            baseline: Some(self.baseline.clone()),
             modules: self.modules.clone(),
             state: self.state.clone(),
             external_pending: !self.live.is_empty(),
@@ -288,7 +391,8 @@ impl Runtime {
         if snapshot.version != SNAPSHOT_VERSION || snapshot.engine != ENGINE_VERSION {
             return Err(SimError::invalid("incompatible kernel checkpoint version"));
         }
-        if *snapshot.definition != *self.definition {
+        snapshot.definition.validate()?;
+        if **snapshot.baseline.as_ref().unwrap_or(&snapshot.definition) != *self.baseline {
             return Err(SimError::invalid(
                 "checkpoint belongs to a different world definition",
             ));
@@ -331,20 +435,20 @@ impl Runtime {
                 }
             }
         }
-        if snapshot.state.computers.len() != self.definition.computers.len()
-            || snapshot.state.services.len() != self.definition.services.len()
+        if snapshot.state.computers.len() != snapshot.definition.computers.len()
+            || snapshot.state.services.len() != snapshot.definition.services.len()
         {
             return Err(SimError::invalid("checkpoint instance set differs"));
         }
         for computer in snapshot.state.computers.values() {
             computer.validate()?;
         }
-        for c in &self.definition.computers {
+        for c in &snapshot.definition.computers {
             if !snapshot.state.computers.contains_key(&c.id) {
                 return Err(SimError::invalid("checkpoint missing computer"));
             }
         }
-        for s in &self.definition.services {
+        for s in &snapshot.definition.services {
             if snapshot
                 .state
                 .services
@@ -365,13 +469,15 @@ impl Runtime {
             .checked_add(1)
             .ok_or_else(|| SimError::invalid("host generation exhausted"))?;
         self.live.clear();
+        self.definition = snapshot.definition.clone();
         self.state = snapshot.state.clone();
         Ok(())
     }
     pub fn fork(&self, snapshot: &Snapshot) -> Result<Self> {
         self.validate_snapshot(snapshot)?;
         Ok(Self {
-            definition: self.definition.clone(),
+            definition: snapshot.definition.clone(),
+            baseline: self.baseline.clone(),
             registry: self.registry.clone(),
             modules: self.modules.clone(),
             state: snapshot.state.clone(),
@@ -386,11 +492,12 @@ impl Runtime {
             .checked_add(1)
             .ok_or_else(|| SimError::invalid("host generation exhausted"))?;
         if seed == self.initial.determinism.seed() {
+            self.definition = self.baseline.clone();
             self.state = self.initial.clone();
             self.live.clear();
             self.generation = generation;
         } else {
-            let mut fresh = Self::new((*self.definition).clone(), seed, self.registry.clone())?;
+            let mut fresh = Self::new((*self.baseline).clone(), seed, self.registry.clone())?;
             fresh.generation = generation;
             *self = fresh;
         }

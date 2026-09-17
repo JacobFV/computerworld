@@ -773,3 +773,122 @@ fn package_removal_and_installation_control_application_launch() {
         "uninstalled builtin application must not launch"
     );
 }
+
+#[test]
+fn live_devices_preserve_state_revoke_grants_and_restore_topology() {
+    use computerworld::{NetworkLink, NetworkNode, NetworkZone};
+    let (mut world, alice, _) = setup(77);
+    shell(
+        &mut world,
+        &alice,
+        "alice-mac",
+        "echo retained > /home/alice/retained.txt",
+    );
+    let before = world.snapshot();
+    let mut phone = world.definition().computers[0].clone();
+    phone.id = "phone".into();
+    phone.node = "phone".into();
+    phone.address = "10.0.0.99".into();
+    let node = NetworkNode {
+        id: phone.id.clone(),
+        address: phone.address.clone(),
+        zone: NetworkZone::Local,
+    };
+    let link = NetworkLink {
+        from: "phone".into(),
+        to: "alice-mac".into(),
+        bidirectional: true,
+        latency_us: 10,
+        loss_per_million: 0,
+    };
+    world
+        .add_computer(phone.clone(), node.clone(), vec![link.clone()])
+        .unwrap();
+    let phone_session = world
+        .environment(EnvironmentConfig::desktop("alice", "phone"))
+        .unwrap();
+    assert_eq!(
+        world
+            .runtime()
+            .read_file("alice-mac", "/home/alice/retained.txt")
+            .unwrap(),
+        b"retained\n"
+    );
+    assert!(world
+        .runtime()
+        .read_file("phone", "/home/alice/retained.txt")
+        .is_err());
+    let response = http(
+        &mut world,
+        &phone_session,
+        "phone",
+        "GET",
+        "http://intranet.internal/",
+        Value::Null,
+    );
+    assert_eq!(response.status, 200);
+    let active = world.snapshot();
+    let portable = world.export_snapshot().unwrap();
+    let active_hash = world.state_hash().unwrap();
+    assert!(world.add_computer(phone, node, vec![link]).is_err());
+    assert_eq!(
+        world.state_hash().unwrap(),
+        active_hash,
+        "failed edit must be atomic"
+    );
+    world.remove_computer("phone").unwrap();
+    assert!(world.validate_session(&phone_session).is_err());
+    assert!(world.runtime().computer("phone").is_err());
+    assert!(!world
+        .runtime()
+        .network()
+        .config
+        .nodes
+        .iter()
+        .any(|n| n.id == "phone"));
+    world.restore(&active).unwrap();
+    assert_eq!(world.state_hash().unwrap(), active_hash);
+    assert!(world.validate_session(&phone_session).is_ok());
+    let mut receiver = World::new(reference_world(), 77).unwrap();
+    receiver.import_snapshot(&portable).unwrap();
+    assert_eq!(receiver.state_hash().unwrap(), active_hash);
+    let fork = receiver.fork(&active).unwrap();
+    assert_eq!(fork.state_hash().unwrap(), active_hash);
+    receiver.restore(&before).unwrap();
+    assert!(receiver.runtime().computer("phone").is_err());
+    world.reset(77).unwrap();
+    assert!(world.runtime().computer("phone").is_err());
+    assert!(world.validate_session(&phone_session).is_err());
+    assert!(world.validate_session(&alice).is_ok());
+    assert!(world
+        .runtime()
+        .read_file("alice-mac", "/home/alice/retained.txt")
+        .is_err());
+}
+
+#[test]
+fn removing_service_host_is_atomic_and_multimachine_grants_shrink() {
+    let (mut world, _, _) = setup(7);
+    let hash = world.state_hash().unwrap();
+    assert!(world.remove_computer("git-server").is_err());
+    assert_eq!(world.state_hash().unwrap(), hash);
+    let mut config = EnvironmentConfig::desktop("alice", "alice-mac");
+    config.machines.push("bob-windows".into());
+    let session = world.environment(config).unwrap();
+    world.remove_computer("alice-mac").unwrap();
+    let config = &world.interfaces().session(&session).unwrap().config;
+    assert_eq!(config.machines, vec!["bob-windows"]);
+    world.observe(&session).unwrap();
+    let outcome = world
+        .step(
+            &session,
+            vec![ActionEnvelope::new(
+                "terminal.v1",
+                "execute",
+                "alice-mac",
+                json!({"command":"pwd"}),
+            )],
+        )
+        .unwrap();
+    assert!(!outcome.outcomes[0].success);
+}

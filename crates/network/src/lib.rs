@@ -298,6 +298,52 @@ impl From<NetworkError> for cw_protocol::SimError {
     }
 }
 impl Network {
+    /// Replace topology atomically while retaining packet history, clocks, RNG and
+    /// transport state for surviving nodes. Existing listener status is retained.
+    pub fn reconfigure_topology(&mut self, world: &WorldDefinition) -> Result<()> {
+        let mut config = Self::with_seed(world, self.rng)?.config;
+        let nodes: BTreeSet<_> = config.nodes.iter().map(|n| n.id.clone()).collect();
+        for node in &mut config.nodes {
+            if let Some(previous) = self.config.nodes.iter().find(|n| n.id == node.id) {
+                node.resolver = previous.resolver.clone().filter(|id| nodes.contains(id));
+            }
+        }
+        for link in &mut config.links {
+            if let Some(previous) = self
+                .config
+                .links
+                .iter()
+                .find(|l| l.a == link.a && l.b == link.b)
+            {
+                link.enabled = previous.enabled;
+            }
+        }
+        config.listeners = self
+            .config
+            .listeners
+            .iter()
+            .filter(|l| nodes.contains(&l.node))
+            .cloned()
+            .collect();
+        config.allow_local = self.config.allow_local;
+        config.allow_internet = self.config.allow_internet;
+        config.denied_pairs = self
+            .config
+            .denied_pairs
+            .iter()
+            .filter(|(a, b)| nodes.contains(a) && nodes.contains(b))
+            .cloned()
+            .collect();
+        self.connections
+            .retain(|_, c| nodes.contains(&c.source) && nodes.contains(&c.destination));
+        self.pending_streams
+            .retain(|s| self.connections.contains_key(&s.id));
+        self.datagrams
+            .retain(|d| nodes.contains(&d.source) && nodes.contains(&d.destination));
+        self.config = config;
+        self.cache.clear();
+        Ok(())
+    }
     pub fn semantic_state(&self) -> NetworkState<'_> {
         NetworkState {
             config: &self.config,

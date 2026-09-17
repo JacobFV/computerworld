@@ -135,6 +135,38 @@ impl Environment {
         self.extensions.insert(name, family);
         Ok(())
     }
+    pub fn add_computer(
+        &mut self,
+        computer: ComputerDefinition,
+        node: NetworkNode,
+        links: Vec<NetworkLink>,
+    ) -> Result<()> {
+        self.runtime.add_computer(computer, node, links)
+    }
+    pub fn remove_computer(&mut self, id: &str) -> Result<()> {
+        self.runtime.remove_computer(id)?;
+        self.prune_sessions();
+        Ok(())
+    }
+    fn prune_sessions(&mut self) {
+        let runtime = &self.runtime;
+        Arc::make_mut(&mut self.sessions).retain(|_, session| {
+            session
+                .config
+                .machines
+                .retain(|id| runtime.computer(id).is_ok());
+            session
+                .machines
+                .retain(|id, _| session.config.machines.contains(id));
+            if session.config.machines.is_empty() {
+                return false;
+            }
+            if !session.machines.contains_key(&session.focused_machine) {
+                session.focused_machine = session.config.machines[0].clone();
+            }
+            true
+        });
+    }
     pub fn environment(&mut self, config: EnvironmentConfig) -> Result<String> {
         if config.actor.trim().is_empty() || config.machines.is_empty() || config.action_budget == 0
         {
@@ -315,6 +347,7 @@ impl Environment {
     }
     pub fn reset(&mut self, seed: u64) -> Result<()> {
         self.runtime.reset(seed)?;
+        self.prune_sessions();
         for session in Arc::make_mut(&mut self.sessions).values_mut() {
             for machine in session.machines.values_mut() {
                 *machine = MachineSession::default();
@@ -1159,7 +1192,14 @@ impl Environment {
                 return Err(SimError::invalid("invalid actor snapshot"));
             }
             for (id, m) in &session.machines {
-                if !session.config.machines.contains(id) || self.runtime.computer(id).is_err() {
+                if !session.config.machines.contains(id)
+                    || !snapshot
+                        .kernel
+                        .definition()
+                        .computers
+                        .iter()
+                        .any(|c| &c.id == id)
+                {
                     return Err(SimError::invalid("invalid machine grant"));
                 }
                 if m.browser.tabs.is_empty()
