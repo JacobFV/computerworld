@@ -7,6 +7,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 pub const FONT_SHA256: &str = "c805f9436dbc268644c1d9584f01a601a653e028e08fd74b9b949f6cf8304d88";
+pub const UI_FONT_SHA256: &str = "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280";
+const UI_FONT_BYTES: &[u8] = include_bytes!("../assets/DejaVuSans.ttf");
 const FONT_BYTES: &[u8] = include_bytes!("../assets/DejaVuSansMono.ttf");
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Frame {
@@ -44,8 +46,9 @@ struct Mask {
 /// Cache limits bound resident text memory across arbitrary navigation histories.
 pub struct Renderer {
     font: Font,
-    glyphs: BTreeMap<(char, u16), Arc<Glyph>>,
-    texts: BTreeMap<(String, u16, u32, u32), Arc<Mask>>,
+    ui_font: Option<Font>,
+    glyphs: BTreeMap<(bool, char, u16), Arc<Glyph>>,
+    texts: BTreeMap<(bool, String, u16, u32, u32), Arc<Mask>>,
     frame: Frame,
     revision: Option<u64>,
     pub stats: RenderStats,
@@ -60,6 +63,7 @@ impl Renderer {
         Self {
             font: Font::from_bytes(FONT_BYTES, FontSettings::default())
                 .expect("bundled font is valid"),
+            ui_font: None,
             glyphs: BTreeMap::new(),
             texts: BTreeMap::new(),
             frame: Frame::default(),
@@ -116,9 +120,9 @@ impl Renderer {
         self.frame.height = scene.height;
         self.frame.rgba.resize(len as usize, 0);
     }
-    fn glyph(&mut self, c: char, size: u16) -> Arc<Glyph> {
+    fn glyph(&mut self, c: char, size: u16, ui: bool) -> Arc<Glyph> {
         let size = size.clamp(1, 256);
-        if let Some(g) = self.glyphs.get(&(c, size)) {
+        if let Some(g) = self.glyphs.get(&(ui, c, size)) {
             return g.clone();
         }
         if self.glyphs.len() >= 8192
@@ -126,13 +130,21 @@ impl Renderer {
         {
             self.glyphs.clear()
         }
-        let (metrics, alpha) = self.font.rasterize(c, size as f32);
+        let font = if ui {
+            self.ui_font.get_or_insert_with(|| {
+                Font::from_bytes(UI_FONT_BYTES, FontSettings::default())
+                    .expect("bundled UI font is valid")
+            })
+        } else {
+            &self.font
+        };
+        let (metrics, alpha) = font.rasterize(c, size as f32);
         let glyph = Arc::new(Glyph { metrics, alpha });
-        self.glyphs.insert((c, size), glyph.clone());
+        self.glyphs.insert((ui, c, size), glyph.clone());
         glyph
     }
-    fn text(&mut self, text: &str, size: u16, width: u32, height: u32) -> Arc<Mask> {
-        let key = (text.to_owned(), size, width, height);
+    fn text(&mut self, text: &str, size: u16, width: u32, height: u32, ui: bool) -> Arc<Mask> {
+        let key = (ui, text.to_owned(), size, width, height);
         if let Some(mask) = self.texts.get(&key) {
             return mask.clone();
         }
@@ -162,16 +174,32 @@ impl Renderer {
             spans: Vec::new(),
         };
         let size = size.clamp(1, 256);
-        let (cell, line_height) = text_cell(size);
-        let columns = (width / cell).max(1) as usize;
-        for (row, line) in wrap_text(text, columns).iter().enumerate() {
-            let baseline = row as i64 * line_height as i64 + size as i64;
-            if baseline - size as i64 >= height as i64 {
-                break;
-            }
-            for (col, c) in line.chars().enumerate() {
-                let g = self.glyph(c, size);
-                let x = col as i64 * cell as i64 + g.metrics.xmin as i64;
+        if ui {
+            // Quantized 1/64-pixel advances avoid cumulative platform floating-point
+            // layout drift. Raster positions and line spacing are integer pixels.
+            let mut pen = 0i64;
+            let mut baseline = size as i64;
+            let line_height = size as i64 + (size as i64 + 3) / 4;
+            for c in text.chars() {
+                if c == '\n' {
+                    pen = 0;
+                    baseline += line_height;
+                    continue;
+                }
+                if c == '\r' {
+                    continue;
+                }
+                if baseline - size as i64 >= height as i64 {
+                    break;
+                }
+                let g = self.glyph(if c == '\t' { ' ' } else { c }, size, true);
+                let advance =
+                    (g.metrics.advance_width * 64.0 + 0.5) as i64 * if c == '\t' { 4 } else { 1 };
+                if pen > 0 && pen + advance > width as i64 * 64 {
+                    pen = 0;
+                    baseline += line_height;
+                }
+                let x = (pen + 32) / 64 + g.metrics.xmin as i64;
                 let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
                 for gy in 0..g.metrics.height {
                     let py = y + gy as i64;
@@ -183,6 +211,35 @@ impl Renderer {
                         if px >= 0 && px < width as i64 {
                             let i = py as usize * width as usize + px as usize;
                             mask.alpha[i] = mask.alpha[i].max(g.alpha[gy * g.metrics.width + gx]);
+                        }
+                    }
+                }
+                pen += advance;
+            }
+        } else {
+            let (cell, line_height) = text_cell(size);
+            let columns = (width / cell).max(1) as usize;
+            for (row, line) in wrap_text(text, columns).iter().enumerate() {
+                let baseline = row as i64 * line_height as i64 + size as i64;
+                if baseline - size as i64 >= height as i64 {
+                    break;
+                }
+                for (col, c) in line.chars().enumerate() {
+                    let g = self.glyph(c, size, false);
+                    let x = col as i64 * cell as i64 + g.metrics.xmin as i64;
+                    let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
+                    for gy in 0..g.metrics.height {
+                        let py = y + gy as i64;
+                        if py < 0 || py >= height as i64 {
+                            continue;
+                        }
+                        for gx in 0..g.metrics.width {
+                            let px = x + gx as i64;
+                            if px >= 0 && px < width as i64 {
+                                let i = py as usize * width as usize + px as usize;
+                                mask.alpha[i] =
+                                    mask.alpha[i].max(g.alpha[gy * g.metrics.width + gx]);
+                            }
                         }
                     }
                 }
@@ -227,7 +284,10 @@ impl Renderer {
                 }
                 let text = match &node.primitive {
                     Primitive::Text { text, size, .. } => {
-                        Some(self.text(text, *size, node.bounds.width, node.bounds.height))
+                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, false))
+                    }
+                    Primitive::UiText { text, size, .. } => {
+                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, true))
                     }
                     _ => None,
                 };
@@ -250,7 +310,9 @@ impl Renderer {
     fn paint_node(&mut self, node: &Node, area: Rect, text: Option<&Mask>) {
         let identity = node.transform == Transform::default();
         if identity {
-            if let (Primitive::Text { color, .. }, Some(mask)) = (&node.primitive, text) {
+            if let (Primitive::Text { color, .. } | Primitive::UiText { color, .. }, Some(mask)) =
+                (&node.primitive, text)
+            {
                 for &(row, start, end) in &mask.spans {
                     let y = node.bounds.y as i64 + row as i64;
                     if y < area.y as i64 || y >= area.y as i64 + area.height as i64 {
@@ -320,7 +382,65 @@ impl Renderer {
                             *fill
                         }
                     }
-                    Primitive::Text { color, .. } => {
+                    Primitive::RoundedBox {
+                        fill,
+                        border,
+                        border_width,
+                        radius,
+                    } => {
+                        let outer = rounded_coverage(
+                            local_x,
+                            local_y,
+                            node.bounds.width,
+                            node.bounds.height,
+                            *radius,
+                        );
+                        if outer == 0 {
+                            continue;
+                        }
+                        let bw = (*border_width)
+                            .min(node.bounds.width.div_ceil(2))
+                            .min(node.bounds.height.div_ceil(2));
+                        let inner = if border.is_some() && bw > 0 {
+                            rounded_coverage(
+                                local_x - bw as i64,
+                                local_y - bw as i64,
+                                node.bounds.width.saturating_sub(bw.saturating_mul(2)),
+                                node.bounds.height.saturating_sub(bw.saturating_mul(2)),
+                                radius.saturating_sub(bw),
+                            )
+                        } else {
+                            outer
+                        };
+                        // Blend disjoint edge/interior coverage once, avoiding a dark
+                        // seam where translucent antialiased fill meets its border.
+                        let edge = outer.saturating_sub(inner);
+                        let border = border.unwrap_or(*fill);
+                        if inner == outer {
+                            Color(fill.0, fill.1, fill.2, mul_alpha(fill.3, outer))
+                        } else if inner == 0 {
+                            Color(border.0, border.1, border.2, mul_alpha(border.3, outer))
+                        } else {
+                            let alpha =
+                                fill.3 as u32 * inner as u32 + border.3 as u32 * edge as u32;
+                            if alpha == 0 {
+                                continue;
+                            }
+                            let channel = |f: u8, b: u8| {
+                                ((f as u32 * fill.3 as u32 * inner as u32
+                                    + b as u32 * border.3 as u32 * edge as u32
+                                    + alpha / 2)
+                                    / alpha) as u8
+                            };
+                            Color(
+                                channel(fill.0, border.0),
+                                channel(fill.1, border.1),
+                                channel(fill.2, border.2),
+                                ((alpha + 127) / 255) as u8,
+                            )
+                        }
+                    }
+                    Primitive::Text { color, .. } | Primitive::UiText { color, .. } => {
                         let Some(mask) = text else { continue };
                         if local_x >= mask.width as i64 || local_y >= mask.height as i64 {
                             continue;
@@ -375,6 +495,33 @@ impl Renderer {
             }
         }
     }
+}
+// Four-by-four fixed sample grid is deterministic across native/Wasm. Only the
+// curved corner pixels pay supersampling cost; rectangular interiors are constant.
+fn rounded_coverage(x: i64, y: i64, width: u32, height: u32, radius: u32) -> u8 {
+    if x < 0 || y < 0 || x >= width as i64 || y >= height as i64 {
+        return 0;
+    }
+    let r = radius.min(width / 2).min(height / 2) as i64;
+    if r == 0 || (x >= r && x < width as i64 - r) || (y >= r && y < height as i64 - r) {
+        return 255;
+    }
+    let r = r as i128 * 8;
+    let w = width as i128 * 8;
+    let h = height as i128 * 8;
+    let mut coverage = 0u32;
+    for sy in [1, 3, 5, 7] {
+        for sx in [1, 3, 5, 7] {
+            let px = x as i128 * 8 + sx;
+            let py = y as i128 * 8 + sy;
+            let dx = (r - px).max(px - (w - r)).max(0);
+            let dy = (r - py).max(py - (h - r)).max(0);
+            if dx * dx + dy * dy <= r * r {
+                coverage += 1;
+            }
+        }
+    }
+    ((coverage * 255 + 8) / 16) as u8
 }
 // Coalesce redundant old/new damage and contiguous rectangles before rasterization.
 // Extra pixels inside a merged bounding rectangle are safe to repaint. Restrict
@@ -573,8 +720,125 @@ mod tests {
         assert_eq!(f.pixel(1, 26), Some([0, 0, 0, 255]));
     }
     #[test]
+    fn rounded_ui_golden_and_incremental() {
+        let mut scene = Scene::new(220, 100);
+        scene.background = Color::rgb(24, 31, 46);
+        let mut panel =
+            Node::rounded_rectangle(1, Rect::new(8, 8, 204, 84), Color(246, 248, 255, 230), 17);
+        panel.primitive = Primitive::RoundedBox {
+            fill: Color(246, 248, 255, 230),
+            border: Some(Color::WHITE),
+            border_width: 2,
+            radius: 17,
+        };
+        scene.nodes.push(panel);
+        scene.nodes.push(Node::ui_text(
+            2,
+            Rect::new(20, 17, 182, 62),
+            "Window settings\nWiFi · λ · 09:41",
+            17,
+            Color::rgb(24, 31, 46),
+        ));
+        let mut renderer = Renderer::new();
+        let frame = renderer.render(&scene);
+        assert_eq!(frame.pixel(8, 8), Some([24, 31, 46, 255]));
+        assert_eq!(frame.pixel(110, 8), Some([255, 255, 255, 255]));
+        assert_eq!(frame, Renderer::new().render(&scene));
+        let digest = format!("{:x}", Sha256::digest(&frame.rgba));
+        assert_eq!(
+            digest,
+            "da928cab834c47449b5d838ccd2f3338e2e318dc63237f421dd7ac3d79324cf0"
+        );
+        let damage = scene
+            .patch(ScenePatch {
+                base_revision: 0,
+                revision: 1,
+                operations: vec![PatchOp::Upsert(Node::ui_text(
+                    2,
+                    Rect::new(20, 17, 182, 62),
+                    "Connected\nWiFi · λ · 09:42",
+                    17,
+                    Color::BLACK,
+                ))],
+            })
+            .unwrap();
+        assert_eq!(
+            renderer.render_incremental(&scene, &damage).clone(),
+            Renderer::new().render(&scene)
+        );
+    }
+    #[test]
+    fn ui_proportional_advances_clipping_and_cache() {
+        let mut renderer = Renderer::new();
+        let narrow = renderer.text("iiii", 20, 180, 30, true);
+        let wide = renderer.text("WWWW", 20, 180, 30, true);
+        let right = |mask: &Mask| mask.spans.iter().map(|s| s.2).max().unwrap();
+        assert!(right(&wide) > right(&narrow) * 2);
+        let cached = renderer.text("iiii", 20, 180, 30, true);
+        assert!(Arc::ptr_eq(&narrow, &cached));
+        let mut scene = Scene::new(80, 30);
+        let mut label = Node::ui_text(
+            1,
+            Rect::new(-5, -3, 180, 40),
+            "Outside clip",
+            24,
+            Color::BLACK,
+        );
+        label.clip = Some(Rect::new(10, 5, 20, 15));
+        scene.nodes.push(label);
+        let frame = renderer.render(&scene);
+        for y in 0..30 {
+            for x in 0..80 {
+                if !Rect::new(10, 5, 20, 15).contains(x, y) {
+                    assert_eq!(frame.pixel(x as u32, y as u32), Some([255, 255, 255, 255]));
+                }
+            }
+        }
+    }
+    #[test]
+    fn rounded_coverage_symmetric_and_bounded() {
+        for width in [1, 2, 13, 32] {
+            for height in [1, 2, 15, 32] {
+                for radius in [0, 1, 7, 500] {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let a = rounded_coverage(x as i64, y as i64, width, height, radius);
+                            assert_eq!(
+                                a,
+                                rounded_coverage(
+                                    (width - x - 1) as i64,
+                                    y as i64,
+                                    width,
+                                    height,
+                                    radius
+                                )
+                            );
+                            assert_eq!(
+                                a,
+                                rounded_coverage(
+                                    x as i64,
+                                    (height - y - 1) as i64,
+                                    width,
+                                    height,
+                                    radius
+                                )
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(rounded_coverage(-1, 0, 20, 20, 4), 0);
+        assert_eq!(rounded_coverage(20, 0, 20, 20, 4), 0);
+        assert_eq!(rounded_coverage(0, 0, 20, 20, 0), 255);
+    }
+    #[test]
     fn font_hash() {
         assert_eq!(format!("{:x}", Sha256::digest(FONT_BYTES)), FONT_SHA256);
+        assert_eq!(
+            format!("{:x}", Sha256::digest(UI_FONT_BYTES)),
+            UI_FONT_SHA256
+        );
     }
     #[test]
     fn structured_scene_does_not_load_font() {

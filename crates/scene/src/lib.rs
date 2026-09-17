@@ -138,6 +138,19 @@ pub enum Primitive {
         border: Option<Color>,
         border_width: u32,
     },
+    /// Rounded rectangle; radius clamps to half the smaller extent.
+    RoundedBox {
+        fill: Color,
+        border: Option<Color>,
+        border_width: u32,
+        radius: u32,
+    },
+    /// Proportional bundled sans-serif text, pixel-wrapped within the bounds.
+    UiText {
+        text: String,
+        color: Color,
+        size: u16,
+    },
     Text {
         text: String,
         color: Color,
@@ -210,6 +223,35 @@ impl Node {
                 text: text.into(),
                 color,
                 size,
+            },
+        )
+    }
+    pub fn ui_text(
+        id: u64,
+        bounds: Rect,
+        text: impl Into<String>,
+        size: u16,
+        color: Color,
+    ) -> Self {
+        Self::new(
+            id,
+            bounds,
+            Primitive::UiText {
+                text: text.into(),
+                color,
+                size,
+            },
+        )
+    }
+    pub fn rounded_rectangle(id: u64, bounds: Rect, fill: Color, radius: u32) -> Self {
+        Self::new(
+            id,
+            bounds,
+            Primitive::RoundedBox {
+                fill,
+                border: None,
+                border_width: 0,
+                radius,
             },
         )
     }
@@ -291,9 +333,15 @@ impl Scene {
                 n.interaction.is_some()
                     && !n.semantic.as_ref().is_some_and(|s| s.disabled)
                     && n.clip.is_none_or(|c| c.contains(x, y))
-                    && n.transform
-                        .inverse_point(x, y)
-                        .is_some_and(|(x, y)| n.bounds.contains(x, y))
+                    && n.transform.inverse_point(x, y).is_some_and(|(x, y)| {
+                        n.bounds.contains(x, y)
+                            && match n.primitive {
+                                Primitive::RoundedBox { radius, .. } => {
+                                    rounded_contains(n.bounds, radius, x, y)
+                                }
+                                _ => true,
+                            }
+                    })
             })
             .max_by_key(|(i, n)| (n.z, *i))
             .map(|(_, n)| n)
@@ -378,6 +426,21 @@ impl Scene {
         }
         Ok(())
     }
+}
+/// Pixel-centre rounded rectangle containment, with integer-only geometry.
+/// Used by hit testing; the compositor additionally samples edge coverage.
+pub fn rounded_contains(bounds: Rect, radius: u32, x: i32, y: i32) -> bool {
+    if !bounds.contains(x, y) {
+        return false;
+    }
+    let r = radius.min(bounds.width / 2).min(bounds.height / 2) as i128 * 2;
+    let x = (x as i128 - bounds.x as i128) * 2 + 1;
+    let y = (y as i128 - bounds.y as i128) * 2 + 1;
+    let w = bounds.width as i128 * 2;
+    let h = bounds.height as i128 * 2;
+    let dx = (r - x).max(x - (w - r)).max(0);
+    let dy = (r - y).max(y - (h - r)).max(0);
+    dx * dx + dy * dy <= r * r
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScenePatch {
@@ -490,6 +553,18 @@ mod tests {
         assert_eq!(s.hit_test(25, 25).unwrap().id, 2);
         assert_eq!(s.hit_test(35, 35).unwrap().id, 1);
         assert!(s.hit_test(90, 90).is_none());
+    }
+    #[test]
+    fn rounded_hit_test_omits_cutaway_corners() {
+        let mut s = Scene::new(100, 100);
+        let mut n = Node::rounded_rectangle(1, Rect::new(0, 0, 40, 40), Color::BLACK, 12)
+            .interactive("round", "button", "Round");
+        n.transform = Transform::translate(10, 10);
+        s.nodes.push(n);
+        assert!(s.hit_test(10, 10).is_none());
+        assert_eq!(s.hit_test(30, 10).unwrap().id, 1);
+        assert_eq!(s.hit_test(30, 30).unwrap().id, 1);
+        assert!(s.hit_test(49, 49).is_none());
     }
     #[test]
     fn patch_atomic() {
