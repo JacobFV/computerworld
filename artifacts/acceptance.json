@@ -1,9 +1,9 @@
 {
   "ok": true,
   "command": "bash scripts/test-all.sh",
-  "test_executions_passed": 163,
+  "test_executions_passed": 178,
   "failed": 0,
-  "workspace_test_executions": 160,
+  "workspace_test_executions": 175,
   "optional_native_http_tests": 3,
   "checks": [
     "pure-core host/dependency boundary",
@@ -13,8 +13,8 @@
     "cargo clippy --workspace --all-targets -- -D warnings",
     "cargo build -p cw-wasm --target wasm32-unknown-unknown --release"
   ],
-  "revision": "de624a58fb6f76ca769aea98155b71505bec57e8",
-  "log_sha256": "983b1091badf6171fc8eeddda4b20d412fbb4f8140aeb77ab439609a79f5328a",
+  "revision": "460d16fa47b31a66071f018f3aa2056c400fdec6",
+  "log_sha256": "2523afbebd3dbbe4236c1c8a4d7d2981cd8b939865be3d5299a665d8c3cec162",
   "exit_code": 0,
   "note": "Rust source at the recorded revision; concurrent worktree changes were documentation, package MSRV metadata, benchmark results and browser UI. Binding execution is recorded separately."
 }

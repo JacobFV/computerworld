@@ -3,9 +3,10 @@
   "url": "https://computerworld-console.jacobfv123.chatgpt.site",
   "access": "owner-private",
   "project_id": "appgprj_6aac28c2c74081918880664acd371c4f",
-  "version_number": 2,
-  "deployment_id": "appgdep_6aac2a243e088191ba65bc35025e74e3",
-  "source_commit": "cf2888c064c7f87233a0540c0955ac757068fe6e",
+  "version_number": 3,
+  "deployment_id": "appgdep_6aac3637fa98819182aaf9a13be0d40b",
+  "source_commit": "acc3bfd0ec72b6101455d5ed07447d7b4c3e52a7",
   "runtime": "canonical Rust/Wasm, static assets only; no simulation backend",
-  "local_browser_verification": "artifacts/browser-verification.json"
+  "local_browser_verification": "artifacts/browser-verification.json",
+  "desktop_verification": "artifacts/desktop-verification.json"
 }
