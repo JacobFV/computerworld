@@ -24,6 +24,13 @@ module identities. A checkpoint with unresolved live host effects is rejected on
 restore; synthetic queued work is serializable. Inspecting or evaluating should not consume random values or
 advance logical time.
 
+Applications do work between actions only in steps: after the actions of every
+`step()`, each native application with background work (a video export) advances by one
+bounded unit (`NativeApp::background`), so how far it has got is a function of the steps
+taken and replays exactly. Media playback reads the world clock: a playing timeline's
+position is derived from the logical time playback started and the time now, never from
+the host (see [video-editing.md](video-editing.md)).
+
 Record trajectories for explanation and the input sequence for replay. Event
 records include sequence, tick, kind, optional machine/actor and structured data.
 Use state hashes to compare reconstructed suffixes. A hash mismatch is diagnostic

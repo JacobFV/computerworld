@@ -17,7 +17,7 @@ const STOPS: u32 = 11;
 /// (application id, icon asset, name). Every application in the catalogue now has its
 /// own artwork, so the whole roster is drawn on SpringBoard. The last four populate the
 /// dock when installed, which is what keeps the home screen looking like a phone.
-const APPS: [(&str, &str, &str); 18] = [
+const APPS: [(&str, &str, &str); 19] = [
     ("calendar", "calendar", "Calendar"),
     ("notes", "notes", "Notes"),
     ("docs", "docs", "Pages"),
@@ -25,6 +25,7 @@ const APPS: [(&str, &str, &str); 18] = [
     ("files", "files", "Files"),
     ("photos", "photos", "Photos"),
     ("music", "music", "Music"),
+    ("imovie", "imovie", "iMovie"),
     ("maps", "maps", "Maps"),
     ("weather", "weather", "Weather"),
     ("clock", "clock", "Clock"),
@@ -48,7 +49,7 @@ const LIBRARY_GROUPS: [(&str, &[&str]); 6] = [
     ),
     ("Utilities", &["files", "clock", "calculator", "settings"]),
     ("Social", &["mail", "chat", "browser"]),
-    ("Photo & Video", &["photos", "music"]),
+    ("Photo & Video", &["photos", "music", "imovie"]),
     ("Travel", &["maps", "weather"]),
     ("Developer", &["terminal", "editor"]),
 ];

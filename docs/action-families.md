@@ -275,10 +275,52 @@ probe in the simulator).
 the native applications (`calendar`, `mail`, `chat`, `docs`, `notes`, `contacts`,
 `settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, `freecad`, `kicad`, the image
 editors `paint`, `preview`, `pixelmator`, `gimp`, `pinta`, `sketchbook`, the spreadsheets
-`spreadsheet` and `excel`, and the SQLite client `database`) listed by the
+`spreadsheet` and `excel`, the SQLite client `database`, and the video editors
+`clipchamp`, `imovie`, `kdenlive` and `videoeditor`) listed by the
 `native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also
 declare `desktop_apps` metadata aliases that launch a browser window at a fixed URL.
 Launching a kind the machine does not have installed is `not_found`.
+
+#### Video editor controls
+
+The video editors are interfaces over one engine (`crates/video`, see
+[video-editing.md](video-editing.md)): Clipchamp (`clipchamp`) on Windows 11, iMovie
+(`imovie`) on macOS and iOS, Kdenlive (`kdenlive`) on Ubuntu and the Android video editor
+(`videoeditor`). Launched with a folder as `argument` the import sheet starts there (the
+default is `Videos` on Windows and Ubuntu, `Movies` elsewhere); a `.cwvideo` project or a
+media file opens or imports it. Every control is `window:<id>:content:video:<command>`; a
+command the product does not have (Clipchamp's reverse, iMovie's track lock) is refused,
+and a control that cannot act now is painted disabled with its reason.
+
+| Target | Effect |
+|---|---|
+| `video:play`, `video:start`, `video:end`, `video:step:<±n>`, `video:skip:<±n>`, `video:seek:<frame>` | Transport. Play toggles playback, which advances with the world clock (`sleep` in a shell moves it); step moves by frames, skip by five seconds (Clipchamp) |
+| `video:shuttle:<j\|k\|l>` | J/K/L shuttle (iMovie on the Mac, Kdenlive): L plays forward at 1×, 2×, 4×; J backwards; K stops |
+| `video:ruler:<scroll>` | The timeline ruler, a drag surface: press and drag to scrub. `<scroll>` is the first frame the ruler showed |
+| `video:media:<id>:<ox>:<oy>:<lane>:<scroll>` | A media bin item, a drag surface. A click selects it; dragging it onto a timeline lane and releasing places a clip at that frame (snapping to clip edges and the playhead). `(ox, oy)` is the timeline lanes' origin relative to the item, `<lane>` the lane height. Released just above the top video lane (or below the last audio lane) it makes a new track |
+| `video:clip:<id>:<lane>` | A timeline clip, a drag surface: click to select, drag sideways to move it (either edge snaps), up or down to another track of its kind. A drop onto another clip lands at that clip's nearer edge and pushes what follows (ripple insert) |
+| `video:trim-in:<id>`, `video:trim-out:<id>` | The selected clip's trim handles, drag surfaces: move its in or out point, within the neighbouring clips and the media's length |
+| `video:transition:<id>` | Select a transition (its duration then shows in the inspector) |
+| `video:append:<media>`, `video:overlay:<media>` | Add media to the end of the main track (at the playhead in iMovie and on phones), or over the movie as picture in picture (Android) |
+| `video:add-title:<plain\|headline\|lower\|top\|credits>`, `video:add-color:<rrggbb>`, `video:add-transition:<cross_dissolve\|dip_to_black\|dip_to_white\|wipe\|slide>` | Add a title (glyphs rasterised by the renderer in the platform font), a background colour clip, or a transition on the cut after the selected clip (else the cut nearest the playhead) |
+| `video:split`, `video:delete`, `video:ripple-delete`, `video:undo`, `video:redo` | Edit: split at the playhead (the selected clip, else every clip it crosses), delete (closing the gap in iMovie and the Android editor), delete and close the gap (Kdenlive) |
+| `video:set:<prop>:<value>`, `video:nudge:<prop>:<±n>`, `video:slider:<prop>:<width>` | Set a property of the selected clip — `opacity`, `x`, `y`, `scale`, `rotation`, `volume`, `brightness`, `contrast`, `saturation`, `temperature`, `speed` (25–400), `fade-in`, `fade-out`, `crop-left`/`-top`/`-right`/`-bottom`, or the selected `transition`'s length. The slider is a drag surface |
+| `video:key:<prop>`, `video:ease:<prop>` | Add or remove a keyframe at the playhead; switch its interpolation between linear and ease (Kdenlive, Android) |
+| `video:reverse`, `video:rotate`, `video:reset`, `video:mute-clip`, `video:pip:<corner>`, `video:fit`, `video:fill`, `video:ken-burns` | Clip commands; Fit, Crop to Fill and Ken Burns are iMovie's cropping modes |
+| `video:title-text`, `video:title-bold`, `video:title-size:<±n>`, `video:title-color:<rrggbb>`, `video:title-bg:<rrggbbaa\|none>`, `video:title-pos:<top\|center\|lower\|bottom>` | The selected title; `title-text` focuses its text for `keyboard.v1 type` |
+| `video:track-mute:<id>`, `video:track-hide:<id>`, `video:track-lock:<id>`, `video:add-track:<video\|audio>` | Track headers (per product: Kdenlive has all three, Clipchamp hide and mute) and Kdenlive's insert-track buttons |
+| `video:snap`, `video:zoom-in`, `video:zoom-out`, `video:zoom-fit:<px>`, `video:zoom:<width>`, `video:scroll:<frame>` | Snapping; timeline zoom (the zoom slider is a drag surface) |
+| `video:tab:<name>`, `video:inspector:<page>`, `video:deselect` | Browser tabs and inspector pages |
+| `video:import`, `video:open`, `video:browse:<folder/\|..>`, `video:pick:<file>`, `video:pick-add:<file>`, `video:close-sheet` | The file sheet: import media (APNG, PNG, JPEG, WAV) or open a project; a phone's picker adds the clip to the movie |
+| `video:new`, `video:save`, `video:save-as`, `video:save-confirm`, `video:name`, `video:project-name` | Projects, saved as `<name>.cwvideo` JSON in the media folder |
+| `video:export`, `video:export-size:<w>x<h>`, `video:export-fps:<12\|24\|30>`, `video:export-start`, `video:export-cancel` | Export (Kdenlive's Render, iMovie's Share): an APNG and a WAV mixdown, encoded a few frames per simulation step |
+
+Keys: `Space` play/pause, arrows step a frame, `Home`/`End`, `Delete`, `Ctrl+Z`/`Ctrl+Y`
+(`Meta+Z`/`Meta+Shift+Z` on the Mac), `Ctrl+=`/`Ctrl+-` zoom, `Ctrl+S` save, `Ctrl+I`
+import, `Escape` closes a sheet or clears the selection; split is `S` in Clipchamp,
+`Meta+B` in iMovie and `Shift+R` in Kdenlive; `J`/`K`/`L` shuttle in iMovie and
+Kdenlive; `Shift+Delete` ripple-deletes and `S` toggles snapping in Kdenlive. With no
+field focused, typed letters are these shortcuts.
 
 #### Image editor controls
 

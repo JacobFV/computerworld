@@ -2147,6 +2147,25 @@ impl DesktopState {
             }
         }
     }
+    /// Whether any window has work to do between actions, such as a video export.
+    pub fn busy(&self) -> bool {
+        self.windows
+            .values()
+            .any(|w| matches!(&w.state, AppState::Native(a) if a.busy()))
+    }
+    /// One simulation step of every window's background work; returns the effects it
+    /// asks for (a finished export's files).
+    pub fn background(&mut self) -> Vec<AppEffect> {
+        let mut out = vec![];
+        for (id, w) in self.windows.iter_mut() {
+            if let AppState::Native(a) = &mut w.state {
+                if a.busy() {
+                    out.extend(a.background(*id));
+                }
+            }
+        }
+        out
+    }
     /// Whether the pointer is captured by an application drag surface.
     pub fn app_captured(&self) -> bool {
         self.pointer_capture

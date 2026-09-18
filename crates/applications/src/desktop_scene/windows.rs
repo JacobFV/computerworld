@@ -22,7 +22,7 @@ const PINNED: [(&str, &str); 6] = [
     ("code", "Visual Studio Code"),
 ];
 /// Every application Start can present, in its pinned-grid order.
-const APPS: [(&str, &str); 23] = [
+const APPS: [(&str, &str); 24] = [
     ("browser", "Edge"),
     ("files", "File Explorer"),
     ("terminal", "Terminal"),
@@ -40,6 +40,7 @@ const APPS: [(&str, &str); 23] = [
     ("contacts", "People"),
     ("photos", "Photos"),
     ("paint", "Paint"),
+    ("clipchamp", "Clipchamp"),
     ("music", "Media Player"),
     ("maps", "Maps"),
     ("weather", "Weather"),

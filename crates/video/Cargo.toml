@@ -1,0 +1,18 @@
+[package]
+name = "cw-video"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Deterministic video editing engine shared by the simulator's video editors"
+
+[dependencies]
+cw-raster = { path = "../raster" }
+serde.workspace = true
+serde_json.workspace = true
+png = "0.17"
+crc32fast = "1"
+# Same configuration as the renderer: scalar kernels only, so native and Wasm decode
+# identical pixels.
+jpeg-decoder = { version = "0.3", default-features = false, features = [
+    "platform_independent",
+] }

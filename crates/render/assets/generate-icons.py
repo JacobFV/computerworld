@@ -126,6 +126,29 @@ def office():
   (OUT/f'{platform}-{name}.svg').write_text(svg)
   cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=size,output_height=size)
 
+# Video editors, one per platform in its own icon idiom. Original artwork (MIT), not
+# vendor logos: Clipchamp's violet clip with a play mark (bare, as Windows shows it),
+# iMovie's star over a film frame on a violet squircle (the Mac and the phone), Kdenlive's
+# clapper over a timeline on a Yaru-style tile, and the Android editor's scissors under a
+# play mark in a teal circle. `--video` rebuilds just these.
+IMOVIE_ART='<defs><linearGradient id="im" x2="0" y2="1"><stop stop-color="#b98cff"/><stop offset="1" stop-color="#5b2bd6"/></linearGradient><linearGradient id="st" x2="0" y2="1"><stop stop-color="#fff6c8"/><stop offset="1" stop-color="#ffc93a"/></linearGradient></defs>'
+IMOVIE_BODY='<rect x="26" y="52" width="76" height="50" rx="8" fill="#261a4a"/><path d="M26 64h76M26 90h76" stroke="#6a55a8" stroke-width="3"/><g fill="#ecdcff">'+''.join(f'<rect x="{31+i*14}" y="55" width="8" height="6" rx="1"/><rect x="{31+i*14}" y="93" width="8" height="6" rx="1"/>' for i in range(5))+'</g><path d="M54 70v14l12-7Z" fill="#fff"/><path d="m64 16 7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2Z" fill="url(#st)" stroke="#e0a100" stroke-width="2" stroke-linejoin="round"/>'
+VIDEO={
+ ('windows','clipchamp',128):'<defs><linearGradient id="cc" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a98bff"/><stop offset=".55" stop-color="#6d4dff"/><stop offset="1" stop-color="#2f6bff"/></linearGradient></defs><path d="M30 18h54l26 26v58a10 10 0 0 1-10 10H30a10 10 0 0 1-10-10V28a10 10 0 0 1 10-10Z" fill="url(#cc)"/><path d="M84 18v20a6 6 0 0 0 6 6h20" fill="#c9b8ff"/><path d="M50 50v38l32-19Z" fill="#fff"/><path d="M30 100h56" stroke="#e6ddff" stroke-width="4" stroke-linecap="round" opacity=".7"/>',
+ ('macos','imovie',128):IMOVIE_ART+'<rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="url(#im)"/><rect x="6" y="4" width="116" height="116" rx="26" fill="none" stroke="#fff" stroke-opacity=".32"/>'+IMOVIE_BODY,
+ ('ios','imovie',128):IMOVIE_ART+'<rect x="5" y="4" width="118" height="118" rx="27" fill="url(#im)"/>'+IMOVIE_BODY,
+ ('ubuntu','kdenlive',256):'<defs><linearGradient id="kd" x2="0" y2="1"><stop stop-color="#3a4250"/><stop offset="1" stop-color="#1c2129"/></linearGradient></defs><rect x="16" y="20" width="224" height="224" rx="48" fill="#000" opacity=".16"/><rect x="16" y="14" width="224" height="224" rx="48" fill="url(#kd)"/><g transform="translate(24 20) scale(1.62)"><path d="M22 44 94 26l4 14-72 18Z" fill="#e8eef5"/><path d="m34 41 8 12m12-17 8 12m12-17 8 12" stroke="#1d99f3" stroke-width="5"/><rect x="22" y="58" width="84" height="44" rx="4" fill="#e8eef5"/><rect x="28" y="66" width="40" height="10" rx="2" fill="#1d99f3"/><rect x="50" y="82" width="46" height="10" rx="2" fill="#27ae60"/><path d="M60 60v42" stroke="#da4453" stroke-width="3"/></g>',
+ ('android','videoeditor',128):'<defs><linearGradient id="ve" x2="0" y2="1"><stop stop-color="#3ee8cf"/><stop offset="1" stop-color="#009b8a"/></linearGradient></defs><circle cx="64" cy="64" r="60" fill="url(#ve)"/><rect x="30" y="30" width="68" height="52" rx="10" fill="#0d2b2a"/><path d="M56 44v24l20-12Z" fill="#fff"/><g stroke="#fff" stroke-width="5" stroke-linecap="round"><path d="M44 104l20-18M84 104 64 86"/></g><circle cx="42" cy="106" r="7" fill="none" stroke="#fff" stroke-width="4"/><circle cx="86" cy="106" r="7" fill="none" stroke="#fff" stroke-width="4"/>',
+}
+def video():
+ for (platform,name,size),art in VIDEO.items():
+  svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">{art}</svg>'
+  (OUT/f'{platform}-{name}.svg').write_text(svg)
+  cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=size,output_height=size)
+
+if '--video' in sys.argv:
+ video()
+ sys.exit(0)
 if '--freecad' in sys.argv:
  freecad()
  sys.exit(0)
@@ -137,3 +160,4 @@ if '--editors' not in sys.argv:
 editors()
 freecad()
 office()
+video()

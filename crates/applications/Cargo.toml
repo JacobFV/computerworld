@@ -10,6 +10,7 @@ cw-protocol = { path = "../protocol" }
 cw-sdk = { path = "../sdk" }
 cw-cad = { path = "../cad" }
 cw-raster = { path = "../raster" }
+cw-video = { path = "../video" }
 cw-sheet = { path = "../sheet" }
 cw-determinism = { path = "../determinism" }
 cw-sql = { path = "../sql" }
