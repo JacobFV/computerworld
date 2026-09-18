@@ -436,7 +436,9 @@ pub fn lanes(ed: &Editor, env: &AppEnv<'_>, r: Rect, header: u32, ruler: u32, la
     let visible = ed.frames(i64::from(width)).max(1);
     let now = ed.now(env.clock_us);
     let mut scroll = ed.scroll;
-    if now < scroll || now >= scroll + visible {
+    // A view put somewhere by hand stays there while the playhead rests where it was.
+    let held = ed.play.is_none() && ed.view == Some(now);
+    if !held && (now < scroll || now >= scroll + visible) {
         scroll = (now - visible / 5).max(0);
     }
     Lanes {
@@ -489,6 +491,18 @@ pub fn timeline(
         ruler,
         Primitive::Region,
         Some((&target(&format!("ruler:{}", g.scroll)), "Timeline ruler")),
+    );
+    // The lanes themselves: a click on empty timeline deselects, and the wheel over
+    // them scrolls or zooms the timeline (the target carries the painted scroll).
+    p.node(
+        Rect::new(
+            g.x,
+            g.y,
+            g.width,
+            (r.y + r.height as i32 - g.y).max(0) as u32,
+        ),
+        Primitive::Region,
+        Some((&target(&format!("lanes:{}", g.scroll)), "Timeline")),
     );
     let lanes = ed.lanes();
     let empty = ed.project.clips.is_empty();
@@ -749,7 +763,10 @@ fn clip(
             border_width: if selected { 2 } else { 1 },
             radius: s.radius.min(6),
         },
-        Some((&target(&format!("clip:{}:{}", c.id, g.lane)), &c.name)),
+        Some((
+            &target(&format!("clip:{}:{}:{}", c.id, g.lane, g.scroll)),
+            &c.name,
+        )),
     );
     // Thumbnails along a picture clip, or the waveform along a sound.
     if let Some(media) = c.media().and_then(|m| ed.library.get(&m)) {
@@ -927,12 +944,16 @@ pub fn bin(
     } else {
         ((r.width + 8) / (tile_w + 8)).max(1)
     };
+    // The bin scrolls when it holds more than it shows (the wheel, its scroll bar, a
+    // finger); a tile's drag geometry is measured where it is painted, scrolled or not.
+    let rows = (ed.project.media.len() as u32).div_ceil(cols);
+    let pane = p.pane("bin", r);
     for (i, m) in ed.project.media.iter().enumerate() {
         let (col, row) = (i as u32 % cols, i as u32 / cols);
         let x = r.x + (col * (if list { r.width } else { tile_w + 8 })) as i32;
-        let y = r.y + (row * (row_h + 6)) as i32;
-        if y + row_h as i32 > r.y + r.height as i32 {
-            break;
+        let y = pane.top() + (row * (row_h + 6)) as i32;
+        if !pane.shows(y, row_h) {
+            continue;
         }
         let tile = if list {
             Rect::new(x, y, r.width, row_h)
@@ -1071,6 +1092,7 @@ pub fn bin(
             p.z -= 1;
         }
     }
+    p.end_pane(pane, Some(rows * (row_h + 6)));
 }
 
 /// A labelled slider row for `prop`: drag or click the track, or nudge with − and +.

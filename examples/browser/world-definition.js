@@ -29417,6 +29417,15 @@ export default {
       "admin"
     ],
     "reference_version": 1,
+    "device_presentations": {
+      "alice-mac": "desktop",
+      "bob-windows": "desktop",
+      "carol-ubuntu": "laptop",
+      "app-server": "server",
+      "git-server": "server",
+      "alice-phone": "phone",
+      "bob-android": "phone"
+    },
     "desktop_apps": [
       {
         "id": "mail",
@@ -29624,15 +29633,6 @@ export default {
         "url": "",
         "icon": "videoeditor"
       }
-    ],
-    "device_presentations": {
-      "alice-mac": "desktop",
-      "bob-windows": "desktop",
-      "carol-ubuntu": "laptop",
-      "app-server": "server",
-      "git-server": "server",
-      "alice-phone": "phone",
-      "bob-android": "phone"
-    }
+    ]
   }
 };

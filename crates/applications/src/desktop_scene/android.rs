@@ -1582,6 +1582,31 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
     // wears an up arrow — the file manager inside a folder; an application's root
     // screen has none, because leaving it is the navigation bar's Back.
     let files_up = window.kind == "files" && !window.document.trim_end_matches('/').is_empty();
+    // An application's leading control: an up arrow on a screen with a parent (an open
+    // conversation, an open message), Gmail's menu button for its drawer.
+    let nav = window.chrome("nav").and_then(|nav| {
+        let mut parts = nav.splitn(3, '\t');
+        let symbol = match parts.next()? {
+            "back" => "arrow-left",
+            "menu" => "menu",
+            _ => return None,
+        };
+        let target = parts.next()?;
+        let label = match parts.next().unwrap_or("") {
+            "" if symbol == "arrow-left" => "Navigate up",
+            "" => "Open menu",
+            label => label,
+        };
+        Some((symbol, target, label))
+    });
+    if let Some((symbol, target, label)) = nav {
+        p.symbol(symbol, r.x + 16, r.y + 56, 24, ink);
+        p.region(
+            Rect::new(r.x + 4, r.y + 44, 48, 48),
+            &window.action(&format!("content:{target}")),
+            label,
+        );
+    }
     if files_up {
         p.symbol("arrow-left", r.x + 16, r.y + 56, 24, ink);
         p.region(
@@ -1602,7 +1627,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         "editor" => String::new(),
         kind => app_name(kind).map_or_else(|| window.title.clone(), str::to_owned),
     };
-    let title_x = if files_up { r.x + 60 } else { r.x + 20 };
+    let title_x = if files_up || nav.is_some() {
+        r.x + 60
+    } else {
+        r.x + 20
+    };
     p.left(
         title_x,
         r.y + 55,

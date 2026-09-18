@@ -298,7 +298,8 @@ and a control that cannot act now is painted disabled with its reason.
 | `video:shuttle:<j\|k\|l>` | J/K/L shuttle (iMovie on the Mac, Kdenlive): L plays forward at 1×, 2×, 4×; J backwards; K stops |
 | `video:ruler:<scroll>` | The timeline ruler, a drag surface: press and drag to scrub. `<scroll>` is the first frame the ruler showed |
 | `video:media:<id>:<ox>:<oy>:<lane>:<scroll>` | A media bin item, a drag surface. A click selects it; dragging it onto a timeline lane and releasing places a clip at that frame (snapping to clip edges and the playhead). `(ox, oy)` is the timeline lanes' origin relative to the item, `<lane>` the lane height. Released just above the top video lane (or below the last audio lane) it makes a new track |
-| `video:clip:<id>:<lane>` | A timeline clip, a drag surface: click to select, drag sideways to move it (either edge snaps), up or down to another track of its kind. A drop onto another clip lands at that clip's nearer edge and pushes what follows (ripple insert) |
+| `video:clip:<id>:<lane>:<scroll>` | A timeline clip, a drag surface: click to select, drag sideways to move it (either edge snaps), up or down to another track of its kind. A drop onto another clip lands at that clip's nearer edge and pushes what follows (ripple insert). `<scroll>` is the first frame the lanes showed |
+| `video:lanes:<scroll>` | The timeline's lanes behind the clips: a click deselects; the wheel over them (and over the ruler and clips) scrolls or zooms the timeline |
 | `video:trim-in:<id>`, `video:trim-out:<id>` | The selected clip's trim handles, drag surfaces: move its in or out point, within the neighbouring clips and the media's length |
 | `video:transition:<id>` | Select a transition (its duration then shows in the inspector) |
 | `video:append:<media>`, `video:overlay:<media>` | Add media to the end of the main track (at the playhead in iMovie and on phones), or over the movie as picture in picture (Android) |
@@ -447,8 +448,11 @@ a themed desktop; `Alt+Tab` cycles windows.
 | `cancel` | same | `null` |
 | `wheel` | same, plus `{"delta_y": i64, "delta_x"?: i64, "modifiers"?: ["Shift"\|"Ctrl"\|"Meta"]}` in pixels (positive `delta_y` rolls towards the user and moves content up; 120 is one notch) | `{"handled": bool}`: whether anything under the pointer moved |
 
-`x`/`y` are clamped to ±32768; `width`/`height` default to 1024×768 and are capped
-at 8192. Coordinates are in the same viewport you pass to `scene(width, height)` —
+`x`/`y` are clamped to ±32768; `width`/`height` default to the machine's screen as the
+actor last addressed it (the last `width`/`height` a pointer action stated), or before
+any to the shell's native screen (390×844 on iOS, 412×915 on Android, 1280×800 on a
+desktop), and are capped at 8192. That same last-addressed size, with its orientation,
+is what a screenshot (`shell:screenshot`, Recents' Screenshot) captures. Coordinates are in the same viewport you pass to `scene(width, height)` —
 hit testing runs against that scene, so the actor aims using only what it can see.
 `cursor` is one of `default`, `pointer`, `text`, `grab`, `grabbing`, `crosshair` (an
 image editor's canvas), `ns-resize`, `ew-resize`, `nesw-resize`, `nwse-resize`.
@@ -464,17 +468,37 @@ Behaviour worth knowing:
   terminal (whole rows), spreadsheets (three rows a notch, Shift for columns, Ctrl
   zooms), SQLite grids (rows), KiCad canvases (zoom about the pointer; Shift pans up and
   down, Ctrl left and right, as KiCad's defaults), image editors' canvas (scroll, Shift
-  across, Ctrl zooms about the pointer), FreeCAD's 3D view (zoom), terminals (lines).
+  across, Ctrl zooms about the pointer), FreeCAD's 3D view (zoom), terminals (lines),
+  and the video editors' timelines (`video:lanes`, `video:ruler`, `video:clip`: the
+  wheel scrolls through time, Shift or a sideways wheel too, and Ctrl/Cmd zooms about
+  the frame under the pointer; a view put somewhere by hand stays there until the
+  playhead moves or plays). A plain-text editor's rows are the `pane:text` area: the
+  view scrolls by whole rows independently of the caret, and an edit or caret move
+  brings the caret back into view; `editor-text:<first row>` always names the row
+  painted first. A video editor's media bin is the `pane:bin` area.
   The browser's page is the `pane:page` area; its offset is `browser.v1 scroll`'s `y`.
   Offsets are window state (`Window::scroll`) and survive snapshots.
 - **Scroll bars are real.** On desktops each overflowing pane paints a thumb sized to
   the real extent, on a drag surface `window:<id>:content:pane:<name>:<track>:<thumb>:<max>`:
   dragging the thumb scrolls, a press on the track jumps the thumb there, and a named
   click without a point pages forward. Phones paint no bar at rest, as they do not.
-- **Phones scroll under the finger.** A `down`/`up` that moves more than 12 px mostly
-  vertically, starts inside an application and is no shell gesture (not from the status
-  bar, the home indicator or the navigation bar) scrolls the pane it started on by the
-  distance moved, and taps nothing.
+- **Phones scroll under the finger.** A touch that moves more than 12 px mostly
+  vertically, starts inside the application in front and is no shell gesture (not from
+  the status bar, the home indicator or the navigation bar) takes the pane it started
+  on and taps nothing. Every `move` then scrolls it so the content stays under the
+  finger (an application's own wheel use, a grid or a scrollback, moves a row at a
+  time); pulled past an end, the content follows with iOS's rubber-band resistance
+  (`Scroll::stretch`) and springs back on release. On `up` the pane flings on: the
+  velocity is the last two finger samples over the world-clock time between them (a
+  60 Hz frame when the clock did not move), and the distance is the platform's
+  deceleration (iOS 0.998/ms; Android's OverScroller spline), stopping at an end. A
+  finger that rested 40 ms of world clock before lifting does not fling. A `down`/`up`
+  with no `move` between scrolls by exactly the distance moved.
+- **A phone's Back is the application's first.** Android's Back button (`shell:mobile-back`)
+  and iOS's navigation-bar chevron go to the application's parent screen before leaving
+  it: Mail's message to its mailbox, a mailbox (iOS) to Mailboxes, Gmail's drawer
+  closed, a conversation to the Messages list, a note or document to its list, a
+  contact to Contacts.
 - **Text focus is one answer.** A native application reports the text field that has
   the focus (`focus.keyboard.target`, role `textbox`); a phone paints its keyboard
   exactly when there is one, and on a phone `keyboard.v1 type` with none reaches

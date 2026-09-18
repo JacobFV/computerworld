@@ -29153,6 +29153,13 @@
       "carol",
       "admin"
     ],
-    "reference_version": 1
+    "reference_version": 1,
+    "device_presentations": {
+      "alice-mac": "desktop",
+      "bob-windows": "desktop",
+      "carol-ubuntu": "laptop",
+      "app-server": "server",
+      "git-server": "server"
+    }
   }
 }

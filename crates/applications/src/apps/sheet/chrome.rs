@@ -674,6 +674,24 @@ fn start_screen(book: &Book, p: &mut Painter, env: &AppEnv<'_>, flavor: Flavor) 
     let x = left as i32 + 24;
     let content_w = w.saturating_sub(left + 48);
     let mut y = 20;
+    // Without a sidebar (a phone, a narrow window) the way back to the open workbook is
+    // a back control over the list, so the list is never a dead end.
+    if left == 0 && !book.name.is_empty() {
+        let r = Rect::new(x - 8, y - 6, content_w.min(220), 30);
+        p.button(r, Color::TRANSPARENT, 6, "sheet:closelist", &book.name);
+        p.symbol("chevron-left", r.x + 2, r.y + 6, 18, accent);
+        p.label(
+            r.x + 24,
+            r.y + 7,
+            r.width.saturating_sub(30),
+            &book.name,
+            13,
+            accent,
+            false,
+            Align::Left,
+        );
+        y += 34;
+    }
     let title = match flavor {
         Flavor::Excel => "Open",
         Flavor::Numbers => "Choose a Template",
@@ -740,10 +758,17 @@ fn start_screen(book: &Book, p: &mut Painter, env: &AppEnv<'_>, flavor: Flavor) 
             MUTED,
         );
     }
+    // The folder's files scroll: a folder with more spreadsheets than the screen shows
+    // is not a folder with fewer.
+    let pane = p.pane(
+        "files",
+        Rect::new(x, y, content_w, h.saturating_sub(y as u32)),
+    );
+    let top = pane.top();
     for (i, name) in files.iter().enumerate() {
-        let r = Rect::new(x, y + i as i32 * 36, content_w, 34);
-        if r.y as u32 + 34 > h {
-            break;
+        let r = Rect::new(x, top + i as i32 * 36, content_w, 34);
+        if !pane.shows(r.y, r.height) {
+            continue;
         }
         let (target, label) = match name.strip_suffix('/') {
             Some(dir) => (format!("sheet:folder:{dir}"), dir.to_string()),
@@ -764,6 +789,7 @@ fn start_screen(book: &Book, p: &mut Painter, env: &AppEnv<'_>, flavor: Flavor) 
         p.left(r.x + 34, r.y + 8, r.width - 40, &label, 13, INK);
         p.hline(r.x, r.y + 34, r.width, LINE);
     }
+    p.end_pane(pane, Some(files.len() as u32 * 36));
 }
 
 /// The selection's statistics, as status bars show them.

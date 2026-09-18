@@ -411,7 +411,10 @@ fn phone_photo_editors_bake_their_look_into_the_saved_file() {
     s.control(photos, "photos:open:screen-0.png");
     s.control(photos, "photos:begin-edit:ios");
     let editor = s.studio(photos);
-    assert_eq!(editor.doc.as_ref().map(|d| d.width()), Some(1280));
+    // The screenshot is of the phone's own screen, so the picture is that size.
+    let doc = editor.doc.as_ref().expect("the screenshot opened");
+    let (w, h) = (doc.width(), doc.height());
+    assert_eq!((w, h), (390, 844), "an iPhone's screen, portrait");
     s.control(photos, "photos:edit:focus:saturation");
     s.control(photos, "photos:edit:set:saturation:-100");
     let path = s.studio(photos).path;
@@ -422,7 +425,7 @@ fn phone_photo_editors_bake_their_look_into_the_saved_file() {
     };
     assert!(state.editing.is_none(), "Done leaves edit mode");
     let png = decode(&s.file(&path));
-    for (x, y) in [(640, 400), (100, 700), (1200, 20)] {
+    for (x, y) in [(w / 2, h / 2), (w / 4, h * 3 / 4), (w - 20, 20)] {
         let p = px(&png, x, y);
         assert_eq!(
             (p[0], p[1]),
@@ -452,7 +455,8 @@ fn phone_photo_editors_bake_their_look_into_the_saved_file() {
         "the original is untouched"
     );
     let copy = decode(&g.file("Pictures/screen-0-edited.png"));
-    let p = px(&copy, 640, 400);
+    assert_eq!((copy.0, copy.1), (412, 915), "a Pixel's screen, portrait");
+    let p = px(&copy, copy.0 / 2, copy.1 / 2);
     assert_eq!((p[0], p[1]), (p[1], p[2]), "Onyx is monochrome: {p:?}");
     let state = match g.state(photos) {
         AppState::Native(NativeApp::Photos(p)) => p,

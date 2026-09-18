@@ -1698,7 +1698,40 @@ impl DesktopState {
         }
         Ok(())
     }
+    /// The focused plain-text editor's caret and text length, to tell afterwards
+    /// whether an edit or a caret move happened.
+    fn editor_mark(&self) -> Option<(u64, usize, usize)> {
+        let id = self.focused?;
+        match &self.windows.get(&id)?.state {
+            AppState::Editor { text, cursor, .. } => Some((id, *cursor, text.len())),
+            _ => None,
+        }
+    }
+    /// After an edit or a caret move in a plain-text editor, the view is brought back
+    /// to the caret (as little as it takes), wherever it had been scrolled.
+    fn reveal_editor_caret(&mut self, before: Option<(u64, usize, usize)>) {
+        let Some((id, cursor, len)) = before else {
+            return;
+        };
+        let moved = match self.windows.get(&id).map(|w| &w.state) {
+            Some(AppState::Editor {
+                text, cursor: c, ..
+            }) => (*c, text.len()) != (cursor, len),
+            _ => false,
+        };
+        if moved {
+            if let Some(w) = self.windows.get_mut(&id) {
+                w.scroll.reveal = Some(desktop_scene::EDITOR_PANE.into());
+            }
+        }
+    }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
+        let mark = self.editor_mark();
+        let result = self.text_inner(text);
+        self.reveal_editor_caret(mark);
+        result
+    }
+    fn text_inner(&mut self, text: &str) -> Result<(), String> {
         let window = self
             .focused
             .and_then(|id| self.windows.get_mut(&id))
@@ -1741,6 +1774,12 @@ impl DesktopState {
         Ok(())
     }
     pub fn key(&mut self, key: &str) -> Result<Vec<AppEffect>, String> {
+        let mark = self.editor_mark();
+        let result = self.key_inner(key);
+        self.reveal_editor_caret(mark);
+        result
+    }
+    fn key_inner(&mut self, key: &str) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
         let window = self.windows.get_mut(&id).ok_or("window not found")?;
         if let AppState::Editor { text, cursor, .. } = &window.state {

@@ -5,7 +5,15 @@ const pretty = value => JSON.stringify(value, (_, v) => typeof v === 'bigint' ? 
 let world, saved, machine, scrollY = 0, environments = new Map(), definition = initialDefinition;
 let presentations = {...initialDefinition.metadata?.device_presentations}, savedPresentation, savedSessions;
 const seed = 2026;
-const kind = id => presentations[id] ?? (id.includes('server') ? 'server' : 'desktop');
+// What a device is: as the world or the device states it, else what the engine assumes
+// (a phone OS is a phone, a computer with no graphical profile is a headless server,
+// anything else a desktop computer).
+const kind = id => {
+  const computer = definition.computers.find(c => c.id === id);
+  const family = definition.profiles.find(p => p.id === computer?.profile)?.family;
+  if (family === 'ios' || family === 'android') return 'phone';
+  return presentations[id] ?? computer?.presentation ?? (computer?.profile?.startsWith('virtual-') ? 'desktop' : 'server');
+};
 const dimensions = id => kind(id)==='phone' ? [390,780] : [960,640];
 const config = id => ({actor: definition.computers.find(c => c.id === id).user,machines:[id],actions:['terminal.v1','browser.v1','keyboard.v1','pointer.v1','application.v1','filesystem.v1','http.v1'],observations:['terminal.v1','semantic.v1','browser.v1'],action_budget:1000000});
 const env = () => environments.get(machine);
@@ -123,7 +131,7 @@ function addDevice({id,profile,user,type='desktop',connectTo='app-server'}) {
   let octet=20;const used=new Set(definition.network.nodes.map(n=>n.address));while(used.has(`10.0.2.${octet}`)&&octet<255)octet++;
   if(octet===255)throw Error('No address available in the demo subnet.');
   const address=`10.0.2.${octet}`;
-  const computer={id,profile,address,user,initial_files:{'notes.txt':`Welcome ${user}.\nInternal site: http://intranet.internal/\n`},installed_apps:['terminal','browser','editor','files','desktop',...(profile.startsWith('virtual-')?['mail','calendar','chat','docs']:[])],packages:['coreutils','git','curl']};
+  const computer={id,profile,address,user,presentation:type,initial_files:{'notes.txt':`Welcome ${user}.\nInternal site: http://intranet.internal/\n`},installed_apps:['terminal','browser','editor','files','desktop',...(profile.startsWith('virtual-')?['mail','calendar','chat','docs']:[])],packages:['coreutils','git','curl']};
   const node={id,address,zone:'local'};
   const links=connectTo?[{from:connectTo,to:id,bidirectional:true,latency_us:10,loss_per_million:0}]:[];
   world.addComputer(computer,node,links);presentations[id]=type;definition=world.definition();environments.set(id,world.environment(config(id)));

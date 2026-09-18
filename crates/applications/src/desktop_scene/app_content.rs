@@ -12,6 +12,8 @@ const INK: Color = Color::rgb(29, 29, 31);
 const MUTED: Color = Color::rgb(112, 114, 120);
 const FAINT: Color = Color::rgb(160, 162, 168);
 const LINE: Color = Color(0, 0, 0, 26);
+/// The pane a plain-text editor's rows scroll in.
+pub const EDITOR_PANE: &str = "text";
 
 struct Look {
     accent: Color,
@@ -1792,7 +1794,30 @@ fn editor(
     let rows = crate::editor_rows(text, columns);
     let (visual, visual_col) = crate::editor_caret_cell(text, end, columns);
     let capacity = (h.saturating_sub(toolbar + status + ROW_H) / ROW_H).max(1) as usize;
-    let first = visual.saturating_sub(capacity.saturating_sub(1));
+    // The view scrolls on its own (the wheel, the scroll bar, a finger), independent
+    // of the caret, and always by whole rows so the click grid stays exact. An edit or
+    // a caret move brings the caret back into view, moving the view as little as it
+    // takes; before the view is first scrolled, it follows the caret the same way.
+    let last_first = rows.len().saturating_sub(capacity);
+    let stored = p.scroll.offsets.get(EDITOR_PANE).copied();
+    let mut first = stored.map_or(0, |o| o.max(0) as usize / ROW_H as usize);
+    first = first.min(last_first);
+    let follow = stored.is_none() || p.scroll.reveals(EDITOR_PANE);
+    if follow {
+        if visual < first {
+            first = visual;
+        } else if visual >= first + capacity {
+            first = visual + 1 - capacity;
+        }
+    }
+    // The offset published is the one asked for when it is the view's (so a trackpad's
+    // small turns accumulate), or the caret's row when the view followed the caret.
+    let offset = match stored {
+        Some(o) if !follow || o.max(0) as usize / ROW_H as usize == first => {
+            o.clamp(0, (last_first as u32 * ROW_H) as i32)
+        }
+        _ => (first as u32 * ROW_H) as i32,
+    };
     let origin = (left as i32, toolbar as i32 + 10);
     // The hit region starts at the first line's top-left corner, so the offsets
     // `click_at` reports are already relative to the text grid.
@@ -1812,6 +1837,13 @@ fn editor(
         },
         "Document text",
     );
+    // The rows are a pane: clipped to whole rows, published with the document's real
+    // extent, and given the platform's scroll bar when the document does not fit.
+    let mut pane = p.pane(
+        EDITOR_PANE,
+        Rect::new(0, origin.1, w, capacity as u32 * ROW_H),
+    );
+    pane.offset = offset;
     // Logical line of the first painted row; a gutter numbers each line once, on the
     // row it starts on, and leaves its soft-wrapped continuations blank.
     let mut line = text[..rows.get(first).map_or(0, |r| r.0)]
@@ -1842,17 +1874,21 @@ fn editor(
             INK,
         );
     }
-    // Caret where the model says it is, on the same grid the click arrives on.
-    p.box_(
-        Rect::new(
-            origin.0 + visual_col as i32 * CELL_W,
-            origin.1 + ((visual - first) as u32 * ROW_H) as i32,
-            if mobile { 2 } else { 1 },
-            ROW_H,
-        ),
-        if mobile { Color::rgb(204, 149, 0) } else { INK },
-        0,
-    );
+    // Caret where the model says it is, on the same grid the click arrives on; scrolled
+    // out of view, it is not painted at all.
+    if (first..first + capacity).contains(&visual) {
+        p.box_(
+            Rect::new(
+                origin.0 + visual_col as i32 * CELL_W,
+                origin.1 + ((visual - first) as u32 * ROW_H) as i32,
+                if mobile { 2 } else { 1 },
+                ROW_H,
+            ),
+            if mobile { Color::rgb(204, 149, 0) } else { INK },
+            0,
+        );
+    }
+    p.end_pane(pane, Some(rows.len().max(1) as u32 * ROW_H));
     let sy = h.saturating_sub(status) as i32;
     let position = format!("Ln {}, Col {}", row + 1, col + 1);
     match t {
