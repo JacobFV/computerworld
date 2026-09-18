@@ -1,5 +1,16 @@
-//! Embedded resources: deterministic PNG decode, no host access.
+//! Embedded resources: deterministic image decode, no host access.
+//!
+//! Icons and symbol masks are PNG. Wallpapers — the only photographic assets —
+//! are baseline JPEG, which stores them at about a fifth of the PNG size that
+//! `gzip` could not compress further. Both decoders are integer-only on every
+//! target: `png` always is, and `jpeg-decoder` is pinned to its
+//! `platform_independent` feature, which compiles out the SSSE3 / NEON /
+//! `simd128` IDCT and colour-convert paths that would otherwise make an x86
+//! host disagree with Wasm. `wallpapers_decode_to_pinned_pixels` below is the
+//! tripwire: it hashes the decoded pixels, so any decoder or target that
+//! diverges fails loudly rather than silently shifting the rendered frame.
 use super::Frame;
+pub use crate::symbols::SYMBOLS;
 use std::sync::{Arc, OnceLock};
 pub const ASSET_IDS: &[&str] = &[
     "wallpaper/macos",
@@ -21,6 +32,13 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/macos/store",
     "icon/macos/launcher",
     "icon/macos/trash",
+    "icon/macos/notes",
+    "icon/macos/contacts",
+    "icon/macos/clock",
+    "icon/macos/calculator",
+    "icon/macos/music",
+    "icon/macos/maps",
+    "icon/macos/weather",
     "icon/windows/files",
     "icon/windows/browser",
     "icon/windows/terminal",
@@ -35,6 +53,13 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/windows/store",
     "icon/windows/launcher",
     "icon/windows/trash",
+    "icon/windows/notes",
+    "icon/windows/contacts",
+    "icon/windows/clock",
+    "icon/windows/calculator",
+    "icon/windows/music",
+    "icon/windows/maps",
+    "icon/windows/weather",
     "icon/ubuntu/files",
     "icon/ubuntu/browser",
     "icon/ubuntu/terminal",
@@ -49,6 +74,13 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/ubuntu/store",
     "icon/ubuntu/launcher",
     "icon/ubuntu/trash",
+    "icon/ubuntu/notes",
+    "icon/ubuntu/contacts",
+    "icon/ubuntu/clock",
+    "icon/ubuntu/calculator",
+    "icon/ubuntu/music",
+    "icon/ubuntu/maps",
+    "icon/ubuntu/weather",
     "icon/ios/files",
     "icon/ios/browser",
     "icon/ios/terminal",
@@ -63,6 +95,13 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/ios/store",
     "icon/ios/launcher",
     "icon/ios/trash",
+    "icon/ios/notes",
+    "icon/ios/contacts",
+    "icon/ios/clock",
+    "icon/ios/calculator",
+    "icon/ios/music",
+    "icon/ios/maps",
+    "icon/ios/weather",
     "icon/android/files",
     "icon/android/browser",
     "icon/android/terminal",
@@ -77,10 +116,17 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/android/store",
     "icon/android/launcher",
     "icon/android/trash",
+    "icon/android/notes",
+    "icon/android/contacts",
+    "icon/android/clock",
+    "icon/android/calculator",
+    "icon/android/music",
+    "icon/android/maps",
+    "icon/android/weather",
 ];
 fn bytes(id: &str) -> Option<&'static [u8]> {
     Some(match id {
-        "wallpaper/macos" => include_bytes!("../assets/wallpapers/macos.png"),
+        "wallpaper/macos" => include_bytes!("../assets/wallpapers/macos.jpg"),
         "icon/macos/files" | "icon/files" => include_bytes!("../assets/icons/macos-files.png"),
         "icon/macos/browser" | "icon/browser" => {
             include_bytes!("../assets/icons/macos-browser.png")
@@ -109,7 +155,24 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
             include_bytes!("../assets/icons/macos-launcher.png")
         }
         "icon/macos/trash" | "icon/trash" => include_bytes!("../assets/icons/macos-trash.png"),
-        "wallpaper/windows" => include_bytes!("../assets/wallpapers/windows.png"),
+        "icon/macos/notes" | "icon/macos/notepad" | "icon/notes" => {
+            include_bytes!("../assets/icons/macos-notes.png")
+        }
+        "icon/macos/contacts" | "icon/macos/addressbook" | "icon/contacts" => {
+            include_bytes!("../assets/icons/macos-contacts.png")
+        }
+        "icon/macos/clock" | "icon/macos/clocks" | "icon/clock" => {
+            include_bytes!("../assets/icons/macos-clock.png")
+        }
+        "icon/macos/calculator" | "icon/macos/calc" | "icon/calculator" => {
+            include_bytes!("../assets/icons/macos-calculator.png")
+        }
+        "icon/macos/music" | "icon/music" => include_bytes!("../assets/icons/macos-music.png"),
+        "icon/macos/maps" | "icon/maps" => include_bytes!("../assets/icons/macos-maps.png"),
+        "icon/macos/weather" | "icon/weather" => {
+            include_bytes!("../assets/icons/macos-weather.png")
+        }
+        "wallpaper/windows" => include_bytes!("../assets/wallpapers/windows.jpg"),
         "icon/windows/files" => include_bytes!("../assets/icons/windows-files.png"),
         "icon/windows/browser" => include_bytes!("../assets/icons/windows-browser.png"),
         "icon/windows/terminal" => include_bytes!("../assets/icons/windows-terminal.png"),
@@ -128,7 +191,22 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/windows/store" => include_bytes!("../assets/icons/windows-store.png"),
         "icon/windows/launcher" => include_bytes!("../assets/icons/windows-launcher.png"),
         "icon/windows/trash" => include_bytes!("../assets/icons/windows-trash.png"),
-        "wallpaper/ubuntu" => include_bytes!("../assets/wallpapers/ubuntu.png"),
+        "icon/windows/notes" | "icon/windows/notepad" => {
+            include_bytes!("../assets/icons/windows-notes.png")
+        }
+        "icon/windows/contacts" | "icon/windows/addressbook" => {
+            include_bytes!("../assets/icons/windows-contacts.png")
+        }
+        "icon/windows/clock" | "icon/windows/clocks" => {
+            include_bytes!("../assets/icons/windows-clock.png")
+        }
+        "icon/windows/calculator" | "icon/windows/calc" => {
+            include_bytes!("../assets/icons/windows-calculator.png")
+        }
+        "icon/windows/music" => include_bytes!("../assets/icons/windows-music.png"),
+        "icon/windows/maps" => include_bytes!("../assets/icons/windows-maps.png"),
+        "icon/windows/weather" => include_bytes!("../assets/icons/windows-weather.png"),
+        "wallpaper/ubuntu" => include_bytes!("../assets/wallpapers/ubuntu.jpg"),
         "icon/ubuntu/files" => include_bytes!("../assets/icons/ubuntu-files.png"),
         "icon/ubuntu/browser" => include_bytes!("../assets/icons/ubuntu-browser.png"),
         "icon/ubuntu/terminal" => include_bytes!("../assets/icons/ubuntu-terminal.png"),
@@ -147,7 +225,22 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/ubuntu/store" => include_bytes!("../assets/icons/ubuntu-store.png"),
         "icon/ubuntu/launcher" => include_bytes!("../assets/icons/ubuntu-launcher.png"),
         "icon/ubuntu/trash" => include_bytes!("../assets/icons/ubuntu-trash.png"),
-        "wallpaper/ios" => include_bytes!("../assets/wallpapers/ios.png"),
+        "icon/ubuntu/notes" | "icon/ubuntu/notepad" => {
+            include_bytes!("../assets/icons/ubuntu-notes.png")
+        }
+        "icon/ubuntu/contacts" | "icon/ubuntu/addressbook" => {
+            include_bytes!("../assets/icons/ubuntu-contacts.png")
+        }
+        "icon/ubuntu/clock" | "icon/ubuntu/clocks" => {
+            include_bytes!("../assets/icons/ubuntu-clock.png")
+        }
+        "icon/ubuntu/calculator" | "icon/ubuntu/calc" => {
+            include_bytes!("../assets/icons/ubuntu-calculator.png")
+        }
+        "icon/ubuntu/music" => include_bytes!("../assets/icons/ubuntu-music.png"),
+        "icon/ubuntu/maps" => include_bytes!("../assets/icons/ubuntu-maps.png"),
+        "icon/ubuntu/weather" => include_bytes!("../assets/icons/ubuntu-weather.png"),
+        "wallpaper/ios" => include_bytes!("../assets/wallpapers/ios.jpg"),
         "icon/ios/files" => include_bytes!("../assets/icons/ios-files.png"),
         "icon/ios/browser" => include_bytes!("../assets/icons/ios-browser.png"),
         "icon/ios/terminal" => include_bytes!("../assets/icons/ios-terminal.png"),
@@ -162,7 +255,22 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/ios/store" => include_bytes!("../assets/icons/ios-store.png"),
         "icon/ios/launcher" => include_bytes!("../assets/icons/ios-launcher.png"),
         "icon/ios/trash" => include_bytes!("../assets/icons/ios-trash.png"),
-        "wallpaper/android" => include_bytes!("../assets/wallpapers/android.png"),
+        "icon/ios/notes" | "icon/ios/notepad" => {
+            include_bytes!("../assets/icons/ios-notes.png")
+        }
+        "icon/ios/contacts" | "icon/ios/addressbook" => {
+            include_bytes!("../assets/icons/ios-contacts.png")
+        }
+        "icon/ios/clock" | "icon/ios/clocks" => {
+            include_bytes!("../assets/icons/ios-clock.png")
+        }
+        "icon/ios/calculator" | "icon/ios/calc" => {
+            include_bytes!("../assets/icons/ios-calculator.png")
+        }
+        "icon/ios/music" => include_bytes!("../assets/icons/ios-music.png"),
+        "icon/ios/maps" => include_bytes!("../assets/icons/ios-maps.png"),
+        "icon/ios/weather" => include_bytes!("../assets/icons/ios-weather.png"),
+        "wallpaper/android" => include_bytes!("../assets/wallpapers/android.jpg"),
         "icon/android/files" => include_bytes!("../assets/icons/android-files.png"),
         "icon/android/browser" => include_bytes!("../assets/icons/android-browser.png"),
         "icon/android/terminal" => include_bytes!("../assets/icons/android-terminal.png"),
@@ -181,7 +289,27 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/android/store" => include_bytes!("../assets/icons/android-store.png"),
         "icon/android/launcher" => include_bytes!("../assets/icons/android-launcher.png"),
         "icon/android/trash" => include_bytes!("../assets/icons/android-trash.png"),
-        _ => return None,
+        "icon/android/notes" | "icon/android/notepad" => {
+            include_bytes!("../assets/icons/android-notes.png")
+        }
+        "icon/android/contacts" | "icon/android/addressbook" => {
+            include_bytes!("../assets/icons/android-contacts.png")
+        }
+        "icon/android/clock" | "icon/android/clocks" => {
+            include_bytes!("../assets/icons/android-clock.png")
+        }
+        "icon/android/calculator" | "icon/android/calc" => {
+            include_bytes!("../assets/icons/android-calculator.png")
+        }
+        "icon/android/music" => include_bytes!("../assets/icons/android-music.png"),
+        "icon/android/maps" => include_bytes!("../assets/icons/android-maps.png"),
+        "icon/android/weather" => include_bytes!("../assets/icons/android-weather.png"),
+        _ => {
+            return SYMBOLS
+                .iter()
+                .find(|(name, _)| *name == id)
+                .map(|(_, b)| *b)
+        }
     })
 }
 pub fn decode(id: &str) -> Option<Arc<Frame>> {
@@ -192,12 +320,18 @@ pub fn decode(id: &str) -> Option<Arc<Frame>> {
     let canonical = if parts.first() == Some(&"icon") {
         let (platform, name) = match parts.as_slice() {
             [_, name] => ("macos", *name),
+            // Platform-neutral content; shells substitute their own artwork.
+            [_, "common", name] => ("macos", *name),
             [_, platform, name] => (*platform, *name),
             _ => return None,
         };
         let name = match name {
             "editor" => "docs",
             "messages" => "chat",
+            "notepad" => "notes",
+            "addressbook" => "contacts",
+            "clocks" => "clock",
+            "calc" => "calculator",
             other => other,
         };
         format!("icon/{platform}/{name}")
@@ -206,18 +340,64 @@ pub fn decode(id: &str) -> Option<Arc<Frame>> {
     };
     let index = ASSET_IDS
         .iter()
-        .position(|candidate| *candidate == canonical)?;
-    let cache = CACHE.get_or_init(|| ASSET_IDS.iter().map(|_| OnceLock::new()).collect());
+        .position(|candidate| *candidate == canonical)
+        .or_else(|| {
+            SYMBOLS
+                .iter()
+                .position(|(name, _)| *name == canonical)
+                .map(|i| ASSET_IDS.len() + i)
+        })?;
+    let cache = CACHE.get_or_init(|| {
+        (0..ASSET_IDS.len() + SYMBOLS.len())
+            .map(|_| OnceLock::new())
+            .collect()
+    });
     Some(
         cache[index]
             .get_or_init(|| {
-                Arc::new(decode_png(&canonical).expect("embedded PNG validated by asset test"))
+                Arc::new(decode_bytes(&canonical).expect("embedded image validated by asset test"))
             })
             .clone(),
     )
 }
-fn decode_png(id: &str) -> Option<Frame> {
+/// Dispatch on the container's magic number rather than on the identifier, so
+/// re-encoding an asset never needs a matching edit here.
+fn decode_bytes(id: &str) -> Option<Frame> {
     let bytes = bytes(id)?;
+    match bytes {
+        [0xFF, 0xD8, 0xFF, ..] => decode_jpeg(bytes),
+        _ => decode_png(bytes),
+    }
+}
+/// Baseline JPEG, integer-only. The wallpapers are encoded 4:4:4, so
+/// `jpeg-decoder`'s chroma upsampler — the one part of that crate that uses
+/// floating point — is never reached; `build-wallpapers.py` explains why.
+fn decode_jpeg(bytes: &[u8]) -> Option<Frame> {
+    let mut decoder = jpeg_decoder::Decoder::new(std::io::Cursor::new(bytes));
+    let pixels = decoder.decode().ok()?;
+    let info = decoder.info()?;
+    let (width, height) = (u32::from(info.width), u32::from(info.height));
+    let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
+    match info.pixel_format {
+        jpeg_decoder::PixelFormat::RGB24 => {
+            for p in pixels.as_chunks::<3>().0 {
+                rgba.extend_from_slice(&[p[0], p[1], p[2], 255]);
+            }
+        }
+        jpeg_decoder::PixelFormat::L8 => {
+            for p in &pixels {
+                rgba.extend_from_slice(&[*p, *p, *p, 255]);
+            }
+        }
+        _ => return None,
+    }
+    Some(Frame {
+        width,
+        height,
+        rgba,
+    })
+}
+fn decode_png(bytes: &[u8]) -> Option<Frame> {
     let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
     let mut reader = decoder.read_info().ok()?;
@@ -249,4 +429,122 @@ fn decode_png(id: &str) -> Option<Frame> {
         height: info.height,
         rgba,
     })
+}
+
+#[cfg(test)]
+mod icon_table_tests {
+    use super::*;
+
+    /// Original vector artwork rasterizes to 128 px; Yaru PNGs ship at 256 px.
+    fn expected_side(id: &str) -> u32 {
+        if id.starts_with("icon/ubuntu/") {
+            256
+        } else {
+            128
+        }
+    }
+
+    #[test]
+    fn every_icon_decodes_at_its_expected_size_and_is_not_blank() {
+        for id in ASSET_IDS.iter().filter(|id| id.starts_with("icon/")) {
+            let frame = decode(id).unwrap_or_else(|| panic!("{id} resolves to no bytes"));
+            let side = expected_side(id);
+            assert_eq!((frame.width, frame.height), (side, side), "{id}");
+            assert_eq!(frame.rgba.len(), (side * side * 4) as usize, "{id}");
+            let opaque = frame.rgba.chunks_exact(4).filter(|px| px[3] >= 128).count();
+            // An id that decodes but draws nothing is the failure this catches;
+            // the thinnest artwork bundled (a Windows silhouette) covers a tenth.
+            assert!(
+                opaque * 20 >= frame.rgba.len() / 4,
+                "{id} is {opaque} opaque pixels of {}",
+                frame.rgba.len() / 4
+            );
+        }
+    }
+
+    #[test]
+    fn icon_aliases_share_one_decoded_resource() {
+        for platform in ["macos", "windows", "ubuntu", "ios", "android"] {
+            for (alias, canonical) in [
+                ("editor", "docs"),
+                ("messages", "chat"),
+                ("notepad", "notes"),
+                ("addressbook", "contacts"),
+                ("clocks", "clock"),
+                ("calc", "calculator"),
+            ] {
+                let aliased = decode(&format!("icon/{platform}/{alias}"))
+                    .unwrap_or_else(|| panic!("icon/{platform}/{alias}"));
+                let named = decode(&format!("icon/{platform}/{canonical}")).unwrap();
+                assert!(
+                    Arc::ptr_eq(&aliased, &named),
+                    "icon/{platform}/{alias} is decoded twice"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_advertised_id_has_embedded_bytes() {
+        for id in ASSET_IDS {
+            assert!(bytes(id).is_some(), "{id} has no embedded bytes");
+        }
+        for (name, _) in SYMBOLS {
+            assert!(decode(name).is_some(), "{name} does not resolve");
+        }
+    }
+
+    /// The wallpapers are the only assets that go through the JPEG decoder, and
+    /// that decoder is the only place in the renderer where a target could
+    /// plausibly disagree with another: `jpeg-decoder` ships SSSE3, NEON and
+    /// `simd128` IDCT kernels that are *not* bit-identical to its scalar one.
+    /// They are compiled out by the `platform_independent` feature, and these
+    /// digests are what proves it — on x86, on aarch64 and under Wasm alike.
+    /// A mismatch here means a rendered desktop has silently moved.
+    #[test]
+    fn wallpapers_decode_to_pinned_pixels() {
+        use sha2::{Digest, Sha256};
+        for (id, side, digest) in [
+            (
+                "wallpaper/macos",
+                (1586u32, 992u32),
+                "0c4ee56e008ffba63f90c471b3179c26fffda660e93e336133a45e3499bb71ba",
+            ),
+            (
+                "wallpaper/windows",
+                (1586, 992),
+                "4aeea3cfd20992b1c54a824c044d30d81c5ed274df3fd1e709131a741623c2ef",
+            ),
+            (
+                "wallpaper/ubuntu",
+                (1600, 900),
+                "a41c7d7f6ebaca2a1e347322ea15529acfd06d8fc32505c5a26eefcc765c3172",
+            ),
+            (
+                "wallpaper/ios",
+                (853, 1844),
+                "ce600fdf77039d52b04338b0f1837e9c73a2394f4451cf30ce2da2d0e70e1bf2",
+            ),
+            (
+                "wallpaper/android",
+                (853, 1844),
+                "b51aac4e98c71da36321e6a0567b33f2f1046b06ed23b2a1b239ad693d661ada",
+            ),
+        ] {
+            let frame = decode(id).unwrap_or_else(|| panic!("{id} resolves to no bytes"));
+            assert_eq!((frame.width, frame.height), side, "{id} dimensions");
+            assert_eq!(
+                frame.rgba.len(),
+                (side.0 * side.1 * 4) as usize,
+                "{id} buffer size"
+            );
+            // Wallpapers are opaque: JPEG carries no alpha and the renderer
+            // composites them as a fully covering background.
+            assert!(
+                frame.rgba.chunks_exact(4).all(|px| px[3] == 255),
+                "{id} decoded a non-opaque pixel"
+            );
+            assert_eq!(format!("{:x}", Sha256::digest(&frame.rgba)), digest, "{id}");
+        }
+    }
 }

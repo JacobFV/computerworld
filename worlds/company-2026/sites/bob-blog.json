@@ -1,0 +1,211 @@
+{
+  "id": "bob-blog",
+  "kind": "press",
+  "node": "bob-blog",
+  "domains": [
+    "bmartinez.net",
+    "www.bmartinez.net"
+  ],
+  "port": 80,
+  "initial_state": {
+    "layout": "blog",
+    "brand": "Bob Martinez",
+    "tagline": "Senior engineer at Northstar. Tests, CI, and the bugs that only happen on one machine.",
+    "theme": {
+      "accent": "#b45309",
+      "background": "#fffdf8",
+      "surface": "#f4ece0",
+      "ink": "#26201a",
+      "muted": "#6d6055",
+      "content_width": 740
+    },
+    "sections": [
+      {
+        "id": "debugging",
+        "title": "Debugging"
+      },
+      {
+        "id": "ci",
+        "title": "CI"
+      }
+    ],
+    "articles": {
+      "hash-order-bit-me": {
+        "id": "hash-order-bit-me",
+        "section": "debugging",
+        "title": "Hash order bit me",
+        "dek": "A test that failed on one Windows runner, one fifth of the time, for four months.",
+        "byline": "Bob Martinez",
+        "date": "Feb 12, 2026",
+        "tick": 6,
+        "read_minutes": 7,
+        "body": [
+          "The test is called bfs_finds_shortest_path. It builds a small graph, runs a breadth-first search, and asserts on the path it gets back. It passed on every machine any of us owned. It failed on one Windows CI runner about one run in five.",
+          "I did what everyone does. I retried it. Then I quarantined it. Then I spent a sprint convinced the runner had a bad disk, because that is the kind of explanation that lets you stop thinking.",
+          "The actual cause: when the BFS frontier has two nodes at the same depth, my implementation took whichever came first out of a hash map. Iteration order for that map is unspecified, and the Windows target happened to produce a different order than the one I had developed against. Both paths were shortest. Only one was the one in the assertion.",
+          "This is the part I want to underline: nothing was broken. The algorithm was correct, the test was wrong, and the test had been wrong since the day I wrote it. The runner was the only machine honest enough to say so.",
+          "Priya Raman wrote the explanation that finally made it click for me, at http://stackoverflow.com/questions/4411 , and the issue with the full timeline is at http://github.com/northstar/atlas/issues/14 . The fix was nine lines: sort the frontier by node id before pushing, and assert on the path set rather than the path.",
+          "What I changed afterwards is more useful than the fix. Our test builds now use a deliberately hostile hasher, so iteration order changes every run. Two more tests failed the first day. Both of them were also wrong."
+        ],
+        "links": [
+          {
+            "label": "Priya's answer on Stack Overflow",
+            "url": "http://stackoverflow.com/questions/4411"
+          },
+          {
+            "label": "atlas issue 14",
+            "url": "http://github.com/northstar/atlas/issues/14"
+          },
+          {
+            "label": "Ars Technica on hash-order nondeterminism",
+            "url": "http://arstechnica.com/2026/hash-order-nondeterminism"
+          }
+        ],
+        "tags": [
+          "testing",
+          "rust",
+          "determinism"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Glad it helped. The hostile-hasher follow-up is the better half of this post.",
+            "tick": 6,
+            "likes": 24
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "\"The runner was the only machine honest enough to say so\" - putting this in the onboarding doc.",
+            "tick": 7,
+            "likes": 19
+          }
+        ]
+      },
+      "ci-runners-i-have-known": {
+        "id": "ci-runners-i-have-known",
+        "section": "ci",
+        "title": "CI runners I have known and blamed",
+        "dek": "A short history of my own wrong hypotheses, in chronological order.",
+        "byline": "Bob Martinez",
+        "date": "Dec 4, 2025",
+        "tick": 4,
+        "read_minutes": 5,
+        "body": [
+          "Every flaky test I have ever met has gone through the same four stages of blame: the runner, the network, the dependency, and finally the code. The first three are never the cause. I say this as someone who has reached stage four an average of eleven days late.",
+          "The reason blaming the runner is so attractive is that it is occasionally true. Disks do fill. Clocks do skew. But the base rate is terrible, and treating it as the default hypothesis costs you the one thing an intermittent failure gives you for free: the fact that it is intermittent, which is information about your code.",
+          "The rule I now use: I am not allowed to blame infrastructure until I can state what about the infrastructure differs, in one sentence, without the word 'something'."
+        ],
+        "links": [],
+        "tags": [
+          "ci",
+          "testing"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Adding the one-sentence rule to the incident template.",
+            "tick": 5,
+            "likes": 11
+          }
+        ]
+      },
+      "testing-without-a-clock": {
+        "id": "testing-without-a-clock",
+        "section": "ci",
+        "title": "Testing without a clock",
+        "dek": "Every sleep in a test is a bet that the machine is not busy.",
+        "byline": "Bob Martinez",
+        "date": "Jun 21, 2025",
+        "tick": 2,
+        "read_minutes": 6,
+        "body": [
+          "A sleep in a test is a wager. You are betting that the thing you are waiting for takes less than the time you slept, on every machine that will ever run this test, forever. You will lose this bet on the build machine, at night, in front of nobody.",
+          "The replacement is not a longer sleep. It is an explicit event: the code under test exposes a point you can wait on, and the test waits on it. If exposing that point feels invasive, that is worth noticing - it usually means the code has no way of telling anyone what it is doing, which is also a production problem.",
+          "Under a deterministic runtime this gets easier in a way that feels like cheating. Time is a tick you control, so 'wait five seconds' is an instruction to the scheduler rather than a request to the universe. The test finishes immediately and fails the same way every time."
+        ],
+        "links": [
+          {
+            "label": "Alice on deterministic time",
+            "url": "http://alicechen.dev/posts/deterministic-time"
+          }
+        ],
+        "tags": [
+          "testing",
+          "determinism",
+          "ci"
+        ],
+        "comments": []
+      }
+    },
+    "subscribers": [],
+    "saved": {},
+    "follows": {
+      "alice": [
+        "publication"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://bmartinez.net/",
+      "title": "Bob Martinez",
+      "snippet": "Senior engineer at Northstar. Tests, CI, and the bugs that only happen on one machine.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "bob martinez",
+        "bmartinez",
+        "blog",
+        "testing",
+        "ci"
+      ]
+    },
+    {
+      "url": "http://bmartinez.net/posts/hash-order-bit-me",
+      "title": "Hash order bit me - Bob Martinez",
+      "snippet": "A BFS test that failed on one Windows runner one run in five, for four months. The cause was unspecified hash iteration order.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "hash order",
+        "flaky test",
+        "windows",
+        "bfs",
+        "hash map",
+        "iteration order",
+        "bit me"
+      ]
+    },
+    {
+      "url": "http://bmartinez.net/posts/ci-runners-i-have-known",
+      "title": "CI runners I have known and blamed - Bob Martinez",
+      "snippet": "Four stages of blame for a flaky test: the runner, the network, the dependency, and finally the code.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "ci",
+        "flaky",
+        "runners",
+        "blame",
+        "testing"
+      ]
+    },
+    {
+      "url": "http://bmartinez.net/posts/testing-without-a-clock",
+      "title": "Testing without a clock - Bob Martinez",
+      "snippet": "Every sleep in a test is a bet that the machine is not busy.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "testing",
+        "sleep",
+        "clock",
+        "determinism",
+        "flaky"
+      ]
+    }
+  ]
+}

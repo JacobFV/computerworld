@@ -57,10 +57,21 @@ pub struct Project {
     #[serde(default)]
     pub writers: Vec<String>,
 }
+/// Skins this instance may wear; Linear gets a branded layout, `plain` is issues.internal.
+pub const SKINS: &[&str] = &["plain", "linear"];
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct IssueState {
+    /// Presentation only. `plain` is the original rendering and is omitted from serialised
+    /// state, so worlds and checkpoints written before skins existed stay byte-identical.
+    #[serde(default, skip_serializing_if = "wire::Skin::is_plain")]
+    pub skin: wire::Skin,
     #[serde(default)]
     pub projects: BTreeMap<String, Project>,
+    /// Skinned chrome only; both are omitted when unset so plain state stays byte-identical.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub workspace: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<cw_protocol::PageTheme>,
 }
 impl Project {
     pub fn can_read(&self, actor: &str) -> bool {
@@ -189,7 +200,22 @@ impl Project {
 use cw_protocol::{HttpRequest, HttpResponse, Page};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as wire;
+pub mod linear;
 pub struct IssuesService;
+/// One issue rendered the way this instance is skinned.
+fn render_issue(
+    skinned: bool,
+    look: &linear::Look,
+    nav: &[(String, String)],
+    key: &str,
+    item: &Issue,
+) -> cw_protocol::Result<HttpResponse> {
+    if skinned {
+        linear::issue(look, key, item, nav)
+    } else {
+        issue_page(key, item)
+    }
+}
 pub fn register(registry: &mut Registry) -> cw_protocol::Result<()> {
     registry.register(IssuesService)
 }
@@ -199,6 +225,7 @@ impl Service for IssuesService {
     }
     fn initialize(&self, initial: Value, _: &ServiceContext) -> cw_protocol::Result<Value> {
         let state: IssueState = wire::load(&initial)?;
+        state.skin.check(SKINS)?;
         Ok(serde_json::to_value(state)?)
     }
     fn handle(
@@ -211,6 +238,22 @@ impl Service for IssuesService {
         let parts: Vec<_> = path.trim_matches('/').split('/').collect();
         let api = parts.first() == Some(&"api");
         let p = if api { &parts[1..] } else { &parts[..] };
+        // Presentation is read out before the mutable borrow of `projects` below.
+        let skinned = !api && state.get("skin").and_then(Value::as_str) == Some("linear");
+        let look = linear::Look {
+            workspace: wire::text(state, "workspace"),
+            theme: serde_json::from_value(state.get("theme").cloned().unwrap_or(Value::Null))?,
+        };
+        let assignee = wire::query(req, "assignee");
+        let nav: Vec<(String, String)> = state["projects"]
+            .as_object()
+            .map(|m| {
+                m.iter()
+                    .filter(|(_, v)| access(v, "readers", &ctx.actor))
+                    .map(|(k, v)| (k.clone(), v["name"].as_str().unwrap_or(k).to_owned()))
+                    .collect()
+            })
+            .unwrap_or_default();
         let projects = state["projects"]
             .as_object_mut()
             .ok_or_else(|| cw_protocol::SimError::invalid("issues state missing projects"))?;
@@ -225,6 +268,17 @@ impl Service for IssuesService {
                 .collect();
             if api {
                 return HttpResponse::json(200, &visible);
+            }
+            if skinned {
+                let teams: Vec<(String, Project)> = visible
+                    .iter()
+                    .filter_map(|v| {
+                        let id = v["id"].as_str()?.to_owned();
+                        let project = serde_json::from_value(projects.get(&id)?.clone()).ok()?;
+                        Some((id, project))
+                    })
+                    .collect();
+                return linear::home(&look, &teams);
             }
             return wire::page(
                 "Projects",
@@ -253,6 +307,10 @@ impl Service for IssuesService {
         if p.len() == 2 && req.method == "GET" {
             if api {
                 return HttpResponse::json(200, project);
+            }
+            if skinned {
+                let typed: Project = serde_json::from_value(project.clone())?;
+                return linear::board(&look, key, &typed, &nav, assignee.as_deref());
             }
             let mut page = Page::new(format!("Project {key}"));
             page.elements.push(wire::heading(
@@ -297,7 +355,7 @@ impl Service for IssuesService {
                             if api {
                                 HttpResponse::json(201, &typed.issues[&id])
                             } else {
-                                issue_page(key, &typed.issues[&id])
+                                render_issue(skinned, &look, &nav, key, &typed.issues[&id])
                             }
                         }
                         Err((code, msg)) => wire::error(code, msg),
@@ -318,7 +376,13 @@ impl Service for IssuesService {
             return if api {
                 HttpResponse::json(200, item)
             } else {
-                issue_page(key, &serde_json::from_value(item.clone())?)
+                render_issue(
+                    skinned,
+                    &look,
+                    &nav,
+                    key,
+                    &serde_json::from_value(item.clone())?,
+                )
             };
         }
         if req.method != "POST" && req.method != "PATCH" {
@@ -328,14 +392,18 @@ impl Service for IssuesService {
             Ok(v) => v,
             Err(_) => return wire::error(400, "malformed request body"),
         };
+        // A board move says so, and lands back on the board it was made on.
+        let to_board = skinned && wire::text(&input, "view") == "board";
         let mut typed: Project = serde_json::from_value(project.clone())?;
         match typed.mutate(id, &ctx.actor, ctx.tick, operation, input) {
             Ok(()) => {
                 *project = serde_json::to_value(&typed)?;
                 if api {
                     HttpResponse::json(200, &typed.issues[&id])
+                } else if to_board {
+                    linear::board(&look, key, &typed, &nav, assignee.as_deref())
                 } else {
-                    issue_page(key, &typed.issues[&id])
+                    render_issue(skinned, &look, &nav, key, &typed.issues[&id])
                 }
             }
             Err((code, msg)) => wire::error(code, msg),
@@ -557,5 +625,126 @@ mod http_tests {
             400
         );
         assert_eq!(before, state);
+    }
+}
+
+#[cfg(test)]
+mod linear_tests {
+    use super::*;
+    fn ctx(actor: &str) -> ServiceContext {
+        ServiceContext {
+            actor: actor.into(),
+            source: format!("machine-{actor}"),
+            tick: 11,
+            seed: 3,
+            instance: "linear".into(),
+        }
+    }
+    fn req(method: &str, path: &str, body: Value) -> HttpRequest {
+        HttpRequest {
+            method: method.into(),
+            url: format!("http://linear.app{path}"),
+            headers: BTreeMap::new(),
+            body: serde_json::to_vec(&body).unwrap(),
+        }
+    }
+    fn seed(skin: &str) -> Value {
+        json!({"skin":skin,"workspace":"Northstar","projects":{"OPS":{"name":"Operations",
+            "writers":["alice","carol"],"issues":{"1":{"id":1,"title":"Confirm Atlas launch checklist",
+            "body":"Read the release code.","status":"open","author":"carol","assignee":"alice",
+            "labels":["release"],"comments":[],"reviews":[],"kind":"issue"}}}}})
+    }
+    fn text(state: &mut Value, actor: &str, path: &str) -> String {
+        String::from_utf8(
+            IssuesService
+                .handle(state, &ctx(actor), &req("GET", path, Value::Null))
+                .unwrap()
+                .body,
+        )
+        .unwrap()
+    }
+    /// The whole point of the skin flag: plain state serialises exactly as it always did.
+    #[test]
+    fn plain_state_and_pages_are_unchanged() {
+        let mut plain = json!({"projects":{"OPS":{"name":"Operations","issues":{}}}});
+        plain = IssuesService.initialize(plain, &ctx("alice")).unwrap();
+        assert_eq!(
+            plain,
+            json!({"projects":{"OPS":{"name":"Operations","issues":{},"readers":[],"writers":[]}}})
+        );
+        assert!(!text(&mut plain, "alice", "/").contains("Your teams"));
+    }
+    #[test]
+    fn board_shows_columns_and_a_move_really_moves() {
+        let mut state = IssuesService
+            .initialize(seed("linear"), &ctx("alice"))
+            .unwrap();
+        let board = text(&mut state, "alice", "/projects/OPS");
+        for column in ["Todo", "In Progress", "Blocked", "Done"] {
+            assert!(board.contains(column), "missing column {column}");
+        }
+        assert!(board.contains("Northstar") && board.contains("release"));
+        let moved = IssuesService
+            .handle(
+                &mut state,
+                &ctx("alice"),
+                &req(
+                    "POST",
+                    "/projects/OPS/issues/1",
+                    json!({"status":"in_progress","view":"board"}),
+                ),
+            )
+            .unwrap();
+        assert_eq!(moved.status, 200);
+        // Landing back on the board is what makes the move feel like a drag.
+        assert!(String::from_utf8(moved.body)
+            .unwrap()
+            .contains("col-in_progress"));
+        assert_eq!(
+            state["projects"]["OPS"]["issues"]["1"]["status"],
+            "in_progress"
+        );
+        let restored: IssueState = serde_json::from_value(state.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&restored).unwrap(), state);
+    }
+    #[test]
+    fn assignee_filter_and_write_refusal() {
+        let mut state = IssuesService
+            .initialize(seed("linear"), &ctx("alice"))
+            .unwrap();
+        assert!(text(&mut state, "alice", "/projects/OPS?assignee=alice").contains("card-1"));
+        assert!(!text(&mut state, "alice", "/projects/OPS?assignee=bob").contains("card-1"));
+        assert_eq!(
+            IssuesService
+                .handle(
+                    &mut state,
+                    &ctx("bob"),
+                    &req("POST", "/projects/OPS/issues/1", json!({"status":"closed"}))
+                )
+                .unwrap()
+                .status,
+            403
+        );
+        assert_eq!(state["projects"]["OPS"]["issues"]["1"]["status"], "open");
+    }
+    #[test]
+    fn issue_page_carries_comments_and_status_moves() {
+        let mut state = IssuesService
+            .initialize(seed("linear"), &ctx("carol"))
+            .unwrap();
+        IssuesService
+            .handle(
+                &mut state,
+                &ctx("carol"),
+                &req(
+                    "POST",
+                    "/projects/OPS/issues/1/comments",
+                    json!({"body":"checklist is in the doc"}),
+                ),
+            )
+            .unwrap();
+        let page = text(&mut state, "carol", "/projects/OPS/issues/1");
+        assert!(page.contains("checklist is in the doc"));
+        assert!(page.contains("status-closed") && page.contains("OPS-1"));
     }
 }

@@ -1,0 +1,98 @@
+{
+  "id": "bing-search",
+  "kind": "search",
+  "node": "bing-search",
+  "domains": ["bing.com", "www.bing.com"],
+  "port": 80,
+  "initial_state": {
+    "brand": "Microsoft Bing",
+    "skin": "bing",
+    "tagline": "The web, with the work stuff first.",
+    "theme": {
+      "accent": "#0078d4",
+      "background": "#ffffff",
+      "surface": "#f3f6f9",
+      "ink": "#1b1b1b",
+      "muted": "#616161",
+      "content_width": 780
+    },
+    "retain_history": true,
+    "rank_weights": {"title": 6, "keywords": 3, "snippet": 2, "authority": 3},
+    "verticals": ["all", "images", "news", "videos"],
+    "about": "Bing scores the same pages as everyone else but leans harder on where a page comes from: the site authority weight is the largest of the three engines, so a wire report or a work tool outranks a blog post that says the same thing.",
+    "footer": [
+      {"text": "Outlook", "url": "http://outlook.com/"},
+      {"text": "LinkedIn", "url": "http://linkedin.com/"},
+      {"text": "Reuters", "url": "http://reuters.com/"}
+    ],
+    "trending": [
+      "atlas determinism",
+      "northstar status incident",
+      "devcon 2026 seattle",
+      "hash order rust"
+    ],
+    "history": {
+      "bob": ["flaky test windows", "meridian labs"]
+    },
+    "documents": []
+  },
+  "search_entries": [
+    {
+      "url": "http://bing.com/",
+      "title": "Microsoft Bing",
+      "snippet": "Search the web with Bing. Trending searches, Images, News and Videos over the same index.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["bing", "microsoft", "search", "search engine", "web search"]
+    },
+    {
+      "url": "http://bing.com/about",
+      "title": "About Microsoft Bing - ranking and verticals",
+      "snippet": "Bing weights site authority more heavily than title text, which is why its order differs from Google's.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["bing", "about", "ranking", "authority", "search engine"]
+    }
+  ],
+  "authority_overrides": {
+    "bing.com": 6,
+    "google.com": 1,
+    "duckduckgo.com": 1,
+    "outlook.com": 9,
+    "linkedin.com": 8,
+    "github.com": 8,
+    "reuters.com": 9,
+    "theverge.com": 5,
+    "arstechnica.com": 5,
+    "wikipedia.org": 6,
+    "stackoverflow.com": 6,
+    "news.ycombinator.com": 3,
+    "reddit.com": 3,
+    "x.com": 2,
+    "mastodon.social": 1,
+    "docs.google.com": 2,
+    "drive.google.com": 2,
+    "mail.google.com": 1,
+    "calendar.google.com": 1,
+    "maps.google.com": 2,
+    "youtube.com": 3,
+    "chatgpt.com": 4,
+    "claude.ai": 4,
+    "amazon.com": 6,
+    "etsy.com": 4,
+    "ticketmaster.com": 6,
+    "spotify.com": 4,
+    "openstreetmap.org": 4,
+    "weather.com": 7,
+    "dropbox.com": 5,
+    "northwind.example": 6,
+    "slack.com": 5,
+    "discord.com": 3,
+    "linear.app": 5,
+    "alicechen.dev": 2,
+    "bmartinez.net": 2,
+    "eng.northstar.example": 5,
+    "northstar.example": 6,
+    "status.northstar.example": 5
+  }
+}

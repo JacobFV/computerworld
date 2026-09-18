@@ -7,18 +7,18 @@ binding. A compatible prebuilt wheel needs no Rust toolchain.
 ## Install the prerelease wheel
 
 Download the wheel matching your operating system/architecture from
-[v0.1.0-alpha.1](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.1).
+[v0.1.0-alpha.2](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.2).
 The listed assets determine available platforms. Python's package version is
-`0.1.0a1`; this is the same engine release. Verify its checksum using the accompanying
+`0.1.0a2`; this is the same engine release. Verify its checksum using the accompanying
 `SHA256SUMS` before installation. There is no PyPI publication yet.
 
 ```sh
 python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install ./computerworld-0.1.0a1-<matching-wheel-tags>.whl
+python -m pip install ./computerworld-0.1.0a2-<matching-wheel-tags>.whl
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.1.0a1 0.1.0-alpha.1
+# Expected: 0.1.0a2 0.1.0-alpha.2
 ```
 
 Replace the example wheel filename with the actual downloaded filename. Wheels
@@ -33,7 +33,7 @@ A Rust toolchain is required for this path. Use the release tag for a reproducib
 checkout (omit `--branch` to work on current development instead):
 
 ```sh
-git clone --branch v0.1.0-alpha.1 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.1.0-alpha.2 https://github.com/JacobFV/computerworld.git
 cd computerworld
 python3 -m venv .venv
 . .venv/bin/activate
@@ -47,8 +47,18 @@ To build distributable wheels instead:
 ```sh
 python -m pip install 'maturin>=1.7,<2'
 maturin build --release --manifest-path crates/python/Cargo.toml
-python -m pip install target/wheels/computerworld*.whl
+python -m pip install --force-reinstall target/wheels/computerworld-0.1.0a2-*.whl
+python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
+# Expected: 0.1.0a2 0.1.0-alpha.2
 ```
+
+Install by exact version, not `computerworld*.whl`. `target/wheels/` is a build
+directory: it accumulates wheels from every revision you have built, and a glob can
+silently install an older one. If `engine_version` does not match the source you
+built, you installed a stale wheel — that is the usual cause of an example failing
+with missing interactions or `application module versions differ`. CI builds
+release candidates into `target/release-wheels/` instead, and
+`scripts/smoke-bindings.sh` uses `target/python-wheel/` with an exact pin.
 
 Run source examples from the checkout; example world JSON is not an implicit kernel
 resource. Your application supplies its own JSON-compatible definition:

@@ -647,6 +647,143 @@ impl Runtime {
         );
         Ok(())
     }
+    /// Create a folder and any missing parent, as the user who owns the machine.
+    pub fn create_directory(&mut self, machine: &str, actor: &str, path: &str) -> Result<()> {
+        let tick = self.tick();
+        let state = Arc::make_mut(&mut self.state);
+        let computer = Arc::make_mut(
+            state
+                .computers
+                .get_mut(machine)
+                .ok_or_else(|| SimError::not_found(format!("computer {machine}")))?,
+        );
+        let resolved = computer.resolve(path);
+        let user = computer.user.clone();
+        computer
+            .vfs
+            .mkdir_all_as(&resolved, &user, tick)
+            .map_err(|e| computer_error(e.to_string()))?;
+        self.event(
+            "filesystem.mkdir",
+            Some(machine),
+            Some(actor),
+            json!({ "path": path }),
+        );
+        Ok(())
+    }
+    /// Create an empty file, as the user who owns the machine. Refuses an existing
+    /// path: a file manager's New must never overwrite what is already there.
+    pub fn create_file(&mut self, machine: &str, actor: &str, path: &str) -> Result<()> {
+        let tick = self.tick();
+        let computer = self.computer_mut(machine)?;
+        let resolved = computer.resolve(path);
+        if computer.vfs.exists(&resolved) {
+            return Err(computer_error(format!("already exists: {path}")));
+        }
+        let user = computer.user.clone();
+        computer
+            .vfs
+            .write_as(&resolved, &[], &user, tick)
+            .map_err(|e| computer_error(e.to_string()))?;
+        self.event(
+            "filesystem.write",
+            Some(machine),
+            Some(actor),
+            json!({"path":path,"bytes":Vec::<u8>::new()}),
+        );
+        Ok(())
+    }
+    /// Copy a file or folder tree. The same access checks a read and a write make, so a
+    /// file manager cannot copy what its user could not have read.
+    pub fn copy_path(&mut self, machine: &str, actor: &str, from: &str, to: &str) -> Result<()> {
+        let tick = self.tick();
+        let computer = self.computer_mut(machine)?;
+        let (source, target) = (computer.resolve(from), computer.resolve(to));
+        let user = computer.user.clone();
+        computer
+            .vfs
+            .copy_as(&source, &target, &user, tick)
+            .map_err(|e| computer_error(e.to_string()))?;
+        self.event(
+            "filesystem.copy",
+            Some(machine),
+            Some(actor),
+            json!({"from":from,"to":to}),
+        );
+        Ok(())
+    }
+    /// Move or rename, with the write checks on both parents that a shell `mv` makes.
+    pub fn move_path(&mut self, machine: &str, actor: &str, from: &str, to: &str) -> Result<()> {
+        let computer = self.computer_mut(machine)?;
+        let (source, target) = (computer.resolve(from), computer.resolve(to));
+        if computer.vfs.exists(&target) {
+            return Err(computer_error(format!("already exists: {to}")));
+        }
+        let user = computer.user.clone();
+        computer
+            .vfs
+            .rename_as(&source, &target, &user)
+            .map_err(|e| computer_error(e.to_string()))?;
+        self.event(
+            "filesystem.move",
+            Some(machine),
+            Some(actor),
+            json!({"from":from,"to":to}),
+        );
+        Ok(())
+    }
+    /// File `path` under `trash`. This is what a desktop's Delete does: the data stays
+    /// in the snapshot under a name that is free, and the caller is told where it went,
+    /// so nothing a user throws away is destroyed behind their back.
+    pub fn trash_path(
+        &mut self,
+        machine: &str,
+        actor: &str,
+        path: &str,
+        trash: &str,
+    ) -> Result<String> {
+        let tick = self.tick();
+        let computer = self.computer_mut(machine)?;
+        let source = computer.resolve(path);
+        let root = computer.resolve(trash);
+        if root == source || root.starts_with(&format!("{}/", source.trim_end_matches('/'))) {
+            return Err(SimError::invalid("cannot move the trash into itself"));
+        }
+        let user = computer.user.clone();
+        computer
+            .vfs
+            .mkdir_all_as(&root, &user, tick)
+            .map_err(|e| computer_error(e.to_string()))?;
+        let name = source.rsplit('/').next().unwrap_or("item");
+        let mut target = format!("{}/{name}", root.trim_end_matches('/'));
+        for n in 2.. {
+            if !computer.vfs.exists(&target) {
+                break;
+            }
+            if n > 999 {
+                return Err(computer_error(format!("the trash already holds {name}")));
+            }
+            target = format!("{}/{name}.{n}", root.trim_end_matches('/'));
+        }
+        computer
+            .vfs
+            .rename_as(&source, &target, &user)
+            .map_err(|e| computer_error(e.to_string()))?;
+        self.event(
+            "filesystem.trash",
+            Some(machine),
+            Some(actor),
+            json!({"path":path,"trash":target}),
+        );
+        Ok(target)
+    }
+    /// The machine, ready to mutate. Same unwrapping every filesystem entry point does.
+    fn computer_mut(&mut self, machine: &str) -> Result<&mut Computer> {
+        let state = Arc::make_mut(&mut self.state);
+        Ok(Arc::make_mut(state.computers.get_mut(machine).ok_or_else(
+            || SimError::not_found(format!("computer {machine}")),
+        )?))
+    }
     pub fn execute(&mut self, machine: &str, actor: &str, command: &str) -> Result<CommandResult> {
         self.computer(machine)?;
         self.event(

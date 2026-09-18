@@ -27,7 +27,9 @@ fn editor_scrolls_to_cursor_and_exposes_real_controls() {
         .iter()
         .any(|n| n.interaction.as_deref() == Some("editor-save")));
     let body = scene.hit_test(100, 90).unwrap();
-    assert_eq!(body.interaction.as_deref(), Some("editor-text"));
+    // The target carries the first visible line, so a click on a scrolled document
+    // still resolves to the character under the pointer.
+    assert_eq!(body.interaction.as_deref(), Some("editor-text:81"));
     assert_eq!(body.semantic.as_ref().unwrap().role, "textbox");
 }
 
@@ -49,9 +51,11 @@ fn projection_tolerates_unaligned_restored_cursor_and_clips_small_views() {
 
 #[test]
 fn file_browser_actions_are_backed_by_visible_entries() {
+    let mut tab = cw_applications::FileTab::new("/Documents");
+    tab.entries = vec!["notes.txt".into(), "projects/".into()];
     let state = AppState::Files {
-        path: "/Documents".into(),
-        entries: vec!["notes.txt".into(), "projects/".into()],
+        tabs: vec![tab],
+        active: 0,
     };
     let scene = app_content(&state, DesktopTheme::Windows, 700, 400);
     for action in ["files-up", "files-root", "open:0", "open:1"] {

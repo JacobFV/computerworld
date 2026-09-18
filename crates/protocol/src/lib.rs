@@ -297,6 +297,180 @@ pub struct Page {
     pub title: String,
     #[serde(default)]
     pub elements: Vec<PageElement>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<PageTheme>,
+}
+/// Radius and padding budget: pages describe documents, not arbitrary geometry.
+pub const MAX_STYLE_SPAN: u32 = 64;
+/// A fully round element needs a radius of half its own size, and avatars are routinely
+/// larger than `MAX_STYLE_SPAN`; the renderer clamps to the box, so the cap only has to
+/// stop absurdity. Padding stays tight because it really does move layout.
+pub const MAX_STYLE_RADIUS: u32 = 512;
+pub const MAX_PAGE_GAP: u32 = 128;
+pub const MAX_GRID_COLUMNS: u32 = 12;
+pub const MAX_PAGE_EXTENT: u32 = 8192;
+/// `#rrggbb` or `#rrggbbaa`; nothing else, so renderers never guess.
+pub fn valid_color(value: &str) -> bool {
+    matches!(value.len(), 7 | 9)
+        && value.starts_with('#')
+        && value[1..].bytes().all(|b| b.is_ascii_hexdigit())
+}
+/// Presentation hints. Absent fields inherit the page theme and renderer defaults.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Style {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u16>,
+    /// "regular" | "medium" | "bold"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radius: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub padding: Option<u32>,
+    /// "left" | "center" | "right"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub align: Option<String>,
+    /// Fixed pixel width. Omitted means "fill the available width".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
+    /// Share of the leftover width inside a Row. Defaults to 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flex: Option<u32>,
+    /// true renders the text on a single clipped line instead of wrapping.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub one_line: Option<bool>,
+}
+/// Chainable presentation setters keep page-building call sites to one line each.
+impl Style {
+    pub fn size(mut self, v: u16) -> Self {
+        self.size = Some(v);
+        self
+    }
+    pub fn bold(mut self) -> Self {
+        self.weight = Some("bold".into());
+        self
+    }
+    pub fn medium(mut self) -> Self {
+        self.weight = Some("medium".into());
+        self
+    }
+    pub fn color(mut self, v: impl Into<String>) -> Self {
+        self.color = Some(v.into());
+        self
+    }
+    pub fn background(mut self, v: impl Into<String>) -> Self {
+        self.background = Some(v.into());
+        self
+    }
+    pub fn border(mut self, v: impl Into<String>) -> Self {
+        self.border = Some(v.into());
+        self
+    }
+    pub fn radius(mut self, v: u32) -> Self {
+        self.radius = Some(v);
+        self
+    }
+    pub fn padding(mut self, v: u32) -> Self {
+        self.padding = Some(v);
+        self
+    }
+    pub fn align(mut self, v: impl Into<String>) -> Self {
+        self.align = Some(v.into());
+        self
+    }
+    pub fn width(mut self, v: u32) -> Self {
+        self.width = Some(v);
+        self
+    }
+    pub fn height(mut self, v: u32) -> Self {
+        self.height = Some(v);
+        self
+    }
+    pub fn flex(mut self, v: u32) -> Self {
+        self.flex = Some(v);
+        self
+    }
+    pub fn one_line(mut self) -> Self {
+        self.one_line = Some(true);
+        self
+    }
+    fn validate(&self) -> Result<()> {
+        for c in [&self.color, &self.background, &self.border]
+            .into_iter()
+            .flatten()
+        {
+            if !valid_color(c) {
+                return Err(SimError::invalid(format!("invalid page colour {c}")));
+            }
+        }
+        let over = |v: &Option<u32>, limit: u32| v.is_some_and(|v| v > limit);
+        if over(&self.radius, MAX_STYLE_RADIUS) {
+            return Err(SimError::invalid(format!(
+                "style radius exceeds {MAX_STYLE_RADIUS}"
+            )));
+        }
+        if over(&self.padding, MAX_STYLE_SPAN) {
+            return Err(SimError::invalid(format!(
+                "style padding exceeds {MAX_STYLE_SPAN}"
+            )));
+        }
+        if over(&self.width, MAX_PAGE_EXTENT) || over(&self.height, MAX_PAGE_EXTENT) {
+            return Err(SimError::invalid("style width or height exceeds 8192"));
+        }
+        if over(&self.flex, 64) {
+            return Err(SimError::invalid("style flex exceeds 64"));
+        }
+        if self.size.is_some_and(|v| !(6..=96).contains(&v)) {
+            return Err(SimError::invalid("style size must be 6 through 96"));
+        }
+        Ok(())
+    }
+}
+/// Page-wide palette. `content_width` centres the column on wider viewports.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PageTheme {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ink: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muted: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_width: Option<u32>,
+}
+impl PageTheme {
+    fn validate(&self) -> Result<()> {
+        for c in [
+            &self.accent,
+            &self.background,
+            &self.surface,
+            &self.ink,
+            &self.muted,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if !valid_color(c) {
+                return Err(SimError::invalid(format!("invalid theme colour {c}")));
+            }
+        }
+        if self.content_width.is_some_and(|v| v > MAX_PAGE_EXTENT) {
+            return Err(SimError::invalid("theme content width exceeds 8192"));
+        }
+        Ok(())
+    }
 }
 impl PageElement {
     pub fn id(&self) -> &str {
@@ -308,7 +482,15 @@ impl PageElement {
             | Self::Input { id, .. }
             | Self::Form { id, .. }
             | Self::Group { id, .. }
-            | Self::Image { id, .. } => id,
+            | Self::Image { id, .. }
+            | Self::Row { id, .. }
+            | Self::Grid { id, .. }
+            | Self::Card { id, .. }
+            | Self::Styled { id, .. }
+            | Self::Thumbnail { id, .. }
+            | Self::Badge { id, .. }
+            | Self::Divider { id, .. }
+            | Self::Spacer { id, .. } => id,
         }
     }
 }
@@ -336,10 +518,54 @@ impl Page {
                     PageElement::Group { children, .. } | PageElement::Form { children, .. } => {
                         visit(children, ids, depth + 1)?
                     }
+                    PageElement::Row {
+                        children,
+                        gap,
+                        style,
+                        ..
+                    } => {
+                        style.validate()?;
+                        if *gap > MAX_PAGE_GAP {
+                            return Err(SimError::invalid("row gap exceeds 128"));
+                        }
+                        visit(children, ids, depth + 1)?
+                    }
+                    PageElement::Grid {
+                        columns,
+                        children,
+                        gap,
+                        style,
+                        ..
+                    } => {
+                        style.validate()?;
+                        if *gap > MAX_PAGE_GAP {
+                            return Err(SimError::invalid("grid gap exceeds 128"));
+                        }
+                        if !(1..=MAX_GRID_COLUMNS).contains(columns) {
+                            return Err(SimError::invalid("grid columns must be 1 through 12"));
+                        }
+                        visit(children, ids, depth + 1)?
+                    }
+                    PageElement::Card {
+                        children, style, ..
+                    } => {
+                        style.validate()?;
+                        visit(children, ids, depth + 1)?
+                    }
+                    PageElement::Styled { style, .. }
+                    | PageElement::Thumbnail { style, .. }
+                    | PageElement::Badge { style, .. }
+                    | PageElement::Divider { style, .. } => style.validate()?,
+                    PageElement::Spacer { height, .. } if *height > MAX_PAGE_EXTENT => {
+                        return Err(SimError::invalid("spacer height exceeds 8192"))
+                    }
                     _ => (),
                 }
             }
             Ok(())
+        }
+        if let Some(theme) = &self.theme {
+            theme.validate()?;
         }
         visit(&self.elements, &mut BTreeSet::new(), 0)
     }
@@ -348,6 +574,7 @@ impl Page {
             version: SCHEMA_VERSION,
             title: title.into(),
             elements: vec![],
+            theme: None,
         }
     }
 }
@@ -394,6 +621,74 @@ pub enum PageElement {
         source: String,
         alt: String,
         width: u32,
+        height: u32,
+    },
+    /// Children laid out left to right. Fixed-width children take `Style::width`; the
+    /// rest split the remainder by `Style::flex`. `align` is "start"|"center"|"end"|"stretch".
+    Row {
+        id: String,
+        children: Vec<PageElement>,
+        #[serde(default)]
+        gap: u32,
+        #[serde(default)]
+        align: String,
+        #[serde(default)]
+        style: Style,
+    },
+    /// Children flowed into `columns` equal columns, row-major.
+    Grid {
+        id: String,
+        columns: u32,
+        children: Vec<PageElement>,
+        #[serde(default)]
+        gap: u32,
+        #[serde(default)]
+        style: Style,
+    },
+    /// A padded, filled, optionally bordered container. With `action`, the whole card
+    /// is one click target: search results, video tiles, feed posts.
+    Card {
+        id: String,
+        children: Vec<PageElement>,
+        #[serde(default)]
+        style: Style,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        action: Option<PageAction>,
+    },
+    /// Text with explicit presentation; `Heading`/`Text` remain for plain content.
+    Styled {
+        id: String,
+        text: String,
+        #[serde(default)]
+        style: Style,
+    },
+    /// Flat-colour stand-in for photography, video stills, avatars and logos. `label`
+    /// is drawn centred and is the accessible name; it never claims to be a real photo.
+    Thumbnail {
+        id: String,
+        label: String,
+        #[serde(default)]
+        style: Style,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        action: Option<PageAction>,
+    },
+    /// Small pill: unread counts, "LIVE", "Ad", tags.
+    Badge {
+        id: String,
+        text: String,
+        #[serde(default)]
+        style: Style,
+    },
+    /// 1px horizontal rule.
+    Divider {
+        id: String,
+        #[serde(default)]
+        style: Style,
+    },
+    /// Vertical gap.
+    Spacer {
+        id: String,
+        #[serde(default)]
         height: u32,
     },
 }
@@ -476,6 +771,107 @@ pub struct Observation {
     #[serde(default)]
     pub channels: BTreeMap<String, Value>,
 }
+/// Tags `ActionEffect::changed` uses. Stable strings, so a consumer can match on them.
+pub mod effect {
+    pub const WINDOW_OPENED: &str = "window.opened";
+    pub const WINDOW_CLOSED: &str = "window.closed";
+    pub const WINDOW_MOVED: &str = "window.moved";
+    pub const WINDOW_FOCUSED: &str = "window.focused";
+    pub const WINDOW_TITLE: &str = "window.title";
+    /// A pane's text content changed.
+    pub const CONTENT: &str = "content";
+    /// The path, URL or document a window presents changed.
+    pub const DOCUMENT: &str = "document";
+    /// The browser's current page changed.
+    pub const NAVIGATE: &str = "navigate";
+    /// Keyboard focus, the focused field or the keystroke route changed.
+    pub const FOCUS: &str = "focus";
+    /// The terminal observation channel changed.
+    pub const TERMINAL: &str = "terminal";
+    /// A registered application's projected page changed.
+    pub const APPLICATION: &str = "application";
+}
+/// Coarse, app-level consequence of one action. `ActionOutcome::success` reports the
+/// envelope; this reports what moved in the world the actor can see. Derived by
+/// comparing an actor-visible projection of the target machine before and after
+/// dispatch, so it is deterministic and costs no wall-clock or host I/O.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActionEffect {
+    /// Sorted `effect::*` tags. Empty means nothing the actor can observe changed,
+    /// which is a real answer and not the same as failure.
+    pub changed: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub windows_opened: Vec<u64>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub windows_closed: Vec<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focused_window: Option<u64>,
+    /// Browser location after the action, when the machine has one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Digest of the actor-visible state of the target machine after this action.
+    /// Content-derived, never counted: equal digests mean equal observable state, in
+    /// this process or after a snapshot restore. Carried as a string because a 64-bit
+    /// integer crosses the Wasm boundary as a BigInt, which `JSON.stringify` refuses.
+    #[serde(with = "digest_text")]
+    pub state: u64,
+}
+/// A `u64` on the wire as decimal text, so every binding can serialise it.
+mod digest_text {
+    use serde::{Deserialize, Deserializer, Serializer};
+    pub fn serialize<S: Serializer>(value: &u64, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&value.to_string())
+    }
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<u64, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Either {
+            Text(String),
+            Number(u64),
+        }
+        match Either::deserialize(d)? {
+            Either::Text(t) => t.parse().map_err(serde::de::Error::custom),
+            Either::Number(n) => Ok(n),
+        }
+    }
+}
+#[cfg(test)]
+mod effect_wire_tests {
+    use super::*;
+    #[test]
+    fn the_state_digest_is_text_on_the_wire_so_every_binding_can_serialise_it() {
+        // A u64 reaches JavaScript as a BigInt, which `JSON.stringify` refuses; the
+        // digest is an identity, never an arithmetic value, so text is the right shape.
+        let effect = ActionEffect {
+            changed: vec!["content".into()],
+            windows_opened: vec![],
+            windows_closed: vec![],
+            focused_window: None,
+            url: None,
+            state: 10_516_701_560_454_250_893,
+        };
+        let json = serde_json::to_value(&effect).unwrap();
+        assert_eq!(json["state"], serde_json::json!("10516701560454250893"));
+        assert_eq!(
+            serde_json::from_value::<ActionEffect>(json).unwrap().state,
+            effect.state
+        );
+        // A number still deserialises, so a report written before this change loads.
+        let legacy = serde_json::json!({"changed":[],"state":42});
+        assert_eq!(
+            serde_json::from_value::<ActionEffect>(legacy)
+                .unwrap()
+                .state,
+            42
+        );
+    }
+}
+impl ActionEffect {
+    /// The action was accepted and changed nothing observable.
+    pub fn is_noop(&self) -> bool {
+        self.changed.is_empty()
+    }
+}
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActionOutcome {
     pub index: usize,
@@ -484,6 +880,10 @@ pub struct ActionOutcome {
     pub value: Value,
     #[serde(default)]
     pub error: Option<SimError>,
+    /// What this action changed. `None` when the environment could not attribute an
+    /// effect, e.g. a denied action that never reached a machine.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect: Option<ActionEffect>,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StepResult {
@@ -689,6 +1089,69 @@ mod tests {
     #[test]
     fn default_gateway_cannot_escape() {
         assert!(!GatewayPolicy::default().allow_host)
+    }
+    #[test]
+    fn rich_elements_validate_colours_and_nested_ids() {
+        let card = |style: Style, child_id: &str| {
+            let mut page = Page::new("p");
+            page.elements = vec![
+                PageElement::Text {
+                    id: "a".into(),
+                    text: "a".into(),
+                },
+                PageElement::Card {
+                    id: "card".into(),
+                    children: vec![PageElement::Text {
+                        id: child_id.into(),
+                        text: "b".into(),
+                    }],
+                    style,
+                    action: None,
+                },
+            ];
+            page.validate()
+        };
+        assert!(card(Style::default(), "b").is_ok());
+        assert!(card(Style::default(), "a").is_err());
+        assert!(card(
+            Style {
+                background: Some("rebeccapurple".into()),
+                ..Style::default()
+            },
+            "b"
+        )
+        .is_err());
+        assert!(card(
+            Style {
+                radius: Some(4096),
+                ..Style::default()
+            },
+            "b"
+        )
+        .is_err());
+        let mut page = Page::new("p");
+        page.elements = vec![PageElement::Grid {
+            id: "g".into(),
+            columns: 0,
+            children: vec![],
+            gap: 8,
+            style: Style::default(),
+        }];
+        assert!(page.validate().is_err());
+    }
+    #[test]
+    fn legacy_pages_deserialize_without_theme() {
+        let json = r#"{"version":1,"title":"Mail","elements":[
+            {"kind":"heading","id":"h","text":"Inbox","level":1},
+            {"kind":"group","id":"g","children":[{"kind":"text","id":"t","text":"hi"}]}]}"#;
+        let page: Page = serde_json::from_str(json).unwrap();
+        page.validate().unwrap();
+        assert_eq!(page.theme, None);
+        assert_eq!(page.elements.len(), 2);
+        // A themeless page must also serialise back to the old shape.
+        let back = serde_json::to_value(&page).unwrap();
+        assert!(back.get("theme").is_none());
+        assert_eq!(serde_json::from_value::<Page>(back).unwrap(), page);
     }
     #[test]
     fn unknown_schema_rejected() {

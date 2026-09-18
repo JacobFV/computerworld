@@ -1,0 +1,683 @@
+{
+  "id": "northstar-status",
+  "kind": "static-site",
+  "node": "northstar-status",
+  "domains": [
+    "status.northstar.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "Northstar Status",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "status-head",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "status-wordmark",
+                "text": "Northstar Status",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "status-home",
+                "text": "northstar.example",
+                "url": "http://northstar.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center",
+            "style": {
+              "background": "#16202a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "status-lead",
+            "height": 18
+          },
+          {
+            "kind": "row",
+            "id": "status-banner",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "status-banner-state",
+                "text": "All systems operational",
+                "style": {
+                  "size": 14,
+                  "color": "#ffffff",
+                  "background": "#1f883d",
+                  "radius": 10,
+                  "padding": 8
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "status-banner-note",
+                "text": "Last incident: 12 minutes of elevated API latency on 2026-02-19.",
+                "style": {
+                  "size": 13,
+                  "color": "#5d6b79"
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "spacer",
+            "id": "status-services-gap",
+            "height": 18
+          },
+          {
+            "kind": "card",
+            "id": "services",
+            "children": [
+              {
+                "kind": "row",
+                "id": "svc-api",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "svc-api-name",
+                    "text": "Atlas API",
+                    "style": {
+                      "size": 14,
+                      "color": "#16202a"
+                    }
+                  },
+                  {
+                    "kind": "badge",
+                    "id": "svc-api-state",
+                    "text": "Operational",
+                    "style": {
+                      "size": 12,
+                      "color": "#1f883d",
+                      "background": "#e8f5ec",
+                      "border": "#1f883d",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center",
+                "style": {
+                  "padding": 10
+                }
+              },
+              {
+                "kind": "divider",
+                "id": "svc-api-rule"
+              },
+              {
+                "kind": "row",
+                "id": "svc-replay",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "svc-replay-name",
+                    "text": "Hosted replays",
+                    "style": {
+                      "size": 14,
+                      "color": "#16202a"
+                    }
+                  },
+                  {
+                    "kind": "badge",
+                    "id": "svc-replay-state",
+                    "text": "Operational",
+                    "style": {
+                      "size": 12,
+                      "color": "#1f883d",
+                      "background": "#e8f5ec",
+                      "border": "#1f883d",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center",
+                "style": {
+                  "padding": 10
+                }
+              },
+              {
+                "kind": "divider",
+                "id": "svc-replay-rule"
+              },
+              {
+                "kind": "row",
+                "id": "svc-web",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "svc-web-name",
+                    "text": "northstar.example",
+                    "style": {
+                      "size": 14,
+                      "color": "#16202a"
+                    }
+                  },
+                  {
+                    "kind": "badge",
+                    "id": "svc-web-state",
+                    "text": "Operational",
+                    "style": {
+                      "size": 12,
+                      "color": "#1f883d",
+                      "background": "#e8f5ec",
+                      "border": "#1f883d",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center",
+                "style": {
+                  "padding": 10
+                }
+              },
+              {
+                "kind": "divider",
+                "id": "svc-web-rule"
+              },
+              {
+                "kind": "row",
+                "id": "svc-registry",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "svc-registry-name",
+                    "text": "Package registry",
+                    "style": {
+                      "size": 14,
+                      "color": "#16202a"
+                    }
+                  },
+                  {
+                    "kind": "badge",
+                    "id": "svc-registry-state",
+                    "text": "Operational",
+                    "style": {
+                      "size": 12,
+                      "color": "#1f883d",
+                      "background": "#e8f5ec",
+                      "border": "#1f883d",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center",
+                "style": {
+                  "padding": 10
+                }
+              }
+            ],
+            "style": {
+              "border": "#dde3ea",
+              "radius": 10
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "status-history-gap",
+            "height": 24
+          },
+          {
+            "kind": "styled",
+            "id": "history-title",
+            "text": "Incident history",
+            "style": {
+              "size": 18,
+              "weight": "bold",
+              "color": "#16202a"
+            }
+          },
+          {
+            "kind": "card",
+            "id": "inc-4-card",
+            "children": [
+              {
+                "kind": "row",
+                "id": "inc-4-head",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "inc-4-tag",
+                    "text": "Resolved",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#1f883d",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "inc-4-title",
+                    "text": "INC-4 Elevated API latency",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#16202a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "inc-4-when",
+                    "text": "2026-02-19 · 12 minutes",
+                    "style": {
+                      "size": 12,
+                      "color": "#5d6b79"
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              },
+              {
+                "kind": "text",
+                "id": "inc-4-body",
+                "text": "p99 latency on the Atlas API rose to eleven seconds after a cold cache on a newly added point of presence. Traffic recovered once the cache warmed."
+              },
+              {
+                "kind": "link",
+                "id": "inc-4-more",
+                "text": "Full timeline",
+                "url": "/incidents/inc-4"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#dde3ea",
+              "radius": 10,
+              "padding": 16
+            },
+            "action": {
+              "method": "GET",
+              "url": "/incidents/inc-4",
+              "fields": {}
+            }
+          },
+          {
+            "kind": "card",
+            "id": "inc-3-card",
+            "children": [
+              {
+                "kind": "row",
+                "id": "inc-3-head",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "inc-3-tag",
+                    "text": "Resolved",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#1f883d",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "inc-3-title",
+                    "text": "INC-3 Package registry read-only",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#16202a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "inc-3-when",
+                    "text": "2026-01-08 · 41 minutes",
+                    "style": {
+                      "size": 12,
+                      "color": "#5d6b79"
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              },
+              {
+                "kind": "text",
+                "id": "inc-3-body",
+                "text": "A migration held a write lock longer than planned. Reads were unaffected throughout."
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#dde3ea",
+              "radius": 10,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "status-subscribe-gap",
+            "height": 24
+          },
+          {
+            "kind": "styled",
+            "id": "subscribe-title",
+            "text": "Get notified",
+            "style": {
+              "size": 16,
+              "weight": "bold",
+              "color": "#16202a"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "subscribe-body",
+            "text": "We send one mail per incident, and nothing else."
+          },
+          {
+            "kind": "form",
+            "id": "subscribe",
+            "action": {
+              "method": "POST",
+              "url": "/api/records/subscriber",
+              "fields": {
+                "email": "$subscribe-email"
+              }
+            },
+            "children": [
+              {
+                "kind": "input",
+                "id": "subscribe-email",
+                "label": "Email address",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "button",
+                "id": "subscribe-submit",
+                "text": "Submit",
+                "action": {
+                  "method": "POST",
+                  "url": "/api/records/subscriber",
+                  "fields": {
+                    "email": "$subscribe-email"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "link",
+            "id": "subscribe-records",
+            "text": "Who is subscribed",
+            "url": "/records"
+          }
+        ],
+        "theme": {
+          "accent": "#1f883d",
+          "background": "#ffffff",
+          "surface": "#f5f7f9",
+          "ink": "#16202a",
+          "muted": "#5d6b79",
+          "content_width": 860
+        }
+      },
+      "/incidents/inc-4": {
+        "version": 1,
+        "title": "INC-4 Elevated API latency · Northstar Status",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "inc4-head",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "inc4-wordmark",
+                "text": "Northstar Status",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "inc4-home",
+                "text": "northstar.example",
+                "url": "http://northstar.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center",
+            "style": {
+              "background": "#16202a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "inc4-lead",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "inc4-back",
+            "text": "All incidents",
+            "url": "/"
+          },
+          {
+            "kind": "styled",
+            "id": "inc4-title",
+            "text": "INC-4 Elevated API latency",
+            "style": {
+              "size": 24,
+              "weight": "bold",
+              "color": "#16202a"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "inc4-meta",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "inc4-tag",
+                "text": "Resolved",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#1f883d",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "inc4-when",
+                "text": "2026-02-19 · 12 minutes · Atlas API",
+                "style": {
+                  "size": 13,
+                  "color": "#5d6b79"
+                }
+              }
+            ],
+            "gap": 10,
+            "align": "center"
+          },
+          {
+            "kind": "divider",
+            "id": "inc4-rule"
+          },
+          {
+            "kind": "card",
+            "id": "inc4-timeline",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "inc4-t1",
+                "text": "14:02 UTC — Investigating",
+                "style": {
+                  "size": 14,
+                  "weight": "bold",
+                  "color": "#16202a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "inc4-t1-body",
+                "text": "p99 latency on the Atlas API crossed the eight second alert threshold. On-call paged."
+              },
+              {
+                "kind": "styled",
+                "id": "inc4-t2",
+                "text": "14:05 UTC — Identified",
+                "style": {
+                  "size": 14,
+                  "weight": "bold",
+                  "color": "#16202a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "inc4-t2-body",
+                "text": "A point of presence added the previous evening was serving cold. Every miss fell through to the origin."
+              },
+              {
+                "kind": "styled",
+                "id": "inc4-t3",
+                "text": "14:09 UTC — Monitoring",
+                "style": {
+                  "size": 14,
+                  "weight": "bold",
+                  "color": "#16202a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "inc4-t3-body",
+                "text": "Traffic shifted away from the cold pop. Latency returned to baseline within ninety seconds."
+              },
+              {
+                "kind": "styled",
+                "id": "inc4-t4",
+                "text": "14:14 UTC — Resolved",
+                "style": {
+                  "size": 14,
+                  "weight": "bold",
+                  "color": "#16202a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "inc4-t4-body",
+                "text": "The pop was returned to rotation behind a cache warmer. Total impact: twelve minutes."
+              }
+            ],
+            "style": {
+              "background": "#f5f7f9",
+              "border": "#dde3ea",
+              "radius": 10,
+              "padding": 18
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "inc4-follow-gap",
+            "height": 18
+          },
+          {
+            "kind": "styled",
+            "id": "inc4-follow-title",
+            "text": "Follow-up",
+            "style": {
+              "size": 16,
+              "weight": "bold",
+              "color": "#16202a"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "inc4-follow",
+            "children": [
+              {
+                "kind": "link",
+                "id": "inc4-linear",
+                "text": "Postmortem OPS-7 on Linear",
+                "url": "http://linear.app/projects/OPS/issues/7"
+              },
+              {
+                "kind": "link",
+                "id": "inc4-slack",
+                "text": "The #incidents thread",
+                "url": "http://slack.com/archives/incidents"
+              },
+              {
+                "kind": "link",
+                "id": "inc4-x",
+                "text": "Our apology on X",
+                "url": "http://x.com/NorthstarHQ"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#1f883d",
+          "background": "#ffffff",
+          "surface": "#f5f7f9",
+          "ink": "#16202a",
+          "muted": "#5d6b79",
+          "content_width": 860
+        }
+      }
+    },
+    "records": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://status.northstar.example/",
+      "title": "Northstar Status",
+      "snippet": "All systems operational. Incident history and subscription for the Atlas API and hosted replays.",
+      "authority": 5,
+      "keywords": [
+        "status",
+        "uptime",
+        "incident",
+        "northstar",
+        "outage"
+      ]
+    },
+    {
+      "url": "http://status.northstar.example/incidents/inc-4",
+      "title": "INC-4 Elevated API latency · Northstar Status",
+      "snippet": "Twelve minutes on 2026-02-19: a cold cache on a new point of presence pushed p99 latency to eleven seconds.",
+      "authority": 5,
+      "keywords": [
+        "inc-4",
+        "incident",
+        "latency",
+        "outage",
+        "postmortem",
+        "northstar down"
+      ]
+    }
+  ]
+}

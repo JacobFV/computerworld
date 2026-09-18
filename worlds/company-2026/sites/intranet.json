@@ -1,0 +1,499 @@
+{
+  "id": "intranet",
+  "kind": "static-site",
+  "node": "app-server",
+  "domains": [
+    "intranet.internal",
+    "intranet.northstar.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "Northstar Workshop",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "masthead-mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 20,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "masthead-public",
+                "text": "northstar.example",
+                "url": "http://northstar.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "row",
+            "id": "banner",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "banner-tag",
+                "text": "Resolved",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#1f883d",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "banner-text",
+                "text": "INC-4 elevated API latency lasted 12 minutes on 19 February. Postmortem in progress.",
+                "style": {
+                  "size": 13,
+                  "color": "#16202a"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "status",
+                "text": "Status page",
+                "url": "http://status.northstar.example/"
+              },
+              {
+                "kind": "link",
+                "id": "banner-postmortem",
+                "text": "Postmortem OPS-7",
+                "url": "http://linear.app/projects/OPS/issues/7"
+              }
+            ],
+            "gap": 10,
+            "align": "center",
+            "style": {
+              "background": "#fff8e6",
+              "border": "#e3b341",
+              "radius": 8,
+              "padding": 12
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "welcome-gap",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "welcome",
+            "text": "Northstar Workshop",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "intro",
+            "text": "Start with the handbook, then check your mail for the Atlas launch."
+          },
+          {
+            "kind": "spacer",
+            "id": "internal-gap",
+            "height": 14
+          },
+          {
+            "kind": "styled",
+            "id": "internal-title",
+            "text": "Internal tools",
+            "style": {
+              "size": 16,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "internal",
+            "children": [
+              {
+                "kind": "link",
+                "id": "handbook",
+                "text": "Team handbook",
+                "url": "http://docs.internal/"
+              },
+              {
+                "kind": "link",
+                "id": "mail",
+                "text": "Read mail",
+                "url": "http://mail.internal/"
+              },
+              {
+                "kind": "link",
+                "id": "chat",
+                "text": "Team chat",
+                "url": "http://chat.internal/"
+              },
+              {
+                "kind": "link",
+                "id": "git",
+                "text": "Source repositories",
+                "url": "http://git.internal/"
+              },
+              {
+                "kind": "link",
+                "id": "issues",
+                "text": "Operations issues",
+                "url": "http://issues.internal/"
+              },
+              {
+                "kind": "link",
+                "id": "calendar",
+                "text": "Team calendar",
+                "url": "http://calendar.internal/"
+              },
+              {
+                "kind": "link",
+                "id": "public-guide",
+                "text": "Public guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "gap": 12,
+            "align": "start"
+          },
+          {
+            "kind": "spacer",
+            "id": "quick-gap",
+            "height": 22
+          },
+          {
+            "kind": "styled",
+            "id": "quick-title",
+            "text": "Everything else you use",
+            "style": {
+              "size": 16,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "grid",
+            "id": "quick",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "quick-gmail",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "quick-gmail-label",
+                    "text": "Gmail",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "quick-gmail-note",
+                    "text": "alice@northstar.example and the launch threads",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://mail.google.com/",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "card",
+                "id": "quick-slack",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "quick-slack-label",
+                    "text": "Slack",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "quick-slack-note",
+                    "text": "#eng, #random, #incidents",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://slack.com/archives/eng",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "card",
+                "id": "quick-linear",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "quick-linear-label",
+                    "text": "Linear",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "quick-linear-note",
+                    "text": "Operations and Atlas boards",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://linear.app/projects/OPS",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "card",
+                "id": "quick-github",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "quick-github-label",
+                    "text": "GitHub",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "quick-github-note",
+                    "text": "northstar/atlas and the CI workflows",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://github.com/northstar/atlas",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "card",
+                "id": "quick-drive",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "quick-drive-label",
+                    "text": "Drive",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "quick-drive-note",
+                    "text": "My Drive / Atlas assets",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://drive.google.com/",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "card",
+                "id": "quick-gcal",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "quick-gcal-label",
+                    "text": "Google Calendar",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "quick-gcal-note",
+                    "text": "Launch review and the DevCon trip",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://calendar.google.com/",
+                  "fields": {}
+                }
+              }
+            ],
+            "gap": 16
+          },
+          {
+            "kind": "spacer",
+            "id": "starter-gap",
+            "height": 24
+          },
+          {
+            "kind": "styled",
+            "id": "starter-title",
+            "text": "New here?",
+            "style": {
+              "size": 16,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "card",
+            "id": "starter",
+            "children": [
+              {
+                "kind": "text",
+                "id": "starter-1",
+                "text": "Read the handbook, then clone the onboarding repository and work through checklist.txt."
+              },
+              {
+                "kind": "link",
+                "id": "starter-repo",
+                "text": "git.internal / onboarding",
+                "url": "http://git.internal/repos/onboarding"
+              },
+              {
+                "kind": "text",
+                "id": "starter-2",
+                "text": "Say hello in #general, and put the launch review in your calendar."
+              },
+              {
+                "kind": "link",
+                "id": "starter-chat",
+                "text": "Say hello in #general",
+                "url": "http://slack.com/archives/general"
+              },
+              {
+                "kind": "text",
+                "id": "starter-3",
+                "text": "Everything we publish outside the company lives on the public guide."
+              },
+              {
+                "kind": "link",
+                "id": "starter-guide",
+                "text": "Public guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "style": {
+              "background": "#f4f6fb",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 18
+            }
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      }
+    },
+    "records": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://intranet.internal/",
+      "title": "Northstar Workshop",
+      "snippet": "The employee intranet: handbook, mail, chat, repositories, boards and the status banner.",
+      "authority": 1,
+      "keywords": [
+        "intranet",
+        "workshop",
+        "northstar",
+        "handbook",
+        "internal"
+      ]
+    }
+  ]
+}

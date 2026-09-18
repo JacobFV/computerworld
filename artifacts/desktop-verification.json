@@ -9,18 +9,18 @@
         "height": 640,
         "rgbaBytes": 2457600,
         "deterministic": true,
-        "pixelChecksum": "774dd4fe",
-        "renderMilliseconds": 1,
-        "nodes": 56
+        "pixelChecksum": "75f6f2d4",
+        "renderMilliseconds": 0.699999988079071,
+        "nodes": 85
       },
       "window": {
         "width": 960,
         "height": 640,
         "rgbaBytes": 2457600,
         "deterministic": true,
-        "pixelChecksum": "e1cc8204",
-        "renderMilliseconds": 1,
-        "nodes": 116
+        "pixelChecksum": "835fd05a",
+        "renderMilliseconds": 1.199999988079071,
+        "nodes": 178
       },
       "nativeBrowserAddress": true,
       "offsetPageHitTest": true,
@@ -36,18 +36,18 @@
         "height": 640,
         "rgbaBytes": 2457600,
         "deterministic": true,
-        "pixelChecksum": "a3d3eac4",
-        "renderMilliseconds": 0.29999998211860657,
-        "nodes": 41
+        "pixelChecksum": "604018b9",
+        "renderMilliseconds": 0.5,
+        "nodes": 46
       },
       "window": {
         "width": 960,
         "height": 640,
         "rgbaBytes": 2457600,
         "deterministic": true,
-        "pixelChecksum": "66229e79",
-        "renderMilliseconds": 0.800000011920929,
-        "nodes": 103
+        "pixelChecksum": "3f006b9",
+        "renderMilliseconds": 1,
+        "nodes": 141
       },
       "nativeBrowserAddress": true,
       "offsetPageHitTest": true,
@@ -63,18 +63,18 @@
         "height": 640,
         "rgbaBytes": 2457600,
         "deterministic": true,
-        "pixelChecksum": "e59c409f",
-        "renderMilliseconds": 0.20000001788139343,
-        "nodes": 43
+        "pixelChecksum": "b99f74",
+        "renderMilliseconds": 0.5,
+        "nodes": 48
       },
       "window": {
         "width": 960,
         "height": 640,
         "rgbaBytes": 2457600,
         "deterministic": true,
-        "pixelChecksum": "9e20ebca",
-        "renderMilliseconds": 0.800000011920929,
-        "nodes": 103
+        "pixelChecksum": "9696f2ca",
+        "renderMilliseconds": 1.0999999940395355,
+        "nodes": 147
       },
       "nativeBrowserAddress": true,
       "offsetPageHitTest": true,
@@ -90,18 +90,18 @@
         "height": 780,
         "rgbaBytes": 1216800,
         "deterministic": true,
-        "pixelChecksum": "6ad639d0",
-        "renderMilliseconds": 0.20000001788139343,
-        "nodes": 83
+        "pixelChecksum": "b4c17615",
+        "renderMilliseconds": 0.5,
+        "nodes": 87
       },
       "window": {
         "width": 390,
         "height": 780,
         "rgbaBytes": 1216800,
         "deterministic": true,
-        "pixelChecksum": "708cfcc5",
-        "renderMilliseconds": 0.5,
-        "nodes": 66
+        "pixelChecksum": "a82cc8bd",
+        "renderMilliseconds": 0.7000000178813934,
+        "nodes": 82
       },
       "nativeBrowserAddress": true,
       "offsetPageHitTest": true,
@@ -117,18 +117,18 @@
         "height": 780,
         "rgbaBytes": 1216800,
         "deterministic": true,
-        "pixelChecksum": "d2af5b5a",
-        "renderMilliseconds": 0.20000001788139343,
-        "nodes": 51
+        "pixelChecksum": "cc416367",
+        "renderMilliseconds": 0.3999999761581421,
+        "nodes": 54
       },
       "window": {
         "width": 390,
         "height": 780,
         "rgbaBytes": 1216800,
         "deterministic": true,
-        "pixelChecksum": "a80fd5a6",
-        "renderMilliseconds": 0.5999999940395355,
-        "nodes": 55
+        "pixelChecksum": "c19b5ac6",
+        "renderMilliseconds": 0.699999988079071,
+        "nodes": 77
       },
       "nativeBrowserAddress": true,
       "offsetPageHitTest": true,

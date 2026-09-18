@@ -1,7 +1,7 @@
 /** Real Chromium / Rust Wasm integration. No network requests allowed after boot. */
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {readFile, mkdir, stat} from 'node:fs/promises';
+import {readFile, mkdir, stat, writeFile} from 'node:fs/promises';
 import {resolve, extname, sep} from 'node:path';
 import {pathToFileURL} from 'node:url';
 const root=resolve(new URL('..',import.meta.url).pathname);
@@ -113,5 +113,9 @@ try {
   report.liveDeviceLifecycle=true;report.headlessConsole=true;report.phoneTextInput=true;report.snapshotTopologyRestore=true;
   assert.deepEqual(requestsAfterBoot,[],'episode made browser network requests');assert.deepEqual(errors,[],'browser errors');
   await mkdir(resolve(root,'artifacts'),{recursive:true});await page.screenshot({path:resolve(root,'artifacts/browser-demo.png'),fullPage:true});
-  console.log(JSON.stringify({ok:true,networkRequestsDuringEpisode:requestsAfterBoot.length,...report},null,2));
+  const verification={ok:true,networkRequestsDuringEpisode:requestsAfterBoot.length,...report};
+  // Written, not just printed: docs link this file, and an artifact no script regenerates
+  // can only ever drift away from the world it claims to describe.
+  await writeFile(resolve(root,'artifacts/browser-verification.json'),JSON.stringify(verification,null,2)+'\n');
+  console.log(JSON.stringify(verification,null,2));
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

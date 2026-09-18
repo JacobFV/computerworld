@@ -38,8 +38,11 @@ impl Environment {
         else {
             return Ok(None);
         };
-        if entry.get("kind").and_then(Value::as_str) != Some("browser") {
-            return Err(SimError::invalid("unsupported desktop application alias"));
+        match entry.get("kind").and_then(Value::as_str) {
+            Some("browser") => {}
+            // A native application is not an alias; it is launched in its own right.
+            Some("native") => return Ok(None),
+            _ => return Err(SimError::invalid("unsupported desktop application alias")),
         }
         let computer = self.runtime.computer(machine)?;
         if !computer.application_available(kind) || !computer.application_available("browser") {
@@ -69,6 +72,62 @@ impl Environment {
         }))
     }
 
+    /// Launch argument for a native application: the world says which service backs it.
+    pub(crate) fn native_argument(&self, kind: &str) -> String {
+        self.runtime
+            .definition()
+            .metadata
+            .get("desktop_apps")
+            .and_then(Value::as_array)
+            .and_then(|entries| {
+                entries
+                    .iter()
+                    .find(|entry| entry.get("id").and_then(Value::as_str) == Some(kind))
+            })
+            .and_then(|entry| entry.get("url").and_then(Value::as_str))
+            .unwrap_or_default()
+            .to_owned()
+    }
+    /// Product name of a native application on this platform.
+    fn native_label(theme: Option<DesktopTheme>, kind: &str) -> &'static str {
+        match (theme, kind) {
+            (_, "calendar") => "Calendar",
+            (Some(DesktopTheme::Windows), "mail") => "Outlook",
+            (Some(DesktopTheme::Android), "mail") => "Gmail",
+            (Some(DesktopTheme::Ubuntu), "mail") => "Thunderbird",
+            (_, "mail") => "Mail",
+            (Some(DesktopTheme::Windows), "chat") => "Teams",
+            (Some(DesktopTheme::Ubuntu), "chat") => "Chat",
+            (_, "chat") => "Messages",
+            (Some(DesktopTheme::Windows), "docs") => "Word",
+            (Some(DesktopTheme::Ubuntu), "docs") => "Writer",
+            (Some(DesktopTheme::Android), "docs") => "Docs",
+            (_, "docs") => "Pages",
+            (Some(DesktopTheme::Windows), "notes") => "Sticky Notes",
+            (Some(DesktopTheme::Android), "notes") => "Keep",
+            (_, "notes") => "Notes",
+            (Some(DesktopTheme::Windows), "contacts") => "People",
+            (_, "contacts") => "Contacts",
+            (Some(DesktopTheme::Macos), "settings") => "System Settings",
+            (_, "settings") => "Settings",
+            (Some(DesktopTheme::Ubuntu), "clock") => "Clocks",
+            (_, "clock") => "Clock",
+            (_, "calculator") => "Calculator",
+            (Some(DesktopTheme::Ubuntu), "photos") => "Image Viewer",
+            (Some(DesktopTheme::Android), "photos") => "Google Photos",
+            (_, "photos") => "Photos",
+            (Some(DesktopTheme::Ubuntu), "music") => "Rhythmbox",
+            (Some(DesktopTheme::Windows), "music") => "Media Player",
+            (Some(DesktopTheme::Android), "music") => "YouTube Music",
+            (_, "music") => "Music",
+            (_, "maps") => "Maps",
+            (_, "weather") => "Weather",
+            (_, other) => {
+                debug_assert!(false, "unnamed native application {other}");
+                "Application"
+            }
+        }
+    }
     pub(crate) fn desktop_catalog(&self, id: &str, machine: &str) -> Vec<DesktopApp> {
         let Ok(computer) = self.runtime.computer(machine) else {
             return Vec::new();
@@ -118,6 +177,18 @@ impl Environment {
                     icon: kind.into(),
                 });
             }
+        }
+        // Applications that ship with the simulator, when the machine has them installed.
+        let theme = self.desktop_theme(id, machine);
+        for kind in cw_applications::NativeApp::KINDS {
+            if catalog.iter().any(|app| &app.id == kind) || !computer.application_available(kind) {
+                continue;
+            }
+            catalog.push(DesktopApp {
+                id: (*kind).into(),
+                label: Self::native_label(theme, kind).into(),
+                icon: (*kind).into(),
+            });
         }
         if let Some(entries) = self
             .runtime
@@ -237,16 +308,24 @@ impl Environment {
                 "settings" => "settings",
                 "overview" => "overview",
                 "context" => "context",
+                "power" => "power",
+                "format" => "format",
+                "app-menu" => "app-menu",
+                "app-settings" => "app-settings",
+                "page" => "page",
                 _ => return Err(SimError::invalid("unknown shell panel")),
             };
             let desktop = &mut self.machine_mut(id, machine)?.desktop;
-            desktop.panel = if desktop.panel.as_deref() == Some(name) {
-                None
-            } else {
-                Some(name.into())
-            };
-            desktop.launcher_open = false;
+            let closing = desktop.panel.as_deref() == Some(name);
+            desktop.panel = if closing { None } else { Some(name.into()) };
+            // A power flyout sits over an open launcher rather than replacing it, which
+            // is what Start does; every other panel takes the screen.
+            desktop.panel_over_launcher = !closing && name == "power" && desktop.launcher_open;
+            if !desktop.panel_over_launcher {
+                desktop.launcher_open = false;
+            }
             desktop.search.clear();
+            desktop.panel_month = 0;
             return Ok(Some(Value::Null));
         }
         if target == "shell:desktop" {
@@ -285,6 +364,321 @@ impl Environment {
             }
             return Ok(Some(Value::Null));
         }
+        // Paging a calendar panel's month grid. Bounded so a held control cannot walk the
+        // grid somewhere a Gregorian date cannot be computed.
+        if let Some(op) = target.strip_prefix("shell:month:") {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            desktop.panel_month = match op {
+                "prev" => desktop.panel_month.saturating_sub(1).max(-1200),
+                "next" => desktop.panel_month.saturating_add(1).min(1200),
+                "today" => 0,
+                _ => return Err(SimError::invalid("unknown month interaction")),
+            };
+            return Ok(Some(json!({ "month": desktop.panel_month })));
+        }
+        // Save the page on screen, capture the screen, or hand something to another app.
+        if target == "shell:download" {
+            let url = self.session(id)?.machines[machine]
+                .browser
+                .url()
+                .unwrap_or_default()
+                .to_owned();
+            if url.is_empty() {
+                return Err(SimError::invalid("there is no page to save"));
+            }
+            let window = self.session(id)?.machines[machine]
+                .desktop
+                .focused
+                .unwrap_or_default();
+            self.effects(
+                id,
+                machine,
+                actor,
+                vec![cw_applications::AppEffect::Download { window, url }],
+            )?;
+            return Ok(Some(Value::Null));
+        }
+        if target == "shell:screenshot" {
+            let window = self.session(id)?.machines[machine]
+                .desktop
+                .focused
+                .unwrap_or_default();
+            self.effects(
+                id,
+                machine,
+                actor,
+                vec![cw_applications::AppEffect::Screenshot {
+                    window,
+                    path: String::new(),
+                }],
+            )?;
+            return Ok(Some(Value::Null));
+        }
+        // Sharing is a real hand-off: the thing on screen opens in a messaging app.
+        if let Some(via) = target.strip_prefix("shell:share") {
+            let via = via.trim_start_matches(':');
+            let kind = if via.is_empty() { "chat" } else { via };
+            if !matches!(kind, "chat" | "mail") {
+                return Err(SimError::invalid("nothing here can receive a share"));
+            }
+            if !self.runtime.computer(machine)?.application_available(kind) {
+                return Err(SimError::not_found("no application to share with"));
+            }
+            let state = &self.session(id)?.machines[machine];
+            let subject = state
+                .desktop
+                .focused
+                .and_then(|w| state.desktop.windows.get(&w))
+                .map(|w| match &w.state {
+                    // The selected item, or the folder itself when nothing is selected.
+                    AppState::Files { .. } => w
+                        .state
+                        .file_tab()
+                        .and_then(|t| t.selected_path())
+                        .unwrap_or_else(|| w.state.file_path().to_owned()),
+                    // An editor's document is a real thing to hand over, and it is what
+                    // a proxy icon would drag if anything consumed a drag.
+                    AppState::Editor { path, .. } => path.clone(),
+                    AppState::Native(app) if !app.document().is_empty() => app.document(),
+                    _ => state.browser.url().unwrap_or_default().to_owned(),
+                })
+                .unwrap_or_default();
+            if subject.is_empty() {
+                return Err(SimError::invalid("there is nothing to share"));
+            }
+            // The receiving application opens with the thing already in hand: a Messages
+            // draft, or a Mail message being written, that the actor still has to send.
+            let result = self.dispatch(
+                id,
+                actor,
+                &ActionEnvelope::new(
+                    "application.v1",
+                    "launch",
+                    machine,
+                    json!({"kind": kind, "argument": subject}),
+                ),
+            )?;
+            self.machine_mut(id, machine)?.desktop.notify(
+                kind,
+                "Ready to share",
+                &subject,
+                Some(format!("shell:launch:{kind}")),
+            );
+            return Ok(Some(result));
+        }
+        // The Trash is a folder, so opening it is opening a folder.
+        if target == "shell:trash" {
+            let home = self.session(id)?.machines[machine].desktop.home_folder();
+            let path = format!("{}/.local/share/Trash/files", home.trim_end_matches('/'));
+            return self
+                .dispatch(
+                    id,
+                    actor,
+                    &ActionEnvelope::new(
+                        "application.v1",
+                        "launch",
+                        machine,
+                        json!({"kind":"files","argument":path}),
+                    ),
+                )
+                .map(Some);
+        }
+        // Virtual desktops.
+        if let Some(op) = target.strip_prefix("shell:workspace:") {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let result = match op {
+                "new" => desktop.add_workspace().map(|_| ()),
+                "close" => {
+                    let here = desktop.workspace;
+                    desktop.close_workspace(here)
+                }
+                index => match index.strip_prefix("move:") {
+                    Some(index) => {
+                        let index = index
+                            .parse()
+                            .map_err(|_| "invalid desktop".to_string())
+                            .and_then(|i| {
+                                desktop
+                                    .focused
+                                    .ok_or("no window to move".into())
+                                    .map(|w| (w, i))
+                            });
+                        index.and_then(|(w, i)| desktop.move_to_workspace(w, i))
+                    }
+                    None => index
+                        .parse()
+                        .map_err(|_| "invalid desktop".to_string())
+                        .and_then(|i| desktop.switch_workspace(i)),
+                },
+            };
+            result.map_err(SimError::invalid)?;
+            let workspace = self.machine_mut(id, machine)?.desktop.workspace;
+            self.sync_desktop_visibility(id, machine)?;
+            return Ok(Some(json!({ "workspace": workspace })));
+        }
+        // Bookmarks, shared by every browser window on the machine.
+        if let Some(op) = target.strip_prefix("shell:bookmark") {
+            let page = self.session(id)?.machines[machine]
+                .browser
+                .page()
+                .map(|p| p.title.clone())
+                .unwrap_or_default();
+            let url = self.session(id)?.machines[machine]
+                .browser
+                .url()
+                .unwrap_or_default()
+                .to_owned();
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            match op {
+                "" | ":toggle" => {
+                    if desktop.bookmarked(&url) {
+                        desktop.remove_bookmark(&url).map_err(SimError::invalid)?;
+                    } else {
+                        desktop.bookmark(&page, &url).map_err(SimError::invalid)?;
+                    }
+                    return Ok(Some(json!({ "bookmarked": desktop.bookmarked(&url) })));
+                }
+                rest => {
+                    let index: usize = rest
+                        .strip_prefix(":open:")
+                        .and_then(|i| i.parse().ok())
+                        .ok_or_else(|| SimError::invalid("unknown bookmark interaction"))?;
+                    let target = desktop
+                        .bookmarks
+                        .get(index)
+                        .ok_or_else(|| SimError::not_found("bookmark"))?
+                        .url
+                        .clone();
+                    return self
+                        .browser_action(
+                            id,
+                            actor,
+                            &ActionEnvelope::new(
+                                "browser.v1",
+                                "navigate",
+                                machine,
+                                json!({ "url": target }),
+                            ),
+                        )
+                        .map(Some);
+                }
+            }
+        }
+        // Notifications the machine really posted.
+        if target == "shell:notifications:seen" {
+            self.machine_mut(id, machine)?.desktop.mark_notices_seen();
+            return Ok(Some(Value::Null));
+        }
+        if let Some(index) = target.strip_prefix("shell:notice:") {
+            let index: usize = index
+                .parse()
+                .map_err(|_| SimError::invalid("invalid notice"))?;
+            let action = self.session(id)?.machines[machine]
+                .desktop
+                .notifications
+                .get(index)
+                .ok_or_else(|| SimError::not_found("notice"))?
+                .action
+                .clone();
+            if let Some(notice) = self
+                .machine_mut(id, machine)?
+                .desktop
+                .notifications
+                .get_mut(index)
+            {
+                notice.seen = true;
+            }
+            return match action {
+                Some(action) => self.shell_action(id, machine, actor, &action).map(Some),
+                None => Ok(Some(Value::Null)),
+            };
+        }
+        // A launcher category the user expanded.
+        if let Some(group) = target.strip_prefix("shell:group:") {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            desktop.library_group = match (group, desktop.library_group.as_deref()) {
+                ("", _) => None,
+                (g, Some(open)) if open == g => None,
+                (g, _) => Some(g.to_owned()),
+            };
+            return Ok(Some(Value::Null));
+        }
+        // Power controls really change what the display shows.
+        if let Some(op) = target.strip_prefix("shell:power:") {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            desktop.panel = None;
+            desktop.launcher_open = false;
+            match op {
+                "lock" => desktop.screen = cw_applications::ScreenState::Locked,
+                "off" | "shutdown" => {
+                    desktop.home();
+                    desktop.windows.clear();
+                    desktop.stacking.clear();
+                    desktop.screen = cw_applications::ScreenState::Off;
+                }
+                "restart" => {
+                    desktop.home();
+                    desktop.windows.clear();
+                    desktop.stacking.clear();
+                    desktop.screen = cw_applications::ScreenState::Locked;
+                }
+                "wake" | "unlock" => desktop.screen = cw_applications::ScreenState::Active,
+                _ => return Err(SimError::invalid("unknown power action")),
+            }
+            self.sync_desktop_visibility(id, machine)?;
+            return Ok(Some(Value::Null));
+        }
+        // Real device switches and levels: quick settings, control centre and the shade.
+        // GNOME Terminal's Reset and Clear: the focused terminal's scrollback is emptied,
+        // exactly as running `clear` in it does.
+        if target == "shell:terminal:clear" {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let window = desktop
+                .focused
+                .ok_or_else(|| SimError::invalid("no terminal"))?;
+            match desktop.windows.get_mut(&window).map(|w| &mut w.state) {
+                Some(AppState::Terminal {
+                    transcript, scroll, ..
+                }) => {
+                    transcript.clear();
+                    *scroll = 0;
+                }
+                _ => return Err(SimError::invalid("the focused window is not a terminal")),
+            }
+            desktop.close_menu();
+            return Ok(Some(Value::Null));
+        }
+        // Page zoom for the browser on screen: `shell:zoom:in|out|reset`.
+        if let Some(step) = target.strip_prefix("shell:zoom:") {
+            let step = step.to_owned();
+            let m = self.machine_mut(id, machine)?;
+            let zoom = m.browser.step_zoom(&step)?;
+            m.desktop.close_menu();
+            return Ok(Some(json!({ "zoom": zoom })));
+        }
+        if let Some(name) = target.strip_prefix("shell:toggle:") {
+            let name = name.to_owned();
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let value = desktop.settings.toggle(&name).map_err(SimError::invalid)?;
+            // A menu entry closes its menu; a switch in a settings flyout stays put.
+            desktop.close_menu();
+            return Ok(Some(json!({ "setting": name, "value": value })));
+        }
+        if let Some(rest) = target.strip_prefix("shell:set:") {
+            let (name, percent) = rest
+                .split_once(':')
+                .ok_or_else(|| SimError::invalid("system level requires a value"))?;
+            let percent: u8 = percent
+                .parse()
+                .map_err(|_| SimError::invalid("invalid system level"))?;
+            let name = name.to_owned();
+            self.machine_mut(id, machine)?
+                .desktop
+                .settings
+                .set_level(&name, percent)
+                .map_err(SimError::invalid)?;
+            return Ok(Some(json!({ "setting": name, "value": percent.min(100) })));
+        }
         match target {
             "shell:noop" => Ok(Some(Value::Null)),
             "shell:mobile-back" => {
@@ -304,7 +698,9 @@ impl Environment {
             "shell:dismiss" => {
                 let desktop = &mut self.machine_mut(id, machine)?.desktop;
                 desktop.panel = None;
-                desktop.launcher_open = false;
+                // Closing a flyout that sat over the launcher returns to the launcher.
+                desktop.launcher_open = desktop.panel_over_launcher;
+                desktop.panel_over_launcher = false;
                 desktop.search.clear();
                 Ok(Some(Value::Null))
             }

@@ -1,0 +1,413 @@
+{
+  "id": "amazon",
+  "kind": "shop",
+  "node": "amazon",
+  "domains": [
+    "amazon.com",
+    "www.amazon.com",
+    "smile.amazon.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "retail",
+    "brand": "Amazon",
+    "tagline": "A simulated everything-store. Nothing here ships and nothing here is charged.",
+    "currency": "USD",
+    "theme": {
+      "accent": "#e8842c",
+      "background": "#ffffff",
+      "surface": "#eaeded",
+      "ink": "#0f1111",
+      "muted": "#565959",
+      "content_width": 1120
+    },
+    "categories": [
+      {
+        "id": "electronics",
+        "title": "Electronics"
+      },
+      {
+        "id": "home",
+        "title": "Home & Office"
+      },
+      {
+        "id": "books",
+        "title": "Books"
+      },
+      {
+        "id": "outdoors",
+        "title": "Outdoors"
+      }
+    ],
+    "products": {
+      "b0monitor27": {
+        "id": "b0monitor27",
+        "category": "electronics",
+        "title": "Lumen 27-inch 4K USB-C Monitor",
+        "seller": "Lumen Works",
+        "price_cents": 42999,
+        "rating_sum": 184,
+        "rating_count": 41,
+        "stock": 12,
+        "fast_shipping": true,
+        "bullets": [
+          "3840x2160 at 60Hz",
+          "90W USB-C power delivery over one cable",
+          "Factory-calibrated sRGB, dE under 2",
+          "Height, tilt and pivot stand"
+        ],
+        "description": "A 27-inch 4K panel that drives a laptop and charges it down the same cable. The stand pivots, so two of these sit side by side without a gap.",
+        "reviews": [
+          {
+            "id": "rv-1",
+            "author": "alice",
+            "stars": 4,
+            "title": "Two of these side by side is the whole point",
+            "body": "One cable to the laptop, 90W back the other way, and the bezels are thin enough that two of them read as one desktop. Docked a star because the stand needs a hex key you do not get in the box.",
+            "tick": 6
+          },
+          {
+            "id": "rv-2",
+            "author": "carol",
+            "stars": 5,
+            "title": "Replaced two older panels with one",
+            "body": "Colour out of the box was close enough that I never opened the calibrator. Menu joystick is better than any button row.",
+            "tick": 4
+          },
+          {
+            "id": "rv-3",
+            "author": "bob",
+            "stars": 3,
+            "title": "Fine, but read the refresh rate again",
+            "body": "It is 60Hz. If you came from a 144Hz gaming panel you will notice, and no firmware update is going to change it.",
+            "tick": 5
+          }
+        ]
+      },
+      "b0dock11": {
+        "id": "b0dock11",
+        "category": "electronics",
+        "title": "Lumen 11-port Thunderbolt Dock",
+        "seller": "Lumen Works",
+        "price_cents": 18999,
+        "rating_sum": 92,
+        "rating_count": 22,
+        "stock": 7,
+        "fast_shipping": true,
+        "bullets": [
+          "Two downstream Thunderbolt ports",
+          "96W upstream charging",
+          "2.5Gb Ethernet",
+          "SD and microSD readers"
+        ],
+        "description": "Eleven ports and a metal shell that stays cool. Pairs with the Lumen 27-inch panel on a single upstream cable.",
+        "reviews": [
+          {
+            "id": "rv-4",
+            "author": "alice",
+            "stars": 4,
+            "title": "Ethernet finally keeps up",
+            "body": "2.5Gb to the switch and the dock does not warm up. The SD reader is slower than the spec sheet suggests.",
+            "tick": 7
+          }
+        ]
+      },
+      "b0kbd87": {
+        "id": "b0kbd87",
+        "category": "electronics",
+        "title": "Meridian 87-key Mechanical Keyboard",
+        "seller": "Meridian Supply",
+        "price_cents": 12450,
+        "rating_sum": 310,
+        "rating_count": 68,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Hot-swap sockets, no soldering",
+          "Tactile 55g switches",
+          "Detachable USB-C",
+          "Aluminium case"
+        ],
+        "description": "Eighty-seven keys, a case you can actually open, and sockets so you can change your mind about the switches later.",
+        "reviews": [
+          {
+            "id": "rv-5",
+            "author": "bob",
+            "stars": 5,
+            "title": "Third one I have bought",
+            "body": "Hot-swap means it outlives whatever switch fashion is current. Back in stock and I buy another.",
+            "tick": 3
+          }
+        ]
+      },
+      "b0chair": {
+        "id": "b0chair",
+        "category": "home",
+        "title": "Harborline Task Chair",
+        "seller": "Harborline Furniture",
+        "price_cents": 32900,
+        "rating_sum": 141,
+        "rating_count": 32,
+        "stock": 4,
+        "fast_shipping": false,
+        "bullets": [
+          "Mesh back with adjustable lumbar",
+          "Four-way arms",
+          "12-year frame warranty"
+        ],
+        "description": "The chair that quietly appeared under half the desks on the fourth floor.",
+        "reviews": []
+      },
+      "b0lamp": {
+        "id": "b0lamp",
+        "category": "home",
+        "title": "Marrow Point Desk Lamp",
+        "seller": "Harborline Furniture",
+        "price_cents": 5899,
+        "rating_sum": 87,
+        "rating_count": 20,
+        "stock": 30,
+        "fast_shipping": true,
+        "bullets": [
+          "2700K-5000K adjustable",
+          "Matte aluminium arm",
+          "USB-C passthrough"
+        ],
+        "description": "A lamp with one dial that does colour temperature and one that does brightness, which is one more dial than most lamps manage.",
+        "reviews": []
+      },
+      "b0book-det": {
+        "id": "b0book-det",
+        "category": "books",
+        "title": "Deterministic Systems in Practice",
+        "seller": "Quill & Kettle Books",
+        "price_cents": 3499,
+        "rating_sum": 194,
+        "rating_count": 40,
+        "stock": 22,
+        "fast_shipping": false,
+        "bullets": [
+          "Paperback, 412 pages",
+          "Covers replay, snapshotting and ordered inputs"
+        ],
+        "description": "A working engineer's book about removing the clock, the random number generator and unordered iteration from a system you still have to ship.",
+        "reviews": [
+          {
+            "id": "rv-6",
+            "author": "carol",
+            "stars": 5,
+            "title": "Chapter 7 is the one",
+            "body": "The chapter on ordered inputs is worth the cover price on its own. We handed it round the team before the Atlas review.",
+            "tick": 5
+          }
+        ]
+      },
+      "b0bottle": {
+        "id": "b0bottle",
+        "category": "outdoors",
+        "title": "Puget 32oz Insulated Bottle",
+        "seller": "Marrow Point Outfitters",
+        "price_cents": 2899,
+        "rating_sum": 254,
+        "rating_count": 55,
+        "stock": 60,
+        "fast_shipping": true,
+        "bullets": [
+          "Holds temperature 24 hours cold, 12 hot",
+          "Fits a standard cup holder",
+          "Dishwasher safe"
+        ],
+        "description": "A bottle that survives being dropped down the stairwell at least twice.",
+        "reviews": []
+      },
+      "b0cable": {
+        "id": "b0cable",
+        "category": "electronics",
+        "title": "Lumen 2m USB-C 240W Cable",
+        "seller": "Lumen Works",
+        "price_cents": 1899,
+        "rating_sum": 118,
+        "rating_count": 26,
+        "stock": 85,
+        "fast_shipping": true,
+        "bullets": [
+          "240W power delivery",
+          "40Gbps data",
+          "Braided, 2 metres"
+        ],
+        "description": "The cable the monitor should have come with if you sit further than a metre away.",
+        "reviews": []
+      }
+    },
+    "carts": {
+      "carol": {
+        "b0lamp": 1,
+        "b0cable": 2
+      }
+    },
+    "orders": {
+      "1001": {
+        "id": "1001",
+        "buyer": "alice",
+        "tick": 3,
+        "date": "2026-03-02",
+        "items": [
+          {
+            "product": "b0monitor27",
+            "title": "Lumen 27-inch 4K USB-C Monitor",
+            "qty": 1,
+            "price_cents": 42999
+          }
+        ],
+        "total_cents": 42999,
+        "status": "Delivered",
+        "confirmation": "ORD-LNUVJ6",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": [
+        "b0dock11",
+        "b0book-det"
+      ],
+      "bob": [
+        "b0kbd87"
+      ]
+    },
+    "messages": [],
+    "next_order": 1002
+  },
+  "search_entries": [
+    {
+      "url": "http://amazon.com/",
+      "title": "Amazon - simulated everything-store",
+      "snippet": "Browse electronics, home, books and outdoors. Add to a cart, check out, and the order really exists afterwards.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "shopping",
+        "store",
+        "buy",
+        "riverbend",
+        "amazon"
+      ]
+    },
+    {
+      "url": "http://amazon.com/dp/b0monitor27",
+      "title": "Lumen 27-inch 4K USB-C Monitor - $429.99",
+      "snippet": "3840x2160 at 60Hz with 90W USB-C power delivery. 4.4 stars from 41 reviews, 12 in stock.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "27 inch 4k usb-c monitor",
+        "4k monitor",
+        "usb-c monitor",
+        "lumen",
+        "monitor",
+        "27 inch monitor"
+      ]
+    },
+    {
+      "url": "http://amazon.com/dp/b0dock11",
+      "title": "Lumen 11-port Thunderbolt Dock - $189.99",
+      "snippet": "Eleven ports, 96W upstream charging and 2.5Gb Ethernet in a metal shell.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "thunderbolt dock",
+        "usb-c dock",
+        "docking station",
+        "lumen dock"
+      ]
+    },
+    {
+      "url": "http://amazon.com/dp/b0kbd87",
+      "title": "Meridian 87-key Mechanical Keyboard - sold out",
+      "snippet": "Hot-swap sockets and tactile 55g switches. Currently out of stock.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "mechanical keyboard",
+        "87 key",
+        "hot swap keyboard",
+        "meridian"
+      ]
+    },
+    {
+      "url": "http://amazon.com/dp/b0book-det",
+      "title": "Deterministic Systems in Practice - $34.99",
+      "snippet": "412 pages on replay, snapshotting and ordered inputs for systems you still have to ship.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "deterministic systems",
+        "determinism book",
+        "replay",
+        "book about determinism"
+      ]
+    },
+    {
+      "url": "http://amazon.com/dp/b0chair",
+      "title": "Harborline Task Chair - $329.00",
+      "snippet": "Mesh back, adjustable lumbar, four-way arms and a 12-year frame warranty.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "office chair",
+        "task chair",
+        "desk chair",
+        "harborline"
+      ]
+    },
+    {
+      "url": "http://amazon.com/dp/b0cable",
+      "title": "Lumen 2m USB-C 240W Cable - $18.99",
+      "snippet": "240W power delivery and 40Gbps data over two braided metres.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "usb-c cable",
+        "240w cable",
+        "thunderbolt cable"
+      ]
+    },
+    {
+      "url": "http://amazon.com/orders",
+      "title": "Your orders - Amazon",
+      "snippet": "Order history for the signed-in account, newest first.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "order history",
+        "my orders",
+        "past orders"
+      ]
+    },
+    {
+      "url": "http://amazon.com/orders/1001",
+      "title": "Order 1001 - Lumen 27-inch 4K USB-C Monitor",
+      "snippet": "Placed for $429.99 and delivered. This is the order the card charge on northwind.example points back at.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "order 1001",
+        "monitor order",
+        "receipt",
+        "order confirmation"
+      ]
+    },
+    {
+      "url": "http://amazon.com/cart",
+      "title": "Cart - Amazon",
+      "snippet": "The signed-in account's cart. Change a quantity to zero to remove a line.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "cart",
+        "basket",
+        "checkout"
+      ]
+    }
+  ]
+}

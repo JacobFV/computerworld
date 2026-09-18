@@ -1,0 +1,113 @@
+{
+  "id": "google-calendar",
+  "kind": "calendar",
+  "node": "google-calendar",
+  "domains": ["calendar.google.com"],
+  "port": 80,
+  "initial_state": {
+    "skin": "gcal",
+    "brand": "Calendar",
+    "events": {
+      "event-1": {
+        "id": "event-1",
+        "owner": "carol",
+        "title": "Atlas launch review",
+        "start": 18000000000,
+        "end": 21600000000,
+        "created": 0,
+        "location": "Northstar HQ · Room 2",
+        "conference_url": "http://slack.com/archives/eng",
+        "description": "Walk the launch checklist end to end and tick the boxes we each own. Checklist: http://docs.google.com/documents/atlas-launch",
+        "attendees": {
+          "alice": "accepted",
+          "bob": "pending"
+        }
+      },
+      "event-2": {
+        "id": "event-2",
+        "owner": "alice",
+        "title": "Atlas standup",
+        "start": 88200000000,
+        "end": 90000000000,
+        "created": 0,
+        "location": "Northstar HQ · Room 1",
+        "conference_url": "http://slack.com/archives/eng",
+        "description": "Fifteen minutes, three questions, no slides. Repo: http://github.com/northstar/atlas",
+        "attendees": {
+          "bob": "accepted",
+          "carol": "tentative"
+        }
+      },
+      "event-3": {
+        "id": "event-3",
+        "owner": "carol",
+        "title": "DevCon Seattle 2026",
+        "start": 345600000000,
+        "end": 460800000000,
+        "created": 0,
+        "location": "Cascade Convention Center, Seattle",
+        "conference_url": "",
+        "description": "Two days, order TM-2210, seat A-14-7. Event: http://ticketmaster.com/event/devcon-2026 · Route from the office: http://maps.google.com/ · Forecast for the travel day: http://weather.com/",
+        "attendees": {}
+      },
+      "event-4": {
+        "id": "event-4",
+        "owner": "carol",
+        "title": "Atlas retro",
+        "start": 712800000000,
+        "end": 716400000000,
+        "created": 0,
+        "location": "Northstar HQ · Room 2",
+        "conference_url": "http://slack.com/archives/eng",
+        "description": "What the launch taught us, written down while we still remember it.",
+        "attendees": {
+          "alice": "pending",
+          "bob": "pending"
+        }
+      }
+    },
+    "next_id": 4
+  },
+  "search_entries": [
+    {
+      "url": "http://calendar.google.com/",
+      "title": "Google Calendar",
+      "snippet": "The week grid: create an event, invite alice, bob or carol, RSVP to an invitation and see the answer stick.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["calendar", "google calendar", "schedule", "week", "meetings", "events"]
+    },
+    {
+      "url": "http://calendar.google.com/?day=0&event=event-1",
+      "title": "Atlas launch review - Google Calendar",
+      "snippet": "Thursday 17 September, 14:00–15:00, Northstar HQ Room 2. Carol Nakamura organising, alice and bob invited, joining link into the #eng channel.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["atlas", "launch review", "meeting", "carol", "northstar", "calendar"]
+    },
+    {
+      "url": "http://calendar.google.com/?day=1&event=event-2",
+      "title": "Atlas standup - Google Calendar",
+      "snippet": "Friday 18 September, 09:30–10:00. Fifteen minutes, three questions, no slides.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": ["standup", "atlas", "daily", "meeting", "calendar"]
+    },
+    {
+      "url": "http://calendar.google.com/?day=4&event=event-3",
+      "title": "DevCon Seattle 2026 - Google Calendar",
+      "snippet": "Two days at the Cascade Convention Center, Seattle, against order TM-2210 and seat A-14-7.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["devcon", "seattle", "conference", "travel", "tm-2210", "calendar"]
+    },
+    {
+      "url": "http://calendar.google.com/?day=7",
+      "title": "Next week - Google Calendar",
+      "snippet": "The week after the launch, with the Atlas retro on the Friday.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": ["calendar", "next week", "retro", "atlas retro"]
+    }
+  ]
+}

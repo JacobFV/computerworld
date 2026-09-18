@@ -1,0 +1,366 @@
+{
+  "id": "stackoverflow",
+  "kind": "forum",
+  "node": "stackoverflow",
+  "domains": ["stackoverflow.com", "www.stackoverflow.com", "stackexchange.com"],
+  "port": 80,
+  "initial_state": {
+    "mode": "qa",
+    "brand": "Stack Overflow",
+    "tagline": "Where developers learn, share and build careers",
+    "theme": {
+      "accent": "#f48024",
+      "background": "#ffffff",
+      "surface": "#f1f2f3",
+      "ink": "#232629",
+      "muted": "#6a737c",
+      "content_width": 1040
+    },
+    "members": {
+      "alicechen": {
+        "handle": "alicechen",
+        "name": "Alice Chen",
+        "actor": "alice",
+        "reputation": 12401,
+        "flair": "gold: rust, silver: simulation",
+        "bio": "Staff engineer. I answer questions about the parts of the standard library I have been burned by.",
+        "site": "http://alicechen.dev/"
+      },
+      "bmartinez": {
+        "handle": "bmartinez",
+        "name": "Bob Martinez",
+        "actor": "bob",
+        "reputation": 3190,
+        "flair": "silver: testing",
+        "bio": "Testing and CI. Most of my reputation is questions, which I consider a feature.",
+        "site": "http://bmartinez.net/"
+      },
+      "carol-n": {
+        "handle": "carol-n",
+        "name": "Carol N",
+        "actor": "carol",
+        "reputation": 871,
+        "bio": "Engineering manager. I ask the question the team is too embarrassed to ask."
+      },
+      "praman": {
+        "handle": "praman",
+        "name": "Priya Raman",
+        "reputation": 58402,
+        "flair": "gold: rust, gold: hashmap",
+        "bio": "Rust internals. If the answer is iteration order, I have already written it three times."
+      },
+      "dmorel": {
+        "handle": "dmorel",
+        "name": "Didier Morel",
+        "reputation": 14820,
+        "flair": "silver: ci",
+        "bio": "Build engineer. Opinions about caches."
+      },
+      "s-kovac": {
+        "handle": "s-kovac",
+        "name": "Sara Kovac",
+        "reputation": 6204,
+        "bio": "Backend, mostly Go, occasionally in the wrong tag."
+      }
+    },
+    "boards": {
+      "": {
+        "id": "",
+        "title": "All questions",
+        "description": "Every question on the site, ranked by score.",
+        "members": 0
+      }
+    },
+    "threads": {
+      "t-4402": {
+        "id": "t-4402",
+        "board": "",
+        "author": "alicechen",
+        "title": "How do you seed a PRNG so a simulation replays exactly on another machine?",
+        "body": "I need a random stream that produces the same values on Linux, macOS and Windows given the same u64 seed. The obvious approach - the standard library's thread-local generator - is neither seedable nor stable across releases. What do people actually use for reproducible simulation work, and what are the failure modes I should expect when the run is replayed on a different platform?",
+        "tags": ["rust", "determinism", "random", "simulation"],
+        "tick": 1,
+        "score": 64,
+        "views": 8820,
+        "accepted": "r-9010",
+        "replies": [
+          {
+            "id": "r-9010",
+            "author": "praman",
+            "body": "Do not use the thread-local generator for anything you want to reproduce. Pick an explicit algorithm with a specification you can point at - a counter-based generator or a fixed PCG variant - and carry the state yourself, in your own struct, so the sequence is part of your data rather than part of the runtime. Three rules after that: draw from the stream in a deterministic order (which means never from inside a parallel iterator), never branch on a float comparison of drawn values, and pin the generator's version - a crate that 'improves' its output between releases will break your replays without changing a line of your code.",
+            "tick": 1,
+            "score": 96,
+            "comments": [
+              {
+                "id": "c-8001",
+                "author": "alicechen",
+                "body": "The 'part of your data rather than part of the runtime' framing is what made this click. We now snapshot the generator state with everything else.",
+                "tick": 2
+              },
+              {
+                "id": "c-8002",
+                "author": "dmorel",
+                "body": "Pinning the version is the one people skip, and then they blame the platform.",
+                "tick": 2
+              }
+            ]
+          },
+          {
+            "id": "r-9011",
+            "author": "s-kovac",
+            "body": "For what it is worth, we hash the seed together with a per-subsystem label and give each subsystem its own stream. It means adding a subsystem does not shift the draws of every other one, which was the thing that kept breaking our golden tests.",
+            "tick": 2,
+            "score": 41,
+            "comments": []
+          }
+        ]
+      },
+      "t-4407": {
+        "id": "t-4407",
+        "board": "",
+        "author": "carol-n",
+        "title": "Is HashMap iteration order guaranteed to be stable between two runs of the same binary?",
+        "body": "Asking on behalf of a team argument. One side says the order is arbitrary but stable for a given binary and input; the other says it can differ run to run. We are on stable Rust, default hasher, no threads involved. Which is it, and is there a document I can point at rather than continuing to be the person who says 'I am fairly sure'?",
+        "tags": ["rust", "hashmap", "determinism"],
+        "tick": 2,
+        "score": 128,
+        "views": 41200,
+        "accepted": "r-9020",
+        "replies": [
+          {
+            "id": "r-9020",
+            "author": "praman",
+            "body": "It can differ run to run, and it is documented. The default hasher is randomly seeded per process, specifically so that the order is not something you can depend on or an attacker can predict. Two runs of the same binary on the same input can iterate the same map in different orders, and that is the intended behaviour, not a bug to report. If you need an order, you have three options: sort the keys at the point of use, swap to a BTreeMap and accept the log factor, or build the HashMap with a fixed, explicit hasher - which makes it reproducible for you and also gives up the collision-attack protection, so do it only for data you control.",
+            "tick": 2,
+            "score": 204,
+            "comments": [
+              {
+                "id": "c-8010",
+                "author": "carol-n",
+                "body": "Perfect, thank you. I have forwarded this to the team argument and declared myself the winner.",
+                "tick": 3
+              }
+            ]
+          },
+          {
+            "id": "r-9021",
+            "author": "alicechen",
+            "body": "One more note from having lived this: the failure will not look like an ordering bug. It will look like a flaky test on one machine, because the order is stable enough within a process that everything downstream of it appears deterministic until the process restarts.",
+            "tick": 3,
+            "score": 88,
+            "comments": []
+          }
+        ]
+      },
+      "t-4411": {
+        "id": "t-4411",
+        "board": "",
+        "author": "bmartinez",
+        "title": "Why does my BFS shortest-path test fail only on Windows?",
+        "body": "The test builds a small graph, runs a breadth-first search and asserts the returned path. It passes on my Linux laptop, on macOS, and on three of our four CI runners. On the Windows runner it fails roughly one run in four, and when it fails the returned path is a different path of the same length. Before anyone tells me it is just a flaky test: when it fails it fails the same way, and the returned path is always a valid one. The graph is built from a HashMap of node id to neighbours. Repro and full logs are in http://github.com/northstar/atlas/issues/14 - what am I not seeing?",
+        "tags": ["rust", "determinism", "testing", "hashmap"],
+        "tick": 3,
+        "score": 37,
+        "views": 2104,
+        "accepted": "r-9002",
+        "replies": [
+          {
+            "id": "r-9002",
+            "author": "praman",
+            "body": "Your test iterates a HashMap, and the iteration order of a HashMap is not defined. The default hasher is randomly seeded per process, so the neighbour expansion order in your BFS changes between runs. Your graph has more than one shortest path, so a different expansion order produces a different - equally correct - path, and your assertion compares against one specific path. Windows is not the cause; it is the runner where you happened to get an unlucky seed often enough to notice. Two fixes, and you want both: sort the neighbours before expanding them so the traversal is deterministic, and assert on the path length plus validity rather than on one exact path. The first makes the test reproducible; the second makes it correct.",
+            "tick": 3,
+            "score": 52,
+            "comments": [
+              {
+                "id": "c-8020",
+                "author": "bmartinez",
+                "body": "That was it. Nine lines, three weeks. Sorting the frontier made it reproducible and the length assertion made it survive the next refactor.",
+                "tick": 4
+              },
+              {
+                "id": "c-8021",
+                "author": "praman",
+                "body": "It is always iteration order, and it is always on exactly one runner.",
+                "tick": 4
+              },
+              {
+                "id": "c-8022",
+                "author": "dmorel",
+                "body": "Writing this one on the wall of our CI room, next to 'it is always DNS'.",
+                "tick": 5
+              }
+            ]
+          },
+          {
+            "id": "r-9003",
+            "author": "alicechen",
+            "body": "To add the cost, since someone always asks in review: sorting the frontier at each expansion cost us about four percent on the traversal benchmark, and it bought a test suite whose failures mean something. We measured it before arguing about it.",
+            "tick": 4,
+            "score": 18,
+            "comments": []
+          },
+          {
+            "id": "r-9004",
+            "author": "s-kovac",
+            "body": "Have you tried running the Windows runner with the same allocator as the Linux ones? We had a similar intermittent failure and it turned out to be the allocator, not the hasher.",
+            "tick": 4,
+            "score": -3,
+            "comments": [
+              {
+                "id": "c-8030",
+                "author": "bmartinez",
+                "body": "Tried that early on - same failure rate with jemalloc on the Windows runner. It was the hasher.",
+                "tick": 4
+              }
+            ]
+          }
+        ]
+      },
+      "t-4418": {
+        "id": "t-4418",
+        "board": "",
+        "author": "bmartinez",
+        "title": "Testing code that reads the clock, without freezing the clock globally",
+        "body": "Half our test suite calls a function that takes a timestamp from the system clock somewhere five layers down. Globally freezing time in the test harness works but makes the tests lie about concurrency, and threading a clock parameter through five layers is a large refactor I would like to justify before starting. Is there a middle option that people have actually lived with for more than a quarter?",
+        "tags": ["testing", "determinism", "time"],
+        "tick": 4,
+        "score": 22,
+        "views": 1840,
+        "replies": [
+          {
+            "id": "r-9030",
+            "author": "dmorel",
+            "body": "The middle option is a clock trait with two implementations and one injection point at the top of each subsystem, rather than a parameter on every function. You pay for it once per subsystem boundary instead of once per call site, and in my experience that is the version that survives - the fully threaded parameter gets reverted by the third person who needs to add a function.",
+            "tick": 4,
+            "score": 31,
+            "comments": []
+          },
+          {
+            "id": "r-9031",
+            "author": "alicechen",
+            "body": "We went further and deleted the ability to read the clock at all: the simulation has a tick counter and nothing below the harness may call the system clock. That is a bigger hammer than you asked for, but it turns 'is this test lying about time' from a judgement call into a compile error.",
+            "tick": 5,
+            "score": 14,
+            "comments": [
+              {
+                "id": "c-8040",
+                "author": "bmartinez",
+                "body": "This is the answer I was afraid of and probably the right one.",
+                "tick": 5
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "votes": {},
+    "subscriptions": {},
+    "next_id": 9100
+  },
+  "search_entries": [
+    {
+      "url": "http://stackoverflow.com/",
+      "title": "Stack Overflow - top questions",
+      "snippet": "Questions ranked by score, with answer and view counts. Vote, answer, comment and accept.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": ["stack overflow", "questions", "programming", "answers", "qa"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4411",
+      "title": "Why does my BFS shortest-path test fail only on Windows? - Stack Overflow",
+      "snippet": "Accepted answer: the test iterates a HashMap, whose order is randomly seeded per process. Sort the frontier and assert on path length.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["bfs", "shortest path", "windows", "flaky test", "hashmap", "iteration order", "determinism", "rust", "accepted answer"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4407",
+      "title": "Is HashMap iteration order guaranteed to be stable between two runs? - Stack Overflow",
+      "snippet": "No. The default hasher is randomly seeded per process. Sort the keys, use a BTreeMap, or supply a fixed hasher.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": ["hashmap", "iteration order", "stable", "rust", "determinism", "btreemap", "hasher"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4402",
+      "title": "How do you seed a PRNG so a simulation replays exactly? - Stack Overflow",
+      "snippet": "Carry the generator state in your own data, draw in a deterministic order, and pin the generator's version.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": ["prng", "seed", "random", "reproducible", "simulation", "determinism", "replay", "rust"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4418",
+      "title": "Testing code that reads the clock, without freezing the clock globally - Stack Overflow",
+      "snippet": "An open question with two answers and no accepted one: a clock trait per subsystem, or removing clock access entirely.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["testing", "clock", "time", "determinism", "unit test", "mock clock"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/determinism",
+      "title": "Questions tagged [determinism] - Stack Overflow",
+      "snippet": "Reproducible runs, seeded generators, hash ordering and the tests that catch them.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["determinism", "tag", "reproducible", "stack overflow", "questions"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/rust",
+      "title": "Questions tagged [rust] - Stack Overflow",
+      "snippet": "Rust questions on Stack Overflow, ranked by score.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["rust", "tag", "stack overflow", "questions", "programming language"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/hashmap",
+      "title": "Questions tagged [hashmap] - Stack Overflow",
+      "snippet": "Hash map behaviour, iteration order and the bugs that come from depending on it.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["hashmap", "tag", "hash map", "iteration", "stack overflow"]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/testing",
+      "title": "Questions tagged [testing] - Stack Overflow",
+      "snippet": "Test design, flaky failures, CI runners and clocks.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["testing", "tag", "flaky", "ci", "stack overflow"]
+    },
+    {
+      "url": "http://stackoverflow.com/u/praman",
+      "title": "Priya Raman - Stack Overflow user, 58,402 reputation",
+      "snippet": "Rust internals. Gold badges in rust and hashmap; author of the accepted answer on the Windows BFS failure.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["priya raman", "praman", "stack overflow", "reputation", "profile", "rust"]
+    },
+    {
+      "url": "http://stackoverflow.com/u/alicechen",
+      "title": "Alice Chen - Stack Overflow user, 12,401 reputation",
+      "snippet": "Staff engineer at Northstar; answers on determinism, clocks and simulation.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["alice chen", "stack overflow", "reputation", "profile", "determinism"]
+    },
+    {
+      "url": "http://stackoverflow.com/u/bmartinez",
+      "title": "Bob Martinez - Stack Overflow user, 3,190 reputation",
+      "snippet": "Testing and CI; asker of the Windows-only BFS question.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["bob martinez", "bmartinez", "stack overflow", "reputation", "profile", "testing"]
+    },
+    {
+      "url": "http://stackoverflow.com/submit",
+      "title": "Ask a question - Stack Overflow",
+      "snippet": "Post a question with a title, tags and what you have already tried.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": ["stack overflow", "ask", "question", "post", "new question"]
+    }
+  ]
+}

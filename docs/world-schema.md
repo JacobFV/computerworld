@@ -11,7 +11,7 @@ interpreting them. `WorldDefinition::from_json` parses and validates the definit
 | `computers` | Machine `id`, `profile`, `address`, `user`, optional `node`, initial files, installed applications and packages |
 | `network` | Nodes, links, DNS records, routes, explicit `implicit_lan` and gateway policy |
 | `services` | Instance `id`, registered `kind`, placement `node`, domains, port, initial state |
-| `metadata` | Owner-side descriptive JSON; not an actor observation channel |
+| `metadata` | Owner-side JSON; not an actor observation channel. Two keys are load-bearing: `desktop_themes` maps a computer to an OS shell, and `desktop_apps` declares its application catalog. Both change what an actor sees and can launch — see [desktop GUI](desktop-gui.md). |
 
 A computer's node defaults to its machine ID. Explicit nodes have an address and
 zone (`local`, `internet`, `host`). Links are required by default; `network.implicit_lan: true` explicitly enables
@@ -33,3 +33,8 @@ a snapshot resumes one.
 
 See [creating a world](custom-world.md) and the
 [company blueprint](../worlds/company-2026/world.json).
+
+`worlds/company-2026/world.json` is **generated**, not hand-written: `scripts/build-world.mjs`
+splices in `worlds/company-2026/sites/*.json` and `scripts/build-search-index.mjs`
+builds its search index, with `scripts/build-content.sh` running the pipeline. Edit
+the inputs, not the output. Your own worlds are of course plain JSON.

@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""Reproduce the bundled fonts and the scene text metrics table.
+
+Two families of output:
+
+  * `fonts/{inter,opensans,ubuntu,roboto}-{regular,bold}.ttf` — per-platform UI
+    faces, instanced from upstream variable fonts and subset to `UI_RANGES`.
+    Inputs (see README.md for sources and licenses):
+      Inter[opsz,wght].ttf, OpenSans[wdth,wght].ttf, Roboto[wdth,wght].ttf
+        (google/fonts, OFL-1.1)
+      UbuntuSans[wdth,wght].ttf  (Ubuntu fonts-ubuntu package, UFL-1.0)
+  * `fonts/dejavu-{sans,sans-bold,mono}.ttf` — the fallback and terminal faces,
+    subset from the full DejaVu masters that sit beside this script.
+
+Why DejaVu is subset: the three masters are 1,811,780 bytes of full-Unicode
+coverage — Hebrew, Arabic, Armenian, Georgian, Thai, Lao, N'Ko, musical
+notation and much more — and every byte ships in a Wasm bundle that renders a
+simulated Latin-script desktop. `DEJAVU_RANGES` below is the coverage the world
+can actually reach, and subsetting to it costs 713,820 bytes instead.
+
+Choosing that set is a correctness decision, not a size one: DejaVu is the
+*fallback* face, so a codepoint it lacks has nowhere else to go and renders as
+`.notdef`. The set is therefore drawn to cover anything an actor can type or a
+simulated service can emit, not merely what today's fixtures happen to show:
+
+  Latin (Basic through Extended-B), IPA, spacing modifiers and combining marks
+    — filenames, user-typed text, transliterated names.
+  Greek and Cyrillic — the two non-Latin scripts the metrics table tabulates,
+    and the source of the λ and Θ used as fallback probes in the tests.
+  Punctuation, super/subscripts, currency, letterlike forms, number forms,
+    arrows, mathematical operators — service page content and shell output.
+  Miscellaneous Technical — ⌘ ⌥ ⌃ ⌫ ⏎, drawn in menus and key hints.
+  Control Pictures, OCR, Enclosed Alphanumerics.
+  Box Drawing, Block Elements, Geometric Shapes — terminal TUIs and progress
+    bars; ▒ and ▧ are named in the glyph-fitting notes in README.md.
+  Miscellaneous Symbols, Dingbats, Braille — ⚀ ⚙ ✓ and TUI spinners.
+  U+FFFD, so decoders that replace bad bytes have a glyph to show.
+
+Outside that set a character renders as DejaVu's `.notdef` box (the subsetter
+keeps its outline via `notdef_outline`), which is visible and self-explanatory;
+`dejavu_subset_draws_notdef_for_uncovered_text` in `src/lib.rs` pins that
+behaviour so an uncovered codepoint can never silently vanish. Subsetting does
+not touch outlines, advances or `unitsPerEm`, so every retained glyph
+rasterizes to exactly the pixels the full master produced.
+
+Usage:
+  build-fonts.py <source-dir>   rebuild everything (requires the variable fonts)
+  build-fonts.py --dejavu-only  rebuild just the DejaVu subsets and the metrics
+                                table, using only files already in the tree
+Requires fontTools; brotli not needed.
+"""
+import sys
+from pathlib import Path
+from fontTools.ttLib import TTFont
+from fontTools.varLib import instancer
+from fontTools import subset
+
+HERE = Path(__file__).resolve().parent
+OUT = HERE / "fonts"
+METRICS = HERE.parents[1] / "scene" / "src" / "metrics_data.rs"
+
+# Coverage of the per-platform UI faces. These are never a fallback: anything
+# they lack falls through to DejaVu, so they stay a tight Latin set.
+UI_RANGES = [(0x20, 0x7E), (0xA0, 0x17F), (0x2010, 0x2027), (0x2030, 0x203A), (0x20AC, 0x20AC),
+             (0x2122, 0x2122), (0x2190, 0x2193), (0x21E7, 0x21E7), (0x2212, 0x2212), (0x2303, 0x2303),
+             (0x2318, 0x2318), (0x2325, 0x2325), (0x232B, 0x232B), (0x23CE, 0x23CE), (0x2713, 0x2713)]
+# Codepoints the metrics table tabulates, so layout measures them exactly.
+WIDE = UI_RANGES + [(0x370, 0x3FF), (0x400, 0x4FF), (0x25A0, 0x25FF)]
+# Coverage of the DejaVu fallback and terminal faces; see the module docstring.
+DEJAVU_RANGES = WIDE + [
+    (0x0180, 0x024F),  # Latin Extended-B
+    (0x0250, 0x02AF),  # IPA Extensions
+    (0x02B0, 0x02FF),  # Spacing Modifier Letters
+    (0x0300, 0x036F),  # Combining Diacritical Marks
+    (0x2000, 0x206F),  # General Punctuation
+    (0x2070, 0x209F),  # Superscripts and Subscripts
+    (0x20A0, 0x20CF),  # Currency Symbols
+    (0x2100, 0x214F),  # Letterlike Symbols
+    (0x2150, 0x218F),  # Number Forms
+    (0x2190, 0x21FF),  # Arrows
+    (0x2200, 0x22FF),  # Mathematical Operators
+    (0x2300, 0x23FF),  # Miscellaneous Technical
+    (0x2400, 0x243F),  # Control Pictures
+    (0x2440, 0x245F),  # Optical Character Recognition
+    (0x2460, 0x24FF),  # Enclosed Alphanumerics
+    (0x2500, 0x257F),  # Box Drawing
+    (0x2580, 0x259F),  # Block Elements
+    (0x2600, 0x26FF),  # Miscellaneous Symbols
+    (0x2700, 0x27BF),  # Dingbats
+    (0x2800, 0x28FF),  # Braille Patterns
+    (0xFFFD, 0xFFFD),  # Replacement character
+]
+FACES = [  # typeface, weight name, source, axes
+    ("inter", "regular", "Inter-var.ttf", {"wght": 400, "opsz": 14}),
+    ("inter", "bold", "Inter-var.ttf", {"wght": 600, "opsz": 14}),
+    ("opensans", "regular", "OpenSans-var.ttf", {"wght": 400, "wdth": 100}),
+    ("opensans", "bold", "OpenSans-var.ttf", {"wght": 600, "wdth": 100}),
+    ("ubuntu", "regular", "UbuntuSans-var.ttf", {"wght": 400, "wdth": 100}),
+    ("ubuntu", "bold", "UbuntuSans-var.ttf", {"wght": 700, "wdth": 100}),
+    ("roboto", "regular", "Roboto-var.ttf", {"wght": 400, "wdth": 100}),
+    ("roboto", "bold", "Roboto-var.ttf", {"wght": 500, "wdth": 100}),
+]
+# Full-Unicode masters kept in the tree so the subsets can be regenerated
+# offline. They are not embedded; only the `fonts/dejavu-*.ttf` outputs are.
+DEJAVU = [  # weight name, master, emitted subset
+    ("regular", "DejaVuSans.ttf", "dejavu-sans.ttf"),
+    ("bold", "DejaVuSans-Bold.ttf", "dejavu-sans-bold.ttf"),
+    ("mono", "DejaVuSansMono.ttf", "dejavu-mono.ttf"),
+]
+
+
+def codepoints(ranges):
+    return sorted({c for a, b in ranges for c in range(a, b + 1)})
+
+
+def table(font, ranges):
+    cmap, hmtx = font.getBestCmap(), font["hmtx"]
+    return [(c, hmtx[cmap[c]][0]) for c in codepoints(ranges) if c in cmap]
+
+
+def shrink(font, ranges):
+    """Subset in place. Outlines, advances and unitsPerEm are untouched, so a
+    retained glyph rasterizes identically to the same glyph in the master."""
+    options = subset.Options()
+    options.hinting = False          # fontdue is an unhinted rasterizer
+    options.layout_features = []     # no shaping; the renderer positions by table
+    options.name_IDs = [0, 1, 2, 3, 4, 5, 6, 13, 14]  # keeps licence and family names
+    options.notdef_outline = True    # an uncovered codepoint must draw a visible box
+    options.glyph_names = False
+    sub = subset.Subsetter(options)
+    sub.populate(unicodes=codepoints(ranges))
+    sub.subset(font)
+    return font
+
+
+def build_dejavu(rows):
+    for weight, master, out_name in DEJAVU:
+        font = shrink(TTFont(HERE / master), DEJAVU_RANGES)
+        path = OUT / out_name
+        font.save(path)
+        before = (HERE / master).stat().st_size
+        print(f"{path.name:22s} {before:>8,} -> {path.stat().st_size:>8,}")
+        # The mono face drives the fixed-cell `Text` primitive, which measures
+        # by the font's own advances rather than the table.
+        if weight != "mono":
+            rows.append(("dejavu", weight, font["head"].unitsPerEm, table(font, WIDE)))
+
+
+def write_metrics(rows):
+    with open(METRICS, "w") as out:
+        out.write("// Generated by crates/render/assets/build-fonts.py; do not edit.\n")
+        out.write("// (codepoint, advance in font units), sorted by codepoint.\n")
+        for face, weight, upem, advances in rows:
+            ident = f"{face}_{weight}".upper()
+            out.write(f"pub const {ident}_UPEM: u32 = {upem};\n")
+            out.write(f"pub static {ident}: &[(u32, u16)] = &[\n")
+            for i in range(0, len(advances), 8):
+                out.write("    " + " ".join(f"({c}, {a})," for c, a in advances[i:i + 8]) + "\n")
+            out.write("];\n")
+
+
+def main(argv):
+    OUT.mkdir(exist_ok=True)
+    dejavu_only = "--dejavu-only" in argv
+    rows = []
+    if not dejavu_only:
+        src = Path(argv[0])
+        for face, weight, source, axes in FACES:
+            font = instancer.instantiateVariableFont(TTFont(src / source), axes, inplace=False)
+            shrink(font, UI_RANGES)
+            path = OUT / f"{face}-{weight}.ttf"
+            font.save(path)
+            rows.append((face, weight, font["head"].unitsPerEm, table(font, UI_RANGES)))
+            print(f"{path.name:22s} {'':>8}    {path.stat().st_size:>8,}")
+    build_dejavu(rows)
+    if dejavu_only:
+        # The UI-face rows are unchanged; keep the existing table as authored.
+        print("--dejavu-only: metrics_data.rs left untouched")
+        return
+    write_metrics(rows)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

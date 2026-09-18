@@ -1,0 +1,310 @@
+{
+  "id": "reuters",
+  "kind": "press",
+  "node": "reuters",
+  "domains": [
+    "reuters.com",
+    "www.reuters.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "layout": "wire",
+    "brand": "Reuters",
+    "tagline": "The wire, as filed.",
+    "theme": {
+      "accent": "#ff8000",
+      "background": "#ffffff",
+      "surface": "#f4f4f4",
+      "ink": "#1a1a1a",
+      "muted": "#5b5b5b",
+      "content_width": 960
+    },
+    "sections": [
+      {
+        "id": "technology",
+        "title": "Technology"
+      },
+      {
+        "id": "business",
+        "title": "Business"
+      },
+      {
+        "id": "markets",
+        "title": "Markets"
+      }
+    ],
+    "articles": {
+      "northstar-atlas-determinism": {
+        "id": "northstar-atlas-determinism",
+        "section": "technology",
+        "year": "2026",
+        "title": "Northstar releases Atlas 1.0, staking simulation product on reproducible runs",
+        "dek": "Privately held developer-tools firm says every run of its simulator can be replayed byte for byte.",
+        "byline": "Reuters Staff",
+        "date": "Mar 5, 2026",
+        "tick": 8,
+        "read_minutes": 2,
+        "body": [
+          "SEATTLE - Northstar, a privately held developer-tools company, released version 1.0 of Atlas on Wednesday, a simulation runtime the company says can reproduce any recorded run exactly from its initial seed.",
+          "The product simulates processes, storage, networking and a browser inside a single deterministic environment. Northstar says the approach removes the wall clock, host randomness and unordered iteration from code running under the simulator, allowing failures to be replayed rather than reproduced by repetition.",
+          "Engineering manager Carol Nakamura said in an interview published by technology site The Verge that determinism 'does not make the software correct, it makes the incorrect parts stay still long enough to look at.' The Verge reported the release at http://theverge.com/2026/atlas-determinism",
+          "Northstar does not disclose revenue or headcount. The company said Atlas 1.0 is generally available and that its source is published at http://github.com/northstar/atlas"
+        ],
+        "links": [
+          {
+            "label": "The Verge's report",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          },
+          {
+            "label": "Atlas source",
+            "url": "http://github.com/northstar/atlas"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "atlas",
+          "software"
+        ],
+        "comments": []
+      },
+      "northstar-latency-incident": {
+        "id": "northstar-latency-incident",
+        "section": "technology",
+        "year": "2026",
+        "title": "Northstar reports 12-minute API latency incident, no data loss",
+        "dek": "Company publishes incident report the same day; customers report degraded response times.",
+        "byline": "Reuters Staff",
+        "date": "Feb 19, 2026",
+        "tick": 5,
+        "read_minutes": 1,
+        "body": [
+          "Northstar said an incident on its public API caused elevated response times for approximately 12 minutes on Wednesday, and that no customer data was lost or exposed.",
+          "The company published an incident report at http://status.northstar.example/ and said a configuration rollback restored normal service. Northstar declined to say how many customers were affected."
+        ],
+        "links": [
+          {
+            "label": "Northstar status page",
+            "url": "http://status.northstar.example/"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "outage"
+        ],
+        "comments": []
+      },
+      "dev-tools-consolidation": {
+        "id": "dev-tools-consolidation",
+        "section": "business",
+        "year": "2026",
+        "title": "Developer-tools spending shifts toward testing and reproducibility, survey finds",
+        "dek": "Buyers report moving budget from observability add-ons to test infrastructure.",
+        "byline": "Marta Lindqvist",
+        "date": "Feb 24, 2026",
+        "tick": 6,
+        "read_minutes": 3,
+        "body": [
+          "Enterprise buyers are moving developer-tools budget toward test infrastructure and away from observability add-ons, according to a survey of 412 engineering leaders published on Tuesday.",
+          "Respondents cited the cost of investigating intermittent failures as the single largest unplanned engineering expense of the past year, ahead of security remediation and cloud overruns.",
+          "Analysts cautioned that survey respondents self-select and that stated intent has historically overstated actual budget movement by a wide margin."
+        ],
+        "links": [],
+        "tags": [
+          "software",
+          "spending",
+          "survey"
+        ],
+        "comments": []
+      },
+      "seattle-conference-economy": {
+        "id": "seattle-conference-economy",
+        "section": "business",
+        "year": "2026",
+        "title": "Seattle convention bookings recover to pre-2020 levels",
+        "dek": "Technology conferences drive a 9% year-on-year increase in downtown hotel occupancy.",
+        "byline": "Marta Lindqvist",
+        "date": "Mar 1, 2026",
+        "tick": 7,
+        "read_minutes": 2,
+        "body": [
+          "SEATTLE - Convention bookings in downtown Seattle have returned to pre-2020 levels, with technology conferences accounting for most of the increase, the city's tourism board said on Sunday.",
+          "Hotel occupancy in the convention district rose 9% year on year. The Cascade Convention Center reported its spring calendar as fully booked, including DevCon Seattle in March.",
+          "Restaurant and transit operators reported smaller gains, which the tourism board attributed to a higher share of single-day attendees."
+        ],
+        "links": [],
+        "tags": [
+          "seattle",
+          "conferences",
+          "economy"
+        ],
+        "comments": []
+      },
+      "markets-close": {
+        "id": "markets-close",
+        "section": "markets",
+        "year": "2026",
+        "title": "Tech shares close mixed as software names diverge",
+        "dek": "Infrastructure software outperforms; consumer-facing names lag.",
+        "byline": "Reuters Staff",
+        "date": "Mar 5, 2026",
+        "tick": 8,
+        "read_minutes": 1,
+        "body": [
+          "Technology shares closed mixed on Wednesday, with infrastructure software names outperforming a broadly flat market and consumer-facing technology lagging.",
+          "Trading volume was below the 30-day average. Analysts attributed the divergence to a rotation into companies with contracted revenue ahead of the next earnings season."
+        ],
+        "links": [],
+        "tags": [
+          "markets",
+          "software"
+        ],
+        "comments": []
+      },
+      "standards-body-reproducible-builds": {
+        "id": "standards-body-reproducible-builds",
+        "section": "technology",
+        "year": "2026",
+        "title": "Standards group proposes reproducible-build requirements for regulated software",
+        "dek": "Draft would require vendors to demonstrate that a shipped binary can be rebuilt from published source.",
+        "byline": "Ines Ferreira",
+        "date": "Jan 28, 2026",
+        "tick": 4,
+        "read_minutes": 3,
+        "body": [
+          "A standards working group has circulated a draft that would require vendors of software used in regulated industries to demonstrate that shipped binaries can be rebuilt bit-for-bit from published source.",
+          "The draft does not mandate any particular toolchain. It would require vendors to publish the build environment as a declared artifact and to make a verification procedure available to auditors.",
+          "Industry groups have asked for a longer comment period, saying the requirement would be expensive for products that depend on pre-built third-party components. The working group has not set an adoption date."
+        ],
+        "links": [],
+        "tags": [
+          "standards",
+          "reproducibility",
+          "regulation"
+        ],
+        "comments": []
+      }
+    },
+    "subscribers": [],
+    "saved": {},
+    "follows": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://reuters.com/",
+      "title": "Reuters",
+      "snippet": "Breaking news, business and markets, filed as it happens.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "reuters",
+        "wire",
+        "news",
+        "business news"
+      ]
+    },
+    {
+      "url": "http://reuters.com/2026/northstar-atlas-determinism",
+      "title": "Northstar releases Atlas 1.0, staking simulation product on reproducible runs | Reuters",
+      "snippet": "The developer-tools firm says every recorded run of its simulator can be replayed byte for byte from its seed.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "determinism",
+        "release",
+        "reuters",
+        "shipping atlas"
+      ]
+    },
+    {
+      "url": "http://reuters.com/2026/northstar-latency-incident",
+      "title": "Northstar reports 12-minute API latency incident, no data loss | Reuters",
+      "snippet": "A configuration rollback restored service; the company published an incident report the same day.",
+      "vertical": "news",
+      "authority": 5,
+      "keywords": [
+        "northstar",
+        "outage",
+        "incident",
+        "latency",
+        "api"
+      ]
+    },
+    {
+      "url": "http://reuters.com/2026/dev-tools-consolidation",
+      "title": "Developer-tools spending shifts toward testing and reproducibility, survey finds | Reuters",
+      "snippet": "Buyers report moving budget from observability add-ons to test infrastructure.",
+      "vertical": "news",
+      "authority": 4,
+      "keywords": [
+        "developer tools",
+        "spending",
+        "survey",
+        "testing"
+      ]
+    },
+    {
+      "url": "http://reuters.com/2026/seattle-conference-economy",
+      "title": "Seattle convention bookings recover to pre-2020 levels | Reuters",
+      "snippet": "Technology conferences drive a 9% year-on-year increase in downtown hotel occupancy.",
+      "vertical": "news",
+      "authority": 3,
+      "keywords": [
+        "seattle",
+        "conference",
+        "economy",
+        "hotels",
+        "devcon"
+      ]
+    },
+    {
+      "url": "http://reuters.com/2026/markets-close",
+      "title": "Tech shares close mixed as software names diverge | Reuters",
+      "snippet": "Infrastructure software outperforms a flat market; consumer-facing technology lags.",
+      "vertical": "news",
+      "authority": 3,
+      "keywords": [
+        "markets",
+        "stocks",
+        "software",
+        "close"
+      ]
+    },
+    {
+      "url": "http://reuters.com/2026/standards-body-reproducible-builds",
+      "title": "Standards group proposes reproducible-build requirements for regulated software | Reuters",
+      "snippet": "A draft would require vendors to show a shipped binary can be rebuilt bit-for-bit from published source.",
+      "vertical": "news",
+      "authority": 4,
+      "keywords": [
+        "reproducible builds",
+        "standards",
+        "regulation",
+        "audit"
+      ]
+    },
+    {
+      "url": "http://reuters.com/technology",
+      "title": "Technology | Reuters",
+      "snippet": "Technology stories on the wire, newest first.",
+      "vertical": "news",
+      "authority": 3,
+      "keywords": [
+        "reuters technology",
+        "tech wire"
+      ]
+    },
+    {
+      "url": "http://reuters.com/markets",
+      "title": "Markets | Reuters",
+      "snippet": "Market reports and closing summaries.",
+      "vertical": "news",
+      "authority": 2,
+      "keywords": [
+        "reuters markets",
+        "stocks"
+      ]
+    }
+  ]
+}

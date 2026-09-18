@@ -2,7 +2,7 @@
 use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
 pub mod shared;
-pub use app_content::app_content;
+pub use app_content::{app_content, app_content_with};
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 mod android;
 mod ios;
@@ -32,6 +32,25 @@ impl DesktopTheme {
             Some(Self::Android)
         } else {
             None
+        }
+    }
+    /// Asset namespace of the platform's icon set.
+    pub fn platform(self) -> &'static str {
+        match self {
+            Self::Macos => "macos",
+            Self::Windows => "windows",
+            Self::Ubuntu => "ubuntu",
+            Self::Ios => "ios",
+            Self::Android => "android",
+        }
+    }
+    /// Bundled family standing in for the platform's system font.
+    pub fn typeface(self) -> cw_scene::Typeface {
+        match self {
+            Self::Macos | Self::Ios => cw_scene::Typeface::Inter,
+            Self::Windows => cw_scene::Typeface::OpenSans,
+            Self::Ubuntu => cw_scene::Typeface::Ubuntu,
+            Self::Android => cw_scene::Typeface::Roboto,
         }
     }
     pub fn mobile(self) -> bool {
@@ -68,11 +87,19 @@ pub fn window_content_rect(theme: DesktopTheme, frame: Rect) -> Rect {
         frame.height.saturating_sub((top + bottom) as u32).max(1),
     )
 }
+/// Client rectangle of a window. Browsers reserve room for their own toolbars: a
+/// 40 px navigation row on desktops, Safari's address bar and bottom toolbar on iOS;
+/// Chrome's toolbar on Android occupies the ordinary application bar.
 pub fn window_content_rect_for_kind(theme: DesktopTheme, frame: Rect, kind: &str) -> Rect {
     let mut r = window_content_rect(theme, frame);
     if kind == "browser" {
-        r.y += 40;
-        r.height = r.height.saturating_sub(40).max(1);
+        let (top, bottom) = match theme {
+            DesktopTheme::Ios => (8, 48),
+            DesktopTheme::Android => (0, 0),
+            _ => (40, 0),
+        };
+        r.y += top as i32;
+        r.height = r.height.saturating_sub(top + bottom).max(1);
     }
     r
 }
@@ -181,15 +208,31 @@ pub fn render_desktop_with_options(
         panel: options.panel.as_deref(),
         search: &options.search,
         hover: options.hover,
+        desktop_selection: options.desktop_selection.as_deref(),
+        settings: &options.settings,
+        screen: options.screen,
+        panel_month: options.panel_month,
+        text_entry: options.text_entry,
+        keyboard: options.keyboard,
+        bookmarks: &options.bookmarks,
+        downloads: &options.downloads,
+        notifications: &options.notifications,
+        workspaces: options.workspaces.max(1),
+        workspace: options.workspace,
+        library_group: options.library_group.as_deref(),
+        bookmarked: options.bookmarked,
+        panel_over_launcher: options.panel_over_launcher,
+        typed: &options.typed,
     };
-    let mut p = Painter::new(width, height);
+    let mut p = Painter::themed(theme, width, height, 1 << 60);
     background(&mut p, &ctx);
     for (index, w) in windows.iter().filter(|w| !w.minimized).enumerate() {
         p.z = 100 + index as i32 * 1000;
         p.region(w.rect, &w.action("focus"), &w.title);
         frame(&mut p, &ctx, w);
+        let client = p.scene.nodes.len();
         if w.kind == "browser" {
-            browser_bar(&mut p, &ctx, w);
+            browser_chrome(&mut p, &ctx, w);
         }
         if let Some(content) = &w.content {
             let r = window_content_rect_for_kind(theme, w.rect, &w.kind);
@@ -222,9 +265,27 @@ pub fn render_desktop_with_options(
                 if let Some(action) = &n.interaction {
                     n.interaction = Some(w.action(&format!("content:{action}")));
                 }
+                // Platform-neutral page artwork adopts the host platform's icon set.
+                if let Primitive::AssetImage { asset } = &mut n.primitive {
+                    if let Some(name) = asset.strip_prefix("icon/common/") {
+                        *asset = format!("icon/{}/{name}", theme.platform());
+                    }
+                }
                 p.scene.nodes.push(n);
             }
         }
+        // Client pixels follow the frame's rounded silhouette, inside its hairline.
+        let radius = corner_radius(theme, w.maximized);
+        p.round_clip_since(
+            client,
+            Rect::new(
+                w.rect.x + 1,
+                w.rect.y + 1,
+                w.rect.width.saturating_sub(2),
+                w.rect.height.saturating_sub(2),
+            ),
+            radius.saturating_sub(1),
+        );
         if !theme.mobile() && !w.maximized {
             p.z += 20;
             resize_regions(&mut p, w);
@@ -235,80 +296,24 @@ pub fn render_desktop_with_options(
     p.scene.revision = clock_us;
     p.scene
 }
-fn browser_bar(p: &mut Painter, c: &ShellContext, w: &WindowView) {
-    let r = window_content_rect(c.theme, w.rect);
-    let ink = cw_scene::Color::rgb(66, 70, 80);
-    p.box_(
-        Rect::new(r.x, r.y, r.width, 40),
-        cw_scene::Color::rgb(242, 243, 246),
-        0,
-    );
-    for (i, action, label) in [
-        (0, "shell:back", "Back"),
-        (1, "shell:forward", "Forward"),
-        (2, "shell:reload", "Reload"),
-    ] {
-        let x = r.x + 8 + i * 29;
-        let y = r.y + 8;
-        if c.hovered(Rect::new(x, y, 26, 26)) {
-            p.box_(
-                Rect::new(x, y, 26, 26),
-                cw_scene::Color::rgb(222, 225, 230),
-                5,
-            );
-        }
-        p.region(
-            Rect::new(x, y, 26, 26),
-            &w.action(&format!("content:{action}")),
-            label,
-        );
-        if i < 2 {
-            let sign = if i == 0 { -1 } else { 1 };
-            let center = x + 13;
-            p.line(
-                vec![
-                    (center - sign * 4, y + 6),
-                    (center + sign * 3, y + 12),
-                    (center - sign * 4, y + 18),
-                ],
-                ink,
-                1,
-            );
-        } else {
-            p.border(
-                Rect::new(x + 6, y + 6, 13, 13),
-                cw_scene::Color::TRANSPARENT,
-                7,
-                ink,
-            );
-            p.line(
-                vec![(x + 18, y + 4), (x + 18, y + 10), (x + 12, y + 10)],
-                ink,
-                1,
-            );
-        }
+fn browser_chrome(p: &mut Painter, c: &ShellContext, w: &WindowView) {
+    match c.theme {
+        DesktopTheme::Macos => macos::browser_chrome(p, c, w),
+        DesktopTheme::Windows => windows::browser_chrome(p, c, w),
+        DesktopTheme::Ubuntu => ubuntu::browser_chrome(p, c, w),
+        DesktopTheme::Ios => ios::browser_chrome(p, c, w),
+        DesktopTheme::Android => android::browser_chrome(p, c, w),
     }
-    let address = Rect::new(r.x + 102, r.y + 6, r.width.saturating_sub(114), 28);
-    p.button(
-        address,
-        cw_scene::Color::WHITE,
-        7,
-        &w.action("content:shell:address"),
-        "Address and search",
-    );
-    let text = w
-        .title
-        .strip_prefix("Browser — ")
-        .or_else(|| w.title.strip_prefix("Browser - "))
-        .unwrap_or(&w.title);
-    p.text(
-        address.x + 12,
-        address.y + 5,
-        address.width.saturating_sub(24),
-        text,
-        12,
-        ink,
-    );
+}
+/// Corner radius of a free-floating window; maximized and phone windows are square.
+pub fn corner_radius(theme: DesktopTheme, maximized: bool) -> u32 {
+    match theme {
+        _ if maximized => 0,
+        DesktopTheme::Macos => 10,
+        DesktopTheme::Windows => 8,
+        DesktopTheme::Ubuntu => 12,
+        DesktopTheme::Ios | DesktopTheme::Android => 0,
+    }
 }
 fn resize_regions(p: &mut Painter, w: &WindowView) {
     let r = w.rect;
@@ -364,6 +369,7 @@ pub fn render_shell(
             maximized,
             minimized: false,
             content: Some(content),
+            ..Default::default()
         })
         .into_iter()
         .collect();
@@ -390,6 +396,7 @@ mod tests {
                 maximized: false,
                 minimized: false,
                 content: Some(content.clone()),
+                ..Default::default()
             })
             .collect();
         let scene = render_desktop(DesktopTheme::Macos, 960, 640, 0, false, windows);
@@ -434,11 +441,20 @@ mod tests {
                     maximized: false,
                     minimized: false,
                     content: Some(content),
+                    // Toolbars grey history they have not got, so this window has some.
+                    document: "http://intranet.internal/".into(),
+                    can_go_back: true,
+                    can_go_forward: true,
+                    ..Default::default()
                 }],
             );
             let site = window_content_rect_for_kind(theme, frame, "browser");
             let base = window_content_rect(theme, frame);
-            assert_eq!(site.y, base.y + 40);
+            assert_eq!(
+                site.y,
+                base.y + if theme.mobile() { site.y - base.y } else { 40 }
+            );
+            assert!(site.y >= base.y && site.y + site.height as i32 <= base.y + base.height as i32);
             for action in ["back", "forward", "reload", "address"] {
                 let target = format!("window:7:content:shell:{action}");
                 let n = scene
@@ -447,7 +463,8 @@ mod tests {
                     .find(|n| n.interaction.as_deref() == Some(&target))
                     .unwrap();
                 let r = n.bounds;
-                assert!(r.y < site.y);
+                // Toolbars sit above the page, or below it for Safari on iOS.
+                assert!(r.y + r.height as i32 <= site.y || r.y >= site.y + site.height as i32);
                 assert_eq!(
                     scene
                         .hit_test(r.x + r.width as i32 / 2, r.y + r.height as i32 / 2)

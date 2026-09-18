@@ -12,3 +12,10 @@ node scripts/smoke-node.cjs target/binding-checks/wasm.json
 python examples/python/smoke.py target/binding-checks/wasm.json
 node scripts/smoke-desktop-pixels.cjs target/binding-checks/desktop.json
 python examples/python/desktop_pixels.py target/binding-checks/desktop.json
+# Byte-compare a whole episode across the two bindings: summary, actions, scene and
+# observation, plus a portable checkpoint imported into the other runtime. This is what
+# catches a Wasm bundle and a wheel built from different revisions, which otherwise
+# surfaces as an unexplained state-hash difference.
+node examples/javascript/computer-interaction.mjs --output target/binding-checks/javascript
+python examples/python/computer_interaction.py --output target/binding-checks/python \
+  --compare target/binding-checks/javascript

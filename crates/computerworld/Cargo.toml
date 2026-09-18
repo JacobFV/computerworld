@@ -8,7 +8,7 @@ description = "Deterministic synthetic computer worlds with native, Wasm and Pyt
 
 [features]
 default = ["render"]
-render = ["dep:cw-render"]
+render = ["dep:cw-render", "dep:png"]
 
 [dependencies]
 cw-protocol = { path = "../protocol" }
@@ -17,6 +17,8 @@ cw-kernel = { path = "../kernel" }
 cw-environment = { path = "../environment" }
 cw-scene = { path = "../scene" }
 cw-render = { path = "../render", optional = true }
+# Screenshot encoding only; the renderer itself decodes with its own copy.
+png = { version = "0.17", optional = true }
 cw-services = { path = "../services" }
 serde.workspace = true
 serde_json.workspace = true
@@ -24,6 +26,8 @@ sha2.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+cw-network = { path = "../network" }
+png = "0.17"
 
 [[example]]
 name = "company"
@@ -36,3 +40,7 @@ path = "../../examples/custom-service/echo.rs"
 [[example]]
 name = "custom-app"
 path = "../../examples/custom-app/counter.rs"
+
+[[example]]
+name = "os-gallery"
+path = "../../examples/native/os_gallery.rs"

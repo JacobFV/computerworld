@@ -1,0 +1,447 @@
+{
+  "id": "youtube",
+  "kind": "media",
+  "node": "youtube",
+  "domains": [
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "youtu.be"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "video",
+    "brand": "YouTube",
+    "tagline": "Broadcast yourself, deterministically.",
+    "theme": {
+      "accent": "#ff0000",
+      "background": "#0f0f0f",
+      "surface": "#212121",
+      "ink": "#f1f1f1",
+      "muted": "#aaaaaa",
+      "content_width": 1120
+    },
+    "channels": {
+      "alice-builds": {
+        "id": "alice-builds",
+        "name": "Alice Builds",
+        "handle": "@alicebuilds",
+        "owner": "alice",
+        "subscribers": 12400,
+        "about": "Deterministic systems, slowly. Renderers, replay and the long tail of nondeterminism. Writing at http://alicechen.dev/"
+      },
+      "carol-ships": {
+        "id": "carol-ships",
+        "name": "Carol Ships It",
+        "handle": "@carolships",
+        "owner": "carol",
+        "subscribers": 3120,
+        "about": "Release management for people who would rather be writing code. Checklists, postmortems, and the meetings in between."
+      },
+      "northstar": {
+        "id": "northstar",
+        "name": "Northstar",
+        "handle": "@northstar",
+        "owner": "admin",
+        "subscribers": 8420,
+        "about": "The official channel of Northstar. Engineering notes live at http://eng.northstar.example/"
+      },
+      "devcon": {
+        "id": "devcon",
+        "name": "DevCon",
+        "handle": "@devcon",
+        "owner": null,
+        "subscribers": 41800,
+        "about": "Talks from DevCon Seattle. Tickets at http://ticketmaster.com/event/devcon-2026"
+      }
+    },
+    "items": {
+      "determinism-intro": {
+        "id": "determinism-intro",
+        "channel": "alice-builds",
+        "title": "What deterministic simulation actually means",
+        "description": "Same seed, same inputs, same bytes out. Fifteen minutes on the three things you have to give up to get there: the wall clock, ambient randomness, and unordered iteration. Background reading: http://en.wikipedia.org/wiki/Deterministic_simulation",
+        "duration_s": 508,
+        "published": "Jan 14, 2026",
+        "published_tick": 1,
+        "views": 42118,
+        "likes": 2310,
+        "tags": [
+          "determinism",
+          "simulation",
+          "rust"
+        ],
+        "badges": [
+          "4K"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "The bit about HashMap iteration order at 4:10 is the one people always miss.",
+            "tick": 1,
+            "likes": 31
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Sending this to every new hire from now on.",
+            "tick": 2,
+            "likes": 12
+          }
+        ],
+        "related": [
+          "atlas-walkthrough",
+          "flaky-test-windows"
+        ]
+      },
+      "flaky-test-windows": {
+        "id": "flaky-test-windows",
+        "channel": "alice-builds",
+        "title": "Debugging a test that only fails on Windows",
+        "description": "A BFS path test that passes everywhere except one CI runner. We read the failure, find the hash-order bug, and fix it in nine lines. Issue: http://github.com/northstar/atlas/issues/14  Question: http://stackoverflow.com/questions/4411  Write-up: http://bmartinez.net/posts/hash-order-bit-me",
+        "duration_s": 393,
+        "published": "Feb 3, 2026",
+        "published_tick": 3,
+        "views": 9127,
+        "likes": 412,
+        "tags": [
+          "testing",
+          "rust",
+          "ci"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "I lived this. The write-up in the description is mine, ask me anything.",
+            "tick": 3,
+            "likes": 22
+          }
+        ],
+        "related": [
+          "determinism-intro",
+          "atlas-walkthrough"
+        ]
+      },
+      "carol-postmortem": {
+        "id": "carol-postmortem",
+        "channel": "carol-ships",
+        "title": "Release postmortem: twelve minutes of elevated latency",
+        "description": "What INC-4 looked like from the release chair, why the rollback was boring, and the three checklist lines we added afterwards. Status page: http://status.northstar.example/",
+        "duration_s": 1264,
+        "published": "Feb 20, 2026",
+        "published_tick": 5,
+        "views": 6031,
+        "likes": 288,
+        "tags": [
+          "release",
+          "postmortem",
+          "northstar"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "admin",
+            "text": "Correction at 9:40 — the alert fired at minute two, not minute four.",
+            "tick": 6,
+            "likes": 9
+          }
+        ],
+        "related": [
+          "atlas-walkthrough",
+          "northstar-standup-live"
+        ]
+      },
+      "atlas-walkthrough": {
+        "id": "atlas-walkthrough",
+        "channel": "alice-builds",
+        "title": "Atlas 1.0 walkthrough — deterministic simulation end to end",
+        "description": "A full run of Atlas from seed to replay: processes, filesystem, network and browser, all reproducible byte for byte. Repo: http://github.com/northstar/atlas  Post: http://eng.northstar.example/posts/shipping-atlas  Coverage: http://theverge.com/2026/atlas-determinism",
+        "duration_s": 742,
+        "published": "Mar 4, 2026",
+        "published_tick": 7,
+        "views": 18342,
+        "likes": 903,
+        "tags": [
+          "atlas",
+          "determinism",
+          "northstar"
+        ],
+        "badges": [
+          "4K"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The BFS bit at 6:20 finally made it click.",
+            "tick": 7,
+            "likes": 41
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Replay from a checkpoint at 9:55 is the part I would lead with next time.",
+            "tick": 8,
+            "likes": 18
+          },
+          {
+            "id": "c3",
+            "author": "carol",
+            "text": "Two years of arguing about this in one video. Nice work.",
+            "tick": 8,
+            "likes": 15
+          }
+        ],
+        "related": [
+          "determinism-intro",
+          "carol-postmortem",
+          "flaky-test-windows"
+        ]
+      },
+      "devcon-keynote": {
+        "id": "devcon-keynote",
+        "channel": "devcon",
+        "title": "DevCon Seattle 2026 keynote — the reproducibility track",
+        "description": "The opening keynote, plus the full schedule for the reproducibility track. Tickets: http://ticketmaster.com/event/devcon-2026",
+        "duration_s": 3180,
+        "published": "Mar 6, 2026",
+        "published_tick": 8,
+        "views": 21044,
+        "likes": 1102,
+        "tags": [
+          "devcon",
+          "seattle",
+          "conference"
+        ],
+        "badges": [
+          "4K"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Booked. See everyone at the reproducibility track.",
+            "tick": 9,
+            "likes": 7
+          }
+        ],
+        "related": [
+          "atlas-walkthrough",
+          "determinism-intro"
+        ]
+      },
+      "northstar-standup-live": {
+        "id": "northstar-standup-live",
+        "channel": "northstar",
+        "title": "Northstar open standup — Atlas week one",
+        "description": "Streaming the first post-launch standup: what broke, what did not, and what shipped anyway. Walkthrough: http://youtube.com/watch?v=atlas-walkthrough",
+        "duration_s": 2701,
+        "published": "Mar 10, 2026",
+        "published_tick": 9,
+        "views": 1204,
+        "likes": 57,
+        "tags": [
+          "northstar",
+          "atlas"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [],
+        "related": [
+          "atlas-walkthrough",
+          "carol-postmortem"
+        ]
+      }
+    },
+    "playlists": {
+      "watch-later": {
+        "id": "watch-later",
+        "title": "Watch later",
+        "owner": null,
+        "items": []
+      },
+      "atlas-launch-kit": {
+        "id": "atlas-launch-kit",
+        "title": "Atlas launch kit",
+        "owner": "alice",
+        "items": [
+          "determinism-intro",
+          "atlas-walkthrough",
+          "carol-postmortem"
+        ]
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "carol-ships",
+        "northstar"
+      ],
+      "bob": [
+        "alice-builds"
+      ],
+      "carol": [
+        "alice-builds",
+        "northstar"
+      ]
+    },
+    "likes": {
+      "bob": [
+        "atlas-walkthrough"
+      ],
+      "carol": [
+        "determinism-intro"
+      ]
+    },
+    "now_playing": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://youtube.com/",
+      "title": "YouTube",
+      "snippet": "Watch, subscribe, comment and build playlists. Deterministic video, one grid of cards at a time.",
+      "vertical": "videos",
+      "authority": 8,
+      "keywords": [
+        "youtube",
+        "video",
+        "watch",
+        "streaming"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=atlas-walkthrough",
+      "title": "Atlas 1.0 walkthrough — deterministic simulation end to end - YouTube",
+      "snippet": "Alice Builds runs Atlas from seed to replay: processes, filesystem, network and browser, reproducible byte for byte.",
+      "vertical": "videos",
+      "authority": 7,
+      "keywords": [
+        "atlas",
+        "walkthrough",
+        "determinism",
+        "northstar",
+        "shipping atlas",
+        "alice chen"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=determinism-intro",
+      "title": "What deterministic simulation actually means - YouTube",
+      "snippet": "Same seed, same inputs, same bytes out — and the three things you give up to get there.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "deterministic simulation",
+        "determinism",
+        "replay",
+        "rust"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=flaky-test-windows",
+      "title": "Debugging a test that only fails on Windows - YouTube",
+      "snippet": "A BFS path test that passes everywhere except one CI runner, and the hash-order bug behind it.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "flaky test",
+        "windows",
+        "hash order",
+        "bfs",
+        "ci"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=carol-postmortem",
+      "title": "Release postmortem: twelve minutes of elevated latency - YouTube",
+      "snippet": "Carol Nakamura on INC-4 from the release chair, and the three checklist lines it added.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "postmortem",
+        "incident",
+        "release",
+        "northstar",
+        "latency"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=devcon-keynote",
+      "title": "DevCon Seattle 2026 keynote — the reproducibility track - YouTube",
+      "snippet": "The opening keynote and the full reproducibility track schedule for DevCon Seattle.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "devcon",
+        "seattle",
+        "keynote",
+        "conference",
+        "devcon seattle tickets"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=northstar-standup-live",
+      "title": "Northstar open standup — Atlas week one (live) - YouTube",
+      "snippet": "The first post-launch standup, streamed: what broke, what did not, and what shipped anyway.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "northstar",
+        "standup",
+        "live",
+        "atlas"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/alice-builds",
+      "title": "Alice Builds - YouTube",
+      "snippet": "Deterministic systems, slowly. Renderers, replay and the long tail of nondeterminism.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "alice builds",
+        "alice chen",
+        "channel",
+        "determinism"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/carol-ships",
+      "title": "Carol Ships It - YouTube",
+      "snippet": "Release management for people who would rather be writing code.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "carol ships it",
+        "carol nakamura",
+        "release management"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/northstar",
+      "title": "Northstar - YouTube",
+      "snippet": "The official Northstar channel: launches, standups and engineering notes.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "northstar",
+        "official",
+        "channel"
+      ]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=atlas-launch-kit",
+      "title": "Atlas launch kit - YouTube playlist",
+      "snippet": "Three videos in the order Alice recommends watching them before reading the launch post.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "atlas",
+        "playlist",
+        "launch kit"
+      ]
+    }
+  ]
+}

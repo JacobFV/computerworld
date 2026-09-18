@@ -1,0 +1,1062 @@
+//! Executes every row of `docs/shell.md` so the published matrix cannot drift.
+//! Each unsupported flag is asserted to fail loudly: a silently ignored flag is the
+//! failure mode this suite exists to prevent.
+use cw_computer::{shell, CommandResult, Computer, OfflineHost};
+
+fn machine() -> Computer {
+    let mut c = Computer::new("box", "user", "linux", true);
+    for setup in [
+        "mkdir -p /home/user/proj/sub",
+        "printf 'alpha\\nbeta\\ngamma\\n' > /home/user/proj/a.txt",
+        "echo hi > /home/user/proj/sub/b.txt",
+        "echo dot > /home/user/.hidden",
+        "ln -s /home/user/proj/a.txt /home/user/link",
+    ] {
+        let r = run(&mut c, setup);
+        assert_eq!(r.exit_code, 0, "{setup}: {}", r.stderr);
+    }
+    c
+}
+fn run(c: &mut Computer, line: &str) -> CommandResult {
+    shell::execute(c, line, 0, &mut OfflineHost)
+}
+/// stdout of a command the matrix says must succeed.
+fn ok(c: &mut Computer, line: &str) -> String {
+    let r = run(c, line);
+    assert_eq!(r.exit_code, 0, "`{line}` should succeed: {}", r.stderr);
+    r.stdout
+}
+/// An unsupported flag must be refused with status 2 and name itself.
+fn refused(c: &mut Computer, line: &str, mention: &str) {
+    let r = run(c, line);
+    assert_eq!(r.exit_code, 2, "`{line}` must be refused, not ignored");
+    assert!(
+        r.stderr.contains(mention),
+        "`{line}` should name `{mention}`, said {:?}",
+        r.stderr
+    );
+}
+
+#[test]
+fn exit_codes_carry_the_classification() {
+    let mut c = machine();
+    assert_eq!(run(&mut c, "true").exit_code, 0);
+    assert_eq!(run(&mut c, "false").exit_code, 1);
+    assert_eq!(run(&mut c, "test -f /nope").exit_code, 1);
+    assert_eq!(run(&mut c, "cat /nope").exit_code, 1);
+    assert_eq!(run(&mut c, "grep zzz /home/user/proj/a.txt").exit_code, 1);
+    // 2 is reserved for "this world does not implement that".
+    assert_eq!(run(&mut c, "ls --bogus").exit_code, 2);
+    assert_eq!(run(&mut c, "echo hi &&").exit_code, 2);
+    assert_eq!(run(&mut c, "echo 'unterminated").exit_code, 2);
+    assert_eq!(run(&mut c, "echo hi >").exit_code, 2);
+    // 127/126 separate "no such command" from "cannot run it".
+    assert_eq!(run(&mut c, "nosuchcommand").exit_code, 127);
+    assert_eq!(run(&mut c, "Write-Output x").exit_code, 127);
+    let r = run(
+        &mut c,
+        "echo '#!/bin/perl' > /tmp/p; chmod 755 /tmp/p; /tmp/p",
+    );
+    assert_eq!(r.exit_code, 126, "{}", r.stderr);
+    // A nested shell propagates its status instead of collapsing it.
+    assert_eq!(run(&mut c, "sh -c 'nosuchcommand'").exit_code, 127);
+    assert_eq!(run(&mut c, "sh -c 'ls --bogus'").exit_code, 2);
+    // Its stderr reaches the caller even when it succeeds.
+    let r = run(&mut c, "sh -c 'cat /nope; true'");
+    assert_eq!(r.exit_code, 0);
+    assert!(
+        r.stderr.contains("nope"),
+        "a script must not lose stderr: {r:?}"
+    );
+}
+
+#[test]
+fn redirection_covers_both_descriptors() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "echo one > /tmp/r; cat /tmp/r"), "one\n");
+    assert_eq!(ok(&mut c, "echo two >> /tmp/r; cat /tmp/r"), "one\ntwo\n");
+    // 2>/dev/null discards and creates nothing.
+    let r = run(&mut c, "cat /nope 2>/dev/null");
+    assert_eq!(
+        (r.exit_code, r.stdout.as_str(), r.stderr.as_str()),
+        (1, "", "")
+    );
+    assert_eq!(run(&mut c, "test -e /dev/null").exit_code, 1);
+    // 2> and 2>> capture stderr to a file.
+    run(&mut c, "cat /nope 2>/tmp/e");
+    run(&mut c, "cat /nope 2>>/tmp/e");
+    assert_eq!(ok(&mut c, "wc -l /tmp/e"), "2\n");
+    // 2>&1 folds stderr into stdout; >&2 folds the other way.
+    let r = run(&mut c, "cat /nope 2>&1");
+    assert!(!r.stdout.is_empty() && r.stderr.is_empty(), "{r:?}");
+    let r = run(&mut c, "echo loud >&2");
+    assert!(r.stdout.is_empty() && r.stderr.contains("loud"), "{r:?}");
+    // Order matters: `>f 2>&1` sends both to the file, `2>&1 >f` leaves stderr behind.
+    run(&mut c, "cat /nope > /tmp/both 2>&1");
+    assert!(ok(&mut c, "cat /tmp/both").contains("nope"));
+    let r = run(&mut c, "cat /nope 2>&1 > /tmp/split");
+    assert!(!r.stdout.is_empty(), "stderr should still reach the caller");
+    assert_eq!(ok(&mut c, "cat /tmp/split"), "");
+    // &> takes both descriptors.
+    run(&mut c, "cat /nope &> /tmp/all");
+    assert!(ok(&mut c, "cat /tmp/all").contains("nope"));
+    run(&mut c, "cat /nope &>> /tmp/all");
+    assert_eq!(ok(&mut c, "wc -l /tmp/all"), "2\n");
+    assert_eq!(ok(&mut c, "echo one 1> /tmp/one; cat /tmp/one"), "one\n");
+    assert_eq!(
+        ok(&mut c, "echo two 1>> /tmp/one; cat /tmp/one"),
+        "one\ntwo\n"
+    );
+    // A digit only prefixes an operator when it is glued on.
+    assert_eq!(ok(&mut c, "echo 2 > /tmp/two; cat /tmp/two"), "2\n");
+}
+
+#[test]
+fn clear_is_a_screen_action_not_output() {
+    let mut c = machine();
+    let r = run(&mut c, "clear");
+    assert_eq!((r.exit_code, r.stdout.as_str(), r.clear), (0, "", true));
+    assert!(!run(&mut c, "echo hi").clear, "only clear raises the flag");
+    assert!(
+        run(&mut c, "echo hi; clear").clear,
+        "the flag survives a list"
+    );
+    refused(&mut c, "clear extra", "clear");
+}
+
+#[test]
+fn date_is_a_clock_not_a_tick() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "date"), "Thu Sep 17 09:00:00 UTC 2026\n");
+    assert_eq!(ok(&mut c, "date +%F"), "2026-09-17\n");
+    assert_eq!(
+        ok(&mut c, "date '+%Y-%m-%dT%H:%M:%SZ'"),
+        "2026-09-17T09:00:00Z\n"
+    );
+    assert_eq!(ok(&mut c, "date +%s"), "1789635600\n");
+    assert_eq!(
+        ok(&mut c, "date -u '+%a %b %e %T %Z'"),
+        "Thu Sep 17 09:00:00 UTC\n"
+    );
+    // The clock advances with simulated time, and only with it.
+    let later = shell::execute(&mut c, "date +%T", 3_600_000_000, &mut OfflineHost);
+    assert_eq!(later.stdout, "10:00:00\n");
+    let tomorrow = shell::execute(&mut c, "date +%F", 86_400_000_000, &mut OfflineHost);
+    assert_eq!(tomorrow.stdout, "2026-09-18\n");
+    refused(&mut c, "date -d yesterday", "-d");
+    refused(&mut c, "date +%Q", "%Q");
+}
+
+#[test]
+fn ls_honours_its_flag_combinations() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "ls /home/user"), "link\nproj\n");
+    assert_eq!(
+        ok(&mut c, "ls -a /home/user"),
+        ".\n..\n.hidden\nlink\nproj\n"
+    );
+    assert_eq!(ok(&mut c, "ls -A /home/user"), ".hidden\nlink\nproj\n");
+    assert_eq!(ok(&mut c, "ls -r /home/user"), "proj\nlink\n");
+    assert_eq!(ok(&mut c, "ls -d /home/user/proj"), "/home/user/proj\n");
+    assert_eq!(ok(&mut c, "ls -F /home/user"), "link@\nproj/\n");
+    let long = ok(&mut c, "ls -la /home/user/proj");
+    assert!(long.starts_with("total "), "{long}");
+    assert!(long.contains("-rw-r--r--"), "{long}");
+    assert!(long.contains("drwxr-xr-x"), "{long}");
+    assert!(long.contains("Sep 17 09:00"), "{long}");
+    assert!(long.lines().any(|l| l.ends_with(" a.txt")), "{long}");
+    assert!(
+        long.lines().any(|l| l.ends_with(" .")),
+        "-a must list . and .."
+    );
+    assert!(ok(&mut c, "ls -l /home/user/proj").contains(" 17 "));
+    // A symlink names its target in long form.
+    assert!(ok(&mut c, "ls -l /home/user/link").contains("-> /home/user/proj/a.txt"));
+    // -R descends and titles each directory.
+    let recursive = ok(&mut c, "ls -R /home/user/proj");
+    assert!(recursive.contains("/home/user/proj:"), "{recursive}");
+    assert!(recursive.contains("/home/user/proj/sub:"), "{recursive}");
+    assert_eq!(run(&mut c, "ls /nope").exit_code, 1);
+    refused(&mut c, "ls -Q /home/user", "-Q");
+    refused(&mut c, "ls --color", "--color");
+}
+
+#[test]
+fn stat_reports_the_vfs_and_formats_it() {
+    let mut c = machine();
+    let block = ok(&mut c, "stat /home/user/proj/a.txt");
+    for fragment in [
+        "  File: /home/user/proj/a.txt",
+        "Size: 17",
+        "regular file",
+        "(0644/-rw-r--r--)",
+        "Uid: ( 1000/    user)",
+        "Modify: 2026-09-17 09:00:00",
+    ] {
+        assert!(block.contains(fragment), "missing {fragment:?} in {block}");
+    }
+    assert_eq!(
+        ok(&mut c, "stat -c '%n %s %F %a %U %h' /home/user/proj/a.txt"),
+        "/home/user/proj/a.txt 17 regular file 644 user 1\n"
+    );
+    assert_eq!(
+        ok(&mut c, "stat --format=%F /home/user/proj"),
+        "directory\n"
+    );
+    assert_eq!(ok(&mut c, "stat -c %s /home/user/proj"), "4096\n");
+    assert_eq!(ok(&mut c, "stat -c %F /home/user/link"), "symbolic link\n");
+    assert_eq!(ok(&mut c, "stat -Lc %F /home/user/link"), "regular file\n");
+    assert_eq!(
+        ok(&mut c, "stat -c %Y /home/user/proj/a.txt"),
+        "1789635600\n"
+    );
+    assert_eq!(run(&mut c, "stat /nope").exit_code, 1);
+    refused(&mut c, "stat -f /home/user", "-f");
+    refused(&mut c, "stat -c %Q /home/user", "%Q");
+    refused(&mut c, "stat", "missing operand");
+}
+
+#[test]
+fn grep_works_without_recursion_and_counts() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "grep beta /home/user/proj/a.txt"), "beta\n");
+    assert_eq!(ok(&mut c, "grep -c a /home/user/proj/a.txt"), "3\n");
+    assert_eq!(ok(&mut c, "grep -n beta /home/user/proj/a.txt"), "2:beta\n");
+    assert_eq!(ok(&mut c, "grep -i BETA /home/user/proj/a.txt"), "beta\n");
+    assert_eq!(
+        ok(&mut c, "grep -v beta /home/user/proj/a.txt"),
+        "alpha\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, "grep -l beta /home/user/proj/a.txt"),
+        "/home/user/proj/a.txt\n"
+    );
+    assert_eq!(ok(&mut c, "cat /home/user/proj/a.txt | grep -c a"), "3\n");
+    assert_eq!(
+        ok(&mut c, "grep -rl hi /home/user/proj"),
+        "/home/user/proj/sub/b.txt\n"
+    );
+    assert!(ok(&mut c, "grep -rn alpha /home/user/proj").contains("a.txt:1:alpha"));
+    assert_eq!(ok(&mut c, "grep -q beta /home/user/proj/a.txt"), "");
+    // A miss is status 1, and -c still prints the zero it counted.
+    let r = run(&mut c, "grep -c zzz /home/user/proj/a.txt");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (1, "0\n"));
+    assert_eq!(run(&mut c, "grep zzz /home/user/proj/a.txt").exit_code, 1);
+    // Two files earn filename prefixes; -h suppresses them.
+    let two = ok(&mut c, "grep a /home/user/proj/a.txt /home/user/proj/a.txt");
+    assert!(
+        two.lines().all(|l| l.starts_with("/home/user/proj/a.txt:")),
+        "{two}"
+    );
+    assert!(!ok(
+        &mut c,
+        "grep -h a /home/user/proj/a.txt /home/user/proj/a.txt"
+    )
+    .contains(':'));
+    refused(&mut c, "grep -A x beta /home/user/proj/a.txt", "-A");
+    refused(&mut c, "grep --include=x beta /home/user/proj", "--include");
+}
+
+#[test]
+fn sed_selects_lines_as_well_as_substituting() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "sed -n 2p /home/user/proj/a.txt"), "beta\n");
+    assert_eq!(
+        ok(&mut c, "sed -n '1,2p' /home/user/proj/a.txt"),
+        "alpha\nbeta\n"
+    );
+    assert_eq!(ok(&mut c, "sed -n '$p' /home/user/proj/a.txt"), "gamma\n");
+    assert_eq!(
+        ok(&mut c, "sed -n '2,$p' /home/user/proj/a.txt"),
+        "beta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed '2d' /home/user/proj/a.txt"),
+        "alpha\ngamma\n"
+    );
+    // Without -n sed auto-prints, so `p` duplicates the selected line.
+    assert_eq!(
+        ok(&mut c, "sed 2p /home/user/proj/a.txt"),
+        "alpha\nbeta\nbeta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, "cat /home/user/proj/a.txt | sed -n 3p"),
+        "gamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 's/beta/BETA/' /home/user/proj/a.txt"),
+        "alpha\nBETA\ngamma\n"
+    );
+    ok(
+        &mut c,
+        "cp /home/user/proj/a.txt /tmp/edit; sed -i 's/alpha/ALPHA/' /tmp/edit",
+    );
+    assert_eq!(ok(&mut c, "sed -n 1p /tmp/edit"), "ALPHA\n");
+    refused(&mut c, "sed 'Z' /home/user/proj/a.txt", "supported scripts");
+    refused(&mut c, "sed -r 's/a/b/' /home/user/proj/a.txt", "-r");
+    refused(&mut c, "sed -e 1p -e 2p /home/user/proj/a.txt", "-e");
+}
+
+#[test]
+fn disk_and_hardware_probes_answer() {
+    let mut c = machine();
+    // du is modelled over the VFS: adding bytes moves the number.
+    let total = |c: &mut Computer| -> u64 {
+        ok(c, "du -s /home/user/proj")
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap()
+    };
+    let before = total(&mut c);
+    ok(
+        &mut c,
+        "head -n 2 /home/user/proj/a.txt > /home/user/proj/big",
+    );
+    assert!(total(&mut c) > before, "du must reflect the VFS");
+    assert!(ok(&mut c, "du -sh /home/user/proj").ends_with("\t/home/user/proj\n"));
+    assert!(ok(&mut c, "du -a /home/user/proj").contains("/home/user/proj/a.txt"));
+    assert!(
+        !ok(&mut c, "du /home/user/proj").contains("a.txt"),
+        "files need -a"
+    );
+    refused(&mut c, "du -x /home/user", "-x");
+    // df: fixed capacity, modelled usage, one filesystem.
+    let df = ok(&mut c, "df");
+    assert!(df.starts_with("Filesystem"), "{df}");
+    assert!(df.contains("/dev/vda1"), "{df}");
+    assert!(df.trim_end().ends_with(" /"), "{df}");
+    assert_eq!(df.lines().count(), 2, "one modelled filesystem");
+    assert!(ok(&mut c, "df -h").contains("64G"));
+    assert!(ok(&mut c, "df -hT").contains("ext4"));
+    assert_eq!(run(&mut c, "df /nope").exit_code, 1);
+    refused(&mut c, "df -i", "-i");
+    // Fixed facts are constant across calls.
+    assert_eq!(ok(&mut c, "nproc"), "4\n");
+    let all = ok(&mut c, "nproc --all");
+    assert_eq!(all, ok(&mut c, "nproc"));
+    refused(&mut c, "nproc --ignore=1", "--ignore");
+    assert_eq!(ok(&mut c, "uptime -s"), "2026-09-17 09:00:00\n");
+    assert_eq!(ok(&mut c, "uptime -p"), "up 0 minutes\n");
+    assert!(ok(&mut c, "uptime").contains("load average: 0.00, 0.00, 0.00"));
+    let hour = shell::execute(&mut c, "uptime -p", 3_600_000_000, &mut OfflineHost);
+    assert_eq!(hour.stdout, "up 1 hour, 0 minutes\n");
+    refused(&mut c, "uptime -h", "-h");
+}
+
+#[test]
+fn network_and_path_probes_answer() {
+    let mut c = machine();
+    let addr = ok(&mut c, "ip addr");
+    assert!(addr.contains("inet 10.0.2.15/24"), "{addr}");
+    assert!(addr.contains("link/ether 52:54:00:12:34:56"), "{addr}");
+    assert!(addr.contains("inet 127.0.0.1/8"), "{addr}");
+    assert_eq!(ok(&mut c, "ip a"), addr);
+    assert_eq!(ok(&mut c, "ip addr show"), addr);
+    assert!(ok(&mut c, "ip route").contains("default via 10.0.2.1 dev eth0"));
+    assert!(ok(&mut c, "ip link").contains("eth0"));
+    refused(&mut c, "ip netns", "netns");
+    refused(&mut c, "ip addr add 1.2.3.4 dev eth0", "unsupported action");
+    refused(&mut c, "ip", "missing object");
+    // which resolves builtins nominally and installed files really.
+    assert_eq!(ok(&mut c, "which grep"), "/usr/bin/grep\n");
+    let r = run(&mut c, "which definitely-not-here");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (1, ""));
+    ok(
+        &mut c,
+        "mkdir -p /tmp/bin; echo '#!/bin/sh' > /tmp/bin/tool",
+    );
+    ok(&mut c, "export PATH=/tmp/bin:/bin:/usr/bin");
+    assert_eq!(ok(&mut c, "which tool"), "/tmp/bin/tool\n");
+    refused(&mut c, "which -s grep", "-s");
+}
+
+#[test]
+fn sudo_runs_as_another_identity() {
+    let mut c = machine();
+    c.vfs.write("/root-only", b"secret", "root", 0).unwrap();
+    c.vfs.chmod("/root-only", 0o600).unwrap();
+    assert_eq!(run(&mut c, "cat /root-only").exit_code, 1);
+    assert_eq!(ok(&mut c, "sudo cat /root-only"), "secret");
+    assert_eq!(ok(&mut c, "sudo whoami"), "root\n");
+    assert_eq!(ok(&mut c, "sudo -u user whoami"), "user\n");
+    assert_eq!(ok(&mut c, "whoami"), "user\n", "the swap must not leak");
+    assert_eq!(ok(&mut c, "sudo -v"), "");
+    refused(&mut c, "sudo", "missing command");
+    refused(&mut c, "sudo -Z ls", "-Z");
+    assert_eq!(run(&mut c, "sudo nosuchcommand").exit_code, 127);
+}
+
+#[test]
+fn text_utilities_refuse_what_they_cannot_do() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "wc -l /home/user/proj/a.txt"), "3\n");
+    assert_eq!(ok(&mut c, "wc -w /home/user/proj/a.txt"), "3\n");
+    assert_eq!(ok(&mut c, "wc /home/user/proj/a.txt"), "3 3 17\n");
+    assert_eq!(ok(&mut c, "head -n 1 /home/user/proj/a.txt"), "alpha\n");
+    assert_eq!(ok(&mut c, "tail -n 1 /home/user/proj/a.txt"), "gamma\n");
+    assert_eq!(ok(&mut c, "printf '2\\n10\\n1\\n' | sort"), "1\n10\n2\n");
+    assert_eq!(ok(&mut c, "printf '2\\n10\\n1\\n' | sort -n"), "1\n2\n10\n");
+    assert_eq!(
+        ok(&mut c, "printf 'a\\na\\nb\\n' | uniq -c"),
+        "      2 a\n      1 b\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'a\\na\\nb\\n' | sort -u"), "a\nb\n");
+    refused(&mut c, "head -c 3 /home/user/proj/a.txt", "-c");
+    refused(&mut c, "sort -k2 /home/user/proj/a.txt", "-k");
+    refused(&mut c, "wc -L /home/user/proj/a.txt", "-L");
+    refused(&mut c, "uniq -i", "-i");
+    // File commands parse their flags rather than skipping anything dash-shaped.
+    assert_eq!(run(&mut c, "mkdir /home/user/proj").exit_code, 1);
+    assert_eq!(run(&mut c, "mkdir /tmp/a/b/c").exit_code, 1);
+    assert_eq!(ok(&mut c, "mkdir -p /tmp/a/b/c; ls /tmp/a/b"), "c\n");
+    refused(&mut c, "mkdir -m 755 /tmp/x", "-m");
+    refused(&mut c, "rm -i /home/user/proj/a.txt", "-i");
+    refused(&mut c, "cp -a /home/user/proj /tmp/copy", "-a");
+    refused(&mut c, "touch -t 1 /tmp/x", "-t");
+    refused(&mut c, "touch --time=access /tmp/x", "--time");
+    assert_eq!(run(&mut c, "cp /home/user/proj /tmp/copy").exit_code, 1);
+    ok(&mut c, "cp -r /home/user/proj /tmp/copy");
+    assert_eq!(ok(&mut c, "cat /tmp/copy/sub/b.txt"), "hi\n");
+    // find already refuses unknown predicates; the matrix says so.
+    refused(&mut c, "find /home/user -newer /tmp", "-newer");
+}
+
+#[test]
+fn every_documented_command_resolves() {
+    let mut c = machine();
+    // The roster `which` reports is the roster the matrix publishes.
+    for name in [
+        "ls",
+        "cat",
+        "stat",
+        "find",
+        "grep",
+        "sed",
+        "du",
+        "df",
+        "which",
+        "nproc",
+        "uptime",
+        "clear",
+        "ip",
+        "sudo",
+        "date",
+        "wc",
+        "sort",
+        "uniq",
+        "head",
+        "tail",
+        "cut",
+        "tr",
+        "test",
+        "ps",
+        "break",
+        "continue",
+        "return",
+        "kill",
+        "git",
+        "sh",
+        "curl",
+        "sleep",
+        "systemctl",
+        "apt",
+    ] {
+        assert_eq!(
+            ok(&mut c, &format!("which {name}")),
+            format!("/usr/bin/{name}\n"),
+            "{name} is in the matrix but not on PATH"
+        );
+    }
+}
+
+#[test]
+fn control_flow_runs_every_construct() {
+    let mut c = machine();
+    assert_eq!(
+        ok(&mut c, "if true; then echo yes; else echo no; fi"),
+        "yes\n"
+    );
+    assert_eq!(
+        ok(&mut c, "if false; then echo a; elif true; then echo b; fi"),
+        "b\n"
+    );
+    assert_eq!(
+        ok(&mut c, "if false; then echo a; else echo c; fi"),
+        "c\n",
+        "the else arm must run"
+    );
+    // An `if` whose condition fails and has no else is still a success.
+    assert_eq!(run(&mut c, "if false; then echo a; fi").exit_code, 0);
+    assert_eq!(ok(&mut c, "for i in a b c; do echo $i; done"), "a\nb\nc\n");
+    assert_eq!(
+        ok(
+            &mut c,
+            "n=0; while test $n -lt 3; do echo $n; n=$((n + 1)); done"
+        ),
+        "0\n1\n2\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "n=0; until test $n -ge 2; do echo $n; n=$((n + 1)); done"
+        ),
+        "0\n1\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "case hello in h*) echo star ;; *) echo rest ;; esac"
+        ),
+        "star\n"
+    );
+    assert_eq!(ok(&mut c, "case b in a|b) echo ab ;; esac"), "ab\n");
+    assert_eq!(
+        ok(&mut c, "case z in (a) echo a ;; *) echo other ;; esac"),
+        "other\n"
+    );
+    // A case with no matching arm succeeds and prints nothing.
+    let r = run(&mut c, "case z in a) echo a ;; esac");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (0, ""));
+    // A subshell restores the environment and the working directory.
+    assert_eq!(
+        ok(&mut c, "X=out; ( cd /tmp; X=in; pwd ); pwd; echo $X"),
+        "/tmp\n/home/user\nout\n"
+    );
+    assert_eq!(ok(&mut c, "{ echo one; echo two; }"), "one\ntwo\n");
+    // The `for` list is the one place a word is split and globbed.
+    assert_eq!(
+        ok(&mut c, "for f in /home/user/proj/*.txt; do echo $f; done"),
+        "/home/user/proj/a.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "for w in $(echo p q); do echo $w; done"),
+        "p\nq\n"
+    );
+    // A compound takes redirections and sits in a pipeline like any other command.
+    assert_eq!(
+        ok(
+            &mut c,
+            "for i in 1 2; do echo $i; done > /tmp/cf; cat /tmp/cf"
+        ),
+        "1\n2\n"
+    );
+    assert_eq!(
+        ok(&mut c, "for i in 1 2 3; do echo $i; done | wc -l"),
+        "3\n"
+    );
+    assert_eq!(ok(&mut c, "echo hi | { cat; echo more; }"), "hi\nmore\n");
+    // A missing terminator is a syntax error, not a silently truncated script.
+    refused(&mut c, "if true; then echo a", "fi");
+    refused(&mut c, "for i in 1; do echo $i", "done");
+    refused(&mut c, "case a in a) echo a", "esac");
+    refused(&mut c, "echo )", ")");
+}
+
+#[test]
+fn break_continue_and_return_are_signals() {
+    let mut c = machine();
+    assert_eq!(
+        ok(
+            &mut c,
+            "for i in 1 2 3 4; do if test $i -eq 3; then break; fi; echo $i; done"
+        ),
+        "1\n2\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "for i in 1 2 3; do if test $i -eq 2; then continue; fi; echo $i; done"
+        ),
+        "1\n3\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "for a in 1 2; do for b in x y; do echo $a$b; break 2; done; done"
+        ),
+        "1x\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "for a in 1 2; do for b in x y; do echo $a$b; continue 2; done; done"
+        ),
+        "1x\n2x\n"
+    );
+    assert_eq!(ok(&mut c, "f() { return 3; }; f; echo $?"), "3\n");
+    // Outside their construct they are refused rather than doing nothing.
+    refused(&mut c, "break", "not in a loop");
+    refused(&mut c, "continue", "not in a loop");
+    refused(&mut c, "return", "not in a function");
+    refused(&mut c, "for i in 1; do break x; done", "numeric");
+}
+
+#[test]
+fn functions_carry_their_own_parameters() {
+    let mut c = machine();
+    assert_eq!(
+        ok(&mut c, "greet() { echo hi $1; }; greet world"),
+        "hi world\n"
+    );
+    assert_eq!(ok(&mut c, "function g { echo g; }; g"), "g\n");
+    assert_eq!(
+        ok(&mut c, "f() { echo \"$@ / $# / $1\"; }; f p q"),
+        "p q / 2 / p\n"
+    );
+    // A function's output is the call's output, so it pipes and redirects.
+    assert_eq!(ok(&mut c, "u() { echo quiet; }; u | tr a-z A-Z"), "QUIET\n");
+    // Parameters are restored after the call.
+    assert_eq!(
+        ok(
+            &mut c,
+            "sh -c 'f() { echo $1; }; f inner; echo \"[$1]\"' zero outer"
+        ),
+        "inner\n[outer]\n"
+    );
+    // A function defined in a subshell does not escape it.
+    assert_eq!(run(&mut c, "( s() { echo s; }; s ); s").exit_code, 127);
+    // Unbounded recursion stops at the nesting limit rather than hanging.
+    let r = run(&mut c, "r() { r; }; r");
+    assert_eq!(r.exit_code, 2);
+    assert!(r.stderr.contains("nesting exceeds 32"), "{}", r.stderr);
+    // `for NAME; do` walks the positional parameters.
+    assert_eq!(
+        ok(&mut c, "sh -c 'for a; do echo $a; done' zero one two"),
+        "one\ntwo\n"
+    );
+}
+
+#[test]
+fn loops_are_bounded_rather_than_hanging() {
+    let mut c = machine();
+    let r = run(&mut c, "while true; do echo x; done");
+    assert_eq!(r.exit_code, 2, "an endless loop must end with a status");
+    assert!(r.stderr.contains("budget"), "{}", r.stderr);
+    // `:` is the null command, so a loop body can legitimately do nothing.
+    let r = run(&mut c, "for i in 1 2 3; do :; done");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (0, ""));
+    let r = run(&mut c, "until false; do :; done");
+    assert_eq!(r.exit_code, 2, "an endless `until` must end too");
+    // Nothing printed before the budget tripped survives as a partial success.
+    let r = run(&mut c, "n=0; while true; do n=$((n + 1)); done; echo $n");
+    assert_eq!(r.exit_code, 2);
+    assert!(r.stdout.is_empty(), "{r:?}");
+}
+
+#[test]
+fn sed_addresses_and_edit_commands() {
+    let mut c = machine();
+    let file = "/home/user/proj/a.txt";
+    assert_eq!(ok(&mut c, &format!("sed -n '/beta/p' {file}")), "beta\n");
+    assert_eq!(
+        ok(&mut c, &format!("sed '/beta/d' {file}")),
+        "alpha\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("sed -n '/beta/,/gamma/p' {file}")),
+        "beta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("sed '/beta/s/e/E/' {file}")),
+        "alpha\nbEta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("sed '2a added' {file}")),
+        "alpha\nbeta\nadded\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("sed '$a tail' {file}")),
+        "alpha\nbeta\ngamma\ntail\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("sed '1i head' {file}")),
+        "head\nalpha\nbeta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("sed 'y/abc/ABC/' {file}")),
+        "AlphA\nBetA\ngAmmA\n"
+    );
+    assert_eq!(ok(&mut c, &format!("sed '2q' {file}")), "alpha\nbeta\n");
+    // `q CODE` becomes the exit status, and what it printed still arrives.
+    let r = run(&mut c, &format!("sed '2q5' {file}"));
+    assert_eq!((r.exit_code, r.stdout.as_str()), (5, "alpha\nbeta\n"));
+    refused(&mut c, &format!("sed 'y/ab/x/' {file}"), "equal length");
+    refused(&mut c, &format!("sed '/unclosed' {file}"), "unterminated");
+    refused(&mut c, &format!("sed '0p' {file}"), "start at 1");
+}
+
+#[test]
+fn grep_shows_context_and_only_the_match() {
+    let mut c = machine();
+    let file = "/home/user/proj/a.txt";
+    assert_eq!(
+        ok(&mut c, &format!("grep -A1 beta {file}")),
+        "beta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("grep -B1 gamma {file}")),
+        "beta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("grep -C1 beta {file}")),
+        "alpha\nbeta\ngamma\n"
+    );
+    // A context line is marked `-` where a matching line is marked `:`.
+    assert_eq!(
+        ok(&mut c, &format!("grep -n -A1 beta {file}")),
+        "2:beta\n3-gamma\n"
+    );
+    // Non-adjacent groups are separated by `--`.
+    let split = ok(&mut c, &format!("grep -A0 -e alpha -e gamma {file}"));
+    assert_eq!(split, "alpha\n--\ngamma\n", "{split}");
+    assert_eq!(ok(&mut c, &format!("grep -o 'a.' {file}")), "al\nam\n");
+    assert_eq!(
+        ok(&mut c, &format!("grep -o -n 'a.' {file}")),
+        "1:al\n3:am\n"
+    );
+    refused(&mut c, &format!("grep -A x beta {file}"), "-A");
+    refused(&mut c, &format!("grep -C q beta {file}"), "-C");
+}
+
+#[test]
+fn chmod_accepts_symbolic_and_recursive_modes() {
+    let mut c = machine();
+    let mode = |c: &mut Computer| ok(c, "stat -c %a /tmp/m");
+    ok(&mut c, "echo x > /tmp/m; chmod 600 /tmp/m");
+    assert_eq!(mode(&mut c), "600\n");
+    ok(&mut c, "chmod u+x /tmp/m");
+    assert_eq!(mode(&mut c), "700\n");
+    ok(&mut c, "chmod go+r /tmp/m");
+    assert_eq!(mode(&mut c), "744\n");
+    ok(&mut c, "chmod go-r /tmp/m");
+    assert_eq!(mode(&mut c), "700\n");
+    ok(&mut c, "chmod a=r /tmp/m");
+    assert_eq!(mode(&mut c), "444\n", "`=` clears what it does not set");
+    ok(&mut c, "chmod u+w,g+x /tmp/m");
+    assert_eq!(mode(&mut c), "654\n");
+    ok(&mut c, "chmod 644 /tmp/m; chmod +x /tmp/m");
+    assert_eq!(mode(&mut c), "755\n", "a bare `+x` means `a+x`");
+    ok(&mut c, "chmod u+s /tmp/m");
+    assert_eq!(mode(&mut c), "4755\n");
+    // -R walks the tree; X only grants execute where one already exists.
+    ok(
+        &mut c,
+        "mkdir -p /tmp/tree/sub; echo y > /tmp/tree/sub/plain; chmod -R 600 /tmp/tree",
+    );
+    ok(&mut c, "chmod -R a+X /tmp/tree");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/tree"), "711\n");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/tree/sub/plain"), "600\n");
+    refused(&mut c, "chmod u+z /tmp/m", "invalid mode");
+    refused(&mut c, "chmod u=g /tmp/m", "copying permissions");
+    refused(&mut c, "chmod 999 /tmp/m", "invalid octal");
+    refused(&mut c, "chmod 644", "missing operand");
+    refused(&mut c, "chmod --reference=/tmp/m /tmp/m", "--reference");
+    assert_eq!(run(&mut c, "chmod 600 /nope").exit_code, 1);
+}
+
+#[test]
+fn touch_sets_the_timestamp_it_is_given() {
+    let mut c = machine();
+    let stamp = |c: &mut Computer| ok(c, "stat -c %y /tmp/t");
+    // With no option the file takes the current simulated tick, not the host clock.
+    let later = shell::execute(&mut c, "touch /tmp/t", 86_400_000_000, &mut OfflineHost);
+    assert_eq!(later.exit_code, 0, "{}", later.stderr);
+    assert_eq!(stamp(&mut c), "2026-09-18 09:00:00.000000000 +0000\n");
+    // An existing file keeps its bytes and moves its timestamp.
+    ok(
+        &mut c,
+        "echo body > /tmp/t; touch -d '2026-09-19 01:02:03' /tmp/t",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/t"), "body\n");
+    assert_eq!(stamp(&mut c), "2026-09-19 01:02:03.000000000 +0000\n");
+    ok(&mut c, "touch -t 202609201122.33 /tmp/t");
+    assert_eq!(stamp(&mut c), "2026-09-20 11:22:33.000000000 +0000\n");
+    ok(&mut c, "touch -r /home/user/proj/a.txt /tmp/t");
+    assert_eq!(stamp(&mut c), "2026-09-17 09:00:00.000000000 +0000\n");
+    // -c never creates.
+    ok(&mut c, "touch -c /tmp/absent");
+    assert_eq!(run(&mut c, "test -e /tmp/absent").exit_code, 1);
+    refused(&mut c, "touch -d yesterday /tmp/t", "-d");
+    refused(&mut c, "touch -d 1999-01-01 /tmp/t", "epoch");
+    refused(&mut c, "touch -t 99 /tmp/t", "-t");
+    refused(&mut c, "touch", "missing operand");
+}
+
+#[test]
+fn ps_prints_columns_by_default() {
+    let mut c = machine();
+    let table = ok(&mut c, "ps");
+    assert_eq!(
+        table.lines().next(),
+        Some("    PID TTY          TIME CMD"),
+        "a person typing `ps` expects columns: {table}"
+    );
+    assert!(!table.starts_with('['), "the default must not be JSON");
+    assert!(
+        table.lines().nth(1).is_some_and(|l| l.ends_with(" ps")),
+        "{table}"
+    );
+    // -e reaches init, which the default (this user's processes) does not.
+    assert!(!table.contains("init"), "{table}");
+    let all = ok(&mut c, "ps -e");
+    assert!(all.contains(" init"), "{all}");
+    let full = ok(&mut c, "ps -ef");
+    assert_eq!(
+        full.lines().next(),
+        Some("UID          PID    PPID  C STIME TTY          TIME CMD")
+    );
+    assert!(full.lines().any(|l| l.starts_with("root")), "{full}");
+    assert_eq!(ok(&mut c, "ps -p 1").lines().count(), 2);
+    assert!(ok(&mut c, "ps -u root").contains("init"));
+    // The JSON dump is still reachable, behind a flag.
+    let json = ok(&mut c, "ps --json");
+    assert!(json.starts_with('['), "{json}");
+    assert!(json.contains("\"pid\""), "{json}");
+    refused(&mut c, "ps aux", "aux");
+    refused(&mut c, "ps -o pid", "-o");
+    refused(&mut c, "ps -p x", "-p");
+}
+
+#[test]
+fn read_walks_a_shared_input_stream() {
+    let mut c = machine();
+    ok(&mut c, "printf 'a b c\\nd e f\\n' > /tmp/rows");
+    assert_eq!(
+        ok(&mut c, "while read l; do echo [$l]; done < /tmp/rows"),
+        "[a b c]\n[d e f]\n"
+    );
+    // Several names split the line; the last one takes the remainder.
+    assert_eq!(
+        ok(
+            &mut c,
+            "while read x y; do echo \"$x|$y\"; done < /tmp/rows"
+        ),
+        "a|b c\nd|e f\n"
+    );
+    // A pipe into a compound is the same stream.
+    assert_eq!(
+        ok(&mut c, "cat /tmp/rows | while read a b c; do echo $c; done"),
+        "c\nf\n"
+    );
+    // No name sets REPLY.
+    assert_eq!(ok(&mut c, "read < /tmp/rows; echo $REPLY"), "a b c\n");
+    // `read` advances the stream, other commands consume the rest of it.
+    assert_eq!(ok(&mut c, "{ read a; cat; } < /tmp/rows"), "d e f\n");
+    // A loop body that ignores stdin does not swallow the loop's own lines.
+    assert_eq!(
+        ok(
+            &mut c,
+            "n=0; while read l; do n=$((n + 1)); done < /tmp/rows; echo $n"
+        ),
+        "2\n"
+    );
+    // End of input is status 1, which is what stops the loop.
+    assert_eq!(run(&mut c, "read x < /dev/null").exit_code, 1);
+    assert_eq!(run(&mut c, "echo one | read x; echo $x").stdout, "one\n");
+    refused(&mut c, "read -p prompt x", "-p");
+    refused(&mut c, "read -t 5 x", "-t");
+    refused(&mut c, "read 1bad < /tmp/rows", "not a valid name");
+}
+
+#[test]
+fn exit_ends_the_shell_it_is_in_and_nothing_more() {
+    let mut c = machine();
+    let r = run(&mut c, "echo a; exit 7; echo b");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (7, "a\n"));
+    // Bare exit carries the last status.
+    assert_eq!(run(&mut c, "false; exit").exit_code, 1);
+    assert_eq!(run(&mut c, "true; exit").exit_code, 0);
+    // It escapes a function and a loop, unlike `return` and `break`.
+    let r = run(&mut c, "f() { exit 5; }; f; echo never");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (5, ""));
+    let r = run(&mut c, "for i in 1 2 3; do echo $i; exit 3; done");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (3, "1\n"));
+    // It does not escape a subshell or a nested shell.
+    assert_eq!(ok(&mut c, "( exit 6 ); echo $?"), "6\n");
+    assert_eq!(ok(&mut c, "sh -c 'exit 9'; echo $?"), "9\n");
+    assert_eq!(
+        ok(&mut c, "echo 'exit 4' > /tmp/x.sh; sh /tmp/x.sh; echo $?"),
+        "4\n"
+    );
+    refused(&mut c, "exit later", "numeric");
+}
+
+#[test]
+fn shift_local_and_source_complete_the_scope_story() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "sh -c 'shift; echo \"$1 $#\"' s a b c"), "b 2\n");
+    assert_eq!(
+        ok(&mut c, "sh -c 'shift 2; echo \"$1 $#\"' s a b c"),
+        "c 1\n"
+    );
+    // Shifting past the end is a modelled negative and changes nothing.
+    assert_eq!(ok(&mut c, "sh -c 'shift 9; echo \"$? $#\"' s a b"), "1 2\n");
+    refused(&mut c, "shift x", "numeric");
+    // local shadows only for the call, including a name that did not exist.
+    assert_eq!(
+        ok(
+            &mut c,
+            "f() { local V=in W; echo \"[$V][$W]\"; }; V=out; W=keep; f; echo \"[$V][$W]\""
+        ),
+        "[in][]\n[out][keep]\n"
+    );
+    refused(&mut c, "local X=1", "not in a function");
+    refused(&mut c, "f() { local 1bad; }; f", "not a valid name");
+    // source runs in this shell: variables, cwd and functions all persist.
+    ok(
+        &mut c,
+        "printf 'SV=5\\ngreet() { echo hi; }\\n' > /tmp/lib.sh",
+    );
+    assert_eq!(ok(&mut c, "source /tmp/lib.sh; echo $SV; greet"), "5\nhi\n");
+    assert_eq!(ok(&mut c, ". /tmp/lib.sh; echo $SV"), "5\n");
+    // return ends a sourced file; exit ends the shell that sourced it.
+    ok(&mut c, "echo 'return 3' > /tmp/r.sh");
+    assert_eq!(ok(&mut c, "source /tmp/r.sh; echo $?"), "3\n");
+    ok(&mut c, "echo 'exit 2' > /tmp/e.sh");
+    let r = run(&mut c, "source /tmp/e.sh; echo never");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (2, ""));
+    assert_eq!(run(&mut c, "source /nope").exit_code, 1);
+    refused(&mut c, "source", "missing file");
+}
+
+#[test]
+fn double_brackets_extend_test_rather_than_replacing_it() {
+    let mut c = machine();
+    let file = "/home/user/proj/a.txt";
+    assert_eq!(ok(&mut c, &format!("[[ -f {file} ]] && echo yes")), "yes\n");
+    // An unquoted right side of == is a pattern, a quoted one is a literal.
+    assert_eq!(ok(&mut c, "[[ abc == a* ]] && echo glob"), "glob\n");
+    assert_eq!(ok(&mut c, "[[ abc == 'a*' ]] || echo literal"), "literal\n");
+    assert_eq!(ok(&mut c, "[[ abc != x* ]] && echo differs"), "differs\n");
+    assert_eq!(ok(&mut c, "[[ abc =~ ^a.c$ ]] && echo regex"), "regex\n");
+    assert_eq!(ok(&mut c, "[[ a < b ]] && echo order"), "order\n");
+    // The operators inside the brackets are the test's, not the shell's.
+    assert_eq!(
+        ok(&mut c, "[[ 3 -gt 2 && 1 -lt 2 ]] && echo both"),
+        "both\n"
+    );
+    assert_eq!(
+        ok(&mut c, "[[ 1 -eq 2 || 2 -eq 2 ]] && echo either"),
+        "either\n"
+    );
+    assert_eq!(ok(&mut c, "[[ ! -f /nope ]] && echo negated"), "negated\n");
+    assert_eq!(
+        ok(
+            &mut c,
+            "[[ ( 1 -eq 1 || 2 -eq 3 ) && 4 -eq 4 ]] && echo grouped"
+        ),
+        "grouped\n"
+    );
+    assert_eq!(run(&mut c, "[[ -f /nope ]]").exit_code, 1);
+    // test and [ gained the same primaries.
+    assert_eq!(
+        ok(&mut c, &format!("test -s {file} && echo nonempty")),
+        "nonempty\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("test -r {file} && echo readable")),
+        "readable\n"
+    );
+    assert_eq!(
+        ok(&mut c, &format!("[ -x {file} ] || echo notexec")),
+        "notexec\n"
+    );
+    assert_eq!(
+        ok(&mut c, "test -L /home/user/link && echo symlink"),
+        "symlink\n"
+    );
+    ok(&mut c, "touch -d 2026-09-20 /tmp/newer");
+    assert_eq!(
+        ok(&mut c, &format!("test /tmp/newer -nt {file} && echo newer")),
+        "newer\n"
+    );
+    refused(&mut c, "[[ -f /tmp", "]]");
+    refused(&mut c, "[[ 1 -zz 2 ]]", "[[");
+    refused(&mut c, &format!("test -G {file}"), "-G");
+}
+
+#[test]
+fn getopts_parses_an_option_string() {
+    let mut c = machine();
+    assert_eq!(
+        ok(&mut c, "sh -c 'while getopts ab:c o; do echo \"$o=$OPTARG\"; done; echo $OPTIND' s -a -b val -c"),
+        "a=\nb=val\nc=\n5\n"
+    );
+    // Clusters and glued arguments both work.
+    assert_eq!(
+        ok(
+            &mut c,
+            "sh -c 'while getopts ab: o; do echo \"$o=$OPTARG\"; done' s -ab val"
+        ),
+        "a=\nb=val\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "sh -c 'while getopts b: o; do echo $OPTARG; done' s -bglued"
+        ),
+        "glued\n"
+    );
+    // A leading colon reports unknown options quietly through OPTARG.
+    assert_eq!(
+        ok(
+            &mut c,
+            "sh -c 'while getopts :ab: o; do echo \"$o/$OPTARG\"; done' s -z"
+        ),
+        "?/z\n"
+    );
+    let noisy = run(&mut c, "sh -c 'while getopts ab: o; do :; done' s -z");
+    assert!(noisy.stderr.contains("illegal option -- z"), "{noisy:?}");
+    let missing = run(&mut c, "sh -c 'while getopts b: o; do :; done' s -b");
+    assert!(
+        missing.stderr.contains("requires an argument"),
+        "{missing:?}"
+    );
+    // `--` ends the options and leaves OPTIND past it.
+    assert_eq!(
+        ok(
+            &mut c,
+            "sh -c 'while getopts a o; do echo $o; done; echo $OPTIND' s -a -- x"
+        ),
+        "a\n3\n"
+    );
+    refused(&mut c, "getopts", "usage");
+    refused(&mut c, "getopts ab 1bad", "not a valid name");
+}
+
+#[test]
+fn unquoted_expansions_split_into_fields() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "X='a b'; sh -c 'echo $#' s $X"), "2\n");
+    assert_eq!(ok(&mut c, "X='a b'; sh -c 'echo $#' s \"$X\""), "1\n");
+    // An empty unquoted expansion contributes no argument; a quoted one contributes ''.
+    assert_eq!(ok(&mut c, "E=; sh -c 'echo $#' s $E"), "0\n");
+    assert_eq!(ok(&mut c, "E=; sh -c 'echo $#' s \"$E\""), "1\n");
+    assert_eq!(
+        ok(&mut c, "X='a b'; for w in $X; do echo $w; done"),
+        "a\nb\n"
+    );
+    // Adjacent literal text joins the first and last fields, as in bash.
+    assert_eq!(
+        ok(&mut c, "X='a b'; sh -c 'echo \"$1|$2\"' s p${X}q"),
+        "pa|bq\n"
+    );
+    // A `*` arriving from a variable stays literal; one in the source globs.
+    assert_eq!(ok(&mut c, "P='*.txt'; echo $P"), "*.txt\n");
+    assert_eq!(ok(&mut c, "cd /home/user/proj; echo *.txt"), "a.txt\n");
+}
+
+#[test]
+fn head_and_tail_take_a_bare_count_as_well_as_dash_n() {
+    // `head -3` is what people type; it is the historical spelling of `head -n 3`.
+    let mut c = machine();
+    run(&mut c, "printf 'a\\nb\\nc\\nd\\ne\\n' > /tmp/five.txt");
+    assert_eq!(ok(&mut c, "head -2 /tmp/five.txt"), "a\nb\n");
+    assert_eq!(ok(&mut c, "head -n 2 /tmp/five.txt"), "a\nb\n");
+    assert_eq!(ok(&mut c, "tail -2 /tmp/five.txt"), "d\ne\n");
+    assert_eq!(ok(&mut c, "cat /tmp/five.txt | head -1"), "a\n");
+    // A count that is not a count still fails loudly rather than being ignored.
+    refused(&mut c, "head -x /tmp/five.txt", "x");
+}

@@ -2,7 +2,15 @@
 
 Run: python examples/python/computer_interaction.py --output target/python-demo
 Optional: --world world.json --machine alice-mac --compare target/javascript-demo
-Agent targeting uses only its permitted scene. Snapshot/replay belongs to the owner.
+
+The shape a provider should copy: the actor holds only `env` and aims with
+`env.scene(w, h)`; `world` is the owner handle and never reaches the agent.
+Every family, op, payload and interaction target is tabulated in
+docs/action-families.md.
+
+The action sequence below is byte-compared against
+examples/javascript/computer-interaction.mjs by `--compare`. Change one and you
+must change the other.
 """
 import argparse
 import hashlib

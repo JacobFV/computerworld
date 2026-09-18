@@ -1,0 +1,300 @@
+{
+  "id": "slack",
+  "kind": "chat",
+  "node": "slack",
+  "domains": [
+    "slack.com",
+    "app.slack.com",
+    "northstar.slack.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "slack",
+    "workspace": "Northstar",
+    "next_id": 20,
+    "channels": {
+      "eng": {
+        "title": "eng",
+        "members": [
+          "admin",
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "messages": [
+          {
+            "id": "chat-1",
+            "author": "bob",
+            "text": "Windows CI went red again. The BFS path test only fails there, about one run in four.",
+            "time": 30,
+            "reactions": {}
+          },
+          {
+            "id": "chat-2",
+            "author": "alice",
+            "text": "That smells like hash-map iteration order.",
+            "time": 30,
+            "reactions": {
+              "eyes": [
+                "bob",
+                "carol"
+              ]
+            }
+          },
+          {
+            "id": "chat-3",
+            "author": "bob",
+            "text": "Filed it: http://github.com/northstar/atlas/issues/14",
+            "time": 31,
+            "reactions": {},
+            "parent": "chat-1"
+          },
+          {
+            "id": "chat-4",
+            "author": "alice",
+            "text": "Priya's answer on Stack Overflow nails it: http://stackoverflow.com/questions/t-4411",
+            "time": 33,
+            "reactions": {
+              "tada": [
+                "bob",
+                "carol"
+              ]
+            }
+          },
+          {
+            "id": "chat-5",
+            "author": "bob",
+            "text": "Wrote it up while it was fresh: http://bmartinez.net/posts/hash-order-bit-me",
+            "time": 34,
+            "reactions": {}
+          },
+          {
+            "id": "chat-6",
+            "author": "carol",
+            "text": "Launch checklist is in the doc: http://docs.google.com/documents/atlas-launch - alice owns the confirmation, tracked as OPS-1: http://linear.app/projects/OPS/issues/1",
+            "time": 35,
+            "reactions": {}
+          },
+          {
+            "id": "chat-7",
+            "author": "alice",
+            "text": "Fix is up for review: http://github.com/northstar/atlas/pull/15",
+            "time": 36,
+            "reactions": {
+              "+1": [
+                "bob",
+                "carol"
+              ]
+            }
+          }
+        ]
+      },
+      "random": {
+        "title": "random",
+        "members": [
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "messages": [
+          {
+            "id": "chat-8",
+            "author": "bob",
+            "text": "which monitor did you get?",
+            "time": 40,
+            "reactions": {}
+          },
+          {
+            "id": "chat-9",
+            "author": "alice",
+            "text": "this one: http://amazon.com/dp/b0monitor27 - 27 inch, 4K, one USB-C cable for power and picture.",
+            "time": 40,
+            "reactions": {
+              "+1": [
+                "bob"
+              ]
+            }
+          },
+          {
+            "id": "chat-10",
+            "author": "bob",
+            "text": "Sold. Ordering one before carol notices the budget.",
+            "time": 40,
+            "reactions": {},
+            "parent": "chat-8"
+          },
+          {
+            "id": "chat-11",
+            "author": "carol",
+            "text": "Launch week soundtrack: http://open.spotify.com/playlist/ship-it",
+            "time": 41,
+            "reactions": {
+              "tada": [
+                "alice",
+                "bob"
+              ]
+            }
+          },
+          {
+            "id": "chat-12",
+            "author": "carol",
+            "text": "And the walkthrough, for anyone who has not watched it: http://youtube.com/watch?v=atlas-walkthrough",
+            "time": 41,
+            "reactions": {}
+          }
+        ]
+      },
+      "incidents": {
+        "title": "incidents",
+        "members": [
+          "admin",
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "messages": [
+          {
+            "id": "chat-13",
+            "author": "admin",
+            "text": "INC-4: elevated API latency. Status page is updated: http://status.northstar.example/",
+            "time": 50,
+            "reactions": {}
+          },
+          {
+            "id": "chat-14",
+            "author": "admin",
+            "text": "Recovered after 12 minutes. Cause was a cold cache on the new pop.",
+            "time": 51,
+            "reactions": {},
+            "parent": "chat-13"
+          },
+          {
+            "id": "chat-15",
+            "author": "carol",
+            "text": "Postmortem is OPS-7: http://linear.app/projects/OPS/issues/7 - admin owns it.",
+            "time": 51,
+            "reactions": {
+              "+1": [
+                "admin"
+              ]
+            }
+          },
+          {
+            "id": "chat-16",
+            "author": "admin",
+            "text": "Apology posted from @NorthstarHQ: http://x.com/NorthstarHQ",
+            "time": 52,
+            "reactions": {}
+          }
+        ]
+      },
+      "general": {
+        "title": "general",
+        "members": [
+          "admin",
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "messages": [
+          {
+            "id": "chat-17",
+            "author": "carol",
+            "text": "New starters: the intranet has everything - http://intranet.internal/",
+            "time": 20,
+            "reactions": {}
+          },
+          {
+            "id": "chat-18",
+            "author": "admin",
+            "text": "And the public guide for anything you would send outside: http://guide.example/",
+            "time": 20,
+            "reactions": {}
+          }
+        ]
+      }
+    },
+    "dms": {
+      "alice|bob": {
+        "title": "alice and bob",
+        "members": [
+          "alice",
+          "bob"
+        ],
+        "messages": [
+          {
+            "id": "chat-19",
+            "author": "bob",
+            "text": "did carol see the flaky test before the launch review?",
+            "time": 32,
+            "reactions": {}
+          },
+          {
+            "id": "chat-20",
+            "author": "alice",
+            "text": "She did. It is on the board as OPS-2 and it is not blocking the launch.",
+            "time": 32,
+            "reactions": {
+              "+1": [
+                "bob"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://slack.com/",
+      "title": "Slack",
+      "snippet": "The Northstar workspace: channels, direct messages and threads.",
+      "authority": 7,
+      "keywords": [
+        "slack",
+        "chat",
+        "workspace",
+        "northstar",
+        "messages"
+      ]
+    },
+    {
+      "url": "http://slack.com/archives/eng",
+      "title": "#eng · Northstar on Slack",
+      "snippet": "Engineering: the Windows CI failure, the Stack Overflow answer and the Atlas launch checklist.",
+      "authority": 6,
+      "keywords": [
+        "eng",
+        "slack",
+        "ci",
+        "atlas",
+        "channel"
+      ]
+    },
+    {
+      "url": "http://slack.com/archives/random",
+      "title": "#random · Northstar on Slack",
+      "snippet": "Monitors, playlists and the Atlas walkthrough.",
+      "authority": 4,
+      "keywords": [
+        "random",
+        "slack",
+        "monitor",
+        "playlist"
+      ]
+    },
+    {
+      "url": "http://slack.com/archives/incidents",
+      "title": "#incidents · Northstar on Slack",
+      "snippet": "INC-4 elevated API latency, twelve minutes, and the postmortem that followed.",
+      "authority": 5,
+      "keywords": [
+        "incident",
+        "outage",
+        "latency",
+        "slack",
+        "inc-4"
+      ]
+    }
+  ]
+}

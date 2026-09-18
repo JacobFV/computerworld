@@ -1,0 +1,1564 @@
+{
+  "id": "northstar-www",
+  "kind": "static-site",
+  "node": "northstar-www",
+  "domains": [
+    "northstar.example",
+    "www.northstar.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "Northstar",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "home-nav",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "home-wordmark",
+                "text": "Northstar",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "home-nav-links",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "home-nav-home",
+                    "text": "Home",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "home-nav-product",
+                    "text": "Product",
+                    "url": "/product"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "home-nav-pricing",
+                    "text": "Pricing",
+                    "url": "/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "home-nav-careers",
+                    "text": "Careers",
+                    "url": "/careers"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "home-nav-contact",
+                    "text": "Contact",
+                    "url": "/contact"
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "home-lead",
+            "height": 20
+          },
+          {
+            "kind": "styled",
+            "id": "hero-title",
+            "text": "Software you can replay",
+            "style": {
+              "size": 34,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "hero-sub",
+            "text": "Atlas runs a whole machine from a seed and gives you back the same bytes, every time. Ship the bug report, not the shrug.",
+            "style": {
+              "size": 16,
+              "color": "#5b6478"
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "hero-gap",
+            "height": 14
+          },
+          {
+            "kind": "row",
+            "id": "hero-actions",
+            "children": [
+              {
+                "kind": "card",
+                "id": "hero-cta",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "hero-cta-text",
+                    "text": "See the product",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#2f5fd0",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "/product",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "link",
+                "id": "hero-code",
+                "text": "Read the source",
+                "url": "http://github.com/northstar/atlas"
+              },
+              {
+                "kind": "link",
+                "id": "hero-video",
+                "text": "Watch the walkthrough",
+                "url": "http://youtube.com/watch?v=atlas-walkthrough"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "spacer",
+            "id": "features-gap",
+            "height": 26
+          },
+          {
+            "kind": "grid",
+            "id": "features",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "feature-replay",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "feature-replay-mark",
+                    "label": "R",
+                    "style": {
+                      "size": 18,
+                      "color": "#2f5fd0",
+                      "background": "#e6ecfb",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 40,
+                      "height": 40
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "feature-replay-title",
+                    "text": "Replay",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "feature-replay-body",
+                    "text": "Same seed, same inputs, same bytes out. A run you can replay is a bug you can reproduce.",
+                    "style": {
+                      "size": 13,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 18
+                }
+              },
+              {
+                "kind": "card",
+                "id": "feature-offline",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "feature-offline-mark",
+                    "label": "O",
+                    "style": {
+                      "size": 18,
+                      "color": "#2f5fd0",
+                      "background": "#e6ecfb",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 40,
+                      "height": 40
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "feature-offline-title",
+                    "text": "Offline",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "feature-offline-body",
+                    "text": "No clock, no network, no host. The whole simulated internet is inside the snapshot.",
+                    "style": {
+                      "size": 13,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 18
+                }
+              },
+              {
+                "kind": "card",
+                "id": "feature-agents",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "feature-agents-mark",
+                    "label": "A",
+                    "style": {
+                      "size": 18,
+                      "color": "#2f5fd0",
+                      "background": "#e6ecfb",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 40,
+                      "height": 40
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "feature-agents-title",
+                    "text": "Agents",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "feature-agents-body",
+                    "text": "Drive a real browser, a real shell and a real desktop, and score the trajectory afterwards.",
+                    "style": {
+                      "size": 13,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 18
+                }
+              }
+            ],
+            "gap": 16
+          },
+          {
+            "kind": "spacer",
+            "id": "trust-gap",
+            "height": 26
+          },
+          {
+            "kind": "row",
+            "id": "trust",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "trust-status",
+                "text": "All systems operational",
+                "style": {
+                  "size": 12,
+                  "color": "#1f883d",
+                  "background": "#e8f5ec",
+                  "border": "#1f883d",
+                  "radius": 10,
+                  "padding": 6
+                }
+              },
+              {
+                "kind": "link",
+                "id": "trust-status-link",
+                "text": "Status and incident history",
+                "url": "http://status.northstar.example/"
+              }
+            ],
+            "gap": 10,
+            "align": "center"
+          },
+          {
+            "kind": "spacer",
+            "id": "home-foot-gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "home-foot-rule"
+          },
+          {
+            "kind": "row",
+            "id": "home-foot",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "home-foot-copy",
+                "text": "Northstar",
+                "style": {
+                  "size": 13,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "home-foot-status",
+                "text": "Status",
+                "url": "http://status.northstar.example/"
+              },
+              {
+                "kind": "link",
+                "id": "home-foot-code",
+                "text": "Source",
+                "url": "http://github.com/northstar/atlas"
+              },
+              {
+                "kind": "link",
+                "id": "home-foot-guide",
+                "text": "Guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/product": {
+        "version": 1,
+        "title": "Product · Northstar",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "product-nav",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "product-wordmark",
+                "text": "Northstar",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "product-nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "product-nav-home",
+                    "text": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "product-nav-product",
+                    "text": "Product",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "product-nav-pricing",
+                    "text": "Pricing",
+                    "url": "/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "product-nav-careers",
+                    "text": "Careers",
+                    "url": "/careers"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "product-nav-contact",
+                    "text": "Contact",
+                    "url": "/contact"
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "product-lead",
+            "height": 20
+          },
+          {
+            "kind": "styled",
+            "id": "product-title",
+            "text": "Atlas",
+            "style": {
+              "size": 30,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "product-sub",
+            "text": "The deterministic runtime behind every Northstar product.",
+            "style": {
+              "size": 16,
+              "color": "#5b6478"
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "product-gap",
+            "height": 16
+          },
+          {
+            "kind": "card",
+            "id": "product-detail",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "product-detail-title",
+                "text": "What it actually does",
+                "style": {
+                  "size": 16,
+                  "weight": "bold",
+                  "color": "#10131a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "product-detail-body",
+                "text": "Atlas boots a simulated computer - processes, filesystem, network stack, browser and desktop - from a single seed. Every action is journalled, so a run can be forked, replayed and diffed. There is no wall clock and no ambient randomness anywhere in the system."
+              },
+              {
+                "kind": "link",
+                "id": "product-detail-repo",
+                "text": "northstar/atlas on GitHub",
+                "url": "http://github.com/northstar/atlas"
+              },
+              {
+                "kind": "link",
+                "id": "product-detail-guide",
+                "text": "The public guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "style": {
+              "background": "#f4f6fb",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 18
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "product-specs-gap",
+            "height": 20
+          },
+          {
+            "kind": "grid",
+            "id": "product-specs",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "spec-scale",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "spec-scale-mark",
+                    "label": "F",
+                    "style": {
+                      "size": 18,
+                      "color": "#2f5fd0",
+                      "background": "#e6ecfb",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 40,
+                      "height": 40
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "spec-scale-title",
+                    "text": "Forty-four nodes",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "spec-scale-body",
+                    "text": "A routed network with real latency, DNS and per-node services.",
+                    "style": {
+                      "size": 13,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 18
+                }
+              },
+              {
+                "kind": "card",
+                "id": "spec-snapshot",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "spec-snapshot-mark",
+                    "label": "O",
+                    "style": {
+                      "size": 18,
+                      "color": "#2f5fd0",
+                      "background": "#e6ecfb",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 40,
+                      "height": 40
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "spec-snapshot-title",
+                    "text": "One-file snapshots",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "spec-snapshot-body",
+                    "text": "Export a world, mail it to a colleague, and get their exact failure back.",
+                    "style": {
+                      "size": 13,
+                      "color": "#5b6478"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 18
+                }
+              }
+            ],
+            "gap": 16
+          },
+          {
+            "kind": "spacer",
+            "id": "product-foot-gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "product-foot-rule"
+          },
+          {
+            "kind": "row",
+            "id": "product-foot",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "product-foot-copy",
+                "text": "Northstar",
+                "style": {
+                  "size": 13,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "product-foot-status",
+                "text": "Status",
+                "url": "http://status.northstar.example/"
+              },
+              {
+                "kind": "link",
+                "id": "product-foot-code",
+                "text": "Source",
+                "url": "http://github.com/northstar/atlas"
+              },
+              {
+                "kind": "link",
+                "id": "product-foot-guide",
+                "text": "Guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/pricing": {
+        "version": 1,
+        "title": "Pricing · Northstar",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "pricing-nav",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "pricing-wordmark",
+                "text": "Northstar",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "pricing-nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "pricing-nav-home",
+                    "text": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "pricing-nav-product",
+                    "text": "Product",
+                    "url": "/product"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "pricing-nav-pricing",
+                    "text": "Pricing",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "pricing-nav-careers",
+                    "text": "Careers",
+                    "url": "/careers"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "pricing-nav-contact",
+                    "text": "Contact",
+                    "url": "/contact"
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "pricing-lead",
+            "height": 20
+          },
+          {
+            "kind": "styled",
+            "id": "pricing-title",
+            "text": "Pricing",
+            "style": {
+              "size": 30,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "pricing-sub",
+            "text": "Per seat, per month, billed annually.",
+            "style": {
+              "size": 15,
+              "color": "#5b6478"
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "pricing-gap",
+            "height": 16
+          },
+          {
+            "kind": "grid",
+            "id": "plans",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "plan-free",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "plan-free-name",
+                    "text": "Open source",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "plan-free-price",
+                    "text": "$0",
+                    "style": {
+                      "size": 28,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "plan-free-body",
+                    "text": "The runtime, the CLI and every example. Apache-2.0."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "plan-free-cta",
+                    "text": "Clone the repository",
+                    "url": "http://github.com/northstar/atlas"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 18
+                }
+              },
+              {
+                "kind": "card",
+                "id": "plan-team",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "plan-team-name",
+                    "text": "Team",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "plan-team-price",
+                    "text": "$24",
+                    "style": {
+                      "size": 28,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "plan-team-body",
+                    "text": "Shared worlds, hosted replays and trajectory scoring."
+                  },
+                  {
+                    "kind": "badge",
+                    "id": "plan-team-tag",
+                    "text": "Most popular",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#2f5fd0",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#2f5fd0",
+                  "radius": 10,
+                  "padding": 18
+                }
+              },
+              {
+                "kind": "card",
+                "id": "plan-enterprise",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "plan-enterprise-name",
+                    "text": "Enterprise",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "plan-enterprise-price",
+                    "text": "Talk to us",
+                    "style": {
+                      "size": 22,
+                      "weight": "bold",
+                      "color": "#2f5fd0"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "plan-enterprise-body",
+                    "text": "Air-gapped deployment, audit export and a named engineer."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 18
+                }
+              }
+            ],
+            "gap": 16
+          },
+          {
+            "kind": "spacer",
+            "id": "pricing-contact-gap",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "pricing-contact",
+            "text": "Ask us a question",
+            "url": "/contact"
+          },
+          {
+            "kind": "spacer",
+            "id": "pricing-foot-gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "pricing-foot-rule"
+          },
+          {
+            "kind": "row",
+            "id": "pricing-foot",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "pricing-foot-copy",
+                "text": "Northstar",
+                "style": {
+                  "size": 13,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "pricing-foot-status",
+                "text": "Status",
+                "url": "http://status.northstar.example/"
+              },
+              {
+                "kind": "link",
+                "id": "pricing-foot-code",
+                "text": "Source",
+                "url": "http://github.com/northstar/atlas"
+              },
+              {
+                "kind": "link",
+                "id": "pricing-foot-guide",
+                "text": "Guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/careers": {
+        "version": 1,
+        "title": "Careers · Northstar",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "careers-nav",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "careers-wordmark",
+                "text": "Northstar",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "careers-nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "careers-nav-home",
+                    "text": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "careers-nav-product",
+                    "text": "Product",
+                    "url": "/product"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "careers-nav-pricing",
+                    "text": "Pricing",
+                    "url": "/pricing"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "careers-nav-careers",
+                    "text": "Careers",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "careers-nav-contact",
+                    "text": "Contact",
+                    "url": "/contact"
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "careers-lead",
+            "height": 20
+          },
+          {
+            "kind": "styled",
+            "id": "careers-title",
+            "text": "Work here",
+            "style": {
+              "size": 30,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "careers-sub",
+            "text": "Small team, long memory, everything reproducible.",
+            "style": {
+              "size": 15,
+              "color": "#5b6478"
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "careers-gap",
+            "height": 16
+          },
+          {
+            "kind": "card",
+            "id": "role-systems",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "role-systems-title",
+                "text": "Systems engineer, runtime",
+                "style": {
+                  "size": 16,
+                  "weight": "bold",
+                  "color": "#10131a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "role-systems-body",
+                "text": "Own a slice of Atlas end to end. You will read more code than you write, and you will be asked why a run diverged."
+              },
+              {
+                "kind": "row",
+                "id": "role-systems-meta",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "role-systems-loc",
+                    "text": "Remote",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478",
+                      "background": "#f4f6fb",
+                      "border": "#d8dee9",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "badge",
+                    "id": "role-systems-level",
+                    "text": "Senior / Staff",
+                    "style": {
+                      "size": 12,
+                      "color": "#5b6478",
+                      "background": "#f4f6fb",
+                      "border": "#d8dee9",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  }
+                ],
+                "gap": 8,
+                "align": "center"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 18
+            }
+          },
+          {
+            "kind": "card",
+            "id": "role-sre",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "role-sre-title",
+                "text": "Site reliability engineer",
+                "style": {
+                  "size": 16,
+                  "weight": "bold",
+                  "color": "#10131a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "role-sre-body",
+                "text": "Keep the hosted replays fast and honest. Read our incident history before you apply - we publish all of it."
+              },
+              {
+                "kind": "link",
+                "id": "role-sre-incidents",
+                "text": "Incident history",
+                "url": "http://status.northstar.example/"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 18
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "careers-apply-gap",
+            "height": 16
+          },
+          {
+            "kind": "text",
+            "id": "careers-apply",
+            "text": "Send us a note through the contact form and mention the role."
+          },
+          {
+            "kind": "link",
+            "id": "careers-contact",
+            "text": "Contact us",
+            "url": "/contact"
+          },
+          {
+            "kind": "spacer",
+            "id": "careers-foot-gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "careers-foot-rule"
+          },
+          {
+            "kind": "row",
+            "id": "careers-foot",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "careers-foot-copy",
+                "text": "Northstar",
+                "style": {
+                  "size": 13,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "careers-foot-status",
+                "text": "Status",
+                "url": "http://status.northstar.example/"
+              },
+              {
+                "kind": "link",
+                "id": "careers-foot-code",
+                "text": "Source",
+                "url": "http://github.com/northstar/atlas"
+              },
+              {
+                "kind": "link",
+                "id": "careers-foot-guide",
+                "text": "Guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/contact": {
+        "version": 1,
+        "title": "Contact · Northstar",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "contact-nav",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "contact-wordmark",
+                "text": "Northstar",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "contact-nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "contact-nav-home",
+                    "text": "Home",
+                    "url": "/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "contact-nav-product",
+                    "text": "Product",
+                    "url": "/product"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "contact-nav-pricing",
+                    "text": "Pricing",
+                    "url": "/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "contact-nav-careers",
+                    "text": "Careers",
+                    "url": "/careers"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "contact-nav-contact",
+                    "text": "Contact",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "contact-lead",
+            "height": 20
+          },
+          {
+            "kind": "styled",
+            "id": "contact-title",
+            "text": "Talk to us",
+            "style": {
+              "size": 30,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "contact-sub",
+            "text": "Every message is recorded as a lead and answered in order.",
+            "style": {
+              "size": 15,
+              "color": "#5b6478"
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "contact-gap",
+            "height": 16
+          },
+          {
+            "kind": "form",
+            "id": "lead",
+            "action": {
+              "method": "POST",
+              "url": "/api/records/lead",
+              "fields": {
+                "name": "$lead-name",
+                "email": "$lead-email",
+                "company": "$lead-company",
+                "message": "$lead-message"
+              }
+            },
+            "children": [
+              {
+                "kind": "input",
+                "id": "lead-name",
+                "label": "Your name",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "input",
+                "id": "lead-email",
+                "label": "Email address",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "input",
+                "id": "lead-company",
+                "label": "Company",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "input",
+                "id": "lead-message",
+                "label": "What do you need?",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "button",
+                "id": "lead-submit",
+                "text": "Submit",
+                "action": {
+                  "method": "POST",
+                  "url": "/api/records/lead",
+                  "fields": {
+                    "name": "$lead-name",
+                    "email": "$lead-email",
+                    "company": "$lead-company",
+                    "message": "$lead-message"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "spacer",
+            "id": "contact-after-gap",
+            "height": 16
+          },
+          {
+            "kind": "link",
+            "id": "contact-records",
+            "text": "See the leads we have received",
+            "url": "/records"
+          },
+          {
+            "kind": "divider",
+            "id": "contact-rule"
+          },
+          {
+            "kind": "text",
+            "id": "contact-other",
+            "text": "Prefer something public? Open an issue on GitHub or ask in the community server."
+          },
+          {
+            "kind": "row",
+            "id": "contact-links",
+            "children": [
+              {
+                "kind": "link",
+                "id": "contact-github",
+                "text": "northstar/atlas issues",
+                "url": "http://github.com/northstar/atlas/issues"
+              },
+              {
+                "kind": "link",
+                "id": "contact-discord",
+                "text": "Atlas community on Discord",
+                "url": "http://discord.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "spacer",
+            "id": "contact-foot-gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "contact-foot-rule"
+          },
+          {
+            "kind": "row",
+            "id": "contact-foot",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "contact-foot-copy",
+                "text": "Northstar",
+                "style": {
+                  "size": 13,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "contact-foot-status",
+                "text": "Status",
+                "url": "http://status.northstar.example/"
+              },
+              {
+                "kind": "link",
+                "id": "contact-foot-code",
+                "text": "Source",
+                "url": "http://github.com/northstar/atlas"
+              },
+              {
+                "kind": "link",
+                "id": "contact-foot-guide",
+                "text": "Guide",
+                "url": "http://guide.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      }
+    },
+    "records": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://northstar.example/",
+      "title": "Northstar — software you can replay",
+      "snippet": "Atlas runs a whole machine from a seed and gives you back the same bytes, every time.",
+      "authority": 6,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "deterministic",
+        "replay",
+        "company"
+      ]
+    },
+    {
+      "url": "http://northstar.example/product",
+      "title": "Product · Northstar",
+      "snippet": "Atlas boots a simulated computer from a single seed: processes, filesystem, network, browser and desktop.",
+      "authority": 5,
+      "keywords": [
+        "product",
+        "atlas",
+        "runtime",
+        "simulation"
+      ]
+    },
+    {
+      "url": "http://northstar.example/pricing",
+      "title": "Pricing · Northstar",
+      "snippet": "Open source at $0, Team at $24 per seat per month, Enterprise on request.",
+      "authority": 5,
+      "keywords": [
+        "pricing",
+        "plans",
+        "cost",
+        "northstar",
+        "enterprise"
+      ]
+    },
+    {
+      "url": "http://northstar.example/careers",
+      "title": "Careers · Northstar",
+      "snippet": "Systems engineer, runtime. Site reliability engineer. Remote.",
+      "authority": 4,
+      "keywords": [
+        "careers",
+        "jobs",
+        "hiring",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://northstar.example/contact",
+      "title": "Contact · Northstar",
+      "snippet": "Send us a note. Every message is recorded as a lead and answered in order.",
+      "authority": 4,
+      "keywords": [
+        "contact",
+        "sales",
+        "lead",
+        "northstar"
+      ]
+    }
+  ]
+}

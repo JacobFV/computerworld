@@ -1,0 +1,368 @@
+{
+  "id": "arstechnica",
+  "kind": "press",
+  "node": "arstechnica",
+  "domains": [
+    "arstechnica.com",
+    "www.arstechnica.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "layout": "magazine",
+    "brand": "Ars Technica",
+    "tagline": "Serving the technologist for over 25 years.",
+    "theme": {
+      "accent": "#ff4e00",
+      "background": "#ffffff",
+      "surface": "#f2f2f2",
+      "ink": "#111111",
+      "muted": "#595959",
+      "content_width": 900
+    },
+    "sections": [
+      {
+        "id": "it",
+        "title": "Information Technology"
+      },
+      {
+        "id": "policy",
+        "title": "Policy"
+      }
+    ],
+    "articles": {
+      "atlas-deep-dive": {
+        "id": "atlas-deep-dive",
+        "section": "it",
+        "year": "2026",
+        "title": "Determinism at scale: a close read of Atlas 1.0",
+        "dek": "We spent a week inside Northstar's simulator. The interesting parts are the things it refuses to let you do.",
+        "byline": "Jonathan Hale",
+        "date": "Mar 9, 2026",
+        "tick": 9,
+        "read_minutes": 14,
+        "body": [
+          "Atlas 1.0 is a simulation runtime that will not let your code look at a clock. That sounds like a limitation and it is, but spend a week with it and the limitation starts to look like the entire product. Everything else - the process model, the virtual filesystem, the packet scheduler - exists to make that one rule survivable.",
+          "Start with time. Inside Atlas there is a tick counter, and every API that would ordinarily consult the host clock consults the tick instead. Sleeping does not suspend a thread; it schedules a wakeup at a future tick. This means a simulated day passes in whatever wall-clock time the host can manage, and more importantly it means two runs of the same program from the same seed will observe the same timeline.",
+          "Randomness is handled the same way: there is one seeded stream, the stream is threaded explicitly through the code that needs it, and reading from the host's entropy source is a compile-time error inside the sandbox. Northstar's patch directory - and it is a large directory - exists mostly to remove such calls from third-party crates.",
+          "The third rule is the one that cost the most. Iterating a hash map in a Rust program is not random, but its order depends on a per-process seed and, historically, on the standard library version and target. Atlas forbids iteration over unordered containers in any code path that can influence output. The compiler cannot check that for you, so Northstar checks it the expensive way: by replaying every recorded run in CI and diffing renderer frames.",
+          "That harness is the part we would most like to see other projects steal. A recorded run is a seed plus an ordered input log. Replay reruns it and compares output frame by frame; a mismatch prints the tick, the frame index and the first differing byte. In practice this turns a category of bug that is normally investigated statistically into one that is investigated by reading a number.",
+          "The best illustration in the repository is issue 14, a BFS path test that failed only on one Windows CI runner. The underlying bug was hash iteration order leaking into path selection; the fix was nine lines. What makes it a good story is that the test had been failing intermittently for months and had been retried, quarantined and blamed on the runner before anyone could reproduce it. Details are at http://github.com/northstar/atlas/issues/14 and the accepted explanation is at http://stackoverflow.com/questions/4411",
+          "Performance is the obvious objection. Northstar quotes roughly 12% overhead on its own workload, which is a number chosen by Northstar about a workload chosen by Northstar. Our own measurements on a synthetic pipeline were worse - closer to 20% - and we would expect anything heavily threaded to be worse still, because the deterministic scheduler serialises decisions that a real scheduler makes concurrently.",
+          "Whether that matters depends on what you are buying. If you need throughput, this is a tax. If you need to be able to answer the question 'why did this run produce this number' six months later, it is the cheapest version of that answer anyone currently sells."
+        ],
+        "links": [
+          {
+            "label": "Atlas issue 14",
+            "url": "http://github.com/northstar/atlas/issues/14"
+          },
+          {
+            "label": "The accepted Stack Overflow answer",
+            "url": "http://stackoverflow.com/questions/4411"
+          },
+          {
+            "label": "Northstar's launch post",
+            "url": "http://eng.northstar.example/posts/shipping-atlas"
+          },
+          {
+            "label": "The Verge's release story",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "atlas",
+          "determinism",
+          "rust"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "The 20% figure matches what I saw on a threaded workload. Worth saying the overhead is almost all scheduler serialisation, not the sandbox.",
+            "tick": 9,
+            "likes": 52
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Author of the quarantined test here. It was retried 41 times before anyone believed it.",
+            "tick": 10,
+            "likes": 38
+          },
+          {
+            "id": "c3",
+            "author": "dfarr",
+            "text": "Every article about determinism eventually admits the compiler cannot check the important rule. This one at least admits it early.",
+            "tick": 10,
+            "likes": 19
+          },
+          {
+            "id": "c4",
+            "author": "alice",
+            "text": "We would love for someone to steal the replay harness. That is not a figure of speech, the licence permits it.",
+            "tick": 11,
+            "likes": 61
+          }
+        ]
+      },
+      "hash-order-nondeterminism": {
+        "id": "hash-order-nondeterminism",
+        "section": "it",
+        "year": "2026",
+        "title": "Your hash map is a nondeterminism generator",
+        "dek": "Iteration order is not random, it is unspecified, and the difference is where the bugs live.",
+        "byline": "Priya Raman",
+        "date": "Feb 11, 2026",
+        "tick": 4,
+        "read_minutes": 8,
+        "body": [
+          "There is a particular class of bug that only shows up on one machine, only in CI, and only about a fifth of the time. It is almost always the same bug wearing a different hat: something iterated a hash map and let the order escape into the output.",
+          "Language documentation is honest about this. Iteration order is unspecified. Unspecified does not mean random - it means the implementation may do whatever is convenient, including something that is perfectly stable on your laptop and perfectly stable, in a different order, on the build machine.",
+          "The fix is never 'sort the map'. Sorting at the point of iteration hides the problem where you noticed it and leaves it everywhere you did not. The fix is to decide, at the type level, whether order is part of the meaning of this collection. If it is, use an ordered container. If it is not, make the consumer order-insensitive.",
+          "The diagnostic trick that works: iterate in reverse, or with a deliberately hostile hasher, in test builds. If a test fails under a shuffled iteration order, that test was depending on the order, and now you know before the build machine tells you."
+        ],
+        "links": [
+          {
+            "label": "The Stack Overflow answer this came from",
+            "url": "http://stackoverflow.com/questions/4411"
+          },
+          {
+            "label": "Bob Martinez's write-up",
+            "url": "http://bmartinez.net/posts/hash-order-bit-me"
+          }
+        ],
+        "tags": [
+          "rust",
+          "determinism",
+          "testing"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The hostile-hasher trick found two more of these in our tree the week I turned it on.",
+            "tick": 5,
+            "likes": 44
+          },
+          {
+            "id": "c2",
+            "author": "mkuznetsov",
+            "text": "\"Unspecified does not mean random\" should be printed on the inside of every standard library.",
+            "tick": 5,
+            "likes": 31
+          }
+        ]
+      },
+      "scheduler-serialisation": {
+        "id": "scheduler-serialisation",
+        "section": "it",
+        "year": "2026",
+        "title": "What a deterministic scheduler actually costs you",
+        "dek": "Serialising the decisions a real scheduler makes concurrently is not free, and the bill is workload-shaped.",
+        "byline": "Jonathan Hale",
+        "date": "Jan 22, 2026",
+        "tick": 2,
+        "read_minutes": 7,
+        "body": [
+          "A deterministic scheduler has to decide, for every point at which two threads could interleave, which one goes first - and it has to decide the same way every time. The usual implementation is to make that decision from the seeded random stream, which turns concurrency into a reproducible sequence of choices.",
+          "The cost is not the decision itself, which is cheap. The cost is that the decision has to be made at all, on a single logical timeline, which means the runtime cannot simply hand work to the operating system and let real parallelism happen.",
+          "For IO-bound workloads this is close to free, because the timeline is mostly waiting. For CPU-bound parallel workloads it is close to catastrophic, because you have bought a reproducible single-threaded program. Most real systems sit somewhere in between, which is why every published overhead number should be read as a statement about a workload rather than about a runtime."
+        ],
+        "links": [],
+        "tags": [
+          "concurrency",
+          "determinism",
+          "performance"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Worth adding: some runtimes let you opt out per-region and lose replay only inside it. That trade is underused.",
+            "tick": 3,
+            "likes": 26
+          }
+        ]
+      },
+      "datacenter-power-seattle": {
+        "id": "datacenter-power-seattle",
+        "section": "policy",
+        "year": "2026",
+        "title": "Seattle's new data-centre power rules land on the smallest operators hardest",
+        "dek": "A tiered tariff aimed at hyperscalers has a cliff edge just above the co-location market.",
+        "byline": "Ines Ferreira",
+        "date": "Feb 5, 2026",
+        "tick": 3,
+        "read_minutes": 6,
+        "body": [
+          "The city's new tiered tariff for data-centre power was written with hyperscale campuses in mind. Its first tier boundary, however, sits just above the load profile of a mid-sized co-location facility, which is where most of the region's smaller operators live.",
+          "Operators below the boundary pay the base rate. Operators a few hundred kilowatts above it pay the second tier on their entire load, not on the excess - a cliff rather than a ramp. Three co-location operators have filed comments asking for the tier to be marginal.",
+          "The utility says the structure is intentional and is designed to discourage growth just under the threshold. Whether that is a policy goal or an accounting convenience depends on who you ask."
+        ],
+        "links": [],
+        "tags": [
+          "policy",
+          "datacenters",
+          "seattle"
+        ],
+        "comments": []
+      },
+      "replay-in-regulated-industries": {
+        "id": "replay-in-regulated-industries",
+        "section": "policy",
+        "year": "2026",
+        "title": "Regulators are starting to ask for the replay, not the report",
+        "dek": "If you can rerun the model, the audit stops being a conversation about your process.",
+        "byline": "Ines Ferreira",
+        "date": "Mar 3, 2026",
+        "tick": 8,
+        "read_minutes": 5,
+        "body": [
+          "Audit of algorithmic systems has historically been an audit of documents: here is our process, here is our change log, here is a summary of our testing. The document is the artifact, and the system itself is inspected indirectly.",
+          "That is changing. Several regulators now ask for a reproducible run - the seed, the inputs and a procedure that produces the same output on the auditor's hardware. It is a much harder request to satisfy and a much easier one to check.",
+          "Vendors who built for reproducibility for engineering reasons are discovering they built a compliance feature by accident. Vendors who did not are discovering how much of their nondeterminism was load-bearing."
+        ],
+        "links": [
+          {
+            "label": "Reuters on the reproducible-build draft",
+            "url": "http://reuters.com/2026/standards-body-reproducible-builds"
+          }
+        ],
+        "tags": [
+          "policy",
+          "reproducibility",
+          "audit"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "\"How much of their nondeterminism was load-bearing\" is the line I will be quoting in planning.",
+            "tick": 9,
+            "likes": 17
+          }
+        ]
+      }
+    },
+    "subscribers": [
+      "bmartinez@outlook.com"
+    ],
+    "saved": {
+      "bob": [
+        "hash-order-nondeterminism"
+      ]
+    },
+    "follows": {
+      "alice": [
+        "determinism"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://arstechnica.com/",
+      "title": "Ars Technica",
+      "snippet": "Technology news and long-form analysis for people who read the footnotes.",
+      "vertical": "news",
+      "authority": 5,
+      "keywords": [
+        "ars technica",
+        "ars",
+        "technology news",
+        "analysis"
+      ]
+    },
+    {
+      "url": "http://arstechnica.com/2026/atlas-deep-dive",
+      "title": "Determinism at scale: a close read of Atlas 1.0 - Ars Technica",
+      "snippet": "A week inside Northstar's simulator: the tick clock, the seeded stream, the replay harness, and what the 12% overhead figure really measures.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "atlas",
+        "northstar",
+        "determinism",
+        "deep dive",
+        "replay",
+        "shipping atlas"
+      ]
+    },
+    {
+      "url": "http://arstechnica.com/2026/hash-order-nondeterminism",
+      "title": "Your hash map is a nondeterminism generator - Ars Technica",
+      "snippet": "Iteration order is unspecified, not random, and that difference is where the one-machine-only bugs live.",
+      "vertical": "news",
+      "authority": 5,
+      "keywords": [
+        "hash map",
+        "iteration order",
+        "nondeterminism",
+        "rust",
+        "flaky test"
+      ]
+    },
+    {
+      "url": "http://arstechnica.com/2026/scheduler-serialisation",
+      "title": "What a deterministic scheduler actually costs you - Ars Technica",
+      "snippet": "Reproducible interleaving means a single logical timeline, and the bill is workload-shaped.",
+      "vertical": "news",
+      "authority": 4,
+      "keywords": [
+        "scheduler",
+        "concurrency",
+        "determinism",
+        "performance",
+        "overhead"
+      ]
+    },
+    {
+      "url": "http://arstechnica.com/2026/datacenter-power-seattle",
+      "title": "Seattle's new data-centre power rules land on the smallest operators hardest - Ars Technica",
+      "snippet": "A tiered tariff aimed at hyperscalers has a cliff edge just above the co-location market.",
+      "vertical": "news",
+      "authority": 3,
+      "keywords": [
+        "data centre",
+        "power",
+        "seattle",
+        "policy",
+        "tariff"
+      ]
+    },
+    {
+      "url": "http://arstechnica.com/2026/replay-in-regulated-industries",
+      "title": "Regulators are starting to ask for the replay, not the report - Ars Technica",
+      "snippet": "A reproducible run is a harder request to satisfy and a much easier one to check.",
+      "vertical": "news",
+      "authority": 4,
+      "keywords": [
+        "regulation",
+        "audit",
+        "replay",
+        "reproducibility"
+      ]
+    },
+    {
+      "url": "http://arstechnica.com/it",
+      "title": "Information Technology - Ars Technica",
+      "snippet": "Ars IT coverage, newest first.",
+      "vertical": "news",
+      "authority": 2,
+      "keywords": [
+        "ars it",
+        "information technology"
+      ]
+    },
+    {
+      "url": "http://arstechnica.com/tag/determinism",
+      "title": "#determinism - Ars Technica",
+      "snippet": "Everything Ars has tagged determinism.",
+      "vertical": "news",
+      "authority": 2,
+      "keywords": [
+        "determinism tag",
+        "ars determinism"
+      ]
+    }
+  ]
+}

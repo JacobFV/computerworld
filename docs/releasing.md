@@ -8,12 +8,12 @@ to PyPI, npm or crates.io.
 
 ## Version identity
 
-The first prerelease uses:
+The current prerelease uses:
 
 | Surface | Version |
 |---|---|
-| Git tag / Cargo / engine | `v0.1.0-alpha.1` / `0.1.0-alpha.1` |
-| Python distribution | `0.1.0a1` |
+| Git tag / Cargo / engine | `v0.1.0-alpha.2` / `0.1.0-alpha.2` |
+| Python distribution | `0.1.0a2` |
 
 Update workspace/dependent Cargo versions, `Cargo.lock`, Python project metadata,
 release packaging metadata and release notes together. Python exposes

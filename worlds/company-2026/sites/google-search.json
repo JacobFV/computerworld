@@ -1,0 +1,92 @@
+{
+  "id": "google-search",
+  "kind": "search",
+  "node": "google-search",
+  "domains": ["google.com", "www.google.com"],
+  "port": 80,
+  "initial_state": {
+    "brand": "Google",
+    "skin": "google",
+    "theme": {
+      "accent": "#1a73e8",
+      "background": "#ffffff",
+      "surface": "#f1f3f4",
+      "ink": "#202124",
+      "muted": "#5f6368",
+      "content_width": 760
+    },
+    "retain_history": true,
+    "rank_weights": {"title": 8, "keywords": 4, "snippet": 1, "authority": 2},
+    "verticals": ["all", "images", "news", "videos"],
+    "about": "Google ranks a fixed index of pages by where the query matches — title first, then keywords, then the description — and adds a per-site authority bonus to anything that already matched. Ties break on the URL, so the same search always comes back in the same order.",
+    "footer": [
+      {"text": "Wikipedia", "url": "http://wikipedia.org/"},
+      {"text": "YouTube", "url": "http://youtube.com/"},
+      {"text": "Northstar", "url": "http://northstar.example/"}
+    ],
+    "history": {
+      "alice": ["27 inch 4k usb-c monitor", "shipping atlas", "deterministic simulation"],
+      "carol": ["devcon seattle tickets", "atlas launch checklist"]
+    },
+    "documents": []
+  },
+  "search_entries": [
+    {
+      "url": "http://google.com/",
+      "title": "Google",
+      "snippet": "Search the web. Type a query to get ranked results, or switch to Images, News and Videos.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["google", "search", "search engine", "web search"]
+    },
+    {
+      "url": "http://google.com/about",
+      "title": "About Google Search - how results are ranked",
+      "snippet": "How Google scores a page: title, keywords, description and site authority, with the URL breaking ties.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["google", "about", "how search works", "ranking", "search engine"]
+    }
+  ],
+  "authority_overrides": {
+    "google.com": 5,
+    "bing.com": 1,
+    "duckduckgo.com": 1,
+    "docs.google.com": 8,
+    "drive.google.com": 7,
+    "mail.google.com": 6,
+    "calendar.google.com": 6,
+    "maps.google.com": 7,
+    "youtube.com": 8,
+    "wikipedia.org": 8,
+    "github.com": 7,
+    "stackoverflow.com": 7,
+    "theverge.com": 6,
+    "arstechnica.com": 5,
+    "reuters.com": 6,
+    "news.ycombinator.com": 4,
+    "reddit.com": 5,
+    "x.com": 4,
+    "mastodon.social": 2,
+    "linkedin.com": 4,
+    "outlook.com": 2,
+    "chatgpt.com": 6,
+    "claude.ai": 5,
+    "amazon.com": 7,
+    "etsy.com": 5,
+    "ticketmaster.com": 5,
+    "spotify.com": 5,
+    "openstreetmap.org": 3,
+    "weather.com": 6,
+    "dropbox.com": 4,
+    "northwind.example": 5,
+    "slack.com": 4,
+    "discord.com": 4,
+    "linear.app": 4,
+    "alicechen.dev": 4,
+    "bmartinez.net": 3,
+    "eng.northstar.example": 4,
+    "northstar.example": 5,
+    "status.northstar.example": 3
+  }
+}

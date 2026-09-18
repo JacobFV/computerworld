@@ -1,0 +1,178 @@
+{
+  "id": "discord",
+  "kind": "chat",
+  "node": "discord",
+  "domains": [
+    "discord.com",
+    "discordapp.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "discord",
+    "workspace": "Atlas Community",
+    "next_id": 40,
+    "channels": {
+      "welcome": {
+        "title": "welcome",
+        "members": [
+          "admin",
+          "alice",
+          "bob",
+          "carol",
+          "praman",
+          "mkowalski"
+        ],
+        "messages": [
+          {
+            "id": "chat-31",
+            "author": "admin",
+            "text": "Welcome to the Atlas community server. Source is at http://github.com/northstar/atlas and the guide is at http://guide.example/",
+            "time": 22,
+            "reactions": {}
+          },
+          {
+            "id": "chat-32",
+            "author": "mkowalski",
+            "text": "Came from the walkthrough video. This is the first simulator I have seen that replays byte for byte.",
+            "time": 44,
+            "reactions": {
+              "tada": [
+                "alice",
+                "praman"
+              ]
+            }
+          }
+        ]
+      },
+      "atlas-help": {
+        "title": "atlas-help",
+        "members": [
+          "alice",
+          "bob",
+          "carol",
+          "praman",
+          "mkowalski"
+        ],
+        "messages": [
+          {
+            "id": "chat-33",
+            "author": "mkowalski",
+            "text": "My replay diverges after about 200 ticks. Anything obvious?",
+            "time": 45,
+            "reactions": {}
+          },
+          {
+            "id": "chat-34",
+            "author": "praman",
+            "text": "Nine times in ten it is an unordered map somewhere in your own code. Same bug we hit: http://github.com/northstar/atlas/issues/14",
+            "time": 45,
+            "reactions": {
+              "+1": [
+                "alice",
+                "bob"
+              ]
+            }
+          },
+          {
+            "id": "chat-35",
+            "author": "mkowalski",
+            "text": "It was a HashSet in my scheduler. Thank you.",
+            "time": 46,
+            "reactions": {},
+            "parent": "chat-33"
+          },
+          {
+            "id": "chat-36",
+            "author": "alice",
+            "text": "Worth reading Priya on the general case: http://stackoverflow.com/questions/t-4411",
+            "time": 46,
+            "reactions": {}
+          }
+        ]
+      },
+      "showcase": {
+        "title": "showcase",
+        "members": [
+          "alice",
+          "bob",
+          "carol",
+          "praman",
+          "mkowalski"
+        ],
+        "messages": [
+          {
+            "id": "chat-37",
+            "author": "alice",
+            "text": "What I learned shipping Atlas: http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+            "time": 47,
+            "reactions": {
+              "tada": [
+                "bob",
+                "mkowalski",
+                "praman"
+              ]
+            }
+          },
+          {
+            "id": "chat-38",
+            "author": "bob",
+            "text": "And the hash-order postmortem: http://bmartinez.net/posts/hash-order-bit-me",
+            "time": 47,
+            "reactions": {}
+          },
+          {
+            "id": "chat-39",
+            "author": "praman",
+            "text": "Sort before you iterate: http://github.com/gist/bfs-order",
+            "time": 48,
+            "reactions": {
+              "+1": [
+                "alice"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://discord.com/",
+      "title": "Discord",
+      "snippet": "The Atlas community server: welcome, atlas-help and showcase.",
+      "authority": 6,
+      "keywords": [
+        "discord",
+        "community",
+        "chat",
+        "atlas",
+        "server"
+      ]
+    },
+    {
+      "url": "http://discord.com/channels/atlas-help",
+      "title": "#atlas-help · Atlas Community",
+      "snippet": "Replay diverging after 200 ticks? Nine times in ten it is an unordered map.",
+      "authority": 5,
+      "keywords": [
+        "help",
+        "atlas",
+        "replay",
+        "determinism",
+        "discord"
+      ]
+    },
+    {
+      "url": "http://discord.com/channels/showcase",
+      "title": "#showcase · Atlas Community",
+      "snippet": "What people built with Atlas, and what they wrote about it afterwards.",
+      "authority": 4,
+      "keywords": [
+        "showcase",
+        "atlas",
+        "discord",
+        "blog"
+      ]
+    }
+  ]
+}

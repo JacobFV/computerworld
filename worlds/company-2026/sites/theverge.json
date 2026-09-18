@@ -1,0 +1,407 @@
+{
+  "id": "theverge",
+  "kind": "press",
+  "node": "theverge",
+  "domains": [
+    "theverge.com",
+    "www.theverge.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "layout": "magazine",
+    "brand": "The Verge",
+    "tagline": "Technology, science, art and culture.",
+    "theme": {
+      "accent": "#5200ff",
+      "background": "#ffffff",
+      "surface": "#f5f5f7",
+      "ink": "#08090a",
+      "muted": "#606468",
+      "content_width": 880
+    },
+    "sections": [
+      {
+        "id": "tech",
+        "title": "Tech"
+      },
+      {
+        "id": "reviews",
+        "title": "Reviews"
+      },
+      {
+        "id": "science",
+        "title": "Science"
+      }
+    ],
+    "articles": {
+      "atlas-determinism": {
+        "id": "atlas-determinism",
+        "section": "tech",
+        "year": "2026",
+        "title": "Northstar's Atlas bets everything on determinism",
+        "dek": "The startup thinks reproducibility is a feature, not a research project.",
+        "byline": "Tom Weber",
+        "date": "Mar 5, 2026",
+        "tick": 8,
+        "read_minutes": 7,
+        "body": [
+          "Most simulation software will tell you it is reproducible. Run it twice with the same inputs and you will usually get the same answer, and when you do not, the vendor will explain that floating point is hard and the scheduler is unpredictable and you should average over more runs. Northstar's Atlas 1.0, which shipped this week, takes the opposite position: a run that cannot be replayed byte for byte is a bug report, not a rounding error.",
+          "Atlas simulates an entire machine - processes, filesystem, network stack and browser - from a single seed. Nothing inside it may read the wall clock, ask the host for randomness, or iterate a container whose order is not defined. Alice Chen, the staff engineer who owns the renderer, described the discipline to me as 'a list of things you are no longer allowed to do, and then two years of finding out how many of them you were doing.'",
+          "The interesting part is not the claim, it is the enforcement. Atlas ships a replay harness that takes a recorded run and reruns it from the seed, comparing every frame the renderer produces. Chen showed me a failure that survived eighteen months of code review: a test that passed on every machine at Northstar and failed on exactly one Windows CI runner, because a hash map was iterated in an order the standard library does not promise. The fix was nine lines. The search took three weeks.",
+          "Carol Nakamura, the engineering manager who owned the release, is careful about what determinism buys you. 'It does not make the software correct,' she said. 'It makes the incorrect parts stay still long enough to look at.' Northstar's own postmortem for a twelve-minute latency incident in February leans on exactly that: the incident was reproduced locally from a checkpoint before anyone had finished writing the timeline.",
+          "There are costs. Determinism rules out a lot of ordinary engineering convenience - thread pools that schedule themselves, caches keyed on timestamps, any library that calls home. Northstar has rewritten or vendored more dependencies than it would like to admit, and the repository at http://github.com/northstar/atlas contains a directory of patches with a README that opens 'we are sorry.'",
+          "Whether the trade is worth it depends on what you are simulating. For a game studio it is probably not. For anyone who has to explain to a regulator why a run produced the number it produced, it starts to look less like engineering taste and more like a requirement. Atlas 1.0 is out now; Chen's full walkthrough is at http://youtube.com/watch?v=atlas-walkthrough and the team's own launch notes are at http://eng.northstar.example/posts/shipping-atlas"
+        ],
+        "links": [
+          {
+            "label": "Atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Alice Chen's walkthrough",
+            "url": "http://youtube.com/watch?v=atlas-walkthrough"
+          },
+          {
+            "label": "Northstar's launch post",
+            "url": "http://eng.northstar.example/posts/shipping-atlas"
+          },
+          {
+            "label": "Deterministic simulation - Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "determinism",
+          "atlas"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Finally. The hash-order story alone is worth the read - I answered that exact question three weeks ago.",
+            "tick": 8,
+            "likes": 37
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Can confirm the Windows runner detail. I opened that issue and I am still not over it.",
+            "tick": 8,
+            "likes": 29
+          },
+          {
+            "id": "c3",
+            "author": "mkuznetsov",
+            "text": "\"Averaging over more runs\" is the most damning sentence I have read about my own industry this year.",
+            "tick": 9,
+            "likes": 22
+          },
+          {
+            "id": "c4",
+            "author": "carol",
+            "text": "For the record the quote is accurate and I stand by it.",
+            "tick": 9,
+            "likes": 18
+          },
+          {
+            "id": "c5",
+            "author": "dfarr",
+            "text": "What does this cost in wall-clock performance? The piece never says.",
+            "tick": 9,
+            "likes": 11
+          },
+          {
+            "id": "c6",
+            "author": "alice",
+            "text": "About 12% on our workload, and we got most of it back by deleting the caches we could no longer justify.",
+            "tick": 10,
+            "likes": 44
+          }
+        ]
+      },
+      "monitor-roundup": {
+        "id": "monitor-roundup",
+        "section": "reviews",
+        "year": "2026",
+        "title": "The best 27-inch 4K USB-C monitors right now",
+        "dek": "One cable, one panel, and a surprising amount of disagreement about what counts as a stand.",
+        "byline": "Tom Weber",
+        "date": "Feb 26, 2026",
+        "tick": 6,
+        "read_minutes": 9,
+        "body": [
+          "The 27-inch 4K USB-C monitor has quietly become the default desk object for anyone who carries a laptop between two places. The pitch is simple: one cable carries video, data and enough power to charge the machine, so docking is a physical act rather than a software one.",
+          "We tested nine panels over six weeks. The short version: the differences that matter are the stand, the power budget and the firmware, in that order. Panel quality at this size and resolution has converged to the point where a blind comparison is mostly a comparison of coatings.",
+          "Power is where the specification sheets lie by omission. A monitor advertising 90W will often deliver it only when nothing is plugged into its downstream USB ports, which is the exact configuration nobody uses. Two of the nine dropped to 60W with a single external drive attached, which is enough to charge a laptop slower than it discharges.",
+          "Our pick is boring and costs $429.99, which is roughly the price at which this category stops feeling like a luxury. Buy the version with the height-adjustable stand even if you think you will not need it."
+        ],
+        "links": [
+          {
+            "label": "Our full testing methodology",
+            "url": "http://theverge.com/2026/monitor-roundup"
+          }
+        ],
+        "tags": [
+          "reviews",
+          "hardware",
+          "monitors"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Bought the pick. Confirm the stand advice, confirm the 90W asterisk.",
+            "tick": 7,
+            "likes": 15
+          },
+          {
+            "id": "c2",
+            "author": "dfarr",
+            "text": "Nine panels and not one word about matte versus glossy?",
+            "tick": 7,
+            "likes": 6
+          }
+        ]
+      },
+      "devcon-preview": {
+        "id": "devcon-preview",
+        "section": "tech",
+        "year": "2026",
+        "title": "DevCon Seattle's schedule is suddenly all about reproducibility",
+        "dek": "Three years ago the track did not exist. This year it has its own room.",
+        "byline": "Nadia Olsen",
+        "date": "Mar 2, 2026",
+        "tick": 7,
+        "read_minutes": 4,
+        "body": [
+          "DevCon Seattle published its 2026 schedule this morning, and the reproducibility track has grown from a single lightning-talk slot into a full day with its own room at the Cascade Convention Center.",
+          "The keynote sets the tone: a live replay of a distributed failure from a recorded seed, on stage, with the audience allowed to pick the breakpoint. Whether that works in front of 2,000 people is the most interesting engineering question of the conference.",
+          "Tickets are still available at http://ticketmaster.com/event/devcon-2026 and the keynote will be streamed at http://youtube.com/watch?v=devcon-keynote"
+        ],
+        "links": [
+          {
+            "label": "DevCon Seattle tickets",
+            "url": "http://ticketmaster.com/event/devcon-2026"
+          },
+          {
+            "label": "Keynote stream",
+            "url": "http://youtube.com/watch?v=devcon-keynote"
+          }
+        ],
+        "tags": [
+          "devcon",
+          "conferences",
+          "seattle"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Booked the Tuesday. The live replay demo is either going to be great or a very memorable failure.",
+            "tick": 7,
+            "likes": 9
+          }
+        ]
+      },
+      "assistants-cite": {
+        "id": "assistants-cite",
+        "section": "tech",
+        "year": "2026",
+        "title": "Assistants that show their sources are finally table stakes",
+        "dek": "The feature everyone shipped last year is the one everyone is now judged on.",
+        "byline": "Nadia Olsen",
+        "date": "Feb 18, 2026",
+        "tick": 5,
+        "read_minutes": 5,
+        "body": [
+          "An answer without a citation is a rumour with good grammar. That sentence has been on a sticky note in this office for two years, and in 2026 the assistant vendors have finally agreed with it.",
+          "The mechanics differ. Some systems retrieve first and generate from what they retrieved; others generate and then go looking for something that agrees. The second approach produces citations that are technically present and practically useless, and users have learned to tell the difference faster than anyone expected.",
+          "The test we now apply is embarrassingly simple: click the link. If it resolves to a page that contains the claim, the assistant earned the answer. If it resolves to a plausible-looking homepage, it did not."
+        ],
+        "links": [
+          {
+            "label": "Deterministic simulation - Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+          }
+        ],
+        "tags": [
+          "ai",
+          "assistants",
+          "citations"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mkuznetsov",
+            "text": "\"A rumour with good grammar\" is going straight into my code review vocabulary.",
+            "tick": 6,
+            "likes": 27
+          }
+        ]
+      },
+      "replay-debugging": {
+        "id": "replay-debugging",
+        "section": "science",
+        "year": "2026",
+        "title": "Replay debugging escapes the lab",
+        "dek": "Record-and-replay has been a research toy since the nineties. Three things changed.",
+        "byline": "Tom Weber",
+        "date": "Jan 30, 2026",
+        "tick": 4,
+        "read_minutes": 6,
+        "body": [
+          "Record-and-replay debugging is older than most of the engineers using it. The idea - capture a run precisely enough to reproduce it on demand - shows up in research systems going back to the nineties, and it has spent most of that time being too slow, too fragile or too specific to one operating system.",
+          "Three things changed. Storage got cheap enough that recording every syscall stopped being absurd. Containerisation made the environment a declared artifact rather than an archaeological question. And a generation of engineers grew up on version control and simply refuses to accept that a failure can be unreproducible.",
+          "The result is that replay is now a product category rather than a paper. It is still not free, and the overhead numbers vendors quote are measured on workloads chosen to make them look good. But the argument has shifted from whether it is possible to what you are willing to give up for it."
+        ],
+        "links": [
+          {
+            "label": "Northstar's Atlas",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ],
+        "tags": [
+          "determinism",
+          "debugging",
+          "research"
+        ],
+        "comments": []
+      }
+    },
+    "subscribers": [
+      "alice.chen@gmail.com"
+    ],
+    "saved": {
+      "alice": [
+        "atlas-determinism"
+      ]
+    },
+    "follows": {
+      "carol": [
+        "publication",
+        "northstar"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://theverge.com/",
+      "title": "The Verge",
+      "snippet": "Technology, science, art and culture. Features, reviews and the occasional argument.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "the verge",
+        "verge",
+        "technology news",
+        "tech news"
+      ]
+    },
+    {
+      "url": "http://theverge.com/2026/atlas-determinism",
+      "title": "Northstar's Atlas bets everything on determinism - The Verge",
+      "snippet": "The startup thinks reproducibility is a feature, not a research project. Inside Atlas 1.0, the replay harness and the nine-line fix that took three weeks.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "determinism",
+        "shipping atlas",
+        "alice chen",
+        "carol nakamura",
+        "tom weber"
+      ]
+    },
+    {
+      "url": "http://theverge.com/2026/monitor-roundup",
+      "title": "The best 27-inch 4K USB-C monitors right now - The Verge",
+      "snippet": "Nine panels over six weeks: the stand, the power budget and the firmware are what actually differ.",
+      "vertical": "news",
+      "authority": 5,
+      "keywords": [
+        "27 inch 4k usb-c monitor",
+        "monitor",
+        "review",
+        "usb-c",
+        "4k",
+        "display"
+      ]
+    },
+    {
+      "url": "http://theverge.com/2026/devcon-preview",
+      "title": "DevCon Seattle's schedule is suddenly all about reproducibility - The Verge",
+      "snippet": "The reproducibility track has grown from one lightning talk into a full day at the Cascade Convention Center.",
+      "vertical": "news",
+      "authority": 4,
+      "keywords": [
+        "devcon",
+        "devcon seattle",
+        "conference",
+        "schedule",
+        "reproducibility"
+      ]
+    },
+    {
+      "url": "http://theverge.com/2026/assistants-cite",
+      "title": "Assistants that show their sources are finally table stakes - The Verge",
+      "snippet": "An answer without a citation is a rumour with good grammar. The test is simple: click the link.",
+      "vertical": "news",
+      "authority": 4,
+      "keywords": [
+        "ai assistants",
+        "citations",
+        "sources",
+        "chatgpt",
+        "claude"
+      ]
+    },
+    {
+      "url": "http://theverge.com/2026/replay-debugging",
+      "title": "Replay debugging escapes the lab - The Verge",
+      "snippet": "Record-and-replay has been a research toy since the nineties. Cheap storage, containers and version control changed that.",
+      "vertical": "news",
+      "authority": 4,
+      "keywords": [
+        "replay debugging",
+        "record and replay",
+        "determinism",
+        "research"
+      ]
+    },
+    {
+      "url": "http://theverge.com/tech",
+      "title": "Tech - The Verge",
+      "snippet": "Everything The Verge has filed under Tech, newest first.",
+      "vertical": "news",
+      "authority": 3,
+      "keywords": [
+        "verge tech",
+        "technology section"
+      ]
+    },
+    {
+      "url": "http://theverge.com/reviews",
+      "title": "Reviews - The Verge",
+      "snippet": "Hardware The Verge has actually plugged in.",
+      "vertical": "news",
+      "authority": 3,
+      "keywords": [
+        "verge reviews",
+        "hardware reviews"
+      ]
+    },
+    {
+      "url": "http://theverge.com/archive",
+      "title": "Archive - The Verge",
+      "snippet": "Every story, newest first.",
+      "vertical": "news",
+      "authority": 2,
+      "keywords": [
+        "verge archive",
+        "all stories"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,585 @@
+{
+  "id": "spotify",
+  "kind": "media",
+  "node": "spotify",
+  "domains": [
+    "spotify.com",
+    "open.spotify.com",
+    "www.spotify.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "audio",
+    "brand": "Spotify",
+    "tagline": "Music for shipping things.",
+    "theme": {
+      "accent": "#1db954",
+      "background": "#121212",
+      "surface": "#181818",
+      "ink": "#ffffff",
+      "muted": "#b3b3b3",
+      "content_width": 1120
+    },
+    "channels": {
+      "midnight-compiler": {
+        "id": "midnight-compiler",
+        "name": "Midnight Compiler",
+        "handle": "@midnightcompiler",
+        "owner": null,
+        "subscribers": 184220,
+        "about": "Four people, one drum machine and a rule against lyrics. Album: Cold Start."
+      },
+      "parallel-lines": {
+        "id": "parallel-lines",
+        "name": "Parallel Lines",
+        "handle": "@parallellines",
+        "owner": null,
+        "subscribers": 402118,
+        "about": "Synth duo from Portland. Fan-out is their second record."
+      },
+      "low-latency": {
+        "id": "low-latency",
+        "name": "Low Latency",
+        "handle": "@lowlatency",
+        "owner": null,
+        "subscribers": 911403,
+        "about": "Drum and bass for people waiting on a build."
+      },
+      "harbor-lights": {
+        "id": "harbor-lights",
+        "name": "Harbor Lights",
+        "handle": "@harborlights",
+        "owner": null,
+        "subscribers": 73540,
+        "about": "Guitars, ferries and rain. Recorded in Seattle."
+      },
+      "tessellate": {
+        "id": "tessellate",
+        "name": "Tessellate",
+        "handle": "@tessellate",
+        "owner": null,
+        "subscribers": 29118,
+        "about": "Minimal piano loops that never quite repeat."
+      }
+    },
+    "items": {
+      "cold-start": {
+        "id": "cold-start",
+        "channel": "midnight-compiler",
+        "title": "Cold Start",
+        "album": "Cold Start",
+        "duration_s": 214,
+        "published": "Feb 2, 2024",
+        "published_tick": 1,
+        "plays": 418233,
+        "likes": 21033,
+        "tags": [
+          "ambient",
+          "focus",
+          "instrumental"
+        ]
+      },
+      "green-build": {
+        "id": "green-build",
+        "channel": "midnight-compiler",
+        "title": "Green Build",
+        "album": "Cold Start",
+        "duration_s": 188,
+        "published": "Feb 2, 2024",
+        "published_tick": 2,
+        "plays": 302914,
+        "likes": 9120,
+        "tags": [
+          "ambient",
+          "focus"
+        ]
+      },
+      "rollback": {
+        "id": "rollback",
+        "channel": "midnight-compiler",
+        "title": "Rollback",
+        "album": "Cold Start",
+        "duration_s": 241,
+        "published": "Feb 2, 2024",
+        "published_tick": 3,
+        "plays": 211775,
+        "likes": 7744,
+        "tags": [
+          "ambient",
+          "downtempo"
+        ]
+      },
+      "fan-out": {
+        "id": "fan-out",
+        "channel": "parallel-lines",
+        "title": "Fan-out",
+        "album": "Fan-out",
+        "duration_s": 203,
+        "published": "Aug 19, 2024",
+        "published_tick": 4,
+        "plays": 884120,
+        "likes": 41207,
+        "tags": [
+          "electronic",
+          "focus"
+        ]
+      },
+      "mutex": {
+        "id": "mutex",
+        "channel": "parallel-lines",
+        "title": "Mutex",
+        "album": "Fan-out",
+        "duration_s": 176,
+        "published": "Aug 19, 2024",
+        "published_tick": 5,
+        "plays": 512043,
+        "likes": 18330,
+        "tags": [
+          "electronic"
+        ]
+      },
+      "backpressure": {
+        "id": "backpressure",
+        "channel": "low-latency",
+        "title": "Backpressure",
+        "album": "Backpressure",
+        "duration_s": 256,
+        "published": "Jan 9, 2025",
+        "published_tick": 6,
+        "plays": 1204338,
+        "likes": 62114,
+        "tags": [
+          "electronic",
+          "drum and bass"
+        ]
+      },
+      "tail-latency": {
+        "id": "tail-latency",
+        "channel": "low-latency",
+        "title": "Tail Latency",
+        "album": "Backpressure",
+        "duration_s": 199,
+        "published": "Jan 9, 2025",
+        "published_tick": 7,
+        "plays": 733910,
+        "likes": 30028,
+        "tags": [
+          "electronic"
+        ]
+      },
+      "p99": {
+        "id": "p99",
+        "channel": "low-latency",
+        "title": "P99",
+        "album": "Backpressure",
+        "duration_s": 223,
+        "published": "Jan 9, 2025",
+        "published_tick": 8,
+        "plays": 489201,
+        "likes": 19844,
+        "tags": [
+          "electronic",
+          "focus"
+        ]
+      },
+      "puget": {
+        "id": "puget",
+        "channel": "harbor-lights",
+        "title": "Puget",
+        "album": "Puget",
+        "duration_s": 268,
+        "published": "Sep 28, 2025",
+        "published_tick": 9,
+        "plays": 156822,
+        "likes": 8201,
+        "tags": [
+          "indie",
+          "guitar"
+        ]
+      },
+      "ferry-terminal": {
+        "id": "ferry-terminal",
+        "channel": "harbor-lights",
+        "title": "Ferry Terminal",
+        "album": "Puget",
+        "duration_s": 231,
+        "published": "Sep 28, 2025",
+        "published_tick": 10,
+        "plays": 98410,
+        "likes": 4410,
+        "tags": [
+          "indie",
+          "guitar"
+        ]
+      },
+      "tiling": {
+        "id": "tiling",
+        "channel": "tessellate",
+        "title": "Tiling",
+        "album": "Tiling",
+        "duration_s": 294,
+        "published": "Feb 6, 2026",
+        "published_tick": 11,
+        "plays": 64027,
+        "likes": 3102,
+        "tags": [
+          "minimal",
+          "instrumental"
+        ]
+      },
+      "seedless": {
+        "id": "seedless",
+        "channel": "tessellate",
+        "title": "Seedless",
+        "album": "Tiling",
+        "duration_s": 185,
+        "published": "Feb 6, 2026",
+        "published_tick": 12,
+        "plays": 41338,
+        "likes": 1877,
+        "tags": [
+          "minimal",
+          "instrumental"
+        ]
+      }
+    },
+    "playlists": {
+      "ship-it": {
+        "id": "ship-it",
+        "title": "Ship It",
+        "owner": "carol",
+        "items": [
+          "cold-start",
+          "green-build",
+          "rollback",
+          "fan-out",
+          "mutex",
+          "backpressure",
+          "tail-latency",
+          "p99",
+          "puget",
+          "ferry-terminal",
+          "tiling"
+        ]
+      },
+      "liked": {
+        "id": "liked",
+        "title": "Liked Songs",
+        "owner": null,
+        "items": [
+          "cold-start",
+          "fan-out"
+        ]
+      },
+      "deep-focus": {
+        "id": "deep-focus",
+        "title": "Deep Focus",
+        "owner": "alice",
+        "items": [
+          "cold-start",
+          "p99",
+          "tiling",
+          "seedless"
+        ]
+      }
+    },
+    "subscriptions": {
+      "carol": [
+        "low-latency",
+        "parallel-lines"
+      ],
+      "alice": [
+        "tessellate",
+        "midnight-compiler"
+      ]
+    },
+    "likes": {
+      "carol": [
+        "backpressure",
+        "fan-out"
+      ],
+      "alice": [
+        "tiling"
+      ],
+      "bob": [
+        "mutex"
+      ]
+    },
+    "now_playing": {
+      "carol": {
+        "item": "cold-start",
+        "tick": 9,
+        "list": "ship-it"
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://spotify.com/",
+      "title": "Spotify",
+      "snippet": "Browse artists, play a track, like it, and build a playlist that persists.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "spotify",
+        "music",
+        "streaming",
+        "playlist"
+      ]
+    },
+    {
+      "url": "http://spotify.com/playlist/ship-it",
+      "title": "Ship It - playlist by Carol Nakamura | Spotify",
+      "snippet": "Eleven tracks Carol plays on release day, from Cold Start to Tiling.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "ship it",
+        "playlist",
+        "carol nakamura",
+        "release day",
+        "shipping atlas"
+      ]
+    },
+    {
+      "url": "http://spotify.com/playlist/deep-focus",
+      "title": "Deep Focus - playlist by Alice Chen | Spotify",
+      "snippet": "Four instrumental tracks for reading a trace you do not understand yet.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "deep focus",
+        "playlist",
+        "instrumental",
+        "alice chen"
+      ]
+    },
+    {
+      "url": "http://spotify.com/artist/midnight-compiler",
+      "title": "Midnight Compiler | Spotify",
+      "snippet": "Four people, one drum machine and a rule against lyrics. Album: Cold Start.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "midnight compiler",
+        "artist",
+        "spotify"
+      ]
+    },
+    {
+      "url": "http://spotify.com/artist/parallel-lines",
+      "title": "Parallel Lines | Spotify",
+      "snippet": "Synth duo from Portland. Fan-out is their second record.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "parallel lines",
+        "artist",
+        "spotify"
+      ]
+    },
+    {
+      "url": "http://spotify.com/artist/low-latency",
+      "title": "Low Latency | Spotify",
+      "snippet": "Drum and bass for people waiting on a build.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "low latency",
+        "artist",
+        "spotify"
+      ]
+    },
+    {
+      "url": "http://spotify.com/artist/harbor-lights",
+      "title": "Harbor Lights | Spotify",
+      "snippet": "Guitars, ferries and rain. Recorded in Seattle.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "harbor lights",
+        "artist",
+        "spotify"
+      ]
+    },
+    {
+      "url": "http://spotify.com/artist/tessellate",
+      "title": "Tessellate | Spotify",
+      "snippet": "Minimal piano loops that never quite repeat.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "tessellate",
+        "artist",
+        "spotify"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/cold-start",
+      "title": "Cold Start - Midnight Compiler | Spotify",
+      "snippet": "Cold Start from the album Cold Start by Midnight Compiler.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "cold start",
+        "midnight compiler",
+        "cold start",
+        "ambient",
+        "focus",
+        "instrumental"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/green-build",
+      "title": "Green Build - Midnight Compiler | Spotify",
+      "snippet": "Green Build from the album Cold Start by Midnight Compiler.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "green build",
+        "midnight compiler",
+        "cold start",
+        "ambient",
+        "focus"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/rollback",
+      "title": "Rollback - Midnight Compiler | Spotify",
+      "snippet": "Rollback from the album Cold Start by Midnight Compiler.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "rollback",
+        "midnight compiler",
+        "cold start",
+        "ambient",
+        "downtempo"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/fan-out",
+      "title": "Fan-out - Parallel Lines | Spotify",
+      "snippet": "Fan-out from the album Fan-out by Parallel Lines.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "fan-out",
+        "parallel lines",
+        "fan-out",
+        "electronic",
+        "focus"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/mutex",
+      "title": "Mutex - Parallel Lines | Spotify",
+      "snippet": "Mutex from the album Fan-out by Parallel Lines.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "mutex",
+        "parallel lines",
+        "fan-out",
+        "electronic"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/backpressure",
+      "title": "Backpressure - Low Latency | Spotify",
+      "snippet": "Backpressure from the album Backpressure by Low Latency.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "backpressure",
+        "low latency",
+        "backpressure",
+        "electronic",
+        "drum and bass"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/tail-latency",
+      "title": "Tail Latency - Low Latency | Spotify",
+      "snippet": "Tail Latency from the album Backpressure by Low Latency.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "tail latency",
+        "low latency",
+        "backpressure",
+        "electronic"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/p99",
+      "title": "P99 - Low Latency | Spotify",
+      "snippet": "P99 from the album Backpressure by Low Latency.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "p99",
+        "low latency",
+        "backpressure",
+        "electronic",
+        "focus"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/puget",
+      "title": "Puget - Harbor Lights | Spotify",
+      "snippet": "Puget from the album Puget by Harbor Lights.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "puget",
+        "harbor lights",
+        "puget",
+        "indie",
+        "guitar"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/ferry-terminal",
+      "title": "Ferry Terminal - Harbor Lights | Spotify",
+      "snippet": "Ferry Terminal from the album Puget by Harbor Lights.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "ferry terminal",
+        "harbor lights",
+        "puget",
+        "indie",
+        "guitar"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/tiling",
+      "title": "Tiling - Tessellate | Spotify",
+      "snippet": "Tiling from the album Tiling by Tessellate.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "tiling",
+        "tessellate",
+        "tiling",
+        "minimal",
+        "instrumental"
+      ]
+    },
+    {
+      "url": "http://spotify.com/track/seedless",
+      "title": "Seedless - Tessellate | Spotify",
+      "snippet": "Seedless from the album Tiling by Tessellate.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "seedless",
+        "tessellate",
+        "tiling",
+        "minimal",
+        "instrumental"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+{
+  "id": "etsy",
+  "kind": "shop",
+  "node": "etsy",
+  "domains": [
+    "etsy.com",
+    "www.etsy.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "retail",
+    "brand": "Etsy",
+    "tagline": "A simulated marketplace of invented makers. No maker is paid and nothing ships.",
+    "currency": "USD",
+    "theme": {
+      "accent": "#f1641e",
+      "background": "#ffffff",
+      "surface": "#f7f5f2",
+      "ink": "#222222",
+      "muted": "#66605c",
+      "content_width": 1080
+    },
+    "categories": [
+      {
+        "id": "ceramics",
+        "title": "Ceramics"
+      },
+      {
+        "id": "textiles",
+        "title": "Textiles"
+      },
+      {
+        "id": "paper",
+        "title": "Paper & Print"
+      },
+      {
+        "id": "jewelry",
+        "title": "Jewelry"
+      }
+    ],
+    "products": {
+      "et-mug-slab": {
+        "id": "et-mug-slab",
+        "category": "ceramics",
+        "title": "Slab-built Stoneware Mug, Harbour Glaze",
+        "seller": "Marrow Point Clay",
+        "price_cents": 3800,
+        "rating_sum": 142,
+        "rating_count": 30,
+        "stock": 9,
+        "fast_shipping": false,
+        "bullets": [
+          "Hand-built, no two alike",
+          "Holds 12oz",
+          "Dishwasher and microwave safe"
+        ],
+        "description": "Thrown, trimmed and glazed in a garage in West Seattle. The glaze breaks blue over the throwing rings.",
+        "reviews": [
+          {
+            "id": "rv-e1",
+            "author": "carol",
+            "stars": 5,
+            "title": "Second one",
+            "body": "Bought one, used it every day for a month, came back for a second so I am not washing it at lunchtime.",
+            "tick": 4
+          }
+        ]
+      },
+      "et-scarf-loom": {
+        "id": "et-scarf-loom",
+        "category": "textiles",
+        "title": "Hand-loomed Lambswool Scarf, Fog Grey",
+        "seller": "Rivergate Loom",
+        "price_cents": 6400,
+        "rating_sum": 95,
+        "rating_count": 19,
+        "stock": 4,
+        "fast_shipping": false,
+        "bullets": [
+          "100% lambswool",
+          "180cm x 30cm",
+          "Woven on a 1940s Hattersley loom"
+        ],
+        "description": "Two weeks on the loom for a run of six. The grey has a thread of oxblood every fortieth pick.",
+        "reviews": []
+      },
+      "et-print-map": {
+        "id": "et-print-map",
+        "category": "paper",
+        "title": "Letterpress Map Print, Puget Sound",
+        "seller": "Quill & Kettle Press",
+        "price_cents": 4200,
+        "rating_sum": 178,
+        "rating_count": 36,
+        "stock": 15,
+        "fast_shipping": false,
+        "bullets": [
+          "A2, 300gsm cotton rag",
+          "Two-colour letterpress",
+          "Signed and numbered to 120"
+        ],
+        "description": "Set in metal type and pulled on a Vandercook. The plate for the coastline took three attempts.",
+        "reviews": [
+          {
+            "id": "rv-e2",
+            "author": "alice",
+            "stars": 5,
+            "title": "Framed it the day it arrived",
+            "body": "The impression is deep enough to feel. Packaging was a tube inside a tube.",
+            "tick": 7
+          }
+        ]
+      },
+      "et-ring-band": {
+        "id": "et-ring-band",
+        "category": "jewelry",
+        "title": "Hammered Band, Recycled Silver",
+        "seller": "Bayfront Metals",
+        "price_cents": 8900,
+        "rating_sum": 88,
+        "rating_count": 18,
+        "stock": 6,
+        "fast_shipping": false,
+        "bullets": [
+          "Recycled sterling silver",
+          "4mm, made to size",
+          "Hand-hammered finish"
+        ],
+        "description": "Each band is forged from reclaimed silver and hammered cold, so the facets catch light differently all the way round.",
+        "reviews": []
+      },
+      "et-notebook": {
+        "id": "et-notebook",
+        "category": "paper",
+        "title": "Coptic-bound Notebook, 160 Pages",
+        "seller": "Quill & Kettle Press",
+        "price_cents": 2900,
+        "rating_sum": 214,
+        "rating_count": 44,
+        "stock": 24,
+        "fast_shipping": false,
+        "bullets": [
+          "Lies completely flat",
+          "160 pages of 100gsm",
+          "Linen thread, exposed spine"
+        ],
+        "description": "Sewn by hand so it opens flat on a desk without being broken in first.",
+        "reviews": []
+      },
+      "et-tote-block": {
+        "id": "et-tote-block",
+        "category": "textiles",
+        "title": "Block-printed Tote, Fern",
+        "seller": "Rivergate Loom",
+        "price_cents": 3400,
+        "rating_sum": 126,
+        "rating_count": 27,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Hand-carved lino block",
+          "Heavyweight cotton canvas",
+          "Printed to order"
+        ],
+        "description": "Carved, inked and pulled one at a time. Sold out while the next block dries.",
+        "reviews": []
+      }
+    },
+    "carts": {
+      "alice": {
+        "et-notebook": 2
+      }
+    },
+    "orders": {
+      "5001": {
+        "id": "5001",
+        "buyer": "alice",
+        "tick": 7,
+        "date": "2026-03-11",
+        "items": [
+          {
+            "product": "et-print-map",
+            "title": "Letterpress Map Print, Puget Sound",
+            "qty": 1,
+            "price_cents": 4200
+          },
+          {
+            "product": "et-mug-slab",
+            "title": "Slab-built Stoneware Mug, Harbour Glaze",
+            "qty": 1,
+            "price_cents": 3800
+          }
+        ],
+        "total_cents": 8000,
+        "status": "Shipped",
+        "confirmation": "ORD-G3XGME",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": [
+        "et-scarf-loom",
+        "et-ring-band"
+      ],
+      "carol": [
+        "et-mug-slab"
+      ]
+    },
+    "messages": [
+      {
+        "id": "msg-1",
+        "from": "alice",
+        "to": "Quill & Kettle Press",
+        "product": "et-print-map",
+        "text": "Is the numbering on the edition visible under a 40cm frame mat?",
+        "tick": 6
+      },
+      {
+        "id": "msg-2",
+        "from": "carol",
+        "to": "Marrow Point Clay",
+        "product": "et-mug-slab",
+        "text": "Could you glaze one in the darker harbour blue if I order two?",
+        "tick": 8
+      }
+    ],
+    "next_order": 5002
+  },
+  "search_entries": [
+    {
+      "url": "http://etsy.com/",
+      "title": "Etsy - simulated maker marketplace",
+      "snippet": "Ceramics, textiles, paper and jewelry from invented makers. Favourite a listing or message the seller.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "handmade",
+        "marketplace",
+        "crafts",
+        "etsy",
+        "makers"
+      ]
+    },
+    {
+      "url": "http://etsy.com/dp/et-print-map",
+      "title": "Letterpress Map Print, Puget Sound - $42.00",
+      "snippet": "A2 two-colour letterpress on cotton rag, signed and numbered to 120.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "letterpress",
+        "map print",
+        "puget sound print",
+        "wall art"
+      ]
+    },
+    {
+      "url": "http://etsy.com/dp/et-mug-slab",
+      "title": "Slab-built Stoneware Mug, Harbour Glaze - $38.00",
+      "snippet": "Hand-built 12oz stoneware with a glaze that breaks blue over the throwing rings.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "stoneware mug",
+        "handmade mug",
+        "ceramics",
+        "pottery"
+      ]
+    },
+    {
+      "url": "http://etsy.com/dp/et-notebook",
+      "title": "Coptic-bound Notebook, 160 Pages - $29.00",
+      "snippet": "Sewn by hand with linen thread so it lies completely flat.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "notebook",
+        "coptic binding",
+        "handmade notebook",
+        "journal"
+      ]
+    },
+    {
+      "url": "http://etsy.com/dp/et-tote-block",
+      "title": "Block-printed Tote, Fern - sold out",
+      "snippet": "Hand-carved lino block on heavyweight canvas, printed to order. Currently sold out.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "tote bag",
+        "block print",
+        "screen print tote"
+      ]
+    },
+    {
+      "url": "http://etsy.com/dp/et-ring-band",
+      "title": "Hammered Band, Recycled Silver - $89.00",
+      "snippet": "Forged from reclaimed sterling and hammered cold, made to size.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "silver ring",
+        "recycled silver",
+        "handmade jewelry",
+        "hammered band"
+      ]
+    },
+    {
+      "url": "http://etsy.com/orders/5001",
+      "title": "Order 5001 - Etsy",
+      "snippet": "A letterpress print and a stoneware mug, $80.00, shipped.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "order 5001",
+        "etsy order",
+        "receipt"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,388 @@
+{
+  "id": "github",
+  "kind": "git",
+  "node": "github",
+  "domains": [
+    "github.com",
+    "www.github.com",
+    "gist.github.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "github",
+    "repositories": {
+      "atlas": {
+        "owner": "northstar",
+        "description": "Deterministic simulation runtime: processes, filesystem, network and browser, replayable byte for byte.",
+        "topics": [
+          "rust",
+          "determinism",
+          "simulation",
+          "testing"
+        ],
+        "stars": [
+          "alicechen",
+          "bmartinez",
+          "cnakamura",
+          "praman"
+        ],
+        "forks": 37,
+        "next_number": 21,
+        "readers": [],
+        "writers": [
+          "admin",
+          "alice",
+          "alicechen",
+          "bmartinez",
+          "bob",
+          "carol",
+          "cnakamura",
+          "northstar-ops"
+        ],
+        "objects": {
+          "e6895a7e6fe894d9f98ce4a22f5c520e9895a2551a999e1e04f1885727226536": {
+            "parents": [],
+            "files": {
+              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
+              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n\n- Handbook: http://intranet.internal/\n- Walkthrough: http://youtube.com/watch?v=atlas-walkthrough\n- Status: http://status.northstar.example/\n- Product: http://northstar.example/product\n",
+              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
+              "tests/path.rs": "#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
+            },
+            "message": "Initial commit",
+            "author": "alicechen",
+            "tick": 12
+          },
+          "7bafcc9ae922f22c413e235f4f8f9c9f1794cb6350715a8b0f7742d0b42cce93": {
+            "parents": [
+              "e6895a7e6fe894d9f98ce4a22f5c520e9895a2551a999e1e04f1885727226536"
+            ],
+            "files": {
+              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
+              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n\n- Handbook: http://intranet.internal/\n- Walkthrough: http://youtube.com/watch?v=atlas-walkthrough\n- Status: http://status.northstar.example/\n- Product: http://northstar.example/product\n",
+              "src/bfs.rs": "use std::collections::BTreeMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is only stable if the map iterates in a stable order. BTreeMap does.\npub fn shortest(links: &BTreeMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
+              "tests/path.rs": "#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
+            },
+            "message": "Sort refs before iterating in BFS",
+            "author": "praman",
+            "tick": 34
+          }
+        },
+        "refs": {
+          "refs/heads/main": "e6895a7e6fe894d9f98ce4a22f5c520e9895a2551a999e1e04f1885727226536",
+          "refs/heads/sort-refs": "7bafcc9ae922f22c413e235f4f8f9c9f1794cb6350715a8b0f7742d0b42cce93"
+        },
+        "issues": {
+          "9": {
+            "number": 9,
+            "title": "Document the seeded determinism streams",
+            "body": "Every service draws from service/{id}/initialize, so insertion order does not perturb anyone else. That is worth a paragraph in CONTRIBUTING.md.",
+            "state": "closed",
+            "author": "praman",
+            "tick": 8,
+            "assignee": "alicechen",
+            "labels": [
+              "docs"
+            ],
+            "comments": [
+              {
+                "author": "alicechen",
+                "body": "Landed in CONTRIBUTING.md.",
+                "tick": 12
+              }
+            ]
+          },
+          "14": {
+            "number": 14,
+            "title": "BFS path test fails on Windows only",
+            "body": "tests/path.rs is green on Linux and macOS and red on the Windows runner, about one run in four. Same seed, same inputs. Repro gist: http://github.com/gist/flaky-repro",
+            "state": "open",
+            "author": "bmartinez",
+            "tick": 30,
+            "assignee": "bmartinez",
+            "labels": [
+              "bug",
+              "windows",
+              "flaky"
+            ],
+            "comments": [
+              {
+                "author": "alicechen",
+                "body": "Smells like hash-map iteration order - src/bfs.rs walks links.get(at) straight out of a HashMap.",
+                "tick": 30
+              },
+              {
+                "author": "praman",
+                "body": "It is. I wrote the long version here: http://stackoverflow.com/questions/t-4411",
+                "tick": 33
+              },
+              {
+                "author": "bmartinez",
+                "body": "Confirmed, and written up at http://bmartinez.net/posts/hash-order-bit-me",
+                "tick": 34
+              }
+            ]
+          },
+          "18": {
+            "number": 18,
+            "title": "Publish a determinism explainer for the launch",
+            "body": "The launch checklist wants one page a reader can send to a sceptic. Draft lives in the launch doc: http://docs.google.com/documents/atlas-launch",
+            "state": "open",
+            "author": "cnakamura",
+            "tick": 35,
+            "assignee": "cnakamura",
+            "labels": [
+              "docs",
+              "launch"
+            ]
+          }
+        },
+        "pull_requests": {
+          "11": {
+            "number": 11,
+            "title": "Add the contributing guide",
+            "body": "Three rules, one page.",
+            "state": "merged",
+            "author": "cnakamura",
+            "tick": 12,
+            "head": "refs/heads/contributing",
+            "base": "refs/heads/main",
+            "merged_by": "alicechen"
+          },
+          "15": {
+            "number": 15,
+            "title": "Sort refs before iterating in BFS",
+            "body": "Swap the HashMap for a BTreeMap so neighbour order is part of the contract. Closes #14.",
+            "state": "open",
+            "author": "praman",
+            "tick": 34,
+            "assignee": "alicechen",
+            "labels": [
+              "bug"
+            ],
+            "comments": [
+              {
+                "author": "bmartinez",
+                "body": "Ran it 200 times on the Windows matrix. Green every time.",
+                "tick": 35
+              }
+            ],
+            "reviews": [
+              {
+                "author": "alicechen",
+                "decision": "approve",
+                "body": "Exactly right. The map was never the fast path anyway.",
+                "tick": 36
+              }
+            ],
+            "head": "refs/heads/sort-refs",
+            "base": "refs/heads/main"
+          }
+        }
+      },
+      "atlas-actions": {
+        "owner": "northstar",
+        "description": "Reusable CI workflows, including the Windows matrix that keeps catching hash-order bugs.",
+        "topics": [
+          "ci",
+          "github-actions"
+        ],
+        "stars": [
+          "alicechen",
+          "cnakamura"
+        ],
+        "forks": 4,
+        "next_number": 8,
+        "writers": [
+          "admin",
+          "alice",
+          "alicechen",
+          "bmartinez",
+          "bob",
+          "carol",
+          "cnakamura",
+          "northstar-ops"
+        ],
+        "files": {
+          "README.md": "# atlas-actions\n\nThe workflows every Northstar repository imports.\n\nThe `windows` job runs each test 20 times. See http://github.com/northstar/atlas/issues/14 for why.\n",
+          "workflows/windows.yml": "name: windows\njobs:\n  test:\n    runs: 20\n    shell: powershell\n"
+        },
+        "issues": {
+          "7": {
+            "number": 7,
+            "title": "Windows runner times out on a cold cache",
+            "body": "First run after a cache eviction takes 19 minutes and trips the 15 minute limit.",
+            "state": "open",
+            "author": "bmartinez",
+            "tick": 38,
+            "assignee": "bmartinez",
+            "labels": [
+              "ci"
+            ]
+          }
+        }
+      },
+      "dotfiles": {
+        "owner": "alicechen",
+        "description": "Alice's shell, editor and tmux configuration.",
+        "topics": [
+          "dotfiles"
+        ],
+        "stars": [
+          "bmartinez"
+        ],
+        "forks": 2,
+        "writers": [
+          "alice",
+          "alicechen"
+        ],
+        "files": {
+          "README.md": "# dotfiles\n\nWhat I actually type. Blog: http://alicechen.dev/\n",
+          "shell/aliases.sh": "alias gs='git status --short'\nalias ll='ls -lah'\n"
+        }
+      }
+    },
+    "gists": {
+      "bfs-order": {
+        "owner": "praman",
+        "description": "Sort before you iterate",
+        "files": {
+          "order.rs": "// A HashMap promises you a value, never an order.\n// If the order is part of your output, it is part of your types.\nlet mut neighbours: Vec<&str> = links[at].iter().map(String::as_str).collect();\nneighbours.sort_unstable();\n"
+        },
+        "tick": 33
+      },
+      "flaky-repro": {
+        "owner": "bmartinez",
+        "description": "Minimal repro for the Windows-only BFS failure",
+        "files": {
+          "repro.rs": "// Run 50 times. On Windows two of them come back with the long path.\nfor _ in 0..50 {\n    assert_eq!(shortest(&fixture(), \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
+        },
+        "tick": 30
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://github.com/",
+      "title": "GitHub",
+      "snippet": "Where the world builds software. Repositories, issues and pull requests.",
+      "authority": 8,
+      "keywords": [
+        "github",
+        "code",
+        "git",
+        "repository",
+        "open source"
+      ]
+    },
+    {
+      "url": "http://github.com/northstar",
+      "title": "northstar · GitHub",
+      "snippet": "The Northstar organisation: atlas and atlas-actions.",
+      "authority": 7,
+      "keywords": [
+        "northstar",
+        "org",
+        "github"
+      ]
+    },
+    {
+      "url": "http://github.com/northstar/atlas",
+      "title": "northstar/atlas · GitHub",
+      "snippet": "Deterministic simulation runtime: processes, filesystem, network and browser, replayable byte for byte.",
+      "authority": 8,
+      "keywords": [
+        "atlas",
+        "northstar",
+        "determinism",
+        "rust",
+        "simulation",
+        "runtime"
+      ]
+    },
+    {
+      "url": "http://github.com/northstar/atlas/issues",
+      "title": "Issues · northstar/atlas",
+      "snippet": "Open issues on the Atlas runtime, including the Windows-only path test.",
+      "authority": 6,
+      "keywords": [
+        "issues",
+        "atlas",
+        "bugs"
+      ]
+    },
+    {
+      "url": "http://github.com/northstar/atlas/issues/14",
+      "title": "BFS path test fails on Windows only · Issue #14 · northstar/atlas",
+      "snippet": "Green on Linux and macOS, red on the Windows runner about one run in four. Hash-map iteration order.",
+      "authority": 7,
+      "keywords": [
+        "flaky",
+        "windows",
+        "bfs",
+        "test",
+        "hash order",
+        "atlas"
+      ]
+    },
+    {
+      "url": "http://github.com/northstar/atlas/pulls",
+      "title": "Pull requests · northstar/atlas",
+      "snippet": "Open pull requests against the Atlas main branch.",
+      "authority": 5,
+      "keywords": [
+        "pull request",
+        "atlas",
+        "review"
+      ]
+    },
+    {
+      "url": "http://github.com/northstar/atlas/pull/15",
+      "title": "Sort refs before iterating in BFS by praman · Pull Request #15",
+      "snippet": "Swap the HashMap for a BTreeMap so neighbour order is part of the contract. Closes #14.",
+      "authority": 6,
+      "keywords": [
+        "pull request",
+        "btreemap",
+        "praman",
+        "bfs",
+        "atlas"
+      ]
+    },
+    {
+      "url": "http://github.com/northstar/atlas-actions",
+      "title": "northstar/atlas-actions · GitHub",
+      "snippet": "Reusable CI workflows, including the Windows matrix that keeps catching hash-order bugs.",
+      "authority": 5,
+      "keywords": [
+        "ci",
+        "github actions",
+        "windows",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://github.com/alicechen/dotfiles",
+      "title": "alicechen/dotfiles · GitHub",
+      "snippet": "Alice Chen's shell, editor and tmux configuration.",
+      "authority": 4,
+      "keywords": [
+        "dotfiles",
+        "alice chen",
+        "shell",
+        "tmux"
+      ]
+    },
+    {
+      "url": "http://github.com/gist/bfs-order",
+      "title": "Sort before you iterate · GitHub Gist",
+      "snippet": "A HashMap promises you a value, never an order. If the order is part of your output, it is part of your types.",
+      "authority": 4,
+      "keywords": [
+        "gist",
+        "hash order",
+        "praman",
+        "sort"
+      ]
+    }
+  ]
+}

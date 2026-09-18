@@ -2,6 +2,137 @@
 //! commands act only on the computer substrate and explicit network adapter.
 use crate::{CommandResult, Computer, ShellHost};
 use std::collections::BTreeMap;
+/// A failure carries its status so consumers classify by exit code, never by matching
+/// error text. 127 no such command, 126 found but not executable, 2 the flag or syntax
+/// is outside the simulated surface, 1 a modelled negative or operational error.
+#[derive(Debug, Clone)]
+pub(crate) struct Fail {
+    text: String,
+    code: i32,
+    /// Output produced before failing: `grep -c` prints 0 and still exits 1.
+    out: String,
+    /// The text is already a complete message: do not prefix it with the command
+    /// name. A nested shell's diagnostics are its own, and are carried through even
+    /// when it exits 0, so a script never loses what it printed to stderr.
+    raw: bool,
+}
+impl Fail {
+    fn new(text: impl Into<String>, code: i32) -> Self {
+        Self {
+            text: text.into(),
+            code,
+            out: String::new(),
+            raw: false,
+        }
+    }
+    /// Carries a nested run's two streams and status through unchanged.
+    fn nested(r: CommandResult) -> Self {
+        Self {
+            text: r.stderr,
+            code: r.exit_code,
+            out: r.stdout,
+            raw: true,
+        }
+    }
+    fn with_output(mut self, out: String) -> Self {
+        self.out = out;
+        self
+    }
+    /// Unsupported flag or malformed invocation: refused loudly, never ignored.
+    fn usage(text: impl Into<String>) -> Self {
+        Self::new(text, 2)
+    }
+}
+impl From<String> for Fail {
+    fn from(text: String) -> Self {
+        Self::new(text, 1)
+    }
+}
+impl From<&str> for Fail {
+    fn from(text: &str) -> Self {
+        Self::new(text, 1)
+    }
+}
+impl From<crate::VfsError> for Fail {
+    fn from(e: crate::VfsError) -> Self {
+        Self::new(e.to_string(), 1)
+    }
+}
+/// Commands implemented in-process. `which` reports a nominal path for these because
+/// the VFS holds no binaries; the roster is the honest answer to "is this available?".
+pub(crate) const BUILTINS: &[&str] = &[
+    ":",
+    "[",
+    "[[",
+    "apt",
+    "apt-get",
+    "bash",
+    "break",
+    "brew",
+    "cat",
+    "cd",
+    "chmod",
+    "clear",
+    "continue",
+    "cp",
+    "curl",
+    "cut",
+    "date",
+    "df",
+    "du",
+    "echo",
+    "env",
+    "exit",
+    "export",
+    "false",
+    "find",
+    "getopts",
+    "git",
+    "grep",
+    "head",
+    "hostname",
+    "ip",
+    "kill",
+    "ln",
+    "local",
+    "ls",
+    "mkdir",
+    "mv",
+    "npm",
+    "nproc",
+    "pip",
+    "printenv",
+    "printf",
+    "ps",
+    "pwd",
+    "read",
+    "return",
+    "rm",
+    "rmdir",
+    "sed",
+    "service",
+    "sh",
+    "shift",
+    "sleep",
+    "sort",
+    "source",
+    "stat",
+    "sudo",
+    "systemctl",
+    "tail",
+    "test",
+    "touch",
+    "tr",
+    "true",
+    "uname",
+    "uniq",
+    "unset",
+    "uptime",
+    "wc",
+    "wget",
+    "which",
+    "whoami",
+];
 #[derive(Clone, Debug)]
 enum Token {
     Word(Vec<(String, u8)>),
@@ -13,6 +144,8 @@ fn lex(s: &str, ps: bool) -> Result<Vec<Token>, String> {
     let mut out = vec![];
     let mut parts = vec![];
     let mut word = false;
+    // Index at which the previous word ended, so `2>` is distinguished from `2 >`.
+    let mut word_end = usize::MAX;
     let mut heredocs: Vec<(usize, String, u8, bool)> = Vec::new();
     while i < chars.len() {
         let ch = chars[i];
@@ -75,10 +208,11 @@ fn lex(s: &str, ps: bool) -> Result<Vec<Token>, String> {
             }
             continue;
         }
-        if ch == ' ' || ch == '\t' || ";\n|&<>".contains(ch) {
+        if ch == ' ' || ch == '\t' || ";\n|&<>()".contains(ch) {
             if word {
                 out.push(Token::Word(std::mem::take(&mut parts)));
                 word = false;
+                word_end = i;
             }
             if ch == ' ' || ch == '\t' {
                 i += 1;
@@ -133,6 +267,7 @@ fn lex(s: &str, ps: bool) -> Result<Vec<Token>, String> {
                 out.push(Token::Op(op));
                 continue;
             }
+            let start = i;
             let mut op = ch.to_string();
             if i + 1 < chars.len() && ((ch == '|' || ch == '&' || ch == '>') && chars[i + 1] == ch)
             {
@@ -140,11 +275,21 @@ fn lex(s: &str, ps: bool) -> Result<Vec<Token>, String> {
                 i += 1;
             }
             if ch == '>' {
+                // A descriptor prefix only counts when glued on: `echo 2 > f` redirects stdout.
                 if let Some(Token::Word(v)) = out.last() {
-                    if v.len() == 1 && v[0].0 == "2" {
+                    if word_end == start && v.len() == 1 && (v[0].0 == "1" || v[0].0 == "2") {
+                        let fd = v[0].0.clone();
                         out.pop();
-                        op = format!("2{op}");
+                        op = format!("{fd}{op}");
                     }
+                }
+                // `2>&1` duplicates a descriptor and takes no path operand.
+                if chars.get(i + 1) == Some(&'&')
+                    && chars.get(i + 2).is_some_and(char::is_ascii_digit)
+                {
+                    op.push('&');
+                    op.push(chars[i + 2]);
+                    i += 2;
                 }
             }
             out.push(Token::Op(op));
@@ -185,7 +330,7 @@ fn lex(s: &str, ps: bool) -> Result<Vec<Token>, String> {
         word = true;
         let mut text = String::new();
         while i < chars.len()
-            && !" \t\n;|&<>\"'".contains(chars[i])
+            && !" \t\n;|&<>()\"'".contains(chars[i])
             && chars[i] != if ps { '`' } else { '\\' }
             && !(chars[i] == '`' && !ps)
         {
@@ -446,6 +591,18 @@ fn glob_paths(c: &Computer, pattern: &str) -> Vec<String> {
         })
         .collect()
 }
+/// `$@`/`$*` joined by a space. Both spellings produce one string here; unquoted it is
+/// then field-split like any other expansion, so `cmd $@` forwards the parameters,
+/// while `"$@"` stays one word rather than one word per parameter.
+fn positional(c: &Computer) -> (usize, String) {
+    let n: usize = c.env.get("#").and_then(|v| v.parse().ok()).unwrap_or(0);
+    let joined = (1..=n)
+        .filter_map(|i| c.env.get(&i.to_string()))
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ");
+    (n, joined)
+}
 fn expand(text: &str, c: &Computer, status: i32) -> String {
     let mut out = String::new();
     let v: Vec<char> = text.chars().collect();
@@ -465,6 +622,32 @@ fn expand(text: &str, c: &Computer, status: i32) -> String {
         let brace = i < v.len() && v[i] == '{';
         if brace {
             i += 1;
+        }
+        // `#` and `@`/`*` are not identifier characters, so they are read here.
+        if matches!(v.get(i), Some('@' | '*' | '#' | '?')) {
+            let special = v[i];
+            i += 1;
+            let (count, joined) = positional(c);
+            if special == '#' && brace && v.get(i) != Some(&'}') {
+                // `${#NAME}` is the length of the value, not the parameter count.
+                let start = i;
+                while i < v.len() && (v[i].is_alphanumeric() || v[i] == '_') {
+                    i += 1;
+                }
+                let name: String = v[start..i].iter().collect();
+                let length = c.env.get(&name).map_or(0, |value| value.chars().count());
+                out.push_str(&length.to_string());
+            } else {
+                out.push_str(&match special {
+                    '#' => count.to_string(),
+                    '?' => status.to_string(),
+                    _ => joined,
+                });
+            }
+            if brace && v.get(i) == Some(&'}') {
+                i += 1;
+            }
+            continue;
         }
         let start = i;
         while i < v.len() && (v[i].is_alphanumeric() || v[i] == '_' || v[i] == ':') {
@@ -530,6 +713,68 @@ fn word(
         _ => Err("expected word".into()),
     }
 }
+/// Expands a word into the fields it becomes. An unquoted expansion is split on
+/// whitespace, a quoted one never is, and an unquoted expansion that comes out empty
+/// contributes no field at all — the difference between `cmd $EMPTY` and `cmd "$EMPTY"`.
+/// Literal text cannot contain whitespace (the lexer would have ended the word), so
+/// splitting a whole unquoted part is the same as splitting only what it expanded to.
+fn word_fields(
+    t: &Token,
+    c: &mut Computer,
+    status: i32,
+    tick: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+) -> Result<Vec<String>, String> {
+    let Token::Word(parts) = t else {
+        return Err("expected word".into());
+    };
+    let mut fields: Vec<String> = Vec::new();
+    let mut pending = String::new();
+    let mut started = false;
+    for (part, flags) in parts {
+        let text = if flags & 1 != 0 {
+            expand_commands(part, c, status, tick, host, depth)?
+        } else {
+            part.clone()
+        };
+        if flags & 2 == 0 {
+            // Quoted: the field exists even when the expansion is empty.
+            pending.push_str(&text);
+            started = true;
+            continue;
+        }
+        if started && text.starts_with(char::is_whitespace) {
+            fields.push(std::mem::take(&mut pending));
+            started = false;
+        }
+        for (k, piece) in text.split_whitespace().enumerate() {
+            if k > 0 {
+                fields.push(std::mem::take(&mut pending));
+            }
+            pending.push_str(piece);
+            started = true;
+        }
+        if started && text.ends_with(char::is_whitespace) {
+            fields.push(std::mem::take(&mut pending));
+            started = false;
+        }
+    }
+    if started {
+        fields.push(pending);
+    }
+    // `~` names the home directory at the head of a word only.
+    if let Some(first) = fields.first_mut() {
+        if first == "~" || first.starts_with("~/") {
+            *first = format!(
+                "{}{}",
+                c.env.get("HOME").cloned().unwrap_or_default(),
+                &first[1..]
+            );
+        }
+    }
+    Ok(fields)
+}
 pub fn execute(
     c: &mut Computer,
     source: &str,
@@ -546,21 +791,27 @@ fn execute_inner(
     depth: usize,
 ) -> CommandResult {
     if depth > 32 {
-        return CommandResult::error("shell: execution nesting exceeds 32");
+        return CommandResult::new("shell: execution nesting exceeds 32\n", 2);
     }
     if source.len() > 65536 {
-        return CommandResult::error("shell: command exceeds 64 KiB limit");
+        return CommandResult::new("shell: command exceeds 64 KiB limit\n", 2);
     }
     let tokens = match lex(source, c.dialect == "powershell") {
         Ok(v) => v,
-        Err(e) => return CommandResult::error(format!("shell: {e}\n")),
+        Err(e) => return CommandResult::new(format!("shell: {e}\n"), 2),
     };
     if matches!(tokens.last(),Some(Token::Op(op)) if op=="&&"||op=="||"||op=="|") {
-        return CommandResult::error("shell: missing command after operator");
+        return CommandResult::new("shell: missing command after operator\n", 2);
     }
     if matches!(tokens.first(),Some(Token::Op(op)) if op=="&&"||op=="||"||op=="|") {
-        return CommandResult::error("shell: unexpected operator");
+        return CommandResult::new("shell: unexpected operator\n", 2);
     }
+    // Control flow is parsed into a tree; a plain list becomes a row of Simple nodes
+    // that the same flat evaluator as before runs, so its semantics cannot drift.
+    let nodes = match Grammar::program(&tokens) {
+        Ok(v) => v,
+        Err(e) => return CommandResult::new(format!("shell: {e}\n"), 2),
+    };
     let pid = c.processes.spawn(1, &c.user, source, tick);
     if tokens
         .first()
@@ -598,16 +849,47 @@ fn execute_inner(
         };
     }
     let mut total = CommandResult::default();
+    let mut ctx = Ctx::default();
+    let mut previous = run_nodes(c, &nodes, &mut ctx, tick, host, depth, &mut total, 0);
+    // A budget is the only signal that survives every frame; it becomes the status.
+    if let Flow::Budget(message) = &ctx.flow {
+        total.stderr.push_str(&format!("shell: {message}\n"));
+        previous = 2;
+    }
+    if let Flow::Exit(code) = ctx.flow {
+        previous = code;
+    }
+    total.exit_code = previous;
+    total.pid = pid;
+    let _ = c.processes.exit(pid, previous, tick);
+    host.cleanup_process(pid);
+    total
+}
+/// An and-or list: pipelines joined by `&&`/`||`, separators included. This is the
+/// evaluator the shell has always had; control flow calls into it for each leaf.
+#[allow(clippy::too_many_arguments)]
+fn run_list(
+    c: &mut Computer,
+    tokens: &[Token],
+    ctx: &mut Ctx,
+    tick: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+    total: &mut CommandResult,
+    mut previous: i32,
+    initial: &str,
+) -> i32 {
     let mut pos = 0;
-    let mut previous = 0;
     let mut gate = String::new();
+    // Only the first command of the list inherits a piped-in or redirected stream.
+    let mut initial = initial.to_string();
     while pos < tokens.len() {
         let allowed = match gate.as_str() {
             "&&" => previous == 0,
             "||" => previous != 0,
             _ => true,
         };
-        let mut input = String::new();
+        let mut input = std::mem::take(&mut initial);
         loop {
             let start = pos;
             while pos < tokens.len()
@@ -624,10 +906,25 @@ fn execute_inner(
                 }
             }
             if allowed {
-                let r = run_tokens(c, &tokens[start..pos], &input, tick, host, depth, previous);
+                let r = run_tokens(
+                    c,
+                    &tokens[start..pos],
+                    &input,
+                    tick,
+                    host,
+                    depth,
+                    previous,
+                    ctx,
+                );
                 previous = r.exit_code;
+                total.clear |= r.clear;
                 total.stderr.push_str(&r.stderr);
                 input = r.stdout;
+                // `break`, `continue`, `return` and an exhausted budget stop here.
+                if ctx.flow != Flow::Normal {
+                    total.stdout.push_str(&input);
+                    return previous;
+                }
             }
             let op = if let Some(Token::Op(s)) = tokens.get(pos) {
                 s.clone()
@@ -650,12 +947,9 @@ fn execute_inner(
             break;
         }
     }
-    total.exit_code = previous;
-    total.pid = pid;
-    let _ = c.processes.exit(pid, previous, tick);
-    host.cleanup_process(pid);
-    total
+    previous
 }
+#[allow(clippy::too_many_arguments)]
 fn run_tokens(
     c: &mut Computer,
     tokens: &[Token],
@@ -664,14 +958,29 @@ fn run_tokens(
     host: &mut dyn ShellHost,
     depth: usize,
     status: i32,
+    ctx: &mut Ctx,
 ) -> CommandResult {
+    if !ctx.charge(Budget::Step) {
+        return CommandResult::new(String::new(), 2);
+    }
     let mut args = vec![];
-    let mut redirects = vec![];
+    // Descriptor table resolved at parse time so `>f 2>&1` and `2>&1 >f` differ as in bash.
+    let mut fds: [Sink; 2] = [Sink::Fd(0), Sink::Fd(1)];
     let mut input = stdin.to_string();
     let mut i = 0;
     while i < tokens.len() {
         match &tokens[i] {
+            Token::Op(op) if op == "(" || op == ")" => {
+                return CommandResult::new(format!("shell: unexpected `{op}`\n"), 2)
+            }
             Token::Op(op) => {
+                if let Some(source) = op.strip_suffix("&1").or_else(|| op.strip_suffix("&2")) {
+                    let to = usize::from(op.ends_with('2'));
+                    let from = usize::from(source.starts_with('2'));
+                    fds[from] = fds[to].clone();
+                    i += 1;
+                    continue;
+                }
                 i += 1;
                 let path = match tokens
                     .get(i)
@@ -685,7 +994,7 @@ fn run_tokens(
                             c.resolve(&p)
                         }
                     }
-                    Err(e) => return CommandResult::error(e),
+                    Err(e) => return CommandResult::new(format!("shell: {e}\n"), 2),
                 };
                 if op == "<<" {
                     input = path;
@@ -695,27 +1004,48 @@ fn run_tokens(
                         Err(e) => return CommandResult::error(e.to_string()),
                     }
                 } else {
-                    redirects.push((op.clone(), path));
+                    let sink = Sink::File(path, op.ends_with(">>"));
+                    if op.starts_with('&') {
+                        fds = [sink.clone(), sink];
+                    } else if op.starts_with('2') {
+                        fds[1] = sink;
+                    } else {
+                        fds[0] = sink;
+                    }
                 }
             }
-            v => match word(v, c, status, t, host, depth) {
-                Ok(s) => {
+            v => match word_fields(v, c, status, t, host, depth) {
+                Ok(fields) => {
+                    // Only a `*` written in the source globs; one that arrives from a
+                    // variable stays literal, so data never turns into a pattern.
                     let glob = matches!(v,Token::Word(parts) if parts.iter().any(|(p,f)| f&2!=0 && (p.contains('*')||p.contains('?'))));
-                    if glob {
-                        let paths = glob_paths(c, &s);
+                    for field in fields {
+                        let paths = if glob && (field.contains('*') || field.contains('?')) {
+                            glob_paths(c, &field)
+                        } else {
+                            vec![]
+                        };
                         if paths.is_empty() {
-                            args.push(s)
+                            args.push(field)
                         } else {
                             args.extend(paths)
                         }
-                    } else {
-                        args.push(s)
                     }
                 }
                 Err(e) => return CommandResult::error(e),
             },
         }
         i += 1;
+    }
+    // A compound's shared stream reaches the command that would actually read it, and
+    // that command consumes it. `read` is handled by its own builtin, which takes one
+    // line and leaves the rest — that is what lets a `while read` loop advance.
+    if input.is_empty()
+        && ctx.stdin.is_some()
+        && args.first().is_some_and(|a| a != "read")
+        && reads_stdin(c, &args)
+    {
+        input = ctx.stdin.take().unwrap_or_default();
     }
     let mut assignments = vec![];
     while args.first().is_some_and(|s| {
@@ -730,14 +1060,32 @@ fn run_tokens(
     let persist = args.is_empty();
     let mut result = if persist {
         CommandResult::default()
+    } else if let Some(r) = control_word(&args, ctx, status) {
+        r
+    } else if let Some(r) = shell_builtin(c, &args, &input, ctx, t, host, depth) {
+        r
+    } else if let Some(body) = ctx.functions.get(&args[0]).cloned() {
+        call_function(c, &body, &args, ctx, t, host, depth)
     } else {
         match run(c, &args, &input, t, host, depth) {
-            Ok(s) => CommandResult::success(s),
-            Err(e) => CommandResult::error(if e.is_empty() {
-                String::new()
-            } else {
-                format!("{}: {e}\n", args[0])
-            }),
+            Ok(s) => CommandResult {
+                stdout: s,
+                // `clear` emits no bytes; the terminal reads this flag and erases itself.
+                clear: args[0].eq_ignore_ascii_case("clear") || args[0].eq_ignore_ascii_case("cls"),
+                ..CommandResult::default()
+            },
+            Err(f) => CommandResult {
+                stdout: f.out.clone(),
+                stderr: if f.text.is_empty() {
+                    String::new()
+                } else if f.raw || f.text.starts_with(&format!("{}: ", args[0])) {
+                    format!("{}\n", f.text.trim_end_matches('\n'))
+                } else {
+                    format!("{}: {}\n", args[0], f.text.trim_end_matches('\n'))
+                },
+                exit_code: f.code,
+                ..CommandResult::default()
+            },
         }
     };
     if !persist {
@@ -749,19 +1097,48 @@ fn run_tokens(
             }
         }
     }
-    for (op, path) in redirects {
-        let data = if op.starts_with('&') {
-            format!(
-                "{}{}",
-                std::mem::take(&mut result.stdout),
-                std::mem::take(&mut result.stderr)
-            )
-        } else if op.starts_with('2') {
-            std::mem::take(&mut result.stderr)
-        } else {
-            std::mem::take(&mut result.stdout)
-        };
-        let written = if op.ends_with(">>") {
+    dispatch(c, &mut result, &fds, t);
+    result
+}
+/// Commands whose implementation falls back to the input stream when they are not
+/// given a file. Only these are handed a compound's shared stream, so a loop body that
+/// ignores stdin cannot swallow the lines the loop is reading.
+fn reads_stdin(c: &Computer, args: &[String]) -> bool {
+    let named_file = args[1..]
+        .iter()
+        .any(|a| !a.starts_with('-') && c.vfs.exists(&c.resolve(a)));
+    match args[0].to_ascii_lowercase().as_str() {
+        "tr" | "cut" => true,
+        "cat" | "type" | "get-content" => args.len() == 1,
+        "grep" | "select-string" | "sed" | "head" | "tail" | "wc" | "sort" | "uniq" => !named_file,
+        _ => false,
+    }
+}
+/// Sends a result's two streams where its descriptor table points. Two descriptors
+/// aimed at one file must produce one write, stdout first.
+fn dispatch(c: &mut Computer, result: &mut CommandResult, fds: &[Sink; 2], t: u64) {
+    let mut files: Vec<(String, bool, String)> = Vec::new();
+    let produced = [
+        std::mem::take(&mut result.stdout),
+        std::mem::take(&mut result.stderr),
+    ];
+    for (slot, data) in produced.into_iter().enumerate() {
+        match fds[slot].clone() {
+            Sink::Fd(0) => result.stdout.push_str(&data),
+            Sink::Fd(_) => result.stderr.push_str(&data),
+            // The bit bucket swallows the bytes and creates nothing.
+            Sink::File(path, _) if path == "/dev/null" => {}
+            Sink::File(path, append_mode) => match files
+                .iter_mut()
+                .find(|(p, a, _)| *p == path && *a == append_mode)
+            {
+                Some(entry) => entry.2.push_str(&data),
+                None => files.push((path, append_mode, data)),
+            },
+        }
+    }
+    for (path, append_mode, data) in files {
+        let written = if append_mode {
             append(c, &path, data.as_bytes(), t)
         } else {
             c.vfs.write_as(&path, data.as_bytes(), &c.user, t)
@@ -771,7 +1148,1393 @@ fn run_tokens(
             result.exit_code = 1;
         }
     }
-    result
+}
+/// Bounds that keep a loop from hanging a deterministic simulator. Every `execute`
+/// gets its own budget and nesting is capped at 32, so the total work one command can
+/// do is finite; exceeding either is status 2, never a hang.
+const STEP_BUDGET: u64 = 10_000;
+const LOOP_BUDGET: u64 = 10_000;
+#[derive(Clone, Copy)]
+enum Budget {
+    Step,
+    Loop,
+}
+/// Why a statement list stopped early. `Budget` unwinds every frame at once.
+#[derive(Clone, PartialEq)]
+enum Flow {
+    Normal,
+    Break(u32),
+    Continue(u32),
+    Return(i32),
+    /// `exit`: unwinds to the end of this shell invocation, through functions too.
+    Exit(i32),
+    Budget(String),
+}
+/// Per-invocation shell state: functions, the early-exit signal, and the budgets.
+/// It is not part of `Computer`, so nothing about it is serialised or replayed.
+struct Ctx {
+    functions: BTreeMap<String, std::sync::Arc<Vec<Node>>>,
+    flow: Flow,
+    steps: u64,
+    loops: u64,
+    /// The shared input stream a compound was given by `< file` or a pipe. `read`
+    /// consumes from it, which is what makes `while read … done < f` terminate.
+    stdin: Option<String>,
+    /// One frame per active function call, holding what `local` shadowed.
+    locals: Vec<Vec<(String, Option<String>)>>,
+    /// `getopts` position inside a cluster such as `-ab`, plus the `OPTIND` it
+    /// belongs to so a script resetting `OPTIND=1` restarts cleanly.
+    optpos: usize,
+    optind: usize,
+    /// Depth of enclosing loops and function bodies: `break` and `return` outside one
+    /// are refused rather than silently doing nothing.
+    in_loop: u32,
+    in_function: u32,
+}
+impl Default for Ctx {
+    fn default() -> Self {
+        Self {
+            functions: BTreeMap::new(),
+            flow: Flow::Normal,
+            steps: STEP_BUDGET,
+            loops: LOOP_BUDGET,
+            stdin: None,
+            locals: Vec::new(),
+            optpos: 0,
+            optind: 0,
+            in_loop: 0,
+            in_function: 0,
+        }
+    }
+}
+impl Ctx {
+    fn charge(&mut self, kind: Budget) -> bool {
+        let (left, message) = match kind {
+            Budget::Step => (
+                &mut self.steps,
+                format!("command budget exhausted after {STEP_BUDGET} commands"),
+            ),
+            Budget::Loop => (
+                &mut self.loops,
+                format!("loops exceeded {LOOP_BUDGET} total iterations"),
+            ),
+        };
+        if *left == 0 {
+            self.flow = Flow::Budget(message);
+            return false;
+        }
+        *left -= 1;
+        true
+    }
+}
+/// A parsed statement. `Simple` holds the tokens of one and-or list and is handed
+/// straight to `run_list`, so quoting, pipes and redirection behave as they always did.
+#[derive(Clone)]
+enum Node {
+    Simple(Vec<Token>),
+    /// `(condition, body)` per `if`/`elif`, then the `else` list.
+    If {
+        branches: Vec<(Vec<Node>, Vec<Node>)>,
+        otherwise: Vec<Node>,
+    },
+    /// `words` is `None` for `for x; do`, which walks the positional parameters.
+    For {
+        name: String,
+        words: Option<Vec<Token>>,
+        body: Vec<Node>,
+    },
+    Loop {
+        until: bool,
+        condition: Vec<Node>,
+        body: Vec<Node>,
+    },
+    Case {
+        subject: Token,
+        arms: Vec<(Vec<Token>, Vec<Node>)>,
+    },
+    Function {
+        name: String,
+        body: std::sync::Arc<Vec<Node>>,
+    },
+    Subshell(Vec<Node>),
+    Group(Vec<Node>),
+    /// `head GATE tail` where at least one side is compound; a plain and-or list of
+    /// simple commands stays one `Simple` node and keeps the older evaluator.
+    Chain {
+        head: Box<Node>,
+        gate: String,
+        tail: Box<Node>,
+    },
+    /// Redirections attached to a compound command, e.g. `done < input`.
+    Redirect {
+        body: Box<Node>,
+        ops: Vec<(String, Option<Token>)>,
+    },
+    /// The tokens between `[[` and `]]`; they include operators the ordinary
+    /// evaluator would have split the command on, so they are kept whole.
+    Conditional(Vec<Token>),
+}
+/// A shell variable or function name: letters, digits and `_`, never leading a digit.
+fn valid_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with(|c: char| c.is_ascii_digit())
+        && name.chars().all(|ch| ch.is_alphanumeric() || ch == '_')
+}
+/// The unquoted text of a one-part word; keywords are only keywords unquoted, so
+/// `"if"` and `\if` stay ordinary arguments.
+fn bare(t: Option<&Token>) -> Option<&str> {
+    match t {
+        Some(Token::Word(parts)) if parts.len() == 1 && parts[0].1 & 2 != 0 => Some(&parts[0].0),
+        _ => None,
+    }
+}
+const KEYWORDS: &[&str] = &[
+    "if", "then", "elif", "else", "fi", "for", "in", "while", "until", "do", "done", "case",
+    "esac", "function", "{", "}",
+];
+struct Grammar<'a> {
+    t: &'a [Token],
+    i: usize,
+}
+impl<'a> Grammar<'a> {
+    fn program(tokens: &'a [Token]) -> Result<Vec<Node>, String> {
+        let mut g = Grammar { t: tokens, i: 0 };
+        let nodes = g.list(&[])?;
+        if g.i < g.t.len() {
+            return Err(match &g.t[g.i] {
+                Token::Op(op) => format!("unexpected `{op}`"),
+                Token::Word(_) => format!("unexpected `{}`", bare(g.t.get(g.i)).unwrap_or("word")),
+            });
+        }
+        Ok(nodes)
+    }
+    fn op(&self, offset: usize) -> Option<&str> {
+        match self.t.get(self.i + offset) {
+            Some(Token::Op(s)) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+    fn word(&self, offset: usize) -> Option<&str> {
+        bare(self.t.get(self.i + offset))
+    }
+    /// `;;` ends a `case` arm; the lexer emits it as two separators.
+    fn double_semicolon(&self) -> bool {
+        self.op(0) == Some(";") && self.op(1) == Some(";")
+    }
+    fn stops(&self, terminators: &[&str]) -> bool {
+        if self.i >= self.t.len() {
+            return true;
+        }
+        if terminators.contains(&";;") && self.double_semicolon() {
+            return true;
+        }
+        self.op(0).is_some_and(|o| terminators.contains(&o))
+            || self.word(0).is_some_and(|w| terminators.contains(&w))
+    }
+    fn list(&mut self, terminators: &[&str]) -> Result<Vec<Node>, String> {
+        let mut nodes = Vec::new();
+        loop {
+            while matches!(self.op(0), Some(";" | "\n" | "&")) {
+                if terminators.contains(&";;") && self.double_semicolon() {
+                    break;
+                }
+                self.i += 1;
+            }
+            if self.stops(terminators) {
+                return Ok(nodes);
+            }
+            nodes.push(self.statement()?);
+            // Anything left that is not a separator is a stray operator, not silence.
+            if let Some(op) = self.op(0).filter(|o| !matches!(*o, ";" | "\n" | "&" | ")")) {
+                return Err(format!("unexpected `{op}`"));
+            }
+        }
+    }
+    fn expect_word(&mut self, name: &str) -> Result<(), String> {
+        if self.word(0) == Some(name) {
+            self.i += 1;
+            Ok(())
+        } else {
+            Err(format!("expected `{name}`"))
+        }
+    }
+    fn expect_op(&mut self, name: &str) -> Result<(), String> {
+        if self.op(0) == Some(name) {
+            self.i += 1;
+            Ok(())
+        } else {
+            Err(format!("expected `{name}`"))
+        }
+    }
+    /// A word that can only begin a compound command, so a gate in front of it means
+    /// the pipeline continues into that compound rather than into another argument.
+    fn compound_ahead(&self, offset: usize) -> bool {
+        self.op(offset) == Some("(")
+            || bare(self.t.get(self.i + offset)).is_some_and(|w| {
+                matches!(
+                    w,
+                    "if" | "for" | "while" | "until" | "case" | "function" | "{" | "[["
+                )
+            })
+    }
+    fn statement(&mut self) -> Result<Node, String> {
+        let mut node = self.unit()?;
+        // A gate is consumed here only when `unit` stopped at one, which happens when
+        // a compound follows it or the unit itself was compound.
+        while let Some(gate) = self.op(0).filter(|o| matches!(*o, "|" | "&&" | "||")) {
+            let gate = gate.to_string();
+            self.i += 1;
+            if self.i >= self.t.len() {
+                return Err(format!("missing command after `{gate}`"));
+            }
+            node = Node::Chain {
+                head: Box::new(node),
+                gate,
+                tail: Box::new(self.unit()?),
+            };
+        }
+        Ok(node)
+    }
+    /// One pipeline element: a compound (with any redirections of its own) or a run
+    /// of tokens the older and-or evaluator understands.
+    fn unit(&mut self) -> Result<Node, String> {
+        if self.compound_ahead(0) {
+            let node = self.compound()?;
+            return self.redirections(node);
+        }
+        self.simple()
+    }
+    /// Trailing `< f`, `> f`, `2>&1` and friends on a compound command.
+    fn redirections(&mut self, node: Node) -> Result<Node, String> {
+        let mut ops = Vec::new();
+        while let Some(op) = self
+            .op(0)
+            .filter(|o| *o == "<" || *o == "<<" || o.contains('>'))
+        {
+            let op = op.to_string();
+            self.i += 1;
+            if op.ends_with("&1") || op.ends_with("&2") {
+                ops.push((op, None));
+                continue;
+            }
+            let target = self
+                .t
+                .get(self.i)
+                .filter(|t| matches!(t, Token::Word(_)))
+                .ok_or_else(|| format!("missing target for `{op}`"))?
+                .clone();
+            self.i += 1;
+            ops.push((op, Some(target)));
+        }
+        Ok(if ops.is_empty() {
+            node
+        } else {
+            Node::Redirect {
+                body: Box::new(node),
+                ops,
+            }
+        })
+    }
+    fn compound(&mut self) -> Result<Node, String> {
+        if self.op(0) == Some("(") {
+            self.i += 1;
+            let body = self.list(&[")"])?;
+            self.expect_op(")")?;
+            return Ok(Node::Subshell(body));
+        }
+        match self.word(0) {
+            Some("{") => {
+                self.i += 1;
+                let body = self.list(&["}"])?;
+                self.expect_word("}")?;
+                return Ok(Node::Group(body));
+            }
+            Some("if") => return self.parse_if(),
+            Some("for") => return self.parse_for(),
+            Some("while") => return self.parse_loop(false),
+            Some("until") => return self.parse_loop(true),
+            Some("case") => return self.parse_case(),
+            Some("[[") => {
+                self.i += 1;
+                let start = self.i;
+                while self.i < self.t.len() && self.word(0) != Some("]]") {
+                    self.i += 1;
+                }
+                if self.i >= self.t.len() {
+                    return Err("expected `]]`".into());
+                }
+                let body = self.t[start..self.i].to_vec();
+                self.i += 1;
+                return Ok(Node::Conditional(body));
+            }
+            Some("function") => {
+                self.i += 1;
+                let name = self.function_name()?;
+                if self.op(0) == Some("(") && self.op(1) == Some(")") {
+                    self.i += 2;
+                }
+                return self.parse_body(name);
+            }
+            _ => {}
+        }
+        Err("expected a compound command".into())
+    }
+    fn simple(&mut self) -> Result<Node, String> {
+        if self.op(1) == Some("(") && self.op(2) == Some(")") && self.word(0).is_some() {
+            let name = self.function_name()?;
+            self.i += 2;
+            return self.parse_body(name);
+        }
+        let start = self.i;
+        while self.i < self.t.len() && !matches!(self.op(0), Some(";" | "\n" | "&" | ")")) {
+            // A gate in front of a compound ends this run; `statement` chains them.
+            if matches!(self.op(0), Some("|" | "&&" | "||")) && self.compound_ahead(1) {
+                break;
+            }
+            self.i += 1;
+        }
+        if self.i == start {
+            return Err(format!("unexpected `{}`", self.op(0).unwrap_or("token")));
+        }
+        Ok(Node::Simple(self.t[start..self.i].to_vec()))
+    }
+    fn function_name(&mut self) -> Result<String, String> {
+        let name = self
+            .word(0)
+            .filter(|n| !KEYWORDS.contains(n) && valid_name(n))
+            .ok_or("invalid function name")?
+            .to_string();
+        self.i += 1;
+        Ok(name)
+    }
+    fn parse_body(&mut self, name: String) -> Result<Node, String> {
+        while matches!(self.op(0), Some(";" | "\n")) {
+            self.i += 1;
+        }
+        self.expect_word("{")?;
+        let body = self.list(&["}"])?;
+        self.expect_word("}")?;
+        Ok(Node::Function {
+            name,
+            body: std::sync::Arc::new(body),
+        })
+    }
+    fn parse_if(&mut self) -> Result<Node, String> {
+        let mut branches = Vec::new();
+        let mut otherwise = Vec::new();
+        self.expect_word("if")?;
+        loop {
+            let condition = self.list(&["then"])?;
+            self.expect_word("then")?;
+            branches.push((condition, self.list(&["elif", "else", "fi"])?));
+            match self.word(0) {
+                Some("elif") => self.i += 1,
+                Some("else") => {
+                    self.i += 1;
+                    otherwise = self.list(&["fi"])?;
+                    break;
+                }
+                _ => break,
+            }
+        }
+        self.expect_word("fi")?;
+        Ok(Node::If {
+            branches,
+            otherwise,
+        })
+    }
+    fn parse_for(&mut self) -> Result<Node, String> {
+        self.expect_word("for")?;
+        let name = self.function_name()?;
+        let mut words = None;
+        if self.word(0) == Some("in") {
+            self.i += 1;
+            let mut collected = Vec::new();
+            while self.i < self.t.len() && self.op(0).is_none() && self.word(0) != Some("do") {
+                collected.push(self.t[self.i].clone());
+                self.i += 1;
+            }
+            words = Some(collected);
+        }
+        while matches!(self.op(0), Some(";" | "\n")) {
+            self.i += 1;
+        }
+        self.expect_word("do")?;
+        let body = self.list(&["done"])?;
+        self.expect_word("done")?;
+        Ok(Node::For { name, words, body })
+    }
+    fn parse_loop(&mut self, until: bool) -> Result<Node, String> {
+        self.expect_word(if until { "until" } else { "while" })?;
+        let condition = self.list(&["do"])?;
+        self.expect_word("do")?;
+        let body = self.list(&["done"])?;
+        self.expect_word("done")?;
+        Ok(Node::Loop {
+            until,
+            condition,
+            body,
+        })
+    }
+    fn parse_case(&mut self) -> Result<Node, String> {
+        self.expect_word("case")?;
+        let subject = self
+            .t
+            .get(self.i)
+            .filter(|t| matches!(t, Token::Word(_)))
+            .ok_or("case needs a word to match")?
+            .clone();
+        self.i += 1;
+        while matches!(self.op(0), Some("\n")) {
+            self.i += 1;
+        }
+        self.expect_word("in")?;
+        let mut arms = Vec::new();
+        loop {
+            while matches!(self.op(0), Some(";" | "\n")) {
+                self.i += 1;
+            }
+            if self.word(0) == Some("esac") {
+                self.i += 1;
+                break;
+            }
+            if self.i >= self.t.len() {
+                return Err("expected `esac`".into());
+            }
+            // A leading `(` is optional, as in `(a|b)`.
+            if self.op(0) == Some("(") {
+                self.i += 1;
+            }
+            let mut patterns = Vec::new();
+            loop {
+                let pattern = self
+                    .t
+                    .get(self.i)
+                    .filter(|t| matches!(t, Token::Word(_)))
+                    .ok_or("case pattern expected")?
+                    .clone();
+                patterns.push(pattern);
+                self.i += 1;
+                if self.op(0) == Some("|") {
+                    self.i += 1;
+                } else {
+                    break;
+                }
+            }
+            self.expect_op(")")?;
+            let body = self.list(&[";;", "esac"])?;
+            if self.double_semicolon() {
+                self.i += 2;
+            }
+            arms.push((patterns, body));
+        }
+        Ok(Node::Case { subject, arms })
+    }
+}
+/// What a `break`/`continue` signal means to the loop that catches it.
+enum Caught {
+    Iterate,
+    Stop,
+    Propagate,
+}
+fn caught(ctx: &mut Ctx) -> Caught {
+    match ctx.flow.clone() {
+        Flow::Normal => Caught::Iterate,
+        Flow::Break(n) => {
+            ctx.flow = if n > 1 {
+                Flow::Break(n - 1)
+            } else {
+                Flow::Normal
+            };
+            Caught::Stop
+        }
+        Flow::Continue(n) => {
+            if n > 1 {
+                ctx.flow = Flow::Continue(n - 1);
+                Caught::Stop
+            } else {
+                ctx.flow = Flow::Normal;
+                Caught::Iterate
+            }
+        }
+        _ => Caught::Propagate,
+    }
+}
+#[allow(clippy::too_many_arguments)]
+fn run_nodes(
+    c: &mut Computer,
+    nodes: &[Node],
+    ctx: &mut Ctx,
+    t: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+    total: &mut CommandResult,
+    mut status: i32,
+) -> i32 {
+    for node in nodes {
+        if ctx.flow != Flow::Normal {
+            break;
+        }
+        status = run_node(c, node, ctx, t, host, depth, total, status);
+    }
+    status
+}
+#[allow(clippy::too_many_arguments)]
+fn run_node(
+    c: &mut Computer,
+    node: &Node,
+    ctx: &mut Ctx,
+    t: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+    total: &mut CommandResult,
+    status: i32,
+) -> i32 {
+    if depth > 32 {
+        ctx.flow = Flow::Budget("execution nesting exceeds 32".into());
+        return 2;
+    }
+    match node {
+        Node::Simple(tokens) => run_list(c, tokens, ctx, t, host, depth, total, status, ""),
+        Node::Conditional(tokens) => match conditional(c, tokens, t, host, depth, status) {
+            Ok(true) => 0,
+            Ok(false) => 1,
+            Err(e) => {
+                total.stderr.push_str(&format!("[[: {e}\n"));
+                2
+            }
+        },
+        Node::Chain { head, gate, tail } => {
+            let mut local = CommandResult::default();
+            let code = run_node(c, head, ctx, t, host, depth, &mut local, status);
+            total.clear |= local.clear;
+            total.stderr.push_str(&local.stderr);
+            if ctx.flow != Flow::Normal {
+                total.stdout.push_str(&local.stdout);
+                return code;
+            }
+            if gate == "|" {
+                // A simple tail reads the bytes directly; a compound tail reads them
+                // through the shared stream, which is what `read` consumes from.
+                return match tail.as_ref() {
+                    Node::Simple(tokens) => {
+                        run_list(c, tokens, ctx, t, host, depth, total, code, &local.stdout)
+                    }
+                    other => {
+                        let saved = ctx.stdin.replace(local.stdout);
+                        let code = run_node(c, other, ctx, t, host, depth, total, code);
+                        ctx.stdin = saved;
+                        code
+                    }
+                };
+            }
+            total.stdout.push_str(&local.stdout);
+            if (gate == "&&") == (code == 0) {
+                run_node(c, tail, ctx, t, host, depth, total, code)
+            } else {
+                code
+            }
+        }
+        Node::Redirect { body, ops } => {
+            let mut fds: [Sink; 2] = [Sink::Fd(0), Sink::Fd(1)];
+            let mut stream = None;
+            for (op, target) in ops {
+                if let Some(source) = op.strip_suffix("&1").or_else(|| op.strip_suffix("&2")) {
+                    let to = usize::from(op.ends_with('2'));
+                    fds[usize::from(source.starts_with('2'))] = fds[to].clone();
+                    continue;
+                }
+                let Some(token) = target else { continue };
+                let text = match word(token, c, status, t, host, depth) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        total.stderr.push_str(&format!("shell: {e}\n"));
+                        return 2;
+                    }
+                };
+                if op == "<<" {
+                    stream = Some(text);
+                } else if op == "<" {
+                    match c.vfs.read_as(&c.resolve(&text), &c.user) {
+                        Ok(v) => stream = Some(String::from_utf8_lossy(&v).into_owned()),
+                        Err(e) => {
+                            total.stderr.push_str(&format!("{e}\n"));
+                            return 1;
+                        }
+                    }
+                } else {
+                    let sink = Sink::File(c.resolve(&text), op.ends_with(">>"));
+                    if op.starts_with('&') {
+                        fds = [sink.clone(), sink];
+                    } else if op.starts_with('2') {
+                        fds[1] = sink;
+                    } else {
+                        fds[0] = sink;
+                    }
+                }
+            }
+            // Without `< …` the body keeps whatever stream it already had.
+            let replacement = stream.or_else(|| ctx.stdin.clone());
+            let saved = std::mem::replace(&mut ctx.stdin, replacement);
+            let mut local = CommandResult::default();
+            let code = run_node(c, body, ctx, t, host, depth, &mut local, status);
+            ctx.stdin = saved;
+            local.exit_code = code;
+            dispatch(c, &mut local, &fds, t);
+            total.clear |= local.clear;
+            total.stdout.push_str(&local.stdout);
+            total.stderr.push_str(&local.stderr);
+            if local.exit_code != code {
+                return local.exit_code;
+            }
+            code
+        }
+        Node::Group(body) => run_nodes(c, body, ctx, t, host, depth, total, status),
+        Node::Function { name, body } => {
+            ctx.functions.insert(name.clone(), body.clone());
+            0
+        }
+        Node::Subshell(body) => {
+            // A subshell sees the parent's state and leaves none of its own behind,
+            // exactly as `$( … )` already does; `break` never escapes one.
+            let (env, cwd, functions) = (c.env.clone(), c.cwd.clone(), ctx.functions.clone());
+            let saved = (ctx.in_loop, ctx.in_function);
+            ctx.in_loop = 0;
+            ctx.in_function = 0;
+            let mut code = run_nodes(c, body, ctx, t, host, depth + 1, total, status);
+            (c.env, c.cwd, ctx.functions) = (env, cwd, functions);
+            (ctx.in_loop, ctx.in_function) = saved;
+            // `exit` ends the subshell, not the shell that spawned it.
+            if let Flow::Exit(n) = ctx.flow {
+                code = n;
+            }
+            if !matches!(ctx.flow, Flow::Budget(_)) {
+                ctx.flow = Flow::Normal;
+            }
+            code
+        }
+        Node::If {
+            branches,
+            otherwise,
+        } => {
+            for (condition, body) in branches {
+                let tested = run_nodes(c, condition, ctx, t, host, depth, total, status);
+                if ctx.flow != Flow::Normal {
+                    return tested;
+                }
+                if tested == 0 {
+                    return run_nodes(c, body, ctx, t, host, depth, total, tested);
+                }
+            }
+            run_nodes(c, otherwise, ctx, t, host, depth, total, 0)
+        }
+        Node::For { name, words, body } => {
+            let items = match for_items(c, words.as_deref(), ctx, t, host, depth, status) {
+                Ok(v) => v,
+                Err(e) => {
+                    total.stderr.push_str(&format!("for: {e}\n"));
+                    return 2;
+                }
+            };
+            let mut code = 0;
+            ctx.in_loop += 1;
+            for item in items {
+                if !ctx.charge(Budget::Loop) {
+                    break;
+                }
+                c.env.insert(name.clone(), item);
+                code = run_nodes(c, body, ctx, t, host, depth, total, code);
+                match caught(ctx) {
+                    Caught::Iterate => {}
+                    Caught::Stop | Caught::Propagate => break,
+                }
+            }
+            ctx.in_loop -= 1;
+            code
+        }
+        Node::Loop {
+            until,
+            condition,
+            body,
+        } => {
+            let mut code = 0;
+            ctx.in_loop += 1;
+            loop {
+                if !ctx.charge(Budget::Loop) {
+                    break;
+                }
+                let tested = run_nodes(c, condition, ctx, t, host, depth, total, code);
+                if ctx.flow != Flow::Normal || (tested == 0) == *until {
+                    break;
+                }
+                code = run_nodes(c, body, ctx, t, host, depth, total, code);
+                match caught(ctx) {
+                    Caught::Iterate => {}
+                    Caught::Stop | Caught::Propagate => break,
+                }
+            }
+            ctx.in_loop -= 1;
+            code
+        }
+        Node::Case { subject, arms } => {
+            let value = match word(subject, c, status, t, host, depth) {
+                Ok(v) => v,
+                Err(e) => {
+                    total.stderr.push_str(&format!("case: {e}\n"));
+                    return 2;
+                }
+            };
+            for (patterns, body) in arms {
+                for pattern in patterns {
+                    let Ok(p) = word(pattern, c, status, t, host, depth) else {
+                        continue;
+                    };
+                    if wildcard(&p, &value) {
+                        return run_nodes(c, body, ctx, t, host, depth, total, 0);
+                    }
+                }
+            }
+            0
+        }
+    }
+}
+/// A `for` list is the one place this shell splits a word: an unquoted expansion is
+/// split on whitespace and globbed, so `for f in *.txt` and `for x in $(ls)` iterate.
+#[allow(clippy::too_many_arguments)]
+fn for_items(
+    c: &mut Computer,
+    words: Option<&[Token]>,
+    _ctx: &mut Ctx,
+    t: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+    status: i32,
+) -> Result<Vec<String>, String> {
+    let Some(words) = words else {
+        let (n, _) = positional(c);
+        return Ok((1..=n)
+            .filter_map(|i| c.env.get(&i.to_string()).cloned())
+            .collect());
+    };
+    let mut items = Vec::new();
+    for token in words {
+        let glob = matches!(token, Token::Word(parts) if parts.iter().any(|(p, f)| f & 2 != 0 && (p.contains('*') || p.contains('?'))));
+        for piece in word_fields(token, c, status, t, host, depth)? {
+            let paths = if glob && (piece.contains('*') || piece.contains('?')) {
+                glob_paths(c, &piece)
+            } else {
+                vec![]
+            };
+            if paths.is_empty() {
+                items.push(piece);
+            } else {
+                items.extend(paths);
+            }
+        }
+    }
+    Ok(items)
+}
+/// `break`, `continue` and `return`: the three commands that are a signal rather than
+/// output. Outside their construct they are refused, not quietly ignored.
+fn control_word(args: &[String], ctx: &mut Ctx, status: i32) -> Option<CommandResult> {
+    let name = args[0].as_str();
+    if !matches!(name, "break" | "continue" | "return" | "exit") {
+        return None;
+    }
+    if args.len() > 2 {
+        return Some(CommandResult::new(
+            format!("{name}: too many arguments\n"),
+            2,
+        ));
+    }
+    let operand = args.get(1).map(String::as_str);
+    if name == "exit" {
+        // Bare `exit` carries the status of the last command, as bash does.
+        let code = match operand.map(str::parse::<i32>) {
+            None => status,
+            Some(Ok(n)) => n,
+            Some(Err(_)) => {
+                return Some(CommandResult::new("exit: numeric argument required\n", 2))
+            }
+        };
+        ctx.flow = Flow::Exit(code);
+        return Some(CommandResult {
+            exit_code: code,
+            ..CommandResult::default()
+        });
+    }
+    if name == "return" {
+        if ctx.in_function == 0 {
+            return Some(CommandResult::new("return: not in a function\n", 2));
+        }
+        let code = match operand.map(str::parse::<i32>) {
+            None => 0,
+            Some(Ok(n)) => n,
+            Some(Err(_)) => {
+                return Some(CommandResult::new("return: numeric argument required\n", 2))
+            }
+        };
+        ctx.flow = Flow::Return(code);
+        return Some(CommandResult {
+            exit_code: code,
+            ..CommandResult::default()
+        });
+    }
+    if ctx.in_loop == 0 {
+        return Some(CommandResult::new(format!("{name}: not in a loop\n"), 2));
+    }
+    let count = match operand.map(str::parse::<u32>) {
+        None => 1,
+        Some(Ok(n)) if n >= 1 => n,
+        Some(_) => {
+            return Some(CommandResult::new(
+                format!("{name}: numeric argument required\n"),
+                2,
+            ))
+        }
+    };
+    ctx.flow = if name == "break" {
+        Flow::Break(count)
+    } else {
+        Flow::Continue(count)
+    };
+    Some(CommandResult::default())
+}
+/// One expanded operand of a `[[ … ]]` test. `raw` records that it was unquoted, which
+/// is what decides whether `==` compares or matches a pattern.
+enum Item {
+    Op(String),
+    Word(String, bool),
+}
+const CONDITIONAL_BINARY: &[&str] = &[
+    "==", "=", "!=", "=~", "-eq", "-ne", "-lt", "-gt", "-le", "-ge", "-nt", "-ot",
+];
+/// `[[ … ]]`. Its tokens were kept whole by the parser, so `&&`, `||`, `!` and
+/// parentheses mean what bash says they mean here instead of splitting the command.
+fn conditional(
+    c: &mut Computer,
+    tokens: &[Token],
+    t: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+    status: i32,
+) -> Result<bool, String> {
+    let mut items = Vec::new();
+    for token in tokens {
+        match token {
+            Token::Op(op) => items.push(Item::Op(op.clone())),
+            Token::Word(parts) => items.push(Item::Word(
+                word(token, c, status, t, host, depth)?,
+                parts.iter().any(|(_, f)| f & 2 != 0),
+            )),
+        }
+    }
+    let mut i = 0;
+    let value = cond_or(c, &items, &mut i)?;
+    if i != items.len() {
+        return Err("trailing operand".into());
+    }
+    Ok(value)
+}
+fn cond_or(c: &Computer, items: &[Item], i: &mut usize) -> Result<bool, String> {
+    let mut value = cond_and(c, items, i)?;
+    while matches!(items.get(*i), Some(Item::Op(o)) if o == "||") {
+        *i += 1;
+        // Both sides are evaluated: nothing here has an effect to short-circuit.
+        value = cond_and(c, items, i)? || value;
+    }
+    Ok(value)
+}
+fn cond_and(c: &Computer, items: &[Item], i: &mut usize) -> Result<bool, String> {
+    let mut value = cond_term(c, items, i)?;
+    while matches!(items.get(*i), Some(Item::Op(o)) if o == "&&") {
+        *i += 1;
+        value = cond_term(c, items, i)? && value;
+    }
+    Ok(value)
+}
+fn cond_term(c: &Computer, items: &[Item], i: &mut usize) -> Result<bool, String> {
+    match items.get(*i) {
+        Some(Item::Word(w, _)) if w == "!" => {
+            *i += 1;
+            Ok(!cond_term(c, items, i)?)
+        }
+        Some(Item::Op(o)) if o == "(" => {
+            *i += 1;
+            let value = cond_or(c, items, i)?;
+            if !matches!(items.get(*i), Some(Item::Op(o)) if o == ")") {
+                return Err("expected `)`".into());
+            }
+            *i += 1;
+            Ok(value)
+        }
+        _ => cond_primary(c, items, i),
+    }
+}
+fn cond_primary(c: &Computer, items: &[Item], i: &mut usize) -> Result<bool, String> {
+    let Some(Item::Word(left, _)) = items.get(*i) else {
+        return Err("expected an operand".into());
+    };
+    *i += 1;
+    let operator = match items.get(*i) {
+        // `<` and `>` reach us as operators; inside `[[ ]]` they compare strings.
+        Some(Item::Op(o)) if o == "<" || o == ">" => Some(o.clone()),
+        Some(Item::Word(w, _)) if CONDITIONAL_BINARY.contains(&w.as_str()) => Some(w.clone()),
+        _ => None,
+    };
+    if let Some(operator) = operator {
+        *i += 1;
+        let Some(Item::Word(right, raw)) = items.get(*i) else {
+            return Err(format!("`{operator}` needs a right operand"));
+        };
+        *i += 1;
+        return match operator.as_str() {
+            "==" | "=" | "!=" => {
+                // An unquoted right side is a pattern, a quoted one is a literal.
+                let hit = if *raw {
+                    wildcard(right, left)
+                } else {
+                    left == right
+                };
+                Ok(hit == (operator != "!="))
+            }
+            "=~" => regex::Regex::new(right)
+                .map(|re| re.is_match(left))
+                .map_err(|e| e.to_string()),
+            "<" => Ok(left < right),
+            ">" => Ok(left > right),
+            _ => test_primary(c, &[left.clone(), operator, right.clone()]).map_err(|f| f.text),
+        };
+    }
+    if left.starts_with('-') && left.chars().count() == 2 {
+        if let Some(Item::Word(operand, _)) = items.get(*i) {
+            *i += 1;
+            return test_primary(c, &[left.clone(), operand.clone()]).map_err(|f| f.text);
+        }
+    }
+    Ok(!left.is_empty())
+}
+/// The primaries `test`, `[` and `[[` share.
+fn test_primary(c: &Computer, vals: &[String]) -> Result<bool, Fail> {
+    let access = |p: &String, r: bool, w: bool, x: bool| {
+        c.vfs.check_access(&c.resolve(p), &c.user, r, w, x).is_ok()
+    };
+    let modified = |p: &String| c.vfs.stat(&c.resolve(p)).map(|m| m.modified);
+    Ok(match vals {
+        [flag, p] if flag == "-e" => c.vfs.stat(&c.resolve(p)).is_ok(),
+        [flag, p] if flag == "-f" => c.vfs.read_as(&c.resolve(p), &c.user).is_ok(),
+        [flag, p] if flag == "-d" => c.vfs.list_as(&c.resolve(p), &c.user).is_ok(),
+        [flag, p] if flag == "-s" => c.vfs.stat(&c.resolve(p)).is_ok_and(|m| m.size > 0),
+        [flag, p] if flag == "-L" || flag == "-h" => {
+            c.vfs.lstat(&c.resolve(p)).is_ok_and(|m| m.is_symlink)
+        }
+        [flag, p] if flag == "-r" => access(p, true, false, false),
+        [flag, p] if flag == "-w" => access(p, false, true, false),
+        [flag, p] if flag == "-x" => access(p, false, false, true),
+        [flag, v] if flag == "-n" => !v.is_empty(),
+        [flag, v] if flag == "-z" => v.is_empty(),
+        [left, op, right] => match op.as_str() {
+            "=" | "==" => left == right,
+            "!=" => left != right,
+            // Both timestamps must exist; a missing file is never newer.
+            "-nt" | "-ot" => match (modified(left), modified(right)) {
+                (Ok(l), Ok(r)) => {
+                    if op == "-nt" {
+                        l > r
+                    } else {
+                        l < r
+                    }
+                }
+                (Ok(_), Err(_)) => op == "-nt",
+                (Err(_), Ok(_)) => op == "-ot",
+                _ => false,
+            },
+            "-eq" | "-ne" | "-lt" | "-gt" | "-le" | "-ge" => {
+                let l = left.parse::<i64>().map_err(|_| "invalid integer")?;
+                let r = right.parse::<i64>().map_err(|_| "invalid integer")?;
+                match op.as_str() {
+                    "-eq" => l == r,
+                    "-ne" => l != r,
+                    "-lt" => l < r,
+                    "-gt" => l > r,
+                    "-le" => l <= r,
+                    _ => l >= r,
+                }
+            }
+            _ => return Err(Fail::usage(format!("unsupported test operator `{op}`"))),
+        },
+        [flag, _] if flag.starts_with('-') && flag.chars().count() == 2 => {
+            return Err(Fail::usage(format!("unsupported test operator `{flag}`")))
+        }
+        [v] => !v.is_empty(),
+        [] => false,
+        _ => return Err(Fail::usage("unsupported test expression")),
+    })
+}
+/// Pulls one line off a stream, consuming its newline. `None` means end of input.
+/// The bool says a newline terminated it, which is how `read` reports end of file.
+fn take_line(buffer: &mut String) -> Option<(String, bool)> {
+    if buffer.is_empty() {
+        return None;
+    }
+    match buffer.find('\n') {
+        Some(k) => {
+            let line = buffer[..k].to_string();
+            buffer.drain(..=k);
+            Some((line, true))
+        }
+        None => Some((std::mem::take(buffer), false)),
+    }
+}
+/// The builtins that need the shell's own state rather than just the computer.
+#[allow(clippy::too_many_arguments)]
+fn shell_builtin(
+    c: &mut Computer,
+    args: &[String],
+    input: &str,
+    ctx: &mut Ctx,
+    t: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+) -> Option<CommandResult> {
+    match args[0].as_str() {
+        "read" => Some(builtin_read(c, args, input, ctx)),
+        "local" => Some(builtin_local(c, args, ctx)),
+        "getopts" => Some(builtin_getopts(c, args, ctx)),
+        "source" | "." => Some(builtin_source(c, args, ctx, t, host, depth)),
+        _ => None,
+    }
+}
+/// `read [-r] [NAME…]`. Fields are split on whitespace and the last name takes the
+/// remainder. Status 1 at end of input is what stops a `while read` loop.
+fn builtin_read(c: &mut Computer, args: &[String], input: &str, ctx: &mut Ctx) -> CommandResult {
+    let mut names = Vec::new();
+    for arg in &args[1..] {
+        if let Some(flags) = arg.strip_prefix('-').filter(|f| !f.is_empty()) {
+            // -r is the behaviour either way: this shell never unescapes a read line.
+            if let Some(bad) = flags.chars().find(|ch| *ch != 'r') {
+                return CommandResult::new(format!("read: unsupported option `-{bad}`\n"), 2);
+            }
+            continue;
+        }
+        if !valid_name(arg) {
+            return CommandResult::new(format!("read: `{arg}` is not a valid name\n"), 2);
+        }
+        names.push(arg.clone());
+    }
+    // A redirect or pipe on this command is a one-shot stream; otherwise the shared
+    // one a compound was given, which successive reads advance through.
+    let mut private;
+    let source = if input.is_empty() {
+        ctx.stdin.get_or_insert_with(String::new)
+    } else {
+        private = input.to_string();
+        &mut private
+    };
+    let Some((line, terminated)) = take_line(source) else {
+        return CommandResult::new(String::new(), 1);
+    };
+    if names.is_empty() {
+        c.env.insert("REPLY".into(), line.trim().to_string());
+    } else {
+        let mut rest = line.as_str();
+        for (k, name) in names.iter().enumerate() {
+            rest = rest.trim_start();
+            let value = if k + 1 == names.len() {
+                let all = rest;
+                rest = "";
+                all.trim_end().to_string()
+            } else {
+                let (field, tail) = match rest.find(char::is_whitespace) {
+                    Some(p) => rest.split_at(p),
+                    None => (rest, ""),
+                };
+                rest = tail;
+                field.to_string()
+            };
+            c.env.insert(name.clone(), value);
+        }
+    }
+    // Bash reports end of file when no newline closed the line, even having assigned.
+    CommandResult::new(String::new(), i32::from(!terminated))
+}
+/// `local NAME[=VALUE]…`: shadows a variable until the enclosing function returns.
+fn builtin_local(c: &mut Computer, args: &[String], ctx: &mut Ctx) -> CommandResult {
+    if ctx.locals.is_empty() {
+        return CommandResult::new("local: not in a function\n", 2);
+    }
+    if args.len() < 2 {
+        return CommandResult::new("local: missing name\n", 2);
+    }
+    for arg in &args[1..] {
+        let (name, value) = match arg.split_once('=') {
+            Some((k, v)) => (k, Some(v.to_string())),
+            None => (arg.as_str(), None),
+        };
+        if !valid_name(name) {
+            return CommandResult::new(format!("local: `{name}` is not a valid name\n"), 2);
+        }
+        let frame = ctx.locals.last_mut().unwrap();
+        if !frame.iter().any(|(k, _)| k == name) {
+            frame.push((name.to_string(), c.env.get(name).cloned()));
+        }
+        match value {
+            Some(v) => c.env.insert(name.into(), v),
+            None => c.env.remove(name),
+        };
+    }
+    CommandResult::default()
+}
+/// `source FILE [ARG…]` / `. FILE`: runs the file in this shell, so its variables,
+/// working directory and functions persist. Bounded by the same nesting guard as a
+/// script, because it is one.
+fn builtin_source(
+    c: &mut Computer,
+    args: &[String],
+    ctx: &mut Ctx,
+    t: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+) -> CommandResult {
+    let Some(path) = args.get(1) else {
+        return CommandResult::new(format!("{}: missing file\n", args[0]), 2);
+    };
+    if depth + 1 > 32 {
+        return CommandResult::new("shell: execution nesting exceeds 32\n", 2);
+    }
+    let resolved = c.resolve(path);
+    let bytes = match c.vfs.read_as(&resolved, &c.user) {
+        Ok(v) => v,
+        Err(e) => return CommandResult::error(format!("{}: {e}\n", args[0])),
+    };
+    let Ok(text) = String::from_utf8(bytes) else {
+        return CommandResult::new(format!("{}: file is not UTF-8\n", args[0]), 2);
+    };
+    let nodes = match lex(&text, c.dialect == "powershell").and_then(|v| Grammar::program(&v)) {
+        Ok(v) => v,
+        Err(e) => return CommandResult::new(format!("{}: {e}\n", args[0]), 2),
+    };
+    let saved = swap_positional(c, &args[1..]);
+    let mut total = CommandResult::default();
+    // `return` ends a sourced file, as it does a function.
+    ctx.in_function += 1;
+    let mut code = run_nodes(c, &nodes, ctx, t, host, depth + 1, &mut total, 0);
+    ctx.in_function -= 1;
+    if let Flow::Return(n) = ctx.flow {
+        ctx.flow = Flow::Normal;
+        code = n;
+    }
+    restore_positional(c, saved);
+    total.exit_code = code;
+    total
+}
+/// Replaces `$0…$#` with `values` and returns what was there.
+fn swap_positional(c: &mut Computer, values: &[String]) -> Vec<(String, String)> {
+    let saved: Vec<(String, String)> = c
+        .env
+        .iter()
+        .filter(|(k, _)| *k == "#" || k.chars().all(|ch| ch.is_ascii_digit()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    for (k, _) in &saved {
+        c.env.remove(k);
+    }
+    for (i, value) in values.iter().enumerate() {
+        c.env.insert(i.to_string(), value.clone());
+    }
+    c.env
+        .insert("#".into(), values.len().saturating_sub(1).to_string());
+    saved
+}
+fn restore_positional(c: &mut Computer, saved: Vec<(String, String)>) {
+    let live: Vec<String> = c
+        .env
+        .keys()
+        .filter(|k| *k == "#" || k.chars().all(|ch| ch.is_ascii_digit()))
+        .cloned()
+        .collect();
+    for k in live {
+        c.env.remove(&k);
+    }
+    c.env.extend(saved);
+}
+/// `getopts OPTSTRING NAME [ARG…]`. `OPTIND` and `OPTARG` are ordinary shell
+/// variables, as in bash; the position inside a cluster such as `-ab` is shell state.
+fn builtin_getopts(c: &mut Computer, args: &[String], ctx: &mut Ctx) -> CommandResult {
+    let ([optstring, name], rest) = match args.get(1..3) {
+        Some([a, b]) => ([a.clone(), b.clone()], &args[3..]),
+        _ => return CommandResult::new("getopts: usage: getopts OPTSTRING NAME [ARG…]\n", 2),
+    };
+    if !valid_name(&name) {
+        return CommandResult::new(format!("getopts: `{name}` is not a valid name\n"), 2);
+    }
+    let quiet = optstring.starts_with(':');
+    let spec: Vec<char> = optstring.trim_start_matches(':').chars().collect();
+    let operands: Vec<String> = if rest.is_empty() {
+        let (n, _) = positional(c);
+        (1..=n)
+            .filter_map(|i| c.env.get(&i.to_string()).cloned())
+            .collect()
+    } else {
+        rest.to_vec()
+    };
+    let mut index: usize = c
+        .env
+        .get("OPTIND")
+        .and_then(|v| v.parse().ok())
+        .filter(|v| *v >= 1)
+        .unwrap_or(1);
+    // A script that resets OPTIND restarts mid-cluster scanning too.
+    if ctx.optind != index {
+        ctx.optpos = 0;
+    }
+    let done = |c: &mut Computer, index: usize, ctx: &mut Ctx| {
+        c.env.insert("OPTIND".into(), index.to_string());
+        ctx.optind = index;
+        ctx.optpos = 0;
+        c.env.insert(name.clone(), "?".into());
+        CommandResult::new(String::new(), 1)
+    };
+    loop {
+        let Some(arg) = operands.get(index - 1) else {
+            return done(c, index, ctx);
+        };
+        if arg == "--" {
+            return done(c, index + 1, ctx);
+        }
+        if !arg.starts_with('-') || arg.len() < 2 {
+            return done(c, index, ctx);
+        }
+        let chars: Vec<char> = arg.chars().collect();
+        let position = if ctx.optpos == 0 { 1 } else { ctx.optpos };
+        let Some(letter) = chars.get(position).copied() else {
+            index += 1;
+            ctx.optpos = 0;
+            continue;
+        };
+        let known = spec.contains(&letter) && letter != ':';
+        let takes = known && spec.iter().skip_while(|c| **c != letter).nth(1) == Some(&':');
+        let report = |c: &mut Computer, ctx: &mut Ctx, value: &str, index: usize, pos: usize| {
+            c.env.insert("OPTIND".into(), index.to_string());
+            ctx.optind = index;
+            ctx.optpos = pos;
+            c.env.insert(name.clone(), value.into());
+        };
+        if !known {
+            let (next, pos) = if position + 1 < chars.len() {
+                (index, position + 1)
+            } else {
+                (index + 1, 0)
+            };
+            report(c, ctx, "?", next, pos);
+            if quiet {
+                c.env.insert("OPTARG".into(), letter.to_string());
+                return CommandResult::default();
+            }
+            c.env.remove("OPTARG");
+            return CommandResult {
+                stderr: format!("getopts: illegal option -- {letter}\n"),
+                ..CommandResult::default()
+            };
+        }
+        if !takes {
+            let (next, pos) = if position + 1 < chars.len() {
+                (index, position + 1)
+            } else {
+                (index + 1, 0)
+            };
+            report(c, ctx, &letter.to_string(), next, pos);
+            c.env.remove("OPTARG");
+            return CommandResult::default();
+        }
+        // An option's argument is the rest of this word, or the whole next one.
+        let glued: String = chars[position + 1..].iter().collect();
+        if !glued.is_empty() {
+            report(c, ctx, &letter.to_string(), index + 1, 0);
+            c.env.insert("OPTARG".into(), glued);
+            return CommandResult::default();
+        }
+        let Some(value) = operands.get(index) else {
+            report(c, ctx, if quiet { ":" } else { "?" }, index + 1, 0);
+            if quiet {
+                c.env.insert("OPTARG".into(), letter.to_string());
+                return CommandResult::default();
+            }
+            c.env.remove("OPTARG");
+            return CommandResult {
+                stderr: format!("getopts: option requires an argument -- {letter}\n"),
+                ..CommandResult::default()
+            };
+        };
+        let value = value.clone();
+        report(c, ctx, &letter.to_string(), index + 2, 0);
+        c.env.insert("OPTARG".into(), value);
+        return CommandResult::default();
+    }
+}
+/// A function call. Positional parameters are swapped for the duration and restored
+/// afterwards; the body's output becomes this command's output, so it pipes normally.
+fn call_function(
+    c: &mut Computer,
+    body: &[Node],
+    args: &[String],
+    ctx: &mut Ctx,
+    t: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+) -> CommandResult {
+    if depth + 1 > 32 {
+        return CommandResult::new("shell: execution nesting exceeds 32\n", 2);
+    }
+    let saved: Vec<(String, String)> = c
+        .env
+        .iter()
+        .filter(|(k, _)| *k == "#" || k.chars().all(|ch| ch.is_ascii_digit()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    for (k, _) in &saved {
+        // `$0` keeps naming the script, as in bash; only `$1…` are replaced.
+        if k != "0" {
+            c.env.remove(k);
+        }
+    }
+    for (i, arg) in args.iter().enumerate().skip(1) {
+        c.env.insert(i.to_string(), arg.clone());
+    }
+    c.env.insert("#".into(), (args.len() - 1).to_string());
+    let mut total = CommandResult::default();
+    ctx.in_function += 1;
+    ctx.locals.push(Vec::new());
+    let mut code = run_nodes(c, body, ctx, t, host, depth + 1, &mut total, 0);
+    // `local` bindings are undone newest first, so a name shadowed twice comes back.
+    for (name, previous) in ctx.locals.pop().unwrap_or_default().into_iter().rev() {
+        match previous {
+            Some(v) => c.env.insert(name, v),
+            None => c.env.remove(&name),
+        };
+    }
+    ctx.in_function -= 1;
+    if let Flow::Return(n) = ctx.flow {
+        ctx.flow = Flow::Normal;
+        code = n;
+    }
+    for (k, _) in c
+        .env
+        .clone()
+        .iter()
+        .filter(|(k, _)| *k == "#" || k.chars().all(|ch| ch.is_ascii_digit()))
+    {
+        c.env.remove(k);
+    }
+    c.env.extend(saved);
+    total.exit_code = code;
+    total
+}
+/// Where a descriptor's bytes land: back to the caller on stdout/stderr, or into a file.
+#[derive(Clone, PartialEq)]
+enum Sink {
+    Fd(usize),
+    File(String, bool),
 }
 fn run(
     c: &mut Computer,
@@ -780,7 +2543,7 @@ fn run(
     t: u64,
     host: &mut dyn ShellHost,
     depth: usize,
-) -> Result<String, String> {
+) -> Result<String, Fail> {
     let cmd = a[0].to_ascii_lowercase();
     if c.dialect != "powershell"
         && matches!(
@@ -802,7 +2565,7 @@ fn run(
                 | "test-path"
         )
     {
-        return Err(format!("command not found: {}", a[0]));
+        return Err(Fail::new(format!("command not found: {}", a[0]), 127));
     }
     let args = &a[1..];
     let required = |i: usize| {
@@ -810,10 +2573,10 @@ fn run(
             .map(String::as_str)
             .ok_or_else(|| "missing operand".to_string())
     };
-    let err = |e: crate::VfsError| e.to_string();
+    let err = Fail::from;
     match cmd.as_str() {
-        "true" => Ok(String::new()),
-        "false" => Err(String::new()),
+        "true" | ":" => Ok(String::new()),
+        "false" => Err(Fail::new(String::new(), 1)),
         "echo" | "write-output" => {
             let no = args.first().is_some_and(|s| s == "-n");
             Ok(format!(
@@ -835,7 +2598,7 @@ fn run(
         "whoami" => Ok(format!("{}\n", c.user)),
         "hostname" => Ok(format!("{}\n", c.id)),
         "uname" => Ok(format!("{}\n", c.os_family)),
-        "date" => Ok(format!("{t}\n")),
+        "date" => cmd_date(args, t),
         "cd" | "set-location" => {
             let p = c.resolve(
                 args.first()
@@ -865,19 +2628,7 @@ fn run(
             }
             Ok(String::new())
         }
-        "ls" | "dir" | "get-childitem" => {
-            let path = args
-                .iter()
-                .find(|s| !s.starts_with('-'))
-                .map(String::as_str)
-                .unwrap_or(".");
-            Ok(c.vfs
-                .list(&c.resolve(path))
-                .map_err(err)?
-                .into_iter()
-                .map(|p| format!("{p}\n"))
-                .collect())
-        }
+        "ls" | "dir" | "get-childitem" => cmd_ls(c, args),
         "cat" | "type" | "get-content" => {
             if args.is_empty() {
                 return Ok(input.into());
@@ -890,18 +2641,29 @@ fn run(
             }
             Ok(out)
         }
-        "touch" => {
-            for p in args {
-                let p = c.resolve(p);
-                if c.vfs.read_as(&p, &c.user).is_err() {
-                    c.vfs.write_as(&p, b"", &c.user, t).map_err(err)?;
-                }
-            }
-            Ok(String::new())
-        }
+        "touch" => cmd_touch(c, args, t),
         "mkdir" | "md" => {
-            for p in args.iter().filter(|s| !s.starts_with('-')) {
-                c.vfs.mkdir_all_as(&c.resolve(p), &c.user, t).map_err(err)?;
+            let (opts, paths) = options("mkdir", args, "pv", "", &[("parents", 'p')])?;
+            if paths.is_empty() {
+                return Err(Fail::usage("mkdir: missing operand"));
+            }
+            for p in &paths {
+                let path = c.resolve(p);
+                // Without -p an existing directory or a missing parent is an error.
+                if !flag(&opts, 'p') {
+                    if c.vfs.exists(&path) {
+                        return Err(format!("cannot create directory '{p}': File exists").into());
+                    }
+                    let parent = path.rsplit_once('/').map_or("/", |(a, _)| a);
+                    let parent = if parent.is_empty() { "/" } else { parent };
+                    if !c.vfs.exists(parent) {
+                        return Err(format!(
+                            "cannot create directory '{p}': No such file or directory"
+                        )
+                        .into());
+                    }
+                }
+                c.vfs.mkdir_all_as(&path, &c.user, t).map_err(err)?;
             }
             Ok(String::new())
         }
@@ -920,10 +2682,37 @@ fn run(
             Ok(String::new())
         }
         "cp" | "copy-item" => {
-            let from = c.resolve(required(0)?);
-            let mut to = c.resolve(required(1)?);
+            let (opts, paths) = options(
+                "cp",
+                &powershell_switches(args),
+                "rRfpv",
+                "",
+                &[("recursive", 'r'), ("force", 'f')],
+            )?;
+            let [source, destination] = paths.as_slice() else {
+                return Err(Fail::usage(
+                    "cp: expects exactly one source and one destination",
+                ));
+            };
+            let from = c.resolve(source);
+            let mut to = c.resolve(destination);
             if c.vfs.list_as(&to, &c.user).is_ok() {
                 to = format!("{to}/{}", from.rsplit('/').next().unwrap_or("file"));
+            }
+            if c.vfs.lstat(&from).map_err(err)?.is_dir {
+                if !(flag(&opts, 'r') || flag(&opts, 'R')) {
+                    return Err(format!("-r not specified; omitting directory '{source}'").into());
+                }
+                for (path, _, directory) in walk_tree(c, &from) {
+                    let target = format!("{to}{}", &path[from.len()..]);
+                    if directory {
+                        c.vfs.mkdir_all_as(&target, &c.user, t).map_err(err)?;
+                    } else {
+                        let bytes = c.vfs.read_as(&path, &c.user).map_err(err)?;
+                        c.vfs.write_as(&target, &bytes, &c.user, t).map_err(err)?;
+                    }
+                }
+                return Ok(String::new());
             }
             let bytes = c.vfs.read_as(&from, &c.user).map_err(err)?;
             c.vfs.write_as(&to, &bytes, &c.user, t).map_err(err)?;
@@ -936,26 +2725,28 @@ fn run(
             Ok(String::new())
         }
         "rm" | "remove-item" | "rmdir" => {
-            let recursive = args
-                .iter()
-                .any(|s| s == "-r" || s == "-rf" || s == "-Recurse");
-            let force = args.iter().any(|s| s == "-f" || s == "-rf");
-            for p in args.iter().filter(|s| !s.starts_with('-')) {
+            let (opts, paths) = options(
+                "rm",
+                &powershell_switches(args),
+                "rRfv",
+                "",
+                &[("recursive", 'r'), ("force", 'f')],
+            )?;
+            let recursive = flag(&opts, 'r') || flag(&opts, 'R') || cmd == "rmdir";
+            let force = flag(&opts, 'f');
+            if paths.is_empty() && !force {
+                return Err(Fail::usage("rm: missing operand"));
+            }
+            for p in &paths {
                 if let Err(e) = c.vfs.remove_as(&c.resolve(p), recursive, &c.user) {
                     if !force {
-                        return Err(e.to_string());
+                        return Err(e.to_string().into());
                     }
                 }
             }
             Ok(String::new())
         }
-        "chmod" => {
-            let mode = u16::from_str_radix(required(0)?, 8).map_err(|_| "invalid octal mode")?;
-            for p in &args[1..] {
-                c.vfs.chmod_as(&c.resolve(p), mode, &c.user).map_err(err)?;
-            }
-            Ok(String::new())
-        }
+        "chmod" => cmd_chmod(c, args),
         "ln" => {
             if args.first().is_some_and(|s| s == "-s") {
                 c.vfs
@@ -968,43 +2759,7 @@ fn run(
             }
             Ok(String::new())
         }
-        "grep" | "select-string" => {
-            let invert = args.iter().any(|s| s == "-v");
-            let insensitive = args.iter().any(|s| s == "-i");
-            let vals: Vec<_> = args.iter().filter(|s| !s.starts_with('-')).collect();
-            let pattern = vals.first().ok_or("missing pattern")?;
-            let mut text = input.to_string();
-            if vals.len() > 1 {
-                text.clear();
-                for p in &vals[1..] {
-                    text.push_str(&String::from_utf8_lossy(
-                        &c.vfs.read_as(&c.resolve(p), &c.user).map_err(err)?,
-                    ));
-                }
-            }
-            let fixed = args.iter().any(|s| s == "-F");
-            let expression = if fixed {
-                regex::escape(pattern)
-            } else {
-                pattern.to_string()
-            };
-            let regex = regex::RegexBuilder::new(&expression)
-                .case_insensitive(insensitive)
-                .build()
-                .map_err(|e| e.to_string())?;
-            let mut out = String::new();
-            for l in text.lines() {
-                let matched = regex.is_match(l);
-                if matched != invert {
-                    out.push_str(l);
-                    out.push('\n');
-                }
-            }
-            if out.is_empty() {
-                return Err(String::new());
-            }
-            Ok(out)
-        }
+        "grep" | "select-string" => cmd_grep(c, args, input),
         "test" | "[" | "test-path" => {
             let vals = if cmd == "[" {
                 if args.last().map(String::as_str) != Some("]") {
@@ -1015,116 +2770,48 @@ fn run(
                 args
             };
             let yes = match vals {
-                [flag, p] if flag == "-e" => c.vfs.stat(&c.resolve(p)).is_ok(),
-                [flag, p] if flag == "-f" => c.vfs.read_as(&c.resolve(p), &c.user).is_ok(),
-                [flag, p] if flag == "-d" => c.vfs.list_as(&c.resolve(p), &c.user).is_ok(),
-                [flag, v] if flag == "-n" => !v.is_empty(),
-                [flag, v] if flag == "-z" => v.is_empty(),
-                [left, op, right] => match op.as_str() {
-                    "=" | "==" => left == right,
-                    "!=" => left != right,
-                    "-eq" | "-ne" | "-lt" | "-gt" | "-le" | "-ge" => {
-                        let l = left.parse::<i64>().map_err(|_| "invalid integer")?;
-                        let r = right.parse::<i64>().map_err(|_| "invalid integer")?;
-                        match op.as_str() {
-                            "-eq" => l == r,
-                            "-ne" => l != r,
-                            "-lt" => l < r,
-                            "-gt" => l > r,
-                            "-le" => l <= r,
-                            _ => l >= r,
-                        }
-                    }
-                    _ => return Err("unsupported test operator".into()),
-                },
-                [v] => {
-                    if cmd == "test-path" {
-                        c.vfs.stat(&c.resolve(v)).is_ok()
-                    } else {
-                        !v.is_empty()
-                    }
-                }
-                [] => false,
-                _ => return Err("unsupported test expression".into()),
+                [v] if cmd == "test-path" => c.vfs.stat(&c.resolve(v)).is_ok(),
+                _ => test_primary(c, vals)?,
             };
             if cmd == "test-path" {
                 Ok(format!("{}\n", if yes { "True" } else { "False" }))
             } else if yes {
                 Ok(String::new())
             } else {
-                Err(String::new())
+                Err(Fail::new(String::new(), 1))
             }
         }
-        "stat" => {
-            let path = c.resolve(required(0)?);
-            c.vfs
-                .check_access(&path, &c.user, true, false, false)
-                .map_err(err)?;
-            serde_json::to_string_pretty(&c.vfs.stat(&path).map_err(err)?)
-                .map(|s| s + "\n")
-                .map_err(|e| e.to_string())
-        }
-        "sed" => {
-            let inplace = args.first().is_some_and(|s| s == "-i");
-            let expression = required(usize::from(inplace))?;
-            let mut chars = expression.chars();
-            if chars.next() != Some('s') {
-                return Err("supported sed syntax: s/PATTERN/REPLACEMENT/[g]".into());
+        "shift" => {
+            if args.len() > 1 {
+                return Err(Fail::usage("shift: too many arguments"));
             }
-            let delimiter = chars.next().ok_or("missing sed delimiter")?;
-            let mut fields = vec![String::new()];
-            let mut escaped = false;
-            for ch in chars {
-                if escaped {
-                    if ch != delimiter {
-                        fields.last_mut().unwrap().push('\\');
-                    }
-                    fields.last_mut().unwrap().push(ch);
-                    escaped = false;
-                } else if ch == '\\' {
-                    escaped = true;
-                } else if ch == delimiter {
-                    fields.push(String::new());
-                } else {
-                    fields.last_mut().unwrap().push(ch)
-                }
-            }
-            if fields.len() != 3 {
-                return Err("malformed sed substitution".into());
-            }
-            let regex = regex::Regex::new(&fields[0]).map_err(|e| e.to_string())?;
-            let replace = |text: &str| {
-                if fields[2].contains('g') {
-                    regex.replace_all(text, fields[1].as_str()).into_owned()
-                } else {
-                    text.split_inclusive('\n')
-                        .map(|line| regex.replace(line, fields[1].as_str()).into_owned())
-                        .collect::<String>()
-                }
+            let by: usize = match args.first() {
+                None => 1,
+                Some(v) => v
+                    .parse()
+                    .map_err(|_| Fail::usage("shift: numeric argument required"))?,
             };
-            let files = &args[usize::from(inplace) + 1..];
-            if files.is_empty() {
-                if inplace {
-                    return Err("sed -i requires file".into());
-                }
-                return Ok(replace(input));
+            let count: usize = c.env.get("#").and_then(|v| v.parse().ok()).unwrap_or(0);
+            // Shifting past the end is a modelled negative, not an unsupported ask.
+            if by > count {
+                return Err(Fail::new(String::new(), 1));
             }
-            let mut out = String::new();
-            for file in files {
-                let path = c.resolve(file);
-                let text = String::from_utf8_lossy(&c.vfs.read_as(&path, &c.user).map_err(err)?)
-                    .into_owned();
-                let changed = replace(&text);
-                if inplace {
-                    c.vfs
-                        .write_as(&path, changed.as_bytes(), &c.user, t)
-                        .map_err(err)?;
-                } else {
-                    out.push_str(&changed)
-                }
+            for i in 1..=count - by {
+                let value = c
+                    .env
+                    .get(&(i + by).to_string())
+                    .cloned()
+                    .unwrap_or_default();
+                c.env.insert(i.to_string(), value);
             }
-            Ok(out)
+            for i in count - by + 1..=count {
+                c.env.remove(&i.to_string());
+            }
+            c.env.insert("#".into(), (count - by).to_string());
+            Ok(String::new())
         }
+        "stat" => cmd_stat(c, args),
+        "sed" => cmd_sed(c, args, input, t),
         "tr" => {
             let delete = args.first().is_some_and(|s| s == "-d");
             let from = character_set(required(usize::from(delete))?);
@@ -1188,76 +2875,64 @@ fn run(
                 })
                 .collect())
         }
-        "head" | "tail" | "wc" | "sort" | "uniq" => {
-            let mut n = 10;
-            let mut path = None;
-            let mut i = 0;
-            while i < args.len() {
-                if args[i] == "-n" {
-                    i += 1;
-                    n = args
-                        .get(i)
-                        .and_then(|s| s.parse().ok())
-                        .ok_or("invalid count")?;
-                } else if !args[i].starts_with('-') {
-                    path = Some(&args[i]);
-                }
-                i += 1;
+        "head" | "tail" | "wc" | "sort" | "uniq" => cmd_text(c, &cmd, args, input),
+        "find" => cmd_find(c, args),
+        "clear" | "cls" => {
+            // No bytes: run_tokens raises CommandResult::clear for the terminal to honour.
+            if !args.is_empty() {
+                return Err(Fail::usage("clear: takes no arguments"));
             }
-            let text = if let Some(p) = path {
-                String::from_utf8_lossy(&c.vfs.read_as(&c.resolve(p), &c.user).map_err(err)?)
-                    .into_owned()
-            } else {
-                input.into()
-            };
-            let mut lines: Vec<_> = text.lines().collect();
-            match cmd.as_str() {
-                "wc" => Ok(if args.iter().any(|s| s == "-l") {
-                    format!("{}\n", text.bytes().filter(|b| *b == b'\n').count())
-                } else {
-                    format!(
-                        "{} {} {}\n",
-                        text.lines().count(),
-                        text.split_whitespace().count(),
-                        text.len()
-                    )
-                }),
-                "head" => Ok(lines
-                    .into_iter()
-                    .take(n)
-                    .map(|l| format!("{l}\n"))
-                    .collect()),
-                "tail" => {
-                    let skip = lines.len().saturating_sub(n);
-                    Ok(lines
-                        .into_iter()
-                        .skip(skip)
-                        .map(|l| format!("{l}\n"))
-                        .collect())
-                }
-                "sort" => {
-                    lines.sort();
-                    if args.iter().any(|s| s == "-r") {
-                        lines.reverse();
-                    }
-                    Ok(lines.into_iter().map(|l| format!("{l}\n")).collect())
-                }
-                _ => {
-                    lines.dedup();
-                    Ok(lines.into_iter().map(|l| format!("{l}\n")).collect())
-                }
-            }
+            Ok(String::new())
         }
-        "find" => {
-            let prefix = c.resolve(args.first().map(String::as_str).unwrap_or("."));
-            Ok(c.vfs
-                .all_files()
-                .keys()
-                .filter(|p| {
-                    p.starts_with(&format!("{}/", prefix.trim_end_matches('/'))) || **p == prefix
-                })
-                .map(|p| format!("{p}\n"))
-                .collect())
+        "nproc" => {
+            let (_, rest) = options("nproc", args, "", "", &[("all", 'a')])?;
+            if !rest.is_empty() {
+                return Err(Fail::usage("nproc: takes no operands"));
+            }
+            Ok(format!("{}\n", c.hardware.cpus))
+        }
+        "uptime" => cmd_uptime(c, args, t),
+        "which" => cmd_which(c, args),
+        "du" => cmd_du(c, args),
+        "df" => cmd_df(c, args),
+        "ip" => cmd_ip(c, args),
+        "sudo" => {
+            let mut index = 0;
+            let mut target = String::from("root");
+            while index < args.len() {
+                match args[index].as_str() {
+                    "-n" | "--non-interactive" | "-E" | "--preserve-env" => index += 1,
+                    "-v" | "--validate" | "-k" | "--reset-timestamp" | "-K" => {
+                        return Ok(String::new())
+                    }
+                    "-u" | "--user" => {
+                        target = args
+                            .get(index + 1)
+                            .cloned()
+                            .ok_or_else(|| Fail::usage("sudo: option `-u` requires a user"))?;
+                        index += 2;
+                    }
+                    "--" => {
+                        index += 1;
+                        break;
+                    }
+                    other if other.starts_with('-') => {
+                        return Err(Fail::usage(format!("sudo: unsupported option `{other}`")))
+                    }
+                    _ => break,
+                }
+            }
+            if index >= args.len() {
+                return Err(Fail::usage("sudo: missing command"));
+            }
+            if depth > 32 {
+                return Err("sudo: execution nesting exceeds 32".into());
+            }
+            // No password or sudoers model: sudo only swaps the identity access checks use.
+            let saved = std::mem::replace(&mut c.user, target);
+            let result = run(c, &args[index..], input, t, host, depth + 1);
+            c.user = saved;
+            result
         }
         "systemctl" | "service" => {
             let (operation, name) = if cmd == "service" {
@@ -1278,7 +2953,7 @@ fn run(
                 return if let Some(p) = running {
                     Ok(format!("{name}: active (running), pid {}\n", p.pid))
                 } else {
-                    Err(format!("{name}: inactive"))
+                    Err(format!("{name}: inactive").into())
                 };
             }
             if operation == "stop" || operation == "restart" {
@@ -1287,7 +2962,7 @@ fn run(
                     if process_terminated(c, p.pid) {
                         host.cleanup_process(p.pid)
                     } else {
-                        return Err(format!("{name}: process did not terminate after TERM"));
+                        return Err(format!("{name}: process did not terminate after TERM").into());
                     }
                 }
                 if operation == "stop" {
@@ -1307,15 +2982,13 @@ fn run(
                     Err(e) => {
                         let _ = c.processes.exit(pid, 1, t);
                         host.cleanup_process(pid);
-                        return Err(e);
+                        return Err(e.into());
                     }
                 }
             }
-            Err("unsupported service operation".into())
+            Err(Fail::usage("unsupported service operation"))
         }
-        "ps" | "get-process" => serde_json::to_string_pretty(&c.processes.list())
-            .map(|s| s + "\n")
-            .map_err(|e| e.to_string()),
+        "ps" | "get-process" => cmd_ps(c, args),
         "kill" | "stop-process" => {
             let (signal, index) = if required(0)?.starts_with('-') {
                 (
@@ -1358,7 +3031,7 @@ fn run(
             } else {
                 return Err("unsupported package operation".into());
             };
-            result.map(|v| v.join("\n") + "\n")
+            Ok(result.map(|v| v.join("\n") + "\n")?)
         }
         "curl" | "wget" | "invoke-webrequest" => {
             let mut method = "GET".to_string();
@@ -1405,7 +3078,7 @@ fn run(
                 body,
             })?;
             if args.iter().any(|s| s == "-f" || s == "--fail") && response.status >= 400 {
-                return Err(format!("HTTP {}", response.status));
+                return Err(format!("HTTP {}", response.status).into());
             }
             if let Some(p) = output {
                 c.vfs
@@ -1421,11 +3094,12 @@ fn run(
             if result.exit_code == 0 {
                 Ok(result.stdout)
             } else {
-                Err(result.stderr)
+                Err(Fail::new(result.stderr, result.exit_code))
             }
         }
         "sh" | "bash" => {
-            let source = if args.first().is_some_and(|s| s == "-c") {
+            let inline = args.first().is_some_and(|s| s == "-c");
+            let source = if inline {
                 required(1)?.to_string()
             } else {
                 String::from_utf8(
@@ -1437,13 +3111,23 @@ fn run(
             };
             let saved_env = c.env.clone();
             let saved_cwd = c.cwd.clone();
+            // `sh -c SCRIPT NAME ARG…`: the operands after the script are $0, $1, …
+            // For a script file the path itself is $0, so nothing is skipped.
+            let operands = &args[if inline { 2.min(args.len()) } else { 0 }..];
+            if !operands.is_empty() {
+                for (i, arg) in operands.iter().enumerate() {
+                    c.env.insert(i.to_string(), arg.clone());
+                }
+                c.env
+                    .insert("#".into(), operands.len().saturating_sub(1).to_string());
+            }
             let r = execute_inner(c, &source, t, host, depth + 1);
             c.env = saved_env;
             c.cwd = saved_cwd;
-            if r.exit_code == 0 {
+            if r.exit_code == 0 && r.stderr.is_empty() {
                 Ok(r.stdout)
             } else {
-                Err(r.stderr)
+                Err(Fail::nested(r))
             }
         }
         _ => {
@@ -1461,12 +3145,12 @@ fn run(
             let path = candidates
                 .into_iter()
                 .find(|p| c.vfs.exists(p))
-                .ok_or_else(|| format!("command not found: {}", a[0]))?;
+                .ok_or_else(|| Fail::new(format!("command not found: {}", a[0]), 127))?;
             c.vfs
                 .check_access(&path, &c.user, true, false, true)
-                .map_err(err)?;
+                .map_err(|e| Fail::new(e.to_string(), 126))?;
             let source = String::from_utf8(c.vfs.read_as(&path, &c.user).map_err(err)?)
-                .map_err(|_| "unsupported binary executable")?;
+                .map_err(|_| Fail::new("unsupported binary executable", 126))?;
             if source.starts_with("#!cw-package\n") {
                 let name = source.lines().nth(1).ok_or("invalid package executable")?;
                 if args.iter().any(|s| s == "--version" || s == "-V") {
@@ -1478,15 +3162,16 @@ fn run(
                             .ok_or("package is not installed")?
                     ));
                 }
-                return Err(format!(
-                    "{name}: no synthetic program implementation registered"
+                return Err(Fail::new(
+                    format!("{name}: no synthetic program implementation registered"),
+                    126,
                 ));
             }
             if !source.starts_with("#!/bin/sh")
                 && !source.starts_with("#!/bin/bash")
                 && !source.starts_with("#!/usr/bin/env sh")
             {
-                return Err("unsupported executable interpreter".into());
+                return Err(Fail::new("unsupported executable interpreter", 126));
             }
             let old = c.env.clone();
             let old_cwd = c.cwd.clone();
@@ -1497,10 +3182,10 @@ fn run(
             let r = execute_inner(c, &source, t, host, depth + 1);
             c.env = old;
             c.cwd = old_cwd;
-            if r.exit_code == 0 {
+            if r.exit_code == 0 && r.stderr.is_empty() {
                 Ok(r.stdout)
             } else {
-                Err(r.stderr)
+                Err(Fail::nested(r))
             }
         }
     }
@@ -1785,4 +3470,2210 @@ mod signal_tests {
         execute(&mut c, &format!("kill -9 {pid}"), 2, &mut host);
         assert!(host.0.contains(&pid));
     }
+}
+
+#[cfg(test)]
+mod find_tests {
+    use super::*;
+    use crate::OfflineHost;
+    fn machine() -> Computer {
+        let mut c = Computer::new("a", "user", "linux", true);
+        for dir in ["/home/user/notes", "/home/user/notes/deep"] {
+            let r = execute(&mut c, &format!("mkdir -p {dir}"), 0, &mut OfflineHost);
+            assert_eq!(r.exit_code, 0, "{}", r.stderr);
+        }
+        for path in [
+            "/home/user/recipes.txt",
+            "/home/user/notes/recipes.md",
+            "/home/user/notes/deep/other.txt",
+        ] {
+            let r = execute(&mut c, &format!("echo x > {path}"), 0, &mut OfflineHost);
+            assert_eq!(r.exit_code, 0, "{}", r.stderr);
+        }
+        c
+    }
+    fn run(c: &mut Computer, line: &str) -> (String, i32) {
+        let r = execute(c, line, 1, &mut OfflineHost);
+        (format!("{}{}", r.stdout, r.stderr), r.exit_code)
+    }
+    #[test]
+    fn a_name_predicate_is_applied_and_a_miss_returns_nothing() {
+        let mut c = machine();
+        let (out, code) = run(&mut c, "find /home/user -name 'nope'");
+        assert_eq!(out, "", "a search with no matches must return no matches");
+        assert_eq!(code, 0);
+        let (out, _) = run(&mut c, "find /home/user -name 'recipes.txt'");
+        assert_eq!(out, "/home/user/recipes.txt\n");
+        let (out, _) = run(&mut c, "find /home/user -name 'recipes.*'");
+        let mut lines: Vec<_> = out.lines().collect();
+        lines.sort();
+        assert_eq!(
+            lines,
+            vec!["/home/user/notes/recipes.md", "/home/user/recipes.txt"]
+        );
+    }
+    #[test]
+    fn type_and_maxdepth_narrow_the_walk() {
+        let mut c = machine();
+        let (out, _) = run(&mut c, "find /home/user -type d");
+        let mut dirs: Vec<_> = out.lines().collect();
+        dirs.sort();
+        assert!(dirs.contains(&"/home/user/notes"), "{dirs:?}");
+        assert!(dirs.contains(&"/home/user/notes/deep"), "{dirs:?}");
+        assert!(!dirs.contains(&"/home/user/recipes.txt"), "{dirs:?}");
+        let (out, _) = run(&mut c, "find /home/user -maxdepth 1 -type f");
+        assert_eq!(out, "/home/user/recipes.txt\n");
+    }
+    #[test]
+    fn an_unsupported_predicate_fails_loudly_rather_than_being_ignored() {
+        let mut c = machine();
+        let (out, code) = run(&mut c, "find /home/user -newer /etc/passwd");
+        assert_ne!(code, 0, "an ignored predicate must not report success");
+        assert!(out.contains("-newer"), "{out}");
+        let (out, code) = run(&mut c, "find /home/user -name");
+        assert_ne!(code, 0);
+        assert!(out.contains("missing argument"), "{out}");
+        let (_, code) = run(&mut c, "find /no/such/root -name x");
+        assert_ne!(code, 0);
+    }
+}
+
+/// Simulated wall clock. Tick 0 is 09:00:00 UTC on Thursday 17 September 2026 — the
+/// same origin the desktop clock uses, so `date` and the GUI never disagree.
+pub const EPOCH_UNIX_SECONDS: u64 = 1_789_635_600;
+const WEEKDAY_ABBR: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_NAME: [&str; 7] = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+];
+const MONTH_ABBR: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+const MONTH_NAME: [&str; 12] = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Clock {
+    pub year: u64,
+    pub month: u64,
+    pub day: u64,
+    pub hour: u64,
+    pub minute: u64,
+    pub second: u64,
+    pub micro: u64,
+    /// 0 is Sunday.
+    pub weekday: u64,
+    pub unix: u64,
+}
+/// Gregorian civil date from a simulated microsecond tick; no host clock is consulted.
+pub fn clock(tick: u64) -> Clock {
+    let unix = EPOCH_UNIX_SECONDS + tick / 1_000_000;
+    let (days, rest) = (unix / 86_400, unix % 86_400);
+    // Hinnant's civil-from-days: a March-based year puts the leap day last.
+    let z = days as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    Clock {
+        year: (yoe + era * 400 + i64::from(month <= 2)) as u64,
+        month: month as u64,
+        day: day as u64,
+        hour: rest / 3600,
+        minute: rest % 3600 / 60,
+        second: rest % 60,
+        micro: tick % 1_000_000,
+        weekday: (days + 4) % 7,
+        unix,
+    }
+}
+impl Clock {
+    /// `2026-09-17 09:00:00`, the stamp `stat` and `uptime -s` print.
+    fn stamp(&self) -> String {
+        format!(
+            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+            self.year, self.month, self.day, self.hour, self.minute, self.second
+        )
+    }
+    /// `Sep 17 09:00`, the `ls -l` column.
+    fn short(&self) -> String {
+        format!(
+            "{} {:2} {:02}:{:02}",
+            MONTH_ABBR[self.month as usize - 1],
+            self.day,
+            self.hour,
+            self.minute
+        )
+    }
+}
+/// GNU-style abbreviated size: exact under 1 KiB, one decimal under 10 units.
+fn human(bytes: u64) -> String {
+    const UNITS: [&str; 6] = ["", "K", "M", "G", "T", "P"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit + 1 < UNITS.len() {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        bytes.to_string()
+    } else if value < 9.95 {
+        format!("{value:.1}{}", UNITS[unit])
+    } else {
+        format!("{}{}", value.ceil() as u64, UNITS[unit])
+    }
+}
+/// `drwxr-xr-t` from the stored mode; setuid/setgid/sticky bits are honoured.
+fn mode_string(mode: u16, is_dir: bool, is_symlink: bool) -> String {
+    let kind = if is_symlink {
+        'l'
+    } else if is_dir {
+        'd'
+    } else {
+        '-'
+    };
+    let mut out = String::from(kind);
+    for (shift, special, low, high) in [
+        (6, 0o4000, 's', 'S'),
+        (3, 0o2000, 's', 'S'),
+        (0, 0o1000, 't', 'T'),
+    ] {
+        let bits = (mode >> shift) & 7;
+        out.push(if bits & 4 != 0 { 'r' } else { '-' });
+        out.push(if bits & 2 != 0 { 'w' } else { '-' });
+        out.push(if mode & special != 0 {
+            if bits & 1 != 0 {
+                low
+            } else {
+                high
+            }
+        } else if bits & 1 != 0 {
+            'x'
+        } else {
+            '-'
+        });
+    }
+    out
+}
+/// Bytes a node occupies, assuming a 4 KiB allocation unit; the VFS has no allocator,
+/// so this is a stated convention rather than a measurement.
+const BLOCK: u64 = 4096;
+fn allocated(size: u64) -> u64 {
+    size.div_ceil(BLOCK) * BLOCK
+}
+/// Bytes a node reports: the VFS stores a child count for directories, but every tool
+/// that prints a size means the allocation unit.
+fn apparent(m: &crate::Metadata) -> u64 {
+    if m.is_dir {
+        BLOCK
+    } else {
+        m.size as u64
+    }
+}
+/// Every node beneath `root` (inclusive) with its apparent size; directories are
+/// reported as one allocation unit. Walks the VFS only.
+fn walk_tree(c: &Computer, root: &str) -> Vec<(String, u64, bool)> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    let mut stack = vec![root.trim_end_matches('/').to_string()];
+    while let Some(path) = stack.pop() {
+        let path = if path.is_empty() {
+            "/".to_string()
+        } else {
+            path
+        };
+        let Ok(meta) = c.vfs.lstat(&path) else {
+            continue;
+        };
+        if !seen.insert(path.clone()) {
+            continue;
+        }
+        if meta.is_dir {
+            out.push((path.clone(), BLOCK, true));
+            for name in c.vfs.list(&path).unwrap_or_default() {
+                stack.push(format!("{}/{name}", path.trim_end_matches('/')));
+            }
+        } else {
+            out.push((path, meta.size as u64, false));
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Option parser shared by the file utilities. Clusters (`-la`) split, long names map
+/// to their short letter, and anything unlisted is a usage failure: a flag this world
+/// cannot honour must never be silently dropped.
+type Parsed = (Vec<(char, String)>, Vec<String>);
+fn options(
+    name: &str,
+    args: &[String],
+    allowed: &str,
+    valued: &str,
+    long: &[(&str, char)],
+) -> Result<Parsed, Fail> {
+    let mut flags = Vec::new();
+    let mut operands = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        let arg = &args[i];
+        if arg == "--" {
+            operands.extend(args[i + 1..].iter().cloned());
+            break;
+        }
+        if let Some(rest) = arg.strip_prefix("--").filter(|s| !s.is_empty()) {
+            let (key, inline) = match rest.split_once('=') {
+                Some((k, v)) => (k, Some(v.to_string())),
+                None => (rest, None),
+            };
+            let ch = long
+                .iter()
+                .find(|(n, _)| *n == key)
+                .map(|(_, c)| *c)
+                .ok_or_else(|| Fail::usage(format!("{name}: unsupported option `--{key}`")))?;
+            if valued.contains(ch) {
+                let value = match inline {
+                    Some(v) => v,
+                    None => {
+                        i += 1;
+                        args.get(i).cloned().ok_or_else(|| {
+                            Fail::usage(format!("{name}: option `--{key}` requires an argument"))
+                        })?
+                    }
+                };
+                flags.push((ch, value));
+            } else if inline.is_some() {
+                return Err(Fail::usage(format!(
+                    "{name}: option `--{key}` takes no argument"
+                )));
+            } else {
+                flags.push((ch, String::new()));
+            }
+            i += 1;
+            continue;
+        }
+        if arg.len() > 1 && arg.starts_with('-') {
+            let chars: Vec<char> = arg[1..].chars().collect();
+            let mut j = 0;
+            while j < chars.len() {
+                let ch = chars[j];
+                if valued.contains(ch) {
+                    let tail: String = chars[j + 1..].iter().collect();
+                    let value = if tail.is_empty() {
+                        i += 1;
+                        args.get(i).cloned().ok_or_else(|| {
+                            Fail::usage(format!("{name}: option `-{ch}` requires an argument"))
+                        })?
+                    } else {
+                        tail
+                    };
+                    flags.push((ch, value));
+                    j = chars.len();
+                } else if allowed.contains(ch) {
+                    flags.push((ch, String::new()));
+                    j += 1;
+                } else {
+                    return Err(Fail::usage(format!("{name}: unsupported option `-{ch}`")));
+                }
+            }
+            i += 1;
+            continue;
+        }
+        operands.push(arg.clone());
+        i += 1;
+    }
+    Ok((flags, operands))
+}
+fn flag(flags: &[(char, String)], f: char) -> bool {
+    flags.iter().any(|(k, _)| *k == f)
+}
+fn value(flags: &[(char, String)], f: char) -> Option<&str> {
+    flags
+        .iter()
+        .rev()
+        .find(|(k, _)| *k == f)
+        .map(|(_, v)| v.as_str())
+}
+/// `date +FORMAT`. Unknown conversions fail rather than being copied through, so a
+/// caller never mistakes an unimplemented field for a literal.
+fn strftime(format: &str, now: &Clock) -> Result<String, Fail> {
+    let chars: Vec<char> = format.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] == '\\' && i + 1 < chars.len() {
+            out.push(match chars[i + 1] {
+                'n' => '\n',
+                't' => '\t',
+                other => other,
+            });
+            i += 2;
+            continue;
+        }
+        if chars[i] != '%' {
+            out.push(chars[i]);
+            i += 1;
+            continue;
+        }
+        let spec = *chars
+            .get(i + 1)
+            .ok_or_else(|| Fail::usage("date: trailing `%` in format".to_string()))?;
+        let (y, mo, d) = (now.year, now.month, now.day);
+        let (h, mi, s) = (now.hour, now.minute, now.second);
+        match spec {
+            '%' => out.push('%'),
+            'Y' => out.push_str(&format!("{y:04}")),
+            'y' => out.push_str(&format!("{:02}", y % 100)),
+            'm' => out.push_str(&format!("{mo:02}")),
+            'd' => out.push_str(&format!("{d:02}")),
+            'e' => out.push_str(&format!("{d:2}")),
+            'H' => out.push_str(&format!("{h:02}")),
+            'M' => out.push_str(&format!("{mi:02}")),
+            'S' => out.push_str(&format!("{s:02}")),
+            'N' => out.push_str(&format!("{:09}", now.micro * 1000)),
+            's' => out.push_str(&now.unix.to_string()),
+            'F' => out.push_str(&format!("{y:04}-{mo:02}-{d:02}")),
+            'T' => out.push_str(&format!("{h:02}:{mi:02}:{s:02}")),
+            'D' => out.push_str(&format!("{:02}/{d:02}/{:02}", mo, y % 100)),
+            'a' => out.push_str(WEEKDAY_ABBR[now.weekday as usize]),
+            'A' => out.push_str(WEEKDAY_NAME[now.weekday as usize]),
+            'b' | 'h' => out.push_str(MONTH_ABBR[mo as usize - 1]),
+            'B' => out.push_str(MONTH_NAME[mo as usize - 1]),
+            'u' => out.push_str(&(if now.weekday == 0 { 7 } else { now.weekday }).to_string()),
+            'w' => out.push_str(&now.weekday.to_string()),
+            'Z' => out.push_str("UTC"),
+            'z' => out.push_str("+0000"),
+            other => {
+                return Err(Fail::usage(format!(
+                    "date: unsupported conversion `%{other}`"
+                )))
+            }
+        }
+        i += 2;
+    }
+    Ok(out)
+}
+struct LsFlags {
+    all: bool,
+    almost: bool,
+    long: bool,
+    human: bool,
+    classify: bool,
+    reverse: bool,
+    by_time: bool,
+    by_size: bool,
+}
+/// Trailing type marker for `ls -F`; executability comes from the stored mode.
+fn classify(meta: &crate::Metadata) -> char {
+    if meta.is_symlink {
+        '@'
+    } else if meta.is_dir {
+        '/'
+    } else if meta.mode & 0o111 != 0 {
+        '*'
+    } else {
+        ' '
+    }
+}
+/// Entries are (label, absolute path) so an operand keeps the spelling the caller used.
+fn ls_render(c: &Computer, entries: &[(String, String)], f: &LsFlags) -> String {
+    let rows: Vec<(String, Option<crate::Metadata>)> = entries
+        .iter()
+        .map(|(n, path)| (n.clone(), c.vfs.lstat(path).ok()))
+        .collect();
+    if !f.long {
+        return rows
+            .iter()
+            .map(|(n, m)| {
+                let mark = match (f.classify, m) {
+                    (true, Some(meta)) => classify(meta),
+                    _ => ' ',
+                };
+                if mark == ' ' {
+                    format!("{n}\n")
+                } else {
+                    format!("{n}{mark}\n")
+                }
+            })
+            .collect();
+    }
+    let blocks: u64 = rows
+        .iter()
+        .filter_map(|(_, m)| m.as_ref())
+        .map(|m| allocated(apparent(m)) / 1024)
+        .sum();
+    let sized: Vec<String> = rows
+        .iter()
+        .map(|(_, m)| match m {
+            Some(meta) if f.human => human(apparent(meta)),
+            Some(meta) => apparent(meta).to_string(),
+            None => "?".into(),
+        })
+        .collect();
+    let width = sized.iter().map(String::len).max().unwrap_or(1);
+    let owners = rows
+        .iter()
+        .map(|(_, m)| m.as_ref().map_or(1, |x| x.owner.len()))
+        .max()
+        .unwrap_or(1);
+    let mut out = format!("total {blocks}\n");
+    for (((name, meta), size), (_, path)) in rows.iter().zip(sized).zip(entries) {
+        let Some(m) = meta else {
+            out.push_str(&format!("?????????? ? ? ? {size:>width$} ? {name}\n"));
+            continue;
+        };
+        let target = if m.is_symlink {
+            c.vfs
+                .read_link(path)
+                .map(|t| format!(" -> {t}"))
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+        let mark = if f.classify { classify(m) } else { ' ' };
+        out.push_str(&format!(
+            "{} {:>3} {:<owners$} {:<owners$} {:>width$} {} {name}{}{}\n",
+            mode_string(m.mode, m.is_dir, m.is_symlink),
+            m.links,
+            m.owner,
+            m.owner,
+            size,
+            clock(m.modified).short(),
+            if mark == ' ' {
+                String::new()
+            } else {
+                mark.to_string()
+            },
+            target,
+        ));
+    }
+    out
+}
+fn ls_block(c: &Computer, dir: &str, f: &LsFlags) -> Result<String, Fail> {
+    let mut names = c.vfs.list_as(dir, &c.user)?;
+    if !f.all && !f.almost {
+        names.retain(|n| !n.starts_with('.'));
+    }
+    let meta = |n: &String| c.vfs.lstat(&crate::normalize_path(dir, n));
+    if f.by_time {
+        names.sort_by_key(|n| std::cmp::Reverse(meta(n).map(|m| m.modified).unwrap_or(0)));
+    } else if f.by_size {
+        names.sort_by_key(|n| std::cmp::Reverse(meta(n).map(|m| apparent(&m)).unwrap_or(0)));
+    }
+    if f.reverse {
+        names.reverse();
+    }
+    if f.all {
+        names.splice(0..0, [".".to_string(), "..".to_string()]);
+    }
+    let entries: Vec<(String, String)> = names
+        .iter()
+        .map(|n| (n.clone(), crate::normalize_path(dir, n)))
+        .collect();
+    Ok(ls_render(c, &entries, f))
+}
+/// `stat -c` conversions. The VFS keeps one timestamp and no numeric ids, so %X/%Y/%Z
+/// coincide and %u/%g report the computer's fixed identity.
+fn stat_format(
+    c: &Computer,
+    format: &str,
+    path: &str,
+    m: &crate::Metadata,
+) -> Result<String, Fail> {
+    let chars: Vec<char> = format.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    let kind = if m.is_symlink {
+        "symbolic link"
+    } else if m.is_dir {
+        "directory"
+    } else {
+        "regular file"
+    };
+    while i < chars.len() {
+        if chars[i] == '\\' && i + 1 < chars.len() {
+            out.push(match chars[i + 1] {
+                'n' => '\n',
+                't' => '\t',
+                other => other,
+            });
+            i += 2;
+            continue;
+        }
+        if chars[i] != '%' {
+            out.push(chars[i]);
+            i += 1;
+            continue;
+        }
+        let spec = *chars
+            .get(i + 1)
+            .ok_or_else(|| Fail::usage("stat: trailing `%` in format".to_string()))?;
+        let type_bits: u32 = if m.is_symlink {
+            0o120000
+        } else if m.is_dir {
+            0o040000
+        } else {
+            0o100000
+        };
+        match spec {
+            '%' => out.push('%'),
+            'n' => out.push_str(path),
+            'N' => out.push_str(&format!("'{path}'")),
+            's' => out.push_str(&apparent(m).to_string()),
+            'b' => out.push_str(&apparent(m).div_ceil(512).to_string()),
+            'B' => out.push_str("512"),
+            'o' => out.push_str(&BLOCK.to_string()),
+            'f' => out.push_str(&format!("{:x}", type_bits | u32::from(m.mode))),
+            'a' => out.push_str(&format!("{:o}", m.mode & 0o7777)),
+            'A' => out.push_str(&mode_string(m.mode, m.is_dir, m.is_symlink)),
+            'F' => out.push_str(kind),
+            'U' | 'G' => out.push_str(&m.owner),
+            'u' => out.push_str(&c.hardware.uid.to_string()),
+            'g' => out.push_str(&c.hardware.gid.to_string()),
+            'i' => out.push_str(&m.inode.to_string()),
+            'h' => out.push_str(&m.links.to_string()),
+            'm' => out.push('/'),
+            'd' => out.push('1'),
+            'X' | 'Y' | 'Z' => out.push_str(&clock(m.modified).unix.to_string()),
+            'x' | 'y' | 'z' => {
+                out.push_str(&format!("{}.000000000 +0000", clock(m.modified).stamp()))
+            }
+            other => {
+                return Err(Fail::usage(format!(
+                    "stat: unsupported conversion `%{other}`"
+                )))
+            }
+        }
+        i += 2;
+    }
+    Ok(out)
+}
+
+/// A sed address. `Last` is `$`; `Pattern` is a regex address.
+enum Address {
+    Line(usize),
+    Last,
+    Pattern(regex::Regex),
+}
+/// Which lines the verb applies to. `All` is an unaddressed script.
+enum Selector {
+    All,
+    One(Address),
+    Range(Address, Address),
+}
+/// The sed verbs this world implements. Anything else is refused by name so a script
+/// never silently passes its input through unchanged.
+enum Verb {
+    Substitute {
+        regex: regex::Regex,
+        with: String,
+        global: bool,
+    },
+    Print,
+    Delete,
+    Append(String),
+    Insert(String),
+    Transliterate(Vec<char>, Vec<char>),
+    Quit(i32),
+}
+struct SedProgram {
+    selector: Selector,
+    verb: Verb,
+}
+const SED_SCRIPTS: &str = "sed: supported scripts are [ADDR]s/RE/REP/[g], and [ADDR] \
+     with p, d, a TEXT, i TEXT, y/SET/SET/ or q [CODE]; an address is N, $, /RE/ or a \
+     pair of those";
+/// Splits `delim`-separated fields, keeping `\x` escapes for everything but the
+/// delimiter itself. Shared by `s///` and `y///`.
+fn sed_fields(chars: &[char], delimiter: char) -> Vec<String> {
+    let mut fields = vec![String::new()];
+    let mut escaped = false;
+    for ch in chars {
+        if escaped {
+            if *ch != delimiter {
+                fields.last_mut().unwrap().push('\\');
+            }
+            fields.last_mut().unwrap().push(*ch);
+            escaped = false;
+        } else if *ch == '\\' {
+            escaped = true;
+        } else if *ch == delimiter {
+            fields.push(String::new());
+        } else {
+            fields.last_mut().unwrap().push(*ch)
+        }
+    }
+    fields
+}
+fn sed_address(chars: &[char], i: &mut usize) -> Result<Option<Address>, Fail> {
+    match chars.get(*i) {
+        Some('$') => {
+            *i += 1;
+            Ok(Some(Address::Last))
+        }
+        Some('/') => {
+            *i += 1;
+            let start = *i;
+            let mut escaped = false;
+            while *i < chars.len() && (escaped || chars[*i] != '/') {
+                escaped = !escaped && chars[*i] == '\\';
+                *i += 1;
+            }
+            if *i >= chars.len() {
+                return Err(Fail::usage("sed: unterminated address regex"));
+            }
+            let body: String = chars[start..*i].iter().collect();
+            *i += 1;
+            Ok(Some(Address::Pattern(
+                regex::Regex::new(&body).map_err(|e| Fail::usage(format!("sed: {e}")))?,
+            )))
+        }
+        Some(c) if c.is_ascii_digit() => {
+            let start = *i;
+            while chars.get(*i).is_some_and(char::is_ascii_digit) {
+                *i += 1;
+            }
+            let n: usize = chars[start..*i].iter().collect::<String>().parse().unwrap();
+            if n == 0 {
+                return Err(Fail::usage("sed: line numbers start at 1"));
+            }
+            Ok(Some(Address::Line(n)))
+        }
+        _ => Ok(None),
+    }
+}
+fn sed_program(expression: &str) -> Result<SedProgram, Fail> {
+    let chars: Vec<char> = expression.trim().chars().collect();
+    let mut i = 0;
+    let selector = match sed_address(&chars, &mut i)? {
+        None => Selector::All,
+        Some(first) if chars.get(i) == Some(&',') => {
+            i += 1;
+            let second = sed_address(&chars, &mut i)?
+                .ok_or_else(|| Fail::usage("sed: a range needs a second address"))?;
+            Selector::Range(first, second)
+        }
+        Some(first) => Selector::One(first),
+    };
+    // GNU allows whitespace between the address and its command.
+    while chars.get(i).is_some_and(|c| *c == ' ' || *c == '\t') {
+        i += 1;
+    }
+    let command = *chars.get(i).ok_or_else(|| Fail::usage(SED_SCRIPTS))?;
+    i += 1;
+    let tail: Vec<char> = chars[i..].to_vec();
+    let text_operand = || match tail.split_first() {
+        Some(('\\', rest)) => rest.iter().collect::<String>(),
+        _ => tail
+            .iter()
+            .collect::<String>()
+            .trim_start_matches([' ', '\t'])
+            .to_string(),
+    };
+    let verb = match command {
+        's' | 'y' => {
+            let delimiter = *tail
+                .first()
+                .ok_or_else(|| Fail::usage("sed: missing delimiter"))?;
+            let fields = sed_fields(&tail[1..], delimiter);
+            if fields.len() != 3 {
+                return Err(Fail::usage(format!("sed: malformed `{command}` command")));
+            }
+            if command == 'y' {
+                let (from, to) = (character_set(&fields[0]), character_set(&fields[1]));
+                if !fields[2].is_empty() || from.len() != to.len() || from.is_empty() {
+                    return Err(Fail::usage("sed: `y` needs two sets of equal length"));
+                }
+                Verb::Transliterate(from, to)
+            } else {
+                if fields[2].chars().any(|c| c != 'g') {
+                    return Err(Fail::usage(format!(
+                        "sed: unsupported substitution flag in `{}`",
+                        fields[2]
+                    )));
+                }
+                Verb::Substitute {
+                    regex: regex::Regex::new(&fields[0])
+                        .map_err(|e| Fail::usage(format!("sed: {e}")))?,
+                    with: fields[1].clone(),
+                    global: fields[2].contains('g'),
+                }
+            }
+        }
+        'p' | 'd' if tail.iter().all(char::is_ascii_whitespace) => {
+            if command == 'p' {
+                Verb::Print
+            } else {
+                Verb::Delete
+            }
+        }
+        'a' => Verb::Append(text_operand()),
+        'i' => Verb::Insert(text_operand()),
+        'q' => {
+            let operand = text_operand();
+            Verb::Quit(if operand.is_empty() {
+                0
+            } else {
+                operand
+                    .parse()
+                    .map_err(|_| Fail::usage("sed: `q` expects a numeric exit code"))?
+            })
+        }
+        _ => return Err(Fail::usage(SED_SCRIPTS)),
+    };
+    Ok(SedProgram { selector, verb })
+}
+impl Address {
+    fn hits(&self, index: usize, line: &str, last: usize) -> bool {
+        match self {
+            Address::Line(n) => *n == index,
+            Address::Last => index == last,
+            Address::Pattern(re) => re.is_match(line),
+        }
+    }
+}
+/// Applies the program to `text`, returning the output and any `q` exit code.
+/// A range opens on its first address and closes on the next line its second matches.
+fn sed_apply(program: &SedProgram, text: &str, quiet: bool) -> (String, Option<i32>) {
+    let lines: Vec<&str> = text.lines().collect();
+    let last = lines.len();
+    let mut open = false;
+    let mut out = String::new();
+    let mut quit = None;
+    for (offset, raw) in lines.iter().enumerate() {
+        let index = offset + 1;
+        let selected = match &program.selector {
+            Selector::All => true,
+            Selector::One(a) => a.hits(index, raw, last),
+            Selector::Range(a, b) => {
+                if open {
+                    if b.hits(index, raw, last) {
+                        open = false;
+                    }
+                    true
+                } else if a.hits(index, raw, last) {
+                    // A numeric end at or before the start makes a one-line range.
+                    open = !matches!(b, Address::Line(n) if *n <= index);
+                    true
+                } else {
+                    false
+                }
+            }
+        };
+        let mut line = (*raw).to_string();
+        let mut print = !quiet;
+        let mut extra = String::new();
+        if selected {
+            match &program.verb {
+                Verb::Substitute {
+                    regex,
+                    with,
+                    global,
+                } => {
+                    line = if *global {
+                        regex.replace_all(&line, with.as_str()).into_owned()
+                    } else {
+                        regex.replace(&line, with.as_str()).into_owned()
+                    }
+                }
+                // Without -n sed still auto-prints, so `p` duplicates the line.
+                Verb::Print => extra = format!("{line}\n"),
+                Verb::Delete => print = false,
+                Verb::Insert(t) => out.push_str(&format!("{t}\n")),
+                Verb::Append(t) => extra = format!("{t}\n"),
+                Verb::Transliterate(from, to) => {
+                    line = line
+                        .chars()
+                        .map(|ch| match from.iter().position(|c| *c == ch) {
+                            Some(k) => to[k],
+                            None => ch,
+                        })
+                        .collect()
+                }
+                Verb::Quit(code) => {
+                    if print {
+                        out.push_str(&format!("{line}\n"));
+                    }
+                    quit = Some(*code);
+                    break;
+                }
+            }
+        }
+        if print {
+            out.push_str(&format!("{line}\n"));
+        }
+        out.push_str(&extra);
+    }
+    // An input with no final newline keeps that shape.
+    if !text.ends_with('\n') && out.ends_with('\n') {
+        out.pop();
+    }
+    (out, quit)
+}
+
+/// PowerShell spells switches with one dash and a whole word; fold the ones the
+/// file commands accept onto their POSIX letters before parsing.
+fn powershell_switches(args: &[String]) -> Vec<String> {
+    args.iter()
+        .map(|a| match a.as_str() {
+            "-Recurse" => "-r".to_string(),
+            "-Force" => "-f".to_string(),
+            other => other.to_string(),
+        })
+        .collect()
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_date(args: &[String], t: u64) -> Result<String, Fail> {
+    let now = clock(t);
+    let mut chosen = None;
+    for arg in args {
+        match arg.strip_prefix('+') {
+            Some(f) => chosen = Some(f.to_string()),
+            None if matches!(arg.as_str(), "-u" | "--utc" | "--universal") => {}
+            None => {
+                return Err(Fail::usage(format!(
+                    "date: unsupported option `{arg}`; the simulated clock is UTC and read-only"
+                )))
+            }
+        }
+    }
+    match chosen {
+        Some(f) => Ok(format!("{}\n", strftime(&f, &now)?)),
+        None => Ok(format!(
+            "{} {} {:2} {:02}:{:02}:{:02} UTC {:04}\n",
+            WEEKDAY_ABBR[now.weekday as usize],
+            MONTH_ABBR[now.month as usize - 1],
+            now.day,
+            now.hour,
+            now.minute,
+            now.second,
+            now.year
+        )),
+    }
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_ls(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, mut paths) = options(
+        "ls",
+        args,
+        "aAldh1FrtSR",
+        "",
+        &[
+            ("all", 'a'),
+            ("almost-all", 'A'),
+            ("human-readable", 'h'),
+            ("reverse", 'r'),
+            ("recursive", 'R'),
+            ("directory", 'd'),
+            ("classify", 'F'),
+        ],
+    )?;
+    let f = LsFlags {
+        all: flag(&opts, 'a'),
+        almost: flag(&opts, 'A'),
+        long: flag(&opts, 'l'),
+        human: flag(&opts, 'h'),
+        classify: flag(&opts, 'F'),
+        reverse: flag(&opts, 'r'),
+        by_time: flag(&opts, 't'),
+        by_size: flag(&opts, 'S'),
+    };
+    if paths.is_empty() {
+        paths.push(".".into());
+    }
+    let mut out = String::new();
+    let mut queue: Vec<(String, String)> = Vec::new();
+    for operand in &paths {
+        let resolved = c.resolve(operand);
+        let meta = c
+            .vfs
+            .lstat(&resolved)
+            .map_err(|_| format!("cannot access '{operand}': No such file or directory"))?;
+        if meta.is_dir && !flag(&opts, 'd') {
+            queue.push((operand.clone(), resolved));
+        } else {
+            out.push_str(&ls_render(c, &[(operand.clone(), resolved)], &f));
+        }
+    }
+    let titled = queue.len() > 1 || flag(&opts, 'R') || !out.is_empty();
+    while let Some((label, dir)) = queue.first().cloned() {
+        queue.remove(0);
+        if !out.is_empty() {
+            out.push('\n');
+        }
+        if titled {
+            out.push_str(&format!("{label}:\n"));
+        }
+        out.push_str(&ls_block(c, &dir, &f)?);
+        if flag(&opts, 'R') {
+            let mut children: Vec<(String, String)> = c
+                .vfs
+                .list_as(&dir, &c.user)?
+                .into_iter()
+                .filter(|n| f.all || f.almost || !n.starts_with('.'))
+                .map(|n| {
+                    (
+                        format!("{}/{n}", label.trim_end_matches('/')),
+                        crate::normalize_path(&dir, &n),
+                    )
+                })
+                .filter(|(_, p)| c.vfs.lstat(p).is_ok_and(|m| m.is_dir))
+                .collect();
+            children.append(&mut queue);
+            queue = children;
+        }
+    }
+    Ok(out)
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_grep(c: &Computer, args: &[String], input: &str) -> Result<String, Fail> {
+    let (opts, mut rest) = options(
+        "grep",
+        args,
+        "ivnclLFEqshHwxrRo",
+        "eABC",
+        &[
+            ("ignore-case", 'i'),
+            ("invert-match", 'v'),
+            ("line-number", 'n'),
+            ("count", 'c'),
+            ("files-with-matches", 'l'),
+            ("files-without-match", 'L'),
+            ("fixed-strings", 'F'),
+            ("extended-regexp", 'E'),
+            ("regexp", 'e'),
+            ("quiet", 'q'),
+            ("silent", 'q'),
+            ("no-messages", 's'),
+            ("no-filename", 'h'),
+            ("with-filename", 'H'),
+            ("word-regexp", 'w'),
+            ("line-regexp", 'x'),
+            ("recursive", 'r'),
+            ("only-matching", 'o'),
+            ("after-context", 'A'),
+            ("before-context", 'B'),
+            ("context", 'C'),
+        ],
+    )?;
+    let count = |letter: char| -> Result<Option<usize>, Fail> {
+        match value(&opts, letter) {
+            Some(v) => v
+                .parse()
+                .map(Some)
+                .map_err(|_| Fail::usage(format!("grep: option `-{letter}` expects a number"))),
+            None => Ok(None),
+        }
+    };
+    let both = count('C')?;
+    let (after, before) = (
+        count('A')?.or(both).unwrap_or(0),
+        count('B')?.or(both).unwrap_or(0),
+    );
+    // Asking for context at all switches on the `--` group separator, even at 0.
+    let context = ['A', 'B', 'C'].iter().any(|f| value(&opts, *f).is_some());
+    let mut patterns: Vec<String> = opts
+        .iter()
+        .filter(|(k, _)| *k == 'e')
+        .map(|(_, v)| v.clone())
+        .collect();
+    if patterns.is_empty() {
+        if rest.is_empty() {
+            return Err(Fail::usage("grep: missing pattern"));
+        }
+        patterns.push(rest.remove(0));
+    }
+    let recursive = flag(&opts, 'r') || flag(&opts, 'R');
+    let expression = patterns
+        .iter()
+        .map(|p| {
+            let body = if flag(&opts, 'F') {
+                regex::escape(p)
+            } else {
+                p.clone()
+            };
+            if flag(&opts, 'x') {
+                format!("^(?:{body})$")
+            } else if flag(&opts, 'w') {
+                format!("\\b(?:{body})\\b")
+            } else {
+                format!("(?:{body})")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("|");
+    let regex = regex::RegexBuilder::new(&expression)
+        .case_insensitive(flag(&opts, 'i'))
+        .build()
+        .map_err(|e| Fail::usage(e.to_string()))?;
+    // Sources are (label, text); with no operand the pipeline's stdin is the source.
+    let mut sources: Vec<(String, String)> = Vec::new();
+    for operand in &rest {
+        let path = c.resolve(operand);
+        let directory = c.vfs.lstat(&path).is_ok_and(|m| m.is_dir);
+        if directory && !recursive {
+            if !flag(&opts, 's') {
+                return Err(format!("{operand}: Is a directory").into());
+            }
+            continue;
+        }
+        let members: Vec<(String, String)> = if directory {
+            walk_tree(c, &path)
+                .into_iter()
+                .filter(|(_, _, dir)| !dir)
+                .map(|(p, _, _)| (p.clone(), p))
+                .collect()
+        } else {
+            vec![(operand.clone(), path)]
+        };
+        for (label, file) in members {
+            match c.vfs.read_as(&file, &c.user) {
+                Ok(bytes) => sources.push((label, String::from_utf8_lossy(&bytes).into_owned())),
+                Err(e) if flag(&opts, 's') => {
+                    let _ = e;
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
+    }
+    if rest.is_empty() {
+        sources.push((String::from("(standard input)"), input.to_string()));
+    }
+    let labelled = if flag(&opts, 'h') {
+        false
+    } else {
+        flag(&opts, 'H') || recursive || sources.len() > 1
+    };
+    let mut out = String::new();
+    let mut matched = false;
+    for (label, text) in &sources {
+        let hits: Vec<(usize, &str)> = text
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| regex.is_match(line) != flag(&opts, 'v'))
+            .collect();
+        matched |= !hits.is_empty();
+        let prefix = if labelled {
+            format!("{label}:")
+        } else {
+            String::new()
+        };
+        if flag(&opts, 'q') {
+            continue;
+        }
+        if flag(&opts, 'c') {
+            out.push_str(&format!("{prefix}{}\n", hits.len()));
+        } else if flag(&opts, 'l') {
+            if !hits.is_empty() {
+                out.push_str(&format!("{label}\n"));
+            }
+        } else if flag(&opts, 'L') {
+            if hits.is_empty() {
+                out.push_str(&format!("{label}\n"));
+            }
+        } else if flag(&opts, 'o') {
+            // Only the matched substrings; an inverted line has none to show.
+            for (n, line) in hits {
+                for found in regex.find_iter(line) {
+                    if flag(&opts, 'n') {
+                        out.push_str(&format!("{prefix}{}:{}\n", n + 1, found.as_str()));
+                    } else {
+                        out.push_str(&format!("{prefix}{}\n", found.as_str()));
+                    }
+                }
+            }
+        } else if context {
+            // Context lines carry `-` where a matching line carries `:`, and a gap
+            // between groups prints the `--` separator, exactly as GNU grep does.
+            let all: Vec<&str> = text.lines().collect();
+            let matches: std::collections::BTreeSet<usize> = hits.iter().map(|(n, _)| *n).collect();
+            let mut shown = std::collections::BTreeSet::new();
+            for n in &matches {
+                for k in n.saturating_sub(before)..=(n + after).min(all.len().saturating_sub(1)) {
+                    shown.insert(k);
+                }
+            }
+            let mut previous: Option<usize> = None;
+            for n in shown {
+                if previous.is_some_and(|p| n > p + 1) {
+                    out.push_str("--\n");
+                }
+                let mark = if matches.contains(&n) { ':' } else { '-' };
+                let head = if labelled {
+                    format!("{label}{mark}")
+                } else {
+                    String::new()
+                };
+                if flag(&opts, 'n') {
+                    out.push_str(&format!("{head}{}{mark}{}\n", n + 1, all[n]));
+                } else {
+                    out.push_str(&format!("{head}{}\n", all[n]));
+                }
+                previous = Some(n);
+            }
+        } else {
+            for (n, line) in hits {
+                if flag(&opts, 'n') {
+                    out.push_str(&format!("{prefix}{}:{line}\n", n + 1));
+                } else {
+                    out.push_str(&format!("{prefix}{line}\n"));
+                }
+            }
+        }
+    }
+    // Status is the answer: 0 found, 1 not found. -c and -L still report it.
+    let found = if flag(&opts, 'L') {
+        !out.is_empty()
+    } else {
+        matched
+    };
+    if found {
+        Ok(out)
+    } else {
+        Err(Fail::new(String::new(), 1).with_output(out))
+    }
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_stat(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let err = |e: crate::VfsError| Fail::from(e);
+    let (opts, paths) = options(
+        "stat",
+        args,
+        "L",
+        "c",
+        &[("format", 'c'), ("printf", 'c'), ("dereference", 'L')],
+    )?;
+    if paths.is_empty() {
+        return Err(Fail::usage("stat: missing operand"));
+    }
+    let mut out = String::new();
+    for operand in &paths {
+        let path = c.resolve(operand);
+        c.vfs
+            .check_access(&path, &c.user, false, false, false)
+            .map_err(err)?;
+        // Without -L a symlink describes itself, exactly as coreutils does.
+        let m = if flag(&opts, 'L') {
+            c.vfs.stat(&path)
+        } else {
+            c.vfs.lstat(&path)
+        }
+        .map_err(err)?;
+        if let Some(format) = value(&opts, 'c') {
+            out.push_str(&stat_format(c, format, operand, &m)?);
+            out.push('\n');
+            continue;
+        }
+        let kind = if m.is_symlink {
+            "symbolic link"
+        } else if m.is_dir {
+            "directory"
+        } else {
+            "regular file"
+        };
+        let stamp = format!("{}.000000000 +0000", clock(m.modified).stamp());
+        out.push_str(&format!(
+                "  File: {operand}\n  Size: {size:<10}\tBlocks: {blocks:<10} IO Block: {block:<6} {kind}\n\
+                 Device: 1,0\tInode: {inode:<11} Links: {links}\n\
+                 Access: ({mode:04o}/{rwx})  Uid: ({uid:5}/{owner:>8})   Gid: ({gid:5}/{owner:>8})\n\
+                 Access: {stamp}\nModify: {stamp}\nChange: {stamp}\n Birth: -\n",
+                size = apparent(&m),
+                blocks = apparent(&m).div_ceil(512),
+                block = BLOCK,
+                inode = m.inode,
+                links = m.links,
+                mode = m.mode & 0o7777,
+                rwx = mode_string(m.mode, m.is_dir, m.is_symlink),
+                uid = c.hardware.uid,
+                gid = c.hardware.gid,
+                owner = m.owner,
+            ));
+    }
+    Ok(out)
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_sed(c: &mut Computer, args: &[String], input: &str, t: u64) -> Result<String, Fail> {
+    let err = |e: crate::VfsError| Fail::from(e);
+    let (opts, mut rest) = options(
+        "sed",
+        args,
+        "ni",
+        "e",
+        &[
+            ("quiet", 'n'),
+            ("silent", 'n'),
+            ("in-place", 'i'),
+            ("expression", 'e'),
+        ],
+    )?;
+    let quiet = flag(&opts, 'n');
+    let inplace = flag(&opts, 'i');
+    let scripts: Vec<String> = opts
+        .iter()
+        .filter(|(k, _)| *k == 'e')
+        .map(|(_, v)| v.clone())
+        .collect();
+    if scripts.len() > 1 {
+        return Err(Fail::usage("sed: only one -e expression is supported"));
+    }
+    let expression = match scripts.first() {
+        Some(e) => e.clone(),
+        None if rest.is_empty() => return Err(Fail::usage("sed: missing expression")),
+        None => rest.remove(0),
+    };
+    let program = sed_program(&expression)?;
+    if rest.is_empty() {
+        if inplace {
+            return Err(Fail::usage("sed: -i requires a file"));
+        }
+        let (out, quit) = sed_apply(&program, input, quiet);
+        return sed_status(out, quit);
+    }
+    let mut out = String::new();
+    for file in &rest {
+        let path = c.resolve(file);
+        let text =
+            String::from_utf8_lossy(&c.vfs.read_as(&path, &c.user).map_err(err)?).into_owned();
+        let (changed, quit) = sed_apply(&program, &text, quiet);
+        if inplace {
+            c.vfs
+                .write_as(&path, changed.as_bytes(), &c.user, t)
+                .map_err(err)?;
+        } else {
+            out.push_str(&changed)
+        }
+        // `q` stops sed altogether, not just this file.
+        if quit.is_some() {
+            return sed_status(out, quit);
+        }
+    }
+    Ok(out)
+}
+/// `q CODE` is the one sed script that chooses its own status; everything already
+/// printed still reaches the caller.
+fn sed_status(out: String, quit: Option<i32>) -> Result<String, Fail> {
+    match quit {
+        Some(code) if code != 0 => Err(Fail::new(String::new(), code).with_output(out)),
+        _ => Ok(out),
+    }
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_text(c: &Computer, cmd: &str, args: &[String], input: &str) -> Result<String, Fail> {
+    let err = |e: crate::VfsError| Fail::from(e);
+    // `head -3` is the historical spelling of `head -n 3`, and is what people type.
+    let rewritten: Vec<String> = if matches!(cmd, "head" | "tail") {
+        let mut out = Vec::with_capacity(args.len() + 1);
+        for arg in args {
+            match arg
+                .strip_prefix('-')
+                .filter(|d| !d.is_empty() && d.chars().all(|c| c.is_ascii_digit()))
+            {
+                Some(count) => {
+                    out.push("-n".to_owned());
+                    out.push(count.to_owned());
+                }
+                None => out.push(arg.clone()),
+            }
+        }
+        out
+    } else {
+        args.to_vec()
+    };
+    let args = &rewritten[..];
+    let (allowed, valued) = match cmd {
+        "wc" => ("lwcm", ""),
+        "sort" => ("rnu", ""),
+        "uniq" => ("cdu", ""),
+        _ => ("", "n"),
+    };
+    let (opts, paths) = options(
+        cmd,
+        args,
+        allowed,
+        valued,
+        &[
+            ("lines", if cmd == "wc" { 'l' } else { 'n' }),
+            ("words", 'w'),
+            ("bytes", 'c'),
+            ("chars", 'm'),
+            ("reverse", 'r'),
+            ("numeric-sort", 'n'),
+            ("unique", 'u'),
+            ("count", 'c'),
+            ("repeated", 'd'),
+        ],
+    )?;
+    // Only head/tail read -n as a count; for sort it is a sort order.
+    let n: usize = match value(&opts, 'n').filter(|_| valued.contains('n')) {
+        Some(v) => v.parse().map_err(|_| Fail::usage("invalid count"))?,
+        None => 10,
+    };
+    let text = match paths.first() {
+        Some(p) => String::from_utf8_lossy(&c.vfs.read_as(&c.resolve(p), &c.user).map_err(err)?)
+            .into_owned(),
+        None => input.into(),
+    };
+    let mut lines: Vec<&str> = text.lines().collect();
+    match cmd {
+        "wc" => {
+            let (l, w, b) = (
+                text.bytes().filter(|b| *b == b'\n').count(),
+                text.split_whitespace().count(),
+                text.len(),
+            );
+            let chosen: Vec<String> = [('l', l), ('w', w), ('c', b), ('m', text.chars().count())]
+                .iter()
+                .filter(|(f, _)| flag(&opts, *f))
+                .map(|(_, v)| v.to_string())
+                .collect();
+            Ok(if chosen.is_empty() {
+                format!("{l} {w} {b}\n")
+            } else {
+                format!("{}\n", chosen.join(" "))
+            })
+        }
+        "head" => Ok(lines
+            .into_iter()
+            .take(n)
+            .map(|l| format!("{l}\n"))
+            .collect()),
+        "tail" => {
+            let skip = lines.len().saturating_sub(n);
+            Ok(lines
+                .into_iter()
+                .skip(skip)
+                .map(|l| format!("{l}\n"))
+                .collect())
+        }
+        "sort" => {
+            if flag(&opts, 'n') {
+                // Non-numeric lines sort as zero, as GNU sort does.
+                lines.sort_by_key(|l| l.trim().parse::<i64>().unwrap_or(0));
+            } else {
+                lines.sort();
+            }
+            if flag(&opts, 'u') {
+                lines.dedup();
+            }
+            if flag(&opts, 'r') {
+                lines.reverse();
+            }
+            Ok(lines.into_iter().map(|l| format!("{l}\n")).collect())
+        }
+        _ => {
+            let mut runs: Vec<(usize, &str)> = Vec::new();
+            for line in lines {
+                match runs.last_mut() {
+                    Some(last) if last.1 == line => last.0 += 1,
+                    _ => runs.push((1, line)),
+                }
+            }
+            Ok(runs
+                .into_iter()
+                .filter(|(count, _)| {
+                    (!flag(&opts, 'd') || *count > 1) && (!flag(&opts, 'u') || *count == 1)
+                })
+                .map(|(count, line)| {
+                    if flag(&opts, 'c') {
+                        format!("{count:7} {line}\n")
+                    } else {
+                        format!("{line}\n")
+                    }
+                })
+                .collect())
+        }
+    }
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_find(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    // Predicates are applied, never ignored: a search that silently returns the
+    // wrong set is worse than one that refuses.
+    let roots: Vec<&String> = args
+        .iter()
+        .take_while(|a| !a.starts_with('-'))
+        .collect::<Vec<_>>();
+    let predicates = &args[roots.len()..];
+    let roots: Vec<String> = if roots.is_empty() {
+        vec![c.resolve(".")]
+    } else {
+        roots.into_iter().map(|r| c.resolve(r)).collect()
+    };
+    let mut name: Option<&str> = None;
+    let mut iname: Option<String> = None;
+    let mut kind: Option<char> = None;
+    let mut max_depth: Option<usize> = None;
+    let mut index = 0;
+    while index < predicates.len() {
+        let value = |i: usize| {
+            predicates
+                .get(i)
+                .map(String::as_str)
+                .ok_or_else(|| format!("find: missing argument to `{}`", predicates[i - 1]))
+        };
+        match predicates[index].as_str() {
+            "-name" => {
+                name = Some(value(index + 1)?);
+                index += 2;
+            }
+            "-iname" => {
+                iname = Some(value(index + 1)?.to_lowercase());
+                index += 2;
+            }
+            "-type" => {
+                let t = value(index + 1)?;
+                kind = match t {
+                    "f" => Some('f'),
+                    "d" => Some('d'),
+                    _ => return Err(Fail::usage(format!("find: unsupported -type `{t}`"))),
+                };
+                index += 2;
+            }
+            "-maxdepth" => {
+                max_depth = Some(
+                    value(index + 1)?
+                        .parse()
+                        .map_err(|_| "find: -maxdepth expects a number".to_string())?,
+                );
+                index += 2;
+            }
+            other => {
+                return Err(Fail::usage(format!(
+                    "find: unsupported predicate `{other}`"
+                )))
+            }
+        }
+    }
+    let mut out = String::new();
+    for root in &roots {
+        let root = root.trim_end_matches('/');
+        let root = if root.is_empty() { "/" } else { root };
+        if c.vfs.stat(root).is_err() {
+            return Err(format!("find: `{root}`: No such file or directory").into());
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for path in c.vfs.all_files().keys() {
+            let inside = path == root
+                || path.starts_with(&format!("{}/", root.trim_end_matches('/')))
+                || root == "/";
+            if !inside {
+                continue;
+            }
+            // Every directory on the way to a file is itself a result.
+            let mut walk = Vec::new();
+            let relative = path.strip_prefix(root).unwrap_or(path);
+            let mut current = root.to_owned();
+            walk.push((current.clone(), 0usize, true));
+            let parts: Vec<&str> = relative.split('/').filter(|s| !s.is_empty()).collect();
+            for (depth, part) in parts.iter().enumerate() {
+                current = format!("{}/{part}", current.trim_end_matches('/'));
+                walk.push((current.clone(), depth + 1, depth + 1 < parts.len()));
+            }
+            for (candidate, depth, directory) in walk {
+                if max_depth.is_some_and(|max| depth > max) || !seen.insert(candidate.clone()) {
+                    continue;
+                }
+                if kind.is_some_and(|k| (k == 'd') != directory) {
+                    continue;
+                }
+                let base = candidate
+                    .rsplit('/')
+                    .next()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or(&candidate);
+                if name.is_some_and(|pattern| !wildcard(pattern, base))
+                    || iname
+                        .as_deref()
+                        .is_some_and(|pattern| !wildcard(pattern, &base.to_lowercase()))
+                {
+                    continue;
+                }
+                out.push_str(&candidate);
+                out.push('\n');
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// One `[ugoa][-+=][rwxXst]` clause. `conditional` is `X`: execute only where the node
+/// is a directory or already carries an execute bit.
+struct ModeClause {
+    who: &'static str,
+    op: char,
+    perms: String,
+}
+/// A chmod mode: an octal literal, or symbolic clauses applied left to right.
+enum ModeSpec {
+    Absolute(u16),
+    Symbolic(Vec<ModeClause>),
+}
+impl ModeSpec {
+    fn parse(spec: &str) -> Result<Self, Fail> {
+        if spec.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            let mode = u16::from_str_radix(spec, 8)
+                .ok()
+                .filter(|m| *m <= 0o7777)
+                .ok_or_else(|| Fail::usage(format!("chmod: invalid octal mode `{spec}`")))?;
+            return Ok(ModeSpec::Absolute(mode));
+        }
+        let mut clauses = Vec::new();
+        for part in spec.split(',') {
+            let chars: Vec<char> = part.chars().collect();
+            let mut i = 0;
+            while chars.get(i).is_some_and(|c| "ugoa".contains(*c)) {
+                i += 1;
+            }
+            let who: String = chars[..i].iter().collect();
+            // No umask is modelled, so a bare `+x` means `a+x`.
+            let who: &'static str = if who.is_empty() || who.contains('a') {
+                "ugo"
+            } else if who == "u" {
+                "u"
+            } else if who == "g" {
+                "g"
+            } else if who == "o" {
+                "o"
+            } else if who == "ug" || who == "gu" {
+                "ug"
+            } else if who == "uo" || who == "ou" {
+                "uo"
+            } else {
+                "go"
+            };
+            if i == chars.len() {
+                return Err(Fail::usage(format!("chmod: invalid mode `{spec}`")));
+            }
+            while i < chars.len() {
+                let op = chars[i];
+                if !"+-=".contains(op) {
+                    return Err(Fail::usage(format!("chmod: invalid mode `{spec}`")));
+                }
+                i += 1;
+                let start = i;
+                while chars.get(i).is_some_and(|c| "rwxXst".contains(*c)) {
+                    i += 1;
+                }
+                if chars.get(i).is_some_and(|c| "ugo".contains(*c)) {
+                    return Err(Fail::usage(format!(
+                        "chmod: copying permissions (`{spec}`) is not implemented"
+                    )));
+                }
+                clauses.push(ModeClause {
+                    who,
+                    op,
+                    perms: chars[start..i].iter().collect(),
+                });
+            }
+        }
+        Ok(ModeSpec::Symbolic(clauses))
+    }
+    fn apply(&self, mode: u16, is_dir: bool) -> u16 {
+        let clauses = match self {
+            ModeSpec::Absolute(m) => return *m,
+            ModeSpec::Symbolic(v) => v,
+        };
+        let mut mode = mode & 0o7777;
+        for clause in clauses {
+            // `X` reads the mode as it stands after the clauses before it.
+            let executable = clause.perms.contains('x')
+                || (clause.perms.contains('X') && (is_dir || mode & 0o111 != 0));
+            let (mut value, mut mask) = (0u16, 0u16);
+            for (who, shift, special) in [('u', 6, 0o4000), ('g', 3, 0o2000), ('o', 0, 0o1000)] {
+                if !clause.who.contains(who) {
+                    continue;
+                }
+                mask |= (7 << shift) | special;
+                if clause.perms.contains('r') {
+                    value |= 4 << shift;
+                }
+                if clause.perms.contains('w') {
+                    value |= 2 << shift;
+                }
+                if executable {
+                    value |= 1 << shift;
+                }
+                if clause.perms.contains('s') && special != 0o1000 {
+                    value |= special;
+                }
+                if clause.perms.contains('t') && special == 0o1000 {
+                    value |= special;
+                }
+            }
+            mode = match clause.op {
+                '+' => mode | value,
+                '-' => mode & !value,
+                _ => (mode & !mask) | value,
+            };
+        }
+        mode
+    }
+}
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_chmod(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, rest) = options(
+        "chmod",
+        args,
+        "Rv",
+        "",
+        &[("recursive", 'R'), ("verbose", 'v')],
+    )?;
+    let Some((spec, paths)) = rest.split_first() else {
+        return Err(Fail::usage("chmod: missing operand"));
+    };
+    if paths.is_empty() {
+        return Err(Fail::usage("chmod: missing operand"));
+    }
+    let change = ModeSpec::parse(spec)?;
+    for operand in paths {
+        let root = c.resolve(operand);
+        let meta = c
+            .vfs
+            .lstat(&root)
+            .map_err(|_| format!("cannot access '{operand}': No such file or directory"))?;
+        let targets: Vec<(String, bool)> = if flag(&opts, 'R') && meta.is_dir {
+            walk_tree(c, &root)
+                .into_iter()
+                .map(|(path, _, dir)| (path, dir))
+                .collect()
+        } else {
+            vec![(root, meta.is_dir)]
+        };
+        for (path, is_dir) in targets {
+            let current = c.vfs.lstat(&path).map_err(Fail::from)?.mode;
+            c.vfs
+                .chmod_as(&path, change.apply(current, is_dir), &c.user)
+                .map_err(Fail::from)?;
+        }
+    }
+    Ok(String::new())
+}
+/// Inverse of `clock`: a civil UTC date to a simulated tick. Times before the world's
+/// epoch cannot be represented, so they are refused rather than clamped.
+fn tick_from_civil(y: i64, m: i64, d: i64, hh: u64, mi: u64, ss: u64) -> Result<u64, Fail> {
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) || hh > 23 || mi > 59 || ss > 60 {
+        return Err(Fail::usage("touch: timestamp is not a valid date"));
+    }
+    let year = y - i64::from(m <= 2);
+    let era = year.div_euclid(400);
+    let yoe = year - era * 400;
+    let mp = if m > 2 { m - 3 } else { m + 9 };
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    let unix = days * 86_400 + (hh * 3600 + mi * 60 + ss) as i64;
+    let offset = unix - EPOCH_UNIX_SECONDS as i64;
+    if offset < 0 {
+        return Err(Fail::usage(
+            "touch: timestamps before the simulated epoch (2026-09-17 09:00:00 UTC) \
+             cannot be represented",
+        ));
+    }
+    Ok(offset as u64 * 1_000_000)
+}
+/// `-t [[CC]YY]MMDDhhmm[.ss]`.
+fn touch_stamp(value: &str) -> Result<u64, Fail> {
+    let invalid = || Fail::usage(format!("touch: unsupported -t stamp `{value}`"));
+    let (body, seconds) = match value.split_once('.') {
+        Some((b, s)) => (b, s.parse::<u64>().map_err(|_| invalid())?),
+        None => (value, 0),
+    };
+    if !body.chars().all(|c| c.is_ascii_digit()) {
+        return Err(invalid());
+    }
+    let number = |from: usize, len: usize| -> Result<i64, Fail> {
+        body.get(from..from + len)
+            .ok_or_else(invalid)?
+            .parse()
+            .map_err(|_| invalid())
+    };
+    let (year, rest) = match body.len() {
+        8 => (2026, 0),
+        10 => (2000 + number(0, 2)?, 2),
+        12 => (number(0, 4)?, 4),
+        _ => return Err(invalid()),
+    };
+    tick_from_civil(
+        year,
+        number(rest, 2)?,
+        number(rest + 2, 2)?,
+        number(rest + 4, 2)? as u64,
+        number(rest + 6, 2)? as u64,
+        seconds,
+    )
+}
+/// `-d`: `@SECONDS` or `YYYY-MM-DD[ |T]HH:MM[:SS]`. Relative words such as `yesterday`
+/// are refused: there is no host clock to resolve them against.
+fn touch_date(value: &str) -> Result<u64, Fail> {
+    let invalid = || {
+        Fail::usage(format!(
+            "touch: unsupported -d date `{value}`; use @SECONDS or YYYY-MM-DD[ HH:MM[:SS]]"
+        ))
+    };
+    if let Some(seconds) = value.strip_prefix('@') {
+        let unix: i64 = seconds.parse().map_err(|_| invalid())?;
+        return tick_from_civil(1970, 1, 1, 0, 0, 0).and_then(|_| {
+            u64::try_from(unix - EPOCH_UNIX_SECONDS as i64)
+                .map(|v| v * 1_000_000)
+                .map_err(|_| {
+                    Fail::usage(
+                        "touch: timestamps before the simulated epoch cannot be represented",
+                    )
+                })
+        });
+    }
+    let (date, time) = match value.split_once(['T', ' ']) {
+        Some((d, t)) => (d, t),
+        None => (value, "00:00:00"),
+    };
+    let day: Vec<&str> = date.split('-').collect();
+    let clock: Vec<&str> = time.trim_end_matches('Z').split(':').collect();
+    if day.len() != 3 || clock.len() < 2 || clock.len() > 3 {
+        return Err(invalid());
+    }
+    let n = |v: &str| v.parse::<i64>().map_err(|_| invalid());
+    tick_from_civil(
+        n(day[0])?,
+        n(day[1])?,
+        n(day[2])?,
+        n(clock[0])? as u64,
+        n(clock[1])? as u64,
+        clock.get(2).map(|v| n(v)).transpose()?.unwrap_or(0) as u64,
+    )
+}
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_touch(c: &mut Computer, args: &[String], t: u64) -> Result<String, Fail> {
+    let (opts, paths) = options(
+        "touch",
+        args,
+        "acm",
+        "dtr",
+        &[("no-create", 'c'), ("date", 'd'), ("reference", 'r')],
+    )?;
+    if paths.is_empty() {
+        return Err(Fail::usage("touch: missing operand"));
+    }
+    // The VFS keeps one timestamp, so -a and -m select the same field.
+    let stamp = match (value(&opts, 'r'), value(&opts, 'd'), value(&opts, 't')) {
+        (Some(reference), _, _) => {
+            c.vfs
+                .lstat(&c.resolve(reference))
+                .map_err(|_| format!("cannot stat '{reference}': No such file or directory"))?
+                .modified
+        }
+        (_, Some(date), _) => touch_date(date)?,
+        (_, _, Some(stamp)) => touch_stamp(stamp)?,
+        _ => t,
+    };
+    for operand in &paths {
+        let path = c.resolve(operand);
+        if c.vfs.exists(&path) {
+            c.vfs
+                .set_modified_as(&path, stamp, &c.user)
+                .map_err(Fail::from)?;
+        } else if !flag(&opts, 'c') {
+            c.vfs
+                .write_as(&path, b"", &c.user, stamp)
+                .map_err(Fail::from)?;
+        }
+    }
+    Ok(String::new())
+}
+/// `ps` column output. No terminal and no CPU accounting are modelled, so TTY is `?`
+/// and TIME is `00:00:00` for every process; everything else is read from the table.
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_ps(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, rest) = options(
+        "ps",
+        args,
+        "efA",
+        "up",
+        &[
+            ("json", 'j'),
+            ("full", 'f'),
+            ("user", 'u'),
+            ("pid", 'p'),
+            ("every", 'e'),
+        ],
+    )?;
+    if let Some(operand) = rest.first() {
+        return Err(Fail::usage(format!(
+            "ps: unsupported operand `{operand}`; this world models `ps`, `ps -e`/`-A`, \
+             `ps -f`, `-u USER`, `-p PID` and `--json`"
+        )));
+    }
+    let pid = match value(&opts, 'p') {
+        Some(v) => Some(
+            v.parse::<u64>()
+                .map_err(|_| Fail::usage("ps: option `-p` expects a pid"))?,
+        ),
+        None => None,
+    };
+    let owner = value(&opts, 'u');
+    let everyone = flag(&opts, 'e')
+        || flag(&opts, 'A')
+        || flag(&opts, 'j')
+        || owner.is_some()
+        || pid.is_some();
+    let rows: Vec<crate::Process> = c
+        .processes
+        .list()
+        .into_iter()
+        .filter(|p| pid.is_none_or(|want| p.pid == want))
+        .filter(|p| owner.is_none_or(|want| p.owner == want))
+        .filter(|p| everyone || p.owner == c.user)
+        .collect();
+    if flag(&opts, 'j') {
+        return Ok(serde_json::to_string_pretty(&rows)
+            .map(|s| s + "\n")
+            .map_err(|e| e.to_string())?);
+    }
+    let command = |p: &crate::Process| match p.state {
+        // A reaped-but-unwaited process is what `<defunct>` means.
+        crate::ProcessState::Zombie { .. } => format!("{} <defunct>", p.command),
+        _ => p.command.clone(),
+    };
+    let full = flag(&opts, 'f');
+    let mut out = if full {
+        format!(
+            "{:<8} {:>7} {:>7}  {:>1} {:<5} {:<8} {:>8} {}\n",
+            "UID", "PID", "PPID", "C", "STIME", "TTY", "TIME", "CMD"
+        )
+    } else {
+        format!("{:>7} {:<8} {:>8} {}\n", "PID", "TTY", "TIME", "CMD")
+    };
+    for p in &rows {
+        let started = clock(p.started);
+        if full {
+            out.push_str(&format!(
+                "{:<8} {:>7} {:>7}  {:>1} {:02}:{:02} {:<8} {:>8} {}\n",
+                p.owner,
+                p.pid,
+                p.parent,
+                0,
+                started.hour,
+                started.minute,
+                "?",
+                "00:00:00",
+                command(p),
+            ));
+        } else {
+            out.push_str(&format!(
+                "{:>7} {:<8} {:>8} {}\n",
+                p.pid,
+                "?",
+                "00:00:00",
+                command(p)
+            ));
+        }
+    }
+    Ok(out)
+}
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_uptime(c: &Computer, args: &[String], t: u64) -> Result<String, Fail> {
+    let (opts, rest) = options("uptime", args, "ps", "", &[("pretty", 'p'), ("since", 's')])?;
+    if !rest.is_empty() {
+        return Err(Fail::usage("uptime: takes no operands"));
+    }
+    let boot = c.hardware.boot_tick;
+    let elapsed = t.saturating_sub(boot) / 1_000_000;
+    if flag(&opts, 's') {
+        return Ok(format!("{}\n", clock(boot).stamp()));
+    }
+    let (days, hours, minutes) = (
+        elapsed / 86_400,
+        elapsed % 86_400 / 3600,
+        elapsed % 3600 / 60,
+    );
+    let plural = |n: u64, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
+    if flag(&opts, 'p') {
+        let mut parts = Vec::new();
+        if days > 0 {
+            parts.push(plural(days, "day"));
+        }
+        if hours > 0 {
+            parts.push(plural(hours, "hour"));
+        }
+        parts.push(plural(minutes, "minute"));
+        return Ok(format!("up {}\n", parts.join(", ")));
+    }
+    let span = if days > 0 {
+        format!("{} days, {hours:2}:{minutes:02}", days)
+    } else if hours > 0 {
+        format!("{hours:2}:{minutes:02}")
+    } else {
+        format!("{minutes} min")
+    };
+    let now = clock(t);
+    Ok(format!(
+        " {:02}:{:02}:{:02} up {span},  1 user,  load average: 0.00, 0.00, 0.00\n",
+        now.hour, now.minute, now.second
+    ))
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_which(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, names) = options("which", args, "a", "", &[("all", 'a')])?;
+    if names.is_empty() {
+        return Err(Fail::usage("which: missing operand"));
+    }
+    let separator = if c.dialect == "powershell" { ';' } else { ':' };
+    let mut out = String::new();
+    let mut missing = 0;
+    for name in &names {
+        let mut hits = Vec::new();
+        for dir in c
+            .env
+            .get("PATH")
+            .map(String::as_str)
+            .unwrap_or("/bin:/usr/bin")
+            .split(separator)
+        {
+            let candidate = c.resolve(&format!("{dir}/{name}"));
+            if c.vfs.exists(&candidate) {
+                hits.push(candidate);
+            }
+        }
+        // Built-ins run in-process: report the conventional path so "is it
+        // available?" gets a truthful yes even though no binary exists.
+        if hits.is_empty() && BUILTINS.contains(&name.to_ascii_lowercase().as_str()) {
+            hits.push(format!("/usr/bin/{name}"));
+        }
+        if hits.is_empty() {
+            missing += 1;
+        }
+        for hit in hits
+            .iter()
+            .take(if flag(&opts, 'a') { usize::MAX } else { 1 })
+        {
+            out.push_str(hit);
+            out.push('\n');
+        }
+    }
+    if missing == names.len() {
+        Err(Fail::new(String::new(), 1).with_output(out))
+    } else {
+        Ok(out)
+    }
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_du(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, mut paths) = options(
+        "du",
+        args,
+        "sahkbcm",
+        "d",
+        &[
+            ("summarize", 's'),
+            ("all", 'a'),
+            ("human-readable", 'h'),
+            ("bytes", 'b'),
+            ("total", 'c'),
+            ("max-depth", 'd'),
+        ],
+    )?;
+    if paths.is_empty() {
+        paths.push(".".into());
+    }
+    let limit = match value(&opts, 'd') {
+        Some(v) => Some(
+            v.parse::<usize>()
+                .map_err(|_| Fail::usage("du: --max-depth expects a number"))?,
+        ),
+        None => None,
+    };
+    let render = |bytes: u64| {
+        if flag(&opts, 'b') {
+            bytes.to_string()
+        } else if flag(&opts, 'h') {
+            human(allocated(bytes))
+        } else if flag(&opts, 'm') {
+            (allocated(bytes) / (1 << 20)).to_string()
+        } else {
+            (allocated(bytes) / 1024).to_string()
+        }
+    };
+    let mut out = String::new();
+    let mut grand = 0u64;
+    for operand in &paths {
+        let root = c.resolve(operand);
+        c.vfs
+            .lstat(&root)
+            .map_err(|_| format!("cannot access '{operand}': No such file or directory"))?;
+        let nodes = walk_tree(c, &root);
+        // Each node's bytes roll up into every ancestor inside the root.
+        let mut totals: BTreeMap<String, u64> = BTreeMap::new();
+        for (path, size, _) in &nodes {
+            let mut current = path.clone();
+            loop {
+                *totals.entry(current.clone()).or_default() += allocated(*size);
+                if current == root || current.len() <= root.len() {
+                    break;
+                }
+                current = current
+                    .rsplit_once('/')
+                    .map(|(a, _)| a.to_string())
+                    .unwrap_or_default();
+                if current.is_empty() {
+                    current = "/".into();
+                }
+            }
+        }
+        grand += totals.get(&root).copied().unwrap_or(0);
+        let depth_of = |path: &str| path[root.len().min(path.len())..].matches('/').count();
+        let mut rows: Vec<(String, u64)> = nodes
+            .iter()
+            .filter(|(path, _, dir)| {
+                (*dir || flag(&opts, 'a'))
+                    && !flag(&opts, 's')
+                    && limit.is_none_or(|max| depth_of(path) <= max)
+            })
+            .map(|(path, _, _)| (path.clone(), totals.get(path).copied().unwrap_or(0)))
+            .collect();
+        // Children before their parent, as du walks depth-first.
+        rows.sort_by(|a, b| b.0.cmp(&a.0));
+        rows.sort_by_key(|(path, _)| std::cmp::Reverse(depth_of(path)));
+        if flag(&opts, 's') {
+            rows.push((root.clone(), totals.get(&root).copied().unwrap_or(0)));
+        }
+        for (path, bytes) in rows {
+            let label = if path == root {
+                operand.clone()
+            } else {
+                format!("{}{}", operand.trim_end_matches('/'), &path[root.len()..])
+            };
+            out.push_str(&format!("{}\t{label}\n", render(bytes)));
+        }
+    }
+    if flag(&opts, 'c') {
+        out.push_str(&format!("{}\ttotal\n", render(grand)));
+    }
+    Ok(out)
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_df(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, paths) = options(
+        "df",
+        args,
+        "hkT",
+        "",
+        &[("human-readable", 'h'), ("print-type", 'T')],
+    )?;
+    for operand in &paths {
+        c.vfs
+            .lstat(&c.resolve(operand))
+            .map_err(|_| format!("{operand}: No such file or directory"))?;
+    }
+    // One filesystem: capacity is a fixed fact, usage is summed from the VFS.
+    let total = c.hardware.disk_bytes;
+    let used: u64 = walk_tree(c, "/")
+        .iter()
+        .map(|(_, size, _)| allocated(*size))
+        .sum();
+    let free = total.saturating_sub(used);
+    let percent = if total == 0 {
+        0
+    } else {
+        used.div_ceil(total.div_ceil(100)).min(100)
+    };
+    let cell = |bytes: u64| {
+        if flag(&opts, 'h') {
+            human(bytes)
+        } else {
+            (bytes / 1024).to_string()
+        }
+    };
+    let kind = if flag(&opts, 'T') { "ext4     " } else { "" };
+    let head = if flag(&opts, 'T') { "Type     " } else { "" };
+    Ok(format!(
+            "Filesystem     {head}{:>10} {:>10} {:>10} Use% Mounted on\n{:<14} {kind}{:>10} {:>10} {:>10} {:>3}% /\n",
+            if flag(&opts, 'h') { "Size" } else { "1K-blocks" },
+            "Used",
+            if flag(&opts, 'h') { "Avail" } else { "Available" },
+            c.hardware.device,
+            cell(total),
+            cell(used),
+            cell(free),
+            percent
+        ))
+}
+
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_ip(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (_, rest) = options("ip", args, "46o", "", &[("brief", 'b')])?;
+    let object = rest.first().map(String::as_str).unwrap_or("");
+    let action = rest.get(1).map(String::as_str).unwrap_or("show");
+    if !matches!(action, "show" | "list" | "s" | "l") {
+        return Err(Fail::usage(format!(
+            "ip: unsupported action `{action}`; the simulated NIC is read-only"
+        )));
+    }
+    let h = &c.hardware;
+    let octets: Vec<u32> = h.ipv4.split('.').filter_map(|p| p.parse().ok()).collect();
+    let address = if octets.len() == 4 {
+        octets.iter().fold(0u32, |acc, o| (acc << 8) | o)
+    } else {
+        0
+    };
+    let mask = if h.prefix >= 32 {
+        u32::MAX
+    } else {
+        !(u32::MAX >> h.prefix)
+    };
+    let quad = |v: u32| format!("{}.{}.{}.{}", v >> 24, v >> 16 & 255, v >> 8 & 255, v & 255);
+    let (network, broadcast) = (quad(address & mask), quad(address | !mask));
+    match object {
+            "a" | "addr" | "address" => Ok(format!(
+                "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000\n    \
+                 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00\n    \
+                 inet 127.0.0.1/8 scope host lo\n       valid_lft forever preferred_lft forever\n\
+                 2: {nic}: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000\n    \
+                 link/ether {mac} brd ff:ff:ff:ff:ff:ff\n    \
+                 inet {ip}/{prefix} brd {broadcast} scope global {nic}\n       valid_lft forever preferred_lft forever\n",
+                nic = h.interface, mac = h.mac, ip = h.ipv4, prefix = h.prefix,
+            )),
+            "l" | "link" => Ok(format!(
+                "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\n    \
+                 link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00\n\
+                 2: {nic}: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000\n    \
+                 link/ether {mac} brd ff:ff:ff:ff:ff:ff\n",
+                nic = h.interface, mac = h.mac,
+            )),
+            "r" | "route" => Ok(format!(
+                "default via {gw} dev {nic} proto dhcp metric 100\n\
+                 {network}/{prefix} dev {nic} proto kernel scope link src {ip} metric 100\n",
+                gw = h.gateway, nic = h.interface, prefix = h.prefix, ip = h.ipv4,
+            )),
+            "" => Err(Fail::usage("ip: missing object; try `ip addr`, `ip link` or `ip route`")),
+            other => Err(Fail::usage(format!(
+                "ip: unsupported object `{other}`; this world models addr, link and route only"
+            ))),
+        }
 }

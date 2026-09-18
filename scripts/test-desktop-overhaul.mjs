@@ -56,7 +56,19 @@ try{
    await launch('browser');await swipe({x:size.w/2,y:size.h-25},{x:size.w/2,y:Math.floor(size.h/2)-30});assert.equal((await state()).desktop.panel,'overview');await shot(`${theme}-recents`);await click('shell:home');checks.push('long upward recent applications gesture');
    const nodes=(await scene()).nodes;const recents=nodes.find(n=>['shell:recents','shell:overview'].includes(n.interaction));if(recents){await click(recents.interaction);assert.equal((await state()).desktop.panel,'overview');await shot(`${theme}-recents`);await click('shell:home');checks.push('mobile recent applications');}
   }
-  for(const kind of ['mail','calendar','chat','docs']){await launch(kind);const s=await state();assert.match(JSON.stringify(s.browser),new RegExp(kind==='chat'?'chat':kind==='docs'?'docs':kind));checks.push(`${kind} state-backed service alias`);if(kind==='mail')await shot(`${theme}-mail`);}
+  // These are native applications now, not browser aliases: the window must be the app
+ // itself, and the browser must not have been navigated on its behalf.
+ for(const kind of ['mail','calendar','chat','docs','notes','contacts','settings','calculator','clock']){
+  const window=await launch(kind);const s=await state();
+  const opened=s.desktop.windows[String(window)];
+  assert.ok(opened,`${kind} opened no window`);
+  assert.equal(opened.state.type,'native',`${kind} did not open a native window`);
+  assert.equal(opened.state.app,kind,`${kind} opened the wrong application`);
+  assert.equal(s.browser_visible,false,`${kind} opened the browser instead of an application`);
+  checks.push(`${kind} is a native application`);
+  if(kind==='mail')await shot(`${theme}-mail`);
+  if(kind==='calendar')await shot(`${theme}-calendar`);
+ }
   await assertSnapshot();
   report.devices.push({id:dev.id,theme,checks});console.log(`${theme}: ${checks.length} interaction checks passed`);
  }

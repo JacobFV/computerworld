@@ -1,6 +1,8 @@
 //! Shared wire helpers, without service domain semantics.
-use cw_protocol::{HttpRequest, HttpResponse, Page, PageAction, PageElement, Result, SimError};
-use serde::{de::DeserializeOwned, Serialize};
+use cw_protocol::{
+    HttpRequest, HttpResponse, Page, PageAction, PageElement, PageTheme, Result, SimError, Style,
+};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 pub fn load<T: DeserializeOwned + Default>(value: &Value) -> Result<T> {
     if value.is_null() {
@@ -137,7 +139,234 @@ pub fn page(title: &str, elements: Vec<PageElement>) -> Result<HttpResponse> {
         version: 1,
         title: title.into(),
         elements,
+        theme: None,
     })
+}
+pub fn themed_page(
+    title: &str,
+    theme: PageTheme,
+    elements: Vec<PageElement>,
+) -> Result<HttpResponse> {
+    HttpResponse::page(&Page {
+        version: 1,
+        title: title.into(),
+        elements,
+        theme: Some(theme),
+    })
+}
+/// Fresh presentation hints; chain `Style`'s setters onto it.
+pub fn style() -> Style {
+    Style::default()
+}
+/// GET navigation, the action a whole card or thumbnail usually performs.
+pub fn visit(url: impl Into<String>) -> PageAction {
+    PageAction {
+        method: "GET".into(),
+        url: url.into(),
+        fields: Default::default(),
+    }
+}
+pub fn row(id: &str, gap: u32, align: &str, children: Vec<PageElement>) -> PageElement {
+    PageElement::Row {
+        id: id.into(),
+        children,
+        gap,
+        align: align.into(),
+        style: Style::default(),
+    }
+}
+pub fn styled_row(
+    id: &str,
+    gap: u32,
+    align: &str,
+    style: Style,
+    children: Vec<PageElement>,
+) -> PageElement {
+    PageElement::Row {
+        id: id.into(),
+        children,
+        gap,
+        align: align.into(),
+        style,
+    }
+}
+pub fn grid(id: &str, columns: u32, gap: u32, children: Vec<PageElement>) -> PageElement {
+    PageElement::Grid {
+        id: id.into(),
+        columns,
+        children,
+        gap,
+        style: Style::default(),
+    }
+}
+/// Children stacked top to bottom: a one-column grid, carrying a style so it can take a
+/// flex share inside a row the way a page column does.
+pub fn column(id: &str, gap: u32, style: Style, children: Vec<PageElement>) -> PageElement {
+    PageElement::Grid {
+        id: id.into(),
+        columns: 1,
+        children,
+        gap,
+        style,
+    }
+}
+pub fn card(id: &str, style: Style, children: Vec<PageElement>) -> PageElement {
+    PageElement::Card {
+        id: id.into(),
+        children,
+        style,
+        action: None,
+    }
+}
+/// A card that is genuinely one click target; without an action a card is inert.
+pub fn card_action(
+    id: &str,
+    style: Style,
+    action: PageAction,
+    children: Vec<PageElement>,
+) -> PageElement {
+    PageElement::Card {
+        id: id.into(),
+        children,
+        style,
+        action: Some(action),
+    }
+}
+pub fn styled(id: &str, text: impl Into<String>, style: Style) -> PageElement {
+    PageElement::Styled {
+        id: id.into(),
+        text: text.into(),
+        style,
+    }
+}
+pub fn thumbnail(id: &str, label: impl Into<String>, style: Style) -> PageElement {
+    PageElement::Thumbnail {
+        id: id.into(),
+        label: label.into(),
+        style,
+        action: None,
+    }
+}
+pub fn thumbnail_action(
+    id: &str,
+    label: impl Into<String>,
+    style: Style,
+    action: PageAction,
+) -> PageElement {
+    PageElement::Thumbnail {
+        id: id.into(),
+        label: label.into(),
+        style,
+        action: Some(action),
+    }
+}
+pub fn badge(id: &str, text: impl Into<String>, style: Style) -> PageElement {
+    PageElement::Badge {
+        id: id.into(),
+        text: text.into(),
+        style,
+    }
+}
+pub fn divider(id: &str) -> PageElement {
+    PageElement::Divider {
+        id: id.into(),
+        style: Style::default(),
+    }
+}
+pub fn spacer(id: &str, height: u32) -> PageElement {
+    PageElement::Spacer {
+        id: id.into(),
+        height,
+    }
+}
+/// Presentation-only variant name. `plain` is the original rendering, and it is omitted from
+/// serialised state so worlds and checkpoints written before a skin existed stay byte-identical.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Skin(pub String);
+impl Default for Skin {
+    fn default() -> Self {
+        Self("plain".into())
+    }
+}
+impl Skin {
+    pub fn is_plain(&self) -> bool {
+        self.0 == "plain"
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    /// Each crate owns its own skin vocabulary; an unknown name is a seed typo, not a fallback.
+    pub fn check(&self, allowed: &[&str]) -> Result<()> {
+        if allowed.contains(&self.0.as_str()) {
+            Ok(())
+        } else {
+            Err(SimError::invalid(format!(
+                "unknown skin {}; expected one of {}",
+                self.0,
+                allowed.join(", ")
+            )))
+        }
+    }
+}
+/// Gate a data-driven service's seed state: an object whose documented keys, when present, carry
+/// the documented container type. Catches authoring typos at world load rather than at render.
+pub fn shape(state: Value, objects: &[&str], arrays: &[&str]) -> Result<Value> {
+    let state = if state.is_null() { json!({}) } else { state };
+    let map = state
+        .as_object()
+        .ok_or_else(|| SimError::invalid("service state must be an object"))?;
+    for (keys, ok, label) in [
+        (objects, Value::is_object as fn(&Value) -> bool, "an object"),
+        (arrays, Value::is_array as fn(&Value) -> bool, "an array"),
+    ] {
+        for key in keys {
+            if map.get(*key).is_some_and(|v| !ok(v)) {
+                return Err(SimError::invalid(format!("{key} must be {label}")));
+            }
+        }
+    }
+    Ok(state)
+}
+/// A documented discriminant such as `mode` or `layout`; absent means the first listed value.
+pub fn variant(state: &Value, key: &str, allowed: &[&str]) -> Result<String> {
+    match state.get(key).and_then(Value::as_str).unwrap_or("") {
+        "" => Ok(allowed[0].into()),
+        v if allowed.contains(&v) => Ok(v.into()),
+        v => Err(SimError::invalid(format!(
+            "unknown {key} {v}; expected one of {}",
+            allowed.join(", ")
+        ))),
+    }
+}
+/// Palette carried by seed state; absent or partial `theme` simply leaves renderer defaults.
+pub fn theme(state: &Value) -> Result<PageTheme> {
+    match state.get("theme") {
+        Some(v) => Ok(serde_json::from_value(v.clone())?),
+        None => Ok(PageTheme::default()),
+    }
+}
+/// Themed brand landing: a wordmark and a line of copy, with nothing that reads as a control.
+pub fn brand_page(brand: &str, tagline: &str, theme: PageTheme) -> Result<HttpResponse> {
+    let accent = theme.accent.clone().unwrap_or_else(|| "#1a73e8".into());
+    let muted = theme.muted.clone().unwrap_or_else(|| "#5f6368".into());
+    themed_page(
+        brand,
+        theme,
+        vec![
+            spacer("brand-lead", 48),
+            styled(
+                "brand",
+                brand,
+                style().size(40).bold().color(accent).align("center"),
+            ),
+            styled(
+                "tagline",
+                tagline,
+                style().size(16).color(muted).align("center"),
+            ),
+        ],
+    )
 }
 /// Explicit textual HTTP links become native navigation controls; no fetch occurs during rendering.
 pub fn links(prefix: &str, text: &str) -> Vec<PageElement> {

@@ -1,0 +1,296 @@
+{
+  "id": "openai",
+  "kind": "assistant",
+  "node": "openai",
+  "domains": [
+    "chatgpt.com",
+    "chat.openai.com",
+    "openai.com",
+    "www.openai.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "ChatGPT",
+    "tagline": "Ask anything.",
+    "model_label": "GPT-5",
+    "theme": {
+      "accent": "#10a37f",
+      "background": "#212121",
+      "surface": "#2f2f2f",
+      "ink": "#ececec",
+      "muted": "#9b9b9b",
+      "content_width": 760
+    },
+    "greeting": "What can I help with?",
+    "suggestions": [
+      "Explain deterministic simulation",
+      "What is the Atlas release code?",
+      "Draft a launch email",
+      "Why is my test suite flaky?"
+    ],
+    "intents": [
+      {
+        "id": "determinism",
+        "patterns": [
+          "determinism",
+          "deterministic",
+          "reproducible",
+          "replay",
+          "deterministic simulation"
+        ],
+        "replies": [
+          "A deterministic simulation produces byte-identical results for the same seed and the same ordered inputs. Three rules do most of the work: no wall clock, no ambient randomness, and a total order on every queue.",
+          "Determinism means: same seed plus same input sequence gives the same output, every time and on every machine. Anything that reads the host - clock, RNG, filesystem iteration order - has to be replaced by something seeded.",
+          "Start from the failure mode. If two runs of the same build disagree, something read the host. Replace the clock with a tick counter, the RNG with a seeded stream, and every iteration over a hash map with an ordered map."
+        ],
+        "citations": [
+          {
+            "label": "Deterministic simulation — Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+          }
+        ]
+      },
+      {
+        "id": "launch-email",
+        "patterns": [
+          "draft a launch email",
+          "launch email",
+          "write an email",
+          "announcement email"
+        ],
+        "replies": [
+          "Subject: Atlas is live\n\nTeam - Atlas shipped this morning. The checklist is closed, the walkthrough is up, and the repo is public. Thanks to everyone who chased the last three items down. - Carol",
+          "Subject: Atlas ships today\n\nHi all - Atlas is out. Highlights: reproducible runs end to end, a public repo, and a ten-minute walkthrough. Questions go to #eng; press questions go to Carol."
+        ],
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "testing",
+        "patterns": [
+          "flaky",
+          "ci",
+          "test suite",
+          "why do tests fail"
+        ],
+        "replies": [
+          "Flakiness is almost always hidden nondeterminism: unordered iteration, a real clock, a shared temp directory, or a test that depends on another test having run first. Order the inputs and most of it disappears.",
+          "Run the suite twice with the same seed and diff the outputs. Whatever differs is reading something you did not declare as an input."
+        ],
+        "citations": [
+          {
+            "label": "Why does my BFS shortest-path test fail only on Windows? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/4411"
+          }
+        ]
+      },
+      {
+        "id": "assistant-honesty",
+        "patterns": [
+          "what model are you",
+          "are you a model",
+          "how do you work",
+          "are you real",
+          "how do you generate"
+        ],
+        "citations": [],
+        "replies": [
+          "I am not a model here - I am a deterministic stand-in. A scored table of patterns picks the reply, so the same question always gets the same answer, and anything I say about this world comes with a link you can open and check.",
+          "There is no model behind this window. Replies come from a scored pattern table with a pure hash choosing between the wordings, which is why regenerating gives you the same set of answers in the same order every time."
+        ]
+      }
+    ],
+    "fallback": [
+      "I don't have anything specific on that. Want me to narrow it down?",
+      "I'm not sure - can you give me a bit more context?",
+      "That's outside what I have here. Try rephrasing it?"
+    ],
+    "facts": [
+      {
+        "id": "atlas-release-code",
+        "patterns": [
+          "atlas release code",
+          "release code",
+          "atlas code"
+        ],
+        "answer": "The Atlas release code is ATLAS-2026. It is recorded in the launch checklist, which Carol Nakamura owns.",
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "atlas-launch-owner",
+        "patterns": [
+          "who owns the atlas launch",
+          "atlas launch owner",
+          "release owner",
+          "who owns atlas"
+        ],
+        "answer": "Carol Nakamura owns the Atlas launch. She is the engineering manager for the release and keeps the launch checklist, with Alice Chen on the renderer and Bob Martinez on CI.",
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "atlas-repository",
+        "patterns": [
+          "atlas repository",
+          "atlas repo",
+          "atlas source",
+          "where is atlas developed"
+        ],
+        "answer": "Atlas is developed at github.com/northstar/atlas. The walkthrough video is the quickest orientation, and the engineering blog covers the launch itself.",
+        "citations": [
+          {
+            "label": "northstar/atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Atlas walkthrough",
+            "url": "http://youtube.com/watch?v=atlas-walkthrough"
+          }
+        ]
+      },
+      {
+        "id": "atlas-press",
+        "patterns": [
+          "verge",
+          "press coverage",
+          "who wrote about atlas",
+          "atlas coverage"
+        ],
+        "answer": "The Verge covered the launch: \"Northstar's Atlas bets everything on determinism\", by Tom Weber. Reuters ran a wire version citing it, and the story reached the front page of Hacker News.",
+        "citations": [
+          {
+            "label": "Northstar's Atlas bets everything on determinism — The Verge",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ]
+      },
+      {
+        "id": "flaky-bfs-test",
+        "patterns": [
+          "flaky test",
+          "bfs path test",
+          "bfs test",
+          "fail only on windows",
+          "fails only on windows",
+          "hash map iteration order"
+        ],
+        "answer": "That is the BFS shortest-path test in Atlas issue 14. It is not a Windows bug: the test iterates a hash map, so the tie between equal-length paths is broken by iteration order. Priya Raman's accepted answer explains it.",
+        "citations": [
+          {
+            "label": "Why does my BFS shortest-path test fail only on Windows? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/4411"
+          },
+          {
+            "label": "northstar/atlas issue 14",
+            "url": "http://github.com/northstar/atlas/issues/14"
+          }
+        ]
+      }
+    ],
+    "conversations": {
+      "conv-1": {
+        "id": "conv-1",
+        "owner": "alice",
+        "title": "Deterministic services",
+        "tick": 3,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How would you explain deterministic simulation to a new engineer?",
+            "attempt": 0,
+            "tick": 3
+          },
+          {
+            "role": "assistant",
+            "text": "A deterministic simulation produces byte-identical results for the same seed and the same ordered inputs. Three rules do most of the work: no wall clock, no ambient randomness, and a total order on every queue.",
+            "citations": [
+              {
+                "label": "Deterministic simulation — Wikipedia",
+                "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+              }
+            ],
+            "intent_id": "determinism",
+            "attempt": 0,
+            "tick": 3
+          },
+          {
+            "role": "user",
+            "text": "What makes a test suite flaky in practice?",
+            "attempt": 0,
+            "tick": 3
+          },
+          {
+            "role": "assistant",
+            "text": "Flakiness is almost always hidden nondeterminism: unordered iteration, a real clock, a shared temp directory, or a test that depends on another test having run first. Order the inputs and most of it disappears.",
+            "citations": [
+              {
+                "label": "Why does my BFS shortest-path test fail only on Windows? — Stack Overflow",
+                "url": "http://stackoverflow.com/questions/4411"
+              }
+            ],
+            "intent_id": "testing",
+            "attempt": 0,
+            "tick": 3
+          }
+        ]
+      },
+      "conv-2": {
+        "id": "conv-2",
+        "owner": "alice",
+        "title": "Draft a launch email",
+        "tick": 5,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Draft a launch email for Atlas",
+            "attempt": 0,
+            "tick": 5
+          },
+          {
+            "role": "assistant",
+            "text": "Subject: Atlas is live\n\nTeam - Atlas shipped this morning. The checklist is closed, the walkthrough is up, and the repo is public. Thanks to everyone who chased the last three items down. - Carol",
+            "citations": [
+              {
+                "label": "Atlas launch checklist",
+                "url": "http://docs.google.com/documents/atlas-launch"
+              }
+            ],
+            "intent_id": "launch-email",
+            "attempt": 0,
+            "tick": 5
+          }
+        ]
+      }
+    },
+    "next_id": 3
+  },
+  "search_entries": [
+    {
+      "url": "http://chatgpt.com/",
+      "title": "ChatGPT",
+      "snippet": "Ask anything. Deterministic replies with citations you can open.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "chatgpt",
+        "openai",
+        "assistant",
+        "ai",
+        "chat"
+      ]
+    }
+  ]
+}

@@ -69,7 +69,13 @@ pub struct BrowserState {
     pub pending: Option<HttpRequest>,
     #[serde(default)]
     pub image_cache: BTreeMap<String, Arc<ImageAsset>>,
+    /// Page zoom in percent, remembered per site the way Safari and Chrome remember
+    /// it. A site that is not listed is shown at 100%.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub zoom: BTreeMap<String, u16>,
 }
+/// The zoom levels a browser steps through, in percent.
+pub const ZOOM_LEVELS: [u16; 11] = [50, 75, 85, 100, 115, 125, 150, 175, 200, 250, 300];
 impl Default for BrowserState {
     fn default() -> Self {
         Self {
@@ -79,6 +85,7 @@ impl Default for BrowserState {
             cookies: BTreeMap::new(),
             pending: None,
             image_cache: BTreeMap::new(),
+            zoom: BTreeMap::new(),
         }
     }
 }
@@ -91,6 +98,48 @@ impl BrowserState {
     }
     pub fn page(&self) -> Option<&Page> {
         self.tab().history.get(self.tab().position).map(|e| &e.page)
+    }
+    /// The site a zoom level belongs to: scheme, host and port of the page on screen.
+    fn zoom_site(&self) -> Option<String> {
+        let url = self.url()?;
+        let (scheme, rest) = url.split_once("://")?;
+        let host = rest.split(['/', '?', '#']).next()?;
+        Some(format!("{scheme}://{host}"))
+    }
+    /// Zoom of the page on screen, in percent.
+    pub fn zoom(&self) -> u16 {
+        self.zoom_site()
+            .and_then(|site| self.zoom.get(&site).copied())
+            .unwrap_or(100)
+    }
+    /// Step the page on screen's zoom `in`, `out`, or `reset` it to 100%, returning the
+    /// new level. Refused when no page is showing.
+    pub fn step_zoom(&mut self, step: &str) -> Result<u16> {
+        let site = self
+            .zoom_site()
+            .ok_or_else(|| SimError::invalid("no page to zoom"))?;
+        let now = self.zoom();
+        let next = match step {
+            "in" => ZOOM_LEVELS
+                .iter()
+                .copied()
+                .find(|z| *z > now)
+                .unwrap_or(now),
+            "out" => ZOOM_LEVELS
+                .iter()
+                .rev()
+                .copied()
+                .find(|z| *z < now)
+                .unwrap_or(now),
+            "reset" => 100,
+            other => return Err(SimError::invalid(format!("unknown zoom step {other}"))),
+        };
+        if next == 100 {
+            self.zoom.remove(&site);
+        } else {
+            self.zoom.insert(site, next);
+        }
+        Ok(next)
     }
     pub fn url(&self) -> Option<&str> {
         self.tab()
@@ -387,6 +436,15 @@ impl BrowserState {
             PageElement::Button { action, .. } | PageElement::Form { action, .. } => {
                 self.perform(action, Some(id), transport)
             }
+            // Cards and thumbnails are controls only when they carry a real action.
+            PageElement::Card {
+                action: Some(action),
+                ..
+            }
+            | PageElement::Thumbnail {
+                action: Some(action),
+                ..
+            } => self.perform(action, Some(id), transport),
             _ => Err(SimError::invalid("element is not interactive")),
         }
     }
@@ -440,7 +498,10 @@ impl BrowserState {
         let mut request = HttpRequest::get(url.as_str());
         request.method = method.clone();
         if method == "GET" {
-            url.query_pairs_mut().extend_pairs(fields);
+            // A fieldless GET is plain navigation; do not decorate it with an empty query.
+            if !fields.is_empty() {
+                url.query_pairs_mut().extend_pairs(fields);
+            }
             request.url = url.to_string()
         } else {
             request.headers.insert(
@@ -633,17 +694,26 @@ impl BrowserState {
         Err(SimError::new("redirect_limit", "image redirect limit"))
     }
     pub fn scene(&self, width: u32, height: u32) -> Scene {
-        match self.tab().history.get(self.tab().position) {
-            Some(entry) => layout_page_with_images(
-                &entry.page,
-                &self.tab().fields,
-                &entry.images,
-                width,
-                height,
-                self.tab().scroll_y,
-            ),
-            None => Scene::new(width, height),
+        let Some(entry) = self.tab().history.get(self.tab().position) else {
+            return Scene::new(width, height);
+        };
+        // Zoom works as a browser's does: the page is laid out for a viewport as many
+        // CSS pixels wide as fit at that zoom, then drawn larger or smaller, so text
+        // reflows instead of running off the side.
+        let zoom = u32::from(self.zoom());
+        let css = |v: u32| (v * 100 / zoom).max(1);
+        let mut scene = layout_page_with_images(
+            &entry.page,
+            &self.tab().fields,
+            &entry.images,
+            css(width),
+            css(height),
+            self.tab().scroll_y,
+        );
+        if zoom != 100 {
+            page_scene::scale(&mut scene, zoom, width, height);
         }
+        scene
     }
 }
 fn cookie_path_matches(path: &str, prefix: &str) -> bool {
@@ -681,70 +751,65 @@ fn parse_cookie(value: &str, request_path: &str) -> Option<Cookie> {
     }
     Some(cookie)
 }
+/// Every container the page model nests through; traversal must cover all of them
+/// or ids inside rows, grids and cards would be unreachable.
+fn children_of(e: &PageElement) -> Option<&[PageElement]> {
+    match e {
+        PageElement::Form { children, .. }
+        | PageElement::Group { children, .. }
+        | PageElement::Row { children, .. }
+        | PageElement::Grid { children, .. }
+        | PageElement::Card { children, .. } => Some(children),
+        _ => None,
+    }
+}
 fn walk(elements: &[PageElement], f: &mut impl FnMut(&PageElement)) {
     for e in elements {
         f(e);
-        match e {
-            PageElement::Form { children, .. } | PageElement::Group { children, .. } => {
-                walk(children, f)
-            }
-            _ => {}
+        if let Some(children) = children_of(e) {
+            walk(children, f)
         }
-    }
-}
-fn element_id(e: &PageElement) -> &str {
-    match e {
-        PageElement::Heading { id, .. }
-        | PageElement::Text { id, .. }
-        | PageElement::Link { id, .. }
-        | PageElement::Button { id, .. }
-        | PageElement::Input { id, .. }
-        | PageElement::Form { id, .. }
-        | PageElement::Group { id, .. }
-        | PageElement::Image { id, .. } => id,
     }
 }
 fn find<'a>(elements: &'a [PageElement], id: &str) -> Option<&'a PageElement> {
     for e in elements {
-        if element_id(e) == id {
+        if e.id() == id {
             return Some(e);
         }
-        if let PageElement::Form { children, .. } | PageElement::Group { children, .. } = e {
-            if let Some(v) = find(children, id) {
-                return Some(v);
-            }
+        if let Some(v) = children_of(e).and_then(|c| find(c, id)) {
+            return Some(v);
         }
     }
     None
 }
 fn parent_form<'a>(elements: &'a [PageElement], id: &str) -> Option<&'a PageAction> {
     for e in elements {
-        match e {
-            PageElement::Form {
-                action, children, ..
-            } if find(children, id).is_some() => return Some(action),
-            PageElement::Group { children, .. } => {
-                if let Some(a) = parent_form(children, id) {
-                    return Some(a);
-                }
+        if let PageElement::Form {
+            action, children, ..
+        } = e
+        {
+            if find(children, id).is_some() {
+                return Some(action);
             }
-            _ => {}
+        }
+        if let Some(a) = children_of(e).and_then(|c| parent_form(c, id)) {
+            return Some(a);
         }
     }
     None
 }
 fn find_form_scope<'a>(elements: &'a [PageElement], id: &str) -> Option<&'a [PageElement]> {
     for e in elements {
-        match e {
-            PageElement::Form {
-                id: fid, children, ..
-            } if fid == id || find(children, id).is_some() => return Some(children),
-            PageElement::Group { children, .. } => {
-                if let Some(a) = find_form_scope(children, id) {
-                    return Some(a);
-                }
+        if let PageElement::Form {
+            id: fid, children, ..
+        } = e
+        {
+            if fid == id || find(children, id).is_some() {
+                return Some(children);
             }
-            _ => {}
+        }
+        if let Some(a) = children_of(e).and_then(|c| find_form_scope(c, id)) {
+            return Some(a);
         }
     }
     None
@@ -835,6 +900,56 @@ mod tests {
             "message=hello+%26+world"
         );
         assert_eq!(requests[2].url, "http://internal.test/second");
+    }
+    #[test]
+    fn card_and_thumbnail_actions_navigate_but_inert_ones_do_not() {
+        let mut p = Page::new("Results");
+        p.elements = vec![PageElement::Card {
+            id: "hit".into(),
+            children: vec![
+                PageElement::Thumbnail {
+                    id: "still".into(),
+                    label: "Still".into(),
+                    style: cw_protocol::Style::default(),
+                    action: None,
+                },
+                PageElement::Thumbnail {
+                    id: "play".into(),
+                    label: "Play".into(),
+                    style: cw_protocol::Style::default(),
+                    action: Some(PageAction {
+                        method: "GET".into(),
+                        url: "/watch".into(),
+                        fields: BTreeMap::new(),
+                    }),
+                },
+            ],
+            style: cw_protocol::Style::default(),
+            action: Some(PageAction {
+                method: "GET".into(),
+                url: "/result".into(),
+                fields: BTreeMap::new(),
+            }),
+        }];
+        let mut b = BrowserState::default();
+        let mut seen = vec![];
+        let mut http = |r: HttpRequest| {
+            seen.push(r.url.clone());
+            HttpResponse::page(&p)
+        };
+        b.navigate("http://internal.test", &mut http).unwrap();
+        b.click("hit", &mut http).unwrap();
+        // Ids nested inside a card stay reachable, and inert artwork stays inert.
+        b.click("play", &mut http).unwrap();
+        assert!(b.click("still", &mut http).is_err());
+        assert_eq!(
+            seen,
+            [
+                "http://internal.test/",
+                "http://internal.test/result",
+                "http://internal.test/watch"
+            ]
+        );
     }
     #[test]
     fn redirects_cookie_scope_storage_and_snapshot() {

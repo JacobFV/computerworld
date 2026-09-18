@@ -202,3 +202,83 @@ fn desktop_launch_and_address_entry_respect_capabilities_and_installation() {
         .unwrap();
     assert!(!launch.outcomes[0].success);
 }
+/// The terminal is legible to an observer, not just to an API caller: the prompt names
+/// the machine, the command is echoed, a failure carries `[exit N]`, and `clear` wipes
+/// the frame without losing the cwd.
+#[test]
+fn terminal_transcript_carries_prompt_echo_and_exit_status() {
+    let (mut world, actor) = world("virtual-ubuntu-lts");
+    click(&mut world, &actor, "shell:launch:terminal");
+    let run = |world: &mut World, actor: &str, command: &str| {
+        action(
+            world,
+            actor,
+            "keyboard.v1",
+            "type",
+            json!({ "text": command }),
+        );
+        action(world, actor, "keyboard.v1", "key", json!({"key":"Enter"}));
+    };
+    let page = |world: &World, actor: &str| -> Value {
+        world.observe(actor).unwrap().channels["semantic.v1"]["alice-mac"].clone()
+    };
+    let texts = |page: &Value| -> Vec<String> {
+        fn walk(element: &Value, out: &mut Vec<String>) {
+            if let Some(text) = element["text"].as_str() {
+                out.push(text.to_owned());
+            }
+            if let Some(children) = element["children"].as_array() {
+                children.iter().for_each(|c| walk(c, out));
+            }
+        }
+        let mut out = vec![];
+        page["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .for_each(|e| walk(e, &mut out));
+        out
+    };
+    run(&mut world, &actor, "cd /tmp");
+    run(&mut world, &actor, "definitely-not-a-command");
+    let observed = page(&world, &actor);
+    let lines = texts(&observed);
+    assert!(lines.contains(&"alice@alice-mac:/Users/alice$ cd /tmp".to_string()));
+    // The prompt followed the cwd, so the echo of the next command proves the move.
+    assert!(lines.contains(&"alice@alice-mac:/tmp$ definitely-not-a-command".to_string()));
+    assert!(lines.contains(&"[exit 0]".to_string()));
+    assert!(lines
+        .iter()
+        .any(|l| l.starts_with("[exit ") && l != "[exit 0]"));
+    // The input label is the live prompt, so a reader knows where the next command lands.
+    let input = observed["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["id"] == "terminal-input")
+        .unwrap()
+        .clone();
+    assert_eq!(input["label"], "alice@alice-mac:/tmp$");
+    // The echoed lines are on screen too, not only in the projection.
+    let scene = world.scene(&actor, 960, 640).unwrap();
+    assert!(scene
+        .nodes
+        .iter()
+        .any(|n| format!("{:?}", n.primitive)
+            .contains("alice@alice-mac:/tmp$ definitely-not-a-command")));
+    run(&mut world, &actor, "clear");
+    let cleared = page(&world, &actor);
+    assert!(!texts(&cleared)
+        .iter()
+        .any(|l| l.contains("definitely-not-a-command")));
+    // cwd survives the clear: the next command still runs in /tmp.
+    assert_eq!(
+        cleared["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["id"] == "terminal-input")
+            .unwrap()["label"],
+        "alice@alice-mac:/tmp$"
+    );
+}

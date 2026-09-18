@@ -45,12 +45,23 @@ order determine which window receives input. Browser windows keep independent
 navigation state. Window geometry, focus, panels and pointer capture are included
 in session snapshots.
 
-Native applications include terminal output/input, filesystem navigation and file
-lists, and an editor with Save. Browser applications obtain supported pages through
-simulated DNS, networking and HTTP. Configured service app aliases open independent
-browser windows for mail, documents, calendar or chat; these remain ordinary world
-services, not special kernel concepts. Alias definitions live in
-`metadata.desktop_apps` and require an installed app plus browser/app grants.
+Thirteen window kinds are launchable. Four are built into `DesktopState::launch`:
+`terminal` (output and input), `files`/`file_manager` (tabbed filesystem navigation
+with click-to-select and double-click-to-open), `editor`/`text_editor` (with Save),
+and `browser`. The other nine are `NativeApp` kinds listed by the `native_apps!`
+macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `chat`, `docs`,
+`notes`, `contacts`, `settings`, `calculator` and `clock`. Each is backed by a world
+service rather than a static mock, so its contents come through the simulated
+network. Browser applications obtain supported pages through simulated DNS,
+networking and HTTP.
+
+`metadata.desktop_apps` entries declare a world's application catalog and take a
+`kind`. `kind: "native"` names one of the nine native applications and supplies the
+service URL it should open against; it is launched in its own right, not as an
+alias. `kind: "browser"` is a genuine alias: it opens a browser window at a fixed
+URL, and therefore requires both `application.v1` and `browser.v1` grants plus an
+installed `browser`. Any other `kind` is rejected. Either way these remain ordinary
+world services, not special kernel concepts.
 
 Launchers, search, task switching and platform panels expose semantic hit regions.
 Mobile profiles implement Home, recent apps and supported vertical swipes for
@@ -59,7 +70,7 @@ Installed-app and capability checks apply to visible launcher actions and direct
 API calls alike. Unsupported decorative app controls are marked disabled.
 
 `application.v1` supports `home`, `launcher`, `minimize`, `maximize`, `switcher`,
-`focus`, `close` and `launch`. Pointer operations include `click`, `down`, `move`,
+`focus`, `close`, `launch` and `event` (for registered SDK applications). Pointer operations include `click`, `down`, `move`,
 `up`, `cancel` and `double_click`; always supply the matching viewport dimensions.
 Keyboard type/key events target the focused control. The console's **Expand desktop**
 enlarges the selected monitor; controls below it are host visualization tools.
@@ -103,3 +114,7 @@ HTML/JavaScript are not implemented. Rendering detail does not imply those featu
 Verification scripts are reproducible checks; current execution results and timings
 belong in generated artifacts/final reports, not implied by the existence of a test.
 Per-frame browser smoke timings do not replace the pinned benchmark methodology.
+
+Every family, op, payload shape and interaction target — including the shell panel,
+toggle, power and tab targets this page describes in prose — is tabulated in
+[action families](action-families.md).

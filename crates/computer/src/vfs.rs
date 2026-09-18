@@ -488,6 +488,44 @@ impl Vfs {
         }
         self.rename(from, to)
     }
+    /// Copy a file, or a whole folder tree, as `user`. Every node goes through the same
+    /// checks a read and a write would make, so copying is not a way around a mode a
+    /// read would have refused. An existing destination is refused rather than merged,
+    /// and a folder cannot be copied inside itself.
+    pub fn copy_as(&mut self, from: &str, to: &str, user: &str, tick: u64) -> Result<(), VfsError> {
+        let (from, to) = (normalize_path("/", from), normalize_path("/", to));
+        if self.exists(&to) {
+            return Err(VfsError::Exists(to));
+        }
+        if to == from || to.starts_with(&format!("{}/", from.trim_end_matches('/'))) {
+            return Err(VfsError::Invalid(to));
+        }
+        if !self.lstat(&from)?.is_dir {
+            let bytes = self.read_as(&from, user)?;
+            return self.write_as(&to, &bytes, user, tick);
+        }
+        self.mkdir_all_as(&to, user, tick)?;
+        for name in self.list_as(&from, user)? {
+            self.copy_as(
+                &format!("{}/{name}", from.trim_end_matches('/')),
+                &format!("{}/{name}", to.trim_end_matches('/')),
+                user,
+                tick,
+            )?;
+        }
+        Ok(())
+    }
+    /// `touch`: the one operation that moves a timestamp without touching the bytes.
+    /// Write access is the gate, as it is for a real `utimensat(… UTIME_NOW)`.
+    pub fn set_modified_as(&mut self, path: &str, tick: u64, user: &str) -> Result<(), VfsError> {
+        self.check_access(path, user, false, true, false)?;
+        let id = self.lookup(path, true, 0)?;
+        Arc::make_mut(&mut self.nodes)
+            .get_mut(&id)
+            .unwrap()
+            .modified = tick;
+        Ok(())
+    }
     pub fn chmod_as(&mut self, path: &str, mode: u16, user: &str) -> Result<(), VfsError> {
         if user != "root" && self.stat(path)?.owner != user {
             return Err(VfsError::Permission(path.into()));

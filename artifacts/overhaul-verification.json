@@ -5,6 +5,7 @@
       "id": "alice-mac",
       "theme": "macos",
       "checks": [
+        "native launcher opens",
         "real pointer window dragging at four positions",
         "edge and corner resizing",
         "maximize restores exact geometry",
@@ -13,10 +14,15 @@
         "overlapping independent windows focus and stack",
         "independent browser window histories",
         "snapshot and fork preserve full geometry and app state",
-        "mail state-backed service alias",
-        "calendar state-backed service alias",
-        "chat state-backed service alias",
-        "docs state-backed service alias"
+        "mail is a native application",
+        "calendar is a native application",
+        "chat is a native application",
+        "docs is a native application",
+        "notes is a native application",
+        "contacts is a native application",
+        "settings is a native application",
+        "calculator is a native application",
+        "clock is a native application"
       ]
     },
     {
@@ -32,10 +38,15 @@
         "overlapping independent windows focus and stack",
         "independent browser window histories",
         "snapshot and fork preserve full geometry and app state",
-        "mail state-backed service alias",
-        "calendar state-backed service alias",
-        "chat state-backed service alias",
-        "docs state-backed service alias"
+        "mail is a native application",
+        "calendar is a native application",
+        "chat is a native application",
+        "docs is a native application",
+        "notes is a native application",
+        "contacts is a native application",
+        "settings is a native application",
+        "calculator is a native application",
+        "clock is a native application"
       ]
     },
     {
@@ -51,10 +62,15 @@
         "overlapping independent windows focus and stack",
         "independent browser window histories",
         "snapshot and fork preserve full geometry and app state",
-        "mail state-backed service alias",
-        "calendar state-backed service alias",
-        "chat state-backed service alias",
-        "docs state-backed service alias"
+        "mail is a native application",
+        "calendar is a native application",
+        "chat is a native application",
+        "docs is a native application",
+        "notes is a native application",
+        "contacts is a native application",
+        "settings is a native application",
+        "calculator is a native application",
+        "clock is a native application"
       ]
     },
     {
@@ -65,10 +81,15 @@
         "touch launcher and upward Home gesture",
         "upward app drawer and downward system panel gestures",
         "long upward recent applications gesture",
-        "mail state-backed service alias",
-        "calendar state-backed service alias",
-        "chat state-backed service alias",
-        "docs state-backed service alias"
+        "mail is a native application",
+        "calendar is a native application",
+        "chat is a native application",
+        "docs is a native application",
+        "notes is a native application",
+        "contacts is a native application",
+        "settings is a native application",
+        "calculator is a native application",
+        "clock is a native application"
       ]
     },
     {
@@ -80,10 +101,15 @@
         "upward app drawer and downward system panel gestures",
         "long upward recent applications gesture",
         "mobile recent applications",
-        "mail state-backed service alias",
-        "calendar state-backed service alias",
-        "chat state-backed service alias",
-        "docs state-backed service alias"
+        "mail is a native application",
+        "calendar is a native application",
+        "chat is a native application",
+        "docs is a native application",
+        "notes is a native application",
+        "contacts is a native application",
+        "settings is a native application",
+        "calculator is a native application",
+        "clock is a native application"
       ]
     }
   ],

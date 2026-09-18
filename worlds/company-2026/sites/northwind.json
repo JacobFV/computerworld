@@ -1,0 +1,317 @@
+{
+  "id": "northwind",
+  "kind": "bank",
+  "node": "northwind",
+  "domains": [
+    "northwind.example",
+    "www.northwind.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Northwind Bank",
+    "tagline": "A simulated bank. Every balance, card and payee below is invented, and no payment network is contacted.",
+    "theme": {
+      "accent": "#117aca",
+      "background": "#ffffff",
+      "surface": "#f2f4f6",
+      "ink": "#1b1b1b",
+      "muted": "#5a5a5a",
+      "content_width": 1000
+    },
+    "accounts": {
+      "chk-4417": {
+        "id": "chk-4417",
+        "owner": "alice",
+        "kind": "checking",
+        "name": "Everyday Checking (...4417)",
+        "balance_cents": 812455,
+        "available_cents": 812455,
+        "limit_cents": 0
+      },
+      "sav-9902": {
+        "id": "sav-9902",
+        "owner": "alice",
+        "kind": "savings",
+        "name": "Reserve Savings (...9902)",
+        "balance_cents": 1450000,
+        "available_cents": 1450000,
+        "limit_cents": 0
+      },
+      "cc-3310": {
+        "id": "cc-3310",
+        "owner": "alice",
+        "kind": "credit",
+        "name": "Horizon Card (...3310)",
+        "balance_cents": -52051,
+        "available_cents": 947949,
+        "limit_cents": 1000000
+      }
+    },
+    "transactions": {
+      "tx-1": {
+        "id": "tx-1",
+        "account": "cc-3310",
+        "tick": 3,
+        "date": "2026-03-02",
+        "merchant": "RIVERBEND.COM",
+        "category": "Shopping",
+        "amount_cents": -42999,
+        "memo": "Order 1001",
+        "link": "http://amazon.com/orders/1001",
+        "pending": false
+      },
+      "tx-2": {
+        "id": "tx-2",
+        "account": "chk-4417",
+        "tick": 0,
+        "date": "2026-02-27",
+        "merchant": "NORTHSTAR PAYROLL",
+        "category": "Income",
+        "amount_cents": 512000,
+        "memo": "Salary, February",
+        "link": "",
+        "pending": false
+      },
+      "tx-3": {
+        "id": "tx-3",
+        "account": "cc-3310",
+        "tick": 1,
+        "date": "2026-02-28",
+        "merchant": "HARBORLINE COFFEE",
+        "category": "Dining",
+        "amount_cents": -1462,
+        "memo": "128 Bayfront Ave",
+        "link": "",
+        "pending": false
+      },
+      "tx-4": {
+        "id": "tx-4",
+        "account": "chk-4417",
+        "tick": 2,
+        "date": "2026-03-01",
+        "merchant": "NINTH & PIKE MARKET",
+        "category": "Groceries",
+        "amount_cents": -8790,
+        "memo": "",
+        "link": "",
+        "pending": false
+      },
+      "tx-5": {
+        "id": "tx-5",
+        "account": "cc-3310",
+        "tick": 5,
+        "date": "2026-03-08",
+        "merchant": "MARQUEE *DEVCON",
+        "category": "Entertainment",
+        "amount_cents": -18900,
+        "memo": "Order TM-2209",
+        "link": "http://ticketmaster.com/orders/TM-2209",
+        "pending": false
+      },
+      "tx-6": {
+        "id": "tx-6",
+        "account": "chk-4417",
+        "tick": 6,
+        "date": "2026-03-09",
+        "merchant": "CASCADE POWER",
+        "category": "Utilities",
+        "amount_cents": -11235,
+        "memo": "Autopay",
+        "link": "",
+        "pending": false
+      },
+      "tx-7": {
+        "id": "tx-7",
+        "account": "sav-9902",
+        "tick": 6,
+        "date": "2026-03-09",
+        "merchant": "INTEREST PAID",
+        "category": "Interest",
+        "amount_cents": 1187,
+        "memo": "",
+        "link": "",
+        "pending": false
+      },
+      "tx-8": {
+        "id": "tx-8",
+        "account": "cc-3310",
+        "tick": 7,
+        "date": "2026-03-11",
+        "merchant": "HANDMADE ROW",
+        "category": "Shopping",
+        "amount_cents": -6400,
+        "memo": "Order 5001",
+        "link": "http://etsy.com/orders/5001",
+        "pending": false
+      },
+      "tx-9": {
+        "id": "tx-9",
+        "account": "chk-4417",
+        "tick": 8,
+        "date": "2026-03-12",
+        "merchant": "TRANSFER TO SAVINGS",
+        "category": "Transfer",
+        "amount_cents": -25000,
+        "memo": "To Reserve Savings (...9902)",
+        "link": "",
+        "pending": false
+      },
+      "tx-10": {
+        "id": "tx-10",
+        "account": "sav-9902",
+        "tick": 8,
+        "date": "2026-03-12",
+        "merchant": "TRANSFER FROM CHECKING",
+        "category": "Transfer",
+        "amount_cents": 25000,
+        "memo": "From Everyday Checking (...4417)",
+        "link": "",
+        "pending": false
+      },
+      "tx-11": {
+        "id": "tx-11",
+        "account": "chk-4417",
+        "tick": 9,
+        "date": "2026-03-13",
+        "merchant": "CARD PAYMENT",
+        "category": "Payment",
+        "amount_cents": -25000,
+        "memo": "To Horizon Card (...3310)",
+        "link": "",
+        "pending": false
+      },
+      "tx-12": {
+        "id": "tx-12",
+        "account": "cc-3310",
+        "tick": 9,
+        "date": "2026-03-13",
+        "merchant": "PAYMENT - THANK YOU",
+        "category": "Payment",
+        "amount_cents": 25000,
+        "memo": "From Everyday Checking (...4417)",
+        "link": "",
+        "pending": false
+      },
+      "tx-13": {
+        "id": "tx-13",
+        "account": "cc-3310",
+        "tick": 10,
+        "date": "2026-03-14",
+        "merchant": "MERIDIAN WIRELESS",
+        "category": "Utilities",
+        "amount_cents": -7290,
+        "memo": "Two lines",
+        "link": "",
+        "pending": true
+      },
+      "tx-14": {
+        "id": "tx-14",
+        "account": "chk-4417",
+        "tick": 11,
+        "date": "2026-03-15",
+        "merchant": "QUILL & KETTLE BOOKS",
+        "category": "Shopping",
+        "amount_cents": -3499,
+        "memo": "",
+        "link": "",
+        "pending": false
+      }
+    },
+    "payees": {
+      "cascade-power": {
+        "id": "cascade-power",
+        "name": "Cascade Power",
+        "account_hint": "...8821"
+      },
+      "harborline-water": {
+        "id": "harborline-water",
+        "name": "Harborline Water",
+        "account_hint": "...4402"
+      },
+      "meridian-wireless": {
+        "id": "meridian-wireless",
+        "name": "Meridian Wireless",
+        "account_hint": "...9137"
+      }
+    },
+    "next_tx": 15
+  },
+  "search_entries": [
+    {
+      "url": "http://northwind.example/",
+      "title": "Northwind Bank - accounts and recent activity",
+      "snippet": "Balances for your checking, savings and card, with the most recent transactions under each.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "bank",
+        "accounts",
+        "balance",
+        "online banking"
+      ]
+    },
+    {
+      "url": "http://northwind.example/accounts/cc-3310",
+      "title": "Horizon Card (...3310) - transactions",
+      "snippet": "Card activity, filterable by category or merchant. Shopping, dining, entertainment and one pending line.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "credit card",
+        "card transactions",
+        "statement",
+        "horizon card"
+      ]
+    },
+    {
+      "url": "http://northwind.example/accounts/cc-3310/transactions/tx-1",
+      "title": "RIVERBEND.COM -$429.99 - transaction detail",
+      "snippet": "Order 1001, charged to the Horizon Card. The detail links back to the order that caused it.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "tx-1",
+        "monitor charge",
+        "riverbend charge",
+        "order 1001"
+      ]
+    },
+    {
+      "url": "http://northwind.example/accounts/chk-4417",
+      "title": "Everyday Checking (...4417) - transactions",
+      "snippet": "Salary, groceries, utilities, a transfer to savings and a card payment.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "checking account",
+        "transactions",
+        "bank statement"
+      ]
+    },
+    {
+      "url": "http://northwind.example/transfers",
+      "title": "Transfers and payments - Northwind Bank",
+      "snippet": "Move money between your own accounts, or pay a saved payee. Both legs are written together.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "transfer money",
+        "pay a bill",
+        "move money",
+        "payments"
+      ]
+    },
+    {
+      "url": "http://northwind.example/statements/chk-4417/2026-03",
+      "title": "Everyday Checking statement - March 2026",
+      "snippet": "A month of activity on ...4417, with the opening and closing balance.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "statement",
+        "monthly statement",
+        "march statement"
+      ]
+    }
+  ]
+}

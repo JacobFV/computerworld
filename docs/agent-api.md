@@ -98,3 +98,171 @@ recover removed computers and sessions; reset returns to the original blueprint.
 Portable snapshots remain constrained to the matching baseline. The browser console
 additionally saves its device-shape visualization metadata alongside its in-memory
 snapshot; these UI descriptors do not introduce another simulator implementation.
+
+## Scene perception contract
+
+`environment.scene(width, height)` returns a structured `Scene`. Everything below is
+additive: existing `Scene`, `Node`, `Semantic` and `Observation` consumers are unchanged,
+and every new field is omitted from the payload when it carries nothing. `SCENE_VERSION`
+is `2`.
+
+Every value is derived from world state. There is no wall clock, no RNG and no host I/O,
+so the same state produces the same scene, the same node revisions and the same digests —
+in this process, after a snapshot restore, in a fork, and in a fresh process.
+
+### Windows (`Scene::windows`)
+
+One `SceneWindow` per window the compositor knows about, bottom-to-top:
+
+```rust
+pub struct SceneWindow {
+    pub id: u64, pub title: String, pub app: String,
+    pub bounds: Rect,          // outer frame, including decoration
+    pub content: Rect,         // client area, excluding decoration and browser chrome
+    pub z: u32,                // 0 is bottom-most
+    pub focused: bool, pub minimized: bool, pub maximized: bool,
+    pub document: String,      // path, URL or document the window presents
+    pub tabs: Vec<String>, pub active_tab: usize,
+    pub occluded_by: Vec<u64>, // higher windows covering part of `bounds`
+    pub exposed: Option<Rect>, // largest uncovered part; None when fully hidden
+}
+```
+
+`Scene::window(id)` looks one up. `exposed` is a point you can actually click to raise a
+partly covered window; spatial reasoning no longer has to be reconstructed from text.
+
+### Roles, state and ownership
+
+`Node` gains `window: Option<u64>`, `state: Option<NodeState>` and `revision: u64`.
+`NodeState` carries `checked`, `selected` and `expanded` (each `Option<bool>`: `None`
+means the role has no such state) plus `focused`. `Semantic` is unchanged — shells build
+it with exhaustive struct literals, so it can never gain a field.
+
+`Scene::accessibility() -> Vec<AxNode>` publishes the accessibility-shaped tree, one entry
+per control, merging every node a shell paints for it. No inference required:
+
+```rust
+pub struct AxNode {
+    pub id: String,             // the interaction id, which actions also address
+    pub role: String, pub name: String, pub value: Option<String>,
+    pub enabled: bool, pub focusable: bool, pub focused: bool,
+    pub checked: Option<bool>, pub selected: Option<bool>, pub expanded: Option<bool>,
+    pub window: Option<u64>,
+    pub bounds: Rect,           // union of the merged nodes' painted bounds
+    pub nodes: Vec<u64>, pub z: i32, pub order: usize,
+    pub hit: Option<(i32, i32)>,// a point a click reaches it at; None when occluded
+    pub revision: u64,
+}
+```
+
+`window` is authoritative for controls, whose interactions are namespaced
+`window:<id>:...`; other nodes are attributed from the compositor's per-window paint run.
+
+### Focus and caret (`Scene::focus`)
+
+```rust
+pub struct Focus {
+    pub window: Option<u64>, pub node: Option<u64>, pub interaction: Option<String>,
+    pub role: String, pub label: String, pub value: Option<String>,
+    pub caret: Option<Caret>, pub keyboard: Keyboard,
+}
+pub struct Caret { pub bounds: Rect, pub line: u32, pub column: u32, pub offset: u32 }
+pub struct Keyboard {
+    pub route: String,          // none|panel|application|address|page|terminal|editor|window
+    pub window: Option<u64>, pub target: Option<String>, pub text_entry: bool,
+}
+```
+
+`Keyboard::route` mirrors the `keyboard.v1` dispatch order exactly, so it answers "where
+would this keystroke go" rather than describing it. `caret.bounds` is the character cell
+the insertion point occupies, from the model's offset on the pane's own painted grid. Do
+not look for a solid block in the pixels.
+
+### Hit testing, z-order and occlusion
+
+`Scene::hit_test(x, y)` is unchanged. Added:
+
+- `Scene::hit_stack(x, y) -> Vec<Hit>` — every node covering the point, topmost first,
+  the `elementFromPoint` equivalent. Non-interactive nodes are included, each with
+  `interactive` and `opaque`, so occlusion is legible and not merely answerable.
+- `Scene::hit_reaches(node, x, y) -> bool` — "is this point actually this element".
+- `Scene::reachable_point(node) -> Option<(i32, i32)>` — a point a click reaches the node
+  at, or `None` when it is fully covered, disabled or inert. Sampling is a fixed grid, so
+  the answer is deterministic.
+- `Rect::subtract`, `Rect::union` and `cw_scene::exposed(bounds, covers)` expose the same
+  geometry windows use.
+
+### Deltas (`Scene::digest`, `Node::revision`)
+
+`Scene::stamp()` fills `Node::revision` with a digest of what the node paints and
+announces, and `Scene::digest` with a digest of the whole scene. `environment.scene`
+stamps before returning, so both are always populated; `0` means unstamped.
+
+A revision is a **content digest, never a counter**. There is no mutable sequence a
+snapshot restore could desynchronise: the same state hashes the same, so restoring a
+checkpoint reproduces the ids exactly and a scene taken before and after a restore
+compares equal.
+
+`new.diff(&old) -> SceneDelta` gives `changed`, `added`, `removed`, `updated`, `windows`,
+`background`, `resized`, `focus` and a `damage` rect list. `changed == false` is the cheap
+"nothing happened" answer: it short-circuits on the scene digest and touches no nodes.
+
+### Text lines and pane buffers
+
+Panes hard-wrap at the character cell, so joining painted lines naively corrupts text
+(`initial commi` + `t`). Every painted line now carries its provenance:
+
+```rust
+pub struct TextLine {
+    pub logical: u32,           // index in the owning pane's buffer
+    pub continuation: bool,     // continues the previous visual line: join with no separator
+    pub offset: u32,            // character offset within the logical line
+    pub wrapped_from: Option<u64>, // node id of the logical line's first fragment
+    pub pane: Option<String>,   // handle into Scene::buffers
+}
+```
+
+`Scene::buffers` carries each text pane's whole buffer, not only the visible region:
+
+```rust
+pub struct TextBuffer {
+    pub handle: String, pub window: Option<u64>, pub kind: String, // "terminal" | "editor"
+    pub lines: Vec<String>,     // every logical line, unwrapped; `logical` indexes this
+    pub first_visible: u32, pub visible: u32,
+    pub truncated: bool,        // older lines dropped at MAX_BUFFER_LINES/CHARS
+}
+```
+
+Terminal panes publish the scrollback the transcript holds; editors publish the whole
+document. `cw_scene::reflow(logical, visual)` and `wrap_text_lines` are the same
+attachment available standalone.
+
+### Action results (`ActionOutcome::effect`)
+
+`step` outcomes report the envelope. `ActionOutcome::effect` reports the app-level
+consequence, derived by comparing an actor-visible projection of the target machine
+before and after dispatch:
+
+```rust
+pub struct ActionEffect {
+    pub changed: Vec<String>,       // sorted `cw_protocol::effect::*` tags
+    pub windows_opened: Vec<u64>, pub windows_closed: Vec<u64>,
+    pub focused_window: Option<u64>, pub url: Option<String>,
+    pub state: u64,                 // digest of the machine's actor-visible state after
+}
+```
+
+Tags are `window.opened`, `window.closed`, `window.moved`, `window.focused`,
+`window.title`, `content`, `document`, `navigate`, `focus`, `terminal` and `application`.
+An empty `changed` (`ActionEffect::is_noop`) means the action was accepted and changed
+nothing observable — a real answer, distinct from failure. A failed action can still carry
+an effect when it mutated state before failing, which is the case worth seeing. `effect`
+is `None` only when the action was refused by its grants and never reached a machine.
+`state` is content-derived like the scene digest, so equal values mean equal observable
+state across restores.
+
+### Cost
+
+Stamping adds one digest pass over the composed scene. `environment.scene` remains a
+sub-millisecond structured call; nothing here rasterizes, and `diff` between two stamped
+scenes is a digest comparison plus a map walk.

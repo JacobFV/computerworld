@@ -1,0 +1,262 @@
+{
+  "id": "google-mail",
+  "kind": "mail",
+  "node": "google-mail",
+  "domains": ["mail.google.com", "gmail.com", "www.gmail.com"],
+  "port": 80,
+  "initial_state": {
+    "skin": "gmail",
+    "brand": "Gmail",
+    "domain": "northstar.example",
+    "users": ["alice", "bob", "carol", "admin"],
+    "accounts": {
+      "alice": "alice@northstar.example",
+      "bob": "bob@northstar.example",
+      "carol": "carol@northstar.example",
+      "admin": "dana@northstar.example"
+    },
+    "names": {
+      "alice": "Alice Chen",
+      "bob": "Bob Martinez",
+      "carol": "Carol Nakamura",
+      "admin": "Dana Okoro",
+      "tom.weber@theverge.com": "Tom Weber",
+      "priya@raman.example": "Priya Raman",
+      "orders@amazon.com": "Amazon.com",
+      "tickets@ticketmaster.com": "Ticketmaster",
+      "messages-noreply@linkedin.com": "LinkedIn",
+      "drive-shares-noreply@google.com": "Google Drive",
+      "nadia.fischer@meridianlabs.example": "Nadia Fischer",
+      "bmartinez@outlook.com": "Bob Martinez",
+      "alice.chen@gmail.com": "Alice Chen",
+      "carol.nakamura@gmail.com": "Carol Nakamura"
+    },
+    "external_contacts": [
+      "alice.chen@gmail.com",
+      "bmartinez@outlook.com",
+      "carol.nakamura@gmail.com",
+      "drive-shares-noreply@google.com",
+      "messages-noreply@linkedin.com",
+      "nadia.fischer@meridianlabs.example",
+      "no-reply@dropbox.com",
+      "orders@amazon.com",
+      "priya@raman.example",
+      "tickets@ticketmaster.com",
+      "tom.weber@theverge.com"
+    ],
+    "messages": {
+      "mail-1": {
+        "id": "mail-1",
+        "sender": "carol",
+        "to": ["alice@northstar.example"],
+        "cc": ["bob@northstar.example"],
+        "subject": "Atlas launch checklist",
+        "body": "Alice — the launch checklist is written up and ready for a second pair of eyes. Everything we agreed in the review is in there, including the release code and the rollback plan.\n\nDoc: http://docs.google.com/documents/atlas-launch\n\nWalk it top to bottom before Thursday and tick the boxes you own. Bob, you are on the CI section.",
+        "time": 0,
+        "mailboxes": {
+          "alice": {"folders": ["inbox"], "labels": ["Atlas"], "read": false, "starred": true},
+          "bob": {"folders": ["inbox"], "labels": [], "read": false},
+          "carol": {"folders": ["sent"], "labels": [], "read": true}
+        }
+      },
+      "mail-2": {
+        "id": "mail-2",
+        "sender": "alice",
+        "to": ["carol@northstar.example"],
+        "cc": ["bob@northstar.example"],
+        "subject": "Re: Atlas launch checklist",
+        "body": "Read it. Two notes: the rollback step needs the repo link spelled out — http://github.com/northstar/atlas — and I would rather we point people at the walkthrough than at the slides.\n\nEverything else I can tick today.",
+        "time": 420000000,
+        "thread_id": "mail-1",
+        "mailboxes": {
+          "alice": {"folders": ["sent"], "labels": ["Atlas"], "read": true},
+          "bob": {"folders": ["inbox"], "labels": [], "read": false},
+          "carol": {"folders": ["inbox"], "labels": [], "read": true}
+        }
+      },
+      "mail-3": {
+        "id": "mail-3",
+        "sender": "bob",
+        "to": ["carol@northstar.example"],
+        "cc": ["alice@northstar.example"],
+        "subject": "Re: Atlas launch checklist",
+        "body": "CI section is green apart from the Windows path test, which is the hash-ordering thing again. Tracking it in the repo, not a launch blocker.\n\nWalkthrough for the doc: http://youtube.com/watch?v=atlas-walkthrough",
+        "time": 780000000,
+        "thread_id": "mail-1",
+        "mailboxes": {
+          "alice": {"folders": ["inbox"], "labels": ["Atlas"], "read": false},
+          "bob": {"folders": ["sent"], "labels": [], "read": true},
+          "carol": {"folders": ["inbox"], "labels": [], "read": false}
+        }
+      },
+      "mail-4": {
+        "id": "mail-4",
+        "sender": "messages-noreply@linkedin.com",
+        "to": ["bob@northstar.example"],
+        "cc": [],
+        "subject": "Nadia Fischer sent you a message on LinkedIn",
+        "body": "Nadia Fischer · Technical Recruiter at Meridian Labs\n\n\"Hi Bob — your CI work on Northstar's Atlas release came up twice in our team this week. We are hiring for a build-reliability role and I would love twenty minutes of your time.\"\n\nRead it on LinkedIn: http://linkedin.com/",
+        "time": 1200000000,
+        "mailboxes": {
+          "bob": {"folders": ["inbox"], "labels": [], "read": false, "starred": true}
+        }
+      },
+      "mail-5": {
+        "id": "mail-5",
+        "sender": "bob",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Fwd: Nadia Fischer sent you a message on LinkedIn",
+        "body": "Moving this off the work account.\n\nNadia Fischer · Technical Recruiter at Meridian Labs — build-reliability role, wants twenty minutes.",
+        "time": 1260000000,
+        "thread_id": "mail-4",
+        "mailboxes": {
+          "bob": {"folders": ["sent"], "labels": [], "read": true}
+        }
+      },
+      "mail-6": {
+        "id": "mail-6",
+        "sender": "tickets@ticketmaster.com",
+        "to": ["carol@northstar.example"],
+        "cc": [],
+        "subject": "Your DevCon Seattle 2026 tickets — order TM-2210",
+        "body": "Order TM-2210 is confirmed. One general-admission ticket, seat A-14-7, Cascade Convention Center, Seattle.\n\nEvent page: http://ticketmaster.com/event/devcon-2026\n\nThe charge will appear on your statement as TICKETMASTER *DEVCON.",
+        "time": 1500000000,
+        "mailboxes": {
+          "carol": {"folders": ["inbox"], "labels": ["Travel"], "read": false, "starred": true}
+        }
+      },
+      "mail-7": {
+        "id": "mail-7",
+        "sender": "orders@amazon.com",
+        "to": ["alice@northstar.example"],
+        "cc": [],
+        "subject": "Your Amazon.com order 1001 has shipped",
+        "body": "27-inch 4K USB-C monitor — $429.99, arriving Friday.\n\nOrder: http://amazon.com/orders/1001\nProduct: http://amazon.com/dp/b0monitor27",
+        "time": 1800000000,
+        "mailboxes": {
+          "alice": {"folders": ["inbox"], "labels": ["Receipts"], "read": true}
+        }
+      },
+      "mail-8": {
+        "id": "mail-8",
+        "sender": "bob",
+        "to": ["alice@northstar.example"],
+        "cc": [],
+        "subject": "Quick question (off the record)",
+        "body": "A recruiter from Meridian Labs pinged me on LinkedIn about a build-reliability role. I have not answered properly yet.\n\nDon't tell carol yet — I want to think about it before it becomes a conversation. Coffee at four?",
+        "time": 2100000000,
+        "mailboxes": {
+          "alice": {"folders": ["inbox"], "labels": [], "read": false},
+          "bob": {"folders": ["sent"], "labels": [], "read": true}
+        }
+      },
+      "mail-9": {
+        "id": "mail-9",
+        "sender": "alice",
+        "to": ["bob@northstar.example"],
+        "cc": [],
+        "subject": "Re: Quick question (off the record)",
+        "body": "Four works. Not a word, obviously.\n\nFor what it is worth: take the call, then decide. Nobody ever regretted knowing the number.",
+        "time": 2400000000,
+        "thread_id": "mail-8",
+        "mailboxes": {
+          "alice": {"folders": ["sent"], "labels": [], "read": true},
+          "bob": {"folders": ["inbox"], "labels": [], "read": false}
+        }
+      },
+      "mail-10": {
+        "id": "mail-10",
+        "sender": "drive-shares-noreply@google.com",
+        "to": ["alice@northstar.example"],
+        "cc": [],
+        "subject": "Carol Nakamura shared a folder with you: Atlas",
+        "body": "Carol Nakamura (carol@northstar.example) shared the folder \"Atlas\" with you. Seven files, plus a shortcut to the launch doc.\n\nOpen in Drive: http://drive.google.com/\n\nThe same seven files are still in the old Dropbox folder if you need the originals: http://dropbox.com/",
+        "time": 2700000000,
+        "mailboxes": {
+          "alice": {"folders": ["inbox"], "labels": ["Atlas"], "read": false}
+        }
+      },
+      "mail-11": {
+        "id": "mail-11",
+        "sender": "tom.weber@theverge.com",
+        "to": ["alice@northstar.example"],
+        "cc": [],
+        "subject": "Comment for a Verge story on Atlas?",
+        "body": "Alice — following up on my DM. I am writing about how Northstar made Atlas replay byte for byte, and I would rather quote you than guess.\n\nAnything on the record before we publish? http://theverge.com/2026/atlas-determinism",
+        "time": 3000000000,
+        "mailboxes": {
+          "alice": {"folders": ["archive"], "labels": ["Press"], "read": true, "starred": true}
+        }
+      }
+    },
+    "next_id": 11
+  },
+  "search_entries": [
+    {
+      "url": "http://mail.google.com/",
+      "title": "Gmail",
+      "snippet": "Northstar's Workspace mail: inbox, starred, sent and all mail, with search and compose.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["gmail", "mail", "email", "inbox", "google mail", "webmail"]
+    },
+    {
+      "site": "gmail.com",
+      "url": "http://gmail.com/",
+      "title": "Gmail — sign in",
+      "snippet": "The same mailbox at its shorter address. Read a thread, star it, label it, archive it or reply.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["gmail", "gmail.com", "email", "mail"]
+    },
+    {
+      "url": "http://mail.google.com/threads/mail-1",
+      "title": "Atlas launch checklist - Gmail",
+      "snippet": "Carol Nakamura to Alice Chen, cc Bob Martinez: the launch checklist is ready for a second pair of eyes, and links the Google Doc.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["atlas", "launch", "checklist", "carol", "northstar", "gmail thread"]
+    },
+    {
+      "url": "http://mail.google.com/threads/mail-6",
+      "title": "Your DevCon Seattle 2026 tickets — order TM-2210 - Gmail",
+      "snippet": "Ticketmaster confirmation for one general-admission ticket, seat A-14-7 at the Cascade Convention Center.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["devcon", "seattle", "ticket", "tm-2210", "order", "confirmation"]
+    },
+    {
+      "url": "http://mail.google.com/threads/mail-7",
+      "title": "Your Amazon.com order 1001 has shipped - Gmail",
+      "snippet": "Receipt for the 27-inch 4K USB-C monitor, $429.99, with links back to the order and the product page.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["amazon", "order", "1001", "monitor", "receipt", "shipped"]
+    },
+    {
+      "url": "http://mail.google.com/threads/mail-10",
+      "title": "Carol Nakamura shared a folder with you: Atlas - Gmail",
+      "snippet": "Drive share notification for the Atlas folder — seven files plus a shortcut to the launch doc.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["drive", "shared", "folder", "atlas", "dropbox", "share notification"]
+    },
+    {
+      "url": "http://mail.google.com/?folder=starred",
+      "title": "Starred - Gmail",
+      "snippet": "Everything flagged for follow-up: the launch checklist, the DevCon tickets and the Verge enquiry.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": ["starred", "gmail", "flagged", "follow up"]
+    },
+    {
+      "url": "http://mail.google.com/?folder=sent",
+      "title": "Sent - Gmail",
+      "snippet": "Mail leaving this mailbox, including the messages forwarded to addresses elsewhere in the world.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": ["sent", "gmail", "outbox"]
+    }
+  ]
+}

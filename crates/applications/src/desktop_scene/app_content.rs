@@ -1,24 +1,74 @@
-//! Native client-area projection. No host data and no invented file metadata.
-use super::{shared::Painter, DesktopTheme};
+//! Native client-area projection. No host data and no invented file metadata: every
+//! row, path and counter comes from application state, and only real actions are
+//! interactive. Window frames own titles and tabs; these scenes own the content.
+use super::{
+    shared::{Align, Painter},
+    DesktopTheme,
+};
 use cw_scene::{Color, Primitive, Rect, Scene};
 
-const INK: Color = Color::rgb(38, 39, 43);
+const INK: Color = Color::rgb(29, 29, 31);
 const MUTED: Color = Color::rgb(112, 114, 120);
-const LINE: Color = Color::rgb(222, 223, 227);
-fn platform(t: DesktopTheme) -> &'static str {
+const FAINT: Color = Color::rgb(160, 162, 168);
+const LINE: Color = Color(0, 0, 0, 26);
+
+struct Look {
+    accent: Color,
+    folder: Color,
+    sidebar: Color,
+    sidebar_width: u32,
+    selection: Color,
+    row: u32,
+    root: &'static str,
+}
+fn look(t: DesktopTheme) -> Look {
     match t {
-        DesktopTheme::Macos => "macos",
-        DesktopTheme::Windows => "windows",
-        DesktopTheme::Ubuntu => "ubuntu",
-        DesktopTheme::Ios => "ios",
-        DesktopTheme::Android => "android",
+        DesktopTheme::Macos => Look {
+            accent: Color::rgb(0, 122, 255),
+            folder: Color::rgb(58, 160, 240),
+            sidebar: Color::rgb(232, 231, 234),
+            sidebar_width: super::macos::FINDER_SIDEBAR,
+            selection: Color(0, 0, 0, 24),
+            row: 24,
+            root: "Macintosh HD",
+        },
+        DesktopTheme::Windows => Look {
+            accent: Color::rgb(0, 95, 184),
+            folder: Color::rgb(245, 187, 64),
+            sidebar: Color::rgb(249, 249, 249),
+            sidebar_width: 184,
+            selection: Color::rgb(229, 241, 251),
+            row: 32,
+            root: "This PC",
+        },
+        DesktopTheme::Ubuntu => Look {
+            accent: Color::rgb(233, 84, 32),
+            folder: Color::rgb(233, 84, 32),
+            sidebar: Color::rgb(246, 246, 246),
+            sidebar_width: super::ubuntu::FILES_SIDEBAR,
+            selection: Color(0, 0, 0, 22),
+            row: 40,
+            root: "Computer",
+        },
+        DesktopTheme::Ios => Look {
+            accent: Color::rgb(0, 122, 255),
+            folder: Color::rgb(64, 168, 250),
+            sidebar: Color::WHITE,
+            sidebar_width: 0,
+            selection: Color(0, 0, 0, 16),
+            row: 60,
+            root: "On My iPhone",
+        },
+        DesktopTheme::Android => Look {
+            accent: Color::rgb(76, 102, 43),
+            folder: Color::rgb(95, 99, 104),
+            sidebar: Color::WHITE,
+            sidebar_width: 0,
+            selection: Color(0, 0, 0, 16),
+            row: 64,
+            root: "Internal storage",
+        },
     }
-}
-fn separator(p: &mut Painter, y: i32, w: u32) {
-    p.box_(Rect::new(0, y, w, 1), LINE, 0);
-}
-fn label(p: &mut Painter, x: i32, y: i32, w: u32, s: &str, size: u16) {
-    p.text(x, y, w, s, size, INK);
 }
 fn mono(p: &mut Painter, r: Rect, s: &str, size: u16, color: Color) {
     p.node(
@@ -31,484 +81,1204 @@ fn mono(p: &mut Painter, r: Rect, s: &str, size: u16, color: Color) {
         None,
     );
 }
-fn control(p: &mut Painter, r: Rect, s: &str, action: &str, color: Color) {
-    p.button(r, Color::TRANSPARENT, 5, action, s);
-    p.text(r.x + 8, r.y + 7, r.width.saturating_sub(12), s, 13, color);
-}
-fn disabled(p: &mut Painter, r: Rect, s: &str) {
-    p.node(
-        r,
-        Primitive::UiText {
-            text: s.into(),
-            size: 12,
-            color: Color::rgb(151, 153, 158),
-        },
-        None,
-    );
-    if let Some(n) = p.scene.nodes.last_mut() {
-        n.semantic = Some(cw_scene::Semantic {
-            role: "button".into(),
-            label: s.into(),
-            value: None,
-            disabled: true,
-            focusable: false,
-        });
-    }
-}
-fn folder(p: &mut Painter, x: i32, y: i32, size: u32, t: DesktopTheme) {
-    let (light, dark) = match t {
-        DesktopTheme::Windows => (Color::rgb(255, 208, 86), Color::rgb(225, 171, 46)),
-        DesktopTheme::Ubuntu => (Color::rgb(237, 141, 92), Color::rgb(190, 97, 65)),
-        _ => (Color::rgb(92, 188, 242), Color::rgb(56, 151, 218)),
-    };
-    p.box_(Rect::new(x, y, size * 2 / 5, size / 3), dark, 2);
-    p.box_(
-        Rect::new(x, y + size as i32 / 6, size, size * 2 / 3),
-        light,
-        2,
-    );
-    p.box_(
-        Rect::new(x + 1, y + size as i32 / 6, size.saturating_sub(2), 1),
-        Color(255, 255, 255, 120),
-        0,
-    );
-}
-fn file_icon(p: &mut Painter, x: i32, y: i32, size: u32, t: DesktopTheme, directory: bool) {
-    if directory {
-        folder(p, x, y, size, t);
+/// A control that is real only when `enabled`; otherwise it is drawn greyed and
+/// announced as disabled, never painted as an affordance that would be refused.
+fn control(p: &mut Painter, r: Rect, action: &str, label: &str, enabled: bool) {
+    if enabled {
+        p.button(r, Color::TRANSPARENT, 4, action, label);
     } else {
-        let w = size * 3 / 4;
-        p.border(
-            Rect::new(x + 2, y, w, size),
-            Color::WHITE,
-            2,
-            Color::rgb(178, 184, 193),
-        );
-        for i in 0..3 {
-            p.box_(
-                Rect::new(x + 6, y + 8 + i * 4, w.saturating_sub(8), 1),
-                Color::rgb(170, 181, 197),
-                0,
-            );
-        }
+        p.box_(r, Color::TRANSPARENT, 4);
+        p.disabled(label);
     }
 }
-fn basename(path: &str) -> &str {
-    path.trim_end_matches(['/', '\\'])
-        .rsplit(['/', '\\'])
-        .next()
-        .filter(|s| !s.is_empty())
-        .unwrap_or("File system")
+fn components(path: &str) -> Vec<&str> {
+    path.split(['/', '\\']).filter(|s| !s.is_empty()).collect()
+}
+fn current<'a>(path: &'a str, root: &'a str) -> &'a str {
+    components(path).last().copied().unwrap_or(root)
+}
+fn parent<'a>(path: &'a str, root: &'a str) -> &'a str {
+    let parts = components(path);
+    if parts.len() >= 2 {
+        parts[parts.len() - 2]
+    } else {
+        root
+    }
+}
+fn has_parent(path: &str) -> bool {
+    !components(path).is_empty()
+}
+/// Breadcrumb trail as (label, absolute path) pairs, root first.
+fn crumbs(path: &str, root: &str) -> Vec<(String, String)> {
+    let mut out = vec![(root.to_owned(), "/".to_owned())];
+    let mut prefix = String::new();
+    for part in components(path) {
+        prefix.push('/');
+        prefix.push_str(part);
+        out.push((part.to_owned(), prefix.clone()));
+    }
+    out
+}
+/// Finder's tab bar. Returns the height it consumed.
+fn tab_strip(
+    p: &mut Painter,
+    l: &Look,
+    x: i32,
+    width: u32,
+    tabs: &[crate::FileTab],
+    active: usize,
+) -> u32 {
+    const HEIGHT: u32 = 28;
+    p.box_(Rect::new(x, 0, width, HEIGHT), Color::rgb(236, 236, 238), 0);
+    p.hline(x, HEIGHT as i32 - 1, width, LINE);
+    let plus = 30;
+    let each = (width.saturating_sub(plus) / tabs.len().max(1) as u32).clamp(60, 240);
+    for (i, tab) in tabs.iter().enumerate() {
+        let r = Rect::new(x + i as i32 * each as i32, 0, each, HEIGHT - 1);
+        p.button(
+            r,
+            if i == active {
+                Color::WHITE
+            } else {
+                Color::TRANSPARENT
+            },
+            0,
+            &format!("files-tab:{i}"),
+            tab.name(),
+        );
+        p.vline(r.x + r.width as i32 - 1, 4, HEIGHT - 9, LINE);
+        p.label(
+            r.x + 10,
+            5,
+            r.width.saturating_sub(34),
+            tab.name(),
+            12,
+            if i == active { INK } else { MUTED },
+            i == active,
+            Align::Left,
+        );
+        let close = Rect::new(r.x + r.width as i32 - 24, 5, 18, 18);
+        p.button(
+            close,
+            Color::TRANSPARENT,
+            4,
+            &format!("files-closetab:{i}"),
+            "Close tab",
+        );
+        p.symbol("close", close.x + 4, close.y + 4, 10, MUTED);
+    }
+    let plus_rect = Rect::new(x + width as i32 - plus as i32, 3, 22, 22);
+    p.button(plus_rect, Color::TRANSPARENT, 4, "files-newtab", "New tab");
+    p.symbol("plus", plus_rect.x + 5, plus_rect.y + 5, 12, l.accent);
+    HEIGHT
+}
+fn entry_icon(p: &mut Painter, l: &Look, x: i32, y: i32, size: u32, directory: bool) {
+    if directory {
+        p.symbol("folder", x, y, size, l.folder);
+    } else {
+        p.symbol("document", x, y, size, Color::rgb(126, 132, 142));
+    }
 }
 
-fn files(p: &mut Painter, t: DesktopTheme, w: u32, h: u32, path: &str, entries: &[String]) {
-    p.scene.background = Color::WHITE;
-    let mobile = t.mobile();
-    let side = if !mobile && w > 470 {
-        if t == DesktopTheme::Windows {
-            176
+/// Sidebar location trail: the root performs `files-root`, the enclosing folder
+/// `files-up`, and the current folder is the selected row.
+fn sidebar(p: &mut Painter, t: DesktopTheme, l: &Look, h: u32, path: &str, count: usize) {
+    let side = l.sidebar_width;
+    p.box_(Rect::new(0, 0, side, h), l.sidebar, 0);
+    p.vline(side as i32 - 1, 0, h, LINE);
+    let heading = match t {
+        DesktopTheme::Macos => "Locations",
+        DesktopTheme::Windows => "",
+        _ => "",
+    };
+    let mut y = 10;
+    if !heading.is_empty() {
+        p.strong(18, y, side - 28, heading, 11, FAINT);
+        y += 22;
+    }
+    let depth = components(path).len();
+    let row = if t == DesktopTheme::Ubuntu { 36 } else { 30 };
+    let item = |p: &mut Painter,
+                y: i32,
+                symbol: &str,
+                name: &str,
+                selected: bool,
+                action: Option<&str>| {
+        let plate = Rect::new(8, y, side - 16, row - 2);
+        if let Some(action) = action {
+            p.button(plate, Color::TRANSPARENT, 6, action, name);
+        }
+        if selected {
+            p.box_(plate, l.selection, 6);
+        }
+        let tint = if t == DesktopTheme::Ubuntu {
+            INK
         } else {
-            164
-        }
-    } else {
-        0
-    };
-    let top = match t {
-        DesktopTheme::Macos => 58,
-        DesktopTheme::Windows => 94,
-        DesktopTheme::Ubuntu => 54,
-        DesktopTheme::Ios => 112,
-        DesktopTheme::Android => 110,
-    };
-    let accent = if t == DesktopTheme::Ubuntu {
-        Color::rgb(222, 80, 38)
-    } else {
-        Color::rgb(0, 112, 222)
-    };
-    if side > 0 {
-        let bg = match t {
-            DesktopTheme::Macos => Color::rgb(237, 236, 238),
-            DesktopTheme::Windows => Color::rgb(249, 249, 249),
-            _ => Color::rgb(245, 245, 245),
+            l.accent
         };
-        p.box_(Rect::new(0, 0, side, h), bg, 0);
-        p.text(
+        p.symbol(
+            symbol,
             18,
-            22,
-            side - 30,
-            if t == DesktopTheme::Macos {
-                "Locations"
-            } else {
-                "This computer"
-            },
-            11,
-            MUTED,
+            y + (row as i32 - 18) / 2,
+            16,
+            if symbol == "folder" { l.folder } else { tint },
         );
-        p.button(
-            Rect::new(9, 48, side - 18, 34),
-            if t == DesktopTheme::Macos {
-                Color::rgb(213, 212, 216)
-            } else {
-                Color::rgb(225, 235, 245)
-            },
-            6,
-            "files-root",
-            "File system",
+        p.left(
+            44,
+            y + (row as i32 - 19) / 2,
+            side.saturating_sub(56),
+            name,
+            13,
+            INK,
         );
-        p.asset(
-            Rect::new(18, 56, 18, 18),
-            &format!("icon/{}/files", platform(t)),
-        );
-        label(p, 44, 58, side - 50, "File system", 13);
-        p.text(18, 107, side - 28, "CURRENT FOLDER", 10, MUTED);
-        folder(p, 19, 137, 17, t);
-        label(p, 44, 138, side - 50, basename(path), 13);
-        p.text(
-            18,
-            h.saturating_sub(62) as i32,
-            side - 30,
-            "Local storage",
-            11,
-            MUTED,
-        );
-        p.text(
-            18,
-            h.saturating_sub(43) as i32,
-            side - 30,
-            &format!("{} items", entries.len()),
-            11,
-            MUTED,
-        );
-        p.box_(Rect::new(side as i32 - 1, 0, 1, h), LINE, 0);
-    }
-    let x = side as i32;
-    let content = w.saturating_sub(side);
-    match t {
-        DesktopTheme::Macos => {
-            p.box_(Rect::new(x, 0, content, 58), Color::rgb(250, 249, 250), 0);
-            control(p, Rect::new(x + 10, 10, 35, 32), "‹", "files-up", INK);
-            label(
-                p,
-                x + 51,
-                18,
-                content.saturating_sub(210),
-                basename(path),
-                15,
-            );
-            disabled(
-                p,
-                Rect::new(w.saturating_sub(153) as i32, 20, 110, 20),
-                "☷   List view",
-            );
-        }
-        DesktopTheme::Windows => {
-            p.box_(Rect::new(x, 0, content, 94), Color::rgb(250, 250, 250), 0);
-            control(p, Rect::new(x + 8, 5, 36, 35), "↑", "files-up", INK);
-            p.border(
-                Rect::new(x + 51, 7, content.saturating_sub(66), 31),
-                Color::WHITE,
-                4,
-                LINE,
-            );
-            label(p, x + 62, 15, content.saturating_sub(87), path, 12);
-            disabled(p, Rect::new(x + 20, 58, 80, 22), "New  ∨");
-            disabled(p, Rect::new(x + 103, 58, 100, 22), "Sort  ∨");
-            p.text(x + 192, 58, 90, "Details", 12, INK);
-        }
-        DesktopTheme::Ubuntu => {
-            p.box_(Rect::new(x, 0, content, 54), Color::rgb(249, 249, 249), 0);
-            p.border(Rect::new(x + 12, 9, 34, 34), Color::WHITE, 7, LINE);
-            control(p, Rect::new(x + 12, 9, 34, 34), "‹", "files-up", INK);
-            p.border(
-                Rect::new(x + 55, 9, content.saturating_sub(69), 34),
-                Color::rgb(235, 235, 235),
-                7,
-                Color::rgb(231, 231, 231),
-            );
-            label(p, x + 68, 19, content.saturating_sub(95), path, 13);
-        }
-        DesktopTheme::Ios => {
-            p.scene.background = Color::rgb(248, 248, 250);
-            control(p, Rect::new(10, 5, 100, 34), "‹ Browse", "files-up", accent);
-            control(
-                p,
-                Rect::new(w.saturating_sub(73) as i32, 5, 65, 34),
-                "Root",
-                "files-root",
-                accent,
-            );
-            label(p, 22, 49, w.saturating_sub(40), basename(path), 28);
-            p.text(23, 87, w.saturating_sub(46), path, 12, MUTED);
-        }
-        DesktopTheme::Android => {
-            p.scene.background = Color::rgb(250, 248, 255);
-            control(p, Rect::new(12, 8, 70, 35), "‹ Back", "files-up", INK);
-            control(
-                p,
-                Rect::new(w.saturating_sub(94) as i32, 8, 85, 35),
-                "Storage",
-                "files-root",
-                INK,
-            );
-            label(p, 25, 56, w.saturating_sub(50), basename(path), 25);
-            p.text(26, 88, w.saturating_sub(50), path, 12, MUTED);
-        }
-    }
-    if side == 0 && !mobile {
-        control(
-            p,
-            Rect::new(w.saturating_sub(59) as i32, top - 30, 52, 25),
-            "Root",
-            "files-root",
-            accent,
-        );
-    }
-    p.box_(Rect::new(x, top, content, 1), LINE, 0);
-    let header = if mobile { 0 } else { 28 };
-    if !mobile {
-        p.box_(
-            Rect::new(x, top + 1, content, 27),
-            Color::rgb(249, 249, 250),
-            0,
-        );
-        p.text(
-            x + 42,
-            top + 8,
-            content.saturating_sub(140),
-            "Name",
-            11,
-            MUTED,
-        );
-        if content > 330 {
-            p.text(
-                w.saturating_sub(124) as i32,
-                top + 8,
-                110,
-                "Kind",
-                11,
-                MUTED,
-            );
-        }
-    }
-    let row_height = if mobile {
-        65
-    } else if t == DesktopTheme::Macos {
-        29
-    } else {
-        38
     };
-    let rows = h.saturating_sub((top + header + 32) as u32) / row_height;
-    for (i, entry) in entries.iter().take(rows as usize).enumerate() {
-        let y = top + header + i as i32 * row_height as i32 + 1;
-        let directory = entry.ends_with('/');
-        let bg = if t == DesktopTheme::Macos && i % 2 == 0 {
-            Color::rgb(245, 245, 247)
+    let root_symbol = if t == DesktopTheme::Windows {
+        "desktop"
+    } else {
+        "drive"
+    };
+    item(p, y, root_symbol, l.root, depth == 0, Some("files-root"));
+    y += row as i32;
+    if depth >= 1 {
+        if depth >= 2 {
+            item(
+                p,
+                y,
+                "folder",
+                parent(path, l.root),
+                false,
+                Some("files-up"),
+            );
+            y += row as i32;
         } else {
-            Color::TRANSPARENT
-        };
-        p.button(
-            Rect::new(x + 5, y, content.saturating_sub(10), row_height),
-            bg,
-            4,
-            &format!("open:{i}"),
-            entry,
-        );
-        let size = if mobile { 32 } else { 19 };
-        file_icon(
-            p,
-            x + if mobile { 22 } else { 17 },
-            y + if mobile { 15 } else { 5 },
-            size,
-            t,
-            directory,
-        );
-        label(
-            p,
-            x + if mobile { 70 } else { 45 },
-            y + if mobile { 13 } else { 7 },
-            content.saturating_sub(if mobile { 91 } else { 180 }),
-            entry.trim_end_matches('/'),
-            if mobile { 16 } else { 12 },
-        );
-        if mobile {
-            p.text(
-                x + 70,
-                y + 36,
-                content.saturating_sub(96),
-                if directory { "Folder" } else { "File" },
-                12,
-                MUTED,
-            );
-            p.box_(
-                Rect::new(x + 70, y + 64, content.saturating_sub(85), 1),
-                LINE,
-                0,
-            );
-        } else if content > 330 {
-            p.text(
-                w.saturating_sub(124) as i32,
-                y + 7,
-                110,
-                if directory { "Folder" } else { "File" },
-                12,
-                MUTED,
+            // The enclosing folder is the root itself: its icon goes up one level.
+            p.region(
+                Rect::new(8, y - row as i32, 32, row - 2),
+                "files-up",
+                "Enclosing folder",
             );
         }
-    }
-    if entries.is_empty() {
-        p.text(
-            x + 28,
-            top + header + 54,
-            content.saturating_sub(56),
-            "This folder is empty",
-            14,
-            MUTED,
+        item(p, y, "folder", current(path, l.root), true, None);
+    } else {
+        p.region(
+            Rect::new(8, y - row as i32, 32, row - 2),
+            "files-up",
+            "Enclosing folder",
         );
     }
-    p.box_(
-        Rect::new(x, h.saturating_sub(27) as i32, content, 27),
-        Color::rgb(247, 247, 248),
-        0,
-    );
-    p.text(
-        x + 16,
-        h.saturating_sub(20) as i32,
-        content.saturating_sub(28),
-        &format!("{} items  ·  {}", entries.len(), path),
+    let note = format!("{count} item{}", if count == 1 { "" } else { "s" });
+    p.left(
+        18,
+        h.saturating_sub(28) as i32,
+        side.saturating_sub(30),
+        &note,
         11,
         MUTED,
     );
 }
 
-fn terminal(p: &mut Painter, t: DesktopTheme, w: u32, h: u32, input: &str, output: &str) {
-    let (bg, fg, bar, prompt) = match t {
+fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], active: usize) {
+    let (t, w, h) = (env.theme, env.width, env.height);
+    let (clipboard, share_to) = (env.clipboard, env.share_to);
+    p.scene.background = Color::WHITE;
+    let Some(tab) = tabs.get(active).or_else(|| tabs.first()) else {
+        return;
+    };
+    let (path, entries) = (tab.path.as_str(), tab.entries.as_slice());
+    // Screen order, resolved once: every row, every `open:<i>` and the selection
+    // highlight all read from this list, so they cannot disagree.
+    let rows_shown = tab.display();
+    if t.mobile() {
+        return files_mobile(p, t, w, h, tab, &rows_shown);
+    }
+    let l = look(t);
+    let side = if w > 470 { l.sidebar_width } else { 0 };
+    if side > 0 {
+        sidebar(p, t, &l, h, path, entries.len());
+    }
+    let x = side as i32;
+    let content = w.saturating_sub(side);
+    let mut top = 0;
+    // Finder keeps its tab bar under the toolbar; Explorer and Files put theirs in
+    // the title bar, which the window frame draws.
+    if t == DesktopTheme::Macos {
+        top = tab_strip(p, &l, x, content, tabs, active) as i32;
+    }
+    if t == DesktopTheme::Windows {
+        // Navigation row with breadcrumb address, then the command bar.
+        p.box_(Rect::new(x, 0, content, 88), Color::rgb(249, 250, 252), 0);
+        for (i, (symbol, action, label, enabled)) in [
+            ("arrow-left", "files-back", "Back", tab.can_go_back()),
+            (
+                "arrow-right",
+                "files-forward",
+                "Forward",
+                tab.can_go_forward(),
+            ),
+            ("arrow-up", "files-up", "Up one level", has_parent(path)),
+            ("reload", "files-reload", "Refresh", true),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let hit = Rect::new(x + 8 + i as i32 * 34, 6, 32, 32);
+            if enabled {
+                p.button(hit, Color::TRANSPARENT, 4, action, label);
+            }
+            p.symbol(
+                symbol,
+                hit.x + 8,
+                hit.y + 8,
+                16,
+                if enabled { INK } else { FAINT },
+            );
+            if !enabled {
+                p.disabled(label);
+            }
+        }
+        let address = Rect::new(x + 150, 7, content.saturating_sub(150 + 190), 30);
+        p.border(address, Color::WHITE, 4, LINE);
+        p.symbol("desktop", address.x + 10, address.y + 8, 14, MUTED);
+        let mut cx = address.x + 32;
+        for (part, target) in crumbs(path, l.root) {
+            p.symbol("chevron-right", cx, address.y + 10, 10, MUTED);
+            cx += 16;
+            let width = (address.x + address.width as i32 - cx - 8).max(0) as u32;
+            let text = p.left(cx, address.y + 7, width, &part, 12, INK);
+            p.region(
+                Rect::new(cx - 3, address.y + 4, text + 6, 24),
+                &format!("files-location:{target}"),
+                &part,
+            );
+            cx += text as i32 + 8;
+        }
+        // Real query field: what is typed lands in `tab.query` and the listing below is
+        // filtered by it, so the field and the rows can never disagree.
+        let search = Rect::new(x + content as i32 - 182, 7, 172, 30);
+        p.border(search, Color::WHITE, 4, LINE);
+        p.region(search, "files-search", "Search this folder");
+        p.symbol("search", search.x + 8, search.y + 8, 13, FAINT);
+        let typing = tab.searching && tab.rename.is_none();
+        let shown = if tab.query.is_empty() && !typing {
+            format!("Search {}", current(path, l.root))
+        } else {
+            tab.query.clone()
+        };
+        let text = p.left(
+            search.x + 26,
+            search.y + 7,
+            118,
+            &shown,
+            12,
+            if tab.query.is_empty() { FAINT } else { INK },
+        );
+        if typing {
+            p.box_(
+                Rect::new(search.x + 27 + text as i32, search.y + 7, 1, 16),
+                INK,
+                0,
+            );
+        }
+        if !tab.query.is_empty() || typing {
+            let clear = Rect::new(search.x + search.width as i32 - 24, search.y + 6, 18, 18);
+            p.button(clear, Color::TRANSPARENT, 9, "files-search-clear", "Clear");
+            p.symbol("close", clear.x + 4, clear.y + 4, 10, MUTED);
+        }
+        p.hline(x, 44, content, LINE);
+        // Command bar. Everything here dispatches a real effect, and what needs a
+        // selection or a clipboard is greyed when it has none rather than refusing.
+        let has_selection = tab.selection().is_some();
+        let folder_scope = tab.scope == crate::FileScope::Folder;
+        control(
+            p,
+            Rect::new(x + 10, 50, 74, 28),
+            "files-new-folder",
+            "New folder",
+            folder_scope,
+        );
+        p.symbol(
+            "plus",
+            x + 16,
+            58,
+            14,
+            if folder_scope { INK } else { FAINT },
+        );
+        p.left(
+            x + 36,
+            56,
+            44,
+            "New",
+            12,
+            if folder_scope { INK } else { FAINT },
+        );
+        for (i, (symbol, label, action, enabled)) in [
+            (
+                "scissors",
+                "Cut",
+                "files-cut",
+                has_selection && folder_scope,
+            ),
+            ("copy", "Copy", "files-copy", has_selection && folder_scope),
+            (
+                "paste",
+                "Paste",
+                "files-paste",
+                clipboard.is_some_and(|c| !c.paths.is_empty()) && folder_scope,
+            ),
+            (
+                "rename",
+                "Rename",
+                "files-rename",
+                has_selection && folder_scope,
+            ),
+            (
+                "trash",
+                "Delete",
+                "files-delete",
+                has_selection && folder_scope,
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let hit = Rect::new(x + 94 + i as i32 * 36, 50, 32, 28);
+            control(p, hit, action, label, enabled);
+            p.symbol(symbol, hit.x + 6, 57, 16, if enabled { INK } else { FAINT });
+        }
+        // Share hands the selected item to Messages or Mail, whichever the machine has;
+        // with no selection, or nothing installed to receive it, it is greyed.
+        let share = Rect::new(x + 268, 50, 28, 28);
+        match share_to.filter(|_| has_selection) {
+            Some(kind) => control(
+                p,
+                share,
+                &format!("shell:share:{kind}"),
+                if kind == "chat" {
+                    "Share with Messages"
+                } else {
+                    "Share with Mail"
+                },
+                true,
+            ),
+            None => control(p, share, "shell:share", "Share", false),
+        }
+        p.symbol(
+            "share",
+            x + 274,
+            57,
+            16,
+            if share_to.is_some() && has_selection {
+                INK
+            } else {
+                FAINT
+            },
+        );
+        control(
+            p,
+            Rect::new(x + 306, 50, 28, 28),
+            "files-new-file",
+            "New file",
+            folder_scope,
+        );
+        p.symbol(
+            "document",
+            x + 310,
+            57,
+            16,
+            if folder_scope { INK } else { FAINT },
+        );
+        if content > 520 {
+            let arrow = if tab.descending {
+                "\u{2193}"
+            } else {
+                "\u{2191}"
+            };
+            // Sort flips the direction of the key that is in force; the column headers
+            // choose the key. Both are the same `files-sort:<key>` command.
+            for (dx, symbol, label, action) in [
+                (
+                    350,
+                    "sort",
+                    format!("Sort {arrow}"),
+                    format!("files-sort:{}", tab.sort.id()),
+                ),
+                (
+                    434,
+                    if tab.view == crate::FileView::Grid {
+                        "list-view"
+                    } else {
+                        "grid-view"
+                    },
+                    if tab.view == crate::FileView::Grid {
+                        "List".to_owned()
+                    } else {
+                        "Grid".to_owned()
+                    },
+                    "files-view".to_owned(),
+                ),
+            ] {
+                let hit = Rect::new(x + dx - 6, 50, 78, 28);
+                p.button(hit, Color::TRANSPARENT, 4, &action, &label);
+                p.symbol(symbol, x + dx, 57, 16, INK);
+                p.left(x + dx + 22, 56, 50, &label, 12, INK);
+            }
+        }
+        p.hline(x, 88, content, LINE);
+        top = 89;
+    }
+    if side == 0 {
+        // Narrow windows lose the sidebar, so the header carries both real actions.
+        p.box_(Rect::new(0, top, w, 30), Color::rgb(248, 248, 249), 0);
+        let up = has_parent(path);
+        if up {
+            p.button(
+                Rect::new(6, top + 2, 72, 26),
+                Color::TRANSPARENT,
+                5,
+                "files-up",
+                "Enclosing folder",
+            );
+        }
+        p.symbol(
+            "chevron-left",
+            10,
+            top + 8,
+            13,
+            if up { l.accent } else { FAINT },
+        );
+        p.left(
+            26,
+            top + 6,
+            50,
+            "Back",
+            13,
+            if up { l.accent } else { FAINT },
+        );
+        if !up {
+            p.disabled("Enclosing folder");
+        }
+        p.button(
+            Rect::new(w.saturating_sub(118) as i32, top + 2, 112, 26),
+            Color::TRANSPARENT,
+            5,
+            "files-root",
+            l.root,
+        );
+        p.right(
+            w.saturating_sub(116) as i32,
+            top + 6,
+            106,
+            l.root,
+            13,
+            l.accent,
+        );
+        top += 30;
+    }
+    // Column headers are the sort controls: each one selects its key, and clicking the
+    // key already in force reverses it. The arrow says which, so the order on screen is
+    // always accounted for by something visible.
+    let kind_x = x + content as i32 - 150;
+    let mark = |key: crate::SortKey| {
+        if tab.sort != key {
+            ""
+        } else if tab.descending {
+            " \u{2193}"
+        } else {
+            " \u{2191}"
+        }
+    };
+    let name_header = Rect::new(x + 40, top, content.saturating_sub(206), 26);
+    p.button(
+        name_header,
+        Color::TRANSPARENT,
+        0,
+        "files-sort:name",
+        "Sort by name",
+    );
+    p.left(
+        x + 44,
+        top + 6,
+        content.saturating_sub(210),
+        &format!("Name{}", mark(crate::SortKey::Name)),
+        11,
+        MUTED,
+    );
+    if content > 330 {
+        let kind = if t == DesktopTheme::Windows {
+            "Type"
+        } else {
+            "Kind"
+        };
+        p.vline(kind_x - 10, top + 5, 16, LINE);
+        p.button(
+            Rect::new(kind_x - 4, top, 134, 26),
+            Color::TRANSPARENT,
+            0,
+            "files-sort:kind",
+            "Sort by kind",
+        );
+        p.left(
+            kind_x,
+            top + 6,
+            130,
+            &format!("{kind}{}", mark(crate::SortKey::Kind)),
+            11,
+            MUTED,
+        );
+    }
+    p.hline(x, top + 26, content, LINE);
+    let footer = if t == DesktopTheme::Ubuntu { 0 } else { 26 };
+    let body = top + 27;
+    if tab.view == crate::FileView::Grid {
+        grid(
+            p,
+            &l,
+            Rect::new(x, body, content, h.saturating_sub(body as u32 + footer)),
+            tab,
+            &rows_shown,
+        );
+    }
+    let rows = if tab.view == crate::FileView::Grid {
+        0
+    } else {
+        h.saturating_sub(body as u32 + footer) / l.row
+    };
+    for (i, index) in rows_shown.iter().copied().take(rows as usize).enumerate() {
+        let entry = &entries[index];
+        let y = body + (i as u32 * l.row) as i32;
+        let directory = entry.ends_with('/');
+        let inset = if t == DesktopTheme::Macos { 8 } else { 4 };
+        let selected = tab.selected == Some(index);
+        let bg = if selected {
+            l.selection
+        } else if t == DesktopTheme::Macos && i % 2 == 1 {
+            Color::rgb(244, 245, 245)
+        } else {
+            Color::TRANSPARENT
+        };
+        p.button(
+            Rect::new(
+                x + inset,
+                y,
+                content.saturating_sub(inset as u32 * 2),
+                l.row,
+            ),
+            bg,
+            if t == DesktopTheme::Macos { 5 } else { 4 },
+            &format!("open:{i}"),
+            entry,
+        );
+        let icon = if t == DesktopTheme::Ubuntu { 24 } else { 16 };
+        if t == DesktopTheme::Macos && directory {
+            p.symbol(
+                "chevron-right",
+                x + 12,
+                y + (l.row as i32 - 9) / 2,
+                9,
+                MUTED,
+            );
+        }
+        entry_icon(
+            p,
+            &l,
+            x + if t == DesktopTheme::Macos { 24 } else { 16 },
+            y + (l.row as i32 - icon as i32) / 2,
+            icon,
+            directory,
+        );
+        let name_x = x + if t == DesktopTheme::Ubuntu { 52 } else { 48 };
+        // A rename replaces the row's name with the field collecting it, caret and all:
+        // what is on screen is the buffer that Enter will commit.
+        match &tab.rename {
+            Some(rename) if selected => {
+                let field = Rect::new(name_x - 4, y + 2, 200.min(content), l.row.saturating_sub(4));
+                p.border(field, Color::WHITE, 3, l.accent);
+                let width = p.left(
+                    field.x + 4,
+                    y + (l.row as i32 - 19) / 2,
+                    190,
+                    &rename.name,
+                    13,
+                    INK,
+                );
+                p.box_(
+                    Rect::new(
+                        field.x + 5 + width as i32,
+                        y + (l.row as i32 - 15) / 2,
+                        1,
+                        15,
+                    ),
+                    INK,
+                    0,
+                );
+            }
+            _ => {
+                p.left(
+                    name_x,
+                    y + (l.row as i32 - 19) / 2,
+                    content.saturating_sub(220),
+                    entry.trim_end_matches('/'),
+                    13,
+                    INK,
+                );
+            }
+        }
+        if content > 330 {
+            let kind = match (t, directory) {
+                (DesktopTheme::Windows, true) => "File folder",
+                (_, true) => "Folder",
+                (DesktopTheme::Windows, false) => "File",
+                (_, false) => "Document",
+            };
+            p.left(kind_x, y + (l.row as i32 - 18) / 2, 130, kind, 12, MUTED);
+        }
+    }
+    if rows_shown.is_empty() {
+        // A filter that hides everything says so: an empty folder and a query with no
+        // match look identical otherwise, and only one of them is the folder's fault.
+        let empty = if !tab.query.is_empty() {
+            "No items match your search."
+        } else if t == DesktopTheme::Windows {
+            "This folder is empty."
+        } else {
+            "Folder is Empty"
+        };
+        p.center(x, body + 60, content, empty, 15, FAINT);
+    }
+    if footer > 0 {
+        let fy = h.saturating_sub(footer) as i32;
+        p.box_(
+            Rect::new(x, fy, content, footer),
+            Color::rgb(248, 248, 249),
+            0,
+        );
+        p.hline(x, fy, content, LINE);
+        if t == DesktopTheme::Macos {
+            // Path bar.
+            let mut cx = x + 12;
+            for (i, part) in std::iter::once(l.root).chain(components(path)).enumerate() {
+                if i > 0 {
+                    p.symbol("chevron-right", cx, fy + 9, 8, FAINT);
+                    cx += 14;
+                }
+                p.symbol(
+                    if i == 0 { "drive" } else { "folder" },
+                    cx,
+                    fy + 6,
+                    13,
+                    if i == 0 { MUTED } else { l.folder },
+                );
+                cx += 18;
+                cx += p.left(
+                    cx,
+                    fy + 5,
+                    (x + content as i32 - cx - 8).max(0) as u32,
+                    part,
+                    11,
+                    MUTED,
+                ) as i32
+                    + 8;
+            }
+        } else {
+            let note = format!(
+                "{} item{}{}{}",
+                rows_shown.len(),
+                if rows_shown.len() == 1 { "" } else { "s" },
+                // The filtered count is the count on screen; the total says what it
+                // was filtered out of, rather than letting the two blur.
+                if rows_shown.len() == entries.len() {
+                    String::new()
+                } else {
+                    format!(" of {}", entries.len())
+                },
+                match tab.selection() {
+                    Some(entry) => format!("  ·  {} selected", entry.trim_end_matches('/')),
+                    None => String::new(),
+                }
+            );
+            p.left(x + 14, fy + 5, content.saturating_sub(28), &note, 12, MUTED);
+        }
+    }
+}
+
+/// Icon grid. Same rows, same order, same `open:<i>` targets as the list — only the
+/// arrangement differs, so switching view cannot move a file out from under a click.
+fn grid(p: &mut Painter, l: &Look, area: Rect, tab: &crate::FileTab, rows: &[usize]) {
+    const CELL: u32 = 96;
+    let columns = (area.width / CELL).max(1);
+    let capacity = (columns * (area.height / CELL).max(1)) as usize;
+    for (i, index) in rows.iter().copied().take(capacity).enumerate() {
+        let entry = &tab.entries[index];
+        let cell = Rect::new(
+            area.x + (i as u32 % columns * CELL) as i32,
+            area.y + (i as u32 / columns * CELL) as i32,
+            CELL,
+            CELL,
+        );
+        p.button(
+            Rect::new(cell.x + 4, cell.y + 4, CELL - 8, CELL - 8),
+            if tab.selected == Some(index) {
+                l.selection
+            } else {
+                Color::TRANSPARENT
+            },
+            6,
+            &format!("open:{i}"),
+            entry,
+        );
+        entry_icon(p, l, cell.x + 30, cell.y + 14, 36, entry.ends_with('/'));
+        p.label(
+            cell.x + 6,
+            cell.y + 58,
+            CELL - 12,
+            entry.trim_end_matches('/'),
+            12,
+            INK,
+            false,
+            Align::Center,
+        );
+    }
+}
+
+fn files_mobile(
+    p: &mut Painter,
+    t: DesktopTheme,
+    w: u32,
+    h: u32,
+    tab: &crate::FileTab,
+    rows_shown: &[usize],
+) {
+    let (path, entries) = (tab.path.as_str(), tab.entries.as_slice());
+    let l = look(t);
+    let ios = t == DesktopTheme::Ios;
+    p.scene.background = if ios {
+        Color::WHITE
+    } else {
+        Color::rgb(248, 250, 240)
+    };
+    let recents = tab.scope == crate::FileScope::Recents;
+    let mut top;
+    if ios {
+        // Leading crumb, large title and search field. Recents is not a folder, so it
+        // gets no enclosing-folder crumb to climb out of.
+        if recents {
+            p.strong(16, 40, w.saturating_sub(32), "Recents", 32, INK);
+        } else {
+            p.button(
+                Rect::new(4, 0, 170, 36),
+                Color::TRANSPARENT,
+                8,
+                "files-up",
+                "Enclosing folder",
+            );
+            p.symbol("chevron-left", 8, 7, 20, l.accent);
+            p.left(28, 7, 140, parent(path, l.root), 17, l.accent);
+            p.strong(16, 40, w.saturating_sub(32), current(path, l.root), 32, INK);
+        }
+        // Real field: typing lands in `tab.query` and the rows below are what survives
+        // it, so nothing on this screen is outside the filter it advertises.
+        let field = Rect::new(16, 90, w.saturating_sub(32), 36);
+        p.box_(field, Color(118, 118, 128, 30), 10);
+        p.region(field, "files-search", "Search");
+        p.symbol("search", field.x + 8, field.y + 10, 16, FAINT);
+        let typing = tab.searching;
+        let width = p.left(
+            field.x + 30,
+            field.y + 8,
+            field.width.saturating_sub(70),
+            if tab.query.is_empty() && !typing {
+                "Search"
+            } else {
+                &tab.query
+            },
+            17,
+            if tab.query.is_empty() { FAINT } else { INK },
+        );
+        if typing {
+            p.box_(
+                Rect::new(field.x + 31 + width as i32, field.y + 8, 2, 21),
+                l.accent,
+                0,
+            );
+        }
+        if !tab.query.is_empty() || typing {
+            let clear = Rect::new(field.x + field.width as i32 - 30, field.y + 8, 22, 22);
+            p.button(clear, Color::TRANSPARENT, 11, "files-search-clear", "Clear");
+            p.symbol("close", clear.x + 5, clear.y + 5, 12, MUTED);
+        }
+        top = 138;
+    } else {
+        // Breadcrumb chips: storage root, enclosing folder, current folder.
+        let mut cx = 16;
+        let depth = components(path).len();
+        for (i, (name, action)) in [
+            (l.root, Some("files-root")),
+            (parent(path, l.root), Some("files-up")),
+            (current(path, l.root), None),
+        ]
+        .iter()
+        .enumerate()
+        {
+            if (i == 1 && depth < 2) || (i == 2 && depth < 1) {
+                if i == 1 {
+                    p.region(Rect::new(16, 4, 28, 32), "files-up", "Enclosing folder");
+                }
+                continue;
+            }
+            if i > 0 {
+                p.symbol("chevron-right", cx, 15, 10, MUTED);
+                cx += 16;
+            }
+            let width = p.measure(name, 14, action.is_none());
+            if let Some(action) = action {
+                p.button(
+                    Rect::new(cx - 6, 4, width + 12, 32),
+                    Color::TRANSPARENT,
+                    16,
+                    action,
+                    name,
+                );
+            }
+            p.label(
+                cx,
+                11,
+                w.saturating_sub(cx as u32 + 8),
+                name,
+                14,
+                if action.is_some() { MUTED } else { INK },
+                action.is_none(),
+                Align::Left,
+            );
+            cx += width as i32 + 10;
+        }
+        p.hline(0, 42, w, LINE);
+        top = 50;
+    }
+    let tab_bar = if ios { 50 } else { 0 };
+    let rows = h.saturating_sub(top as u32 + tab_bar) / l.row;
+    for (i, index) in rows_shown.iter().copied().take(rows as usize).enumerate() {
+        let entry = &entries[index];
+        let y = top + (i as u32 * l.row) as i32;
+        let directory = entry.ends_with('/');
+        p.button(
+            Rect::new(0, y, w, l.row),
+            Color::TRANSPARENT,
+            0,
+            &format!("open:{i}"),
+            entry,
+        );
+        if ios {
+            entry_icon(p, &l, 16, y + 12, 36, directory);
+        } else {
+            p.circle(36, y + 32, 20, Color::rgb(232, 236, 222));
+            entry_icon(p, &l, 25, y + 21, 22, directory);
+        }
+        let tx = if ios { 66 } else { 72 };
+        // A recent is an absolute path, so the row shows the name and says where it
+        // lives; inside a folder every row is already a child of the title.
+        let trimmed = entry.trim_end_matches('/');
+        let (name, note) = match recents {
+            true => (
+                trimmed.rsplit('/').next().unwrap_or(trimmed),
+                parent_label(trimmed, l.root),
+            ),
+            false => (
+                trimmed,
+                if directory { "Folder" } else { "Document" }.to_owned(),
+            ),
+        };
+        p.left(
+            tx,
+            y + if ios { 10 } else { 13 },
+            w.saturating_sub(tx as u32 + 40),
+            name,
+            16,
+            INK,
+        );
+        p.left(
+            tx,
+            y + if ios { 32 } else { 36 },
+            w.saturating_sub(tx as u32 + 40),
+            &note,
+            13,
+            MUTED,
+        );
+        if ios {
+            p.symbol(
+                "chevron-right",
+                w.saturating_sub(26) as i32,
+                y + 23,
+                13,
+                FAINT,
+            );
+            p.hline(tx, y + l.row as i32 - 1, w.saturating_sub(tx as u32), LINE);
+        }
+    }
+    if rows_shown.is_empty() {
+        let empty = if !tab.query.is_empty() {
+            "No items match your search."
+        } else if recents {
+            "No recent documents"
+        } else if ios {
+            "Folder is Empty"
+        } else {
+            "No items"
+        };
+        p.center(0, top + 70, w, empty, 17, MUTED);
+    }
+    top = h.saturating_sub(tab_bar) as i32;
+    if ios {
+        p.box_(Rect::new(0, top, w, tab_bar), Color(249, 249, 249, 245), 0);
+        p.hline(0, top, w, LINE);
+        for (i, (symbol, name, action)) in [
+            // Recents is a real list: every entry is a document this desktop opened.
+            ("clock", "Recents", Some("files-recents")),
+            // Shared stays inert. Nothing in this world can receive a shared file —
+            // no recipient, no link, no service to hand it to — so there is nothing
+            // for a Shared list to hold and nothing honest for the tab to dispatch.
+            ("person", "Shared", None),
+            ("folder", "Browse", Some("files-browse")),
+        ]
+        .iter()
+        .enumerate()
+        {
+            let cx = (w as i32 / 3) * i as i32 + w as i32 / 6;
+            let selected = (i == 0) == recents && i != 1;
+            let tint = match (action.is_some(), selected) {
+                (false, _) => FAINT,
+                (true, true) => l.accent,
+                (true, false) => MUTED,
+            };
+            if let Some(action) = action {
+                p.button(
+                    Rect::new(cx - 40, top + 2, 80, 46),
+                    Color::TRANSPARENT,
+                    8,
+                    action,
+                    name,
+                );
+            }
+            p.symbol(symbol, cx - 12, top + 5, 24, tint);
+            p.label(cx - 40, top + 30, 80, name, 10, tint, false, Align::Center);
+            if action.is_none() {
+                p.disabled(name);
+            }
+        }
+    }
+}
+/// Enclosing folder of an absolute path, as a Recents subtitle shows it.
+fn parent_label(path: &str, root: &str) -> String {
+    match path.rsplit_once('/') {
+        Some((parent, _)) if !parent.is_empty() => parent.to_owned(),
+        _ => root.to_owned(),
+    }
+}
+
+/// Wrap `text` to `cells` columns, tagging every line with the colour that says which
+/// stream it came from.
+fn wrap_into(lines: &mut Vec<(String, Color)>, text: &str, color: Color, cells: usize) {
+    for line in text.lines() {
+        let chars: Vec<_> = line.chars().collect();
+        if chars.is_empty() {
+            lines.push((String::new(), color));
+        }
+        for chunk in chars.chunks(cells) {
+            lines.push((chunk.iter().collect::<String>(), color));
+        }
+    }
+}
+#[allow(clippy::too_many_arguments)]
+fn terminal(
+    p: &mut Painter,
+    t: DesktopTheme,
+    w: u32,
+    h: u32,
+    input: &str,
+    prompt_text: &str,
+    transcript: &[crate::TerminalEntry],
+    cursor: usize,
+    scroll: usize,
+) {
+    let (bg, fg, prompt, err) = match t {
         DesktopTheme::Macos => (
-            Color::rgb(255, 255, 255),
-            Color::rgb(30, 30, 30),
-            Color::rgb(237, 236, 237),
-            Color::rgb(30, 30, 30),
+            Color::WHITE,
+            Color::rgb(0, 0, 0),
+            Color::rgb(0, 0, 0),
+            Color::rgb(190, 30, 30),
         ),
         DesktopTheme::Ubuntu => (
             Color::rgb(48, 10, 36),
-            Color::rgb(242, 236, 239),
-            Color::rgb(59, 58, 58),
-            Color::rgb(137, 213, 83),
+            Color::rgb(255, 255, 255),
+            Color::rgb(138, 226, 52),
+            Color::rgb(239, 41, 41),
         ),
         DesktopTheme::Windows => (
             Color::rgb(12, 12, 12),
-            Color::rgb(230, 230, 230),
-            Color::rgb(34, 34, 34),
-            Color::rgb(230, 230, 230),
+            Color::rgb(204, 204, 204),
+            Color::rgb(204, 204, 204),
+            Color::rgb(231, 72, 86),
         ),
-        _ => (
-            Color::rgb(24, 27, 32),
+        DesktopTheme::Ios => (
+            Color::rgb(0, 0, 0),
+            Color::rgb(235, 235, 235),
+            Color::rgb(48, 209, 88),
+            Color::rgb(255, 69, 58),
+        ),
+        DesktopTheme::Android => (
+            Color::rgb(18, 20, 22),
             Color::rgb(220, 230, 228),
-            Color::rgb(33, 37, 43),
             Color::rgb(111, 220, 160),
+            Color::rgb(242, 109, 109),
         ),
     };
     p.scene.background = bg;
-    p.box_(Rect::new(0, 0, w, 32), bar, 0);
-    let tab = if t == DesktopTheme::Windows {
-        "PowerShell"
-    } else if t == DesktopTheme::Macos {
-        "Shell — Terminal"
-    } else {
-        "Terminal"
-    };
-    p.asset(
-        Rect::new(13, 7, 18, 18),
-        &format!("icon/{}/terminal", platform(t)),
-    );
-    p.text(
-        40,
-        9,
-        220,
-        tab,
-        12,
-        if t == DesktopTheme::Macos {
-            INK
-        } else {
-            Color::rgb(230, 230, 230)
-        },
-    );
-    p.box_(
-        Rect::new(0, 31, w, 1),
-        if t == DesktopTheme::Macos {
-            LINE
-        } else {
-            Color::rgb(71, 65, 71)
-        },
-        0,
-    );
-    let pad = if t.mobile() { 16 } else { 12 };
+    let pad: u32 = if t.mobile() { 14 } else { 8 };
     let size = 13;
     let cells = (w.saturating_sub(pad * 2) / 8).max(1) as usize;
-    let mut lines = Vec::new();
-    for line in output.lines() {
-        let chars: Vec<_> = line.chars().collect();
-        if chars.is_empty() {
-            lines.push(String::new());
+    let mut lines: Vec<(String, Color)> = Vec::new();
+    for entry in transcript {
+        // Echo first: the prompt plus the command is the boundary an observer keys on.
+        wrap_into(&mut lines, &entry.echo(), prompt, cells);
+        if !entry.stdout.is_empty() {
+            wrap_into(&mut lines, &entry.stdout, fg, cells);
         }
-        for chunk in chars.chunks(cells) {
-            lines.push(chunk.iter().collect::<String>());
+        if !entry.stderr.is_empty() {
+            wrap_into(&mut lines, &entry.stderr, err, cells);
+        }
+        if entry.failed() {
+            // Only failures are marked: a clean frame stays clean, and `[exit 1]` is a
+            // literal to match where error prose is not.
+            wrap_into(&mut lines, &entry.status(), err, cells);
         }
     }
-    let capacity = (h.saturating_sub(65) / 19).max(1) as usize;
-    let first = lines.len().saturating_sub(capacity);
-    let mut y = 43;
-    for line in &lines[first..] {
+    let capacity = (h.saturating_sub(pad * 2 + 19) / 19).max(1) as usize;
+    // `scroll` lifts the window off the tail. It is clamped here rather than in state
+    // because only the view knows how many wrapped lines fit at this size.
+    let hidden = lines.len().saturating_sub(capacity);
+    let scroll = scroll.min(hidden);
+    let first = hidden - scroll;
+    let mut y = pad as i32;
+    for (line, color) in &lines[first..(first + capacity).min(lines.len())] {
         mono(
             p,
             Rect::new(pad as i32, y, w.saturating_sub(pad * 2), 19),
             line,
             size,
-            fg,
+            *color,
         );
         y += 19;
     }
     p.region(
-        Rect::new(0, 33, w, h.saturating_sub(33)),
+        Rect::new(0, 0, w, h),
         "terminal-input",
         "Terminal command input",
     );
-    let sig = if t == DesktopTheme::Windows {
-        "PS> "
-    } else {
-        "$ "
-    };
+    // The machine's own prompt, not a per-theme sigil: what is drawn is what the shell
+    // prints, so nothing on screen is a harness invention.
+    let sig = format!("{} ", crate::prompt_or_sigil(prompt_text));
     mono(
         p,
         Rect::new(pad as i32, y, w.saturating_sub(pad * 2), 19),
-        &format!("{sig}{input}"),
+        &sig,
         size,
         prompt,
     );
-    let caret = (sig.chars().count() + input.chars().count()) as i32 * 8;
+    let offset = sig.chars().count() as i32 * 8;
+    mono(
+        p,
+        Rect::new(
+            pad as i32 + offset,
+            y,
+            w.saturating_sub(pad * 2 + offset as u32),
+            19,
+        ),
+        input,
+        size,
+        fg,
+    );
+    // The prompt line has its own target, laid over the body and starting at the first
+    // character of the input, so `click_at` reads a column straight off `dx`. Clicking
+    // anywhere else still focuses the shell and leaves the caret where it was.
+    p.region(
+        Rect::new(
+            pad as i32 + offset,
+            y,
+            w.saturating_sub(pad * 2 + offset as u32).max(1),
+            19,
+        ),
+        "terminal-line",
+        "Terminal prompt line",
+    );
+    // Where the caret really is: `cursor` is a byte offset into the input, and a click
+    // on the line above moved it there.
+    let before = input
+        .get(..cursor.min(input.len()))
+        .unwrap_or(input)
+        .chars()
+        .count() as i32;
+    let caret = offset + before * 8;
+    // Block cursor on the desktops, a bar on touch keyboards.
     p.box_(
-        Rect::new(pad as i32 + caret, y, 7, 16),
-        Color(fg.0, fg.1, fg.2, 180),
+        Rect::new(
+            pad as i32 + caret,
+            y + 1,
+            if t.mobile() { 2 } else { 8 },
+            16,
+        ),
+        if t == DesktopTheme::Macos {
+            Color(0, 0, 0, 110)
+        } else {
+            Color(fg.0, fg.1, fg.2, 200)
+        },
         0,
     );
-    if first > 0 {
-        p.box_(
-            Rect::new(w.saturating_sub(5) as i32, 40, 3, h.saturating_sub(48)),
-            Color(128, 128, 128, 55),
-            2,
-        );
-        p.box_(
-            Rect::new(
-                w.saturating_sub(5) as i32,
-                h.saturating_sub(60) as i32,
-                3,
-                48,
+    if hidden > 0 {
+        // A real scrollbar: the thumb sits where the view is, and the track above and
+        // below it pages the scrollback by the height of one screen.
+        let track = h.saturating_sub(8);
+        let thumb = (track * capacity as u32 / lines.len().max(1) as u32).clamp(24, track.max(24));
+        let travel = track.saturating_sub(thumb);
+        let from_top = (travel as usize * (hidden - scroll) / hidden.max(1)) as i32;
+        let bar = Rect::new(w.saturating_sub(9) as i32, 4, 8, track);
+        let page = capacity.max(1);
+        for (r, lines_to, label, live) in [
+            (
+                Rect::new(bar.x, bar.y, bar.width, from_top.max(0) as u32),
+                scroll + page,
+                "Scroll back",
+                scroll < hidden,
             ),
-            Color(128, 128, 128, 120),
+            (
+                Rect::new(
+                    bar.x,
+                    bar.y + from_top + thumb as i32,
+                    bar.width,
+                    travel.saturating_sub(from_top.max(0) as u32),
+                ),
+                scroll.saturating_sub(page),
+                "Scroll forward",
+                scroll > 0,
+            ),
+        ] {
+            if r.height > 0 && live {
+                p.button(
+                    r,
+                    Color::TRANSPARENT,
+                    2,
+                    &format!("terminal-scroll:{lines_to}"),
+                    label,
+                );
+            }
+        }
+        p.box_(
+            Rect::new(bar.x + 2, bar.y + from_top, 4, thumb),
+            Color(128, 128, 128, 150),
             2,
         );
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn editor(
     p: &mut Painter,
     t: DesktopTheme,
@@ -517,62 +1287,123 @@ fn editor(
     text: &str,
     dirty: bool,
     cursor: usize,
+    wrap: bool,
 ) {
     let mobile = t.mobile();
-    let paper = if t == DesktopTheme::Ios {
-        Color::rgb(255, 253, 247)
-    } else {
-        Color::WHITE
+    let paper = match t {
+        DesktopTheme::Ios => Color::rgb(255, 255, 255),
+        DesktopTheme::Android => Color::rgb(248, 250, 240),
+        _ => Color::WHITE,
     };
     p.scene.background = paper;
-    let toolbar = if mobile { 49 } else { 38 };
-    let status = if mobile { 26 } else { 28 };
-    p.box_(
-        Rect::new(0, 0, w, toolbar),
-        if t == DesktopTheme::Ios {
-            paper
-        } else {
-            Color::rgb(247, 247, 247)
-        },
-        0,
-    );
-    let name = if path.is_empty() {
-        "Untitled"
-    } else {
-        basename(path)
+    let toolbar: u32 = match t {
+        DesktopTheme::Windows => 36,
+        DesktopTheme::Macos => 30,
+        DesktopTheme::Ubuntu => 0,
+        _ => 44,
     };
-    if mobile {
-        label(p, 19, 14, w.saturating_sub(103), name, 16);
-    } else if t == DesktopTheme::Macos {
-        p.text(16, 12, 150, "Plain text", 12, MUTED);
-        p.text(160, 12, w.saturating_sub(263), name, 12, INK);
-    } else if t == DesktopTheme::Windows {
-        p.asset(Rect::new(14, 10, 19, 19), "icon/windows/editor");
-        label(p, 43, 12, w.saturating_sub(145), name, 12);
-    } else {
-        label(p, 17, 12, w.saturating_sub(116), name, 13);
+    let status: u32 = match t {
+        DesktopTheme::Windows => 26,
+        DesktopTheme::Ubuntu => 30,
+        DesktopTheme::Macos => 0,
+        _ => 46,
+    };
+    let accent = look(t).accent;
+    let save_label = match t {
+        DesktopTheme::Ios => "Done",
+        _ => "Save",
+    };
+    // (x, y, width) of the Save control on each platform.
+    let save = match t {
+        DesktopTheme::Ubuntu => Rect::new(
+            w.saturating_sub(74) as i32,
+            h.saturating_sub(27) as i32,
+            66,
+            24,
+        ),
+        DesktopTheme::Windows => Rect::new(150, 4, 52, 28),
+        DesktopTheme::Macos => Rect::new(w.saturating_sub(62) as i32, 3, 54, 24),
+        _ => Rect::new(w.saturating_sub(76) as i32, 6, 64, 32),
+    };
+    match t {
+        DesktopTheme::Windows => {
+            p.box_(Rect::new(0, 0, w, toolbar), Color::rgb(249, 250, 252), 0);
+            // The shell owns menus: these open the same panels the desktop menu bar does.
+            for (i, (menu, panel)) in [("File", "file"), ("Edit", "edit"), ("View", "view")]
+                .into_iter()
+                .enumerate()
+            {
+                let x = 8 + i as i32 * 46;
+                p.button(
+                    Rect::new(x, 3, 44, toolbar - 7),
+                    Color::TRANSPARENT,
+                    4,
+                    &format!("shell:panel:{panel}"),
+                    menu,
+                );
+                p.left(x + 6, 9, 40, menu, 13, INK);
+            }
+            // Notepad's settings: word wrap and the app theme, both real machine settings.
+            p.button(
+                Rect::new(w.saturating_sub(40) as i32, 3, 32, toolbar - 7),
+                Color::TRANSPARENT,
+                4,
+                "shell:panel:app-settings",
+                "Settings",
+            );
+            p.symbol("gear", w.saturating_sub(32) as i32, 10, 16, INK);
+            p.hline(0, toolbar as i32 - 1, w, LINE);
+        }
+        DesktopTheme::Macos => {
+            p.box_(Rect::new(0, 0, w, toolbar), Color::rgb(246, 246, 247), 0);
+            // TextEdit's format popup has nothing to switch: the document is plain text.
+            p.left(14, 7, 120, "Plain Text", 12, FAINT);
+            p.disabled("Plain Text");
+            p.hline(0, toolbar as i32 - 1, w, LINE);
+        }
+        DesktopTheme::Ubuntu => {}
+        _ => {
+            let name = components(path).last().copied().unwrap_or("New Note");
+            p.strong(16, 11, w.saturating_sub(110), name, 17, INK);
+        }
     }
-    if !path.is_empty() {
-        control(
-            p,
-            Rect::new(w.saturating_sub(77) as i32, 4, 68, 30),
-            "Save",
+    if path.is_empty() {
+        p.left(
+            save.x + 8,
+            save.y + (save.height as i32 - 18) / 2,
+            save.width,
+            save_label,
+            13,
+            FAINT,
+        );
+        p.disabled(save_label);
+    } else {
+        let filled = matches!(t, DesktopTheme::Ubuntu) && dirty;
+        p.button(
+            save,
+            if filled { accent } else { Color::TRANSPARENT },
+            6,
             "editor-save",
-            if t == DesktopTheme::Ios {
-                Color::rgb(174, 125, 0)
-            } else {
-                Color::rgb(0, 100, 204)
-            },
+            save_label,
         );
-    } else {
-        disabled(
-            p,
-            Rect::new(w.saturating_sub(65) as i32, 13, 57, 20),
-            "Save",
+        p.label(
+            save.x,
+            save.y + (save.height as i32 - 18) / 2,
+            save.width,
+            save_label,
+            13,
+            if filled {
+                Color::WHITE
+            } else if mobile {
+                Color::rgb(204, 149, 0)
+            } else {
+                accent
+            },
+            mobile,
+            Align::Center,
         );
     }
-    separator(p, toolbar as i32, w);
-    let gutter = if t == DesktopTheme::Ubuntu { 43 } else { 0 };
+    let gutter = if t == DesktopTheme::Ubuntu { 44 } else { 0 };
     if gutter > 0 {
         p.box_(
             Rect::new(
@@ -581,11 +1412,11 @@ fn editor(
                 gutter,
                 h.saturating_sub(toolbar + status),
             ),
-            Color::rgb(248, 248, 248),
+            Color::rgb(250, 250, 250),
             0,
         );
     }
-    let left = if mobile { 22 } else { gutter + 16 };
+    let left = if mobile { 18 } else { gutter + 12 };
     let mut end = cursor.min(text.len());
     while !text.is_char_boundary(end) {
         end -= 1;
@@ -593,127 +1424,475 @@ fn editor(
     let before = &text[..end];
     let row = before.bytes().filter(|b| *b == b'\n').count();
     let col = before.rsplit('\n').next().unwrap_or("").chars().count();
-    let line_height = if mobile { 25 } else { 22 };
-    let capacity = (h.saturating_sub(toolbar + status + 24) / line_height).max(1) as usize;
-    let first = row.saturating_sub(capacity.saturating_sub(1));
+    // One 8x18 cell, the geometry `crate::caret_for_point` assumes: `Primitive::Text`
+    // advances `text_cell(13).0` = 8 px, and rows are stepped 18 px apart. Keeping the
+    // paint on that grid is what makes a click land on the character under the pointer.
+    const CELL_W: i32 = 8;
+    const ROW_H: u32 = 18;
+    const SIZE: u16 = 13;
+    // With word wrap on, rows are as many cells as the text area holds; `Ln`/`Col`
+    // below stay logical, as Notepad's do, while the caret sits on its visual row.
+    let text_width = w.saturating_sub(left + 12);
+    let columns = if wrap {
+        (text_width / CELL_W as u32).max(1) as usize
+    } else {
+        0
+    };
+    let rows = crate::editor_rows(text, columns);
+    let (visual, visual_col) = crate::editor_caret_cell(text, end, columns);
+    let capacity = (h.saturating_sub(toolbar + status + ROW_H) / ROW_H).max(1) as usize;
+    let first = visual.saturating_sub(capacity.saturating_sub(1));
+    let origin = (left as i32, toolbar as i32 + 10);
+    // The hit region starts at the first line's top-left corner, so the offsets
+    // `click_at` reports are already relative to the text grid.
     p.region(
         Rect::new(
-            gutter as i32,
-            toolbar as i32 + 1,
-            w.saturating_sub(gutter),
-            h.saturating_sub(toolbar + status + 1),
+            origin.0,
+            origin.1,
+            w.saturating_sub(left + 12),
+            h.saturating_sub(toolbar + status + 10),
         ),
-        "editor-text",
+        // The scroll position travels with the target, so a click on a scrolled
+        // document still resolves to the character actually under the pointer.
+        &if columns > 0 {
+            format!("editor-text:{first}:{columns}")
+        } else {
+            format!("editor-text:{first}")
+        },
         "Document text",
     );
-    for (i, line) in text.split('\n').enumerate().skip(first).take(capacity) {
-        let y = toolbar as i32 + 14 + (i - first) as i32 * line_height as i32;
-        if gutter > 0 {
-            p.text(12, y, 27, &(i + 1).to_string(), 11, MUTED);
+    if t == DesktopTheme::Ubuntu {
+        // Current-line highlight, as in GNOME Text Editor.
+        p.box_(
+            Rect::new(
+                0,
+                origin.1 + ((visual - first) as u32 * ROW_H) as i32,
+                w,
+                ROW_H,
+            ),
+            Color(0, 0, 0, 10),
+            0,
+        );
+    }
+    // Logical line of the first painted row; a gutter numbers each line once, on the
+    // row it starts on, and leaves its soft-wrapped continuations blank.
+    let mut line = text[..rows.get(first).map_or(0, |r| r.0)]
+        .bytes()
+        .filter(|b| *b == b'\n')
+        .count();
+    for (i, (start, stop)) in rows.iter().enumerate().skip(first).take(capacity) {
+        let y = origin.1 + ((i - first) as u32 * ROW_H) as i32;
+        let starts_line = i == 0 || text.as_bytes()[start - 1] == b'\n';
+        if starts_line && i > first {
+            line += 1;
+        }
+        if gutter > 0 && starts_line {
+            p.right(
+                0,
+                y + 1,
+                gutter - 10,
+                &(line + 1).to_string(),
+                11,
+                if line == row { INK } else { FAINT },
+            );
         }
         mono(
             p,
-            Rect::new(left as i32, y, w.saturating_sub(left + 17), line_height),
-            line,
-            if mobile { 15 } else { 14 },
+            Rect::new(origin.0, y, text_width, ROW_H),
+            &text[*start..*stop],
+            SIZE,
             INK,
         );
     }
-    // The canonical fixed-cell text primitive is 9px at 14px, 9px at 15px.
+    // Caret where the model says it is, on the same grid the click arrives on.
     p.box_(
         Rect::new(
-            left as i32 + col as i32 * 9,
-            toolbar as i32 + 14 + (row - first) as i32 * line_height as i32,
-            1,
-            18,
+            origin.0 + visual_col as i32 * CELL_W,
+            origin.1 + ((visual - first) as u32 * ROW_H) as i32,
+            if mobile { 2 } else { 1 },
+            ROW_H,
         ),
-        Color::rgb(30, 104, 206),
+        if mobile { Color::rgb(204, 149, 0) } else { INK },
         0,
     );
-    p.box_(
-        Rect::new(0, h.saturating_sub(status) as i32, w, status),
-        if t == DesktopTheme::Ios {
-            paper
-        } else {
-            Color::rgb(245, 246, 247)
-        },
-        0,
-    );
-    separator(p, h.saturating_sub(status) as i32, w);
-    p.text(
-        13,
-        h.saturating_sub(status - 7) as i32,
-        w.saturating_sub(170),
-        &format!(
-            "Ln {}, Col {}{}",
-            row + 1,
-            col + 1,
-            if dirty { "  •  Modified" } else { "" }
-        ),
-        11,
-        MUTED,
-    );
-    if w > 300 {
-        p.text(
-            w.saturating_sub(145) as i32,
-            h.saturating_sub(status - 7) as i32,
-            133,
-            "Plain text   UTF-8",
-            11,
-            MUTED,
-        );
+    let sy = h.saturating_sub(status) as i32;
+    let position = format!("Ln {}, Col {}", row + 1, col + 1);
+    match t {
+        DesktopTheme::Windows => {
+            p.box_(Rect::new(0, sy, w, status), Color::rgb(249, 250, 252), 0);
+            p.hline(0, sy, w, LINE);
+            // Ln/Col is live; zoom, line endings and encoding are fixed facts about the
+            // model (no zoom level, `String` text, always UTF-8) and open no picker.
+            p.left(14, sy + 5, 160, &position, 12, MUTED);
+            if w > 420 {
+                for (i, item) in ["100%", "Windows (CRLF)", "UTF-8"].iter().enumerate() {
+                    let x = w as i32 - 330 + i as i32 * 110;
+                    p.vline(x - 12, sy + 5, 16, LINE);
+                    p.left(x, sy + 5, 100, item, 12, FAINT);
+                    p.disabled(item);
+                }
+            }
+        }
+        DesktopTheme::Ubuntu => {
+            p.box_(Rect::new(0, sy, w, status), Color::rgb(250, 250, 250), 0);
+            p.hline(0, sy, w, LINE);
+            p.left(
+                14,
+                sy + 7,
+                200,
+                &format!("{position}{}", if dirty { "  •  Unsaved" } else { "" }),
+                12,
+                MUTED,
+            );
+        }
+        DesktopTheme::Macos => {}
+        _ => {
+            p.hline(0, sy, w, LINE);
+            // Only "New note" is real — `shell:new` opens another window of this app.
+            // Gallery view, the camera and markup have no model behind them.
+            let live = if t == DesktopTheme::Ios {
+                Color::rgb(204, 149, 0)
+            } else {
+                MUTED
+            };
+            for (i, (symbol, label, action)) in [
+                ("list-view", "Gallery view", None),
+                ("camera", "Insert photo", None),
+                ("edit", "Markup", None),
+                ("compose", "New note", Some("shell:new")),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let cx = (w as i32 / 4) * i as i32 + w as i32 / 8;
+                if let Some(action) = action {
+                    p.button(
+                        Rect::new(cx - 24, sy + 6, 48, 34),
+                        Color::TRANSPARENT,
+                        8,
+                        action,
+                        label,
+                    );
+                }
+                p.symbol(
+                    symbol,
+                    cx - 11,
+                    sy + 12,
+                    22,
+                    if action.is_some() { live } else { FAINT },
+                );
+                if action.is_none() {
+                    p.disabled(label);
+                }
+            }
+        }
     }
 }
 
 /// Pure application projection; the compositor owns frame geometry and clipping.
 pub fn app_content(state: &crate::AppState, theme: DesktopTheme, width: u32, height: u32) -> Scene {
-    let mut p = Painter {
-        scene: Scene::new(width, height),
-        next: 1_u64 << 52,
-        z: 0,
-    };
+    app_content_with(
+        state,
+        &crate::AppEnv {
+            theme,
+            width,
+            height,
+            clock_us: 0,
+            settings: &crate::SystemSettings::DEFAULT,
+            clipboard: None,
+            share_to: None,
+        },
+    )
+}
+/// The same projection, with the machine facts a native application is allowed to read.
+pub fn app_content_with(state: &crate::AppState, env: &crate::AppEnv<'_>) -> Scene {
+    let (theme, width, height) = (env.theme, env.width, env.height);
+    let mut p = Painter::themed(theme, width, height, 1_u64 << 52);
     match state {
-        crate::AppState::Files { path, entries } => {
-            files(&mut p, theme, width, height, path, entries)
-        }
-        crate::AppState::Terminal { input, output, .. } => {
-            terminal(&mut p, theme, width, height, input, output)
-        }
+        crate::AppState::Native(app) => app.render(&mut p, env),
+        crate::AppState::Files { tabs, active } => files(&mut p, env, tabs, *active),
+        crate::AppState::Terminal {
+            input,
+            prompt,
+            transcript,
+            cursor,
+            scroll,
+            ..
+        } => terminal(
+            &mut p, theme, width, height, input, prompt, transcript, *cursor, *scroll,
+        ),
         crate::AppState::Editor {
             path,
             text,
             dirty,
             cursor,
-        } => editor(&mut p, theme, (width, height), path, text, *dirty, *cursor),
-        crate::AppState::Browser { address } => {
-            p.scene.background = Color::rgb(250, 250, 252);
-            let x = width.saturating_sub(300) as i32 / 2;
-            p.asset(
-                Rect::new(x + 118, 50, 64, 64),
-                &format!("icon/{}/browser", platform(theme)),
-            );
-            label(&mut p, x, 137, 300, "Explore your world", 25);
-            p.text(
-                x,
-                181,
-                300,
-                "Enter an address to open a website.",
-                13,
-                MUTED,
-            );
-            p.text(x, 211, 300, address, 12, MUTED);
-        }
+        } => editor(
+            &mut p,
+            theme,
+            (width, height),
+            path,
+            text,
+            *dirty,
+            *cursor,
+            // A phone's editor always wraps; there is no horizontal scroll to fall back on.
+            env.settings.word_wrap || theme.mobile(),
+        ),
+        // Browser windows are projected by `cw_browser::Browser::scene`, which owns the
+        // page, its start page and its chrome; this arm only keeps the match total.
+        crate::AppState::Browser { .. } => {}
     }
     for n in &mut p.scene.nodes {
         n.clip = Some(Rect::new(0, 0, width, height));
         if let Some(s) = &mut n.semantic {
-            if matches!(
-                n.interaction.as_deref(),
-                Some("editor-text" | "terminal-input")
-            ) {
+            if n.interaction.as_deref().is_some_and(|i| {
+                i.starts_with("editor-text") || i == "terminal-input" || i == "files-search"
+            }) {
                 s.role = "textbox".into();
             }
         }
     }
     p.scene
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{caret_for_point, AppState, FileTab};
+
+    fn actions(scene: &Scene) -> Vec<&str> {
+        scene
+            .nodes
+            .iter()
+            .filter_map(|n| n.interaction.as_deref())
+            .collect()
+    }
+    fn unavailable(scene: &Scene) -> Vec<&str> {
+        scene
+            .nodes
+            .iter()
+            .filter_map(|n| n.semantic.as_ref())
+            .filter(|s| s.disabled)
+            .map(|s| s.label.as_str())
+            .collect()
+    }
+
+    /// The painted text grid and `caret_for_point` must be the same 8x18 grid, or a
+    /// click places the caret somewhere the user did not point at.
+    #[test]
+    fn editor_click_grid_agrees_with_the_caret_model() {
+        let text = "hello world\nsecond line\nthird".to_owned();
+        let scene = app_content(
+            &AppState::Editor {
+                path: "/note.txt".into(),
+                text: text.clone(),
+                cursor: 0,
+                dirty: false,
+            },
+            DesktopTheme::Macos,
+            400,
+            300,
+        );
+        let region = scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some("editor-text:0"))
+            .unwrap()
+            .bounds;
+        let (dx, dy) = (7 * 8 + 3, 18 + 9);
+        assert_eq!(
+            scene
+                .hit_test(region.x + dx, region.y + dy)
+                .unwrap()
+                .interaction
+                .as_deref(),
+            Some("editor-text:0")
+        );
+        let cursor = caret_for_point(&text, 0, dx, dy);
+        assert_eq!(&text[cursor..cursor + 1], "l");
+        let placed = app_content(
+            &AppState::Editor {
+                path: "/note.txt".into(),
+                text,
+                cursor,
+                dirty: false,
+            },
+            DesktopTheme::Macos,
+            400,
+            300,
+        );
+        let caret = placed
+            .nodes
+            .iter()
+            .find(|n| n.bounds.width == 1 && n.bounds.height == 18)
+            .unwrap()
+            .bounds;
+        assert_eq!((caret.x, caret.y), (region.x + 7 * 8, region.y + 18));
+    }
+
+    #[test]
+    fn editor_chrome_dispatches_real_shell_actions() {
+        let state = AppState::Editor {
+            path: "/note.txt".into(),
+            text: "note".into(),
+            cursor: 0,
+            dirty: false,
+        };
+        let notepad = app_content(&state, DesktopTheme::Windows, 620, 400);
+        for id in ["shell:panel:file", "shell:panel:edit", "shell:panel:view"] {
+            assert!(actions(&notepad).contains(&id), "menu bar lost {id}");
+        }
+        assert!(actions(&notepad).contains(&"shell:panel:app-settings"));
+        assert!(unavailable(&notepad).contains(&"UTF-8"));
+        // Notes' compose button opens another window of the focused application.
+        let notes = app_content(&state, DesktopTheme::Ios, 390, 700);
+        assert!(actions(&notes).contains(&"shell:new"));
+        assert!(unavailable(&notes).contains(&"Insert photo"));
+        assert!(
+            unavailable(&app_content(&state, DesktopTheme::Macos, 620, 400))
+                .contains(&"Plain Text")
+        );
+    }
+
+    /// Nothing that cannot act may look clickable. A command that needs a selection or
+    /// a clipboard is greyed until it has one, and Share — which has no recipient
+    /// anywhere in this world — is greyed always.
+    #[test]
+    fn file_manager_commands_are_live_only_when_they_can_act() {
+        let mut tab = FileTab::new("/work");
+        tab.entries = vec!["notes.txt".into(), "invoices/".into()];
+        let idle = AppState::Files {
+            tabs: vec![tab.clone()],
+            active: 0,
+        };
+        let explorer = app_content(&idle, DesktopTheme::Windows, 900, 520);
+        // Nothing is selected and the clipboard is empty, so none of these can act.
+        for label in ["Cut", "Copy", "Paste", "Rename", "Delete"] {
+            assert!(
+                unavailable(&explorer).contains(&label),
+                "{label} looks live with nothing selected"
+            );
+        }
+        // These never need one.
+        for action in [
+            "files-new-folder",
+            "files-new-file",
+            "files-search",
+            "files-sort:name",
+            "files-sort:kind",
+            "files-view",
+        ] {
+            assert!(actions(&explorer).contains(&action), "missing {action}");
+        }
+        tab.selected = Some(0);
+        let picked = AppState::Files {
+            tabs: vec![tab],
+            active: 0,
+        };
+        let clipboard = crate::Clipboard::new(vec!["/work/notes.txt".into()], false);
+        let live = app_content_with(
+            &picked,
+            &crate::AppEnv {
+                theme: DesktopTheme::Windows,
+                width: 900,
+                height: 520,
+                clock_us: 0,
+                settings: &crate::SystemSettings::DEFAULT,
+                clipboard: Some(&clipboard),
+                share_to: None,
+            },
+        );
+        for action in [
+            "files-cut",
+            "files-copy",
+            "files-paste",
+            "files-rename",
+            "files-delete",
+        ] {
+            assert!(actions(&live).contains(&action), "missing {action}");
+        }
+        // Share has no target model at all, in either shell.
+        assert!(unavailable(&live).contains(&"Share"));
+        let ios = app_content(&idle, DesktopTheme::Ios, 390, 700);
+        assert!(actions(&ios).contains(&"files-search"));
+        assert!(actions(&ios).contains(&"files-recents"));
+        assert!(unavailable(&ios).contains(&"Shared"));
+        for scene in [&explorer, &live, &ios] {
+            for n in &scene.nodes {
+                if n.semantic.as_ref().is_some_and(|s| s.disabled) {
+                    assert!(n.interaction.is_none());
+                }
+            }
+        }
+    }
+
+    /// The scrollbar really scrolls, and the caret really sits where `cursor` says.
+    #[test]
+    fn terminal_scrollbar_pages_and_the_caret_follows_the_cursor() {
+        let transcript = (0..60)
+            .map(|i| crate::TerminalEntry::new("me@box:/$", "ls", &format!("line {i}"), "", 0))
+            .collect::<Vec<_>>();
+        let tail = AppState::Terminal {
+            input: "ls".into(),
+            prompt: "me@box:/$".into(),
+            transcript: transcript.clone(),
+            history: vec![],
+            cursor: 2,
+            scroll: 0,
+        };
+        let scene = app_content(&tail, DesktopTheme::Ubuntu, 600, 240);
+        // Pinned to the tail: only "scroll back" is offered, and it names a real target.
+        let back: Vec<_> = actions(&scene)
+            .into_iter()
+            .filter(|a| a.starts_with("terminal-scroll:"))
+            .collect();
+        assert_eq!(back.len(), 1);
+        let lines: usize = back[0]
+            .trim_start_matches("terminal-scroll:")
+            .parse()
+            .unwrap();
+        assert!(lines > 0);
+        let text = |scene: &Scene, want: &str| {
+            scene
+                .nodes
+                .iter()
+                .any(|n| matches!(&n.primitive, Primitive::Text { text, .. } if text == want))
+        };
+        assert!(text(&scene, "line 59"));
+        let lifted = app_content(
+            &AppState::Terminal {
+                input: "ls".into(),
+                prompt: "me@box:/$".into(),
+                transcript,
+                history: vec![],
+                cursor: 2,
+                scroll: lines,
+            },
+            DesktopTheme::Ubuntu,
+            600,
+            240,
+        );
+        // Scrolled back: earlier output is on screen and both directions are offered.
+        assert!(!text(&lifted, "line 59"));
+        assert_eq!(
+            actions(&lifted)
+                .into_iter()
+                .filter(|a| a.starts_with("terminal-scroll:"))
+                .count(),
+            2
+        );
+        // The prompt line is its own target, and `click_at` reads a column off it.
+        assert!(actions(&scene).contains(&"terminal-line"));
+        let mut desktop = crate::DesktopState::default();
+        let (id, _) = desktop.launch("terminal", "").unwrap();
+        desktop.text("hello").unwrap();
+        desktop.click_at("terminal-line", 8, 0).unwrap();
+        desktop.text("X").unwrap();
+        match &desktop.windows[&id].state {
+            AppState::Terminal { input, cursor, .. } => {
+                assert_eq!(input, "hXello");
+                assert_eq!(*cursor, 2);
+            }
+            _ => panic!("not a terminal"),
+        }
+    }
 }

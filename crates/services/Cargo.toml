@@ -13,3 +13,16 @@ cw-service-mail = { path = "../../services/mail" }
 cw-service-chat = { path = "../../services/chat" }
 cw-service-docs = { path = "../../services/docs" }
 cw-service-calendar = { path = "../../services/calendar" }
+cw-service-assistant = { path = "../../services/assistant" }
+cw-service-bank = { path = "../../services/bank" }
+cw-service-drive = { path = "../../services/drive" }
+cw-service-forum = { path = "../../services/forum" }
+cw-service-geo = { path = "../../services/geo" }
+cw-service-media = { path = "../../services/media" }
+cw-service-press = { path = "../../services/press" }
+cw-service-search = { path = "../../services/search" }
+cw-service-shop = { path = "../../services/shop" }
+cw-service-social = { path = "../../services/social" }
+cw-service-wiki = { path = "../../services/wiki" }
+[dev-dependencies]
+serde_json.workspace = true

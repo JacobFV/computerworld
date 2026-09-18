@@ -39,11 +39,125 @@ pub struct Repository {
     /// Initialization convenience; consumed into the first commit.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub files: BTreeMap<String, String>,
+    /// GitHub-style namespace. Empty keeps the repository on the legacy `/repos/{name}` path only.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub owner: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub topics: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub stars: BTreeSet<String>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub forks: u64,
+    /// Issues and pull requests share one number space, as they do on the real thing.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub issues: BTreeMap<u64, Thread>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub pull_requests: BTreeMap<u64, Thread>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub next_number: u64,
 }
+fn is_zero(n: &u64) -> bool {
+    *n == 0
+}
+fn open_state() -> String {
+    "open".into()
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Comment {
+    #[serde(default)]
+    pub author: String,
+    #[serde(default)]
+    pub body: String,
+    #[serde(default)]
+    pub tick: u64,
+}
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Review {
+    #[serde(default)]
+    pub author: String,
+    #[serde(default)]
+    pub decision: String,
+    #[serde(default)]
+    pub body: String,
+    #[serde(default)]
+    pub tick: u64,
+}
+/// One issue or one pull request; `head`/`base`/`reviews` are the pull-request half.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Thread {
+    pub number: u64,
+    pub title: String,
+    #[serde(default)]
+    pub body: String,
+    /// `open` | `closed` | `merged`.
+    #[serde(default = "open_state")]
+    pub state: String,
+    #[serde(default)]
+    pub author: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub assignee: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub labels: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<Comment>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reviews: Vec<Review>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub head: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub base: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub merged_by: String,
+    #[serde(default)]
+    pub tick: u64,
+}
+impl Thread {
+    pub fn new(number: u64, title: &str, body: &str, author: &str, tick: u64) -> Self {
+        Self {
+            number,
+            title: title.into(),
+            body: body.into(),
+            state: open_state(),
+            author: author.into(),
+            assignee: String::new(),
+            labels: vec![],
+            comments: vec![],
+            reviews: vec![],
+            head: String::new(),
+            base: String::new(),
+            merged_by: String::new(),
+            tick,
+        }
+    }
+}
+/// A single-file-set paste. Gists are owned but never ACL'd; publishing one is the point.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Gist {
+    #[serde(default)]
+    pub owner: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub files: BTreeMap<String, String>,
+    #[serde(default)]
+    pub tick: u64,
+}
+/// Skins this instance may wear; GitHub gets a branded layout, `plain` is git.internal.
+pub const SKINS: &[&str] = &["plain", "github"];
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GitState {
+    /// Presentation only. `plain` is the original rendering and is omitted from serialised
+    /// state, so worlds and checkpoints written before skins existed stay byte-identical.
+    #[serde(default, skip_serializing_if = "web::Skin::is_plain")]
+    pub skin: web::Skin,
     #[serde(default)]
     pub repositories: BTreeMap<String, Repository>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub gists: BTreeMap<String, Gist>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<cw_protocol::PageTheme>,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Push {
@@ -76,6 +190,174 @@ impl Repository {
     }
     pub fn can_write(&self, actor: &str) -> bool {
         self.writers.is_empty() || self.writers.iter().any(|s| s == actor)
+    }
+    /// Issues and pull requests draw from one counter, so `#14` is unambiguous in a repository.
+    fn allocate(&mut self) -> u64 {
+        let highest = self
+            .issues
+            .keys()
+            .chain(self.pull_requests.keys())
+            .copied()
+            .max()
+            .unwrap_or(0);
+        let number = self.next_number.max(highest + 1);
+        self.next_number = number + 1;
+        number
+    }
+    pub fn thread(&self, pull: bool, number: u64) -> Option<&Thread> {
+        if pull {
+            self.pull_requests.get(&number)
+        } else {
+            self.issues.get(&number)
+        }
+    }
+    fn thread_mut(&mut self, pull: bool, number: u64) -> Result<&mut Thread, (u16, String)> {
+        let found = if pull {
+            self.pull_requests.get_mut(&number)
+        } else {
+            self.issues.get_mut(&number)
+        };
+        found.ok_or((404, "thread not found".into()))
+    }
+    /// Anyone who can read a public repository may file an issue; that is what makes it public.
+    pub fn open_issue(
+        &mut self,
+        actor: &str,
+        title: &str,
+        body: &str,
+        tick: u64,
+    ) -> Result<u64, (u16, String)> {
+        if !self.can_read(actor) {
+            return Err((403, "repository read denied".into()));
+        }
+        let title = title.trim();
+        if title.is_empty() {
+            return Err((422, "issue title is required".into()));
+        }
+        let number = self.allocate();
+        self.issues
+            .insert(number, Thread::new(number, title, body, actor, tick));
+        Ok(number)
+    }
+    pub fn open_pull(
+        &mut self,
+        actor: &str,
+        title: &str,
+        head: &str,
+        base: &str,
+        tick: u64,
+    ) -> Result<u64, (u16, String)> {
+        if !self.can_write(actor) {
+            return Err((403, "repository write denied".into()));
+        }
+        if !self.refs.contains_key(head) {
+            return Err((422, "head ref does not exist".into()));
+        }
+        let number = self.allocate();
+        let mut thread = Thread::new(number, title, "", actor, tick);
+        thread.head = head.into();
+        thread.base = base.into();
+        self.pull_requests.insert(number, thread);
+        Ok(number)
+    }
+    pub fn comment(
+        &mut self,
+        pull: bool,
+        number: u64,
+        actor: &str,
+        body: &str,
+        tick: u64,
+    ) -> Result<(), (u16, String)> {
+        if !self.can_read(actor) {
+            return Err((403, "repository read denied".into()));
+        }
+        let body = body.trim();
+        if body.is_empty() {
+            return Err((422, "comment body is required".into()));
+        }
+        self.thread_mut(pull, number)?.comments.push(Comment {
+            author: actor.into(),
+            body: body.into(),
+            tick,
+        });
+        Ok(())
+    }
+    /// Closing and reopening are maintainer actions; commenting is not.
+    pub fn set_state(
+        &mut self,
+        pull: bool,
+        number: u64,
+        actor: &str,
+        state: &str,
+    ) -> Result<(), (u16, String)> {
+        if !self.can_write(actor) {
+            return Err((403, "repository write denied".into()));
+        }
+        if !["open", "closed"].contains(&state) {
+            return Err((422, "state must be open or closed".into()));
+        }
+        let thread = self.thread_mut(pull, number)?;
+        if thread.state == "merged" {
+            return Err((409, "a merged pull request cannot change state".into()));
+        }
+        thread.state = state.into();
+        Ok(())
+    }
+    pub fn review(
+        &mut self,
+        number: u64,
+        actor: &str,
+        decision: &str,
+        body: &str,
+        tick: u64,
+    ) -> Result<(), (u16, String)> {
+        if !self.can_read(actor) {
+            return Err((403, "repository read denied".into()));
+        }
+        if !["approve", "request_changes", "comment"].contains(&decision) {
+            return Err((422, "invalid review decision".into()));
+        }
+        self.thread_mut(true, number)?.reviews.push(Review {
+            author: actor.into(),
+            decision: decision.into(),
+            body: body.into(),
+            tick,
+        });
+        Ok(())
+    }
+    /// Merging really moves the base ref onto the head commit, so a clone afterwards sees it.
+    pub fn merge(&mut self, number: u64, actor: &str, tick: u64) -> Result<(), (u16, String)> {
+        if !self.can_write(actor) {
+            return Err((403, "repository write denied".into()));
+        }
+        let pull = self.thread_mut(true, number)?;
+        if pull.state != "open" {
+            return Err((409, format!("pull request is already {}", pull.state)));
+        }
+        let (head, base) = (pull.head.clone(), pull.base.clone());
+        if !head.is_empty() {
+            if base.is_empty() {
+                return Err((422, "pull request has no base ref".into()));
+            }
+            let Some(id) = self.refs.get(&head).cloned() else {
+                return Err((409, "head ref no longer exists".into()));
+            };
+            self.refs.insert(base, id);
+        }
+        let pull = self.thread_mut(true, number)?;
+        pull.state = "merged".into();
+        pull.merged_by = actor.into();
+        pull.tick = tick;
+        Ok(())
+    }
+    /// Toggling; returns whether the actor now stars the repository.
+    pub fn star(&mut self, actor: &str) -> bool {
+        if self.stars.remove(actor) {
+            false
+        } else {
+            self.stars.insert(actor.into());
+            true
+        }
     }
     pub fn push(&mut self, actor: &str, push: Push) -> Result<(), (u16, String)> {
         if !self.can_write(actor) {
@@ -147,6 +429,10 @@ impl Repository {
 
 use cw_protocol::{HttpRequest, HttpResponse, Page, PageElement, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
+use cw_service_common as web;
+pub mod github;
+/// Owner names the router reserves; a repository owner may not shadow a fixed route.
+const RESERVED: &[&str] = &["api", "repos", "gist", "gists"];
 pub struct GitService;
 pub fn register(registry: &mut Registry) -> cw_protocol::Result<()> {
     registry.register(GitService)
@@ -164,6 +450,7 @@ impl Service for GitService {
         } else {
             initial
         })?;
+        state.skin.check(SKINS)?;
         for (name, repo) in state.repositories.iter_mut() {
             if name.is_empty() || name.contains('/') || name == "." || name == ".." {
                 return Err(SimError::invalid(
@@ -174,6 +461,29 @@ impl Service for GitService {
                 return Err(SimError::invalid(
                     "use initial files or explicit refs, not both",
                 ));
+            }
+            if RESERVED.contains(&repo.owner.as_str()) {
+                return Err(SimError::invalid(format!(
+                    "repository {name}: owner may not be one of {}",
+                    RESERVED.join(", ")
+                )));
+            }
+            for (pull, threads) in [(false, &repo.issues), (true, &repo.pull_requests)] {
+                for (number, thread) in threads {
+                    if thread.number != *number {
+                        return Err(SimError::invalid(format!(
+                            "repository {name}: {} {number} carries number {}",
+                            if pull { "pull request" } else { "issue" },
+                            thread.number
+                        )));
+                    }
+                    if !["open", "closed", "merged"].contains(&thread.state.as_str()) {
+                        return Err(SimError::invalid(format!(
+                            "repository {name}: unknown thread state {}",
+                            thread.state
+                        )));
+                    }
+                }
             }
             repo.initialize();
             let mut validator = Repository::default();
@@ -203,6 +513,14 @@ impl Service for GitService {
         let path = url.path().trim_matches('/');
         let parts: Vec<_> = path.split('/').collect();
         let api = parts.starts_with(&["api", "git", "repos"]);
+        // `/repos/*`, `/api/git/repos/*` and the plain landing page stay on the original code
+        // path, byte for byte. Everything else is the owner-namespaced GitHub surface.
+        let legacy = api
+            || parts.first() == Some(&"repos")
+            || (path.is_empty() && state["skin"].as_str().unwrap_or("plain") == "plain");
+        if !legacy {
+            return github::handle(state, ctx, req, path);
+        }
         let repos = state
             .get_mut("repositories")
             .and_then(Value::as_object_mut)

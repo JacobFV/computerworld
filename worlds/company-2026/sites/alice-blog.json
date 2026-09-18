@@ -1,0 +1,260 @@
+{
+  "id": "alice-blog",
+  "kind": "press",
+  "node": "alice-blog",
+  "domains": [
+    "alicechen.dev",
+    "www.alicechen.dev"
+  ],
+  "port": 80,
+  "initial_state": {
+    "layout": "blog",
+    "brand": "Alice Chen",
+    "tagline": "Staff systems engineer at Northstar. Renderers, replay, and the long tail of nondeterminism.",
+    "theme": {
+      "accent": "#0f766e",
+      "background": "#fbfbf9",
+      "surface": "#eef1ef",
+      "ink": "#14201d",
+      "muted": "#5d6b66",
+      "content_width": 760
+    },
+    "sections": [
+      {
+        "id": "engineering",
+        "title": "Engineering"
+      },
+      {
+        "id": "notes",
+        "title": "Notes"
+      }
+    ],
+    "articles": {
+      "what-i-learned-shipping-atlas": {
+        "id": "what-i-learned-shipping-atlas",
+        "section": "engineering",
+        "title": "What I learned shipping Atlas",
+        "dek": "Two years, one rule, and a long list of things I had to stop doing.",
+        "byline": "Alice Chen",
+        "date": "Mar 8, 2026",
+        "tick": 9,
+        "read_minutes": 11,
+        "body": [
+          "Atlas 1.0 is out. I have been the renderer owner for most of its life, which mostly meant being the person who found out, repeatedly, that something I had written was not deterministic. Here is what I would tell myself at the start.",
+          "One: the rule is not 'avoid randomness'. Nobody on the team was calling a random number generator. The rule is 'nothing may influence output unless it is a declared, ordered input', and the violations are never the obvious ones. They are a cache keyed on insertion order, a log line that includes a duration, a test fixture that iterates a directory.",
+          "Two: you cannot review your way to determinism. We tried. Reviews catch the clock calls and miss everything else, because the interesting violations are emergent - two correct-looking pieces of code that only misbehave when composed. What actually worked was the replay harness: record a run, rerun it from the seed, diff every frame. It found things no human was going to find.",
+          "Three: the fix is usually small and the search is usually not. The bug I will remember is a BFS path test that failed on exactly one Windows runner. Bob chased it for weeks, Priya explained it in four paragraphs on Stack Overflow, and the patch was nine lines. That ratio is the job.",
+          "Four: determinism is contagious in the right direction. Once replay works, every other kind of investigation gets cheaper, because 'I cannot reproduce it' stops being a sentence anyone says. Carol's postmortem for our February latency incident was written against a replay of the incident, not against a memory of it.",
+          "Five: some of it is just loss. We deleted caches we liked. We vendored dependencies we did not want to own. We gave up real parallelism in places where real parallelism was the point, and we ate the overhead. If your product does not need to answer 'why did this run do that', you should not pay this.",
+          "The walkthrough I recorded is at http://youtube.com/watch?v=atlas-walkthrough , the code is at http://github.com/northstar/atlas , and The Verge wrote it up at http://theverge.com/2026/atlas-determinism if you want the outside view."
+        ],
+        "links": [
+          {
+            "label": "Atlas walkthrough (YouTube)",
+            "url": "http://youtube.com/watch?v=atlas-walkthrough"
+          },
+          {
+            "label": "Atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "The Verge: Atlas bets everything on determinism",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ],
+        "tags": [
+          "atlas",
+          "determinism",
+          "northstar"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "\"Bob chased it for weeks\" is generous. Bob blamed the runner for weeks and then chased it for three days.",
+            "tick": 9,
+            "likes": 33
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Point two is the one I wish more teams internalised. Review is a filter, not a proof.",
+            "tick": 10,
+            "likes": 27
+          },
+          {
+            "id": "c3",
+            "author": "mkuznetsov",
+            "text": "Came here from the Verge piece. The honesty in point five is rarer than the engineering.",
+            "tick": 10,
+            "likes": 14
+          }
+        ]
+      },
+      "the-renderer-rewrite": {
+        "id": "the-renderer-rewrite",
+        "section": "engineering",
+        "title": "The renderer rewrite nobody asked for",
+        "dek": "We replaced a working renderer because it could not tell us why a frame looked the way it did.",
+        "byline": "Alice Chen",
+        "date": "Nov 12, 2025",
+        "tick": 5,
+        "read_minutes": 8,
+        "body": [
+          "The old renderer worked. That was the problem with arguing about it: every complaint sounded like taste. It drew the right pixels, most of the time, and when it did not there was no way to ask it why.",
+          "The rewrite changed one thing structurally: a frame became a value. Not a sequence of draw calls issued into a context, but a tree you can build, compare, hash and serialise. Everything else - the deterministic layout pass, the frame diffing in CI, the ability to attach a frame to a bug report - falls out of that one decision.",
+          "It took four months longer than I said it would, which is the standard multiplier, and the part that took the longest was not the drawing. It was text. Text layout has more hidden state than the rest of the renderer combined, and most of it lives in libraries that consider the hidden state a feature."
+        ],
+        "links": [],
+        "tags": [
+          "rendering",
+          "determinism"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "For the record I approved the four months and I would approve them again.",
+            "tick": 6,
+            "likes": 12
+          }
+        ]
+      },
+      "deterministic-time": {
+        "id": "deterministic-time",
+        "section": "notes",
+        "title": "Notes on deterministic time",
+        "dek": "A tick is not a timestamp, and treating it like one will hurt.",
+        "byline": "Alice Chen",
+        "date": "Aug 3, 2025",
+        "tick": 3,
+        "read_minutes": 4,
+        "body": [
+          "A tick counter is a logical clock. It orders events. It does not measure duration, it does not correspond to anything a human would call a moment, and the instant you format one as a date you have created a bug that will be found by a user in a different timezone.",
+          "The discipline that worked for us: ticks are for ordering and scheduling, and any human-facing time is a value carried explicitly in the data, seeded like everything else. If a page wants to say 'Mar 4, 2026', that string is content. It is not derived from the clock, because there is no clock.",
+          "The awkward consequence is that 'how long did this take' becomes a question about two recorded ticks and a declared tick rate, which is exactly as annoying as it sounds and exactly as reproducible as you wanted."
+        ],
+        "links": [],
+        "tags": [
+          "determinism",
+          "time"
+        ],
+        "comments": []
+      },
+      "reading-a-trace": {
+        "id": "reading-a-trace",
+        "section": "notes",
+        "title": "How I read a trace I do not understand",
+        "dek": "Four passes, in order, and no guessing until the third.",
+        "byline": "Alice Chen",
+        "date": "Apr 19, 2025",
+        "tick": 1,
+        "read_minutes": 5,
+        "body": [
+          "First pass: shape only. How long is it, where are the gaps, is there a repeating unit. I do not read any individual event. I am looking for the rhythm, because a trace with a rhythm has a loop in it and a trace without one usually has a stall.",
+          "Second pass: boundaries. Where does the work cross a thread, a process or the network. Almost every surprising latency number lives at a boundary, and almost every determinism bug does too.",
+          "Third pass: now I am allowed to guess, and I write the guess down before I check it. Writing it down is not discipline theatre; it is the only way I have found to notice that I have quietly changed my hypothesis three times.",
+          "Fourth pass: reproduce. If the system supports replay, this is cheap and the guess is confirmed or dead in a minute. If it does not, this pass is the entire cost of the investigation, which is the argument for replay in one sentence."
+        ],
+        "links": [],
+        "tags": [
+          "debugging",
+          "notes"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Stealing the write-the-guess-down rule.",
+            "tick": 2,
+            "likes": 8
+          }
+        ]
+      }
+    },
+    "subscribers": [
+      "bmartinez@outlook.com",
+      "carol.nakamura@gmail.com"
+    ],
+    "saved": {
+      "bob": [
+        "what-i-learned-shipping-atlas"
+      ]
+    },
+    "follows": {
+      "bob": [
+        "publication"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://alicechen.dev/",
+      "title": "Alice Chen",
+      "snippet": "Staff systems engineer at Northstar. Renderers, replay, and the long tail of nondeterminism.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "alice chen",
+        "alicechen",
+        "blog",
+        "northstar",
+        "renderer"
+      ]
+    },
+    {
+      "url": "http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+      "title": "What I learned shipping Atlas - Alice Chen",
+      "snippet": "Two years, one rule, and a long list of things I had to stop doing. Links to the walkthrough, the repo and the Verge story.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": [
+        "shipping atlas",
+        "atlas",
+        "what i learned",
+        "determinism",
+        "alice chen",
+        "lessons"
+      ]
+    },
+    {
+      "url": "http://alicechen.dev/posts/the-renderer-rewrite",
+      "title": "The renderer rewrite nobody asked for - Alice Chen",
+      "snippet": "We replaced a working renderer because it could not tell us why a frame looked the way it did.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "renderer",
+        "rewrite",
+        "frames",
+        "determinism"
+      ]
+    },
+    {
+      "url": "http://alicechen.dev/posts/deterministic-time",
+      "title": "Notes on deterministic time - Alice Chen",
+      "snippet": "A tick is not a timestamp, and treating it like one will hurt.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "deterministic time",
+        "tick",
+        "logical clock",
+        "timestamps"
+      ]
+    },
+    {
+      "url": "http://alicechen.dev/posts/reading-a-trace",
+      "title": "How I read a trace I do not understand - Alice Chen",
+      "snippet": "Four passes, in order, and no guessing until the third.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "trace",
+        "debugging",
+        "profiling",
+        "method"
+      ]
+    }
+  ]
+}

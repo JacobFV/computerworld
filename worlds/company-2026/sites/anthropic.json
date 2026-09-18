@@ -1,0 +1,311 @@
+{
+  "id": "anthropic",
+  "kind": "assistant",
+  "node": "anthropic",
+  "domains": [
+    "claude.ai",
+    "claude.anthropic.com",
+    "anthropic.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Claude",
+    "tagline": "A thinking partner that shows its sources.",
+    "model_label": "Claude Opus 4.5",
+    "theme": {
+      "accent": "#c15f3c",
+      "background": "#faf9f5",
+      "surface": "#f0eee6",
+      "ink": "#1f1e1d",
+      "muted": "#6b6a65",
+      "content_width": 760
+    },
+    "greeting": "Good to see you. What are we working on?",
+    "suggestions": [
+      "What is the Atlas release code?",
+      "Who owns the Atlas launch?",
+      "Explain deterministic simulation",
+      "What model are you?"
+    ],
+    "intents": [
+      {
+        "id": "determinism",
+        "patterns": [
+          "determinism",
+          "deterministic",
+          "reproducible",
+          "replay",
+          "deterministic simulation"
+        ],
+        "replies": [
+          "A deterministic simulation is one whose output is fixed by its initial state and its ordered inputs, and by nothing else. In practice that means removing three things: the wall clock, ambient randomness, and any unordered iteration.",
+          "The short version: same seed, same inputs, same bytes out. The long version is a list of things you are no longer allowed to read - the clock, the RNG, the filesystem, the network - each replaced by a declared, ordered input.",
+          "Think of it as a contract with your future self: a run you can replay is a bug you can reproduce. Everything that makes replay impossible - unordered maps, timestamps, thread interleaving - is the thing to hunt."
+        ],
+        "citations": [
+          {
+            "label": "Deterministic simulation — Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+          }
+        ]
+      },
+      {
+        "id": "atlas-overview",
+        "patterns": [
+          "what is atlas",
+          "tell me about atlas",
+          "atlas"
+        ],
+        "replies": [
+          "Atlas is Northstar's deterministic simulation runtime. It runs a whole simulated machine - processes, filesystem, network, browser - from a seed, and replays it byte for byte.",
+          "Atlas is the product Northstar shipped in 2026: a runtime for simulations that replay exactly. The encyclopedia entry is a fair summary and the repository is public."
+        ],
+        "citations": [
+          {
+            "label": "Atlas (software) — Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Atlas_(software)"
+          },
+          {
+            "label": "northstar/atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          }
+        ]
+      },
+      {
+        "id": "writing",
+        "patterns": [
+          "summarise",
+          "summarize",
+          "rewrite",
+          "edit this",
+          "make it shorter"
+        ],
+        "replies": [
+          "Send it over and tell me the audience and the length you want. I will keep your claims and cut the scaffolding.",
+          "Paste the text. I will tighten it without inventing anything that was not already in there."
+        ],
+        "citations": []
+      },
+      {
+        "id": "assistant-honesty",
+        "patterns": [
+          "what model are you",
+          "are you a model",
+          "how do you work",
+          "are you real",
+          "how do you generate"
+        ],
+        "citations": [],
+        "replies": [
+          "I should be straight with you: there is no model running here. Replies come from a scored table of patterns, and a pure hash picks between the wordings. The same question always gets the same answer.",
+          "No model - a pattern table. Facts about this world outrank the generic answers and always carry a citation, so you never have to take my word for anything."
+        ]
+      }
+    ],
+    "fallback": [
+      "I don't have anything on that here - what would be most useful?",
+      "That one is outside what I know. Can you say more about what you are after?",
+      "I would rather say I don't know than guess. Try narrowing it down?"
+    ],
+    "facts": [
+      {
+        "id": "atlas-release-code",
+        "patterns": [
+          "atlas release code",
+          "release code",
+          "atlas code"
+        ],
+        "answer": "The Atlas release code is ATLAS-2026. It is recorded in the launch checklist, which Carol Nakamura owns.",
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "atlas-launch-owner",
+        "patterns": [
+          "who owns the atlas launch",
+          "atlas launch owner",
+          "release owner",
+          "who owns atlas"
+        ],
+        "answer": "Carol Nakamura owns the Atlas launch. She is the engineering manager for the release and keeps the launch checklist, with Alice Chen on the renderer and Bob Martinez on CI.",
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "atlas-repository",
+        "patterns": [
+          "atlas repository",
+          "atlas repo",
+          "atlas source",
+          "where is atlas developed"
+        ],
+        "answer": "Atlas is developed at github.com/northstar/atlas. The walkthrough video is the quickest orientation, and the engineering blog covers the launch itself.",
+        "citations": [
+          {
+            "label": "northstar/atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Atlas walkthrough",
+            "url": "http://youtube.com/watch?v=atlas-walkthrough"
+          }
+        ]
+      },
+      {
+        "id": "atlas-press",
+        "patterns": [
+          "verge",
+          "press coverage",
+          "who wrote about atlas",
+          "atlas coverage"
+        ],
+        "answer": "The Verge covered the launch: \"Northstar's Atlas bets everything on determinism\", by Tom Weber. Reuters ran a wire version citing it, and the story reached the front page of Hacker News.",
+        "citations": [
+          {
+            "label": "Northstar's Atlas bets everything on determinism — The Verge",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ]
+      },
+      {
+        "id": "flaky-bfs-test",
+        "patterns": [
+          "flaky test",
+          "bfs path test",
+          "bfs test",
+          "fail only on windows",
+          "fails only on windows",
+          "hash map iteration order"
+        ],
+        "answer": "That is the BFS shortest-path test in Atlas issue 14. It is not a Windows bug: the test iterates a hash map, so the tie between equal-length paths is broken by iteration order. Priya Raman's accepted answer explains it.",
+        "citations": [
+          {
+            "label": "Why does my BFS shortest-path test fail only on Windows? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/4411"
+          },
+          {
+            "label": "northstar/atlas issue 14",
+            "url": "http://github.com/northstar/atlas/issues/14"
+          }
+        ]
+      }
+    ],
+    "conversations": {
+      "conv-1": {
+        "id": "conv-1",
+        "owner": "carol",
+        "title": "Atlas release code",
+        "tick": 4,
+        "messages": [
+          {
+            "role": "user",
+            "text": "What is the Atlas release code?",
+            "attempt": 0,
+            "tick": 4
+          },
+          {
+            "role": "assistant",
+            "text": "The Atlas release code is ATLAS-2026. It is recorded in the launch checklist, which Carol Nakamura owns.",
+            "citations": [
+              {
+                "label": "Atlas launch checklist",
+                "url": "http://docs.google.com/documents/atlas-launch"
+              }
+            ],
+            "intent_id": "atlas-release-code",
+            "attempt": 0,
+            "tick": 4
+          },
+          {
+            "role": "user",
+            "text": "Who owns the Atlas launch?",
+            "attempt": 0,
+            "tick": 4
+          },
+          {
+            "role": "assistant",
+            "text": "Carol Nakamura owns the Atlas launch. She is the engineering manager for the release and keeps the launch checklist, with Alice Chen on the renderer and Bob Martinez on CI.",
+            "citations": [
+              {
+                "label": "Atlas launch checklist",
+                "url": "http://docs.google.com/documents/atlas-launch"
+              }
+            ],
+            "intent_id": "atlas-launch-owner",
+            "attempt": 0,
+            "tick": 4
+          }
+        ]
+      },
+      "conv-2": {
+        "id": "conv-2",
+        "owner": "alice",
+        "title": "Why the test only fails on Windows",
+        "tick": 6,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Why does the BFS path test fail only on Windows?",
+            "attempt": 0,
+            "tick": 6
+          },
+          {
+            "role": "assistant",
+            "text": "That is the BFS shortest-path test in Atlas issue 14. It is not a Windows bug: the test iterates a hash map, so the tie between equal-length paths is broken by iteration order. Priya Raman's accepted answer explains it.",
+            "citations": [
+              {
+                "label": "Why does my BFS shortest-path test fail only on Windows? — Stack Overflow",
+                "url": "http://stackoverflow.com/questions/4411"
+              },
+              {
+                "label": "northstar/atlas issue 14",
+                "url": "http://github.com/northstar/atlas/issues/14"
+              }
+            ],
+            "intent_id": "flaky-bfs-test",
+            "attempt": 0,
+            "tick": 6
+          },
+          {
+            "role": "user",
+            "text": "What model are you, exactly?",
+            "attempt": 0,
+            "tick": 6
+          },
+          {
+            "role": "assistant",
+            "text": "No model - a pattern table. Facts about this world outrank the generic answers and always carry a citation, so you never have to take my word for anything.",
+            "intent_id": "assistant-honesty",
+            "attempt": 0,
+            "tick": 6
+          }
+        ]
+      }
+    },
+    "next_id": 3
+  },
+  "search_entries": [
+    {
+      "url": "http://claude.ai/",
+      "title": "Claude",
+      "snippet": "A thinking partner that shows its sources. Ask about Atlas and follow the citation.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "claude",
+        "anthropic",
+        "assistant",
+        "ai",
+        "chat"
+      ]
+    }
+  ]
+}

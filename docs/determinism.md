@@ -33,3 +33,23 @@ The renderer uses fixed scene geometry, bundled font data and explicit raster
 inputs. Host font lookup, wall-time animations and browser layout are not part of
 canonical output. Pixel parity tests cover supported scenes; this is not an
 arbitrary HTML/CSS rendering guarantee.
+
+## Rendered frames as labelled data
+
+Because a frame is an exact function of (engine, world, seed, action sequence,
+viewport), the text an agent types is also a *label* for the pixels that text
+produces. Replay a recorded episode, render at whatever viewport you want, and you
+have glyph-accurate ground truth for every string on screen — for free, at whatever
+volume you are willing to render, with no annotation pass and no labelling error.
+
+The scene is the index. `scene(width, height)` gives each text node's string,
+bounds and transform before rasterization, so a `(crop, string)` pair falls out of
+walking the scene and cropping the frame from `render(width, height)` at the same
+viewport. Varying the theme, viewport and bundled typeface varies the rendering of
+identical text, which is the axis that matters for OCR generalization.
+
+One consumer used this to train an OCR model on its own agent's typed text and
+measured held-out-font accuracy rising from 0.668 to 0.794.
+
+This only holds within one engine version: pixel output is not stable across
+releases (the alpha shell work changed it), so keep the version with the data.

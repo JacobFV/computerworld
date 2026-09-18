@@ -1,0 +1,234 @@
+{
+  "id": "northstar-eng",
+  "kind": "press",
+  "node": "northstar-eng",
+  "domains": [
+    "eng.northstar.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "layout": "blog",
+    "brand": "Northstar Engineering",
+    "tagline": "How we build Atlas, and what it costs us.",
+    "theme": {
+      "accent": "#2563eb",
+      "background": "#ffffff",
+      "surface": "#eef2fb",
+      "ink": "#0b1220",
+      "muted": "#5a6478",
+      "content_width": 780
+    },
+    "sections": [
+      {
+        "id": "engineering",
+        "title": "Engineering"
+      },
+      {
+        "id": "incidents",
+        "title": "Incidents"
+      }
+    ],
+    "articles": {
+      "shipping-atlas": {
+        "id": "shipping-atlas",
+        "section": "engineering",
+        "title": "Shipping Atlas 1.0",
+        "dek": "Two years of removing things, one release, and the harness that made it possible.",
+        "byline": "Northstar Engineering",
+        "date": "Mar 4, 2026",
+        "tick": 7,
+        "read_minutes": 9,
+        "body": [
+          "Atlas 1.0 is generally available today. Atlas runs a whole simulated machine - processes, filesystem, network and browser - from a seed, and replays any recorded run byte for byte. This post is the engineering version of the announcement: what we built, what it cost, and what we would do differently.",
+          "The product rule is one sentence: nothing may influence output unless it is a declared, ordered input. In practice that removed three things from every code path inside the sandbox. The wall clock became a tick counter. Ambient randomness became a single seeded stream, threaded explicitly. Iteration over unordered containers became a thing you are not allowed to do where it can reach output.",
+          "None of those rules is checkable by a compiler, so we check them by replay. Every run recorded in CI is rerun from its seed and every renderer frame is compared. A mismatch prints the tick, the frame index and the first differing byte, which turns a class of bug that is normally investigated statistically into one you investigate by reading a number.",
+          "The replay harness paid for itself in its first month by finding a BFS path test that had been quarantined for four months. Bob's write-up of that one is at http://bmartinez.net/posts/hash-order-bit-me and it is the best short explanation of why this work matters that any of us have written.",
+          "Alice recorded a full end-to-end walkthrough - seed, run, checkpoint, replay - at http://youtube.com/watch?v=atlas-walkthrough . It is twelve minutes and it is the fastest way to understand what Atlas actually is. The source is at http://github.com/northstar/atlas",
+          "What it cost: roughly 12% throughput on our own workload, a vendored-dependency directory larger than we would like, and a set of caches we deleted because we could no longer justify them. What we would do differently: build the replay harness first. We built it in year two, and every determinism bug found before it existed took an order of magnitude longer to find.",
+          "Thanks to everyone who ran a pre-release build and told us it was broken. Alice has written up her own view of the two years at http://alicechen.dev/posts/what-i-learned-shipping-atlas"
+        ],
+        "links": [
+          {
+            "label": "Atlas walkthrough (YouTube)",
+            "url": "http://youtube.com/watch?v=atlas-walkthrough"
+          },
+          {
+            "label": "Atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Bob on the hash-order bug",
+            "url": "http://bmartinez.net/posts/hash-order-bit-me"
+          },
+          {
+            "label": "Alice: what I learned shipping Atlas",
+            "url": "http://alicechen.dev/posts/what-i-learned-shipping-atlas"
+          }
+        ],
+        "tags": [
+          "atlas",
+          "determinism",
+          "release"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "\"Build the replay harness first\" is the whole post. Congratulations to the team.",
+            "tick": 7,
+            "likes": 29
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "The 12% is measured on our pipeline and will not be your 12%. Measure your own.",
+            "tick": 8,
+            "likes": 16
+          }
+        ]
+      },
+      "incident-inc-4": {
+        "id": "incident-inc-4",
+        "section": "incidents",
+        "title": "INC-4: twelve minutes of elevated API latency",
+        "dek": "What happened, why the rollback was boring, and the three lines it added to the checklist.",
+        "byline": "Dana Okoro",
+        "date": "Feb 18, 2026",
+        "tick": 5,
+        "read_minutes": 6,
+        "body": [
+          "On Wednesday our public API served elevated response times for twelve minutes. No data was lost, no data was exposed, and no request failed outright - the slowest observed response was 4.2 seconds against a normal p99 of 180 milliseconds.",
+          "Cause: a configuration change widened a connection pool on one tier without widening the downstream limit, so requests queued at the boundary instead of at the edge where our load shedding lives. The change had been reviewed and had passed staging, where the downstream limit is configured differently. That difference is now a test.",
+          "Detection was two minutes, which we are happy with. Mitigation was a configuration rollback, which took eight minutes, most of which was one engineer reading the runbook carefully rather than quickly. We consider that the correct trade and we are not going to optimise it.",
+          "The useful part came afterwards: we replayed the incident locally from a checkpoint taken before the change, which meant the timeline in this report was read off a rerun rather than reconstructed from memory and dashboards. Carol's video walkthrough of the postmortem process is at http://youtube.com/watch?v=carol-postmortem",
+          "Three lines were added to the release checklist: verify downstream limits when changing pool sizes, confirm staging and production limits match or document why they do not, and record a checkpoint immediately before any configuration change to the API tier."
+        ],
+        "links": [
+          {
+            "label": "Status page",
+            "url": "http://status.northstar.example/"
+          },
+          {
+            "label": "Carol's postmortem walkthrough",
+            "url": "http://youtube.com/watch?v=carol-postmortem"
+          }
+        ],
+        "tags": [
+          "incident",
+          "postmortem",
+          "reliability"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Reading the runbook carefully rather than quickly is a good sentence and a better policy.",
+            "tick": 6,
+            "likes": 13
+          }
+        ]
+      },
+      "how-we-test-determinism": {
+        "id": "how-we-test-determinism",
+        "section": "engineering",
+        "title": "How we test determinism",
+        "dek": "Four checks, all cheap, none of which a code review would have caught.",
+        "byline": "Northstar Engineering",
+        "date": "Oct 30, 2025",
+        "tick": 4,
+        "read_minutes": 7,
+        "body": [
+          "Check one: replay every recorded run. Rerun from the seed, diff every renderer frame, report the first differing byte. This is the expensive one to build and the one that finds almost everything.",
+          "Check two: hostile hashing in test builds. Iteration order for unordered containers changes on every run, so any test that depends on it fails immediately rather than on a stranger's machine in four months.",
+          "Check three: snapshot round-trips. Serialise state, deserialise it, and assert the bytes are identical and that the next tick from the restored state matches the next tick from the live one. This catches state that lives somewhere other than the state.",
+          "Check four: cross-platform frame hashes. The same seed on every supported target must produce the same frame hashes. This is the check that caught text layout, twice, and it is the reason we own more of the text stack than we planned to."
+        ],
+        "links": [
+          {
+            "label": "Atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          }
+        ],
+        "tags": [
+          "determinism",
+          "testing",
+          "atlas"
+        ],
+        "comments": []
+      }
+    },
+    "subscribers": [
+      "priya@raman.example"
+    ],
+    "saved": {
+      "carol": [
+        "shipping-atlas"
+      ]
+    },
+    "follows": {
+      "alice": [
+        "publication",
+        "atlas"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://eng.northstar.example/",
+      "title": "Northstar Engineering",
+      "snippet": "How we build Atlas, and what it costs us. Release notes, incident reports and testing practice.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "northstar engineering",
+        "eng blog",
+        "northstar",
+        "atlas"
+      ]
+    },
+    {
+      "url": "http://eng.northstar.example/posts/shipping-atlas",
+      "title": "Shipping Atlas 1.0 - Northstar Engineering",
+      "snippet": "Two years of removing things, one release, and the replay harness that made it possible. Links to the walkthrough and the repo.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "shipping atlas",
+        "atlas",
+        "launch",
+        "release",
+        "determinism",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://eng.northstar.example/posts/incident-inc-4",
+      "title": "INC-4: twelve minutes of elevated API latency - Northstar Engineering",
+      "snippet": "A pool change without a matching downstream limit, a boring rollback, and three new checklist lines.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "inc-4",
+        "incident",
+        "postmortem",
+        "latency",
+        "outage",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://eng.northstar.example/posts/how-we-test-determinism",
+      "title": "How we test determinism - Northstar Engineering",
+      "snippet": "Replay, hostile hashing, snapshot round-trips and cross-platform frame hashes.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "determinism",
+        "testing",
+        "replay",
+        "snapshot",
+        "frame hash"
+      ]
+    }
+  ]
+}

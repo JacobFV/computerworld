@@ -13,6 +13,24 @@ fields can reference a control with `$control-id`; this allows a service to name
 control IDs while retaining its request field names. Plain text, JSON, and HTML
 outside the native media type display as text; no JavaScript executes.
 
+## Rich page layout
+
+`page_scene` measures before it places: every container asks each child for the
+height it would occupy at a given width, then positions it. `Row` allocates fixed
+widths first and splits the remainder by `flex`; `Grid` flows children row-major
+into equal columns; `Card` draws padding, fill, border and radius around a nested
+column. A page `theme` supplies the accent, background, surface, ink and muted
+colours, and `theme.content_width` centres a content column on wider viewports.
+Measurement replays the placement code with output suppressed, so the two passes
+cannot disagree. Text is broken with `cw_scene::metrics` against the widest bundled
+family, keeping raster output identical across platform typefaces.
+
+Only elements that dispatch a real action become controls. A `Card` or `Thumbnail`
+with a `PageAction` gets an `interaction` equal to its element id and a focusable
+`link`/`button` semantic; without one it is painted as decoration with no
+interaction, and a thumbnail keeps a non-focusable `img` semantic naming the
+stand-in artwork it draws rather than claiming to be a photograph.
+
 ## Image assets
 
 Native image elements resolve their `source` relative to the received page URL.

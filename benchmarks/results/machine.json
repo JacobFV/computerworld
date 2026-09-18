@@ -1,7 +1,7 @@
 {
-  "revision": "de624a58fb6f76ca769aea98155b71505bec57e8",
-  "worktree_status": "M Cargo.toml\n M README.md\n M artifacts/browser-demo.png\n M benchmarks/results/browser-render.json\n M benchmarks/results/many-worlds.json\n M benchmarks/results/native-world.json\n M benchmarks/results/python.json\n M benchmarks/results/summary.json\n M benchmarks/results/wasm-node.json\n M examples/browser/README.md\n M examples/browser/app.js\n M examples/browser/build.mjs\n M examples/browser/index.html\n M examples/browser/style.css\n M examples/browser/world-definition.js\n M scripts/test-browser.mjs\n?? docs/final-report.md\n?? examples/browser/.openai/",
-  "diff_sha256": "b43df2163efae8c04664ca4d6dee085ca3ec05c1889d25abeb7feeb399419ea3",
+  "revision": "193382cfb1f37d5fedfcca828e687eaa9ec8f824",
+  "worktree_status": "M CHANGELOG.md\n M Cargo.lock\n M README.md\n M artifacts/browser-demo.png\n M artifacts/browser-verification.json\n M artifacts/desktop-android-home.png\n M artifacts/desktop-android-window.png\n M artifacts/desktop-ios-home.png\n M artifacts/desktop-ios-window.png\n M artifacts/desktop-macos-home.png\n M artifacts/desktop-macos-window.png\n M artifacts/desktop-ubuntu-home.png\n M artifacts/desktop-ubuntu-window.png\n M artifacts/desktop-verification.json\n M artifacts/desktop-windows-home.png\n M artifacts/desktop-windows-window.png\n M artifacts/desktop-world-console.png\n M artifacts/overhaul-macos-mail.png\n M artifacts/overhaul-macos-multiwindow.png\n M artifacts/overhaul-ubuntu-multiwindow.png\n M artifacts/overhaul-verification.json\n M artifacts/overhaul-windows-multiwindow.png\n M benchmarks/results/native-world.json\n M crates/applications/src/desktop_scene.rs\n M crates/applications/src/desktop_scene/android.rs\n M crates/applications/src/desktop_scene/app_content.rs\n M crates/applications/src/desktop_scene/ios.rs\n M crates/applications/src/desktop_scene/macos.rs\n M crates/applications/src/desktop_scene/shared.rs\n M crates/applications/src/desktop_scene/ubuntu.rs\n M crates/applications/src/desktop_scene/windows.rs\n M crates/applications/src/lib.rs\n M crates/applications/tests/native_views.rs\n M crates/applications/tests/native_visual_overhaul.rs\n M crates/browser/README.md\n M crates/browser/src/lib.rs\n M crates/browser/src/page_scene.rs\n M crates/computer/src/lib.rs\n M crates/computer/src/shell.rs\n M crates/computer/src/vfs.rs\n M crates/computerworld/Cargo.toml\n M crates/computerworld/src/lib.rs\n M crates/computerworld/tests/desktop.rs\n M crates/environment/src/desktop_extensions.rs\n M crates/environment/src/lib.rs\n M crates/kernel/src/lib.rs\n M crates/protocol/src/lib.rs\n M crates/render/Cargo.toml\n M crates/render/assets/README.md\n M crates/render/assets/generate-icons.py\n M crates/render/src/assets.rs\n M crates/render/src/lib.rs\n M crates/scene/Cargo.toml\n M crates/scene/src/lib.rs\n M crates/services/Cargo.toml\n M crates/services/src/lib.rs\n M docs/agent-api.md\n M docs/architecture.md\n M docs/desktop-gui.md\n M docs/determinism.md\n M docs/final-report.md\n M docs/performance.md\n M docs/python.md\n M docs/rendering.md\n M docs/service-sdk.md\n M docs/world-schema.md\n M examples/browser/README.md\n M examples/browser/build.mjs\n M examples/browser/world-definition.js\n M examples/python/computer_interaction.py\n M examples/python/desktop_pixels.py\n M pyproject.toml\n M scripts/build-wasm.sh\n M scripts/smoke-bindings.sh\n M scripts/test-all.sh\n M scripts/test-browser.mjs\n M scripts/test-desktop-overhaul.mjs\n M services/calendar/src/lib.rs\n M services/chat/src/lib.rs\n M services/common/src/lib.rs\n M services/docs/src/lib.rs\n M services/git/Cargo.toml\n M services/git/src/lib.rs\n M services/issues/src/lib.rs\n M services/mail/src/lib.rs\n M worlds/company-2026/README.md\n M worlds/company-2026/world.json\n?? artifacts/overhaul-android-browser.png\n?? artifacts/overhaul-android-calendar.png\n?? artifacts/overhaul-android-drawer.png\n?? artifacts/overhaul-android-home.png\n?? artifacts/overhaul-android-launcher.png\n?? artifacts/overhaul-android-mail.png\n?? artifacts/overhaul-android-recents.png\n?? artifacts/overhaul-android-shade.png\n?? artifacts/overhaul-failure.png\n?? artifacts/overhaul-ios-browser.png\n?? artifacts/overhaul-ios-calendar.png\n?? artifacts/overhaul-ios-drawer.png\n?? artifacts/overhaul-ios-home.png\n?? artifacts/overhaul-ios-launcher.png\n?? artifacts/overhaul-ios-mail.png\n?? artifacts/overhaul-ios-recents.png\n?? artifacts/overhaul-ios-shade.png\n?? artifacts/overhaul-macos-calendar.png\n?? artifacts/overhaul-macos-home.png\n?? artifacts/overhaul-macos-launcher.png\n?? artifacts/overhaul-run-phones.log\n?? artifacts/overhaul-run-remaining.log\n?? artifacts/overhaul-run.log\n?? artifacts/overhaul-ubuntu-calendar.png\n?? artifacts/overhaul-ubuntu-home.png\n?? artifacts/overhaul-ubuntu-launcher.png\n?? artifacts/overhaul-ubuntu-mail.png\n?? artifacts/overhaul-windows-calendar.png\n?? artifacts/overhaul-windows-home.png\n?? artifacts/overhaul-windows-launcher.png\n?? artifacts/overhaul-windows-mail.png\n?? benchmarks/results/native.json\n?? crates/applications/src/apps/\n?? crates/computer/tests/\n?? crates/computerworld/tests/file_manager.rs\n?? crates/computerworld/tests/grants.rs\n?? crates/computerworld/tests/interaction_semantics.rs\n?? crates/computerworld/tests/internet_links.rs\n?? crates/computerworld/tests/keyboard.rs\n?? crates/computerworld/tests/native_apps.rs\n?? crates/computerworld/tests/reference_network.rs\n?? crates/render/assets/build-fonts.py\n?? crates/render/assets/fonts/\n?? crates/render/assets/generate-symbols.py\n?? crates/render/assets/icons/android-calculator.png\n?? crates/render/assets/icons/android-calculator.svg\n?? crates/render/assets/icons/android-clock.png\n?? crates/render/assets/icons/android-clock.svg\n?? crates/render/assets/icons/android-contacts.png\n?? crates/render/assets/icons/android-contacts.svg\n?? crates/render/assets/icons/android-notes.png\n?? crates/render/assets/icons/android-notes.svg\n?? crates/render/assets/icons/ios-calculator.png\n?? crates/render/assets/icons/ios-calculator.svg\n?? crates/render/assets/icons/ios-clock.png\n?? crates/render/assets/icons/ios-clock.svg\n?? crates/render/assets/icons/ios-contacts.png\n?? crates/render/assets/icons/ios-contacts.svg\n?? crates/render/assets/icons/ios-notes.png\n?? crates/render/assets/icons/ios-notes.svg\n?? crates/render/assets/icons/macos-calculator.png\n?? crates/render/assets/icons/macos-calculator.svg\n?? crates/render/assets/icons/macos-clock.png\n?? crates/render/assets/icons/macos-clock.svg\n?? crates/render/assets/icons/macos-contacts.png\n?? crates/render/assets/icons/macos-contacts.svg\n?? crates/render/assets/icons/macos-notes.png\n?? crates/render/assets/icons/macos-notes.svg\n?? crates/render/assets/icons/ubuntu-calculator.png\n?? crates/render/assets/icons/ubuntu-clock.png\n?? crates/render/assets/icons/ubuntu-contacts.png\n?? crates/render/assets/icons/ubuntu-notes.png\n?? crates/render/assets/icons/windows-calculator.png\n?? crates/render/assets/icons/windows-calculator.svg\n?? crates/render/assets/icons/windows-clock.png\n?? crates/render/assets/icons/windows-clock.svg\n?? crates/render/assets/icons/windows-contacts.png\n?? crates/render/assets/icons/windows-contacts.svg\n?? crates/render/assets/icons/windows-notes.png\n?? crates/render/assets/icons/windows-notes.svg\n?? crates/render/assets/symbols/\n?? crates/render/src/glyph_fit.rs\n?? crates/render/src/symbols.rs\n?? crates/render/tests/icon_assets.rs\n?? crates/render/tests/terminal_legibility.rs\n?? crates/scene/src/metrics.rs\n?? crates/scene/src/metrics_data.rs\n?? docs/action-families.md\n?? docs/shell.md\n?? examples/native/os_gallery.rs\n?? scripts/build-content.sh\n?? scripts/build-search-index.mjs\n?? scripts/build-world.mjs\n?? services/assistant/\n?? services/bank/\n?? services/calendar/src/gcal.rs\n?? services/calendar/src/time.rs\n?? services/calendar/tests/\n?? services/chat/src/skins.rs\n?? services/chat/tests/\n?? services/docs/src/gdocs.rs\n?? services/docs/tests/\n?? services/drive/\n?? services/forum/\n?? services/geo/\n?? services/git/src/github.rs\n?? services/git/tests/\n?? services/issues/src/linear.rs\n?? services/issues/tests/\n?? services/mail/src/skin.rs\n?? services/mail/src/time.rs\n?? services/mail/tests/\n?? services/media/\n?? services/press/\n?? services/search/\n?? services/shop/\n?? services/social/\n?? services/wiki/\n?? worlds/company-2026/sites/",
+  "diff_sha256": "48eea3badbabe0c70a279715bd71b12f107ebe41dfd6c6deae73cca11ee08b6a",
   "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6",
   "kernel": {
     "system": "Linux",
@@ -12,19 +12,19 @@
     "processor": "aarch64"
   },
   "cpu": "Architecture:                            aarch64\nCPU op-mode(s):                          64-bit\nByte Order:                              Little Endian\nCPU(s):                                  20\nOn-line CPU(s) list:                     0-19\nVendor ID:                               ARM\nModel name:                              Cortex-X925\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      10\nSocket(s):                               1\nStepping:                                r0p1\nFrequency boost:                         disabled\nCPU(s) scaling MHz:                      100%\nCPU max MHz:                             3900.0000\nCPU min MHz:                             1378.0000\nBogoMIPS:                                2000.00\nFlags:                                   fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp sve2 sveaes svepmull svebitperm svesha3 svesm4 flagm2 frint svei8mm svebf16 i8mm bf16 dgh bti ecv afp wfxt\nModel name:                              Cortex-A725\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      10\nSocket(s):                               1\nStepping:                                r0p1\nCPU(s) scaling MHz:                      100%\nCPU max MHz:                             2808.0000\nCPU min MHz:                             338.0000\nBogoMIPS:                                2000.00\nFlags:                                   fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 sm3 sm4 asimddp sha512 sve asimdfhm dit uscat ilrcpc flagm sb paca pacg dcpodp sve2 sveaes svepmull svebitperm svesha3 svesm4 flagm2 frint svei8mm svebf16 i8mm bf16 dgh bti ecv afp wfxt\nL1d cache:                               1.3 MiB (20 instances)\nL1i cache:                               1.3 MiB (20 instances)\nL2 cache:                                25 MiB (20 instances)\nL3 cache:                                24 MiB (2 instances)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-19\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; CSV2, BHB\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected",
-  "affinity": "pid 3189765's current affinity list: 0-19",
-  "clock": "2026-09-17T10:55:01-07:00",
+  "affinity": "pid 1270330's current affinity list: 0-19",
+  "clock": "2026-09-17T19:17:33-07:00",
   "browser": "Google Chrome 151.0.7922.71",
   "assets": {
     "Cargo.lock": {
-      "bytes": 48880,
-      "gzip_bytes": 11823,
-      "sha256": "e63b7578818fdd3a7bafe9cbdef1c5ffae337264cb73641ac4b250462db97ece"
+      "bytes": 53496,
+      "gzip_bytes": 12563,
+      "sha256": "a98990e33c7ad4385e667ffeec4278763326e31104eb681846b94ef4c45901c3"
     },
     "worlds/company-2026/world.json": {
-      "bytes": 16736,
-      "gzip_bytes": 2502,
-      "sha256": "369aba734977901722dbd65e0c8da9b47e1b1ff755f97c89bd24f739f2a9eab6"
+      "bytes": 905664,
+      "gzip_bytes": 144419,
+      "sha256": "4bc72a7d7fb3e1eb06ef67bc5f3a1a448a77f5a430a2113706bd7f0d10ad3a00"
     },
     "crates/render/assets/DejaVuSansMono.ttf": {
       "bytes": 343140,
@@ -32,14 +32,14 @@
       "sha256": "c805f9436dbc268644c1d9584f01a601a653e028e08fd74b9b949f6cf8304d88"
     },
     "pkg/web/computerworld_bg.wasm": {
-      "bytes": 5490584,
-      "gzip_bytes": 1664137,
-      "sha256": "f90dd666f55abf9efa799518a2c1dce27b98d4af60abfca375e275d1630ed0e8"
+      "bytes": 22104977,
+      "gzip_bytes": 13803685,
+      "sha256": "438ee392695a0aa0aafac812cf95f40b59cfd0743508ff8ad17ba68b5f808508"
     },
     "pkg/web/computerworld.js": {
-      "bytes": 32456,
-      "gzip_bytes": 6121,
-      "sha256": "ab77efa275532afed136f0500dd6791773ba237b951aac7b513e10d8e7819406"
+      "bytes": 32869,
+      "gzip_bytes": 6208,
+      "sha256": "e431fabf3f8c3fb637917222215a98dc4f91d2eca5278d6d08140a41e1f9f831"
     },
     "benchmarks/runner/src/bin/world.rs": {
       "bytes": 8792,
@@ -62,19 +62,19 @@
       "sha256": "6bbfb424817276f01222df5da538825ec5dcad7e0ba4477f9589320819424579"
     },
     "target/release/world": {
-      "bytes": 6417552,
-      "gzip_bytes": 2449877,
-      "sha256": "df23de78db28bbf30a3bcf138090d7d5b69e86f8182c4fd0cf253559e81baa73"
+      "bytes": 13171648,
+      "gzip_bytes": 5158721,
+      "sha256": "b3f6a6ca703c249b76c97d509858f25b7bde6f0d557038c48312a1f23466776a"
     },
     "target/release/cw-benchmarks": {
-      "bytes": 1093808,
-      "gzip_bytes": 518704,
-      "sha256": "70333311cade7101d5c7feaacca7af804923fe390e230c71cead342d7a9d3779"
+      "bytes": 12941672,
+      "gzip_bytes": 11374426,
+      "sha256": "07396c3cdb0c53531e5b336a3a558d101c2e413a8f615d1e9c4adb5be39ce8b7"
     },
     "target/release/many_worlds": {
-      "bytes": 2720408,
-      "gzip_bytes": 1074582,
-      "sha256": "19e7698a3107b5eb0391121a80c27e00409da87bdf640a17feabf88a2da9268b"
+      "bytes": 7565112,
+      "gzip_bytes": 2969743,
+      "sha256": "8f7f794a9d1ded424846202051a5c91cbd85ee044045fc37d1489408b79fd25c"
     }
   },
   "pinned_cpu_capacity": "1024",

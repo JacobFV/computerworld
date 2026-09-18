@@ -1,0 +1,340 @@
+{
+  "id": "ticketmaster",
+  "kind": "shop",
+  "node": "ticketmaster",
+  "domains": [
+    "ticketmaster.com",
+    "www.ticketmaster.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "tickets",
+    "brand": "Ticketmaster",
+    "tagline": "A simulated box office. Every seat, code and event here is invented.",
+    "currency": "USD",
+    "theme": {
+      "accent": "#1f6fe0",
+      "background": "#ffffff",
+      "surface": "#eef1f7",
+      "ink": "#141b2d",
+      "muted": "#5a6478",
+      "content_width": 1080
+    },
+    "categories": [
+      {
+        "id": "conference",
+        "title": "Conferences"
+      },
+      {
+        "id": "music",
+        "title": "Music"
+      },
+      {
+        "id": "sport",
+        "title": "Sport"
+      }
+    ],
+    "products": {
+      "devcon-2026": {
+        "id": "devcon-2026",
+        "category": "conference",
+        "title": "DevCon Seattle 2026",
+        "seller": "Cascade Events",
+        "price_cents": 18900,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Two days, four tracks",
+          "Keynote: deterministic systems at scale",
+          "Hall pass includes the Tuesday workshops"
+        ],
+        "description": "Two days of systems talks at the Cascade Convention Center. The Monday keynote is on replayable simulation; the Tuesday workshops are hands-on and cap at forty people.",
+        "reviews": [],
+        "venue": "devcon-center",
+        "venue_name": "Cascade Convention Center",
+        "event_tick": 96,
+        "event_date": "2026-04-14",
+        "tiers": [
+          {
+            "id": "floor",
+            "title": "Main hall",
+            "price_cents": 18900,
+            "section": "A",
+            "row_size": 12,
+            "capacity": 600,
+            "remaining": 437
+          },
+          {
+            "id": "mezz",
+            "title": "Mezzanine",
+            "price_cents": 12900,
+            "section": "B",
+            "row_size": 14,
+            "capacity": 420,
+            "remaining": 388
+          },
+          {
+            "id": "workshop",
+            "title": "Workshop track",
+            "price_cents": 24900,
+            "section": "W",
+            "row_size": 8,
+            "capacity": 40,
+            "remaining": 6
+          }
+        ]
+      },
+      "meridian-tour": {
+        "id": "meridian-tour",
+        "category": "music",
+        "title": "Sonic Meridian - Ship It Tour",
+        "seller": "Cascade Events",
+        "price_cents": 7400,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Doors 19:00, support from Lowlight",
+          "General admission floor",
+          "Under 16s with an adult"
+        ],
+        "description": "The Ship It Tour lands at Cascade Arena for one night. The floor is standing; the bowl is reserved seating.",
+        "reviews": [],
+        "venue": "cascade-arena",
+        "venue_name": "Cascade Arena",
+        "event_tick": 140,
+        "event_date": "2026-05-02",
+        "tiers": [
+          {
+            "id": "floor",
+            "title": "Floor, standing",
+            "price_cents": 7400,
+            "section": "F",
+            "row_size": 20,
+            "capacity": 2000,
+            "remaining": 1244
+          },
+          {
+            "id": "bowl",
+            "title": "Lower bowl",
+            "price_cents": 11200,
+            "section": "L",
+            "row_size": 18,
+            "capacity": 3600,
+            "remaining": 2907
+          }
+        ]
+      },
+      "psfc-rivergate": {
+        "id": "psfc-rivergate",
+        "category": "sport",
+        "title": "Puget Sound FC vs Rivergate United",
+        "seller": "Puget Sound FC",
+        "price_cents": 4200,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Kick-off 15:00",
+          "Supporters' end is section S",
+          "Bag policy: clear bags only"
+        ],
+        "description": "League fixture at Cascade Arena. Rivergate have not won here in six visits, which the away end will remind you about all afternoon.",
+        "reviews": [],
+        "venue": "cascade-arena",
+        "venue_name": "Cascade Arena",
+        "event_tick": 168,
+        "event_date": "2026-05-16",
+        "tiers": [
+          {
+            "id": "sideline",
+            "title": "Sideline",
+            "price_cents": 4200,
+            "section": "S",
+            "row_size": 22,
+            "capacity": 4400,
+            "remaining": 1980
+          },
+          {
+            "id": "end",
+            "title": "Supporters' end",
+            "price_cents": 2800,
+            "section": "E",
+            "row_size": 22,
+            "capacity": 2200,
+            "remaining": 340
+          }
+        ]
+      },
+      "rust-meetup": {
+        "id": "rust-meetup",
+        "category": "conference",
+        "title": "Northwest Rust Meetup - Replay Night",
+        "seller": "Northstar",
+        "price_cents": 0,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Free, but ticketed",
+          "Two talks and a long Q&A",
+          "Pizza from 18:30"
+        ],
+        "description": "Monthly meetup in the Northstar HQ ground-floor commons. This month: snapshot formats, and what breaks when you replay across architectures.",
+        "reviews": [],
+        "venue": "northstar-hq",
+        "venue_name": "Northstar HQ",
+        "event_tick": 72,
+        "event_date": "2026-04-02",
+        "tiers": [
+          {
+            "id": "rsvp",
+            "title": "RSVP",
+            "price_cents": 0,
+            "section": "R",
+            "row_size": 10,
+            "capacity": 90,
+            "remaining": 17
+          }
+        ]
+      }
+    },
+    "carts": {},
+    "orders": {
+      "TM-2209": {
+        "id": "TM-2209",
+        "buyer": "alice",
+        "tick": 5,
+        "date": "2026-03-08",
+        "items": [
+          {
+            "product": "devcon-2026",
+            "title": "DevCon Seattle 2026 \u2014 Main hall",
+            "qty": 1,
+            "price_cents": 18900
+          }
+        ],
+        "total_cents": 18900,
+        "status": "Issued",
+        "confirmation": "TKT-FSDRWP",
+        "seats": [
+          "A-14-6"
+        ],
+        "venue": "devcon-center"
+      },
+      "TM-2210": {
+        "id": "TM-2210",
+        "buyer": "carol",
+        "tick": 5,
+        "date": "2026-03-08",
+        "items": [
+          {
+            "product": "devcon-2026",
+            "title": "DevCon Seattle 2026 \u2014 Main hall",
+            "qty": 1,
+            "price_cents": 18900
+          }
+        ],
+        "total_cents": 18900,
+        "status": "Issued",
+        "confirmation": "TKT-QZWVU9",
+        "seats": [
+          "A-14-7"
+        ],
+        "venue": "devcon-center"
+      }
+    },
+    "favorites": {
+      "bob": [
+        "meridian-tour"
+      ]
+    },
+    "messages": [],
+    "next_order": 2211
+  },
+  "search_entries": [
+    {
+      "url": "http://ticketmaster.com/",
+      "title": "Ticketmaster - simulated box office",
+      "snippet": "Conferences, music and sport. Pick a tier, buy, and the seat is allocated from what is left.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "tickets",
+        "events",
+        "box office",
+        "buy tickets"
+      ]
+    },
+    {
+      "url": "http://ticketmaster.com/event/devcon-2026",
+      "title": "DevCon Seattle 2026 - tickets",
+      "snippet": "14-15 April at the Cascade Convention Center. Main hall $189.00, mezzanine $129.00, workshop track $249.00 with six places left.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "devcon",
+        "devcon seattle",
+        "devcon 2026",
+        "conference tickets",
+        "seattle conference"
+      ]
+    },
+    {
+      "url": "http://ticketmaster.com/event/meridian-tour",
+      "title": "Sonic Meridian - Ship It Tour - tickets",
+      "snippet": "2 May at Cascade Arena. Standing floor $74.00, lower bowl $112.00.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "sonic meridian",
+        "ship it tour",
+        "concert tickets",
+        "cascade arena"
+      ]
+    },
+    {
+      "url": "http://ticketmaster.com/event/psfc-rivergate",
+      "title": "Puget Sound FC vs Rivergate United - tickets",
+      "snippet": "16 May at Cascade Arena, kick-off 15:00. Supporters' end $28.00.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "puget sound fc",
+        "football tickets",
+        "soccer tickets",
+        "rivergate united"
+      ]
+    },
+    {
+      "url": "http://ticketmaster.com/event/rust-meetup",
+      "title": "Northwest Rust Meetup - Replay Night - free, ticketed",
+      "snippet": "2 April at Northstar HQ. Snapshot formats and cross-architecture replay. Seventeen places left.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "rust meetup",
+        "northwest rust",
+        "meetup seattle",
+        "replay night"
+      ]
+    },
+    {
+      "url": "http://ticketmaster.com/my-tickets",
+      "title": "My tickets - Ticketmaster",
+      "snippet": "Tickets issued to the signed-in account, with seat and confirmation code.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "my tickets",
+        "ticket history",
+        "confirmation code"
+      ]
+    }
+  ]
+}

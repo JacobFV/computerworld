@@ -1,0 +1,109 @@
+{
+  "id": "outlook-mail",
+  "kind": "mail",
+  "node": "outlook-mail",
+  "domains": ["outlook.com", "outlook.office.com", "hotmail.com"],
+  "port": 80,
+  "initial_state": {
+    "skin": "outlook",
+    "brand": "Outlook",
+    "domain": "outlook.com",
+    "users": ["alice", "bob", "carol", "admin"],
+    "accounts": {
+      "bob": "bmartinez@outlook.com"
+    },
+    "names": {
+      "alice": "Alice Chen",
+      "bob": "Bob Martinez",
+      "carol": "Carol Nakamura",
+      "admin": "Dana Okoro",
+      "bob@northstar.example": "Bob Martinez",
+      "alice@northstar.example": "Alice Chen",
+      "alice.chen@gmail.com": "Alice Chen",
+      "nadia.fischer@meridianlabs.example": "Nadia Fischer",
+      "messages-noreply@linkedin.com": "LinkedIn"
+    },
+    "external_contacts": [
+      "alice.chen@gmail.com",
+      "alice@northstar.example",
+      "bob@northstar.example",
+      "carol@northstar.example",
+      "messages-noreply@linkedin.com",
+      "nadia.fischer@meridianlabs.example"
+    ],
+    "messages": {
+      "mail-1": {
+        "id": "mail-1",
+        "sender": "bob@northstar.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Fwd: Nadia Fischer sent you a message on LinkedIn",
+        "body": "Moving this off the work account.\n\nNadia Fischer · Technical Recruiter at Meridian Labs\n\n\"Hi Bob — your CI work on Northstar's Atlas release came up twice in our team this week. We are hiring for a build-reliability role and I would love twenty minutes of your time.\"\n\nHer profile and the thread are on LinkedIn: http://linkedin.com/",
+        "time": 1260000000,
+        "mailboxes": {
+          "bob": {"folders": ["inbox"], "labels": ["Personal"], "read": false, "starred": true}
+        }
+      },
+      "mail-2": {
+        "id": "mail-2",
+        "sender": "bob",
+        "to": ["nadia.fischer@meridianlabs.example"],
+        "cc": [],
+        "subject": "Meridian Labs — happy to talk",
+        "body": "Hi Nadia — thanks for reaching out. Twenty minutes is fine, but not this week: we are shipping something and I am on the CI section of the checklist.\n\nNext Tuesday afternoon, my time? Please use this address rather than my work one.",
+        "time": 2000000000,
+        "mailboxes": {
+          "bob": {"folders": ["sent"], "labels": ["Personal"], "read": true}
+        }
+      },
+      "mail-3": {
+        "id": "mail-3",
+        "sender": "alice.chen@gmail.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "That monitor",
+        "body": "You asked which one I got — this is it, and it is worth the money: http://amazon.com/dp/b0monitor27\n\n$429.99, single cable to the laptop, no dock.",
+        "time": 2600000000,
+        "mailboxes": {
+          "bob": {"folders": ["inbox"], "labels": [], "read": true}
+        }
+      }
+    },
+    "next_id": 3
+  },
+  "search_entries": [
+    {
+      "url": "http://outlook.com/",
+      "title": "Outlook",
+      "snippet": "Personal mail: the recruiter thread, the reply to Meridian Labs and everything kept off the work account.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": ["outlook", "hotmail", "mail", "email", "personal mail", "webmail"]
+    },
+    {
+      "url": "http://outlook.com/threads/mail-1",
+      "title": "Fwd: Nadia Fischer sent you a message on LinkedIn - Outlook",
+      "snippet": "Bob Martinez forwards a Meridian Labs recruiter's LinkedIn message from his work address to his personal mailbox.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["recruiter", "meridian labs", "nadia fischer", "linkedin", "bob martinez", "forward"]
+    },
+    {
+      "url": "http://outlook.com/?folder=sent",
+      "title": "Sent Items - Outlook",
+      "snippet": "The reply to Meridian Labs: twenty minutes next Tuesday, and please use this address rather than the work one.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": ["sent items", "outlook", "meridian labs", "reply"]
+    },
+    {
+      "site": "hotmail.com",
+      "url": "http://hotmail.com/",
+      "title": "Hotmail — now Outlook",
+      "snippet": "The old address still opens the same mailbox.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": ["hotmail", "outlook", "email"]
+    }
+  ]
+}

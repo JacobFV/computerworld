@@ -1,0 +1,99 @@
+{
+  "id": "ddg-search",
+  "kind": "search",
+  "node": "ddg-search",
+  "domains": ["duckduckgo.com", "ddg.gg"],
+  "port": 80,
+  "initial_state": {
+    "brand": "DuckDuckGo",
+    "skin": "ddg",
+    "tagline": "Privacy, simplified. Searches are never written down.",
+    "theme": {
+      "accent": "#3969ef",
+      "background": "#ffffff",
+      "surface": "#f7f7f8",
+      "ink": "#1c1d1f",
+      "muted": "#6e6f71",
+      "content_width": 740
+    },
+    "retain_history": false,
+    "bang_prefix": "!",
+    "bangs": {
+      "gh": {"title": "GitHub", "template": "http://github.com/search?q={}"},
+      "w": {"title": "Wikipedia", "template": "http://wikipedia.org/search?q={}"},
+      "so": {"title": "Stack Overflow", "template": "http://stackoverflow.com/search?q={}"},
+      "yt": {"title": "YouTube", "template": "http://youtube.com/results?search_query={}"},
+      "r": {"title": "Reddit", "template": "http://reddit.com/search?q={}"},
+      "hn": {"title": "Hacker News", "template": "http://news.ycombinator.com/search?q={}"}
+    },
+    "rank_weights": {"title": 9, "keywords": 6, "snippet": 1, "authority": 1},
+    "verticals": ["all", "images", "news", "videos"],
+    "about": "DuckDuckGo scores almost entirely on what a page says rather than who published it, and it keeps no history: nothing typed into the box is stored against the person who typed it. A query beginning with ! is a bang and jumps straight to another site.",
+    "footer": [
+      {"text": "Wikipedia", "url": "http://wikipedia.org/"},
+      {"text": "Hacker News", "url": "http://news.ycombinator.com/"},
+      {"text": "GitHub", "url": "http://github.com/"}
+    ],
+    "history": {},
+    "documents": []
+  },
+  "search_entries": [
+    {
+      "url": "http://duckduckgo.com/",
+      "title": "DuckDuckGo - Privacy, simplified",
+      "snippet": "Search without being tracked. Bang shortcuts such as !gh and !w jump straight to another site.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": ["duckduckgo", "ddg", "privacy", "search", "search engine", "bangs"]
+    },
+    {
+      "url": "http://duckduckgo.com/about",
+      "title": "About DuckDuckGo - bangs and no search history",
+      "snippet": "How DuckDuckGo ranks pages on their text rather than their publisher, and why it keeps no recent searches.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["duckduckgo", "about", "bangs", "privacy", "search history", "ranking"]
+    }
+  ],
+  "authority_overrides": {
+    "duckduckgo.com": 4,
+    "google.com": 1,
+    "bing.com": 1,
+    "wikipedia.org": 9,
+    "stackoverflow.com": 8,
+    "github.com": 7,
+    "news.ycombinator.com": 7,
+    "reddit.com": 6,
+    "arstechnica.com": 6,
+    "theverge.com": 5,
+    "reuters.com": 5,
+    "mastodon.social": 5,
+    "x.com": 2,
+    "linkedin.com": 2,
+    "alicechen.dev": 5,
+    "bmartinez.net": 5,
+    "eng.northstar.example": 4,
+    "northstar.example": 3,
+    "status.northstar.example": 3,
+    "docs.google.com": 1,
+    "drive.google.com": 1,
+    "mail.google.com": 1,
+    "calendar.google.com": 1,
+    "maps.google.com": 1,
+    "youtube.com": 2,
+    "outlook.com": 1,
+    "chatgpt.com": 3,
+    "claude.ai": 3,
+    "amazon.com": 2,
+    "etsy.com": 3,
+    "ticketmaster.com": 2,
+    "spotify.com": 3,
+    "openstreetmap.org": 6,
+    "weather.com": 3,
+    "dropbox.com": 2,
+    "northwind.example": 2,
+    "slack.com": 2,
+    "discord.com": 3,
+    "linear.app": 2
+  }
+}

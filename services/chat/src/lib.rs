@@ -1,11 +1,25 @@
 //! Membership-scoped persistent chat service.
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+/// Skins this instance may wear; Slack and Discord get branded layouts, `plain` is chat.internal.
+pub const SKINS: &[&str] = &["plain", "slack", "discord"];
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct ChatState {
+    /// Presentation only. `plain` is the original rendering and is omitted from serialised
+    /// state, so worlds and checkpoints written before skins existed stay byte-identical.
+    #[serde(default, skip_serializing_if = "web::Skin::is_plain")]
+    pub skin: web::Skin,
     pub channels: BTreeMap<String, Channel>,
     pub next_id: u64,
+    /// Direct messages, keyed by the participants sorted and joined with `|`, so the pair
+    /// alice/bob names exactly one conversation whichever of them opens it.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub dms: BTreeMap<String, Channel>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub workspace: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<cw_protocol::PageTheme>,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -21,13 +35,66 @@ pub struct Message {
     pub text: String,
     pub time: u64,
     pub reactions: BTreeMap<String, BTreeSet<String>>,
+    /// Set on a threaded reply; the parent stays in the main transcript.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+}
+/// A DM key is the participants sorted and joined, so both sides address the same conversation.
+pub fn dm_key(a: &str, b: &str) -> String {
+    let mut pair = [a, b];
+    pair.sort_unstable();
+    pair.join("|")
 }
 impl ChatState {
     pub fn channel(&self, actor: &str, id: &str) -> Result<&Channel, String> {
-        self.channels
-            .get(id)
-            .filter(|c| c.members.contains(actor))
+        self.conversations()
+            .into_iter()
+            .find(|(key, c)| *key == id && c.members.contains(actor))
+            .map(|(_, c)| c)
             .ok_or("channel unavailable".into())
+    }
+    /// Channels first, then DMs; one namespace so every route works for both.
+    fn conversations(&self) -> Vec<(&str, &Channel)> {
+        self.channels
+            .iter()
+            .chain(&self.dms)
+            .map(|(k, v)| (k.as_str(), v))
+            .collect()
+    }
+    fn conversation_mut(&mut self, id: &str) -> Option<&mut Channel> {
+        match self.channels.contains_key(id) {
+            true => self.channels.get_mut(id),
+            false => self.dms.get_mut(id),
+        }
+    }
+    /// Opening a DM is idempotent: the pair already has exactly one conversation or gains one.
+    pub fn open_dm(&mut self, actor: &str, other: &str) -> Result<String, String> {
+        let other = other.trim();
+        if other.is_empty() || other == actor {
+            return Err("a direct message needs another person".into());
+        }
+        if !self.people().any(|who| who == other) {
+            return Err("person unavailable".into());
+        }
+        let key = dm_key(actor, other);
+        self.dms.entry(key.clone()).or_insert_with(|| Channel {
+            title: format!("{actor} and {other}"),
+            members: [actor, other].into_iter().map(str::to_owned).collect(),
+            messages: vec![],
+        });
+        Ok(key)
+    }
+    /// Everyone who is a member of something on this instance; the DM directory.
+    pub fn people(&self) -> impl Iterator<Item = &str> {
+        let mut all: Vec<&str> = self
+            .channels
+            .values()
+            .chain(self.dms.values())
+            .flat_map(|c| c.members.iter().map(String::as_str))
+            .collect();
+        all.sort_unstable();
+        all.dedup();
+        all.into_iter()
     }
     pub fn send(
         &mut self,
@@ -36,12 +103,27 @@ impl ChatState {
         text: &str,
         time: u64,
     ) -> Result<Message, String> {
-        self.channel(actor, id)?;
+        self.send_reply(actor, id, text, time, None)
+    }
+    pub fn send_reply(
+        &mut self,
+        actor: &str,
+        id: &str,
+        text: &str,
+        time: u64,
+        parent: Option<&str>,
+    ) -> Result<Message, String> {
+        let channel = self.channel(actor, id)?;
         if text.trim().is_empty() {
             return Err("message required".into());
         }
+        let parent = match parent.filter(|p| !p.is_empty()) {
+            None => None,
+            Some(p) if channel.messages.iter().any(|m| m.id == p) => Some(p.to_owned()),
+            Some(_) => return Err("parent message is not in this conversation".into()),
+        };
         self.next_id = self.next_id.checked_add(1).ok_or("ID space exhausted")?;
-        while self.channels.values().any(|c| {
+        while self.channels.values().chain(self.dms.values()).any(|c| {
             c.messages
                 .iter()
                 .any(|m| m.id == format!("chat-{}", self.next_id))
@@ -54,8 +136,12 @@ impl ChatState {
             text: text.into(),
             time,
             reactions: BTreeMap::new(),
+            parent,
         };
-        self.channels.get_mut(id).unwrap().messages.push(m.clone());
+        self.conversation_mut(id)
+            .ok_or("channel unavailable")?
+            .messages
+            .push(m.clone());
         Ok(m)
     }
     pub fn react(
@@ -70,9 +156,8 @@ impl ChatState {
             return Err("reaction required".into());
         }
         let m = self
-            .channels
-            .get_mut(id)
-            .unwrap()
+            .conversation_mut(id)
+            .ok_or("channel unavailable")?
             .messages
             .iter_mut()
             .find(|m| m.id == message)
@@ -88,6 +173,7 @@ use cw_protocol::{HttpRequest, HttpResponse, Result as SimResult};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde_json::{json, Value};
+pub mod skins;
 pub struct ChatService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(ChatService)
@@ -153,6 +239,7 @@ impl Service for ChatService {
 
     fn initialize(&self, initial: Value, _: &ServiceContext) -> SimResult<Value> {
         let s: ChatState = web::load(&initial)?;
+        s.skin.check(SKINS)?;
         Ok(serde_json::to_value(s)?)
     }
     fn handle(
@@ -167,9 +254,15 @@ impl Service for ChatService {
         let parts: Vec<_> = path.trim_matches('/').split('/').collect();
         let api = p.starts_with("/api/");
         let method = r.method.to_ascii_uppercase();
+        // The plain skin keeps the original flat page; a branded instance gets the workspace.
+        let skinned = (!s.skin.is_plain()).then(|| skins::look(s.skin.as_str()));
+        let render = |s: &ChatState, open: Option<&str>| match &skinned {
+            Some(look) => skins::workspace(s, &c.actor, open, look),
+            None => view(s, &c.actor, open),
+        };
         if method == "GET" {
             return match parts.as_slice() {
-                [""] => view(&s, &c.actor, None),
+                [""] => render(&s, None),
                 ["channels"] => HttpResponse::json(
                     200,
                     &s.channels
@@ -178,8 +271,19 @@ impl Service for ChatService {
                         .map(|(id, ch)| (id, &ch.title))
                         .collect::<BTreeMap<_, _>>(),
                 ),
-                ["channels", id] if !api => view(&s, &c.actor, Some(id)),
-                ["channels", id] | ["channels", id, "messages"] => {
+                ["dms"] if !api => render(&s, None),
+                ["dms"] => HttpResponse::json(
+                    200,
+                    &s.dms
+                        .iter()
+                        .filter(|(_, ch)| ch.members.contains(&c.actor))
+                        .map(|(id, ch)| (id, &ch.title))
+                        .collect::<BTreeMap<_, _>>(),
+                ),
+                // Slack permalinks are `/archives/<channel>`; seeded prose links them that way.
+                ["archives", id] if !api => render(&s, Some(id)),
+                ["channels", id] | ["dms", id] if !api => render(&s, Some(id)),
+                ["channels", id] | ["dms", id] | ["channels", id, "messages"] => {
                     web::domain(s.channel(&c.actor, id).map(|ch| json!(ch)))
                 }
                 _ => web::error(404, "route not found"),
@@ -189,20 +293,37 @@ impl Service for ChatService {
             return web::error(405, "method not allowed");
         }
         let b = web::body(r)?;
+        // A browser POST lands on the conversation it changed, as a redirect would.
+        let mut landing = parts.get(1).copied();
+        let opened;
         let result = match parts.as_slice() {
             ["channels", id, "messages"] => s
-                .send(&c.actor, id, &web::text(&b, "text"), c.tick)
+                .send_reply(
+                    &c.actor,
+                    id,
+                    &web::text(&b, "text"),
+                    c.tick,
+                    Some(web::text(&b, "parent")).as_deref(),
+                )
                 .map(|m| json!(m)),
             ["channels", id, "messages", message, "reactions"] => s
                 .react(&c.actor, id, message, &web::text(&b, "reaction"))
                 .map(|_| json!({"ok":true})),
+            ["dms"] => match s.open_dm(&c.actor, &web::text(&b, "to")) {
+                Ok(key) => {
+                    opened = key;
+                    landing = Some(&opened);
+                    Ok(json!({"conversation": opened}))
+                }
+                Err(e) => Err(e),
+            },
             _ => return web::error(404, "route not found"),
         };
         if result.is_ok() {
             web::save(state, &s)?;
         }
         if !api && result.is_ok() {
-            view(&s, &c.actor, parts.get(1).copied())
+            render(&s, landing)
         } else {
             web::domain(result)
         }

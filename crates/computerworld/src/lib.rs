@@ -12,6 +12,55 @@ pub use cw_scene::Scene;
 pub use cw_sdk::{Application, Registry, Service};
 use std::sync::Arc;
 
+/// Rasterizes a scene for the Screenshot effect. A fresh renderer per capture keeps the
+/// incremental cache the interactive path relies on untouched.
+#[cfg(feature = "render")]
+struct PngCapture;
+#[cfg(feature = "render")]
+impl cw_environment::Raster for PngCapture {
+    fn png(&self, scene: &Scene) -> std::result::Result<Vec<u8>, String> {
+        let mut renderer = cw_render::Renderer::new();
+        let frame = renderer.try_render(scene).map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut out, frame.width, frame.height);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder
+                .write_header()
+                .and_then(|mut w| w.write_image_data(&frame.rgba))
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(out)
+    }
+    fn decode(&self, bytes: &[u8]) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+        let decoder = png::Decoder::new(bytes);
+        let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
+        // Bound the allocation: a malformed header must not ask for gigabytes.
+        let size = reader.output_buffer_size();
+        if size > 64 << 20 {
+            return Err("image is too large to decode".into());
+        }
+        let mut buffer = vec![0; size];
+        let info = reader.next_frame(&mut buffer).map_err(|e| e.to_string())?;
+        buffer.truncate(info.buffer_size());
+        // The scene draws RGBA; widen anything narrower rather than refusing it.
+        let rgba = match info.color_type {
+            png::ColorType::Rgba => buffer,
+            png::ColorType::Rgb => buffer
+                .chunks_exact(3)
+                .flat_map(|p| [p[0], p[1], p[2], 255])
+                .collect(),
+            png::ColorType::Grayscale => buffer.iter().flat_map(|g| [*g, *g, *g, 255]).collect(),
+            png::ColorType::GrayscaleAlpha => buffer
+                .chunks_exact(2)
+                .flat_map(|p| [p[0], p[0], p[0], p[1]])
+                .collect(),
+            other => return Err(format!("unsupported image format {other:?}")),
+        };
+        Ok((info.width, info.height, rgba))
+    }
+}
 /// Persistent owner of simulation and interface state; renderer caches are disposable.
 pub struct World {
     environment: Environment,
@@ -37,6 +86,12 @@ impl World {
         )))
     }
     fn from_environment(environment: Environment) -> Self {
+        #[allow(unused_mut)]
+        let mut environment = environment;
+        // A build with the rasterizer can take a real screenshot; one without refuses
+        // rather than writing a file that is not a picture of the screen.
+        #[cfg(feature = "render")]
+        environment.register_raster(std::sync::Arc::new(PngCapture));
         Self {
             environment,
             #[cfg(feature = "render")]
@@ -191,9 +246,17 @@ fn validate_viewport(width: u32, height: u32) -> Result<()> {
     Ok(())
 }
 /// Explicit optional reference blueprint; never an implicit kernel default.
+///
+/// Parsed once and cloned: the world now carries a whole simulated internet, and benchmarks and
+/// tests call this per iteration, so re-parsing the embedded JSON every time is pure waste.
 pub fn reference_world() -> WorldDefinition {
-    serde_json::from_str(include_str!("../../../worlds/company-2026/world.json"))
-        .expect("packaged reference world is valid JSON")
+    static PARSED: std::sync::OnceLock<WorldDefinition> = std::sync::OnceLock::new();
+    PARSED
+        .get_or_init(|| {
+            serde_json::from_str(include_str!("../../../worlds/company-2026/world.json"))
+                .expect("packaged reference world is valid JSON")
+        })
+        .clone()
 }
 
 #[cfg(feature = "render")]

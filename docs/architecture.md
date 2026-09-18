@@ -29,8 +29,11 @@ machine and communication mechanics. `cw-kernel` coordinates them. `cw-browser`
 and `cw-applications` implement application behavior. `cw-scene` and `cw-render`
 separate visual description from optional pixels. `cw-environment` projects
 actor capabilities and observations; `cw-trajectory` and `cw-evaluation` are
-separate recording and evaluation surfaces. The `computerworld` facade is the
-usual consumer entry point. `cw-wasm` and `cw-python` wrap that facade.
+separate recording and evaluation surfaces. `cw-services` holds the shared service
+runtime that the `services/*` crates build on. `cw-host-adapters` is the only crate
+permitted real host I/O and is opt-in behind explicit policy. The `computerworld`
+facade is the usual consumer entry point. `cw-wasm` and `cw-python` wrap that
+facade.
 
 Three layers must stay distinct:
 

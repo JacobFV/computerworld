@@ -1,0 +1,418 @@
+{
+  "id": "guide",
+  "kind": "static-site",
+  "node": "guide-node",
+  "domains": [
+    "guide.example",
+    "help.northstar.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "Atlas public guide",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "guide-head",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "guide-mark",
+                "text": "Atlas guide",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "guide-vendor",
+                "text": "northstar.example",
+                "url": "http://northstar.example/"
+              }
+            ],
+            "gap": 14,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "guide-lead",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "Atlas public guide",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "guide",
+            "text": "Atlas packages contain README.md and checklist.txt. Publish a reviewed checklist after the release owner confirms the code."
+          },
+          {
+            "kind": "spacer",
+            "id": "guide-cards-gap",
+            "height": 14
+          },
+          {
+            "kind": "grid",
+            "id": "guide-cards",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "guide-start",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "guide-start-title",
+                    "text": "Start here",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "guide-start-body",
+                    "text": "Clone the repository, run the test suite twice, and confirm both runs hash identically.",
+                    "style": {
+                      "size": 13,
+                      "color": "#5b6478"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "guide-start-link",
+                    "text": "Getting started",
+                    "url": "/getting-started"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "guide-source",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "guide-source-title",
+                    "text": "Read the source",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold",
+                      "color": "#10131a"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "guide-source-body",
+                    "text": "Everything in this guide is in the repository, including the contributing rules.",
+                    "style": {
+                      "size": 13,
+                      "color": "#5b6478"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "guide-source-link",
+                    "text": "northstar/atlas",
+                    "url": "http://github.com/northstar/atlas"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 16
+          },
+          {
+            "kind": "spacer",
+            "id": "guide-links-gap",
+            "height": 20
+          },
+          {
+            "kind": "styled",
+            "id": "guide-links-title",
+            "text": "Elsewhere",
+            "style": {
+              "size": 15,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "guide-links",
+            "children": [
+              {
+                "kind": "link",
+                "id": "home",
+                "text": "Northstar intranet",
+                "url": "http://intranet.internal/"
+              },
+              {
+                "kind": "link",
+                "id": "guide-community",
+                "text": "Community server",
+                "url": "http://discord.com/"
+              },
+              {
+                "kind": "link",
+                "id": "guide-status",
+                "text": "Service status",
+                "url": "http://status.northstar.example/"
+              },
+              {
+                "kind": "link",
+                "id": "guide-video",
+                "text": "Walkthrough video",
+                "url": "http://youtube.com/watch?v=atlas-walkthrough"
+              }
+            ],
+            "gap": 12,
+            "align": "start"
+          },
+          {
+            "kind": "spacer",
+            "id": "guide-ask-gap",
+            "height": 20
+          },
+          {
+            "kind": "styled",
+            "id": "guide-ask-title",
+            "text": "Ask a question",
+            "style": {
+              "size": 15,
+              "weight": "bold",
+              "color": "#10131a"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "guide-ask-body",
+            "text": "Questions asked here are recorded and answered in the community server."
+          },
+          {
+            "kind": "form",
+            "id": "question",
+            "action": {
+              "method": "POST",
+              "url": "/api/records/question",
+              "fields": {
+                "name": "$question-name",
+                "question": "$question-question"
+              }
+            },
+            "children": [
+              {
+                "kind": "input",
+                "id": "question-name",
+                "label": "Your name",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "input",
+                "id": "question-question",
+                "label": "Your question",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "button",
+                "id": "question-submit",
+                "text": "Submit",
+                "action": {
+                  "method": "POST",
+                  "url": "/api/records/question",
+                  "fields": {
+                    "name": "$question-name",
+                    "question": "$question-question"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "link",
+            "id": "guide-questions",
+            "text": "Questions asked so far",
+            "url": "/records"
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 820
+        }
+      },
+      "/getting-started": {
+        "version": 1,
+        "title": "Getting started · Atlas guide",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "gs-head",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "gs-mark",
+                "text": "Atlas guide",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "gs-home",
+                "text": "Guide home",
+                "url": "/"
+              }
+            ],
+            "gap": 14,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gs-lead",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "gs-title",
+            "text": "Getting started",
+            "level": 1
+          },
+          {
+            "kind": "card",
+            "id": "gs-steps",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "gs-1",
+                "text": "1. Clone",
+                "style": {
+                  "size": 14,
+                  "weight": "bold",
+                  "color": "#10131a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "gs-1-body",
+                "text": "git clone http://github.com/northstar/atlas and read CONTRIBUTING.md before anything else."
+              },
+              {
+                "kind": "styled",
+                "id": "gs-2",
+                "text": "2. Run it twice",
+                "style": {
+                  "size": 14,
+                  "weight": "bold",
+                  "color": "#10131a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "gs-2-body",
+                "text": "Run the suite twice from the same seed and compare the state hash. If the two differ, something in your code is reading the clock, the RNG, or an unordered map."
+              },
+              {
+                "kind": "styled",
+                "id": "gs-3",
+                "text": "3. Report what you find",
+                "style": {
+                  "size": 14,
+                  "weight": "bold",
+                  "color": "#10131a"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "gs-3-body",
+                "text": "A divergence is always reproducible. Attach the seed and the tick where the two runs part."
+              },
+              {
+                "kind": "link",
+                "id": "gs-issues",
+                "text": "Open an issue",
+                "url": "http://github.com/northstar/atlas/issues"
+              }
+            ],
+            "style": {
+              "background": "#f4f6fb",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 18
+            }
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 820
+        }
+      }
+    },
+    "records": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://guide.example/",
+      "title": "Atlas public guide",
+      "snippet": "Atlas packages contain README.md and checklist.txt. Publish a reviewed checklist after the release owner confirms the code.",
+      "authority": 3,
+      "keywords": [
+        "atlas",
+        "guide",
+        "documentation",
+        "checklist",
+        "help"
+      ]
+    },
+    {
+      "url": "http://guide.example/getting-started",
+      "title": "Getting started · Atlas guide",
+      "snippet": "Clone, run the suite twice from the same seed, and compare the state hash.",
+      "authority": 3,
+      "keywords": [
+        "getting started",
+        "atlas",
+        "tutorial",
+        "seed",
+        "replay"
+      ]
+    }
+  ]
+}

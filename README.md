@@ -12,13 +12,14 @@ Requires Rust 1.88 or newer to build (verified with Rust 1.97.1).
 
 ## Versioned alpha release
 
-[v0.1.0-alpha.1](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.1)
-is the first prerelease for technical early adopters. Download compatible Python
+[v0.1.0-alpha.2](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.2)
+is the current prerelease for technical early adopters; it is the first to ship the
+desktop shell, native applications and the simulated web in its binaries. Download compatible Python
 wheels or browser/Node Wasm bundles from its release assets; no Rust build is needed
-to consume those binaries. Python names the same version `0.1.0a1`.
+to consume those binaries. Python names the same version `0.1.0a2`.
 
 APIs, world schemas and checkpoints may change between alpha releases. Pin the
-version and retain your world/seed/action sequence. See [release notes](docs/releases/v0.1.0-alpha.1.md),
+version and retain your world/seed/action sequence. See [release notes](docs/releases/v0.1.0-alpha.2.md),
 [Python installation](docs/python.md), [JavaScript installation](docs/wasm.md) and
 [verification policy](docs/releasing.md). Packages are not published to PyPI, npm
 or crates.io by this release.
@@ -68,9 +69,20 @@ python examples/python/smoke.py
 python examples/python/computer_interaction.py
 ```
 
-Alternatively install a compatible wheel from the GitHub release or a local build
-in `target/wheels/`; wheel consumers need neither Rust nor Node. See the
-[Python guide](docs/python.md) for pinned installation and version checks.
+Alternatively install a compatible wheel from the GitHub release; wheel consumers
+need neither Rust nor Node. Install by exact version, never by glob — `target/` is a
+build directory and may hold wheels from an older revision:
+
+```sh
+maturin build --release --manifest-path crates/python/Cargo.toml
+pip install --force-reinstall target/wheels/computerworld-0.1.0a2-*.whl
+python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
+# Expected: 0.1.0a2 0.1.0-alpha.2
+```
+
+The Python package version is `0.1.0a2` and the engine version is
+`0.1.0-alpha.2`; they are the same release under PEP 440 and Cargo spellings.
+See the [Python guide](docs/python.md) for pinned installation and version checks.
 
 ```python
 import json
@@ -121,19 +133,34 @@ const frame = env.render(960, 560); // width, height, Uint8Array rgba
   links, processes, shell commands, installed packages and applications.
 - Source-aware DNS, routes, links, loopback, listeners, timed transports and HTTP;
   independent service state and inspectable causal/network events.
-- Mail delivery, shared chat, document revisions, calendars, Git objects/remotes,
-  issues/reviews and native websites in optional service crates.
-- A synthetic browser with received-page state, history, cookies/storage, forms
-  and network-loaded images. No DOM or Chromium is needed.
+- Mail, chat, documents, drive, calendars, Git objects/remotes, issues/reviews,
+  search, wiki, forum, social, press, media, shop, bank, maps and an assistant, each
+  an optional service crate with its own state. `ls services/` is the current list.
+- A synthetic browser with received-page state, tabs, history, cookies/storage,
+  forms and network-loaded images. No DOM or Chromium is needed.
+- A window manager and OS shell: move/resize/minimize/maximize/close, a tabbed file
+  manager, click-to-select and double-click-to-open, launchers, panels, device
+  toggles and touch gestures on phone themes. Nine native applications.
 - Compact scenes, semantic observations, hit testing, keyboard/pointer interaction,
   cached deterministic text and incremental CPU rasterization.
 - Controlled time/RNG/IDs, deterministic scheduling, persistent sessions, cheap
   COW checkpoints/forks, portable restore and recorded-action replay.
 - Separate actor grants, owner/evaluator inspection and optional task/reward logic.
 
-The reference company has five computers, three OS profiles and eight services.
-Its examples exercise local file work, cross-machine Git, mail/document work,
-shared chat, browser discovery and service debugging.
+Determinism is not only a reproducibility property. Because a frame is an exact
+function of (engine, world, seed, action sequence, viewport), and because
+`scene(w, h)` gives every text node's string and bounds *before* rasterization, an
+agent's own typed text is free labelled training data: crop the frame, read the
+label off the scene, no annotation pass and no labelling error. One consumer trained
+an OCR model this way and moved held-out-font accuracy from 0.668 to 0.794. See
+[determinism](docs/determinism.md#rendered-frames-as-labelled-data).
+
+The reference company (`worlds/company-2026/world.json`) has five computers and
+three OS profiles, and hosts its services alongside a browsable synthetic web of
+independent sites under `worlds/company-2026/sites/`. Service and site counts change
+per revision; read the world definition rather than a number quoted here. Its
+examples exercise local file work, cross-machine Git, mail/document work, shared
+chat, browser discovery and service debugging.
 
 ## Contracts and extension guides
 
@@ -144,6 +171,8 @@ shared chat, browser discovery and service debugging.
 | Native / Python / Wasm interfaces | [Rust](docs/native.md), [Python](docs/python.md), [Wasm](docs/wasm.md) |
 | Programmatic computer interaction | [Python/JavaScript guide and demos](docs/programmatic-computer-use.md) |
 | Agent actions, observations and evaluation | [Agent API](docs/agent-api.md) |
+| Every family, op, payload and the privileged/actor split | [Action families](docs/action-families.md) |
+| Desktop shell, windows and interaction targets | [Desktop GUI](docs/desktop-gui.md) |
 | Application and service extensions | [App SDK](docs/application-sdk.md), [service SDK](docs/service-sdk.md) |
 | Authoring examples | [Custom app](docs/custom-application.md), [custom service](docs/custom-service.md) |
 | Semantics and isolation | [Computers](docs/computers.md), [networking](docs/networking.md), [security](docs/security.md) |

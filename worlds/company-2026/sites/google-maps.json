@@ -1,0 +1,437 @@
+{
+  "id": "google-maps",
+  "kind": "geo",
+  "node": "google-maps",
+  "domains": [
+    "maps.google.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "maps",
+    "brand": "Google Maps",
+    "tagline": "Find a place, get directions, keep the ones you go back to.",
+    "units": "imperial",
+    "theme": {
+      "accent": "#1a73e8",
+      "background": "#e8eaed",
+      "surface": "#dfe3e8",
+      "ink": "#202124",
+      "muted": "#5f6368",
+      "content_width": 1080
+    },
+    "places": {
+      "bayfront-depot": {
+        "id": "bayfront-depot",
+        "name": "Bayfront Transit Depot",
+        "kind": "transit",
+        "address": "300 Bayfront Ave, Seattle WA",
+        "lat": 47569800,
+        "lon": -122344500,
+        "rating": 38,
+        "reviews": 402,
+        "hours": "Daily 5:00-00:30",
+        "phone": "+1 206 555 0102",
+        "website": "",
+        "summary": "Light rail and bus interchange two blocks south of the Northstar campus.",
+        "tags": [
+          "transit",
+          "light rail",
+          "bus"
+        ]
+      },
+      "bridgetown-annex": {
+        "id": "bridgetown-annex",
+        "name": "Northstar Bridgetown Annex",
+        "kind": "office",
+        "address": "55 Rivergate Way, Portland OR",
+        "lat": 45515200,
+        "lon": -122678000,
+        "rating": 44,
+        "reviews": 31,
+        "hours": "Mon-Fri 9:00-17:00",
+        "phone": "+1 503 555 0164",
+        "website": "http://northstar.example/",
+        "summary": "The Portland satellite office: support, docs and two of the SRE rotations.",
+        "tags": [
+          "office",
+          "northstar"
+        ]
+      },
+      "cascade-arena": {
+        "id": "cascade-arena",
+        "name": "Cascade Arena",
+        "kind": "venue",
+        "address": "1200 Rivergate Blvd, Seattle WA",
+        "lat": 47622100,
+        "lon": -122354000,
+        "rating": 41,
+        "reviews": 5820,
+        "hours": "Event nights",
+        "phone": "+1 206 555 0177",
+        "website": "http://ticketmaster.com/",
+        "summary": "Eighteen thousand seats under a folded-plate roof; the city's big touring room.",
+        "tags": [
+          "venue",
+          "arena",
+          "concerts"
+        ]
+      },
+      "devcon-center": {
+        "id": "devcon-center",
+        "name": "Cascade Convention Center",
+        "kind": "venue",
+        "address": "800 Pike St, Seattle WA",
+        "lat": 47611400,
+        "lon": -122333000,
+        "rating": 43,
+        "reviews": 2140,
+        "hours": "Varies by event",
+        "phone": "+1 206 555 0131",
+        "website": "http://ticketmaster.com/event/devcon-2026",
+        "summary": "Four halls and a glass concourse over Pike St. DevCon Seattle 2026 is here.",
+        "tags": [
+          "venue",
+          "conference",
+          "devcon"
+        ]
+      },
+      "harborline-coffee": {
+        "id": "harborline-coffee",
+        "name": "Harborline Coffee",
+        "kind": "cafe",
+        "address": "128 Bayfront Ave, Seattle WA",
+        "lat": 47574100,
+        "lon": -122345800,
+        "rating": 47,
+        "reviews": 913,
+        "hours": "Mon-Fri 6:00-16:00, Sat-Sun 7:00-15:00",
+        "phone": "+1 206 555 0119",
+        "website": "",
+        "summary": "The Northstar standup runs on this. Cardamom bun, flat white, back upstairs.",
+        "tags": [
+          "cafe",
+          "coffee",
+          "breakfast"
+        ]
+      },
+      "hotel-cascade": {
+        "id": "hotel-cascade",
+        "name": "Hotel Cascade",
+        "kind": "hotel",
+        "address": "905 Pike St, Seattle WA",
+        "lat": 47613100,
+        "lon": -122331500,
+        "rating": 42,
+        "reviews": 1188,
+        "hours": "Open 24 hours",
+        "phone": "+1 206 555 0155",
+        "website": "",
+        "summary": "Conference hotel across the street from the convention center.",
+        "tags": [
+          "hotel",
+          "conference"
+        ]
+      },
+      "lumen-works": {
+        "id": "lumen-works",
+        "name": "Lumen Works Showroom",
+        "kind": "store",
+        "address": "77 Yesler Row, Seattle WA",
+        "lat": 47596200,
+        "lon": -122327400,
+        "rating": 45,
+        "reviews": 286,
+        "hours": "Tue-Sat 10:00-18:00",
+        "phone": "+1 206 555 0188",
+        "website": "http://amazon.com/dp/b0monitor27",
+        "summary": "Displays and docks you can actually put your hands on before you buy one.",
+        "tags": [
+          "store",
+          "electronics",
+          "monitors"
+        ]
+      },
+      "marrow-point-park": {
+        "id": "marrow-point-park",
+        "name": "Marrow Point Park",
+        "kind": "park",
+        "address": "2 Marrow Point Rd, Seattle WA",
+        "lat": 47581900,
+        "lon": -122361400,
+        "rating": 48,
+        "reviews": 3401,
+        "hours": "Daily 5:00-23:00",
+        "phone": "",
+        "website": "",
+        "summary": "Twelve acres of headland, one loop path, and the best view of the sound in the city.",
+        "tags": [
+          "park",
+          "outdoors",
+          "views"
+        ]
+      },
+      "ninth-and-pike-market": {
+        "id": "ninth-and-pike-market",
+        "name": "Ninth & Pike Market",
+        "kind": "store",
+        "address": "915 Pike St, Seattle WA",
+        "lat": 47611900,
+        "lon": -122335600,
+        "rating": 44,
+        "reviews": 2260,
+        "hours": "Daily 7:00-19:00",
+        "phone": "+1 206 555 0126",
+        "website": "",
+        "summary": "Produce, fish and a very good bread counter, one block from the convention center.",
+        "tags": [
+          "market",
+          "groceries",
+          "food"
+        ]
+      },
+      "northstar-hq": {
+        "id": "northstar-hq",
+        "name": "Northstar HQ",
+        "kind": "office",
+        "address": "410 Bayfront Ave, Seattle WA",
+        "lat": 47572600,
+        "lon": -122348000,
+        "rating": 46,
+        "reviews": 128,
+        "hours": "Mon-Fri 8:00-18:00",
+        "phone": "+1 206 555 0148",
+        "website": "http://northstar.example/",
+        "summary": "Northstar's bayfront campus: engineering on four and five, the lab in the basement.",
+        "tags": [
+          "office",
+          "northstar",
+          "engineering"
+        ]
+      },
+      "puget-field": {
+        "id": "puget-field",
+        "name": "Puget Sound Field",
+        "kind": "airport",
+        "address": "17800 Sound Pkwy, SeaTac WA",
+        "lat": 47443200,
+        "lon": -122301000,
+        "rating": 36,
+        "reviews": 14208,
+        "hours": "Open 24 hours",
+        "phone": "+1 206 555 0100",
+        "website": "",
+        "summary": "The regional airport. Two terminals, one very long walk between them.",
+        "tags": [
+          "airport",
+          "travel",
+          "flights"
+        ]
+      },
+      "quill-and-kettle": {
+        "id": "quill-and-kettle",
+        "name": "Quill & Kettle Books",
+        "kind": "store",
+        "address": "1412 Third Ave, Seattle WA",
+        "lat": 47609800,
+        "lon": -122340200,
+        "rating": 49,
+        "reviews": 744,
+        "hours": "Daily 10:00-20:00",
+        "phone": "+1 206 555 0173",
+        "website": "",
+        "summary": "Independent bookshop with an unreasonably deep computing shelf.",
+        "tags": [
+          "bookshop",
+          "books",
+          "shopping"
+        ]
+      },
+      "southbay-lab": {
+        "id": "southbay-lab",
+        "name": "Northstar South Bay Lab",
+        "kind": "office",
+        "address": "2200 Orchard Row, San Jose CA",
+        "lat": 37338200,
+        "lon": -121886000,
+        "rating": 43,
+        "reviews": 19,
+        "hours": "Mon-Fri 9:00-18:00",
+        "phone": "+1 408 555 0192",
+        "website": "http://northstar.example/",
+        "summary": "Hardware lab and the replay cluster that the determinism suite runs on.",
+        "tags": [
+          "office",
+          "northstar",
+          "lab"
+        ]
+      }
+    },
+    "routes": {
+      "northstar-hq|devcon-center|driving": {
+        "id": "northstar-hq|devcon-center|driving",
+        "from": "northstar-hq",
+        "to": "devcon-center",
+        "mode": "driving",
+        "metres": 5428,
+        "minutes": 14,
+        "steps": [
+          {
+            "text": "Start at Northstar HQ, 410 Bayfront Ave, Seattle WA",
+            "metres": 0
+          },
+          {
+            "text": "Head north on Bayfront Ave — 2.7 mi",
+            "metres": 4306
+          },
+          {
+            "text": "Turn east onto Pike St — 0.7 mi",
+            "metres": 1122
+          },
+          {
+            "text": "Arrive at Cascade Convention Center, 800 Pike St, Seattle WA",
+            "metres": 0
+          }
+        ]
+      }
+    },
+    "saved": {
+      "alice": [
+        "northstar-hq",
+        "harborline-coffee",
+        "quill-and-kettle"
+      ],
+      "carol": [
+        "northstar-hq",
+        "devcon-center",
+        "hotel-cascade"
+      ],
+      "bob": [
+        "northstar-hq",
+        "marrow-point-park"
+      ]
+    },
+    "unit_prefs": {},
+    "forecasts": {},
+    "alerts": [],
+    "notes": [],
+    "next_note": 1
+  },
+  "search_entries": [
+    {
+      "url": "http://maps.google.com/",
+      "title": "Google Maps",
+      "snippet": "Search places, get step-by-step directions and keep a list of the places you go back to.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "maps",
+        "google maps",
+        "directions",
+        "places"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/place/northstar-hq",
+      "title": "Northstar HQ - Google Maps",
+      "snippet": "410 Bayfront Ave, Seattle WA. Mon-Fri 8:00-18:00. Northstar's bayfront campus, rated 4.6.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "northstar",
+        "northstar hq",
+        "bayfront ave",
+        "seattle office"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/place/devcon-center",
+      "title": "Cascade Convention Center - Google Maps",
+      "snippet": "800 Pike St, Seattle WA. Four halls over Pike St and the home of DevCon Seattle 2026.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "cascade convention center",
+        "devcon",
+        "convention center",
+        "pike st"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=driving",
+      "title": "Northstar HQ to Cascade Convention Center - 14 min driving",
+      "snippet": "3.4 mi, about 14 minutes by car: north on Bayfront Ave, then east onto Pike St.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "directions",
+        "northstar to devcon",
+        "drive to convention center",
+        "14 min"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/place/harborline-coffee",
+      "title": "Harborline Coffee - Google Maps",
+      "snippet": "128 Bayfront Ave, Seattle WA. Rated 4.7. Two blocks from the Northstar campus.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "coffee",
+        "harborline coffee",
+        "cafe seattle",
+        "bayfront"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/place/marrow-point-park",
+      "title": "Marrow Point Park - Google Maps",
+      "snippet": "Twelve acres of headland with a loop path and the best view of the sound.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "park",
+        "marrow point",
+        "seattle park",
+        "views"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/place/puget-field",
+      "title": "Puget Sound Field - Google Maps",
+      "snippet": "17800 Sound Pkwy, SeaTac WA. The regional airport, two terminals.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "airport",
+        "puget sound field",
+        "seatac",
+        "flights"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/saved",
+      "title": "Your places - Google Maps",
+      "snippet": "The places you saved, per account. Open a place and save it to add one.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "saved places",
+        "your places",
+        "favourites",
+        "maps"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/search?q=convention%20center",
+      "title": "convention center - Google Maps search",
+      "snippet": "Places matching \"convention center\", ranked by name then by id.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "search places",
+        "convention center",
+        "maps search"
+      ]
+    }
+  ]
+}

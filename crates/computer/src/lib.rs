@@ -16,11 +16,23 @@ pub struct CommandResult {
     pub stderr: String,
     pub exit_code: i32,
     pub pid: u64,
+    /// Screen action, not output: `clear` produces no bytes, so the terminal
+    /// application must erase its scrollback itself when this is set.
+    #[serde(default)]
+    pub clear: bool,
 }
 impl CommandResult {
     pub fn success(stdout: impl Into<String>) -> Self {
         Self {
             stdout: stdout.into(),
+            ..Self::default()
+        }
+    }
+    /// Failure with an explicit status; see docs/shell.md for the code vocabulary.
+    pub fn new(stderr: impl Into<String>, exit_code: i32) -> Self {
+        Self {
+            stderr: stderr.into(),
+            exit_code,
             ..Self::default()
         }
     }
@@ -48,6 +60,45 @@ impl ShellHost for OfflineHost {
         Err("network adapter unavailable".into())
     }
 }
+/// Facts the world does not simulate (cores, RAM, disk capacity, NIC) but that
+/// probing commands must still report. Fixed per computer so every call and every
+/// replay agrees; never sampled from the host.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Hardware {
+    pub cpus: u32,
+    pub memory_bytes: u64,
+    /// Capacity of the single modelled filesystem; usage is summed from the VFS.
+    pub disk_bytes: u64,
+    pub device: String,
+    pub interface: String,
+    pub ipv4: String,
+    pub prefix: u8,
+    pub mac: String,
+    pub gateway: String,
+    /// Tick at which this computer booted; `uptime` is the distance from it.
+    pub boot_tick: u64,
+    /// Numeric identity reported by `stat`; the VFS stores owners by name only.
+    pub uid: u32,
+    pub gid: u32,
+}
+impl Default for Hardware {
+    fn default() -> Self {
+        Self {
+            cpus: 4,
+            memory_bytes: 8 << 30,
+            disk_bytes: 64 << 30,
+            device: "/dev/vda1".into(),
+            interface: "eth0".into(),
+            ipv4: "10.0.2.15".into(),
+            prefix: 24,
+            mac: "52:54:00:12:34:56".into(),
+            gateway: "10.0.2.1".into(),
+            boot_tick: 0,
+            uid: 1000,
+            gid: 1000,
+        }
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Computer {
     pub id: String,
@@ -61,6 +112,8 @@ pub struct Computer {
     pub packages: PackageManager,
     #[serde(default)]
     pub installed_apps: std::collections::BTreeSet<String>,
+    #[serde(default)]
+    pub hardware: Hardware,
 }
 impl Computer {
     pub fn validate(&self) -> cw_protocol::Result<()> {
@@ -111,6 +164,7 @@ impl Computer {
             processes: ProcessTable::new(),
             packages: PackageManager::default(),
             installed_apps: std::collections::BTreeSet::new(),
+            hardware: Hardware::default(),
         }
     }
     pub fn from_definition(

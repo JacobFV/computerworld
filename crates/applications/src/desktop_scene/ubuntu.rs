@@ -1,46 +1,175 @@
-//! Ubuntu 24 / GNOME shell. Geometry follows the native 32px panel, 68px
-//! Ubuntu Dock and 46px libadwaita headerbar; all controls dispatch Rust actions.
-use super::shared::{Painter, ShellContext, WindowView};
+//! Ubuntu 24.04 / GNOME 46 presentation: 32 px top bar, 68 px Ubuntu Dock, 46 px
+//! libadwaita header bars with circular window buttons, and Yaru's orange accent.
+//! All controls that accept input dispatch Rust simulator actions.
+use super::shared::{Align, Painter, ShellContext, WindowView};
 use cw_scene::{Color, Rect};
 
-const PANEL: Color = Color::rgb(30, 30, 30);
-const INK: Color = Color::rgb(47, 47, 47);
+const PANEL: Color = Color::rgb(19, 19, 19);
+const INK: Color = Color::rgb(61, 61, 61);
+const DIM: Color = Color::rgb(146, 146, 146);
 const ORANGE: Color = Color::rgb(233, 84, 32);
-const APPS: [(&str, &str); 8] = [
-    ("browser", "Web Browser"),
+const HEADER: Color = Color::rgb(235, 235, 235);
+const HEADER_BACKDROP: Color = Color::rgb(242, 242, 242);
+const DARK_HEADER: Color = Color::rgb(48, 48, 48);
+const POPOVER: Color = Color::rgb(53, 53, 53);
+const POPOVER_EDGE: Color = Color::rgb(80, 80, 80);
+const TILE: Color = Color::rgb(80, 80, 80);
+const LIGHT: Color = Color::rgb(246, 246, 246);
+/// Width of the Files sidebar; shared with the Files client area.
+pub const FILES_SIDEBAR: u32 = 180;
+/// Every application this shell can present, in Activities grid order.
+const APPS: [(&str, &str); 17] = [
+    ("browser", "Firefox"),
     ("files", "Files"),
     ("terminal", "Terminal"),
     ("editor", "Text Editor"),
-    ("mail", "Mail"),
+    ("mail", "Thunderbird Mail"),
     ("calendar", "Calendar"),
     ("chat", "Chat"),
-    ("docs", "Documents"),
+    ("docs", "LibreOffice Writer"),
+    ("notes", "Notes"),
+    ("contacts", "Contacts"),
+    ("photos", "Image Viewer"),
+    ("music", "Rhythmbox"),
+    ("maps", "Maps"),
+    ("weather", "Weather"),
+    ("calculator", "Calculator"),
+    ("clock", "Clocks"),
+    ("settings", "Settings"),
 ];
+/// The favourites the Ubuntu dock keeps; Activities carries the whole grid.
+const DOCK: [&str; 8] = [
+    "browser", "files", "terminal", "editor", "mail", "calendar", "chat", "docs",
+];
+
+fn basename(path: &str) -> &str {
+    path.trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .filter(|s| !s.is_empty())
+        .unwrap_or("Computer")
+}
 
 pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     p.asset(Rect::new(0, 0, ctx.width, ctx.height), "wallpaper/ubuntu");
     if ctx.width > 300 && ctx.height > 250 && ctx.installed("files") {
-        let x = ctx.width as i32 - 98;
+        let x = ctx.width as i32 - 104;
+        let slot = Rect::new(x, 48, 92, 92);
+        if ctx.selected("files") {
+            p.box_(slot, Color(255, 255, 255, 64), 8);
+        } else if ctx.hovered(slot) {
+            p.box_(slot, Color(255, 255, 255, 40), 8);
+        }
         p.platform_icon(
-            Rect::new(x + 14, 58, 48, 48),
+            Rect::new(x + 20, 54, 52, 52),
             "ubuntu",
             "files",
-            "shell:launch:files",
+            "shell:open:files",
             "Open home folder",
         );
-        p.text(x + 19, 112, 76, "Home", 13, Color::WHITE);
+        for (dy, alpha) in [(1, 170), (2, 70)] {
+            p.label(
+                x,
+                112 + dy,
+                92,
+                "Home",
+                13,
+                Color(0, 0, 0, alpha),
+                false,
+                Align::Center,
+            );
+        }
+        p.label(x, 112, 92, "Home", 13, Color::WHITE, false, Align::Center);
     }
 }
 
 pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
-    let width = ctx.width as i32;
-    let height = ctx.height as i32;
-    p.box_(Rect::new(0, 0, ctx.width, 32), PANEL, 0);
-    // GNOME 46's Activities control is a workspace pill, not a text menu.
+    // A locked or powered-off display covers the session entirely, chrome included.
+    if !ctx.awake() {
+        shield(p, ctx);
+        return;
+    }
+    let overview = ctx.launcher_open || matches!(ctx.panel, Some("search" | "overview"));
+    if overview {
+        activities(p, ctx);
+    }
+    top_bar(p, ctx);
+    dock(p, ctx);
+    if let Some(panel) = ctx.panel {
+        if !matches!(panel, "search" | "overview") {
+            panel_surface(p, ctx, panel);
+        }
+    }
+}
+
+/// GNOME's shield and the powered-off display. The only way back is a real wake.
+fn shield(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let full = Rect::new(0, 0, ctx.width, ctx.height);
+    let (width, height) = (ctx.width as i32, ctx.height as i32);
+    if ctx.screen == crate::ScreenState::Off {
+        p.box_(full, Color::BLACK, 0);
+        p.region(full, "shell:power:wake", "Turn the screen on");
+        p.center(
+            0,
+            height / 2 - 8,
+            ctx.width,
+            "Screen off",
+            13,
+            Color::rgb(58, 58, 58),
+        );
+        return;
+    }
+    p.asset(full, "wallpaper/ubuntu");
+    p.box_(full, Color(0, 0, 0, 178), 0);
+    // Clicking anywhere raises the shield; GDM has no password here, there is no auth model.
+    p.region(full, "shell:power:wake", "Unlock the session");
+    let date = ctx.date();
+    p.label(
+        0,
+        height / 4,
+        ctx.width,
+        &ctx.time(),
+        64,
+        Color::WHITE,
+        true,
+        Align::Center,
+    );
+    p.center(
+        0,
+        height / 4 + 96,
+        ctx.width,
+        &format!("{} {} {}", date.weekday_name(), date.day, date.month_name()),
+        17,
+        Color(255, 255, 255, 200),
+    );
+    p.symbol(
+        "lock",
+        width / 2 - 10,
+        height / 2 + 40,
+        20,
+        Color(255, 255, 255, 190),
+    );
+    let button = Rect::new(width / 2 - 90, height / 2 + 80, 180, 40);
     p.button(
-        Rect::new(6, 3, 63, 26),
-        if ctx.hovered(Rect::new(6, 3, 63, 26)) {
-            Color::rgb(65, 65, 65)
+        button,
+        Color(255, 255, 255, if ctx.hovered(button) { 60 } else { 34 }),
+        20,
+        "shell:power:wake",
+        "Unlock the session",
+    );
+    p.strong_center(button.x, button.y + 11, 180, "Unlock", 14, Color::WHITE);
+}
+
+fn top_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let width = ctx.width as i32;
+    p.box_(Rect::new(0, 0, ctx.width, 32), PANEL, 0);
+    let plate = Color(255, 255, 255, 38);
+    // GNOME 46's Activities control is a workspace indicator, not a text menu.
+    let activities = Rect::new(6, 3, 63, 26);
+    p.button(
+        activities,
+        if ctx.hovered(activities) || ctx.launcher_open {
+            plate
         } else {
             PANEL
         },
@@ -50,255 +179,880 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
     );
     p.box_(Rect::new(16, 12, 25, 8), Color::rgb(247, 247, 247), 4);
     p.box_(Rect::new(47, 12, 8, 8), Color::rgb(154, 154, 154), 4);
-    let clock = format!("Sep 17  {}", ctx.time());
-    p.text((width / 2 - 48).max(75), 5, 140, &clock, 13, Color::WHITE);
+    let date = ctx.date();
+    let clock = format!("{} {}  {}", &date.month_name()[..3], date.day, ctx.time());
+    let clock_width = p.measure(&clock, 13, true);
+    let hit = Rect::new(
+        width / 2 - clock_width as i32 / 2 - 12,
+        3,
+        clock_width + 24,
+        26,
+    );
+    if ctx.hovered(hit) || ctx.panel == Some("calendar") {
+        p.box_(hit, plate, 13);
+    }
+    p.strong_center(hit.x, 8, hit.width, &clock, 13, Color::WHITE);
     p.region(
-        Rect::new((width / 2 - 64).max(72), 0, 154, 32),
+        Rect::new(hit.x, 0, hit.width, 32),
         "shell:panel:calendar",
         "Open calendar and notifications",
     );
     if width > 380 {
-        tray(p, width - 91, 10);
+        let tray = Rect::new(width - 94, 3, 88, 26);
+        if ctx.hovered(tray) || ctx.panel == Some("quick") {
+            p.box_(tray, plate, 13);
+        }
+        for (i, symbol) in ["wifi", "volume", "battery"].iter().enumerate() {
+            p.symbol(
+                symbol,
+                tray.x + 11 + i as i32 * 24,
+                8,
+                if i == 2 { 18 } else { 16 },
+                Color::rgb(242, 242, 242),
+            );
+        }
         p.region(
             Rect::new(width - 98, 0, 98, 32),
             "shell:panel:quick",
             "Open system menu",
         );
     }
-    // Ubuntu's fixed full-height dock, with subtly translucent aubergine backing.
-    p.box_(
+}
+
+fn dock(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let height = ctx.height as i32;
+    // Ubuntu's fixed full-height dock: translucent over the blurred wallpaper.
+    p.glass(
         Rect::new(0, 32, 68, ctx.height.saturating_sub(32)),
-        Color(36, 29, 37, 235),
         0,
+        30,
+        Color(28, 24, 30, 205),
+        None,
     );
-    p.box_(
-        Rect::new(67, 32, 1, ctx.height.saturating_sub(32)),
-        Color(255, 255, 255, 19),
-        0,
+    p.vline(
+        67,
+        32,
+        ctx.height.saturating_sub(32),
+        Color(255, 255, 255, 18),
     );
     for (i, (kind, name)) in APPS
         .iter()
-        .filter(|(kind, _)| ctx.installed(kind))
-        .take(4)
+        .filter(|(kind, _)| DOCK.contains(kind) && ctx.installed(kind))
         .enumerate()
     {
         let y = 43 + i as i32 * 59;
-        if y + 55 > height - 65 {
+        if y + 55 > height - 125 {
             break;
         }
-        let running = ctx
-            .windows
-            .iter()
-            .filter(|w| w.kind == *kind)
-            .collect::<Vec<_>>();
-        let dock_rect = Rect::new(6, y - 2, 56, 56);
-        let hovered = ctx.hovered(dock_rect);
-        if hovered || running.iter().any(|w| w.focused && !w.minimized) {
+        let running: Vec<_> = ctx.windows.iter().filter(|w| w.kind == *kind).collect();
+        let slot = Rect::new(6, y - 2, 56, 56);
+        let hovered = ctx.hovered(slot);
+        let focused = running.iter().any(|w| w.focused && !w.minimized);
+        if hovered || focused {
             p.box_(
-                dock_rect,
-                Color(255, 255, 255, if hovered { 48 } else { 28 }),
-                8,
+                slot,
+                Color(255, 255, 255, if hovered { 46 } else { 30 }),
+                12,
             );
         }
         let action = running
             .last()
             .map_or_else(|| format!("shell:launch:{kind}"), |w| w.action("focus"));
-        p.platform_icon(Rect::new(12, y + 4, 44, 44), "ubuntu", kind, &action, name);
-        p.region(dock_rect, &action, name);
+        p.platform_icon(Rect::new(10, y + 2, 48, 48), "ubuntu", kind, &action, name);
+        p.region(slot, &action, name);
         if hovered && !ctx.launcher_open {
-            let tip = Rect::new(78, y + 9, (name.len() as u32 * 7 + 24).max(72), 30);
-            p.shadow(tip, 7);
-            p.box_(tip, Color::rgb(42, 42, 42), 7);
-            p.text(
-                tip.x + 12,
-                tip.y + 8,
-                tip.width - 20,
-                name,
-                12,
-                Color::WHITE,
-            );
+            let width = p.measure(name, 13, false) + 24;
+            let tip = Rect::new(78, y + 11, width, 30);
+            p.drop_shadow(tip, 15, 10, 80, 3);
+            p.border(tip, Color::rgb(36, 36, 36), 15, Color(255, 255, 255, 30));
+            p.center(tip.x, tip.y + 7, width, name, 13, Color::WHITE);
         }
-        for n in 0..running.len().min(3) {
-            p.box_(Rect::new(1, y + 23 + n as i32 * 7, 4, 4), ORANGE, 2);
+        let dots = running.len().min(4) as i32;
+        for n in 0..dots {
+            p.circle(3, y + 26 - (dots - 1) * 4 + n * 8, 2, ORANGE);
         }
+    }
+    if height > 320 {
+        p.hline(16, height - 122, 36, Color(255, 255, 255, 40));
+        let slot = Rect::new(6, height - 118, 56, 56);
+        if ctx.hovered(slot) {
+            p.box_(slot, Color(255, 255, 255, 46), 12);
+        }
+        p.asset(Rect::new(10, height - 114, 48, 48), "icon/ubuntu/trash");
+        // Deleted files really land in ~/.local/share/Trash/files; this opens that folder.
+        p.region(slot, "shell:trash", "Trash");
     }
     if height > 190 {
         let y = height - 62;
+        let slot = Rect::new(6, y, 56, 54);
         p.button(
-            Rect::new(6, y, 56, 54),
-            if ctx.launcher_open || ctx.hovered(Rect::new(6, y, 56, 54)) {
-                Color(255, 255, 255, 30)
+            slot,
+            if ctx.launcher_open || ctx.hovered(slot) {
+                Color(255, 255, 255, 40)
             } else {
                 Color::TRANSPARENT
             },
-            8,
+            12,
             "shell:launcher",
             "Show applications",
         );
-        grid(p, 22, y + 16, 5, 7, Color::rgb(241, 241, 241));
-    }
-    if ctx.launcher_open || ctx.panel == Some("search") {
-        launcher(p, ctx);
-    }
-    if let Some(panel) = ctx.panel {
-        if panel != "search" {
-            panel_surface(p, ctx, panel);
-        }
+        p.symbol("grid", 20, y + 13, 28, Color::rgb(241, 241, 241));
     }
 }
 
-fn tray(p: &mut Painter, x: i32, y: i32) {
-    let white = Color::rgb(240, 240, 240);
-    // Crisp symbolic GNOME network, speaker and battery glyphs.
-    p.line(
-        vec![(x, y + 2), (x + 4, y), (x + 9, y), (x + 13, y + 2)],
-        white,
-        2,
-    );
-    p.line(
-        vec![(x + 3, y + 6), (x + 6, y + 4), (x + 9, y + 6)],
-        white,
-        2,
-    );
-    p.box_(Rect::new(x + 5, y + 9, 3, 3), white, 2);
-    p.path(
-        vec![
-            (x + 25, y + 4),
-            (x + 28, y + 4),
-            (x + 32, y + 1),
-            (x + 32, y + 12),
-            (x + 28, y + 9),
-            (x + 25, y + 9),
-        ],
-        white,
-    );
-    p.line(
-        vec![(x + 36, y + 3), (x + 38, y + 6), (x + 36, y + 10)],
-        white,
-        1,
-    );
-    p.border(
-        Rect::new(x + 49, y + 1, 17, 11),
-        Color::TRANSPARENT,
-        2,
-        white,
-    );
-    p.box_(Rect::new(x + 51, y + 3, 12, 7), white, 1);
-    p.box_(Rect::new(x + 66, y + 4, 2, 5), white, 1);
-}
-
-fn grid(p: &mut Painter, x: i32, y: i32, size: u32, gap: i32, c: Color) {
-    for row in 0..3 {
-        for col in 0..3 {
-            p.box_(Rect::new(x + col * gap, y + row * gap, size, size), c, 1);
-        }
-    }
-}
-
-fn launcher(p: &mut Painter, ctx: &ShellContext<'_>) {
+/// Activities overview: search, the open windows of the workspace, and the app grid.
+fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
     let width = ctx.width as i32;
     let height = ctx.height as i32;
-    p.box_(
-        Rect::new(
-            68,
-            32,
-            ctx.width.saturating_sub(68),
-            ctx.height.saturating_sub(32),
-        ),
-        Color(36, 31, 42, 246),
-        0,
+    let area = Rect::new(
+        68,
+        32,
+        ctx.width.saturating_sub(68),
+        ctx.height.saturating_sub(32),
     );
-    let center = (width + 68) / 2;
-    let search_width = (width - 110).clamp(140, 380) as u32;
-    let search_x = center - search_width as i32 / 2;
+    p.glass(area, 0, 40, Color(30, 26, 34, 215), None);
+    p.region(area, "shell:dismiss", "Close Activities");
+    let centre = (width + 68) / 2;
+    let search_width = (width - 110).clamp(140, 360) as u32;
+    let field = Rect::new(centre - search_width as i32 / 2, 52, search_width, 38);
     p.border(
-        Rect::new(search_x, 58, search_width, 42),
-        Color::rgb(65, 60, 70),
-        22,
-        Color::rgb(91, 86, 96),
+        field,
+        Color(255, 255, 255, 34),
+        19,
+        Color(255, 255, 255, 40),
     );
-    p.region(
-        Rect::new(search_x, 58, search_width, 42),
-        "shell:search",
-        "Search applications",
+    p.region(field, "shell:search", "Search applications");
+    p.symbol(
+        "search",
+        field.x + 14,
+        field.y + 11,
+        16,
+        Color::rgb(200, 198, 204),
     );
-    p.text(
-        search_x + 48,
-        69,
-        search_width.saturating_sub(58),
-        if ctx.search.is_empty() {
-            "Type to search"
-        } else {
-            ctx.search
-        },
-        14,
-        Color::rgb(224, 222, 226),
-    );
-    p.box_(
-        Rect::new(search_x + 22, 72, 10, 10),
-        Color::rgb(193, 190, 198),
-        5,
-    );
-    p.box_(
-        Rect::new(search_x + 24, 74, 6, 6),
-        Color::rgb(65, 60, 70),
-        3,
-    );
-    p.line(
-        vec![(search_x + 30, 80), (search_x + 35, 85)],
-        Color::rgb(193, 190, 198),
-        2,
-    );
-    let columns = ((width - 100) / 140).clamp(1, 4);
-    let cell = ((width - 100) / columns).min(150);
-    let start = center - columns * cell / 2;
+    if ctx.search.is_empty() {
+        p.left(
+            field.x + 40,
+            field.y + 10,
+            search_width - 52,
+            "Type to search",
+            14,
+            Color::rgb(200, 198, 204),
+        );
+    } else {
+        let end = p.left(
+            field.x + 40,
+            field.y + 10,
+            search_width - 52,
+            ctx.search,
+            14,
+            Color::WHITE,
+        );
+        p.box_(
+            Rect::new(field.x + 41 + end as i32, field.y + 10, 1, 18),
+            Color::WHITE,
+            0,
+        );
+    }
+    let mut top = 120;
+    let open: Vec<_> = ctx.windows.iter().rev().take(4).collect();
+    if ctx.search.is_empty() && !open.is_empty() && height > 520 {
+        // Workspace thumbnails of the running windows.
+        let card_width = ((width - 68 - 80) / open.len() as i32).min(230);
+        let left = centre - card_width * open.len() as i32 / 2;
+        for (i, w) in open.iter().enumerate() {
+            let card = Rect::new(
+                left + i as i32 * card_width + 8,
+                top,
+                card_width as u32 - 16,
+                124,
+            );
+            p.drop_shadow(card, 10, 16, 120, 6);
+            p.border(
+                card,
+                Color::rgb(250, 250, 250),
+                10,
+                if w.focused {
+                    ORANGE
+                } else {
+                    Color(255, 255, 255, 40)
+                },
+            );
+            p.box_(
+                Rect::new(card.x + 1, card.y + 1, card.width - 2, 24),
+                HEADER,
+                9,
+            );
+            p.strong_center(
+                card.x + 8,
+                card.y + 5,
+                card.width - 16,
+                &window_title(w),
+                11,
+                INK,
+            );
+            p.asset(
+                Rect::new(card.x + card.width as i32 / 2 - 24, card.y + 56, 48, 48),
+                &format!("icon/ubuntu/{}", w.kind),
+            );
+            p.region(card, &w.action("focus"), &format!("Switch to {}", w.title));
+        }
+        top += 160;
+    }
+    let columns = ((width - 68 - 100) / 150).clamp(1, 6);
+    let cell = ((width - 68 - 100) / columns).min(160);
+    let start = centre - columns * cell / 2;
+    let query = ctx.search.to_lowercase();
     for (i, (kind, name)) in APPS
         .iter()
         .filter(|(kind, name)| {
             ctx.installed(kind)
-                && (ctx.search.is_empty()
-                    || name.to_lowercase().contains(&ctx.search.to_lowercase()))
+                && (query.is_empty()
+                    || name.to_lowercase().contains(&query)
+                    || kind.contains(&query))
         })
         .enumerate()
     {
         let x = start + (i as i32 % columns) * cell;
-        let y = 145 + (i as i32 / columns) * 136;
-        if y + 94 > height {
+        let y = top + 20 + (i as i32 / columns) * 140;
+        // Leave the foot of the overview to the workspace switcher.
+        if y + 110 > height - 96 {
             break;
         }
-        let tile = Rect::new(x + 4, y - 12, cell.saturating_sub(8) as u32, 112);
+        let tile = Rect::new(x + 6, y - 10, cell as u32 - 12, 124);
         if ctx.hovered(tile) {
-            p.box_(tile, Color(255, 255, 255, 24), 12);
+            p.box_(tile, Color(255, 255, 255, 28), 16);
         }
-        p.region(tile, &format!("shell:launch:{kind}"), name);
+        let action = format!("shell:launch:{kind}");
+        p.region(tile, &action, name);
         p.platform_icon(
-            Rect::new(x + (cell - 68) / 2, y, 68, 68),
+            Rect::new(x + (cell - 72) / 2, y, 72, 72),
             "ubuntu",
             kind,
-            &format!("shell:launch:{kind}"),
+            &action,
             name,
         );
-        let offset = (cell - (name.chars().count() as i32 * 7)) / 2;
-        p.text(x + offset, y + 80, cell as u32, name, 13, Color::WHITE);
-    }
-    if height > 400 {
-        p.box_(
-            Rect::new(center - 4, height - 36, 8, 8),
-            Color::rgb(240, 239, 242),
-            4,
+        p.label(
+            x + 8,
+            y + 82,
+            cell as u32 - 16,
+            name,
+            13,
+            Color::WHITE,
+            false,
+            Align::Center,
         );
+    }
+    // The grid never paginates, so it carries no page indicator. What the foot of the
+    // overview does carry is GNOME's workspace switcher, and those desktops are real.
+    if height > 400 {
+        workspace_strip(p, ctx, centre, height - 60);
     }
 }
 
-fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
-    let width = ctx.width.saturating_sub(90).min(346);
-    let x = if panel == "calendar" {
-        (ctx.width.saturating_sub(width) / 2) as i32
+/// Workspace switcher: one tile per desktop the machine really has, the one on screen
+/// marked, and the controls that add, close and switch between them.
+fn workspace_strip(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32, y: i32) {
+    let count = ctx.workspaces.max(1);
+    let full = count >= crate::WORKSPACE_LIMIT;
+    let span = (count as i32 + i32::from(!full)) * 74 - 10;
+    let mut x = centre - span / 2;
+    // A window view carries no workspace, so only the desktop on screen can show what
+    // is on it; the others are named and reachable but cannot be previewed yet.
+    let here_windows = ctx.windows.iter().filter(|w| !w.minimized).count().min(3);
+    for index in 0..count {
+        let r = Rect::new(x, y, 64, 40);
+        let here = index == ctx.workspace;
+        p.button(
+            r,
+            Color(255, 255, 255, if here { 74 } else { 24 }),
+            6,
+            &format!("shell:workspace:{index}"),
+            &format!("Desktop {}", index + 1),
+        );
+        p.border(
+            r,
+            Color::TRANSPARENT,
+            6,
+            if here {
+                ORANGE
+            } else {
+                Color(255, 255, 255, 60)
+            },
+        );
+        if here {
+            for n in 0..here_windows as i32 {
+                p.box_(
+                    Rect::new(r.x + 8 + n * 17, y + 12, 13, 16),
+                    Color(255, 255, 255, 170),
+                    2,
+                );
+            }
+            // The handler closes the desktop you are on, so only that tile offers it.
+            if count > 1 {
+                let close = Rect::new(r.x + 48, y - 8, 20, 20);
+                p.button(
+                    close,
+                    Color::rgb(46, 46, 46),
+                    10,
+                    "shell:workspace:close",
+                    &format!("Close desktop {}", index + 1),
+                );
+                p.symbol("close", close.x + 5, close.y + 5, 10, Color::WHITE);
+            }
+        }
+        x += 74;
+    }
+    let add = Rect::new(x, y, 64, 40);
+    if full {
+        p.border(add, Color(255, 255, 255, 12), 6, Color(255, 255, 255, 40));
+        // Eight desktops is the machine's limit; a ninth would be refused.
+        p.symbol("plus", add.x + 24, y + 12, 16, Color(255, 255, 255, 90));
+        p.disabled("New desktop");
     } else {
-        ctx.width.saturating_sub(width + 12) as i32
+        p.button(
+            add,
+            Color(255, 255, 255, if ctx.hovered(add) { 46 } else { 18 }),
+            6,
+            "shell:workspace:new",
+            "New desktop",
+        );
+        p.symbol("plus", add.x + 24, y + 12, 16, Color::WHITE);
+    }
+}
+
+fn window_title(w: &WindowView) -> String {
+    match w.kind.as_str() {
+        "files" => basename(&w.document).to_owned(),
+        "terminal" => "alice@ubuntu: ~".into(),
+        "editor" if w.document.is_empty() => "Untitled Document".into(),
+        "editor" => basename(&w.document).to_owned(),
+        "browser" if w.caption.is_empty() => "New Tab".into(),
+        "browser" => w.caption.clone(),
+        _ => w.title.clone(),
+    }
+}
+/// Flat libadwaita header bar button with its hover plate.
+fn header_button(p: &mut Painter, ctx: &ShellContext<'_>, r: Rect, symbol: &str, ink: Color) {
+    if ctx.hovered(r) {
+        p.box_(r, Color(128, 128, 128, 50), 8);
+    }
+    p.symbol(
+        symbol,
+        r.x + (r.width as i32 - 16) / 2,
+        r.y + (r.height as i32 - 16) / 2,
+        16,
+        ink,
+    );
+}
+
+/// GNOME's path bar: one button per component, each navigating to that exact folder.
+fn path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: Rect, ink: Color) {
+    p.box_(bar, Color(0, 0, 0, 18), 8);
+    let mut crumbs = vec![("Computer".to_owned(), "/".to_owned())];
+    let mut path = String::new();
+    for part in w.document.split('/').filter(|s| !s.is_empty()) {
+        path.push('/');
+        path.push_str(part);
+        crumbs.push((part.to_owned(), path.clone()));
+    }
+    let last = crumbs.len() - 1;
+    let widths: Vec<u32> = crumbs
+        .iter()
+        .enumerate()
+        .map(|(i, (name, _))| p.measure(name, 13, true) + if i == last { 24 } else { 36 })
+        .collect();
+    // Elide from the front when the bar is short: the deepest components are the useful ones.
+    let mut first = 0;
+    while first < last && widths[first..].iter().sum::<u32>() > bar.width.saturating_sub(8) {
+        first += 1;
+    }
+    let mut cx = bar.x + 4;
+    for (i, (name, target)) in crumbs.iter().enumerate().skip(first) {
+        let room = bar.width.saturating_sub(8).max(24);
+        let width = widths[i].min(room);
+        let chip = Rect::new(cx, bar.y + 3, width - if i == last { 0 } else { 12 }, 26);
+        if ctx.hovered(chip) {
+            p.box_(chip, Color(0, 0, 0, 24), 6);
+        }
+        p.label(
+            chip.x,
+            chip.y + 5,
+            chip.width,
+            name,
+            13,
+            ink,
+            i == last,
+            Align::Center,
+        );
+        p.region(
+            chip,
+            &w.action(&format!("content:files-location:{target}")),
+            &format!("Go to {name}"),
+        );
+        if i < last {
+            p.symbol(
+                "chevron-right",
+                chip.x + chip.width as i32,
+                bar.y + 11,
+                12,
+                DIM,
+            );
+        }
+        cx += width as i32;
+        if cx >= bar.x + bar.width as i32 {
+            break;
+        }
+    }
+}
+
+pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
+    let r = w.rect;
+    let radius = super::corner_radius(ctx.theme, w.maximized);
+    if !w.maximized {
+        if w.focused {
+            p.drop_shadow(r, radius, 30, 110, 12);
+        } else {
+            p.drop_shadow(r, radius, 16, 70, 5);
+        }
+    }
+    let dark = w.kind == "terminal";
+    let header = match (dark, w.focused) {
+        (true, true) => DARK_HEADER,
+        (true, false) => Color::rgb(58, 58, 58),
+        (false, true) => HEADER,
+        (false, false) => HEADER_BACKDROP,
     };
-    let height = if panel == "calendar" { 326 } else { 238 };
-    let r = Rect::new(x, 40, width, height);
+    let ink = match (dark, w.focused) {
+        (true, true) => Color::rgb(246, 246, 246),
+        (true, false) => Color::rgb(160, 160, 160),
+        (false, true) => INK,
+        (false, false) => DIM,
+    };
+    p.border(
+        r,
+        if dark {
+            Color::rgb(48, 10, 36)
+        } else {
+            Color::rgb(250, 250, 250)
+        },
+        radius,
+        Color(0, 0, 0, if w.focused { 110 } else { 70 }),
+    );
+    let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 45);
+    p.box_(inner, header, radius.saturating_sub(1));
+    p.box_(Rect::new(inner.x, r.y + 24, inner.width, 22), header, 0);
+    if !dark {
+        p.hline(inner.x, r.y + 45, inner.width, Color(0, 0, 0, 30));
+    }
+    p.region(
+        Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 44),
+        &w.action("drag"),
+        &format!("Move {}", w.title),
+    );
+    let right = r.x + r.width as i32;
+    match w.kind.as_str() {
+        "browser" => {
+            // Firefox draws its tab strip in the title bar; each tab is a real target.
+            let room = r.width.saturating_sub(190);
+            let width = (232.min(room / w.tabs.len().max(1) as u32))
+                .max(92)
+                .min(room);
+            let mut x = r.x + 8;
+            for (index, label) in w.tabs.iter().enumerate() {
+                if x + width as i32 > r.x + r.width as i32 - 160 {
+                    break;
+                }
+                let tab = Rect::new(x, r.y + 6, width, 34);
+                let selected = index == w.active_tab;
+                if selected {
+                    p.drop_shadow(tab, 5, 4, 40, 1);
+                }
+                p.button(
+                    tab,
+                    if selected {
+                        Color::WHITE
+                    } else {
+                        Color::TRANSPARENT
+                    },
+                    5,
+                    &w.tab_select(index),
+                    label,
+                );
+                p.symbol("globe", tab.x + 10, tab.y + 10, 14, DIM);
+                p.left(
+                    tab.x + 32,
+                    tab.y + 9,
+                    width.saturating_sub(62),
+                    label,
+                    12,
+                    ink,
+                );
+                let close = Rect::new(tab.x + width as i32 - 28, tab.y + 7, 21, 21);
+                p.button(
+                    close,
+                    Color::TRANSPARENT,
+                    4,
+                    &w.tab_close(index),
+                    "Close tab",
+                );
+                p.symbol("close", close.x + 6, close.y + 6, 10, ink);
+                x += width as i32 + 2;
+            }
+            let plus = Rect::new(x + 4, r.y + 8, 26, 26);
+            p.button(plus, Color::TRANSPARENT, 4, &w.tab_new(), "New tab");
+            p.symbol("plus", plus.x + 6, plus.y + 6, 14, ink);
+        }
+        "files" => {
+            let sidebar = r.width > 470;
+            let x = r.x + if sidebar { FILES_SIDEBAR as i32 } else { 0 };
+            if sidebar {
+                p.box_(
+                    Rect::new(inner.x, inner.y, FILES_SIDEBAR, 45),
+                    LIGHT,
+                    radius.saturating_sub(1),
+                );
+                p.box_(
+                    Rect::new(inner.x + 14, inner.y, FILES_SIDEBAR - 14, 45),
+                    LIGHT,
+                    0,
+                );
+                p.box_(Rect::new(inner.x, r.y + 24, FILES_SIDEBAR, 22), LIGHT, 0);
+                p.vline(x, inner.y, 45, Color(0, 0, 0, 24));
+                // `files-search` opens the tab's own query field and really filters the
+                // rows below, so this is the search the sidebar always claimed to be.
+                let find = Rect::new(r.x + 8, r.y + 7, 32, 32);
+                header_button(p, ctx, find, "search", ink);
+                p.region(
+                    find,
+                    &w.action("content:files-search"),
+                    "Search this folder",
+                );
+                // A heading, not a control: GNOME's sidebar title does nothing.
+                p.strong_center(r.x + 44, r.y + 14, FILES_SIDEBAR - 88, "Files", 14, ink);
+                // GNOME's primary menu is gone rather than greyed: everything it would
+                // hold is already on this header bar, and nothing opens a popover here.
+            }
+            let up = Rect::new(x + 8, r.y + 7, 34, 32);
+            header_button(p, ctx, up, "chevron-left", ink);
+            p.region(up, &w.action("content:files-up"), "Back to parent folder");
+            let forward = Rect::new(x + 46, r.y + 7, 34, 32);
+            header_button(
+                p,
+                ctx,
+                forward,
+                "chevron-right",
+                if w.can_go_forward { ink } else { DIM },
+            );
+            // Nothing to go forward to is a greyed control, not one that refuses.
+            if w.can_go_forward {
+                p.region(
+                    forward,
+                    &w.action("content:files-forward"),
+                    "Forward to the next folder",
+                );
+            } else {
+                p.disabled("Forward to the next folder");
+            }
+            let bar = Rect::new(x + 84, r.y + 7, (right - 210 - x - 84).max(60) as u32, 32);
+            path_bar(p, ctx, w, bar, ink);
+            if r.width > 560 {
+                // `files-view` swaps the tab between its list and grid layouts for real.
+                // The ⋮ beside it is gone: preferences and shortcuts do not exist, and
+                // the header already carries every action the file manager has.
+                let view = Rect::new(right - 200, r.y + 7, 48, 32);
+                if ctx.hovered(view) {
+                    p.box_(view, Color(128, 128, 128, 50), 8);
+                }
+                p.symbol("list-view", view.x + 6, r.y + 15, 16, ink);
+                p.symbol("chevron-down", view.x + 28, r.y + 18, 10, ink);
+                p.region(view, &w.action("content:files-view"), "Change view");
+            }
+        }
+        "editor" => {
+            let open = Rect::new(r.x + 8, r.y + 7, 74, 32);
+            // This shell's file chooser is the Files application: documents open from there.
+            if ctx.installed("files") {
+                p.button(
+                    open,
+                    Color(0, 0, 0, if ctx.hovered(open) { 34 } else { 18 }),
+                    8,
+                    &w.action("content:shell:launch:files"),
+                    "Open a document in Files",
+                );
+            } else {
+                p.box_(open, Color(0, 0, 0, 18), 8);
+                // Files is not installed, so there is nowhere to pick a document.
+                p.disabled("Open a document");
+            }
+            p.left(open.x + 12, open.y + 8, 40, "Open", 13, ink);
+            p.symbol("chevron-down", open.x + 54, open.y + 11, 10, ink);
+            let new = Rect::new(r.x + 90, r.y + 7, 32, 32);
+            header_button(p, ctx, new, "new-tab", ink);
+            p.region(new, &w.action("content:shell:new"), "New document");
+            let title = format!("{}{}", if w.modified { "• " } else { "" }, window_title(w));
+            p.strong_center(
+                r.x + 130,
+                r.y + 7,
+                r.width.saturating_sub(300),
+                &title,
+                13,
+                ink,
+            );
+            let folder = if w.document.is_empty() {
+                "Draft".to_owned()
+            } else {
+                w.document
+                    .rsplit_once('/')
+                    .map_or("/", |(dir, _)| if dir.is_empty() { "/" } else { dir })
+                    .to_owned()
+            };
+            p.center(
+                r.x + 130,
+                r.y + 24,
+                r.width.saturating_sub(300),
+                &folder,
+                11,
+                DIM,
+            );
+            // Text Editor's primary menu: new window, save, wrap, date and close.
+            let menu = Rect::new(right - 152, r.y + 7, 32, 32);
+            header_button(p, ctx, menu, "menu", ink);
+            p.region(menu, "shell:panel:app-menu", "Primary menu");
+        }
+        "terminal" => {
+            let new = Rect::new(r.x + 10, r.y + 7, 32, 32);
+            header_button(p, ctx, new, "new-tab", ink);
+            // One shell per window: the simulator has no tabbed terminal.
+            p.region(new, &w.action("content:shell:new"), "New terminal window");
+            p.strong_center(
+                r.x + 120,
+                r.y + 14,
+                r.width.saturating_sub(240),
+                &window_title(w),
+                13,
+                ink,
+            );
+            if r.width > 420 {
+                // Terminal's primary menu: new window, full screen, reset and clear.
+                // Find stays out: a scrollback search needs state the terminal lacks.
+                let menu = Rect::new(right - 152, r.y + 7, 32, 32);
+                header_button(p, ctx, menu, "menu", ink);
+                p.region(menu, "shell:panel:app-menu", "Primary menu");
+            }
+        }
+        _ => p.strong_center(
+            r.x + 120,
+            r.y + 14,
+            r.width.saturating_sub(240),
+            &w.title,
+            13,
+            ink,
+        ),
+    }
+    for (offset, action, label) in [
+        (104, "minimize", "Minimize window"),
+        (70, "maximize", "Maximize or restore window"),
+        (36, "close", "Close window"),
+    ] {
+        let cx = right - offset;
+        let hit = Rect::new(cx, r.y + 9, 28, 28);
+        let hovered = ctx.hovered(hit);
+        p.region(hit, &w.action(action), label);
+        let plate = match (dark, hovered) {
+            (true, true) => Color(255, 255, 255, 60),
+            (true, false) => Color(255, 255, 255, 30),
+            (false, true) => Color(0, 0, 0, 50),
+            (false, false) => Color(0, 0, 0, 22),
+        };
+        p.circle(cx + 14, r.y + 23, 12, plate);
+        let (mx, my) = (cx + 14, r.y + 23);
+        match action {
+            "minimize" => p.line(vec![(mx - 4, my + 3), (mx + 4, my + 3)], ink, 1),
+            "maximize" => {
+                if w.maximized {
+                    p.border(Rect::new(mx - 2, my - 5, 7, 7), Color::TRANSPARENT, 1, ink);
+                    p.box_(Rect::new(mx - 5, my - 2, 7, 7), header, 1);
+                    p.border(Rect::new(mx - 5, my - 2, 7, 7), Color::TRANSPARENT, 1, ink);
+                } else {
+                    p.border(Rect::new(mx - 4, my - 4, 9, 9), Color::TRANSPARENT, 1, ink);
+                }
+            }
+            _ => {
+                p.line(vec![(mx - 4, my - 4), (mx + 4, my + 4)], ink, 1);
+                p.line(vec![(mx + 4, my - 4), (mx - 4, my + 4)], ink, 1);
+            }
+        }
+    }
+}
+
+/// Firefox navigation toolbar beneath the title bar's tab strip.
+pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
+    let r = super::window_content_rect(ctx.theme, w.rect);
+    let ink = if w.focused { INK } else { DIM };
+    p.box_(
+        Rect::new(r.x, r.y, r.width, 40),
+        Color::rgb(249, 249, 251),
+        0,
+    );
+    p.hline(r.x, r.y + 39, r.width, Color(0, 0, 0, 26));
+    // Firefox greys what it cannot do: Back and Forward follow the tab's real history,
+    // and Reload needs a page to re-request.
+    for (i, (symbol, action, label, ready)) in [
+        ("arrow-left", "back", "Back", w.can_go_back),
+        ("arrow-right", "forward", "Forward", w.can_go_forward),
+        ("reload", "reload", "Reload", !w.document.is_empty()),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let hit = Rect::new(r.x + 6 + i as i32 * 34, r.y + 4, 32, 32);
+        if ready && ctx.hovered(hit) {
+            p.box_(hit, Color(0, 0, 0, 16), 4);
+        }
+        p.symbol(
+            symbol,
+            hit.x + 8,
+            hit.y + 8,
+            16,
+            if ready { ink } else { DIM },
+        );
+        if ready {
+            p.region(hit, &w.action(&format!("content:shell:{action}")), label);
+        } else {
+            p.disabled(label);
+        }
+    }
+    let trailing = if r.width > 520 { 80 } else { 10 };
+    let field = Rect::new(
+        r.x + 114,
+        r.y + 4,
+        r.width.saturating_sub(114 + trailing),
+        32,
+    );
+    p.button(
+        field,
+        if w.editing {
+            Color::WHITE
+        } else {
+            Color::rgb(240, 240, 244)
+        },
+        5,
+        &w.action("content:shell:address"),
+        "Address and search",
+    );
+    if w.editing {
+        p.border(field, Color::TRANSPARENT, 5, Color::rgb(0, 96, 223));
+    }
+    let typed = w
+        .title
+        .split_once(" — ")
+        .map_or(w.title.as_str(), |(_, a)| a);
+    let inner = field.width.saturating_sub(96);
+    if typed.is_empty() {
+        p.symbol("search", field.x + 12, field.y + 9, 14, DIM);
+        p.left(
+            field.x + 36,
+            field.y + 8,
+            inner + 30,
+            "Search or enter address",
+            13,
+            DIM,
+        );
+    } else {
+        p.symbol("shield", field.x + 10, field.y + 9, 14, DIM);
+        p.symbol("lock", field.x + 32, field.y + 9, 13, DIM);
+        let shown = typed
+            .strip_prefix("http://")
+            .or_else(|| typed.strip_prefix("https://"))
+            .unwrap_or(typed);
+        let shown = if w.editing {
+            typed
+        } else {
+            shown.trim_end_matches('/')
+        };
+        let end = p.left(field.x + 56, field.y + 8, inner, shown, 13, INK);
+        if w.editing {
+            p.box_(
+                Rect::new(field.x + 57 + end as i32, field.y + 8, 1, 16),
+                INK,
+                0,
+            );
+        }
+    }
+    // The star saves the page to the machine's real bookmark list and reads its own
+    // position back; an empty tab has no page, so there the star is greyed.
+    let star = Rect::new(field.x + field.width as i32 - 32, field.y + 4, 24, 24);
+    let saved = ctx.bookmarked && w.focused;
+    if w.document.is_empty() {
+        p.symbol("star-outline", star.x + 4, star.y + 4, 15, DIM);
+        p.disabled("Bookmark this page");
+    } else {
+        if ctx.hovered(star) {
+            p.box_(star, Color(0, 0, 0, 16), 4);
+        }
+        p.symbol(
+            if saved { "star" } else { "star-outline" },
+            star.x + 4,
+            star.y + 4,
+            15,
+            if saved { ORANGE } else { ink },
+        );
+        p.region(
+            star,
+            "shell:bookmark",
+            if saved {
+                "Remove bookmark"
+            } else {
+                "Bookmark this page"
+            },
+        );
+    }
+    if r.width > 520 {
+        let right = r.x + r.width as i32;
+        // `shell:download` fetches the page on screen through the gateway and writes it
+        // to ~/Downloads; with no page there is nothing to fetch, so it greys instead.
+        let save = Rect::new(right - 74, r.y + 4, 32, 32);
+        if w.document.is_empty() {
+            p.symbol("download", save.x + 8, save.y + 8, 16, DIM);
+            p.disabled("Save this page");
+        } else {
+            if ctx.hovered(save) {
+                p.box_(save, Color(0, 0, 0, 16), 4);
+            }
+            p.symbol("download", save.x + 8, save.y + 8, 16, ink);
+            p.region(save, "shell:download", "Save this page to Downloads");
+        }
+        // The badge counts files the browser really wrote, never a guess.
+        if !ctx.downloads.is_empty() {
+            p.circle(save.x + 25, save.y + 8, 7, ORANGE);
+            p.label(
+                save.x + 18,
+                save.y + 2,
+                14,
+                &ctx.downloads.len().min(99).to_string(),
+                9,
+                Color::WHITE,
+                true,
+                Align::Center,
+            );
+        }
+        // Firefox's ☰ is its settings menu, so it opens the machine's Settings panel.
+        let menu = Rect::new(right - 42, r.y + 4, 32, 32);
+        if ctx.hovered(menu) {
+            p.box_(menu, Color(0, 0, 0, 16), 4);
+        }
+        p.symbol("menu", menu.x + 8, menu.y + 8, 16, ink);
+        p.region(menu, "shell:settings", "Application menu");
+    }
+}
+
+fn popover(p: &mut Painter, r: Rect) {
+    p.drop_shadow(r, 22, 24, 120, 8);
+    p.border(r, POPOVER, 22, POPOVER_EDGE);
+    p.region(r, "shell:noop", "System menu");
+}
+
+fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
     p.region(
         Rect::new(
             68,
@@ -309,212 +1063,541 @@ fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         "shell:dismiss",
         "Dismiss system menu",
     );
-    p.shadow(r, 16);
-    p.border(r, Color::rgb(48, 48, 48), 16, Color::rgb(77, 77, 77));
-
-    let text = Color::rgb(242, 242, 242);
-    if panel == "calendar" {
-        p.text(
-            x + 22,
-            60,
-            width.saturating_sub(44),
-            "Thursday, September 17",
-            15,
-            text,
-        );
-        p.text(
-            x + 22,
-            91,
-            width.saturating_sub(44),
-            "September 2026",
-            14,
-            text,
-        );
-        let cell = width.saturating_sub(40) / 7;
-        for (i, day) in ["M", "T", "W", "T", "F", "S", "S"].iter().enumerate() {
-            p.text(
-                x + 22 + i as i32 * cell as i32,
-                125,
-                cell,
-                day,
-                12,
-                Color::rgb(161, 161, 161),
-            );
-        }
-        for day in 1..=30 {
-            let index = day; // September 1, 2026 is Tuesday.
-            let dx = x + 22 + (index % 7) * cell as i32;
-            let dy = 151 + (index / 7) * 28;
-            if day == 17 {
-                p.box_(Rect::new(dx - 7, dy - 4, 28, 27), ORANGE, 14);
-            }
-            p.text(dx, dy, cell, &day.to_string(), 13, text);
-        }
-        p.line(
-            vec![(x + 20, 307), (x + width as i32 - 20, 307)],
-            Color::rgb(83, 83, 83),
-            1,
-        );
-        if ctx.installed("calendar") {
-            p.region(
-                Rect::new(x + 16, 316, width.saturating_sub(32), 36),
-                "shell:launch:calendar",
-                "Open calendar application",
-            );
-            p.text(
-                x + 24,
-                323,
-                width.saturating_sub(48),
-                "Open Calendar",
-                13,
-                text,
-            );
-        } else {
-            p.text(
-                x + 24,
-                323,
-                width.saturating_sub(48),
-                "No notifications",
-                13,
-                Color::rgb(183, 183, 183),
-            );
-        }
-    } else {
-        p.text(
-            x + 22,
-            60,
-            width.saturating_sub(44),
-            if panel == "settings" {
-                "System"
-            } else {
-                "Quick Settings"
-            },
-            17,
-            text,
-        );
-        p.text(
-            x + 22,
-            93,
-            width.saturating_sub(44),
-            "Ubuntu 24.04 LTS",
-            14,
-            Color::rgb(185, 185, 185),
-        );
-        for (i, (label, action)) in [
-            ("Applications", "shell:launcher"),
-            ("System information", "shell:settings"),
-            ("Open Terminal", "shell:launch:terminal"),
-        ]
-        .iter()
-        .enumerate()
-        {
-            let y = 124 + i as i32 * 44;
-            p.button(
-                Rect::new(x + 16, y, width.saturating_sub(32), 36),
-                Color::rgb(64, 64, 64),
-                9,
-                action,
-                label,
-            );
-            p.text(x + 29, y + 10, width.saturating_sub(58), label, 13, text);
-        }
+    match panel {
+        "calendar" | "notifications" => calendar(p, ctx),
+        "settings" => settings(p, ctx),
+        "context" => context_menu(p, ctx),
+        "app-menu" => app_menu(p, ctx),
+        _ => quick_settings(p, ctx),
     }
 }
 
-pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
-    let r = w.rect;
-    let radius = if w.maximized { 0 } else { 12 };
-    if !w.maximized {
-        p.shadow(r, radius);
-    }
-    let edge = if w.focused {
-        Color::rgb(117, 111, 116)
-    } else {
-        Color::rgb(145, 140, 145)
+/// The primary (hamburger) menu of the focused Text Editor or Terminal window, dropped
+/// from the button that opened it. Every entry acts on the window, its document or a
+/// real machine setting.
+fn app_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let Some(w) = ctx.windows.iter().find(|w| w.focused) else {
+        return;
     };
-    p.border(r, Color::rgb(250, 250, 250), radius, edge);
-    let header = if w.focused {
-        Color::rgb(235, 235, 235)
-    } else {
-        Color::rgb(243, 243, 243)
-    };
-    p.box_(
-        Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 45),
-        header,
-        radius.saturating_sub(1),
-    );
-    p.box_(
-        Rect::new(r.x + 1, r.y + 24, r.width.saturating_sub(2), 22),
-        header,
-        0,
-    );
-    p.line(
-        vec![(r.x + 1, r.y + 45), (r.x + r.width as i32 - 2, r.y + 45)],
-        Color::rgb(209, 209, 209),
-        1,
-    );
-    p.region(
-        Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 44),
-        &w.action("drag"),
-        &format!("Move {}", w.title),
-    );
-    // GNOME app menu at the left and title centered in the remaining header.
-    let title_width = r.width.saturating_sub(158);
-    let title_px = (w.title.chars().count() as u32 * 7).min(title_width);
-    let title_x = r.x + (r.width.saturating_sub(title_px) / 2) as i32 - 16;
-    p.text(
-        title_x.max(r.x + 15),
-        r.y + 14,
-        title_width,
-        &w.title,
-        14,
-        if w.focused {
-            INK
-        } else {
-            Color::rgb(120, 120, 120)
-        },
-    );
-    let x = r.x + r.width as i32;
-    for (offset, action, label) in [
-        (104, "minimize", "Minimize window"),
-        (70, "maximize", "Maximize or restore window"),
-        (36, "close", "Close window"),
-    ] {
-        let cx = x - offset;
-        p.button(
-            Rect::new(cx, r.y + 9, 28, 28),
-            if ctx.hovered(Rect::new(cx, r.y + 9, 28, 28)) {
-                Color::rgb(199, 199, 199)
-            } else if action == "close" {
-                Color::rgb(217, 217, 217)
-            } else {
-                header
-            },
-            14,
-            &w.action(action),
-            label,
-        );
-        match action {
-            "minimize" => p.line(vec![(cx + 9, r.y + 24), (cx + 19, r.y + 24)], INK, 1),
-            "maximize" => {
-                p.border(Rect::new(cx + 9, r.y + 18, 10, 9), header, 1, INK);
+    let date = ctx.date();
+    let entries: Vec<(String, String)> = match w.kind.as_str() {
+        "editor" => vec![
+            ("New Window".into(), "shell:new".into()),
+            ("Save".into(), "shell:save".into()),
+            (
+                if ctx.settings.word_wrap {
+                    "✓ Wrap Text".into()
+                } else {
+                    "Wrap Text".into()
+                },
+                "shell:toggle:word_wrap".into(),
+            ),
+            (
+                "Insert Date and Time".into(),
+                format!(
+                    "shell:insert:{:04}-{:02}-{:02} {}",
+                    date.year,
+                    date.month,
+                    date.day,
+                    ctx.time()
+                ),
+            ),
+            ("Close".into(), w.action("close")),
+        ],
+        "terminal" => vec![
+            ("New Window".into(), "shell:new".into()),
+            (
                 if w.maximized {
-                    p.line(
-                        vec![
-                            (cx + 12, r.y + 15),
-                            (cx + 21, r.y + 15),
-                            (cx + 21, r.y + 24),
-                        ],
-                        INK,
-                        1,
-                    );
+                    "Leave Full Screen".into()
+                } else {
+                    "Full Screen".into()
+                },
+                w.action("maximize"),
+            ),
+            ("Reset and Clear".into(), "shell:terminal:clear".into()),
+            ("Close Window".into(), w.action("close")),
+        ],
+        _ => return,
+    };
+    let right = w.rect.x + w.rect.width as i32;
+    let r = Rect::new(
+        (right - 240).clamp(72, ctx.width as i32 - 224),
+        w.rect.y + 44,
+        220,
+        entries.len() as u32 * 34 + 12,
+    );
+    p.drop_shadow(r, 12, 18, 110, 6);
+    p.border(r, Color::rgb(250, 250, 250), 12, Color(0, 0, 0, 50));
+    p.region(r, "shell:noop", "Menu");
+    for (i, (label, action)) in entries.iter().enumerate() {
+        let row = Rect::new(r.x + 6, r.y + 6 + i as i32 * 34, r.width - 12, 34);
+        if ctx.hovered(row) {
+            p.box_(row, Color(0, 0, 0, 18), 8);
+        }
+        p.left(row.x + 12, row.y + 9, row.width - 24, label, 13, INK);
+        p.region(row, action, label);
+    }
+}
+
+fn calendar(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let text = Color::rgb(246, 246, 246);
+    let faint = Color::rgb(170, 170, 170);
+    let date = ctx.date();
+    // The heading reports the world's own day; the grid below follows the paged month.
+    let shown = ctx.panel_date();
+    let paged = ctx.panel_month != 0;
+    let two_column = ctx.width >= 900;
+    let cal_width = 320.min(ctx.width.saturating_sub(90));
+    let width = if two_column {
+        cal_width + 380
+    } else {
+        cal_width
+    };
+    let x = ((ctx.width.saturating_sub(width)) / 2) as i32;
+    let r = Rect::new(x, 38, width, 412);
+    popover(p, r);
+    let cx = if two_column {
+        // The left column lists what applications really posted; when nothing has been
+        // posted it says so, instead of saying so whatever the machine holds.
+        if ctx.notifications.is_empty() {
+            p.symbol(
+                "bell",
+                x + 190 - 24,
+                r.y + 150,
+                48,
+                Color::rgb(110, 110, 110),
+            );
+            p.strong_center(x, r.y + 214, 380, "No Notifications", 15, faint);
+        } else {
+            p.strong(x + 20, r.y + 18, 200, "Notifications", 13, faint);
+            let clear = Rect::new(x + 264, r.y + 12, 100, 26);
+            p.button(
+                clear,
+                if ctx.hovered(clear) {
+                    Color::rgb(100, 100, 100)
+                } else {
+                    Color::rgb(72, 72, 72)
+                },
+                13,
+                "shell:notifications:seen",
+                "Mark all as read",
+            );
+            p.center(clear.x, clear.y + 6, 100, "Clear", 12, text);
+            for (i, notice) in ctx.notifications.iter().take(5).enumerate() {
+                let row = Rect::new(x + 16, r.y + 50 + i as i32 * 62, 348, 56);
+                p.box_(
+                    row,
+                    if ctx.hovered(row) {
+                        Color::rgb(80, 80, 80)
+                    } else {
+                        Color::rgb(64, 64, 64)
+                    },
+                    14,
+                );
+                p.asset(
+                    Rect::new(row.x + 12, row.y + 14, 28, 28),
+                    &format!("icon/ubuntu/{}", notice.app),
+                );
+                p.strong(row.x + 52, row.y + 9, 250, &notice.title, 12, text);
+                p.left(row.x + 52, row.y + 28, 250, &notice.body, 11, faint);
+                // Unread is a real flag on the notice, not a guess from its age.
+                if !notice.seen {
+                    p.circle(row.x + 330, row.y + 16, 4, ORANGE);
                 }
-            }
-            _ => {
-                p.line(vec![(cx + 10, r.y + 19), (cx + 18, r.y + 27)], INK, 1);
-                p.line(vec![(cx + 18, r.y + 19), (cx + 10, r.y + 27)], INK, 1);
+                p.region(row, &format!("shell:notice:{i}"), &notice.title);
             }
         }
+        p.vline(x + 380, r.y + 1, r.height - 2, POPOVER_EDGE);
+        let dnd = Rect::new(x + 16, r.y + r.height as i32 - 46, 348, 32);
+        p.left(dnd.x + 4, dnd.y + 8, 160, "Do Not Disturb", 13, text);
+        let on = ctx.switch("do_not_disturb");
+        let switch = Rect::new(dnd.x + 300, dnd.y + 5, 44, 24);
+        p.button(
+            switch,
+            if on { ORANGE } else { Color::rgb(95, 95, 95) },
+            12,
+            "shell:toggle:do_not_disturb",
+            if on {
+                "Turn Do Not Disturb off"
+            } else {
+                "Turn Do Not Disturb on"
+            },
+        );
+        // The knob sits where the switch really is.
+        p.circle(
+            switch.x + if on { 32 } else { 12 },
+            switch.y + 12,
+            10,
+            Color::rgb(230, 230, 230),
+        );
+        x + 380
+    } else {
+        x
+    };
+    p.left(
+        cx + 24,
+        r.y + 20,
+        cal_width - 48,
+        date.weekday_name(),
+        13,
+        faint,
+    );
+    p.strong(
+        cx + 24,
+        r.y + 40,
+        cal_width - 48,
+        &format!("{} {} {}", date.month_name(), date.day, date.year),
+        19,
+        text,
+    );
+    let grid = Rect::new(cx + 16, r.y + 84, cal_width - 32, 252);
+    p.box_(grid, Color::rgb(64, 64, 64), 14);
+    // Both chevrons page the grid's month for real.
+    for (i, (symbol, action, label)) in [
+        ("chevron-left", "shell:month:prev", "Previous month"),
+        ("chevron-right", "shell:month:next", "Next month"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let hit = Rect::new(
+            grid.x + 4 + i as i32 * (grid.width as i32 - 36),
+            grid.y + 6,
+            32,
+            28,
+        );
+        if ctx.hovered(hit) {
+            p.box_(hit, Color(255, 255, 255, 24), 14);
+        }
+        p.symbol(symbol, hit.x + 8, hit.y + 8, 12, text);
+        p.region(hit, action, label);
+    }
+    // GNOME's month heading returns to today, which only moves when the grid has left it.
+    let heading = Rect::new(grid.x + 44, grid.y + 6, grid.width - 88, 28);
+    if paged && ctx.hovered(heading) {
+        p.box_(heading, Color(255, 255, 255, 24), 14);
+    }
+    p.strong_center(
+        heading.x,
+        grid.y + 11,
+        heading.width,
+        &if paged {
+            format!("{} {}", shown.month_name(), shown.year)
+        } else {
+            shown.month_name().to_owned()
+        },
+        13,
+        text,
+    );
+    if paged {
+        p.region(
+            heading,
+            "shell:month:today",
+            &format!("Back to {} {}", date.month_name(), date.year),
+        );
+    }
+    let cell = (grid.width - 16) / 7;
+    // GNOME weeks begin on Monday.
+    for (i, day) in ["M", "T", "W", "T", "F", "S", "S"].iter().enumerate() {
+        p.center(
+            grid.x + 8 + (i as u32 * cell) as i32,
+            grid.y + 42,
+            cell,
+            day,
+            11,
+            faint,
+        );
+    }
+    let offset = (shown.first_weekday + 6) % 7;
+    // Each day opens Calendar on that day; days before the world began are only text.
+    for day in 1..=shown.days_in_month {
+        let slot = day - 1 + offset;
+        let dx = grid.x + 8 + ((slot % 7) as u32 * cell) as i32;
+        let dy = grid.y + 66 + (slot / 7) as i32 * 30;
+        if let Some(open) = ctx.open_day(day) {
+            p.region_above(
+                Rect::new(dx, dy - 5, cell, 28),
+                &open,
+                &format!("{} {day}", shown.month_name()),
+            );
+        }
+        // Only the world's own day is ringed, and only on its own month.
+        let today = !paged && day == date.day;
+        if today {
+            p.circle(dx + cell as i32 / 2, dy + 9, 14, ORANGE);
+        }
+        p.label(
+            dx,
+            dy + 1,
+            cell,
+            &day.to_string(),
+            12,
+            text,
+            today,
+            Align::Center,
+        );
+    }
+    let row = Rect::new(cx + 16, r.y + 348, cal_width - 32, 48);
+    p.box_(row, Color::rgb(64, 64, 64), 14);
+    if ctx.installed("calendar") {
+        if ctx.hovered(row) {
+            p.box_(row, Color(255, 255, 255, 20), 14);
+        }
+        p.region(row, "shell:launch:calendar", "Open calendar application");
+        p.strong(row.x + 16, row.y + 8, row.width - 32, "Today", 12, text);
+        p.left(
+            row.x + 16,
+            row.y + 25,
+            row.width - 32,
+            "Open Calendar",
+            12,
+            faint,
+        );
+    } else {
+        p.strong(row.x + 16, row.y + 8, row.width - 32, "Today", 12, text);
+        p.left(
+            row.x + 16,
+            row.y + 25,
+            row.width - 32,
+            "No Events",
+            12,
+            faint,
+        );
+    }
+}
+
+fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let text = Color::rgb(246, 246, 246);
+    let width = 360.min(ctx.width.saturating_sub(84));
+    let x = ctx.width as i32 - width as i32 - 8;
+    let r = Rect::new(x, 38, width, 398);
+    popover(p, r);
+    // Top row: battery summary and round system buttons.
+    let battery = Rect::new(x + 16, r.y + 16, 84, 36);
+    p.button(
+        battery,
+        if ctx.hovered(battery) {
+            Color::rgb(110, 110, 110)
+        } else {
+            TILE
+        },
+        18,
+        "shell:settings",
+        "Battery, open Settings",
+    );
+    p.symbol("battery", x + 28, r.y + 25, 20, text);
+    p.left(x + 54, r.y + 25, 44, "100 %", 12, text);
+    // Screenshot rasterises the display and writes a real PNG to ~/Pictures; every
+    // button in this row changes the machine rather than decorating the panel.
+    for (i, (symbol, action, label)) in [
+        ("screenshot", "shell:screenshot", "Take screenshot"),
+        ("gear", "shell:settings", "Settings"),
+        ("lock", "shell:power:lock", "Lock screen"),
+        ("power", "shell:power:off", "Power off"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let bx = x + width as i32 - 16 - (4 - i as i32) * 44 + 8;
+        let hit = Rect::new(bx, r.y + 16, 36, 36);
+        p.circle(
+            bx + 18,
+            r.y + 34,
+            18,
+            if ctx.hovered(hit) {
+                Color::rgb(110, 110, 110)
+            } else {
+                TILE
+            },
+        );
+        p.symbol(symbol, bx + 10, r.y + 26, 16, text);
+        p.region(hit, action, label);
+    }
+    // Sliders are twenty-one discrete stops, so a click lands on an exact level.
+    const STOPS: i32 = 20;
+    for (i, (symbol, name)) in [("volume", "volume"), ("sun", "brightness")]
+        .iter()
+        .enumerate()
+    {
+        let sy = r.y + 76 + i as i32 * 44;
+        p.symbol(symbol, x + 22, sy, 16, text);
+        let track = Rect::new(x + 52, sy + 6, width - 76, 4);
+        let span = track.width as i32;
+        for step in 0..=STOPS {
+            let lo = if step == 0 {
+                0
+            } else {
+                span * (2 * step - 1) / (2 * STOPS)
+            };
+            let hi = if step == STOPS {
+                span
+            } else {
+                span * (2 * step + 1) / (2 * STOPS)
+            };
+            let percent = step * 100 / STOPS;
+            p.button(
+                Rect::new(track.x + lo, sy - 2, (hi - lo).max(1) as u32, 24),
+                Color::TRANSPARENT,
+                0,
+                &format!("shell:set:{name}:{percent}"),
+                &format!("Set {name} to {percent} %"),
+            );
+        }
+        // The filled portion is the level the machine really holds.
+        let fill = track.width * u32::from(ctx.level(name)).min(100) / 100;
+        p.box_(track, Color::rgb(100, 100, 100), 2);
+        p.box_(Rect::new(track.x, track.y, fill, 4), ORANGE, 2);
+        p.circle(track.x + fill as i32, track.y + 2, 9, Color::WHITE);
+    }
+    let pill = (width - 44) / 2;
+    for (i, (symbol, name, switch)) in [
+        ("wifi", "Wi-Fi", "wifi"),
+        ("bluetooth", "Bluetooth", "bluetooth"),
+        ("leaf", "Power Mode", "battery_saver"),
+        ("night-light", "Night Light", "night_light"),
+        ("moon", "Dark Style", "dark_mode"),
+        ("airplane", "Airplane Mode", "airplane_mode"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let on = ctx.switch(switch);
+        let px = x + 16 + (i % 2) as i32 * (pill as i32 + 12);
+        let py = r.y + 170 + (i / 2) as i32 * 60;
+        let slot = Rect::new(px, py, pill, 48);
+        p.button(
+            slot,
+            match (on, ctx.hovered(slot)) {
+                (true, true) => Color::rgb(243, 104, 52),
+                (true, false) => ORANGE,
+                (false, true) => Color::rgb(110, 110, 110),
+                (false, false) => TILE,
+            },
+            24,
+            &format!("shell:toggle:{switch}"),
+            &format!("Turn {name} {}", if on { "off" } else { "on" }),
+        );
+        p.symbol(symbol, px + 16, py + 16, 16, text);
+        // Each pill states the position the switch is really in.
+        let detail = match (*switch, on) {
+            ("wifi", true) => "Connected",
+            ("battery_saver", true) => "Power Saver",
+            ("battery_saver", false) => "Balanced",
+            (_, true) => "On",
+            (_, false) => "Off",
+        };
+        p.strong(px + 42, py + 8, pill - 52, name, 13, text);
+        p.left(
+            px + 42,
+            py + 25,
+            pill - 52,
+            detail,
+            11,
+            Color(255, 255, 255, 200),
+        );
+    }
+    let apps = Rect::new(x + 16, r.y + 350, width - 32, 34);
+    p.button(
+        apps,
+        if ctx.hovered(apps) {
+            Color::rgb(100, 100, 100)
+        } else {
+            TILE
+        },
+        17,
+        "shell:launcher",
+        "Show applications",
+    );
+    p.symbol("grid", apps.x + 14, apps.y + 9, 16, text);
+    p.left(
+        apps.x + 40,
+        apps.y + 9,
+        apps.width - 52,
+        "Show Applications",
+        13,
+        text,
+    );
+}
+
+fn settings(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let width = 560.min(ctx.width.saturating_sub(90));
+    let height = 360.min(ctx.height.saturating_sub(60));
+    let x = 68 + (ctx.width as i32 - 68 - width as i32) / 2;
+    let y = 32 + (ctx.height as i32 - 32 - height as i32) / 2;
+    let r = Rect::new(x, y, width, height);
+    p.drop_shadow(r, 12, 30, 110, 12);
+    p.border(r, Color::rgb(250, 250, 250), 12, Color(0, 0, 0, 110));
+    p.region(r, "shell:noop", "Settings");
+    p.box_(Rect::new(x + 1, y + 1, width - 2, 45), HEADER, 11);
+    p.box_(Rect::new(x + 1, y + 24, width - 2, 22), HEADER, 0);
+    p.strong_center(x, y + 14, width, "About", 14, INK);
+    let close = Rect::new(x + width as i32 - 36, y + 9, 28, 28);
+    p.circle(
+        close.x + 14,
+        close.y + 14,
+        12,
+        Color(0, 0, 0, if ctx.hovered(close) { 50 } else { 22 }),
+    );
+    p.symbol("close", close.x + 9, close.y + 9, 10, INK);
+    p.region(close, "shell:dismiss", "Close Settings");
+    p.strong_center(x, y + 70, width, "Ubuntu 24.04 LTS", 22, INK);
+    let card = Rect::new(x + 40, y + 120, width - 80, 144);
+    p.border(card, Color::WHITE, 12, Color(0, 0, 0, 30));
+    // GNOME's About rows are read-only facts, so they are painted, never clickable.
+    for (i, (key, value)) in [
+        ("Device Name", "alice-ubuntu".to_owned()),
+        ("Display", format!("{} × {}", ctx.width, ctx.height)),
+        ("Windowing System", "Wayland".to_owned()),
+        ("Open Windows", ctx.windows.len().to_string()),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let ry = card.y + 10 + i as i32 * 34;
+        p.left(card.x + 16, ry, 200, key, 13, INK);
+        p.right(card.x + card.width as i32 - 216, ry, 200, value, 13, DIM);
+        if i < 3 {
+            p.hline(card.x + 1, ry + 25, card.width - 2, Color(0, 0, 0, 20));
+        }
+    }
+    let launch = Rect::new(x + width as i32 / 2 - 90, y + height as i32 - 60, 180, 34);
+    p.button(launch, ORANGE, 8, "shell:launcher", "Show Applications");
+    p.strong_center(
+        launch.x,
+        launch.y + 9,
+        180,
+        "Show Applications",
+        13,
+        Color::WHITE,
+    );
+}
+
+fn context_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let (mx, my) = ctx
+        .hover
+        .unwrap_or((ctx.width as i32 / 2, ctx.height as i32 / 3));
+    let entries = [
+        ("New Window", "shell:new"),
+        ("Open in Terminal", "shell:launch:terminal"),
+        ("Show Applications", "shell:launcher"),
+        ("Settings", "shell:settings"),
+    ];
+    let r = Rect::new(
+        mx.clamp(72, ctx.width as i32 - 224),
+        my.clamp(36, ctx.height as i32 - 170),
+        220,
+        entries.len() as u32 * 34 + 12,
+    );
+    p.drop_shadow(r, 12, 18, 110, 6);
+    p.border(r, Color::rgb(250, 250, 250), 12, Color(0, 0, 0, 50));
+    p.region(r, "shell:noop", "Menu");
+    for (i, (label, action)) in entries.iter().enumerate() {
+        let row = Rect::new(r.x + 6, r.y + 6 + i as i32 * 34, r.width - 12, 34);
+        if ctx.hovered(row) {
+            p.box_(row, Color(0, 0, 0, 18), 8);
+        }
+        p.left(row.x + 12, row.y + 9, row.width - 24, label, 13, INK);
+        p.region(row, action, label);
     }
 }
 
@@ -523,37 +1606,53 @@ mod tests {
     use super::*;
     use crate::desktop_scene::DesktopTheme;
 
+    fn context<'a>(windows: &'a [WindowView], active: bool) -> ShellContext<'a> {
+        ShellContext {
+            theme: DesktopTheme::Ubuntu,
+            width: 1024,
+            height: 768,
+            clock_us: 0,
+            title: "",
+            launcher_open: false,
+            active,
+            windows,
+            installed_apps: &[],
+            panel: None,
+            search: "",
+            hover: None,
+            desktop_selection: None,
+            settings: &crate::SystemSettings::DEFAULT,
+            screen: crate::ScreenState::Active,
+            panel_month: 0,
+            text_entry: false,
+            keyboard: crate::KeyboardState::default(),
+            bookmarks: &[],
+            downloads: &[],
+            notifications: &[],
+            workspaces: 1,
+            workspace: 0,
+            library_group: None,
+            bookmarked: false,
+            panel_over_launcher: false,
+            typed: "",
+        }
+    }
     #[test]
     fn titlebar_controls_do_not_get_captured_by_drag_region() {
-        let window = WindowView {
+        let windows = [WindowView {
             id: 42,
             title: "Files".into(),
             kind: "files".into(),
             rect: Rect::new(120, 90, 700, 430),
             focused: true,
-            maximized: false,
-            minimized: false,
-            content: None,
-        };
-        let windows = [window];
-        let ctx = ShellContext {
-            theme: DesktopTheme::Ubuntu,
-            width: 1024,
-            height: 768,
-            clock_us: 0,
-            title: "Files",
-            launcher_open: false,
-            active: true,
-            windows: &windows,
-            installed_apps: &[],
-            panel: None,
-            search: "",
-            hover: None,
-        };
+            ..Default::default()
+        }];
+        let ctx = context(&windows, true);
         let mut painter = Painter::new(1024, 768);
         window_frame(&mut painter, &ctx, &windows[0]);
         for (x, expected) in [
-            (400, "drag"),
+            (320, "content:files-up"),
+            (500, "drag"),
             (730, "minimize"),
             (764, "maximize"),
             (798, "close"),
@@ -574,25 +1673,10 @@ mod tests {
             title: "Terminal".into(),
             kind: "terminal".into(),
             rect: Rect::new(120, 90, 600, 400),
-            focused: false,
-            maximized: false,
             minimized: true,
-            content: None,
+            ..Default::default()
         });
-        let ctx = ShellContext {
-            theme: DesktopTheme::Ubuntu,
-            width: 1024,
-            height: 768,
-            clock_us: 0,
-            title: "",
-            launcher_open: false,
-            active: false,
-            windows: &windows,
-            installed_apps: &[],
-            panel: None,
-            search: "",
-            hover: None,
-        };
+        let ctx = context(&windows, false);
         let mut painter = Painter::new(1024, 768);
         chrome(&mut painter, &ctx);
         assert_eq!(
@@ -609,5 +1693,604 @@ mod tests {
                 .and_then(|n| n.interaction.as_deref()),
             Some("shell:launch:browser")
         );
+    }
+    #[test]
+    fn system_menu_absorbs_clicks_and_dismisses_outside() {
+        let mut ctx = context(&[], false);
+        ctx.panel = Some("quick");
+        let mut painter = Painter::new(1024, 768);
+        chrome(&mut painter, &ctx);
+        let hit = |x, y| {
+            painter
+                .scene
+                .hit_test(x, y)
+                .and_then(|n| n.interaction.as_deref())
+        };
+        // Bare popover background between the battery pill and the round buttons.
+        assert_eq!(hit(800, 60), Some("shell:noop"));
+        assert_eq!(hit(300, 500), Some("shell:dismiss"));
+        assert_eq!(
+            hit(1024 - 8 - 16 - 3 * 44 + 8 + 18, 72),
+            Some("shell:settings")
+        );
+    }
+    #[test]
+    fn quick_settings_pills_switches_and_power_buttons_carry_real_ids() {
+        let mut ctx = context(&[], false);
+        ctx.panel = Some("quick");
+        let mut painter = Painter::new(1024, 768);
+        chrome(&mut painter, &ctx);
+        let hit = |x, y| {
+            painter
+                .scene
+                .hit_test(x, y)
+                .and_then(|n| n.interaction.as_deref())
+        };
+        // Six pills, two per row, in the order the panel paints them.
+        let (left, right) = (656 + 16 + 40, 656 + 16 + (360 - 44) / 2 + 12 + 40);
+        for (row, (a, b)) in [
+            ("wifi", "bluetooth"),
+            ("battery_saver", "night_light"),
+            ("dark_mode", "airplane_mode"),
+        ]
+        .iter()
+        .enumerate()
+        {
+            let y = 38 + 170 + row as i32 * 60 + 24;
+            assert_eq!(hit(left, y), Some(format!("shell:toggle:{a}").as_str()));
+            assert_eq!(hit(right, y), Some(format!("shell:toggle:{b}").as_str()));
+        }
+        // Battery pill, screenshot, lock and power off — all four change the machine.
+        assert_eq!(hit(656 + 40, 72), Some("shell:settings"));
+        assert_eq!(
+            hit(656 + 360 - 16 - 4 * 44 + 8 + 18, 72),
+            Some("shell:screenshot")
+        );
+        assert_eq!(
+            hit(656 + 360 - 16 - 2 * 44 + 8 + 18, 72),
+            Some("shell:power:lock")
+        );
+        assert_eq!(
+            hit(656 + 360 - 16 - 44 + 8 + 18, 72),
+            Some("shell:power:off")
+        );
+    }
+    #[test]
+    fn sliders_are_discrete_stops_that_set_the_level_they_paint() {
+        let mut ctx = context(&[], false);
+        ctx.panel = Some("quick");
+        let settings = crate::SystemSettings {
+            volume: 25,
+            ..crate::SystemSettings::DEFAULT
+        };
+        ctx.settings = &settings;
+        let mut painter = Painter::new(1024, 768);
+        chrome(&mut painter, &ctx);
+        let track = Rect::new(656 + 52, 38 + 76 + 6, 360 - 76, 4);
+        let hit = |x, y| {
+            painter
+                .scene
+                .hit_test(x, y)
+                .and_then(|n| n.interaction.as_deref())
+        };
+        assert_eq!(hit(track.x, track.y), Some("shell:set:volume:0"));
+        assert_eq!(
+            hit(track.x + track.width as i32 / 2, track.y),
+            Some("shell:set:volume:50")
+        );
+        assert_eq!(
+            hit(track.x + track.width as i32 - 1, track.y),
+            Some("shell:set:volume:100")
+        );
+        assert_eq!(
+            hit(track.x + 52, 38 + 76 + 44 + 6),
+            Some("shell:set:brightness:20")
+        );
+        // The orange fill reports the level the machine really holds.
+        let fill = track.width * 25 / 100;
+        assert!(painter
+            .scene
+            .nodes
+            .iter()
+            .any(|n| n.bounds == Rect::new(track.x, track.y, fill, 4)));
+    }
+    #[test]
+    fn do_not_disturb_switch_toggles_and_shows_its_real_position() {
+        let on = crate::SystemSettings {
+            do_not_disturb: true,
+            ..crate::SystemSettings::DEFAULT
+        };
+        let mut positions = Vec::new();
+        for settings in [&crate::SystemSettings::DEFAULT, &on] {
+            let mut ctx = context(&[], false);
+            ctx.panel = Some("calendar");
+            ctx.settings = settings;
+            let mut painter = Painter::new(1024, 768);
+            chrome(&mut painter, &ctx);
+            let x = (1024 - (320 + 380)) / 2;
+            let switch = Rect::new(x + 16 + 300, 38 + 412 - 46 + 5, 44, 24);
+            assert_eq!(
+                painter
+                    .scene
+                    .hit_test(switch.x + 22, switch.y + 12)
+                    .and_then(|n| n.interaction.as_deref()),
+                Some("shell:toggle:do_not_disturb")
+            );
+            positions.push(
+                painter
+                    .scene
+                    .nodes
+                    .iter()
+                    .filter(|n| n.bounds.width == 20 && n.bounds.y == switch.y + 2)
+                    .map(|n| n.bounds.x)
+                    .next_back()
+                    .expect("the knob is painted"),
+            );
+        }
+        assert!(positions[0] < positions[1]);
+    }
+    #[test]
+    fn locked_and_powered_off_screens_cover_everything_with_a_real_way_back() {
+        for screen in [crate::ScreenState::Locked, crate::ScreenState::Off] {
+            let windows = [WindowView {
+                id: 3,
+                kind: "terminal".into(),
+                rect: Rect::new(120, 90, 600, 400),
+                ..Default::default()
+            }];
+            let mut ctx = context(&windows, true);
+            ctx.screen = screen;
+            ctx.panel = Some("quick");
+            let mut painter = Painter::new(1024, 768);
+            painter.z = 1_000_000;
+            chrome(&mut painter, &ctx);
+            for (x, y) in [(20, 20), (512, 384), (1000, 700)] {
+                assert_eq!(
+                    painter
+                        .scene
+                        .hit_test(x, y)
+                        .and_then(|n| n.interaction.as_deref()),
+                    Some("shell:power:wake"),
+                    "{screen:?} leaks a control at {x},{y}"
+                );
+            }
+            // Neither the dock nor the system menu survives behind the shield.
+            assert!(!painter
+                .scene
+                .nodes
+                .iter()
+                .any(|n| n.interaction.as_deref() == Some("shell:launcher")));
+        }
+    }
+    #[test]
+    fn files_header_navigates_by_breadcrumb_and_offers_forward() {
+        let window = |width: u32| WindowView {
+            id: 42,
+            title: "Files".into(),
+            kind: "files".into(),
+            document: "/home/alice/work".into(),
+            rect: Rect::new(60, 90, width, 430),
+            focused: true,
+            can_go_forward: true,
+            ..Default::default()
+        };
+        let crumbs = |w: &WindowView| {
+            let windows = [w.clone()];
+            let ctx = context(&windows, true);
+            let mut painter = Painter::new(1024, 768);
+            window_frame(&mut painter, &ctx, &windows[0]);
+            let trail: Vec<String> = painter
+                .scene
+                .nodes
+                .iter()
+                .filter_map(|n| n.interaction.as_deref())
+                .filter(|a| a.contains("files-location:"))
+                .map(str::to_owned)
+                .collect();
+            let hit = |x: i32| {
+                painter
+                    .scene
+                    .hit_test(x, 113)
+                    .and_then(|n| n.interaction.as_deref())
+                    .map(str::to_owned)
+            };
+            (trail, hit(260), hit(300))
+        };
+        let (trail, up, forward) = crumbs(&window(900));
+        assert_eq!(up.as_deref(), Some("window:42:content:files-up"));
+        assert_eq!(forward.as_deref(), Some("window:42:content:files-forward"));
+        assert_eq!(
+            trail,
+            [
+                "window:42:content:files-location:/",
+                "window:42:content:files-location:/home",
+                "window:42:content:files-location:/home/alice",
+                "window:42:content:files-location:/home/alice/work",
+            ]
+        );
+        // A short bar elides from the front and always keeps the folder in view.
+        let (short, _, _) = crumbs(&window(620));
+        assert!(short.len() < trail.len());
+        assert_eq!(short.last(), trail.last());
+    }
+    #[test]
+    fn editor_and_terminal_header_controls_open_real_windows() {
+        for (kind, label) in [
+            ("editor", "New document"),
+            ("terminal", "New terminal window"),
+        ] {
+            let windows = [WindowView {
+                id: 8,
+                title: "Text Editor".into(),
+                kind: kind.into(),
+                rect: Rect::new(100, 80, 640, 420),
+                focused: true,
+                ..Default::default()
+            }];
+            let ctx = context(&windows, true);
+            let mut painter = Painter::new(1024, 768);
+            window_frame(&mut painter, &ctx, &windows[0]);
+            let new = painter
+                .scene
+                .nodes
+                .iter()
+                .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == label))
+                .expect("the header paints a new-window control");
+            assert_eq!(
+                new.interaction.as_deref(),
+                Some("window:8:content:shell:new")
+            );
+            assert!(!new.semantic.as_ref().unwrap().disabled);
+        }
+        let windows = [WindowView {
+            id: 8,
+            kind: "editor".into(),
+            rect: Rect::new(100, 80, 640, 420),
+            focused: true,
+            ..Default::default()
+        }];
+        let ctx = context(&windows, true);
+        let mut painter = Painter::new(1024, 768);
+        window_frame(&mut painter, &ctx, &windows[0]);
+        assert_eq!(
+            painter
+                .scene
+                .hit_test(120, 103)
+                .and_then(|n| n.interaction.as_deref()),
+            Some("window:8:content:shell:launch:files")
+        );
+    }
+    fn actions(p: &Painter) -> Vec<&str> {
+        p.scene
+            .nodes
+            .iter()
+            .filter_map(|n| n.interaction.as_deref())
+            .collect()
+    }
+    /// Every string the painter drew, bold or not.
+    fn texts(p: &Painter) -> Vec<&str> {
+        p.scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                cw_scene::Primitive::UiText { text, .. }
+                | cw_scene::Primitive::UiTextBold { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect()
+    }
+    fn labelled<'a>(p: &'a Painter, label: &str) -> Option<&'a cw_scene::Node> {
+        p.scene
+            .nodes
+            .iter()
+            .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == label))
+    }
+    /// Hit-test the middle of a labelled control, so occlusion counts too.
+    fn hit_labelled<'a>(p: &'a Painter, label: &str) -> Option<&'a str> {
+        let node = labelled(p, label)?;
+        p.scene
+            .hit_test(
+                node.bounds.x + node.bounds.width as i32 / 2,
+                node.bounds.y + node.bounds.height as i32 / 2,
+            )
+            .and_then(|n| n.interaction.as_deref())
+    }
+    #[test]
+    fn activities_carries_the_whole_grid_and_the_dock_only_its_favourites() {
+        let mut ctx = context(&[], true);
+        ctx.launcher_open = true;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        let launches = actions(&p);
+        for (kind, _) in APPS {
+            assert!(
+                launches.contains(&format!("shell:launch:{kind}").as_str()),
+                "Activities hides {kind}"
+            );
+        }
+        // The dock keeps its favourites; the rest is one "Show applications" away.
+        let ctx = context(&[], true);
+        let mut docked = Painter::new(1024, 768);
+        chrome(&mut docked, &ctx);
+        let dock = actions(&docked);
+        for kind in ["notes", "contacts", "calculator", "clock", "settings"] {
+            assert!(!dock.contains(&format!("shell:launch:{kind}").as_str()));
+        }
+        assert!(dock.contains(&"shell:launcher"));
+        // Only what the machine has installed is ever offered.
+        let apps: Vec<String> = vec!["files".into(), "clock".into()];
+        let mut ctx = context(&[], true);
+        ctx.installed_apps = &apps;
+        ctx.launcher_open = true;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        for action in actions(&p) {
+            if let Some(kind) = action.strip_prefix("shell:launch:") {
+                assert!(apps.iter().any(|a| a == kind), "{kind} is not installed");
+            }
+        }
+    }
+    #[test]
+    fn the_calendar_grid_pages_the_month_the_panel_reports() {
+        let mut ctx = context(&[], true);
+        ctx.panel = Some("calendar");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert_eq!(hit_labelled(&p, "Previous month"), Some("shell:month:prev"));
+        assert_eq!(hit_labelled(&p, "Next month"), Some("shell:month:next"));
+        assert!(texts(&p).contains(&"September"));
+        assert!(!actions(&p).contains(&"shell:month:today"));
+        // One month on, the grid is February's, drawn from `panel_date`.
+        ctx.panel_month = 17;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        let shown = ctx.panel_date();
+        assert_eq!(
+            (shown.year, shown.month, shown.days_in_month),
+            (2028, 2, 29)
+        );
+        assert!(texts(&p).contains(&"February 2028"));
+        assert_eq!(
+            hit_labelled(&p, "Back to September 2026"),
+            Some("shell:month:today")
+        );
+        let days: Vec<&str> = texts(&p)
+            .into_iter()
+            .filter(|t| t.parse::<u64>().is_ok_and(|d| (1..=31).contains(&d)))
+            .collect();
+        // A leap February, and no cell of it is a target.
+        assert_eq!(days.len(), 29);
+        assert!(days.contains(&"29"));
+    }
+    #[test]
+    fn firefox_greys_history_and_reload_it_cannot_perform() {
+        let fresh = [WindowView {
+            id: 5,
+            kind: "browser".into(),
+            rect: Rect::new(60, 60, 880, 600),
+            focused: true,
+            tabs: vec!["New tab".into()],
+            ..Default::default()
+        }];
+        let ctx = context(&fresh, true);
+        let mut p = Painter::new(1024, 768);
+        browser_chrome(&mut p, &ctx, &fresh[0]);
+        for label in ["Back", "Forward", "Reload"] {
+            let node = labelled(&p, label).unwrap();
+            let semantic = node.semantic.as_ref().unwrap();
+            assert!(semantic.disabled && !semantic.focusable, "{label}");
+            assert!(node.interaction.is_none(), "{label}");
+            assert_eq!(hit_labelled(&p, label), None, "{label}");
+        }
+        let loaded = [WindowView {
+            document: "http://example.test/".into(),
+            can_go_back: true,
+            can_go_forward: true,
+            ..fresh[0].clone()
+        }];
+        let ctx = context(&loaded, true);
+        let mut p = Painter::new(1024, 768);
+        browser_chrome(&mut p, &ctx, &loaded[0]);
+        for (label, action) in [
+            ("Back", "back"),
+            ("Forward", "forward"),
+            ("Reload", "reload"),
+        ] {
+            assert_eq!(
+                hit_labelled(&p, label),
+                Some(format!("window:5:content:shell:{action}").as_str())
+            );
+        }
+    }
+    #[test]
+    fn nothing_decorative_is_left_clickable() {
+        let windows = [WindowView {
+            id: 5,
+            kind: "browser".into(),
+            rect: Rect::new(60, 60, 880, 600),
+            focused: true,
+            tabs: vec!["Start".into()],
+            ..Default::default()
+        }];
+        let mut ctx = context(&windows, true);
+        ctx.launcher_open = true;
+        let mut painter = Painter::new(1024, 768);
+        chrome(&mut painter, &ctx);
+        window_frame(&mut painter, &ctx, &windows[0]);
+        browser_chrome(&mut painter, &ctx, &windows[0]);
+        let announced: Vec<_> = painter
+            .scene
+            .nodes
+            .iter()
+            .filter(|n| n.semantic.as_ref().is_some_and(|s| s.disabled))
+            .collect();
+        // What is left greyed is only what this window genuinely cannot do: an empty
+        // tab has no page to bookmark and none to save.
+        let labels: Vec<&str> = announced
+            .iter()
+            .map(|n| n.semantic.as_ref().unwrap().label.as_str())
+            .collect();
+        assert!(labels.contains(&"Bookmark this page"), "{labels:?}");
+        assert!(labels.contains(&"Save this page"), "{labels:?}");
+        for n in announced {
+            assert!(n.interaction.is_none());
+            assert!(!n.semantic.as_ref().unwrap().focusable);
+        }
+        // The dock's trash and the overview's workspace tile are real now, and the
+        // app grid carries no page indicator at all.
+        let live = actions(&painter);
+        assert!(live.contains(&"shell:trash"));
+        assert!(live.contains(&"shell:workspace:0"));
+        assert!(!labels.contains(&"Page 1 of 1"));
+    }
+
+    fn notice(app: &str, title: &str, seen: bool) -> crate::Notice {
+        crate::Notice {
+            app: app.into(),
+            title: title.into(),
+            body: "Saved to ~/Pictures".into(),
+            time_us: 0,
+            action: Some("shell:launch:files".into()),
+            seen,
+        }
+    }
+
+    #[test]
+    fn the_calendar_panel_lists_the_notices_the_machine_really_posted() {
+        let posted = [notice("files", "Screenshot taken", false)];
+        let mut ctx = context(&[], true);
+        ctx.width = 1024;
+        ctx.panel = Some("calendar");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert!(texts(&p).contains(&"No Notifications"));
+        assert!(!actions(&p).iter().any(|a| a.starts_with("shell:notice:")));
+        ctx.notifications = &posted;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert!(!texts(&p).contains(&"No Notifications"));
+        assert_eq!(hit_labelled(&p, "Screenshot taken"), Some("shell:notice:0"));
+        assert_eq!(
+            hit_labelled(&p, "Mark all as read"),
+            Some("shell:notifications:seen")
+        );
+    }
+
+    #[test]
+    fn the_activities_switcher_shows_the_real_desktops() {
+        let windows = [WindowView {
+            id: 5,
+            kind: "editor".into(),
+            rect: Rect::new(120, 90, 500, 360),
+            focused: true,
+            ..Default::default()
+        }];
+        // One desktop: switching to it is real, and the last one cannot be closed.
+        let mut ctx = context(&windows, true);
+        ctx.launcher_open = true;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert_eq!(hit_labelled(&p, "Desktop 1"), Some("shell:workspace:0"));
+        assert_eq!(hit_labelled(&p, "New desktop"), Some("shell:workspace:new"));
+        assert!(labelled(&p, "Close desktop 1").is_none());
+        // Three desktops, sitting on the second: each tile carries its own index, and
+        // only the one on screen offers the close the handler would accept.
+        ctx.workspaces = 3;
+        ctx.workspace = 1;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        for index in 0..3 {
+            assert_eq!(
+                hit_labelled(&p, &format!("Desktop {}", index + 1)),
+                Some(format!("shell:workspace:{index}").as_str()),
+                "desktop {index}"
+            );
+        }
+        assert!(labelled(&p, "Desktop 4").is_none());
+        assert_eq!(
+            hit_labelled(&p, "Close desktop 2"),
+            Some("shell:workspace:close")
+        );
+        assert!(labelled(&p, "Close desktop 3").is_none());
+        // At the machine's limit the plus is announced unavailable and cannot be hit.
+        ctx.workspaces = crate::WORKSPACE_LIMIT;
+        ctx.workspace = 0;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        let node = labelled(&p, "New desktop").unwrap();
+        assert!(node.semantic.as_ref().unwrap().disabled);
+        assert!(node.interaction.is_none() && !node.semantic.as_ref().unwrap().focusable);
+        assert_ne!(hit_labelled(&p, "New desktop"), Some("shell:workspace:new"));
+    }
+
+    #[test]
+    fn the_files_header_searches_and_swaps_view_for_real() {
+        let windows = [WindowView {
+            id: 4,
+            title: "Files".into(),
+            kind: "files".into(),
+            rect: Rect::new(0, 0, 900, 600),
+            focused: true,
+            document: "/home/alice".into(),
+            ..Default::default()
+        }];
+        let ctx = context(&windows, true);
+        let mut p = Painter::new(1024, 768);
+        window_frame(&mut p, &ctx, &windows[0]);
+        assert_eq!(
+            hit_labelled(&p, "Search this folder"),
+            Some("window:4:content:files-search")
+        );
+        assert_eq!(
+            hit_labelled(&p, "Change view"),
+            Some("window:4:content:files-view")
+        );
+        // The sidebar's hamburger and the header's ⋮ are gone, not greyed.
+        for gone in [
+            "Primary menu",
+            "More options",
+            "View options",
+            "Search files",
+        ] {
+            assert!(labelled(&p, gone).is_none(), "{gone}");
+        }
+    }
+
+    #[test]
+    fn the_firefox_toolbar_saves_pages_and_bookmarks_them() {
+        let loaded = [WindowView {
+            id: 5,
+            title: "Example — http://example.test/".into(),
+            kind: "browser".into(),
+            rect: Rect::new(60, 60, 880, 600),
+            focused: true,
+            document: "http://example.test/".into(),
+            tabs: vec!["Example".into()],
+            ..Default::default()
+        }];
+        let downloads = [crate::Download {
+            name: "index.html".into(),
+            path: "/home/alice/Downloads/index.html".into(),
+            url: "http://example.test/".into(),
+            bytes: 12,
+        }];
+        let mut ctx = context(&loaded, true);
+        ctx.downloads = &downloads;
+        let mut p = Painter::new(1024, 768);
+        browser_chrome(&mut p, &ctx, &loaded[0]);
+        assert_eq!(
+            hit_labelled(&p, "Bookmark this page"),
+            Some("shell:bookmark")
+        );
+        assert_eq!(
+            hit_labelled(&p, "Save this page to Downloads"),
+            Some("shell:download")
+        );
+        assert_eq!(hit_labelled(&p, "Application menu"), Some("shell:settings"));
+        // Saved already: the same star takes it off the list and says so.
+        ctx.bookmarked = true;
+        let mut p = Painter::new(1024, 768);
+        browser_chrome(&mut p, &ctx, &loaded[0]);
+        assert_eq!(hit_labelled(&p, "Remove bookmark"), Some("shell:bookmark"));
     }
 }

@@ -1,0 +1,255 @@
+{
+  "id": "google-drive",
+  "kind": "drive",
+  "node": "google-drive",
+  "domains": [
+    "drive.google.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "gdrive",
+    "brand": "Google Drive",
+    "theme": {
+      "accent": "#1a73e8",
+      "background": "#ffffff",
+      "surface": "#f8fafd",
+      "ink": "#202124",
+      "muted": "#5f6368",
+      "content_width": 1000
+    },
+    "root": "root",
+    "nodes": {
+      "root": {
+        "kind": "folder",
+        "name": "My Drive",
+        "owner": "alice",
+        "tick": 0
+      },
+      "f-atlas": {
+        "kind": "folder",
+        "name": "Atlas",
+        "parent": "root",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "tick": 0
+      },
+      "atlas-launch": {
+        "kind": "shortcut",
+        "name": "Atlas launch checklist",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "target_url": "http://docs.google.com/documents/atlas-launch",
+        "mime": "application/vnd.google-apps.document",
+        "tick": 0
+      },
+      "f-personal": {
+        "kind": "folder",
+        "name": "Personal",
+        "parent": "root",
+        "owner": "alice",
+        "tick": 0
+      },
+      "budget": {
+        "kind": "file",
+        "name": "budget-2026.txt",
+        "parent": "f-personal",
+        "owner": "alice",
+        "mime": "text/plain",
+        "content": "Monitor: 429.99. Conference ticket: 349.00. Books: 62.40.\n",
+        "tick": 0
+      },
+      "f-offsite": {
+        "kind": "folder",
+        "name": "Team offsite",
+        "parent": "root",
+        "owner": "bob",
+        "shared_with": [
+          "alice"
+        ],
+        "tick": 3
+      },
+      "offsite-notes": {
+        "kind": "file",
+        "name": "offsite-notes.txt",
+        "parent": "f-offsite",
+        "owner": "bob",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Rooms booked. Agenda is in http://docs.google.com/documents/offsite-agenda\n",
+        "tick": 3
+      },
+      "atlas-logo": {
+        "kind": "file",
+        "name": "atlas-logo.txt",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "mime": "text/plain",
+        "content": "Northstar Atlas wordmark, 2026 refresh.\nPrimary #1a73e8 on #ffffff; clear space is one cap height on every side.\nDo not stretch the mark, recolour it, or set it in outline.\n",
+        "tick": 1
+      },
+      "launch-checklist": {
+        "kind": "file",
+        "name": "launch-checklist.txt",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "mime": "text/plain",
+        "content": "Frozen copy of the launch checklist, kept for the record.\nThe live one is http://docs.google.com/documents/atlas-launch and it is the\nonly copy anyone should be editing after the review.\n",
+        "tick": 1
+      },
+      "press-kit": {
+        "kind": "file",
+        "name": "press-kit.txt",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "mime": "text/plain",
+        "content": "Press kit contents\n- One paragraph on what Atlas is, in plain words, no adjectives.\n- The wordmark, light and dark.\n- Two screenshots of the renderer, taken at 1440 wide.\n- Carol Nakamura is the named contact for press questions.\n",
+        "tick": 1
+      },
+      "release-notes": {
+        "kind": "file",
+        "name": "release-notes.txt",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "mime": "text/plain",
+        "content": "Release notes, draft 4\n- Deterministic renderer: the same world and seed produce the same pixels.\n- Snapshot round trip is now byte-exact, including page state.\n- Known issue: the BFS path test still fails on Windows only.\n  Tracked at http://github.com/northstar/atlas\n",
+        "tick": 1
+      },
+      "benchmarks": {
+        "kind": "file",
+        "name": "benchmarks.csv",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "mime": "text/csv",
+        "content": "run,platform,frames,p50_ms,p95_ms\n1,linux,1800,96,184\n2,linux,1800,95,181\n3,macos,1800,102,197\n4,windows,1800,118,241\n",
+        "tick": 1
+      },
+      "demo-script": {
+        "kind": "file",
+        "name": "demo-script.txt",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "mime": "text/plain",
+        "content": "Walkthrough script, six minutes\n0:00 Open a world, show the seed.\n1:10 Run it twice, diff the frames, get nothing.\n3:20 Break determinism on purpose, show the diff light up.\n5:00 Snapshot, restore, keep going from the same tick.\n",
+        "tick": 1
+      },
+      "faq": {
+        "kind": "file",
+        "name": "faq.txt",
+        "parent": "f-atlas",
+        "owner": "carol",
+        "shared_with": [
+          "alice",
+          "bob"
+        ],
+        "mime": "text/plain",
+        "content": "Q. Is the renderer deterministic across platforms?\nA. Yes. Text metrics come from the bundled typeface, never the host.\nQ. What happens to a world on restore?\nA. It resumes at the tick it was snapshotted on, with identical state.\n",
+        "tick": 1
+      }
+    },
+    "starred": {
+      "alice": [
+        "f-atlas",
+        "atlas-launch"
+      ]
+    },
+    "next_id": 0
+  },
+  "search_entries": [
+    {
+      "url": "http://drive.google.com/",
+      "title": "My Drive - Google Drive",
+      "snippet": "Folders, shortcuts and files, with everything other people shared with you.",
+      "keywords": [
+        "google drive",
+        "drive",
+        "my drive",
+        "files",
+        "cloud storage"
+      ],
+      "authority": 4
+    },
+    {
+      "url": "http://drive.google.com/drive/folders/f-atlas",
+      "title": "Atlas - Google Drive",
+      "snippet": "Carol's Atlas folder: the seven launch assets carried over from Dropbox, plus a shortcut to the launch checklist.",
+      "keywords": [
+        "atlas",
+        "atlas folder",
+        "launch assets",
+        "press kit",
+        "drive",
+        "northstar"
+      ],
+      "authority": 4
+    },
+    {
+      "url": "http://drive.google.com/file/press-kit",
+      "title": "press-kit.txt - Google Drive",
+      "snippet": "What goes in the Atlas press kit and who the named contact is.",
+      "keywords": [
+        "press kit",
+        "atlas",
+        "press",
+        "media"
+      ],
+      "authority": 2
+    },
+    {
+      "url": "http://drive.google.com/file/benchmarks",
+      "title": "benchmarks.csv - Google Drive",
+      "snippet": "Four benchmark runs across Linux, macOS and Windows with p50 and p95 frame times.",
+      "keywords": [
+        "benchmarks",
+        "csv",
+        "performance",
+        "atlas",
+        "latency"
+      ],
+      "authority": 2
+    },
+    {
+      "url": "http://drive.google.com/shared-with-me",
+      "title": "Shared with me - Google Drive",
+      "snippet": "Everything other people put in your Drive, newest first.",
+      "keywords": [
+        "shared with me",
+        "google drive",
+        "sharing"
+      ],
+      "authority": 1
+    }
+  ]
+}

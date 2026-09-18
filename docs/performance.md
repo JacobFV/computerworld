@@ -1,5 +1,18 @@
 # Performance
 
+> **Partly re-measured.** The native world table below was re-run on the current tree on
+> a quiet host and is current. **Every other section is still stale**: the raster,
+> binding, browser and predecessor numbers were captured before the desktop shell and
+> renderer overhaul, and before the reference world grew from 16.7 KB to 432 KB of
+> definition. Re-run `benchmarks/run-all.sh` on a quiet host before quoting those. The
+> methodology and the negative results are accurate throughout and are the reason to
+> keep the document.
+>
+> What the growth cost, measured rather than guessed: portable snapshot decode went from
+> 0.142 ms to 4.90 ms and fork from 16.5 µs to 265 µs, both roughly tracking the 26x
+> larger world definition. Everything that does not touch the whole world — a terminal
+> step, a file write, an editor keystroke, a reset — is unchanged.
+
 Measured on September 17, 2026, Linux ARM64, Cortex-X925 CPU 19 (3.9 GHz
 maximum), Rust 1.97.1 release builds and Chrome 151. Native actor terminal steps
 cost **3.84 µs p50**, dirty resets **1.52 µs**, and warm 1280×720 frames **0.522 ms**.
@@ -42,27 +55,35 @@ Neither structured observations nor scene generation requests rasterization.
 
 ## Native world results
 
-All values are **microseconds**. Each short row has 5,000 measured operations;
+All values are **microseconds**, and are the median across five independent runs of
+each workload's own p50 and p95. Each short row has 5,000 measured operations;
 portable snapshot encode/decode have 1,000. These use the rich company world and
 full journaling. The initial snapshot is held during each workload. File, pipe
 and HTTP results are asserted to prevent no-op success from counting as work.
 
+The first run of each workload is excluded, because it pays one-time cache
+population the steady state does not. That only matters in one row: virtual HTTP
+costs **148 µs** on its first request against 83 µs afterwards, which is the DNS
+resolver cache filling. A consumer measuring a single cold request will see the
+larger figure, and that is the honest number for one-shot work.
+
 | Workload | p50 | p95 |
 |---|---:|---:|
-| Terminal `pwd`, full actor step | 3.840 | 4.752 |
-| Terminal parse + pipe | 4.448 | 4.912 |
-| File write + read, two actor actions | 7.168 | 7.744 |
-| Virtual HTTP, full actor step | 14.880 | 16.928 |
-| Synthetic browser navigation through network | 23.568 | 26.256 |
-| Editor type + backspace, two actions | 4.256 | 5.184 |
-| Structured actor observation | 4.448 | 4.624 |
-| Browser scene / layout, no raster | 2.016 | 2.080 |
-| Already-clean same-seed reset | 0.144 | 0.144 |
-| Snapshot handle | 0.464 | 0.528 |
-| Fork from initial snapshot | 16.545 | 16.896 |
-| Fork + first file mutation | 25.729 | 26.225 |
-| Portable initial snapshot encode | 32.800 | 34.529 |
-| Portable initial snapshot decode | 141.986 | 145.634 |
+| Terminal `pwd`, full actor step | 4.776 | 5.128 |
+| Terminal parse + pipe | 5.224 | 5.568 |
+| File write + read, two actor actions | 7.536 | 7.904 |
+| Virtual HTTP, full actor step | 82.856 | 87.441 |
+| Synthetic browser navigation through network | 159.672 | 168.657 |
+| Editor type + backspace, two actions | 6.536 | 7.056 |
+| Structured actor observation | 34.368 | 35.112 |
+| Desktop scene, no raster | 93.192 | 95.184 |
+| Already-clean same-seed reset | 0.560 | 0.584 |
+| Dirty same-seed reset | 4.544 | 4.728 |
+| Snapshot handle | 0.976 | 1.040 |
+| Fork from initial snapshot | 264.921 | 271.161 |
+| Fork + first file mutation | 290.457 | 296.185 |
+| Portable initial snapshot encode | 962.083 | 1005.259 |
+| Portable initial snapshot decode | 4895.680 | 5464.466 |
 
 A dirty same-seed reset is **1.520 µs p50 / 1.568 µs p95**. Every iteration mutates a file before the timer,
 then resets inside the timer and verifies the file disappeared after timing.
@@ -204,11 +225,81 @@ cold-start percentile.
 
 | Packaged artifact | Raw bytes | Gzip bytes |
 |---|---:|---:|
-| Browser Wasm, standard services + renderer/font | 5,490,584 | 1,664,137 |
-| Browser JS glue | 32,456 | 6,121 |
-| Bundled font, already embedded in Wasm | 343,140 | 203,155 |
+| Browser Wasm, standard services + renderer/fonts | 10,083,313 | 4,932,659 |
+| Browser JS glue | 42,215 | 6,531 |
 
-The font row is an accounting breakdown, not an additional required demo fetch.
+Measured with `gzip -9` on a `pkg/web` built by `scripts/build-wasm.sh` from the current
+source. The fonts, wallpapers, icons and symbol masks are embedded in the Wasm; there is
+no second fetch.
+
+**Bundle size, before and after.** The Wasm had grown to 22,136,038 raw / 13,813,875
+gzip (the previous revision of this table recorded 22,104,977 / 13,804,622) once eleven
+font faces, symbol sheets and icon/wallpaper assets were embedded — 8.3x the 1,664,137
+gzip it was before the shell work. It is now 2.8x smaller gzipped. Where the bytes went,
+as raw / standalone `gzip -9`:
+
+| Component | Before | After | Change |
+|---|---:|---:|---|
+| Wallpapers (5) | 9,293,680 / 9,240,819 | 1,765,706 / 1,751,728 | PNG → baseline JPEG q92 4:4:4, same dimensions |
+| DejaVu faces (3) | 1,811,780 / 940,395 | 717,820 / 404,395 | subset to the reachable coverage set |
+| Platform UI fonts (8) | 203,612 / 127,998 | 203,612 / 127,998 | unchanged; already subset |
+| Icons | 570,094 / 567,725 (90) | 686,517 / 684,153 (105) | +15 new `music`/`maps`/`weather` icons |
+| Symbol masks (98) | 88,604 / 91,324 | 88,604 / 91,324 | unchanged |
+| Wasm code section | 7,979,322 / 2,472,878 | 5,810,481 / 1,625,158 | `opt-level="z"` + fat LTO, raster path kept at 3 |
+| Wasm `name` section | 1,410,209 / 141,903 | 0 | `strip="symbols"` |
+| **Whole module** | **22,136,038 / 13,813,875** | **10,083,313 / 4,932,659** | |
+
+Wallpapers were the headline, not fonts: they were photographic images stored as PNG,
+which is already DEFLATE, so `gzip` could not compress them at all. They made up two
+thirds of the download. JPEG keeps them at 35–54 dB PSNR. Font subsetting and the
+compiler flags each saved roughly 0.5–0.85 MB gzip.
+
+What moved, and what did not:
+
+- **Pixels.** Every frame that shows a wallpaper changed, because the decoded wallpaper
+  pixels changed. Native and Wasm still agree bit for bit: `scripts/smoke-desktop-pixels.cjs`
+  followed by `examples/python/desktop_pixels.py` re-renders all five OS themes natively
+  from the Wasm checkpoint and matches every hash. The decoder is `jpeg-decoder` with its
+  `platform_independent` feature, which compiles out the SSSE3/NEON/`simd128` kernels
+  that are not bit-identical to the scalar ones, and the wallpapers are 4:4:4 so its
+  floating-point chroma upsampler never runs. `wallpapers_decode_to_pinned_pixels` pins
+  each decoded wallpaper's SHA-256. No text glyph moved: subsetting keeps outlines and
+  advances, the renderer's pinned frame hashes and `smoke-node.cjs`'s fixture hash are
+  unchanged, and `metrics_data.rs` needed no regeneration. Committed screenshots under
+  `artifacts/` that show a desktop are stale until they are regenerated.
+- **Unsupported scripts.** Text in a script outside the DejaVu coverage set (Hebrew,
+  Arabic, Thai, CJK and others) renders as the `.notdef` box. That is visible and
+  consistent, and a test pins it; before this change DejaVu drew some of these scripts.
+  The coverage set is documented in `crates/render/assets/build-fonts.py`.
+- **Speed.** Compiling for size costs Wasm speed. The raster path (`cw-render` and its
+  PNG/JPEG/font decoders) is kept at opt-level 3, but scene construction, services and
+  the kernel are now at `z`. A warm 960×640 desktop `render()` in Node, including scene
+  construction, takes about 70 ms p50, against about 50 ms at opt-level 3 throughout
+  and about 88 ms at `z` throughout. The browser timings earlier in this document were
+  measured on the opt-level-3 bundle. Raster-only rows should still hold, but anything
+  that includes world stepping or scene construction should be re-measured.
+  `scripts/build-wasm.sh` records the options:
+
+  | Wasm build | Gzip bytes | Desktop `render()` p50 |
+  |---|---:|---:|
+  | opt-level 3 everywhere | 6,004,786 | ~50 ms |
+  | opt-level `z` everywhere | 4,906,012 | ~88 ms |
+  | `z`, raster path at 3 (shipped) | 4,931,475 | ~70 ms |
+  | `z`, raster and scene building at 3 | 5,369,981 | ~50 ms |
+
+- **`wasm-opt` is not used.** With binaryen 119, `-Oz`, `-Os` and `-O2` all shrank the raw
+  module by 0.7–1.0 MB but made the gzipped download 150–160 KB *larger*. The build does
+  not need binaryen installed.
+
+Levers left, with their cost: the Ubuntu icons are byte-for-byte 256×256 Yaru copies,
+46% of icon bytes for a fifth of the icons (about 200 KB would come back at 128×128, at
+the cost of no longer being unmodified upstream artwork). A zopfli repack of the icon and
+symbol PNGs would save about 15% of their bytes with identical pixels, but committed PNGs
+would then no longer be `generate-icons.py`'s output byte for byte. Wallpapers are stored
+at 1586×992 and 853×1844. That is about 1.2x the largest desktop viewport rendered
+in-tree (1280×800) and over 2x the phone viewports. Downscaling would save roughly
+0.6 MB, but a large viewport would lose sharpness.
+
 Browser linear memory grew from **19 MiB to 20.56 MiB** across five
 create/1,100-step/free cycles; Wasm memory retains its high-water allocation after
 handles are freed. That is a bounded sample, not proof of zero growth over all
@@ -216,6 +307,34 @@ workloads. Native 1 / 100 / 1,000 independent, unrendered company worlds occupie
 3.42 / 27.34 / 244.68 MiB RSS and took 2.73 / 27.79 / 272.25 ms total to create in
 one serial trial each. RSS after dropping them retained allocator pages; no claim
 of OS page reclamation is made.
+
+## Structured observation versus a pixel pipeline
+
+The shape that matters for episode throughput: `scene()` is cheaper than `render()`
+by orders of magnitude, and both are cheaper than a screenshot pipeline by more
+still. On the 100-text-node fixture above, scene construction is **10.560 µs** and a
+warm full 1280×720 raster is **522 µs** — roughly 50×, on a fixture chosen to stress
+text, not a full desktop. Against a browser, the end-to-end capture rows show the
+larger gap: 12.8–15.2 ms for the Wasm paths versus 35.0 ms for DOM update plus a
+Chrome PNG capture.
+
+An agent that acts on `scene()` and never rasterizes pays neither the raster nor the
+capture cost. `EnvironmentConfig` makes that a grant decision, not a convention:
+withhold `pixels.v1`, keep `semantic.v1`, and rasterization is unreachable. See
+[action families](action-families.md).
+
+Reported by a consumer porting an existing agent stack onto this library, on their
+own hardware and their own workload: per-episode wall time 7.07 s → 0.0158 s
+(60.2 episodes/s), `env.scene(w, h)` at 0.41 ms against 223 ms for the pixel
+pipeline they replaced, a 1280×800 desktop render at 4.1 ms, and two external
+processes per episode down to zero. **These are not measurements from this repo.**
+They are a different host, a different world, and a full desktop scene rather than
+the text fixture above, so they are not comparable row-for-row with the tables here
+and are not reproduced by `benchmarks/run-all.sh`. There is no episode-throughput
+benchmark in `benchmarks/`; the closest supported statement this repo can make is
+the per-operation actor-step cost in the native world table. The process count is
+structural rather than measured: no binding spawns a subprocess or requires a
+simulation server, which `scripts/check-boundaries.py` enforces.
 
 ## Limits and next measurements
 

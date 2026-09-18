@@ -1,17 +1,49 @@
 //! Deterministic portable CPU compositor. No browser, GPU, host font or clock.
 //! A renderer owns disposable glyph/text caches and a retained RGBA framebuffer.
 mod assets;
-pub use assets::ASSET_IDS;
-use cw_scene::{text_cell, wrap_text, Color, Damage, Node, Primitive, Rect, Scene, Transform};
+mod glyph_fit;
+mod symbols;
+pub use assets::{ASSET_IDS, SYMBOLS};
+use cw_scene::{
+    metrics, text_cell, wrap_text, Color, Damage, Node, Primitive, Rect, Scene, Transform, Typeface,
+};
 use fontdue::{Font, FontSettings};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-pub const FONT_SHA256: &str = "c805f9436dbc268644c1d9584f01a601a653e028e08fd74b9b949f6cf8304d88";
-pub const UI_FONT_SHA256: &str = "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280";
-const UI_FONT_BYTES: &[u8] = include_bytes!("../assets/DejaVuSans.ttf");
-const FONT_BYTES: &[u8] = include_bytes!("../assets/DejaVuSansMono.ttf");
+pub const FONT_SHA256: &str = "0c8e3c7a3d59e41f73d593616c5c42ba3f4d916d9a5a93baeba1d56776a733ef";
+pub const UI_FONT_SHA256: &str = "a8ef62637fccede99b4736e2a376aafb723807e217dba916bb607ce825627231";
+/// The DejaVu faces are subset to the coverage the world can reach; the
+/// full-Unicode masters stay in `assets/` but are not embedded. See
+/// `assets/build-fonts.py` for the coverage set and why it is drawn that way.
+/// Subsetting preserves outlines and advances exactly, so every retained glyph
+/// rasterizes to the pixels the master produced.
+const UI_FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-sans.ttf");
+const FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-mono.ttf");
+/// Latin subsets of the per-platform UI families, regular then strong weight.
+const FACE_BYTES: [&[u8]; 8] = [
+    include_bytes!("../assets/fonts/inter-regular.ttf"),
+    include_bytes!("../assets/fonts/inter-bold.ttf"),
+    include_bytes!("../assets/fonts/opensans-regular.ttf"),
+    include_bytes!("../assets/fonts/opensans-bold.ttf"),
+    include_bytes!("../assets/fonts/ubuntu-regular.ttf"),
+    include_bytes!("../assets/fonts/ubuntu-bold.ttf"),
+    include_bytes!("../assets/fonts/roboto-regular.ttf"),
+    include_bytes!("../assets/fonts/roboto-bold.ttf"),
+];
+fn face_index(typeface: Typeface, bold: bool) -> Option<usize> {
+    let family = match typeface {
+        Typeface::DejaVu => return None,
+        Typeface::Inter => 0,
+        Typeface::OpenSans => 1,
+        Typeface::Ubuntu => 2,
+        Typeface::Roboto => 3,
+    };
+    Some(family * 2 + usize::from(bold))
+}
+/// Backdrop blur radius per pass; three passes reach three times this distance.
+const MAX_BACKDROP_BLUR: u32 = 48;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Frame {
     pub width: u32,
@@ -45,13 +77,16 @@ struct Mask {
     alpha: Vec<u8>,
     spans: Vec<(u32, u32, u32)>,
 }
+/// (style, family, text, size, width, height) of a rasterized text block.
+type TextKey = (u8, Typeface, String, u16, u32, u32);
 /// Cache limits bound resident text memory across arbitrary navigation histories.
 pub struct Renderer {
     font: Font,
     ui_font: Option<Font>,
     bold_font: Option<Font>,
+    faces: [Option<Font>; 8],
     glyphs: BTreeMap<(u8, char, u16), Arc<Glyph>>,
-    texts: BTreeMap<(u8, String, u16, u32, u32), Arc<Mask>>,
+    texts: BTreeMap<TextKey, Arc<Mask>>,
     assets: BTreeMap<(String, u32, u32), Arc<Frame>>,
     shadows: BTreeMap<(u32, u32, u32, u32), Arc<Mask>>,
     frame: Frame,
@@ -70,6 +105,7 @@ impl Renderer {
                 .expect("bundled font is valid"),
             ui_font: None,
             bold_font: None,
+            faces: Default::default(),
             glyphs: BTreeMap::new(),
             texts: BTreeMap::new(),
             assets: BTreeMap::new(),
@@ -128,8 +164,15 @@ impl Renderer {
         self.frame.height = scene.height;
         self.frame.rgba.resize(len as usize, 0);
     }
-    fn glyph(&mut self, c: char, size: u16, ui: u8) -> Arc<Glyph> {
+    fn glyph(&mut self, c: char, size: u16, ui: u8, typeface: Typeface) -> Arc<Glyph> {
         let size = size.clamp(1, 256);
+        // Platform families are Latin subsets; anything else falls back to DejaVu.
+        let face = if ui > 0 && typeface.covers(ui == 2, c) {
+            face_index(typeface, ui == 2)
+        } else {
+            None
+        };
+        let ui = face.map_or(ui, |f| 3 + f as u8);
         if let Some(g) = self.glyphs.get(&(ui, c, size)) {
             return g.clone();
         }
@@ -138,10 +181,15 @@ impl Renderer {
         {
             self.glyphs.clear()
         }
-        let font = if ui == 2 {
+        let font = if let Some(face) = face {
+            self.faces[face].get_or_insert_with(|| {
+                Font::from_bytes(FACE_BYTES[face], FontSettings::default())
+                    .expect("bundled platform font is valid")
+            })
+        } else if ui == 2 {
             self.bold_font.get_or_insert_with(|| {
                 Font::from_bytes(
-                    include_bytes!("../assets/DejaVuSans-Bold.ttf") as &[u8],
+                    include_bytes!("../assets/fonts/dejavu-sans-bold.ttf") as &[u8],
                     FontSettings::default(),
                 )
                 .expect("bundled bold font is valid")
@@ -155,12 +203,27 @@ impl Renderer {
             &self.font
         };
         let (metrics, alpha) = font.rasterize(c, size as f32);
+        // Terminal frames are what vision consumers OCR, so the fixed-pitch face is
+        // grid-fitted; proportional UI text keeps the rasterizer's own output.
+        let (metrics, alpha) = if ui == 0 {
+            glyph_fit::fit(font, c, size, metrics, alpha)
+        } else {
+            (metrics, alpha)
+        };
         let glyph = Arc::new(Glyph { metrics, alpha });
         self.glyphs.insert((ui, c, size), glyph.clone());
         glyph
     }
-    fn text(&mut self, text: &str, size: u16, width: u32, height: u32, ui: u8) -> Arc<Mask> {
-        let key = (ui, text.to_owned(), size, width, height);
+    fn text(
+        &mut self,
+        text: &str,
+        size: u16,
+        width: u32,
+        height: u32,
+        ui: u8,
+        typeface: Typeface,
+    ) -> Arc<Mask> {
+        let key = (ui, typeface, text.to_owned(), size, width, height);
         if let Some(mask) = self.texts.get(&key) {
             return mask.clone();
         }
@@ -191,46 +254,37 @@ impl Renderer {
         };
         let size = size.clamp(1, 256);
         if ui > 0 {
-            // Quantized 1/64-pixel advances avoid cumulative platform floating-point
-            // layout drift. Raster positions and line spacing are integer pixels.
-            let mut pen = 0i64;
-            let mut baseline = size as i64;
+            // Tabulated 1/64-pixel advances and word wrapping are shared with layout
+            // code, avoiding platform floating-point drift. Raster origins are integers.
+            let bold = ui == 2;
             let line_height = size as i64 + (size as i64 + 3) / 4;
-            for c in text.chars() {
-                if c == '\n' {
-                    pen = 0;
-                    baseline += line_height;
-                    continue;
-                }
-                if c == '\r' {
-                    continue;
-                }
+            let lines = metrics::wrap(typeface, bold, text, size, width);
+            for (row, line) in lines.iter().enumerate() {
+                let baseline = size as i64 + row as i64 * line_height;
                 if baseline - size as i64 >= height as i64 {
                     break;
                 }
-                let g = self.glyph(if c == '\t' { ' ' } else { c }, size, ui);
-                let advance =
-                    (g.metrics.advance_width * 64.0 + 0.5) as i64 * if c == '\t' { 4 } else { 1 };
-                if pen > 0 && pen + advance > width as i64 * 64 {
-                    pen = 0;
-                    baseline += line_height;
-                }
-                let x = (pen + 32) / 64 + g.metrics.xmin as i64;
-                let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
-                for gy in 0..g.metrics.height {
-                    let py = y + gy as i64;
-                    if py < 0 || py >= height as i64 {
-                        continue;
-                    }
-                    for gx in 0..g.metrics.width {
-                        let px = x + gx as i64;
-                        if px >= 0 && px < width as i64 {
-                            let i = py as usize * width as usize + px as usize;
-                            mask.alpha[i] = mask.alpha[i].max(g.alpha[gy * g.metrics.width + gx]);
+                let mut pen = 0i64;
+                for c in line.chars() {
+                    let g = self.glyph(if c == '\t' { ' ' } else { c }, size, ui, typeface);
+                    let x = (pen + 32) / 64 + g.metrics.xmin as i64;
+                    let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
+                    for gy in 0..g.metrics.height {
+                        let py = y + gy as i64;
+                        if py < 0 || py >= height as i64 {
+                            continue;
+                        }
+                        for gx in 0..g.metrics.width {
+                            let px = x + gx as i64;
+                            if px >= 0 && px < width as i64 {
+                                let i = py as usize * width as usize + px as usize;
+                                mask.alpha[i] =
+                                    mask.alpha[i].max(g.alpha[gy * g.metrics.width + gx]);
+                            }
                         }
                     }
+                    pen += metrics::advance(typeface, bold, c, size);
                 }
-                pen += advance;
             }
         } else {
             let (cell, line_height) = text_cell(size);
@@ -241,7 +295,7 @@ impl Renderer {
                     break;
                 }
                 for (col, c) in line.chars().enumerate() {
-                    let g = self.glyph(c, size, 0);
+                    let g = self.glyph(c, size, 0, Typeface::DejaVu);
                     let x = col as i64 * cell as i64 + g.metrics.xmin as i64;
                     let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
                     for gy in 0..g.metrics.height {
@@ -285,7 +339,7 @@ impl Renderer {
     fn paint(&mut self, scene: &Scene, damage: &[Rect]) {
         let viewport = Rect::new(0, 0, scene.width, scene.height);
         let nodes = scene.ordered_nodes();
-        let damage = normalize_damage(damage, viewport);
+        let damage = backdrop_damage(normalize_damage(damage, viewport), &nodes, viewport);
         for damage in &damage {
             let Some(area) = damage.intersection(viewport) else {
                 continue;
@@ -299,18 +353,35 @@ impl Renderer {
                     continue;
                 }
                 let text = match &node.primitive {
-                    Primitive::Text { text, size, .. } => {
-                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, 0))
-                    }
-                    Primitive::UiTextBold { text, size, .. } => {
-                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, 2))
-                    }
-                    Primitive::UiText { text, size, .. } => {
-                        Some(self.text(text, *size, node.bounds.width, node.bounds.height, 1))
-                    }
+                    Primitive::Text { text, size, .. } => Some(self.text(
+                        text,
+                        *size,
+                        node.bounds.width,
+                        node.bounds.height,
+                        0,
+                        scene.typeface,
+                    )),
+                    Primitive::UiTextBold { text, size, .. } => Some(self.text(
+                        text,
+                        *size,
+                        node.bounds.width,
+                        node.bounds.height,
+                        2,
+                        scene.typeface,
+                    )),
+                    Primitive::UiText { text, size, .. } => Some(self.text(
+                        text,
+                        *size,
+                        node.bounds.width,
+                        node.bounds.height,
+                        1,
+                        scene.typeface,
+                    )),
                     _ => None,
                 };
-                let asset = if let Primitive::AssetImage { asset } = &node.primitive {
+                let asset = if let Primitive::AssetImage { asset }
+                | Primitive::Symbol { asset, .. } = &node.primitive
+                {
                     let key = (asset.clone(), node.bounds.width, node.bounds.height);
                     if !self.assets.contains_key(&key) {
                         if let Some(frame) = assets::decode(asset) {
@@ -334,7 +405,7 @@ impl Renderer {
                                 || self
                                     .assets
                                     .iter()
-                                    .filter(|((id, _, _), _)| id.starts_with("icon/"))
+                                    .filter(|((id, _, _), _)| !id.starts_with("wallpaper/"))
                                     .map(|(_, f)| f.rgba.len())
                                     .sum::<usize>()
                                     > 8 * 1024 * 1024
@@ -372,18 +443,53 @@ impl Renderer {
                 } else {
                     None
                 };
+                let backdrop = match &node.primitive {
+                    Primitive::Backdrop { blur, .. } => {
+                        self.blurred_backdrop(node, *blur, viewport)
+                    }
+                    _ => None,
+                };
                 self.paint_node(
                     node,
                     area,
                     text.as_deref(),
                     asset.as_deref(),
                     shadow.as_deref(),
+                    backdrop.as_ref(),
                 );
             }
         }
         self.stats.frames += 1;
         self.stats.glyph_cache_entries = self.glyphs.len();
         self.stats.text_cache_entries = self.texts.len();
+    }
+    /// Blurred copy of the pixels already composited beneath a backdrop node. The
+    /// source extends three pass radii beyond the node so edge clamping never reaches
+    /// visible pixels unless the viewport itself ends there.
+    fn blurred_backdrop(&self, node: &Node, blur: u32, viewport: Rect) -> Option<(Rect, Vec<u8>)> {
+        if node.transform != Transform::default() {
+            return None;
+        }
+        let source = backdrop_source(node, blur, viewport)?;
+        let (w, h) = (source.width as usize, source.height as usize);
+        let mut rgb = vec![0u8; w * h * 3];
+        for y in 0..h {
+            let start =
+                ((source.y as usize + y) * self.frame.width as usize + source.x as usize) * 4;
+            for x in 0..w {
+                rgb[(y * w + x) * 3..(y * w + x) * 3 + 3]
+                    .copy_from_slice(&self.frame.rgba[start + x * 4..start + x * 4 + 3]);
+            }
+        }
+        let r = blur.min(MAX_BACKDROP_BLUR) as usize;
+        if r > 0 {
+            let mut tmp = vec![0u8; rgb.len()];
+            for _ in 0..3 {
+                box_blur_rgb(&rgb, &mut tmp, w, h, r, true);
+                box_blur_rgb(&tmp, &mut rgb, w, h, r, false);
+            }
+        }
+        Some((source, rgb))
     }
     fn clear(&mut self, area: Rect, c: Color) {
         let pixel = [c.0, c.1, c.2, c.3];
@@ -404,8 +510,20 @@ impl Renderer {
         text: Option<&Mask>,
         asset: Option<&Frame>,
         shadow: Option<&Mask>,
+        backdrop: Option<&(Rect, Vec<u8>)>,
     ) {
         let identity = node.transform == Transform::default();
+        let clip_coverage = |x: i64, y: i64| {
+            node.rounded_clip.map_or(255, |c| {
+                rounded_coverage(
+                    x - c.rect.x as i64,
+                    y - c.rect.y as i64,
+                    c.rect.width,
+                    c.rect.height,
+                    c.radius,
+                )
+            })
+        };
         if identity {
             if let (
                 Primitive::Text { color, .. }
@@ -429,7 +547,10 @@ impl Renderer {
                             color.0,
                             color.1,
                             color.2,
-                            mul_alpha(mul_alpha(color.3, alpha), node.opacity),
+                            mul_alpha(
+                                mul_alpha(mul_alpha(color.3, alpha), node.opacity),
+                                clip_coverage(x, y),
+                            ),
                         );
                         if color.3 == 0 {
                             continue;
@@ -446,12 +567,94 @@ impl Renderer {
             } = &node.primitive
             {
                 if fill.3 == 255 && node.opacity == 255 {
-                    self.clear(area, *fill);
-                    self.stats.painted_pixels += area.width as u64 * area.height as u64;
-                    return;
+                    let Some(clip) = node.rounded_clip else {
+                        self.clear(area, *fill);
+                        self.stats.painted_pixels += area.width as u64 * area.height as u64;
+                        return;
+                    };
+                    // Rows clear of the clip's corners are constant; only the corner
+                    // bands need per-pixel coverage.
+                    let r = clip
+                        .radius
+                        .min(clip.rect.width / 2)
+                        .min(clip.rect.height / 2);
+                    let straight = Rect::new(
+                        clip.rect.x,
+                        clip.rect.y.saturating_add(r as i32),
+                        clip.rect.width,
+                        clip.rect.height - r * 2,
+                    );
+                    if let Some(fast) = area.intersection(straight) {
+                        self.clear(fast, *fill);
+                        self.stats.painted_pixels += fast.width as u64 * fast.height as u64;
+                        let below = fast.y + fast.height as i32;
+                        for band in [
+                            Rect::new(area.x, area.y, area.width, (fast.y - area.y) as u32),
+                            Rect::new(
+                                area.x,
+                                below,
+                                area.width,
+                                (area.y + area.height as i32 - below) as u32,
+                            ),
+                        ] {
+                            if band.height > 0 {
+                                self.paint_pixels(node, band, text, asset, shadow, backdrop);
+                            }
+                        }
+                        return;
+                    }
                 }
             }
         }
+        self.paint_pixels(node, area, text, asset, shadow, backdrop);
+    }
+    fn paint_pixels(
+        &mut self,
+        node: &Node,
+        mut area: Rect,
+        text: Option<&Mask>,
+        asset: Option<&Frame>,
+        shadow: Option<&Mask>,
+        backdrop: Option<&(Rect, Vec<u8>)>,
+    ) {
+        let identity = node.transform == Transform::default();
+        if let (
+            true,
+            Primitive::Path {
+                points,
+                stroke_width,
+                ..
+            },
+        ) = (identity, &node.primitive)
+        {
+            // Shell glyphs use scene-sized bounds; only their extent can paint.
+            let pad = i64::from(*stroke_width) / 2 + 2;
+            let extent = |f: fn(&(i32, i32)) -> i32, origin: i32| {
+                let lo = points.iter().map(f).min().unwrap_or(0) as i64 + origin as i64 - pad;
+                let hi = points.iter().map(f).max().unwrap_or(0) as i64 + origin as i64 + pad;
+                (
+                    lo.clamp(i32::MIN as i64, i32::MAX as i64) as i32,
+                    (hi - lo + 1).clamp(0, u32::MAX as i64) as u32,
+                )
+            };
+            let (x, width) = extent(|p| p.0, node.bounds.x);
+            let (y, height) = extent(|p| p.1, node.bounds.y);
+            match area.intersection(Rect::new(x, y, width, height)) {
+                Some(tight) => area = tight,
+                None => return,
+            }
+        }
+        let clip_coverage = |x: i64, y: i64| {
+            node.rounded_clip.map_or(255, |c| {
+                rounded_coverage(
+                    x - c.rect.x as i64,
+                    y - c.rect.y as i64,
+                    c.rect.width,
+                    c.rect.height,
+                    c.radius,
+                )
+            })
+        };
         for y in area.y..area.y + area.height as i32 {
             for x in area.x..area.x + area.width as i32 {
                 let p = if identity {
@@ -560,11 +763,25 @@ impl Renderer {
                     }
                     Primitive::AssetImage { .. } => {
                         let Some(frame) = asset else { continue };
+                        if frame.width > 256 || frame.height > 256 {
+                            // Wallpapers fill their bounds like a real desktop: centred,
+                            // aspect-preserving crop with bilinear filtering.
+                            cover_sample(frame, node.bounds, local_x, local_y)
+                        } else {
+                            let sx = local_x as u64 * frame.width as u64 / node.bounds.width as u64;
+                            let sy =
+                                local_y as u64 * frame.height as u64 / node.bounds.height as u64;
+                            let i = ((sy * frame.width as u64 + sx) * 4) as usize;
+                            let p = &frame.rgba[i..i + 4];
+                            Color(p[0], p[1], p[2], p[3])
+                        }
+                    }
+                    Primitive::Symbol { color, .. } => {
+                        let Some(frame) = asset else { continue };
                         let sx = local_x as u64 * frame.width as u64 / node.bounds.width as u64;
                         let sy = local_y as u64 * frame.height as u64 / node.bounds.height as u64;
-                        let i = ((sy * frame.width as u64 + sx) * 4) as usize;
-                        let p = &frame.rgba[i..i + 4];
-                        Color(p[0], p[1], p[2], p[3])
+                        let alpha = frame.rgba[((sy * frame.width as u64 + sx) * 4) as usize + 3];
+                        Color(color.0, color.1, color.2, mul_alpha(color.3, alpha))
                     }
                     Primitive::Image {
                         width,
@@ -588,21 +805,38 @@ impl Renderer {
                         stroke,
                         stroke_width,
                         closed,
-                    } => {
-                        let p = (local_x as i32, local_y as i32);
-                        let mut color = Color::TRANSPARENT;
-                        if *closed && inside_polygon(p, points) {
-                            color = fill.unwrap_or(color)
+                    } => path_color(
+                        (local_x as i32, local_y as i32),
+                        points,
+                        if *closed { *fill } else { None },
+                        if *stroke_width > 0 { *stroke } else { None },
+                        *stroke_width,
+                        *closed,
+                    ),
+                    Primitive::Backdrop { radius, .. } => {
+                        let Some((source, rgb)) = backdrop else {
+                            continue;
+                        };
+                        let coverage = rounded_coverage(
+                            local_x,
+                            local_y,
+                            node.bounds.width,
+                            node.bounds.height,
+                            *radius,
+                        );
+                        if !source.contains(x, y) {
+                            continue;
                         }
-                        if let Some(stroke) = stroke {
-                            if on_path(p, points, *closed, *stroke_width) {
-                                color = *stroke
-                            }
-                        }
-                        color
+                        let i = ((y - source.y) as usize * source.width as usize
+                            + (x - source.x) as usize)
+                            * 3;
+                        Color(rgb[i], rgb[i + 1], rgb[i + 2], coverage)
                     }
                 };
-                color.3 = mul_alpha(color.3, node.opacity);
+                color.3 = mul_alpha(
+                    mul_alpha(color.3, node.opacity),
+                    clip_coverage(x as i64, y as i64),
+                );
                 if color.3 == 0 {
                     continue;
                 }
@@ -695,17 +929,129 @@ fn blend(dst: &mut [u8], src: Color) {
     }
     dst[3] = ((out + 127) / 255) as u8;
 }
-fn inside_polygon((x, y): (i32, i32), points: &[(i32, i32)]) -> bool {
+fn cover_sample(frame: &Frame, bounds: Rect, x: i64, y: i64) -> Color {
+    let (fw, fh) = (frame.width as i64, frame.height as i64);
+    let (w, h) = (bounds.width.max(1) as i64, bounds.height.max(1) as i64);
+    let (crop_w, crop_h) = if fw * h > fh * w {
+        ((fh * w / h).max(1), fh)
+    } else {
+        (fw, (fw * h / w).max(1))
+    };
+    let axis = |v: i64, out: i64, crop: i64, full: i64| {
+        let p = (full - crop) / 2 * 256 + ((2 * v + 1) * crop * 256) / (2 * out) - 128;
+        let p = p.clamp(0, (full - 1) * 256);
+        (
+            (p / 256) as usize,
+            ((p / 256 + 1).min(full - 1)) as usize,
+            (p % 256) as u32,
+        )
+    };
+    let (x0, x1, fx) = axis(x, w, crop_w, fw);
+    let (y0, y1, fy) = axis(y, h, crop_h, fh);
+    let at = |x: usize, y: usize| &frame.rgba[(y * frame.width as usize + x) * 4..][..4];
+    let (a, b, c, d) = (at(x0, y0), at(x1, y0), at(x0, y1), at(x1, y1));
+    let mix = |i: usize| {
+        let top = a[i] as u32 * (256 - fx) + b[i] as u32 * fx;
+        let bottom = c[i] as u32 * (256 - fx) + d[i] as u32 * fx;
+        ((top * (256 - fy) + bottom * fy + 32768) >> 16) as u8
+    };
+    Color(mix(0), mix(1), mix(2), mix(3))
+}
+/// Source pixels a backdrop reads: its bounds grown by the three-pass blur reach.
+fn backdrop_source(node: &Node, blur: u32, viewport: Rect) -> Option<Rect> {
+    let reach = (blur.min(MAX_BACKDROP_BLUR) * 3) as i32;
+    let b = node.bounds.intersection(viewport)?;
+    Rect::new(
+        b.x - reach,
+        b.y - reach,
+        b.width + reach as u32 * 2,
+        b.height + reach as u32 * 2,
+    )
+    .intersection(viewport)
+}
+/// A repaint touching a backdrop's source must repaint the whole source in one pass,
+/// because pixels outside the damage already hold layers composited above it.
+fn backdrop_damage(mut rects: Vec<Rect>, nodes: &[&Node], viewport: Rect) -> Vec<Rect> {
+    let sources: Vec<Rect> = nodes
+        .iter()
+        .filter(|n| n.opacity > 0)
+        .filter_map(|n| match n.primitive {
+            Primitive::Backdrop { blur, .. } => backdrop_source(n, blur, viewport),
+            _ => None,
+        })
+        .collect();
+    if sources.is_empty() {
+        return rects;
+    }
+    loop {
+        let mut changed = false;
+        for source in &sources {
+            let hits: Vec<usize> = (0..rects.len())
+                .filter(|&i| rects[i].intersection(*source).is_some())
+                .collect();
+            let contained =
+                hits.len() == 1 && rects[hits[0]].intersection(*source) == Some(*source);
+            if hits.is_empty() || contained {
+                continue;
+            }
+            let mut merged = *source;
+            for &i in hits.iter().rev() {
+                merged = union(merged, rects.remove(i));
+            }
+            rects.push(merged);
+            changed = true;
+        }
+        if !changed {
+            return rects;
+        }
+        rects = normalize_damage(&rects, viewport);
+    }
+}
+fn union(a: Rect, b: Rect) -> Rect {
+    let x = a.x.min(b.x);
+    let y = a.y.min(b.y);
+    let right = (a.x as i64 + a.width as i64).max(b.x as i64 + b.width as i64);
+    let bottom = (a.y as i64 + a.height as i64).max(b.y as i64 + b.height as i64);
+    Rect::new(x, y, (right - x as i64) as u32, (bottom - y as i64) as u32)
+}
+/// One clamped running-sum box pass over interleaved RGB rows or columns.
+fn box_blur_rgb(src: &[u8], dst: &mut [u8], w: usize, h: usize, r: usize, horizontal: bool) {
+    let (lines, len) = if horizontal { (h, w) } else { (w, h) };
+    let index = |line: usize, i: usize| {
+        if horizontal {
+            (line * w + i) * 3
+        } else {
+            (i * w + line) * 3
+        }
+    };
+    let window = (r * 2 + 1) as u32;
+    for line in 0..lines {
+        for channel in 0..3 {
+            let at =
+                |i: i64| src[index(line, i.clamp(0, len as i64 - 1) as usize) + channel] as u32;
+            let mut sum: u32 = (-(r as i64)..=r as i64).map(at).sum();
+            for i in 0..len {
+                dst[index(line, i) + channel] = ((sum + window / 2) / window) as u8;
+                sum += at(i as i64 + r as i64 + 1);
+                sum -= at(i as i64 - r as i64);
+            }
+        }
+    }
+}
+// Path geometry is evaluated in eighths of a pixel so the same integer predicates
+// serve both pixel centres and the 4x4 antialiasing grid.
+fn inside_polygon((x, y): (i128, i128), points: &[(i32, i32)]) -> bool {
     let mut inside = false;
     if points.len() < 3 {
         return false;
     }
     for i in 0..points.len() {
-        let (ax, ay) = points[i];
-        let (bx, by) = points[(i + 1) % points.len()];
+        let (ax, ay) = (points[i].0 as i128 * 8, points[i].1 as i128 * 8);
+        let b = points[(i + 1) % points.len()];
+        let (bx, by) = (b.0 as i128 * 8, b.1 as i128 * 8);
         if (ay > y) != (by > y) {
-            let lhs = (x as i128 - ax as i128) * (by as i128 - ay as i128);
-            let rhs = (bx as i128 - ax as i128) * (y as i128 - ay as i128);
+            let lhs = (x - ax) * (by - ay);
+            let rhs = (bx - ax) * (y - ay);
             if if by > ay { lhs < rhs } else { lhs > rhs } {
                 inside = !inside
             }
@@ -713,8 +1059,9 @@ fn inside_polygon((x, y): (i32, i32), points: &[(i32, i32)]) -> bool {
     }
     inside
 }
-fn on_path(p: (i32, i32), points: &[(i32, i32)], closed: bool, width: u16) -> bool {
-    if width == 0 || points.len() < 2 {
+/// Whether any segment lies within `distance` eighth-pixels of `p`.
+fn near_path(p: (i128, i128), points: &[(i32, i32)], closed: bool, distance: i128) -> bool {
+    if distance < 0 || points.len() < 2 {
         return false;
     }
     let n = if closed {
@@ -722,27 +1069,79 @@ fn on_path(p: (i32, i32), points: &[(i32, i32)], closed: bool, width: u16) -> bo
     } else {
         points.len() - 1
     };
+    let limit = distance * distance;
     (0..n).any(|i| {
-        let a = points[i];
+        let a = (points[i].0 as i128 * 8, points[i].1 as i128 * 8);
         let b = points[(i + 1) % points.len()];
-        let dx = b.0 as i128 - a.0 as i128;
-        let dy = b.1 as i128 - a.1 as i128;
-        let px = p.0 as i128 - a.0 as i128;
-        let py = p.1 as i128 - a.1 as i128;
+        let b = (b.0 as i128 * 8, b.1 as i128 * 8);
+        let dx = b.0 - a.0;
+        let dy = b.1 - a.1;
+        let px = p.0 - a.0;
+        let py = p.1 - a.1;
         let len = dx * dx + dy * dy;
-        let radius = width as i128 * width as i128;
         let dot = px * dx + py * dy;
         if len == 0 || dot <= 0 {
-            4 * (px * px + py * py) <= radius
+            px * px + py * py <= limit
         } else if dot >= len {
-            let x = p.0 as i128 - b.0 as i128;
-            let y = p.1 as i128 - b.1 as i128;
-            4 * (x * x + y * y) <= radius
+            let x = p.0 - b.0;
+            let y = p.1 - b.1;
+            x * x + y * y <= limit
         } else {
             let cross = px * dy - py * dx;
-            4 * cross * cross <= radius * len
+            cross * cross <= limit * len
         }
     })
+}
+/// Antialiased fill and stroke. Integer coordinates address pixel centres; pixels
+/// provably clear of every edge take one sample, the rest a fixed 4x4 grid.
+fn path_color(
+    (x, y): (i32, i32),
+    points: &[(i32, i32)],
+    fill: Option<Color>,
+    stroke: Option<Color>,
+    stroke_width: u16,
+    closed: bool,
+) -> Color {
+    let centre = (x as i128 * 8, y as i128 * 8);
+    let half = stroke_width as i128 * 4;
+    // Samples lie within 3√2 < 5 eighths of the centre.
+    if let Some(stroke) = stroke {
+        if half > 5 && near_path(centre, points, closed, half - 5) {
+            return stroke;
+        }
+    }
+    let stroke_edge = stroke.is_some() && near_path(centre, points, closed, half + 5);
+    let fill_edge = fill.is_some() && near_path(centre, points, true, 5);
+    if !stroke_edge && !fill_edge {
+        return match fill {
+            Some(fill) if inside_polygon(centre, points) => fill,
+            _ => Color::TRANSPARENT,
+        };
+    }
+    let (mut r, mut g, mut b, mut a) = (0u32, 0u32, 0u32, 0u32);
+    for sy in [-3, -1, 1, 3] {
+        for sx in [-3, -1, 1, 3] {
+            let p = (centre.0 + sx, centre.1 + sy);
+            let sample = match (stroke, fill) {
+                (Some(stroke), _) if near_path(p, points, closed, half) => stroke,
+                (_, Some(fill)) if inside_polygon(p, points) => fill,
+                _ => continue,
+            };
+            r += sample.0 as u32 * sample.3 as u32;
+            g += sample.1 as u32 * sample.3 as u32;
+            b += sample.2 as u32 * sample.3 as u32;
+            a += sample.3 as u32;
+        }
+    }
+    if a == 0 {
+        return Color::TRANSPARENT;
+    }
+    Color(
+        ((r + a / 2) / a) as u8,
+        ((g + a / 2) / a) as u8,
+        ((b + a / 2) / a) as u8,
+        ((a + 8) / 16) as u8,
+    )
 }
 
 #[cfg(test)]
@@ -887,11 +1286,11 @@ mod tests {
     #[test]
     fn ui_proportional_advances_clipping_and_cache() {
         let mut renderer = Renderer::new();
-        let narrow = renderer.text("iiii", 20, 180, 30, 1);
-        let wide = renderer.text("WWWW", 20, 180, 30, 1);
+        let narrow = renderer.text("iiii", 20, 180, 30, 1, Typeface::DejaVu);
+        let wide = renderer.text("WWWW", 20, 180, 30, 1, Typeface::DejaVu);
         let right = |mask: &Mask| mask.spans.iter().map(|s| s.2).max().unwrap();
         assert!(right(&wide) > right(&narrow) * 2);
-        let cached = renderer.text("iiii", 20, 180, 30, 1);
+        let cached = renderer.text("iiii", 20, 180, 30, 1, Typeface::DejaVu);
         assert!(Arc::ptr_eq(&narrow, &cached));
         let mut scene = Scene::new(80, 30);
         let mut label = Node::ui_text(
@@ -956,6 +1355,41 @@ mod tests {
             format!("{:x}", Sha256::digest(UI_FONT_BYTES)),
             UI_FONT_SHA256
         );
+    }
+    /// The DejaVu faces are subset (see `assets/build-fonts.py`), and DejaVu is
+    /// the last fallback, so a codepoint outside the coverage set has nowhere
+    /// left to go. It must then draw `.notdef` — a visible hollow box — rather
+    /// than nothing at all, because a glyph that silently renders as blank is
+    /// indistinguishable from a rendering bug and unreadable to an OCR consumer.
+    #[test]
+    fn uncovered_codepoints_draw_a_visible_notdef_box() {
+        // Scripts the full masters carried and the subset deliberately drops.
+        for uncovered in ['\u{05D0}', '\u{0627}', '\u{10A0}', '\u{0E01}', '\u{4E2D}'] {
+            for ui in [0u8, 1, 2] {
+                let mut renderer = Renderer::new();
+                let glyph = renderer.glyph(uncovered, 24, ui, Typeface::DejaVu);
+                let ink: u32 = glyph.alpha.iter().map(|a| u32::from(*a)).sum();
+                assert!(
+                    ink > 0,
+                    "U+{:04X} at ui={ui} rendered as blank, not .notdef",
+                    uncovered as u32
+                );
+                // Every uncovered codepoint maps to glyph 0, so they are the
+                // same mark: predictable, not merely non-empty.
+                let other = renderer.glyph('\u{0905}', 24, ui, Typeface::DejaVu);
+                assert_eq!(
+                    glyph.alpha, other.alpha,
+                    "U+{:04X} at ui={ui} is not the shared .notdef",
+                    uncovered as u32
+                );
+            }
+        }
+        // A covered codepoint must still be its own glyph, or the assertion
+        // above would pass with the whole face replaced by boxes.
+        let mut renderer = Renderer::new();
+        let lambda = renderer.glyph('\u{03BB}', 24, 1, Typeface::DejaVu);
+        let notdef = renderer.glyph('\u{05D0}', 24, 1, Typeface::DejaVu);
+        assert_ne!(lambda.alpha, notdef.alpha, "λ must not be .notdef");
     }
     #[test]
     fn structured_scene_does_not_load_font() {
@@ -1135,44 +1569,255 @@ mod desktop_asset_tests {
 }
 
 /// Fixed-point bilinear sampling of premultiplied colors avoids dark alpha fringes.
+/// Coverage-weighted area resampling in 1/256 source pixels: a box filter when
+/// shrinking (no aliasing at dock and status sizes) and a smooth step when enlarging.
 fn resample_icon(source: &Frame, width: u32, height: u32) -> Frame {
+    // Per output cell: the source span it covers, as (first index, weights).
+    let spans = |from: u32, to: u32| -> Vec<(u32, Vec<u64>)> {
+        (0..to as u64)
+            .map(|o| {
+                let start = o * from as u64 * 256 / to as u64;
+                let end = ((o + 1) * from as u64 * 256 / to as u64).max(start + 1);
+                let first = (start / 256) as u32;
+                let last = (((end - 1) / 256) as u32).min(from - 1);
+                let weights = (first..=last)
+                    .map(|i| (end.min((i as u64 + 1) * 256)) - start.max(i as u64 * 256))
+                    .collect();
+                (first, weights)
+            })
+            .collect()
+    };
+    let columns = spans(source.width, width);
+    let rows = spans(source.height, height);
     let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
-    for y in 0..height {
-        let sy = (((2 * y as i64 + 1) * source.height as i64 * 256) / (2 * height as i64) - 128)
-            .clamp(0, (source.height as i64 - 1) * 256);
-        let y0 = (sy / 256) as u32;
-        let y1 = (y0 + 1).min(source.height - 1);
-        let fy = sy as u64 % 256;
-        for x in 0..width {
-            let sx = (((2 * x as i64 + 1) * source.width as i64 * 256) / (2 * width as i64) - 128)
-                .clamp(0, (source.width as i64 - 1) * 256);
-            let x0 = (sx / 256) as u32;
-            let x1 = (x0 + 1).min(source.width - 1);
-            let fx = sx as u64 % 256;
+    for (y0, wy) in &rows {
+        for (x0, wx) in &columns {
             let mut a = 0u64;
             let mut c = [0u64; 3];
-            for (px, py, weight) in [
-                (x0, y0, (256 - fx) * (256 - fy)),
-                (x1, y0, fx * (256 - fy)),
-                (x0, y1, (256 - fx) * fy),
-                (x1, y1, fx * fy),
-            ] {
-                let i = ((py * source.width + px) * 4) as usize;
-                let alpha = source.rgba[i + 3] as u64 * weight;
-                a += alpha;
-                for (channel, total) in c.iter_mut().enumerate() {
-                    *total += source.rgba[i + channel] as u64 * alpha;
+            let mut total = 0u64;
+            for (dy, wy) in wy.iter().enumerate() {
+                for (dx, wx) in wx.iter().enumerate() {
+                    let weight = wx * wy;
+                    let i = (((y0 + dy as u32) * source.width + x0 + dx as u32) * 4) as usize;
+                    let alpha = source.rgba[i + 3] as u64 * weight;
+                    total += weight;
+                    a += alpha;
+                    for (channel, sum) in c.iter_mut().enumerate() {
+                        *sum += source.rgba[i + channel] as u64 * alpha;
+                    }
                 }
             }
-            for total in c {
-                rgba.push((total + a / 2).checked_div(a).unwrap_or(0) as u8);
+            for sum in c {
+                rgba.push((sum + a / 2).checked_div(a).unwrap_or(0) as u8);
             }
-            rgba.push(((a + 32768) / 65536) as u8);
+            rgba.push(((a + total / 2) / total.max(1)) as u8);
         }
     }
     Frame {
         width,
         height,
         rgba,
+    }
+}
+
+#[cfg(test)]
+mod fidelity_tests {
+    use super::*;
+    use cw_scene::{PatchOp, RoundedClip, ScenePatch};
+
+    fn glass_scene() -> Scene {
+        let mut s = Scene::new(220, 160);
+        s.background = Color::rgb(20, 40, 90);
+        for i in 0..8 {
+            s.nodes.push(Node::rectangle(
+                i + 1,
+                Rect::new(i as i32 * 27, 10 + i as i32 * 9, 20, 90),
+                Color::rgb(250, (i * 30) as u8, 40),
+            ));
+        }
+        let mut glass = Node::new(
+            50,
+            Rect::new(40, 40, 120, 70),
+            Primitive::Backdrop {
+                radius: 14,
+                blur: 6,
+            },
+        );
+        glass.z = 5;
+        s.nodes.push(glass);
+        let mut tint =
+            Node::rounded_rectangle(51, Rect::new(40, 40, 120, 70), Color(255, 255, 255, 90), 14);
+        tint.z = 6;
+        s.nodes.push(tint);
+        let mut label = Node::ui_text(
+            52,
+            Rect::new(52, 52, 100, 40),
+            "Control Centre",
+            13,
+            Color::BLACK,
+        );
+        label.z = 7;
+        s.nodes.push(label);
+        s
+    }
+    #[test]
+    fn backdrop_blurs_lower_layers_and_incremental_equals_full() {
+        let mut scene = glass_scene();
+        let mut renderer = Renderer::new();
+        let frame = renderer.render(&scene);
+        // Inside the glass a hard bar edge becomes a gradient; outside it stays crisp.
+        let row = |y: u32| {
+            (60..100)
+                .map(|x| frame.pixel(x, y).unwrap()[1])
+                .collect::<Vec<_>>()
+        };
+        let distinct = |v: Vec<u8>| {
+            v.into_iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+        };
+        assert!(distinct(row(75)) > 6);
+        assert!(distinct(row(30)) <= 4);
+        assert_eq!(frame, Renderer::new().render(&scene));
+        // Moving a bar beneath, beside, and far from the glass must match a full repaint.
+        for (id, x, y) in [(3u64, 70, 20), (1, 8, 60), (8, 195, 120), (3, 100, 45)] {
+            let mut node = scene.nodes.iter().find(|n| n.id == id).unwrap().clone();
+            node.bounds.x = x;
+            node.bounds.y = y;
+            let revision = scene.revision + 1;
+            let damage = scene
+                .patch(ScenePatch {
+                    base_revision: scene.revision,
+                    revision,
+                    operations: vec![PatchOp::Upsert(node)],
+                })
+                .unwrap();
+            assert_eq!(
+                renderer.render_incremental(&scene, &damage),
+                &Renderer::new().render(&scene)
+            );
+        }
+    }
+    #[test]
+    fn rounded_clip_antialiases_corners_and_matches_incrementally() {
+        let mut scene = Scene::new(120, 90);
+        scene.background = Color::BLACK;
+        let clip = RoundedClip {
+            rect: Rect::new(10, 10, 100, 70),
+            radius: 12,
+        };
+        let mut content = Node::rectangle(1, Rect::new(10, 30, 100, 50), Color::WHITE);
+        content.rounded_clip = Some(clip);
+        scene.nodes.push(content);
+        let mut text = Node::ui_text(
+            2,
+            Rect::new(11, 62, 90, 18),
+            "gjpqy",
+            14,
+            Color::rgb(200, 0, 0),
+        );
+        text.rounded_clip = Some(clip);
+        scene.nodes.push(text);
+        let mut renderer = Renderer::new();
+        let frame = renderer.render(&scene);
+        assert_eq!(frame.pixel(10, 79).unwrap(), [0, 0, 0, 255]);
+        assert_eq!(frame.pixel(10, 40).unwrap(), [255, 255, 255, 255]);
+        assert_eq!(frame.pixel(60, 79).unwrap(), [255, 255, 255, 255]);
+        let edge = frame.pixel(13, 76).unwrap()[0];
+        assert!(edge > 0 && edge < 255, "corner must be antialiased: {edge}");
+        assert!(scene.hit_test(10, 79).is_none());
+        let damage = Damage {
+            rects: vec![Rect::new(0, 60, 40, 30)],
+        };
+        assert_eq!(renderer.render_incremental(&scene, &damage), &frame);
+    }
+    #[test]
+    fn paths_are_antialiased_with_crisp_axis_aligned_strokes() {
+        let mut scene = Scene::new(64, 64);
+        let path = |id, points: Vec<(i32, i32)>, closed: bool| {
+            Node::new(
+                id,
+                Rect::new(0, 0, 64, 64),
+                Primitive::Path {
+                    points,
+                    fill: closed.then_some(Color::BLACK),
+                    stroke: (!closed).then_some(Color::BLACK),
+                    stroke_width: 1,
+                    closed,
+                },
+            )
+        };
+        scene.nodes.push(path(1, vec![(4, 10), (40, 10)], false));
+        scene.nodes.push(path(2, vec![(4, 20), (30, 33)], false));
+        scene
+            .nodes
+            .push(path(3, vec![(40, 40), (60, 44), (44, 60)], true));
+        let frame = Renderer::new().render(&scene);
+        assert_eq!(frame.pixel(20, 10).unwrap(), [0, 0, 0, 255]);
+        assert_eq!(frame.pixel(20, 9).unwrap(), [255, 255, 255, 255]);
+        assert_eq!(frame.pixel(20, 11).unwrap(), [255, 255, 255, 255]);
+        let grey = |x0: u32, x1: u32, y0: u32, y1: u32| {
+            (y0..y1)
+                .flat_map(|y| (x0..x1).map(move |x| (x, y)))
+                .filter(|&(x, y)| !matches!(frame.pixel(x, y).unwrap()[0], 0 | 255))
+                .count()
+        };
+        assert!(grey(4, 31, 19, 35) > 10, "diagonal stroke is antialiased");
+        assert!(grey(38, 62, 38, 62) > 10, "polygon edge is antialiased");
+        assert_eq!(frame.pixel(47, 47).unwrap(), [0, 0, 0, 255]);
+    }
+    #[test]
+    fn platform_typefaces_render_distinctly_with_fallback_glyphs() {
+        let mut frames = Vec::new();
+        for typeface in [
+            Typeface::DejaVu,
+            Typeface::Inter,
+            Typeface::OpenSans,
+            Typeface::Ubuntu,
+            Typeface::Roboto,
+        ] {
+            let mut scene = Scene::new(260, 60);
+            scene.typeface = typeface;
+            scene.nodes.push(Node::ui_text(
+                1,
+                Rect::new(4, 4, 250, 24),
+                "Settings λ 09:41",
+                15,
+                Color::BLACK,
+            ));
+            scene.nodes.push(Node::ui_text_bold(
+                2,
+                Rect::new(4, 30, 250, 24),
+                "Quick Settings",
+                15,
+                Color::BLACK,
+            ));
+            let frame = Renderer::new().render(&scene);
+            assert_eq!(frame, Renderer::new().render(&scene));
+            let json = serde_json::to_string(&scene).unwrap();
+            assert_eq!(json.contains("typeface"), typeface != Typeface::DejaVu);
+            assert_eq!(serde_json::from_str::<Scene>(&json).unwrap(), scene);
+            assert!(!frames.contains(&frame));
+            frames.push(frame);
+        }
+    }
+    #[test]
+    fn ui_text_wraps_between_words() {
+        let mut scene = Scene::new(120, 80);
+        scene.typeface = Typeface::Inter;
+        scene.nodes.push(Node::ui_text(
+            1,
+            Rect::new(0, 0, 120, 80),
+            "checklist after release",
+            14,
+            Color::BLACK,
+        ));
+        let frame = Renderer::new().render(&scene);
+        let lines = metrics::wrap(Typeface::Inter, false, "checklist after release", 14, 120);
+        assert_eq!(lines, ["checklist after ", "release"]);
+        let inked = |y0: u32, y1: u32| {
+            (y0..y1).any(|y| (0..120).any(|x| frame.pixel(x, y).unwrap()[0] < 128))
+        };
+        assert!(inked(2, 16) && inked(20, 34) && !inked(40, 80));
     }
 }
