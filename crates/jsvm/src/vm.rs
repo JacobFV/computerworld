@@ -282,6 +282,8 @@ pub struct Vm<'h> {
     pub timer_id: u64,
     /// Virtual milliseconds elapsed (timers advance it).
     pub elapsed_ms: f64,
+    /// `module.parent` for the next module object created.
+    pub loading_parent: Option<Value>,
     /// Instruction count already folded into `elapsed_ms`.
     pub clock_steps: u64,
     pub start_micros: i64,

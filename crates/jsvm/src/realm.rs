@@ -141,6 +141,7 @@ impl<'h> Vm<'h> {
             timer_id: 1,
             elapsed_ms: 0.0,
             clock_steps: 0,
+            loading_parent: None,
             start_micros,
             pending_rejections: vec![],
             modules: vec![],

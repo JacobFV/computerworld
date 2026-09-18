@@ -1,0 +1,8 @@
+name,dept,salary,note
+# comment lines are skipped
+Ada,engineering,125000,Loves the analytical engine and the engine room
+Grace,engineering,118000,Found the bug in the relay
+Linus,platform,99000,Maintains the kernel and the mailing list
+Margaret,research,132000,Wrote the code that went to the moon
+Ken,platform,101000,Likes small tools that do one thing
+Barbara,research,127000,Abstraction and the data abstraction

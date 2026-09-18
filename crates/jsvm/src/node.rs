@@ -1013,7 +1013,18 @@ impl<'h> Vm<'h> {
             self.modules.push((key, Value::Obj(m)));
             return Ok(exports);
         }
+        // The requiring module becomes `module.parent` and lists the child.
+        let parent_mod = self.cached_module(parent);
+        self.loading_parent = Some(parent_mod.clone().unwrap_or(Value::Null));
         let m = self.load_file_module(&key)?;
+        if let Some(pm) = parent_mod {
+            let ch = self.get_str(&pm, "children")?;
+            if let Value::Obj(a) = &ch {
+                if let Kind::Array(v) = &mut a.borrow_mut().kind {
+                    v.push(m.clone());
+                }
+            }
+        }
         self.get_str(&m, "exports")
     }
 
@@ -1029,6 +1040,8 @@ impl<'h> Vm<'h> {
         m.set_prop("children", ch, ALL);
         let paths = self.arr(vec![]);
         m.set_prop("paths", paths, ALL);
+        let parent = self.loading_parent.take().unwrap_or(Value::Null);
+        m.set_hidden("parent", parent);
         m
     }
 
@@ -1212,7 +1225,20 @@ impl<'h> Vm<'h> {
         Ctl::Throw(Value::Obj(err))
     }
 
+    /// Loads a module; one that fails to load leaves no cache entry.
     pub fn load_file_module(&mut self, path: &str) -> JsResult<Value> {
+        let r = self.load_file_module_inner(path);
+        if r.is_err() {
+            if let Some(i) = self.modules.iter().rposition(|(k, _)| k == path) {
+                self.modules.remove(i);
+            }
+            let cache = self.require_cache();
+            cache.borrow_mut().props.remove(&Key::str(path));
+        }
+        r
+    }
+
+    fn load_file_module_inner(&mut self, path: &str) -> JsResult<Value> {
         let bytes = match self.host.read_file(path) {
             Ok(b) => b,
             Err(_) => return Err(self.module_not_found(path, &[])),

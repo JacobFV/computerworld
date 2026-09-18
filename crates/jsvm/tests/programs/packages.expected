@@ -1,0 +1,23 @@
+--- exit: 0
+--- stdout
+HELLO WORLD! 1.2.3
+{ scoped: true, dir: '@scope/pkg' }
+a b saw a.name=a true
+{ list: [ 1, 2, 3 ], nested: { deep: true } } true app/src/index.js
+object 4 object
+entry exports { ok: true }
+MODULE_NOT_FOUND Cannot find module 'not-installed'
+MODULE_NOT_FOUND [ 'main.js' ]
+SyntaxError <cwd>/app/broken.json: Expected double-quoted property name in JSON at position 9 (line 1 column 10)
+[
+  'app/node_modules/@scope/pkg/index.js',
+  'app/node_modules/greeter/lib/greet.js',
+  'app/node_modules/greeter/lib/util.js',
+  'app/node_modules/greeter/package.json',
+  'app/src/a.js',
+  'app/src/b.js',
+  'app/src/data.json',
+  'app/src/index.js',
+  'main.js'
+]
+--- stderr

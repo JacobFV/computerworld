@@ -1,0 +1,20 @@
+--- exit: 0
+--- stdout
+6 records, columns: name | dept | salary | note
+┌─────────┬───────────────┬───────┬────────┬────────────────────┐
+│ (index) │ dept          │ count │ avg    │ names              │
+├─────────┼───────────────┼───────┼────────┼────────────────────┤
+│ 0       │ 'research'    │ 2     │ 129500 │ 'Barbara;Margaret' │
+│ 1       │ 'engineering' │ 2     │ 121500 │ 'Ada;Grace'        │
+│ 2       │ 'platform'    │ 2     │ 100000 │ 'Ken;Linus'        │
+└─────────┴───────────────┴───────┴────────┴────────────────────┘
+Ada      engineering    125,000 #############
+Barbara  research       127,000 #############
+Grace    engineering    118,000 ############
+Ken      platform       101,000 ##########
+Linus    platform        99,000 ##########
+Margaret research       132,000 #############
+top words: the=9, and=3, abstraction=2, engine=2, that=2
+{"max":132000,"depts":["engineering","platform","research"]}
+total payroll: 702000.00
+--- stderr

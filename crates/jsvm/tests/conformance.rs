@@ -74,8 +74,10 @@ programs!("js":
     json,
     language,
     modules_fs,
+    packages,
     stdin_events,
     strings_regex,
+    text_pipeline,
     util_events,
 );
 
