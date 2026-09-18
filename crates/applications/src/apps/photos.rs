@@ -765,17 +765,21 @@ impl Photos {
             true,
             Align::Center,
         );
-        p.label(
-            close.x + close.width as i32 + 12,
-            (bar as i32 - 16) / 2,
-            // Room is left for Edit beside Previous and Next.
-            width.saturating_sub(close.width + 340),
-            open,
-            13,
-            Color::WHITE,
-            false,
-            Align::Left,
-        );
+        // Room is left for Edit beside Previous and Next; a phone too narrow for the
+        // name leaves it to the caption below the photo.
+        let title = width.saturating_sub(close.width + 340);
+        if title >= 48 {
+            p.label(
+                close.x + close.width as i32 + 12,
+                (bar as i32 - 16) / 2,
+                title,
+                open,
+                13,
+                Color::WHITE,
+                false,
+                Align::Left,
+            );
+        }
         let at = self.entries.iter().position(|e| e == open);
         let mut x = width as i32 - 150;
         for (target, label, enabled) in [
