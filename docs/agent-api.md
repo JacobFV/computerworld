@@ -253,7 +253,14 @@ pub struct ActionEffect {
 ```
 
 Tags are `window.opened`, `window.closed`, `window.moved`, `window.focused`,
-`window.title`, `content`, `document`, `navigate`, `focus`, `terminal` and `application`.
+`window.title`, `content`, `document`, `navigate`, `focus`, `terminal`, `application`,
+`scroll` (a pane, a terminal's scrollback, a browser page or an application's own wheel
+use moved, or a list was pulled past its end), `clipboard`, `notifications`, `settings`
+(a system setting or the screen's power state), `shell` (launcher search text, a
+selected desktop icon, the virtual desktop, an expanded launcher group, Recents, the
+on-screen keyboard's plane, the calendar panel's month) and `library` (recent
+documents, stars, bookmarks, downloads). A browser's form fields, tabs and zoom report
+`content`.
 An empty `changed` (`ActionEffect::is_noop`) means the action was accepted and changed
 nothing observable — a real answer, distinct from failure. A failed action can still carry
 an effect when it mutated state before failing, which is the case worth seeing. `effect`

@@ -1114,6 +1114,26 @@ impl Environment {
                         .shell_action(id, machine, actor, "shell:back")
                         .map(Some);
                 }
+                // An application's own screens come first: a conversation goes back to
+                // the list, a drawer closes, a message goes back to its mailbox.
+                let theme = self.desktop_theme(id, machine);
+                let inner = state
+                    .desktop
+                    .focused
+                    .and_then(|window| state.desktop.windows.get(&window))
+                    .and_then(|window| match (&window.state, theme) {
+                        (AppState::Native(app), Some(theme)) => app.phone_back(theme),
+                        _ => None,
+                    });
+                if let Some(target) = inner {
+                    let effects = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .click(&target)
+                        .map_err(SimError::invalid)?;
+                    self.effects(id, machine, actor, effects)?;
+                    return Ok(Some(Value::Null));
+                }
                 // The file manager's own back stack: the folder above, until the root.
                 let inside_folder = state
                     .desktop

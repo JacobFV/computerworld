@@ -522,6 +522,10 @@ impl NativeApp {
             Self::Excel(a) => a.0.wheel(target, wheel),
             Self::Kicad(a) => a.wheel(target, x, y, wheel),
             Self::Database(a) => a.0.wheel(target, wheel),
+            other if other.video().is_some() => match other.video_mut() {
+                Some(video) => video.timeline_wheel(target, x, wheel),
+                None => Ok(false),
+            },
             other => match other.studio_mut() {
                 Some(studio) => studio.wheel(target, x, y, wheel),
                 None => Ok(false),
@@ -677,6 +681,39 @@ impl NativeApp {
         self.video_mut()
             .map(|v| v.background(window))
             .unwrap_or_default()
+    }
+    /// Where a phone's Back (Android's navigation bar button, iOS's navigation bar
+    /// chevron) goes inside the application before it leaves it: the control that
+    /// returns to the parent screen, or `None` on a root screen.
+    pub fn phone_back(&self, theme: DesktopTheme) -> Option<String> {
+        match self {
+            Self::Mail(a) => a.phone_back(theme).map(str::to_owned),
+            Self::Chat(a) => a.phone_back().map(str::to_owned),
+            Self::Notes(a) => a.open.is_some().then(|| "notes:close".to_owned()),
+            Self::Docs(a) => (a.open.is_some() && !a.dirty).then(|| "docs:close".to_owned()),
+            Self::Contacts(a) => a.selected.is_some().then(|| "contacts:back".to_owned()),
+            _ => None,
+        }
+    }
+    /// The leading control a phone's navigation bar shows for the application, as
+    /// (`back` or `menu`, target, label): a way to the parent screen named for it, or
+    /// Gmail's drawer button. The shell paints it in the bar, where each platform puts it.
+    pub fn phone_nav(&self, theme: DesktopTheme) -> Option<(&'static str, String, String)> {
+        match self {
+            Self::Mail(a) => a.phone_nav(theme),
+            Self::Chat(a) => a.phone_nav(),
+            _ => None,
+        }
+    }
+    /// What pulling the list down past its top and letting go does on a phone (iOS's
+    /// UIRefreshControl, Android's swipe-to-refresh): the control that reloads from the
+    /// service, for the applications whose lists refresh that way.
+    pub fn pull_to_refresh(&self) -> Option<&'static str> {
+        match self {
+            Self::Mail(a) if a.selected.is_none() && !a.mailboxes => Some("mail:reload"),
+            Self::Chat(a) if a.listing => Some("chat:reload"),
+            _ => None,
+        }
     }
     /// The text field that has the keyboard focus, named by the control that shows it,
     /// or `None` when nothing in the application is taking text. This is the one answer

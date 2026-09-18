@@ -24,6 +24,16 @@ export const sitesUrl = new URL('worlds/company-2026/sites/', root);
 /// "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}}. The node takes the
 /// site's `node` id and is upserted with its link, so a site needs no hand edit of world.json.
 const BUILD_ONLY = ['search_entries', 'authority_overrides', 'network_node'];
+/// What each reference computer is, which decides what its shell shows (a laptop and a
+/// phone report a battery; a desktop computer and a server have none). Declared here so
+/// the world and every build from it (the browser demo adds its phones) say the same.
+export const DEVICE_PRESENTATIONS = {
+  'alice-mac': 'desktop',
+  'bob-windows': 'desktop',
+  'carol-ubuntu': 'laptop',
+  'app-server': 'server',
+  'git-server': 'server',
+};
 /// The world file is hand-read constantly; keep its exact on-disk shape so diffs stay reviewable.
 export async function write(url, value) {
   await writeFile(url, `${JSON.stringify(value, null, 2)}\n`);
@@ -75,6 +85,10 @@ async function main() {
     if (at < 0) world.services.push(service);
     else world.services[at] = service;
   }
+  for (const id of Object.keys(DEVICE_PRESENTATIONS)) {
+    if (!world.computers.some((c) => c.id === id)) throw new Error(`device_presentations: no computer "${id}"`);
+  }
+  world.metadata = {...world.metadata, device_presentations: DEVICE_PRESENTATIONS};
   await write(worldUrl, world);
   console.log(`Spliced ${sites.length} site file(s); world declares ${world.services.length} services.`);
 }

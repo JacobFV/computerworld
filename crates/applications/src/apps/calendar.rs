@@ -437,7 +437,17 @@ impl Calendar {
         p.hline(0, top + bar as i32, width, LINE);
         // The New event button owns the right end; chips stop before it rather than
         // overlapping it on a narrow screen.
-        let limit = width as i32 - 116;
+        // A phone has no room for the word "Reload": it wears the refresh symbol at the
+        // right of the toolbar instead, as the phone calendars do, and the chips that
+        // flow from the left stop before it.
+        // A phone adds an event with a "+", as its calendar does; a desktop names it.
+        let mut limit = width as i32 - if theme.mobile() { 50 } else { 116 };
+        if theme.mobile() {
+            let r = Rect::new(limit - 34, top + 6, 30, 26);
+            p.button(r, Color::TRANSPARENT, l.radius, "cal:reload", "Reload");
+            p.symbol("reload", r.x + 7, r.y + 5, 16, INK);
+            limit -= 38;
+        }
         let mut x = 8;
         for (target, label) in [
             ("cal:prev", "‹"),
@@ -447,6 +457,9 @@ impl Calendar {
             ("cal:day", "Day"),
             ("cal:reload", "Reload"),
         ] {
+            if theme.mobile() && target == "cal:reload" {
+                continue;
+            }
             let w = p.measure(label, 12, false) + 22;
             if x + w as i32 > limit {
                 break;
@@ -473,8 +486,14 @@ impl Calendar {
             );
             x += w as i32 + 4;
         }
-        let new = Rect::new(width as i32 - 106, top + 6, 96, 26);
-        action(p, &l, new, "New event", "cal:new", true);
+        if theme.mobile() {
+            let new = Rect::new(width as i32 - 42, top + 4, 32, 30);
+            p.button(new, Color::TRANSPARENT, l.radius, "cal:new", "New event");
+            p.symbol("plus", new.x + 7, new.y + 7, 18, l.accent);
+        } else {
+            let new = Rect::new(width as i32 - 106, top + 6, 96, 26);
+            action(p, &l, new, "New event", "cal:new", true);
+        }
         top += bar as i32 + 1;
         if let Some(text) = self.status.notice() {
             notice(p, width, top + 10, text);

@@ -56,6 +56,11 @@ pub struct Mail {
     pub selected: Option<String>,
     pub compose: Option<Compose>,
     pub status: Status,
+    /// A phone's way to the other mailboxes is showing: iOS Mail's Mailboxes screen,
+    /// the parent of every mailbox's list; Gmail's navigation drawer over the list.
+    /// A desktop keeps its folders in the sidebar and never sets it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub mailboxes: bool,
 }
 pub const FOLDERS: [&str; 3] = ["inbox", "sent", "archive"];
 impl Mail {
@@ -93,6 +98,7 @@ impl Mail {
             selected: None,
             compose,
             status: Status::Loading,
+            mailboxes: false,
         };
         let effects = app.fetch(window);
         (app, effects)
@@ -229,6 +235,16 @@ impl Mail {
                 self.selected.take().ok_or("no message is open")?;
                 Ok(vec![])
             }
+            // A phone's way to the other mailboxes: iOS's "Mailboxes" back button, or
+            // Gmail's menu button, which opens the drawer (and, pressed on the scrim
+            // or again, closes it).
+            "mailboxes" => {
+                self.mailboxes = !self.mailboxes;
+                if self.mailboxes {
+                    self.selected = None;
+                }
+                Ok(vec![])
+            }
             "send" => {
                 let compose = self.compose.clone().ok_or("no message is being written")?;
                 let to: Vec<_> = compose
@@ -291,6 +307,7 @@ impl Mail {
                     }
                     self.folder = folder.into();
                     self.selected = None;
+                    self.mailboxes = false;
                     self.status = Status::Loading;
                     return Ok(self.fetch(window));
                 }
@@ -324,6 +341,40 @@ impl Mail {
                 }
                 Err(format!("unknown mail command {command}"))
             }
+        }
+    }
+    /// Where Back goes inside Mail on a phone, before it leaves the application: a
+    /// draft is cancelled, an open message goes back to its mailbox, the drawer
+    /// closes, and (iOS) a mailbox's list goes up to Mailboxes.
+    pub fn phone_back(&self, theme: DesktopTheme) -> Option<&'static str> {
+        if self.compose.is_some() {
+            return Some("mail:cancel");
+        }
+        if self.selected.is_some() {
+            return Some("mail:back");
+        }
+        match (theme, self.mailboxes) {
+            (DesktopTheme::Android, true) | (DesktopTheme::Ios, false) => Some("mail:mailboxes"),
+            _ => None,
+        }
+    }
+    /// The navigation bar's leading control on a phone, as (kind, target, label):
+    /// `back` is a chevron or an arrow named for the parent screen, `menu` Gmail's
+    /// drawer button.
+    pub fn phone_nav(&self, theme: DesktopTheme) -> Option<(&'static str, String, String)> {
+        if self.selected.is_some() {
+            return Some(("back", "mail:back".into(), title_case(&self.folder)));
+        }
+        match theme {
+            DesktopTheme::Ios if !self.mailboxes => {
+                Some(("back", "mail:mailboxes".into(), "Mailboxes".into()))
+            }
+            DesktopTheme::Android => Some((
+                "menu",
+                "mail:mailboxes".into(),
+                "Open navigation drawer".into(),
+            )),
+            _ => None,
         }
     }
     pub fn page(&self, page: &mut cw_protocol::Page) {
@@ -428,15 +479,31 @@ impl Mail {
             .selected
             .as_ref()
             .and_then(|id| self.messages.iter().find(|m| &m.id == id));
-        // Without room for a reading pane (a phone), an open message is the screen.
+        // Without room for a reading pane (a phone), an open message is the screen; its
+        // way back is the navigation bar's on a phone (see `phone_nav`), or a row of
+        // its own in a narrow desktop window.
         if let (false, Some(message)) = (reading, open) {
-            self.message(p, &l, width, height, message, 0, 0, true);
+            self.message(p, &l, width, height, message, 0, 0, !theme.mobile());
             if let Some(compose) = &self.compose {
                 self.composer(p, &l, width, height, compose);
             }
             return;
         }
-        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        // iOS Mail's Mailboxes screen: every mailbox, one tap from its list.
+        if theme == DesktopTheme::Ios && self.mailboxes {
+            self.mailbox_screen(p, &l, width, height);
+            if let Some(compose) = &self.compose {
+                self.composer(p, &l, width, height, compose);
+            }
+            return;
+        }
+        // On a phone the list is titled with its mailbox, as iOS Mail and Gmail do.
+        let heading = if theme.mobile() {
+            title_case(&self.folder)
+        } else {
+            self.title(theme)
+        };
+        let screen = screen(p, theme, &l, width, height as i32, &heading);
         let top = screen.top;
         if sidebar > 0 {
             p.box_(Rect::new(0, top, sidebar, height), l.chrome, 0);
@@ -476,7 +543,7 @@ impl Mail {
                 "mail:reload",
                 false,
             );
-        } else {
+        } else if theme != DesktopTheme::Android {
             action(
                 p,
                 &l,
@@ -536,6 +603,23 @@ impl Mail {
         }
         list.end(p);
         screen.end(p);
+        // Gmail's extended Compose button floats over the list's bottom-right corner.
+        if theme == DesktopTheme::Android {
+            let fab = Rect::new(width as i32 - 150, height as i32 - 76, 134, 56);
+            p.drop_shadow(fab, 16, 10, 40, 3);
+            p.button(fab, l.chrome, 16, "mail:compose", "Compose");
+            p.symbol("pencil", fab.x + 18, fab.y + 16, 24, INK);
+            p.label(
+                fab.x + 52,
+                fab.y + 18,
+                76,
+                "Compose",
+                14,
+                INK,
+                true,
+                Align::Left,
+            );
+        }
         // Reading pane, when the window is wide enough for one.
         if reading {
             let pane = x + list_w as i32;
@@ -550,8 +634,97 @@ impl Mail {
                 ),
             }
         }
+        // Gmail's navigation drawer, over the list it will replace.
+        if theme == DesktopTheme::Android && self.mailboxes {
+            self.drawer(p, &l, width, height);
+        }
         if let Some(compose) = &self.compose {
             self.composer(p, &l, width, height, compose);
+        }
+    }
+    /// iOS Mail's Mailboxes: the mailboxes as a grouped list under a large title.
+    fn mailbox_screen(&self, p: &mut Painter, l: &super::look::Look, width: u32, height: u32) {
+        let screen = screen(p, DesktopTheme::Ios, l, width, height as i32, "Mailboxes");
+        let card = Rect::new(
+            16,
+            screen.top + 8,
+            width.saturating_sub(32),
+            FOLDERS.len() as u32 * 48,
+        );
+        p.box_(card, Color::WHITE, l.radius);
+        for (index, folder) in FOLDERS.iter().enumerate() {
+            let r = Rect::new(card.x, card.y + index as i32 * 48, card.width, 48);
+            let name = title_case(folder);
+            p.button(
+                r,
+                Color::TRANSPARENT,
+                l.radius,
+                &format!("mail:folder:{folder}"),
+                &name,
+            );
+            p.symbol(folder_symbol(folder), r.x + 14, r.y + 13, 22, l.accent);
+            p.left(
+                r.x + 50,
+                r.y + 14,
+                r.width.saturating_sub(90),
+                &name,
+                17,
+                INK,
+            );
+            p.symbol("chevron-right", r.right() - 28, r.y + 16, 16, FAINT);
+            if index + 1 < FOLDERS.len() {
+                p.hline(r.x + 50, r.bottom() - 1, r.width.saturating_sub(50), LINE);
+            }
+        }
+        screen.end(p);
+    }
+    /// Gmail's navigation drawer: a scrim over the list that closes it, and a sheet of
+    /// mailboxes from the left edge, the one on show filled.
+    fn drawer(&self, p: &mut Painter, l: &super::look::Look, width: u32, height: u32) {
+        p.box_(Rect::new(0, 0, width, height), Color(0, 0, 0, 82), 0);
+        p.region(
+            Rect::new(0, 0, width, height),
+            "mail:mailboxes",
+            "Close navigation drawer",
+        );
+        let sheet = Rect::new(0, 0, (width * 4 / 5).min(336), height);
+        p.box_(sheet, l.surface, 0);
+        p.strong(
+            sheet.x + 28,
+            22,
+            sheet.width.saturating_sub(40),
+            "Gmail",
+            22,
+            INK,
+        );
+        for (index, folder) in FOLDERS.iter().enumerate() {
+            let r = Rect::new(
+                sheet.x + 12,
+                70 + index as i32 * 56,
+                sheet.width.saturating_sub(24),
+                56,
+            );
+            let on = self.folder == *folder;
+            let name = title_case(folder);
+            p.button(
+                r,
+                if on { l.selection } else { Color::TRANSPARENT },
+                28,
+                &format!("mail:folder:{folder}"),
+                &name,
+            );
+            let ink = if on { l.accent } else { INK };
+            p.symbol(folder_symbol(folder), r.x + 16, r.y + 16, 24, ink);
+            p.label(
+                r.x + 56,
+                r.y + 17,
+                r.width.saturating_sub(70),
+                &name,
+                14,
+                ink,
+                on,
+                Align::Left,
+            );
         }
     }
     /// One message from `x` rightwards and `top` down, its body scrolling when it is
@@ -686,6 +859,14 @@ impl Mail {
             "mail:cancel",
             false,
         );
+    }
+}
+/// The symbol a mailbox wears in iOS's Mailboxes and Gmail's drawer.
+fn folder_symbol(folder: &str) -> &'static str {
+    match folder {
+        "sent" => "send",
+        "archive" => "archive",
+        _ => "inbox",
     }
 }
 fn title_case(text: &str) -> String {

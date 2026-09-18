@@ -1862,6 +1862,25 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
     // at the root there is nowhere to pop to, so no chevron is painted at all. No other
     // application gets a way "Home" in its navigation bar: an iPhone has none there, and
     // leaving an application is the home indicator's swipe.
+    // An application's own way back to its parent screen (Mail's Mailboxes, a
+    // conversation's list) is the bar's leading chevron, named for where it goes.
+    if let Some((target, label)) = window.chrome("nav").and_then(|nav| {
+        let mut parts = nav.splitn(3, '\t');
+        (parts.next()? == "back").then_some(())?;
+        Some((parts.next()?, parts.next().unwrap_or("")))
+    }) {
+        p.symbol("chevron-left", 8, 61, 22, BLUE);
+        let text = if label.is_empty() {
+            0
+        } else {
+            p.left(29, 62, 120, label, 17, BLUE)
+        };
+        p.region(
+            Rect::new(4, 51, text + 34, 42),
+            &window.action(&format!("content:{target}")),
+            if label.is_empty() { "Back" } else { label },
+        );
+    }
     if window.kind == "files" && !folder.is_empty() {
         let label = folder
             .rsplit_once('/')
