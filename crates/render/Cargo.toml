@@ -17,6 +17,9 @@ jpeg-decoder = { version = "0.3", default-features = false, features = [
     "platform_independent",
 ] }
 fontdue = "=0.9.3"
+# Shapes colour emoji clusters with the colour font and walks its COLR paint graph
+# (`rustybuzz::ttf_parser`); the same pinned version the scene crate lays out with.
+rustybuzz = "=0.14.1"
 serde.workspace = true
 sha2.workspace = true
 

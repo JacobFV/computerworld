@@ -1359,14 +1359,12 @@ fn parent_label(path: &str, root: &str) -> String {
 
 /// Wrap `text` to `cells` columns, tagging every line with the colour that says which
 /// stream it came from.
+/// Rows of `cells` terminal cells: wide characters (CJK, emoji) take two, combining
+/// marks none, exactly as `Primitive::Text` lays them out.
 fn wrap_into(lines: &mut Vec<(String, Color)>, text: &str, color: Color, cells: usize) {
     for line in text.lines() {
-        let chars: Vec<_> = line.chars().collect();
-        if chars.is_empty() {
-            lines.push((String::new(), color));
-        }
-        for chunk in chars.chunks(cells) {
-            lines.push((chunk.iter().collect::<String>(), color));
+        for row in cw_scene::wrap_text(line, cells) {
+            lines.push((row, color));
         }
     }
 }
@@ -1466,7 +1464,7 @@ fn terminal(
         size,
         prompt,
     );
-    let offset = sig.chars().count() as i32 * 8;
+    let offset = cw_scene::text::terminal::columns(&sig) as i32 * 8;
     mono(
         p,
         Rect::new(
@@ -1494,11 +1492,9 @@ fn terminal(
     );
     // Where the caret really is: `cursor` is a byte offset into the input, and a click
     // on the line above moved it there.
-    let before = input
-        .get(..cursor.min(input.len()))
-        .unwrap_or(input)
-        .chars()
-        .count() as i32;
+    let before =
+        cw_scene::text::terminal::columns(input.get(..cursor.min(input.len())).unwrap_or(input))
+            as i32;
     let caret = offset + before * 8;
     // Block cursor on the desktops, a bar on touch keyboards.
     p.box_(
@@ -2112,6 +2108,42 @@ mod tests {
         }
     }
 
+    /// Wide characters take two cells in the transcript's rows and under the caret,
+    /// exactly as `Primitive::Text` draws them.
+    #[test]
+    fn terminal_rows_and_caret_count_cells_not_characters() {
+        let output = "日本語のテキストが長く続くと折り返されます";
+        let state = AppState::Terminal {
+            input: "echo 中文".into(),
+            prompt: "me@box:/$".into(),
+            transcript: vec![crate::TerminalEntry::new("me@box:/$", "cat", output, "", 0)],
+            history: vec![],
+            cursor: "echo 中文".len(),
+            scroll: 0,
+        };
+        let scene = app_content(&state, DesktopTheme::Ubuntu, 16 + 8 * 20, 400);
+        let rows: Vec<&str> = scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                Primitive::Text { text, .. } if !text.starts_with("me@") => Some(text.as_str()),
+                _ => None,
+            })
+            .filter(|t| t.chars().any(|c| c > '\u{3000}'))
+            .collect();
+        // Twenty cells hold ten ideographs.
+        assert_eq!(rows[0], "日本語のテキストが長");
+        assert!(rows
+            .iter()
+            .all(|r| cw_scene::text::terminal::columns(r) <= 20));
+        // "echo 中文" is nine cells, so the caret sits nine cells past the prompt.
+        assert_eq!(cw_scene::text::terminal::columns("echo 中文"), 9);
+        assert_eq!(crate::caret_for_column("echo 中文", 7 * 8), "echo 中".len());
+        assert_eq!(
+            crate::caret_for_column("echo 中文", 9 * 8),
+            "echo 中文".len()
+        );
+    }
     /// The scrollbar really scrolls, and the caret really sits where `cursor` says.
     #[test]
     fn terminal_scrollbar_pages_and_the_caret_follows_the_cursor() {

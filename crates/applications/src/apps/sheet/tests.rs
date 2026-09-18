@@ -250,3 +250,28 @@ fn the_status_bar_sums_the_selection_in_the_active_cells_format() {
         "Average: $4.50    Count: 4    Sum: $18.00"
     );
 }
+
+#[test]
+fn italic_cells_are_set_in_the_italic_face() {
+    let mut b = book(false, Flavor::Excel);
+    b.command(1, "select:A2", 0, Flavor::Excel).unwrap();
+    b.command(1, "italic", 0, Flavor::Excel).unwrap();
+    b.command(1, "select:A3", 0, Flavor::Excel).unwrap();
+    b.command(1, "bold", 0, Flavor::Excel).unwrap();
+    b.command(1, "italic", 0, Flavor::Excel).unwrap();
+    b.command(1, "select:D9", 0, Flavor::Excel).unwrap();
+    let mut p = Painter::new(1100, 700);
+    chrome::render(&b, &mut p, &env(DesktopTheme::Windows, 1100, 700));
+    let style = |text: &str| {
+        p.scene
+            .nodes
+            .iter()
+            .find(|n| n.painted_text() == Some(text))
+            .and_then(|n| n.primitive.text_style())
+            .unwrap_or_else(|| panic!("no cell {text}"))
+    };
+    use cw_scene::{Lang, Style};
+    assert_eq!(style("Pens"), Style::new(false, true, Lang::Auto));
+    assert_eq!(style("Ink"), Style::new(true, true, Lang::Auto));
+    assert_eq!(style("Pads"), Style::default());
+}

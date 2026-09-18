@@ -328,19 +328,12 @@ fn overlays(p: &mut Painter, r: Rect, studio: &Studio) {
         if !t.text.is_empty() {
             p.node(
                 Rect::new(x, y, width + 2, h),
-                if studio.bold {
-                    Primitive::UiTextBold {
-                        text: t.text.clone(),
-                        color: rgba(studio.primary),
-                        size,
-                    }
-                } else {
-                    Primitive::UiText {
-                        text: t.text.clone(),
-                        color: rgba(studio.primary),
-                        size,
-                    }
-                },
+                Primitive::ui_text(
+                    t.text.clone(),
+                    rgba(studio.primary),
+                    size,
+                    studio.bold.into(),
+                ),
                 None,
             );
         }

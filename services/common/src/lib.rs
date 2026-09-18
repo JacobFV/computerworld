@@ -140,6 +140,7 @@ pub fn page(title: &str, elements: Vec<PageElement>) -> Result<HttpResponse> {
         title: title.into(),
         elements,
         theme: None,
+        lang: None,
     })
 }
 pub fn themed_page(
@@ -152,6 +153,7 @@ pub fn themed_page(
         title: title.into(),
         elements,
         theme: Some(theme),
+        lang: None,
     })
 }
 /// Fresh presentation hints; chain `Style`'s setters onto it.

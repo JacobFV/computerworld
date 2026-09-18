@@ -1408,17 +1408,21 @@ fn tabs(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                 p.label(x + 8, r.y + 11, 20, glyph, 10, c, true, Align::Left);
             }
         }
-        // A preview tab's title is set apart the way VS Code italicises it.
+        // A preview tab's title is set in italic, as VS Code sets it apart.
         let title = if tab.preview { pal.tab_dim } else { fg };
-        label(
-            p,
-            x + 30,
-            r.y + 9,
-            tw.saturating_sub(64),
-            &tab.name(),
-            13,
-            title,
-        );
+        let room = tw.saturating_sub(64);
+        if room > 0 {
+            p.label(
+                x + 30,
+                r.y + 9,
+                room,
+                &tab.name(),
+                13,
+                title,
+                cw_scene::Style::new(false, tab.preview, cw_scene::Lang::Auto),
+                Align::Left,
+            );
+        }
         let close = Rect::new(x + tw as i32 - 28, r.y + 7, 20, 20);
         if tab.dirty() {
             p.circle(close.x + 10, close.y + 10, 4, fg);

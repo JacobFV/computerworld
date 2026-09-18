@@ -3583,10 +3583,16 @@ pub fn caret_for_point_wrapped(
 pub fn caret_for_column(text: &str, dx: i32) -> usize {
     const CELL_W: i32 = 8;
     let column = ((dx.max(0) + CELL_W / 2) / CELL_W) as usize;
-    text.char_indices()
-        .nth(column)
-        .map(|(i, _)| i)
-        .unwrap_or(text.len())
+    // Cells, not characters: a wide character spans two, a combining mark none.
+    let mut col = 0;
+    for (i, c) in text.char_indices() {
+        let width = cw_scene::text::terminal::char_width(c) as usize;
+        if width > 0 && col >= column {
+            return i;
+        }
+        col += width;
+    }
+    text.len()
 }
 fn parent_folder(path: &str) -> &str {
     match path.trim_end_matches('/').rsplit_once('/') {

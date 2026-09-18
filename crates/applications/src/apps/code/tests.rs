@@ -730,3 +730,37 @@ fn every_painted_control_is_a_real_target_or_announced_disabled() {
         }
     }
 }
+
+#[test]
+fn a_preview_tab_title_is_italic_and_a_pinned_one_upright() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "print('hi')\n");
+    let title_style = |app: &Code| {
+        let mut p = crate::desktop_scene::Painter::new(1100, 700);
+        let env = crate::AppEnv {
+            theme: crate::desktop_scene::DesktopTheme::Ubuntu,
+            width: 1100,
+            height: 700,
+            clock_us: 0,
+            settings: &crate::SystemSettings::DEFAULT,
+            clipboard: None,
+            share_to: None,
+            files: Default::default(),
+            editor: None,
+            pointer: None,
+        };
+        render::render(app, &mut p, &env);
+        // The tree row and breadcrumb name the file too; only the tab is italic.
+        p.scene
+            .nodes
+            .iter()
+            .filter(|n| n.painted_text() == Some("main.py"))
+            .filter_map(|n| n.primitive.text_style())
+            .filter(|s| s.italic)
+            .count()
+    };
+    assert!(app.tabs[0].preview);
+    assert_eq!(title_style(&app), 1);
+    app.activate(W, "code:tab:0", 0).unwrap();
+    assert_eq!(title_style(&app), 0);
+}

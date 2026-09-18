@@ -395,6 +395,7 @@ dependencies = [
  "jpeg-decoder",
  "png",
  "proptest",
+ "rustybuzz",
  "serde",
  "serde_json",
  "sha2",
