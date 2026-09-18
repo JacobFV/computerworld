@@ -853,21 +853,22 @@ mod tests {
         let v = k.ui.view;
         assert!(v.zoom > before.zoom);
         assert_eq!(v.world(400, 300), before.world(400, 300));
-        // Shift pans up and down, Ctrl left and right, at the zoom the canvas showed.
+        // Shift pans up and down, Ctrl left and right, a tenth of the canvas a notch at
+        // the zoom the canvas showed (600 px and 800 px at 100 px per 1000 mils).
         let shift = crate::Wheel {
             dy: 120,
             shift: true,
             ..Default::default()
         };
         assert!(k.wheel(target, 400, 300, shift).unwrap());
-        assert_eq!((k.ui.view.x0, k.ui.view.y0), (0, 1200));
+        assert_eq!((k.ui.view.x0, k.ui.view.y0), (0, 600));
         let ctrl = crate::Wheel {
             dy: 120,
             ctrl: true,
             ..Default::default()
         };
         assert!(k.wheel(target, 400, 300, ctrl).unwrap());
-        assert_eq!((k.ui.view.x0, k.ui.view.y0), (1200, 0));
+        assert_eq!((k.ui.view.x0, k.ui.view.y0), (800, 0));
     }
     #[test]
     fn the_code_terminal_walks_its_scrollback_by_lines() {
