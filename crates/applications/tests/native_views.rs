@@ -22,14 +22,15 @@ fn editor_scrolls_to_cursor_and_exposes_real_controls() {
         .nodes
         .iter()
         .any(|n| matches!(&n.primitive, Primitive::Text { text, .. } if text == "line 0")));
-    assert!(scene
+    // TextEdit saves from its menu bar; the document area paints no Save.
+    assert!(!scene
         .nodes
         .iter()
         .any(|n| n.interaction.as_deref() == Some("editor-save")));
     let body = scene.hit_test(100, 90).unwrap();
     // The target carries the first visible line, so a click on a scrolled document
     // still resolves to the character under the pointer.
-    assert_eq!(body.interaction.as_deref(), Some("editor-text:81"));
+    assert_eq!(body.interaction.as_deref(), Some("editor-text:79"));
     assert_eq!(body.semantic.as_ref().unwrap().role, "textbox");
 }
 

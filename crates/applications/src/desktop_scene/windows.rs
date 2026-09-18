@@ -74,9 +74,10 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     if !ctx.installed("files") {
         return;
     }
-    // The desktop shortcut opens the real file manager. No inert recycle-bin fixture.
+    // A new Windows desktop holds the Recycle Bin and nothing else. It is the real
+    // trash folder: deleting from Explorer moves files there, and this opens it.
     let slot = Rect::new(4, 8, 76, 84);
-    if ctx.selected("files") {
+    if ctx.selected("trash") {
         p.border(slot, Color(255, 255, 255, 60), 3, Color(255, 255, 255, 110));
     } else if ctx.hovered(slot) {
         p.border(slot, Color(255, 255, 255, 36), 3, Color(255, 255, 255, 60));
@@ -84,11 +85,11 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     p.platform_icon(
         Rect::new(18, 14, 48, 48),
         "windows",
-        "files",
-        "shell:open:files",
-        "Open File Explorer",
+        "trash",
+        "shell:open:trash",
+        "Open Recycle Bin",
     );
-    shadowed_label(p, 4, 66, 76, "File Explorer");
+    shadowed_label(p, 4, 66, 76, "Recycle Bin");
 }
 
 fn start_mark(p: &mut Painter, x: i32, y: i32) {
@@ -223,7 +224,7 @@ fn locked_screen(p: &mut Painter, ctx: &ShellContext<'_>) {
         0,
         mid + 116,
         ctx.width,
-        "alice",
+        ctx.user,
         18,
         Color::WHITE,
         true,
@@ -455,13 +456,13 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
         .enumerate()
     {
         let ix = x + 32 + index as i32 % columns as i32 * stride;
-        let iy = y + 128 + (index as i32 / columns as i32) * 84;
-        // The account row owns the foot of the menu; search carries the overflow.
-        if iy + 80 > y + height as i32 - 64 {
+        let iy = y + 124 + (index as i32 / columns as i32) * 78;
+        // Three rows, as Start pages its pins; All apps carries the overflow.
+        if index as u32 >= columns * 3 || iy + 76 > y + height as i32 - 64 {
             break;
         }
         let action = format!("shell:launch:{kind}");
-        let slot = Rect::new(ix + 2, iy, stride as u32 - 4, 80);
+        let slot = Rect::new(ix + 2, iy, stride as u32 - 4, 74);
         if ctx.hovered(slot) {
             p.border(slot, Color(255, 255, 255, 170), 4, STROKE);
         }
@@ -473,10 +474,10 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
             label,
         );
         p.region(slot, &action, label);
-        p.center(ix, iy + 53, stride as u32, label, 12, INK);
+        p.center(ix, iy + 51, stride as u32, label, 12, INK);
     }
-    if height > 430 {
-        let recent_y = y + 318;
+    if height > 470 {
+        let recent_y = y + 372;
         p.strong(
             x + 56,
             recent_y,
@@ -485,18 +486,39 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
             14,
             INK,
         );
-        if ctx.windows.is_empty() {
+        let rows = ((height as i32 - 64 - 372 - 36) / 56).clamp(0, 3) as usize;
+        let column = (width as i32 - 80) / 2;
+        // Recommended lists the documents the user really opened, newest first, as
+        // Windows does; each opens in Notepad. Nothing opened yet reads as such.
+        let documents: Vec<&String> = if ctx.installed("editor") {
+            ctx.recents.iter().take(rows * 2).collect()
+        } else {
+            vec![]
+        };
+        for (index, path) in documents.iter().enumerate() {
+            let rx = x + 40 + (index % 2) as i32 * column;
+            let ry = recent_y + 36 + (index / 2) as i32 * 56;
+            let row = Rect::new(rx, ry, column as u32, 52);
+            if ctx.hovered(row) {
+                p.border(row, Color(255, 255, 255, 170), 4, STROKE);
+            }
+            let action = format!("shell:launch:editor/{path}");
+            p.region(row, &action, &format!("Open {}", basename(path)));
+            p.symbol("document", rx + 18, ry + 12, 26, Color::rgb(96, 110, 128));
+            p.left(rx + 58, ry + 9, column as u32 - 70, basename(path), 12, INK);
+            let folder = path.rsplit_once('/').map_or("", |(dir, _)| dir);
+            p.left(rx + 58, ry + 27, column as u32 - 70, folder, 12, MUTED);
+        }
+        if documents.is_empty() && ctx.windows.is_empty() {
             p.paragraph(
                 x + 56,
                 recent_y + 36,
                 width.saturating_sub(112),
-                "Your open applications will appear here.",
+                "Files you open will appear here.",
                 13,
                 MUTED,
             );
-        } else {
-            let rows = ((height as i32 - 64 - 318 - 40) / 56).clamp(0, 3) as usize;
-            let column = (width as i32 - 80) / 2;
+        } else if documents.is_empty() {
             for (index, w) in ctx.windows.iter().rev().take(rows * 2).enumerate() {
                 let rx = x + 40 + (index % 2) as i32 * column;
                 let ry = recent_y + 36 + (index / 2) as i32 * 56;
@@ -533,8 +555,12 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
     }
     p.circle(x + 72, foot + 32, 16, Color::rgb(203, 214, 228));
     p.symbol("person", x + 63, foot + 23, 18, Color::rgb(80, 96, 116));
-    p.left(x + 98, foot + 24, 110, "alice", 12, INK);
-    p.region(user, "shell:settings", "Account settings for alice");
+    p.left(x + 98, foot + 24, 110, ctx.user, 12, INK);
+    p.region(
+        user,
+        "shell:settings",
+        &format!("Account settings for {}", ctx.user),
+    );
     let power = Rect::new(x + width as i32 - 92, foot + 12, 40, 40);
     if ctx.hovered(power) {
         p.border(power, Color(255, 255, 255, 170), 4, STROKE);
@@ -546,10 +572,16 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
 /// Tab caption of an inbox application window.
 fn tab_title(w: &WindowView) -> String {
     match w.kind.as_str() {
+        "files" if !w.caption.is_empty() => w.caption.clone(),
         "files" => basename(&w.document).to_owned(),
         "editor" if w.document.is_empty() => "Untitled".into(),
         "editor" => basename(&w.document).to_owned(),
-        "terminal" => "Windows PowerShell".into(),
+        // Windows Terminal names a tab after its shell: PowerShell, or for a POSIX
+        // shell the title that shell sets, `user@host: dir`.
+        "terminal" => w
+            .shell_identity()
+            .map(|(user, host, dir)| format!("{user}@{host}: {dir}"))
+            .unwrap_or_else(|| "Windows PowerShell".into()),
         "browser" if w.caption.is_empty() => "New tab".into(),
         "browser" => w.caption.clone(),
         _ => w.title.clone(),
@@ -566,7 +598,14 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             p.drop_shadow(r, radius, 16, 60, 6);
         }
     }
-    let caption = if w.focused { CAPTION } else { CAPTION_INACTIVE };
+    // Windows Terminal draws its own dark caption; everything else takes Mica.
+    let terminal = w.kind == "terminal";
+    let caption = match (terminal, w.focused) {
+        (true, true) => Color::rgb(32, 32, 32),
+        (true, false) => Color::rgb(44, 44, 44),
+        (false, true) => CAPTION,
+        (false, false) => CAPTION_INACTIVE,
+    };
     p.border(
         r,
         Color::rgb(249, 249, 249),
@@ -585,7 +624,12 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         &w.action("drag"),
         &format!("Move {}", w.title),
     );
-    let ink = if w.focused { INK } else { FAINT };
+    let ink = match (terminal, w.focused) {
+        (true, true) => Color::rgb(242, 242, 242),
+        (true, false) => Color::rgb(160, 160, 160),
+        (false, true) => INK,
+        (false, false) => FAINT,
+    };
     if !w.tabs.is_empty() {
         // Explorer and Edge both place their tab strip in the caption. Every tab, its
         // close button and the new-tab button drive the application's real tab list.
@@ -640,6 +684,60 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         let plus = Rect::new(x + 4, r.y + 6, 26, 26);
         p.button(plus, Color::TRANSPARENT, 4, &w.tab_new(), "New tab");
         p.symbol("plus", plus.x + 7, plus.y + 7, 13, ink);
+    } else if matches!(w.kind.as_str(), "editor" | "terminal") && r.width > 360 {
+        // Notepad and Windows Terminal title their window with a tab in the caption.
+        // The simulator gives each document or shell its own window, so this one tab
+        // is the window: its close closes the window and + opens another window.
+        let label = tab_title(w);
+        let width = (p.measure(&label, 12, false) + 80).clamp(140, 240);
+        let tab = Rect::new(r.x + 8, r.y + 6, width, 32);
+        let plate = if w.kind == "terminal" {
+            Color::rgb(12, 12, 12)
+        } else {
+            TAB
+        };
+        let tab_ink = if w.kind == "terminal" {
+            Color::rgb(242, 242, 242)
+        } else {
+            ink
+        };
+        p.box_(tab, plate, 7);
+        p.box_(Rect::new(tab.x, tab.y + 16, tab.width, 16), plate, 0);
+        p.asset(
+            Rect::new(tab.x + 10, tab.y + 8, 16, 16),
+            &format!("icon/windows/{}", w.kind),
+        );
+        p.left(
+            tab.x + 34,
+            tab.y + 8,
+            width.saturating_sub(64),
+            &label,
+            12,
+            tab_ink,
+        );
+        if w.modified {
+            // Notepad marks unsaved changes with a dot where the close button sits.
+            p.circle(tab.x + width as i32 - 17, tab.y + 16, 4, tab_ink);
+        } else {
+            let close = Rect::new(tab.x + width as i32 - 28, tab.y + 5, 22, 22);
+            p.button(
+                close,
+                Color::TRANSPARENT,
+                4,
+                &w.action("close"),
+                "Close window",
+            );
+            p.symbol("close", close.x + 6, close.y + 6, 11, tab_ink);
+        }
+        let plus = Rect::new(tab.x + width as i32 + 6, r.y + 9, 26, 26);
+        p.button(
+            plus,
+            Color::TRANSPARENT,
+            4,
+            &w.action("content:shell:new"),
+            "New window",
+        );
+        p.symbol("plus", plus.x + 7, plus.y + 7, 13, ink);
     } else {
         p.asset(
             Rect::new(r.x + 12, r.y + 11, 16, 16),
@@ -649,7 +747,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             r.x + 38,
             r.y + 11,
             r.width.saturating_sub(192),
-            &w.title,
+            &tab_title(w),
             12,
             ink,
         );
@@ -849,28 +947,29 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     }
     if r.width > 520 {
         let right = r.x + r.width as i32;
-        // Edge calls this menu "Settings and more"; it opens the real settings panel.
-        let more = Rect::new(right - 84, r.y + 6, 32, 28);
-        if ctx.hovered(more) {
-            p.box_(more, Color(0, 0, 0, 14), 4);
-        }
-        p.symbol("more", right - 72, r.y + 12, 16, ink);
-        p.region(more, "shell:settings", "Settings and more");
         // There is one account on this machine, and its settings are where Start's own
         // account row leads, so the avatar goes to the same place rather than nowhere.
-        let profile = Rect::new(right - 38, r.y + 8, 24, 24);
+        let profile = Rect::new(right - 82, r.y + 8, 24, 24);
         if ctx.hovered(profile) {
             p.box_(profile, Color(0, 0, 0, 14), 12);
         }
-        p.circle(right - 26, r.y + 20, 12, Color::rgb(216, 222, 231));
+        p.circle(right - 70, r.y + 20, 12, Color::rgb(216, 222, 231));
         p.symbol(
             "person",
-            right - 33,
+            right - 77,
             r.y + 13,
             14,
             Color::rgb(122, 134, 150),
         );
-        p.region(profile, "shell:settings", "Profile, alice");
+        p.region(profile, "shell:settings", &format!("Profile, {}", ctx.user));
+        // Edge keeps "Settings and more" at the far right of its toolbar; it opens the
+        // real settings panel.
+        let more = Rect::new(right - 44, r.y + 6, 32, 28);
+        if ctx.hovered(more) {
+            p.box_(more, Color(0, 0, 0, 14), 4);
+        }
+        p.symbol("more", right - 36, r.y + 12, 16, ink);
+        p.region(more, "shell:settings", "Settings and more");
     }
 }
 
@@ -1383,19 +1482,15 @@ fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
             INK,
         );
         let track = Rect::new(r.x + 60, sy + 6, r.width - 96, 4);
+        // One continuous Fluent track, accent up to the thumb; the steps are only
+        // where a click lands, never drawn.
+        let filled = track.width * current.min(100) / 100;
+        p.box_(track, Color(0, 0, 0, 90), 2);
+        p.box_(Rect::new(track.x, track.y, filled.max(1), 4), ACCENT, 2);
         for step in 0..STEPS {
             let x0 = track.x + (track.width * step / STEPS) as i32;
             let x1 = track.x + (track.width * (step + 1) / STEPS) as i32;
             let percent = (step + 1) * 100 / STEPS;
-            p.box_(
-                Rect::new(x0, track.y, (x1 - x0 - 2).max(1) as u32, 4),
-                if percent <= current {
-                    ACCENT
-                } else {
-                    Color(0, 0, 0, 70)
-                },
-                2,
-            );
             p.button(
                 Rect::new(x0 - 1, sy - 6, (x1 - x0 + 2) as u32, 24),
                 Color::TRANSPARENT,
@@ -1736,6 +1831,9 @@ mod tests {
             bookmarked: false,
             panel_over_launcher: false,
             typed: "",
+            user: "alice",
+            home: "/Users/alice",
+            recents: &[],
         }
     }
     #[test]

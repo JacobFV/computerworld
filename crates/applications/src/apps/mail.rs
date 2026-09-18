@@ -724,6 +724,7 @@ mod tests {
                 settings: &crate::SystemSettings::DEFAULT,
                 clipboard: None,
                 share_to: None,
+                files: Default::default(),
             },
         );
         for target in scene

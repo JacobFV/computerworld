@@ -301,6 +301,7 @@ impl Environment {
                 "view" => "view",
                 "window" => "window",
                 "help" => "help",
+                "go" => "go",
                 "spotlight" | "search" => "search",
                 "control" | "quick" => "quick",
                 "calendar" | "clock" => "calendar",

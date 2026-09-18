@@ -256,10 +256,12 @@ fn the_trash_is_a_folder_and_opening_it_shows_what_was_deleted() {
         .unwrap()
         .clone();
     let tab = &state["windows"][&window]["state"]["tabs"][0];
+    // `open:<i>` is a row on screen, and the screen hides dot files.
     let index = tab["entries"]
         .as_array()
         .unwrap()
         .iter()
+        .filter(|e| !e.as_str().unwrap_or_default().starts_with('.'))
         .position(|e| e == "doomed.txt")
         .expect("the file is in the listing");
     shell(

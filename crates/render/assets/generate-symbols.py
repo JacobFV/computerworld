@@ -142,6 +142,8 @@ SYMBOLS = {
     "copy": f'<rect x="8" y="8" width="12.5" height="12.5" rx="2.2" {S}/><path {S} d="M5.5 16H5A1.8 1.8 0 0 1 3.5 14V5.500A2 2 0 0 1 5.5 3.500H14A1.8 1.8 0 0 1 16 5v.5"/>',
     "paste": f'<path {S} d="M9 4.500H6.500A1.5 1.5 0 0 0 5 6v13.500A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.500V6a1.5 1.5 0 0 0-1.5-1.500H15"/><rect x="9" y="2.8" width="6" height="3.6" rx="1.2" {S}/>',
     "rename": f'<rect x="2.5" y="7.5" width="19" height="9" rx="2" {S}/><path {S} d="M15 4.500v15M13 4.500h4M13 19.500h4M6 12h5"/>',
+    "film": f'<rect x="3" y="4" width="18" height="16" rx="2.5" {S}/><path {S} d="M7.5 4v16M16.5 4v16M3 8.500h4.5M3 12h4.5M3 15.500h4.5M16.5 8.500H21M16.5 12H21M16.5 15.500H21"/>',
+    "ubuntu": f'<circle cx="12" cy="12" r="6.1" {S} stroke-width="2.1"/><circle cx="2.9" cy="12" r="2.3" {F}/><circle cx="16.55" cy="4.12" r="2.3" {F}/><circle cx="16.55" cy="19.88" r="2.3" {F}/>',
 }
 
 

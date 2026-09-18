@@ -252,7 +252,39 @@ impl Environment {
                 focused_machine,
             },
         );
+        self.first_login(&id)?;
         Ok(id)
+    }
+    /// A desktop session's first login makes the user's standard folders, as
+    /// `xdg-user-dirs-update` does on Ubuntu and a new profile does on Windows and
+    /// macOS, and the trash folder deletions go to. Only missing folders are made, so
+    /// a second login changes nothing, and a snapshot taken after this carries them.
+    /// A session without a desktop shell logs nobody in and makes nothing.
+    fn first_login(&mut self, id: &str) -> Result<()> {
+        let session = self.session(id)?;
+        let actor = session.config.actor.clone();
+        let machines: Vec<String> = session.machines.keys().cloned().collect();
+        for machine in machines {
+            let Some(theme) = self.desktop_theme(id, &machine) else {
+                continue;
+            };
+            let desktop = &self.session(id)?.machines[&machine].desktop;
+            let home = desktop.home_folder();
+            if theme.mobile() || home == "/" {
+                continue;
+            }
+            let mut wanted: Vec<String> = cw_applications::standard_folders(theme)
+                .iter()
+                .map(|name| format!("{}/{name}", home.trim_end_matches('/')))
+                .collect();
+            wanted.push(desktop.trash_folder());
+            for path in wanted {
+                if !self.runtime.computer(&machine)?.vfs.exists(&path) {
+                    self.runtime.create_directory(&machine, &actor, &path)?;
+                }
+            }
+        }
+        Ok(())
     }
     /// A fresh desktop for `machine`, seeded with the facts the shell needs about it.
     fn new_machine_session(&self, machine: &str) -> MachineSession {
@@ -264,10 +296,11 @@ impl Environment {
                 .cloned()
                 .unwrap_or_else(|| computer.cwd.clone());
             // Same source as `home`: the machine states its own prompt.
-            session.desktop.prompt = cw_applications::shell_prompt(
+            session.desktop.prompt = cw_applications::shell_prompt_at(
                 &computer.user,
                 &computer.id,
                 &computer.cwd,
+                &session.desktop.home,
                 &computer.dialect,
             );
         }
@@ -435,6 +468,11 @@ impl Environment {
                 *machine = fresh.get(id).cloned().unwrap_or_default();
             }
             session.focused_machine = session.config.machines[0].clone();
+        }
+        // A reset world is logged into afresh, exactly as a new one is.
+        let ids: Vec<String> = self.sessions.keys().cloned().collect();
+        for id in ids {
+            self.first_login(&id)?;
         }
         self.journal = Arc::new(Journal::default());
         Ok(())
@@ -683,6 +721,18 @@ impl Environment {
                         } else {
                             &from_world
                         });
+                // Files, Finder and Explorer open on the user's home; a phone's file
+                // browser opens on its storage root.
+                let home;
+                let arg = if arg.is_empty()
+                    && matches!(kind, "files" | "file_manager")
+                    && self.desktop_theme(id, machine).is_some_and(|t| !t.mobile())
+                {
+                    home = self.session(id)?.machines[machine].desktop.home_folder();
+                    home.as_str()
+                } else {
+                    arg
+                };
                 let (window, effects) = self
                     .machine_mut(id, machine)?
                     .desktop
@@ -1092,12 +1142,13 @@ impl Environment {
                             return Ok(Value::Null);
                         }
                         self.machine_mut(id, machine)?.desktop.desktop_selection = None;
-                        return self.shell_action(
-                            id,
-                            machine,
-                            actor,
-                            &format!("shell:launch:{kind}"),
-                        );
+                        // The Recycle Bin is a folder, not an application.
+                        let open = if kind == "trash" {
+                            "shell:trash".to_owned()
+                        } else {
+                            format!("shell:launch:{kind}")
+                        };
+                        return self.shell_action(id, machine, actor, &open);
                     }
                     if action.op == "double_click" {
                         return Ok(Value::Null);
@@ -1399,7 +1450,8 @@ impl Environment {
                     let clear = result.clear;
                     let next = {
                         let c = self.runtime.computer(machine)?;
-                        cw_applications::shell_prompt(&c.user, &c.id, &c.cwd, &c.dialect)
+                        let home = c.env.get("HOME").map_or("", String::as_str);
+                        cw_applications::shell_prompt_at(&c.user, &c.id, &c.cwd, home, &c.dialect)
                     };
                     let desktop = &mut self.machine_mut(id, machine)?.desktop;
                     desktop.prompt = next;
@@ -1934,6 +1986,29 @@ impl Environment {
                         .into_iter()
                         .find(|k| c.application_available(k))
                 });
+            // The places a file manager's sidebar may offer, read from the machine now.
+            let home = m.desktop.home_folder();
+            let trash = m.desktop.trash_folder();
+            let files_env = cw_applications::FilesEnv {
+                home: &home,
+                folders: self
+                    .runtime
+                    .computer(&s.focused_machine)
+                    .map(|c| {
+                        cw_applications::standard_folders(theme)
+                            .iter()
+                            .filter(|name| {
+                                c.vfs
+                                    .stat(&format!("{}/{name}", home.trim_end_matches('/')))
+                                    .is_ok_and(|m| m.is_dir)
+                            })
+                            .map(|name| (*name).to_owned())
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                trash: trash.clone(),
+                starred: &m.desktop.starred,
+            };
             let mut views = Vec::new();
             for window_id in m.desktop.ordered_windows() {
                 let window = &m.desktop.windows[&window_id];
@@ -1975,6 +2050,7 @@ impl Environment {
                             settings: &m.desktop.settings,
                             clipboard: m.desktop.clipboard.as_ref(),
                             share_to,
+                            files: files_env.clone(),
                         },
                     )
                 };
@@ -1991,11 +2067,20 @@ impl Environment {
                             false,
                         )
                     }
+                    // A list, a view or the Trash is named, not traced as a path.
                     AppState::Files { .. } => {
-                        (window.state.file_path().to_owned(), String::new(), false)
+                        let caption = window
+                            .state
+                            .file_tab()
+                            .filter(|tab| tab.is_place(&trash))
+                            .map(|tab| tab.title(theme, &home, &trash))
+                            .unwrap_or_default();
+                        (window.state.file_path().to_owned(), caption, false)
                     }
                     AppState::Editor { path, dirty, .. } => (path.clone(), String::new(), *dirty),
-                    AppState::Terminal { .. } => Default::default(),
+                    // The prompt names the user, the host and the directory; a frame titles
+                    // the window from it the way each platform's terminal does.
+                    AppState::Terminal { prompt, .. } => (String::new(), prompt.clone(), false),
                     AppState::Native(app) => (app.document(), app.caption(), app.modified()),
                 };
                 let title = match &window.state {
@@ -2026,7 +2111,9 @@ impl Environment {
                         )
                     }
                     AppState::Files { tabs, active } => (
-                        tabs.iter().map(|tab| tab.name().to_owned()).collect(),
+                        tabs.iter()
+                            .map(|tab| tab.title(theme, &home, &trash))
+                            .collect(),
                         *active,
                     ),
                     _ => (vec![], 0),
@@ -2059,10 +2146,16 @@ impl Environment {
                     content: Some(content),
                     document,
                     caption,
+                    home: home.clone(),
                     modified,
-                    editing: kind == "browser"
+                    // A browser's address field, or a file manager's search field.
+                    editing: (kind == "browser"
                         && m.address_focused
-                        && m.desktop.focused == Some(window_id),
+                        && m.desktop.focused == Some(window_id))
+                        || window
+                            .state
+                            .file_tab()
+                            .is_some_and(|t| t.searching && t.rename.is_none()),
                     tabs,
                     active_tab,
                     can_go_back,
@@ -2154,6 +2247,13 @@ impl Environment {
                     bookmarked: m.browser.url().is_some_and(|url| m.desktop.bookmarked(url)),
                     panel_over_launcher: m.desktop.panel_over_launcher,
                     typed: typed_of(m),
+                    user: self
+                        .runtime
+                        .computer(&s.focused_machine)
+                        .map(|c| c.user.clone())
+                        .unwrap_or_default(),
+                    recents: m.desktop.recents.clone(),
+                    home: m.desktop.home_folder(),
                 },
             );
             self.decorate(&mut scene, m, published);

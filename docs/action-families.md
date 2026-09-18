@@ -143,9 +143,9 @@ is reachable either from a painted control or from `application.v1 shell`.
 |---|---|
 | `shell:launch:<kind>` | Launch or focus an application |
 | `shell:launch:<kind>/<argument>` | Launch it *on* something: a file manager on a folder, a calendar on a date. Every shell's calendar panel paints each day as `shell:launch:calendar/YYYY-MM-DD`; days before the world began, or with no Calendar installed, carry no target |
-| `shell:open:<kind>` | Desktop icon: select on one click, open on two |
+| `shell:open:<kind>` | Desktop icon: select on one click, open on two. `shell:open:trash` is the Windows Recycle Bin, which opens the trash folder |
 | `shell:home` / `shell:launcher` / `shell:desktop` / `shell:dismiss` | Show the desktop, toggle the launcher, dismiss a panel |
-| `shell:panel:<name>` | Open a panel: `apple`, `file`, `edit`, `view`, `window`, `help`, `spotlight`, `control`, `quick`, `calendar`, `notifications`, `settings`, `overview`, `context`, `power`, `app-menu` (GNOME header-bar primary menu), `app-settings` (Notepad settings), `page` (iOS Safari "AA"). Choosing an entry in a drop-down menu (`file`, `edit`, `view`, `format`, `app-menu`) closes it |
+| `shell:panel:<name>` | Open a panel: `apple`, `file`, `edit`, `view`, `go` (Finder's Go menu), `window`, `help`, `spotlight`, `control`, `quick`, `calendar`, `notifications`, `settings`, `overview`, `context`, `power`, `app-menu` (GNOME header-bar primary menu), `app-settings` (Notepad settings), `page` (iOS Safari "AA"). Choosing an entry in a drop-down menu (`file`, `edit`, `view`, `format`, `app-menu`) closes it |
 | `shell:search` / `shell:settings` / `shell:overview` / `shell:notifications` / `shell:quick-settings` | Panel shortcuts |
 | `shell:back` / `shell:forward` / `shell:reload` / `shell:address` | Browser navigation, refused when there is no history or no page |
 | `shell:tab:new` / `shell:tab:select:<i>` / `shell:tab:close:<i>` | Browser tabs |
@@ -175,7 +175,9 @@ File manager controls, reached as `window:<id>:content:<target>`: `files-back`,
 `files-forward`, `files-up`, `files-root`, `files-home`, `files-reload`,
 `files-newtab`, `files-tab:<i>`, `files-closetab:<i>`, `files-location:<path>`,
 `files-view`, `files-sort:<key>`, `files-search`, `files-search-clear`,
-`files-recents`, `files-browse`, `files-open`, `files-new-folder`, `files-new-file`,
+`files-recents`, `files-browse`, `files-starred`, `files-star`, `files-star:<i>`,
+`files-quick-access`, `files-gallery`, `files-trash`, `files-hidden`, `files-open`,
+`files-new-folder`, `files-new-file`,
 `files-cut`, `files-copy`, `files-paste`, `files-rename`, `files-delete`, and
 `open:<i>`, which indexes the **displayed** row order rather than the raw listing.
 
@@ -242,9 +244,9 @@ shell is driven, so these strings are part of the actor-facing contract.
 | `window:<id>:drag` \| `:focus` \| `:minimize` \| `:maximize` \| `:close` \| `:resize:{n,s,e,w,ne,nw,se,sw}` | Window frame. Requires `application.v1`. |
 | `window:<id>:content:<target>` | Forwarded into the window's content as `<target>` |
 | `shell:launch:<kind>` | Launch an application (same path as `application.v1 launch`) |
-| `shell:open:<kind>` | Desktop icon: select on click, launch on double-click |
+| `shell:open:<kind>` | Desktop icon: select on click, launch on double-click (`trash` opens the trash folder) |
 | `shell:home`, `shell:launcher`, `shell:switcher`, `shell:minimize`, `shell:maximize`, `shell:close`, `shell:desktop`, `shell:dismiss`, `shell:noop`, `shell:new`, `shell:save`, `shell:mobile-back` | Shell commands |
-| `shell:panel:<name>` where name ∈ `apple file edit view window help spotlight search control quick calendar clock notifications settings overview context power` | Toggle a panel. `shell:menu:<Name>`, `shell:search`, `shell:spotlight`, `shell:settings`, `shell:overview`, `shell:recents`, `shell:notifications`, `shell:control-center`, `shell:quick-settings`, `shell:system` are aliases. |
+| `shell:panel:<name>` where name ∈ `apple file edit view go window help spotlight search control quick calendar clock notifications settings overview context power` | Toggle a panel. `shell:menu:<Name>`, `shell:search`, `shell:spotlight`, `shell:settings`, `shell:overview`, `shell:recents`, `shell:notifications`, `shell:control-center`, `shell:quick-settings`, `shell:system` are aliases. |
 | `shell:toggle:<setting>` | Flip a device switch (wifi, bluetooth, airplane, dark, …). Returns `{"setting","value"}`. |
 | `shell:set:<setting>:<percent>` | Set a level 0–100. Returns `{"setting","value"}`. |
 | `shell:power:{lock,off,shutdown,restart,wake,unlock}` | Changes what the screen actually shows; `off`/`restart` clear windows |
@@ -255,6 +257,9 @@ shell is driven, so these strings are part of the actor-facing contract.
 | `files-search`, `files-search-clear` | Focus the query field, and clear it. Typing goes to `FileTab::query`, which filters the rows. |
 | `files-{new-folder,new-file,cut,copy,paste,rename,delete}` | File manager mutations. Each runs through the kernel under the same access checks as `read_file`/`write_file`, and re-lists the folder afterwards. `delete` moves to `~/.local/share/Trash/files`; nothing is hard-removed. `rename` opens a field committed with `Enter` and cancelled with `Escape`. |
 | `files-recents`, `files-browse` | Switch the tab between the desktop's recent-documents list and the folder it was showing. |
+| `files-starred`, `files-star`, `files-star:<i>` | Files' Starred list (`DesktopState::starred`), and star or unstar the selection or on-screen row `<i>`. A star toggles; unstarring in the Starred list takes the row off it. |
+| `files-quick-access`, `files-gallery` | Explorer's Home (the pinned folders the home folder really holds, then favourites, then recent documents) and Gallery (the image files in `~/Pictures`). Both are views over a real listing, not folders, so mutations are refused in them. |
+| `files-trash`, `files-hidden` | Show the trash folder in the tab, and show or hide dot files (also `Ctrl+H`). Dot files are hidden by default, as in every desktop file manager. |
 | `window:<id>:content:terminal-scroll:<n>`, `terminal-line` | Terminal scrollback position, and the prompt line — a click on it places the input caret. |
 | `shell:address`, `shell:back`, `shell:forward`, `shell:reload` | Browser chrome. History ops require `browser.v1`. |
 | `shell:type:<text>`, `shell:key:<key>` | Re-dispatched as `keyboard.v1` |

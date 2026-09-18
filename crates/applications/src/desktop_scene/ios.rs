@@ -2126,6 +2126,9 @@ mod tests {
             bookmarked: false,
             panel_over_launcher: false,
             typed: "",
+            user: "alice",
+            home: "/Users/alice",
+            recents: &[],
         };
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         background(&mut p, &ctx);
@@ -2184,6 +2187,9 @@ mod tests {
             bookmarked: false,
             panel_over_launcher: false,
             typed: "",
+            user: "alice",
+            home: "/Users/alice",
+            recents: &[],
         }
     }
     fn ids(p: &Painter) -> Vec<String> {

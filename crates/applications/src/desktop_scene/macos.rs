@@ -52,10 +52,11 @@ fn basename(path: &str) -> &str {
 
 pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     p.asset(Rect::new(0, 0, ctx.width, ctx.height), "wallpaper/macos");
-    // Desktop items are real entry points, not unrelated artwork.
+    // Desktop items are real entry points, not unrelated artwork. The startup disk is
+    // the one item a Mac shows here; applications live in the Dock, not on the desktop.
     if ctx.width >= 640 {
         let x = ctx.width as i32 - 108;
-        for (i, (kind, name)) in [("files", "Macintosh HD"), ("editor", "TextEdit")]
+        for (i, (kind, name)) in [("files", "Macintosh HD")]
             .into_iter()
             .filter(|(kind, _)| ctx.installed(kind))
             .enumerate()
@@ -179,12 +180,26 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 }
             }
             let right = r.x + r.width as i32;
-            let title_width = (right - x - 84 - 210).max(40) as u32;
+            // Finder's toolbar, right to left: search, share, view. Search is a
+            // magnifier until it is in use, then the field holding the query.
+            let finding = w.editing || !w.query.is_empty();
+            let search = if finding {
+                Rect::new(right - 186, r.y + 8, 174, 26)
+            } else {
+                Rect::new(right - 42, r.y + 8, 30, 26)
+            };
+            let view = Rect::new(search.x - 72, r.y + 9, 62, 24);
+            let share = Rect::new(view.x - 36, r.y + 8, 28, 26);
+            let title_width = (share.x - x - 84).max(40) as u32;
             p.strong(
                 x + 74,
                 r.y + 12,
                 title_width,
-                basename(&w.document),
+                if w.caption.is_empty() {
+                    basename(&w.document)
+                } else {
+                    &w.caption
+                },
                 15,
                 ink,
             );
@@ -192,7 +207,6 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 // One control, not two segments: `files-view` swaps the tab between its
                 // icon and list layouts, and there is no id that sets an exact one. The
                 // window view carries no view mode either, so neither half is lit.
-                let view = Rect::new(right - 178, r.y + 9, 62, 24);
                 if ctx.hovered(view) {
                     p.box_(view, Color(0, 0, 0, 18), 6);
                 }
@@ -202,7 +216,6 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.region(view, &w.action("content:files-view"), "Icon or list view");
                 // Share hands the selected item to Messages, or Mail without it; with
                 // nothing selected or nothing to receive it, it is greyed.
-                let share = Rect::new(right - 212, r.y + 8, 28, 26);
                 let via = ["chat", "mail"]
                     .into_iter()
                     .find(|kind| ctx.installed(kind));
@@ -224,24 +237,57 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                         p.disabled("Share");
                     }
                 }
-                // Tagging has no model; these three navigate for real.
-                for (i, (symbol, target, label)) in [
-                    ("reload", "files-reload", "Refresh"),
-                    ("home", "files-home", "Home"),
-                    ("drive", "files-root", "Computer"),
-                ]
-                .into_iter()
-                .enumerate()
-                {
-                    let hit = Rect::new(right - 106 + i as i32 * 34, r.y + 8, 28, 26);
-                    tool(p, ctx, hit, symbol, SECONDARY);
-                    p.region(hit, &w.action(&format!("content:{target}")), label);
+                // Tags, Group and the action menu have no model and are left out; the
+                // Go menu carries Home, Computer and the other places.
+                if finding {
+                    p.border(search, Color::rgb(255, 255, 255), 7, Color(0, 0, 0, 30));
+                    p.region(search, &w.action("content:files-search"), "Search");
+                    p.symbol("search", search.x + 8, search.y + 6, 14, SECONDARY);
+                    let shown = if w.query.is_empty() {
+                        "Search"
+                    } else {
+                        w.query.as_str()
+                    };
+                    let used = p.left(
+                        search.x + 28,
+                        search.y + 5,
+                        search.width - 52,
+                        shown,
+                        13,
+                        if w.query.is_empty() { TERTIARY } else { INK },
+                    );
+                    if w.editing {
+                        let caret = if w.query.is_empty() { 0 } else { used as i32 };
+                        p.box_(
+                            Rect::new(search.x + 29 + caret, search.y + 6, 1, 15),
+                            ACCENT,
+                            0,
+                        );
+                    }
+                    let clear =
+                        Rect::new(search.x + search.width as i32 - 22, search.y + 5, 16, 16);
+                    p.button(
+                        clear,
+                        Color::TRANSPARENT,
+                        8,
+                        &w.action("content:files-search-clear"),
+                        "Clear search",
+                    );
+                    p.circle(clear.x + 8, clear.y + 8, 7, Color(0, 0, 0, 60));
+                    p.symbol("close", clear.x + 4, clear.y + 4, 8, Color::WHITE);
+                } else {
+                    tool(p, ctx, search, "search", SECONDARY);
+                    p.region(search, &w.action("content:files-search"), "Search");
                 }
             }
         }
         kind => {
             let name = match kind {
-                "terminal" => "alice — -zsh".to_owned(),
+                // Terminal titles a window with the user and the shell it runs.
+                "terminal" => w
+                    .shell_identity()
+                    .map(|(user, _, _)| format!("{user} — -zsh"))
+                    .unwrap_or_else(|| "Terminal".into()),
                 "editor" if w.document.is_empty() => "Untitled".to_owned(),
                 "editor" => basename(&w.document).to_owned(),
                 _ => w.title.clone(),
@@ -687,6 +733,8 @@ fn locked(p: &mut Painter, ctx: &ShellContext<'_>) {
 }
 
 const MENUS: [&str; 5] = ["File", "Edit", "View", "Window", "Help"];
+/// Finder's menus: the same, with its Go menu between View and Window.
+const FINDER_MENUS: [&str; 6] = ["File", "Edit", "View", "Go", "Window", "Help"];
 fn front_app(ctx: &ShellContext<'_>) -> &'static str {
     ctx.windows
         .iter()
@@ -698,7 +746,12 @@ fn front_app(ctx: &ShellContext<'_>) -> &'static str {
 fn menu_layout(p: &Painter, ctx: &ShellContext<'_>) -> Vec<(&'static str, i32, u32)> {
     let mut x = 46 + p.measure(front_app(ctx), 13, true) as i32 + 20;
     let mut out = Vec::new();
-    for label in MENUS {
+    let menus: &[&'static str] = if front_app(ctx) == "Finder" {
+        &FINDER_MENUS
+    } else {
+        &MENUS
+    };
+    for &label in menus {
         let width = p.measure(label, 13, false) + 20;
         if x + width as i32 > ctx.width as i32 - 300 {
             break;
@@ -1252,17 +1305,18 @@ fn control_center(p: &mut Painter, ctx: &ShellContext<'_>) {
     let width = 324.min(ctx.width.saturating_sub(24));
     let x = ctx.width as i32 - width as i32 - 10;
     let y = 34;
-    let r = Rect::new(x, y, width, 352);
+    // Sequoia's layout: the connectivity module and Focus side by side, then the
+    // Display and Sound sliders. AirDrop, Stage Manager, Screen Mirroring and Now
+    // Playing have nothing behind them in the simulator and are left out, not faked.
+    let r = Rect::new(x, y, width, 254);
     popover(p, r, 18);
     let half = (width - 36) / 2;
-    // Connectivity summary.
-    let net = Rect::new(x + 12, y + 12, half, 150);
+    let net = Rect::new(x + 12, y + 12, half, 106);
     module(p, net);
     // Every row flips a real switch and paints the position it reads back.
     for (i, (symbol, name, switch)) in [
         ("wifi", "Wi-Fi", "wifi"),
         ("bluetooth", "Bluetooth", "bluetooth"),
-        ("dnd", "Focus", "do_not_disturb"),
     ]
     .into_iter()
     .enumerate()
@@ -1289,29 +1343,28 @@ fn control_center(p: &mut Painter, ctx: &ShellContext<'_>) {
             &format!("{name} {}", if on { "on" } else { "off" }),
         );
     }
-    // Shell destinations keep their real actions.
-    let right = x + 24 + half as i32;
-    for (i, (symbol, name, detail, action)) in [
-        ("search", "Spotlight", "Search applications", "shell:search"),
-        (
-            "bell",
-            "Notifications",
-            "Notification Center",
-            "shell:panel:notifications",
-        ),
-    ]
-    .iter()
-    .enumerate()
-    {
-        let tile = Rect::new(right, y + 12 + i as i32 * 78, half, 72);
-        module(p, tile);
-        if ctx.hovered(tile) {
-            p.box_(tile, Color(255, 255, 255, 90), 14);
-        }
-        badge(p, tile.x + 12, tile.y + 22, symbol, false);
-        p.strong(tile.x + 48, tile.y + 27, half - 56, name, 13, INK);
-        p.region(tile, action, detail);
+    // Focus is its own tile, and Do Not Disturb is the Focus the machine has.
+    let focus = Rect::new(x + 24 + half as i32, y + 12, half, 106);
+    module(p, focus);
+    if ctx.hovered(focus) {
+        p.box_(focus, Color(255, 255, 255, 90), 14);
     }
+    let on = ctx.switch("do_not_disturb");
+    badge(p, focus.x + 12, focus.y + 36, "dnd", on);
+    p.strong(focus.x + 48, focus.y + 35, half - 56, "Focus", 13, INK);
+    p.left(
+        focus.x + 48,
+        focus.y + 51,
+        half - 56,
+        if on { "Do Not Disturb" } else { "Off" },
+        11,
+        SECONDARY,
+    );
+    p.region(
+        focus,
+        "shell:toggle:do_not_disturb",
+        &format!("Focus {}", if on { "on" } else { "off" }),
+    );
     for (i, (title, symbol, setting)) in [
         ("Display", "sun", "brightness"),
         ("Sound", "volume", "volume"),
@@ -1319,19 +1372,11 @@ fn control_center(p: &mut Painter, ctx: &ShellContext<'_>) {
     .into_iter()
     .enumerate()
     {
-        let tile = Rect::new(x + 12, y + 174 + i as i32 * 66, width - 24, 58);
+        let tile = Rect::new(x + 12, y + 130 + i as i32 * 60, width - 24, 54);
         module(p, tile);
         let level = u32::from(ctx.level(setting));
-        p.strong(tile.x + 14, tile.y + 8, 140, title, 12, INK);
-        p.right(
-            tile.x + 14,
-            tile.y + 8,
-            tile.width - 28,
-            &format!("{level}%"),
-            12,
-            SECONDARY,
-        );
-        let track = Rect::new(tile.x + 12, tile.y + 28, tile.width - 24, 22);
+        p.strong(tile.x + 14, tile.y + 7, 140, title, 12, INK);
+        let track = Rect::new(tile.x + 12, tile.y + 26, tile.width - 24, 22);
         p.border(track, Color(0, 0, 0, 22), 11, Color(0, 0, 0, 20));
         let fill = (track.width * level / 100).max(22);
         p.box_(Rect::new(track.x, track.y, fill, 22), Color::WHITE, 11);
@@ -1357,22 +1402,6 @@ fn control_center(p: &mut Painter, ctx: &ShellContext<'_>) {
                 &format!("{title} {percent}%"),
             );
         }
-    }
-    for (i, (symbol, name, action)) in [
-        ("gear", "Settings", "shell:settings"),
-        ("grid", "Applications", "shell:launcher"),
-    ]
-    .iter()
-    .enumerate()
-    {
-        let tile = Rect::new(x + 12 + i as i32 * (half as i32 + 12), y + 306, half, 34);
-        module(p, tile);
-        if ctx.hovered(tile) {
-            p.box_(tile, Color(255, 255, 255, 90), 14);
-        }
-        p.symbol(symbol, tile.x + 12, tile.y + 9, 16, INK);
-        p.left(tile.x + 36, tile.y + 9, half - 44, name, 13, INK);
-        p.region(tile, action, name);
     }
 }
 
@@ -1894,6 +1923,47 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
                 })),
         )
         .collect(),
+        // Finder's Go menu. In a Finder window each entry moves that window; with none
+        // in front it opens a new one there, as Finder does. Recents needs a
+        // window to show it in, so it is only offered from one.
+        "go" => {
+            let finder = front.filter(|w| w.kind == "files");
+            let home = ctx.home.trim_end_matches('/');
+            let go = |path: String| match finder {
+                Some(w) => w.action(&format!("content:files-location:{path}")),
+                None => format!("shell:launch:files/{path}"),
+            };
+            let mut out: Vec<(String, String, &str)> = Vec::new();
+            if let Some(w) = finder {
+                if w.can_go_back {
+                    out.push(("Back".into(), w.action("content:files-back"), "⌘["));
+                }
+                if w.can_go_forward {
+                    out.push(("Forward".into(), w.action("content:files-forward"), "⌘]"));
+                }
+                if w.caption.is_empty() && w.document != "/" {
+                    out.push((
+                        "Enclosing Folder".into(),
+                        w.action("content:files-up"),
+                        "⌘↑",
+                    ));
+                }
+                out.push((String::new(), String::new(), ""));
+                out.push(("Recents".into(), w.action("content:files-recents"), "⇧⌘F"));
+            }
+            if !home.is_empty() && ctx.installed("files") {
+                for (label, folder, keys) in [
+                    ("Documents", "Documents", "⇧⌘O"),
+                    ("Desktop", "Desktop", "⇧⌘D"),
+                    ("Downloads", "Downloads", "⌥⌘L"),
+                ] {
+                    out.push((label.into(), go(format!("{home}/{folder}")), keys));
+                }
+                out.push(("Home".into(), go(home.to_owned()), "⇧⌘H"));
+                out.push(("Computer".into(), go("/".into()), "⇧⌘C"));
+            }
+            out
+        }
         "edit" => vec![(
             "Find Applications…".into(),
             "shell:panel:spotlight".into(),
@@ -2013,6 +2083,9 @@ mod tests {
             bookmarked: false,
             panel_over_launcher: false,
             typed: "",
+            user: "alice",
+            home: "/Users/alice",
+            recents: &[],
         }
     }
     fn browser(tabs: &[&str], active: usize) -> WindowView {
@@ -2170,9 +2243,7 @@ mod tests {
         for (x, target) in [
             (196, "files-back"),
             (230, "files-forward"),
-            (808, "files-reload"),
-            (842, "files-home"),
-            (876, "files-root"),
+            (873, "files-search"),
         ] {
             assert_eq!(
                 hit(&p, x, 21),
@@ -2187,6 +2258,19 @@ mod tests {
         for gone in ["Icon view", "List view"] {
             assert!(labelled(&p, gone).is_none(), "{gone}");
         }
+        // A query in force opens the field, and the field can clear it.
+        let finding = vec![WindowView {
+            query: "notes".into(),
+            ..windows[0].clone()
+        }];
+        let ctx = context(&finding, &settings);
+        let mut p = Painter::themed(DesktopTheme::Macos, 1280, 800, 1);
+        window_frame(&mut p, &ctx, &finding[0]);
+        assert!(texts(&p).contains(&"notes"));
+        assert_eq!(
+            hit_labelled(&p, "Clear search"),
+            Some("window:3:content:files-search-clear")
+        );
         // A fresh window has no history, so both chevrons are greyed rather than live.
         let fresh = vec![WindowView {
             can_go_back: false,
@@ -2212,7 +2296,13 @@ mod tests {
         chrome(&mut p, &ctx);
         assert_eq!(hit(&p, 1030, 72), Some("shell:toggle:wifi"));
         assert_eq!(hit(&p, 1030, 116), Some("shell:toggle:bluetooth"));
-        assert_eq!(hit(&p, 1030, 160), Some("shell:toggle:do_not_disturb"));
+        // Focus is its own tile beside the connectivity module, as in Sequoia.
+        let focus = labelled(&p, "Focus off").expect("a Focus tile");
+        let b = focus.bounds;
+        assert_eq!(
+            hit(&p, b.x + b.width as i32 / 2, b.y + b.height as i32 / 2),
+            Some("shell:toggle:do_not_disturb")
+        );
         // The off row reads its true position back.
         assert!(p
             .scene

@@ -53,24 +53,28 @@ fn basename(path: &str) -> &str {
 pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     p.asset(Rect::new(0, 0, ctx.width, ctx.height), "wallpaper/ubuntu");
     if ctx.width > 300 && ctx.height > 250 && ctx.installed("files") {
+        // Desktop Icons NG lays icons out from the bottom-right corner, Home first.
         let x = ctx.width as i32 - 104;
-        let slot = Rect::new(x, 48, 92, 92);
+        let top = ctx.height as i32 - 112;
+        let slot = Rect::new(x, top, 92, 92);
         if ctx.selected("files") {
             p.box_(slot, Color(255, 255, 255, 64), 8);
         } else if ctx.hovered(slot) {
             p.box_(slot, Color(255, 255, 255, 40), 8);
         }
         p.platform_icon(
-            Rect::new(x + 20, 54, 52, 52),
+            Rect::new(x + 20, top + 6, 52, 52),
             "ubuntu",
             "files",
             "shell:open:files",
             "Open home folder",
         );
+        // Yaru's home folder carries a house on it.
+        p.symbol("home", x + 38, top + 28, 16, Color(255, 255, 255, 200));
         for (dy, alpha) in [(1, 170), (2, 70)] {
             p.label(
                 x,
-                112 + dy,
+                top + 64 + dy,
                 92,
                 "Home",
                 13,
@@ -79,7 +83,16 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
                 Align::Center,
             );
         }
-        p.label(x, 112, 92, "Home", 13, Color::WHITE, false, Align::Center);
+        p.label(
+            x,
+            top + 64,
+            92,
+            "Home",
+            13,
+            Color::WHITE,
+            false,
+            Align::Center,
+        );
     }
 }
 
@@ -202,12 +215,14 @@ fn top_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
         if ctx.hovered(tray) || ctx.panel == Some("quick") {
             p.box_(tray, plate, 13);
         }
-        for (i, symbol) in ["wifi", "volume", "battery"].iter().enumerate() {
+        // Network, volume and, with no battery to report, the power glyph GNOME
+        // shows on a desktop computer.
+        for (i, symbol) in ["wifi", "volume", "power"].iter().enumerate() {
             p.symbol(
                 symbol,
                 tray.x + 11 + i as i32 * 24,
                 8,
-                if i == 2 { 18 } else { 16 },
+                16,
                 Color::rgb(242, 242, 242),
             );
         }
@@ -296,7 +311,8 @@ fn dock(p: &mut Painter, ctx: &ShellContext<'_>) {
             "shell:launcher",
             "Show applications",
         );
-        p.symbol("grid", 20, y + 13, 28, Color::rgb(241, 241, 241));
+        // Ubuntu 24.04's Show Applications button is the Ubuntu logo.
+        p.symbol("ubuntu", 20, y + 13, 28, Color::rgb(241, 241, 241));
     }
 }
 
@@ -522,8 +538,14 @@ fn workspace_strip(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32, y: i32)
 
 fn window_title(w: &WindowView) -> String {
     match w.kind.as_str() {
+        "files" if !w.caption.is_empty() => w.caption.clone(),
+        "files" if !w.home.is_empty() && w.tilde(&w.document) == "~" => "Home".into(),
         "files" => basename(&w.document).to_owned(),
-        "terminal" => "alice@ubuntu: ~".into(),
+        // GNOME Terminal titles itself from the prompt: `user@host: ~/dir`.
+        "terminal" => w
+            .shell_identity()
+            .map(|(user, host, dir)| format!("{user}@{host}: {dir}"))
+            .unwrap_or_else(|| "Terminal".into()),
         "editor" if w.document.is_empty() => "Untitled Document".into(),
         "editor" => basename(&w.document).to_owned(),
         "browser" if w.caption.is_empty() => "New Tab".into(),
@@ -546,20 +568,49 @@ fn header_button(p: &mut Painter, ctx: &ShellContext<'_>, r: Rect, symbol: &str,
 }
 
 /// GNOME's path bar: one button per component, each navigating to that exact folder.
+/// Inside the home folder the trail starts at Home, as Files starts it; a place that is
+/// not a folder (Recent, Starred, Trash) is a single named button.
 fn path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: Rect, ink: Color) {
     p.box_(bar, Color(0, 0, 0, 18), 8);
-    let mut crumbs = vec![("Computer".to_owned(), "/".to_owned())];
-    let mut path = String::new();
-    for part in w.document.split('/').filter(|s| !s.is_empty()) {
+    let home = w.home.trim_end_matches('/');
+    let under_home =
+        !home.is_empty() && (w.document == home || w.document.starts_with(&format!("{home}/")));
+    let (mut crumbs, rest, mut path) = if !w.caption.is_empty() {
+        (vec![(w.caption.clone(), String::new())], "", String::new())
+    } else if under_home {
+        (
+            vec![("Home".to_owned(), home.to_owned())],
+            &w.document[home.len()..],
+            home.to_owned(),
+        )
+    } else {
+        (
+            vec![("Computer".to_owned(), "/".to_owned())],
+            w.document.as_str(),
+            String::new(),
+        )
+    };
+    for part in rest.split('/').filter(|s| !s.is_empty()) {
         path.push('/');
         path.push_str(part);
         crumbs.push((part.to_owned(), path.clone()));
     }
+    let lead = if !w.caption.is_empty() {
+        None
+    } else if under_home {
+        Some("home")
+    } else {
+        Some("drive")
+    };
     let last = crumbs.len() - 1;
     let widths: Vec<u32> = crumbs
         .iter()
         .enumerate()
-        .map(|(i, (name, _))| p.measure(name, 13, true) + if i == last { 24 } else { 36 })
+        .map(|(i, (name, _))| {
+            p.measure(name, 13, true)
+                + if i == last { 24 } else { 36 }
+                + if i == 0 && lead.is_some() { 22 } else { 0 }
+        })
         .collect();
     // Elide from the front when the bar is short: the deepest components are the useful ones.
     let mut first = 0;
@@ -574,21 +625,37 @@ fn path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: Rect, 
         if ctx.hovered(chip) {
             p.box_(chip, Color(0, 0, 0, 24), 6);
         }
+        let (text_x, text_width) = match lead.filter(|_| i == 0) {
+            Some(symbol) => {
+                p.symbol(symbol, chip.x + 10, chip.y + 5, 16, ink);
+                (chip.x + 22, chip.width.saturating_sub(22))
+            }
+            None => (chip.x, chip.width),
+        };
         p.label(
-            chip.x,
+            text_x,
             chip.y + 5,
-            chip.width,
+            text_width,
             name,
             13,
             ink,
             i == last,
             Align::Center,
         );
-        p.region(
-            chip,
-            &w.action(&format!("content:files-location:{target}")),
-            &format!("Go to {name}"),
-        );
+        if target.is_empty() {
+            // A named place re-reads itself: Recent and Starred refresh from state.
+            p.region(
+                chip,
+                &w.action("content:files-reload"),
+                &format!("Reload {name}"),
+            );
+        } else {
+            p.region(
+                chip,
+                &w.action(&format!("content:files-location:{target}")),
+                &format!("Go to {name}"),
+            );
+        }
         if i < last {
             p.symbol(
                 "chevron-right",
@@ -732,9 +799,24 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 // GNOME's primary menu is gone rather than greyed: everything it would
                 // hold is already on this header bar, and nothing opens a popover here.
             }
-            let up = Rect::new(x + 8, r.y + 7, 34, 32);
-            header_button(p, ctx, up, "chevron-left", ink);
-            p.region(up, &w.action("content:files-up"), "Back to parent folder");
+            // Files' arrows are history, like a browser's; the path bar climbs.
+            let back = Rect::new(x + 8, r.y + 7, 34, 32);
+            header_button(
+                p,
+                ctx,
+                back,
+                "chevron-left",
+                if w.can_go_back { ink } else { DIM },
+            );
+            if w.can_go_back {
+                p.region(
+                    back,
+                    &w.action("content:files-back"),
+                    "Back to the previous folder",
+                );
+            } else {
+                p.disabled("Back to the previous folder");
+            }
             let forward = Rect::new(x + 46, r.y + 7, 34, 32);
             header_button(
                 p,
@@ -801,10 +883,14 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             let folder = if w.document.is_empty() {
                 "Draft".to_owned()
             } else {
-                w.document
-                    .rsplit_once('/')
-                    .map_or("/", |(dir, _)| if dir.is_empty() { "/" } else { dir })
-                    .to_owned()
+                // GNOME writes the folder under home as `~/...`.
+                w.tilde(w.document.rsplit_once('/').map_or("/", |(dir, _)| {
+                    if dir.is_empty() {
+                        "/"
+                    } else {
+                        dir
+                    }
+                }))
             };
             p.center(
                 r.x + 130,
@@ -1370,23 +1456,10 @@ fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
     let text = Color::rgb(246, 246, 246);
     let width = 360.min(ctx.width.saturating_sub(84));
     let x = ctx.width as i32 - width as i32 - 8;
-    let r = Rect::new(x, 38, width, 398);
+    let r = Rect::new(x, 38, width, 356);
     popover(p, r);
-    // Top row: battery summary and round system buttons.
-    let battery = Rect::new(x + 16, r.y + 16, 84, 36);
-    p.button(
-        battery,
-        if ctx.hovered(battery) {
-            Color::rgb(110, 110, 110)
-        } else {
-            TILE
-        },
-        18,
-        "shell:settings",
-        "Battery, open Settings",
-    );
-    p.symbol("battery", x + 28, r.y + 25, 20, text);
-    p.left(x + 54, r.y + 25, 44, "100 %", 12, text);
+    // Top row: round system buttons. The machine has no battery, so GNOME shows no
+    // battery pill, exactly as it does on a desktop computer.
     // Screenshot rasterises the display and writes a real PNG to ~/Pictures; every
     // button in this row changes the machine rather than decorating the panel.
     for (i, (symbol, action, label)) in [
@@ -1496,27 +1569,6 @@ fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
             Color(255, 255, 255, 200),
         );
     }
-    let apps = Rect::new(x + 16, r.y + 350, width - 32, 34);
-    p.button(
-        apps,
-        if ctx.hovered(apps) {
-            Color::rgb(100, 100, 100)
-        } else {
-            TILE
-        },
-        17,
-        "shell:launcher",
-        "Show applications",
-    );
-    p.symbol("grid", apps.x + 14, apps.y + 9, 16, text);
-    p.left(
-        apps.x + 40,
-        apps.y + 9,
-        apps.width - 52,
-        "Show Applications",
-        13,
-        text,
-    );
 }
 
 fn settings(p: &mut Painter, ctx: &ShellContext<'_>) {
@@ -1635,6 +1687,9 @@ mod tests {
             bookmarked: false,
             panel_over_launcher: false,
             typed: "",
+            user: "alice",
+            home: "/Users/alice",
+            recents: &[],
         }
     }
     #[test]
@@ -1645,14 +1700,15 @@ mod tests {
             kind: "files".into(),
             rect: Rect::new(120, 90, 700, 430),
             focused: true,
+            can_go_back: true,
             ..Default::default()
         }];
         let ctx = context(&windows, true);
         let mut painter = Painter::new(1024, 768);
         window_frame(&mut painter, &ctx, &windows[0]);
         for (x, expected) in [
-            (320, "content:files-up"),
-            (500, "drag"),
+            (320, "content:files-back"),
+            (600, "drag"),
             (730, "minimize"),
             (764, "maximize"),
             (798, "close"),
@@ -1740,8 +1796,13 @@ mod tests {
             assert_eq!(hit(left, y), Some(format!("shell:toggle:{a}").as_str()));
             assert_eq!(hit(right, y), Some(format!("shell:toggle:{b}").as_str()));
         }
-        // Battery pill, screenshot, lock and power off — all four change the machine.
-        assert_eq!(hit(656 + 40, 72), Some("shell:settings"));
+        // No battery pill: the machine has no battery. Screenshot, Settings, lock
+        // and power off all change the machine.
+        assert_eq!(hit(656 + 40, 72), Some("shell:noop"));
+        assert_eq!(
+            hit(656 + 360 - 16 - 3 * 44 + 8 + 18, 72),
+            Some("shell:settings")
+        );
         assert_eq!(
             hit(656 + 360 - 16 - 4 * 44 + 8 + 18, 72),
             Some("shell:screenshot")
@@ -1871,6 +1932,7 @@ mod tests {
             document: "/home/alice/work".into(),
             rect: Rect::new(60, 90, width, 430),
             focused: true,
+            can_go_back: true,
             can_go_forward: true,
             ..Default::default()
         };
@@ -1896,8 +1958,9 @@ mod tests {
             };
             (trail, hit(260), hit(300))
         };
-        let (trail, up, forward) = crumbs(&window(900));
-        assert_eq!(up.as_deref(), Some("window:42:content:files-up"));
+        let (trail, back, forward) = crumbs(&window(900));
+        // Files' arrows walk history, as a browser's do; the path bar climbs.
+        assert_eq!(back.as_deref(), Some("window:42:content:files-back"));
         assert_eq!(forward.as_deref(), Some("window:42:content:files-forward"));
         assert_eq!(
             trail,
@@ -1912,6 +1975,26 @@ mod tests {
         let (short, _, _) = crumbs(&window(620));
         assert!(short.len() < trail.len());
         assert_eq!(short.last(), trail.last());
+        // Inside the home folder the trail starts at Home, as Files starts it.
+        let mut homed = window(900);
+        homed.home = "/home/alice".into();
+        let (trail, _, _) = crumbs(&homed);
+        assert_eq!(
+            trail,
+            [
+                "window:42:content:files-location:/home/alice",
+                "window:42:content:files-location:/home/alice/work",
+            ]
+        );
+        // A named place is one button that re-reads it, not a trail of folders.
+        homed.caption = "Starred".into();
+        let (trail, _, _) = crumbs(&homed);
+        assert!(trail.is_empty());
+        // With no history, Back is greyed rather than refused.
+        let mut fresh = window(900);
+        fresh.can_go_back = false;
+        let (_, back, _) = crumbs(&fresh);
+        assert_ne!(back.as_deref(), Some("window:42:content:files-back"));
     }
     #[test]
     fn editor_and_terminal_header_controls_open_real_windows() {

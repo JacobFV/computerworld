@@ -83,6 +83,16 @@ fn desktop(world: &World, actor: &str) -> Value {
     let session = world.interfaces().session(actor).unwrap();
     serde_json::to_value(&session.machines["alice-mac"].desktop).unwrap()
 }
+/// The rows a file manager shows, in order: the listing without its dot files, which
+/// every desktop file manager hides until asked. `open:<i>` indexes this list.
+fn shown(entries: &[Value]) -> Vec<String> {
+    entries
+        .iter()
+        .filter_map(|e| e.as_str())
+        .filter(|name| !name.starts_with('.'))
+        .map(str::to_owned)
+        .collect()
+}
 fn windows(world: &World, actor: &str) -> usize {
     desktop(world, actor)["windows"].as_object().unwrap().len()
 }
@@ -102,21 +112,23 @@ fn tab(world: &World, actor: &str) -> Value {
 
 #[test]
 fn a_desktop_icon_selects_on_one_click_and_opens_on_two() {
-    for theme in [
-        "virtual-macos-golden-gate",
-        "virtual-windows-11",
-        "virtual-ubuntu-24",
+    // Each desktop's own first icon: the startup disk, the Recycle Bin, Home.
+    for (theme, icon) in [
+        ("virtual-macos-golden-gate", "files"),
+        ("virtual-windows-11", "trash"),
+        ("virtual-ubuntu-24", "files"),
     ] {
         let (mut world, actor) = world(theme);
         assert_eq!(windows(&world, &actor), 0);
-        click(&mut world, &actor, "shell:open:files");
+        let target = format!("shell:open:{icon}");
+        click(&mut world, &actor, &target);
         assert_eq!(
             windows(&world, &actor),
             0,
             "{theme}: a single click opened a window"
         );
-        assert_eq!(desktop(&world, &actor)["desktop_selection"], "files");
-        double_click(&mut world, &actor, "shell:open:files");
+        assert_eq!(desktop(&world, &actor)["desktop_selection"], icon);
+        double_click(&mut world, &actor, &target);
         assert_eq!(windows(&world, &actor), 1, "{theme}: double click opens");
         assert_eq!(desktop(&world, &actor)["desktop_selection"], Value::Null);
     }
@@ -128,17 +140,15 @@ fn a_folder_selects_on_one_click_and_opens_in_the_same_window_on_two() {
     double_click(&mut world, &actor, "shell:open:files");
     let start = tab(&world, &actor)["path"].as_str().unwrap().to_owned();
     let entries = tab(&world, &actor)["entries"].as_array().unwrap().clone();
-    let (index, name) = entries
-        .iter()
+    let (index, name) = shown(&entries)
+        .into_iter()
         .enumerate()
-        .find_map(|(i, e)| {
-            let name = e.as_str()?;
-            name.ends_with('/').then_some((i, name.to_owned()))
-        })
+        .find(|(_, name)| name.ends_with('/'))
         .expect("the home folder contains a folder");
 
     click(&mut world, &actor, &format!("open:{index}"));
-    assert_eq!(tab(&world, &actor)["selected"], index as u64);
+    let raw = entries.iter().position(|e| e == name.as_str()).unwrap();
+    assert_eq!(tab(&world, &actor)["selected"], raw as u64);
     assert_eq!(
         tab(&world, &actor)["path"],
         start,
@@ -179,9 +189,9 @@ fn a_document_opens_in_an_editor_only_on_the_second_click() {
     let (mut world, actor) = world("virtual-windows-11");
     open_home(&mut world, &actor);
     let entries = tab(&world, &actor)["entries"].as_array().unwrap().clone();
-    let index = entries
+    let index = shown(&entries)
         .iter()
-        .position(|e| e.as_str().is_some_and(|name| !name.ends_with('/')))
+        .position(|name| !name.ends_with('/'))
         .expect("the home folder contains a file");
     click(&mut world, &actor, &format!("open:{index}"));
     assert_eq!(windows(&world, &actor), 1);
@@ -196,7 +206,7 @@ fn a_document_opens_in_an_editor_only_on_the_second_click() {
 #[test]
 fn the_file_manager_tab_strip_really_opens_and_closes_tabs() {
     let (mut world, actor) = world("virtual-windows-11");
-    double_click(&mut world, &actor, "shell:open:files");
+    open_home(&mut world, &actor);
     click(&mut world, &actor, "files-newtab");
     let desktop = desktop(&world, &actor);
     let files = desktop["windows"]

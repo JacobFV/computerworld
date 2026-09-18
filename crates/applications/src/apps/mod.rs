@@ -47,6 +47,34 @@ pub struct AppEnv<'a> {
     /// The installed application a Share hands things to (Messages first, then Mail),
     /// or `None` when nothing on the machine can receive one.
     pub share_to: Option<&'static str>,
+    /// Places a file manager's sidebar offers, read from the machine as it is now.
+    pub files: FilesEnv<'a>,
+}
+/// What a file manager may know beyond its own tab. Every field is read from the
+/// machine when the frame is drawn, so a sidebar never offers a folder that is gone.
+#[derive(Clone, Debug, Default)]
+pub struct FilesEnv<'a> {
+    /// The user's home folder; empty when the machine states none.
+    pub home: &'a str,
+    /// Names from `standard_folders` that really are folders in `home` right now.
+    pub folders: Vec<String>,
+    /// Where deleted files go (`DesktopState::trash_folder`); empty when unknown.
+    pub trash: String,
+    /// `DesktopState::starred`, so a row can show whether it is starred.
+    pub starred: &'a [String],
+}
+impl FilesEnv<'_> {
+    pub fn has(&self, folder: &str) -> bool {
+        self.folders.iter().any(|f| f == folder)
+    }
+    /// Absolute path of a folder inside home.
+    pub fn folder(&self, name: &str) -> String {
+        format!("{}/{name}", self.home.trim_end_matches('/'))
+    }
+    pub fn starred(&self, path: &str) -> bool {
+        let path = path.trim_end_matches('/');
+        self.starred.iter().any(|s| s.trim_end_matches('/') == path)
+    }
 }
 impl AppEnv<'_> {
     pub fn switch(&self, name: &str) -> bool {
