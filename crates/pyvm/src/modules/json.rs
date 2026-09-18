@@ -626,7 +626,7 @@ pub fn make(vm: &mut Vm) -> Value {
         "JSONDecodeError",
         vec![vm.t.exc("ValueError")],
         Kind::Exception,
-        true,
+        false,
     );
     jde.dict
         .borrow_mut()

@@ -131,6 +131,7 @@ pub struct Vm<'h> {
     pub classes: Vec<std::rc::Weak<Class>>,
     pub id_map: RefCell<IdMap<usize, (Value, usize)>>,
     pub open_files: Vec<Ref<FileObj>>,
+    pub call_sites: Vec<(Rc<Code>, usize)>,
 }
 
 impl<'h> Vm<'h> {
@@ -1875,7 +1876,7 @@ impl<'h> Vm<'h> {
                         return Ok(Flow::Call(frame));
                     }
                 }
-                self.call_kw(&func, args, kwargs)
+                self.call_tracked(f, &func, args, kwargs)
             }
             Value::Class(cls) if !cls.builtin => {
                 // Instantiate; run a Python __init__ inline.
@@ -1897,13 +1898,46 @@ impl<'h> Vm<'h> {
                         return Ok(Flow::Call(frame));
                     }
                 }
-                self.call_kw(&func, args, kwargs)
+                self.call_tracked(f, &func, args, kwargs)
             }
-            _ => self.call_kw(&func, args, kwargs),
+            _ => self.call_tracked(f, &func, args, kwargs),
         };
         let v = r?;
         f.stack.push(v);
         Ok(Flow::Continue)
+    }
+
+    /// A non-inline call made by frame `f`; records the call site so natives can
+    /// see where they were called from (warnings, traceback.print_stack).
+    fn call_tracked(
+        &mut self,
+        f: &Frame,
+        func: &Value,
+        args: Vec<Value>,
+        kwargs: Vec<(Rc<str>, Value)>,
+    ) -> PyResult<Value> {
+        self.call_sites.push((f.code.clone(), f.pc));
+        let r = self.call_kw(func, args, kwargs);
+        self.call_sites.pop();
+        r
+    }
+
+    /// (filename, line, function) for the calling frames, innermost first.
+    pub fn stack_summary(&self) -> Vec<(Rc<str>, u32, Rc<str>)> {
+        let mut out = vec![];
+        let line_of = |code: &Rc<Code>, pc: usize| {
+            code.pos
+                .get(pc.saturating_sub(1))
+                .map(|p| p.line)
+                .unwrap_or(code.firstlineno)
+        };
+        if let Some((code, pc)) = self.call_sites.last() {
+            out.push((code.filename.clone(), line_of(code, *pc), code.name.clone()));
+        }
+        for fr in self.frames.iter().rev() {
+            out.push((fr.code.filename.clone(), line_of(&fr.code, fr.pc), fr.code.name.clone()));
+        }
+        out
     }
 
     pub fn new_instance(&mut self, cls: &Rc<Class>) -> Value {

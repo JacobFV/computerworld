@@ -893,7 +893,7 @@ pub fn make(vm: &mut Vm) -> Value {
         set_val(&m, n, Value::Int(v));
     }
     set_val(&m, "_cache", Value::dict(Dict::new()));
-    let error = new_class("error", vec![vm.t.exc("Exception")], Kind::Exception, true);
+    let error = new_class("error", vec![vm.t.exc("Exception")], Kind::Exception, false);
     error
         .dict
         .borrow_mut()

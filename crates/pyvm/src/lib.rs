@@ -113,6 +113,7 @@ impl<'h> Vm<'h> {
             classes: vec![],
             id_map: RefCell::new(Default::default()),
             open_files: vec![],
+            call_sites: vec![],
         };
         bfuncs::install(&mut vm);
         methods::install(&mut vm);

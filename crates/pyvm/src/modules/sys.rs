@@ -144,6 +144,41 @@ pub fn make_sys(vm: &mut Vm) -> Value {
     });
     set_fn(&m, "settrace", |_, _| Ok(Value::None));
     set_fn(&m, "gettrace", |_, _| Ok(Value::None));
+    set_fn(&m, "_format_exception", |vm, a| {
+        let exc = a.args.first().cloned().unwrap_or(Value::None);
+        let chain = match a.args.get(1) {
+            Some(v) => vm.truthy(v)?,
+            None => true,
+        };
+        Ok(Value::string(crate::format_exception(
+            vm,
+            &exc,
+            if chain { 0 } else { 20 },
+        )))
+    });
+    set_fn(&m, "_stack", |vm, _| {
+        let items = vm
+            .stack_summary()
+            .into_iter()
+            .map(|(f, l, n)| {
+                Value::tuple(vec![Value::str(&f), Value::Int(l as i64), Value::str(&n)])
+            })
+            .collect();
+        Ok(Value::list(items))
+    });
+    set_fn(&m, "_source_line", |vm, a| {
+        let file = match a.args.first() {
+            Some(Value::Str(s)) => s.s.clone(),
+            _ => return Ok(Value::None),
+        };
+        let line = to_int_arg(vm, a.args.get(1).unwrap_or(&Value::Int(0)))?;
+        let text = vm.sources.get(&file).and_then(|src| {
+            src.lines()
+                .nth((line - 1).max(0) as usize)
+                .map(|l| l.to_string())
+        });
+        Ok(text.map(Value::string).unwrap_or(Value::None))
+    });
     exec_snippet(
         vm,
         &m,

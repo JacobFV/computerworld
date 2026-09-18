@@ -42,7 +42,7 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("numbers", include_str!("../../lib/numbers.py")),
     ("operator", include_str!("../../lib/operator.py")),
     ("os", include_str!("../../lib/os.py")),
-    ("os.path", include_str!("../../lib/posixpath.py")),
+    ("posixpath", include_str!("../../lib/posixpath.py")),
     ("pathlib", include_str!("../../lib/pathlib.py")),
     ("pprint", include_str!("../../lib/pprint.py")),
     ("queue", include_str!("../../lib/queue.py")),

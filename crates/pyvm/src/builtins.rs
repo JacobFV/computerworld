@@ -708,9 +708,9 @@ pub fn seq_getitem(vm: &mut Vm, obj: &Value, idx: &Value) -> PyResult<Value> {
         };
     }
     let (kind, len) = match obj {
-        Value::List(l) => ("list", l.borrow().len()),
-        Value::Tuple(t) => ("tuple", t.len()),
-        Value::Str(s) => ("string", s.nchars),
+        Value::List(l) => ("list index", l.borrow().len()),
+        Value::Tuple(t) => ("tuple index", t.len()),
+        Value::Str(s) => ("string index", s.nchars),
         Value::Bytes(b) => ("index", b.len()),
         Value::ByteArray(b) => ("bytearray index", b.borrow().len()),
         Value::Range(r) => ("range object index", r.len() as usize),

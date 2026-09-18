@@ -1228,9 +1228,23 @@ pub fn type_new(
     for b in bases {
         match b {
             Value::Class(c) => {
-                if c.builtin && matches!(c.kind, Kind::Bool | Kind::NoneType)
-                    || (c.builtin && c.kind == Kind::Other && !Rc::ptr_eq(&c, &vm.t.object))
-                {
+                let final_type = matches!(
+                    &*c.name(),
+                    "bool"
+                        | "NoneType"
+                        | "range"
+                        | "slice"
+                        | "function"
+                        | "builtin_function_or_method"
+                        | "method"
+                        | "generator"
+                        | "coroutine"
+                        | "ellipsis"
+                        | "NotImplementedType"
+                        | "cell"
+                        | "code"
+                );
+                if c.builtin && final_type {
                     return Err(type_err(format!(
                         "type '{}' is not an acceptable base type",
                         c.name()

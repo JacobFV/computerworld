@@ -645,7 +645,7 @@ impl SymBuilder {
                 }
             }
             if self.scopes[idx].needs_class {
-                self.add_free(idx, "__class__");
+                self.find_enclosing(idx, "__class__", false)?;
             }
             for n in names {
                 let s = &self.scopes[idx];
@@ -689,6 +689,8 @@ impl SymBuilder {
                         }
                         return Ok(true);
                     }
+                    // A class body relays free variables to its methods.
+                    path.push(p);
                 }
                 _ => {
                     if s.globals.contains(name) {
@@ -1729,7 +1731,7 @@ impl<'a> Compiler<'a> {
         } else if let Some(i) = u.freevars.iter().position(|c| &**c == name) {
             u.cellvars.len() + i
         } else {
-            0
+            panic!("closure name {name} missing in {} cells={:?} frees={:?}", u.qualname, u.cellvars, u.freevars);
         };
         self.emit(Op::LoadClosure(idx as u32));
     }
