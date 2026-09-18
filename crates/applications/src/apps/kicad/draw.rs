@@ -21,6 +21,69 @@ pub const NO_CONNECT: Color = Color::rgb(0, 0, 132);
 pub const SHEET: Color = Color::rgb(132, 0, 0);
 pub const SELECT: Color = Color(0, 120, 215, 60);
 pub const SELECT_EDGE: Color = Color::rgb(0, 120, 215);
+/// KiCad's default theme colours for buses, sheets and hierarchical labels.
+pub const BUS: Color = Color::rgb(0, 0, 132);
+pub const SHEET_EDGE: Color = Color::rgb(132, 0, 132);
+pub const SHEET_FILL: Color = Color::rgb(255, 255, 221);
+pub const HIER: Color = Color::rgb(114, 86, 0);
+
+/// The flag of a hierarchical label or sheet pin at `at` on side `side` (0 left, 1
+/// right, 2 top, 3 bottom of what it belongs to): an arrow in for an input, out for an
+/// output, a diamond for bidirectional, a box for passive. `inside` points the flag
+/// into the sheet (a sheet pin) rather than away from the wire (a label).
+pub fn port_shape(
+    p: &mut Painter,
+    cv: &Cv,
+    at: Pt,
+    side: u8,
+    shape: cw_eda::symbols::PinType,
+    c: Color,
+    inside: bool,
+) {
+    use cw_eda::symbols::PinType;
+    // Unit vector along which the flag extends, and across it.
+    let (ax, ay) = match side {
+        0 => (1, 0),
+        1 => (-1, 0),
+        2 => (0, 1),
+        _ => (0, -1),
+    };
+    let (ax, ay) = if inside { (ax, ay) } else { (-ax, -ay) };
+    let (cx, cy) = (-ay, ax);
+    let q = |along: i64, across: i64| {
+        Pt::new(
+            at.x + ax * along + cx * across,
+            at.y + ay * along + cy * across,
+        )
+    };
+    let s = 40;
+    let points_in = match shape {
+        PinType::Input => !inside,
+        PinType::Output => inside,
+        _ => false,
+    };
+    let pts: Vec<Pt> = match shape {
+        PinType::Input | PinType::Output => {
+            if points_in {
+                vec![
+                    q(0, 0),
+                    q(s, -s),
+                    q(2 * s, -s),
+                    q(2 * s, s),
+                    q(s, s),
+                    q(0, 0),
+                ]
+            } else {
+                vec![q(0, -s), q(s, -s), q(2 * s, 0), q(s, s), q(0, s), q(0, -s)]
+            }
+        }
+        PinType::Bidirectional | PinType::TriState => {
+            vec![q(0, 0), q(s, -s), q(2 * s, 0), q(s, s), q(0, 0)]
+        }
+        _ => vec![q(0, -s), q(2 * s, -s), q(2 * s, s), q(0, s), q(0, -s)],
+    };
+    cv.stroke(p, &pts, c, 6, 1);
+}
 
 /// A canvas: where it sits in the window and how the world maps onto it.
 #[derive(Clone, Copy)]
@@ -113,12 +176,26 @@ pub fn arc_points(a: (f64, f64), m: (f64, f64), b: (f64, f64)) -> Vec<(f64, f64)
         .collect()
 }
 
-/// Draw a symbol: body, pins, pin numbers and names, and its visible fields.
-#[allow(clippy::too_many_arguments)]
+/// Draw a symbol (unit 1): body, pins, pin numbers and names, and its visible fields.
 pub fn symbol(
     p: &mut Painter,
     cv: &Cv,
     lib: &LibSymbol,
+    pos: Pt,
+    xf: Xf,
+    fields: Option<&[Field]>,
+    ghost: bool,
+) {
+    symbol_unit(p, cv, lib, 1, pos, xf, fields, ghost);
+}
+
+/// Draw one unit of a symbol; a multi-unit part's reference shows its unit letter.
+#[allow(clippy::too_many_arguments)]
+pub fn symbol_unit(
+    p: &mut Painter,
+    cv: &Cv,
+    lib: &LibSymbol,
+    unit: u32,
     pos: Pt,
     xf: Xf,
     fields: Option<&[Field]>,
@@ -131,7 +208,7 @@ pub fn symbol(
     } else {
         (BODY, BODY_FILL, BODY, PIN_NUM, PIN_NAME)
     };
-    for g in &lib.graphics {
+    for g in lib.unit_graphics(unit) {
         match g {
             Graphic::Rect { a, b, fill: f } => {
                 let pts = [to(*a), to((b.0, a.1)), to(*b), to((a.0, b.1)), to(*a)];
@@ -179,7 +256,7 @@ pub fn symbol(
             Graphic::Text { at, text } => cv.text(p, to(*at), text, 50, body, Align::Center),
         }
     }
-    for pn in &lib.pins {
+    for pn in lib.unit_pins(unit) {
         if pn.hidden {
             continue;
         }
@@ -193,7 +270,7 @@ pub fn symbol(
             } else {
                 Pt::new(-30, 0)
             };
-            cv.text(p, mid.add(off), pn.number, 40, num, Align::Center);
+            cv.text(p, mid.add(off), &pn.number, 40, num, Align::Center);
         }
         if !lib.pin_names_hidden && pn.name != "~" {
             // The name sits just inside the body, reading away from the pin.
@@ -212,7 +289,7 @@ pub fn symbol(
             } else {
                 at
             };
-            cv.text(p, at, pn.name, 40, name, align);
+            cv.text(p, at, &pn.name, 40, name, align);
         }
     }
     if let Some(fields) = fields {
@@ -225,10 +302,16 @@ pub fn symbol(
             } else {
                 Align::Left
             };
+            // A multi-unit part shows which unit this is: U1A, U1B.
+            let text = if f.name == "Reference" && lib.units > 1 {
+                format!("{}{}", f.value, LibSymbol::unit_letter(unit))
+            } else {
+                f.value.clone()
+            };
             cv.text(
                 p,
                 pos.add(f.offset),
-                &f.value,
+                &text,
                 50,
                 if ghost { body } else { FIELD },
                 align,
