@@ -3741,9 +3741,11 @@ pub fn caret_for_point(text: &str, first: usize, dx: i32, dy: i32) -> usize {
     caret_for_point_wrapped(text, first, 0, dx, dy)
 }
 /// The rows an editor paints: byte ranges into `text`, one per visual row. With
-/// `columns` > 0 a line longer than that many characters is soft-wrapped, after the
-/// last space that fits or, in a word longer than the row, at the edge. A row that
-/// ends where the next begins is a soft wrap; a newline sits between the others.
+/// `columns` > 0 a line wider than that many cells is soft-wrapped, after the
+/// last space that fits or, in a word longer than the row, at the edge. Cells are
+/// `Primitive::Text`'s: a wide character (CJK, emoji) takes two, a combining mark
+/// none. A row that ends where the next begins is a soft wrap; a newline sits
+/// between the others.
 pub fn editor_rows(text: &str, columns: usize) -> Vec<(usize, usize)> {
     let mut rows = Vec::new();
     let mut start = 0;
@@ -3752,12 +3754,17 @@ pub fn editor_rows(text: &str, columns: usize) -> Vec<(usize, usize)> {
         let mut from = start;
         loop {
             let rest = &text[from..end];
-            match rest.char_indices().nth(columns).filter(|_| columns > 0) {
+            // The first row of `rest` in cells; a cluster is never split.
+            let cut = cw_scene::text::terminal::wrap(rest, columns)
+                .first()
+                .map(|row| row.end)
+                .filter(|&cut| columns > 0 && cut < rest.len());
+            match cut {
                 None => {
                     rows.push((from, end));
                     break;
                 }
-                Some((cut, _)) => {
+                Some(cut) => {
                     let brk = rest[..cut].rfind(' ').map_or(cut, |space| space + 1);
                     rows.push((from, from + brk));
                     from += brk;
@@ -3779,11 +3786,14 @@ pub fn editor_caret_cell(text: &str, cursor: usize, columns: usize) -> (usize, u
     for (i, (start, end)) in rows.iter().enumerate() {
         let soft = rows.get(i + 1).is_some_and(|(next, _)| next == end);
         if cursor >= *start && (cursor < *end || (cursor == *end && !soft)) {
-            return (i, text[*start..cursor].chars().count());
+            return (i, cw_scene::text::terminal::columns(&text[*start..cursor]));
         }
     }
     let (start, end) = rows[rows.len() - 1];
-    (rows.len() - 1, text[start..end].chars().count())
+    (
+        rows.len() - 1,
+        cw_scene::text::terminal::columns(&text[start..end]),
+    )
 }
 /// `caret_for_point` on soft-wrapped rows `columns` characters wide (0: no wrap).
 pub fn caret_for_point_wrapped(
@@ -3802,8 +3812,8 @@ pub fn caret_for_point_wrapped(
         return text.len();
     };
     let content = &text[start..end];
-    match content.char_indices().nth(column) {
-        Some((i, _)) => start + i,
+    match cw_scene::text::terminal::byte_at_column(content, column) {
+        Some(i) => start + i,
         // Past the end of a soft-wrapped row: the caret stays on this row, before its
         // last character, rather than jumping to the start of the next one.
         None if rows.get(row + 1).is_some_and(|(next, _)| *next == end) => content
@@ -3818,10 +3828,8 @@ pub fn caret_for_point_wrapped(
 pub fn caret_for_column(text: &str, dx: i32) -> usize {
     const CELL_W: i32 = 8;
     let column = ((dx.max(0) + CELL_W / 2) / CELL_W) as usize;
-    text.char_indices()
-        .nth(column)
-        .map(|(i, _)| i)
-        .unwrap_or(text.len())
+    // Cells, not characters: a wide character spans two, a combining mark none.
+    cw_scene::text::terminal::byte_at_column(text, column).unwrap_or(text.len())
 }
 fn parent_folder(path: &str) -> &str {
     match path.trim_end_matches('/').rsplit_once('/') {

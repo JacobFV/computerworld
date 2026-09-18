@@ -314,6 +314,10 @@ pub struct Page {
     pub elements: Vec<PageElement>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<PageTheme>,
+    /// BCP 47 language of the page (the `<html lang>` attribute): picks regional Han
+    /// forms for its text. Absent means inferred from the text itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
 }
 /// Radius and padding budget: pages describe documents, not arbitrary geometry.
 pub const MAX_STYLE_SPAN: u32 = 64;
@@ -394,6 +398,13 @@ pub struct Style {
     /// top-level elements only; anywhere else it is ignored.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pin: Option<String>,
+    /// Italic text (`font-style: italic`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    /// BCP 47 language of this element's text (an HTML `lang` attribute), overriding
+    /// the page's. It picks regional Han forms: `zh-Hant`, `ja`, `ko`, ...
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
 }
 /// Chainable presentation setters keep page-building call sites to one line each.
 impl Style {
@@ -403,6 +414,14 @@ impl Style {
     }
     pub fn bold(mut self) -> Self {
         self.weight = Some("bold".into());
+        self
+    }
+    pub fn italic(mut self) -> Self {
+        self.italic = Some(true);
+        self
+    }
+    pub fn lang(mut self, tag: impl Into<String>) -> Self {
+        self.lang = Some(tag.into());
         self
     }
     pub fn medium(mut self) -> Self {
@@ -629,6 +648,7 @@ impl Page {
             title: title.into(),
             elements: vec![],
             theme: None,
+            lang: None,
         }
     }
 }

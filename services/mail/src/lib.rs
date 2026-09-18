@@ -440,6 +440,7 @@ impl Service for MailService {
                 title: String::new(),
                 elements: vec![],
                 theme: Some(theme.clone()),
+                lang: None,
             }
             .validate()?;
         }

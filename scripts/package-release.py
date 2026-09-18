@@ -60,10 +60,12 @@ env.free(); world.free();
 
 {'Serve this directory over HTTP (for example `python -m http.server 8000`); initialization loads the sibling Wasm file. No simulator backend or outbound networking is needed.' if target == 'web' else 'Run the complete keyboard/mouse, rendering and replay example: `node examples/javascript/computer-interaction.mjs --output ./demo-output`.'}
 
-CJK (Han, kana, Hangul) and emoji glyphs are a separate font pack in fonts/, not in the
-module: pass each file's bytes to `installFont` (at startup, or when
-`fontPackStatus().missing` lists it). Layout does not depend on it; until a file is
-installed its glyphs draw as boxes.
+CJK (Han, kana, Hangul; bold, and Traditional Chinese, Japanese and Korean forms),
+emoji (colour and monochrome) and the Gujarati, Ethiopic, Myanmar and Sinhala glyphs
+are a separate font pack in fonts/, not in the module: pass each file's bytes to
+`installFont` (at startup, or when `fontPackStatus().missing` lists it). Layout does
+not depend on it; until a file is installed its glyphs draw as boxes (emoji draw
+monochrome until the colour file is installed).
 
 See PROGRAMMATIC-USE.md, generated TypeScript declarations, and notices/ for third-party licenses.
 World handles are privileged; give acting agents only configured environment handles.

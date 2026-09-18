@@ -313,7 +313,9 @@ pub fn paint(p: &mut Painter, book: &Book, area: Rect, geom: Geom, pal: &Palette
                     span += cw;
                 }
             }
-            let bold = d.style.bold;
+            // Bold and italic cells are set in the real bold and italic faces, and
+            // measured in them, so overflow and #### follow what is drawn.
+            let bold = cw_scene::Style::new(d.style.bold, d.style.italic, cw_scene::Lang::Auto);
             let width = p.measure(&text, font, bold);
             if numeric && width + 6 > w {
                 let hashes = (w.saturating_sub(4) / p.measure("#", font, false).max(1)).max(1);
@@ -406,7 +408,7 @@ pub fn paint(p: &mut Painter, book: &Book, area: Rect, geom: Geom, pal: &Palette
                         &text,
                         font,
                         pal.text,
-                        d.style.bold,
+                        cw_scene::Style::new(d.style.bold, d.style.italic, cw_scene::Lang::Auto),
                         if right {
                             TextAlign::Right
                         } else {
