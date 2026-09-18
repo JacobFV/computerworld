@@ -29,7 +29,9 @@ const nativeApps=[
  {id:'clock',label:'Clock',kind:'native',url:'',icon:'clock'},
  // These four read real services on the synthetic web, or the machine's own files.
  {id:'photos',label:'Photos',kind:'native',url:'',icon:'photos'},
- {id:'music',label:'Music',kind:'native',url:'http://spotify.com/',icon:'music'},
+ // Apple Music, Media Player and Rhythmbox read spotify.com's catalogue; Android's music
+ // player is YouTube Music, so it reads music.youtube.com.
+ {id:'music',label:'Music',kind:'native',url:'http://spotify.com/',urls:{android:'http://music.youtube.com/'},icon:'music'},
  {id:'maps',label:'Maps',kind:'native',url:'http://maps.google.com/',icon:'maps'},
  {id:'weather',label:'Weather',kind:'native',url:'http://weather.com/',icon:'weather'}
 ];

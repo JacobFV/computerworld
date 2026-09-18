@@ -1824,7 +1824,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         },
         0,
     );
-    if window.kind == "browser" {
+    if window.kind == "browser" || window.kind == "music" {
         return;
     }
     let ink = if dark { Color::WHITE } else { INK };

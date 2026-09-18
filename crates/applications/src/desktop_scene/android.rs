@@ -1391,7 +1391,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
     let r = window.rect;
     let dark = window.kind == "terminal";
     p.box_(r, if dark { Color::rgb(18, 20, 22) } else { PAPER }, 0);
-    if window.kind == "browser" {
+    if window.kind == "browser" || window.kind == "music" {
         return;
     }
     let ink = if dark { SHADE_INK } else { INK };

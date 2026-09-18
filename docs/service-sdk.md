@@ -38,8 +38,13 @@ Pages that need real site structure add `Row`, `Grid`, `Card`, `Styled`,
 `Thumbnail`, `Badge`, `Divider` and `Spacer`, plus an optional page `theme`
 (`accent`, `background`, `surface`, `ink`, `muted`, `content_width`). `Style`
 carries `size`, `weight`, `color`, `background`, `border`, `radius`, `padding`,
-`align`, `width`, `height`, `flex` and `one_line`; colours are `#rrggbb` or
-`#rrggbbaa` and radius/padding are capped at 64 by `Page::validate`. Inside a `Row`,
+`align`, `width`, `height`, `flex`, `one_line` and `pin`; colours are `#rrggbb` or
+`#rrggbbaa` and radius/padding are capped at 64 by `Page::validate`. `pin: "bottom"` on
+a top-level element keeps it on the viewport's bottom edge while the page scrolls under
+it (a music site's player bar); the page beneath is clipped so a click on the bar never
+reaches what it covers. A `Thumbnail` shorter than 12 px (a progress bar's segment) has
+no minimum width and paints no caption, so a row of them can be a seek bar whose
+segments each keep an accessible name. Inside a `Row`,
 children with `Style::width` keep it and the rest divide the remainder by `flex`,
 never below their min-content width (the longest word, a button's label, a link's
 longest word). A row whose children cannot all fit that way wraps onto more lines,

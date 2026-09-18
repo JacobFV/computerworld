@@ -347,6 +347,11 @@ pub struct Style {
     /// true renders the text on a single clipped line instead of wrapping.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub one_line: Option<bool>,
+    /// "bottom" keeps a top-level element on the bottom edge of the viewport while the
+    /// rest of the page scrolls under it, as a site's player bar does. Honoured on
+    /// top-level elements only; anywhere else it is ignored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pin: Option<String>,
 }
 /// Chainable presentation setters keep page-building call sites to one line each.
 impl Style {
@@ -402,6 +407,10 @@ impl Style {
         self.one_line = Some(true);
         self
     }
+    pub fn pin(mut self, edge: impl Into<String>) -> Self {
+        self.pin = Some(edge.into());
+        self
+    }
     fn validate(&self) -> Result<()> {
         for c in [&self.color, &self.background, &self.border]
             .into_iter()
@@ -430,6 +439,9 @@ impl Style {
         }
         if self.size.is_some_and(|v| !(6..=96).contains(&v)) {
             return Err(SimError::invalid("style size must be 6 through 96"));
+        }
+        if self.pin.as_deref().is_some_and(|edge| edge != "bottom") {
+            return Err(SimError::invalid("style pin must be bottom"));
         }
         Ok(())
     }

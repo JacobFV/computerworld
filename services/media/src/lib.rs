@@ -1,13 +1,31 @@
-//! Streaming platforms: youtube.com (`mode: video`) and spotify.com (`mode: audio`) share
-//! one catalogue shape, so channels/artists and videos/tracks are the same two maps.
+//! Streaming platforms: youtube.com (`mode: video`), spotify.com (`mode: audio`) and
+//! music.youtube.com (`mode: music`) share one catalogue shape, so channels/artists and
+//! videos/tracks are the same two maps.
 //!
 //! Watching is a mutation on purpose: `GET /watch` counts a view and parks `now_playing`, so the
-//! world visibly changes when an agent watches something. Audio keeps the play count behind the
-//! explicit Play control, which is where a listener expects it.
+//! world visibly changes when an agent watches something. The two music modes play through a
+//! real player (`player`): a queue built from an album, playlist, artist, station, mood or
+//! the library, shuffle and repeat, and a position the world clock moves. Their pages
+//! (`spotify`, `ytmusic`) pin a player bar to the bottom of the viewport, and the native
+//! music players read the same session as JSON:
+//!
+//! - `GET /api/catalog` — artists, albums, tracks, playlists, and this listener's likes,
+//!   library, history, subscriptions and player as of the request's tick;
+//! - `GET /api/search?q=` — matching track, album, artist and playlist ids;
+//! - `POST /api/player` — `{action: play|toggle|pause|resume|next|previous|seek|shuffle|
+//!   repeat|jump|queue, ...}`, answered with the player;
+//! - `POST /api/library/items/<id>`, `/api/library/albums/<id>` — save or unsave;
+//! - `POST /api/items/<id>/queue`, `/api/playlists/<id>/remove` — Play Next and removal.
 use cw_protocol::{HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde_json::{json, Map, Value};
+mod catalog;
+mod kit;
+mod player;
+mod spotify;
+mod ytmusic;
+pub use player::{Player, Repeat};
 pub struct MediaService;
 pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(MediaService)
@@ -21,10 +39,16 @@ const OBJECTS: &[&str] = &[
     "subscriptions",
     "likes",
     "now_playing",
+    "albums",
+    "library",
+    "history",
 ];
 const ARRAYS: &[&str] = &[];
 /// `mode` is the documented discriminant; an unlisted value is a seed typo, not a fallback.
-const MODES: &[&str] = &["video", "audio"];
+/// `video` is a video site (youtube.com), `audio` a Spotify-style player (spotify.com) and
+/// `music` a YouTube Music-style one (music.youtube.com). The two music modes share one
+/// catalogue model and one player; only the pages differ.
+const MODES: &[&str] = &["video", "audio", "music"];
 const BRAND: &str = "Media";
 const TAGLINE: &str = "Watch and listen.";
 /// Flat stand-in tints. Artwork is never photography here, so a stable hash of the id keeps every
@@ -1225,6 +1249,20 @@ fn next_comment_id(comments: &[Value]) -> String {
         .unwrap_or(0);
     format!("c{}", highest + 1)
 }
+/// Percent-encode a query value so it survives a round trip through a URL.
+fn encode(value: &str) -> String {
+    let mut out = String::new();
+    for byte in value.bytes() {
+        match byte {
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char)
+            }
+            b' ' => out.push('+'),
+            other => out.push_str(&format!("%{other:02X}")),
+        }
+    }
+    out
+}
 fn slug(title: &str) -> String {
     let slug: String = title
         .to_lowercase()
@@ -1245,11 +1283,29 @@ fn render(
     count: bool,
 ) -> Result<HttpResponse> {
     let theme = web::theme(state)?;
-    let video = web::variant(state, "mode", MODES)? == "video";
+    let mode = web::variant(state, "mode", MODES)?;
+    let video = mode == "video";
     let path = web::path(request);
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     match parts.as_slice() {
-        [""] if state.get("items").is_none() => landing(state),
+        ["api", "catalog"] => {
+            return HttpResponse::json(200, &catalog::snapshot(state, &ctx.actor, ctx.tick))
+        }
+        ["api", "search"] => {
+            return HttpResponse::json(
+                200,
+                &catalog::search(state, &web::query(request, "q").unwrap_or_default()),
+            )
+        }
+        [""] if state.get("items").is_none() => return landing(state),
+        _ => {}
+    }
+    match mode.as_str() {
+        "audio" => return spotify::route(state, ctx, request, &parts, &theme),
+        "music" => return ytmusic::route(state, ctx, request, &parts, &theme, count),
+        _ => {}
+    }
+    match parts.as_slice() {
         [""] if video => home(state, &theme),
         [""] => browse(state, &ctx.actor, &theme),
         ["watch"] => {
@@ -1339,6 +1395,60 @@ impl Service for MediaService {
                     ))
                 }
             }
+            // Both music modes play through the listener's player; its reply is the player.
+            ["player"] if !video => catalog::command(state, ctx, &body)
+                .map(|p| (catalog::player_json(state, &p), "/".to_owned())),
+            ["items", id, "play"] if !video => {
+                if record(state, "items", id).is_none() {
+                    Err("item not found".into())
+                } else {
+                    let list = web::text(&body, "list");
+                    let context = if list.is_empty() {
+                        "track".to_owned()
+                    } else {
+                        format!("playlist:{list}")
+                    };
+                    catalog::command(
+                        state,
+                        ctx,
+                        &json!({"action": "play", "item": id, "context": context}),
+                    )
+                    .map(|_| {
+                        (
+                            json!({"plays": num(&state["items"][id], "plays")}),
+                            format!("/track/{id}"),
+                        )
+                    })
+                }
+            }
+            ["items", id, "queue"] if !video => {
+                if record(state, "items", id).is_none() {
+                    Err("item not found".into())
+                } else {
+                    let next = web::text(&body, "next") == "true";
+                    catalog::queue_or_play(state, ctx, id, next)
+                        .map(|p| (catalog::player_json(state, &p), "/".to_owned()))
+                }
+            }
+            ["library", "items", id] if !video => match record(state, "items", id) {
+                None => Err("item not found".into()),
+                Some(_) => {
+                    let saved = catalog::save(state, &ctx.actor, &[id.to_string()]);
+                    Ok((json!({"saved": saved}), "/library".to_owned()))
+                }
+            },
+            ["library", "albums", id] if !video => match catalog::album(state, id) {
+                None => Err("album not found".into()),
+                Some(album) => {
+                    let saved = catalog::save(state, &ctx.actor, &album.tracks);
+                    Ok((json!({"saved": saved}), "/library".to_owned()))
+                }
+            },
+            ["playlists", id, "remove"] => {
+                let item = web::text(&body, "item");
+                catalog::remove_from_playlist(state, &ctx.actor, id, &item)
+                    .map(|p| (p, format!("/playlist/{id}")))
+            }
             ["items", id, "play"] => {
                 if record(state, "items", id).is_none() {
                     Err("item not found".into())
@@ -1362,7 +1472,14 @@ impl Service for MediaService {
                 Some(_) => {
                     let liked = toggle(state, "likes", &ctx.actor, id);
                     bump(state, id, "likes", if liked { 1 } else { -1 });
-                    Ok((json!({"liked": liked}), format!("/watch?v={id}")))
+                    Ok((
+                        json!({"liked": liked}),
+                        if video {
+                            format!("/watch?v={id}")
+                        } else {
+                            "/".to_owned()
+                        },
+                    ))
                 }
             },
             ["items", id, "comments"] => {
@@ -1463,6 +1580,14 @@ impl Service for MediaService {
                     q if q.is_empty() => web::text(&body, "q"),
                     q => q,
                 };
+                if !video {
+                    return render(
+                        state,
+                        ctx,
+                        &HttpRequest::get(format!("http://media/search?q={}", encode(&query))),
+                        false,
+                    );
+                }
                 return results(state, &query, &theme, video);
             }
             _ => return web::error(404, "route not found"),
@@ -1928,5 +2053,400 @@ mod tests {
                 "http://youtube.com/playlist?list=watch-later"
             ))
         );
+    }
+
+    /// The music catalogue both music sites share, small enough to reason about: an EP of
+    /// three songs (10 s, 20 s and 30 s) and a single.
+    fn music_seed(mode: &str) -> Value {
+        json!({
+            "mode": mode, "brand": if mode == "music" { "YouTube Music" } else { "Spotify" },
+            "theme": {"accent": "#ff0000", "background": "#030303", "surface": "#212121",
+                      "ink": "#ffffff", "muted": "#aaaaaa"},
+            "channels": {
+                "cache-miss": {"id": "cache-miss", "name": "Cache Miss", "subscribers": 1320455,
+                               "about": "Lo-fi beats to wait on a cold read to."},
+                "tessellate": {"id": "tessellate", "name": "Tessellate", "subscribers": 29118}
+            },
+            "items": {
+                "cold-reads": {"id": "cold-reads", "channel": "cache-miss", "title": "Cold Reads",
+                               "album": "Cold Reads", "duration_s": 10, "published": "Apr 10, 2026",
+                               "published_tick": 18, "plays": 100, "likes": 5, "tags": ["lo-fi", "focus"]},
+                "warm-cache": {"id": "warm-cache", "channel": "cache-miss", "title": "Warm Cache",
+                               "album": "Cold Reads", "duration_s": 20, "published": "Apr 10, 2026",
+                               "published_tick": 19, "plays": 90, "likes": 4, "tags": ["lo-fi", "sleep"]},
+                "eviction": {"id": "eviction", "channel": "cache-miss", "title": "Eviction",
+                             "album": "Cold Reads", "duration_s": 30, "published": "Apr 10, 2026",
+                             "published_tick": 20, "plays": 80, "likes": 3, "tags": ["relax"]},
+                "tiling": {"id": "tiling", "channel": "tessellate", "title": "Tiling", "album": "Tiling",
+                           "duration_s": 294, "published": "Feb 6, 2026", "published_tick": 11,
+                           "plays": 60, "likes": 2, "tags": ["focus", "sleep"]}
+            },
+            "albums": {"cold-reads": {"genre": "Lo-Fi"}},
+            "playlists": {
+                "deep-focus": {"id": "deep-focus", "title": "Deep Focus", "owner": "alice", "items": ["tiling"]},
+                "ship-it": {"id": "ship-it", "title": "Ship It", "owner": "carol", "items": ["eviction"]}
+            },
+            "subscriptions": {}, "likes": {"alice": ["tiling"]}, "now_playing": {},
+            "library": {"alice": ["tiling"]}, "history": {"alice": ["tiling"]}
+        })
+    }
+    fn at(tick: u64) -> ServiceContext {
+        ServiceContext { tick, ..ctx() }
+    }
+    fn api(state: &mut Value, tick: u64, url: &str, body: Value) -> Value {
+        let request = HttpRequest::json("POST", url, &body).unwrap();
+        let reply = MediaService.handle(state, &at(tick), &request).unwrap();
+        assert_eq!(reply.status, 200, "{url} {body}: {}", text(&reply));
+        serde_json::from_slice(&reply.body).unwrap()
+    }
+    fn refused(state: &mut Value, tick: u64, url: &str, body: Value) -> u16 {
+        let request = HttpRequest::json("POST", url, &body).unwrap();
+        MediaService
+            .handle(state, &at(tick), &request)
+            .unwrap()
+            .status
+    }
+    fn get_at(state: &mut Value, tick: u64, url: &str) -> HttpResponse {
+        MediaService
+            .handle(state, &at(tick), &HttpRequest::get(url))
+            .unwrap()
+    }
+    fn json_at(state: &mut Value, tick: u64, url: &str) -> Value {
+        serde_json::from_slice(&get_at(state, tick, url).body).unwrap()
+    }
+    const S: u64 = 1_000_000;
+    const PLAYER: &str = "http://spotify.com/api/player";
+
+    #[test]
+    fn albums_are_gathered_from_their_tracks_in_running_order() {
+        let state = MediaService
+            .initialize(music_seed("audio"), &ctx())
+            .unwrap();
+        let albums = catalog::albums(&state);
+        assert_eq!(albums[0].id, "cold-reads", "newest release first");
+        assert_eq!(albums[0].tracks, ["cold-reads", "warm-cache", "eviction"]);
+        assert_eq!(albums[0].genre, "Lo-Fi", "seed metadata wins");
+        assert_eq!(albums[0].year, "2026");
+        assert_eq!(albums[1].genre, "Focus", "otherwise the first tag");
+        assert_eq!(albums[1].kind(), "Single");
+    }
+
+    #[test]
+    fn the_player_runs_on_the_world_clock_through_the_queue() {
+        let mut state = MediaService
+            .initialize(music_seed("audio"), &ctx())
+            .unwrap();
+        let p = api(
+            &mut state,
+            5 * S,
+            PLAYER,
+            json!({"action": "play", "context": "album:cold-reads"}),
+        );
+        assert_eq!(p["item"], json!("cold-reads"));
+        assert_eq!(p["playing"], json!(true));
+        assert_eq!(state["items"]["cold-reads"]["plays"], json!(101));
+        assert_eq!(state["history"]["alice"][0], json!("cold-reads"));
+        // Twelve seconds later the first 10 s song is over and the second is 2 s in.
+        let later = json_at(&mut state, 17 * S, "http://spotify.com/api/catalog");
+        assert_eq!(later["player"]["item"], json!("warm-cache"));
+        assert_eq!(later["player"]["position_ms"], json!(2000));
+        // Reading is pure: nothing was written by looking.
+        assert_eq!(state["now_playing"]["alice"]["index"], json!(0));
+        // Seek, then pause: the clock stops moving it.
+        let p = api(
+            &mut state,
+            17 * S,
+            PLAYER,
+            json!({"action": "seek", "position_ms": "15000"}),
+        );
+        assert_eq!(p["item"], json!("warm-cache"));
+        assert_eq!(p["position_ms"], json!(15000));
+        api(&mut state, 18 * S, PLAYER, json!({"action": "toggle"}));
+        let paused = json_at(&mut state, 90 * S, "http://spotify.com/api/catalog");
+        assert_eq!(paused["player"]["position_ms"], json!(16000));
+        assert_eq!(paused["player"]["playing"], json!(false));
+        // Next; nothing after the last song; previous; jump.
+        assert_eq!(
+            api(&mut state, 91 * S, PLAYER, json!({"action": "next"}))["item"],
+            json!("eviction")
+        );
+        assert_eq!(
+            refused(&mut state, 92 * S, PLAYER, json!({"action": "next"})),
+            400
+        );
+        assert_eq!(
+            api(&mut state, 92 * S, PLAYER, json!({"action": "previous"}))["item"],
+            json!("warm-cache")
+        );
+        let p = api(
+            &mut state,
+            93 * S,
+            PLAYER,
+            json!({"action": "jump", "index": 0}),
+        );
+        assert_eq!(p["item"], json!("cold-reads"));
+        assert_eq!(p["playing"], json!(true));
+        // Repeat cycles off → all → one → off.
+        for mode in ["all", "one", "off"] {
+            assert_eq!(
+                api(&mut state, 94 * S, PLAYER, json!({"action": "repeat"}))["repeat"],
+                json!(mode)
+            );
+        }
+        assert_eq!(
+            refused(&mut state, 95 * S, PLAYER, json!({"action": "dance"})),
+            400
+        );
+    }
+
+    #[test]
+    fn shuffle_is_seeded_keeps_the_song_and_restores_the_order() {
+        let mut a = MediaService
+            .initialize(music_seed("audio"), &ctx())
+            .unwrap();
+        let mut b = a.clone();
+        let play = json!({"action": "play", "context": "album:cold-reads", "item": "warm-cache"});
+        api(&mut a, S, PLAYER, play.clone());
+        api(&mut b, S, PLAYER, play);
+        let one = api(&mut a, 2 * S, PLAYER, json!({"action": "shuffle"}));
+        let two = api(&mut b, 2 * S, PLAYER, json!({"action": "shuffle"}));
+        assert_eq!(one, two, "the same world deals the same order");
+        assert_eq!(one["queue"][0], json!("warm-cache"));
+        assert_eq!(one["shuffle"], json!(true));
+        let off = api(&mut a, 3 * S, PLAYER, json!({"action": "shuffle"}));
+        assert_eq!(
+            off["queue"],
+            json!(["cold-reads", "warm-cache", "eviction"])
+        );
+        assert_eq!(off["item"], json!("warm-cache"));
+    }
+
+    #[test]
+    fn library_queue_and_playlists_are_the_listeners_own() {
+        let mut state = MediaService
+            .initialize(music_seed("music"), &ctx())
+            .unwrap();
+        let host = "http://music.youtube.com/api";
+        assert_eq!(
+            api(
+                &mut state,
+                1,
+                &format!("{host}/library/items/eviction"),
+                json!({})
+            )["saved"],
+            json!(true)
+        );
+        assert_eq!(
+            api(
+                &mut state,
+                1,
+                &format!("{host}/library/albums/cold-reads"),
+                json!({})
+            )["saved"],
+            json!(true)
+        );
+        assert_eq!(
+            catalog::library_songs(&state, "alice"),
+            ["cold-reads", "eviction", "tiling", "warm-cache"]
+        );
+        assert_eq!(
+            api(
+                &mut state,
+                1,
+                &format!("{host}/library/albums/cold-reads"),
+                json!({})
+            )["saved"],
+            json!(false)
+        );
+        // "Play next" with nothing loaded plays; with something loaded it queues.
+        let p = api(
+            &mut state,
+            2,
+            &format!("{host}/items/tiling/queue"),
+            json!({"next": "true"}),
+        );
+        assert_eq!(p["item"], json!("tiling"));
+        let p = api(
+            &mut state,
+            3,
+            &format!("{host}/items/eviction/queue"),
+            json!({"next": "true"}),
+        );
+        assert_eq!(p["queue"], json!(["tiling", "eviction"]));
+        assert_eq!(
+            refused(
+                &mut state,
+                4,
+                &format!("{host}/playlists/ship-it/remove"),
+                json!({"item": "eviction"})
+            ),
+            403,
+            "carol's playlist is not alice's"
+        );
+        api(
+            &mut state,
+            4,
+            &format!("{host}/playlists/deep-focus/remove"),
+            json!({"item": "tiling"}),
+        );
+        assert_eq!(state["playlists"]["deep-focus"]["items"], json!([]));
+    }
+
+    #[test]
+    fn the_catalogue_and_search_answer_in_json() {
+        let mut state = MediaService
+            .initialize(music_seed("music"), &ctx())
+            .unwrap();
+        let catalog = json_at(&mut state, 1, "http://music.youtube.com/api/catalog");
+        assert_eq!(catalog["albums"][0]["tracks"].as_array().unwrap().len(), 3);
+        assert_eq!(catalog["playlists"][0]["editable"], json!(true));
+        assert_eq!(catalog["playlists"][1]["editable"], json!(false));
+        assert_eq!(catalog["liked"], json!(["tiling"]));
+        assert!(catalog["player"].is_null());
+        let hits = json_at(&mut state, 1, "http://music.youtube.com/api/search?q=cache");
+        assert_eq!(hits["artists"], json!(["cache-miss"]));
+        assert_eq!(hits["tracks"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn every_music_page_is_a_valid_page_and_reading_it_is_pure() {
+        for (mode, host, routes) in [
+            (
+                "music",
+                "music.youtube.com",
+                vec![
+                    "/",
+                    "/?mood=relax",
+                    "/explore",
+                    "/explore/charts",
+                    "/explore/new_releases",
+                    "/explore/moods_and_genres",
+                    "/library",
+                    "/library/songs",
+                    "/library/albums",
+                    "/library/artists",
+                    "/browse/cold-reads",
+                    "/channel/cache-miss",
+                    "/playlist?list=deep-focus",
+                    "/playlist?list=LM",
+                    "/search",
+                    "/search?q=cold",
+                    "/search?q=zzz",
+                ],
+            ),
+            (
+                "audio",
+                "spotify.com",
+                vec![
+                    "/",
+                    "/search",
+                    "/search?q=cold",
+                    "/album/cold-reads",
+                    "/artist/cache-miss",
+                    "/track/tiling",
+                    "/playlist/deep-focus",
+                    "/collection",
+                    "/collection/tracks",
+                    "/collection/albums",
+                    "/queue",
+                    "/playlists",
+                ],
+            ),
+        ] {
+            let mut state = MediaService.initialize(music_seed(mode), &ctx()).unwrap();
+            // With something playing, every page carries the pinned player bar.
+            api(
+                &mut state,
+                1,
+                &format!("http://{host}/api/player"),
+                json!({"action": "play", "context": "album:cold-reads"}),
+            );
+            for route in routes {
+                let url = format!("http://{host}{route}");
+                let page = get(&mut state, &url);
+                assert_eq!(page.status, 200, "{url}");
+                let parsed: cw_protocol::Page = serde_json::from_slice(&page.body).unwrap();
+                parsed.validate().unwrap_or_else(|e| panic!("{url}: {e}"));
+                let body = text(&page);
+                assert!(
+                    body.contains("player-toggle") && body.contains("\"pin\":\"bottom\""),
+                    "{url} has no player bar"
+                );
+                assert_eq!(page, get(&mut state, &url), "{url} must be pure");
+            }
+            assert_eq!(
+                get(&mut state, &format!("http://{host}/browse/ghost")).status,
+                404
+            );
+        }
+    }
+
+    #[test]
+    fn opening_a_song_on_youtube_music_plays_it_in_its_list() {
+        let mut state = MediaService
+            .initialize(music_seed("music"), &ctx())
+            .unwrap();
+        let page = get_at(
+            &mut state,
+            S,
+            "http://music.youtube.com/watch?v=warm-cache&list=OLAK-cold-reads",
+        );
+        assert_eq!(page.status, 200);
+        assert!(text(&page).contains("Playing from Cold Reads"));
+        assert_eq!(
+            state["now_playing"]["alice"]["context"],
+            json!("album:cold-reads")
+        );
+        assert_eq!(state["items"]["warm-cache"]["plays"], json!(91));
+        // Opening it again does not restart it or count another play.
+        get_at(
+            &mut state,
+            5 * S,
+            "http://music.youtube.com/watch?v=warm-cache&list=OLAK-cold-reads",
+        );
+        assert_eq!(state["items"]["warm-cache"]["plays"], json!(91));
+        // With no list, a song starts its artist's radio.
+        get_at(&mut state, 6 * S, "http://music.youtube.com/watch?v=tiling");
+        assert_eq!(
+            state["now_playing"]["alice"]["context"],
+            json!("station:tessellate")
+        );
+    }
+
+    #[test]
+    fn a_player_bar_control_lands_back_on_its_page() {
+        let mut state = MediaService
+            .initialize(music_seed("music"), &ctx())
+            .unwrap();
+        api(
+            &mut state,
+            1,
+            "http://music.youtube.com/api/player",
+            json!({"action": "play", "context": "album:cold-reads"}),
+        );
+        let back = post(
+            &mut state,
+            "http://music.youtube.com/player",
+            json!({"action": "next", "return": "/browse/cold-reads"}),
+        );
+        assert_eq!(back.status, 200);
+        assert!(
+            text(&back).contains("album-header"),
+            "it re-renders the album page"
+        );
+        assert_eq!(state["now_playing"]["alice"]["item"], json!("warm-cache"));
+        let liked = post(
+            &mut state,
+            "http://music.youtube.com/items/warm-cache/like",
+            json!({"return": "/"}),
+        );
+        assert_eq!(liked.status, 200);
+        assert_eq!(state["likes"]["alice"], json!(["tiling", "warm-cache"]));
+        let searched = post(
+            &mut state,
+            "http://music.youtube.com/search",
+            json!({"q": "tiling"}),
+        );
+        assert!(text(&searched).contains("result-tiling"));
     }
 }

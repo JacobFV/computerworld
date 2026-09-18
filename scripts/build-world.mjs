@@ -19,7 +19,11 @@ const root = new URL('../', import.meta.url);
 export const worldUrl = new URL('worlds/company-2026/world.json', root);
 export const sitesUrl = new URL('worlds/company-2026/sites/', root);
 /// Keys that exist for the build only and must never reach a ServiceDefinition.
-const BUILD_ONLY = ['search_entries', 'authority_overrides'];
+///
+/// `network_node` lets a new site bring its own host: {"address": "203.0.113.27",
+/// "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}}. The node takes the
+/// site's `node` id and is upserted with its link, so a site needs no hand edit of world.json.
+const BUILD_ONLY = ['search_entries', 'authority_overrides', 'network_node'];
 /// The world file is hand-read constantly; keep its exact on-disk shape so diffs stay reviewable.
 export async function write(url, value) {
   await writeFile(url, `${JSON.stringify(value, null, 2)}\n`);
@@ -50,7 +54,20 @@ async function main() {
     for (const key of ['id', 'kind', 'node']) {
       if (!site[key]) throw new Error(`${site.id ?? '<unnamed>'}: "${key}" is required`);
     }
-    // WP-0 owns the network; a site may only bind to a node that already exists there.
+    if (site.network_node) {
+      const {address, zone = 'internet', link} = site.network_node;
+      if (!address || !link?.from) throw new Error(`${site.id}: network_node needs an address and link.from`);
+      const node = {id: site.node, address, zone};
+      const at = world.network.nodes.findIndex((n) => n.id === site.node);
+      if (at < 0) world.network.nodes.push(node);
+      else world.network.nodes[at] = node;
+      const edge = {from: link.from, to: site.node, bidirectional: true, latency_us: link.latency_us ?? 1500, loss_per_million: 0};
+      const existing = world.network.links.findIndex((l) => l.from === link.from && l.to === site.node);
+      if (existing < 0) world.network.links.push(edge);
+      else world.network.links[existing] = edge;
+      nodes.add(site.node);
+    }
+    // Otherwise the network owns the node; a site may only bind to one that already exists.
     if (!nodes.has(site.node)) throw new Error(`${site.id}: unknown network node "${site.node}"`);
     const service = {...site};
     for (const key of BUILD_ONLY) delete service[key];

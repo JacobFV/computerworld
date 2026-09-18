@@ -302,6 +302,8 @@ impl Layout<'_> {
                 let pad = style.padding.unwrap_or(0).min(64);
                 metrics::text_width(FACE, true, text, size) + 2 * pad.max(9)
             }
+            // A hairline (a progress bar's segment) carries no caption, so it has no floor.
+            PageElement::Thumbnail { style, .. } if style.height.is_some_and(|h| h < 12) => 1,
             PageElement::Thumbnail { .. } => 48,
             PageElement::Card {
                 children, style, ..
@@ -799,7 +801,10 @@ impl Layout<'_> {
                         None,
                     );
                 }
-                if !label.is_empty() {
+                // A caption taller than its box (a progress bar's segment) stays the
+                // accessible name only; painting it would spill over its neighbours.
+                let caption = line_height(style.size.unwrap_or(12).clamp(6, 96));
+                if !label.is_empty() && caption <= box_h {
                     let size = style.size.unwrap_or(12).clamp(6, 96);
                     let colour = self.ink_of(style);
                     // Small tiles (avatars) keep a 2 px margin so initials fit.
@@ -1276,7 +1281,11 @@ pub(super) fn layout(
     let mut side_y = 116 - scroll;
     let mut form_y = 88 - scroll;
     let mut deferred = Vec::new();
+    let pinned = |e: &PageElement| style_of(e).and_then(|s| s.pin.as_deref()) == Some("bottom");
     for e in &page.elements {
+        if pinned(e) {
+            continue;
+        }
         if !themed && matches!(e,PageElement::Heading{text,..}if text==&page.title) {
             continue;
         }
@@ -1314,6 +1323,30 @@ pub(super) fn layout(
     for e in deferred {
         y += 18;
         p.element(e, x, &mut y, mainw);
+    }
+    // Pinned bars span the viewport on its bottom edge, stacked in page order, and the
+    // page under them is clipped away so a click on a bar never reaches what it covers.
+    let bars: Vec<&PageElement> = page.elements.iter().filter(|e| pinned(e)).collect();
+    if !bars.is_empty() {
+        let heights: Vec<u32> = bars.iter().map(|e| p.measure(e, width, None)).collect();
+        let total = heights.iter().sum::<u32>().min(height);
+        let edge = height.saturating_sub(total);
+        // Content wholly behind the bars keeps a one-row clip strip above them rather than
+        // none, so it stays in the page (reachable by scrolling) yet paints nothing there.
+        let visible = Rect::new(0, 0, width, edge.max(1));
+        for node in &mut p.scene.nodes {
+            node.clip = Some(
+                node.clip
+                    .unwrap_or(visible)
+                    .intersection(visible)
+                    .unwrap_or(Rect::new(0, 0, 1, 1)),
+            );
+        }
+        let mut by = edge as i32;
+        for (e, h) in bars.into_iter().zip(heights) {
+            p.place(e, 0, by, width, None);
+            by += h as i32;
+        }
     }
     if special {
         for node in &mut p.scene.nodes {

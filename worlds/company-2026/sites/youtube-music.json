@@ -1,23 +1,29 @@
 {
-  "id": "spotify",
+  "id": "youtube-music",
   "kind": "media",
-  "node": "spotify",
+  "node": "youtube-music",
   "domains": [
-    "spotify.com",
-    "open.spotify.com",
-    "www.spotify.com"
+    "music.youtube.com"
   ],
   "port": 80,
+  "network_node": {
+    "address": "203.0.113.27",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
   "initial_state": {
-    "mode": "audio",
-    "brand": "Spotify",
-    "tagline": "Music for shipping things.",
+    "mode": "music",
+    "brand": "YouTube Music",
+    "tagline": "Music for every build.",
     "theme": {
-      "accent": "#1ed760",
-      "background": "#000000",
-      "surface": "#121212",
+      "accent": "#ff0000",
+      "background": "#030303",
+      "surface": "#212121",
       "ink": "#ffffff",
-      "muted": "#b3b3b3"
+      "muted": "#aaaaaa"
     },
     "channels": {
       "midnight-compiler": {
@@ -457,37 +463,59 @@
           "tiling",
           "seedless"
         ]
+      },
+      "morning-commute": {
+        "id": "morning-commute",
+        "title": "Morning Commute",
+        "owner": "bob",
+        "items": [
+          "fan-out",
+          "puget",
+          "mark-and-sweep",
+          "stop-the-world",
+          "mutex"
+        ]
+      },
+      "lo-fi-desk": {
+        "id": "lo-fi-desk",
+        "title": "Lo-fi at the desk",
+        "owner": null,
+        "items": [
+          "cold-reads",
+          "warm-cache",
+          "eviction",
+          "prefetch",
+          "tiling"
+        ]
       }
     },
     "subscriptions": {
-      "carol": [
-        "low-latency",
-        "parallel-lines"
-      ],
       "alice": [
         "tessellate",
-        "midnight-compiler"
+        "cache-miss"
+      ],
+      "carol": [
+        "low-latency"
+      ],
+      "bob": [
+        "byte-order"
       ]
     },
     "likes": {
+      "alice": [
+        "tiling",
+        "cold-reads",
+        "mark-and-sweep"
+      ],
       "carol": [
         "backpressure",
         "fan-out"
       ],
-      "alice": [
-        "tiling"
-      ],
       "bob": [
-        "mutex"
+        "little-endian"
       ]
     },
-    "now_playing": {
-      "carol": {
-        "item": "cold-start",
-        "tick": 9,
-        "list": "ship-it"
-      }
-    },
+    "now_playing": {},
     "albums": {
       "cold-start": {
         "genre": "Ambient"
@@ -563,144 +591,130 @@
   },
   "search_entries": [
     {
-      "url": "http://spotify.com/",
-      "title": "Spotify",
-      "snippet": "Browse artists, play a track, like it, and build a playlist that persists.",
+      "url": "http://music.youtube.com/",
+      "title": "YouTube Music",
+      "snippet": "Listen again, quick picks, moods and every album in one place.",
       "vertical": "all",
       "authority": 5,
       "keywords": [
-        "spotify",
+        "youtube music",
         "music",
         "streaming",
         "playlist"
       ]
     },
     {
-      "url": "http://spotify.com/playlist/ship-it",
-      "title": "Ship It - playlist by Carol Nakamura | Spotify",
-      "snippet": "Eleven tracks Carol plays on release day, from Cold Start to Tiling.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "ship it",
-        "playlist",
-        "carol nakamura",
-        "release day",
-        "shipping atlas"
-      ]
-    },
-    {
-      "url": "http://spotify.com/playlist/deep-focus",
-      "title": "Deep Focus - playlist by Alice Chen | Spotify",
-      "snippet": "Four instrumental tracks for reading a trace you do not understand yet.",
+      "url": "http://music.youtube.com/explore",
+      "title": "Explore - YouTube Music",
+      "snippet": "New albums and singles, charts, moods and genres.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
-        "deep focus",
-        "playlist",
-        "instrumental",
-        "alice chen"
+        "youtube music",
+        "explore",
+        "charts",
+        "new releases"
       ]
     },
     {
-      "url": "http://spotify.com/artist/midnight-compiler",
-      "title": "Midnight Compiler | Spotify",
+      "url": "http://music.youtube.com/channel/midnight-compiler",
+      "title": "Midnight Compiler | YouTube Music",
       "snippet": "Four people, one drum machine and a rule against lyrics. Album: Cold Start.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "midnight compiler",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/artist/parallel-lines",
-      "title": "Parallel Lines | Spotify",
+      "url": "http://music.youtube.com/channel/parallel-lines",
+      "title": "Parallel Lines | YouTube Music",
       "snippet": "Synth duo from Portland. Fan-out is their second record.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "parallel lines",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/artist/low-latency",
-      "title": "Low Latency | Spotify",
+      "url": "http://music.youtube.com/channel/low-latency",
+      "title": "Low Latency | YouTube Music",
       "snippet": "Drum and bass for people waiting on a build.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "low latency",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/artist/harbor-lights",
-      "title": "Harbor Lights | Spotify",
+      "url": "http://music.youtube.com/channel/harbor-lights",
+      "title": "Harbor Lights | YouTube Music",
       "snippet": "Guitars, ferries and rain. Recorded in Seattle.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "harbor lights",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/artist/tessellate",
-      "title": "Tessellate | Spotify",
+      "url": "http://music.youtube.com/channel/tessellate",
+      "title": "Tessellate | YouTube Music",
       "snippet": "Minimal piano loops that never quite repeat.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "tessellate",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/artist/heap-allocation",
-      "title": "Heap Allocation | Spotify",
+      "url": "http://music.youtube.com/channel/heap-allocation",
+      "title": "Heap Allocation | YouTube Music",
       "snippet": "Indie pop from Austin about everything you forgot to free.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "heap allocation",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/artist/byte-order",
-      "title": "Byte Order | Spotify",
+      "url": "http://music.youtube.com/channel/byte-order",
+      "title": "Byte Order | YouTube Music",
       "snippet": "Two MCs who cannot agree which end goes first.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "byte order",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/artist/cache-miss",
-      "title": "Cache Miss | Spotify",
+      "url": "http://music.youtube.com/channel/cache-miss",
+      "title": "Cache Miss | YouTube Music",
       "snippet": "Lo-fi beats to wait on a cold read to.",
       "vertical": "all",
       "authority": 3,
       "keywords": [
         "cache miss",
         "artist",
-        "spotify"
+        "youtube music"
       ]
     },
     {
-      "url": "http://spotify.com/album/cold-start",
-      "title": "Cold Start - Album by Midnight Compiler | Spotify",
+      "url": "http://music.youtube.com/browse/cold-start",
+      "title": "Cold Start - Album by Midnight Compiler | YouTube Music",
       "snippet": "Cold Start by Midnight Compiler.",
       "vertical": "all",
       "authority": 3,
@@ -711,8 +725,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/album/fan-out",
-      "title": "Fan-out - Album by Parallel Lines | Spotify",
+      "url": "http://music.youtube.com/browse/fan-out",
+      "title": "Fan-out - Album by Parallel Lines | YouTube Music",
       "snippet": "Fan-out by Parallel Lines.",
       "vertical": "all",
       "authority": 3,
@@ -723,8 +737,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/album/backpressure",
-      "title": "Backpressure - Album by Low Latency | Spotify",
+      "url": "http://music.youtube.com/browse/backpressure",
+      "title": "Backpressure - Album by Low Latency | YouTube Music",
       "snippet": "Backpressure by Low Latency.",
       "vertical": "all",
       "authority": 3,
@@ -735,8 +749,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/album/puget",
-      "title": "Puget - Album by Harbor Lights | Spotify",
+      "url": "http://music.youtube.com/browse/puget",
+      "title": "Puget - Album by Harbor Lights | YouTube Music",
       "snippet": "Puget by Harbor Lights.",
       "vertical": "all",
       "authority": 3,
@@ -747,8 +761,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/album/tiling",
-      "title": "Tiling - Album by Tessellate | Spotify",
+      "url": "http://music.youtube.com/browse/tiling",
+      "title": "Tiling - Album by Tessellate | YouTube Music",
       "snippet": "Tiling by Tessellate.",
       "vertical": "all",
       "authority": 3,
@@ -759,8 +773,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/album/garbage-collected",
-      "title": "Garbage Collected - Album by Heap Allocation | Spotify",
+      "url": "http://music.youtube.com/browse/garbage-collected",
+      "title": "Garbage Collected - Album by Heap Allocation | YouTube Music",
       "snippet": "Garbage Collected by Heap Allocation.",
       "vertical": "all",
       "authority": 3,
@@ -771,8 +785,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/album/endianness",
-      "title": "Endianness - Album by Byte Order | Spotify",
+      "url": "http://music.youtube.com/browse/endianness",
+      "title": "Endianness - Album by Byte Order | YouTube Music",
       "snippet": "Endianness by Byte Order.",
       "vertical": "all",
       "authority": 3,
@@ -783,8 +797,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/album/cold-reads",
-      "title": "Cold Reads - Album by Cache Miss | Spotify",
+      "url": "http://music.youtube.com/browse/cold-reads",
+      "title": "Cold Reads - Album by Cache Miss | YouTube Music",
       "snippet": "Cold Reads by Cache Miss.",
       "vertical": "all",
       "authority": 3,
@@ -795,8 +809,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/cold-start",
-      "title": "Cold Start - Midnight Compiler | Spotify",
+      "url": "http://music.youtube.com/watch?v=cold-start",
+      "title": "Cold Start - Midnight Compiler | YouTube Music",
       "snippet": "Cold Start from the album Cold Start by Midnight Compiler.",
       "vertical": "all",
       "authority": 2,
@@ -811,8 +825,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/green-build",
-      "title": "Green Build - Midnight Compiler | Spotify",
+      "url": "http://music.youtube.com/watch?v=green-build",
+      "title": "Green Build - Midnight Compiler | YouTube Music",
       "snippet": "Green Build from the album Cold Start by Midnight Compiler.",
       "vertical": "all",
       "authority": 2,
@@ -825,8 +839,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/rollback",
-      "title": "Rollback - Midnight Compiler | Spotify",
+      "url": "http://music.youtube.com/watch?v=rollback",
+      "title": "Rollback - Midnight Compiler | YouTube Music",
       "snippet": "Rollback from the album Cold Start by Midnight Compiler.",
       "vertical": "all",
       "authority": 2,
@@ -841,8 +855,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/fan-out",
-      "title": "Fan-out - Parallel Lines | Spotify",
+      "url": "http://music.youtube.com/watch?v=fan-out",
+      "title": "Fan-out - Parallel Lines | YouTube Music",
       "snippet": "Fan-out from the album Fan-out by Parallel Lines.",
       "vertical": "all",
       "authority": 2,
@@ -857,8 +871,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/mutex",
-      "title": "Mutex - Parallel Lines | Spotify",
+      "url": "http://music.youtube.com/watch?v=mutex",
+      "title": "Mutex - Parallel Lines | YouTube Music",
       "snippet": "Mutex from the album Fan-out by Parallel Lines.",
       "vertical": "all",
       "authority": 2,
@@ -871,8 +885,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/backpressure",
-      "title": "Backpressure - Low Latency | Spotify",
+      "url": "http://music.youtube.com/watch?v=backpressure",
+      "title": "Backpressure - Low Latency | YouTube Music",
       "snippet": "Backpressure from the album Backpressure by Low Latency.",
       "vertical": "all",
       "authority": 2,
@@ -888,8 +902,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/tail-latency",
-      "title": "Tail Latency - Low Latency | Spotify",
+      "url": "http://music.youtube.com/watch?v=tail-latency",
+      "title": "Tail Latency - Low Latency | YouTube Music",
       "snippet": "Tail Latency from the album Backpressure by Low Latency.",
       "vertical": "all",
       "authority": 2,
@@ -902,8 +916,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/p99",
-      "title": "P99 - Low Latency | Spotify",
+      "url": "http://music.youtube.com/watch?v=p99",
+      "title": "P99 - Low Latency | YouTube Music",
       "snippet": "P99 from the album Backpressure by Low Latency.",
       "vertical": "all",
       "authority": 2,
@@ -917,8 +931,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/puget",
-      "title": "Puget - Harbor Lights | Spotify",
+      "url": "http://music.youtube.com/watch?v=puget",
+      "title": "Puget - Harbor Lights | YouTube Music",
       "snippet": "Puget from the album Puget by Harbor Lights.",
       "vertical": "all",
       "authority": 2,
@@ -933,8 +947,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/ferry-terminal",
-      "title": "Ferry Terminal - Harbor Lights | Spotify",
+      "url": "http://music.youtube.com/watch?v=ferry-terminal",
+      "title": "Ferry Terminal - Harbor Lights | YouTube Music",
       "snippet": "Ferry Terminal from the album Puget by Harbor Lights.",
       "vertical": "all",
       "authority": 2,
@@ -949,8 +963,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/tiling",
-      "title": "Tiling - Tessellate | Spotify",
+      "url": "http://music.youtube.com/watch?v=tiling",
+      "title": "Tiling - Tessellate | YouTube Music",
       "snippet": "Tiling from the album Tiling by Tessellate.",
       "vertical": "all",
       "authority": 2,
@@ -965,8 +979,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/seedless",
-      "title": "Seedless - Tessellate | Spotify",
+      "url": "http://music.youtube.com/watch?v=seedless",
+      "title": "Seedless - Tessellate | YouTube Music",
       "snippet": "Seedless from the album Tiling by Tessellate.",
       "vertical": "all",
       "authority": 2,
@@ -981,8 +995,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/mark-and-sweep",
-      "title": "Mark and Sweep - Heap Allocation | Spotify",
+      "url": "http://music.youtube.com/watch?v=mark-and-sweep",
+      "title": "Mark and Sweep - Heap Allocation | YouTube Music",
       "snippet": "Mark and Sweep from the album Garbage Collected by Heap Allocation.",
       "vertical": "all",
       "authority": 2,
@@ -997,8 +1011,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/stop-the-world",
-      "title": "Stop the World - Heap Allocation | Spotify",
+      "url": "http://music.youtube.com/watch?v=stop-the-world",
+      "title": "Stop the World - Heap Allocation | YouTube Music",
       "snippet": "Stop the World from the album Garbage Collected by Heap Allocation.",
       "vertical": "all",
       "authority": 2,
@@ -1012,8 +1026,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/generational",
-      "title": "Generational - Heap Allocation | Spotify",
+      "url": "http://music.youtube.com/watch?v=generational",
+      "title": "Generational - Heap Allocation | YouTube Music",
       "snippet": "Generational from the album Garbage Collected by Heap Allocation.",
       "vertical": "all",
       "authority": 2,
@@ -1027,8 +1041,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/little-endian",
-      "title": "Little Endian - Byte Order | Spotify",
+      "url": "http://music.youtube.com/watch?v=little-endian",
+      "title": "Little Endian - Byte Order | YouTube Music",
       "snippet": "Little Endian from the album Endianness by Byte Order.",
       "vertical": "all",
       "authority": 2,
@@ -1042,8 +1056,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/big-endian",
-      "title": "Big Endian - Byte Order | Spotify",
+      "url": "http://music.youtube.com/watch?v=big-endian",
+      "title": "Big Endian - Byte Order | YouTube Music",
       "snippet": "Big Endian from the album Endianness by Byte Order.",
       "vertical": "all",
       "authority": 2,
@@ -1057,8 +1071,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/cold-reads",
-      "title": "Cold Reads - Cache Miss | Spotify",
+      "url": "http://music.youtube.com/watch?v=cold-reads",
+      "title": "Cold Reads - Cache Miss | YouTube Music",
       "snippet": "Cold Reads from the album Cold Reads by Cache Miss.",
       "vertical": "all",
       "authority": 2,
@@ -1072,8 +1086,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/warm-cache",
-      "title": "Warm Cache - Cache Miss | Spotify",
+      "url": "http://music.youtube.com/watch?v=warm-cache",
+      "title": "Warm Cache - Cache Miss | YouTube Music",
       "snippet": "Warm Cache from the album Cold Reads by Cache Miss.",
       "vertical": "all",
       "authority": 2,
@@ -1087,8 +1101,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/eviction",
-      "title": "Eviction - Cache Miss | Spotify",
+      "url": "http://music.youtube.com/watch?v=eviction",
+      "title": "Eviction - Cache Miss | YouTube Music",
       "snippet": "Eviction from the album Cold Reads by Cache Miss.",
       "vertical": "all",
       "authority": 2,
@@ -1101,8 +1115,8 @@
       ]
     },
     {
-      "url": "http://spotify.com/track/prefetch",
-      "title": "Prefetch - Cache Miss | Spotify",
+      "url": "http://music.youtube.com/watch?v=prefetch",
+      "title": "Prefetch - Cache Miss | YouTube Music",
       "snippet": "Prefetch from the album Cold Reads by Cache Miss.",
       "vertical": "all",
       "authority": 2,

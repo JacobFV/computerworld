@@ -73,8 +73,12 @@ impl Environment {
     }
 
     /// Launch argument for a native application: the world says which service backs it.
-    pub(crate) fn native_argument(&self, kind: &str) -> String {
-        self.runtime
+    /// An entry's `urls` may name a different service per platform (`{"android": ...}`),
+    /// because the same kind of application is a different product on each: Android's
+    /// music player is YouTube Music, backed by music.youtube.com.
+    pub(crate) fn native_argument(&self, id: &str, machine: &str, kind: &str) -> String {
+        let Some(entry) = self
+            .runtime
             .definition()
             .metadata
             .get("desktop_apps")
@@ -84,7 +88,15 @@ impl Environment {
                     .iter()
                     .find(|entry| entry.get("id").and_then(Value::as_str) == Some(kind))
             })
-            .and_then(|entry| entry.get("url").and_then(Value::as_str))
+        else {
+            return String::new();
+        };
+        let platform = self
+            .desktop_theme(id, machine)
+            .map(DesktopTheme::platform)
+            .and_then(|platform| entry.get("urls")?.get(platform)?.as_str());
+        platform
+            .or_else(|| entry.get("url").and_then(Value::as_str))
             .unwrap_or_default()
             .to_owned()
     }

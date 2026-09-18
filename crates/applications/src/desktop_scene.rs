@@ -96,11 +96,19 @@ pub fn window_content_rect(theme: DesktopTheme, frame: Rect) -> Rect {
         frame.height.saturating_sub((top + bottom) as u32).max(1),
     )
 }
+/// Height of the application bar a phone paints above ordinary application content.
+pub const PHONE_APP_BAR: u32 = 46;
 /// Client rectangle of a window. Browsers reserve room for their own toolbars: a
 /// 40 px navigation row on desktops, Safari's address bar and bottom toolbar on iOS;
 /// Chrome's toolbar on Android occupies the ordinary application bar.
 pub fn window_content_rect_for_kind(theme: DesktopTheme, frame: Rect, kind: &str) -> Rect {
     let mut r = window_content_rect(theme, frame);
+    // A phone's music player draws its own top bar (Apple Music's large titles, YouTube
+    // Music's logo row), so it starts right under the status bar with no app bar above.
+    if kind == "music" && theme.mobile() {
+        r.y -= PHONE_APP_BAR as i32;
+        r.height += PHONE_APP_BAR;
+    }
     if kind == "browser" {
         let (top, bottom) = match theme {
             DesktopTheme::Ios => (8, 48),
@@ -283,6 +291,11 @@ pub fn render_desktop_with_options(
                 };
                 if n.clip.is_none() {
                     continue;
+                }
+                // A rounded clip the application drew (rounded artwork) moves with it.
+                if let Some(rounded) = &mut n.rounded_clip {
+                    rounded.rect.x = rounded.rect.x.saturating_add(r.x);
+                    rounded.rect.y = rounded.rect.y.saturating_add(r.y);
                 }
                 if let Some(action) = &n.interaction {
                     n.interaction = Some(w.action(&format!("content:{action}")));
