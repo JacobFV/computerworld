@@ -58,7 +58,10 @@ networking and HTTP.
 `metadata.desktop_apps` entries declare a world's application catalog and take a
 `kind`. `kind: "native"` names one of the nine native applications and supplies the
 service URL it should open against; it is launched in its own right, not as an
-alias. `kind: "browser"` is a genuine alias: it opens a browser window at a fixed
+alias. An optional `urls` object overrides that URL per platform (`macos`, `windows`,
+`ubuntu`, `ios`, `android`), because one kind of application is a different product on
+each: the reference world's `music` entry opens spotify.com's catalogue everywhere but
+Android, whose player is YouTube Music and reads `http://music.youtube.com/`. `kind: "browser"` is a genuine alias: it opens a browser window at a fixed
 URL, and therefore requires both `application.v1` and `browser.v1` grants plus an
 installed `browser`. Any other `kind` is rejected. Either way these remain ordinary
 world services, not special kernel concepts.

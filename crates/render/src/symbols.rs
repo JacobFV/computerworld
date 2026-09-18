@@ -30,6 +30,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/backspace.png"),
     ),
     (
+        "symbol/backward",
+        include_bytes!("../assets/symbols/backward.png"),
+    ),
+    (
         "symbol/battery",
         include_bytes!("../assets/symbols/battery.png"),
     ),
@@ -90,6 +94,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/cloud.png"),
     ),
     (
+        "symbol/compass",
+        include_bytes!("../assets/symbols/compass.png"),
+    ),
+    (
         "symbol/compose",
         include_bytes!("../assets/symbols/compose.png"),
     ),
@@ -134,6 +142,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/folder.png"),
     ),
     (
+        "symbol/forward",
+        include_bytes!("../assets/symbols/forward.png"),
+    ),
+    (
         "symbol/fruit",
         include_bytes!("../assets/symbols/fruit.png"),
     ),
@@ -150,6 +162,14 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
     (
         "symbol/headphones",
         include_bytes!("../assets/symbols/headphones.png"),
+    ),
+    (
+        "symbol/heart",
+        include_bytes!("../assets/symbols/heart.png"),
+    ),
+    (
+        "symbol/heart-fill",
+        include_bytes!("../assets/symbols/heart-fill.png"),
     ),
     ("symbol/home", include_bytes!("../assets/symbols/home.png")),
     (
@@ -170,6 +190,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/keyboard.png"),
     ),
     ("symbol/leaf", include_bytes!("../assets/symbols/leaf.png")),
+    (
+        "symbol/library",
+        include_bytes!("../assets/symbols/library.png"),
+    ),
     ("symbol/link", include_bytes!("../assets/symbols/link.png")),
     (
         "symbol/list-view",
@@ -209,14 +233,27 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/paste.png"),
     ),
     (
+        "symbol/pause",
+        include_bytes!("../assets/symbols/pause.png"),
+    ),
+    (
         "symbol/person",
         include_bytes!("../assets/symbols/person.png"),
     ),
     ("symbol/pin", include_bytes!("../assets/symbols/pin.png")),
+    ("symbol/play", include_bytes!("../assets/symbols/play.png")),
     ("symbol/plus", include_bytes!("../assets/symbols/plus.png")),
     (
         "symbol/power",
         include_bytes!("../assets/symbols/power.png"),
+    ),
+    (
+        "symbol/queue",
+        include_bytes!("../assets/symbols/queue.png"),
+    ),
+    (
+        "symbol/radio",
+        include_bytes!("../assets/symbols/radio.png"),
     ),
     (
         "symbol/reload",
@@ -225,6 +262,14 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
     (
         "symbol/rename",
         include_bytes!("../assets/symbols/rename.png"),
+    ),
+    (
+        "symbol/repeat",
+        include_bytes!("../assets/symbols/repeat.png"),
+    ),
+    (
+        "symbol/repeat-one",
+        include_bytes!("../assets/symbols/repeat-one.png"),
     ),
     (
         "symbol/reply",
@@ -256,12 +301,24 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/shield.png"),
     ),
     (
+        "symbol/shuffle",
+        include_bytes!("../assets/symbols/shuffle.png"),
+    ),
+    (
         "symbol/sidebar",
         include_bytes!("../assets/symbols/sidebar.png"),
     ),
     (
         "symbol/signal",
         include_bytes!("../assets/symbols/signal.png"),
+    ),
+    (
+        "symbol/skip-next",
+        include_bytes!("../assets/symbols/skip-next.png"),
+    ),
+    (
+        "symbol/skip-previous",
+        include_bytes!("../assets/symbols/skip-previous.png"),
     ),
     ("symbol/sort", include_bytes!("../assets/symbols/sort.png")),
     (
@@ -279,6 +336,14 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
     (
         "symbol/terminal",
         include_bytes!("../assets/symbols/terminal.png"),
+    ),
+    (
+        "symbol/thumb-up",
+        include_bytes!("../assets/symbols/thumb-up.png"),
+    ),
+    (
+        "symbol/thumb-up-fill",
+        include_bytes!("../assets/symbols/thumb-up-fill.png"),
     ),
     (
         "symbol/trash",

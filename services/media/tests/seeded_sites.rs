@@ -8,6 +8,7 @@ use cw_service_media::MediaService;
 use serde_json::Value;
 const YOUTUBE: &str = include_str!("../../../worlds/company-2026/sites/youtube.json");
 const SPOTIFY: &str = include_str!("../../../worlds/company-2026/sites/spotify.json");
+const YOUTUBE_MUSIC: &str = include_str!("../../../worlds/company-2026/sites/youtube-music.json");
 fn ctx() -> ServiceContext {
     ServiceContext {
         actor: "alice".into(),
@@ -186,4 +187,44 @@ fn watching_the_seeded_walkthrough_changes_the_world() {
         before + 1
     );
     assert_eq!(state["now_playing"]["alice"]["item"], "atlas-walkthrough");
+}
+#[test]
+fn every_youtube_music_page_a_seed_names_resolves_and_plays() {
+    let (file, mut state, entries) = site(YOUTUBE_MUSIC);
+    assert_eq!(file["domains"][0], "music.youtube.com");
+    assert_eq!(state["mode"], "music");
+    for id in keys(&state, "channels") {
+        assert_eq!(
+            get(
+                &mut state,
+                &format!("http://music.youtube.com/channel/{id}")
+            )
+            .status,
+            200
+        );
+    }
+    for id in keys(&state, "playlists") {
+        assert_eq!(
+            get(
+                &mut state,
+                &format!("http://music.youtube.com/playlist?list={id}")
+            )
+            .status,
+            200
+        );
+    }
+    for url in &entries {
+        assert_eq!(
+            get(&mut state, url).status,
+            200,
+            "indexed page {url} must resolve"
+        );
+    }
+    // Opening the last indexed song left it playing, with a real queue behind it.
+    let player = &state["now_playing"]["alice"];
+    assert_eq!(player["playing"], true);
+    assert!(player["queue"].as_array().is_some_and(|q| !q.is_empty()));
+    // The shared catalogue: the same songs spotify.com serves.
+    let (_, spotify, _) = site(SPOTIFY);
+    assert_eq!(keys(&state, "items"), keys(&spotify, "items"));
 }

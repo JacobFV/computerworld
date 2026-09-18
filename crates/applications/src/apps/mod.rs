@@ -220,6 +220,18 @@ native_apps! {
     Weather => weather,
 }
 
+impl NativeApp {
+    /// Whether keystrokes insert text. Every application but the music player has a
+    /// field that is always ready for typing; the player takes text only while its search
+    /// or playlist-title field is focused, so a phone shows no keyboard over it otherwise.
+    pub fn takes_text(&self) -> bool {
+        match self {
+            Self::Music(app) => app.takes_text(),
+            _ => true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

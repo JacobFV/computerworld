@@ -660,7 +660,7 @@ impl Environment {
                 let native = cw_applications::NativeApp::KINDS.contains(&kind);
                 let supplied = p.get("argument").and_then(Value::as_str).unwrap_or("");
                 let world_url = if native {
-                    self.native_argument(kind)
+                    self.native_argument(id, machine, kind)
                 } else {
                     String::new()
                 };
@@ -3456,12 +3456,12 @@ fn text_entry_of(m: &MachineSession, phone: bool) -> bool {
         return m.focused_input.is_some();
     }
     match m.desktop.windows.get(&id).map(|w| &w.state) {
-        Some(
-            AppState::Terminal { .. }
-            | AppState::Editor { .. }
-            | AppState::Browser { .. }
-            | AppState::Native(_),
-        ) => true,
+        Some(AppState::Terminal { .. } | AppState::Editor { .. } | AppState::Browser { .. }) => {
+            true
+        }
+        // A native application takes text while it has a field focused; a music player
+        // with none takes no text, so a phone paints no keyboard over it.
+        Some(AppState::Native(app)) => app.takes_text(),
         // A file manager takes text only while it is searching or renaming, which is
         // exactly the condition `DesktopState::text` checks.
         Some(state @ AppState::Files { .. }) => {
@@ -3648,12 +3648,12 @@ fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow], phone: b
             bind(&mut focus, "address", Some(action), true);
             focus.value = Some(address.clone());
         }
-        Some(AppState::Native(_)) => {
+        Some(AppState::Native(app)) => {
             bind(
                 &mut focus,
                 "application",
                 Some(format!("window:{id}:focus")),
-                true,
+                app.takes_text(),
             );
         }
         // A file manager takes text only while it is searching or renaming.

@@ -570,6 +570,11 @@ export default {
         "zone": "internet"
       },
       {
+        "id": "youtube-music",
+        "address": "203.0.113.27",
+        "zone": "internet"
+      },
+      {
         "id": "alice-phone",
         "address": "10.0.0.15",
         "zone": "local"
@@ -964,6 +969,13 @@ export default {
         "to": "osm",
         "bidirectional": true,
         "latency_us": 3000,
+        "loss_per_million": 0
+      },
+      {
+        "from": "pop-west",
+        "to": "youtube-music",
+        "bidirectional": true,
+        "latency_us": 1500,
         "loss_per_million": 0
       },
       {
@@ -4976,6 +4988,583 @@ export default {
             "snippet": "Dana Quarks on the enforcement part of the Verge story, boosted across the instance."
           },
           {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "youtube music",
+              "music",
+              "streaming",
+              "playlist"
+            ],
+            "url": "http://music.youtube.com/",
+            "title": "YouTube Music",
+            "snippet": "Listen again, quick picks, moods and every album in one place."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "backpressure",
+              "low latency",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/backpressure",
+            "title": "Backpressure - Album by Low Latency | YouTube Music",
+            "snippet": "Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/cold-reads",
+            "title": "Cold Reads - Album by Cache Miss | YouTube Music",
+            "snippet": "Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/cold-start",
+            "title": "Cold Start - Album by Midnight Compiler | YouTube Music",
+            "snippet": "Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "endianness",
+              "byte order",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/endianness",
+            "title": "Endianness - Album by Byte Order | YouTube Music",
+            "snippet": "Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/fan-out",
+            "title": "Fan-out - Album by Parallel Lines | YouTube Music",
+            "snippet": "Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "garbage collected",
+              "heap allocation",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/garbage-collected",
+            "title": "Garbage Collected - Album by Heap Allocation | YouTube Music",
+            "snippet": "Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/puget",
+            "title": "Puget - Album by Harbor Lights | YouTube Music",
+            "snippet": "Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/tiling",
+            "title": "Tiling - Album by Tessellate | YouTube Music",
+            "snippet": "Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "byte order",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/byte-order",
+            "title": "Byte Order | YouTube Music",
+            "snippet": "Two MCs who cannot agree which end goes first."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cache miss",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/cache-miss",
+            "title": "Cache Miss | YouTube Music",
+            "snippet": "Lo-fi beats to wait on a cold read to."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "harbor lights",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/harbor-lights",
+            "title": "Harbor Lights | YouTube Music",
+            "snippet": "Guitars, ferries and rain. Recorded in Seattle."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "heap allocation",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/heap-allocation",
+            "title": "Heap Allocation | YouTube Music",
+            "snippet": "Indie pop from Austin about everything you forgot to free."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "low latency",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/low-latency",
+            "title": "Low Latency | YouTube Music",
+            "snippet": "Drum and bass for people waiting on a build."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "midnight compiler",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/midnight-compiler",
+            "title": "Midnight Compiler | YouTube Music",
+            "snippet": "Four people, one drum machine and a rule against lyrics. Album: Cold Start."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "parallel lines",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/parallel-lines",
+            "title": "Parallel Lines | YouTube Music",
+            "snippet": "Synth duo from Portland. Fan-out is their second record."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "tessellate",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/tessellate",
+            "title": "Tessellate | YouTube Music",
+            "snippet": "Minimal piano loops that never quite repeat."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "youtube music",
+              "explore",
+              "charts",
+              "new releases"
+            ],
+            "url": "http://music.youtube.com/explore",
+            "title": "Explore - YouTube Music",
+            "snippet": "New albums and singles, charts, moods and genres."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "backpressure",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
+            ],
+            "url": "http://music.youtube.com/watch?v=backpressure",
+            "title": "Backpressure - Low Latency | YouTube Music",
+            "snippet": "Backpressure from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "big endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "party",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=big-endian",
+            "title": "Big Endian - Byte Order | YouTube Music",
+            "snippet": "Big Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=cold-reads",
+            "title": "Cold Reads - Cache Miss | YouTube Music",
+            "snippet": "Cold Reads from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "focus",
+              "instrumental",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=cold-start",
+            "title": "Cold Start - Midnight Compiler | YouTube Music",
+            "snippet": "Cold Start from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "eviction",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=eviction",
+            "title": "Eviction - Cache Miss | YouTube Music",
+            "snippet": "Eviction from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "fan-out",
+              "electronic",
+              "focus",
+              "energize",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=fan-out",
+            "title": "Fan-out - Parallel Lines | YouTube Music",
+            "snippet": "Fan-out from the album Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "ferry terminal",
+              "harbor lights",
+              "puget",
+              "indie",
+              "guitar",
+              "relax",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=ferry-terminal",
+            "title": "Ferry Terminal - Harbor Lights | YouTube Music",
+            "snippet": "Ferry Terminal from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "generational",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=generational",
+            "title": "Generational - Heap Allocation | YouTube Music",
+            "snippet": "Generational from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "green build",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=green-build",
+            "title": "Green Build - Midnight Compiler | YouTube Music",
+            "snippet": "Green Build from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "little endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "workout",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=little-endian",
+            "title": "Little Endian - Byte Order | YouTube Music",
+            "snippet": "Little Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "mark and sweep",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ],
+            "url": "http://music.youtube.com/watch?v=mark-and-sweep",
+            "title": "Mark and Sweep - Heap Allocation | YouTube Music",
+            "snippet": "Mark and Sweep from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "mutex",
+              "parallel lines",
+              "fan-out",
+              "electronic",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=mutex",
+            "title": "Mutex - Parallel Lines | YouTube Music",
+            "snippet": "Mutex from the album Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "p99",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "focus",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=p99",
+            "title": "P99 - Low Latency | YouTube Music",
+            "snippet": "P99 from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "prefetch",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=prefetch",
+            "title": "Prefetch - Cache Miss | YouTube Music",
+            "snippet": "Prefetch from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "puget",
+              "indie",
+              "guitar",
+              "commute",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=puget",
+            "title": "Puget - Harbor Lights | YouTube Music",
+            "snippet": "Puget from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "rollback",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "downtempo",
+              "relax",
+              "sleep"
+            ],
+            "url": "http://music.youtube.com/watch?v=rollback",
+            "title": "Rollback - Midnight Compiler | YouTube Music",
+            "snippet": "Rollback from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "seedless",
+              "tessellate",
+              "tiling",
+              "minimal",
+              "instrumental",
+              "sleep",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=seedless",
+            "title": "Seedless - Tessellate | YouTube Music",
+            "snippet": "Seedless from the album Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "stop the world",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=stop-the-world",
+            "title": "Stop the World - Heap Allocation | YouTube Music",
+            "snippet": "Stop the World from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "tail latency",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "workout"
+            ],
+            "url": "http://music.youtube.com/watch?v=tail-latency",
+            "title": "Tail Latency - Low Latency | YouTube Music",
+            "snippet": "Tail Latency from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "tiling",
+              "minimal",
+              "instrumental",
+              "sleep",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=tiling",
+            "title": "Tiling - Tessellate | YouTube Music",
+            "snippet": "Tiling from the album Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "warm cache",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "sleep"
+            ],
+            "url": "http://music.youtube.com/watch?v=warm-cache",
+            "title": "Warm Cache - Cache Miss | YouTube Music",
+            "snippet": "Warm Cache from the album Cold Reads by Cache Miss."
+          },
+          {
             "site": "news.ycombinator.com",
             "vertical": "all",
             "authority": 3,
@@ -5796,6 +6385,136 @@ export default {
             "vertical": "all",
             "authority": 4,
             "keywords": [
+              "backpressure",
+              "low latency",
+              "album"
+            ],
+            "url": "http://spotify.com/album/backpressure",
+            "title": "Backpressure - Album by Low Latency | Spotify",
+            "snippet": "Backpressure by Low Latency."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "album"
+            ],
+            "url": "http://spotify.com/album/cold-reads",
+            "title": "Cold Reads - Album by Cache Miss | Spotify",
+            "snippet": "Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "album"
+            ],
+            "url": "http://spotify.com/album/cold-start",
+            "title": "Cold Start - Album by Midnight Compiler | Spotify",
+            "snippet": "Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "endianness",
+              "byte order",
+              "album"
+            ],
+            "url": "http://spotify.com/album/endianness",
+            "title": "Endianness - Album by Byte Order | Spotify",
+            "snippet": "Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "album"
+            ],
+            "url": "http://spotify.com/album/fan-out",
+            "title": "Fan-out - Album by Parallel Lines | Spotify",
+            "snippet": "Fan-out by Parallel Lines."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "garbage collected",
+              "heap allocation",
+              "album"
+            ],
+            "url": "http://spotify.com/album/garbage-collected",
+            "title": "Garbage Collected - Album by Heap Allocation | Spotify",
+            "snippet": "Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "album"
+            ],
+            "url": "http://spotify.com/album/puget",
+            "title": "Puget - Album by Harbor Lights | Spotify",
+            "snippet": "Puget by Harbor Lights."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "album"
+            ],
+            "url": "http://spotify.com/album/tiling",
+            "title": "Tiling - Album by Tessellate | Spotify",
+            "snippet": "Tiling by Tessellate."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "byte order",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/byte-order",
+            "title": "Byte Order | Spotify",
+            "snippet": "Two MCs who cannot agree which end goes first."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "cache miss",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/cache-miss",
+            "title": "Cache Miss | Spotify",
+            "snippet": "Lo-fi beats to wait on a cold read to."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
               "harbor lights",
               "artist",
               "spotify"
@@ -5803,6 +6522,19 @@ export default {
             "url": "http://spotify.com/artist/harbor-lights",
             "title": "Harbor Lights | Spotify",
             "snippet": "Guitars, ferries and rain. Recorded in Seattle."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "heap allocation",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/heap-allocation",
+            "title": "Heap Allocation | Spotify",
+            "snippet": "Indie pop from Austin about everything you forgot to free."
           },
           {
             "site": "spotify.com",
@@ -5894,11 +6626,46 @@ export default {
               "low latency",
               "backpressure",
               "electronic",
-              "drum and bass"
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
             ],
             "url": "http://spotify.com/track/backpressure",
             "title": "Backpressure - Low Latency | Spotify",
             "snippet": "Backpressure from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "big endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "party",
+              "energize"
+            ],
+            "url": "http://spotify.com/track/big-endian",
+            "title": "Big Endian - Byte Order | Spotify",
+            "snippet": "Big Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "relax"
+            ],
+            "url": "http://spotify.com/track/cold-reads",
+            "title": "Cold Reads - Cache Miss | Spotify",
+            "snippet": "Cold Reads from the album Cold Reads by Cache Miss."
           },
           {
             "site": "spotify.com",
@@ -5910,7 +6677,8 @@ export default {
               "cold start",
               "ambient",
               "focus",
-              "instrumental"
+              "instrumental",
+              "relax"
             ],
             "url": "http://spotify.com/track/cold-start",
             "title": "Cold Start - Midnight Compiler | Spotify",
@@ -5921,11 +6689,28 @@ export default {
             "vertical": "all",
             "authority": 4,
             "keywords": [
+              "eviction",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "relax"
+            ],
+            "url": "http://spotify.com/track/eviction",
+            "title": "Eviction - Cache Miss | Spotify",
+            "snippet": "Eviction from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
               "fan-out",
               "parallel lines",
               "fan-out",
               "electronic",
-              "focus"
+              "focus",
+              "energize",
+              "commute"
             ],
             "url": "http://spotify.com/track/fan-out",
             "title": "Fan-out - Parallel Lines | Spotify",
@@ -5940,11 +6725,29 @@ export default {
               "harbor lights",
               "puget",
               "indie",
-              "guitar"
+              "guitar",
+              "relax",
+              "feel good"
             ],
             "url": "http://spotify.com/track/ferry-terminal",
             "title": "Ferry Terminal - Harbor Lights | Spotify",
             "snippet": "Ferry Terminal from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "generational",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good"
+            ],
+            "url": "http://spotify.com/track/generational",
+            "title": "Generational - Heap Allocation | Spotify",
+            "snippet": "Generational from the album Garbage Collected by Heap Allocation."
           },
           {
             "site": "spotify.com",
@@ -5966,10 +6769,44 @@ export default {
             "vertical": "all",
             "authority": 4,
             "keywords": [
+              "little endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "workout",
+              "energize"
+            ],
+            "url": "http://spotify.com/track/little-endian",
+            "title": "Little Endian - Byte Order | Spotify",
+            "snippet": "Little Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "mark and sweep",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ],
+            "url": "http://spotify.com/track/mark-and-sweep",
+            "title": "Mark and Sweep - Heap Allocation | Spotify",
+            "snippet": "Mark and Sweep from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
               "mutex",
               "parallel lines",
               "fan-out",
-              "electronic"
+              "electronic",
+              "commute"
             ],
             "url": "http://spotify.com/track/mutex",
             "title": "Mutex - Parallel Lines | Spotify",
@@ -5984,7 +6821,8 @@ export default {
               "low latency",
               "backpressure",
               "electronic",
-              "focus"
+              "focus",
+              "energize"
             ],
             "url": "http://spotify.com/track/p99",
             "title": "P99 - Low Latency | Spotify",
@@ -5995,11 +6833,28 @@ export default {
             "vertical": "all",
             "authority": 4,
             "keywords": [
+              "prefetch",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus"
+            ],
+            "url": "http://spotify.com/track/prefetch",
+            "title": "Prefetch - Cache Miss | Spotify",
+            "snippet": "Prefetch from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
               "puget",
               "harbor lights",
               "puget",
               "indie",
-              "guitar"
+              "guitar",
+              "commute",
+              "feel good"
             ],
             "url": "http://spotify.com/track/puget",
             "title": "Puget - Harbor Lights | Spotify",
@@ -6014,7 +6869,9 @@ export default {
               "midnight compiler",
               "cold start",
               "ambient",
-              "downtempo"
+              "downtempo",
+              "relax",
+              "sleep"
             ],
             "url": "http://spotify.com/track/rollback",
             "title": "Rollback - Midnight Compiler | Spotify",
@@ -6029,7 +6886,9 @@ export default {
               "tessellate",
               "tiling",
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "relax"
             ],
             "url": "http://spotify.com/track/seedless",
             "title": "Seedless - Tessellate | Spotify",
@@ -6040,10 +6899,27 @@ export default {
             "vertical": "all",
             "authority": 4,
             "keywords": [
+              "stop the world",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "commute"
+            ],
+            "url": "http://spotify.com/track/stop-the-world",
+            "title": "Stop the World - Heap Allocation | Spotify",
+            "snippet": "Stop the World from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
               "tail latency",
               "low latency",
               "backpressure",
-              "electronic"
+              "electronic",
+              "workout"
             ],
             "url": "http://spotify.com/track/tail-latency",
             "title": "Tail Latency - Low Latency | Spotify",
@@ -6058,11 +6934,29 @@ export default {
               "tessellate",
               "tiling",
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "focus"
             ],
             "url": "http://spotify.com/track/tiling",
             "title": "Tiling - Tessellate | Spotify",
             "snippet": "Tiling from the album Tiling by Tessellate."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 4,
+            "keywords": [
+              "warm cache",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "sleep"
+            ],
+            "url": "http://spotify.com/track/warm-cache",
+            "title": "Warm Cache - Cache Miss | Spotify",
+            "snippet": "Warm Cache from the album Cold Reads by Cache Miss."
           },
           {
             "site": "stackoverflow.com",
@@ -8970,6 +9864,583 @@ export default {
             "snippet": "Dana Quarks on the enforcement part of the Verge story, boosted across the instance."
           },
           {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "youtube music",
+              "music",
+              "streaming",
+              "playlist"
+            ],
+            "url": "http://music.youtube.com/",
+            "title": "YouTube Music",
+            "snippet": "Listen again, quick picks, moods and every album in one place."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "backpressure",
+              "low latency",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/backpressure",
+            "title": "Backpressure - Album by Low Latency | YouTube Music",
+            "snippet": "Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/cold-reads",
+            "title": "Cold Reads - Album by Cache Miss | YouTube Music",
+            "snippet": "Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/cold-start",
+            "title": "Cold Start - Album by Midnight Compiler | YouTube Music",
+            "snippet": "Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "endianness",
+              "byte order",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/endianness",
+            "title": "Endianness - Album by Byte Order | YouTube Music",
+            "snippet": "Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/fan-out",
+            "title": "Fan-out - Album by Parallel Lines | YouTube Music",
+            "snippet": "Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "garbage collected",
+              "heap allocation",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/garbage-collected",
+            "title": "Garbage Collected - Album by Heap Allocation | YouTube Music",
+            "snippet": "Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/puget",
+            "title": "Puget - Album by Harbor Lights | YouTube Music",
+            "snippet": "Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/tiling",
+            "title": "Tiling - Album by Tessellate | YouTube Music",
+            "snippet": "Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "byte order",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/byte-order",
+            "title": "Byte Order | YouTube Music",
+            "snippet": "Two MCs who cannot agree which end goes first."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cache miss",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/cache-miss",
+            "title": "Cache Miss | YouTube Music",
+            "snippet": "Lo-fi beats to wait on a cold read to."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "harbor lights",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/harbor-lights",
+            "title": "Harbor Lights | YouTube Music",
+            "snippet": "Guitars, ferries and rain. Recorded in Seattle."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "heap allocation",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/heap-allocation",
+            "title": "Heap Allocation | YouTube Music",
+            "snippet": "Indie pop from Austin about everything you forgot to free."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "low latency",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/low-latency",
+            "title": "Low Latency | YouTube Music",
+            "snippet": "Drum and bass for people waiting on a build."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "midnight compiler",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/midnight-compiler",
+            "title": "Midnight Compiler | YouTube Music",
+            "snippet": "Four people, one drum machine and a rule against lyrics. Album: Cold Start."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "parallel lines",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/parallel-lines",
+            "title": "Parallel Lines | YouTube Music",
+            "snippet": "Synth duo from Portland. Fan-out is their second record."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "tessellate",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/tessellate",
+            "title": "Tessellate | YouTube Music",
+            "snippet": "Minimal piano loops that never quite repeat."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "youtube music",
+              "explore",
+              "charts",
+              "new releases"
+            ],
+            "url": "http://music.youtube.com/explore",
+            "title": "Explore - YouTube Music",
+            "snippet": "New albums and singles, charts, moods and genres."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "backpressure",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
+            ],
+            "url": "http://music.youtube.com/watch?v=backpressure",
+            "title": "Backpressure - Low Latency | YouTube Music",
+            "snippet": "Backpressure from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "big endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "party",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=big-endian",
+            "title": "Big Endian - Byte Order | YouTube Music",
+            "snippet": "Big Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=cold-reads",
+            "title": "Cold Reads - Cache Miss | YouTube Music",
+            "snippet": "Cold Reads from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "focus",
+              "instrumental",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=cold-start",
+            "title": "Cold Start - Midnight Compiler | YouTube Music",
+            "snippet": "Cold Start from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "eviction",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=eviction",
+            "title": "Eviction - Cache Miss | YouTube Music",
+            "snippet": "Eviction from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "fan-out",
+              "electronic",
+              "focus",
+              "energize",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=fan-out",
+            "title": "Fan-out - Parallel Lines | YouTube Music",
+            "snippet": "Fan-out from the album Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "ferry terminal",
+              "harbor lights",
+              "puget",
+              "indie",
+              "guitar",
+              "relax",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=ferry-terminal",
+            "title": "Ferry Terminal - Harbor Lights | YouTube Music",
+            "snippet": "Ferry Terminal from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "generational",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=generational",
+            "title": "Generational - Heap Allocation | YouTube Music",
+            "snippet": "Generational from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "green build",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=green-build",
+            "title": "Green Build - Midnight Compiler | YouTube Music",
+            "snippet": "Green Build from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "little endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "workout",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=little-endian",
+            "title": "Little Endian - Byte Order | YouTube Music",
+            "snippet": "Little Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "mark and sweep",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ],
+            "url": "http://music.youtube.com/watch?v=mark-and-sweep",
+            "title": "Mark and Sweep - Heap Allocation | YouTube Music",
+            "snippet": "Mark and Sweep from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "mutex",
+              "parallel lines",
+              "fan-out",
+              "electronic",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=mutex",
+            "title": "Mutex - Parallel Lines | YouTube Music",
+            "snippet": "Mutex from the album Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "p99",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "focus",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=p99",
+            "title": "P99 - Low Latency | YouTube Music",
+            "snippet": "P99 from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "prefetch",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=prefetch",
+            "title": "Prefetch - Cache Miss | YouTube Music",
+            "snippet": "Prefetch from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "puget",
+              "indie",
+              "guitar",
+              "commute",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=puget",
+            "title": "Puget - Harbor Lights | YouTube Music",
+            "snippet": "Puget from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "rollback",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "downtempo",
+              "relax",
+              "sleep"
+            ],
+            "url": "http://music.youtube.com/watch?v=rollback",
+            "title": "Rollback - Midnight Compiler | YouTube Music",
+            "snippet": "Rollback from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "seedless",
+              "tessellate",
+              "tiling",
+              "minimal",
+              "instrumental",
+              "sleep",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=seedless",
+            "title": "Seedless - Tessellate | YouTube Music",
+            "snippet": "Seedless from the album Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "stop the world",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=stop-the-world",
+            "title": "Stop the World - Heap Allocation | YouTube Music",
+            "snippet": "Stop the World from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "tail latency",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "workout"
+            ],
+            "url": "http://music.youtube.com/watch?v=tail-latency",
+            "title": "Tail Latency - Low Latency | YouTube Music",
+            "snippet": "Tail Latency from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "tiling",
+              "minimal",
+              "instrumental",
+              "sleep",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=tiling",
+            "title": "Tiling - Tessellate | YouTube Music",
+            "snippet": "Tiling from the album Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "warm cache",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "sleep"
+            ],
+            "url": "http://music.youtube.com/watch?v=warm-cache",
+            "title": "Warm Cache - Cache Miss | YouTube Music",
+            "snippet": "Warm Cache from the album Cold Reads by Cache Miss."
+          },
+          {
             "site": "news.ycombinator.com",
             "vertical": "all",
             "authority": 7,
@@ -9790,6 +11261,136 @@ export default {
             "vertical": "all",
             "authority": 3,
             "keywords": [
+              "backpressure",
+              "low latency",
+              "album"
+            ],
+            "url": "http://spotify.com/album/backpressure",
+            "title": "Backpressure - Album by Low Latency | Spotify",
+            "snippet": "Backpressure by Low Latency."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "album"
+            ],
+            "url": "http://spotify.com/album/cold-reads",
+            "title": "Cold Reads - Album by Cache Miss | Spotify",
+            "snippet": "Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "album"
+            ],
+            "url": "http://spotify.com/album/cold-start",
+            "title": "Cold Start - Album by Midnight Compiler | Spotify",
+            "snippet": "Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "endianness",
+              "byte order",
+              "album"
+            ],
+            "url": "http://spotify.com/album/endianness",
+            "title": "Endianness - Album by Byte Order | Spotify",
+            "snippet": "Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "album"
+            ],
+            "url": "http://spotify.com/album/fan-out",
+            "title": "Fan-out - Album by Parallel Lines | Spotify",
+            "snippet": "Fan-out by Parallel Lines."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "garbage collected",
+              "heap allocation",
+              "album"
+            ],
+            "url": "http://spotify.com/album/garbage-collected",
+            "title": "Garbage Collected - Album by Heap Allocation | Spotify",
+            "snippet": "Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "album"
+            ],
+            "url": "http://spotify.com/album/puget",
+            "title": "Puget - Album by Harbor Lights | Spotify",
+            "snippet": "Puget by Harbor Lights."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "album"
+            ],
+            "url": "http://spotify.com/album/tiling",
+            "title": "Tiling - Album by Tessellate | Spotify",
+            "snippet": "Tiling by Tessellate."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "byte order",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/byte-order",
+            "title": "Byte Order | Spotify",
+            "snippet": "Two MCs who cannot agree which end goes first."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cache miss",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/cache-miss",
+            "title": "Cache Miss | Spotify",
+            "snippet": "Lo-fi beats to wait on a cold read to."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
               "harbor lights",
               "artist",
               "spotify"
@@ -9797,6 +11398,19 @@ export default {
             "url": "http://spotify.com/artist/harbor-lights",
             "title": "Harbor Lights | Spotify",
             "snippet": "Guitars, ferries and rain. Recorded in Seattle."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "heap allocation",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/heap-allocation",
+            "title": "Heap Allocation | Spotify",
+            "snippet": "Indie pop from Austin about everything you forgot to free."
           },
           {
             "site": "spotify.com",
@@ -9888,11 +11502,46 @@ export default {
               "low latency",
               "backpressure",
               "electronic",
-              "drum and bass"
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
             ],
             "url": "http://spotify.com/track/backpressure",
             "title": "Backpressure - Low Latency | Spotify",
             "snippet": "Backpressure from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "big endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "party",
+              "energize"
+            ],
+            "url": "http://spotify.com/track/big-endian",
+            "title": "Big Endian - Byte Order | Spotify",
+            "snippet": "Big Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "relax"
+            ],
+            "url": "http://spotify.com/track/cold-reads",
+            "title": "Cold Reads - Cache Miss | Spotify",
+            "snippet": "Cold Reads from the album Cold Reads by Cache Miss."
           },
           {
             "site": "spotify.com",
@@ -9904,7 +11553,8 @@ export default {
               "cold start",
               "ambient",
               "focus",
-              "instrumental"
+              "instrumental",
+              "relax"
             ],
             "url": "http://spotify.com/track/cold-start",
             "title": "Cold Start - Midnight Compiler | Spotify",
@@ -9915,11 +11565,28 @@ export default {
             "vertical": "all",
             "authority": 3,
             "keywords": [
+              "eviction",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "relax"
+            ],
+            "url": "http://spotify.com/track/eviction",
+            "title": "Eviction - Cache Miss | Spotify",
+            "snippet": "Eviction from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
               "fan-out",
               "parallel lines",
               "fan-out",
               "electronic",
-              "focus"
+              "focus",
+              "energize",
+              "commute"
             ],
             "url": "http://spotify.com/track/fan-out",
             "title": "Fan-out - Parallel Lines | Spotify",
@@ -9934,11 +11601,29 @@ export default {
               "harbor lights",
               "puget",
               "indie",
-              "guitar"
+              "guitar",
+              "relax",
+              "feel good"
             ],
             "url": "http://spotify.com/track/ferry-terminal",
             "title": "Ferry Terminal - Harbor Lights | Spotify",
             "snippet": "Ferry Terminal from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "generational",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good"
+            ],
+            "url": "http://spotify.com/track/generational",
+            "title": "Generational - Heap Allocation | Spotify",
+            "snippet": "Generational from the album Garbage Collected by Heap Allocation."
           },
           {
             "site": "spotify.com",
@@ -9960,10 +11645,44 @@ export default {
             "vertical": "all",
             "authority": 3,
             "keywords": [
+              "little endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "workout",
+              "energize"
+            ],
+            "url": "http://spotify.com/track/little-endian",
+            "title": "Little Endian - Byte Order | Spotify",
+            "snippet": "Little Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "mark and sweep",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ],
+            "url": "http://spotify.com/track/mark-and-sweep",
+            "title": "Mark and Sweep - Heap Allocation | Spotify",
+            "snippet": "Mark and Sweep from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
               "mutex",
               "parallel lines",
               "fan-out",
-              "electronic"
+              "electronic",
+              "commute"
             ],
             "url": "http://spotify.com/track/mutex",
             "title": "Mutex - Parallel Lines | Spotify",
@@ -9978,7 +11697,8 @@ export default {
               "low latency",
               "backpressure",
               "electronic",
-              "focus"
+              "focus",
+              "energize"
             ],
             "url": "http://spotify.com/track/p99",
             "title": "P99 - Low Latency | Spotify",
@@ -9989,11 +11709,28 @@ export default {
             "vertical": "all",
             "authority": 3,
             "keywords": [
+              "prefetch",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus"
+            ],
+            "url": "http://spotify.com/track/prefetch",
+            "title": "Prefetch - Cache Miss | Spotify",
+            "snippet": "Prefetch from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
               "puget",
               "harbor lights",
               "puget",
               "indie",
-              "guitar"
+              "guitar",
+              "commute",
+              "feel good"
             ],
             "url": "http://spotify.com/track/puget",
             "title": "Puget - Harbor Lights | Spotify",
@@ -10008,7 +11745,9 @@ export default {
               "midnight compiler",
               "cold start",
               "ambient",
-              "downtempo"
+              "downtempo",
+              "relax",
+              "sleep"
             ],
             "url": "http://spotify.com/track/rollback",
             "title": "Rollback - Midnight Compiler | Spotify",
@@ -10023,7 +11762,9 @@ export default {
               "tessellate",
               "tiling",
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "relax"
             ],
             "url": "http://spotify.com/track/seedless",
             "title": "Seedless - Tessellate | Spotify",
@@ -10034,10 +11775,27 @@ export default {
             "vertical": "all",
             "authority": 3,
             "keywords": [
+              "stop the world",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "commute"
+            ],
+            "url": "http://spotify.com/track/stop-the-world",
+            "title": "Stop the World - Heap Allocation | Spotify",
+            "snippet": "Stop the World from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
               "tail latency",
               "low latency",
               "backpressure",
-              "electronic"
+              "electronic",
+              "workout"
             ],
             "url": "http://spotify.com/track/tail-latency",
             "title": "Tail Latency - Low Latency | Spotify",
@@ -10052,11 +11810,29 @@ export default {
               "tessellate",
               "tiling",
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "focus"
             ],
             "url": "http://spotify.com/track/tiling",
             "title": "Tiling - Tessellate | Spotify",
             "snippet": "Tiling from the album Tiling by Tessellate."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "warm cache",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "sleep"
+            ],
+            "url": "http://spotify.com/track/warm-cache",
+            "title": "Warm Cache - Cache Miss | Spotify",
+            "snippet": "Warm Cache from the album Cold Reads by Cache Miss."
           },
           {
             "site": "stackoverflow.com",
@@ -12946,6 +14722,583 @@ export default {
             "snippet": "Dana Quarks on the enforcement part of the Verge story, boosted across the instance."
           },
           {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "youtube music",
+              "music",
+              "streaming",
+              "playlist"
+            ],
+            "url": "http://music.youtube.com/",
+            "title": "YouTube Music",
+            "snippet": "Listen again, quick picks, moods and every album in one place."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "backpressure",
+              "low latency",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/backpressure",
+            "title": "Backpressure - Album by Low Latency | YouTube Music",
+            "snippet": "Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/cold-reads",
+            "title": "Cold Reads - Album by Cache Miss | YouTube Music",
+            "snippet": "Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/cold-start",
+            "title": "Cold Start - Album by Midnight Compiler | YouTube Music",
+            "snippet": "Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "endianness",
+              "byte order",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/endianness",
+            "title": "Endianness - Album by Byte Order | YouTube Music",
+            "snippet": "Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/fan-out",
+            "title": "Fan-out - Album by Parallel Lines | YouTube Music",
+            "snippet": "Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "garbage collected",
+              "heap allocation",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/garbage-collected",
+            "title": "Garbage Collected - Album by Heap Allocation | YouTube Music",
+            "snippet": "Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/puget",
+            "title": "Puget - Album by Harbor Lights | YouTube Music",
+            "snippet": "Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "album"
+            ],
+            "url": "http://music.youtube.com/browse/tiling",
+            "title": "Tiling - Album by Tessellate | YouTube Music",
+            "snippet": "Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "byte order",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/byte-order",
+            "title": "Byte Order | YouTube Music",
+            "snippet": "Two MCs who cannot agree which end goes first."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "cache miss",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/cache-miss",
+            "title": "Cache Miss | YouTube Music",
+            "snippet": "Lo-fi beats to wait on a cold read to."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "harbor lights",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/harbor-lights",
+            "title": "Harbor Lights | YouTube Music",
+            "snippet": "Guitars, ferries and rain. Recorded in Seattle."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "heap allocation",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/heap-allocation",
+            "title": "Heap Allocation | YouTube Music",
+            "snippet": "Indie pop from Austin about everything you forgot to free."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "low latency",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/low-latency",
+            "title": "Low Latency | YouTube Music",
+            "snippet": "Drum and bass for people waiting on a build."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "midnight compiler",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/midnight-compiler",
+            "title": "Midnight Compiler | YouTube Music",
+            "snippet": "Four people, one drum machine and a rule against lyrics. Album: Cold Start."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "parallel lines",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/parallel-lines",
+            "title": "Parallel Lines | YouTube Music",
+            "snippet": "Synth duo from Portland. Fan-out is their second record."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "tessellate",
+              "artist",
+              "youtube music"
+            ],
+            "url": "http://music.youtube.com/channel/tessellate",
+            "title": "Tessellate | YouTube Music",
+            "snippet": "Minimal piano loops that never quite repeat."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 3,
+            "keywords": [
+              "youtube music",
+              "explore",
+              "charts",
+              "new releases"
+            ],
+            "url": "http://music.youtube.com/explore",
+            "title": "Explore - YouTube Music",
+            "snippet": "New albums and singles, charts, moods and genres."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "backpressure",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
+            ],
+            "url": "http://music.youtube.com/watch?v=backpressure",
+            "title": "Backpressure - Low Latency | YouTube Music",
+            "snippet": "Backpressure from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "big endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "party",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=big-endian",
+            "title": "Big Endian - Byte Order | YouTube Music",
+            "snippet": "Big Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=cold-reads",
+            "title": "Cold Reads - Cache Miss | YouTube Music",
+            "snippet": "Cold Reads from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "focus",
+              "instrumental",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=cold-start",
+            "title": "Cold Start - Midnight Compiler | YouTube Music",
+            "snippet": "Cold Start from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "eviction",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=eviction",
+            "title": "Eviction - Cache Miss | YouTube Music",
+            "snippet": "Eviction from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "fan-out",
+              "electronic",
+              "focus",
+              "energize",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=fan-out",
+            "title": "Fan-out - Parallel Lines | YouTube Music",
+            "snippet": "Fan-out from the album Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "ferry terminal",
+              "harbor lights",
+              "puget",
+              "indie",
+              "guitar",
+              "relax",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=ferry-terminal",
+            "title": "Ferry Terminal - Harbor Lights | YouTube Music",
+            "snippet": "Ferry Terminal from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "generational",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=generational",
+            "title": "Generational - Heap Allocation | YouTube Music",
+            "snippet": "Generational from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "green build",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=green-build",
+            "title": "Green Build - Midnight Compiler | YouTube Music",
+            "snippet": "Green Build from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "little endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "workout",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=little-endian",
+            "title": "Little Endian - Byte Order | YouTube Music",
+            "snippet": "Little Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "mark and sweep",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ],
+            "url": "http://music.youtube.com/watch?v=mark-and-sweep",
+            "title": "Mark and Sweep - Heap Allocation | YouTube Music",
+            "snippet": "Mark and Sweep from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "mutex",
+              "parallel lines",
+              "fan-out",
+              "electronic",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=mutex",
+            "title": "Mutex - Parallel Lines | YouTube Music",
+            "snippet": "Mutex from the album Fan-out by Parallel Lines."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "p99",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "focus",
+              "energize"
+            ],
+            "url": "http://music.youtube.com/watch?v=p99",
+            "title": "P99 - Low Latency | YouTube Music",
+            "snippet": "P99 from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "prefetch",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=prefetch",
+            "title": "Prefetch - Cache Miss | YouTube Music",
+            "snippet": "Prefetch from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "puget",
+              "indie",
+              "guitar",
+              "commute",
+              "feel good"
+            ],
+            "url": "http://music.youtube.com/watch?v=puget",
+            "title": "Puget - Harbor Lights | YouTube Music",
+            "snippet": "Puget from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "rollback",
+              "midnight compiler",
+              "cold start",
+              "ambient",
+              "downtempo",
+              "relax",
+              "sleep"
+            ],
+            "url": "http://music.youtube.com/watch?v=rollback",
+            "title": "Rollback - Midnight Compiler | YouTube Music",
+            "snippet": "Rollback from the album Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "seedless",
+              "tessellate",
+              "tiling",
+              "minimal",
+              "instrumental",
+              "sleep",
+              "relax"
+            ],
+            "url": "http://music.youtube.com/watch?v=seedless",
+            "title": "Seedless - Tessellate | YouTube Music",
+            "snippet": "Seedless from the album Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "stop the world",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "commute"
+            ],
+            "url": "http://music.youtube.com/watch?v=stop-the-world",
+            "title": "Stop the World - Heap Allocation | YouTube Music",
+            "snippet": "Stop the World from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "tail latency",
+              "low latency",
+              "backpressure",
+              "electronic",
+              "workout"
+            ],
+            "url": "http://music.youtube.com/watch?v=tail-latency",
+            "title": "Tail Latency - Low Latency | YouTube Music",
+            "snippet": "Tail Latency from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "tiling",
+              "minimal",
+              "instrumental",
+              "sleep",
+              "focus"
+            ],
+            "url": "http://music.youtube.com/watch?v=tiling",
+            "title": "Tiling - Tessellate | YouTube Music",
+            "snippet": "Tiling from the album Tiling by Tessellate."
+          },
+          {
+            "site": "music.youtube.com",
+            "vertical": "all",
+            "authority": 2,
+            "keywords": [
+              "warm cache",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "sleep"
+            ],
+            "url": "http://music.youtube.com/watch?v=warm-cache",
+            "title": "Warm Cache - Cache Miss | YouTube Music",
+            "snippet": "Warm Cache from the album Cold Reads by Cache Miss."
+          },
+          {
             "site": "news.ycombinator.com",
             "vertical": "all",
             "authority": 4,
@@ -13766,6 +16119,136 @@ export default {
             "vertical": "all",
             "authority": 5,
             "keywords": [
+              "backpressure",
+              "low latency",
+              "album"
+            ],
+            "url": "http://spotify.com/album/backpressure",
+            "title": "Backpressure - Album by Low Latency | Spotify",
+            "snippet": "Backpressure by Low Latency."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "album"
+            ],
+            "url": "http://spotify.com/album/cold-reads",
+            "title": "Cold Reads - Album by Cache Miss | Spotify",
+            "snippet": "Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "cold start",
+              "midnight compiler",
+              "album"
+            ],
+            "url": "http://spotify.com/album/cold-start",
+            "title": "Cold Start - Album by Midnight Compiler | Spotify",
+            "snippet": "Cold Start by Midnight Compiler."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "endianness",
+              "byte order",
+              "album"
+            ],
+            "url": "http://spotify.com/album/endianness",
+            "title": "Endianness - Album by Byte Order | Spotify",
+            "snippet": "Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "fan-out",
+              "parallel lines",
+              "album"
+            ],
+            "url": "http://spotify.com/album/fan-out",
+            "title": "Fan-out - Album by Parallel Lines | Spotify",
+            "snippet": "Fan-out by Parallel Lines."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "garbage collected",
+              "heap allocation",
+              "album"
+            ],
+            "url": "http://spotify.com/album/garbage-collected",
+            "title": "Garbage Collected - Album by Heap Allocation | Spotify",
+            "snippet": "Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "puget",
+              "harbor lights",
+              "album"
+            ],
+            "url": "http://spotify.com/album/puget",
+            "title": "Puget - Album by Harbor Lights | Spotify",
+            "snippet": "Puget by Harbor Lights."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "tiling",
+              "tessellate",
+              "album"
+            ],
+            "url": "http://spotify.com/album/tiling",
+            "title": "Tiling - Album by Tessellate | Spotify",
+            "snippet": "Tiling by Tessellate."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "byte order",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/byte-order",
+            "title": "Byte Order | Spotify",
+            "snippet": "Two MCs who cannot agree which end goes first."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "cache miss",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/cache-miss",
+            "title": "Cache Miss | Spotify",
+            "snippet": "Lo-fi beats to wait on a cold read to."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
               "harbor lights",
               "artist",
               "spotify"
@@ -13773,6 +16256,19 @@ export default {
             "url": "http://spotify.com/artist/harbor-lights",
             "title": "Harbor Lights | Spotify",
             "snippet": "Guitars, ferries and rain. Recorded in Seattle."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "heap allocation",
+              "artist",
+              "spotify"
+            ],
+            "url": "http://spotify.com/artist/heap-allocation",
+            "title": "Heap Allocation | Spotify",
+            "snippet": "Indie pop from Austin about everything you forgot to free."
           },
           {
             "site": "spotify.com",
@@ -13864,11 +16360,46 @@ export default {
               "low latency",
               "backpressure",
               "electronic",
-              "drum and bass"
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
             ],
             "url": "http://spotify.com/track/backpressure",
             "title": "Backpressure - Low Latency | Spotify",
             "snippet": "Backpressure from the album Backpressure by Low Latency."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "big endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "party",
+              "energize"
+            ],
+            "url": "http://spotify.com/track/big-endian",
+            "title": "Big Endian - Byte Order | Spotify",
+            "snippet": "Big Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "cold reads",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "relax"
+            ],
+            "url": "http://spotify.com/track/cold-reads",
+            "title": "Cold Reads - Cache Miss | Spotify",
+            "snippet": "Cold Reads from the album Cold Reads by Cache Miss."
           },
           {
             "site": "spotify.com",
@@ -13880,7 +16411,8 @@ export default {
               "cold start",
               "ambient",
               "focus",
-              "instrumental"
+              "instrumental",
+              "relax"
             ],
             "url": "http://spotify.com/track/cold-start",
             "title": "Cold Start - Midnight Compiler | Spotify",
@@ -13891,11 +16423,28 @@ export default {
             "vertical": "all",
             "authority": 5,
             "keywords": [
+              "eviction",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "relax"
+            ],
+            "url": "http://spotify.com/track/eviction",
+            "title": "Eviction - Cache Miss | Spotify",
+            "snippet": "Eviction from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
               "fan-out",
               "parallel lines",
               "fan-out",
               "electronic",
-              "focus"
+              "focus",
+              "energize",
+              "commute"
             ],
             "url": "http://spotify.com/track/fan-out",
             "title": "Fan-out - Parallel Lines | Spotify",
@@ -13910,11 +16459,29 @@ export default {
               "harbor lights",
               "puget",
               "indie",
-              "guitar"
+              "guitar",
+              "relax",
+              "feel good"
             ],
             "url": "http://spotify.com/track/ferry-terminal",
             "title": "Ferry Terminal - Harbor Lights | Spotify",
             "snippet": "Ferry Terminal from the album Puget by Harbor Lights."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "generational",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good"
+            ],
+            "url": "http://spotify.com/track/generational",
+            "title": "Generational - Heap Allocation | Spotify",
+            "snippet": "Generational from the album Garbage Collected by Heap Allocation."
           },
           {
             "site": "spotify.com",
@@ -13936,10 +16503,44 @@ export default {
             "vertical": "all",
             "authority": 5,
             "keywords": [
+              "little endian",
+              "byte order",
+              "endianness",
+              "hip hop",
+              "workout",
+              "energize"
+            ],
+            "url": "http://spotify.com/track/little-endian",
+            "title": "Little Endian - Byte Order | Spotify",
+            "snippet": "Little Endian from the album Endianness by Byte Order."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "mark and sweep",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ],
+            "url": "http://spotify.com/track/mark-and-sweep",
+            "title": "Mark and Sweep - Heap Allocation | Spotify",
+            "snippet": "Mark and Sweep from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
               "mutex",
               "parallel lines",
               "fan-out",
-              "electronic"
+              "electronic",
+              "commute"
             ],
             "url": "http://spotify.com/track/mutex",
             "title": "Mutex - Parallel Lines | Spotify",
@@ -13954,7 +16555,8 @@ export default {
               "low latency",
               "backpressure",
               "electronic",
-              "focus"
+              "focus",
+              "energize"
             ],
             "url": "http://spotify.com/track/p99",
             "title": "P99 - Low Latency | Spotify",
@@ -13965,11 +16567,28 @@ export default {
             "vertical": "all",
             "authority": 5,
             "keywords": [
+              "prefetch",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus"
+            ],
+            "url": "http://spotify.com/track/prefetch",
+            "title": "Prefetch - Cache Miss | Spotify",
+            "snippet": "Prefetch from the album Cold Reads by Cache Miss."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
               "puget",
               "harbor lights",
               "puget",
               "indie",
-              "guitar"
+              "guitar",
+              "commute",
+              "feel good"
             ],
             "url": "http://spotify.com/track/puget",
             "title": "Puget - Harbor Lights | Spotify",
@@ -13984,7 +16603,9 @@ export default {
               "midnight compiler",
               "cold start",
               "ambient",
-              "downtempo"
+              "downtempo",
+              "relax",
+              "sleep"
             ],
             "url": "http://spotify.com/track/rollback",
             "title": "Rollback - Midnight Compiler | Spotify",
@@ -13999,7 +16620,9 @@ export default {
               "tessellate",
               "tiling",
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "relax"
             ],
             "url": "http://spotify.com/track/seedless",
             "title": "Seedless - Tessellate | Spotify",
@@ -14010,10 +16633,27 @@ export default {
             "vertical": "all",
             "authority": 5,
             "keywords": [
+              "stop the world",
+              "heap allocation",
+              "garbage collected",
+              "indie",
+              "pop",
+              "commute"
+            ],
+            "url": "http://spotify.com/track/stop-the-world",
+            "title": "Stop the World - Heap Allocation | Spotify",
+            "snippet": "Stop the World from the album Garbage Collected by Heap Allocation."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
               "tail latency",
               "low latency",
               "backpressure",
-              "electronic"
+              "electronic",
+              "workout"
             ],
             "url": "http://spotify.com/track/tail-latency",
             "title": "Tail Latency - Low Latency | Spotify",
@@ -14028,11 +16668,29 @@ export default {
               "tessellate",
               "tiling",
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "focus"
             ],
             "url": "http://spotify.com/track/tiling",
             "title": "Tiling - Tessellate | Spotify",
             "snippet": "Tiling from the album Tiling by Tessellate."
+          },
+          {
+            "site": "spotify.com",
+            "vertical": "all",
+            "authority": 5,
+            "keywords": [
+              "warm cache",
+              "cache miss",
+              "cold reads",
+              "lo-fi",
+              "focus",
+              "sleep"
+            ],
+            "url": "http://spotify.com/track/warm-cache",
+            "title": "Warm Cache - Cache Miss | Spotify",
+            "snippet": "Warm Cache from the album Cold Reads by Cache Miss."
           },
           {
             "site": "stackoverflow.com",
@@ -15264,12 +17922,11 @@ export default {
         "brand": "Spotify",
         "tagline": "Music for shipping things.",
         "theme": {
-          "accent": "#1db954",
-          "background": "#121212",
-          "surface": "#181818",
+          "accent": "#1ed760",
+          "background": "#000000",
+          "surface": "#121212",
           "ink": "#ffffff",
-          "muted": "#b3b3b3",
-          "content_width": 1120
+          "muted": "#b3b3b3"
         },
         "channels": {
           "midnight-compiler": {
@@ -15311,6 +17968,30 @@ export default {
             "owner": null,
             "subscribers": 29118,
             "about": "Minimal piano loops that never quite repeat."
+          },
+          "heap-allocation": {
+            "id": "heap-allocation",
+            "name": "Heap Allocation",
+            "handle": "@heapallocation",
+            "owner": null,
+            "subscribers": 268004,
+            "about": "Indie pop from Austin about everything you forgot to free."
+          },
+          "byte-order": {
+            "id": "byte-order",
+            "name": "Byte Order",
+            "handle": "@byteorder",
+            "owner": null,
+            "subscribers": 512880,
+            "about": "Two MCs who cannot agree which end goes first."
+          },
+          "cache-miss": {
+            "id": "cache-miss",
+            "name": "Cache Miss",
+            "handle": "@cachemiss",
+            "owner": null,
+            "subscribers": 1320455,
+            "about": "Lo-fi beats to wait on a cold read to."
           }
         },
         "items": {
@@ -15327,7 +18008,8 @@ export default {
             "tags": [
               "ambient",
               "focus",
-              "instrumental"
+              "instrumental",
+              "relax"
             ]
           },
           "green-build": {
@@ -15357,7 +18039,9 @@ export default {
             "likes": 7744,
             "tags": [
               "ambient",
-              "downtempo"
+              "downtempo",
+              "relax",
+              "sleep"
             ]
           },
           "fan-out": {
@@ -15372,7 +18056,9 @@ export default {
             "likes": 41207,
             "tags": [
               "electronic",
-              "focus"
+              "focus",
+              "energize",
+              "commute"
             ]
           },
           "mutex": {
@@ -15386,7 +18072,8 @@ export default {
             "plays": 512043,
             "likes": 18330,
             "tags": [
-              "electronic"
+              "electronic",
+              "commute"
             ]
           },
           "backpressure": {
@@ -15401,7 +18088,10 @@ export default {
             "likes": 62114,
             "tags": [
               "electronic",
-              "drum and bass"
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
             ]
           },
           "tail-latency": {
@@ -15415,7 +18105,8 @@ export default {
             "plays": 733910,
             "likes": 30028,
             "tags": [
-              "electronic"
+              "electronic",
+              "workout"
             ]
           },
           "p99": {
@@ -15430,7 +18121,8 @@ export default {
             "likes": 19844,
             "tags": [
               "electronic",
-              "focus"
+              "focus",
+              "energize"
             ]
           },
           "puget": {
@@ -15445,7 +18137,9 @@ export default {
             "likes": 8201,
             "tags": [
               "indie",
-              "guitar"
+              "guitar",
+              "commute",
+              "feel good"
             ]
           },
           "ferry-terminal": {
@@ -15460,7 +18154,9 @@ export default {
             "likes": 4410,
             "tags": [
               "indie",
-              "guitar"
+              "guitar",
+              "relax",
+              "feel good"
             ]
           },
           "tiling": {
@@ -15475,7 +18171,9 @@ export default {
             "likes": 3102,
             "tags": [
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "focus"
             ]
           },
           "seedless": {
@@ -15490,7 +18188,152 @@ export default {
             "likes": 1877,
             "tags": [
               "minimal",
-              "instrumental"
+              "instrumental",
+              "sleep",
+              "relax"
+            ]
+          },
+          "mark-and-sweep": {
+            "id": "mark-and-sweep",
+            "channel": "heap-allocation",
+            "title": "Mark and Sweep",
+            "album": "Garbage Collected",
+            "duration_s": 201,
+            "published": "Oct 3, 2025",
+            "published_tick": 13,
+            "plays": 344120,
+            "likes": 15230,
+            "tags": [
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ]
+          },
+          "stop-the-world": {
+            "id": "stop-the-world",
+            "channel": "heap-allocation",
+            "title": "Stop the World",
+            "album": "Garbage Collected",
+            "duration_s": 233,
+            "published": "Oct 3, 2025",
+            "published_tick": 14,
+            "plays": 188402,
+            "likes": 7310,
+            "tags": [
+              "indie",
+              "pop",
+              "commute"
+            ]
+          },
+          "generational": {
+            "id": "generational",
+            "channel": "heap-allocation",
+            "title": "Generational",
+            "album": "Garbage Collected",
+            "duration_s": 187,
+            "published": "Oct 3, 2025",
+            "published_tick": 15,
+            "plays": 120775,
+            "likes": 5022,
+            "tags": [
+              "indie",
+              "pop",
+              "feel good"
+            ]
+          },
+          "little-endian": {
+            "id": "little-endian",
+            "channel": "byte-order",
+            "title": "Little Endian",
+            "album": "Endianness",
+            "duration_s": 176,
+            "published": "Jan 23, 2026",
+            "published_tick": 16,
+            "plays": 690118,
+            "likes": 40211,
+            "tags": [
+              "hip hop",
+              "workout",
+              "energize"
+            ]
+          },
+          "big-endian": {
+            "id": "big-endian",
+            "channel": "byte-order",
+            "title": "Big Endian",
+            "album": "Endianness",
+            "duration_s": 204,
+            "published": "Jan 23, 2026",
+            "published_tick": 17,
+            "plays": 571342,
+            "likes": 33054,
+            "tags": [
+              "hip hop",
+              "party",
+              "energize"
+            ]
+          },
+          "cold-reads": {
+            "id": "cold-reads",
+            "channel": "cache-miss",
+            "title": "Cold Reads",
+            "album": "Cold Reads",
+            "duration_s": 158,
+            "published": "Apr 10, 2026",
+            "published_tick": 18,
+            "plays": 2210433,
+            "likes": 98112,
+            "tags": [
+              "lo-fi",
+              "focus",
+              "relax"
+            ]
+          },
+          "warm-cache": {
+            "id": "warm-cache",
+            "channel": "cache-miss",
+            "title": "Warm Cache",
+            "album": "Cold Reads",
+            "duration_s": 171,
+            "published": "Apr 10, 2026",
+            "published_tick": 19,
+            "plays": 1640021,
+            "likes": 71002,
+            "tags": [
+              "lo-fi",
+              "focus",
+              "sleep"
+            ]
+          },
+          "eviction": {
+            "id": "eviction",
+            "channel": "cache-miss",
+            "title": "Eviction",
+            "album": "Cold Reads",
+            "duration_s": 149,
+            "published": "Apr 10, 2026",
+            "published_tick": 20,
+            "plays": 903114,
+            "likes": 38440,
+            "tags": [
+              "lo-fi",
+              "relax"
+            ]
+          },
+          "prefetch": {
+            "id": "prefetch",
+            "channel": "cache-miss",
+            "title": "Prefetch",
+            "album": "Cold Reads",
+            "duration_s": 163,
+            "published": "Apr 10, 2026",
+            "published_tick": 21,
+            "plays": 812355,
+            "likes": 30119,
+            "tags": [
+              "lo-fi",
+              "focus"
             ]
           }
         },
@@ -15511,15 +18354,6 @@ export default {
               "puget",
               "ferry-terminal",
               "tiling"
-            ]
-          },
-          "liked": {
-            "id": "liked",
-            "title": "Liked Songs",
-            "owner": null,
-            "items": [
-              "cold-start",
-              "fan-out"
             ]
           },
           "deep-focus": {
@@ -15562,6 +18396,78 @@ export default {
             "tick": 9,
             "list": "ship-it"
           }
+        },
+        "albums": {
+          "cold-start": {
+            "genre": "Ambient"
+          },
+          "fan-out": {
+            "genre": "Electronic"
+          },
+          "backpressure": {
+            "genre": "Drum & Bass"
+          },
+          "puget": {
+            "genre": "Indie Rock"
+          },
+          "tiling": {
+            "genre": "Classical"
+          },
+          "garbage-collected": {
+            "genre": "Indie Pop"
+          },
+          "endianness": {
+            "genre": "Hip-Hop/Rap"
+          },
+          "cold-reads": {
+            "genre": "Lo-Fi"
+          }
+        },
+        "library": {
+          "alice": [
+            "tiling",
+            "seedless",
+            "cold-start",
+            "green-build",
+            "rollback",
+            "mark-and-sweep",
+            "puget",
+            "cold-reads",
+            "warm-cache"
+          ],
+          "carol": [
+            "backpressure",
+            "tail-latency",
+            "p99",
+            "fan-out",
+            "mutex",
+            "cold-start"
+          ],
+          "bob": [
+            "fan-out",
+            "mutex",
+            "little-endian"
+          ]
+        },
+        "history": {
+          "alice": [
+            "tiling",
+            "cold-reads",
+            "cold-start",
+            "p99",
+            "puget",
+            "mark-and-sweep"
+          ],
+          "carol": [
+            "cold-start",
+            "backpressure",
+            "fan-out",
+            "little-endian"
+          ],
+          "bob": [
+            "mutex",
+            "big-endian"
+          ]
         }
       }
     },
@@ -25824,6 +28730,590 @@ export default {
         },
         "next_tx": 15
       }
+    },
+    {
+      "id": "youtube-music",
+      "kind": "media",
+      "node": "youtube-music",
+      "domains": [
+        "music.youtube.com"
+      ],
+      "port": 80,
+      "initial_state": {
+        "mode": "music",
+        "brand": "YouTube Music",
+        "tagline": "Music for every build.",
+        "theme": {
+          "accent": "#ff0000",
+          "background": "#030303",
+          "surface": "#212121",
+          "ink": "#ffffff",
+          "muted": "#aaaaaa"
+        },
+        "channels": {
+          "midnight-compiler": {
+            "id": "midnight-compiler",
+            "name": "Midnight Compiler",
+            "handle": "@midnightcompiler",
+            "owner": null,
+            "subscribers": 184220,
+            "about": "Four people, one drum machine and a rule against lyrics. Album: Cold Start."
+          },
+          "parallel-lines": {
+            "id": "parallel-lines",
+            "name": "Parallel Lines",
+            "handle": "@parallellines",
+            "owner": null,
+            "subscribers": 402118,
+            "about": "Synth duo from Portland. Fan-out is their second record."
+          },
+          "low-latency": {
+            "id": "low-latency",
+            "name": "Low Latency",
+            "handle": "@lowlatency",
+            "owner": null,
+            "subscribers": 911403,
+            "about": "Drum and bass for people waiting on a build."
+          },
+          "harbor-lights": {
+            "id": "harbor-lights",
+            "name": "Harbor Lights",
+            "handle": "@harborlights",
+            "owner": null,
+            "subscribers": 73540,
+            "about": "Guitars, ferries and rain. Recorded in Seattle."
+          },
+          "tessellate": {
+            "id": "tessellate",
+            "name": "Tessellate",
+            "handle": "@tessellate",
+            "owner": null,
+            "subscribers": 29118,
+            "about": "Minimal piano loops that never quite repeat."
+          },
+          "heap-allocation": {
+            "id": "heap-allocation",
+            "name": "Heap Allocation",
+            "handle": "@heapallocation",
+            "owner": null,
+            "subscribers": 268004,
+            "about": "Indie pop from Austin about everything you forgot to free."
+          },
+          "byte-order": {
+            "id": "byte-order",
+            "name": "Byte Order",
+            "handle": "@byteorder",
+            "owner": null,
+            "subscribers": 512880,
+            "about": "Two MCs who cannot agree which end goes first."
+          },
+          "cache-miss": {
+            "id": "cache-miss",
+            "name": "Cache Miss",
+            "handle": "@cachemiss",
+            "owner": null,
+            "subscribers": 1320455,
+            "about": "Lo-fi beats to wait on a cold read to."
+          }
+        },
+        "items": {
+          "cold-start": {
+            "id": "cold-start",
+            "channel": "midnight-compiler",
+            "title": "Cold Start",
+            "album": "Cold Start",
+            "duration_s": 214,
+            "published": "Feb 2, 2024",
+            "published_tick": 1,
+            "plays": 418233,
+            "likes": 21033,
+            "tags": [
+              "ambient",
+              "focus",
+              "instrumental",
+              "relax"
+            ]
+          },
+          "green-build": {
+            "id": "green-build",
+            "channel": "midnight-compiler",
+            "title": "Green Build",
+            "album": "Cold Start",
+            "duration_s": 188,
+            "published": "Feb 2, 2024",
+            "published_tick": 2,
+            "plays": 302914,
+            "likes": 9120,
+            "tags": [
+              "ambient",
+              "focus"
+            ]
+          },
+          "rollback": {
+            "id": "rollback",
+            "channel": "midnight-compiler",
+            "title": "Rollback",
+            "album": "Cold Start",
+            "duration_s": 241,
+            "published": "Feb 2, 2024",
+            "published_tick": 3,
+            "plays": 211775,
+            "likes": 7744,
+            "tags": [
+              "ambient",
+              "downtempo",
+              "relax",
+              "sleep"
+            ]
+          },
+          "fan-out": {
+            "id": "fan-out",
+            "channel": "parallel-lines",
+            "title": "Fan-out",
+            "album": "Fan-out",
+            "duration_s": 203,
+            "published": "Aug 19, 2024",
+            "published_tick": 4,
+            "plays": 884120,
+            "likes": 41207,
+            "tags": [
+              "electronic",
+              "focus",
+              "energize",
+              "commute"
+            ]
+          },
+          "mutex": {
+            "id": "mutex",
+            "channel": "parallel-lines",
+            "title": "Mutex",
+            "album": "Fan-out",
+            "duration_s": 176,
+            "published": "Aug 19, 2024",
+            "published_tick": 5,
+            "plays": 512043,
+            "likes": 18330,
+            "tags": [
+              "electronic",
+              "commute"
+            ]
+          },
+          "backpressure": {
+            "id": "backpressure",
+            "channel": "low-latency",
+            "title": "Backpressure",
+            "album": "Backpressure",
+            "duration_s": 256,
+            "published": "Jan 9, 2025",
+            "published_tick": 6,
+            "plays": 1204338,
+            "likes": 62114,
+            "tags": [
+              "electronic",
+              "drum and bass",
+              "workout",
+              "energize",
+              "party"
+            ]
+          },
+          "tail-latency": {
+            "id": "tail-latency",
+            "channel": "low-latency",
+            "title": "Tail Latency",
+            "album": "Backpressure",
+            "duration_s": 199,
+            "published": "Jan 9, 2025",
+            "published_tick": 7,
+            "plays": 733910,
+            "likes": 30028,
+            "tags": [
+              "electronic",
+              "workout"
+            ]
+          },
+          "p99": {
+            "id": "p99",
+            "channel": "low-latency",
+            "title": "P99",
+            "album": "Backpressure",
+            "duration_s": 223,
+            "published": "Jan 9, 2025",
+            "published_tick": 8,
+            "plays": 489201,
+            "likes": 19844,
+            "tags": [
+              "electronic",
+              "focus",
+              "energize"
+            ]
+          },
+          "puget": {
+            "id": "puget",
+            "channel": "harbor-lights",
+            "title": "Puget",
+            "album": "Puget",
+            "duration_s": 268,
+            "published": "Sep 28, 2025",
+            "published_tick": 9,
+            "plays": 156822,
+            "likes": 8201,
+            "tags": [
+              "indie",
+              "guitar",
+              "commute",
+              "feel good"
+            ]
+          },
+          "ferry-terminal": {
+            "id": "ferry-terminal",
+            "channel": "harbor-lights",
+            "title": "Ferry Terminal",
+            "album": "Puget",
+            "duration_s": 231,
+            "published": "Sep 28, 2025",
+            "published_tick": 10,
+            "plays": 98410,
+            "likes": 4410,
+            "tags": [
+              "indie",
+              "guitar",
+              "relax",
+              "feel good"
+            ]
+          },
+          "tiling": {
+            "id": "tiling",
+            "channel": "tessellate",
+            "title": "Tiling",
+            "album": "Tiling",
+            "duration_s": 294,
+            "published": "Feb 6, 2026",
+            "published_tick": 11,
+            "plays": 64027,
+            "likes": 3102,
+            "tags": [
+              "minimal",
+              "instrumental",
+              "sleep",
+              "focus"
+            ]
+          },
+          "seedless": {
+            "id": "seedless",
+            "channel": "tessellate",
+            "title": "Seedless",
+            "album": "Tiling",
+            "duration_s": 185,
+            "published": "Feb 6, 2026",
+            "published_tick": 12,
+            "plays": 41338,
+            "likes": 1877,
+            "tags": [
+              "minimal",
+              "instrumental",
+              "sleep",
+              "relax"
+            ]
+          },
+          "mark-and-sweep": {
+            "id": "mark-and-sweep",
+            "channel": "heap-allocation",
+            "title": "Mark and Sweep",
+            "album": "Garbage Collected",
+            "duration_s": 201,
+            "published": "Oct 3, 2025",
+            "published_tick": 13,
+            "plays": 344120,
+            "likes": 15230,
+            "tags": [
+              "indie",
+              "pop",
+              "feel good",
+              "party"
+            ]
+          },
+          "stop-the-world": {
+            "id": "stop-the-world",
+            "channel": "heap-allocation",
+            "title": "Stop the World",
+            "album": "Garbage Collected",
+            "duration_s": 233,
+            "published": "Oct 3, 2025",
+            "published_tick": 14,
+            "plays": 188402,
+            "likes": 7310,
+            "tags": [
+              "indie",
+              "pop",
+              "commute"
+            ]
+          },
+          "generational": {
+            "id": "generational",
+            "channel": "heap-allocation",
+            "title": "Generational",
+            "album": "Garbage Collected",
+            "duration_s": 187,
+            "published": "Oct 3, 2025",
+            "published_tick": 15,
+            "plays": 120775,
+            "likes": 5022,
+            "tags": [
+              "indie",
+              "pop",
+              "feel good"
+            ]
+          },
+          "little-endian": {
+            "id": "little-endian",
+            "channel": "byte-order",
+            "title": "Little Endian",
+            "album": "Endianness",
+            "duration_s": 176,
+            "published": "Jan 23, 2026",
+            "published_tick": 16,
+            "plays": 690118,
+            "likes": 40211,
+            "tags": [
+              "hip hop",
+              "workout",
+              "energize"
+            ]
+          },
+          "big-endian": {
+            "id": "big-endian",
+            "channel": "byte-order",
+            "title": "Big Endian",
+            "album": "Endianness",
+            "duration_s": 204,
+            "published": "Jan 23, 2026",
+            "published_tick": 17,
+            "plays": 571342,
+            "likes": 33054,
+            "tags": [
+              "hip hop",
+              "party",
+              "energize"
+            ]
+          },
+          "cold-reads": {
+            "id": "cold-reads",
+            "channel": "cache-miss",
+            "title": "Cold Reads",
+            "album": "Cold Reads",
+            "duration_s": 158,
+            "published": "Apr 10, 2026",
+            "published_tick": 18,
+            "plays": 2210433,
+            "likes": 98112,
+            "tags": [
+              "lo-fi",
+              "focus",
+              "relax"
+            ]
+          },
+          "warm-cache": {
+            "id": "warm-cache",
+            "channel": "cache-miss",
+            "title": "Warm Cache",
+            "album": "Cold Reads",
+            "duration_s": 171,
+            "published": "Apr 10, 2026",
+            "published_tick": 19,
+            "plays": 1640021,
+            "likes": 71002,
+            "tags": [
+              "lo-fi",
+              "focus",
+              "sleep"
+            ]
+          },
+          "eviction": {
+            "id": "eviction",
+            "channel": "cache-miss",
+            "title": "Eviction",
+            "album": "Cold Reads",
+            "duration_s": 149,
+            "published": "Apr 10, 2026",
+            "published_tick": 20,
+            "plays": 903114,
+            "likes": 38440,
+            "tags": [
+              "lo-fi",
+              "relax"
+            ]
+          },
+          "prefetch": {
+            "id": "prefetch",
+            "channel": "cache-miss",
+            "title": "Prefetch",
+            "album": "Cold Reads",
+            "duration_s": 163,
+            "published": "Apr 10, 2026",
+            "published_tick": 21,
+            "plays": 812355,
+            "likes": 30119,
+            "tags": [
+              "lo-fi",
+              "focus"
+            ]
+          }
+        },
+        "playlists": {
+          "ship-it": {
+            "id": "ship-it",
+            "title": "Ship It",
+            "owner": "carol",
+            "items": [
+              "cold-start",
+              "green-build",
+              "rollback",
+              "fan-out",
+              "mutex",
+              "backpressure",
+              "tail-latency",
+              "p99",
+              "puget",
+              "ferry-terminal",
+              "tiling"
+            ]
+          },
+          "deep-focus": {
+            "id": "deep-focus",
+            "title": "Deep Focus",
+            "owner": "alice",
+            "items": [
+              "cold-start",
+              "p99",
+              "tiling",
+              "seedless"
+            ]
+          },
+          "morning-commute": {
+            "id": "morning-commute",
+            "title": "Morning Commute",
+            "owner": "bob",
+            "items": [
+              "fan-out",
+              "puget",
+              "mark-and-sweep",
+              "stop-the-world",
+              "mutex"
+            ]
+          },
+          "lo-fi-desk": {
+            "id": "lo-fi-desk",
+            "title": "Lo-fi at the desk",
+            "owner": null,
+            "items": [
+              "cold-reads",
+              "warm-cache",
+              "eviction",
+              "prefetch",
+              "tiling"
+            ]
+          }
+        },
+        "subscriptions": {
+          "alice": [
+            "tessellate",
+            "cache-miss"
+          ],
+          "carol": [
+            "low-latency"
+          ],
+          "bob": [
+            "byte-order"
+          ]
+        },
+        "likes": {
+          "alice": [
+            "tiling",
+            "cold-reads",
+            "mark-and-sweep"
+          ],
+          "carol": [
+            "backpressure",
+            "fan-out"
+          ],
+          "bob": [
+            "little-endian"
+          ]
+        },
+        "now_playing": {},
+        "albums": {
+          "cold-start": {
+            "genre": "Ambient"
+          },
+          "fan-out": {
+            "genre": "Electronic"
+          },
+          "backpressure": {
+            "genre": "Drum & Bass"
+          },
+          "puget": {
+            "genre": "Indie Rock"
+          },
+          "tiling": {
+            "genre": "Classical"
+          },
+          "garbage-collected": {
+            "genre": "Indie Pop"
+          },
+          "endianness": {
+            "genre": "Hip-Hop/Rap"
+          },
+          "cold-reads": {
+            "genre": "Lo-Fi"
+          }
+        },
+        "library": {
+          "alice": [
+            "tiling",
+            "seedless",
+            "cold-start",
+            "green-build",
+            "rollback",
+            "mark-and-sweep",
+            "puget",
+            "cold-reads",
+            "warm-cache"
+          ],
+          "carol": [
+            "backpressure",
+            "tail-latency",
+            "p99",
+            "fan-out",
+            "mutex",
+            "cold-start"
+          ],
+          "bob": [
+            "fan-out",
+            "mutex",
+            "little-endian"
+          ]
+        },
+        "history": {
+          "alice": [
+            "tiling",
+            "cold-reads",
+            "cold-start",
+            "p99",
+            "puget",
+            "mark-and-sweep"
+          ],
+          "carol": [
+            "cold-start",
+            "backpressure",
+            "fan-out",
+            "little-endian"
+          ],
+          "bob": [
+            "mutex",
+            "big-endian"
+          ]
+        }
+      }
     }
   ],
   "metadata": {
@@ -25911,6 +29401,9 @@ export default {
         "label": "Music",
         "kind": "native",
         "url": "http://spotify.com/",
+        "urls": {
+          "android": "http://music.youtube.com/"
+        },
         "icon": "music"
       },
       {
