@@ -8,6 +8,7 @@ cw-protocol = { path = "../protocol" }
 cw-kernel = { path = "../kernel" }
 cw-browser = { path = "../browser" }
 cw-applications = { path = "../applications" }
+cw-raster = { path = "../raster" }
 cw-scene = { path = "../scene" }
 cw-trajectory = { path = "../trajectory" }
 serde.workspace = true

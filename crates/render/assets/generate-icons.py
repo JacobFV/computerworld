@@ -3,6 +3,7 @@ Original artwork released under repository MIT license. Yaru PNGs are separate.
 """
 from pathlib import Path
 import cairosvg
+import sys
 OUT=Path(__file__).parent/'icons'
 colors={'files':('#75ceff','#0677d8'),'browser':('#4abdfc','#0560d8'),'terminal':('#444952','#17191e'),'docs':('#fdfefe','#d6e3f0'),'mail':('#40c4ff','#086ee9'),'calendar':('#fff','#e7edf4'),'chat':('#6ae268','#16ae39'),'settings':('#aeb4c0','#697383'),'camera':('#e3e6eb','#abb3bc'),'photos':('#fff','#eff3f7'),'phone':('#6cdf65','#0fa834'),'store':('#47baff','#0877ee'),'launcher':('#dfdef2','#7b8196'),'trash':('#e3edf4','#9eb0bf'),'notes':('#ffdc6e','#f5a521'),'contacts':('#e6bd93','#a9713d'),'clock':('#5b6472','#232831'),'calculator':('#9aa4b2','#4e5765'),'music':('#ff8a9b','#e2374f'),'maps':('#84dfa6','#1c9a55'),'weather':('#8fd0ff','#2d7ccd')}
 shapes={
@@ -28,23 +29,53 @@ shapes={
 'maps':'<path d="M18 36 47 25v70L18 106Z" fill="#fff"/><path d="M47 25l34 11v70L47 95Z" fill="#dcefe3"/><path d="M81 36l29-11v70l-29 11Z" fill="#fff"/><path d="M18 36 47 25v70L18 106Zm63 0 29-11v70l-29 11Z" fill="none" stroke="#bcd8c7" stroke-width="2"/><path d="M33 63h58" stroke="#f2c14b" stroke-width="5" stroke-linecap="round"/><path d="M64 30a17 17 0 0 0-17 17c0 13 17 32 17 32s17-19 17-32a17 17 0 0 0-17-17Z" fill="#e8453c"/><circle cx="64" cy="47" r="7" fill="#fff"/>',
 'weather':'<circle cx="50" cy="46" r="19" fill="#ffd451"/><g stroke="#ffd451" stroke-width="6" stroke-linecap="round"><path d="M50 15v-8M19 46h-8M28 24l-6-6M72 24l6-6M28 68l-6 6"/></g><path d="M48 99a20 20 0 0 1 1-40 27 27 0 0 1 50 7 17 17 0 0 1-4 33Z" fill="#fff"/><path d="M48 99a20 20 0 0 1 1-40 27 27 0 0 1 50 7 17 17 0 0 1-4 33Z" fill="none" stroke="#dce9f4" stroke-width="2"/>',
 }
-for platform in ['macos','windows','ios','android']:
- for name,(a,b) in colors.items():
-  defs=f'<defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="{a}"/><stop offset="1" stop-color="{b}"/></linearGradient><linearGradient id="folder" x2="0" y2="1"><stop stop-color="#ffe88b"/><stop offset="1" stop-color="#f7ba40"/></linearGradient></defs>'
-  bg='<rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="url(#bg)"/><rect x="6" y="4" width="116" height="116" rx="26" fill="none" stroke="#fff" stroke-opacity=".32"/>'
-  if platform=='ios': bg='<rect x="5" y="4" width="118" height="118" rx="27" fill="url(#bg)"/>'
-  if platform=='android': bg='<circle cx="64" cy="64" r="60" fill="url(#bg)"/>'
-  if platform=='windows': bg=''
-  art=shapes[name]
-  if name=='files' and platform == 'macos':
-   art='<path d="M23 17h82v94H23Z" fill="#69baff"/><path d="M64 17h41v94H59l9-52H56Z" fill="#e4f3ff"/><path d="M45 39v8m39-8v8M38 77q25 24 52-1" stroke="#173e66" stroke-width="4" fill="none" stroke-linecap="round"/>'
-  if name=='files' and platform=='ios':
-   bg='<rect x="5" y="4" width="118" height="118" rx="27" fill="#fff"/>'
-   art='<path d="M21 39h32l9 10h45v46H21Z" fill="#0876ed"/><path d="M21 39h32l9 10h45v11H21Z" fill="#3b9af9"/>'
-  if name=='browser' and platform=='windows':
-   art='<path d="M109 80c-5 24-37 38-62 22C17 84 18 56 35 35c20-25 63-15 73 12 4 12-1 21-13 25-13 5-38-5-42 9-3 13 38 20 56-1Z" fill="#12b7ba"/><path d="M109 80c-27 12-53 1-55-16-2-17 20-29 35-22-17-21-49-14-61 11-13 28 6 55 34 57 23 1 41-12 47-30Z" fill="#1578df"/><path d="M35 35c26-26 59-10 64 11-22-14-48-1-48 19-16 0-26-13-16-30Z" fill="#48dab7"/>'
-  if name=='browser' and platform=='android':
-   art='<circle cx="64" cy="64" r="47" fill="#f0c742"/><path d="M64 17a47 47 0 0 1 41 24H64L42 79 23 47a47 47 0 0 1 41-30" fill="#e95446"/><path d="M23 47 46 87h43a47 47 0 0 1-25 24 47 47 0 0 1-41-64" fill="#45a666"/><circle cx="64" cy="64" r="23" fill="#fff"/><circle cx="64" cy="64" r="19" fill="#388ed5"/>'
-  svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">{defs}{bg}{art}</svg>'
+def platform_icons():
+ for platform in ['macos','windows','ios','android']:
+  for name,(a,b) in colors.items():
+   defs=f'<defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="{a}"/><stop offset="1" stop-color="{b}"/></linearGradient><linearGradient id="folder" x2="0" y2="1"><stop stop-color="#ffe88b"/><stop offset="1" stop-color="#f7ba40"/></linearGradient></defs>'
+   bg='<rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="url(#bg)"/><rect x="6" y="4" width="116" height="116" rx="26" fill="none" stroke="#fff" stroke-opacity=".32"/>'
+   if platform=='ios': bg='<rect x="5" y="4" width="118" height="118" rx="27" fill="url(#bg)"/>'
+   if platform=='android': bg='<circle cx="64" cy="64" r="60" fill="url(#bg)"/>'
+   if platform=='windows': bg=''
+   art=shapes[name]
+   if name=='files' and platform == 'macos':
+    art='<path d="M23 17h82v94H23Z" fill="#69baff"/><path d="M64 17h41v94H59l9-52H56Z" fill="#e4f3ff"/><path d="M45 39v8m39-8v8M38 77q25 24 52-1" stroke="#173e66" stroke-width="4" fill="none" stroke-linecap="round"/>'
+   if name=='files' and platform=='ios':
+    bg='<rect x="5" y="4" width="118" height="118" rx="27" fill="#fff"/>'
+    art='<path d="M21 39h32l9 10h45v46H21Z" fill="#0876ed"/><path d="M21 39h32l9 10h45v11H21Z" fill="#3b9af9"/>'
+   if name=='browser' and platform=='windows':
+    art='<path d="M109 80c-5 24-37 38-62 22C17 84 18 56 35 35c20-25 63-15 73 12 4 12-1 21-13 25-13 5-38-5-42 9-3 13 38 20 56-1Z" fill="#12b7ba"/><path d="M109 80c-27 12-53 1-55-16-2-17 20-29 35-22-17-21-49-14-61 11-13 28 6 55 34 57 23 1 41-12 47-30Z" fill="#1578df"/><path d="M35 35c26-26 59-10 64 11-22-14-48-1-48 19-16 0-26-13-16-30Z" fill="#48dab7"/>'
+   if name=='browser' and platform=='android':
+    art='<circle cx="64" cy="64" r="47" fill="#f0c742"/><path d="M64 17a47 47 0 0 1 41 24H64L42 79 23 47a47 47 0 0 1 41-30" fill="#e95446"/><path d="M23 47 46 87h43a47 47 0 0 1-25 24 47 47 0 0 1-41-64" fill="#45a666"/><circle cx="64" cy="64" r="23" fill="#fff"/><circle cx="64" cy="64" r="19" fill="#388ed5"/>'
+   svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">{defs}{bg}{art}</svg>'
+   (OUT/f'{platform}-{name}.svg').write_text(svg)
+   cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=128,output_height=128)
+
+# Platform-specific image editors: each exists on one platform only, so each is drawn
+# once, in that platform's icon idiom. Original artwork (MIT), not vendor logos.
+# `generate-icons.py --editors` rebuilds just these.
+EDITORS={
+ # Windows 11 Paint: a pale palette with four paint wells and a slanted brush.
+ ('windows','paint',128):'<path d="M64 14C33 14 12 36 12 62c0 25 19 44 42 44 9 0 12-5 11-11-1-8 4-12 11-12h12c16 0 28-11 28-27 0-24-24-42-52-42Z" fill="#f4f1ea" stroke="#c9c2b3" stroke-width="3"/><circle cx="36" cy="58" r="9" fill="#e5383b"/><circle cx="50" cy="35" r="9" fill="#f7b32b"/><circle cx="76" cy="32" r="9" fill="#2a9d8f"/><circle cx="96" cy="50" r="9" fill="#3a86ff"/><path d="M118 20 80 76" stroke="#8a5a2b" stroke-width="7" stroke-linecap="round"/><path d="M83 71c-8-2-15 3-17 10-2 8-6 12-12 14 13 5 30 1 33-12 1-5-1-10-4-12Z" fill="#1f6fd1"/>',
+ # Preview: two photo prints, one tilted, under a loupe.
+ ('macos','preview',128):'<rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="url(#bg)"/><g transform="rotate(-10 58 64)"><rect x="22" y="30" width="62" height="50" rx="3" fill="#fff" stroke="#c7ced8" stroke-width="2"/><rect x="28" y="36" width="50" height="34" fill="#8fd0ff"/><path d="M28 70 44 52l10 10 8-7 16 15Z" fill="#3aa35c"/></g><rect x="44" y="44" width="62" height="50" rx="3" fill="#fff" stroke="#c7ced8" stroke-width="2"/><rect x="50" y="50" width="50" height="34" fill="#ffd08a"/><circle cx="88" cy="60" r="6" fill="#fff4c2"/><path d="M50 84 66 66l10 10 8-7 16 15Z" fill="#e0703a"/><circle cx="60" cy="86" r="17" fill="#e8f4ff" fill-opacity=".55" stroke="#3b4656" stroke-width="5"/><path d="m72 98 14 14" stroke="#3b4656" stroke-width="8" stroke-linecap="round"/>',
+ # Pixelmator Pro: a white squircle with a spectrum-gradient swirl of three petals.
+ ('macos','pixelmator',128):'<defs><linearGradient id="px" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff4f7b"/><stop offset=".35" stop-color="#ffb13d"/><stop offset=".65" stop-color="#38c7ff"/><stop offset="1" stop-color="#7a5cff"/></linearGradient></defs><rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="#fbfbfd"/><rect x="6" y="4" width="116" height="116" rx="26" fill="none" stroke="#000" stroke-opacity=".08"/><g fill="url(#px)"><path d="M64 26c16 0 26 12 22 28-8-8-20-10-32-6 0-12 4-22 10-22Z"/><path d="M98 78c-8 14-24 18-36 8 11-3 19-12 22-24 10 4 18 10 14 16Z"/><path d="M34 82c-8-14-2-30 14-34-3 11 0 23 8 32-8 6-18 8-22 2Z"/></g><circle cx="64" cy="64" r="9" fill="#fff"/>',
+ # GIMP: a grey-brown creature's face with round eyes, holding a brush.
+ ('ubuntu','gimp',256):'<rect x="16" y="20" width="224" height="224" rx="48" fill="#000" opacity=".16"/><rect x="16" y="14" width="224" height="224" rx="48" fill="#5c5543"/><rect x="16" y="14" width="224" height="112" rx="48" fill="#6f6752"/><path d="M52 150c0-44 34-78 76-78s76 34 76 78c0 32-30 52-76 52s-76-20-76-52Z" fill="#8a7f63"/><path d="M60 92 44 44l42 30Zm136 0 16-48-42 30Z" fill="#8a7f63"/><circle cx="100" cy="126" r="24" fill="#fff"/><circle cx="156" cy="126" r="24" fill="#fff"/><circle cx="108" cy="130" r="10" fill="#222"/><circle cx="148" cy="130" r="10" fill="#222"/><ellipse cx="128" cy="168" rx="16" ry="9" fill="#3a3528"/><path d="M150 176 222 104" stroke="#e8c26a" stroke-width="10" stroke-linecap="round"/><path d="M222 104 236 90" stroke="#b33a2c" stroke-width="12" stroke-linecap="round"/>',
+ # Pinta: a paintbrush crossing a small palette, on a Yaru-like rounded square.
+ ('ubuntu','pinta',256):'<rect x="16" y="20" width="224" height="224" rx="48" fill="#000" opacity=".16"/><rect x="16" y="14" width="224" height="224" rx="48" fill="#f2f0ec"/><path d="M128 50c-50 0-86 34-86 76 0 38 28 62 62 62 14 0 18-8 16-18-2-12 6-18 18-18h22c26 0 46-18 46-44 0-34-34-58-78-58Z" fill="#fff" stroke="#b9b2a3" stroke-width="5"/><circle cx="86" cy="122" r="14" fill="#e01b24"/><circle cx="106" cy="84" r="14" fill="#f6d32d"/><circle cx="150" cy="80" r="14" fill="#33d17a"/><circle cx="182" cy="106" r="14" fill="#3584e4"/><path d="M226 44 150 150" stroke="#865e3c" stroke-width="13" stroke-linecap="round"/><path d="M155 143c-14-4-28 5-31 18-4 14-11 21-22 25 24 9 55 2 60-22 2-9-2-18-7-21Z" fill="#9141ac"/>',
+ # Sketchbook: an orange-red circle with a white pencil swoosh.
+ ('android','sketchbook',128):'<circle cx="64" cy="64" r="60" fill="#ef5a2e"/><path d="M28 88c14-30 34-44 50-38 12 5 2 22-10 26-10 3-4 14 12 10 12-3 20-12 24-18" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="m92 30 10 10-30 30-13 3 3-13Z" fill="#fff"/>',
+}
+def editors():
+ for (platform,name,size),art in EDITORS.items():
+  a,b=('#f3f6fa','#d9e1ea') if name=='preview' else ('#fff','#eee')
+  defs=f'<defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="{a}"/><stop offset="1" stop-color="{b}"/></linearGradient></defs>'
+  svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">{defs}{art}</svg>'
   (OUT/f'{platform}-{name}.svg').write_text(svg)
-  cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=128,output_height=128)
+  cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=size,output_height=size)
+
+if '--editors' not in sys.argv:
+ platform_icons()
+editors()

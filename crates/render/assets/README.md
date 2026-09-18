@@ -242,9 +242,23 @@ committed. Re-running the generator reproduces all 84 non-Ubuntu PNGs byte for b
 CairoSVG 2.9.1, which is how each batch is checked before it lands. DejaVuSans-Bold.ttf uses
 the same bundled DejaVu font license as the other fonts (`FONT-LICENSE.txt`).
 
+The image editors each exist on one platform, so each has one icon, in that
+platform's idiom: `windows-paint` (a palette and brush), `macos-preview` (photo prints
+under a loupe), `macos-pixelmator` (a spectrum swirl on a white squircle),
+`ubuntu-gimp` (a grey-brown creature holding a brush) and `ubuntu-pinta` (a palette
+and brush) on 256 px Yaru-like rounded squares, and `android-sketchbook` (a pencil
+swoosh on an orange disc). They are original artwork under the repository MIT
+license — renditions in the spirit of each product, not vendor logos, and the two
+Ubuntu ones are not Yaru icons. `generate-icons.py --editors` rebuilds just these six
+without touching the others. The editors' tool glyphs (`pencil`, `brush`, `bucket`,
+`eraser`, `eyedropper`, `select-rect`, `lasso`, `wand`, `crop`, `layers`, `undo`, …)
+are original symbols in `generate-symbols.py`, and regenerating the symbol set leaves
+every earlier PNG byte-identical.
+
 Runtime identifiers: `wallpaper/{macos,windows,ubuntu,ios,android}` and
 `icon/{platform}/{files,browser,terminal,docs,mail,calendar,chat,settings,camera,photos,phone,store,launcher,trash,notes,contacts,clock,calculator,music,maps,weather}`,
-for all five platforms. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
+for all five platforms, plus `icon/windows/paint`, `icon/macos/{preview,pixelmator}`,
+`icon/ubuntu/{gimp,pinta}` and `icon/android/sketchbook`. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
 aliases `notes`, `addressbook` aliases `contacts`, `clocks` aliases `clock` and `calc`
 aliases `calculator`; unqualified `icon/{app}` and `icon/common/{app}` use macOS
 artwork. Unknown names paint nothing and never access a host path or

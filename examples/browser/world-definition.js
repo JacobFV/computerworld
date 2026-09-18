@@ -97,7 +97,9 @@ export default {
         "photos",
         "music",
         "maps",
-        "weather"
+        "weather",
+        "preview",
+        "pixelmator"
       ],
       "packages": [
         "coreutils",
@@ -133,7 +135,8 @@ export default {
         "photos",
         "music",
         "maps",
-        "weather"
+        "weather",
+        "paint"
       ],
       "packages": [
         "coreutils",
@@ -169,7 +172,9 @@ export default {
         "photos",
         "music",
         "maps",
-        "weather"
+        "weather",
+        "gimp",
+        "pinta"
       ],
       "packages": [
         "coreutils",
@@ -283,7 +288,8 @@ export default {
         "photos",
         "music",
         "maps",
-        "weather"
+        "weather",
+        "sketchbook"
       ],
       "packages": [
         "coreutils",
@@ -25926,6 +25932,48 @@ export default {
         "kind": "native",
         "url": "http://weather.com/",
         "icon": "weather"
+      },
+      {
+        "id": "paint",
+        "label": "Paint",
+        "kind": "native",
+        "url": "",
+        "icon": "paint"
+      },
+      {
+        "id": "preview",
+        "label": "Preview",
+        "kind": "native",
+        "url": "",
+        "icon": "preview"
+      },
+      {
+        "id": "pixelmator",
+        "label": "Pixelmator Pro",
+        "kind": "native",
+        "url": "",
+        "icon": "pixelmator"
+      },
+      {
+        "id": "gimp",
+        "label": "GNU Image Manipulation Program",
+        "kind": "native",
+        "url": "",
+        "icon": "gimp"
+      },
+      {
+        "id": "pinta",
+        "label": "Pinta",
+        "kind": "native",
+        "url": "",
+        "icon": "pinta"
+      },
+      {
+        "id": "sketchbook",
+        "label": "Sketchbook",
+        "kind": "native",
+        "url": "",
+        "icon": "sketchbook"
       }
     ],
     "device_presentations": {

@@ -132,14 +132,17 @@ dependencies = [
 name = "computerworld"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-applications",
  "cw-environment",
  "cw-kernel",
  "cw-network",
  "cw-protocol",
+ "cw-raster",
  "cw-render",
  "cw-scene",
  "cw-sdk",
  "cw-services",
+ "jpeg-decoder",
  "png",
  "proptest",
  "serde",
@@ -189,6 +192,7 @@ name = "cw-applications"
 version = "0.1.0-alpha.2"
 dependencies = [
  "cw-protocol",
+ "cw-raster",
  "cw-scene",
  "cw-sdk",
  "serde",
@@ -247,6 +251,7 @@ dependencies = [
  "cw-browser",
  "cw-kernel",
  "cw-protocol",
+ "cw-raster",
  "cw-scene",
  "cw-sdk",
  "cw-trajectory",

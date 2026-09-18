@@ -122,6 +122,12 @@ impl Environment {
             (_, "music") => "Music",
             (_, "maps") => "Maps",
             (_, "weather") => "Weather",
+            (_, "paint") => "Paint",
+            (_, "preview") => "Preview",
+            (_, "pixelmator") => "Pixelmator Pro",
+            (_, "gimp") => "GNU Image Manipulation Program",
+            (_, "pinta") => "Pinta",
+            (_, "sketchbook") => "Sketchbook",
             (_, other) => {
                 debug_assert!(false, "unnamed native application {other}");
                 "Application"

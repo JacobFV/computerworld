@@ -6,6 +6,7 @@
 //! name until then. `AppEffect::ReadImage` asks the shell to decode a file, because plain
 //! `ReadFile` delivers lossy UTF-8 and would destroy image bytes; a build with no
 //! rasterizer, or a file that will not decode, says so rather than showing a gap.
+use super::imaging::{self, Product, Studio};
 use super::look::{action, header, look, notice, FAINT, INK, LINE, MUTED};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -22,6 +23,19 @@ pub const DECODED_LIMIT: usize = 64;
 /// Extensions the grid treats as pictures. A folder may hold anything; only these are shown,
 /// so a stray text file never becomes a photo.
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "bmp", "webp"];
+
+/// Product name of an image editor kind, for "Edit with …".
+fn editor_name(kind: &str) -> &str {
+    match kind {
+        "paint" => "Paint",
+        "preview" => "Preview",
+        "pixelmator" => "Pixelmator Pro",
+        "gimp" => "GIMP",
+        "pinta" => "Pinta",
+        "sketchbook" => "Sketchbook",
+        other => other,
+    }
+}
 
 fn is_image(name: &str) -> bool {
     match name.rsplit_once('.') {
@@ -52,6 +66,10 @@ pub struct Photos {
     /// as one that is still loading.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub undecodable: BTreeSet<String>,
+    /// The photo being edited on a phone: iOS Photos' edit mode and Google Photos'
+    /// editor live inside the library, as they do on the devices.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub editing: Option<Box<Studio>>,
 }
 /// Decoded image, downsampled to at most `THUMBNAIL` on its long edge. A photo library
 /// must not put a full-resolution bitmap per file into every snapshot.
@@ -77,6 +95,7 @@ impl Photos {
             problem: None,
             pixels: BTreeMap::new(),
             undecodable: BTreeSet::new(),
+            editing: None,
         };
         (
             app,
@@ -116,7 +135,25 @@ impl Photos {
         }
     }
     pub fn modified(&self) -> bool {
-        false
+        self.editing.as_ref().is_some_and(|e| e.modified)
+    }
+    /// Full path of a photo in the library.
+    fn path_of(&self, name: &str) -> String {
+        format!("{}/{name}", self.folder.trim_end_matches('/'))
+    }
+    /// The edited photo was written: leave the editor and show the result.
+    pub fn image_saved(&mut self, window: u64, path: &str) -> Result<Vec<AppEffect>, String> {
+        let editing = self.editing.take().ok_or("no photo is being edited")?;
+        let name = path.rsplit('/').next().unwrap_or(path).to_owned();
+        // The file changed on disk; its old thumbnail is stale.
+        self.pixels.remove(&name);
+        self.open = Some(name);
+        drop(editing);
+        Ok(vec![AppEffect::ListDirectory {
+            window,
+            tab: 0,
+            path: self.folder.clone(),
+        }])
     }
     /// The shell delivers a listing of the pictures folder here.
     /// Accept decoded pixels, downsampled so a snapshot stays a reasonable size. The
@@ -128,6 +165,14 @@ impl Photos {
         height: u32,
         rgba: Vec<u8>,
     ) -> Result<(), String> {
+        // The photo being edited arrives at full resolution for the editor.
+        if let Some(editor) = self
+            .editing
+            .as_mut()
+            .filter(|e| e.loading.as_deref() == Some(path))
+        {
+            return editor.image(path, width, height, rgba);
+        }
         let name = path.rsplit('/').next().unwrap_or(path).to_owned();
         if width == 0 || height == 0 || rgba.len() < (width as usize * height as usize * 4) {
             self.undecodable.insert(name);
@@ -164,7 +209,15 @@ impl Photos {
         Ok(())
     }
     /// This file will not decode. The rest of the library is unaffected.
-    pub fn image_failed(&mut self, path: &str) {
+    pub fn image_failed(&mut self, path: &str, reason: &str) {
+        if let Some(editor) = self
+            .editing
+            .as_mut()
+            .filter(|e| e.loading.as_deref() == Some(path))
+        {
+            editor.image_failed(path, reason);
+            return;
+        }
         let name = path.rsplit('/').next().unwrap_or(path).to_owned();
         self.pixels.remove(&name);
         self.undecodable.insert(name);
@@ -213,8 +266,53 @@ impl Photos {
     ) -> Result<Vec<AppEffect>, String> {
         Err("photos reads the machine's filesystem and makes no requests".into())
     }
-    pub fn text(&mut self, _text: &str) -> Result<(), String> {
-        Err("photos has no text field".into())
+    pub fn text(&mut self, text: &str) -> Result<(), String> {
+        match &mut self.editing {
+            Some(editor) => editor.text(text),
+            None => Err("photos has no text field".into()),
+        }
+    }
+    /// Commands of the phone editors, and the Edit buttons that start them.
+    fn edit_command(&mut self, window: u64, command: &str) -> Result<Vec<AppEffect>, String> {
+        if let Some(product) = command.strip_prefix("begin-edit:") {
+            let product = match product {
+                "ios" => Product::IosPhotos,
+                "android" => Product::GooglePhotos,
+                _ => return Err("unknown photo editor".into()),
+            };
+            let name = self.open.clone().ok_or("open a photo to edit it")?;
+            let path = self.path_of(&name);
+            let (mut editor, effects) = Studio::launch(product, &path, window);
+            editor.tab = "adjust".into();
+            editor.focus = if product == Product::IosPhotos {
+                "exposure".into()
+            } else {
+                "brightness".into()
+            };
+            self.editing = Some(Box::new(editor));
+            return Ok(effects);
+        }
+        if let Some(kind) = command.strip_prefix("edit-with:") {
+            let name = self.open.clone().ok_or("open a photo to edit it")?;
+            return Ok(vec![AppEffect::Launch {
+                window,
+                kind: kind.to_owned(),
+                argument: self.path_of(&name),
+            }]);
+        }
+        let rest = command
+            .strip_prefix("edit:")
+            .ok_or_else(|| format!("unknown photos command {command}"))?;
+        let entries = self.entries.clone();
+        let editor = self.editing.as_mut().ok_or("no photo is being edited")?;
+        match rest {
+            "discard" => {
+                self.editing = None;
+                Ok(vec![])
+            }
+            "look:done" => imaging::look::done(editor, window, &entries),
+            other => editor.command(window, other),
+        }
     }
     fn step(&mut self, forward: bool) -> Result<(), String> {
         let open = self.open.clone().ok_or("no photo is open")?;
@@ -237,6 +335,9 @@ impl Photos {
         Ok(())
     }
     pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
+        if let Some(editor) = &mut self.editing {
+            return editor.key(window, key);
+        }
         match key {
             "Escape" => self.click(window, "photos:close", clock_us),
             "ArrowLeft" => self.click(window, "photos:prev", clock_us),
@@ -253,6 +354,9 @@ impl Photos {
         let command = target
             .strip_prefix("photos:")
             .ok_or("interaction does not belong to photos")?;
+        if command.starts_with("edit") || command.starts_with("begin-edit:") {
+            return self.edit_command(window, command);
+        }
         match command {
             "reload" => {
                 self.pixels.clear();
@@ -290,6 +394,10 @@ impl Photos {
     }
     pub fn page(&self, page: &mut cw_protocol::Page) {
         use cw_protocol::PageElement as E;
+        if let Some(editor) = &self.editing {
+            editor.page(page);
+            return;
+        }
         let act = |url: &str| cw_protocol::PageAction {
             method: "APP".into(),
             url: url.into(),
@@ -406,8 +514,13 @@ impl Photos {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
+        if let Some(editor) = &self.editing {
+            editor.render(p, env);
+            return;
+        }
         if let Some(open) = &self.open {
             self.viewer(p, theme, &l, width, height, open);
+            self.edit_button(p, env, open);
             return;
         }
         let mut top = header(p, theme, &l, width, &self.title(theme));
@@ -575,6 +688,51 @@ impl Photos {
             }
         }
     }
+    /// The viewer's Edit button. Phones edit in place; desktops hand the file to the
+    /// platform's installed image editor, and say so when there is none.
+    fn edit_button(&self, p: &mut Painter, env: &crate::AppEnv<'_>, open: &str) {
+        let theme = env.theme;
+        let bar: u32 = if theme.mobile() { 52 } else { 40 };
+        let (label, target) = match theme {
+            DesktopTheme::Ios => ("Edit".to_owned(), Some("photos:begin-edit:ios".to_owned())),
+            DesktopTheme::Android => (
+                "Edit".to_owned(),
+                Some("photos:begin-edit:android".to_owned()),
+            ),
+            _ => match env.editor {
+                Some(kind) => (
+                    format!("Edit with {}", editor_name(kind)),
+                    Some(format!("photos:edit-with:{kind}")),
+                ),
+                None => ("Edit".to_owned(), None),
+            },
+        };
+        // Only files the editors can decode are editable.
+        let editable = imaging::is_image(open);
+        let w = p.measure(&label, 12, true) + 24;
+        let r = Rect::new(env.width as i32 - 156 - w as i32, 6, w, bar - 12);
+        match target.filter(|_| editable && !self.undecodable.contains(open)) {
+            Some(target) => p.button(r, Color(255, 214, 10, 230), 6, &target, &label),
+            None => {
+                p.box_(r, Color(255, 255, 255, 10), 6);
+                p.disabled(if editable {
+                    "No image editor is installed"
+                } else {
+                    "This file cannot be edited"
+                });
+            }
+        }
+        p.label(
+            r.x,
+            r.y + (r.height as i32 - 17) / 2,
+            r.width,
+            &label,
+            12,
+            Color::rgb(20, 20, 20),
+            true,
+            Align::Center,
+        );
+    }
     fn viewer(
         &self,
         p: &mut Painter,
@@ -610,7 +768,8 @@ impl Photos {
         p.label(
             close.x + close.width as i32 + 12,
             (bar as i32 - 16) / 2,
-            width.saturating_sub(close.width + 200),
+            // Room is left for Edit beside Previous and Next.
+            width.saturating_sub(close.width + 340),
             open,
             13,
             Color::WHITE,
@@ -787,6 +946,7 @@ mod tests {
                         settings: &crate::SystemSettings::DEFAULT,
                         clipboard: None,
                         share_to: None,
+                        editor: None,
                         files: Default::default(),
                     },
                 );

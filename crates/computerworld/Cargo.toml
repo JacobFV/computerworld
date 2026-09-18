@@ -8,7 +8,7 @@ description = "Deterministic synthetic computer worlds with native, Wasm and Pyt
 
 [features]
 default = ["render"]
-render = ["dep:cw-render", "dep:png"]
+render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
 
 [dependencies]
 cw-protocol = { path = "../protocol" }
@@ -19,6 +19,11 @@ cw-scene = { path = "../scene" }
 cw-render = { path = "../render", optional = true }
 # Screenshot encoding only; the renderer itself decodes with its own copy.
 png = { version = "0.17", optional = true }
+# Opening JPEG photos in the image editors. Same pinned, integer-only build the
+# renderer uses, so a decoded photo is the same bytes natively and under Wasm.
+jpeg-decoder = { version = "0.3", optional = true, default-features = false, features = [
+    "platform_independent",
+] }
 cw-services = { path = "../services" }
 serde.workspace = true
 serde_json.workspace = true
@@ -27,6 +32,8 @@ sha2.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 cw-network = { path = "../network" }
+cw-applications = { path = "../applications" }
+cw-raster = { path = "../raster" }
 png = "0.17"
 
 [[example]]

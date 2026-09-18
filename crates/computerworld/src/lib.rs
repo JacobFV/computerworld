@@ -33,7 +33,33 @@ impl cw_environment::Raster for PngCapture {
         }
         Ok(out)
     }
+    fn encode(&self, width: u32, height: u32, rgba: &[u8]) -> std::result::Result<Vec<u8>, String> {
+        if rgba.len() != width as usize * height as usize * 4 || width == 0 || height == 0 {
+            return Err("pixel buffer does not match the image size".into());
+        }
+        let mut out = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut out, width, height);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder
+                .write_header()
+                .and_then(|mut w| w.write_image_data(rgba))
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(out)
+    }
+    fn pixels(&self, scene: &Scene) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+        let frame = cw_render::Renderer::new()
+            .try_render(scene)
+            .map_err(|e| e.to_string())?;
+        Ok((frame.width, frame.height, frame.rgba))
+    }
     fn decode(&self, bytes: &[u8]) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+        // JPEG files start with an SOI marker; everything else is tried as PNG.
+        if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+            return decode_jpeg(bytes);
+        }
         let decoder = png::Decoder::new(bytes);
         let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
         // Bound the allocation: a malformed header must not ask for gigabytes.
@@ -64,6 +90,29 @@ impl cw_environment::Raster for PngCapture {
         };
         Ok((info.width, info.height, rgba))
     }
+}
+/// Baseline and progressive JPEG to RGBA, with the integer-only decoder build.
+#[cfg(feature = "render")]
+fn decode_jpeg(bytes: &[u8]) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+    let mut decoder = jpeg_decoder::Decoder::new(bytes);
+    decoder.read_info().map_err(|e| e.to_string())?;
+    let info = decoder.info().ok_or("JPEG has no header")?;
+    // Bound the allocation before decoding, as for PNG.
+    if u64::from(info.width) * u64::from(info.height) * 4 > 64 << 20 {
+        return Err("image is too large to decode".into());
+    }
+    let data = decoder.decode().map_err(|e| e.to_string())?;
+    let rgba: Vec<u8> = match info.pixel_format {
+        jpeg_decoder::PixelFormat::RGB24 => data
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[1], p[2], 255])
+            .collect(),
+        jpeg_decoder::PixelFormat::L8 => data.iter().flat_map(|g| [*g, *g, *g, 255]).collect(),
+        other => return Err(format!("unsupported JPEG pixel format {other:?}")),
+    };
+    Ok((u32::from(info.width), u32::from(info.height), rgba))
 }
 /// Persistent owner of simulation and interface state; renderer caches are disposable.
 pub struct World {

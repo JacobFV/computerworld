@@ -236,15 +236,24 @@ impl Document {
         out
     }
     /// A view of the image: `width` x `height` view pixels, view pixel `(vx, vy)` showing
-    /// the image at sub16 `origin + v * step` (nearest sample). Transparency shows the
-    /// checkerboard, and anything outside the image is `outside`.
-    pub fn view(&self, origin: P16, step: i64, width: u32, height: u32, outside: Rgba) -> Canvas {
+    /// the image at the centre of its span, sub16 `origin + (v + 1/2) * num / den` (nearest
+    /// sample; the ratio is exact, so a view at 67% does not drift). Transparency shows
+    /// the checkerboard, and anything outside the image is `outside`.
+    pub fn view(
+        &self,
+        origin: P16,
+        (num, den): (i64, i64),
+        width: u32,
+        height: u32,
+        outside: Rgba,
+    ) -> Canvas {
         let mut out = Canvas::new(width.max(1), height.max(1));
-        let step = step.max(1);
+        let (num, den) = (num.max(1), den.max(1));
+        let at = |o: i64, v: i64| (o + (2 * v + 1) * num / (2 * den)).div_euclid(16);
         for vy in 0..height as i64 {
-            let iy = (origin.1 + vy * step + step / 2).div_euclid(16);
+            let iy = at(origin.1, vy);
             for vx in 0..width as i64 {
-                let ix = (origin.0 + vx * step + step / 2).div_euclid(16);
+                let ix = at(origin.0, vx);
                 let p = if ix < 0
                     || iy < 0
                     || ix >= i64::from(self.width)
@@ -1122,18 +1131,18 @@ mod tests {
         assert_eq!(back, d);
         // Pinned: any change to rasterisation, blur or rounding moves this hash.
         assert_eq!(format!("{:016x}", d.composite().hash()), "4abb365a4021b651");
-        let view = d.view((0, 0), 8, 64, 48, [0, 0, 0, 255]);
+        let view = d.view((0, 0), (8, 1), 64, 48, [0, 0, 0, 255]);
         // Two view pixels per image pixel: nearest sampling repeats each one.
         assert_eq!(view.get(0, 0), d.pixel(0, 0));
         assert_eq!(view.get(7, 5), d.pixel(3, 2));
         assert_eq!(view.get(63, 47), d.pixel(31, 23));
         let transparent = Document::new(2, 2, None).unwrap();
         // Zoomed to 1600%: one image pixel fills 16x16 view pixels of checkerboard.
-        let v = transparent.view((0, 0), 1, 16, 16, BLACK);
+        let v = transparent.view((0, 0), (1, 1), 16, 16, BLACK);
         assert_eq!(v.get(0, 0), [255, 255, 255, 255]);
         assert_eq!(v.get(8, 0), [204, 204, 204, 255]);
         assert_eq!(v.get(15, 15), [255, 255, 255, 255]);
-        let outside = transparent.view((-32, 0), 16, 3, 1, BLACK);
+        let outside = transparent.view((-32, 0), (16, 1), 3, 1, BLACK);
         assert_eq!(outside.get(0, 0), BLACK);
     }
 }
