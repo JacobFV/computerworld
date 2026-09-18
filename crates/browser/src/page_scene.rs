@@ -1170,6 +1170,11 @@ pub(super) fn scale(scene: &mut Scene, percent: u32, width: u32, height: u32) {
             _ => {}
         }
     }
+    // The page still fills the viewport; its offset and extent stay in CSS pixels,
+    // the units `browser.v1 scroll` takes.
+    for area in &mut scene.scrolls {
+        area.bounds = Rect::new(0, 0, width, height);
+    }
     scene.width = width;
     scene.height = height;
 }
@@ -1327,9 +1332,13 @@ pub(super) fn layout(
     // Pinned bars span the viewport on its bottom edge, stacked in page order, and the
     // page under them is clipped away so a click on a bar never reaches what it covers.
     let bars: Vec<&PageElement> = page.elements.iter().filter(|e| pinned(e)).collect();
+    // Everything the page holds, unscrolled: the flowed columns plus the bars pinned
+    // over its bottom edge, which the last row must be able to scroll clear of.
+    let mut extent = (y.max(side_y).max(form_y) + scroll).max(0) as u32 + 16;
     if !bars.is_empty() {
         let heights: Vec<u32> = bars.iter().map(|e| p.measure(e, width, None)).collect();
         let total = heights.iter().sum::<u32>().min(height);
+        extent += total;
         let edge = height.saturating_sub(total);
         // Content wholly behind the bars keeps a one-row clip strip above them rather than
         // none, so it stays in the page (reachable by scrolling) yet paints nothing there.
@@ -1377,6 +1386,15 @@ pub(super) fn layout(
             true,
         );
     }
+    p.scene.scrolls.push(cw_scene::ScrollArea {
+        target: "pane:page".into(),
+        window: None,
+        bounds: Rect::new(0, 0, width, height),
+        offset: scroll,
+        extent,
+        title: None,
+        title_height: 0,
+    });
     p.scene
 }
 

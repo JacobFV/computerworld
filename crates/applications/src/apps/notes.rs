@@ -1,6 +1,6 @@
 //! Notes kept as real files on the machine's own filesystem under the user's Notes folder.
 //! Nothing is cached that the filesystem does not actually hold.
-use super::look::{action, header, look, notice, FAINT, INK, LINE, MUTED};
+use super::look::{action, look, notice, screen, FAINT, INK, LINE, MUTED};
 use super::push_bounded;
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
@@ -17,6 +17,10 @@ pub struct Notes {
     pub dirty: bool,
     /// Set when the folder could not be listed; shown instead of an empty list.
     pub problem: Option<String>,
+    /// The note's body has been tapped (or the note was just created), so on a phone
+    /// it has the keyboard. A desktop focuses the body whenever a note is open.
+    #[serde(default)]
+    pub editing: bool,
 }
 impl Notes {
     pub const KIND: &'static str = "notes";
@@ -33,6 +37,7 @@ impl Notes {
             text: String::new(),
             dirty: false,
             problem: None,
+            editing: false,
         };
         (
             app,
@@ -139,6 +144,7 @@ impl Notes {
                 // A new note is named from the world clock, so two machines agree.
                 let name = format!("note-{}.txt", clock_us / 1_000_000);
                 self.open = Some(name.clone());
+                self.editing = true;
                 self.text.clear();
                 self.dirty = true;
                 if !self.entries.contains(&name) {
@@ -168,7 +174,27 @@ impl Notes {
                     },
                 ])
             }
-            "body" => Ok(vec![]),
+            "body" => {
+                if self.open.is_none() {
+                    return Err("no note is open".into());
+                }
+                self.editing = true;
+                Ok(vec![])
+            }
+            // A phone's back button: the list again, and the keyboard goes down. The
+            // phones' Notes keep what was typed, so unsaved text is written first.
+            "close" => {
+                let effects = if self.dirty {
+                    self.click(window, "notes:save", clock_us)?
+                } else {
+                    vec![]
+                };
+                self.open = None;
+                self.editing = false;
+                self.text.clear();
+                self.dirty = false;
+                Ok(effects)
+            }
             rest => {
                 let name = rest
                     .strip_prefix("open:")
@@ -177,6 +203,7 @@ impl Notes {
                     return Err("note not found".into());
                 }
                 self.open = Some(name.to_owned());
+                self.editing = false;
                 self.text.clear();
                 self.dirty = false;
                 Ok(vec![AppEffect::ReadFile {
@@ -236,13 +263,20 @@ impl Notes {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let top = header(p, theme, &l, width, &self.title(theme));
-        let list_w = if theme.mobile() || width < 480 {
-            width
-        } else {
-            200
-        };
-        p.box_(Rect::new(0, top, list_w, height), l.chrome, 0);
+        let narrow = theme.mobile() || width < 480;
+        // A phone shows one thing at a time: the note that is open, or the list.
+        if narrow {
+            if let Some(name) = &self.open {
+                self.note(p, &l, theme, width, height, name, 0, 0);
+                return;
+            }
+        }
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let top = screen.top;
+        let list_w = if narrow { width } else { 200 };
+        if !screen.scrolls() {
+            p.box_(Rect::new(0, top, list_w, height), l.chrome, 0);
+        }
         action(
             p,
             &l,
@@ -264,16 +298,23 @@ impl Notes {
         } else if self.entries.is_empty() {
             notice(p, list_w, top + 48, "No notes yet");
         }
+        let list = screen.column(
+            p,
+            "list",
+            Rect::new(
+                0,
+                top + 42,
+                list_w,
+                (height as i32 - top - 42).max(1) as u32,
+            ),
+        );
         for (index, name) in self.entries.iter().enumerate() {
             let r = Rect::new(
                 4,
-                top + 44 + index as i32 * 30,
+                list.top + 2 + index as i32 * 30,
                 list_w.saturating_sub(8),
                 28,
             );
-            if r.y as u32 + 28 > height {
-                break;
-            }
             let on = self.open.as_deref() == Some(name.as_str());
             p.button(
                 r,
@@ -291,51 +332,99 @@ impl Notes {
                 if on { l.accent } else { INK },
             );
         }
-        if list_w == width {
+        list.end(p);
+        screen.end(p);
+        if narrow {
             return;
         }
         let x = list_w as i32;
         p.vline(x, top, height, LINE);
         match &self.open {
-            Some(name) => {
-                p.strong(
-                    x + 16,
-                    top + 10,
-                    width.saturating_sub(list_w + 110),
-                    name,
-                    14,
-                    INK,
-                );
-                action(
-                    p,
-                    &l,
-                    Rect::new(width as i32 - 86, top + 8, 76, 26),
-                    if self.dirty { "Save •" } else { "Save" },
-                    "notes:save",
-                    self.dirty,
-                );
-                let body = Rect::new(
-                    x + 12,
-                    top + 42,
-                    width.saturating_sub(list_w + 24),
-                    height.saturating_sub(top as u32 + 54),
-                );
-                p.region(body, "notes:body", "Note text");
-                p.paragraph(
-                    body.x + 4,
-                    body.y + 4,
-                    body.width.saturating_sub(8),
-                    &self.text,
-                    13,
-                    INK,
-                );
-                if self.text.is_empty() {
-                    p.left(body.x + 4, body.y + 4, body.width, "Empty note", 13, FAINT);
-                }
-            }
+            Some(name) => self.note(p, &l, theme, width, height, name, x, top),
             None => notice(p, width.saturating_sub(list_w), top + 40, "Select a note"),
         }
         let _ = MUTED;
+    }
+    /// The open note from `x` rightwards and `top` down: its name, Save, and the body,
+    /// which scrolls when it is longer than the window. On a phone it fills the screen
+    /// and a back button returns to the list.
+    #[allow(clippy::too_many_arguments)]
+    fn note(
+        &self,
+        p: &mut Painter,
+        l: &super::look::Look,
+        theme: DesktopTheme,
+        width: u32,
+        height: u32,
+        name: &str,
+        x: i32,
+        top: i32,
+    ) {
+        let mut left = x + 16;
+        if x == 0 {
+            // The phone's navigation: back to the list of notes.
+            let back = Rect::new(4, top + 6, 96, 30);
+            p.button(
+                back,
+                Color::TRANSPARENT,
+                l.radius,
+                "notes:close",
+                "Back to notes",
+            );
+            p.symbol("chevron-left", back.x + 2, back.y + 5, 20, l.accent);
+            p.left(
+                back.x + 24,
+                back.y + 6,
+                70,
+                &self.title(theme),
+                15,
+                l.accent,
+            );
+            left = back.x + back.width as i32 + 8;
+        }
+        p.strong(
+            left,
+            top + 10,
+            (width as i32 - left - 96).max(0) as u32,
+            name.trim_end_matches(".txt"),
+            14,
+            INK,
+        );
+        action(
+            p,
+            l,
+            Rect::new(width as i32 - 86, top + 8, 76, 26),
+            if self.dirty { "Save •" } else { "Save" },
+            "notes:save",
+            self.dirty,
+        );
+        let body = Rect::new(
+            x + 12,
+            top + 42,
+            width.saturating_sub(x as u32 + 24),
+            (height as i32 - top - 54).max(1) as u32,
+        );
+        p.region(body, "notes:body", "Note text");
+        let pane = p.pane("note", body);
+        p.paragraph(
+            body.x + 4,
+            pane.top() + 4,
+            body.width.saturating_sub(18),
+            &self.text,
+            13,
+            INK,
+        );
+        if self.text.is_empty() {
+            p.left(
+                body.x + 4,
+                pane.top() + 4,
+                body.width,
+                "Empty note",
+                13,
+                FAINT,
+            );
+        }
+        p.end_pane(pane, None);
     }
 }
 

@@ -35,11 +35,15 @@ pub fn render(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
         w.saturating_sub(side + 1),
         body_h,
     );
-    let mark = p.scene.nodes.len();
-    let listed = main(app, p, env, area);
-    for n in &mut p.scene.nodes[mark..] {
-        n.clip = Some(n.clip.and_then(|c| c.intersection(area)).unwrap_or(area));
-    }
+    // The track list scrolls; each source keeps its own place.
+    let pane = p.pane(&app.view_pane(), area);
+    let listed = main(
+        app,
+        p,
+        env,
+        Rect::new(area.x, pane.top(), area.width, area.height),
+    );
+    p.end_pane(pane, None);
     let bar = Rect::new(0, (h - status) as i32, w, status);
     p.box_(bar, SIDE, 0);
     p.hline(0, bar.y, w, LINE);
@@ -400,9 +404,6 @@ fn table(
     p.hline(area.x, y + 24, w, LINE);
     y += 25;
     for (i, t) in tracks.iter().enumerate() {
-        if y + 24 > area.y + area.height as i32 {
-            break;
-        }
         let current = live
             .as_ref()
             .is_some_and(|l| l.id == t.id && (!jump || l.index == i));

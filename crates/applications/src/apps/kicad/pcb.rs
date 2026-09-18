@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 
 pub const PCB_BG: Color = Color::rgb(0, 16, 35);
 const PANEL_W: u32 = 220;
-const MIN_ZOOM: i64 = 2;
-const MAX_ZOOM: i64 = 800;
+pub(super) const MIN_ZOOM: i64 = 2;
+pub(super) const MAX_ZOOM: i64 = 800;
 const WIDTHS: [i64; 6] = [250_000, 400_000, 500_000, 800_000, 1_000_000, 1_500_000];
 
 /// A track being routed.

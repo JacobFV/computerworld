@@ -224,9 +224,10 @@ fn top_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
         if ctx.hovered(tray) || ctx.panel == Some("quick") {
             p.box_(tray, plate, 13);
         }
-        // Network, volume and, with no battery to report, the power glyph GNOME
-        // shows on a desktop computer.
-        for (i, symbol) in ["wifi", "volume", "power"].iter().enumerate() {
+        // Network, volume, and the battery on a laptop; with no battery to report,
+        // the power glyph GNOME shows on a desktop computer.
+        let last = if ctx.battery { "battery" } else { "power" };
+        for (i, symbol) in ["wifi", "volume", last].iter().enumerate() {
             p.symbol(
                 symbol,
                 tray.x + 11 + i as i32 * 24,
@@ -1504,8 +1505,25 @@ fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
     let x = ctx.width as i32 - width as i32 - 8;
     let r = Rect::new(x, 38, width, 356);
     popover(p, r);
-    // Top row: round system buttons. The machine has no battery, so GNOME shows no
-    // battery pill, exactly as it does on a desktop computer.
+    // Top row: a laptop's battery pill, then round system buttons. A desktop computer
+    // has no battery, so GNOME shows no pill there. The machine keeps no charge model:
+    // a laptop here is on mains power and full, which is what the pill says.
+    let pill = if ctx.battery { 96 } else { 0 };
+    if ctx.battery {
+        let b = Rect::new(x + 16, r.y + 16, 84, 36);
+        p.box_(
+            b,
+            if ctx.hovered(b) {
+                Color::rgb(110, 110, 110)
+            } else {
+                TILE
+            },
+            18,
+        );
+        p.symbol("battery", b.x + 12, b.y + 10, 16, text);
+        p.left(b.x + 34, b.y + 9, 46, "100 %", 13, text);
+        p.region(b, "shell:settings", "Power settings, fully charged");
+    }
     // Screenshot rasterises the display and writes a real PNG to ~/Pictures; every
     // button in this row changes the machine rather than decorating the panel.
     for (i, (symbol, action, label)) in [
@@ -1521,7 +1539,7 @@ fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
         let bx = if i == 3 {
             x + width as i32 - 16 - 36
         } else {
-            x + 16 + i as i32 * 44
+            x + 16 + pill + i as i32 * 44
         };
         let hit = Rect::new(bx, r.y + 16, 36, 36);
         p.circle(
@@ -1677,19 +1695,38 @@ fn settings(p: &mut Painter, ctx: &ShellContext<'_>) {
 
 fn context_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
     let (mx, my) = ctx
-        .hover
+        .anchor
+        .or(ctx.hover)
         .unwrap_or((ctx.width as i32 / 2, ctx.height as i32 / 3));
-    let entries = [
+    let mut entries: Vec<(String, String)> = Vec::new();
+    // Over Files with a file selected, the menu is about that file first, as Nautilus's
+    // is: open it, and star or unstar it (the grid has no star column).
+    if let Some(w) = ctx
+        .windows
+        .iter()
+        .find(|w| w.focused && !w.minimized && w.kind == "files" && !w.selection.is_empty())
+    {
+        entries.push(("Open".into(), w.action("content:files-open")));
+        let starred = w.chrome("starred") == Some("1");
+        entries.push((
+            if starred { "Unstar" } else { "Star" }.into(),
+            w.action("content:files-star"),
+        ));
+    }
+    for (label, action) in [
         ("New Window", "shell:new"),
         ("Open in Terminal", "shell:launch:terminal"),
         ("Show Applications", "shell:launcher"),
         ("Settings", "shell:settings"),
-    ];
+    ] {
+        entries.push((label.into(), action.into()));
+    }
+    let tall = entries.len() as i32 * 34 + 12;
     let r = Rect::new(
         mx.clamp(72, ctx.width as i32 - 224),
-        my.clamp(36, ctx.height as i32 - 170),
+        my.clamp(36, (ctx.height as i32 - tall - 2).max(36)),
         220,
-        entries.len() as u32 * 34 + 12,
+        tall as u32,
     );
     p.drop_shadow(r, 12, 18, 110, 6);
     p.border(r, Color::rgb(250, 250, 250), 12, Color(0, 0, 0, 50));
@@ -1742,6 +1779,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: false,
+            anchor: None,
+            overview: Default::default(),
         }
     }
     #[test]

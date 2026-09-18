@@ -77,9 +77,16 @@ pub fn mac(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
         w - side,
         h.saturating_sub(bar + 1),
     );
-    let mark = p.scene.nodes.len();
-    body(app, p, env, area, &MAC);
-    clip(p, mark, area);
+    // The view scrolls under the toolbar; each view keeps its own place.
+    let pane = p.pane(&app.view_pane(), area);
+    body(
+        app,
+        p,
+        env,
+        Rect::new(area.x, pane.top(), area.width, area.height),
+        &MAC,
+    );
+    p.end_pane(pane, None);
     overlays(app, p, env, Rect::new(0, 0, w, h), &MAC);
 }
 
@@ -98,9 +105,15 @@ pub fn ios(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
         0
     };
     let area = Rect::new(0, 0, w, h.saturating_sub(tabs + mini));
-    let mark = p.scene.nodes.len();
-    body(app, p, env, area, &PHONE);
-    clip(p, mark, area);
+    let pane = p.pane(&app.view_pane(), area);
+    body(
+        app,
+        p,
+        env,
+        Rect::new(area.x, pane.top(), area.width, area.height),
+        &PHONE,
+    );
+    p.end_pane(pane, None);
     let bottom = h.saturating_sub(tabs) as i32;
     if mini > 0 {
         mini_player(
@@ -112,13 +125,6 @@ pub fn ios(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
     tab_bar(app, p, Rect::new(0, bottom, w, tabs));
     overlays(app, p, env, Rect::new(0, 0, w, h), &PHONE);
-}
-
-/// Keep what a view drew inside its area, so a long list never paints over the bars.
-fn clip(p: &mut Painter, mark: usize, area: Rect) {
-    for n in &mut p.scene.nodes[mark..] {
-        n.clip = Some(n.clip.and_then(|c| c.intersection(area)).unwrap_or(area));
-    }
 }
 
 fn overlays(app: &Music, p: &mut Painter, _env: &crate::AppEnv<'_>, all: Rect, m: &M) {
@@ -686,9 +692,6 @@ fn grid(
     let per = ((inner + gap) / (m.card + gap)).max(2);
     let size = (inner - gap * (per - 1)) / per;
     for chunk in cards.chunks(per as usize) {
-        if y > area.y + area.height as i32 {
-            break;
-        }
         let mut x = area.x + m.pad;
         for (key, title, sub, target, round) in chunk {
             card(p, x, y, size, key, title, sub, target, *round, m);
@@ -727,11 +730,7 @@ fn songs(
     let live = app.live(env.clock_us);
     let x = area.x + m.pad;
     let width = area.width.saturating_sub(m.pad as u32 * 2);
-    let bottom = area.y + area.height as i32;
     for (i, t) in tracks.iter().enumerate() {
-        if y + m.row as i32 > bottom {
-            break;
-        }
         let r = Rect::new(x, y, width, m.row);
         let current = live.as_ref().is_some_and(|l| l.id == t.id);
         let zebra = !m.mobile && i % 2 == 1;
@@ -1331,9 +1330,6 @@ fn library(
             );
             let mut y = y;
             for a in artists {
-                if y + 52 > area.y + area.height as i32 {
-                    break;
-                }
                 let r = Rect::new(
                     area.x + m.pad,
                     y,
@@ -1543,9 +1539,6 @@ fn search(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: 
                     w,
                     70,
                 );
-                if r.y + 70 > area.y + area.height as i32 {
-                    break;
-                }
                 let tint = art::tint(tag);
                 p.button(
                     r,
@@ -1616,13 +1609,9 @@ fn queue(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: &
         );
         y += 22;
     }
-    let bottom = area.y + area.height as i32;
     for (i, id) in player.queue.iter().enumerate() {
         if i < index {
             continue;
-        }
-        if y + m.row as i32 > bottom {
-            break;
         }
         let Some(t) = c.track(id) else { continue };
         let r = Rect::new(

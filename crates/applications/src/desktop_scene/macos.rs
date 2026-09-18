@@ -874,6 +874,11 @@ fn menu_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
                     format!("Wi-Fi {}", if wifi { "on" } else { "off" })
                 },
             ),
+        ]
+        .into_iter()
+        // The battery item exists only on a Mac that has one: a desktop Mac's menu
+        // bar has no battery.
+        .chain(ctx.battery.then(|| {
             (
                 "battery",
                 25,
@@ -884,9 +889,8 @@ fn menu_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
                 } else {
                     "Battery".to_owned()
                 },
-            ),
-        ]
-        .into_iter()
+            )
+        }))
         .enumerate()
         {
             x -= size + 18;
@@ -2032,7 +2036,10 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
     }
     let desired_x = match panel {
         "apple" => 8,
-        "context" => ctx.hover.map_or(ctx.width as i32 / 3, |(x, _)| x),
+        "context" => ctx
+            .anchor
+            .or(ctx.hover)
+            .map_or(ctx.width as i32 / 3, |(x, _)| x),
         name => menu_layout(p, ctx)
             .iter()
             .find(|(label, _, _)| label.eq_ignore_ascii_case(name))
@@ -2043,7 +2050,8 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         .max(8)
         .min(ctx.width.saturating_sub(width + 8) as i32);
     let top = if panel == "context" {
-        ctx.hover
+        ctx.anchor
+            .or(ctx.hover)
             .map_or(120, |(_, y)| y)
             .clamp(30, ctx.height as i32 - 200)
     } else {
@@ -2263,6 +2271,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         }
     }
     fn browser(tabs: &[&str], active: usize) -> WindowView {

@@ -203,12 +203,15 @@ is the one part of that crate that uses floating point, and rendering here must 
 bit-identical between native and Wasm. `wallpapers_decode_to_pinned_pixels` in
 `src/assets.rs` hashes the decoded pixels on every target to hold that line.
 
-`wallpapers/ubuntu.png` is the official Noble Numbat dimmed wallpaper from the
-Ubuntu `ubuntu-wallpapers` package, resized from 3480×2160 to 1600×993 using
-ImageMagick. Source: `/usr/share/backgrounds/Numbat_wallpaper_dimmed_3480x2160.png`,
-upstream <https://launchpad.net/ubuntu-wallpapers>. It remains **CC-BY-SA-3.0** under
-the package's default asset license, credited to the Ubuntu community
-contributors. Full package copyright and license: `UBUNTU-WALLPAPER-COPYRIGHT.txt`.
+`wallpapers/ubuntu.png` is the official Ubuntu 24.04 LTS "Noble Numbat" default
+wallpaper (the colour variant GNOME shows on a fresh install: aubergine to orange with
+the Numbat crown), from the Ubuntu `ubuntu-wallpapers` package, resized from 3840×2160
+to 1600×900 with Pillow's Lanczos filter. Source:
+`/usr/share/backgrounds/warty-final-ubuntu.png` (the file name 24.04 ships its default
+under), upstream <https://launchpad.net/ubuntu-wallpapers>. It is © 2016-2022 Canonical
+Ltd and licensed **CC-BY-SA-4.0** (see its stanza in the package's copyright file); the
+resized copy is distributed under the same license, with this attribution.
+Full package copyright and license: `UBUNTU-WALLPAPER-COPYRIGHT.txt`.
 
 `icons/ubuntu-*.png` are **CC-BY-SA-4.0** Yaru icons, credited to Sam Hewitt and
 Yaru contributors, copied without artistic modifications from the Ubuntu

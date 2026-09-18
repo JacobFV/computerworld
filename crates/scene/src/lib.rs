@@ -632,6 +632,44 @@ pub struct TextBuffer {
     #[serde(default)]
     pub truncated: bool,
 }
+/// A pane whose content is taller than the part it shows, and how far it is scrolled.
+/// Published so an actor can see that more is there, how much, and where the view is,
+/// without inferring it from a painted scroll bar. `pointer.v1 wheel` over `bounds`
+/// (or, on a phone, a vertical swipe that starts there) moves `offset`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScrollArea {
+    /// `pane:<name>` inside an application; the compositor namespaces it the way it
+    /// namespaces interactions (`window:<id>:content:pane:<name>`).
+    pub target: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window: Option<u64>,
+    /// The viewport, in scene coordinates.
+    pub bounds: Rect,
+    /// Pixels of content scrolled above the viewport's top edge, `0..=max_offset()`.
+    pub offset: i32,
+    /// Height of everything the pane holds, shown or not.
+    pub extent: u32,
+    /// A large title at the top of the content that collapses into the navigation bar
+    /// once it is scrolled away (iOS). `None` for panes without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Height of that large title's band: the offset at which it has collapsed.
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub title_height: u32,
+}
+fn is_zero_u32(v: &u32) -> bool {
+    *v == 0
+}
+impl ScrollArea {
+    /// The furthest the content can be scrolled.
+    pub fn max_offset(&self) -> i32 {
+        self.extent.saturating_sub(self.bounds.height) as i32
+    }
+    /// The large title has scrolled out of the content into the navigation bar.
+    pub fn title_collapsed(&self) -> bool {
+        self.title.is_some() && self.offset >= self.title_height as i32
+    }
+}
 /// Published scrollback bound: lines, then characters. A scene is a perception payload,
 /// not a file transfer.
 pub const MAX_BUFFER_LINES: usize = 4096;
@@ -672,6 +710,9 @@ pub struct Scene {
     pub focus: Option<Focus>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub buffers: Vec<TextBuffer>,
+    /// Scrollable panes and where each is scrolled to, topmost last.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scrolls: Vec<ScrollArea>,
     /// Content digest of the whole scene, filled by `Scene::stamp`. Equal digests mean
     /// nothing changed; 0 means unstamped.
     #[serde(default, skip_serializing_if = "is_unstamped")]
@@ -697,6 +738,7 @@ impl Scene {
             windows: Vec::new(),
             focus: None,
             buffers: Vec::new(),
+            scrolls: Vec::new(),
             digest: 0,
         }
     }
@@ -717,6 +759,19 @@ impl Scene {
             .filter(|(_, n)| n.accepts_input() && n.covers(x, y))
             .max_by_key(|(i, n)| (n.z, *i))
             .map(|(_, n)| n)
+    }
+    /// Scroll areas of window `window` (any window for `None`) under `(x, y)`,
+    /// innermost first: the order a wheel turn tries them in.
+    pub fn scrolls_at(&self, window: Option<u64>, x: i32, y: i32) -> Vec<&ScrollArea> {
+        let mut areas: Vec<(usize, &ScrollArea)> = self
+            .scrolls
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| window.is_none() || a.window == window)
+            .filter(|(_, a)| a.bounds.contains(x, y))
+            .collect();
+        areas.sort_by_key(|(i, a)| (a.bounds.area(), std::cmp::Reverse(*i)));
+        areas.into_iter().map(|(_, a)| a).collect()
     }
     /// Every node covering `(x, y)`, topmost first: the `elementFromPoint` stack.
     /// Includes non-interactive nodes so occlusion is legible, not just answerable.
@@ -859,6 +914,11 @@ impl Scene {
                 .map(|n| (n.id, n.revision))
                 .collect::<Vec<_>>(),
         ));
+        // Folded in only when present, so a scene without panes keeps the digest it
+        // always had.
+        if !self.scrolls.is_empty() {
+            self.digest = digest(&(self.digest, &self.scrolls));
+        }
     }
     /// What changed since `previous`. Both scenes must be stamped; an unstamped scene
     /// reports everything as changed rather than silently reporting nothing.

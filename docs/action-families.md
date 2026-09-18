@@ -395,7 +395,7 @@ a themed desktop; `Alt+Tab` cycles windows.
 | `click` | same | the target's result |
 | `double_click` | same | the target's result |
 | `cancel` | same | `null` |
-| `wheel` | same, plus `{"delta_y": i64}` (positive rolls towards the user) | `{"handled": bool}`: whether the control under the pointer used it (FreeCAD's 3D view zooms at the pointer) |
+| `wheel` | same, plus `{"delta_y": i64, "delta_x"?: i64, "modifiers"?: ["Shift"\|"Ctrl"\|"Meta"]}` in pixels (positive `delta_y` rolls towards the user and moves content up; 120 is one notch) | `{"handled": bool}`: whether anything under the pointer moved |
 
 `x`/`y` are clamped to ±32768; `width`/`height` default to 1024×768 and are capped
 at 8192. Coordinates are in the same viewport you pass to `scene(width, height)` —
@@ -404,6 +404,32 @@ hit testing runs against that scene, so the actor aims using only what it can se
 image editor's canvas), `ns-resize`, `ew-resize`, `nesw-resize`, `nwse-resize`.
 
 Behaviour worth knowing:
+
+- **Scrolling is a platform service.** A pane whose content is taller than its view is
+  published in `Scene::scrolls` (`ScrollArea`: `target`, `window`, `bounds`, `offset`,
+  `extent`, and on iOS the large `title` that collapses into the navigation bar once
+  `offset >= title_height`). A `wheel` first goes to the application's own use of the
+  wheel, then to the innermost pane under the pointer that can still move that way,
+  then outwards. Applications with their own wheel: Visual Studio Code's editor and
+  terminal (whole rows), spreadsheets (three rows a notch, Shift for columns, Ctrl
+  zooms), SQLite grids (rows), KiCad canvases (zoom about the pointer; Shift pans up and
+  down, Ctrl left and right, as KiCad's defaults), image editors' canvas (scroll, Shift
+  across, Ctrl zooms about the pointer), FreeCAD's 3D view (zoom), terminals (lines).
+  The browser's page is the `pane:page` area; its offset is `browser.v1 scroll`'s `y`.
+  Offsets are window state (`Window::scroll`) and survive snapshots.
+- **Scroll bars are real.** On desktops each overflowing pane paints a thumb sized to
+  the real extent, on a drag surface `window:<id>:content:pane:<name>:<track>:<thumb>:<max>`:
+  dragging the thumb scrolls, a press on the track jumps the thumb there, and a named
+  click without a point pages forward. Phones paint no bar at rest, as they do not.
+- **Phones scroll under the finger.** A `down`/`up` that moves more than 12 px mostly
+  vertically, starts inside an application and is no shell gesture (not from the status
+  bar, the home indicator or the navigation bar) scrolls the pane it started on by the
+  distance moved, and taps nothing.
+- **Text focus is one answer.** A native application reports the text field that has
+  the focus (`focus.keyboard.target`, role `textbox`); a phone paints its keyboard
+  exactly when there is one, and on a phone `keyboard.v1 type` with none reaches
+  nothing. Messages' composer and a note's or document's body take the focus when
+  tapped on a phone, and whenever their conversation or document is open on a desktop.
 
 - **`down` then `up` is a click with press identity.** `down` records the hit target
   and its bounds; `up` only fires if released inside those bounds. Dragging out
@@ -433,9 +459,11 @@ Behaviour worth knowing:
   - **Android** (three-button navigation): down from the status bar, or anywhere on
     the home screen, opens the notification shade, and a second pull expands it to
     Quick Settings; up closes the shade; up on the home screen opens the app drawer and
-    down closes it. Swipes that start on the 48 px navigation bar are presses of its
-    buttons: Back (`shell:mobile-back`), Home (`shell:home`), Recents
-    (`shell:overview`).
+    down closes it. Sideways on the home screen walks Pixel Launcher's pages (the dots
+    above the hotseat are `shell:home-page:<n>`); in Recents it walks the carousel,
+    and past the oldest card is Clear all. Swipes that start on the 48 px navigation
+    bar are presses of its buttons: Back (`shell:mobile-back`), Home (`shell:home`),
+    Recents (`shell:overview`).
   - On both, a card swiped up in the overview / App Switcher closes that application.
     Tapping the space around the cards goes home.
 - Window `drag` and `resize:<edge>` operations capture the pointer between `down` and
@@ -459,10 +487,11 @@ shell is driven, so these strings are part of the actor-facing contract.
 | `shell:toggle:<setting>` | Flip a device switch (wifi, bluetooth, airplane, dark, …). Returns `{"setting","value"}`. |
 | `shell:set:<setting>:<percent>` | Set a level 0–100. Returns `{"setting","value"}`. |
 | `shell:power:{lock,off,shutdown,restart,wake,unlock}` | Changes what the screen actually shows; `off`/`restart` clear windows |
+| `shell:recents:slot:<n>`, `shell:recents:clear`, `shell:recents:select`, `shell:recents:copy`, `shell:recents:screenshot` | Android Recents: centre card `<n>` (oldest 0; -1 is the Clear all slot); close every application; Select mode on the centred card (its text is outlined); copy that card's text (read from the application's semantic page) to the clipboard, returning `{"copied"}`; capture the centred application alone to `~/Pictures`. Refused unless Recents is open. |
 | `shell:tab:new`, `shell:tab:select:<i>`, `shell:tab:close:<i>` | **Browser** tabs; re-dispatched as `browser.v1 new_tab`/`switch_tab`/`close_tab` |
 | `window:<id>:content:files-newtab` \| `files-tab:<i>` \| `files-closetab:<i>` | **File manager** tabs. They live in the window, not the browser session, so they use different targets. |
 | `window:<id>:content:files-{home,up,root,back,forward,reload,path}`, `files-location:<path>` | File manager navigation |
-| `files-view`, `files-sort:{name,kind}` | List/grid toggle, and the sort key. The same key again reverses it. Both only reorder the view. |
+| `files-view`, `files-sort:{name,kind}` | List/grid toggle, and the sort key. The same key again reverses it. Both only reorder the view. GNOME Files opens in the grid, where the selected or a starred item carries a `files-star:<i>` button and the context menu offers Star/Unstar (`files-star`) and Open (`files-open`) on the selection. |
 | `files-search`, `files-search-clear` | Focus the query field, and clear it. Typing goes to `FileTab::query`, which filters the rows. |
 | `files-{new-folder,new-file,cut,copy,paste,rename,delete}` | File manager mutations. Each runs through the kernel under the same access checks as `read_file`/`write_file`, and re-lists the folder afterwards. `delete` moves to `~/.local/share/Trash/files`; nothing is hard-removed. `rename` opens a field committed with `Enter` and cancelled with `Escape`. |
 | `files-recents`, `files-browse` | Switch the tab between the desktop's recent-documents list and the folder it was showing. |

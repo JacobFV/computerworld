@@ -119,6 +119,12 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     }
     let width = ctx.width as i32;
     let height = ctx.height as i32;
+    // At a Glance and the clock widget live on the first page; later pages are apps.
+    let pages = home_pages(ctx.installed_apps, ctx.width, ctx.height);
+    if ctx.home_page.min(pages.saturating_sub(1)) > 0 {
+        launcher_pages(p, ctx);
+        return;
+    }
     // At a Glance and the clock widget are calendar surfaces: they open the Calendar
     // application when it is installed, and the shell's own month grid when it is not.
     let calendar = if ctx.installed("calendar") {
@@ -179,39 +185,143 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
         diameter as u32,
     );
     p.region(widget, calendar, "Clock widget, open the calendar");
-    let icon_size = (ctx.width / 7).clamp(43, 60);
-    let column = |i: i32| width * (i * 2 + 1) / 8 - icon_size as i32 / 2;
-    let installed: Vec<_> = APPS
-        .iter()
-        .filter(|(kind, _)| ctx.installed(kind))
-        .collect();
-    // Hotseat favourites first; the remaining applications fill the row above.
-    let preferred = ["chat", "browser", "mail", "files"];
-    let mut dock: Vec<_> = preferred
-        .iter()
-        .filter_map(|k| installed.iter().find(|(kind, _)| kind == k))
-        .collect();
-    let mut page: Vec<_> = installed.iter().filter(|a| !dock.contains(a)).collect();
-    while dock.len() < 4 && !page.is_empty() {
-        dock.push(page.remove(0));
+    launcher_pages(p, ctx);
+}
+
+/// Pixel Launcher's layout at a screen size: the hotseat's four favourites, then the
+/// other installed applications on home screen pages in a grid of four columns (five
+/// on a wide screen). The first page keeps At a Glance and the clock widget above its
+/// apps; later pages are all grid. The router swipes through exactly these pages.
+struct Launcher {
+    icon: u32,
+    columns: i32,
+    pitch: i32,
+    dock_y: i32,
+    dots_y: i32,
+    first_y: i32,
+    dock: Vec<(&'static str, &'static str)>,
+    pages: Vec<Vec<(&'static str, &'static str)>>,
+}
+impl Launcher {
+    fn new(installed: impl Fn(&str) -> bool, width: u32, height: u32) -> Self {
+        let (w, h) = (width as i32, height as i32);
+        let icon = (width / 7).clamp(43, 60);
+        let columns = if width >= 480 { 5 } else { 4 };
+        let pitch = icon as i32 + 42;
+        let all: Vec<(&'static str, &'static str)> = APPS
+            .iter()
+            .copied()
+            .filter(|(kind, _)| installed(kind))
+            .collect();
+        // Hotseat favourites first; the remaining applications fill the pages.
+        let preferred = ["chat", "browser", "mail", "files"];
+        let mut dock: Vec<_> = preferred
+            .iter()
+            .filter_map(|k| all.iter().copied().find(|(kind, _)| kind == k))
+            .collect();
+        let mut rest: Vec<_> = all.iter().copied().filter(|a| !dock.contains(a)).collect();
+        while dock.len() < 4 && !rest.is_empty() {
+            dock.push(rest.remove(0));
+        }
+        let dock_y = h - 194;
+        let dots_y = dock_y - 14;
+        // The first page's apps sit under the clock widget, as they always have.
+        let diameter = (width * 56 / 100).clamp(148, 250) as i32;
+        let cy = (h * 33 / 100).max(190);
+        let first_y = (h - 300).max(cy + diameter / 2 + 24);
+        let fits = |top: i32| ((dots_y - 10 - top - icon as i32 - 26) / pitch + 1).max(1) as usize;
+        let first = fits(first_y) * columns as usize;
+        let per_page = fits(70) * columns as usize;
+        let mut pages = vec![rest.iter().copied().take(first).collect::<Vec<_>>()];
+        for chunk in rest[first.min(rest.len())..].chunks(per_page.max(1)) {
+            pages.push(chunk.to_vec());
+        }
+        let _ = w;
+        Self {
+            icon,
+            columns,
+            pitch,
+            dock_y,
+            dots_y,
+            first_y,
+            dock,
+            pages,
+        }
     }
-    let row_y = (height - 300).max(cy + diameter / 2 + 24);
-    for (i, (kind, label)) in page.iter().take(4).enumerate() {
+    fn column(&self, width: u32, i: i32) -> i32 {
+        let w = width as i32;
+        w * (i * 2 + 1) / (self.columns * 2) - self.icon as i32 / 2
+    }
+}
+
+/// Home screen pages at this size, for these installed applications (empty meaning all).
+pub fn home_pages(installed: &[String], width: u32, height: u32) -> u32 {
+    Launcher::new(
+        |kind| installed.is_empty() || installed.iter().any(|a| a == kind),
+        width,
+        height,
+    )
+    .pages
+    .len() as u32
+}
+
+/// The page of the home screen the user swiped to, its dots, and the hotseat.
+fn launcher_pages(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let l = Launcher::new(|kind| ctx.installed(kind), ctx.width, ctx.height);
+    let page = (ctx.home_page as usize).min(l.pages.len() - 1);
+    let top = if page == 0 { l.first_y } else { 70 };
+    for (i, (kind, label)) in l.pages[page].iter().enumerate() {
+        let (col, row) = (i as i32 % l.columns, i as i32 / l.columns);
         app(
             p,
-            column(i as i32),
-            row_y,
-            icon_size,
+            l.column(ctx.width, col),
+            top + row * l.pitch,
+            l.icon,
             kind,
             label,
             Some(Color::WHITE),
         );
     }
-    // The hotseat and the search bar sit just above the navigation bar.
-    let dock_y = height - 194;
-    for (i, (kind, label)) in dock.iter().enumerate() {
-        app(p, column(i as i32), dock_y, icon_size, kind, label, None);
+    // The page indicator: one dot a page, the current one filled; a dot is a real
+    // control that goes to its page, as tapping the indicator does.
+    let count = l.pages.len() as i32;
+    if count > 1 {
+        let gap = 16;
+        let x0 = ctx.width as i32 / 2 - (count - 1) * gap / 2;
+        for i in 0..count {
+            let cx = x0 + i * gap;
+            // A soft shadow keeps the white dots legible over a light wallpaper.
+            p.circle(cx, l.dots_y + 1, 5, Color(0, 0, 0, 40));
+            if i as usize == page {
+                p.circle(cx, l.dots_y, 4, Color::WHITE);
+            } else {
+                p.circle(cx, l.dots_y, 3, Color(255, 255, 255, 120));
+            }
+            p.region(
+                Rect::new(cx - 8, l.dots_y - 10, 16, 20),
+                &format!("shell:home-page:{i}"),
+                &format!("Page {} of {count}", i + 1),
+            );
+        }
     }
+    // The hotseat and the search bar sit just above the navigation bar on every page.
+    let dock_column = |i: i32| ctx.width as i32 * (i * 2 + 1) / 8 - l.icon as i32 / 2;
+    for (i, (kind, label)) in l.dock.iter().enumerate() {
+        app(
+            p,
+            dock_column(i as i32),
+            l.dock_y,
+            l.icon,
+            kind,
+            label,
+            None,
+        );
+    }
+    search_bar(p, ctx);
+}
+
+fn search_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let height = ctx.height as i32;
     let search = Rect::new(18, height - NAV_BAR - 66, ctx.width.saturating_sub(36), 54);
     p.drop_shadow(search, 27, 8, 40, 2);
     p.box_(search, PAPER, 27);
@@ -908,17 +1018,44 @@ fn overview(p: &mut Painter, ctx: &ShellContext<'_>) {
         p.center(0, h / 2 - 12, ctx.width, "No recent items", 18, INK);
         return;
     }
-    let selected = ctx
+    let focused = ctx
         .windows
         .iter()
         .position(|window| window.focused)
-        .unwrap_or(ctx.windows.len() - 1);
+        .unwrap_or(ctx.windows.len() - 1) as i32;
+    // The carousel is centred on the focused card until it is swiped; past the oldest
+    // card (to the left) is the Clear all slot.
+    let centred = ctx
+        .overview
+        .slot
+        .unwrap_or(focused)
+        .clamp(-1, ctx.windows.len() as i32 - 1);
     let card_width = ctx.width * 72 / 100;
     let card_height = ctx.height * 62 / 100;
+    let stride = card_width as i32 + 18;
+    let slot_x = |i: i32| (w - card_width as i32) / 2 + (i - centred) * stride;
+    let y = 124;
+    let clear = Rect::new(
+        slot_x(-1) + card_width as i32 / 2 - 60,
+        y + card_height as i32 / 2 - 22,
+        120,
+        44,
+    );
+    if clear.x + clear.width as i32 > 0 && clear.x < w {
+        p.button(clear, PAPER, 22, "shell:recents:clear", "Clear all");
+        p.label(
+            clear.x,
+            clear.y + 12,
+            clear.width,
+            "Clear all",
+            14,
+            INK,
+            true,
+            Align::Center,
+        );
+    }
     for (i, window) in ctx.windows.iter().enumerate() {
-        let x =
-            (w - card_width as i32) / 2 + (i as i32 - selected as i32) * (card_width as i32 + 18);
-        let y = 124;
+        let x = slot_x(i as i32);
         if x + card_width as i32 <= 0 || x >= w {
             continue;
         }
@@ -926,6 +1063,9 @@ fn overview(p: &mut Painter, ctx: &ShellContext<'_>) {
         p.drop_shadow(card, 24, 16, 70, 6);
         if let Some(content) = &window.content {
             p.thumbnail(content, card, 24);
+            if ctx.overview.select && i as i32 == centred {
+                select_highlights(p, content, card);
+            }
         } else {
             p.box_(card, PAPER, 24);
         }
@@ -939,13 +1079,31 @@ fn overview(p: &mut Painter, ctx: &ShellContext<'_>) {
             &format!("Resume {}, swipe up to dismiss", window.title),
         );
     }
-    // The action row under the cards. `shell:screenshot` rasterises the display and
-    // writes a PNG, refusing at the observation grant rather than here. There is no
-    // Close chip: a card is dismissed by swiping it up, which the router recognises.
-    let chip = Rect::new(w / 2 - 62, 124 + card_height as i32 + 22, 124, 40);
-    p.button(chip, PAPER, 20, "shell:screenshot", "Screenshot");
-    p.symbol("screenshot", chip.x + 16, chip.y + 12, 16, INK);
-    p.left(chip.x + 40, chip.y + 11, 80, "Screenshot", 14, INK);
+    // The action row under the centred card: Screenshot captures that application and
+    // Select picks up the text it shows; in Select mode, Copy takes it to the clipboard.
+    // There is no Close chip: a card is dismissed by swiping it up.
+    if centred >= 0 {
+        let row_y = y + card_height as i32 + 22;
+        let chips: [(&str, &str, &str); 2] = if ctx.overview.select {
+            [
+                ("copy", "Copy", "shell:recents:copy"),
+                ("check", "Done", "shell:recents:select"),
+            ]
+        } else {
+            [
+                ("screenshot", "Screenshot", "shell:recents:screenshot"),
+                ("text-tool", "Select", "shell:recents:select"),
+            ]
+        };
+        let chip_w = 124;
+        let x0 = w / 2 - chip_w - 6;
+        for (i, (symbol, label, action)) in chips.iter().enumerate() {
+            let chip = Rect::new(x0 + i as i32 * (chip_w + 12), row_y, chip_w as u32, 40);
+            p.button(chip, PAPER, 20, action, label);
+            p.symbol(symbol, chip.x + 16, chip.y + 12, 16, INK);
+            p.left(chip.x + 40, chip.y + 11, 80, label, 14, INK);
+        }
+    }
     // Every live app is addressable, including those outside the horizontal card viewport.
     let count = ctx.windows.len().max(1) as i32;
     let icon_size = (w / (count + 1)).clamp(22, 40) as u32;
@@ -958,6 +1116,28 @@ fn overview(p: &mut Painter, ctx: &ShellContext<'_>) {
             &window.action("focus"),
             &format!("Resume {}", window.title),
         );
+    }
+}
+
+/// Select mode marks every run of text on the card, the way Pixel outlines what it
+/// can pick up from an app's screenshot.
+fn select_highlights(p: &mut Painter, content: &cw_scene::Scene, card: Rect) {
+    let scale = (i64::from(card.width) * 1024 / i64::from(content.width.max(1))) as i32;
+    let s = |v: i32| v * scale / 1024;
+    for n in &content.nodes {
+        if n.painted_text().is_none_or(|t| t.trim().is_empty()) {
+            continue;
+        }
+        let b = n.painted_bounds();
+        let r = Rect::new(
+            card.x + s(b.x),
+            card.y + s(b.y),
+            s(b.width as i32).max(2) as u32,
+            s(b.height as i32).max(2) as u32,
+        );
+        if let Some(r) = r.intersection(card) {
+            p.box_(r, Color(76, 102, 43, 70), 2);
+        }
     }
 }
 
@@ -1682,6 +1862,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         }
     }
     /// Every id the scene can actually dispatch, ignoring announced-disabled paint.
@@ -2344,9 +2527,17 @@ mod tests {
         // A card is dismissed by swiping it up; there is no Close chip on a Pixel.
         assert!(!ids.contains(&"window:7:close".to_owned()));
         assert!(ids.contains(&"window:7:focus".to_owned()));
-        // The screenshot chip really captures the screen; the grant decides, not the shell.
-        assert!(ids.contains(&"shell:screenshot".to_owned()));
+        // The Screenshot chip really captures the centred application (the grant
+        // decides, not the shell), Select picks up its text, and past the oldest card
+        // is Clear all.
+        for chip in ["shell:recents:screenshot", "shell:recents:select"] {
+            assert!(ids.contains(&chip.to_owned()), "{chip}");
+        }
         assert!(!greyed(&p, "Screenshot"));
+        ctx.overview.slot = Some(-1);
+        let ids = actions(&shell(&ctx));
+        assert!(ids.contains(&"shell:recents:clear".to_owned()));
+        assert!(!ids.contains(&"shell:recents:select".to_owned()));
         assert!(!ids.iter().any(|a| a == "shell:noop"));
         let mut ctx = context(Some("settings"));
         ctx.windows = &windows;

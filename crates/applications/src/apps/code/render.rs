@@ -614,15 +614,21 @@ fn explorer(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             .find(|(_, p)| p == rel)
             .map(|(s, _)| *s)
     };
-    let mut y = top;
-    let limit = r.y + r.height as i32 - ROW as i32;
+    // The tree scrolls under its header; rows out of view are counted, not painted.
+    let pane = p.pane(
+        "explorer",
+        Rect::new(
+            r.x,
+            top,
+            r.width,
+            r.height.saturating_sub((top - r.y) as u32).max(1),
+        ),
+    );
+    let mut y = pane.top();
     let mut index = 0;
     rows.truncate(2000);
     let mut i = 0;
     while i <= rows.len() {
-        if y > limit {
-            break;
-        }
         if let (Some(at), Some(inline)) = (inline_at, &app.inline) {
             if at == index && (inline.from.is_none() || i < rows.len()) {
                 let depth = if inline.parent.is_empty() {
@@ -658,6 +664,12 @@ fn explorer(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         let Some((rel, depth, dir)) = rows.get(i).cloned() else {
             break;
         };
+        if !pane.shows(y, ROW) {
+            y += ROW as i32;
+            index += 1;
+            i += 1;
+            continue;
+        }
         let row = Rect::new(r.x, y, r.width, ROW);
         let selected = app.selected.as_deref() == Some(rel.as_str());
         let open = app.active_tab().and_then(|t| app.rel(&t.path)).as_deref() == Some(rel.as_str());
@@ -738,7 +750,10 @@ fn explorer(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             12,
             pal.desc,
         );
+        y += ROW as i32;
     }
+    let extent = (y - pane.top()) as u32 + ROW;
+    p.end_pane(pane, Some(extent));
 }
 
 fn search_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
@@ -856,11 +871,14 @@ fn search_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         let hh = p.paragraph(r.x + 22, y + 2, r.width.saturating_sub(30), &text, 12, c);
         y += hh as i32 + 8;
     }
-    let limit = r.y + r.height as i32 - ROW as i32;
-    'files: for (fi, file) in s.results.iter().enumerate() {
-        if y > limit {
-            break;
-        }
+    // The results tree scrolls; rows out of view are counted, not painted.
+    let pane = p.pane(
+        "search",
+        Rect::new(r.x, y, r.width, (r.y + r.height as i32 - y).max(1) as u32),
+    );
+    let first = y;
+    y = pane.top();
+    for (fi, file) in s.results.iter().enumerate() {
         let collapsed = s.collapsed.contains(&file.path);
         let row = Rect::new(r.x, y, r.width, ROW);
         p.symbol(
@@ -911,8 +929,9 @@ fn search_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             continue;
         }
         for (hi, hit) in file.hits.iter().enumerate() {
-            if y > limit {
-                break 'files;
+            if !pane.shows(y, ROW) {
+                y += ROW as i32;
+                continue;
             }
             let row = Rect::new(r.x, y, r.width, ROW);
             // Show the match with some context before it, as the results tree does.
@@ -937,6 +956,9 @@ fn search_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             y += ROW as i32;
         }
     }
+    let extent = (y - pane.top()) as u32 + ROW / 2;
+    let _ = first;
+    p.end_pane(pane, Some(extent));
 }
 
 fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {

@@ -1049,6 +1049,16 @@ impl Music {
             ));
         }
     }
+    /// The scroll pane the current view is painted in. Each view gets its own, so a
+    /// playlist opens at its top however far down the last one was scrolled.
+    pub fn view_pane(&self) -> String {
+        let slug: String = format!("{:?}", self.view)
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+            .take(48)
+            .collect();
+        format!("view-{slug}")
+    }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         match env.theme {
             DesktopTheme::Macos => apple::mac(self, p, env),

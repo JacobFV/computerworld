@@ -32,8 +32,8 @@ pub struct SchUi {
     pub no_auto_annotate: bool,
 }
 
-const MIN_ZOOM: i64 = 20;
-const MAX_ZOOM: i64 = 2400;
+pub(super) const MIN_ZOOM: i64 = 20;
+pub(super) const MAX_ZOOM: i64 = 2400;
 
 pub(super) fn units_label(u: u8) -> &'static str {
     match u {

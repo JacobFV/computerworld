@@ -3068,6 +3068,47 @@ impl Workbench {
             None => end,
         })
     }
+    /// A wheel turn over the editor or the terminal moves it by whole rows (the view
+    /// stops following the caret, as a scrollbar drag does); the Explorer and Search
+    /// lists are panes the platform scrolls. Returns whether anything moved.
+    pub fn wheel(&mut self, target: &str, wheel: crate::Wheel) -> Result<bool, String> {
+        if target.starts_with("code:editor") {
+            let (_, row_h) = render::cell(self.settings.font_size, self.platform);
+            let lines = wheel.lines(row_h as i32);
+            let wrap = self.wrap_cols;
+            let Some(tab) = self.active_mut() else {
+                return Ok(false);
+            };
+            let last = crate::editor_rows(&tab.doc.text, wrap)
+                .len()
+                .saturating_sub(1);
+            let next = (tab.scroll as i64 + i64::from(lines)).clamp(0, last as i64) as usize;
+            if next == tab.scroll {
+                return Ok(false);
+            }
+            tab.scroll = next;
+            tab.follow = false;
+            return Ok(true);
+        }
+        if target == "code:terminal"
+            || target == "code:terminal-line"
+            || target.starts_with("code:term-scroll")
+        {
+            let (_, row_h) = render::terminal_cell();
+            let lines = wheel.lines(row_h as i32);
+            let Some(term) = self.terminals.get_mut(self.term) else {
+                return Ok(false);
+            };
+            // The terminal counts lines lifted off its tail: rolling back lifts more.
+            let next = (term.scroll as i64 - i64::from(lines)).clamp(0, 4096) as usize;
+            if next == term.scroll {
+                return Ok(false);
+            }
+            term.scroll = next;
+            return Ok(true);
+        }
+        Ok(false)
+    }
     /// A press in the text area puts the caret there and anchors a drag selection.
     pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
         if !target.starts_with("code:editor:") {

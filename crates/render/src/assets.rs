@@ -576,7 +576,7 @@ mod icon_table_tests {
             (
                 "wallpaper/ubuntu",
                 (1600, 900),
-                "a41c7d7f6ebaca2a1e347322ea15529acfd06d8fc32505c5a26eefcc765c3172",
+                "8de818e28f09f273e5485b18f9d062706eebc0769c9f0985e2253a1492fbe68d",
             ),
             (
                 "wallpaper/ios",

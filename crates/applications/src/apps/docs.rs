@@ -1,5 +1,5 @@
 //! Documents over the `docs` service: real documents, real revisions, real edits.
-use super::look::{action, header, look, notice, INK, LINE, MUTED};
+use super::look::{action, look, notice, screen, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
@@ -26,6 +26,10 @@ pub struct Docs {
     pub draft: String,
     pub dirty: bool,
     pub status: Status,
+    /// The body has been tapped, so on a phone it has the keyboard. A desktop focuses
+    /// the body whenever a document is open.
+    #[serde(default)]
+    pub editing: bool,
 }
 impl Docs {
     pub const KIND: &'static str = "docs";
@@ -41,6 +45,7 @@ impl Docs {
             draft: String::new(),
             dirty: false,
             status: Status::Loading,
+            editing: false,
         };
         let effects = vec![app.request(window, "list", "GET", "/api/documents", String::new())];
         (app, effects)
@@ -183,7 +188,27 @@ impl Docs {
                     String::new(),
                 )])
             }
-            "body" => Ok(vec![]),
+            "body" => {
+                if self.open.is_none() {
+                    return Err("no document is open".into());
+                }
+                self.editing = true;
+                Ok(vec![])
+            }
+            // A phone's back button returns to the list. An edit not yet saved would be
+            // lost, so it is refused rather than dropped: Save first.
+            "close" => {
+                if self.open.is_none() {
+                    return Err("no document is open".into());
+                }
+                if self.dirty {
+                    return Err("save the document before closing it".into());
+                }
+                self.open = None;
+                self.editing = false;
+                self.draft.clear();
+                Ok(vec![])
+            }
             "save" => {
                 let document = self.open.clone().ok_or("no document is open")?;
                 self.status = Status::Loading;
@@ -206,6 +231,7 @@ impl Docs {
                 if !self.documents.iter().any(|d| d.id == id) {
                     return Err("document not found".into());
                 }
+                self.editing = false;
                 self.status = Status::Loading;
                 Ok(vec![self.request(
                     window,
@@ -265,13 +291,20 @@ impl Docs {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let top = header(p, theme, &l, width, &self.title(theme));
-        let list_w = if theme.mobile() || width < 520 {
-            width
-        } else {
-            216
-        };
-        p.box_(Rect::new(0, top, list_w, height), l.chrome, 0);
+        let narrow = theme.mobile() || width < 520;
+        // A phone shows the open document, or the list: one thing at a time.
+        if narrow {
+            if let Some(document) = &self.open {
+                self.document_view(p, &l, width, height, document, 0, 0);
+                return;
+            }
+        }
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let top = screen.top;
+        let list_w = if narrow { width } else { 216 };
+        if !screen.scrolls() {
+            p.box_(Rect::new(0, top, list_w, height), l.chrome, 0);
+        }
         action(
             p,
             &l,
@@ -285,16 +318,23 @@ impl Docs {
         } else if self.documents.is_empty() {
             notice(p, list_w, top + 44, "No documents");
         }
+        let list = screen.column(
+            p,
+            "list",
+            Rect::new(
+                0,
+                top + 40,
+                list_w,
+                (height as i32 - top - 40).max(1) as u32,
+            ),
+        );
         for (index, document) in self.documents.iter().enumerate() {
             let r = Rect::new(
                 4,
-                top + 42 + index as i32 * 32,
+                list.top + 2 + index as i32 * 32,
                 list_w.saturating_sub(8),
                 30,
             );
-            if r.y as u32 + 30 > height {
-                break;
-            }
             let on = self.open.as_ref().is_some_and(|d| d.id == document.id);
             p.button(
                 r,
@@ -324,38 +364,15 @@ impl Docs {
                 MUTED,
             );
         }
-        if list_w == width {
+        list.end(p);
+        screen.end(p);
+        if narrow {
             return;
         }
         let x = list_w as i32;
         p.vline(x, top, height, LINE);
         match &self.open {
-            Some(document) => {
-                p.strong(
-                    x + 20,
-                    top + 12,
-                    width.saturating_sub(list_w + 120),
-                    &document.title,
-                    16,
-                    INK,
-                );
-                action(
-                    p,
-                    &l,
-                    Rect::new(width as i32 - 92, top + 10, 82, 26),
-                    if self.dirty { "Save •" } else { "Save" },
-                    "docs:save",
-                    self.dirty,
-                );
-                let body = Rect::new(
-                    x + 20,
-                    top + 46,
-                    width.saturating_sub(list_w + 40),
-                    height.saturating_sub(top as u32 + 58),
-                );
-                p.region(body, "docs:body", "Document body");
-                p.paragraph(body.x, body.y, body.width, &self.draft, 13, INK);
-            }
+            Some(document) => self.document_view(p, &l, width, height, document, x, top),
             None => notice(
                 p,
                 width.saturating_sub(list_w),
@@ -363,6 +380,69 @@ impl Docs {
                 "Select a document",
             ),
         }
+    }
+    /// The open document from `x` rightwards and `top` down; its body scrolls. On a
+    /// phone it fills the screen and a back button returns to the list.
+    #[allow(clippy::too_many_arguments)]
+    fn document_view(
+        &self,
+        p: &mut Painter,
+        l: &super::look::Look,
+        width: u32,
+        height: u32,
+        document: &Document,
+        x: i32,
+        top: i32,
+    ) {
+        let mut left = x + 20;
+        if x == 0 {
+            let back = Rect::new(4, top + 6, 40, 30);
+            p.button(
+                back,
+                cw_scene::Color::TRANSPARENT,
+                l.radius,
+                "docs:close",
+                "Back to documents",
+            );
+            if self.dirty {
+                p.disabled("Save the document before going back to the list");
+            }
+            p.symbol("chevron-left", back.x + 8, back.y + 5, 20, l.accent);
+            left = back.x + back.width as i32 + 4;
+        }
+        p.strong(
+            left,
+            top + 12,
+            (width as i32 - left - 100).max(0) as u32,
+            &document.title,
+            16,
+            INK,
+        );
+        action(
+            p,
+            l,
+            Rect::new(width as i32 - 92, top + 10, 82, 26),
+            if self.dirty { "Save •" } else { "Save" },
+            "docs:save",
+            self.dirty,
+        );
+        let body = Rect::new(
+            x + 20,
+            top + 46,
+            width.saturating_sub(x as u32 + 40),
+            (height as i32 - top - 58).max(1) as u32,
+        );
+        p.region(body, "docs:body", "Document body");
+        let pane = p.pane("body", body);
+        p.paragraph(
+            body.x,
+            pane.top(),
+            body.width.saturating_sub(14),
+            &self.draft,
+            13,
+            INK,
+        );
+        p.end_pane(pane, None);
     }
 }
 
