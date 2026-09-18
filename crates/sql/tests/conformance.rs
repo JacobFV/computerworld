@@ -930,3 +930,52 @@ fn triggers_and_without_rowid_tables_survive_the_file_format() {
         .unwrap();
     assert_eq!(rows(&mut back, "select count(*) from log"), ["5"]);
 }
+
+#[test]
+fn renaming_a_column_rewrites_views_and_indexes_quoting_as_written() {
+    let mut d = db("create table child(id, note); create table other(note);
+        create view notes as select note, id from child where note is not null;
+        create view o as select note from other;
+        create unique index child_note on child (note collate nocase desc);
+        insert into child values (1, 'a');
+        alter table child rename column \"note\" to \"text\";
+        alter table child rename column id to ident;");
+    assert_eq!(
+        rows(&mut d, "select sql from sqlite_schema"),
+        [
+            "CREATE TABLE child(ident, \"text\")",
+            "CREATE TABLE other(note)",
+            "CREATE VIEW notes as select \"text\", ident from child where \"text\" is not null",
+            "CREATE VIEW o as select note from other",
+            "CREATE UNIQUE INDEX child_note on child (\"text\" collate nocase desc)",
+        ]
+    );
+    assert_eq!(rows(&mut d, "select * from notes"), ["a|1"]);
+}
+
+#[test]
+fn a_table_primary_key_takes_autoincrement_inside_its_parentheses() {
+    // DB Browser for SQLite writes tables this way.
+    let mut d = db(
+        "create table t(id integer, name text, primary key(\"id\" autoincrement));
+        insert into t(name) values ('a'), ('b'); delete from t where id = 2;
+        insert into t(name) values ('c');",
+    );
+    assert_eq!(rows(&mut d, "select id, name from t"), ["1|a", "3|c"]);
+    assert_eq!(
+        rows(&mut d, "select name, seq from sqlite_sequence"),
+        ["t|3"]
+    );
+    assert_eq!(
+        err(
+            &mut d,
+            "create table u(a integer, b, primary key(a, b autoincrement))"
+        ),
+        "AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY"
+    );
+    assert!(err(
+        &mut d,
+        "create table w(a integer, primary key(a) autoincrement)"
+    )
+    .contains("near \"autoincrement\": syntax error"));
+}

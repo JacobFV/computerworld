@@ -1188,6 +1188,11 @@ impl<'a> Parser<'a> {
     }
     /// `(col [COLLATE c] [ASC|DESC], ...)` including the closing parenthesis.
     fn indexed_columns(&mut self) -> Result<Vec<IndexedColumn>, SqlError> {
+        Ok(self.indexed_list(false)?.0)
+    }
+    /// A parenthesised column list after its `(`, through the `)`; a primary key's may
+    /// end in AUTOINCREMENT.
+    fn indexed_list(&mut self, autoinc: bool) -> Result<(Vec<IndexedColumn>, bool), SqlError> {
         let mut out = Vec::new();
         loop {
             let name = self.name()?;
@@ -1214,8 +1219,9 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+        let autoincrement = autoinc && self.eat_kw("AUTOINCREMENT");
         self.expect_op(")")?;
-        Ok(out)
+        Ok((out, autoincrement))
     }
     fn type_name(&mut self) -> Result<String, SqlError> {
         let mut words = Vec::new();
@@ -1434,9 +1440,10 @@ impl<'a> Parser<'a> {
         if self.eat_kw("PRIMARY") {
             self.expect_kw("KEY")?;
             self.expect_op("(")?;
-            let cols = self.indexed_columns()?;
+            // SQLite's grammar: PRIMARY KEY ( sortlist autoinc ), as DB Browser writes
+            // `PRIMARY KEY("id" AUTOINCREMENT)`.
+            let (cols, autoincrement) = self.indexed_list(true)?;
             self.on_conflict()?;
-            let autoincrement = self.eat_kw("AUTOINCREMENT");
             return Ok(TableConstraint::PrimaryKey(cols, autoincrement));
         }
         if self.eat_kw("UNIQUE") {
@@ -1503,11 +1510,16 @@ impl<'a> Parser<'a> {
             self.eat_kw("COLUMN");
             let from = self.name()?;
             self.expect_kw("TO")?;
+            let quoted = matches!(
+                self.peek().tok,
+                Tok::Ident { quoted: true, .. } | Tok::Str(_)
+            );
             let to = self.name()?;
             return Ok(Stmt::AlterTable(Box::new(AlterTable::RenameColumn {
                 table,
                 from,
                 to,
+                quoted,
             })));
         }
         if self.eat_kw("ADD") {

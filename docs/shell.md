@@ -209,7 +209,8 @@ ROWID table), views, triggers (`BEFORE`, `AFTER` and `INSTEAD OF` on `INSERT`,
 `RAISE(IGNORE | ABORT | FAIL | ROLLBACK, message)`; the newest fires first,
 `recursive_triggers` is off, foreign key actions fire the child's triggers, and a
 view with `INSTEAD OF` triggers takes writes), `ALTER TABLE` (rename, add, rename and
-drop column; renames rewrite triggers), joins (inner, left, right, full, cross,
+drop column; renames rewrite triggers, indexes and the views that read the table,
+quoting the new name as the statement did), joins (inner, left, right, full, cross,
 `USING`, `NATURAL`), grouping, aggregates, compound selects, scalar, `IN` and `EXISTS`
 subqueries, recursive CTEs, upsert, `RETURNING`, transactions and savepoints. Refused
 by name rather than half-done: window functions, partial and expression indexes,

@@ -647,3 +647,133 @@ fn calc_builds_a_pivot_table_refreshes_it_and_keeps_it_in_ods() {
     assert_eq!(pivot.rows, vec![0]);
     assert_eq!(pivot.values[0].1, cw_sheet::pivot::Agg::Average);
 }
+
+#[test]
+fn db_browser_designs_tables_and_indexes_and_writes_them_to_the_file() {
+    let mut s = session("virtual-ubuntu-24", &["database"]);
+    let home = s.home();
+    let path = format!("{home}/Documents/Inventory.db");
+    let w = s.launch("database", &path);
+    s.click("db:tab:structure");
+    // Create Table: a name, two fields, an AUTOINCREMENT key and a NOT NULL column.
+    s.click("db:createtable");
+    s.type_text("warehouses");
+    s.click("db:design:add");
+    s.type_text("id");
+    s.key("Enter");
+    s.click("db:design:cell:0:4");
+    s.click("db:design:add");
+    s.type_text("city");
+    s.key("Tab");
+    s.type_text("TEXT");
+    s.key("Enter");
+    s.click("db:design:cell:1:2");
+    s.click("db:design:ok");
+    assert!(s.client(w).design.is_none(), "{:?}", s.client(w).message);
+    // Modify Table on suppliers: email moves above country, which SQLite can only do
+    // by rebuilding the table under the foreign key from products.
+    s.click("db:tree:table:suppliers");
+    s.click("db:modifytable:suppliers");
+    s.click("db:design:cell:3:0");
+    s.click("db:design:up");
+    s.click("db:design:ok");
+    assert!(s.client(w).design.is_none(), "{:?}", s.client(w).message);
+    // Create Index on products(stock), descending.
+    s.click("db:tree:table:products");
+    s.click("db:createindex");
+    s.type_text("products_stock");
+    s.click("db:index:col:stock");
+    s.click("db:index:order:0");
+    s.click("db:index:ok");
+    assert!(
+        s.client(w).index_design.is_none(),
+        "{:?}",
+        s.client(w).message
+    );
+    // Nothing is in the file until Write Changes.
+    assert!(!cw_sql::Database::open(&s.file(&path))
+        .unwrap()
+        .is_table("warehouses"));
+    s.click("db:write");
+    let mut db = cw_sql::Database::open(&s.file(&path)).unwrap();
+    let text = |db: &mut cw_sql::Database, sql: &str| -> Vec<String> {
+        db.query(sql)
+            .unwrap()
+            .rows
+            .iter()
+            .map(|r| {
+                r.iter()
+                    .map(cw_sql::Value::to_text)
+                    .collect::<Vec<_>>()
+                    .join("|")
+            })
+            .collect()
+    };
+    assert_eq!(
+        text(&mut db, "SELECT sql FROM sqlite_schema WHERE name = 'warehouses'"),
+        ["CREATE TABLE \"warehouses\" (\n\t\"id\"\tINTEGER,\n\t\"city\"\tTEXT NOT NULL,\n\tPRIMARY KEY(\"id\" AUTOINCREMENT)\n)"]
+    );
+    let cols: Vec<String> = db
+        .table_info("suppliers")
+        .unwrap()
+        .into_iter()
+        .map(|c| c.name)
+        .collect();
+    assert_eq!(cols, ["id", "name", "email", "country"]);
+    assert_eq!(
+        text(
+            &mut db,
+            "SELECT id, name, email, country FROM suppliers WHERE id = 3"
+        ),
+        ["3|Kyoto Precision||Japan"]
+    );
+    assert_eq!(
+        text(
+            &mut db,
+            "SELECT sql FROM sqlite_schema WHERE name = 'products_stock'"
+        ),
+        ["CREATE INDEX \"products_stock\" ON \"products\" (\n\t\"stock\"\tDESC\n)"]
+    );
+    assert_eq!(text(&mut db, "PRAGMA integrity_check"), ["ok"]);
+    assert!(text(&mut db, "PRAGMA foreign_key_check").is_empty());
+    db.execute("PRAGMA foreign_keys = ON; INSERT INTO warehouses (city) VALUES ('Oslo')")
+        .unwrap();
+    assert_eq!(text(&mut db, "SELECT id, city FROM warehouses"), ["1|Oslo"]);
+}
+
+#[test]
+fn tableplus_edits_a_tables_structure_in_place_and_commits_it() {
+    let mut s = session("virtual-macos-golden-gate", &["database"]);
+    let home = s.home();
+    let path = format!("{home}/Documents/Inventory.db");
+    let w = s.launch("database", &path);
+    s.click("db:table:suppliers");
+    s.click("db:tab:structure");
+    // Double-click the email column's name and type over the end of it.
+    s.double_click("db:struct:cell:3:0");
+    s.type_text("_address");
+    s.key("Enter");
+    // A new column, typed in place.
+    s.click("db:struct:addcol");
+    s.type_text("phone");
+    s.key("Enter");
+    assert!(s.client(w).modified());
+    assert!(s.find("db:write").is_some(), "Commit is offered");
+    s.key("Meta+s");
+    let mut db = cw_sql::Database::open(&s.file(&path)).unwrap();
+    let cols: Vec<String> = db
+        .table_info("suppliers")
+        .unwrap()
+        .into_iter()
+        .map(|c| c.name)
+        .collect();
+    assert_eq!(cols, ["id", "name", "country", "email_address", "phone"]);
+    let out = db
+        .query("SELECT email_address FROM suppliers WHERE id = 1")
+        .unwrap();
+    assert_eq!(
+        out.rows[0][0],
+        cw_sql::Value::Text("orders@acme.example".into())
+    );
+    assert!(!s.client(w).modified());
+}

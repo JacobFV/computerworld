@@ -1725,9 +1725,22 @@ pub fn drop(
 }
 
 /// Replace identifier tokens equal to `from` in schema text with `to`.
-fn rename_identifier(sql: &str, from: &str, to: &str, only_after: Option<&str>) -> String {
+/// `sql` with the identifier `from` renamed to `to`; SQLite quotes the new name when
+/// the ALTER statement quoted it (`quoted`), or when it has to be.
+fn rename_identifier(
+    sql: &str,
+    from: &str,
+    to: &str,
+    only_after: Option<&str>,
+    quoted: bool,
+) -> String {
     let Ok(toks) = crate::lexer::tokenize(sql) else {
         return sql.to_owned();
+    };
+    let shown = if quoted {
+        format!("\"{}\"", to.replace('"', "\"\""))
+    } else {
+        quote_ident(to)
     };
     let mut out = String::new();
     let mut last = 0;
@@ -1737,7 +1750,7 @@ fn rename_identifier(sql: &str, from: &str, to: &str, only_after: Option<&str>) 
             let allowed = only_after.is_none_or(|kw| prev_kw.as_deref() == Some(kw));
             if name.eq_ignore_ascii_case(from) && allowed {
                 out.push_str(&sql[last..t.start]);
-                out.push_str(&quote_ident(to));
+                out.push_str(&shown);
                 last = t.end;
             }
         }
@@ -1773,7 +1786,7 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
                     let suffix = i.name.rsplit('_').next().unwrap_or("1").to_owned();
                     i.name = format!("sqlite_autoindex_{to}_{suffix}");
                 } else if let Some(sql) = &i.sql {
-                    i.sql = Some(rename_identifier(sql, &old_name, to, Some("ON")));
+                    i.sql = Some(rename_identifier(sql, &old_name, to, Some("ON"), false));
                 }
                 state
                     .indexes
@@ -1791,12 +1804,12 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
                             f.parent = to.clone();
                         }
                     }
-                    o.sql = rename_identifier(&o.sql, &old_name, to, Some("REFERENCES"));
+                    o.sql = rename_identifier(&o.sql, &old_name, to, Some("REFERENCES"), false);
                 }
             }
             for v in state.views.values_mut() {
-                v.sql = rename_identifier(&v.sql, &old_name, to, None);
-                v.select = rename_identifier(&v.select, &old_name, to, None);
+                v.sql = rename_identifier(&v.sql, &old_name, to, None, false);
+                v.select = rename_identifier(&v.select, &old_name, to, None, false);
             }
             // Triggers follow the table, and every trigger program naming it is
             // rewritten, as SQLite 3.25 and later do.
@@ -1816,7 +1829,12 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
                 }
             }
         }
-        AlterTable::RenameColumn { table, from, to } => {
+        AlterTable::RenameColumn {
+            table,
+            from,
+            to,
+            quoted,
+        } => {
             let key = guard_writable(state, table)?;
             let t = state.tables[&key].clone();
             let i = t
@@ -1827,24 +1845,39 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
             }
             let t = Arc::make_mut(state.tables.get_mut(&key).expect("checked"));
             t.columns[i].name = to.clone();
-            t.sql = rename_identifier(&t.sql, from, to, None);
+            t.sql = rename_identifier(&t.sql, from, to, None, *quoted);
             t.checks = t
                 .checks
                 .iter()
-                .map(|c| rename_identifier(c, from, to, None))
+                .map(|c| rename_identifier(c, from, to, None, *quoted))
                 .collect();
             let tname = t.name.clone();
             for trig in state.triggers.values_mut() {
                 if trig.table == key {
-                    trig.sql = rename_trigger_text(&trig.sql, from, to, false);
+                    trig.sql = rename_trigger_text(&trig.sql, from, to, *quoted);
                 }
             }
             for idx in state.indexes.values_mut() {
                 if idx.table == key {
                     if let Some(sql) = &idx.sql {
-                        let s = rename_identifier(sql, from, to, None);
+                        let s = rename_identifier(sql, from, to, None, *quoted);
                         Arc::make_mut(idx).sql = Some(s);
                     }
+                }
+            }
+            // Views that read the table follow the column, as SQLite rewrites them.
+            let reads_table = |sql: &str| {
+                crate::lexer::tokenize(sql).is_ok_and(|toks| {
+                    toks.iter().any(|t| {
+                        matches!(&t.tok, crate::lexer::Tok::Ident { name, .. }
+                            if name.eq_ignore_ascii_case(&tname))
+                    })
+                })
+            };
+            for view in state.views.values_mut() {
+                if reads_table(&view.select) {
+                    view.sql = rename_identifier(&view.sql, from, to, None, *quoted);
+                    view.select = rename_identifier(&view.select, from, to, None, *quoted);
                 }
             }
             for other in state.tables.values_mut() {

@@ -321,6 +321,8 @@ pub enum AlterTable {
         table: String,
         from: String,
         to: String,
+        /// The new name was written quoted, and SQLite writes it into the schema so.
+        quoted: bool,
     },
     AddColumn {
         table: String,
