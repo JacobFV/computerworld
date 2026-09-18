@@ -2,14 +2,12 @@
 //! watertight results.
 use cw_cad::document::*;
 use cw_cad::math::{v2, v3, PI, TAU};
-use cw_cad::sketch::profile::SEGMENTS;
 use cw_cad::sketch::{tools, Constraint, ConstraintType as T, Pos, Sketch};
 use cw_cad::solid::EdgeKind;
 
-/// Area of the inscribed polygon standing in for a circle of radius `r`.
+/// A circle's area: the kernel is exact, so this is the real thing.
 fn circle_area(r: f64) -> f64 {
-    let n = SEGMENTS as f64;
-    0.5 * n * r * r * (TAU / n).sin()
+    PI * r * r
 }
 
 fn sketch_on(doc: &mut Document, body: &str, plane: BasePlane, s: Sketch) -> String {
@@ -68,8 +66,8 @@ fn pad_then_pocket_through_all_and_edit_upstream() {
     let (mut doc, body, p) = padded_box();
     let model = recompute(&mut doc);
     ok(&model, &[&p, &body]);
-    let m = &shape(&model, &p).mesh;
-    assert!(m.is_watertight());
+    let m = shape(&model, &p);
+    assert!(m.mesh.is_watertight());
     assert!((m.volume() - 1000.0).abs() < 1e-9);
     assert!((m.area() - 2.0 * (200.0 + 100.0 + 50.0)).abs() < 1e-9);
 
@@ -91,8 +89,8 @@ fn pad_then_pocket_through_all_and_edit_upstream() {
         .unwrap();
     let model = recompute(&mut doc);
     ok(&model, &[&pocket]);
-    let m = &model.body_shape[&body].mesh;
-    assert!(m.is_watertight(), "{} open edges", m.open_edges());
+    let m = &model.body_shape[&body];
+    assert!(m.mesh.is_watertight(), "{} open edges", m.mesh.open_edges());
     let want = 1000.0 - circle_area(3.0) * 5.0;
     assert!((m.volume() - want).abs() < 1e-6, "{} vs {want}", m.volume());
     // Two circular edges and the box's twelve.
@@ -114,10 +112,10 @@ fn pad_then_pocket_through_all_and_edit_upstream() {
         *length = 8.0;
     }
     let model = recompute(&mut doc);
-    let m = &model.body_shape[&body].mesh;
+    let m = &model.body_shape[&body];
     let want = 1600.0 - circle_area(3.0) * 8.0;
     assert!((m.volume() - want).abs() < 1e-6, "{} vs {want}", m.volume());
-    assert!(m.is_watertight());
+    assert!(m.mesh.is_watertight());
 }
 
 #[test]
@@ -148,7 +146,7 @@ fn a_sketch_on_a_face_follows_the_face_when_the_pad_changes() {
     ok(&model, &[&sk, &p2]);
     assert!((model.frames[&sk].origin.z - 5.0).abs() < 1e-9);
     let want = 1000.0 + circle_area(2.0) * 3.0;
-    assert!((model.body_shape[&body].mesh.volume() - want).abs() < 1e-6);
+    assert!((model.body_shape[&body].volume() - want).abs() < 1e-6);
     let b = model.body_shape[&body].mesh.bounds().unwrap();
     assert!((b.max.z - 8.0).abs() < 1e-9);
     // The base pad grows; the sketch rides up with its face.
@@ -188,8 +186,8 @@ fn revolution_and_groove_match_their_polygonal_volumes() {
     ok(&model, &[&rev]);
     let k = circle_area(1.0);
     let tube = k * (225.0 - 25.0) * 20.0;
-    let m = &model.body_shape[&body].mesh;
-    assert!(m.is_watertight());
+    let m = &model.body_shape[&body];
+    assert!(m.mesh.is_watertight());
     assert!((m.volume() - tube).abs() < 1e-6, "{} vs {tube}", m.volume());
     // Groove a 2 x 2 ring out of the outer wall at mid height.
     let mut g = Sketch::default();
@@ -209,8 +207,8 @@ fn revolution_and_groove_match_their_polygonal_volumes() {
         .unwrap();
     let model = recompute(&mut doc);
     ok(&model, &[&groove]);
-    let m = &model.body_shape[&body].mesh;
-    assert!(m.is_watertight(), "{} open", m.open_edges());
+    let m = &model.body_shape[&body];
+    assert!(m.mesh.is_watertight(), "{} open", m.mesh.open_edges());
     let want = tube - k * (225.0 - 169.0) * 2.0;
     assert!((m.volume() - want).abs() < 1e-6, "{} vs {want}", m.volume());
 }
@@ -236,19 +234,25 @@ fn fillet_and_chamfer_remove_exactly_their_sections() {
                     Feature::Chamfer {
                         edges: vec![edge],
                         size: 2.0,
+                        kind: ChamferType::Equal,
+                        size2: 2.0,
+                        angle: 45.0,
+                        flip: false,
+                        all_edges: false,
                     }
                 } else {
                     Feature::Fillet {
                         edges: vec![edge],
                         radius: 2.0,
+                        all_edges: false,
                     }
                 },
             )
             .unwrap();
         let model = recompute(&mut doc);
         ok(&model, &[&f]);
-        let m = &model.body_shape[&body].mesh;
-        assert!(m.is_watertight(), "{} open", m.open_edges());
+        let m = &model.body_shape[&body];
+        assert!(m.mesh.is_watertight(), "{} open", m.mesh.open_edges());
         let removed = if chamfer {
             2.0 * 2.0 / 2.0 * 20.0
         } else {
@@ -263,7 +267,7 @@ fn fillet_and_chamfer_remove_exactly_their_sections() {
         if !chamfer {
             let t = &model.body_shape[&body].topo;
             assert!(t.faces.iter().any(|f| matches!(
-                m.surfaces[f.surface as usize],
+                m.mesh.surfaces[f.surface as usize],
                 cw_cad::mesh::Surface::Cylinder { .. }
             )));
         }
@@ -305,8 +309,8 @@ fn a_through_hole_with_a_counterbore() {
         .unwrap();
     let model = recompute(&mut doc);
     ok(&model, &[&h]);
-    let m = &model.body_shape[&body].mesh;
-    assert!(m.is_watertight(), "{} open", m.open_edges());
+    let m = &model.body_shape[&body];
+    assert!(m.mesh.is_watertight(), "{} open", m.mesh.open_edges());
     let want = 1000.0 - circle_area(2.0) * 3.0 - circle_area(3.0) * 2.0;
     assert!((m.volume() - want).abs() < 1e-6, "{} vs {want}", m.volume());
 }
@@ -344,8 +348,8 @@ fn patterns_and_mirrors_repeat_the_original_tool() {
         .unwrap();
     let model = recompute(&mut doc);
     ok(&model, &[&pocket, &lin]);
-    let m = &model.body_shape[&body].mesh;
-    assert!(m.is_watertight(), "{} open", m.open_edges());
+    let m = &model.body_shape[&body];
+    assert!(m.mesh.is_watertight(), "{} open", m.mesh.open_edges());
     let hole = circle_area(1.0) * 5.0;
     assert!((m.volume() - (1000.0 - 4.0 * hole)).abs() < 1e-6);
     // Mirror the first hole across the plane x = 0 would leave the part; mirror
@@ -366,8 +370,8 @@ fn patterns_and_mirrors_repeat_the_original_tool() {
         .unwrap();
     let model = recompute(&mut doc);
     ok(&model, &[&boss, &mir]);
-    let m = &model.body_shape[&body].mesh;
-    assert!(m.is_watertight());
+    let m = &model.body_shape[&body];
+    assert!(m.mesh.is_watertight());
     // Box, the boss's 3 mm above it, and the mirrored boss (all 8 mm) beside it.
     assert!(
         (m.volume() - (1000.0 + 2.0 * 10.0 * 3.0 + 2.0 * 10.0 * 8.0)).abs() < 1e-6,
@@ -398,8 +402,8 @@ fn patterns_and_mirrors_repeat_the_original_tool() {
         .unwrap();
     let model = recompute(&mut doc);
     ok(&model, &[&polar]);
-    let m = &model.body_shape[&body].mesh;
-    assert!(m.is_watertight(), "{} open", m.open_edges());
+    let m = &model.body_shape[&body];
+    assert!(m.mesh.is_watertight(), "{} open", m.mesh.open_edges());
     assert!(m.volume() > circle_area(10.0) * 2.0 + 6.0 * 4.0 * 2.0 * 2.0 - 1e-6);
     let _ = PI;
 }

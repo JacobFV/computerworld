@@ -1357,8 +1357,8 @@ impl Cad {
                     text: format!(
                         "{} volume {} mm³, area {} mm²",
                         self.label_of(&body),
-                        cw_cad::math::fmt_num(shape.mesh.volume(), 3),
-                        cw_cad::math::fmt_num(shape.mesh.area(), 3)
+                        cw_cad::math::fmt_num(shape.volume(), 3),
+                        cw_cad::math::fmt_num(shape.area(), 3)
                     ),
                 });
             }

@@ -549,6 +549,15 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
                 None => return Err("a face could not be classified".into()),
             },
         };
+        #[cfg(test)]
+        if std::env::var("CW_BOOL_DEBUG").is_ok() {
+            println!(
+                "sub {si} side {:?} face {} state {state} at {p:?} uv {uv:?} loops {:?}",
+                sf.side,
+                sf.face,
+                sf.loops.iter().map(|l| l.len()).collect::<Vec<_>>()
+            );
+        }
         let take = match (op, sf.side, state) {
             (Op::Union, _, "out") => Some(false),
             (Op::Union, Side::A, "same") => Some(false),
@@ -622,11 +631,25 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
             .filter(|i| *i < out.edges.len())
             .map(|i| {
                 let ed = &out.edges[i];
+                let users: Vec<String> = out
+                    .faces
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, f)| f.loops.iter().flatten().any(|c| c.edge == i))
+                    .map(|(fi, f)| {
+                        format!(
+                            "{fi}:{}{:?}",
+                            f.surface.name(),
+                            f.surface.frame().map(|g| (g.origin, g.z))
+                        )
+                    })
+                    .collect();
                 format!(
-                    " at {:?} from {:?} to {:?}",
+                    " at {:?} from {:?} to {:?}, faces {}",
                     ed.mid(),
                     out.vertices[ed.v0].p,
-                    out.vertices[ed.v1].p
+                    out.vertices[ed.v1].p,
+                    users.join(" ")
                 )
             })
             .unwrap_or_default();

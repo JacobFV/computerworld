@@ -362,6 +362,24 @@ fn a_fillet_between_two_cylinders_rolls_round_the_junction() {
 #[ignore]
 fn debug_sphere() {
     {
+        let plate = cuboid(V3::ZERO, v3(20.0, 10.0, 5.0));
+        let f = Frame::XY;
+        let tool = super::build::extrude(&[circle_region(v2(3.0, 5.0), 1.0)], &f, -60.0, 60.0);
+        let prep = super::intersect::Prepared::new(&tool);
+        for p in [
+            v3(3.0, 4.9366, 0.0),
+            v3(3.0, 5.0636, 5.0),
+            v3(3.0, 5.0, 0.0),
+            v3(3.0, 5.0, 1.0),
+        ] {
+            println!("contains {p:?} -> {:?}", prep.contains(p));
+        }
+        match boolean(&plate, &tool, Op::Difference) {
+            Ok(r) => println!("pocket ok faces {} vol {}", r.faces.len(), mass_props(&r).volume),
+            Err(e) => println!("pocket err {e}"),
+        }
+    }
+    {
         let cube = cuboid(V3::ZERO, v3(2.0, 2.0, 2.0));
         let ball = sphere(v3(2.0, 2.0, 2.0), 2.0);
         match boolean(&cube, &ball, Op::Difference) {

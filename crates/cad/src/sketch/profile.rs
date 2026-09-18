@@ -258,6 +258,86 @@ pub fn regions(s: &Sketch) -> Result<Vec<Region>, String> {
     Ok(regions.into_iter().map(|(_, r)| r).collect())
 }
 
+/// The sketch's profile as exact wires (lines and arcs) for the solid kernel: the same
+/// faces [`regions`] finds, each polygon run of one geometry turned back into that
+/// geometry, traversed the wire's way.
+pub fn exact_regions(s: &Sketch) -> Result<Vec<crate::brep::build::Region2>, String> {
+    use crate::brep::build::{Region2, Wire2};
+    let exact = |w: &Wire| -> Wire2 {
+        let n = w.pts.len();
+        let start = (0..n).find(|&i| w.edge_geo[(i + n - 1) % n] != w.edge_geo[i]);
+        let Some(start) = start else {
+            // One geometry all round: a circle.
+            let g = &s.geos[w.edge_geo[0] as usize].geom;
+            let (c, r) = match *g {
+                Geom::Circle { c, r } => (c, r),
+                Geom::Arc { c, r, .. } => (c, r),
+                _ => (w.pts[0], 0.0),
+            };
+            let sweep = if w.area() >= 0.0 { TAU } else { -TAU };
+            return Wire2 {
+                segs: vec![crate::brep::build::Seg2::Arc {
+                    c,
+                    r,
+                    a0: 0.0,
+                    sweep,
+                }],
+            };
+        };
+        let mut segs = Vec::new();
+        let mut i = 0;
+        while i < n {
+            let k = (start + i) % n;
+            let id = w.edge_geo[k];
+            let mut len = 1;
+            while i + len < n && w.edge_geo[(start + i + len) % n] == id {
+                len += 1;
+            }
+            let from = w.pts[k];
+            let to = w.pts[(start + i + len) % n];
+            let g = &s.geos[id as usize].geom;
+            use crate::brep::build::Seg2;
+            match *g {
+                Geom::Line { a, b } => {
+                    if from.dist(a) <= from.dist(b) {
+                        segs.push(Seg2::Line(a, b));
+                    } else {
+                        segs.push(Seg2::Line(b, a));
+                    }
+                }
+                Geom::Arc { c, r, start: a0, end: a1 } => {
+                    let ps = c + V2::polar(a0, r);
+                    if from.dist(ps) <= to.dist(ps) {
+                        segs.push(Seg2::Arc {
+                            c,
+                            r,
+                            a0,
+                            sweep: a1 - a0,
+                        });
+                    } else {
+                        segs.push(Seg2::Arc {
+                            c,
+                            r,
+                            a0: a1,
+                            sweep: a0 - a1,
+                        });
+                    }
+                }
+                _ => segs.push(Seg2::Line(from, to)),
+            }
+            i += len;
+        }
+        Wire2 { segs }
+    };
+    Ok(regions(s)?
+        .iter()
+        .map(|r| Region2 {
+            outer: exact(&r.outer),
+            holes: r.holes.iter().map(exact).collect(),
+        })
+        .collect())
+}
+
 /// A point strictly on the wire's boundary, nudged nowhere: containment of wires that
 /// do not cross is decided by any of their vertices.
 fn inner_point(w: &Wire) -> V2 {

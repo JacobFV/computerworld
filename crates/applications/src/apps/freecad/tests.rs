@@ -302,24 +302,24 @@ fn trim_extend_and_fillet_by_clicking() {
 #[test]
 fn features_are_made_edited_and_recomputed_through_their_panels() {
     let mut c = padded();
-    assert!((body_shape(&c).mesh.volume() - 8000.0).abs() < 1e-6);
+    assert!((body_shape(&c).volume() - 8000.0).abs() < 1e-6);
     // Edit the pad's length in the property editor: everything downstream follows.
     c.command(W, "tree:Pad", None).unwrap();
     c.command(W, "prop:Length", None).unwrap();
     c.type_text("15").unwrap();
     c.key(W, "Enter").unwrap();
-    assert!((body_shape(&c).mesh.volume() - 12000.0).abs() < 1e-6);
+    assert!((body_shape(&c).volume() - 12000.0).abs() < 1e-6);
     // Reopen the pad's panel by double-click; Cancel restores it untouched.
     c.double_click(W, "tree:Pad").unwrap();
     c.command(W, "field:task:Length", None).unwrap();
     c.type_text("99").unwrap();
     c.key(W, "Enter").unwrap();
     assert!(
-        (body_shape(&c).mesh.volume() - 79200.0).abs() < 1e-6,
+        (body_shape(&c).volume() - 79200.0).abs() < 1e-6,
         "the panel previews live"
     );
     c.task_command(W, "cancel").unwrap();
-    assert!((body_shape(&c).mesh.volume() - 12000.0).abs() < 1e-6);
+    assert!((body_shape(&c).volume() - 12000.0).abs() < 1e-6);
     // Fillet a picked edge.
     c.set_view(StdView::Isometric);
     c.fit_all();
@@ -333,7 +333,7 @@ fn features_are_made_edited_and_recomputed_through_their_panels() {
     c.task_command(W, "ok").unwrap();
     let shape = body_shape(&c);
     assert!(shape.mesh.is_watertight());
-    let removed = 12000.0 - shape.mesh.volume();
+    let removed = 12000.0 - shape.volume();
     assert!(removed > 0.8 * 40.0 && removed < 4.0 * 40.0, "{removed}");
     // A polar pattern of the fillet is refused (only additive/subtractive tools pattern).
     c.command(W, "tree:Fillet", None).unwrap();
@@ -347,7 +347,7 @@ fn features_are_made_edited_and_recomputed_through_their_panels() {
     c.command(W, "choice:task/Type:Through all", None).unwrap();
     c.command(W, "task:toggle:Reversed", None).unwrap();
     c.task_command(W, "ok").unwrap();
-    let before = body_shape(&c).mesh.volume();
+    let before = body_shape(&c).volume();
     c.command(W, "tree:Pocket", None).unwrap();
     c.run(W, "PartDesign_LinearPattern").unwrap();
     c.command(W, "field:task:Length", None).unwrap();
@@ -357,7 +357,7 @@ fn features_are_made_edited_and_recomputed_through_their_panels() {
     c.type_text("3").unwrap();
     c.key(W, "Enter").unwrap();
     c.task_command(W, "ok").unwrap();
-    let after = body_shape(&c).mesh.volume();
+    let after = body_shape(&c).volume();
     let hole = before - after;
     assert!(hole > 0.0);
     assert!(body_shape(&c).mesh.is_watertight());
@@ -374,10 +374,9 @@ fn revolution_hole_and_mirror_from_the_toolbar() {
     c.leave_sketch();
     c.run(W, "PartDesign_Revolution").unwrap();
     c.task_command(W, "ok").unwrap();
-    let v = body_shape(&c).mesh.volume();
-    let n = cw_cad::sketch::profile::SEGMENTS as f64;
-    let k = 0.5 * n * (std::f64::consts::TAU / n).sin();
-    assert!((v - k * (225.0 - 25.0) * 10.0).abs() < 1e-6, "{v}");
+    let v = body_shape(&c).volume();
+    let want = std::f64::consts::PI * (225.0 - 25.0) * 10.0;
+    assert!((v - want).abs() < 1e-9, "{v} vs {want}");
     // A hole in the top ring, from a sketch on the top face.
     let shape = body_shape(&c);
     let top = (0..shape.topo.faces.len())
@@ -395,7 +394,7 @@ fn revolution_hole_and_mirror_from_the_toolbar() {
     c.leave_sketch();
     c.run(W, "PartDesign_Hole").unwrap();
     c.task_command(W, "ok").unwrap();
-    let with_hole = body_shape(&c).mesh.volume();
+    let with_hole = body_shape(&c).volume();
     assert!(
         with_hole < v - 100.0,
         "a 6 mm hole 10 mm deep removed material: {v} -> {with_hole}"
@@ -406,7 +405,7 @@ fn revolution_hole_and_mirror_from_the_toolbar() {
     c.run(W, "PartDesign_Mirrored").unwrap();
     c.command(W, "choice:task/Plane:YZ_Plane", None).unwrap();
     c.task_command(W, "ok").unwrap();
-    let mirrored = body_shape(&c).mesh.volume();
+    let mirrored = body_shape(&c).volume();
     assert!(((v - with_hole) * 2.0 - (v - mirrored)).abs() < 1e-6);
 }
 

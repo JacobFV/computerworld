@@ -297,8 +297,22 @@ pub fn classify(s: &Solid, fu: &FaceUV, f: usize, p: V3, tol: f64) -> Where {
         let span = hi - lo;
         t > lo + span * 1e-6 && t < hi - span * 1e-6
     };
-    let chord = s.edge_box(c.edge).diagonal() * 4e-3 + 50.0 * TOL;
-    if interior && dist < chord {
+    // How far the parameter-plane polygon can stray from the true edge: a straight edge
+    // not at all, a sampled curve by its sagitta.
+    let chord = match &e.curve {
+        crate::brep::geom::Curve::Line { .. } => 50.0 * TOL,
+        crate::brep::geom::Curve::Circle { r, .. } => r.abs() * 4e-3 + 50.0 * TOL,
+        _ => s.edge_box(c.edge).diagonal() * 4e-3 + 50.0 * TOL,
+    };
+    // A seam has the same face on both sides: its side tells nothing.
+    let seam = face
+        .loops
+        .iter()
+        .flatten()
+        .filter(|x| x.edge == c.edge)
+        .count()
+        > 1;
+    if interior && !seam && dist < chord {
         let (q, d) = e.curve.d1(t);
         let tan = if c.rev { -d } else { d };
         let (u, v) = face.surface.project(q);

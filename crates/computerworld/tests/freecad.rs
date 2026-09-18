@@ -187,7 +187,7 @@ impl Desk {
     fn body_volume(&self) -> f64 {
         let (doc, model) = self.model();
         let body = doc.bodies()[0].to_owned();
-        model.body_shape[&body].mesh.volume()
+        model.body_shape[&body].volume()
     }
     fn solver(&self) -> String {
         let r: cw_cad::sketch::SolveReport =
@@ -316,8 +316,7 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
         .unwrap();
     assert_eq!(pocket["Type"], "ThroughAll", "{pocket}");
     d.click("freecad:task:ok");
-    let n = cw_cad::sketch::profile::SEGMENTS as f64;
-    let hole = 0.5 * n * 25.0 * (std::f64::consts::TAU / n).sin() * 10.0;
+    let hole = std::f64::consts::PI * 25.0 * 10.0;
     assert!(
         (d.body_volume() - (8000.0 - hole)).abs() < 1e-6,
         "{}",
@@ -347,8 +346,10 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     );
     let mesh = cw_cad::io::read_stl(&bytes).unwrap();
     assert!(mesh.is_watertight());
+    // The exported mesh is the display tessellation of the exact solid: a hole's wall
+    // is inscribed, so its volume is a shade over the exact one.
     assert!(
-        (mesh.volume() - (8000.0 - hole)).abs() < 0.05,
+        (mesh.volume() - (8000.0 - hole)).abs() < 0.002 * (8000.0 - hole),
         "{}",
         mesh.volume()
     );

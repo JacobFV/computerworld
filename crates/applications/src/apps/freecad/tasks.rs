@@ -184,9 +184,21 @@ impl Cad {
             return Err("Select one or more edges of the body first".into());
         }
         let feature = if id == "PartDesign_Fillet" {
-            Feature::Fillet { edges, radius: 1.0 }
+            Feature::Fillet {
+                edges,
+                radius: 1.0,
+                all_edges: false,
+            }
         } else {
-            Feature::Chamfer { edges, size: 1.0 }
+            Feature::Chamfer {
+                edges,
+                size: 1.0,
+                kind: cw_cad::document::ChamferType::Equal,
+                size2: 1.0,
+                angle: 45.0,
+                flip: false,
+                all_edges: false,
+            }
         };
         let label = if id == "PartDesign_Fillet" {
             "Fillet"
@@ -1041,16 +1053,15 @@ impl Cad {
                 _ => model.shapes.get(&s.object),
             };
             if let Some(shape) = shape {
-                let m = &shape.mesh;
                 out.push((
                     format!("{} volume", self.label_of(&s.object)),
-                    format!("{} mm³", fmt_num(m.volume(), 2)),
+                    format!("{} mm³", fmt_num(shape.volume(), 2)),
                 ));
                 out.push((
                     "Surface area".into(),
-                    format!("{} mm²", fmt_num(m.area(), 2)),
+                    format!("{} mm²", fmt_num(shape.area(), 2)),
                 ));
-                if let Some(c) = m.center_of_mass() {
+                if let Some(c) = shape.center_of_mass() {
                     out.push((
                         "Center of mass".into(),
                         format!(
@@ -1061,7 +1072,7 @@ impl Cad {
                         ),
                     ));
                 }
-                if let Some(b) = m.bounds() {
+                if let Some(b) = shape.mesh.bounds() {
                     let d = b.size();
                     out.push((
                         "Bounding box".into(),
