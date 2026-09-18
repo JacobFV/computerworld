@@ -199,6 +199,34 @@ impl Desk {
         self.typed(text);
         self.key("Enter");
     }
+    /// A real double click on the control whose target starts with `prefix`: the host
+    /// sends the click, then the double click.
+    fn double_click(&mut self, prefix: &str) {
+        let r = self.at(prefix);
+        let (x, y) = (r.x + r.width as i32 / 2, r.y + r.height as i32 / 2);
+        for op in ["click", "double_click"] {
+            let payload = json!({"x": x, "y": y, "width": W, "height": H});
+            if let Err(e) = self.try_act("pointer.v1", op, payload) {
+                panic!(
+                    "{op} on {prefix} failed: {e}; status {:?}",
+                    self.state()["status"]
+                );
+            }
+        }
+    }
+    fn dialog(&self) -> Value {
+        self.state()["dialog"].clone()
+    }
+    fn folder(&self) -> String {
+        self.dialog()["folder"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned()
+    }
+    fn exists(&mut self, path: &str) -> bool {
+        self.try_act("filesystem.v1", "read", json!({"path": path}))
+            .is_ok()
+    }
     fn read_file(&mut self, path: &str) -> Vec<u8> {
         let v = self.act("filesystem.v1", "read", json!({"path": path}));
         v["bytes"]
@@ -431,4 +459,139 @@ fn the_view_orbits_pans_zooms_and_answers_the_navigation_cube() {
         json!({"x": 2, "y": 2, "width": W, "height": H, "delta_y": 120}),
     );
     assert_eq!(outside["handled"], false);
+}
+
+/// Each desktop's own file dialog, driven by pointer and keyboard: Save As goes
+/// through the sidebar's standard places, the path bar (the Mac's folder pop-up),
+/// history, and New Folder into a folder that really appears on the machine; the file
+/// is written there; saving over it asks the platform's question; and the document
+/// comes back through the Open dialog by double clicks.
+#[test]
+fn native_file_dialogs_save_and_open_on_every_desktop() {
+    for (machine, user) in [
+        ("alice-mac", "alice"),
+        ("bob-windows", "bob"),
+        ("carol-ubuntu", "carol"),
+    ] {
+        let mut d = Desk::new(machine, user);
+        d.launch();
+        let home = d.state()["home"].as_str().unwrap().to_owned();
+        assert!(
+            !home.is_empty(),
+            "{machine}: the window knows the home folder"
+        );
+        let docs = format!("{home}/Documents");
+        let desktop = format!("{home}/Desktop");
+
+        d.key("Ctrl+Shift+S");
+        assert_eq!(d.dialog()["purpose"], "save_as");
+        assert_eq!(d.folder(), docs, "{machine}: Save As starts in Documents");
+        // A sidebar place.
+        d.click(&format!("freecad:file:place:{desktop}"));
+        assert_eq!(d.folder(), desktop, "{machine}: sidebar Desktop");
+        // The path bar (on the Mac, the folder pop-up) up to the home folder.
+        if machine == "alice-mac" {
+            d.click("freecad:choice:open:filepath");
+            d.click(&format!("freecad:choice:filepath:{home}"));
+        } else {
+            d.click(&format!("freecad:file:crumb:{home}"));
+        }
+        assert_eq!(d.folder(), home, "{machine}: path bar");
+        // History: Back to the Desktop, Forward home again (GTK's chooser has no
+        // history buttons; Alt+Left and Alt+Right are its keys).
+        if machine == "carol-ubuntu" {
+            d.key("Alt+ArrowLeft");
+        } else {
+            d.click("freecad:file:back");
+        }
+        assert_eq!(d.folder(), desktop, "{machine}: back");
+        if machine == "carol-ubuntu" {
+            d.key("Alt+ArrowRight");
+        } else {
+            d.click("freecad:file:forward");
+        }
+        assert_eq!(d.folder(), home, "{machine}: forward");
+        // Into Documents by a double click on its row.
+        d.double_click("freecad:file:entry:Documents/");
+        assert_eq!(d.folder(), docs, "{machine}: double click opens a folder");
+
+        // New Folder, the platform's way.
+        let parts = match machine {
+            "bob-windows" => {
+                d.click("freecad:file:new-folder");
+                assert_eq!(d.dialog()["selected"], "New folder/");
+                let listed = d.dialog()["entries"].clone();
+                assert!(
+                    listed
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|e| e == "New folder/"),
+                    "the new folder is listed from the machine: {listed}"
+                );
+                d.double_click("freecad:file:entry:New folder/");
+                format!("{docs}/New folder")
+            }
+            "alice-mac" => {
+                d.click("freecad:file:folder-prompt:");
+                d.typed("Parts");
+                d.key("Enter");
+                format!("{docs}/Parts")
+            }
+            _ => {
+                d.click("freecad:file:folder-prompt:");
+                d.typed("Parts");
+                d.click("freecad:file:folder-create");
+                format!("{docs}/Parts")
+            }
+        };
+        assert_eq!(d.folder(), parts, "{machine}: into the new folder");
+        assert_eq!(d.dialog()["entries"], json!([]), "a new folder is empty");
+        // Name it and save with Return.
+        d.click("freecad:field:file-name");
+        d.typed("Bracket");
+        d.key("Enter");
+        let saved = format!("{parts}/Bracket.FCStd.json");
+        assert!(d.state()["dialog"].is_null(), "{machine}: saved and closed");
+        assert!(d.exists(&saved), "{machine}: {saved} is on the machine");
+        assert_eq!(d.state()["path"], saved.as_str());
+
+        // Save As over it asks first.
+        d.key("Ctrl+Shift+S");
+        assert_eq!(d.folder(), parts);
+        d.key("Enter");
+        assert_eq!(
+            d.dialog()["confirm"],
+            "Bracket.FCStd.json",
+            "{machine}: replace question"
+        );
+        d.key("Enter");
+        if machine == "carol-ubuntu" {
+            // GTK's default response is Replace.
+            assert!(d.state()["dialog"].is_null());
+        } else {
+            // The Mac's alert and Confirm Save As default to Cancel / No.
+            assert!(
+                d.dialog()["confirm"].is_null(),
+                "{machine}: Return declined"
+            );
+            assert!(!d.state()["dialog"].is_null());
+            d.key("Enter");
+            d.click("freecad:file:replace");
+            assert!(d.state()["dialog"].is_null(), "{machine}: replaced");
+        }
+
+        // A new document, then the saved one back through Open.
+        d.click("freecad:cmd:Std_New");
+        assert_eq!(d.state()["path"], "");
+        d.key("Ctrl+o");
+        assert_eq!(d.dialog()["purpose"], "open");
+        assert_eq!(d.folder(), docs);
+        let folder = parts.rsplit('/').next().unwrap().to_owned();
+        d.double_click(&format!("freecad:file:entry:{folder}/"));
+        d.double_click("freecad:file:entry:Bracket.FCStd.json");
+        assert!(d.state()["dialog"].is_null(), "{machine}: opened");
+        assert_eq!(d.state()["path"], saved.as_str());
+        assert_eq!(d.state()["doc"]["Label"], "Bracket");
+    }
 }

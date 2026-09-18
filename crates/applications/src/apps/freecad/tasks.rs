@@ -819,6 +819,10 @@ impl Cad {
         if target == "filetype" {
             return self.file_command(window, &format!("type:{value}"));
         }
+        // The Mac panel's folder pop-up: the folder and each one above it.
+        if target == "filepath" {
+            return self.file_command(window, &format!("crumb:{value}"));
+        }
         Err("unknown choice".into())
     }
 

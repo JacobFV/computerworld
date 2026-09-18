@@ -49,7 +49,7 @@ pub fn render(cad: &Cad, p: &mut Painter, env: &crate::AppEnv<'_>) {
         report_view(cad, p, r);
     }
     status_bar(cad, p, &l, pointer);
-    dialogs(cad, p, &l, pointer);
+    dialogs(cad, p, &l, env);
     popups(cad, p, &l, pointer);
 }
 
@@ -1303,7 +1303,7 @@ fn popup(
         p.left(
             row.x + 26,
             row.y + 3,
-            width - 100,
+            width - if keys.is_empty() { 36 } else { 100 },
             label,
             12,
             if live { INK } else { Color::rgb(150, 150, 150) },
@@ -1458,6 +1458,25 @@ fn popups(cad: &Cad, p: &mut Painter, l: &Layout, pointer: Option<(i32, i32)>) {
                     .collect(),
                 _ => vec![],
             }
+        } else if target == "filepath" {
+            // The Mac panel's folder pop-up: this folder, then each one above it.
+            match &cad.dialog {
+                Some(Dialog::File(d)) => {
+                    let mut out = vec![];
+                    let mut path = d.folder.trim_end_matches('/').to_owned();
+                    while !path.is_empty() {
+                        let name = path.rsplit('/').next().unwrap_or("").to_owned();
+                        out.push((path.clone(), name));
+                        path = match path.rsplit_once('/') {
+                            Some((up, _)) => up.to_owned(),
+                            None => String::new(),
+                        };
+                    }
+                    out.push(("/".to_owned(), "Macintosh HD".to_owned()));
+                    out
+                }
+                _ => vec![],
+            }
         } else {
             vec![]
         };
@@ -1527,10 +1546,11 @@ fn dialog_frame(p: &mut Painter, l: &Layout, w: u32, h: u32, title: &str) -> Rec
     Rect::new(r.x + 10, r.y + 34, r.width - 20, r.height - 44)
 }
 
-fn dialogs(cad: &Cad, p: &mut Painter, l: &Layout, pointer: Option<(i32, i32)>) {
+fn dialogs(cad: &Cad, p: &mut Painter, l: &Layout, env: &crate::AppEnv<'_>) {
+    let pointer = env.pointer;
     let Some(d) = &cad.dialog else { return };
     match d {
-        Dialog::File(fd) => file_dialog(cad, p, l, fd, pointer),
+        Dialog::File(fd) => super::file_dialog::draw(cad, p, l, fd, env),
         Dialog::Dimension { index, title } => {
             let r = dialog_frame(p, l, 300, 130, title);
             let label = match cad
@@ -1644,143 +1664,4 @@ fn dialogs(cad: &Cad, p: &mut Painter, l: &Layout, pointer: Option<(i32, i32)>) 
             button(p, ok, "OK", "freecad:dialog:ok", pointer, Ok(()));
         }
     }
-}
-
-fn file_dialog(
-    cad: &Cad,
-    p: &mut Painter,
-    l: &Layout,
-    d: &super::files::FileDialog,
-    pointer: Option<(i32, i32)>,
-) {
-    let r = dialog_frame(p, l, 620, 420, d.purpose.title());
-    // Look in: the folder, and Up.
-    p.left(r.x, r.y + 4, 60, "Look in:", 12, INK);
-    let path = Rect::new(r.x + 64, r.y, r.width - 100, 24);
-    p.border(path, WHITE, 2, EDGE);
-    p.left(path.x + 6, path.y + 4, path.width - 10, &d.folder, 12, INK);
-    let up = Rect::new(r.x + r.width as i32 - 30, r.y, 28, 24);
-    button(
-        p,
-        up,
-        "↑",
-        "freecad:file:up",
-        pointer,
-        if d.folder == "/" {
-            Err("Already at the top".into())
-        } else {
-            Ok(())
-        },
-    );
-    // Places.
-    let side = Rect::new(r.x, r.y + 32, 120, r.height - 120);
-    p.border(side, WHITE, 0, EDGE);
-    let mut y = side.y + 4;
-    let home = if cad.home.is_empty() {
-        "/".to_owned()
-    } else {
-        cad.home.clone()
-    };
-    for (label, place) in [
-        ("Home".to_owned(), home.clone()),
-        ("Desktop".to_owned(), format!("{home}/Desktop")),
-        ("Documents".to_owned(), format!("{home}/Documents")),
-        ("Computer".to_owned(), "/".to_owned()),
-    ] {
-        let row = Rect::new(side.x + 2, y, side.width - 4, 20);
-        if d.folder == place {
-            p.box_(row, SELECTED, 0);
-        }
-        p.symbol("folder", row.x + 4, row.y + 3, 14, Color::rgb(230, 160, 40));
-        p.left(row.x + 22, row.y + 2, row.width - 24, &label, 12, INK);
-        p.region(row, &format!("freecad:file:place:{place}"), &label);
-        y += 20;
-    }
-    // Entries.
-    let list = Rect::new(r.x + 126, r.y + 32, r.width - 126, r.height - 120);
-    p.border(list, WHITE, 0, EDGE);
-    let mark = p.scene.nodes.len();
-    let mut y = list.y + 2;
-    if d.loading {
-        p.left(list.x + 8, y + 4, list.width - 16, "Loading…", 12, DIM);
-    } else if let Some(e) = &d.error {
-        p.left(list.x + 8, y + 4, list.width - 16, e, 12, ERROR);
-    }
-    for e in d.visible() {
-        if y + 20 > list.y + list.height as i32 {
-            break;
-        }
-        let row = Rect::new(list.x + 2, y, list.width - 4, 20);
-        let is_dir = e.ends_with('/');
-        if !is_dir && *e == d.name {
-            p.box_(row, SELECTED, 0);
-        } else if over(pointer, row) {
-            p.box_(row, HOVER, 0);
-        }
-        if is_dir {
-            p.symbol("folder", row.x + 4, row.y + 3, 14, Color::rgb(230, 160, 40));
-        } else {
-            p.symbol("document", row.x + 4, row.y + 3, 14, DIM);
-        }
-        p.left(
-            row.x + 24,
-            row.y + 2,
-            row.width - 28,
-            e.trim_end_matches('/'),
-            12,
-            INK,
-        );
-        p.region(row, &format!("freecad:file:entry:{e}"), e);
-        y += 20;
-    }
-    for n in &mut p.scene.nodes[mark..] {
-        n.clip = Some(list);
-    }
-    // File name and type.
-    let by = r.y + r.height as i32 - 80;
-    p.left(r.x, by + 4, 90, "File name:", 12, INK);
-    let focused = matches!(
-        cad.field,
-        Some(Field {
-            target: FieldTarget::FileName,
-            ..
-        })
-    );
-    let name = if focused {
-        cad.field
-            .as_ref()
-            .map(|f| f.text.clone())
-            .unwrap_or_default()
-    } else {
-        d.name.clone()
-    };
-    text_field(
-        p,
-        Rect::new(r.x + 96, by, r.width - 190, 24),
-        &name,
-        focused,
-        "freecad:field:file-name",
-    );
-    p.left(r.x, by + 34, 90, "Files of type:", 12, INK);
-    let t = Rect::new(r.x + 96, by + 30, r.width - 190, 24);
-    p.border(t, WHITE, 2, EDGE);
-    let filters = super::files::filters(d.purpose);
-    let type_label = match d.purpose {
-        super::files::Purpose::Import => "Supported formats (*.stl *.obj *.dxf)",
-        _ => filters.get(d.filter).map(|f| f.0).unwrap_or(""),
-    };
-    p.left(t.x + 6, t.y + 4, t.width - 24, type_label, 12, INK);
-    if filters.len() > 1 && d.purpose != super::files::Purpose::Import {
-        p.symbol("chevron-down", t.x + t.width as i32 - 14, t.y + 8, 9, DIM);
-        p.region(t, "freecad:choice:open:filetype", "Files of type");
-    }
-    let ok = Rect::new(r.x + r.width as i32 - 84, by, 84, 26);
-    let cancel = Rect::new(r.x + r.width as i32 - 84, by + 30, 84, 26);
-    let can = if d.name.trim().is_empty() && !focused {
-        Err("Type or pick a file name".to_owned())
-    } else {
-        Ok(())
-    };
-    button(p, ok, d.purpose.button(), "freecad:file:ok", pointer, can);
-    button(p, cancel, "Cancel", "freecad:file:cancel", pointer, Ok(()));
 }

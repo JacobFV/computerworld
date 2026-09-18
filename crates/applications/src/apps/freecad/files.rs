@@ -54,7 +54,9 @@ pub fn filters(p: Purpose) -> &'static [(&'static str, &'static str)] {
     }
 }
 
-/// Qt's file dialog as FreeCAD shows it.
+/// The platform's own file dialog, as FreeCAD 1.0 shows it on each desktop (an
+/// NSSavePanel/NSOpenPanel, Windows' common item dialog, GTK's file chooser): one
+/// state over the machine's real folders, drawn in the look of the desktop.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FileDialog {
     pub purpose: Purpose,
@@ -68,6 +70,27 @@ pub struct FileDialog {
     pub then: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Where Back returns to, newest last, and where Forward goes again.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub back: Vec<super::browse::Location>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub forward: Vec<super::browse::Location>,
+    /// Explorer's Home: the pinned Quick access folders of `folder` (the home folder)
+    /// rather than its whole listing.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub home_view: bool,
+    /// The entry highlighted in the list (a folder keeps its trailing `/`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected: Option<String>,
+    /// The New Folder name prompt (macOS sheet, GTK popover), with its last refusal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<super::browse::FolderPrompt>,
+    /// A save would replace this existing file: the platform's "Replace?" question.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confirm: Option<String>,
+    /// The Mac save panel folded down to its Where pop-up.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub collapsed: bool,
 }
 impl FileDialog {
     pub fn extension(&self) -> &'static str {
@@ -78,6 +101,13 @@ impl FileDialog {
     }
     /// Entries the current filter shows: folders and matching files.
     pub fn visible(&self) -> Vec<&String> {
+        if self.home_view {
+            // Explorer's Home pins the standard folders that really exist, in its order.
+            return crate::QUICK_ACCESS
+                .iter()
+                .filter_map(|name| self.entries.iter().find(|e| **e == format!("{name}/")))
+                .collect();
+        }
         let exts: Vec<&str> = match self.purpose {
             Purpose::Import => filters(self.purpose).iter().map(|f| f.1).collect(),
             _ => vec![self.extension()],
@@ -96,7 +126,7 @@ impl FileDialog {
 }
 
 /// Parent folder of a path.
-fn parent(path: &str) -> String {
+pub(super) fn parent(path: &str) -> String {
     let t = path.trim_end_matches('/');
     match t.rsplit_once('/') {
         Some(("", _)) => "/".into(),
@@ -104,7 +134,7 @@ fn parent(path: &str) -> String {
         None => "/".into(),
     }
 }
-fn join(folder: &str, name: &str) -> String {
+pub(super) fn join(folder: &str, name: &str) -> String {
     if folder.ends_with('/') {
         format!("{folder}{name}")
     } else {
@@ -161,6 +191,13 @@ impl Cad {
             filter: 0,
             then: None,
             error: None,
+            back: vec![],
+            forward: vec![],
+            home_view: false,
+            selected: None,
+            prompt: None,
+            confirm: None,
+            collapsed: false,
         })));
         if purpose.saving() {
             self.field = Some(Field {
@@ -204,47 +241,14 @@ impl Cad {
         window: u64,
         rest: &str,
     ) -> Result<Vec<AppEffect>, String> {
+        // Browsing (places, path bar, history, New Folder, Replace?) is the dialog's
+        // own navigation; what follows here is the file type and the final answer.
+        if let Some(result) = self.browse_command(window, rest) {
+            return result;
+        }
         let Some(Dialog::File(d)) = &mut self.dialog else {
             return Err("no file dialog is open".into());
         };
-        if let Some(entry) = rest.strip_prefix("entry:") {
-            if !d.entries.iter().any(|e| e == entry) {
-                return Err("no such entry".into());
-            }
-            if let Some(folder) = entry.strip_suffix('/') {
-                let path = join(&d.folder, folder);
-                d.folder = path.clone();
-                d.loading = true;
-                return Ok(vec![AppEffect::ListDirectory {
-                    window,
-                    tab: 0,
-                    path,
-                }]);
-            }
-            d.name = entry.to_owned();
-            if d.purpose.saving() {
-                self.field = Some(Field {
-                    target: FieldTarget::FileName,
-                    text: entry.to_owned(),
-                    replace: true,
-                });
-            }
-            return Ok(vec![]);
-        }
-        if let Some(place) = rest.strip_prefix("place:") {
-            let path = if place.is_empty() {
-                "/".to_owned()
-            } else {
-                place.to_owned()
-            };
-            d.folder = path.clone();
-            d.loading = true;
-            return Ok(vec![AppEffect::ListDirectory {
-                window,
-                tab: 0,
-                path,
-            }]);
-        }
         if let Some(i) = rest.strip_prefix("type:") {
             let i: usize = i.parse().map_err(|_| "bad file type")?;
             if i >= filters(d.purpose).len() {
@@ -252,6 +256,15 @@ impl Cad {
             }
             d.filter = i;
             if d.purpose.saving() {
+                // A name typed but not yet committed is the one that changes extension.
+                if let Some(Field {
+                    target: FieldTarget::FileName,
+                    text,
+                    ..
+                }) = &self.field
+                {
+                    d.name = text.trim().to_owned();
+                }
                 let ext = d.extension();
                 let base = stem(&d.name);
                 d.name = format!("{base}.{ext}");
@@ -264,67 +277,102 @@ impl Cad {
             return Ok(vec![]);
         }
         match rest {
-            "up" => {
-                let path = parent(&d.folder);
-                d.folder = path.clone();
-                d.loading = true;
-                Ok(vec![AppEffect::ListDirectory {
-                    window,
-                    tab: 0,
-                    path,
-                }])
-            }
             "cancel" => {
                 self.dialog = None;
                 self.field = None;
                 Ok(vec![])
             }
-            "ok" => {
-                // A name typed but not yet committed counts.
-                if let Some(Field {
-                    target: FieldTarget::FileName,
-                    text,
-                    ..
-                }) = &self.field
-                {
-                    d.name = text.trim().to_owned();
-                }
-                let d = (**d).clone();
-                if d.name.trim().is_empty() || d.name.contains('/') {
-                    return Err("Type a file name".into());
-                }
-                let mut name = d.name.trim().to_owned();
-                let ext = d.extension();
-                if d.purpose.saving()
-                    && !name
-                        .to_ascii_lowercase()
-                        .ends_with(&format!(".{}", ext.to_ascii_lowercase()))
-                    && !(ext == "ast" && name.to_ascii_lowercase().ends_with(".stl"))
-                {
-                    name = format!("{name}.{ext}");
-                }
-                let path = join(&d.folder, &name);
-                self.field = None;
-                self.dialog = None;
-                match d.purpose {
-                    Purpose::Open | Purpose::Import => {
-                        self.io_read = Some(Pending {
-                            purpose: d.purpose,
-                            path: path.clone(),
-                        });
-                        Ok(vec![AppEffect::ReadBytes { window, path }])
-                    }
-                    Purpose::SaveAs => {
-                        let effects = self.write_document(window, &path);
-                        if let Some(then) = d.then {
-                            self.after_save = Some(then);
-                        }
-                        Ok(effects)
-                    }
-                    Purpose::Export => self.export(window, &path, ext),
-                }
-            }
+            "ok" => self.file_ok(window, false),
+            "replace" => self.file_ok(window, true),
             other => Err(format!("unknown file dialog command {other}")),
+        }
+    }
+
+    /// Save or Open. A save over a file the folder already holds asks first, as every
+    /// platform's dialog does; `replace` is the answer Yes/Replace.
+    fn file_ok(&mut self, window: u64, replace: bool) -> Result<Vec<AppEffect>, String> {
+        let Some(Dialog::File(d)) = &mut self.dialog else {
+            return Err("no file dialog is open".into());
+        };
+        if d.confirm.is_some() && !replace {
+            return Err("Answer whether to replace the file first".into());
+        }
+        if replace && d.confirm.is_none() {
+            return Err("nothing is waiting to be replaced".into());
+        }
+        // A name typed but not yet committed counts.
+        if let Some(Field {
+            target: FieldTarget::FileName,
+            text,
+            ..
+        }) = &self.field
+        {
+            d.name = text.trim().to_owned();
+        }
+        // Open with a folder highlighted (or on Explorer's Home) goes into the folder.
+        let chosen_folder = d.selected.as_ref().filter(|s| s.ends_with('/'));
+        if !d.purpose.saving() || d.home_view || d.name.trim().is_empty() {
+            if let Some(folder) = chosen_folder.cloned() {
+                return self.open_entry(window, &folder);
+            }
+            if d.home_view {
+                return Err("Choose a folder first".into());
+            }
+        }
+        let d = (**d).clone();
+        if d.name.trim().is_empty() || d.name.contains('/') {
+            return Err("Type a file name".into());
+        }
+        let mut name = d.name.trim().to_owned();
+        let ext = d.extension();
+        if d.purpose.saving()
+            && !name
+                .to_ascii_lowercase()
+                .ends_with(&format!(".{}", ext.to_ascii_lowercase()))
+            && !(ext == "ast" && name.to_ascii_lowercase().ends_with(".stl"))
+        {
+            name = format!("{name}.{ext}");
+        }
+        // Windows' file system ignores case, so "a.stl" would replace "A.STL" there.
+        let windows = self.platform == Some(DesktopTheme::Windows);
+        let taken = |e: &String| {
+            if windows {
+                e.eq_ignore_ascii_case(&name)
+            } else {
+                *e == name
+            }
+        };
+        if d.purpose.saving() && !replace && d.entries.iter().any(taken) {
+            if let Some(Dialog::File(live)) = &mut self.dialog {
+                live.name = name.clone();
+                live.confirm = Some(name);
+            }
+            // The question takes the keyboard: Return answers it, not the name box.
+            self.field = None;
+            return Ok(vec![]);
+        }
+        if d.entries.iter().any(|e| *e == format!("{name}/")) {
+            return Err(format!("“{name}” is a folder"));
+        }
+        let path = join(&d.folder, &name);
+        self.field = None;
+        self.dialog = None;
+        match d.purpose {
+            Purpose::Open | Purpose::Import => {
+                self.io_read = Some(Pending {
+                    purpose: d.purpose,
+                    path: path.clone(),
+                });
+                Ok(vec![AppEffect::ReadBytes { window, path }])
+            }
+            Purpose::SaveAs => {
+                let effects = self.write_document(window, &path);
+                if let Some(then) = d.then {
+                    self.after_save = Some(then);
+                }
+                Ok(effects)
+            }
+            Purpose::Export => self.export(window, &path, ext),
         }
     }
 
@@ -362,10 +410,11 @@ impl Cad {
     fn proceed(&mut self, window: u64, then: &str) -> Result<Vec<AppEffect>, String> {
         match then {
             "new" => {
-                let home = self.home.clone();
+                let (home, platform) = (self.home.clone(), self.platform);
                 let (fresh, _) = Freecad::launch("", window, 0);
                 *self = *fresh.0;
                 self.home = home;
+                self.platform = platform;
                 self.log(ReportKind::Log, "New document Unnamed");
                 Ok(vec![])
             }
@@ -479,10 +528,11 @@ impl Cad {
                 let text = String::from_utf8_lossy(&bytes);
                 match io::load_native(&text) {
                     Ok(doc) => {
-                        let home = self.home.clone();
+                        let (home, platform) = (self.home.clone(), self.platform);
                         let (fresh, _) = Freecad::launch("", 0, 0);
                         *self = *fresh.0;
                         self.home = home;
+                        self.platform = platform;
                         self.doc = doc;
                         self.path = path.to_owned();
                         self.active_body = self.doc.bodies().first().map(|b| (*b).to_owned());

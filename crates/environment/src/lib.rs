@@ -281,6 +281,8 @@ impl Environment {
             let Some(theme) = self.desktop_theme(id, &machine) else {
                 continue;
             };
+            // Applications that follow the platform learn it from the desktop.
+            self.machine_mut(id, &machine)?.desktop.theme = Some(theme);
             let desktop = &self.session(id)?.machines[&machine].desktop;
             let home = desktop.home_folder();
             if theme.mobile() || home == "/" {
