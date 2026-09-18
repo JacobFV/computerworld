@@ -257,7 +257,7 @@ fn excel_takes_formulas_fills_down_by_the_handle_charts_and_saves_xlsx() {
     s.click("sheet:chart:column");
     assert_eq!(s.book(w).workbook.sheets[0].charts.len(), 1);
     assert!(
-        s.find("sheet:chartsel:0").is_some(),
+        s.find("sheet:chartmove:0:").is_some(),
         "the chart is on the sheet"
     );
     // Ctrl+S writes a real workbook into Documents.
@@ -427,4 +427,223 @@ fn the_file_manager_opens_workbooks_and_databases_in_their_applications() {
     let client = s.client(focused(&s));
     assert_eq!(client.name, "Inventory.db");
     assert!(client.tables().contains(&"products".to_string()));
+}
+
+impl Session {
+    /// Type `rows` into the grid from A1, clicking each cell first.
+    fn fill(&mut self, rows: &[&[&str]]) {
+        for (r, row) in rows.iter().enumerate() {
+            for (c, v) in row.iter().enumerate() {
+                self.pointer("click", self.cell(r as u32, c as u32));
+                self.type_text(v);
+                self.key("Enter");
+            }
+        }
+    }
+    /// The grid's column width and row height in screen pixels.
+    fn cell_size(&self) -> (i32, i32) {
+        let (_, target) = self.find("sheet:grid:").expect("a grid on screen");
+        let mut parts = target.rsplit(':');
+        let scale: u32 = parts.next().unwrap().parse().unwrap();
+        let row_h: i32 = parts.next().unwrap().parse().unwrap();
+        ((64 * scale / 100) as i32, row_h)
+    }
+    fn centre(&self, target: &str) -> (i32, i32) {
+        let r = self.bounds(target);
+        (r.x + r.width as i32 / 2, r.y + r.height as i32 / 2)
+    }
+}
+
+const SALES: &[&[&str]] = &[
+    &["Region", "Sales", "Units"],
+    &["East", "10", "3"],
+    &["West", "25", "7"],
+    &["East", "7", "1"],
+    &["North", "31", "9"],
+];
+
+#[test]
+fn excel_merges_borders_highlights_and_moves_charts_and_keeps_them_in_xlsx() {
+    let mut s = session("virtual-windows-11", &["spreadsheet"]);
+    let home = s.home();
+    let w = s.launch("spreadsheet", "");
+    s.click("sheet:new:excel");
+    s.fill(SALES);
+    s.pointer("click", s.cell(6, 0));
+    s.type_text("Sales by region");
+    s.key("Enter");
+
+    // Merge & Center A7:C7 from the ribbon.
+    s.drag(&[s.cell(6, 0), s.cell(6, 2)]);
+    s.click("sheet:merge:center");
+    let book = s.book(w);
+    assert_eq!(book.workbook.sheets[0].merges[0].a1(), "A7:C7");
+    // Clicking any part of the merge selects all of it; arrows step over it.
+    s.pointer("click", s.cell(6, 1));
+    let book = s.book(w);
+    assert_eq!(book.selection().a1(), "A7:C7");
+    assert_eq!(book.active, Cell::new(6, 0));
+    s.key("ArrowRight");
+    assert_eq!(s.book(w).active, Cell::new(6, 3));
+    // Unmerge from the drop-down, then merge again.
+    s.pointer("click", s.cell(6, 1));
+    s.click("sheet:menu:merge");
+    s.click("sheet:unmerge");
+    assert!(s.book(w).workbook.sheets[0].merges.is_empty());
+    s.drag(&[s.cell(6, 0), s.cell(6, 2)]);
+    s.click("sheet:menu:merge");
+    s.click("sheet:merge:center");
+
+    // All Borders, then Thick Outside Borders, over the table.
+    s.drag(&[s.cell(0, 0), s.cell(4, 2)]);
+    s.click("sheet:menu:borders");
+    s.click("sheet:border:all");
+    s.click("sheet:menu:borders");
+    s.click("sheet:border:thickoutside");
+    let book = s.book(w);
+    let inner = book.workbook.style(0, Cell::new(2, 1)).borders;
+    assert_eq!(inner.left.unwrap().line, cw_sheet::Line::Thin);
+    let corner = book.workbook.style(0, Cell::new(0, 0)).borders;
+    assert_eq!(corner.top.unwrap().line, cw_sheet::Line::Thick);
+    assert_eq!(corner.right.unwrap().line, cw_sheet::Line::Thin);
+
+    // Conditional Formatting › Highlight Cells Rules › Greater Than… 20.
+    s.drag(&[s.cell(1, 1), s.cell(4, 1)]);
+    s.click("sheet:menu:cf");
+    s.click("sheet:menu:cfhighlight");
+    s.click("sheet:cf:greater");
+    for _ in 0.."18.25".len() {
+        s.key("Backspace");
+    }
+    s.type_text("20");
+    s.click("sheet:dialog:preset:yellow");
+    s.click("sheet:dialog:ok");
+    // Data bars on the same cells.
+    s.click("sheet:menu:cf");
+    s.click("sheet:menu:cfbars");
+    let bar = s.find("sheet:cf:bar:").unwrap().1;
+    let bar = bar[bar.find("sheet:cf:bar:").unwrap()..].to_owned();
+    s.click(&bar);
+    let book = s.book(w);
+    assert_eq!(book.workbook.sheets[0].conditional.len(), 2);
+    let fx = book
+        .workbook
+        .conditional_effects(0, cw_sheet::Range::parse("A1:C5").unwrap());
+    assert!(fx[&Cell::new(2, 1)].style.fill.is_some(), "25 > 20");
+    assert!(fx
+        .get(&Cell::new(1, 1))
+        .is_none_or(|e| e.style.fill.is_none()));
+    assert!(fx[&Cell::new(4, 1)].bar.is_some());
+    // The Rules Manager deletes the data bar again.
+    s.click("sheet:menu:cf");
+    s.click("sheet:cfmanage");
+    s.click("sheet:cfrule:1");
+    s.click("sheet:cfdelete");
+    s.click("sheet:dialog:ok");
+    assert_eq!(s.book(w).workbook.sheets[0].conditional.len(), 1);
+
+    // A chart, dragged two columns right and two rows down, then made bigger by its
+    // bottom-right handle.
+    s.drag(&[s.cell(0, 0), s.cell(4, 2)]);
+    s.click("sheet:ribbon:insert");
+    s.click("sheet:chart:column");
+    let (cw, rh) = s.cell_size();
+    let before = s.book(w).workbook.sheets[0].charts[0].clone();
+    let from = s.centre("sheet:chartmove:0:");
+    s.drag(&[
+        from,
+        (from.0 + cw, from.1 + rh),
+        (from.0 + 2 * cw, from.1 + 2 * rh),
+    ]);
+    let moved = s.book(w).workbook.sheets[0].charts[0].clone();
+    assert_eq!(
+        moved.anchor,
+        Cell::new(before.anchor.row + 2, before.anchor.col + 2)
+    );
+    assert_eq!((moved.cols, moved.rows), (before.cols, before.rows));
+    assert_eq!(moved.offsets, before.offsets);
+    let corner = s.centre("sheet:chartsize:0:4:");
+    s.drag(&[corner, (corner.0 + cw, corner.1 + 3 * rh)]);
+    let sized = s.book(w).workbook.sheets[0].charts[0].clone();
+    assert_eq!(sized.anchor, moved.anchor);
+    assert_eq!((sized.cols, sized.rows), (moved.cols + 1, moved.rows + 3));
+
+    // Saved and read back: merges, borders, rules and the chart's place survive.
+    s.key("Ctrl+s");
+    let back = cw_sheet::xlsx::read(&s.file(&format!("{home}/Documents/Book1.xlsx"))).unwrap();
+    let book = s.book(w);
+    let sheet = &back.sheets[0];
+    assert_eq!(sheet.merges[0].a1(), "A7:C7");
+    assert_eq!(
+        back.style(0, Cell::new(6, 0)).align,
+        cw_sheet::Align::Center
+    );
+    for c in [Cell::new(0, 0), Cell::new(2, 1), Cell::new(4, 2)] {
+        assert_eq!(back.style(0, c).borders, book.workbook.style(0, c).borders);
+    }
+    assert_eq!(sheet.conditional, book.workbook.sheets[0].conditional);
+    assert_eq!(sheet.charts[0].anchor, sized.anchor);
+    assert_eq!(
+        (sheet.charts[0].cols, sheet.charts[0].rows),
+        (sized.cols, sized.rows)
+    );
+}
+
+#[test]
+fn calc_builds_a_pivot_table_refreshes_it_and_keeps_it_in_ods() {
+    let mut s = session("virtual-ubuntu-24", &["spreadsheet"]);
+    let home = s.home();
+    let w = s.launch("spreadsheet", "");
+    s.click("sheet:new:calc");
+    s.fill(SALES);
+    // Insert › Pivot Table… over the data, onto a new sheet.
+    s.drag(&[s.cell(0, 0), s.cell(4, 2)]);
+    s.click("sheet:menu:calcinsert");
+    s.click("sheet:pivot:new");
+    s.click("sheet:dialog:ok");
+    let book = s.book(w);
+    assert_eq!(book.workbook.sheets.len(), 2);
+    let ps = book.sheet;
+    assert_eq!(book.workbook.sheets[ps].pivots.len(), 1);
+    // Tick Region (to Rows) and Sales (to Values) in the field list.
+    s.click("sheet:pivotfield:0");
+    s.click("sheet:pivotfield:1");
+    let book = s.book(w);
+    let pivot = &book.workbook.sheets[ps].pivots[0];
+    assert_eq!(pivot.rows, vec![0]);
+    assert_eq!(pivot.values.len(), 1);
+    let at = pivot.at;
+    let row = |book: &Book, label: &str| -> String {
+        let r = (0..8)
+            .find(|r| book.workbook.display(ps, Cell::new(at.row + r, at.col)) == label)
+            .unwrap_or_else(|| panic!("no {label} row"));
+        book.workbook.display(ps, Cell::new(at.row + r, at.col + 1))
+    };
+    assert_eq!(row(&book, "East"), "17");
+    // Average instead of Sum, from the value field's menu.
+    s.click("sheet:menu:pivotvalue:0");
+    s.click("sheet:pivotagg:0:average");
+    let book = s.book(w);
+    assert_eq!(
+        book.workbook.sheets[ps].pivots[0].values[0].1,
+        cw_sheet::pivot::Agg::Average
+    );
+    assert_eq!(row(&book, "East"), "8.5");
+    // Change the source; the report follows on Refresh.
+    let source = 1 - ps;
+    s.click(&format!("sheet:tab:{source}"));
+    s.pointer("click", s.cell(1, 1));
+    s.type_text("30");
+    s.key("Enter");
+    s.click(&format!("sheet:tab:{ps}"));
+    assert_eq!(row(&s.book(w), "East"), "8.5");
+    s.pointer("click", s.cell(at.row + 1, at.col));
+    s.click("sheet:pivot:refresh");
+    assert_eq!(row(&s.book(w), "East"), "18.5");
+    // Saved as OpenDocument and read back, the data pilot is still there.
+    s.key("Ctrl+s");
+    let back = cw_sheet::ods::read(&s.file(&format!("{home}/Documents/Untitled 1.ods"))).unwrap();
+    let pivot = &back.sheets[ps].pivots[0];
+    assert_eq!(pivot.rows, vec![0]);
+    assert_eq!(pivot.values[0].1, cw_sheet::pivot::Agg::Average);
 }

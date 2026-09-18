@@ -5,13 +5,13 @@
 use crate::address::{Cell, CellRef};
 use crate::parser::{self, Expr, RangeKind};
 use crate::value::{ErrorKind, Value};
-use crate::workbook::{Align, Input, Sheet, Style, Workbook};
+use crate::workbook::{Align, Borders, Edge, Input, Line, Sheet, Style, Workbook};
 use crate::xml::{escape, parse, Element};
 use std::collections::BTreeMap;
 
 const MIME: &str = "application/vnd.oasis.opendocument.spreadsheet";
 const HEAD: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-const NS: &str = "xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" xmlns:number=\"urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0\" xmlns:of=\"urn:oasis:names:tc:opendocument:xmlns:of:1.2\" xmlns:meta=\"urn:oasis:names:tc:opendocument:xmlns:meta:1.0\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"";
+const NS: &str = "xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" xmlns:number=\"urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0\" xmlns:of=\"urn:oasis:names:tc:opendocument:xmlns:of:1.2\" xmlns:meta=\"urn:oasis:names:tc:opendocument:xmlns:meta:1.0\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:calcext=\"urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0\"";
 
 // ----- OpenFormula -----
 
@@ -296,26 +296,61 @@ pub fn write(wb: &Workbook, generator: &str) -> Vec<u8> {
     let mut widths: std::collections::BTreeSet<u32> =
         [crate::workbook::DEFAULT_COL_WIDTH].into_iter().collect();
     let mut body = String::new();
+    // Conditional formats' named cell styles, `ConditionalStyle_<n+1>`.
+    let mut cf_styles: Vec<crate::conditional::Dxf> = Vec::new();
     for (si, sheet) in wb.sheets.iter().enumerate() {
         body.push_str(&format!(
             "<table:table table:name=\"{}\">",
             escape(&sheet.name)
         ));
         let used = wb.used_range(si);
-        let last_col = used.map_or(0, |u| u.end.col);
+        let merge_end = sheet
+            .merges
+            .iter()
+            .fold((0, 0), |(r, c), m| (r.max(m.end.row), c.max(m.end.col)));
+        let last_col = used.map_or(0, |u| u.end.col).max(merge_end.1);
         for col in 0..=last_col {
             let w = sheet.col_width(col);
             widths.insert(w);
             body.push_str(&format!("<table:table-column table:style-name=\"co{w}\"/>"));
         }
-        let last_row = used.map_or(0, |u| u.end.row);
+        let last_row = used.map_or(0, |u| u.end.row).max(merge_end.0);
         for row in 0..=last_row {
             body.push_str("<table:table-row>");
             let mut empty_run = 0;
             for col in 0..=last_col {
                 let c = Cell::new(row, col);
+                let merge = sheet.merge_at(c);
+                if merge.is_some_and(|m| m.start != c) {
+                    // Inside a merged area: a covered cell.
+                    if empty_run > 0 {
+                        body.push_str(&format!(
+                            "<table:table-cell table:number-columns-repeated=\"{empty_run}\"/>"
+                        ));
+                        empty_run = 0;
+                    }
+                    body.push_str("<table:covered-table-cell/>");
+                    continue;
+                }
+                let span = merge.map_or(String::new(), |m| {
+                    format!(
+                        " table:number-columns-spanned=\"{}\" table:number-rows-spanned=\"{}\"",
+                        m.cols(),
+                        m.rows()
+                    )
+                });
                 let Some(d) = sheet.cells.get(&c) else {
-                    empty_run += 1;
+                    if span.is_empty() {
+                        empty_run += 1;
+                    } else {
+                        if empty_run > 0 {
+                            body.push_str(&format!(
+                                "<table:table-cell table:number-columns-repeated=\"{empty_run}\"/>"
+                            ));
+                            empty_run = 0;
+                        }
+                        body.push_str(&format!("<table:table-cell{span}/>"));
+                    }
                     continue;
                 };
                 if empty_run > 0 {
@@ -374,13 +409,15 @@ pub fn write(wb: &Workbook, generator: &str) -> Vec<u8> {
                     format!("<text:p>{shown}</text:p>")
                 };
                 body.push_str(&format!(
-                    "<table:table-cell{style_attr}{formula}{value}>{text}</table:table-cell>"
+                    "<table:table-cell{style_attr}{span}{formula}{value}>{text}</table:table-cell>"
                 ));
             }
             body.push_str("</table:table-row>");
         }
+        body.push_str(&crate::ods_extra::conditional_xml(wb, si, &mut cf_styles));
         body.push_str("</table:table>");
     }
+    let pilots = crate::ods_extra::pivots_xml(wb);
     let mut named = String::new();
     for (name, (sheet, range)) in &wb.names {
         let abs = |c: Cell| {
@@ -407,6 +444,7 @@ pub fn write(wb: &Workbook, generator: &str) -> Vec<u8> {
             "<table:named-expressions>{named}</table:named-expressions>"
         ));
     }
+    body.push_str(&pilots);
     let mut auto = String::new();
     for w in widths {
         auto.push_str(&format!(
@@ -430,6 +468,16 @@ pub fn write(wb: &Workbook, generator: &str) -> Vec<u8> {
                 f[0], f[1], f[2]
             ));
         }
+        for (side, e) in [
+            ("left", s.borders.left),
+            ("right", s.borders.right),
+            ("top", s.borders.top),
+            ("bottom", s.borders.bottom),
+        ] {
+            if let Some(e) = e {
+                cell_props.push_str(&format!(" fo:border-{side}=\"{}\"", border_attr(e)));
+            }
+        }
         if !cell_props.is_empty() {
             auto.push_str(&format!("<style:table-cell-properties{cell_props}/>"));
         }
@@ -439,7 +487,7 @@ pub fn write(wb: &Workbook, generator: &str) -> Vec<u8> {
                 "<style:paragraph-properties fo:text-align=\"{}\"/>",
                 match a {
                     Align::Left => "start",
-                    Align::Center => "center",
+                    Align::Center | Align::CenterAcross => "center",
                     _ => "end",
                 }
             )),
@@ -468,8 +516,12 @@ pub fn write(wb: &Workbook, generator: &str) -> Vec<u8> {
     let content = format!(
         "{HEAD}<office:document-content {NS} office:version=\"1.3\"><office:automatic-styles>{auto}</office:automatic-styles><office:body><office:spreadsheet>{body}</office:spreadsheet></office:body></office:document-content>"
     );
+    let mut named_styles = String::new();
+    for (i, d) in cf_styles.iter().enumerate() {
+        named_styles.push_str(&crate::ods_extra::dxf_style(i + 1, d));
+    }
     let styles_xml = format!(
-        "{HEAD}<office:document-styles {NS} office:version=\"1.3\"><office:styles><style:style style:name=\"Default\" style:family=\"table-cell\"><style:text-properties style:font-name=\"Liberation Sans\" fo:font-size=\"10pt\"/></style:style></office:styles></office:document-styles>"
+        "{HEAD}<office:document-styles {NS} office:version=\"1.3\"><office:styles><style:style style:name=\"Default\" style:family=\"table-cell\"><style:text-properties style:font-name=\"Liberation Sans\" fo:font-size=\"10pt\"/></style:style>{named_styles}</office:styles></office:document-styles>"
     );
     let meta = format!(
         "{HEAD}<office:document-meta {NS} office:version=\"1.3\"><office:meta><meta:generator>{}</meta:generator><meta:creation-date>{}</meta:creation-date><dc:date>{}</dc:date></office:meta></office:document-meta>",
@@ -515,6 +567,8 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
     // Styles: cell style name → (data style name, style).
     let mut data_styles: BTreeMap<String, String> = BTreeMap::new();
     let mut cell_styles: BTreeMap<String, (Option<String>, Style)> = BTreeMap::new();
+    // Every cell style as a conditional format could apply it.
+    let mut dxfs: BTreeMap<String, crate::conditional::Dxf> = BTreeMap::new();
     let mut col_widths: BTreeMap<String, u32> = BTreeMap::new();
     let mut style_roots = vec![doc.child("automatic-styles").cloned()];
     if let Some(s) = parts.get("styles.xml") {
@@ -534,6 +588,11 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
                     data_styles.insert(name.to_owned(), code_from_style(el));
                 }
                 "style" if el.attr("family") == Some("table-cell") => {
+                    dxfs.insert(name.to_owned(), crate::ods_extra::dxf_of(el));
+                    // Conditions name a style by its display name.
+                    if let Some(shown) = el.attr("display-name") {
+                        dxfs.insert(shown.to_owned(), crate::ods_extra::dxf_of(el));
+                    }
                     let mut st = Style::default();
                     if let Some(t) = el.child("text-properties") {
                         st.bold = t.attr("font-weight") == Some("bold");
@@ -546,6 +605,14 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
                     }
                     if let Some(c) = el.child("table-cell-properties") {
                         st.fill = c.attr("background-color").and_then(hex_color);
+                        let all = c.attr("border").and_then(parse_border);
+                        let side = |n: &str| c.attr(n).map_or(all, parse_border);
+                        st.borders = Borders {
+                            left: side("border-left"),
+                            right: side("border-right"),
+                            top: side("border-top"),
+                            bottom: side("border-bottom"),
+                        };
                     }
                     if let Some(p) = el.child("paragraph-properties") {
                         st.align = match p.attr("text-align") {
@@ -598,6 +665,7 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
         let si = wb.sheets.len();
         wb.sheets
             .push(Sheet::new(table.attr("name").unwrap_or("Sheet")));
+        wb.sheets[si].conditional = crate::ods_extra::read_conditional(table, &dxfs);
         let mut col = 0u32;
         for c in table
             .elements()
@@ -644,6 +712,10 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
                 c.attr("value-type").is_some()
                     || c.attr("formula").is_some()
                     || c.child("p").is_some()
+                    || c.attr("number-columns-spanned").is_some()
+                    || c.attr("number-rows-spanned").is_some()
+                    || c.attr("style-name")
+                        .is_some_and(|s| !style_for(Some(s)).is_default())
             });
             if !has_content {
                 row = row.saturating_add(rep);
@@ -657,6 +729,19 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
                         .and_then(|r| r.parse().ok())
                         .unwrap_or(1);
                     let style = style_for(tc.attr("style-name"));
+                    let span = |n: &str| -> u32 {
+                        tc.attr(n).and_then(|v| v.parse().ok()).unwrap_or(1).max(1)
+                    };
+                    let (cs, rs) = (span("number-columns-spanned"), span("number-rows-spanned"));
+                    if (cs > 1 || rs > 1) && tc.local() == "table-cell" {
+                        let m = crate::address::Range::new(
+                            Cell::new(row, col),
+                            Cell::new(row + rs - 1, col + cs - 1),
+                        );
+                        if !wb.sheets[si].merges.contains(&m) {
+                            wb.sheets[si].merges.push(m);
+                        }
+                    }
                     let text = tc
                         .children_named("p")
                         .map(|p| p.text())
@@ -728,7 +813,77 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
     if wb.sheets.is_empty() {
         return Err("the spreadsheet has no tables".into());
     }
+    for s in &mut wb.sheets {
+        s.merges.sort();
+    }
+    for (sheet, p) in crate::ods_extra::read_pivots(spreadsheet, &wb) {
+        if let Some(si) = wb.sheet_index(&sheet) {
+            wb.sheets[si].pivots.push(p);
+        }
+    }
     Ok(wb.loaded())
+}
+/// An edge as an XSL-FO border: width, style and colour, as LibreOffice writes them.
+fn border_attr(e: Edge) -> String {
+    let (w, s) = match e.line {
+        Line::Hair => ("0.05pt", "solid"),
+        Line::Thin => ("0.74pt", "solid"),
+        Line::Medium => ("1.76pt", "solid"),
+        Line::Thick => ("2.49pt", "solid"),
+        Line::Double => ("2.01pt", "double"),
+        Line::Dotted => ("0.74pt", "dotted"),
+        Line::Dashed | Line::DashDot | Line::DashDotDot => ("0.74pt", "dashed"),
+        Line::MediumDashed | Line::MediumDashDot | Line::MediumDashDotDot | Line::SlantDashDot => {
+            ("1.76pt", "dashed")
+        }
+    };
+    format!(
+        "{w} {s} #{:02x}{:02x}{:02x}",
+        e.color[0], e.color[1], e.color[2]
+    )
+}
+fn parse_border(s: &str) -> Option<Edge> {
+    let mut width = 0.74;
+    let mut style = "solid";
+    let mut color = [0, 0, 0];
+    for part in s.split_whitespace() {
+        if part == "none" || part == "hidden" {
+            return None;
+        }
+        if let Some(c) = hex_color(part) {
+            color = c;
+        } else if let Some(px) = length_px(part) {
+            let _ = px;
+            width = part
+                .trim_end_matches(|c: char| c.is_ascii_alphabetic())
+                .parse::<f64>()
+                .unwrap_or(0.74)
+                * match part.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.') {
+                    "cm" => 28.35,
+                    "mm" => 2.835,
+                    "in" => 72.0,
+                    _ => 1.0,
+                };
+        } else {
+            style = match part {
+                "double" => "double",
+                "dotted" => "dotted",
+                "dashed" => "dashed",
+                _ => "solid",
+            };
+        }
+    }
+    let line = match style {
+        "double" => Line::Double,
+        "dotted" => Line::Dotted,
+        "dashed" if width >= 1.0 => Line::MediumDashed,
+        "dashed" => Line::Dashed,
+        _ if width < 0.3 => Line::Hair,
+        _ if width < 1.2 => Line::Thin,
+        _ if width < 2.2 => Line::Medium,
+        _ => Line::Thick,
+    };
+    Some(Edge::new(line, color))
 }
 fn hex_color(s: &str) -> Option<[u8; 3]> {
     let s = s.strip_prefix('#')?;

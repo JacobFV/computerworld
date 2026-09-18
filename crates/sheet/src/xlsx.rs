@@ -5,10 +5,12 @@
 //! defined names, and DrawingML charts). Reading takes the same parts from files
 //! Excel, Numbers and LibreOffice write, including shared formulas and rich text.
 use crate::address::{Cell, CellRef, Range};
+use crate::conditional::Dxf;
 use crate::parser::{self, Expr, Formula};
 use crate::value::{ErrorKind, Value};
 use crate::workbook::{
-    Align, AutoFilter, Chart, ChartKind, Input, Sheet, Style, Workbook, DEFAULT_COL_WIDTH,
+    Align, AutoFilter, Borders, Chart, ChartKind, Edge, Input, Line, Sheet, Style, Workbook,
+    DEFAULT_COL_WIDTH,
 };
 use crate::xml::{escape, parse, Element};
 use std::collections::BTreeMap;
@@ -69,6 +71,8 @@ fn future_names(e: &Expr, add: bool) -> Expr {
         other => other.clone(),
     }
 }
+/// DrawingML measures in English Metric Units: 914,400 to the inch, 9,525 to a pixel.
+const EMU_PER_PX: u64 = 9525;
 fn width_chars(px: u32) -> f64 {
     ((f64::from(px) - 5.0) / 7.0 * 100.0).round() / 100.0
 }
@@ -117,6 +121,53 @@ fn parse_ref(text: &str) -> Option<(String, Range)> {
 
 struct Styles {
     xfs: Vec<Style>,
+    /// Differential formats for conditional formatting, in `dxfId` order.
+    dxfs: Vec<Dxf>,
+}
+fn border_xml(b: &Borders) -> String {
+    let edge = |name: &str, e: &Option<Edge>| match e {
+        Some(e) => format!(
+            "<{name} style=\"{}\"><color rgb=\"{}\"/></{name}>",
+            e.line.name(),
+            rgb_hex(e.color)
+        ),
+        None => format!("<{name}/>"),
+    };
+    format!(
+        "<border>{}{}{}{}<diagonal/></border>",
+        edge("left", &b.left),
+        edge("right", &b.right),
+        edge("top", &b.top),
+        edge("bottom", &b.bottom)
+    )
+}
+fn dxf_xml(d: &Dxf) -> String {
+    let mut font = String::new();
+    if d.bold {
+        font.push_str("<b/>");
+    }
+    if d.italic {
+        font.push_str("<i/>");
+    }
+    if d.underline {
+        font.push_str("<u/>");
+    }
+    if let Some(c) = d.color {
+        font.push_str(&format!("<color rgb=\"{}\"/>", rgb_hex(c)));
+    }
+    let mut out = String::from("<dxf>");
+    if !font.is_empty() {
+        out.push_str(&format!("<font>{font}</font>"));
+    }
+    if let Some(c) = d.fill {
+        // A differential fill's colour is its background colour.
+        out.push_str(&format!(
+            "<fill><patternFill><bgColor rgb=\"{}\"/></patternFill></fill>",
+            rgb_hex(c)
+        ));
+    }
+    out.push_str("</dxf>");
+    out
 }
 impl Styles {
     fn index(&mut self, s: &Style) -> usize {
@@ -128,10 +179,20 @@ impl Styles {
             }
         }
     }
+    fn dxf(&mut self, d: &Dxf) -> usize {
+        match self.dxfs.iter().position(|x| x == d) {
+            Some(i) => i,
+            None => {
+                self.dxfs.push(*d);
+                self.dxfs.len() - 1
+            }
+        }
+    }
     fn xml(&self) -> String {
         let mut numfmts: Vec<String> = Vec::new();
         let mut fonts: Vec<(bool, bool, bool, Option<[u8; 3]>)> = vec![(false, false, false, None)];
         let mut fills: Vec<Option<[u8; 3]>> = vec![None, None];
+        let mut borders: Vec<Borders> = vec![Borders::default()];
         let mut xf = String::new();
         for s in &self.xfs {
             let fmt_id = match crate::format::builtin_id(&s.format) {
@@ -165,17 +226,26 @@ impl Styles {
                     }
                 },
             };
+            let border_id = match borders.iter().position(|b| *b == s.borders) {
+                Some(i) => i,
+                None => {
+                    borders.push(s.borders);
+                    borders.len() - 1
+                }
+            };
             let align = match s.align {
                 Align::General => None,
                 Align::Left => Some("left"),
                 Align::Center => Some("center"),
                 Align::Right => Some("right"),
+                Align::CenterAcross => Some("centerContinuous"),
             };
             xf.push_str(&format!(
-                "<xf numFmtId=\"{fmt_id}\" fontId=\"{font_id}\" fillId=\"{fill_id}\" borderId=\"0\" xfId=\"0\"{}{}{}{}",
+                "<xf numFmtId=\"{fmt_id}\" fontId=\"{font_id}\" fillId=\"{fill_id}\" borderId=\"{border_id}\" xfId=\"0\"{}{}{}{}{}",
                 if fmt_id != 0 { " applyNumberFormat=\"1\"" } else { "" },
                 if font_id != 0 { " applyFont=\"1\"" } else { "" },
                 if fill_id != 0 { " applyFill=\"1\"" } else { "" },
+                if border_id != 0 { " applyBorder=\"1\"" } else { "" },
                 match align {
                     Some(a) => format!(" applyAlignment=\"1\"><alignment horizontal=\"{a}\"/></xf>"),
                     None => "/>".into(),
@@ -222,14 +292,22 @@ impl Styles {
             out.push_str(&format!("<fill><patternFill patternType=\"solid\"><fgColor rgb=\"{}\"/><bgColor indexed=\"64\"/></patternFill></fill>", rgb_hex(*c)));
         }
         out.push_str("</fills>");
-        out.push_str("<borders count=\"1\"><border><left/><right/><top/><bottom/><diagonal/></border></borders>");
+        out.push_str(&format!("<borders count=\"{}\">", borders.len()));
+        for b in &borders {
+            out.push_str(&border_xml(b));
+        }
+        out.push_str("</borders>");
         out.push_str("<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>");
         out.push_str(&format!(
             "<cellXfs count=\"{}\">{xf}</cellXfs>",
             self.xfs.len()
         ));
         out.push_str("<cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles>");
-        out.push_str("<dxfs count=\"0\"/><tableStyles count=\"0\" defaultTableStyle=\"TableStyleMedium2\" defaultPivotStyle=\"PivotStyleLight16\"/>");
+        out.push_str(&format!("<dxfs count=\"{}\">", self.dxfs.len()));
+        for d in &self.dxfs {
+            out.push_str(&dxf_xml(d));
+        }
+        out.push_str("</dxfs><tableStyles count=\"0\" defaultTableStyle=\"TableStyleMedium2\" defaultPivotStyle=\"PivotStyleLight16\"/>");
         out.push_str("</styleSheet>");
         out
     }
@@ -343,13 +421,17 @@ fn drawing_xml(charts: &[(usize, &Chart)]) -> String {
     );
     for (i, (_, c)) in charts.iter().enumerate() {
         out.push_str(&format!(
-            "<xdr:twoCellAnchor editAs=\"oneCell\"><xdr:from><xdr:col>{}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>{}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>{}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>{}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>\
+            "<xdr:twoCellAnchor editAs=\"oneCell\"><xdr:from><xdr:col>{}</xdr:col><xdr:colOff>{}</xdr:colOff><xdr:row>{}</xdr:row><xdr:rowOff>{}</xdr:rowOff></xdr:from><xdr:to><xdr:col>{}</xdr:col><xdr:colOff>{}</xdr:colOff><xdr:row>{}</xdr:row><xdr:rowOff>{}</xdr:rowOff></xdr:to>\
              <xdr:graphicFrame macro=\"\"><xdr:nvGraphicFramePr><xdr:cNvPr id=\"{}\" name=\"Chart {}\"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/></xdr:xfrm>\
              <a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:r=\"{REL}\" r:id=\"rId{}\"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>",
             c.anchor.col,
+            u64::from(c.offsets[0]) * EMU_PER_PX,
             c.anchor.row,
+            u64::from(c.offsets[1]) * EMU_PER_PX,
             c.anchor.col + c.cols,
+            u64::from(c.offsets[2]) * EMU_PER_PX,
             c.anchor.row + c.rows,
+            u64::from(c.offsets[3]) * EMU_PER_PX,
             i + 2,
             i + 1,
             i + 1
@@ -364,7 +446,10 @@ fn drawing_xml(charts: &[(usize, &Chart)]) -> String {
 pub fn write(wb: &Workbook, application: &str) -> Vec<u8> {
     let mut styles = Styles {
         xfs: vec![Style::default()],
+        dxfs: vec![],
     };
+    // Pivot tables, numbered from 1 in the order they are written.
+    let mut pivot_caches: Vec<usize> = Vec::new();
     let mut strings: Vec<String> = Vec::new();
     let mut string_index: BTreeMap<String, usize> = BTreeMap::new();
     let mut parts: Vec<(String, Vec<u8>)> = Vec::new();
@@ -514,14 +599,28 @@ pub fn write(wb: &Workbook, application: &str) -> Vec<u8> {
                 x.push_str("</autoFilter>");
             }
         }
+        if !sheet.merges.is_empty() {
+            x.push_str(&format!("<mergeCells count=\"{}\">", sheet.merges.len()));
+            for m in &sheet.merges {
+                x.push_str(&format!("<mergeCell ref=\"{}\"/>", m.a1()));
+            }
+            x.push_str("</mergeCells>");
+        }
+        let mut priority = 0;
+        for cf in &sheet.conditional {
+            priority += 1;
+            let dxf = cf.rule.style().map(|d| styles.dxf(&d));
+            x.push_str(&crate::xlsx_extra::conditional_xml(cf, priority, dxf));
+        }
         x.push_str("<pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0.3\" footer=\"0.3\"/>");
-        let mut sheet_rels = String::new();
+        let mut rels: Vec<String> = Vec::new();
         if !sheet.charts.is_empty() {
             drawing_no += 1;
-            x.push_str("<drawing r:id=\"rId1\"/>");
-            sheet_rels = format!(
-                "{HEAD}<Relationships xmlns=\"{PKG_REL}\"><Relationship Id=\"rId1\" Type=\"{REL}/drawing\" Target=\"../drawings/drawing{drawing_no}.xml\"/></Relationships>"
-            );
+            rels.push(format!(
+                "<Relationship Id=\"rId{}\" Type=\"{REL}/drawing\" Target=\"../drawings/drawing{drawing_no}.xml\"/>",
+                rels.len() + 1
+            ));
+            x.push_str(&format!("<drawing r:id=\"rId{}\"/>", rels.len()));
             let charts: Vec<(usize, &Chart)> = sheet.charts.iter().enumerate().collect();
             parts.push((
                 format!("xl/drawings/drawing{drawing_no}.xml"),
@@ -544,12 +643,48 @@ pub fn write(wb: &Workbook, application: &str) -> Vec<u8> {
                 drels.into_bytes(),
             ));
         }
+        for p in &sheet.pivots {
+            let Some(written) = crate::xlsx_extra::pivot_parts(wb, p, pivot_caches.len()) else {
+                continue;
+            };
+            let n = pivot_caches.len() + 1;
+            rels.push(format!(
+                "<Relationship Id=\"rId{}\" Type=\"{REL}/pivotTable\" Target=\"../pivotTables/pivotTable{n}.xml\"/>",
+                rels.len() + 1
+            ));
+            parts.push((
+                format!("xl/pivotTables/pivotTable{n}.xml"),
+                written.table.into_bytes(),
+            ));
+            parts.push((
+                format!("xl/pivotTables/_rels/pivotTable{n}.xml.rels"),
+                format!("{HEAD}<Relationships xmlns=\"{PKG_REL}\"><Relationship Id=\"rId1\" Type=\"{REL}/pivotCacheDefinition\" Target=\"../pivotCache/pivotCacheDefinition{n}.xml\"/></Relationships>").into_bytes(),
+            ));
+            parts.push((
+                format!("xl/pivotCache/pivotCacheDefinition{n}.xml"),
+                written.cache.into_bytes(),
+            ));
+            parts.push((
+                format!("xl/pivotCache/_rels/pivotCacheDefinition{n}.xml.rels"),
+                format!("{HEAD}<Relationships xmlns=\"{PKG_REL}\"><Relationship Id=\"rId1\" Type=\"{REL}/pivotCacheRecords\" Target=\"pivotCacheRecords{n}.xml\"/></Relationships>").into_bytes(),
+            ));
+            parts.push((
+                format!("xl/pivotCache/pivotCacheRecords{n}.xml"),
+                written.records.into_bytes(),
+            ));
+            overrides.push_str(&format!("<Override PartName=\"/xl/pivotTables/pivotTable{n}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml\"/><Override PartName=\"/xl/pivotCache/pivotCacheDefinition{n}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml\"/><Override PartName=\"/xl/pivotCache/pivotCacheRecords{n}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml\"/>"));
+            pivot_caches.push(n);
+        }
         x.push_str("</worksheet>");
         sheet_parts.push((format!("xl/worksheets/sheet{}.xml", si + 1), x.into_bytes()));
-        if !sheet_rels.is_empty() {
+        if !rels.is_empty() {
             sheet_parts.push((
                 format!("xl/worksheets/_rels/sheet{}.xml.rels", si + 1),
-                sheet_rels.into_bytes(),
+                format!(
+                    "{HEAD}<Relationships xmlns=\"{PKG_REL}\">{}</Relationships>",
+                    rels.concat()
+                )
+                .into_bytes(),
             ));
         }
         overrides.push_str(&format!("<Override PartName=\"/xl/worksheets/sheet{}.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>", si + 1));
@@ -584,7 +719,20 @@ pub fn write(wb: &Workbook, application: &str) -> Vec<u8> {
             defined.join("")
         ));
     }
-    book.push_str("<calcPr calcId=\"191029\" fullCalcOnLoad=\"1\"/></workbook>");
+    book.push_str("<calcPr calcId=\"191029\" fullCalcOnLoad=\"1\"/>");
+    // Pivot caches: relationships after the sheets', styles' and shared strings'.
+    if !pivot_caches.is_empty() {
+        book.push_str("<pivotCaches>");
+        for (k, p) in pivot_caches.iter().enumerate() {
+            book.push_str(&format!(
+                "<pivotCache cacheId=\"{}\" r:id=\"rId{}\"/>",
+                k + 1,
+                p + 2 + n
+            ));
+        }
+        book.push_str("</pivotCaches>");
+    }
+    book.push_str("</workbook>");
     let mut rels = format!("{HEAD}<Relationships xmlns=\"{PKG_REL}\">");
     for i in 0..n {
         rels.push_str(&format!("<Relationship Id=\"rId{}\" Type=\"{REL}/worksheet\" Target=\"worksheets/sheet{}.xml\"/>", i + 1, i + 1));
@@ -597,6 +745,12 @@ pub fn write(wb: &Workbook, application: &str) -> Vec<u8> {
         "<Relationship Id=\"rId{}\" Type=\"{REL}/sharedStrings\" Target=\"sharedStrings.xml\"/>",
         n + 2
     ));
+    for p in &pivot_caches {
+        rels.push_str(&format!(
+            "<Relationship Id=\"rId{}\" Type=\"{REL}/pivotCacheDefinition\" Target=\"pivotCache/pivotCacheDefinition{p}.xml\"/>",
+            p + 2 + n
+        ));
+    }
     rels.push_str("</Relationships>");
     let mut sst = format!(
         "{HEAD}<sst xmlns=\"{MAIN}\" count=\"{0}\" uniqueCount=\"{0}\">",
@@ -711,13 +865,40 @@ fn rels_of(
     }
     Ok(out)
 }
+fn read_borders(root: &Element) -> Vec<Borders> {
+    let Some(list) = root.child("borders") else {
+        return vec![];
+    };
+    list.children_named("border")
+        .map(|b| {
+            let edge = |name: &str| -> Option<Edge> {
+                let e = b.child(name)?;
+                let line = Line::parse(e.attr("style")?)?;
+                let color = e
+                    .child("color")
+                    .and_then(|c| c.attr("rgb"))
+                    .and_then(parse_rgb)
+                    .unwrap_or([0, 0, 0]);
+                Some(Edge::new(line, color))
+            };
+            Borders {
+                left: edge("left").or_else(|| edge("start")),
+                right: edge("right").or_else(|| edge("end")),
+                top: edge("top"),
+                bottom: edge("bottom"),
+            }
+        })
+        .collect()
+}
 struct ReadStyles {
     xfs: Vec<Style>,
+    dxfs: Vec<Dxf>,
 }
 fn read_styles(root: Option<Element>) -> ReadStyles {
     let Some(root) = root else {
         return ReadStyles {
             xfs: vec![Style::default()],
+            dxfs: vec![],
         };
     };
     let mut custom = BTreeMap::new();
@@ -757,6 +938,7 @@ fn read_styles(root: Option<Element>) -> ReadStyles {
                 .collect()
         })
         .unwrap_or_default();
+    let borders = read_borders(&root);
     let fills: Vec<Option<[u8; 3]>> = root
         .child("fills")
         .map(|f| {
@@ -797,7 +979,8 @@ fn read_styles(root: Option<Element>) -> ReadStyles {
                 .flatten();
             let align = match xf.child("alignment").and_then(|a| a.attr("horizontal")) {
                 Some("left") => Align::Left,
-                Some("center") | Some("centerContinuous") => Align::Center,
+                Some("center") => Align::Center,
+                Some("centerContinuous") => Align::CenterAcross,
                 Some("right") => Align::Right,
                 _ => Align::General,
             };
@@ -809,13 +992,19 @@ fn read_styles(root: Option<Element>) -> ReadStyles {
                 align,
                 fill,
                 color: font.3,
+                borders: xf
+                    .attr("borderId")
+                    .and_then(|v| v.parse::<usize>().ok())
+                    .and_then(|i| borders.get(i).copied())
+                    .unwrap_or_default(),
             });
         }
     }
     if xfs.is_empty() {
         xfs.push(Style::default());
     }
-    ReadStyles { xfs }
+    let dxfs = crate::xlsx_extra::read_dxfs(Some(&root));
+    ReadStyles { xfs, dxfs }
 }
 /// Read an `.xlsx` workbook.
 pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
@@ -887,6 +1076,15 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
             }
         }
     }
+    let mut pivot_caches: BTreeMap<String, String> = BTreeMap::new();
+    if let Some(pc) = book.child("pivotCaches") {
+        for c in pc.children_named("pivotCache") {
+            let rid = c.attr_exact("r:id").or_else(|| c.attr("id")).unwrap_or("");
+            if let (Some(id), Some(path)) = (c.attr("cacheId"), book_rels.get(rid)) {
+                pivot_caches.insert(id.to_owned(), path.clone());
+            }
+        }
+    }
     for (si, path) in sheet_paths.iter().enumerate() {
         let Some(ws) = xml_part(&parts, path)? else {
             continue;
@@ -901,6 +1099,26 @@ pub fn read(bytes: &[u8]) -> Result<Workbook, String> {
                 .unwrap_or("");
             if let Some(dpath) = rels.get(rid) {
                 read_charts(&mut wb, si, &parts, dpath)?;
+            }
+        }
+        // Pivot tables, each with its cache definition by the workbook's cache id.
+        for target in rels.values().filter(|t| t.contains("pivotTables/")) {
+            let Some(def) = xml_part(&parts, target)? else {
+                continue;
+            };
+            let Some(cache_path) = def.attr("cacheId").and_then(|id| pivot_caches.get(id)) else {
+                continue;
+            };
+            let Some(cache) = xml_part(&parts, cache_path)? else {
+                continue;
+            };
+            if let Some(mut p) = crate::xlsx_extra::read_pivot(&def, &cache) {
+                let loc = def
+                    .child("location")
+                    .and_then(|l| l.attr("ref"))
+                    .and_then(Range::parse);
+                p.extent = loc.map(|l| Range::new(p.origin(), l.end));
+                wb.sheets[si].pivots.push(p);
             }
         }
     }
@@ -1052,6 +1270,22 @@ fn read_sheet(
             wb.load_cell(si, at, input, cached, style);
         }
     }
+    if let Some(mc) = ws.child("mergeCells") {
+        for m in mc.children_named("mergeCell") {
+            if let Some(r) = m.attr("ref").and_then(Range::parse) {
+                if !r.is_single()
+                    && !wb.sheets[si]
+                        .merges
+                        .iter()
+                        .any(|x| x.intersect(&r).is_some())
+                {
+                    wb.sheets[si].merges.push(r);
+                }
+            }
+        }
+        wb.sheets[si].merges.sort();
+    }
+    wb.sheets[si].conditional = crate::xlsx_extra::read_conditional(ws, &styles.dxfs);
     if let Some(af) = ws.child("autoFilter") {
         if let Some(range) = af.attr("ref").and_then(Range::parse) {
             let mut filter = AutoFilter {
@@ -1180,13 +1414,39 @@ fn read_charts(
             .unwrap_or_default();
         let from = pos("from").unwrap_or(Cell::new(range.start.row, range.end.col + 2));
         let to = pos("to").unwrap_or(Cell::new(from.row + 15, from.col + 7));
+        let off = |which: &str, part: &str| -> u32 {
+            anchor
+                .child(which)
+                .and_then(|p| p.child(part))
+                .and_then(|o| o.text().trim().parse::<u64>().ok())
+                .map_or(0, |emu| (emu / EMU_PER_PX) as u32)
+        };
+        let (cols, rows) = (
+            to.col.saturating_sub(from.col),
+            to.row.saturating_sub(from.row),
+        );
+        let offsets = [
+            off("from", "colOff"),
+            off("from", "rowOff"),
+            off("to", "colOff"),
+            off("to", "rowOff"),
+        ];
         wb.sheets[si].charts.push(Chart {
             kind,
             range,
             title,
             anchor: from,
-            cols: to.col.saturating_sub(from.col).max(2),
-            rows: to.row.saturating_sub(from.row).max(4),
+            cols: if cols == 0 && offsets[2] == 0 {
+                2
+            } else {
+                cols
+            },
+            rows: if rows == 0 && offsets[3] == 0 {
+                4
+            } else {
+                rows
+            },
+            offsets,
         });
     }
     Ok(())
