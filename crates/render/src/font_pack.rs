@@ -1,7 +1,7 @@
 //! Outline sources for the fallback faces, and the on-demand CJK/emoji font pack.
 //!
 //! The Hebrew, Arabic, Thai and Devanagari faces are embedded everywhere. The
-//! CJK and emoji faces (`assets/fonts/pack/`) are 7.5 MB of outlines, so the Wasm
+//! CJK and emoji faces (`assets/fonts/pack/`) are 6.75 MB of outlines, so the Wasm
 //! build leaves them out and a page installs them with [`install_font`] once it has
 //! fetched them; native builds embed them and never need to. Layout does not wait
 //! for the pack — it shapes the always-embedded stubs (see `cw_scene::text`) — so
@@ -29,19 +29,19 @@ pub const FONT_PACK: [PackFile; 3] = [
     PackFile {
         face: FaceId::Han,
         file: "noto-sans-sc.ttf",
-        sha256: "03b845810b14111b16e3aa41e5d63ada45fd9a34f42c352a9838b85e1f41ac69",
+        sha256: "34379072e545d67c4b22de7ccb2a60bdb02c82e8144eb705ab73356d1b65cec7",
         bytes: 3_522_836,
     },
     PackFile {
         face: FaceId::Hangul,
         file: "noto-sans-kr.ttf",
-        sha256: "6be20f9d400618361e076f0e7cf423644e9a1fbdb4c08b615609ac5ed88b2a24",
+        sha256: "b7328d27e2cda3fd8c6198df10ba6a780102b7a5698ee67f6153005f26077c73",
         bytes: 2_366_072,
     },
     PackFile {
         face: FaceId::Emoji,
         file: "noto-emoji.ttf",
-        sha256: "4928fa7b71796ae9cdcb25a744f13fa03d7e2e49049ff3cf4fcb6dfd2ca39314",
+        sha256: "f2ca5cf2d5d68e2e98920db332ecb333a50c747d4bc2d151aa3357d2fe8b1ce8",
         bytes: 862_788,
     },
 ];
@@ -50,14 +50,16 @@ fn slot(face: FaceId) -> Option<usize> {
     FONT_PACK.iter().position(|p| p.face == face)
 }
 
+/// In statics rather than constants so each file is in the binary exactly once.
+#[cfg(not(target_family = "wasm"))]
+static EMBEDDED: [&[u8]; 3] = [
+    include_bytes!("../assets/fonts/pack/noto-sans-sc.ttf"),
+    include_bytes!("../assets/fonts/pack/noto-sans-kr.ttf"),
+    include_bytes!("../assets/fonts/pack/noto-emoji.ttf"),
+];
 #[cfg(not(target_family = "wasm"))]
 fn embedded(face: FaceId) -> Option<&'static [u8]> {
-    Some(match face {
-        FaceId::Han => include_bytes!("../assets/fonts/pack/noto-sans-sc.ttf"),
-        FaceId::Hangul => include_bytes!("../assets/fonts/pack/noto-sans-kr.ttf"),
-        FaceId::Emoji => include_bytes!("../assets/fonts/pack/noto-emoji.ttf"),
-        _ => return None,
-    })
+    slot(face).map(|i| EMBEDDED[i])
 }
 #[cfg(target_family = "wasm")]
 fn embedded(_: FaceId) -> Option<&'static [u8]> {

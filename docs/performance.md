@@ -225,12 +225,48 @@ cold-start percentile.
 
 | Packaged artifact | Raw bytes | Gzip bytes |
 |---|---:|---:|
-| Browser Wasm, standard services + renderer/fonts | 10,083,313 | 4,932,659 |
+| Browser Wasm, standard services + renderer/fonts | 11,355,891 | 5,403,366 |
 | Browser JS glue | 42,215 | 6,531 |
+| CJK/emoji font pack, 3 files (fetched on demand) | 6,751,696 | 3,613,294 |
 
 Measured with `gzip -9` on a `pkg/web` built by `scripts/build-wasm.sh` from the current
-source. The fonts, wallpapers, icons and symbol masks are embedded in the Wasm; there is
-no second fetch.
+source. The fonts, wallpapers, icons and symbol masks are embedded in the Wasm, except
+the CJK/emoji font pack in `pkg/web/fonts/`, which a page fetches only if it wants Han,
+kana, Hangul or emoji glyphs (see "Complex scripts" below).
+
+**Complex scripts, before and after.** Hebrew, Arabic, Thai, Devanagari, CJK and emoji
+support (fallback faces, bidi, `rustybuzz` shaping, CJK line breaking) grew the module
+by 9.2% gzipped. Both builds below are `scripts/build-wasm.sh` with the same toolchain
+(Rust 1.97.1, wasm-bindgen 0.2.128), the "before" from the release commit `6adc175`:
+
+| Module | Raw bytes | Gzip bytes |
+|---|---:|---:|
+| Before (`6adc175`) | 10,129,130 | 4,949,209 |
+| After | 11,355,891 | 5,403,366 |
+| Change | +1,226,761 (+12.1%) | +454,157 (+9.2%) |
+
+Where the growth went: 717,496 raw / about 259,000 gzip is font data — Noto Sans
+Hebrew, Arabic, Thai and Devanagari in two weights (512,860 raw; Devanagari alone is
+328,276, its conjunct forms) and the outline-free *stubs* of the three pack faces
+(204,636 raw, 44,055 gzip) that let layout shape CJK and emoji without the pack. The rest,
+about 508,000 raw / 194,000 gzip, is code and Unicode tables: `rustybuzz` (179 KB of
+code), the extra `ttf-parser` tables it reads (68 KB), `unicode-bidi` (28 KB) and
+their property data. The pack itself — Noto Sans SC subset to 10,269 common Han
+(2,190,576 gzip), all 11,172 Hangul syllables in Noto Sans KR (855,949) and Noto Emoji
+(566,769) — would have taken the module to about 9 MB gzipped; kept separate, it costs
+nothing unless used. Native builds embed it.
+
+A first build embedded each Noto face twice (1.23 MB of fonts for 0.72 MB of files):
+`include_bytes!` behind a `const` is re-materialized at every inlined use site. The
+faces are now in `static`s, which have one address; `cw-render` puts the native pack
+in statics for the same reason.
+
+Loading a pack face is the one runtime cost: `fontdue` prepares every outline of a face
+when it is first used. Measured in Node on this build, the first frame that needs emoji,
+Hangul or Han takes about 34, 106 and 174 ms and grows memory by about 26, 46 and 60 MiB;
+the embedded scripts take 3–11 ms the first time, and every later frame is
+sub-millisecond. Latin text pays nothing: it takes the original table path, and no pinned
+frame hash moved.
 
 **Bundle size, before and after.** The Wasm had grown to 22,136,038 raw / 13,813,875
 gzip (the previous revision of this table recorded 22,104,977 / 13,804,622) once eleven
@@ -268,9 +304,10 @@ What moved, and what did not:
   unchanged, and `metrics_data.rs` needed no regeneration. Committed screenshots under
   `artifacts/` that show a desktop are stale until they are regenerated.
 - **Unsupported scripts.** Text in a script outside the DejaVu coverage set (Hebrew,
-  Arabic, Thai, CJK and others) renders as the `.notdef` box. That is visible and
-  consistent, and a test pins it; before this change DejaVu drew some of these scripts.
-  The coverage set is documented in `crates/render/assets/build-fonts.py`.
+  Arabic, Thai, CJK and others) rendered as the `.notdef` box after this change. The
+  complex-script work above restored Hebrew, Arabic and Thai and added Devanagari, CJK
+  and emoji through Noto faces; scripts no bundled face covers (Georgian, Armenian,
+  Ethiopic, Bengali, …) still draw the box, and a test pins that.
 - **Speed.** Compiling for size costs Wasm speed. The raster path (`cw-render` and its
   PNG/JPEG/font decoders) is kept at opt-level 3, but scene construction, services and
   the kernel are now at `z`. A warm 960×640 desktop `render()` in Node, including scene

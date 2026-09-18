@@ -22,6 +22,7 @@
 //! right-to-left, joiner or emoji-sequence characters is measured and placed exactly as
 //! before this module existed: per-character tabulated advances, breaks after spaces.
 //! Latin output is therefore unchanged by construction.
+#[rustfmt::skip]
 mod coverage;
 
 use crate::metrics::{self, Typeface};
@@ -55,6 +56,23 @@ macro_rules! font {
         include_bytes!(concat!("../../../render/assets/fonts/", $name)) as &[u8]
     };
 }
+/// Font bytes live in statics, not constants: a constant is materialized at each
+/// use site that survives inlining, which embedded every face twice in the Wasm.
+static EMBEDDED: [&[u8]; 8] = [
+    font!("noto-hebrew-regular.ttf"),
+    font!("noto-hebrew-bold.ttf"),
+    font!("noto-arabic-regular.ttf"),
+    font!("noto-arabic-bold.ttf"),
+    font!("noto-thai-regular.ttf"),
+    font!("noto-thai-bold.ttf"),
+    font!("noto-devanagari-regular.ttf"),
+    font!("noto-devanagari-bold.ttf"),
+];
+static STUBS: [&[u8]; 3] = [
+    font!("stubs/noto-sans-sc.ttf"),
+    font!("stubs/noto-sans-kr.ttf"),
+    font!("stubs/noto-emoji.ttf"),
+];
 
 impl FaceId {
     pub const ALL: [FaceId; 11] = [
@@ -94,25 +112,13 @@ impl FaceId {
     /// Complete font bytes for the embedded faces; `None` for pack faces, whose
     /// outlines the renderer obtains separately.
     pub fn embedded_bytes(self) -> Option<&'static [u8]> {
-        Some(match self {
-            Self::Hebrew => font!("noto-hebrew-regular.ttf"),
-            Self::HebrewBold => font!("noto-hebrew-bold.ttf"),
-            Self::Arabic => font!("noto-arabic-regular.ttf"),
-            Self::ArabicBold => font!("noto-arabic-bold.ttf"),
-            Self::Thai => font!("noto-thai-regular.ttf"),
-            Self::ThaiBold => font!("noto-thai-bold.ttf"),
-            Self::Devanagari => font!("noto-devanagari-regular.ttf"),
-            Self::DevanagariBold => font!("noto-devanagari-bold.ttf"),
-            Self::Han | Self::Hangul | Self::Emoji => return None,
-        })
+        EMBEDDED.get(self as usize).copied()
     }
     /// Bytes layout shapes with: the face itself, or a pack face's outline-free stub.
     pub fn layout_bytes(self) -> &'static [u8] {
-        match self {
-            Self::Han => font!("stubs/noto-sans-sc.ttf"),
-            Self::Hangul => font!("stubs/noto-sans-kr.ttf"),
-            Self::Emoji => font!("stubs/noto-emoji.ttf"),
-            _ => self.embedded_bytes().expect("embedded face"),
+        match self.embedded_bytes() {
+            Some(bytes) => bytes,
+            None => STUBS[self as usize - EMBEDDED.len()],
         }
     }
     fn shaper(self) -> &'static rustybuzz::Face<'static> {
@@ -156,7 +162,7 @@ pub struct PlacedGlyph {
 }
 
 /// A wrapped line: its logical text, its glyphs left to right, and its advance width
-/// in 1/64 pixel.
+/// in 1/64 pixel (as `metrics::text_width` measures it, before rounding up).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LaidLine {
     pub text: String,
@@ -186,17 +192,16 @@ pub(crate) fn block(
             let mut lines = Vec::new();
             metrics::wrap_simple_paragraph(typeface, bold, paragraph, size, limit, &mut lines);
             for line in lines {
+                // `metrics::wrap` only needs the line text; skip placement for it.
                 let mut placed = Vec::new();
                 let mut pen = 0;
-                for c in line.chars() {
-                    if glyphs {
-                        placed.push(PlacedGlyph {
-                            face: None,
-                            glyph: GlyphRef::Char(c),
-                            x: pen,
-                            y: 0,
-                        });
-                    }
+                for c in line.chars().filter(|_| glyphs) {
+                    placed.push(PlacedGlyph {
+                        face: None,
+                        glyph: GlyphRef::Char(c),
+                        x: pen,
+                        y: 0,
+                    });
                     pen += metrics::advance(typeface, bold, c, size);
                 }
                 out.push(LaidLine {
@@ -350,13 +355,26 @@ pub fn script_face(bold: bool, c: char) -> Option<FaceId> {
 }
 
 fn is_rtl(c: char) -> bool {
-    matches!(c as u32, 0x0590..=0x08FF | 0xFB1D..=0xFDFF | 0xFE70..=0xFEFF | 0x10800..=0x10FFF | 0x1E800..=0x1EFFF)
+    matches!(
+        c as u32,
+        0x0590..=0x08FF | 0xFB1D..=0xFDFF | 0xFE70..=0xFEFF | 0x10800..=0x10FFF | 0x1E800..=0x1EFFF
+    )
 }
 
 /// Default-ignorable format characters: joiners, directional marks and controls,
 /// variation selectors and tags. Zero width and never drawn on their own.
 fn is_ignorable(c: char) -> bool {
-    matches!(c as u32, 0x061C | 0x200B..=0x200F | 0x202A..=0x202E | 0x2060..=0x2064 | 0x2066..=0x2069 | 0xFE00..=0xFE0F | 0xFEFF | 0xE0000..=0xE0FFF)
+    matches!(
+        c as u32,
+        0x061C
+            | 0x200B..=0x200F
+            | 0x202A..=0x202E
+            | 0x2060..=0x2064
+            | 0x2066..=0x2069
+            | 0xFE00..=0xFE0F
+            | 0xFEFF
+            | 0xE0000..=0xE0FFF
+    )
 }
 
 const ZWJ: char = '\u{200D}';
@@ -457,108 +475,32 @@ fn atom_boundary(chars: &[(usize, char)], i: usize) -> bool {
 /// Characters around which lines may break without a space (UAX #14 class ID and
 /// friends): Han, kana, Hangul, CJK punctuation and fullwidth forms.
 fn is_cjk(c: char) -> bool {
-    matches!(c as u32, 0x1100..=0x11FF | 0x2E80..=0x2FFF | 0x3000..=0x303F | 0x3040..=0x30FF | 0x3100..=0x31FF | 0x3200..=0x9FFF | 0xA960..=0xA97F | 0xAC00..=0xD7FF | 0xF900..=0xFAFF | 0xFE30..=0xFE4F | 0xFF00..=0xFFEF | 0x20000..=0x3FFFF)
+    matches!(
+        c as u32,
+        0x1100..=0x11FF
+            | 0x2E80..=0x2FFF
+            | 0x3000..=0x303F
+            | 0x3040..=0x30FF
+            | 0x3100..=0x31FF
+            | 0x3200..=0x9FFF
+            | 0xA960..=0xA97F
+            | 0xAC00..=0xD7FF
+            | 0xF900..=0xFAFF
+            | 0xFE30..=0xFE4F
+            | 0xFF00..=0xFFEF
+            | 0x20000..=0x3FFFF
+    )
 }
-/// Kinsoku: characters a line must not start with.
+/// Kinsoku: characters a line must not start with (closing brackets and punctuation,
+/// small kana, iteration and prolonged-sound marks).
 fn no_break_before(c: char) -> bool {
-    matches!(
-        c,
-        ')' | ']'
-            | '}'
-            | ','
-            | '.'
-            | ':'
-            | ';'
-            | '!'
-            | '?'
-            | '%'
-            | '’'
-            | '”'
-            | '…'
-            | '‥'
-            | '、'
-            | '。'
-            | '，'
-            | '．'
-            | '：'
-            | '；'
-            | '！'
-            | '？'
-            | '）'
-            | '］'
-            | '｝'
-            | '」'
-            | '』'
-            | '〕'
-            | '】'
-            | '〉'
-            | '》'
-            | '〙'
-            | '〗'
-            | '〟'
-            | 'ー'
-            | '々'
-            | '〻'
-            | 'ゝ'
-            | 'ゞ'
-            | 'ヽ'
-            | 'ヾ'
-            | '・'
-            | '〜'
-            | '～'
-            | 'ぁ'
-            | 'ぃ'
-            | 'ぅ'
-            | 'ぇ'
-            | 'ぉ'
-            | 'っ'
-            | 'ゃ'
-            | 'ゅ'
-            | 'ょ'
-            | 'ゎ'
-            | 'ゕ'
-            | 'ゖ'
-            | 'ァ'
-            | 'ィ'
-            | 'ゥ'
-            | 'ェ'
-            | 'ォ'
-            | 'ッ'
-            | 'ャ'
-            | 'ュ'
-            | 'ョ'
-            | 'ヮ'
-            | 'ヵ'
-            | 'ヶ'
-            | '％'
-    )
+    ")]},.:;!?%’”…‥、。，．：；！？）］｝」』〕】〉》〙〗〟ー々〻ゝゞヽヾ・〜～％\
+     ぁぃぅぇぉっゃゅょゎゕゖァィゥェォッャュョヮヵヶ"
+        .contains(c)
 }
-/// Kinsoku: characters a line must not end with.
+/// Kinsoku: characters a line must not end with (opening brackets, currency signs).
 fn no_break_after(c: char) -> bool {
-    matches!(
-        c,
-        '(' | '['
-            | '{'
-            | '‘'
-            | '“'
-            | '（'
-            | '［'
-            | '｛'
-            | '「'
-            | '『'
-            | '〔'
-            | '【'
-            | '〈'
-            | '《'
-            | '〘'
-            | '〖'
-            | '〝'
-            | '$'
-            | '£'
-            | '¥'
-            | '￥'
-            | '＄'
-    )
+    "([{‘“（［｛「『〔【〈《〘〖〝$£¥￥＄".contains(c)
 }
 /// A line may break before char `i`: after a space (as for Latin text), or between
 /// CJK characters subject to kinsoku, and never inside a cluster.

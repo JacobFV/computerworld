@@ -20,5 +20,12 @@ include = [
   { path = "crates/render/assets/fonts/OPENSANS-OFL.txt", format = "wheel" },
   { path = "crates/render/assets/fonts/ROBOTO-OFL.txt", format = "wheel" },
   { path = "crates/render/assets/fonts/UBUNTU-UFL.txt", format = "wheel" },
+  { path = "crates/render/assets/fonts/NOTOSANSHEBREW-OFL.txt", format = "wheel" },
+  { path = "crates/render/assets/fonts/NOTOSANSARABIC-OFL.txt", format = "wheel" },
+  { path = "crates/render/assets/fonts/NOTOSANSTHAI-OFL.txt", format = "wheel" },
+  { path = "crates/render/assets/fonts/NOTOSANSDEVANAGARI-OFL.txt", format = "wheel" },
+  { path = "crates/render/assets/fonts/NOTOSANSSC-OFL.txt", format = "wheel" },
+  { path = "crates/render/assets/fonts/NOTOSANSKR-OFL.txt", format = "wheel" },
+  { path = "crates/render/assets/fonts/NOTOEMOJI-OFL.txt", format = "wheel" },
   { path = "crates/render/assets/README.md", format = "wheel" },
 ]

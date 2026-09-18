@@ -125,7 +125,7 @@ fn raster_stays_inside_the_measured_width_and_wraps_where_metrics_do() {
     let lines = wrap(Typeface::DejaVu, false, text, 16, 100);
     assert!(lines.len() >= 4, "{lines:?}");
     let frame = label(text, 100, 200, 16);
-    let line_height = 16 + (16 + 3) / 4;
+    let line_height = 16 + 16u32.div_ceil(4);
     for row in 0..8u32 {
         let inked = (row * line_height..(row + 1) * line_height)
             .any(|y| (0..100).any(|x| frame.pixel(x, y).unwrap()[0] < 128));

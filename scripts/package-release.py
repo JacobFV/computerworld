@@ -37,7 +37,7 @@ for target in ('web', 'node'):
                     description='Deterministic synthetic computer worlds: canonical Rust via WebAssembly',
                     license='MIT', repository='https://github.com/JacobFV/computerworld',
                     main='computerworld.js', types='computerworld.d.ts',
-                    files=['*.js', '*.wasm', '*.ts', '*.md', 'LICENSE', 'notices', 'worlds', 'examples', 'release.json'])
+                    files=['*.js', '*.wasm', '*.ts', '*.md', 'LICENSE', 'notices', 'fonts', 'worlds', 'examples', 'release.json'])
     metadata['type'] = 'module' if target == 'web' else 'commonjs'
     (package / 'package.json').write_text(json.dumps(metadata, indent=2) + '\n', encoding='utf-8')
     (package / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
@@ -59,6 +59,11 @@ env.free(); world.free();
 ```
 
 {'Serve this directory over HTTP (for example `python -m http.server 8000`); initialization loads the sibling Wasm file. No simulator backend or outbound networking is needed.' if target == 'web' else 'Run the complete keyboard/mouse, rendering and replay example: `node examples/javascript/computer-interaction.mjs --output ./demo-output`.'}
+
+CJK (Han, kana, Hangul) and emoji glyphs are a separate font pack in fonts/, not in the
+module: pass each file's bytes to `installFont` (at startup, or when
+`fontPackStatus().missing` lists it). Layout does not depend on it; until a file is
+installed its glyphs draw as boxes.
 
 See PROGRAMMATIC-USE.md, generated TypeScript declarations, and notices/ for third-party licenses.
 World handles are privileged; give acting agents only configured environment handles.

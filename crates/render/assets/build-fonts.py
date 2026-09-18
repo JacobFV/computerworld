@@ -19,9 +19,10 @@ simulated Latin-script desktop. `DEJAVU_RANGES` below is the coverage the world
 can actually reach, and subsetting to it costs 713,820 bytes instead.
 
 Choosing that set is a correctness decision, not a size one: DejaVu is the
-*fallback* face, so a codepoint it lacks has nowhere else to go and renders as
-`.notdef`. The set is therefore drawn to cover anything an actor can type or a
-simulated service can emit, not merely what today's fixtures happen to show:
+first *fallback* face, and a codepoint neither it nor the Noto faces below map
+renders as `.notdef`. The set is therefore drawn to cover anything an actor can
+type or a simulated service can emit in the scripts DejaVu serves, not merely
+what today's fixtures happen to show:
 
   Latin (Basic through Extended-B), IPA, spacing modifiers and combining marks
     — filenames, user-typed text, transliterated names.
@@ -36,10 +37,11 @@ simulated service can emit, not merely what today's fixtures happen to show:
   Miscellaneous Symbols, Dingbats, Braille — ⚀ ⚙ ✓ and TUI spinners.
   U+FFFD, so decoders that replace bad bytes have a glyph to show.
 
-Outside that set a character renders as DejaVu's `.notdef` box (the subsetter
-keeps its outline via `notdef_outline`), which is visible and self-explanatory;
-`dejavu_subset_draws_notdef_for_uncovered_text` in `src/lib.rs` pins that
-behaviour so an uncovered codepoint can never silently vanish. Subsetting does
+Outside that set and the Noto coverage a character renders as DejaVu's `.notdef`
+box (the subsetter keeps its outline via `notdef_outline`), which is visible and
+self-explanatory; `uncovered_codepoints_draw_a_visible_notdef_box` in
+`src/lib.rs` pins that behaviour so an uncovered codepoint can never silently
+vanish. Subsetting does
 not touch outlines, advances or `unitsPerEm`, so every retained glyph
 rasterizes to exactly the pixels the full master produced.
 
@@ -248,7 +250,7 @@ def stub(path, out):
     tables, so shaping it yields exactly the glyph ids and positions shaping the
     full face would. Only outlines (and side bearings) are dropped."""
     from fontTools.ttLib.tables._g_l_y_f import Glyph
-    font = TTFont(path)
+    font = TTFont(path, recalcTimestamp=False)
     order = font.getGlyphOrder()
     for name in order:
         font["glyf"][name] = Glyph()
@@ -286,7 +288,7 @@ def build_noto(src):
     src = Path(src)
     for name, master, ranges in NOTO_CORE:
         for weight, wght in NOTO_WEIGHTS:
-            font = instancer.instantiateVariableFont(TTFont(src / master), {"wght": wght, "wdth": 100})
+            font = instancer.instantiateVariableFont(TTFont(src / master, recalcTimestamp=False), {"wght": wght, "wdth": 100})
             noto_subset(font, codepoints(ranges) + SHAPING, layout=True)
             path = OUT / f"noto-{name}-{weight}.ttf"
             font.save(path)
@@ -300,7 +302,7 @@ def build_noto(src):
         ("noto-emoji.ttf", "NotoEmoji-var.ttf", {"wght": 400}, set(emoji.getBestCmap()), True),
     ]
     for out_name, master, axes, unicodes, layout in pack:
-        font = instancer.instantiateVariableFont(TTFont(src / master), axes)
+        font = instancer.instantiateVariableFont(TTFont(src / master, recalcTimestamp=False), axes)
         noto_subset(font, unicodes, layout)
         path = OUT / "pack" / out_name
         font.save(path)

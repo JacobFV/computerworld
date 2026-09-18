@@ -35,17 +35,126 @@ glyph rasterizes to exactly the pixels the master produced** — the renderer's 
 frame hashes are unchanged by it, and `crates/scene/src/metrics_data.rs` needed no
 regeneration because every codepoint it tabulates is inside the coverage set.
 
-DejaVu is the last fallback, so a codepoint outside the set has nowhere else to go and
-renders as `.notdef`, a visible hollow box (`notdef_outline` keeps its outline).
-`uncovered_codepoints_draw_a_visible_notdef_box` in `src/lib.rs` pins that: an
-uncovered character must draw a mark, and must draw the *same* mark as every other
-uncovered character. It can never silently vanish, which would be indistinguishable
-from a rendering bug and unreadable to an OCR consumer.
+DejaVu is no longer the last fallback: the Noto faces below cover the scripts the
+subset dropped. A codepoint that no bundled face maps (Georgian, Armenian, Ethiopic,
+Bengali, Tamil, …) still renders as `.notdef`, a visible hollow box (`notdef_outline`
+keeps its outline). `uncovered_codepoints_draw_a_visible_notdef_box` in `src/lib.rs`
+pins that: an uncovered character must draw a mark, and must draw the *same* mark as
+every other uncovered character. It can never silently vanish, which would be
+indistinguishable from a rendering bug and unreadable to an OCR consumer.
 
 The renderer uses fontdue antialiasing, integer raster origins, 1/64-pixel
-quantized UI advances, and integer line heights. UI text supports Unicode glyphs
-available in the bundled font but does not implement bidirectional shaping or
-complex-script layout. `Text` retains its original fixed-cell pixel output.
+quantized UI advances, and integer line heights. `Text` retains its original
+fixed-cell pixel output.
+
+## Scripts beyond Latin: Noto faces, shaping and the font pack
+
+Hebrew, Arabic, Thai, Devanagari, Chinese, Japanese, Korean and emoji are drawn from
+Noto fonts (SIL OFL 1.1, `fonts/NOTO*-OFL.txt`), built by
+`build-fonts.py --noto <dir>` from masters that `fetch-noto-sources.py <dir>`
+downloads from google/fonts at a pinned commit and checks against pinned SHA-256s.
+The build is byte-for-byte reproducible (fontTools 4.55.3; timestamps are kept from
+the masters), and each output keeps its name table, so every file still carries its
+copyright and license. Only Noto Sans SC/KR carry a Reserved Font Name, "Source",
+which the modified files do not use.
+
+| Face | Files | Coverage | Tier |
+| --- | --- | --- | --- |
+| Noto Sans Hebrew | `fonts/noto-hebrew-{regular,bold}.ttf` | U+0590–05FF, FB1D–FB4F | embedded |
+| Noto Sans Arabic | `fonts/noto-arabic-{regular,bold}.ttf` | U+0600–06FF, 0750–077F, FE70–FEFF | embedded |
+| Noto Sans Thai | `fonts/noto-thai-{regular,bold}.ttf` | U+0E00–0E7F | embedded |
+| Noto Sans Devanagari | `fonts/noto-devanagari-{regular,bold}.ttf` | U+0900–097F, A8E0–A8FF | embedded |
+| Noto Sans SC | `fonts/pack/noto-sans-sc.ttf` | 10,269 common Han, kana, CJK punctuation, fullwidth forms | pack |
+| Noto Sans KR | `fonts/pack/noto-sans-kr.ttf` | all 11,172 Hangul syllables, compatibility jamo | pack |
+| Noto Emoji | `fonts/pack/noto-emoji.ttf` | all of Noto Emoji, with its sequence ligatures | pack |
+
+The four embedded scripts keep their OpenType layout tables and are instanced at
+weights 400 and 700 (bold `UiTextBold` gets real bold). The Han set is the union of
+GB 2312 (Simplified, 6,763), Big5 level 1 (Traditional common, 5,401) and JIS X 0208
+levels 1–2 (Japanese, 6,355), enumerated from Python's own codecs so no data file is
+needed. Pack faces are regular weight only.
+
+**Fallback chain.** Per character, in order: the scene's platform face (Inter, Open
+Sans, Ubuntu, Roboto), DejaVu Sans (regular or bold), the matching-weight Noto
+Hebrew/Arabic/Thai/Devanagari face, Noto Sans SC, Noto Sans KR, Noto Emoji, and
+finally DejaVu's `.notdef`. Combining marks and joiners stay in their base's face.
+Emoji sequences — VS16, ZWJ sequences, skin-tone modifiers, keycaps, regional-indicator
+flags and tag flags — go to Noto Emoji as one cluster even when the base is a symbol
+DejaVu draws as text (`❤` stays DejaVu's text heart; `❤️` is the emoji); VS15 keeps
+the text glyph. The chain lives in `cw_scene::text`, and scene metrics use it too.
+
+**Layout.** `cw_scene::text::layout` wraps, reorders and shapes; `metrics::wrap`,
+`text_width` and `ellipsize` and the renderer all go through it, so what layout
+measures is what is drawn (`measurement_agrees_with_placement`,
+`raster_stays_inside_the_measured_width_and_wraps_where_metrics_do`).
+
+* Bidi: each `\n`-paragraph takes its direction from its first strong character
+  (UAX #9 P2/P3), and every wrapped line is reordered with that base direction by the
+  `unicode-bidi` crate, including number runs and bracket mirroring. Lines are
+  left-aligned in the node; trailing spaces of a right-to-left line are kept out of
+  the visual left edge.
+* Shaping: `rustybuzz` (a pure-Rust HarfBuzz port, pinned) shapes each run with the
+  face's GSUB/GPOS: Arabic initial/medial/final/isolated forms and the mandatory
+  lam-alef forms, Devanagari reordering, reph and conjuncts, Thai and Hebrew mark
+  attachment, emoji ligatures. Positions are font units scaled to 1/64 pixel with the
+  advance table's rounding — integer arithmetic throughout.
+* Line breaking: after spaces, as before, and additionally between Han, kana and
+  Hangul characters, never before closing punctuation or small kana (`。」ッー`…) or
+  after opening brackets. A word wider than the line breaks between grapheme clusters,
+  never inside a base-plus-marks cluster, virama conjunct, flag or ZWJ sequence.
+* Latin is untouched: a paragraph with nothing beyond the platform/DejaVu tables and
+  no right-to-left, joiner or emoji-sequence character takes the original per-character
+  path, so every existing pixel hash is unchanged.
+
+**The font pack, and how Wasm gets it.** CJK and emoji outlines are 6.75 MB, so
+`pkg/{web,node}/fonts/` ships them beside the module instead of in it. The module
+exports `fontPackStatus()` (each file's name, path, SHA-256 and size, which are
+installed, and which a renderer has needed but lacked) and `installFont(bytes)`,
+which accepts only a file whose SHA-256 matches this build's pack. Native builds
+(Rust, Python) embed the pack and need neither. Layout never waits for it:
+layout shapes `fonts/stubs/*.ttf`, outline-free twins of the pack faces with the same
+glyph order, cmap, advances and GSUB (`stubs_match_their_pack_faces`), which are
+always embedded. Before a pack file is installed its glyphs draw as boxes at their
+final positions; after, every renderer drops its cached text and repaints fully on
+its next frame. With the pack installed, Wasm renders exactly the native pixels:
+`scripts/smoke-node.cjs` checks the multi-script frame of `tests/scripts-scene.json`
+against the hash `multi_script_scene_is_pinned` pins natively. The browser demo
+fetches the pack during boot, alongside the first paint, so an episode makes no
+network requests.
+
+Sizes (bytes; gzip is `gzip -9` of each file):
+
+| Component | Raw | Gzip | Where |
+| --- | ---: | ---: | --- |
+| Noto Hebrew/Arabic/Thai/Devanagari, 2 weights each | 512,860 | 221,486 | Wasm module |
+| Pack stubs (SC, KR, emoji) | 204,636 | 44,055 | Wasm module |
+| `pack/noto-sans-sc.ttf` | 3,522,836 | 2,190,576 | fetched on demand |
+| `pack/noto-sans-kr.ttf` | 2,366,072 | 855,949 | fetched on demand |
+| `pack/noto-emoji.ttf` | 862,788 | 566,769 | fetched on demand |
+
+Alternatives measured while choosing the sets: GB 2312 alone would be 1,402,476 gzip
+for Han (but no Traditional or Japanese-only kanji); the 2,350 KS X 1001 syllables
+would be 194,982 gzip for Hangul (but 8,822 valid syllables would draw as boxes).
+Neither saving touches the default download, which excludes the pack either way.
+`docs/performance.md` has the module before/after.
+
+**Limits.**
+
+* Emoji are monochrome (Noto Emoji), tinted with the text colour like any glyph;
+  flags are Noto Emoji's monochrome flag glyphs. Colour emoji would need an RGBA text
+  path and a colour font several times the size.
+* One CJK face: Han is drawn with Simplified-Chinese glyph forms whatever the
+  language, since text carries no language tag. Han outside the common set, and CJK
+  bold, fall back to a box and to the regular weight respectively.
+* No dictionary word breaking: Thai breaks at spaces (and between clusters when a
+  word is wider than the line). No hyphenation, justification or vertical text.
+* Bidi explicit embeddings and isolates apply within a line; right-to-left paragraphs
+  are left-aligned rather than right-aligned.
+* `Text` (terminals) gets glyph fallback only: no shaping or reordering, and a
+  CJK or emoji glyph is drawn at the largest whole pixel size that fits one cell.
+* In Wasm, fontdue prepares every outline of a face when it is first used: measured
+  in Node, the first frame needing emoji, Hangul or Han takes about 34, 106 and
+  174 ms and grows memory by about 26, 46 and 60 MiB; later frames are sub-millisecond.
 
 ## Platform UI fonts
 
@@ -56,7 +165,7 @@ unhinted Latin subsets (Basic Latin to Latin Extended-A plus common punctuation,
 and key symbols), instanced from the upstream variable fonts by `build-fonts.py`
 (fontTools). Glyph outlines and family names are unchanged. A scene selects a family with
 `Scene::typeface`; the default remains DejaVu, and any character a subset lacks falls
-back to DejaVu. Sources: <https://github.com/google/fonts> (`ofl/inter`, `ofl/opensans`,
+back to DejaVu and then the Noto faces above. Sources: <https://github.com/google/fonts> (`ofl/inter`, `ofl/opensans`,
 `ofl/roboto`) and Ubuntu's `fonts-ubuntu` package. Inter, Open Sans and Roboto are under
 the SIL Open Font License 1.1 (`fonts/*-OFL.txt`); Ubuntu Sans is under the Ubuntu Font
 Licence 1.0 (`fonts/UBUNTU-UFL.txt`). These notices must accompany redistributed bundles.
