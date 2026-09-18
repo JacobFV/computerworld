@@ -463,6 +463,9 @@ fn every_documented_command_resolves() {
         "systemctl",
         "apt",
         "sqlite3",
+        "python3",
+        "python",
+        "node",
     ] {
         assert_eq!(
             ok(&mut c, &format!("which {name}")),
@@ -1118,5 +1121,245 @@ fn sqlite3_keeps_real_database_files_on_the_machine() {
             "sqlite3 /home/user/shop.db 'select count(*) from t'"
         ),
         "2\n"
+    );
+}
+
+#[test]
+fn python3_runs_programs_against_the_machine() {
+    let mut c = machine();
+    // Inline code, version, and the conventional aliases.
+    assert_eq!(ok(&mut c, "python3 -c 'print(6 * 7)'"), "42\n");
+    assert_eq!(ok(&mut c, "python --version"), "Python 3.12.3\n");
+    assert_eq!(
+        ok(
+            &mut c,
+            "/usr/bin/python3 -c 'import sys; print(sys.argv)' x"
+        ),
+        "['-c', 'x']\n"
+    );
+    // A script file with arguments sees the simulated filesystem and cwd.
+    run(
+        &mut c,
+        "printf 'import sys, os\\nprint(sys.argv[1:], os.getcwd())\\nprint(open(\"proj/a.txt\").read().split())\\n' > /home/user/main.py",
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user && python3 main.py one two"),
+        "['one', 'two'] /home/user\n['alpha', 'beta', 'gamma']\n"
+    );
+    // Pipes feed stdin; output flows on through the pipeline.
+    assert_eq!(
+        ok(
+            &mut c,
+            "cat /home/user/proj/a.txt | python3 -c 'import sys; print(len(sys.stdin.read().splitlines()))'"
+        ),
+        "3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "python3 -c 'for i in range(3): print(i)' | wc -l"),
+        "3\n"
+    );
+    assert_eq!(ok(&mut c, "echo 'print(1 + 1)' | python3"), "2\n");
+    // Files a program writes land in the VFS.
+    ok(
+        &mut c,
+        "python3 -c 'open(\"/tmp/py-out.txt\", \"w\").write(\"from python\\n\")'",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/py-out.txt"), "from python\n");
+    // Redirection of the runtime's own streams.
+    run(
+        &mut c,
+        "python3 -c 'import sys; print(\"err\", file=sys.stderr); print(\"out\")' > /tmp/o 2> /tmp/e",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/o"), "out\n");
+    assert_eq!(ok(&mut c, "cat /tmp/e"), "err\n");
+    // A program's chdir does not move the shell.
+    ok(
+        &mut c,
+        "cd /home/user && python3 -c 'import os; os.chdir(\"/tmp\")'",
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user && python3 -c 'pass' && pwd"),
+        "/home/user\n"
+    );
+}
+
+#[test]
+fn python3_reports_errors_and_exit_codes_like_cpython() {
+    let mut c = machine();
+    run(
+        &mut c,
+        "printf 'def f(x):\\n    return x / 0\\n\\nprint(\"before\")\\nf(1)\\n' > /home/user/bad.py",
+    );
+    let r = run(&mut c, "cd /home/user && python3 bad.py");
+    assert_eq!(r.exit_code, 1);
+    assert_eq!(r.stdout, "before\n");
+    assert_eq!(
+        r.stderr,
+        "Traceback (most recent call last):\n  File \"/home/user/bad.py\", line 5, in <module>\n    f(1)\n  File \"/home/user/bad.py\", line 2, in f\n    return x / 0\n           ~~^~~\nZeroDivisionError: division by zero\n"
+    );
+    assert_eq!(
+        run(&mut c, "python3 -c 'import sys; sys.exit(7)'").exit_code,
+        7
+    );
+    assert_eq!(
+        run(&mut c, "python3 -c 'raise SystemExit(\"bye\")'").stderr,
+        "bye\n"
+    );
+    let r = run(&mut c, "python3 /nope.py");
+    assert_eq!(r.exit_code, 2);
+    assert_eq!(
+        r.stderr,
+        "/usr/bin/python3: can't open file '/nope.py': [Errno 2] No such file or directory\n"
+    );
+    // The shell's status logic sees the runtime's status.
+    assert_eq!(
+        ok(
+            &mut c,
+            "python3 -c 'import sys; sys.exit(1)' || echo failed"
+        ),
+        "failed\n"
+    );
+    // An infinite loop ends deterministically on the step budget.
+    let r = run(&mut c, "python3 -c 'while True: pass'");
+    assert_eq!(r.exit_code, 124);
+    assert!(r
+        .stderr
+        .contains("TimeoutError: execution step limit exceeded"));
+}
+
+#[test]
+fn node_runs_programs_against_the_machine() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "node -e 'console.log(6 * 7)'"), "42\n");
+    assert_eq!(ok(&mut c, "node --version"), "v24.21.0\n");
+    assert_eq!(ok(&mut c, "node -p '[1, 2].map(x => x * 2)'"), "[ 2, 4 ]\n");
+    assert_eq!(
+        ok(
+            &mut c,
+            "/usr/bin/node -e 'console.log(process.argv.slice(1))' a b"
+        ),
+        "[ 'a', 'b' ]\n"
+    );
+    // A script file with arguments sees the simulated filesystem and cwd.
+    run(
+        &mut c,
+        "printf 'const fs = require(\"fs\");\\nconsole.log(process.argv.slice(2), process.cwd());\\nconsole.log(fs.readFileSync(\"proj/a.txt\", \"utf8\").trim().split(String.fromCharCode(10)));\\n' > /home/user/app.js",
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user && node app.js one two"),
+        "[ 'one', 'two' ] /home/user\n[ 'alpha', 'beta', 'gamma' ]\n"
+    );
+    // Pipes feed stdin (fs.readFileSync(0) and process.stdin); the program
+    // itself can arrive on stdin.
+    assert_eq!(
+        ok(
+            &mut c,
+            "cat /home/user/proj/a.txt | node -e 'console.log(require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\").length)'"
+        ),
+        "4\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "printf '3\\n4\\n' | node -e 'let d = \"\"; process.stdin.on(\"data\", c => d += c).on(\"end\", () => console.log(d.split(\"\\n\").filter(Boolean).map(Number).reduce((a, b) => a + b)))'"
+        ),
+        "7\n"
+    );
+    assert_eq!(ok(&mut c, "echo 'console.log(1 + 1)' | node"), "2\n");
+    assert_eq!(
+        ok(
+            &mut c,
+            "node -e 'for (let i = 0; i < 3; i++) console.log(i)' | wc -l"
+        ),
+        "3\n"
+    );
+    // Files a program writes land in the VFS.
+    ok(
+        &mut c,
+        "node -e 'require(\"fs\").writeFileSync(\"/tmp/js-out.txt\", \"from node\\n\")'",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/js-out.txt"), "from node\n");
+    // Redirection of the runtime's own streams.
+    run(
+        &mut c,
+        "node -e 'console.error(\"err\"); console.log(\"out\")' > /tmp/o 2> /tmp/e",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/o"), "out\n");
+    assert_eq!(ok(&mut c, "cat /tmp/e"), "err\n");
+    // Timers and promises run to completion before the command ends.
+    assert_eq!(
+        ok(&mut c, "node -e 'setTimeout(() => console.log(\"later\"), 50); Promise.resolve().then(() => console.log(\"soon\"))'"),
+        "soon\nlater\n"
+    );
+    // A program's chdir does not move the shell.
+    ok(&mut c, "cd /home/user && node -e 'process.chdir(\"/tmp\")'");
+    assert_eq!(
+        ok(&mut c, "cd /home/user && node -e '0' && pwd"),
+        "/home/user\n"
+    );
+}
+
+#[test]
+fn node_reports_errors_and_exit_codes_like_node() {
+    let mut c = machine();
+    run(
+        &mut c,
+        "printf 'function f(x) {\\n  return x.y.z;\\n}\\nconsole.log(\"before\");\\nf({});\\n' > /home/user/bad.js",
+    );
+    let r = run(&mut c, "cd /home/user && node bad.js");
+    assert_eq!(r.exit_code, 1);
+    assert_eq!(r.stdout, "before\n");
+    assert_eq!(
+        r.stderr,
+        "/home/user/bad.js:2\n  return x.y.z;\n             ^\n\nTypeError: Cannot read properties of undefined (reading 'z')\n    at f (/home/user/bad.js:2:14)\n    at Object.<anonymous> (/home/user/bad.js:5:1)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Object..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47\n\nNode.js v24.21.0\n"
+    );
+    assert_eq!(run(&mut c, "node -e 'process.exit(7)'").exit_code, 7);
+    assert_eq!(run(&mut c, "node -e 'process.exitCode = 3'").exit_code, 3);
+    let r = run(&mut c, "cd /home/user && node nope.js");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stderr.starts_with("node:internal/modules/cjs/loader:1568\n  throw err;\n  ^\n\nError: Cannot find module '/home/user/nope.js'\n"));
+    let r = run(&mut c, "node -e 'let x = ;'");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stderr.contains("SyntaxError: Unexpected token ';'"));
+    // The shell's status logic sees the runtime's status.
+    assert_eq!(
+        ok(&mut c, "node -e 'process.exit(1)' || echo failed"),
+        "failed\n"
+    );
+    // An infinite loop ends deterministically on the step budget.
+    let r = run(&mut c, "node -e 'while (true) {}'");
+    assert_eq!(r.exit_code, 124);
+    assert!(r
+        .stderr
+        .contains("TimeoutError: execution step limit exceeded"));
+}
+
+#[test]
+fn shebang_scripts_run_under_their_interpreter() {
+    let mut c = machine();
+    run(
+        &mut c,
+        "printf '#!/usr/bin/env python3\\nimport sys\\nprint(\"hi from\", sys.argv[0], sys.argv[1:])\\n' > /home/user/hello; chmod 755 /home/user/hello",
+    );
+    assert_eq!(
+        ok(&mut c, "/home/user/hello a b"),
+        "hi from /home/user/hello ['a', 'b']\n"
+    );
+    run(
+        &mut c,
+        "mkdir -p /home/user/bin; printf '#!/usr/bin/python3\\nprint(\"on PATH\")\\n' > /home/user/bin/tool; chmod +x /home/user/bin/tool",
+    );
+    assert_eq!(ok(&mut c, "PATH=/home/user/bin:/usr/bin tool"), "on PATH\n");
+    run(
+        &mut c,
+        "printf '#!/usr/bin/env node\\nconsole.log(\"js\", process.argv.slice(2))\\n' > /home/user/bin/jstool; chmod +x /home/user/bin/jstool",
+    );
+    assert_eq!(
+        ok(&mut c, "PATH=/home/user/bin:/usr/bin jstool x"),
+        "js [ 'x' ]\n"
+    );
+    assert_eq!(
+        ok(&mut c, "which python3 node"),
+        "/usr/bin/python3\n/usr/bin/node\n"
     );
 }

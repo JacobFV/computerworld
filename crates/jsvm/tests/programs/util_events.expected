@@ -1,0 +1,25 @@
+--- exit: 0
+--- stdout
+Bob is 42.5 years and 3 days; {"a":1}; [ 1, [length]: 1 ]; %
+extra args 1 { b: [ 2 ] }
+{ deep: { deeper: [Object] } }
+'str' [ 1, 2, 3 ] true
+true true true
+(first listener)
+progress 50
+done ok true
+2 [ 'progress' ] false
+emit error threw: unhandled job error
+<Buffer 68 c3 a9 6c 6c 6f 20 77 c3 b6 72 6c 64> 13 68c3a96c6c6f2077c3b6726c64 aMOpbGxvIHfDtnJsZA==
+hello <Buffer 01 02 09 09>
+<Buffer de ad be ef fe ff 00 00> deadbeef -2 <Buffer de ad> true
+true -1 7
+ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+5d41402abc4b2a76b9719d911017c592 2jmj7l5rSw0yVb/vlWAYkK/YBwk=
+6e9ef29b75fffc5b7abae527d58fdadb2fe42e7219011976917343065f58ed4a
+https://user:pw@example.com:8080/a/c?x=1&y=two#frag example.com:8080 /a/c ?x=1&y=two #frag two https://example.com:8080
+https://user:pw@example.com:8080/a/c?x=1&y=two&z=a+b#frag [ 'x', 'y', 'z' ]
+Uint8Array(3) [ 226, 130, 172 ] round trip ✓
+{ d: 1970-01-01T00:00:00.000Z, m: Map(1) { 1 => { x: 1 } } }
+promisified 10
+--- stderr

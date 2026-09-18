@@ -1,0 +1,7 @@
+--- exit: 1
+--- stdout
+--- stderr
+  File "/home/user/main.py", line 4
+    if True
+           ^
+SyntaxError: expected ':'

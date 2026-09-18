@@ -29,3 +29,15 @@ debug = 1
 # (and every test that drives the modeller) an order of magnitude slower.
 [profile.dev.package.cw-cad]
 opt-level = 2
+
+# The language runtimes recurse in Rust when native code calls back into
+# user code; unoptimised frames would need tens of KiB per level, so they are
+# optimised even in dev and test builds.
+[profile.dev.package.cw-pyvm]
+opt-level = 2
+
+[profile.dev.package.cw-regex]
+opt-level = 2
+
+[profile.dev.package.cw-jsvm]
+opt-level = 2

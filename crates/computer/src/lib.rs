@@ -2,6 +2,7 @@
 pub mod git;
 pub mod packages;
 pub mod process;
+pub mod runtimes;
 pub mod shell;
 mod sqlite;
 pub mod vfs;
@@ -53,6 +54,12 @@ pub trait ShellHost {
     }
     fn start_service(&mut self, _name: &str, _pid: u64) -> Result<String, String> {
         Err("service adapter unavailable".into())
+    }
+    /// Seed material for programs that ask for randomness (an unseeded
+    /// `random`, `Math.random`). The world supplies it from its seeded streams;
+    /// without a world it is a constant, so runs stay reproducible.
+    fn entropy(&mut self) -> u64 {
+        0x5eed_c0de_2026_0917
     }
 }
 pub struct OfflineHost;

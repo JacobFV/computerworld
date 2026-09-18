@@ -1,0 +1,6 @@
+--- exit: 3
+--- stdout
+before exit
+caught exit 4
+partial line--- stderr
+to stderr

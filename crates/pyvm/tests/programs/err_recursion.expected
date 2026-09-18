@@ -1,0 +1,22 @@
+--- exit: 1
+--- stdout
+900
+RecursionError: maximum recursion depth exceeded
+1000
+--- stderr
+Traceback (most recent call last):
+  File "/home/user/main.py", line 26, in <module>
+    boom(10)
+  File "/home/user/main.py", line 23, in boom
+    return boom(n - 1)
+           ^^^^^^^^^^^
+  File "/home/user/main.py", line 23, in boom
+    return boom(n - 1)
+           ^^^^^^^^^^^
+  File "/home/user/main.py", line 23, in boom
+    return boom(n - 1)
+           ^^^^^^^^^^^
+  [Previous line repeated 7 more times]
+  File "/home/user/main.py", line 22, in boom
+    raise ValueError("bottom")
+ValueError: bottom

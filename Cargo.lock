@@ -243,7 +243,10 @@ dependencies = [
 name = "cw-computer"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-jsvm",
  "cw-protocol",
+ "cw-pyvm",
+ "cw-script-host",
  "cw-sql",
  "proptest",
  "regex",
@@ -308,6 +311,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-jsvm"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "cw-regex",
+ "cw-script-host",
+ "sha2",
+]
+
+[[package]]
 name = "cw-kernel"
 version = "0.1.0-alpha.2"
 dependencies = [
@@ -354,12 +366,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-pyvm"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "cw-regex",
+ "cw-script-host",
+ "sha2",
+]
+
+[[package]]
 name = "cw-raster"
 version = "0.1.0-alpha.2"
 dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "cw-regex"
+version = "0.1.0-alpha.2"
 
 [[package]]
 name = "cw-render"
@@ -388,6 +413,10 @@ dependencies = [
  "unicode-bidi-mirroring",
  "unicode-properties",
 ]
+
+[[package]]
+name = "cw-script-host"
+version = "0.1.0-alpha.2"
 
 [[package]]
 name = "cw-sdk"

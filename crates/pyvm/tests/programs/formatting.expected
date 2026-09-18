@@ -1,0 +1,43 @@
+--- exit: 0
+--- stdout
+Ada is 36 years old; pi=3.142
+'Ada' Ada 'Ada' '\xe9'
+   36|36   | 36  |   36|00036|-0036|+36
+    3.1416|3.14      |3.141593e+00|3.14E+00|3.14159|1e+20|1.234e-05
+1,234,567.89|1_234_567|ff|FF|0o377|101|0b11111111
+25.000000%|50%|300.0%
+left      |     right|  center  |****x****|pad___
+12 14 2.67 1.00 -0.0
+       3.142|      nested
+apple   $   1.50
+banana  $   0.25
+cherry  $  10.00
+age = 36, pi = 3.14, name='Ada'
+{literal braces} 3 [0, 2, 4] yes
+a and b y x y id-007
+first second 3.0
+  3.14|ab    |  c   
+Bob is 42 years, 99.50% done,     r|l    |003.1
+ff FF 10 1.234568e+04 0.0001 A 'q'
+1 + 2 %%  12.3%
+1.0 1e+16 1e-05 0.30000000000000004 0.3333333333333333 100.0 1e+100 -0.0
+1000000000000000.0 1e+16 1.2345678901234568e+17 0.000123 0.0001 2.5e-07 inf -inf nan
+2 4 -2 2.67 1200.0 10 20
+"it's" 'say "hi"' 'both \' "' 'tab\tnewline\n\\' '\x00\x7fé中'
+b'bytes\x00\xff' bytearray(b'ab') abc b'h\xc3\xa9llo'
+a|b|c ['a', 'b', '', 'c'] ['x', 'y'] ['a', 'b c'] ['a.b', 'c']
+hello world Hello World Hello hELLO SS ǆ
+***abc*** abc---    abc 00042 -0042
+strip hi heLLo heLlo
+2 3 -1 2 1
+True True True True True True
+ell olleH llo Hlo  bd
+tab sep ['line1', 'line2', 'line3'] ('a', '-', 'b-c') ('a-b', '-', 'c')
+[1, 2] (1, 2)        'x' 3.14 00101010   s  
+Name      Qty
+apple       3
+kiwi       12
+(3+4j) (1-1j) 2j (5+5j) 5.0
+100000000000000000000 -4 -2 0.5 (-4, 1) 255 5
+'\u65e5\u672c' ☃ 8364 -0xff 0b1010 0o100 42 3.5 -3
+--- stderr

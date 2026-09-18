@@ -1,0 +1,30 @@
+--- exit: 1
+--- stdout
+true true HttpError 502 SyntaxError
+HttpError: bad gateway for /x [ 'name', 'status', 'headers' ]
+--- stderr
+/home/user/main.js:14
+    throw new HttpError(502, `bad gateway for ${path}`, { cause: e });
+    ^
+
+HttpError: bad gateway for /api/users
+    at request (/home/user/main.js:14:11)
+    at Object.<anonymous> (/home/user/main.js:26:1)
+    ... 6 lines matching cause stack trace ...
+    at node:internal/main/run_main_module:33:47 {
+  status: 502,
+  headers: { 'content-type': 'text/plain' },
+  [cause]: SyntaxError: Unexpected end of JSON input
+      at JSON.parse (<anonymous>)
+      at request (/home/user/main.js:12:10)
+      at Object.<anonymous> (/home/user/main.js:26:1)
+      at Module._compile (node:internal/modules/cjs/loader:1929:14)
+      at Object..js (node:internal/modules/cjs/loader:2060:10)
+      at Module.load (node:internal/modules/cjs/loader:1651:32)
+      at Module._load (node:internal/modules/cjs/loader:1443:12)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+      at node:internal/main/run_main_module:33:47
+}
+
+Node.js v24.21.0

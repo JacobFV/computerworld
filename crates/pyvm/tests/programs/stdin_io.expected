@@ -1,0 +1,8 @@
+--- exit: 0
+--- stdout
+Your name: Hello, Grace!
+sum: 13 max: 10
+remaining lines: ['the rest of the input', 'spans two lines']
+word count: 8
+EOFError: EOF when reading a line
+--- stderr

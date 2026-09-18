@@ -1,0 +1,12 @@
+--- exit: 1
+--- stdout
+throwing an object
+exit code 1
+--- stderr
+
+/home/user/main.js:4
+throw { code: 'E_CUSTOM', detail: [1, 2, 3], nested: { ok: false } };
+^
+{ code: 'E_CUSTOM', detail: [ 1, 2, 3 ], nested: { ok: false } }
+
+Node.js v24.21.0

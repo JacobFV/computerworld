@@ -1,0 +1,11 @@
+[package]
+name = "cw-jsvm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A deterministic JavaScript (ES2020 core, Node-flavoured) interpreter for simulated computers."
+
+[dependencies]
+cw-script-host = { path = "../script-host" }
+cw-regex = { path = "../regex" }
+sha2.workspace = true

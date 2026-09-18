@@ -1,0 +1,66 @@
+--- exit: 0
+--- stdout
+"{bad" => Expected property name or '}' in JSON at position 1 (line 1 column 2)
+"" => Unexpected end of JSON input
+"[1,]" => Unexpected token ']', "[1,]" is not valid JSON
+"{\"a\":1}x" => Unexpected non-whitespace character after JSON at position 7 (line 1 column 8)
+"{\"a\" 1}" => Expected ':' after property name in JSON at position 5 (line 1 column 6)
+"[1 2]" => Expected ',' or ']' after array element in JSON at position 3 (line 1 column 4)
+"{\"a\":1 \"b\"}" => Expected ',' or '}' after property value in JSON at position 7 (line 1 column 8)
+"\"abc" => Unterminated string in JSON at position 4 (line 1 column 5)
+"undefined" => "undefined" is not valid JSON
+"'a'" => Unexpected token ''', "'a'" is not valid JSON
+"\"\\x\"" => Bad escaped character in JSON at position 2 (line 1 column 3)
+"\"a\tb\"" => Bad control character in string literal in JSON at position 2 (line 1 column 3)
+"-" => No number after minus sign in JSON at position 1 (line 1 column 2)
+"1e" => Exponent part is missing a number in JSON at position 2 (line 1 column 3)
+"1." => Unterminated fractional number in JSON at position 2 (line 1 column 3)
+"{\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\": tru}" => Unexpected token '}', ..."aaaa": tru}" is not valid JSON
+"nul" => Unexpected end of JSON input
+"[1,\n2,\n]" => Unexpected token ']', "[1,
+2,
+]" is not valid JSON
+"{\"a\":[1,2,{\"b\":3}],\"cccccccccccccccccccccccc\":\"ddddddddddddddd\" x}" => Expected ',' or '}' after property value in JSON at position 64 (line 1 column 65)
+"01" => Unexpected number in JSON at position 1 (line 1 column 2)
+"{,}" => Expected property name or '}' in JSON at position 1 (line 1 column 2)
+"[" => Unexpected end of JSON input
+"{\"a\":" => Unexpected end of JSON input
+{
+  "a": [
+    1,
+    {
+      "b": 2
+    }
+  ],
+  "c": "x\ny",
+  "f": null,
+  "g": "1970-01-01T00:00:00.000Z",
+  "h": [
+    null,
+    null
+  ]
+}
+" \u0007" {"a":true} [{},{}]
+Converting circular structure to JSON
+    --> starting at object with constructor 'Object'
+    --- property 'self' closes the circle
+Converting circular structure to JSON
+    --> starting at object with constructor 'Object'
+    |     property 'x' -> object with constructor 'Object'
+    |     property 'y' -> object with constructor 'Array'
+    --- index 0 closes the circle
+Converting circular structure to JSON
+    --> starting at object with constructor 'Foo'
+    --- property 'me' closes the circle
+Do not know how to serialize a BigInt
+{"a":1} {"b":2} [
+--1,
+--[
+----2,
+----[
+------3
+----]
+--]
+]
+{ a: [ 10, 20, { b: null } ], c: true }
+--- stderr

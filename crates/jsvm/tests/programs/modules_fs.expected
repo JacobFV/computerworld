@@ -1,0 +1,31 @@
+--- exit: 0
+--- stdout
+math loaded true undefined
+12.566 true 3.14159
+2 [ 1, 2, 3 ] lib index
+MODULE_NOT_FOUND Cannot find module './work/missing'
+function true true
+"line1\nline2\n" 12 true false
+[ 'data.json', 'lib', 'notes.txt' ] [ 'data.json', 'lib/', 'notes.txt' ]
+true false 12 true
+[ 'data.json', 'lib', 'notes.txt' ]
+ENOENT open -2 ENOENT: no such file or directory, open '<dir>/ghost.txt'
+EEXIST EEXIST: file already exists, mkdir '<dir>'
+ENOTEMPTY
+[ 'data.json', 'notes.txt' ] false
+c.txt c .gz /a/b false
+/a/c/d/ ../../d ../b /x/z
+{
+  root: '/',
+  dir: '/home/user',
+  base: 'file.test.js',
+  ext: '.js',
+  name: 'file.test'
+} /tmp/f.md / :
+true linux Linux number number /tmp string
+promise read demo
+callback read null 58
+callback err ENOENT
+async async data
+async err ENOENT
+--- stderr

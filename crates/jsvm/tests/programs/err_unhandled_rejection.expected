@@ -1,0 +1,14 @@
+--- exit: 1
+--- stdout
+main done
+got { id: 1 }
+--- stderr
+/home/user/main.js:4
+  if (id < 0) throw new RangeError(`invalid user id ${id}`);
+                    ^
+
+RangeError: invalid user id -5
+    at fetchUser (/home/user/main.js:4:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.21.0

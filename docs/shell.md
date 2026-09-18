@@ -163,6 +163,8 @@ every replay.
 | `sqlite3` | `[OPTIONS] [FILE [SQL…]]`; SQL and dot-commands on stdin (pipe, heredoc, `<`); `-header -noheader -csv -column -list -line -json -box -table -markdown -tabs -quote -html -ascii -separator SEP -newline SEP -nullvalue TEXT -cmd CMD -init FILE -bail -echo -version -help`; `-batch -readonly -safe` accepted and inert | every other option, refused by name with status `2`; an interactive prompt | modelled: the `cw-sql` engine over the VFS, reading and writing real SQLite 3 files; see *sqlite3* below |
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
+| `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions, threads, sockets, subprocesses | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
+| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads`, networking modules, `child_process` (fails with `ENOSYS`) | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
 
@@ -208,6 +210,64 @@ savepoints. Refused by name rather than half-done: triggers, window functions,
 `WITHOUT ROWID` tables, partial and expression indexes, generated columns, `ATTACH`,
 virtual tables, JSON operators and bytecode `EXPLAIN`. Foreign keys are checked
 immediately rather than deferred to the end of the statement.
+
+## Language runtimes
+
+`python3` (crate `cw-pyvm`) and `node` (crate `cw-jsvm`) are interpreters written in
+Rust that run inside the simulation. They are commands like any other: they resolve
+through `PATH` and `which`, read stdin from a pipe or here-document, write to the pipe
+or redirection that follows them, and set `$?`. A script with a `#!/usr/bin/env
+python3`, `#!/usr/bin/python3`, `#!/usr/bin/env node` or `#!/usr/bin/node` line runs
+under that interpreter when executed by path after `chmod +x`.
+
+Both see exactly what the rest of the shell sees and nothing of the host:
+
+* **Files** are the computer's VFS, with the current user's permissions, relative to the
+  shell's working directory. A program's `os.chdir` / `process.chdir` moves only the
+  program, never the shell.
+* **Time** is the simulated clock. `time.time()`, `Date.now()` and `new Date()` start at
+  the world tick; timers, `time.sleep`, `setTimeout` and `setInterval` advance a
+  virtual clock and never block the host. Executing code takes virtual time as well
+  (one millisecond per 100 000 `node` instructions), so a busy-wait on `Date.now()`
+  ends. The timezone is UTC.
+* **Randomness** (`random`, `secrets`, `Math.random`, `crypto.randomBytes`,
+  `crypto.randomUUID`) is drawn from the world's seeded entropy, so a replay prints the
+  same numbers. `random.seed(n)` streams match CPython exactly.
+* **Resources** are bounded: a program that exceeds its instruction budget (50 million
+  steps for `python3`, 200 million for `node`) stops with a `TimeoutError` and status
+  `124`; the budget cannot be caught. Deep recursion is Python's `RecursionError`
+  or Node's `RangeError: Maximum call stack size exceeded`, not a host crash.
+
+Output reproduces the real tools, byte for byte where it is observable: `print`, `repr`
+and tracebacks for Python; `console.log` / `util.inspect` formatting, uncaught-error
+reports (source line, caret, stack with Node's internal frames, `Node.js v24.21.0`),
+unhandled rejections and exit codes for Node. Conformance corpora of whole programs
+with outputs recorded from CPython 3.12 and Node 24.21 live in
+`crates/pyvm/tests/programs` and `crates/jsvm/tests/programs`.
+
+`node` implements the language through ES2023 (classes with private members,
+generators, async functions and async iterators, destructuring, spread, optional
+chaining, BigInt, tagged templates, Proxy/Reflect, typed arrays, `DataView`, WeakRef,
+labelled statements, getters and setters, ES modules with top-level `await` and dynamic
+`import()`), CommonJS `require` with Node's resolution (`node_modules`, `index.js`,
+`package.json` `main`, JSON files, `require.cache`), and a Node-shaped event loop
+(`process.nextTick`, microtasks, timers, immediates, `process.on('exit')`,
+`'uncaughtException'` and `'unhandledRejection'`). Built-in modules: `fs` (sync,
+callback and promise APIs), `fs/promises`, `path`, `os`, `events`, `util`, `assert`
+(`assert/strict`), `readline` (`readline/promises`), `url`, `querystring`,
+`string_decoder`, `stream` (a subset), `buffer`, `crypto` (hashes, HMAC, random),
+`timers`, `timers/promises`, `perf_hooks`, `process` and `child_process` (which refuses
+with `ENOSYS`). Globals include `Buffer`, `URL`, `URLSearchParams`, `TextEncoder`,
+`TextDecoder`, `AbortController`, `structuredClone`, `atob`/`btoa`, `queueMicrotask`
+and a `crypto` object.
+
+Known gaps shared by both: no network access, no subprocesses, no threads and no
+native extensions. `node` does not implement `Intl` beyond `en-US` date and number
+formatting, `Atomics`/`SharedArrayBuffer`, `http`/`net`/`dns`/`zlib`/`worker_threads`,
+or the REPL. Strings that contain unpaired UTF-16 surrogates are carried as the
+replacement character. Event-loop orderings that depend on real wall-clock jitter in
+Node (for example `setTimeout(f, 0)` against `setImmediate(g)` from the main module)
+are resolved one fixed way: the main module is taken to run for one millisecond.
 
 ## Clock
 

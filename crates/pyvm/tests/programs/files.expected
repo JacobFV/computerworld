@@ -1,0 +1,26 @@
+--- exit: 0
+--- stdout
+written: data/notes.txt w False
+closed after with: True
+'first line\n'
+['second line\n', 'third line\n', 'appended\n']
+1 first line
+2 second line
+3 third line
+4 appended
+3
+b'\x00\x01\x02\x03\x04\xff' 6 255 [0, 1, 2]
+True True False 6
+['blob.bin', 'notes.txt', 'sub'] notes.txt /a/b
+['blob.bin']
+data/sub/hello.txt hello.txt hello .txt data/sub True hi from pathlib
+['data/notes.txt', 'data/sub'] ['hello.txt', 'notes.txt']
+True
+data ['sub'] ['copy.txt', 'notes.txt']
+data/sub [] ['blob.bin', 'hello.txt']
+2 No such file or directory data/copy.txt
+exists: [Errno 17] File exists: 'data'
+isdir: [Errno 21] Is a directory: 'data'
+False /home/user
+'line A\nline B'
+--- stderr

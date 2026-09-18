@@ -11,5 +11,8 @@ thiserror.workspace = true
 regex = "1"
 cw-protocol = { path = "../protocol" }
 cw-sql = { path = "../sql" }
+cw-script-host = { path = "../script-host" }
+cw-pyvm = { path = "../pyvm" }
+cw-jsvm = { path = "../jsvm" }
 [dev-dependencies]
 proptest.workspace = true
