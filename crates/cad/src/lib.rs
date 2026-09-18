@@ -16,6 +16,7 @@
 //! Everything is a pure function of its inputs. No host clock, randomness or I/O, and
 //! floating point only in operations IEEE-754 rounds identically on every target (see
 //! [`math`]).
+pub mod brep;
 pub mod csg;
 pub mod document;
 pub mod io;
