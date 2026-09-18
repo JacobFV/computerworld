@@ -245,6 +245,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-eda"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-environment"
 version = "0.1.0-alpha.2"
 dependencies = [
