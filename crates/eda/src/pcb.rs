@@ -1,7 +1,7 @@
 //! Printed circuit board model: footprints with pads, tracks, vias, board outline and
 //! copper zones on a two-layer board, in nanometres with Y down as KiCad keeps them.
-use crate::connectivity::{analyze, natural};
-use crate::footprints::{self, PadKind, PadShape, MM};
+use crate::connectivity::analyze;
+use crate::footprints::{self, LibFootprint, PadKind, PadShape, MM};
 use crate::geom::{Pt, Rect, Xf};
 use crate::schematic::Schematic;
 use serde::{Deserialize, Serialize};
@@ -168,8 +168,9 @@ pub struct Footprint {
     pub reference: String,
     pub value: String,
     pub pos: Pt,
-    /// Rotation in quarter turns counter-clockwise.
-    pub rot: u8,
+    /// Orientation in tenths of a degree counter-clockwise (as seen from the front),
+    /// 0 ≤ angle < 3600: KiCad keeps any angle, not just quarter turns.
+    pub angle: i32,
     pub back: bool,
     pub pads: Vec<Pad>,
     /// Silkscreen, fabrication and courtyard strokes in footprint coordinates.
@@ -178,30 +179,104 @@ pub struct Footprint {
     pub symbol: Option<u64>,
     #[serde(default)]
     pub locked: bool,
+    /// Body height for the 3D viewer.
+    #[serde(default)]
+    pub height: i64,
 }
-impl Footprint {
-    fn xf(&self) -> Xf {
-        let r = Xf::rotation(self.rot);
-        if self.back {
-            Xf::MIRROR_Y.then(r)
-        } else {
-            r
-        }
+
+/// Round half away from zero, without the platform's `round`.
+fn round_i64(v: f64) -> i64 {
+    if v >= 0.0 {
+        (v + 0.5) as i64
+    } else {
+        -((-v + 0.5) as i64)
     }
-    /// Footprint point to board point.
+}
+/// Rotate `p` by `angle` tenths of a degree counter-clockwise on a Y-down board. Quarter
+/// turns are exact; any other angle goes through the deterministic sine and cosine and
+/// rounds to the nanometre.
+pub fn rotate(p: Pt, angle: i32) -> Pt {
+    let a = angle.rem_euclid(3600);
+    if a % 900 == 0 {
+        return Xf::rotation((a / 900) as u8).apply(p);
+    }
+    let t = a as f64 * crate::num::PI / 1800.0;
+    let (c, s) = (crate::num::cos(t), crate::num::sin(t));
+    let (x, y) = (p.x as f64, p.y as f64);
+    Pt::new(round_i64(x * c + y * s), round_i64(-x * s + y * c))
+}
+/// An angle in tenths of a degree as KiCad writes it: "90", "22.5", "-45".
+pub fn angle_text(angle: i32) -> String {
+    let a = angle.rem_euclid(3600);
+    if a % 10 == 0 {
+        (a / 10).to_string()
+    } else {
+        format!("{}.{}", a / 10, a % 10)
+    }
+}
+/// Parse a KiCad angle in degrees into tenths, normalised to 0..3600.
+pub fn parse_angle(text: &str) -> Option<i32> {
+    let tenths = crate::geom::parse_mm(text, 10)?;
+    Some(tenths.rem_euclid(3600) as i32)
+}
+
+impl Footprint {
+    /// Footprint point to board point: mirrored for the back side, then rotated.
     pub fn to_board(&self, p: Pt) -> Pt {
-        self.pos.add(self.xf().apply(p))
+        let p = if self.back { Pt::new(-p.x, p.y) } else { p };
+        self.pos.add(rotate(p, self.angle))
+    }
+    /// Board point to footprint point (the inverse of `to_board`).
+    pub fn to_local(&self, p: Pt) -> Pt {
+        let q = rotate(p.sub(self.pos), -self.angle);
+        if self.back {
+            Pt::new(-q.x, q.y)
+        } else {
+            q
+        }
     }
     pub fn pad_pos(&self, pad: &Pad) -> Pt {
         self.to_board(pad.at)
     }
-    /// Pad size after rotation: width and height on the board.
+    /// Whether the footprint sits at a quarter turn, so its pads stay axis-aligned.
+    pub fn orthogonal(&self) -> bool {
+        self.angle.rem_euclid(900) == 0
+    }
+    /// Pad size on the board for an axis-aligned footprint: width and height swap at
+    /// odd quarter turns. At other angles it is the pad's own size (see `pad_shape`).
     pub fn pad_size(&self, pad: &Pad) -> (i64, i64) {
-        if self.rot % 2 == 1 {
+        if self.orthogonal() && (self.angle.rem_euclid(3600) / 900) % 2 == 1 {
             (pad.size.1, pad.size.0)
         } else {
             pad.size
         }
+    }
+    /// The four board corners of a rectangle given in footprint coordinates.
+    pub fn corners(&self, a: Pt, b: Pt) -> [Pt; 4] {
+        [
+            self.to_board(a),
+            self.to_board(Pt::new(b.x, a.y)),
+            self.to_board(b),
+            self.to_board(Pt::new(a.x, b.y)),
+        ]
+    }
+    /// The courtyard as a board polygon (its rectangle, turned with the footprint).
+    pub fn courtyard_poly(&self) -> Option<[Pt; 4]> {
+        let mut r: Option<Rect> = None;
+        for l in self.lines.iter().filter(|l| l.layer == Layer::FCrtYd) {
+            let seg = Rect::new(l.a, l.b);
+            r = Some(r.map_or(seg, |x| x.union(&seg)));
+        }
+        r.map(|r| self.corners(r.min, r.max))
+    }
+    /// The body outline (fabrication layer) as a board polygon.
+    pub fn body_poly(&self) -> Option<[Pt; 4]> {
+        let mut r: Option<Rect> = None;
+        for l in self.lines.iter().filter(|l| l.layer == Layer::FFab) {
+            let seg = Rect::new(l.a, l.b);
+            r = Some(r.map_or(seg, |x| x.union(&seg)));
+        }
+        r.map(|r| self.corners(r.min, r.max))
     }
     /// Copper layers the pad is on.
     pub fn pad_layers(&self, pad: &Pad) -> Vec<Layer> {
@@ -217,30 +292,50 @@ impl Footprint {
             l
         }
     }
+    /// Board bounding box of the courtyard.
     pub fn courtyard(&self) -> Option<Rect> {
-        let mut r: Option<Rect> = None;
-        for l in self.lines.iter().filter(|l| l.layer == Layer::FCrtYd) {
-            let seg = Rect::new(self.to_board(l.a), self.to_board(l.b));
-            r = Some(match r {
-                Some(r) => r.union(&seg),
-                None => seg,
-            });
-        }
-        r
+        self.courtyard_poly().map(|c| bbox_of(&c))
     }
     pub fn bounds(&self) -> Rect {
         let mut r = self
             .courtyard()
             .unwrap_or_else(|| Rect::around(self.pos, MM, MM));
         for p in &self.pads {
-            let (w, h) = self.pad_size(p);
-            r = r.union(&Rect::around(self.pad_pos(p), w / 2, h / 2));
+            r = r.union(&self.pad_shape(p).bbox());
         }
         r
     }
     /// Copper outline of one pad.
     pub fn pad_shape(&self, pad: &Pad) -> Shape {
         let c = self.pad_pos(pad);
+        if !self.orthogonal() {
+            let (w, h) = pad.size;
+            return match pad.shape {
+                PadShape::Circle => Shape::Seg {
+                    a: c,
+                    b: c,
+                    r: w / 2,
+                },
+                PadShape::Oval => {
+                    // A stadium along the pad's long axis, turned with the footprint.
+                    let (half, r, axis) = if w >= h {
+                        ((w - h) / 2, h / 2, Pt::new(1, 0))
+                    } else {
+                        ((h - w) / 2, w / 2, Pt::new(0, 1))
+                    };
+                    let d = Pt::new(axis.x * half, axis.y * half);
+                    Shape::Seg {
+                        a: self.to_board(pad.at.sub(d)),
+                        b: self.to_board(pad.at.add(d)),
+                        r,
+                    }
+                }
+                PadShape::Rect | PadShape::RoundRect => Shape::Poly(self.corners(
+                    Pt::new(pad.at.x - w / 2, pad.at.y - h / 2),
+                    Pt::new(pad.at.x + w / 2, pad.at.y + h / 2),
+                )),
+            };
+        }
         let (w, h) = self.pad_size(pad);
         match pad.shape {
             PadShape::Circle => Shape::Seg {
@@ -282,6 +377,11 @@ impl Footprint {
         pos: Pt,
     ) -> Option<Self> {
         let lib = footprints::find(fp_id)?;
+        Some(Self::from_def(id, lib, reference, value, pos))
+    }
+    /// A footprint placed from a library definition (installed or project).
+    pub fn from_def(id: u64, lib: &LibFootprint, reference: &str, value: &str, pos: Pt) -> Self {
+        let fp_id = lib.id.as_str();
         let pt = |(x, y): (i64, i64)| Pt::new(x, y);
         let mut lines = Vec::new();
         for (a, b) in &lib.silk {
@@ -311,19 +411,19 @@ impl Footprint {
             };
         rect_lines(Layer::FFab, lib.fab, 100_000, &mut lines);
         rect_lines(Layer::FCrtYd, lib.courtyard, 50_000, &mut lines);
-        Some(Self {
+        Self {
             id,
             fp_id: fp_id.into(),
             reference: reference.into(),
             value: value.into(),
             pos,
-            rot: 0,
+            angle: 0,
             back: false,
             pads: lib
                 .pads
                 .iter()
                 .map(|p| Pad {
-                    number: p.number.into(),
+                    number: p.number.clone(),
                     kind: p.kind,
                     shape: p.shape,
                     at: pt(p.at),
@@ -335,35 +435,112 @@ impl Footprint {
             lines,
             symbol: None,
             locked: false,
-        })
+            height: lib.height,
+        }
     }
 }
 
-/// Copper geometry: a stadium (segment swept by a disc; a disc when a == b) or a rectangle.
+/// Bounding box of a polygon.
+pub fn bbox_of(pts: &[Pt]) -> Rect {
+    let mut r = Rect::new(pts[0], pts[0]);
+    for p in pts {
+        r = r.union(&Rect::new(*p, *p));
+    }
+    r
+}
+
+/// Whether two convex polygons' interiors overlap (separating-axis test; touching
+/// edges do not count).
+pub fn convex_overlap(a: &[Pt], b: &[Pt]) -> bool {
+    for poly in [a, b] {
+        let n = poly.len();
+        for i in 0..n {
+            let (p, q) = (poly[i], poly[(i + 1) % n]);
+            let axis = ((q.y - p.y) as i128, -((q.x - p.x) as i128));
+            let proj = |pts: &[Pt]| {
+                let mut lo = i128::MAX;
+                let mut hi = i128::MIN;
+                for r in pts {
+                    let v = axis.0 * r.x as i128 + axis.1 * r.y as i128;
+                    lo = lo.min(v);
+                    hi = hi.max(v);
+                }
+                (lo, hi)
+            };
+            let (a0, a1) = proj(a);
+            let (b0, b1) = proj(b);
+            if a1 <= b0 || b1 <= a0 {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+/// Copper geometry: a stadium (segment swept by a disc; a disc when a == b), an
+/// axis-aligned rectangle, or a convex quadrilateral (a rectangular pad at an angle).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Shape {
     Seg { a: Pt, b: Pt, r: i64 },
     Rect(Rect),
+    Poly([Pt; 4]),
+}
+fn rect_corners(r: &Rect) -> [Pt; 4] {
+    [
+        r.min,
+        Pt::new(r.max.x, r.min.y),
+        r.max,
+        Pt::new(r.min.x, r.max.y),
+    ]
+}
+/// Distance from segment a–b to a convex polygon: 0 when they meet.
+fn segment_poly(a: Pt, b: Pt, poly: &[Pt]) -> f64 {
+    use crate::geom::{in_polygon, segment_segment};
+    if in_polygon(a, poly) || in_polygon(b, poly) {
+        return 0.0;
+    }
+    let n = poly.len();
+    (0..n)
+        .map(|i| segment_segment(a, b, poly[i], poly[(i + 1) % n]))
+        .fold(f64::INFINITY, f64::min)
+}
+fn poly_poly(p: &[Pt], q: &[Pt]) -> f64 {
+    let n = p.len();
+    (0..n)
+        .map(|i| segment_poly(p[i], p[(i + 1) % n], q))
+        .fold(f64::INFINITY, f64::min)
+        .min(if crate::geom::in_polygon(q[0], p) {
+            0.0
+        } else {
+            f64::INFINITY
+        })
 }
 impl Shape {
     /// Edge-to-edge distance; 0 when touching or overlapping.
     pub fn distance(&self, o: &Shape) -> f64 {
         use crate::geom::{rect_rect, segment_rect, segment_segment};
-        let d = match (self, o) {
-            (Shape::Seg { a, b, r }, Shape::Seg { a: c, b: d, r: s }) => {
-                segment_segment(*a, *b, *c, *d) - *r as f64 - *s as f64
-            }
-            (Shape::Seg { a, b, r }, Shape::Rect(q)) | (Shape::Rect(q), Shape::Seg { a, b, r }) => {
-                segment_rect(*a, *b, q) - *r as f64
-            }
-            (Shape::Rect(p), Shape::Rect(q)) => rect_rect(p, q),
-        };
+        let d =
+            match (self, o) {
+                (Shape::Seg { a, b, r }, Shape::Seg { a: c, b: d, r: s }) => {
+                    segment_segment(*a, *b, *c, *d) - *r as f64 - *s as f64
+                }
+                (Shape::Seg { a, b, r }, Shape::Rect(q))
+                | (Shape::Rect(q), Shape::Seg { a, b, r }) => segment_rect(*a, *b, q) - *r as f64,
+                (Shape::Rect(p), Shape::Rect(q)) => rect_rect(p, q),
+                (Shape::Seg { a, b, r }, Shape::Poly(q))
+                | (Shape::Poly(q), Shape::Seg { a, b, r }) => segment_poly(*a, *b, q) - *r as f64,
+                (Shape::Rect(p), Shape::Poly(q)) | (Shape::Poly(q), Shape::Rect(p)) => {
+                    poly_poly(&rect_corners(p), q)
+                }
+                (Shape::Poly(p), Shape::Poly(q)) => poly_poly(p, q),
+            };
         d.max(0.0)
     }
     pub fn bbox(&self) -> Rect {
         match self {
             Shape::Seg { a, b, r } => Rect::new(*a, *b).inflate(*r),
             Shape::Rect(r) => *r,
+            Shape::Poly(p) => bbox_of(p),
         }
     }
     /// Distance from a point to the shape's edge (0 inside).
@@ -371,6 +548,21 @@ impl Shape {
         match self {
             Shape::Seg { a, b, r } => (crate::geom::point_segment(p, *a, *b) - *r as f64).max(0.0),
             Shape::Rect(q) => crate::geom::rect_rect(q, &Rect::new(p, p)),
+            Shape::Poly(q) => {
+                if crate::geom::in_polygon(p, q) {
+                    0.0
+                } else {
+                    crate::geom::polygon_edge_distance(p, q)
+                }
+            }
+        }
+    }
+    /// The four corners of a rectangular shape; `None` for a stadium.
+    pub fn corners(&self) -> Option<[Pt; 4]> {
+        match self {
+            Shape::Rect(r) => Some(rect_corners(r)),
+            Shape::Poly(p) => Some(*p),
+            Shape::Seg { .. } => None,
         }
     }
 }
@@ -417,6 +609,10 @@ pub struct Zone {
     /// The fill: rectangles of copper, as computed by `zones::fill`.
     pub fill: Vec<Rect>,
     pub filled: bool,
+    /// A rule area (keepout): no copper of any net may enter it, and it is never
+    /// filled. The router walks around it.
+    #[serde(default)]
+    pub keepout: bool,
 }
 
 /// Board-level items a selection can hold.
@@ -552,15 +748,23 @@ impl Board {
     /// Schematic does. New footprints are placed in a row to the right of the board (or
     /// of the origin) for the user to position. Returns the changes, in order.
     pub fn update_from_schematic(&mut self, sch: &Schematic, apply: bool) -> Vec<Change> {
+        self.update_from_schematic_with(sch, apply, &[])
+    }
+    /// Update PCB with footprints looked up in the project's own libraries (`libs`)
+    /// before the installed ones.
+    pub fn update_from_schematic_with(
+        &mut self,
+        sch: &Schematic,
+        apply: bool,
+        libs: &[LibFootprint],
+    ) -> Vec<Change> {
         let conn = analyze(sch);
         let mut changes = Vec::new();
         let mut next = self.clone();
-        let mut wanted: Vec<_> = sch
-            .symbols
-            .iter()
-            .filter(|s| !s.is_power() && s.on_board)
+        let wanted: Vec<_> = crate::netlist::components(sch)
+            .into_iter()
+            .filter(|(_, _, s)| !s.is_power() && s.on_board)
             .collect();
-        wanted.sort_by_key(|s| natural(s.reference()));
         // New nets first, so pads can refer to them.
         for net in &conn.nets {
             let real = net.pins.iter().filter(|p| !p.power).count();
@@ -580,7 +784,8 @@ impl Board {
             .map(|r| Pt::new(r.max.x + 5 * MM, r.min.y + 3 * MM))
             .unwrap_or(Pt::new(20 * MM, 20 * MM));
         let mut cursor = start;
-        for sym in &wanted {
+        for (gid, _, sym) in &wanted {
+            let gid = *gid;
             if !sym.annotated() {
                 changes.push(Change {
                     message: format!("{} is not annotated; skipped.", sym.reference()),
@@ -596,7 +801,11 @@ impl Board {
                 });
                 continue;
             }
-            if footprints::find(&fp_id).is_none() {
+            let Some(def) = libs
+                .iter()
+                .find(|l| l.id == fp_id)
+                .or_else(|| footprints::find(&fp_id))
+            else {
                 changes.push(Change {
                     message: format!(
                         "{}: footprint '{fp_id}' not found in any library.",
@@ -605,25 +814,19 @@ impl Board {
                     warning: true,
                 });
                 continue;
-            }
+            };
             let existing = next
                 .footprints
                 .iter()
-                .position(|f| f.symbol == Some(sym.id) || f.reference == sym.reference());
+                .position(|f| f.symbol == Some(gid) || f.reference == sym.reference());
             let index = match existing {
                 Some(i) if next.footprints[i].fp_id != fp_id => {
                     let old = next.footprints[i].clone();
-                    let mut f = Footprint::from_library(
-                        old.id,
-                        &fp_id,
-                        sym.reference(),
-                        sym.value(),
-                        old.pos,
-                    )
-                    .unwrap();
-                    f.rot = old.rot;
+                    let mut f =
+                        Footprint::from_def(old.id, def, sym.reference(), sym.value(), old.pos);
+                    f.angle = old.angle;
                     f.back = old.back;
-                    f.symbol = Some(sym.id);
+                    f.symbol = Some(gid);
                     changes.push(Change {
                         message: format!(
                             "Change {} footprint from '{}' to '{}'.",
@@ -661,15 +864,13 @@ impl Board {
                         });
                         f.value = sym.value().into();
                     }
-                    f.symbol = Some(sym.id);
+                    f.symbol = Some(gid);
                     i
                 }
                 None => {
                     let id = next.take_id();
-                    let mut f =
-                        Footprint::from_library(id, &fp_id, sym.reference(), sym.value(), cursor)
-                            .unwrap();
-                    f.symbol = Some(sym.id);
+                    let mut f = Footprint::from_def(id, def, sym.reference(), sym.value(), cursor);
+                    f.symbol = Some(gid);
                     // Lay new parts out left to right, spaced by their own size.
                     let b = f.bounds();
                     let shift = Pt::new(cursor.x - b.min.x, cursor.y - b.min.y);
@@ -696,7 +897,8 @@ impl Board {
                 .collect();
             for (pi, number) in pads {
                 let net_name = conn
-                    .net_of_pin(sym.id, &number)
+                    .net_of_pin(gid, &number)
+                    .or_else(|| conn.net_of_ref_pin(&reference, &number))
                     .filter(|n| n.pins.iter().filter(|p| !p.power).count() > 1 || n.named)
                     .map(|n| n.name.clone())
                     .unwrap_or_default();
@@ -718,7 +920,7 @@ impl Board {
             }
         }
         // Footprints whose symbol is gone.
-        let keep: Vec<u64> = wanted.iter().map(|s| s.id).collect();
+        let keep: Vec<u64> = wanted.iter().map(|(g, _, _)| *g).collect();
         let removed: Vec<String> = next
             .footprints
             .iter()
@@ -1017,9 +1219,9 @@ mod tests {
         .unwrap();
         let p8 = f.pads.iter().find(|p| p.number == "8").unwrap().clone();
         assert_eq!(f.pad_pos(&p8), Pt::new(7_620_000, 0));
-        f.rot = 1;
+        f.angle = 900;
         assert_eq!(f.pad_pos(&p8), Pt::new(0, -7_620_000));
-        f.rot = 0;
+        f.angle = 0;
         f.back = true;
         assert_eq!(f.pad_pos(&p8), Pt::new(-7_620_000, 0));
         assert_eq!(f.layer(Layer::FSilkS), Layer::BSilkS);

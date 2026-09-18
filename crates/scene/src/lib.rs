@@ -6,7 +6,9 @@ pub mod metrics;
 pub mod text;
 #[rustfmt::skip]
 mod metrics_data;
-pub use metrics::Typeface;
+#[rustfmt::skip]
+mod metrics_italic;
+pub use metrics::{Lang, Style, Typeface};
 
 pub const SCENE_VERSION: u32 = 2;
 /// Maximum raster target: 64 MiB of RGBA. Structured scenes share this viewport bound.
@@ -205,6 +207,9 @@ impl Transform {
         )
     }
 }
+fn is_false(b: &bool) -> bool {
+    !*b
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Primitive {
@@ -221,15 +226,25 @@ pub enum Primitive {
         radius: u32,
     },
     /// Proportional bundled sans-serif text, pixel-wrapped within the bounds.
+    /// `italic` and `lang` are optional in scene JSON and omitted when default.
     UiText {
         text: String,
         color: Color,
         size: u16,
+        #[serde(default, skip_serializing_if = "is_false")]
+        italic: bool,
+        /// Language of the text, which picks regional Han forms (see [`Lang`]).
+        #[serde(default, skip_serializing_if = "Lang::is_auto")]
+        lang: Lang,
     },
     UiTextBold {
         text: String,
         color: Color,
         size: u16,
+        #[serde(default, skip_serializing_if = "is_false")]
+        italic: bool,
+        #[serde(default, skip_serializing_if = "Lang::is_auto")]
+        lang: Lang,
     },
     Text {
         text: String,
@@ -263,6 +278,38 @@ pub enum Primitive {
     Backdrop { radius: u32, blur: u32 },
     /// Invisible layout/interaction region.
     Region,
+}
+impl Primitive {
+    /// UI text set in `style`: `UiTextBold` when bold, otherwise `UiText`.
+    pub fn ui_text(text: impl Into<String>, color: Color, size: u16, style: Style) -> Self {
+        let text = text.into();
+        let Style { bold, italic, lang } = style;
+        if bold {
+            Self::UiTextBold {
+                text,
+                color,
+                size,
+                italic,
+                lang,
+            }
+        } else {
+            Self::UiText {
+                text,
+                color,
+                size,
+                italic,
+                lang,
+            }
+        }
+    }
+    /// Weight, slant and language of a UI text primitive; `None` for anything else.
+    pub fn text_style(&self) -> Option<Style> {
+        match self {
+            Self::UiText { italic, lang, .. } => Some(Style::new(false, *italic, *lang)),
+            Self::UiTextBold { italic, lang, .. } => Some(Style::new(true, *italic, *lang)),
+            _ => None,
+        }
+    }
 }
 /// Rounded clip in scene coordinates, applied in addition to `Node::clip`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -438,11 +485,7 @@ impl Node {
         Self::new(
             id,
             bounds,
-            Primitive::UiText {
-                text: text.into(),
-                color,
-                size,
-            },
+            Primitive::ui_text(text, color, size, Style::default()),
         )
     }
     pub fn ui_text_bold(
@@ -455,12 +498,19 @@ impl Node {
         Self::new(
             id,
             bounds,
-            Primitive::UiTextBold {
-                text: text.into(),
-                color,
-                size,
-            },
+            Primitive::ui_text(text, color, size, true.into()),
         )
+    }
+    /// UI text in any [`Style`]: weight, italic and language.
+    pub fn ui_text_styled(
+        id: u64,
+        bounds: Rect,
+        text: impl Into<String>,
+        size: u16,
+        color: Color,
+        style: Style,
+    ) -> Self {
+        Self::new(id, bounds, Primitive::ui_text(text, color, size, style))
     }
     pub fn rounded_rectangle(id: u64, bounds: Rect, fill: Color, radius: u32) -> Self {
         Self::new(
@@ -664,9 +714,6 @@ pub struct ScrollArea {
 }
 fn is_zero_u32(v: &u32) -> bool {
     *v == 0
-}
-fn is_false(v: &bool) -> bool {
-    !*v
 }
 impl ScrollArea {
     /// The furthest the content can be scrolled.
@@ -1405,56 +1452,39 @@ pub fn flow_layout(
 }
 /// `wrap_text` with provenance, so a consumer that joins the result cannot corrupt it.
 pub fn wrap_text_lines(text: &str, max_columns: usize) -> Vec<(String, TextLine)> {
-    let max_columns = max_columns.max(1);
     let mut out = Vec::new();
     for (logical, line) in text.split('\n').enumerate() {
-        let chars: Vec<char> = line.chars().collect();
-        if chars.is_empty() {
+        let mut offset = 0;
+        for (index, range) in text::terminal::wrap(line, max_columns)
+            .into_iter()
+            .enumerate()
+        {
+            let chunk = &line[range];
             out.push((
-                String::new(),
-                TextLine {
-                    logical: logical as u32,
-                    ..TextLine::default()
-                },
-            ));
-            continue;
-        }
-        for (index, chunk) in chars.chunks(max_columns).enumerate() {
-            out.push((
-                chunk.iter().collect(),
+                chunk.to_owned(),
                 TextLine {
                     logical: logical as u32,
                     continuation: index > 0,
-                    offset: (index * max_columns) as u32,
+                    offset,
                     ..TextLine::default()
                 },
             ));
+            offset += chunk.chars().count() as u32;
         }
     }
     out
 }
 /// Fixed-cell text wrapping shared by layout and rasterization, preserving newlines.
+/// Rows hold `max_columns` cells: wide characters (CJK, emoji) take two, combining
+/// marks none (see [`text::terminal`]).
 pub fn wrap_text(text: &str, max_columns: usize) -> Vec<String> {
-    let max_columns = max_columns.max(1);
-    let mut lines = Vec::new();
-    for line in text.split('\n') {
-        if line.is_empty() {
-            lines.push(String::new());
-            continue;
-        }
-        let mut out = String::new();
-        let mut count = 0;
-        for c in line.chars() {
-            if count == max_columns {
-                lines.push(std::mem::take(&mut out));
-                count = 0
-            }
-            out.push(c);
-            count += 1;
-        }
-        lines.push(out);
-    }
-    lines
+    text.split('\n')
+        .flat_map(|line| {
+            text::terminal::wrap(line, max_columns)
+                .into_iter()
+                .map(move |range| line[range].to_owned())
+        })
+        .collect()
 }
 pub fn text_cell(size: u16) -> (u32, u32) {
     let size = u32::from(size.max(1));

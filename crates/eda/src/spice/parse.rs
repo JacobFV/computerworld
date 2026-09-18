@@ -1,8 +1,13 @@
 //! SPICE deck parser. Reads the subset of the Berkeley SPICE3 / ngspice input language
 //! that a schematic exports: passive and controlled elements, independent sources with
-//! DC/AC/PULSE/SIN/PWL specifications, diodes, BJTs, level-1 MOSFETs, `.model`,
-//! `.subckt` (flattened on the way in) and the analysis commands.
-use super::{Analysis, BjtModel, Circuit, Device, DiodeModel, MosModel, Source, Wave};
+//! DC/AC/PULSE/SIN/PWL specifications, diodes, Gummel–Poon BJTs, level-1 MOSFETs,
+//! voltage-controlled switches, XSPICE `A` devices (digital gates, flip-flops, latches,
+//! oscillators and the ADC/DAC bridges), `.model`, `.subckt` (flattened on the way in),
+//! `.options` tolerances and the analysis commands.
+use super::digital::{self, DacLevels, GateOp, Logic, Port};
+use super::{
+    Analysis, BjtModel, Circuit, Device, DiodeModel, MosModel, Options, Source, SwitchModel, Wave,
+};
 use crate::num::parse_value;
 use std::collections::BTreeMap;
 
@@ -19,6 +24,8 @@ fn tokenize(text: &str) -> Vec<String> {
         match ch {
             '(' | ')' | ',' => spaced.push(' '),
             '=' => spaced.push_str(" = "),
+            '[' => spaced.push_str(" [ "),
+            ']' => spaced.push_str(" ] "),
             c => spaced.push(c),
         }
     }
@@ -100,6 +107,74 @@ fn params(tokens: &[String], line: usize) -> Result<BTreeMap<String, f64>, Strin
     Ok(out)
 }
 
+/// XSPICE model parameters: `key = value` or `key = [v1 v2 …]`.
+fn array_params(tokens: &[String], line: usize) -> Result<BTreeMap<String, Vec<f64>>, String> {
+    let mut out = BTreeMap::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        if tokens.get(i + 1).map(String::as_str) != Some("=") {
+            i += 1;
+            continue;
+        }
+        let key = tokens[i].to_ascii_lowercase();
+        if tokens.get(i + 2).map(String::as_str) == Some("[") {
+            let mut j = i + 3;
+            let mut vals = vec![];
+            while j < tokens.len() && tokens[j] != "]" {
+                vals.push(value(&tokens[j], &key, line)?);
+                j += 1;
+            }
+            if j >= tokens.len() {
+                return Err(format!("line {line}: {key}= array has no closing ]"));
+            }
+            out.insert(key, vals);
+            i = j + 1;
+        } else {
+            let raw = tokens
+                .get(i + 2)
+                .ok_or_else(|| format!("line {line}: {key}= has no value"))?;
+            out.insert(key.clone(), vec![value(raw, &key, line)?]);
+            i += 3;
+        }
+    }
+    Ok(out)
+}
+
+/// An XSPICE code model: its type (`d_and`, `adc_bridge`, …) and parameters.
+#[derive(Clone, Debug)]
+struct CodeModel {
+    kind: String,
+    params: BTreeMap<String, Vec<f64>>,
+}
+impl CodeModel {
+    fn get(&self, key: &str, default: f64) -> f64 {
+        self.params
+            .get(key)
+            .and_then(|v| v.first())
+            .copied()
+            .unwrap_or(default)
+    }
+}
+
+/// The XSPICE code models this simulator implements.
+pub const CODE_MODELS: [&str; 15] = [
+    "d_and",
+    "d_nand",
+    "d_or",
+    "d_nor",
+    "d_xor",
+    "d_xnor",
+    "d_buffer",
+    "d_inverter",
+    "d_dff",
+    "d_srlatch",
+    "d_osc",
+    "d_pullup",
+    "d_pulldown",
+    "adc_bridge",
+    "dac_bridge",
+];
+
 #[derive(Clone, Debug)]
 struct Subckt {
     ports: Vec<String>,
@@ -111,6 +186,8 @@ enum Model {
     Diode(DiodeModel),
     Bjt(BjtModel),
     Mos(MosModel),
+    Switch(SwitchModel),
+    Code(CodeModel),
 }
 
 fn parse_model(card: &Card) -> Result<(String, Model), String> {
@@ -123,30 +200,64 @@ fn parse_model(card: &Card) -> Result<(String, Model), String> {
     }
     let name = t[1].to_ascii_lowercase();
     let kind = t[2].to_ascii_lowercase();
+    if CODE_MODELS.contains(&kind.as_str()) {
+        return Ok((
+            name,
+            Model::Code(CodeModel {
+                kind,
+                params: array_params(&t[3..], card.line)?,
+            }),
+        ));
+    }
     let p = params(&t[3..], card.line)?;
     let get = |k: &str, d: f64| p.get(k).copied().unwrap_or(d);
+    let opt = |k: &str| p.get(k).copied();
     let model = match kind.as_str() {
         "d" => Model::Diode(DiodeModel {
             is: get("is", 1e-14),
             n: get("n", 1.0),
             rs: get("rs", 0.0),
-            bv: p.get("bv").copied(),
+            bv: opt("bv"),
             ibv: get("ibv", 1e-3),
-            cjo: get("cjo", get("cj0", 0.0)),
+            cjo: get("cjo", get("cj0", get("cj", 0.0))),
             vj: get("vj", 1.0),
             m: get("m", 0.5),
             tt: get("tt", 0.0),
             fc: get("fc", 0.5),
         }),
-        "npn" | "pnp" => Model::Bjt(BjtModel {
-            pnp: kind == "pnp",
-            is: get("is", 1e-16),
-            bf: get("bf", 100.0),
-            br: get("br", 1.0),
-            nf: get("nf", 1.0),
-            nr: get("nr", 1.0),
-            vaf: p.get("vaf").or(p.get("va")).copied(),
-        }),
+        "npn" | "pnp" => {
+            let d = BjtModel::default();
+            let is = get("is", d.is);
+            Model::Bjt(BjtModel {
+                pnp: kind == "pnp",
+                is,
+                bf: get("bf", d.bf),
+                nf: get("nf", d.nf),
+                vaf: opt("vaf").or(opt("va")),
+                ikf: opt("ikf").or(opt("ik")),
+                // SPICE2's C2 and C4 give the leakage saturation currents as multiples of IS.
+                ise: get("ise", get("c2", 0.0) * is),
+                ne: get("ne", d.ne),
+                br: get("br", d.br),
+                nr: get("nr", d.nr),
+                var: opt("var").or(opt("vb")),
+                ikr: opt("ikr"),
+                isc: get("isc", get("c4", 0.0) * is),
+                nc: get("nc", d.nc),
+                rb: get("rb", 0.0),
+                re: get("re", 0.0),
+                rc: get("rc", 0.0),
+                cje: get("cje", 0.0),
+                vje: get("vje", get("pe", d.vje)),
+                mje: get("mje", get("me", d.mje)),
+                cjc: get("cjc", 0.0),
+                vjc: get("vjc", get("pc", d.vjc)),
+                mjc: get("mjc", get("mc", d.mjc)),
+                tf: get("tf", 0.0),
+                tr: get("tr", 0.0),
+                fc: get("fc", d.fc),
+            })
+        }
         "nmos" | "pmos" => {
             let level = get("level", 1.0);
             if level != 1.0 {
@@ -155,16 +266,57 @@ fn parse_model(card: &Card) -> Result<(String, Model), String> {
                     card.line
                 ));
             }
+            let d = MosModel::default();
+            let tox = opt("tox").filter(|t| *t > 0.0);
+            // Without KP, SPICE derives it from the surface mobility and the oxide.
+            let kp = match (opt("kp"), tox) {
+                (Some(kp), _) => kp,
+                (None, Some(t)) => {
+                    get("uo", get("u0", 600.0)) * 1e-4 * 3.9 * 8.854_214_871e-12 / t
+                }
+                (None, None) => d.kp,
+            };
             Model::Mos(MosModel {
                 pmos: kind == "pmos",
-                vto: get("vto", 0.0),
-                kp: get("kp", 2e-5),
+                vto: get("vto", get("vt0", 0.0)),
+                kp,
+                gamma: get("gamma", 0.0),
+                phi: get("phi", d.phi),
                 lambda: get("lambda", 0.0),
+                rd: get("rd", 0.0),
+                rs: get("rs", 0.0),
+                cbd: get("cbd", 0.0),
+                cbs: get("cbs", 0.0),
+                is: get("is", d.is),
+                pb: get("pb", d.pb),
+                mj: get("mj", d.mj),
+                fc: get("fc", d.fc),
+                cgso: get("cgso", 0.0),
+                cgdo: get("cgdo", 0.0),
+                cgbo: get("cgbo", 0.0),
+                tox,
+                ld: get("ld", 0.0),
+            })
+        }
+        "sw" => {
+            let ron = get("ron", 1.0);
+            let roff = get("roff", 1e12);
+            if ron <= 0.0 || roff <= 0.0 {
+                return Err(format!(
+                    "line {}: switch {name} needs positive RON and ROFF",
+                    card.line
+                ));
+            }
+            Model::Switch(SwitchModel {
+                vt: get("vt", 0.0),
+                vh: get("vh", 0.0).abs(),
+                ron,
+                roff,
             })
         }
         other => {
             return Err(format!(
-                "line {}: model type {other} is not supported (d, npn, pnp, nmos, pmos)",
+                "line {}: model type {other} is not supported (d, npn, pnp, nmos, pmos, sw, or an XSPICE digital model)",
                 card.line
             ))
         }
@@ -293,6 +445,255 @@ impl Builder {
         self.node_index.insert(key, i);
         i
     }
+    /// An XSPICE instance: `A<name> <connections…> <model>`, where a connection is a
+    /// node, `~node` (inverted), `NULL`, or a `[ … ]` vector of them.
+    fn code_device(
+        &mut self,
+        name: &str,
+        t: &[String],
+        line: usize,
+        resolve: &dyn Fn(&str) -> String,
+    ) -> Result<(), String> {
+        if t.len() < 3 {
+            return Err(format!(
+                "line {line}: {} needs connections and a model",
+                t[0]
+            ));
+        }
+        let model_name = &t[t.len() - 1];
+        let model = match self.models.get(&model_name.to_ascii_lowercase()) {
+            Some(Model::Code(m)) => m.clone(),
+            Some(_) => {
+                return Err(format!(
+                    "line {line}: {model_name} is not an XSPICE code model"
+                ))
+            }
+            None => return Err(format!("line {line}: unknown model {model_name}")),
+        };
+        // Connection groups.
+        let body = &t[..t.len() - 1];
+        let mut groups: Vec<Vec<String>> = vec![];
+        let mut i = 1;
+        while i < body.len() {
+            if body[i] == "[" {
+                let mut g = vec![];
+                i += 1;
+                while i < body.len() && body[i] != "]" {
+                    g.push(body[i].clone());
+                    i += 1;
+                }
+                if i >= body.len() {
+                    return Err(format!("line {line}: {} has an unclosed [", t[0]));
+                }
+                groups.push(g);
+            } else {
+                groups.push(vec![body[i].clone()]);
+            }
+            i += 1;
+        }
+        let kind = model.kind.as_str();
+        let expect = |n: usize| -> Result<(), String> {
+            if groups.len() != n {
+                Err(format!(
+                    "line {line}: {} ({kind}) needs {n} connections, has {}",
+                    t[0],
+                    groups.len()
+                ))
+            } else {
+                Ok(())
+            }
+        };
+        let single = |g: &Vec<String>| -> Result<String, String> {
+            match g.as_slice() {
+                [one] => Ok(one.clone()),
+                _ => Err(format!("line {line}: {} expects a single node here", t[0])),
+            }
+        };
+        let rise = model.get("rise_delay", 1e-9);
+        let fall = model.get("fall_delay", 1e-9);
+        if rise < 0.0 || fall < 0.0 {
+            return Err(format!("line {line}: {} has a negative delay", t[0]));
+        }
+        let element =
+            |kind: digital::Kind, inputs: Vec<Port>, outputs: Vec<Port>| digital::Element {
+                name: name.to_owned(),
+                kind,
+                inputs,
+                outputs,
+                rise,
+                fall,
+            };
+        match kind {
+            "adc_bridge" | "dac_bridge" => {
+                expect(2)?;
+                if groups[0].len() != groups[1].len() {
+                    return Err(format!(
+                        "line {line}: {} has {} inputs but {} outputs",
+                        t[0],
+                        groups[0].len(),
+                        groups[1].len()
+                    ));
+                }
+                for (k, (a, b)) in groups[0].iter().zip(&groups[1]).enumerate() {
+                    let label = if groups[0].len() == 1 {
+                        name.to_owned()
+                    } else {
+                        format!("{name}#{k}")
+                    };
+                    if kind == "adc_bridge" {
+                        let node = self.node(&resolve(a));
+                        let net = self.circuit.digital.net(&resolve(b));
+                        self.circuit.digital.adcs.push(digital::Adc {
+                            name: label,
+                            node,
+                            net,
+                            in_low: model.get("in_low", 1.0),
+                            in_high: model.get("in_high", 2.0),
+                            rise,
+                            fall,
+                        });
+                    } else {
+                        let net = self.circuit.digital.net(&resolve(a));
+                        let p = self.node(&resolve(b));
+                        let (lo, hi) = (model.get("out_low", 0.0), model.get("out_high", 1.0));
+                        let levels = DacLevels {
+                            out_low: lo,
+                            out_high: hi,
+                            out_undef: model.get("out_undef", (lo + hi) / 2.0),
+                            t_rise: model.get("t_rise", 1e-9),
+                            t_fall: model.get("t_fall", 1e-9),
+                        };
+                        self.circuit.devices.push(Device::Dac {
+                            name: label,
+                            p,
+                            net,
+                            levels,
+                        });
+                    }
+                }
+            }
+            "d_buffer" | "d_inverter" | "d_and" | "d_nand" | "d_or" | "d_nor" | "d_xor"
+            | "d_xnor" => {
+                expect(2)?;
+                let unary = matches!(kind, "d_buffer" | "d_inverter");
+                if unary && groups[0].len() != 1 {
+                    return Err(format!("line {line}: {} takes one input", t[0]));
+                }
+                if !unary && groups[0].len() < 2 {
+                    return Err(format!("line {line}: {} needs at least two inputs", t[0]));
+                }
+                let y = single(&groups[1])?;
+                let ins: Vec<Port> = groups[0].iter().map(|g| self.port(g, resolve)).collect();
+                let out = self.port(&y, resolve);
+                let e = element(
+                    digital::Kind::Gate(GateOp::parse(kind).expect("a gate model")),
+                    ins,
+                    vec![out],
+                );
+                self.circuit.digital.elements.push(e);
+            }
+            "d_dff" | "d_srlatch" => {
+                let n_in = if kind == "d_dff" { 4 } else { 5 };
+                expect(n_in + 2)?;
+                let mut ports = vec![];
+                for g in &groups {
+                    let s = single(g)?;
+                    ports.push(self.port(&s, resolve));
+                }
+                let ic = if model.get("ic", 0.0) >= 0.5 {
+                    Logic::One
+                } else {
+                    Logic::Zero
+                };
+                let k = if kind == "d_dff" {
+                    digital::Kind::Dff {
+                        clk_delay: model.get("clk_delay", 1e-9),
+                        set_delay: model.get("set_delay", 1e-9),
+                        reset_delay: model.get("reset_delay", 1e-9),
+                        ic,
+                    }
+                } else {
+                    digital::Kind::SrLatch {
+                        sr_delay: model.get("sr_delay", 1e-9),
+                        enable_delay: model.get("enable_delay", 1e-9),
+                        set_delay: model.get("set_delay", 1e-9),
+                        reset_delay: model.get("reset_delay", 1e-9),
+                        ic,
+                    }
+                };
+                let outs = ports.split_off(n_in);
+                let e = element(k, ports, outs);
+                self.circuit.digital.elements.push(e);
+            }
+            "d_osc" => {
+                expect(2)?;
+                let control = self.node(&resolve(&single(&groups[0])?));
+                let out = single(&groups[1])?;
+                let cntl = model.params.get("cntl_array").cloned().unwrap_or_default();
+                let freq = model.params.get("freq_array").cloned().unwrap_or_default();
+                if cntl.is_empty() || cntl.len() != freq.len() {
+                    return Err(format!(
+                        "line {line}: {} needs cntl_array and freq_array of the same length",
+                        t[0]
+                    ));
+                }
+                if freq.iter().any(|f| *f <= 0.0) {
+                    return Err(format!(
+                        "line {line}: {} has a non-positive frequency",
+                        t[0]
+                    ));
+                }
+                let out = self.port(&out, resolve);
+                let e = element(
+                    digital::Kind::Osc {
+                        control,
+                        cntl,
+                        freq,
+                        duty: model.get("duty_cycle", 0.5),
+                        phase: model.get("init_phase", 0.0) / 360.0,
+                    },
+                    vec![],
+                    vec![out],
+                );
+                self.circuit.digital.elements.push(e);
+            }
+            "d_pullup" | "d_pulldown" => {
+                expect(1)?;
+                let out = single(&groups[0])?;
+                let out = self.port(&out, resolve);
+                let e = element(
+                    digital::Kind::Const(if kind == "d_pullup" {
+                        Logic::One
+                    } else {
+                        Logic::Zero
+                    }),
+                    vec![],
+                    vec![out],
+                );
+                self.circuit.digital.elements.push(e);
+            }
+            other => return Err(format!("line {line}: code model {other} is not supported")),
+        }
+        Ok(())
+    }
+    /// A digital connection: `NULL`, a net, or `~net` read inverted.
+    fn port(&mut self, tok: &str, resolve: &dyn Fn(&str) -> String) -> Port {
+        if tok.eq_ignore_ascii_case("null") {
+            return Port {
+                net: None,
+                invert: false,
+            };
+        }
+        let (invert, n) = match tok.strip_prefix('~') {
+            Some(r) => (true, r),
+            None => (false, tok),
+        };
+        Port {
+            net: Some(self.circuit.digital.net(&resolve(n))),
+            invert,
+        }
+    }
+
     fn expand(
         &mut self,
         cards: &[Card],
@@ -442,7 +843,6 @@ impl Builder {
                         name,
                         a,
                         k,
-                        internal: None,
                         model,
                         area,
                     });
@@ -451,12 +851,26 @@ impl Builder {
                     need(5)?;
                     let nodes: Vec<String> = t[1..4].iter().map(|n| resolve(n)).collect();
                     // An optional substrate node sits before the model name.
-                    let model_token =
+                    let model_at =
                         if t.len() >= 6 && !self.models.contains_key(&t[4].to_ascii_lowercase()) {
-                            &t[5]
+                            5
                         } else {
-                            &t[4]
+                            4
                         };
+                    let model_token = &t[model_at];
+                    // An optional area follows it, bare or as AREA=.
+                    let area = match t.get(model_at + 1) {
+                        Some(a) if t.get(model_at + 2).map(String::as_str) != Some("=") => {
+                            value(a, "area", line)?
+                        }
+                        _ => params(&t[model_at + 1..], line)?
+                            .get("area")
+                            .copied()
+                            .unwrap_or(1.0),
+                    };
+                    if area <= 0.0 {
+                        return Err(format!("line {line}: {} has a non-positive area", t[0]));
+                    }
                     let model = match self.models.get(&model_token.to_ascii_lowercase()) {
                         Some(Model::Bjt(m)) => m.clone(),
                         Some(_) => {
@@ -475,8 +889,41 @@ impl Builder {
                         b,
                         e,
                         model,
+                        area,
                     });
                 }
+                's' => {
+                    need(6)?;
+                    let nodes: Vec<String> = t[1..5].iter().map(|n| resolve(n)).collect();
+                    let model = match self.models.get(&t[5].to_ascii_lowercase()) {
+                        Some(Model::Switch(m)) => m.clone(),
+                        Some(_) => {
+                            return Err(format!("line {line}: {} is not a switch model", t[5]))
+                        }
+                        None => return Err(format!("line {line}: unknown model {}", t[5])),
+                    };
+                    let initial = match t.get(6).map(|x| x.to_ascii_lowercase()).as_deref() {
+                        Some("on") => Some(true),
+                        Some("off") => Some(false),
+                        _ => None,
+                    };
+                    let (p, n, cp, cn) = (
+                        self.node(&nodes[0]),
+                        self.node(&nodes[1]),
+                        self.node(&nodes[2]),
+                        self.node(&nodes[3]),
+                    );
+                    self.circuit.devices.push(Device::S {
+                        name,
+                        p,
+                        n,
+                        cp,
+                        cn,
+                        model,
+                        initial,
+                    });
+                }
+                'a' => self.code_device(&name, t, line, &resolve)?,
                 'm' => {
                     need(6)?;
                     let nodes: Vec<String> = t[1..5].iter().map(|n| resolve(n)).collect();
@@ -688,11 +1135,26 @@ pub fn parse(text: &str) -> Result<Circuit, String> {
             devices: vec![],
             analyses,
             trapezoidal: true,
+            digital: Default::default(),
+            options: Options::default(),
         },
         node_index: BTreeMap::new(),
         models,
         subckts,
     };
+    for (key, slot) in [
+        ("reltol", &mut builder.circuit.options.reltol),
+        ("abstol", &mut builder.circuit.options.abstol),
+        ("vntol", &mut builder.circuit.options.vntol),
+        ("chgtol", &mut builder.circuit.options.chgtol),
+        ("trtol", &mut builder.circuit.options.trtol),
+    ] {
+        if let Some(v) = options.get(key) {
+            *slot = parse_value(v)
+                .filter(|x| *x > 0.0)
+                .ok_or_else(|| format!(".options {key}={v} is not a positive number"))?;
+        }
+    }
     if let Some(method) = options.get("method") {
         builder.circuit.trapezoidal = match method.as_str() {
             "trap" | "trapezoidal" => true,

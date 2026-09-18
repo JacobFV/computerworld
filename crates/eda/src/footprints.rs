@@ -40,19 +40,19 @@ impl PadShape {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LibPad {
-    pub number: &'static str,
+    pub number: String,
     pub kind: PadKind,
     pub shape: PadShape,
     pub at: (i64, i64),
     pub size: (i64, i64),
     pub drill: i64,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LibFootprint {
-    pub id: &'static str,
-    pub description: &'static str,
+    pub id: String,
+    pub description: String,
     pub pads: Vec<LibPad>,
     /// Silkscreen strokes (front side), in footprint coordinates.
     pub silk: Vec<((i64, i64), (i64, i64))>,
@@ -60,13 +60,64 @@ pub struct LibFootprint {
     pub courtyard: ((i64, i64), (i64, i64)),
     /// Fabrication-layer body outline.
     pub fab: ((i64, i64), (i64, i64)),
+    /// Height of the component body above the board, for the 3D viewer.
+    #[serde(default)]
+    pub height: i64,
 }
 impl LibFootprint {
-    pub fn library(&self) -> &'static str {
+    pub fn library(&self) -> &str {
         self.id.split(':').next().unwrap_or("")
     }
-    pub fn name(&self) -> &'static str {
-        self.id.split(':').nth(1).unwrap_or(self.id)
+    pub fn name(&self) -> &str {
+        self.id.split(':').nth(1).unwrap_or(&self.id)
+    }
+    /// An empty footprint for the Footprint Editor's New Footprint.
+    pub fn blank(id: &str) -> LibFootprint {
+        LibFootprint {
+            id: id.into(),
+            description: String::new(),
+            pads: vec![],
+            silk: vec![],
+            courtyard: ((-MM, -MM), (MM, MM)),
+            fab: ((-MM / 2, -MM / 2), (MM / 2, MM / 2)),
+            height: MM,
+        }
+    }
+    /// Recompute the courtyard as KiCad's checker expects it: the pads and body with a
+    /// 0.25 mm margin, on a 0.01 mm grid.
+    pub fn fit_courtyard(&mut self) {
+        let mut lo = (
+            self.fab.0 .0.min(self.fab.1 .0),
+            self.fab.0 .1.min(self.fab.1 .1),
+        );
+        let mut hi = (
+            self.fab.0 .0.max(self.fab.1 .0),
+            self.fab.0 .1.max(self.fab.1 .1),
+        );
+        for p in &self.pads {
+            lo = (
+                lo.0.min(p.at.0 - p.size.0 / 2),
+                lo.1.min(p.at.1 - p.size.1 / 2),
+            );
+            hi = (
+                hi.0.max(p.at.0 + p.size.0 / 2),
+                hi.1.max(p.at.1 + p.size.1 / 2),
+            );
+        }
+        let m = 250_000;
+        let down = |v: i64| (v - m).div_euclid(10_000) * 10_000;
+        let up = |v: i64| -(-(v + m)).div_euclid(10_000) * 10_000;
+        self.courtyard = ((down(lo.0), down(lo.1)), (up(hi.0), up(hi.1)));
+    }
+}
+
+/// A body height for a footprint whose library does not give one: low for surface
+/// mount parts, a typical radial height for through-hole ones.
+pub fn default_height(pads: &[LibPad]) -> i64 {
+    if pads.iter().any(|p| p.kind == PadKind::ThroughHole) {
+        3 * MM
+    } else {
+        MM
     }
 }
 
@@ -83,15 +134,9 @@ fn mm(v: f64) -> i64 {
 fn p(x: f64, y: f64) -> (i64, i64) {
     (mm(x), mm(y))
 }
-fn tht(
-    number: &'static str,
-    shape: PadShape,
-    at: (f64, f64),
-    size: (f64, f64),
-    drill: f64,
-) -> LibPad {
+fn tht(number: &str, shape: PadShape, at: (f64, f64), size: (f64, f64), drill: f64) -> LibPad {
     LibPad {
-        number,
+        number: number.into(),
         kind: PadKind::ThroughHole,
         shape,
         at: p(at.0, at.1),
@@ -99,9 +144,9 @@ fn tht(
         drill: mm(drill),
     }
 }
-fn smd(number: &'static str, at: (f64, f64), size: (f64, f64)) -> LibPad {
+fn smd(number: &str, at: (f64, f64), size: (f64, f64)) -> LibPad {
     LibPad {
-        number,
+        number: number.into(),
         kind: PadKind::Smd,
         shape: PadShape::RoundRect,
         at: p(at.0, at.1),
@@ -136,8 +181,8 @@ fn axial(
     silk.push((p(1.04, 0.0), p(x0 - 0.12, 0.0)));
     silk.push((p(pitch - 1.04, 0.0), p(x0 + len + 0.12, 0.0)));
     LibFootprint {
-        id,
-        description,
+        id: id.into(),
+        description: description.into(),
         pads: vec![
             tht("1", first, (0.0, 0.0), (1.6, 1.6), 0.8),
             tht("2", second, (pitch, 0.0), (1.6, 1.6), 0.8),
@@ -148,6 +193,7 @@ fn axial(
             p(pitch + 1.05, dia / 2.0 + 0.37),
         ),
         fab: (p(x0, -dia / 2.0), p(x0 + len, dia / 2.0)),
+        height: 0,
     }
 }
 fn chip(
@@ -158,8 +204,8 @@ fn chip(
     court: (f64, f64),
 ) -> LibFootprint {
     LibFootprint {
-        id,
-        description,
+        id: id.into(),
+        description: description.into(),
         pads: vec![smd("1", (-pad_x, 0.0), pad), smd("2", (pad_x, 0.0), pad)],
         silk: vec![
             (p(-0.227, -0.735), p(0.227, -0.735)),
@@ -167,6 +213,7 @@ fn chip(
         ],
         courtyard: (p(-court.0, -court.1), p(court.0, court.1)),
         fab: (p(-1.0, -0.625), p(1.0, 0.625)),
+        height: 0,
     }
 }
 
@@ -213,8 +260,8 @@ fn build() -> Vec<LibFootprint> {
         ),
     ];
     lib.push(LibFootprint {
-        id: "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
-        description: "C, Disc series, Radial, pin pitch=5.00mm, diameter*width=5*2.5mm^2",
+        id: "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm".into(),
+        description: "C, Disc series, Radial, pin pitch=5.00mm, diameter*width=5*2.5mm^2".into(),
         pads: vec![
             tht("1", Circle, (0.0, 0.0), (1.6, 1.6), 0.8),
             tht("2", Circle, (5.0, 0.0), (1.6, 1.6), 0.8),
@@ -222,11 +269,13 @@ fn build() -> Vec<LibFootprint> {
         silk: outline((-0.12, -1.37), (5.12, 1.37)),
         courtyard: (p(-1.05, -1.5), p(6.05, 1.5)),
         fab: (p(0.0, -1.25), p(5.0, 1.25)),
+        height: 0,
     });
     lib.push(LibFootprint {
-        id: "Capacitor_THT:CP_Radial_D5.0mm_P2.00mm",
+        id: "Capacitor_THT:CP_Radial_D5.0mm_P2.00mm".into(),
         description:
-            "CP, Radial series, Radial, pin pitch=2.00mm, diameter=5mm, Electrolytic Capacitor",
+            "CP, Radial series, Radial, pin pitch=2.00mm, diameter=5mm, Electrolytic Capacitor"
+                .into(),
         pads: vec![
             tht("1", Rect, (0.0, 0.0), (1.6, 1.6), 0.8),
             tht("2", Circle, (2.0, 0.0), (1.6, 1.6), 0.8),
@@ -239,10 +288,11 @@ fn build() -> Vec<LibFootprint> {
         },
         courtyard: (p(-1.75, -2.75), p(3.75, 2.75)),
         fab: (p(-1.5, -2.5), p(3.5, 2.5)),
+        height: 0,
     });
     lib.push(LibFootprint {
-        id: "LED_THT:LED_D5.0mm",
-        description: "LED, diameter 5.0mm, 2 pins",
+        id: "LED_THT:LED_D5.0mm".into(),
+        description: "LED, diameter 5.0mm, 2 pins".into(),
         pads: vec![
             tht("1", Rect, (0.0, 0.0), (1.8, 1.8), 0.9),
             tht("2", Circle, (2.54, 0.0), (1.8, 1.8), 0.9),
@@ -250,10 +300,11 @@ fn build() -> Vec<LibFootprint> {
         silk: outline((-1.29, -2.62), (3.83, 2.62)),
         courtyard: (p(-1.95, -3.25), p(4.5, 3.25)),
         fab: (p(-1.23, -2.5), p(3.77, 2.5)),
+        height: 0,
     });
     lib.push(LibFootprint {
-        id: "Package_TO_SOT_THT:TO-92_Inline",
-        description: "TO-92 leads in-line, narrow, oval pads, drill 0.75mm",
+        id: "Package_TO_SOT_THT:TO-92_Inline".into(),
+        description: "TO-92 leads in-line, narrow, oval pads, drill 0.75mm".into(),
         pads: vec![
             tht("1", Rect, (0.0, 0.0), (1.05, 1.5), 0.75),
             tht("2", Oval, (1.27, 0.0), (1.05, 1.5), 0.75),
@@ -262,11 +313,13 @@ fn build() -> Vec<LibFootprint> {
         silk: vec![(p(-0.53, 1.85), p(3.07, 1.85))],
         courtyard: (p(-1.46, -2.73), p(4.0, 2.01)),
         fab: (p(-0.5, -2.0), p(3.04, 1.75)),
+        height: 0,
     });
     lib.push(LibFootprint {
-        id: "Package_TO_SOT_SMD:SOT-23",
+        id: "Package_TO_SOT_SMD:SOT-23".into(),
         description:
-            "SOT, 3 Pin (https://www.jedec.org/document_search?search_api_views_fulltext=to-236)",
+            "SOT, 3 Pin (https://www.jedec.org/document_search?search_api_views_fulltext=to-236)"
+                .into(),
         pads: vec![
             smd("1", (-0.9375, -0.95), (1.325, 0.6)),
             smd("2", (-0.9375, 0.95), (1.325, 0.6)),
@@ -278,10 +331,12 @@ fn build() -> Vec<LibFootprint> {
         ],
         courtyard: (p(-1.92, -1.7), p(1.92, 1.7)),
         fab: (p(-0.65, -1.45), p(0.65, 1.45)),
+        height: 0,
     });
     lib.push(LibFootprint {
-        id: "Package_TO_SOT_SMD:SOT-23-5",
-        description: "SOT, 5 Pin (https://www.jedec.org/sites/default/files/docs/Mo-178c.PDF)",
+        id: "Package_TO_SOT_SMD:SOT-23-5".into(),
+        description: "SOT, 5 Pin (https://www.jedec.org/sites/default/files/docs/Mo-178c.PDF)"
+            .into(),
         pads: vec![
             smd("1", (-1.1375, -0.95), (1.325, 0.6)),
             smd("2", (-1.1375, 0.0), (1.325, 0.6)),
@@ -292,10 +347,12 @@ fn build() -> Vec<LibFootprint> {
         silk: vec![(p(0.0, -1.56), p(0.8, -1.56)), (p(0.0, 1.56), p(0.8, 1.56))],
         courtyard: (p(-2.05, -1.7), p(2.05, 1.7)),
         fab: (p(-0.8, -1.45), p(0.8, 1.45)),
+        height: 0,
     });
     lib.push(LibFootprint {
-        id: "Package_DIP:DIP-8_W7.62mm",
-        description: "8-lead though-hole mounted DIP package, row spacing 7.62 mm (300 mils)",
+        id: "Package_DIP:DIP-8_W7.62mm".into(),
+        description: "8-lead though-hole mounted DIP package, row spacing 7.62 mm (300 mils)"
+            .into(),
         pads: (0..8)
             .map(|i| {
                 let numbers = ["1", "2", "3", "4", "5", "6", "7", "8"];
@@ -323,6 +380,7 @@ fn build() -> Vec<LibFootprint> {
         },
         courtyard: (p(-1.1, -1.55), p(8.7, 9.15)),
         fab: (p(0.635, -1.27), p(6.985, 8.89)),
+        height: 0,
     });
     for n in [2usize, 3] {
         let numbers = ["1", "2", "3"];
@@ -331,12 +389,14 @@ fn build() -> Vec<LibFootprint> {
                 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
             } else {
                 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
-            },
+            }
+            .into(),
             description: if n == 2 {
                 "Through hole straight pin header, 1x02, 2.54mm pitch, single row"
             } else {
                 "Through hole straight pin header, 1x03, 2.54mm pitch, single row"
-            },
+            }
+            .into(),
             pads: (0..n)
                 .map(|i| {
                     tht(
@@ -351,11 +411,12 @@ fn build() -> Vec<LibFootprint> {
             silk: outline((-1.33, 1.27), (1.33, 2.54 * (n as f64 - 1.0) + 1.33)),
             courtyard: (p(-1.8, -1.8), p(1.8, 2.54 * (n as f64 - 1.0) + 1.8)),
             fab: (p(-1.27, -1.27), p(1.27, 2.54 * (n as f64 - 1.0) + 1.27)),
+            height: 0,
         });
     }
     lib.push(LibFootprint {
-        id: "Button_Switch_THT:SW_PUSH_6mm",
-        description: "tactile push button, 6x6mm e.g. PHAP33xx series, height=4.3mm",
+        id: "Button_Switch_THT:SW_PUSH_6mm".into(),
+        description: "tactile push button, 6x6mm e.g. PHAP33xx series, height=4.3mm".into(),
         pads: vec![
             tht("1", Circle, (0.0, 0.0), (2.0, 2.0), 1.1),
             tht("2", Circle, (6.5, 0.0), (2.0, 2.0), 1.1),
@@ -365,7 +426,26 @@ fn build() -> Vec<LibFootprint> {
         silk: outline((0.25, -1.0), (6.25, 5.5)),
         courtyard: (p(-1.25, -1.5), p(7.75, 6.0)),
         fab: (p(0.25, -0.75), p(6.25, 5.25)),
+        height: 0,
     });
+    // Body heights from the parts' datasheets (seated height above the board).
+    for f in &mut lib {
+        f.height = match f.name() {
+            n if n.starts_with("R_Axial") => 2_500_000,
+            n if n.starts_with("L_Axial") => 2_200_000,
+            n if n.starts_with("D_DO-35") => 2_000_000,
+            n if n.starts_with("R_0805") || n.starts_with("C_0805") => 600_000,
+            n if n.starts_with("C_Disc") => 5_000_000,
+            n if n.starts_with("CP_Radial") => 11_000_000,
+            n if n.starts_with("LED_D5") => 8_600_000,
+            n if n.starts_with("TO-92") => 4_800_000,
+            n if n.starts_with("SOT-23") => 1_100_000,
+            n if n.starts_with("DIP-8") => 3_900_000,
+            n if n.starts_with("PinHeader") => 2_500_000,
+            n if n.starts_with("SW_PUSH") => 4_300_000,
+            _ => default_height(&f.pads),
+        };
+    }
     lib
 }
 
@@ -383,7 +463,7 @@ mod tests {
     #[test]
     fn every_footprint_used_by_a_symbol_exists_and_holds_its_pins() {
         for s in crate::symbols::library() {
-            for fp in s.footprints {
+            for fp in &s.footprints {
                 let f = find(fp).unwrap_or_else(|| panic!("{} names missing {fp}", s.lib_id));
                 for pin in &s.pins {
                     if pin.kind == crate::symbols::PinType::NoConnect {

@@ -36,10 +36,35 @@ pub struct Scroll {
     /// grabbed, so the thumb stays under the pointer while it moves.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grab: Option<(String, i32)>,
+    /// A pane a finger is pulling past one of its ends, and by how many pixels its
+    /// content is displaced there (positive: pulled down past the top; negative: pulled
+    /// up past the end). The rubber band of iOS and the overscroll of Android; it
+    /// springs back to nothing when the finger lifts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stretch: Option<(String, i32)>,
+    /// A pane whose caret was just moved by an edit: it is painted scrolled as little as
+    /// it takes to show the caret, until it is scrolled again. The view is otherwise
+    /// independent of the caret, as in every text editor.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reveal: Option<String>,
 }
 impl Scroll {
     pub fn is_empty(&self) -> bool {
-        self.offsets.is_empty() && self.grab.is_none()
+        self.offsets.is_empty()
+            && self.grab.is_none()
+            && self.stretch.is_none()
+            && self.reveal.is_none()
+    }
+    /// How far `pane`'s content is displaced past an end by a finger pulling on it.
+    pub fn stretch_of(&self, pane: &str) -> i32 {
+        self.stretch
+            .as_ref()
+            .filter(|(p, _)| p == pane)
+            .map_or(0, |(_, s)| *s)
+    }
+    /// Whether `pane` must be painted showing its caret (see `reveal`).
+    pub fn reveals(&self, pane: &str) -> bool {
+        self.reveal.as_deref() == Some(pane)
     }
     /// The pane's offset as last set; painting clamps it to what the content allows.
     pub fn offset(&self, pane: &str) -> i32 {
@@ -50,6 +75,10 @@ impl Scroll {
     /// end until it is first scrolled, so an offset, even 0, is kept once set.
     pub fn set(&mut self, pane: &str, offset: i32) -> bool {
         let offset = offset.max(0);
+        // Scrolled on purpose, the view no longer chases the caret.
+        if self.reveals(pane) {
+            self.reveal = None;
+        }
         if self.offsets.get(pane) == Some(&offset) {
             return false;
         }
@@ -275,8 +304,16 @@ impl Painter {
         });
         let max = extent.saturating_sub(span) as i32;
         let offset = pane.offset.clamp(0, max);
+        // A finger pulling past an end displaces the content by the rubber band; only
+        // at that end, and never by more than the viewport along the pane's own axis.
+        let stretch = match self.scroll.stretch_of(&pane.name) {
+            s if s > 0 && offset == 0 => s,
+            s if s < 0 && offset == max => s,
+            _ => 0,
+        }
+        .clamp(-(span as i32), span as i32);
         // Content painted for an offset the extent does not allow comes back.
-        let shift = pane.offset - offset;
+        let shift = pane.offset - offset + stretch;
         let content = self.scene.nodes.split_off(pane.mark);
         for mut n in content {
             if shift != 0 && across {
@@ -434,9 +471,102 @@ impl Painter {
     }
 }
 
+/// iOS's rubber band: a finger `excess` pixels past an end of a pane `dimension` tall
+/// moves the content this much, ever less the further it pulls and never the whole
+/// viewport. UIScrollView's curve, `(1 - 1 / (x * c / d + 1)) * d` with c = 0.55,
+/// kept in integers so it is the same everywhere. Android's overscroll stretch resists
+/// the same way and is modelled by the same curve.
+pub fn rubber_band(excess: i32, dimension: u32) -> i32 {
+    if excess == 0 || dimension == 0 {
+        return 0;
+    }
+    let x = i64::from(excess.unsigned_abs());
+    let d = i64::from(dimension);
+    let moved = (x * 55 * d / (x * 55 + d * 100)) as i32;
+    moved * excess.signum()
+}
+/// Slowest finger, in pixels per second, that still flings a list on release
+/// (Android's `ViewConfiguration` minimum fling velocity, 50 dp/s).
+pub const MIN_FLING: i64 = 50;
+/// Fastest fling a list takes (Android's maximum, 8000 dp/s); faster is clamped.
+pub const MAX_FLING: i64 = 8000;
+/// How far a list keeps moving after a finger leaves it at `velocity` pixels per
+/// second (signed; the result has the same sign), as each platform decelerates it.
+///
+/// iOS decelerates exponentially at UIScrollView's normal rate, 0.998 per
+/// millisecond, which travels `v / 1000 * r / (1 - r)` = 0.499 v in all. Android's
+/// OverScroller follows its spline, `f * c * exp(D / (D - 1) * ln(0.35 v / (f * c)))`
+/// with friction f = 0.015, D = ln 0.78 / ln 0.9 and c the physical coefficient of a
+/// 160 dpi pixel. Both are pure functions of the velocity, and the transcendental
+/// functions are cw-determinism's, so a fling lands on the same pixel on every host.
+pub fn fling_distance(android: bool, velocity: i64) -> i32 {
+    let speed = velocity.unsigned_abs().min(i64::MAX as u64) as i64;
+    if speed < MIN_FLING {
+        return 0;
+    }
+    let speed = speed.min(MAX_FLING);
+    let distance = if android {
+        use cw_determinism::math::{exp, ln};
+        const FRICTION: f64 = 0.015;
+        // GRAVITY_EARTH * 39.37 in/m * 160 px/in * 0.84: OverScroller's constant.
+        const PHYSICAL: f64 = 9.806_65 * 39.37 * 160.0 * 0.84;
+        let decel = ln(0.78) / ln(0.9);
+        let l = ln(0.35 * speed as f64 / (FRICTION * PHYSICAL));
+        (FRICTION * PHYSICAL * exp(decel / (decel - 1.0) * l)) as i64
+    } else {
+        speed * 499 / 1000
+    };
+    distance as i32 * velocity.signum() as i32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_pulled_end_stretches_and_resists_and_a_fling_decelerates_per_platform() {
+        // The content follows the finger less and less past an end, never a viewport.
+        assert_eq!(rubber_band(0, 600), 0);
+        let small = rubber_band(40, 600);
+        let large = rubber_band(400, 600);
+        assert!(small > 0 && small < 40, "{small}");
+        assert!(large > small && large < 400, "{large}");
+        assert!(rubber_band(1_000_000, 600) < 600);
+        assert_eq!(rubber_band(-40, 600), -small);
+        // Painted, a stretch at the top moves the content down, and only at the top.
+        for (offset, expected) in [(0, 230), (50, 150)] {
+            let mut p = Painter::themed(DesktopTheme::Ios, 300, 400, 1);
+            p.scroll.set("list", offset);
+            p.scroll.stretch = Some(("list".into(), 30));
+            let pane = p.pane("list", Rect::new(0, 100, 300, 200));
+            p.button(
+                Rect::new(0, pane.top() + 100, 280, 40),
+                Color::WHITE,
+                0,
+                "row:0",
+                "Row",
+            );
+            p.end_pane(pane, Some(800));
+            let row = p
+                .scene
+                .nodes
+                .iter()
+                .find(|n| n.interaction.as_deref() == Some("row:0"))
+                .unwrap();
+            assert_eq!(row.transform.bounds(row.bounds).y, expected);
+        }
+        // Flings: iOS travels about half the release speed; Android's spline goes
+        // less far; both keep the sign and ignore a finger that was barely moving.
+        assert_eq!(fling_distance(false, 1000), 499);
+        assert_eq!(fling_distance(false, -1000), -499);
+        let android = fling_distance(true, 1200);
+        assert!((200..340).contains(&android), "{android}");
+        assert_eq!(fling_distance(true, 30), 0);
+        assert_eq!(
+            fling_distance(false, 100_000),
+            fling_distance(false, MAX_FLING)
+        );
+    }
 
     fn painted(offset: i32, rows: i32) -> (Painter, ScrollArea) {
         let mut p = Painter::themed(DesktopTheme::Macos, 300, 400, 1);

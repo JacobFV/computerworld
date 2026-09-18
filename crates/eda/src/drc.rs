@@ -46,11 +46,11 @@ fn anchors(board: &Board, c: &Copper) -> Vec<Pt> {
                     vec![a, b]
                 }
             }
-            Shape::Rect(r) => vec![r.center()],
+            other => vec![other.bbox().center()],
         },
         Owner::Zone(..) => match c.shape {
-            Shape::Rect(r) => vec![r.center()],
             Shape::Seg { a, .. } => vec![a],
+            other => vec![other.bbox().center()],
         },
     }
 }
@@ -421,6 +421,24 @@ pub fn check(board: &Board, schematic_refs: Option<&[(String, String)]>) -> Vec<
                     .map(|p| polygon_edge_distance(*p, poly))
                     .fold(f64::INFINITY, f64::min)
                     .min(polygon_edge_distance(r.center(), poly)),
+                Shape::Poly(q) => {
+                    // A turned pad: its own corners against the outline's edges.
+                    let n = poly.len();
+                    (0..4)
+                        .map(|i| {
+                            (0..n)
+                                .map(|k| {
+                                    crate::geom::segment_segment(
+                                        q[i],
+                                        q[(i + 1) % 4],
+                                        poly[k],
+                                        poly[(k + 1) % n],
+                                    )
+                                })
+                                .fold(f64::INFINITY, f64::min)
+                        })
+                        .fold(f64::INFINITY, f64::min)
+                }
             };
             if !inside || edge_gap < rules.copper_edge_clearance as f64 {
                 if matches!(c.owner, Owner::Zone(..)) && inside {
@@ -444,16 +462,19 @@ pub fn check(board: &Board, schematic_refs: Option<&[(String, String)]>) -> Vec<
             }
         }
     }
-    // Courtyards.
-    let yards: Vec<(usize, bool, Rect)> = board
+    // Courtyards, turned with their footprints.
+    let yards: Vec<(usize, bool, Rect, [Pt; 4])> = board
         .footprints
         .iter()
         .enumerate()
-        .filter_map(|(i, f)| f.courtyard().map(|r| (i, f.back, r)))
+        .filter_map(|(i, f)| {
+            f.courtyard_poly()
+                .map(|p| (i, f.back, crate::pcb::bbox_of(&p), p))
+        })
         .collect();
-    for (k, (i, back, r)) in yards.iter().enumerate() {
-        for (j, back2, s) in &yards[k + 1..] {
-            if back == back2 && r.overlaps(s) {
+    for (k, (i, back, r, pa)) in yards.iter().enumerate() {
+        for (j, back2, s, pb) in &yards[k + 1..] {
+            if back == back2 && r.overlaps(s) && crate::pcb::convex_overlap(pa, pb) {
                 let (a, b) = (&board.footprints[*i], &board.footprints[*j]);
                 out.push(Violation {
                     severity: Severity::Error,
@@ -472,6 +493,28 @@ pub fn check(board: &Board, schematic_refs: Option<&[(String, String)]>) -> Vec<
                         ),
                         format!("Footprint {}", b.reference),
                     ],
+                });
+            }
+        }
+    }
+    // Rule areas: no copper inside a keepout.
+    for z in board
+        .zones
+        .iter()
+        .filter(|z| z.keepout && z.outline.len() >= 3)
+    {
+        for c in copper.iter().filter(|c| c.layer == z.layer) {
+            if shape_enters(&c.shape, &z.outline) {
+                let key = (c.owner, Owner::Zone(z.id, usize::MAX));
+                if !reported.insert(key) {
+                    continue;
+                }
+                out.push(Violation {
+                    severity: Severity::Error,
+                    rule: "items_not_allowed".into(),
+                    message: format!("Items not allowed (keepout area on {})", z.layer.name()),
+                    pos: centre(c),
+                    items: vec![describe(board, c), "Rule area".into()],
                 });
             }
         }
@@ -532,6 +575,25 @@ pub fn check(board: &Board, schematic_refs: Option<&[(String, String)]>) -> Vec<
             .then(a.pos.cmp(&b.pos))
     });
     out
+}
+
+/// Whether a copper shape reaches inside polygon `poly` (touching its edge counts).
+pub fn shape_enters(shape: &Shape, poly: &[Pt]) -> bool {
+    let n = poly.len();
+    let edge_hits = |a: Pt, b: Pt, r: f64| {
+        (0..n).any(|k| crate::geom::segment_segment(a, b, poly[k], poly[(k + 1) % n]) < r)
+    };
+    match shape {
+        Shape::Seg { a, b, r } => {
+            in_polygon(*a, poly) || in_polygon(*b, poly) || edge_hits(*a, *b, (*r as f64).max(1.0))
+        }
+        other => {
+            let c = other.corners().expect("rectangular shapes have corners");
+            c.iter().any(|p| in_polygon(*p, poly))
+                || (0..4).any(|i| edge_hits(c[i], c[(i + 1) % 4], 1.0))
+                || in_polygon(poly[0], &c)
+        }
+    }
 }
 
 /// "Unconnected items" as DRC lists them: every ratsnest line still to route.

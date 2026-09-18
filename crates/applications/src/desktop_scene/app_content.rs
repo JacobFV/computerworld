@@ -12,6 +12,8 @@ const INK: Color = Color::rgb(29, 29, 31);
 const MUTED: Color = Color::rgb(112, 114, 120);
 const FAINT: Color = Color::rgb(160, 162, 168);
 const LINE: Color = Color(0, 0, 0, 26);
+/// The pane a plain-text editor's rows scroll in.
+pub const EDITOR_PANE: &str = "text";
 
 struct Look {
     accent: Color,
@@ -1435,14 +1437,12 @@ fn parent_label(path: &str, root: &str) -> String {
 
 /// Wrap `text` to `cells` columns, tagging every line with the colour that says which
 /// stream it came from.
+/// Rows of `cells` terminal cells: wide characters (CJK, emoji) take two, combining
+/// marks none, exactly as `Primitive::Text` lays them out.
 fn wrap_into(lines: &mut Vec<(String, Color)>, text: &str, color: Color, cells: usize) {
     for line in text.lines() {
-        let chars: Vec<_> = line.chars().collect();
-        if chars.is_empty() {
-            lines.push((String::new(), color));
-        }
-        for chunk in chars.chunks(cells) {
-            lines.push((chunk.iter().collect::<String>(), color));
+        for row in cw_scene::wrap_text(line, cells) {
+            lines.push((row, color));
         }
     }
 }
@@ -1542,7 +1542,7 @@ fn terminal(
         size,
         prompt,
     );
-    let offset = sig.chars().count() as i32 * 8;
+    let offset = cw_scene::text::terminal::columns(&sig) as i32 * 8;
     mono(
         p,
         Rect::new(
@@ -1570,11 +1570,9 @@ fn terminal(
     );
     // Where the caret really is: `cursor` is a byte offset into the input, and a click
     // on the line above moved it there.
-    let before = input
-        .get(..cursor.min(input.len()))
-        .unwrap_or(input)
-        .chars()
-        .count() as i32;
+    let before =
+        cw_scene::text::terminal::columns(input.get(..cursor.min(input.len())).unwrap_or(input))
+            as i32;
     let caret = offset + before * 8;
     // Block cursor on the desktops, a bar on touch keyboards.
     p.box_(
@@ -1796,7 +1794,30 @@ fn editor(
     let rows = crate::editor_rows(text, columns);
     let (visual, visual_col) = crate::editor_caret_cell(text, end, columns);
     let capacity = (h.saturating_sub(toolbar + status + ROW_H) / ROW_H).max(1) as usize;
-    let first = visual.saturating_sub(capacity.saturating_sub(1));
+    // The view scrolls on its own (the wheel, the scroll bar, a finger), independent
+    // of the caret, and always by whole rows so the click grid stays exact. An edit or
+    // a caret move brings the caret back into view, moving the view as little as it
+    // takes; before the view is first scrolled, it follows the caret the same way.
+    let last_first = rows.len().saturating_sub(capacity);
+    let stored = p.scroll.offsets.get(EDITOR_PANE).copied();
+    let mut first = stored.map_or(0, |o| o.max(0) as usize / ROW_H as usize);
+    first = first.min(last_first);
+    let follow = stored.is_none() || p.scroll.reveals(EDITOR_PANE);
+    if follow {
+        if visual < first {
+            first = visual;
+        } else if visual >= first + capacity {
+            first = visual + 1 - capacity;
+        }
+    }
+    // The offset published is the one asked for when it is the view's (so a trackpad's
+    // small turns accumulate), or the caret's row when the view followed the caret.
+    let offset = match stored {
+        Some(o) if !follow || o.max(0) as usize / ROW_H as usize == first => {
+            o.clamp(0, (last_first as u32 * ROW_H) as i32)
+        }
+        _ => (first as u32 * ROW_H) as i32,
+    };
     let origin = (left as i32, toolbar as i32 + 10);
     // The hit region starts at the first line's top-left corner, so the offsets
     // `click_at` reports are already relative to the text grid.
@@ -1816,6 +1837,13 @@ fn editor(
         },
         "Document text",
     );
+    // The rows are a pane: clipped to whole rows, published with the document's real
+    // extent, and given the platform's scroll bar when the document does not fit.
+    let mut pane = p.pane(
+        EDITOR_PANE,
+        Rect::new(0, origin.1, w, capacity as u32 * ROW_H),
+    );
+    pane.offset = offset;
     // Logical line of the first painted row; a gutter numbers each line once, on the
     // row it starts on, and leaves its soft-wrapped continuations blank.
     let mut line = text[..rows.get(first).map_or(0, |r| r.0)]
@@ -1846,17 +1874,21 @@ fn editor(
             INK,
         );
     }
-    // Caret where the model says it is, on the same grid the click arrives on.
-    p.box_(
-        Rect::new(
-            origin.0 + visual_col as i32 * CELL_W,
-            origin.1 + ((visual - first) as u32 * ROW_H) as i32,
-            if mobile { 2 } else { 1 },
-            ROW_H,
-        ),
-        if mobile { Color::rgb(204, 149, 0) } else { INK },
-        0,
-    );
+    // Caret where the model says it is, on the same grid the click arrives on; scrolled
+    // out of view, it is not painted at all.
+    if (first..first + capacity).contains(&visual) {
+        p.box_(
+            Rect::new(
+                origin.0 + visual_col as i32 * CELL_W,
+                origin.1 + ((visual - first) as u32 * ROW_H) as i32,
+                if mobile { 2 } else { 1 },
+                ROW_H,
+            ),
+            if mobile { Color::rgb(204, 149, 0) } else { INK },
+            0,
+        );
+    }
+    p.end_pane(pane, Some(rows.len().max(1) as u32 * ROW_H));
     let sy = h.saturating_sub(status) as i32;
     let position = format!("Ln {}, Col {}", row + 1, col + 1);
     match t {
@@ -2197,6 +2229,48 @@ mod tests {
         }
     }
 
+    /// Wide characters take two cells in the transcript's rows and under the caret,
+    /// exactly as `Primitive::Text` draws them.
+    #[test]
+    fn terminal_rows_and_caret_count_cells_not_characters() {
+        let output = "日本語のテキストが長く続くと折り返されます";
+        let state = AppState::Terminal {
+            input: "echo 中文".into(),
+            prompt: "me@box:/$".into(),
+            transcript: vec![crate::TerminalEntry::new("me@box:/$", "cat", output, "", 0)],
+            history: vec![],
+            cursor: "echo 中文".len(),
+            scroll: 0,
+        };
+        let scene = app_content(&state, DesktopTheme::Ubuntu, 16 + 8 * 20, 400);
+        let rows: Vec<&str> = scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                Primitive::Text { text, .. } if !text.starts_with("me@") => Some(text.as_str()),
+                _ => None,
+            })
+            .filter(|t| t.chars().any(|c| c > '\u{3000}'))
+            .collect();
+        // Twenty cells hold ten ideographs.
+        assert_eq!(rows[0], "日本語のテキストが長");
+        assert!(rows
+            .iter()
+            .all(|r| cw_scene::text::terminal::columns(r) <= 20));
+        // "echo 中文" is nine cells, so the caret sits nine cells past the prompt.
+        assert_eq!(cw_scene::text::terminal::columns("echo 中文"), 9);
+        assert_eq!(crate::caret_for_column("echo 中文", 7 * 8), "echo 中".len());
+        assert_eq!(
+            crate::caret_for_column("echo 中文", 9 * 8),
+            "echo 中文".len()
+        );
+        // The editor soft-wraps and places its caret on the same cells.
+        let text = "中文中文中文";
+        assert_eq!(crate::editor_rows(text, 5), [(0, 6), (6, 12), (12, 18)]);
+        assert_eq!(crate::editor_caret_cell(text, 9, 5), (1, 2));
+        assert_eq!(crate::caret_for_point_wrapped(text, 0, 5, 2 * 8, 18), 9);
+        assert_eq!(crate::editor_rows("e\u{301}xyz", 3), [(0, 5), (5, 6)]);
+    }
     /// The scrollbar really scrolls, and the caret really sits where `cursor` says.
     #[test]
     fn terminal_scrollbar_pages_and_the_caret_follows_the_cursor() {

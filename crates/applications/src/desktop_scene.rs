@@ -3,7 +3,7 @@ use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
 pub mod scroll;
 pub mod shared;
-pub use app_content::{app_content, app_content_scrolled, app_content_with};
+pub use app_content::{app_content, app_content_scrolled, app_content_with, EDITOR_PANE};
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 mod android;
 mod ios;
@@ -56,6 +56,16 @@ impl DesktopTheme {
     }
     pub fn mobile(self) -> bool {
         matches!(self, Self::Ios | Self::Android)
+    }
+    /// The screen a machine of this shell has before anything has said otherwise, in
+    /// the logical pixels scenes are laid out in, portrait for a phone: an iPhone's
+    /// 390 x 844 points, a Pixel's 412 x 915 dp, and a 1280 x 800 desktop.
+    pub fn native_screen(self) -> (u32, u32) {
+        match self {
+            Self::Ios => (390, 844),
+            Self::Android => (412, 915),
+            _ => (1280, 800),
+        }
     }
 }
 pub fn work_area(theme: DesktopTheme, width: u32, height: u32) -> Rect {

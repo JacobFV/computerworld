@@ -2,7 +2,9 @@
 //! page element; this layer never reads services, users or privileged world state.
 use super::ImageAsset;
 use cw_protocol::{Page, PageElement, Style};
-use cw_scene::{metrics, Color, Node, Primitive, Rect, Scene, Semantic, Typeface};
+use cw_scene::{
+    metrics, Color, Lang, Node, Primitive, Rect, Scene, Semantic, Style as TextStyle, Typeface,
+};
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
@@ -54,20 +56,8 @@ fn mix(a: Color, b: Color, pct: u32) -> Color {
     let c = |a: u8, b: u8| ((u32::from(a) * (100 - pct) + u32::from(b) * pct) / 100) as u8;
     Color(c(a.0, b.0), c(a.1, b.1), c(a.2, b.2), a.3)
 }
-fn ui_text(text: &str, size: u16, color: Color, bold: bool) -> Primitive {
-    if bold {
-        Primitive::UiTextBold {
-            text: text.into(),
-            size,
-            color,
-        }
-    } else {
-        Primitive::UiText {
-            text: text.into(),
-            size,
-            color,
-        }
-    }
+fn ui_text(text: &str, size: u16, color: Color, style: TextStyle) -> Primitive {
+    Primitive::ui_text(text, color, size, style)
 }
 /// Whether a block holds reading matter — a sentence, a field, a picture — rather than
 /// a stack of small controls like a vote arrow over a score.
@@ -193,6 +183,8 @@ struct Layout<'a> {
     /// Measurement runs the real placement with output suppressed, so the measure
     /// pass can never disagree with the place pass.
     dry: bool,
+    /// The page's language (`Page::lang`), for text that does not name its own.
+    lang: Lang,
 }
 impl Layout<'_> {
     fn id(&mut self, s: &str) -> u64 {
@@ -240,28 +232,22 @@ impl Layout<'_> {
             None,
         );
     }
-    fn text(&mut self, id: u64, r: Rect, text: &str, size: u16, color: Color, bold: bool) {
-        self.node(
-            id,
-            r,
-            if bold {
-                Primitive::UiTextBold {
-                    text: text.into(),
-                    size,
-                    color,
-                }
-            } else {
-                Primitive::UiText {
-                    text: text.into(),
-                    size,
-                    color,
-                }
-            },
-            None,
-            None,
-        );
+    fn text(
+        &mut self,
+        id: u64,
+        r: Rect,
+        text: &str,
+        size: u16,
+        color: Color,
+        style: impl Into<TextStyle>,
+    ) {
+        let mut style = style.into();
+        if style.lang.is_auto() {
+            style.lang = self.lang;
+        }
+        self.node(id, r, ui_text(text, size, color, style), None, None);
     }
-    fn caption(&mut self, r: Rect, s: &str, size: u16, color: Color, bold: bool) {
+    fn caption(&mut self, r: Rect, s: &str, size: u16, color: Color, bold: impl Into<TextStyle>) {
         let id = self.decoration;
         self.decoration += 1;
         self.text(id, r, s, size, color, bold);
@@ -271,7 +257,7 @@ impl Layout<'_> {
     /// the way CSS's min-content width is. Rows wrap and grids drop columns to keep
     /// every child at least this wide.
     fn min_width(&self, e: &PageElement) -> u32 {
-        let longest = |text: &str, bold: bool, size: u16| {
+        let longest = |text: &str, bold: TextStyle, size: u16| {
             text.split_whitespace()
                 .map(|word| metrics::text_width(FACE, bold, word, size))
                 .max()
@@ -286,10 +272,10 @@ impl Layout<'_> {
         };
         let natural = match e {
             PageElement::Heading { text, level, .. } => {
-                longest(text, true, if *level <= 1 { 18 } else { 15 })
+                longest(text, true.into(), if *level <= 1 { 18 } else { 15 })
             }
-            PageElement::Text { text, .. } => longest(text, false, 13),
-            PageElement::Link { text, .. } => longest(text, false, 13) + 24,
+            PageElement::Text { text, .. } => longest(text, false.into(), 13),
+            PageElement::Link { text, .. } => longest(text, false.into(), 13) + 24,
             PageElement::Button { id, text, .. } => {
                 metrics::text_width(FACE, true, submit_label(id, text), 12) + 30
             }
@@ -300,7 +286,7 @@ impl Layout<'_> {
             PageElement::Image { width, .. } => (*width).min(96),
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
-                let bold = matches!(style.weight.as_deref(), Some("bold") | Some("medium"));
+                let bold = self.text_style(style);
                 let pad = style.padding.unwrap_or(0).min(64) * 2;
                 pad + if style.one_line.unwrap_or(false) {
                     metrics::text_width(FACE, bold, text, size)
@@ -372,6 +358,17 @@ impl Layout<'_> {
     }
     fn bold_of(&self, style: &Style) -> bool {
         matches!(style.weight.as_deref(), Some("bold") | Some("medium"))
+    }
+    /// Weight, slant and language of a styled element's text.
+    fn text_style(&self, style: &Style) -> TextStyle {
+        TextStyle::new(
+            self.bold_of(style),
+            style.italic.unwrap_or(false),
+            style
+                .lang
+                .as_deref()
+                .map_or(self.lang, cw_scene::Lang::from_tag),
+        )
     }
     /// Horizontal offset of `text_width` inside `w` for the style's alignment.
     fn offset(style: &Style, w: u32, text_width: u32) -> i32 {
@@ -557,11 +554,7 @@ impl Layout<'_> {
                 self.node(
                     id,
                     Rect::new(x, y, w, 30),
-                    Primitive::UiTextBold {
-                        text: text.clone(),
-                        size,
-                        color: self.ink,
-                    },
+                    ui_text(text, size, self.ink, TextStyle::new(true, false, self.lang)),
                     Some(Semantic {
                         role: "heading".into(),
                         label: text.clone(),
@@ -578,11 +571,12 @@ impl Layout<'_> {
                 self.node(
                     id,
                     Rect::new(x, y, w, h),
-                    Primitive::UiText {
-                        text: lines.join("\n"),
-                        size: 13,
-                        color: self.ink,
-                    },
+                    ui_text(
+                        &lines.join("\n"),
+                        13,
+                        self.ink,
+                        TextStyle::new(false, false, self.lang),
+                    ),
                     Some(Semantic {
                         role: "text".into(),
                         label: text.clone(),
@@ -710,7 +704,7 @@ impl Layout<'_> {
             }
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
-                let bold = self.bold_of(style);
+                let bold = self.text_style(style);
                 let pad = style.padding.unwrap_or(0).min(64);
                 let colour = self.ink_of(style);
                 let w = style.width.map_or(w, |v| v.min(w));
@@ -1417,6 +1411,7 @@ pub(super) fn layout_scrolled(
         },
         surface,
         dry: false,
+        lang: page.lang.as_deref().map_or(Lang::Auto, Lang::from_tag),
     };
     p.scene.background = colour(|t| t.background.as_ref(), Color::rgb(248, 250, 253));
     let special = !themed
@@ -1660,6 +1655,72 @@ mod tests {
             .iter()
             .find(|n| n.interaction.as_deref() == Some(action))
             .unwrap()
+    }
+    #[test]
+    fn page_language_and_italic_reach_the_text_primitives() {
+        let mut page = Page::new("記事");
+        page.lang = Some("ja-JP".into());
+        page.elements = vec![
+            PageElement::Heading {
+                id: "h".into(),
+                text: "骨の話".into(),
+                level: 1,
+            },
+            PageElement::Text {
+                id: "t".into(),
+                text: "直次".into(),
+            },
+            PageElement::Styled {
+                id: "quote".into(),
+                text: "an italic pull quote that is long enough to wrap".into(),
+                style: Style::default().italic(),
+            },
+            PageElement::Styled {
+                id: "tc".into(),
+                text: "骨".into(),
+                style: Style::default().lang("zh-TW").bold(),
+            },
+        ];
+        let scene_of = |page: &Page| scene(page, 220);
+        let scene = scene_of(&page);
+        let style_of = |text: &str| {
+            scene
+                .nodes
+                .iter()
+                .find(|n| n.painted_text().is_some_and(|t| t.contains(text)))
+                .and_then(|n| n.primitive.text_style())
+                .unwrap()
+        };
+        assert_eq!(style_of("骨の話"), TextStyle::new(true, false, Lang::Ja));
+        assert_eq!(style_of("直次"), TextStyle::new(false, false, Lang::Ja));
+        assert_eq!(style_of("italic"), TextStyle::new(false, true, Lang::Ja));
+        assert_eq!(style_of("骨"), TextStyle::new(true, false, Lang::Ja));
+        let tc = scene
+            .nodes
+            .iter()
+            .find(|n| n.painted_text() == Some("骨"))
+            .unwrap();
+        assert_eq!(
+            tc.primitive.text_style(),
+            Some(TextStyle::new(true, false, Lang::ZhHant))
+        );
+        // The italic block wraps with italic metrics.
+        let quote = scene
+            .nodes
+            .iter()
+            .find(|n| n.painted_text().is_some_and(|t| t.contains("italic")))
+            .unwrap();
+        for line in quote.painted_text().unwrap().lines() {
+            assert!(
+                metrics::text_width(FACE, TextStyle::new(false, true, Lang::Ja), line, 13)
+                    <= quote.bounds.width
+            );
+        }
+        // Scene JSON only carries the new fields where they are set.
+        let json = serde_json::to_string(&scene).unwrap();
+        assert!(json.contains(r#""lang":"ja""#) && json.contains(r#""italic":true"#));
+        let plain = scene_of(&Page::new("p"));
+        assert!(!serde_json::to_string(&plain).unwrap().contains("lang"));
     }
     #[test]
     fn mail_uses_one_title_and_fields_remain_hit_testable() {

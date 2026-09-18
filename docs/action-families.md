@@ -243,28 +243,39 @@ selection's visibility, as FreeCAD's single-key shortcuts do. Typed text goes to
 focused field; values take units (`25`, `25 mm`, `1 in`, `45 °`, `0.5 rad`).
 
 KiCad controls (kind `kicad`), reached as `window:<id>:content:<target>`. KiCad opens one
-window per frame — project manager, Schematic Editor, PCB Editor, Simulator — all over
-the one open project. A control whose command cannot run now is painted disabled with
+window per frame — project manager, Schematic Editor, PCB Editor, Simulator, Symbol
+Editor, Footprint Editor, 3D Viewer — all over the one open project. A control whose command cannot run now is painted disabled with
 the reason; while a dialog is open only its own controls act:
 
 | Target | Effect |
 |---|---|
 | `kicad:menu:<title>` | Open or close a menu of the frame's menu bar (`File`, `Edit`, `View`, `Place`, `Route`, `Inspect`, `Tools`, `Simulation`, `Help`) |
 | `kicad:pm:new`, `kicad:pm:open`, `kicad:pm:close`, `kicad:pm:refresh`, `kicad:pm:folder` | Project manager: New Project and Open Project dialogs over `~/Documents/KiCad`, close the project, re-list its folder, show it in the file manager |
-| `kicad:pm:launch:<sch\|pcb>`, `kicad:pm:file:<i>` | Open the Schematic or PCB Editor (or raise it); select a project tree row — a double click opens a `.kicad_sch`/`.kicad_pcb` in its editor |
-| `kicad:canvas:sch:<x0>:<y0>:<zoom>:<w>:<h>` | The schematic sheet. The arguments are the view it was painted with (mils at the left/top edge, pixels per 1000 mils, canvas size). A drag surface: `pointer.v1 down`/`move`/`up` drive the current tool (select, box-select and drag-move with the select tool), a `click` is a press and release at one point, `move` with no button down draws the wire or symbol being placed under the pointer, and a `double_click` finishes a wire or opens a symbol's or label's properties |
-| `kicad:sch:tool:<select\|symbol\|power\|wire\|label\|global\|noconnect\|junction>` | Schematic tools. Symbol and power open the symbol chooser; a wire ends on a pin or wire, with a double click, or with `End` |
+| `kicad:pm:launch:<sch\|pcb\|symed\|fped>`, `kicad:pm:file:<i>` | Open the Schematic, PCB, Symbol or Footprint Editor (or raise it); select a project tree row — a double click opens a `.kicad_sch`/`.kicad_pcb` in its editor |
+| `kicad:canvas:sch:<x0>:<y0>:<zoom>:<w>:<h>` | The schematic sheet. The arguments are the view it was painted with (mils at the left/top edge, pixels per 1000 mils, canvas size). A drag surface: `pointer.v1 down`/`move`/`up` drive the current tool (select, box-select and drag-move with the select tool), a `click` is a press and release at one point, `move` with no button down draws the wire or symbol being placed under the pointer, and a `double_click` finishes a wire or opens a symbol's or label's properties (or enters a sheet). `pointer.v1 wheel` over any KiCad canvas zooms about the pointer; with `modifiers: ["shift"]` it pans up and down and with `["ctrl"]` left and right, and a sideways turn (`delta_x`) pans sideways, as KiCad's default mouse settings do |
+| `kicad:sch:tool:<select\|symbol\|power\|wire\|label\|global\|hlabel\|noconnect\|junction\|bus\|entry\|sheet\|sheetpin>` | Schematic tools. Symbol and power open the symbol chooser (the project's own libraries first); a wire or bus ends on a pin, wire or bus, with a double click, or with `End`; a bus entry joins a wire to a bus at 45° (`R` turns it); a sheet is two clicks, corner to corner, then Sheet Properties (name and file); a sheet pin is a click on a sheet's edge and offers the sheet's hierarchical labels that have none; hierarchical labels belong inside a sub-sheet. Label names like `D[0..7]` name vector buses |
+| `kicad:sch:<enter\|leave>`, `kicad:sch:enter:<id>`, `kicad:sch:goto:<i>` | Hierarchy: enter the selected sheet (or a double click on it), back to the parent (`Alt+Backspace`), jump to a sheet of the Hierarchy panel |
+| `kicad:sch:<symed\|fped>` | Open the Symbol Editor or the Footprint Editor |
 | `kicad:sch:<save\|undo\|redo\|rotate\|mirror-x\|mirror-y\|delete\|properties>` | Edit commands on the selection (keys `Ctrl+S`, `Ctrl+Z`/`Ctrl+Y`, `R`, `X`, `Y`, `Del`, `E`) |
 | `kicad:sch:zoom:<in\|out\|fit\|objects>[:<view>]`, `kicad:sch:<grid\|units\|posture\|auto-annotate>` | View: zoom about the canvas centre (`F1`/`F2` zoom about the pointer, `Home`, `Ctrl+Home`); grid, display units, wire posture and automatic annotation toggles |
 | `kicad:sch:<annotate\|erc\|netlist\|bom>` | Annotate Schematic, Electrical Rules Checker, Export Netlist (KiCad `.net` or SPICE `.cir`) and Generate BOM (`.csv`) dialogs |
 | `kicad:sch:<simulator\|update-pcb\|pcb>` | Open the Simulator; Update PCB from Schematic (raises the PCB Editor with its update dialog); switch to the PCB Editor |
-| `kicad:canvas:pcb:<x0>:<y0>:<zoom>:<w>:<h>` | The board, in micrometres and pixels per millimetre; the same pointer contract as the schematic canvas. The route tool starts on a pad or track, adds 45° corners on clicks and ends on a pad or track of the same net (or with a double click, `End`); `V` while routing drops a via and changes layer |
-| `kicad:pcb:tool:<select\|route\|via\|zone\|line\|rect>` | PCB tools; lines and rectangles are drawn on the active layer (a rectangle on `Edge.Cuts` is the board outline); a zone closes on its first corner or a double click and asks for its net, layer and clearance |
+| `kicad:canvas:pcb:<x0>:<y0>:<zoom>:<w>:<h>` | The board, in micrometres and pixels per millimetre; the same pointer contract as the schematic canvas. The route tool starts on a pad or track, adds 45° corners on clicks and ends on a pad or track of the same net (or with a double click, `End`); `V` while routing drops a via and changes layer. The interactive router walks around pads, tracks, vias and rule areas of other nets with the board's clearance, in 45° segments; in highlight-collisions mode it draws straight 45° postures and rings what they would violate |
+| `kicad:pcb:tool:<select\|route\|via\|zone\|keepout\|line\|rect>` | PCB tools; lines and rectangles are drawn on the active layer (a rectangle on `Edge.Cuts` is the board outline); a zone or rule area (keepout) closes on its first corner or a double click and asks for its net, layer and clearance (`kicad:dlg:keepout` turns a zone into a rule area) |
 | `kicad:pcb:layer:<layer>`, `kicad:pcb:eye:<layer>` | Appearance panel: make a layer active, show or hide it |
-| `kicad:pcb:<save\|undo\|redo\|rotate\|flip\|delete\|width\|grid\|posture\|ratsnest\|fill\|unfill>` | Edit and view commands (keys `R`, `F`, `Del`, `W`, `/`, `B`, `Ctrl+B`, `X` for the router, `PageUp`/`PageDown` for the copper layer) |
+| `kicad:pcb:<save\|undo\|redo\|rotate\|rotate-cw\|rotate45\|properties\|flip\|delete\|width\|grid\|posture\|ratsnest\|fill\|unfill>` | Edit and view commands (keys `R` 90° counter-clockwise, `Shift+R` clockwise, `Ctrl+R` 45°, `E` footprint properties with any angle, `F`, `Del`, `W`, `/`, `B`, `Ctrl+B`, `X` for the router, `PageUp`/`PageDown` for the copper layer) |
+| `kicad:pcb:<router\|3d\|fped>` | Interactive Router Settings (`kicad:dlg:mode:<walkaround\|highlight>`), the 3D Viewer (`Alt+3`), the Footprint Editor |
 | `kicad:pcb:zoom:<in\|out\|fit>[:<view>]`, `kicad:pcb:<update\|drc\|plot\|drill\|setup\|schematic>` | Zoom; Update PCB from Schematic, Design Rules Checker, Plot (Gerber RS-274X or SVG), Generate Drill Files (Excellon), Board Setup (design rules) dialogs; switch to the schematic |
 | `kicad:sim:<run\|settings\|probe\|signals>`, `kicad:sim:cursor:<0\|1>`, `kicad:sim:toggle:<signal>` | Simulator: run, the analysis dialog (operating point, DC sweep, AC, transient), probe (arms the schematic's probe tool: a click on a wire or pin plots its voltage), Add Signals, show/hide a cursor, take a signal off the plot |
 | `kicad:canvas:plot:<x0>:<x1>:<w>:<lin\|log>` | The plot area: a drag moves the nearest cursor along the x axis |
+| `kicad:symed:<new-lib\|new-symbol\|save\|properties\|edit\|rotate\|delete\|delete-symbol\|undo\|redo\|cancel\|finish\|schematic>` | Symbol Editor: New Library (writes `<name>.kicad_sym` and `sym-lib-table`), New Symbol (name, reference, units), save (`Ctrl+S`; placed copies in the schematic follow), Library Symbol Properties (fields, units, simulation model, `Sim.Params`, power, pin name/number visibility), edit the selected pin (`E`), rotate it (`R`), delete (`Del`), undo/redo |
+| `kicad:symed:lib:<name>`, `kicad:symed:open:<Lib:Name>`, `kicad:symed:unit:<n>`, `kicad:symed:tool:<select\|pin\|rect\|circle\|line\|text>`, `kicad:symed:zoom:<in\|out\|fit>[:<view>]` | Library tree, the symbol on the canvas, the unit drawn into, drawing tools (a pin click opens Pin Properties: name, number, length, unit, electrical type `kicad:dlg:kind:<keyword>`, orientation `kicad:dlg:orient:<0\|90\|180\|270>`; rectangles and circles are two clicks; a polyline ends with a double click or `Escape`) |
+| `kicad:canvas:symed:<x0>:<y0>:<zoom>:<w>:<h>` | The symbol, in mils with the library's Y up; the select tool picks and drags pins and graphics, a double click opens a pin's or text's properties (or the symbol's) |
+| `kicad:fped:<new-lib\|new-footprint\|save\|properties\|edit\|rotate\|delete\|delete-footprint\|fit-courtyard\|grid\|undo\|redo\|cancel\|finish\|board>` | Footprint Editor: New Library (`<name>.pretty/`, `fp-lib-table`), New Footprint, save (one `.kicad_mod` per footprint), Footprint Properties (description, body height for the 3D Viewer), edit or quarter-turn the selected pad, fit the courtyard to pads and body |
+| `kicad:fped:lib:<name>`, `kicad:fped:open:<Lib:Name>`, `kicad:fped:tool:<select\|pad\|silk\|fab\|courtyard>`, `kicad:fped:zoom:<in\|out\|fit>[:<view>]` | Library tree, the footprint on the canvas, tools: a pad click opens Pad Properties (number, position, size, drill; `kicad:dlg:smd:<yes\|no>`, `kicad:dlg:shape:<circle\|rect\|oval\|roundrect>`); silkscreen lines chain until a double click; fabrication outline and courtyard are two clicks |
+| `kicad:canvas:fped:<x0>:<y0>:<zoom>:<w>:<h>` | The footprint, in micrometres like the board canvas; the select tool picks and drags pads and silkscreen |
+| `kicad:canvas:3d:<w>:<h>` | The 3D Viewer's image of the board: substrate with its drilled holes, mask, copper, silkscreen and extruded component bodies. A drag orbits (or pans in pan mode); the wheel zooms about the pointer |
+| `kicad:v3d:view:<top\|bottom\|front\|back\|left\|right\|iso>`, `kicad:v3d:zoom:<in\|out\|fit>`, `kicad:v3d:mode:<orbit\|pan>`, `kicad:v3d:orbit:<left\|right\|up\|down>`, `kicad:v3d:toggle:<board\|copper\|mask\|silk\|bodies>` | 3D Viewer: standard views (`Z`, `Shift+Z`, `Y`, `Shift+Y`, `X`, `Shift+X`), zoom (`F1`, `F2`, `Home`), drag mode, 15° turns (arrow keys), Appearance check boxes |
 | `kicad:dlg:<ok\|cancel>` and the dialog's own `kicad:dlg:<command>[:<arg>]`, `kicad:field:<name>` | Dialog buttons, list rows and check boxes; a field click focuses it for `keyboard.v1 type` (`Backspace`, `Enter` for OK, `Escape` to cancel) |
 | `kicad:about` | Help ▸ About KiCad |
 
@@ -300,7 +311,8 @@ and a control that cannot act now is painted disabled with its reason.
 | `video:shuttle:<j\|k\|l>` | J/K/L shuttle (iMovie on the Mac, Kdenlive): L plays forward at 1×, 2×, 4×; J backwards; K stops |
 | `video:ruler:<scroll>` | The timeline ruler, a drag surface: press and drag to scrub. `<scroll>` is the first frame the ruler showed |
 | `video:media:<id>:<ox>:<oy>:<lane>:<scroll>` | A media bin item, a drag surface. A click selects it; dragging it onto a timeline lane and releasing places a clip at that frame (snapping to clip edges and the playhead). `(ox, oy)` is the timeline lanes' origin relative to the item, `<lane>` the lane height. Released just above the top video lane (or below the last audio lane) it makes a new track |
-| `video:clip:<id>:<lane>` | A timeline clip, a drag surface: click to select, drag sideways to move it (either edge snaps), up or down to another track of its kind. A drop onto another clip lands at that clip's nearer edge and pushes what follows (ripple insert) |
+| `video:clip:<id>:<lane>:<scroll>` | A timeline clip, a drag surface: click to select, drag sideways to move it (either edge snaps), up or down to another track of its kind. A drop onto another clip lands at that clip's nearer edge and pushes what follows (ripple insert). `<scroll>` is the first frame the lanes showed |
+| `video:lanes:<scroll>` | The timeline's lanes behind the clips: a click deselects; the wheel over them (and over the ruler and clips) scrolls or zooms the timeline |
 | `video:trim-in:<id>`, `video:trim-out:<id>` | The selected clip's trim handles, drag surfaces: move its in or out point, within the neighbouring clips and the media's length |
 | `video:transition:<id>` | Select a transition (its duration then shows in the inspector) |
 | `video:append:<media>`, `video:overlay:<media>` | Add media to the end of the main track (at the playhead in iMovie and on phones), or over the movie as picture in picture (Android) |
@@ -419,6 +431,12 @@ Calc; a file keeps its own format when saved again. Every control is
 | `insert:<rows\|cols\|sheet>`, `delete:<rows\|cols\|sheet\|chart>`, `colwidth:<col>:<px>`, `autofit`, `freeze:<panes\|row\|col\|none>` | Structure. Inserting or deleting rows and columns rewrites every reference to them |
 | `sort:<asc\|desc>`, `filter`, `filterpick:<col>`, `filtertoggle:<col>:<value>` | Sort the current region by the active column (a text header row stays put); AutoFilter with a value list per column |
 | `chart:<column\|bar\|line\|pie>`, `chartsel:<i>`, `charttype:<kind>` | Charts of the selection (or the data around the active cell) |
+| `merge:<center\|across\|cells\|down>`, `merge!:<mode>`, `unmerge` | Merge & Center, Merge Across (one merge per row), Merge Cells and Sheets' Merge vertically. Merging cells that hold more than the top-left value asks first (`merge!` is the confirmed form) and keeps only that value; a merge is selected, navigated and sorted around as one cell, as Excel does. Center Across Selection is `Align::CenterAcross` |
+| `border:<bottom\|top\|left\|right\|none\|all\|outside\|thickoutside\|inside\|insideh\|insidev\|doublebottom\|thickbottom\|topbottom\|topthickbottom\|topdoublebottom>`, `borderline:<thin\|medium\|thick\|double\|dotted\|dashed\|hair\|mediumDashed\|dashDot\|mediumDashDot\|dashDotDot\|mediumDashDotDot\|slantDashDot>`, `bordercolor:<rrggbb\|auto>`, `drawborder:<border\|grid\|erase\|off>` | Cell borders: Excel's presets in the current line style and colour; Draw Border mode draws on the grid by dragging |
+| `cf:<greater\|less\|between\|equal\|text\|date\|duplicate\|top\|toppct\|bottom\|bottompct\|above\|below\|formula>`, `cf:bar:<rrggbb>`, `cf:scale:<id>`, `cf:icons:<set>`, `cfclear:<selection\|sheet>`, `cfmanage`, `cfrule:<i>`, `cfdelete`, `cfup`, `cfdown`, `cfstop` | Conditional formatting: rule dialogs (Highlight Cells, Top/Bottom, New Rule with a formula), data bars, colour scales, icon sets, and the Rules Manager (select, delete, reorder, Stop If True) |
+| `dialog:<ok\|cancel>`, `dialog:field:<i>`, `dialog:preset:<id>`, `dialog:choice:<id>`, `dialog:<newsheet\|existing>`, `dialog:delim:<tab\|comma\|semicolon\|space>`, `dialog:mergeruns` | The open dialog: typing fills the focused field, `Tab` moves, `Enter` is OK and `Escape` Cancel. A refused OK reports why and keeps the dialog |
+| `pivot:<new\|refresh\|refreshall\|delete\|pane>`, `pivotfield:<k>`, `pivotarea:<k>:<rows\|cols\|values\|filters\|remove>`, `pivotagg:<i>:<sum\|count\|average\|max\|min>`, `pivotfilter:<k>`, `pivothide:<k>:<item>` | Pivot tables from the selection, onto a new or an existing sheet; the field list ticks a field into Rows (text) or Values (numbers), moves it between areas, changes the summary and hides items. Refresh rereads the source; Sheets and Numbers refresh on every change |
+| `calcnow`, `ttc` | Calculate Now (`F9`) and Text to Columns on one column |
 | `menu:<id>`, `ribbon:<tab>`, `inspector[:<pane>]`, `zoom:<in\|out\|reset\|percent>`, `gridlines`, `dismiss`, `noop` | Menus, Excel's ribbon tabs and backstage, Numbers' Format and Organize sidebar, view settings, the message dialog |
 
 **Drag surfaces.** `sheet:grid:<row height>:<scale>` is the cell area and
@@ -426,7 +444,14 @@ Calc; a file keeps its own format when saved again. Every control is
 on the grid selects from the press to the release (the press stays the active cell);
 while a formula is waiting for an argument (`=SUM(`) a drag inserts the range instead. A
 drag from the fill handle fills the selection in the direction dragged furthest,
-continuing number and date series and adjusting relative references. A double click on
+continuing number and date series and adjusting relative references.
+`sheet:chartmove:<i>:<row height>:<scale>` is a chart: pressing selects it and a drag
+moves it, landing on the cells (and offsets into them) under its new corners.
+`sheet:chartsize:<i>:<handle>:<row height>:<scale>` are the eight sizing handles of the
+selected chart, clockwise from the top-left (0) to the left edge (7). In Draw Border
+mode a drag on the grid draws the outline (or grid, or erases) of the cells it spans.
+While a formula is typed its references are coloured in the editor and their cells
+outlined in the same colours. A double click on
 the grid edits the active cell; on a phone a tap selects and a second tap (a double
 click) edits. Keys follow Excel with `Meta` as `Ctrl`: arrows (with `Shift` to extend,
 `Ctrl` to jump to the edge of the data), `Tab`, `Enter`, `F2`, `Delete`, `Backspace`,
@@ -446,10 +471,13 @@ Revert Changes returns to what the file holds. Every control is
 |---|---|
 | `new`, `open`, `openfile:<name>`, `folder:<name\|..>`, `cancel`, `write`, `revert`, `close`, `savechanges`, `discard`, `import`, `exportcsv` | Files. `new` creates `Untitled.db` in the folder at once; `import` makes a table from a CSV file (typed INTEGER, REAL or TEXT by its values); `exportcsv` writes the browsed table as `<table>.csv`; closing with unwritten changes asks first |
 | `tab:<structure\|browse\|pragmas\|execute>`, `menu:<file\|edit\|view\|tools\|tables>`, `dismiss`, `noop` | DB Browser's four tabs and menus; TablePlus's Data and Structure views |
-| `expand:<node>`, `tree:<table:NAME\|index:NAME\|view:NAME>`, `droptable[:<name>]`, `yes`, `no` | The Database Structure tree; Delete Table asks before it drops |
-| `table:<name>`, `cell:<row>:<col>`, `editcell[:<row>:<col>]`, `setnull`, `newrow`, `deleterow`, `sort:<col>`, `filter:<col>`, `clearfilters`, `refresh`, `page:<first\|prev\|next\|last>` | Browse Data. An edited cell is an `UPDATE … WHERE rowid = ?`, so the column's type affinity and the table's constraints decide what is stored (a refused edit is reported). A filter is `LIKE %text%`, or a comparison when it starts with `=`, `<`, `>`, `<=`, `>=`, `<>` or `!=`. Views are read-only |
+| `expand:<node>`, `tree:<table:NAME\|index:NAME\|view:NAME\|trigger:NAME>`, `droptable[:<name>]`, `yes`, `no` | The Database Structure tree (Tables, Indices, Views, Triggers); Delete Table asks before it drops |
+| `table:<name>`, `cell:<row>:<col>`, `editcell[:<row>:<col>]`, `setnull`, `newrow`, `deleterow`, `sort:<col>`, `filter:<col>`, `clearfilters`, `refresh`, `page:<first\|prev\|next\|last>` | Browse Data. An edited cell is an `UPDATE … WHERE rowid = ?` (by primary key in a `WITHOUT ROWID` table, whose rows are shown in key order), so the column's type affinity and the table's constraints decide what is stored (a refused edit is reported). A filter is `LIKE %text%`, or a comparison when it starts with `=`, `<`, `>`, `<=`, `>=`, `<>` or `!=`. Views are read-only |
 | `sql[:start]`, `run`, `runline`, `clearsql`, `results:<up\|down>` | Execute SQL: the editor (typing, `Enter`, arrows), Execute all (`F5`, `Ctrl+Enter`, `Ctrl+R`) and Execute current line (`Shift+F5`); the grid shows the last statement that returned rows and the message pane reports rows, changes or the error with its line |
 | `pragma:foreign_keys`, `pragma:user_version:<up\|down>`, `integrity` | Edit Pragmas and Tools › Integrity Check |
+| `createtable`, `modifytable[:<name>]`, `design:<name\|add\|remove\|top\|up\|down\|bottom\|withoutrowid\|ok\|cancel>`, `design:cell:<field>:<col>`, `design:type:<field>:<INTEGER\|TEXT\|BLOB\|REAL\|NUMERIC>` | DB Browser's Edit Table Definition dialog. Columns are Name, Type, NN, PK, AI, U, Default, Check, Collation, Foreign Key (0–9): a click on a text cell selects it (typing replaces it, a double click edits at the end), on a check box toggles it; `Tab` moves along the text cells and `Enter` leaves the cell, then is OK. OK writes the `CREATE TABLE` DB Browser writes, or for a change `ALTER TABLE` (rename table or column, add or drop column) where SQLite can and otherwise SQLite's twelve-step rebuild (`sqlb_temp_table_N`, copy, drop, rename, indexes, triggers and views back, `foreign_key_check`). A refused change is reported and changes nothing |
+| `createindex[:<table>]`, `index:<name\|unique\|ok\|cancel>`, `index:table:<name>`, `index:col:<column>`, `index:order:<i>` | Edit Index Definition: name, table, Unique, the index columns (a click adds or removes one) and each one's ASC/DESC. The partial index clause is painted disabled: the engine has no partial indexes |
+| `struct:cell:<row>:<col>`, `struct:addcol`, `struct:delcol`, `struct:dropindex:<name>` | TablePlus's Structure view: column_name, data_type, is_nullable, column_default, primary_key, foreign_key (0–5) are edited in place and staged; Commit (`Cmd+S`) applies them as above and writes the file, Discard drops them |
 
 A double click on a grid cell edits it; `Enter` or `Tab` commits, `Escape` cancels,
 `Delete` sets NULL. The shell's `sqlite3` works on the same files.
@@ -478,8 +506,11 @@ a themed desktop; `Alt+Tab` cycles windows.
 | `cancel` | same | `null` |
 | `wheel` | same, plus `{"delta_y": i64, "delta_x"?: i64, "modifiers"?: ["Shift"\|"Ctrl"\|"Meta"]}` in pixels (positive `delta_y` rolls towards the user and moves content up; 120 is one notch) | `{"handled": bool}`: whether anything under the pointer moved |
 
-`x`/`y` are clamped to ±32768; `width`/`height` default to 1024×768 and are capped
-at 8192. Coordinates are in the same viewport you pass to `scene(width, height)` —
+`x`/`y` are clamped to ±32768; `width`/`height` default to the machine's screen as the
+actor last addressed it (the last `width`/`height` a pointer action stated), or before
+any to the shell's native screen (390×844 on iOS, 412×915 on Android, 1280×800 on a
+desktop), and are capped at 8192. That same last-addressed size, with its orientation,
+is what a screenshot (`shell:screenshot`, Recents' Screenshot) captures. Coordinates are in the same viewport you pass to `scene(width, height)` —
 hit testing runs against that scene, so the actor aims using only what it can see.
 `cursor` is one of `default`, `pointer`, `text`, `grab`, `grabbing`, `crosshair` (an
 image editor's canvas), `ns-resize`, `ew-resize`, `nesw-resize`, `nwse-resize`.
@@ -495,7 +526,14 @@ Behaviour worth knowing:
   terminal (whole rows), spreadsheets (three rows a notch, Shift for columns, Ctrl
   zooms), SQLite grids (rows), KiCad canvases (zoom about the pointer; Shift pans up and
   down, Ctrl left and right, as KiCad's defaults), image editors' canvas (scroll, Shift
-  across, Ctrl zooms about the pointer), FreeCAD's 3D view (zoom), terminals (lines).
+  across, Ctrl zooms about the pointer), FreeCAD's 3D view (zoom), terminals (lines),
+  and the video editors' timelines (`video:lanes`, `video:ruler`, `video:clip`: the
+  wheel scrolls through time, Shift or a sideways wheel too, and Ctrl/Cmd zooms about
+  the frame under the pointer; a view put somewhere by hand stays there until the
+  playhead moves or plays). A plain-text editor's rows are the `pane:text` area: the
+  view scrolls by whole rows independently of the caret, and an edit or caret move
+  brings the caret back into view; `editor-text:<first row>` always names the row
+  painted first. A video editor's media bin is the `pane:bin` area.
   The browser's page is the `pane:page` area; its offset is `browser.v1 scroll`'s `y`.
   Offsets are window state (`Window::scroll`) and survive snapshots.
 - **Some panes scroll sideways.** A shelf of album covers (Apple Music's and YouTube
@@ -508,11 +546,24 @@ Behaviour worth knowing:
   (`hpane:…`, along the bottom edge, for one that scrolls sideways):
   dragging the thumb scrolls, a press on the track jumps the thumb there, and a named
   click without a point pages forward. Phones paint no bar at rest, as they do not.
-- **Phones scroll under the finger.** A `down`/`up` that moves more than 12 px mostly
-  vertically, starts inside an application and is no shell gesture (not from the status
-  bar, the home indicator or the navigation bar) scrolls the pane it started on by the
-  distance moved, and taps nothing. A mostly sideways one moves a shelf that scrolls
-  sideways under it the same way.
+- **Phones scroll under the finger.** A touch that moves more than 12 px mostly
+  vertically, starts inside the application in front and is no shell gesture (not from
+  the status bar, the home indicator or the navigation bar) takes the pane it started
+  on and taps nothing. Every `move` then scrolls it so the content stays under the
+  finger (an application's own wheel use, a grid or a scrollback, moves a row at a
+  time); pulled past an end, the content follows with iOS's rubber-band resistance
+  (`Scroll::stretch`) and springs back on release. On `up` the pane flings on: the
+  velocity is the last two finger samples over the world-clock time between them (a
+  60 Hz frame when the clock did not move), and the distance is the platform's
+  deceleration (iOS 0.998/ms; Android's OverScroller spline), stopping at an end. A
+  finger that rested 40 ms of world clock before lifting does not fling. A `down`/`up`
+  with no `move` between scrolls by exactly the distance moved. A mostly sideways touch
+  moves a shelf that scrolls sideways under it the same way.
+- **A phone's Back is the application's first.** Android's Back button (`shell:mobile-back`)
+  and iOS's navigation-bar chevron go to the application's parent screen before leaving
+  it: Mail's message to its mailbox, a mailbox (iOS) to Mailboxes, Gmail's drawer
+  closed, a conversation to the Messages list, a note or document to its list, a
+  contact to Contacts.
 - **Text focus is one answer.** A native application reports the text field that has
   the focus (`focus.keyboard.target`, role `textbox`); a phone paints its keyboard
   exactly when there is one, and on a phone `keyboard.v1 type` with none reaches

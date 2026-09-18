@@ -215,9 +215,8 @@ nothing it opens `~/project` when the machine has one and the Welcome page other
   (`~/.config/Code/User`, `~/Library/Application Support/Code/User`,
   `~/AppData/Roaming/Code/User`) and are read back at launch.
 
-Not implemented, and so not drawn: extensions, the debugger (Run executes without
-one), the Accounts menu, and italic preview tabs (the renderer has no italic face yet,
-so a preview tab is dimmed instead).
+Not implemented, and so not drawn: extensions, the debugger (Run executes without one)
+and the Accounts menu.
 
 Launchers, search, task switching and platform panels expose semantic hit regions.
 Mobile profiles implement Home, recent apps and supported vertical swipes for

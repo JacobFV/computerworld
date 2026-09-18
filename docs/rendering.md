@@ -19,8 +19,13 @@ in scene coordinates.
 
 The scene supplies deterministic flow layout. Text measurement is per-primitive:
 `UiText`/`UiTextBold` are measured proportionally from the generated advance tables
-in `cw-scene::metrics`, with word wrapping and ellipsizing; the legacy `Text`
-primitive keeps fixed-cell measurement and its golden pixels.
+in `cw-scene::metrics`, with word wrapping and ellipsizing; the `Text` primitive
+(terminals, editors) keeps fixed-cell measurement and its golden pixels for plain
+rows. `UiText`/`UiTextBold` take two optional fields, omitted from scene JSON when
+unset so existing scenes serialize unchanged: `italic` (bool) and `lang` (`"zh-Hans"`,
+`"zh-Hant"`, `"ja"`, `"ko"`), which picks regional Han forms. `cw_scene::Style`
+(bold, italic, lang) is what the metrics functions take; a plain `bool` still means
+bold.
 Hit testing uses transformed coordinates, clipping, disabled state and z-order;
 later nodes win equal-z ties. It operates without generating pixels.
 
@@ -28,14 +33,16 @@ later nodes win equal-z ties. It operates without generating pixels.
 revision and produces damaged rectangles. Invalid revision/duplicate-ID updates
 are rejected atomically. The rasterizer can use damage to update the existing
 frame; compare full and incremental output in tests when adding primitives.
-Nineteen font files are embedded, not one: DejaVu Sans, DejaVu Sans Bold and
-DejaVu Sans Mono, regular and bold Inter, Open Sans, Roboto and Ubuntu for the
-per-platform shells, and regular and bold Noto Sans Hebrew, Arabic, Thai and
-Devanagari. Noto Sans SC (Han and kana), Noto Sans KR (Hangul) and Noto Emoji form a
-CJK/emoji *font pack* that native builds embed and the Wasm build fetches on demand.
-They ship under three licenses (DejaVu, SIL OFL 1.1 and the Ubuntu Font Licence
-1.0); all notices are in [`crates/render/assets`](../crates/render/assets), which is
-the authoritative list and documents the fallback chain and the pack.
+Thirty-five font files are embedded, not one: DejaVu Sans, Sans Bold, Sans Oblique,
+Sans Bold Oblique and Sans Mono; regular, bold, italic and bold italic Inter, Open
+Sans, Roboto and Ubuntu for the per-platform shells; and regular and bold Noto Sans
+Hebrew, Arabic, Thai, Devanagari, Bengali, Georgian and Armenian. The CJK faces (Noto
+Sans SC and KR in two weights, and Traditional Chinese, Japanese and Korean locale
+forms), Noto Emoji, Noto Color Emoji and eight further scripts form a *font pack* that
+native builds embed and the Wasm build fetches on demand. They ship under three
+licenses (DejaVu, SIL OFL 1.1 and the Ubuntu Font Licence 1.0); all notices are in
+[`crates/render/assets`](../crates/render/assets), which is the authoritative list and
+documents the fallback chain, italics, colour emoji, locale forms and the pack.
 
 `UiText` is laid out by `cw_scene::text`: a deterministic fallback chain, Unicode
 bidirectional reordering (right-to-left paragraphs and mixed runs), OpenType shaping
@@ -44,8 +51,13 @@ and Hebrew mark attachment, emoji ZWJ/flag/keycap/skin-tone ligatures) and line
 breaking between CJK characters with kinsoku. Scene metrics and the renderer share
 that one layout, so measured widths, wraps and ellipses are exactly what is drawn.
 
+Emoji draw in colour from Noto Color Emoji's COLRv1 tables, painted by the
+renderer's own deterministic COLR rasterizer (gradients, clip boxes, transforms and
+composite modes), identically natively and in Wasm; the monochrome glyphs remain the
+fallback while the colour file is absent.
+
 This is a deliberately smaller layout and text system than a web browser. It does
-not claim complete CSS, vertical or justified text, per-language glyph selection,
+not claim complete CSS, vertical or justified text, synthetic italics,
 arbitrary DOM execution or browser compositor compatibility. Native pages should be designed for this
 contract. A real-browser adapter would be an optional compatibility backend and
 must not become the state model for ordinary synthetic services.
@@ -61,9 +73,11 @@ aspect-preserving crop with bilinear filtering. Polygon paths support fills and
 strokes, antialiased. `fontdue` is pinned and uses the bundled fonts.
 Glyph/text-mask caches are bounded. The checked raster API rejects frames above
 16,777,216 pixels. Text wraps and ellipsizes on measured advances for `UiText`, on
-fixed cells for `Text`, with fallback for unavailable glyphs. `Text` (the terminal
-face) falls back to the same faces glyph by glyph but is not shaped or reordered,
-and draws a wide CJK or emoji glyph scaled down into its single cell.
+fixed cells for `Text`, with fallback for unavailable glyphs. `Text` lays out as a
+terminal does (`cw_scene::text::terminal`): grapheme clusters in cells, combining
+marks in their base's cell, East Asian wide characters and emoji across two cells,
+right-to-left runs reordered within each row (VTE's implicit bidi mode) and script
+runs shaped, so Arabic joins cell by cell.
 
 ## OS desktop scenes
 

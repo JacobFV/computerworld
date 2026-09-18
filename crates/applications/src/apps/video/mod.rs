@@ -408,6 +408,11 @@ pub struct Editor {
     /// Last export settings, so the sheet reopens on them.
     pub export_size: (u32, u32),
     pub export_fps: u32,
+    /// The timeline was scrolled or zoomed by hand while the playhead rested at this
+    /// frame: it stays where it was put instead of following the playhead, until the
+    /// playhead moves or plays (every editor's timeline follows a playing playhead).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view: Option<i64>,
 }
 
 fn parse<T: std::str::FromStr>(s: &str, what: &str) -> Result<T, String> {
@@ -468,6 +473,7 @@ impl Editor {
             reading: vec![],
             export_size: (320, 180),
             export_fps: 24,
+            view: None,
         };
         let argument = argument.trim();
         let mut effects = vec![];
@@ -626,6 +632,72 @@ impl Editor {
                 .map(|t| t.id),
         );
         v
+    }
+    /// A wheel turn over the timeline, at `x` from the left of `target`. Ctrl (Cmd on a
+    /// Mac) zooms about the frame under the pointer, as Clipchamp's, iMovie's and
+    /// Kdenlive's timelines do; otherwise the wheel scrolls through time, a vertical
+    /// wheel as well as a sideways one (or Shift), since the timeline runs sideways.
+    /// A phone's finger dragging along empty lanes arrives here too. `false` when the
+    /// pointer is not over the timeline or the view could not move.
+    pub fn timeline_wheel(
+        &mut self,
+        target: &str,
+        x: i32,
+        wheel: crate::Wheel,
+    ) -> Result<bool, String> {
+        let Some(rest) = target
+            .strip_prefix(PREFIX)
+            .and_then(|t| t.strip_prefix(':'))
+        else {
+            return Ok(false);
+        };
+        let parts: Vec<&str> = rest.split(':').collect();
+        // The first frame the lanes showed as painted, and the pointer's distance in
+        // pixels from the lanes' left edge.
+        let (scroll, at) = match parts.as_slice() {
+            ["ruler", scroll] | ["lanes", scroll] => {
+                (parse::<i64>(scroll, "scroll")?, i64::from(x))
+            }
+            ["clip", id, _lane, scroll] => {
+                let scroll = parse::<i64>(scroll, "scroll")?;
+                let clip = self
+                    .project
+                    .clip(parse(id, "clip")?)
+                    .ok_or("no such clip")?;
+                (scroll, self.pixels(clip.start - scroll) + i64::from(x))
+            }
+            _ => return Ok(false),
+        };
+        let end = self.project.duration().max(0);
+        let before = (self.zoom, scroll);
+        if wheel.ctrl {
+            // Away from the user zooms in, a quarter per notch.
+            let notches = crate::wheel_steps(-wheel.dy, 120);
+            let frame = scroll + self.frames(at);
+            let mut zoom = i64::from(self.zoom);
+            for _ in 0..notches.unsigned_abs().min(32) {
+                zoom = if notches > 0 {
+                    (zoom * 5 / 4).max(zoom + 1)
+                } else {
+                    zoom * 4 / 5
+                }
+                .clamp(i64::from(ZOOM_MIN), i64::from(ZOOM_MAX));
+            }
+            self.zoom = zoom as u32;
+            self.scroll = (frame - self.frames(at)).clamp(0, end);
+        } else {
+            let turn = match wheel.horizontal() {
+                0 => wheel.dy,
+                sideways => sideways,
+            };
+            self.scroll = (scroll + self.frames(i64::from(turn))).clamp(0, end);
+        }
+        if (self.zoom, self.scroll) == before {
+            return Ok(false);
+        }
+        // A resting playhead no longer pulls the view back to it.
+        self.view = self.play.is_none().then_some(self.playhead);
+        Ok(true)
     }
     /// Frames per `px` pixels at the current zoom.
     pub fn frames(&self, px: i64) -> i64 {
@@ -1295,7 +1367,8 @@ impl Editor {
                 let id = self.selected.ok_or("no clip is selected")?;
                 self.edit(|p, _| p.ripple_delete(id))?;
             }
-            "deselect" => {
+            // A click on the timeline's empty lanes deselects, in every editor.
+            "deselect" | "lanes" => {
                 self.selected = None;
                 self.selected_transition = None;
                 self.field = Field::None;

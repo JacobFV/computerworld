@@ -39,6 +39,44 @@ pub struct MachineSession {
     /// Press identity remains stable even if focusing changes the taskbar action.
     #[serde(default)]
     pub pointer_press: Option<(String, cw_scene::Rect)>,
+    /// A finger dragging a list on a phone: it follows the finger move by move, and
+    /// flings on release.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub touch_scroll: Option<TouchScroll>,
+    /// The screen size the actor last addressed this machine at (the `width` and
+    /// `height` its pointer actions state), which is the screen a screenshot captures.
+    /// Recorded from actions, never from observations, so it replays exactly.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub viewport: Option<(u32, u32)>,
+    /// Something scrolled during the action being dispatched, so its effect reports
+    /// `scroll` even where the view that moved is an application's own (a grid's rows).
+    /// Cleared before each action; never part of the state.
+    #[serde(skip)]
+    pub scrolled: bool,
+}
+/// A list under a finger. The pane it took (or the application's own wheel use when
+/// no pane can move there), where the finger and the list were when it took it, and
+/// the last two finger samples with the world clock at each, from which the release
+/// velocity is measured.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TouchScroll {
+    pub window: u64,
+    /// `None`: no published pane moves here, so the application's own wheel use
+    /// (a grid by rows, a terminal's scrollback) is driven instead.
+    pub pane: Option<String>,
+    /// Where the drag started, which is where the application's wheel is aimed.
+    pub at: (i32, i32),
+    /// The pane's offset, and the finger's y, when the drag took it.
+    pub origin: i32,
+    pub anchor: i32,
+    /// The pane's furthest offset and viewport height when it was taken.
+    pub max: i32,
+    pub height: u32,
+    /// The finger's y already handed to the application's wheel.
+    pub applied: i32,
+    /// The latest finger sample and the one before it: (y, world clock in µs).
+    pub last: (i32, u64),
+    pub prev: Option<(i32, u64)>,
 }
 impl Default for MachineSession {
     fn default() -> Self {
@@ -57,6 +95,9 @@ impl Default for MachineSession {
             touch_start: None,
             pointer_position: None,
             pointer_press: None,
+            touch_scroll: None,
+            viewport: None,
+            scrolled: false,
         }
     }
 }
@@ -375,6 +416,9 @@ impl Environment {
             // bracket the dispatch with an actor-visible projection of the target.
             let permitted = config.machines.contains(&action.machine)
                 && config.actions.contains(&action.family);
+            if let Ok(m) = self.machine_mut(id, &action.machine) {
+                m.scrolled = false;
+            }
             let before = permitted
                 .then(|| {
                     self.session(id)
@@ -1061,16 +1105,7 @@ impl Environment {
                         .clamp(-32768, 32768) as i32)
                 };
                 let (x, y) = (coord("x")?, coord("y")?);
-                let width = p
-                    .get("width")
-                    .and_then(integer_u64)
-                    .unwrap_or(1024)
-                    .min(8192) as u32;
-                let height = p
-                    .get("height")
-                    .and_then(integer_u64)
-                    .unwrap_or(768)
-                    .min(8192) as u32;
+                let (width, height) = self.pointer_size(id, machine, p)?;
                 let delta = |k: &str| {
                     p.get(k)
                         .and_then(integer_i64)
@@ -1093,6 +1128,7 @@ impl Environment {
                     ctrl: held("ctrl") || held("control") || held("meta"),
                 };
                 self.machine_mut(id, machine)?.pointer_position = Some((x, y));
+                self.record_viewport(id, machine, p, (width, height))?;
                 let handled = self.scroll_at(id, machine, (x, y), (width, height), wheel)?;
                 Ok(json!({"handled": handled}))
             }
@@ -1107,17 +1143,9 @@ impl Environment {
                     .and_then(integer_i64)
                     .ok_or_else(|| SimError::invalid("y required"))?
                     .clamp(-32768, 32768) as i32;
-                let width = p
-                    .get("width")
-                    .and_then(integer_u64)
-                    .unwrap_or(1024)
-                    .min(8192) as u32;
-                let height = p
-                    .get("height")
-                    .and_then(integer_u64)
-                    .unwrap_or(768)
-                    .min(8192) as u32;
+                let (width, height) = self.pointer_size(id, machine, p)?;
                 self.machine_mut(id, machine)?.pointer_position = Some((x, y));
+                self.record_viewport(id, machine, p, (width, height))?;
                 // Keys held with the pointer (`["ctrl"]`, `["alt"]`…): an image editor's
                 // Ctrl- or Option-click sets a clone source.
                 let modifiers = match p.get("modifiers") {
@@ -1147,9 +1175,11 @@ impl Environment {
                 let mobile = matches!(theme, Some(DesktopTheme::Ios | DesktopTheme::Android));
                 if mobile && action.op == "down" {
                     self.machine_mut(id, machine)?.touch_start = Some((x, y));
+                    self.end_touch_scroll(id, machine)?;
                 }
                 if action.op == "cancel" {
                     self.machine_mut(id, machine)?.touch_start = None;
+                    self.end_touch_scroll(id, machine)?;
                 }
                 // A drag surface inside an application (a canvas, a slider) holds the
                 // pointer from press to release: moves and the release go to it before
@@ -1177,6 +1207,24 @@ impl Environment {
                         } else {
                             Value::Null
                         });
+                    }
+                }
+                // A finger that has taken a list moves it with every sample, and on
+                // release lets it fling; neither is a tap or a shell gesture.
+                if let (true, Some(theme)) = (mobile, theme) {
+                    if action.op == "move" {
+                        if let Some(value) =
+                            self.touch_scroll_move(id, machine, (x, y), (width, height), theme)?
+                        {
+                            return Ok(value);
+                        }
+                    }
+                    if action.op == "up"
+                        && self.session(id)?.machines[machine].touch_scroll.is_some()
+                    {
+                        self.machine_mut(id, machine)?.touch_start = None;
+                        self.touch_scroll_release(id, machine, y, (width, height), theme)?;
+                        return Ok(Value::Null);
                     }
                 }
                 if mobile && action.op == "up" {
@@ -1619,6 +1667,20 @@ impl Environment {
         &mut self,
         id: &str,
         machine: &str,
+        at: (i32, i32),
+        size: (u32, u32),
+        wheel: cw_applications::Wheel,
+    ) -> Result<bool> {
+        let moved = self.scroll_under(id, machine, at, size, wheel)?;
+        if moved {
+            self.machine_mut(id, machine)?.scrolled = true;
+        }
+        Ok(moved)
+    }
+    fn scroll_under(
+        &mut self,
+        id: &str,
+        machine: &str,
         (x, y): (i32, i32),
         (width, height): (u32, u32),
         wheel: cw_applications::Wheel,
@@ -1662,14 +1724,6 @@ impl Environment {
         if wheel.dy == 0 && wheel.dx == 0 {
             return Ok(false);
         }
-        let browser = matches!(
-            self.session(id)?.machines[machine]
-                .desktop
-                .windows
-                .get(&window)
-                .map(|w| &w.state),
-            Some(AppState::Browser { .. })
-        );
         for area in scene.scrolls_at(Some(window), x, y) {
             // A sideways pane takes the wheel's x, or its y with Shift held, as every
             // desktop does; an upright one takes y, and ignores a Shift-turn.
@@ -1693,28 +1747,7 @@ impl Environment {
             else {
                 continue;
             };
-            let m = self.machine_mut(id, machine)?;
-            if browser && (pane == "page" || pane.starts_with("row:")) {
-                let tab = if m.active_browser_window == Some(window) {
-                    m.browser.tab_mut()
-                } else if let Some(state) = m.browser_windows.get_mut(&window) {
-                    state.tab_mut()
-                } else {
-                    m.browser.tab_mut()
-                };
-                match pane.strip_prefix("row:") {
-                    // A shelf on the page that scrolls sideways.
-                    Some(row) => {
-                        tab.scroll_x.insert(row.to_owned(), next);
-                    }
-                    None => tab.scroll_y = next,
-                }
-                return Ok(true);
-            }
-            return m
-                .desktop
-                .scroll_pane(window, &pane, next)
-                .map_err(SimError::invalid);
+            return self.set_pane_offset(id, machine, window, &pane, next);
         }
         Ok(false)
     }
@@ -1758,6 +1791,350 @@ impl Environment {
                 Some(actor),
                 json!({"session": id, "error": message}),
             );
+        }
+    }
+    /// Scroll pane `pane` of window `window` to `offset`: a browser's page scrolls its
+    /// tab, every other pane is the window's own. Returns whether the view moved.
+    fn set_pane_offset(
+        &mut self,
+        id: &str,
+        machine: &str,
+        window: u64,
+        pane: &str,
+        offset: i32,
+    ) -> Result<bool> {
+        let m = self.machine_mut(id, machine)?;
+        let browser = matches!(
+            m.desktop.windows.get(&window).map(|w| &w.state),
+            Some(AppState::Browser { .. })
+        );
+        if browser && (pane == "page" || pane.starts_with("row:")) {
+            let tab = if m.active_browser_window == Some(window) {
+                m.browser.tab_mut()
+            } else if let Some(state) = m.browser_windows.get_mut(&window) {
+                state.tab_mut()
+            } else {
+                m.browser.tab_mut()
+            };
+            let moved = match pane.strip_prefix("row:") {
+                // A shelf on the page that scrolls sideways.
+                Some(row) => tab.scroll_x.insert(row.to_owned(), offset) != Some(offset),
+                None => {
+                    let moved = tab.scroll_y != offset;
+                    tab.scroll_y = offset;
+                    moved
+                }
+            };
+            m.scrolled |= moved;
+            return Ok(moved);
+        }
+        let moved = m
+            .desktop
+            .scroll_pane(window, pane, offset)
+            .map_err(SimError::invalid)?;
+        m.scrolled |= moved;
+        Ok(moved)
+    }
+    /// Pull `window`'s pane past an end by `stretch` pixels (0 lets it go).
+    fn set_stretch(&mut self, id: &str, machine: &str, window: u64, pane: &str, stretch: i32) {
+        if let Ok(m) = self.machine_mut(id, machine) {
+            if let Some(w) = m.desktop.windows.get_mut(&window) {
+                w.scroll.stretch = (stretch != 0).then(|| (pane.to_owned(), stretch));
+            }
+        }
+    }
+    /// The screen a pointer action addresses: the `width` and `height` it states,
+    /// each falling back to the machine's screen as last addressed (or its native one).
+    fn pointer_size(&self, id: &str, machine: &str, p: &Value) -> Result<(u32, u32)> {
+        let screen = self.screen_size(id, machine)?;
+        let side = |key: &str, fallback: u32| {
+            p.get(key)
+                .and_then(integer_u64)
+                .unwrap_or(u64::from(fallback))
+                .min(8192) as u32
+        };
+        Ok((side("width", screen.0), side("height", screen.1)))
+    }
+    /// Remember the screen size a pointer action addressed the machine at, when it
+    /// stated one.
+    fn record_viewport(
+        &mut self,
+        id: &str,
+        machine: &str,
+        payload: &Value,
+        size: (u32, u32),
+    ) -> Result<()> {
+        if payload.get("width").is_some()
+            && payload.get("height").is_some()
+            && size.0 > 0
+            && size.1 > 0
+        {
+            self.machine_mut(id, machine)?.viewport = Some(size);
+        }
+        Ok(())
+    }
+    /// The screen of `machine` as the actor last addressed it, or the shell's native
+    /// screen (portrait on a phone) before any action has said: what a screenshot of it
+    /// captures, at its real size and orientation.
+    fn screen_size(&self, id: &str, machine: &str) -> Result<(u32, u32)> {
+        let recorded = self
+            .session(id)?
+            .machines
+            .get(machine)
+            .and_then(|m| m.viewport);
+        Ok(recorded.unwrap_or_else(|| {
+            self.desktop_theme(id, machine)
+                .unwrap_or(DesktopTheme::Ubuntu)
+                .native_screen()
+        }))
+    }
+    /// A finger that stops touching lets go of any list it held: a rubber band springs
+    /// back.
+    fn end_touch_scroll(&mut self, id: &str, machine: &str) -> Result<()> {
+        if let Some(drag) = self.machine_mut(id, machine)?.touch_scroll.take() {
+            if let Some(pane) = &drag.pane {
+                self.set_stretch(id, machine, drag.window, pane, 0);
+            }
+        }
+        Ok(())
+    }
+    /// A finger moving on a phone. Once it has travelled past the slop, mostly
+    /// vertically, from somewhere no shell gesture starts, inside the application in
+    /// front, it takes the list under it; from then on every move scrolls that list so
+    /// the content stays under the finger, pulling past an end with the rubber band.
+    /// `None` when the move is not a list's.
+    fn touch_scroll_move(
+        &mut self,
+        id: &str,
+        machine: &str,
+        (x, y): (i32, i32),
+        size: (u32, u32),
+        theme: DesktopTheme,
+    ) -> Result<Option<Value>> {
+        let tick = self.runtime.tick();
+        let m = &self.session(id)?.machines[machine];
+        if let Some(mut drag) = m.touch_scroll.clone() {
+            drag.prev = Some(drag.last);
+            drag.last = (y, tick);
+            self.touch_scroll_to(id, machine, &mut drag, y, size)?;
+            self.machine_mut(id, machine)?.touch_scroll = Some(drag);
+            return Ok(Some(json!({"cursor": "default"})));
+        }
+        let Some(start) = m.touch_start else {
+            return Ok(None);
+        };
+        let (dx, dy) = (x - start.0, y - start.1);
+        if dy.abs() <= SWIPE_SLOP || dy.abs() < dx.abs() {
+            return Ok(None);
+        }
+        let d = &m.desktop;
+        if d.screen != cw_applications::ScreenState::Active
+            || d.panel.is_some()
+            || d.launcher_open
+            || m.active_app.is_some()
+        {
+            return Ok(None);
+        }
+        let Some(focused) = d.focused else {
+            return Ok(None);
+        };
+        // Where the platform's own gestures start: the status bar and the home
+        // indicator on iOS, the status bar and the navigation bar on Android.
+        let h = size.1 as i32;
+        let edge = match theme {
+            DesktopTheme::Ios => start.1 < 50 || start.1 > h - 60,
+            _ => start.1 < 40 || start.1 >= h - cw_applications::desktop_scene::ANDROID_NAV_BAR,
+        };
+        if edge
+            || self
+                .touch_gesture(id, machine, theme, start, (x, y), size, None)?
+                .is_some()
+        {
+            return Ok(None);
+        }
+        if !self
+            .session(id)?
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "application.v1")
+        {
+            return Ok(None);
+        }
+        let scene = self.scene(id, size.0, size.1)?;
+        let window = scene
+            .hit_test(start.0, start.1)
+            .and_then(|n| n.interaction.as_deref())
+            .and_then(|t| t.strip_prefix("window:"))
+            .and_then(|t| t.split_once(':'))
+            .and_then(|(w, _)| w.parse::<u64>().ok());
+        if window != Some(focused) {
+            return Ok(None);
+        }
+        // The innermost pane that can scroll at all takes the finger, even at an end:
+        // pulled further, it stretches.
+        let areas = scene.scrolls_at(Some(focused), start.0, start.1);
+        // A list that refreshes by pulling bounces even when it is short, as iOS's and
+        // Android's refreshable lists do.
+        let refreshes = matches!(
+            m.desktop.windows.get(&focused).map(|w| &w.state),
+            Some(AppState::Native(app)) if app.pull_to_refresh().is_some()
+        );
+        let area = areas
+            .iter()
+            .copied()
+            .find(|a| a.max_offset() > 0)
+            .or_else(|| {
+                areas
+                    .iter()
+                    .copied()
+                    .find(|a| refreshes && a.target.ends_with(":content:pane:main"))
+            });
+        let pane = area.and_then(|a| {
+            a.target
+                .split_once(":content:pane:")
+                .map(|(_, pane)| pane.to_owned())
+        });
+        let mut drag = TouchScroll {
+            window: focused,
+            pane: pane.clone(),
+            at: start,
+            origin: area.filter(|_| pane.is_some()).map_or(0, |a| a.offset),
+            anchor: start.1,
+            max: area.map_or(0, |a| a.max_offset()),
+            height: area.map_or(size.1, |a| a.bounds.height),
+            applied: start.1,
+            last: (y, tick),
+            // The finger came down at the start; with the world clock unmoved since,
+            // that sample is a frame before this one.
+            prev: Some((start.1, tick)),
+        };
+        // The press was not a tap on whatever the finger came down on.
+        self.machine_mut(id, machine)?.pointer_press = None;
+        self.touch_scroll_to(id, machine, &mut drag, y, size)?;
+        self.machine_mut(id, machine)?.touch_scroll = Some(drag);
+        Ok(Some(json!({"cursor": "default"})))
+    }
+    /// Move the list a finger holds so the content is under the finger at `y`.
+    fn touch_scroll_to(
+        &mut self,
+        id: &str,
+        machine: &str,
+        drag: &mut TouchScroll,
+        y: i32,
+        size: (u32, u32),
+    ) -> Result<bool> {
+        match drag.pane.clone() {
+            Some(pane) => {
+                let raw = drag.origin + (drag.anchor - y);
+                let offset = raw.clamp(0, drag.max.max(0));
+                // Past an end the content still follows, but resists: pulled down at the
+                // top it comes down after the finger; pushed up at the end, it goes up.
+                let stretch =
+                    -cw_applications::desktop_scene::scroll::rubber_band(raw - offset, drag.height);
+                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset)?;
+                self.set_stretch(id, machine, drag.window, &pane, stretch);
+                Ok(moved)
+            }
+            None => {
+                // An application's own use of the wheel moves in its own steps (rows,
+                // lines), so it is handed the finger's travel a step's worth at a time.
+                let delta = drag.applied - y;
+                if delta.abs() < TOUCH_STEP {
+                    return Ok(false);
+                }
+                drag.applied = y;
+                self.scroll_at(
+                    id,
+                    machine,
+                    drag.at,
+                    size,
+                    cw_applications::Wheel::vertical(delta),
+                )
+            }
+        }
+    }
+    /// The finger holding a list lifts at `y`. The list lands under it, then keeps
+    /// going as far as the platform's deceleration carries the finger's last velocity
+    /// (measured from the last two samples and the world clock between them), stopping
+    /// at an end; a rubber band springs back. A finger that rested before lifting does
+    /// not fling. Returns whether the list moved.
+    fn touch_scroll_release(
+        &mut self,
+        id: &str,
+        machine: &str,
+        y: i32,
+        size: (u32, u32),
+        theme: DesktopTheme,
+    ) -> Result<bool> {
+        let tick = self.runtime.tick();
+        let Some(mut drag) = self.machine_mut(id, machine)?.touch_scroll.take() else {
+            return Ok(false);
+        };
+        if y != drag.last.0 {
+            drag.prev = Some(drag.last);
+            drag.last = (y, tick);
+        }
+        let velocity = match drag.prev {
+            _ if tick.saturating_sub(drag.last.1) > FINGER_STOPPED_US => 0,
+            Some(prev) => {
+                let elapsed = drag.last.1.saturating_sub(prev.1).max(FRAME_US);
+                i64::from(drag.last.0 - prev.0) * 1_000_000 / elapsed as i64
+            }
+            None => 0,
+        };
+        // The content follows the finger, so a finger flung upwards carries the list
+        // further down it.
+        let fling = cw_applications::desktop_scene::scroll::fling_distance(
+            theme == DesktopTheme::Android,
+            velocity,
+        );
+        match drag.pane.clone() {
+            Some(pane) => {
+                // Pulled far enough down past the top of a phone screen's list, the
+                // release refreshes it, as iOS's refresh control and Android's
+                // swipe-to-refresh do.
+                let pulled = cw_applications::desktop_scene::scroll::rubber_band(
+                    -(drag.origin + (drag.anchor - y)),
+                    drag.height,
+                );
+                let refresh = (pane == "main" && pulled >= PULL_TO_REFRESH)
+                    .then(|| {
+                        let m = self.session(id).ok()?.machines.get(machine)?;
+                        match &m.desktop.windows.get(&drag.window)?.state {
+                            AppState::Native(app) => app.pull_to_refresh(),
+                            _ => None,
+                        }
+                    })
+                    .flatten();
+                let raw = drag.origin + (drag.anchor - y) - fling;
+                let offset = raw.clamp(0, drag.max.max(0));
+                self.set_stretch(id, machine, drag.window, &pane, 0);
+                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset)?;
+                if let Some(target) = refresh {
+                    let actor = self.session(id)?.config.actor.clone();
+                    let effects = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .click(target)
+                        .map_err(SimError::invalid)?;
+                    self.effects(id, machine, &actor, effects)?;
+                }
+                Ok(moved)
+            }
+            None => {
+                let delta = drag.applied - y - fling;
+                if delta == 0 {
+                    return Ok(false);
+                }
+                self.scroll_at(
+                    id,
+                    machine,
+                    drag.at,
+                    size,
+                    cw_applications::Wheel::vertical(delta),
+                )
+            }
         }
     }
     fn browser_action(&mut self, id: &str, actor: &str, a: &ActionEnvelope) -> Result<Value> {
@@ -2275,8 +2652,10 @@ impl Environment {
                         return Err(SimError::denied("pixel capture is not permitted"));
                     }
                     // The screen is rasterised from the same scene an observer sees, so a
-                    // screenshot cannot show something the actor could not.
-                    let scene = self.scene(id, 1280, 800)?;
+                    // screenshot cannot show something the actor could not, at the size
+                    // and orientation the machine's screen really has.
+                    let (width, height) = self.screen_size(id, machine)?;
+                    let scene = self.scene(id, width, height)?;
                     let png = self
                         .capture
                         .clone()
@@ -2491,17 +2870,31 @@ impl Environment {
         Ok(())
     }
     /// How the world presents `machine`: `desktop`, `laptop`, `phone` or `server`,
-    /// from the world's `device_presentations` metadata. A machine the world says
-    /// nothing about is a phone on a phone shell and a desktop computer otherwise.
+    /// as the computer states it (`presentation`) or else the world's
+    /// `device_presentations` metadata. A phone shell is a phone whatever is stated; a
+    /// machine nothing is (truthfully) said about is a desktop computer.
     pub(crate) fn form_factor(&self, machine: &str, theme: DesktopTheme) -> String {
-        self.runtime
-            .definition()
-            .metadata
-            .get("device_presentations")
-            .and_then(|p| p.get(machine))
-            .and_then(Value::as_str)
-            .map(str::to_owned)
-            .unwrap_or_else(|| if theme.mobile() { "phone" } else { "desktop" }.to_owned())
+        if theme.mobile() {
+            return "phone".into();
+        }
+        let definition = self.runtime.definition();
+        let stated = definition
+            .computers
+            .iter()
+            .find(|c| c.id == machine)
+            .and_then(|c| c.presentation.clone())
+            .or_else(|| {
+                definition
+                    .metadata
+                    .get("device_presentations")
+                    .and_then(|p| p.get(machine))
+                    .and_then(Value::as_str)
+                    .map(str::to_owned)
+            });
+        match stated.as_deref() {
+            Some(kind @ ("desktop" | "laptop" | "server")) => kind.to_owned(),
+            _ => "desktop".to_owned(),
+        }
     }
     /// Whether the machine has a battery for its shell to report: laptops and phones
     /// do, desktop computers and servers do not.
@@ -2999,7 +3392,17 @@ impl Environment {
                     _ => (false, false),
                 };
                 let (dark_chrome, chrome) = match &window.state {
-                    AppState::Native(app) => (app.dark_chrome(), app.chrome()),
+                    AppState::Native(app) => {
+                        let mut chrome = app.chrome();
+                        // A phone's navigation bar carries the application's way to its
+                        // parent screen, or Gmail's drawer button.
+                        if let Some((kind, target, label)) =
+                            app.phone_nav(theme).filter(|_| theme.mobile())
+                        {
+                            chrome.push(("nav".into(), format!("{kind}\t{target}\t{label}")));
+                        }
+                        (app.dark_chrome(), chrome)
+                    }
                     // Whether the selected file is starred, for a context menu that
                     // offers Star or Unstar on it.
                     AppState::Files { .. } => (
@@ -3212,6 +3615,7 @@ fn cursor_for_target(target: &str, captured: bool) -> &'static str {
         return "crosshair";
     }
     if target.ends_with("editor-text")
+        || target.contains(":content:editor-text:")
         || target.ends_with("terminal-input")
         || target.ends_with("shell:address")
     {
@@ -4232,7 +4636,8 @@ fn attach_buffer(scene: &mut Scene, buffer: &mut TextBuffer, content: Rect) {
 fn caret_after(anchor: &Node, offset: u32) -> Caret {
     let (cw, ch) = anchor.cell().unwrap_or_else(|| cw_scene::text_cell(13));
     let b = anchor.painted_bounds();
-    let painted = anchor.painted_text().unwrap_or("").chars().count() as u32;
+    // Cells on the node's grid: a wide character (CJK, emoji) takes two.
+    let painted = cw_scene::text::terminal::columns(anchor.painted_text().unwrap_or("")) as u32;
     Caret {
         bounds: Rect::new(
             b.x.saturating_add((painted * cw) as i32),
@@ -4484,13 +4889,25 @@ fn typed_of(m: &MachineSession, phone: bool) -> String {
     let skip = text.chars().count().saturating_sub(64);
     text.chars().skip(skip).collect()
 }
+/// How far a finger may drift before a touch is a drag rather than a tap: past it, a
+/// press in an application's content scrolls it instead of pressing what it started on.
+const SWIPE_SLOP: i32 = 12;
+/// A finger's travel handed to an application's own wheel use at a time while it
+/// drags on a phone: about a row, so a grid or a scrollback moves as the finger does.
+const TOUCH_STEP: i32 = 16;
+/// One display frame at 60 Hz, in µs: the interval assumed between two finger samples
+/// when the world clock did not move between them, as touch samples arrive per frame.
+const FRAME_US: u64 = 16_667;
+/// A finger that rested this long (µs of world clock) before lifting has stopped, and
+/// the list does not fling (Android's VelocityTracker assumes the same 40 ms).
+const FINGER_STOPPED_US: u64 = 40_000;
+/// How far (in rubber-banded pixels) a list must be pulled down past its top for the
+/// release to refresh it.
+const PULL_TO_REFRESH: i32 = 56;
 /// A phone's system surface over the screen — Control Center, the shade, the App
 /// Switcher, Settings, a sheet — other than Search. It is modal on the device: it has
 /// no text field, the soft keyboard goes down under it, and keystrokes reach nothing
 /// behind it until it is put away.
-/// How far a finger may drift before a touch is a drag rather than a tap: past it, a
-/// press in an application's content scrolls it instead of pressing what it started on.
-const SWIPE_SLOP: i32 = 12;
 pub(crate) fn phone_overlay(m: &MachineSession) -> bool {
     m.desktop
         .panel
@@ -4790,6 +5207,23 @@ struct Visible {
     address_focused: bool,
     focused_input: Option<String>,
     terminal: u64,
+    /// Every browser's tabs, fields and zoom, their scroll positions aside.
+    browser: u64,
+    /// Every browser tab's scroll position.
+    browser_scroll: u64,
+    clipboard: u64,
+    notifications: u64,
+    /// System settings and the screen's power state.
+    settings: u64,
+    /// Shell state that is no focus change (see `effect::SHELL`).
+    shell: u64,
+    /// Recents, stars, bookmarks and downloads.
+    library: u64,
+    /// An application's own wheel use moved its view during the action. It carries no
+    /// state of its own (the view it moved is in `content`), so it is left out of the
+    /// digest: equal digests still mean equal observable state.
+    #[serde(skip)]
+    scrolled: bool,
 }
 #[derive(Clone, PartialEq, Eq, Serialize)]
 struct VisibleWindow {
@@ -4800,7 +5234,11 @@ struct VisibleWindow {
     maximized: bool,
     document: String,
     /// Digest of the window's whole application state: text, caret, tabs, dirty flag.
+    /// A terminal's scrollback position is its `scroll`, not its content.
     content: u64,
+    /// Digest of where the window's panes are scrolled (and a pane pulled past its end),
+    /// and of a terminal's scrollback position.
+    scroll: u64,
 }
 /// Path, URL or document a window presents; empty when it presents none.
 fn presented(state: &AppState) -> String {
@@ -4812,32 +5250,83 @@ fn presented(state: &AppState) -> String {
         AppState::Terminal { .. } => String::new(),
     }
 }
+/// A browser's state as it bears on what is shown, split into its scroll positions and
+/// everything else. Storage and cookies are not shown and are left out.
+fn browser_view(b: &BrowserState) -> (u64, u64) {
+    let tabs: Vec<_> = b
+        .tabs
+        .iter()
+        .map(|t| (&t.history, t.position, &t.focused, &t.fields))
+        .collect();
+    let scrolls: Vec<i32> = b.tabs.iter().map(|t| t.scroll_y).collect();
+    (
+        cw_scene::digest(&(tabs, b.active, &b.zoom, &b.pending)),
+        cw_scene::digest(&scrolls),
+    )
+}
 fn visible(m: &MachineSession) -> Visible {
+    let browsers: Vec<(u64, u64)> = std::iter::once(&m.browser)
+        .chain(m.browser_windows.values())
+        .map(browser_view)
+        .collect();
+    let d = &m.desktop;
     Visible {
-        focused: m.desktop.focused,
-        windows: m
-            .desktop
+        focused: d.focused,
+        windows: d
             .windows
             .values()
-            .map(|w| VisibleWindow {
-                id: w.id,
-                title: w.title.clone(),
-                frame: w.frame,
-                minimized: w.minimized,
-                maximized: w.maximized,
-                document: presented(&w.state),
-                content: cw_scene::digest(&w.state),
+            .map(|w| {
+                let (content, scroll) = match &w.state {
+                    AppState::Terminal { scroll, .. } => {
+                        let mut still = w.state.clone();
+                        if let AppState::Terminal { scroll, .. } = &mut still {
+                            *scroll = 0;
+                        }
+                        (
+                            cw_scene::digest(&still),
+                            cw_scene::digest(&(&w.scroll, scroll)),
+                        )
+                    }
+                    state => (cw_scene::digest(state), cw_scene::digest(&w.scroll)),
+                };
+                VisibleWindow {
+                    id: w.id,
+                    title: w.title.clone(),
+                    frame: w.frame,
+                    minimized: w.minimized,
+                    maximized: w.maximized,
+                    document: presented(&w.state),
+                    content,
+                    scroll,
+                }
             })
             .collect(),
         url: m.browser.url().map(str::to_owned),
         app: m.active_app.clone(),
         page: cw_scene::digest(&m.custom_page),
-        panel: m.desktop.panel.clone(),
-        launcher: m.desktop.launcher_open,
-        home_page: m.desktop.home_page,
+        panel: d.panel.clone(),
+        launcher: d.launcher_open,
+        home_page: d.home_page,
         address_focused: m.address_focused,
         focused_input: m.focused_input.clone(),
         terminal: cw_scene::digest(&m.terminal),
+        browser: cw_scene::digest(&browsers.iter().map(|b| b.0).collect::<Vec<_>>()),
+        browser_scroll: cw_scene::digest(&browsers.iter().map(|b| b.1).collect::<Vec<_>>()),
+        clipboard: cw_scene::digest(&(&d.clipboard, &d.clipboard_text)),
+        notifications: cw_scene::digest(&d.notifications),
+        settings: cw_scene::digest(&(&d.settings, &d.screen)),
+        shell: cw_scene::digest(&(
+            &d.search,
+            &d.desktop_selection,
+            (d.workspace, d.workspaces),
+            &d.library_group,
+            &d.overview,
+            d.panel_month,
+            &d.keyboard,
+            &d.file_view,
+        )),
+        library: cw_scene::digest(&(&d.recents, &d.starred, &d.bookmarks, &d.downloads)),
+        scrolled: m.scrolled,
     }
 }
 fn effect_of(before: &Visible, after: &Visible) -> ActionEffect {
@@ -4894,6 +5383,33 @@ fn effect_of(before: &Visible, after: &Visible) -> ActionEffect {
     }
     if before.terminal != after.terminal {
         changed.insert(effect::TERMINAL);
+    }
+    if before.browser != after.browser {
+        changed.insert(effect::CONTENT);
+    }
+    let window_scrolled = after.windows.iter().any(|w| {
+        before
+            .windows
+            .iter()
+            .any(|o| o.id == w.id && o.scroll != w.scroll)
+    });
+    if window_scrolled || before.browser_scroll != after.browser_scroll || after.scrolled {
+        changed.insert(effect::SCROLL);
+    }
+    for (tag, was, is) in [
+        (effect::CLIPBOARD, before.clipboard, after.clipboard),
+        (
+            effect::NOTIFICATIONS,
+            before.notifications,
+            after.notifications,
+        ),
+        (effect::SETTINGS, before.settings, after.settings),
+        (effect::SHELL, before.shell, after.shell),
+        (effect::LIBRARY, before.library, after.library),
+    ] {
+        if was != is {
+            changed.insert(tag);
+        }
     }
     ActionEffect {
         changed: changed.into_iter().map(str::to_owned).collect(),

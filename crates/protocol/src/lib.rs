@@ -96,6 +96,11 @@ pub struct ComputerDefinition {
     pub installed_apps: Vec<String>,
     #[serde(default)]
     pub packages: Vec<String>,
+    /// What the machine is, `desktop`, `laptop`, `phone` or `server`, stated by the
+    /// computer itself (a device added to a running world). A world's
+    /// `metadata.device_presentations` says the same for the computers it declares.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<String>,
 }
 impl ComputerDefinition {
     /// The seeded files that are not text, decoded.
@@ -320,6 +325,10 @@ pub struct Page {
     pub elements: Vec<PageElement>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<PageTheme>,
+    /// BCP 47 language of the page (the `<html lang>` attribute): picks regional Han
+    /// forms for its text. Absent means inferred from the text itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
 }
 /// Radius and padding budget: pages describe documents, not arbitrary geometry.
 pub const MAX_STYLE_SPAN: u32 = 64;
@@ -478,6 +487,13 @@ pub struct Style {
     /// publishes it as a horizontal scroll area, `pane:row:<row id>`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scroll_x: Option<bool>,
+    /// Italic text (`font-style: italic`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    /// BCP 47 language of this element's text (an HTML `lang` attribute), overriding
+    /// the page's. It picks regional Han forms: `zh-Hant`, `ja`, `ko`, ...
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
 }
 /// Chainable presentation setters keep page-building call sites to one line each.
 impl Style {
@@ -487,6 +503,14 @@ impl Style {
     }
     pub fn bold(mut self) -> Self {
         self.weight = Some("bold".into());
+        self
+    }
+    pub fn italic(mut self) -> Self {
+        self.italic = Some(true);
+        self
+    }
+    pub fn lang(mut self, tag: impl Into<String>) -> Self {
+        self.lang = Some(tag.into());
         self
     }
     pub fn medium(mut self) -> Self {
@@ -731,6 +755,7 @@ impl Page {
             title: title.into(),
             elements: vec![],
             theme: None,
+            lang: None,
         }
     }
 }
@@ -959,6 +984,21 @@ pub mod effect {
     pub const TERMINAL: &str = "terminal";
     /// A registered application's projected page changed.
     pub const APPLICATION: &str = "application";
+    /// A view scrolled: a window's pane, a terminal's scrollback, a browser page, an
+    /// application's own wheel use (a grid, a timeline), or a list pulled past its end.
+    pub const SCROLL: &str = "scroll";
+    /// What Copy put down (text or files) changed.
+    pub const CLIPBOARD: &str = "clipboard";
+    /// A notification was posted or dismissed.
+    pub const NOTIFICATIONS: &str = "notifications";
+    /// A system setting (a toggle, a slider) or the screen's power state changed.
+    pub const SETTINGS: &str = "settings";
+    /// Shell state with no focus change: launcher search text, a selected desktop
+    /// icon, the virtual desktop on screen, an expanded launcher group, a phone's
+    /// Recents carousel, the on-screen keyboard's plane, the calendar panel's month.
+    pub const SHELL: &str = "shell";
+    /// The user's saved places changed: recent documents, stars, bookmarks, downloads.
+    pub const LIBRARY: &str = "library";
 }
 /// Coarse, app-level consequence of one action. `ActionOutcome::success` reports the
 /// envelope; this reports what moved in the world the actor can see. Derived by

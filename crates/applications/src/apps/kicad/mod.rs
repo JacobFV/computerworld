@@ -11,19 +11,25 @@ use crate::{AppEffect, PointerPhase};
 use cw_eda::drc;
 use cw_eda::erc;
 use cw_eda::files;
+use cw_eda::footprints::LibFootprint;
 use cw_eda::geom::Pt;
 use cw_eda::pcb::{Board, BoardItem, Change, Layer};
-use cw_eda::schematic::{History, Item, Schematic};
+use cw_eda::schematic::{History, Item, LabelKind, Schematic};
+use cw_eda::symbols::{LibSymbol, PinType};
 use serde::{Deserialize, Serialize};
 
 mod draw;
+mod forms;
+mod fped;
 mod icons;
 mod pcb;
 mod pm;
 mod sch;
 mod sim;
+mod symed;
 #[cfg(test)]
 mod tests;
+mod view3d;
 mod widgets;
 
 pub use sim::{Plot, Trace};
@@ -36,6 +42,9 @@ pub enum Frame {
     Schematic,
     Pcb,
     Simulator,
+    SymbolEditor,
+    FootprintEditor,
+    Viewer3d,
 }
 impl Frame {
     fn code(self) -> &'static str {
@@ -44,6 +53,9 @@ impl Frame {
             Self::Schematic => "sch",
             Self::Pcb => "pcb",
             Self::Simulator => "sim",
+            Self::SymbolEditor => "symed",
+            Self::FootprintEditor => "fped",
+            Self::Viewer3d => "3d",
         }
     }
     fn parse(s: &str) -> Option<Self> {
@@ -52,9 +64,32 @@ impl Frame {
             "sch" => Self::Schematic,
             "pcb" | "pcb-update" => Self::Pcb,
             "sim" => Self::Simulator,
+            "symed" => Self::SymbolEditor,
+            "fped" => Self::FootprintEditor,
+            "3d" => Self::Viewer3d,
             _ => return None,
         })
     }
+}
+
+/// A project symbol library (`<name>.kicad_sym`, listed in `sym-lib-table`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SymLib {
+    pub name: String,
+    /// File name relative to the project folder.
+    pub file: String,
+    pub symbols: Vec<LibSymbol>,
+    /// Changed since it was last saved.
+    pub dirty: bool,
+}
+/// A project footprint library (`<name>.pretty/`, listed in `fp-lib-table`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FpLib {
+    pub name: String,
+    /// Folder name relative to the project folder.
+    pub dir: String,
+    pub footprints: Vec<LibFootprint>,
+    pub dirty: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -112,6 +147,44 @@ pub struct Session {
     pub sim: sim::SimState,
     /// Why the project could not be read, shown in place of its contents.
     pub problem: Option<String>,
+    /// The project's own symbol and footprint libraries.
+    #[serde(default)]
+    pub sym_libs: Vec<SymLib>,
+    #[serde(default)]
+    pub fp_libs: Vec<FpLib>,
+    /// Files under the project folder (two levels), for finding `.pretty` contents.
+    #[serde(default)]
+    pub project_tree: Option<Vec<String>>,
+    /// `fp-lib-table` entries (name, folder) waiting for the folder listing.
+    #[serde(default)]
+    pub fp_table: Option<Vec<(String, String)>>,
+}
+impl Session {
+    /// A symbol definition by library id: the project's libraries first, then the
+    /// installed ones. The flag says whether it came from the project.
+    pub fn find_symbol(&self, lib_id: &str) -> Option<(LibSymbol, bool)> {
+        for l in &self.sym_libs {
+            if let Some(s) = l.symbols.iter().find(|s| s.lib_id == lib_id) {
+                return Some((s.clone(), true));
+            }
+        }
+        cw_eda::symbols::find(lib_id).map(|s| (s.clone(), false))
+    }
+    /// Every footprint of the project's libraries.
+    pub fn project_footprints(&self) -> Vec<LibFootprint> {
+        self.fp_libs
+            .iter()
+            .flat_map(|l| l.footprints.iter().cloned())
+            .collect()
+    }
+    pub fn find_footprint(&self, id: &str) -> Option<LibFootprint> {
+        self.fp_libs
+            .iter()
+            .flat_map(|l| l.footprints.iter())
+            .find(|f| f.id == id)
+            .cloned()
+            .or_else(|| cw_eda::footprints::find(id).cloned())
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -207,13 +280,92 @@ pub enum Dialog {
         on_board: bool,
         in_bom: bool,
         dnp: bool,
+        /// Which unit of a multi-unit part the symbol shows.
+        #[serde(default)]
+        unit: u32,
         error: String,
     },
     Label {
         pos: Pt,
-        global: bool,
+        kind: LabelKind,
+        /// Electrical shape of a global or hierarchical label.
+        shape: PinType,
         text: String,
         edit: Option<u64>,
+    },
+    /// Sheet Properties: a new sheet's box, or an existing sheet (`edit`).
+    SheetProperties {
+        edit: Option<u64>,
+        pos: Pt,
+        size: Pt,
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    /// A pin on a sheet symbol's edge.
+    SheetPin {
+        sheet: u64,
+        pos: Pt,
+        shape: PinType,
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    FootprintProperties {
+        id: u64,
+        back: bool,
+        locked: bool,
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    RouterSettings {
+        walkaround: bool,
+    },
+    NewLibrary {
+        fp: bool,
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    NewSymbol {
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    PinProperties {
+        edit: Option<usize>,
+        pos: (i64, i64),
+        kind: PinType,
+        /// Direction the pin points from its connection end into the body (0, 90, 180, 270).
+        orient: u16,
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    SymbolFields {
+        fields: Vec<(String, String)>,
+        /// Simulation model keyword (`none`, `R`, `C`, `L`, `D`, `NPN`, `PNP`, `NMOS`,
+        /// `PMOS`, `V`, `I`, a logic gate, `DFF`, `555`, `MCU`).
+        model: String,
+        power: bool,
+        pin_names_hidden: bool,
+        pin_numbers_hidden: bool,
+        error: String,
+    },
+    SymText {
+        pos: (i64, i64),
+        fields: Vec<(String, String)>,
+    },
+    NewFootprint {
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    PadProperties {
+        edit: Option<usize>,
+        pos: (i64, i64),
+        smd: bool,
+        shape: String,
+        fields: Vec<(String, String)>,
+        error: String,
+    },
+    FootprintFields {
+        fields: Vec<(String, String)>,
+        error: String,
     },
     Annotate {
         by_x: bool,
@@ -256,6 +408,9 @@ pub enum Dialog {
         net: usize,
         layer: Layer,
         clearance: String,
+        /// A rule area that keeps copper out rather than a copper pour.
+        #[serde(default)]
+        keepout: bool,
         error: String,
     },
     SimSettings {
@@ -272,9 +427,43 @@ impl Dialog {
         match self {
             Self::SymbolProperties { fields, .. }
             | Self::BoardSetup { fields, .. }
-            | Self::SimSettings { fields, .. } => Some(fields),
+            | Self::SimSettings { fields, .. }
+            | Self::SheetProperties { fields, .. }
+            | Self::SheetPin { fields, .. }
+            | Self::FootprintProperties { fields, .. }
+            | Self::NewLibrary { fields, .. }
+            | Self::NewSymbol { fields, .. }
+            | Self::PinProperties { fields, .. }
+            | Self::SymbolFields { fields, .. }
+            | Self::SymText { fields, .. }
+            | Self::NewFootprint { fields, .. }
+            | Self::PadProperties { fields, .. }
+            | Self::FootprintFields { fields, .. } => Some(fields),
             _ => None,
         }
+    }
+    /// The editable text fields, by name, in the order the dialog shows them.
+    pub fn field_names(&self) -> Vec<String> {
+        match self {
+            Self::NewProject { .. } => vec!["name".into()],
+            Self::Chooser { .. } => vec!["filter".into()],
+            Self::Label { .. } => vec!["text".into()],
+            Self::Plot { .. } => vec!["dir".into()],
+            Self::ZoneProperties { .. } => vec!["clearance".into()],
+            other => {
+                let mut d = other.clone();
+                d.fields_mut()
+                    .map(|f| f.iter().map(|(k, _)| k.clone()).collect())
+                    .unwrap_or_default()
+            }
+        }
+    }
+    /// A text field's value, trimmed.
+    pub fn value(&self, name: &str) -> String {
+        let mut d = self.clone();
+        d.field_mut(name)
+            .map(|v| v.trim().to_owned())
+            .unwrap_or_default()
     }
     /// The text a named field holds.
     pub fn field_mut(&mut self, name: &str) -> Option<&mut String> {
@@ -299,8 +488,31 @@ impl Dialog {
             Self::Chooser { power: false, .. } => "Choose Symbol",
             Self::Chooser { power: true, .. } => "Choose Power Symbol",
             Self::SymbolProperties { .. } => "Symbol Properties",
-            Self::Label { global: false, .. } => "Label Properties",
-            Self::Label { global: true, .. } => "Global Label Properties",
+            Self::Label {
+                kind: LabelKind::Local,
+                ..
+            } => "Label Properties",
+            Self::Label {
+                kind: LabelKind::Global,
+                ..
+            } => "Global Label Properties",
+            Self::Label {
+                kind: LabelKind::Hierarchical,
+                ..
+            } => "Hierarchical Label Properties",
+            Self::SheetProperties { .. } => "Sheet Properties",
+            Self::SheetPin { .. } => "Sheet Pin Properties",
+            Self::FootprintProperties { .. } => "Footprint Properties",
+            Self::RouterSettings { .. } => "Interactive Router Settings",
+            Self::NewLibrary { fp: false, .. } => "New Symbol Library",
+            Self::NewLibrary { fp: true, .. } => "New Footprint Library",
+            Self::NewSymbol { .. } => "New Symbol",
+            Self::PinProperties { .. } => "Pin Properties",
+            Self::SymbolFields { .. } => "Library Symbol Properties",
+            Self::SymText { .. } => "Text Properties",
+            Self::NewFootprint { .. } => "New Footprint",
+            Self::PadProperties { .. } => "Pad Properties",
+            Self::FootprintFields { .. } => "Footprint Properties",
             Self::Annotate { .. } => "Annotate Schematic",
             Self::Erc { .. } => "Electrical Rules Checker",
             Self::Netlist { .. } => "Export Netlist",
@@ -349,6 +561,12 @@ pub struct Ui {
     pub sim: sim::SimUi,
     /// Selected row in the project tree.
     pub tree_row: Option<usize>,
+    #[serde(default)]
+    pub symed: symed::SymEdUi,
+    #[serde(default)]
+    pub fped: fped::FpEdUi,
+    #[serde(default)]
+    pub v3d: view3d::View3dUi,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -427,6 +645,33 @@ impl Kicad {
                 n.unwrap_or("untitled")
             ),
             (Frame::Simulator, n) => format!("{} — SPICE Simulator", n.unwrap_or("untitled")),
+            (Frame::SymbolEditor, _) => {
+                let lib = self.ui.symed.lib.as_deref();
+                let dirty = self
+                    .session
+                    .sym_libs
+                    .iter()
+                    .any(|l| Some(l.name.as_str()) == lib && l.dirty);
+                match (lib, &self.ui.symed.symbol) {
+                    (Some(l), Some(s)) => format!("{}{s} [{l}] — Symbol Editor", star(dirty)),
+                    (Some(l), None) => format!("{}{l} — Symbol Editor", star(dirty)),
+                    _ => "Symbol Editor".into(),
+                }
+            }
+            (Frame::FootprintEditor, _) => {
+                let lib = self.ui.fped.lib.as_deref();
+                let dirty = self
+                    .session
+                    .fp_libs
+                    .iter()
+                    .any(|l| Some(l.name.as_str()) == lib && l.dirty);
+                match (lib, &self.ui.fped.footprint) {
+                    (Some(l), Some(f)) => format!("{}{f} [{l}] — Footprint Editor", star(dirty)),
+                    (Some(l), None) => format!("{}{l} — Footprint Editor", star(dirty)),
+                    _ => "Footprint Editor".into(),
+                }
+            }
+            (Frame::Viewer3d, n) => format!("{} — 3D Viewer", n.unwrap_or("untitled")),
         }
     }
     pub fn document(&self) -> String {
@@ -436,7 +681,21 @@ impl Kicad {
         match self.frame {
             Frame::ProjectManager | Frame::Simulator => p.pro(),
             Frame::Schematic => p.file("kicad_sch"),
-            Frame::Pcb => p.file("kicad_pcb"),
+            Frame::Pcb | Frame::Viewer3d => p.file("kicad_pcb"),
+            Frame::SymbolEditor => self
+                .session
+                .sym_libs
+                .iter()
+                .find(|l| Some(&l.name) == self.ui.symed.lib.as_ref())
+                .map(|l| format!("{}/{}", p.dir, l.file))
+                .unwrap_or_else(|| p.pro()),
+            Frame::FootprintEditor => self
+                .session
+                .fp_libs
+                .iter()
+                .find(|l| Some(&l.name) == self.ui.fped.lib.as_ref())
+                .map(|l| format!("{}/{}", p.dir, l.dir))
+                .unwrap_or_else(|| p.pro()),
         }
     }
     pub fn caption(&self) -> String {
@@ -446,6 +705,8 @@ impl Kicad {
         match self.frame {
             Frame::Schematic => self.session.sch_dirty,
             Frame::Pcb => self.session.pcb_dirty,
+            Frame::SymbolEditor => self.session.sym_libs.iter().any(|l| l.dirty),
+            Frame::FootprintEditor => self.session.fp_libs.iter().any(|l| l.dirty),
             _ => false,
         }
     }
@@ -493,6 +754,8 @@ impl Kicad {
             project.pro(),
             project.file("kicad_sch"),
             project.file("kicad_pcb"),
+            format!("{}/sym-lib-table", project.dir),
+            format!("{}/fp-lib-table", project.dir),
         ];
         let dir = project.dir.clone();
         self.session.problem = None;
@@ -506,8 +769,13 @@ impl Kicad {
         self.session.erc = None;
         self.session.drc = None;
         self.session.sim = sim::SimState::default();
+        self.session.sym_libs.clear();
+        self.session.fp_libs.clear();
+        self.session.project_tree = None;
+        self.session.fp_table = None;
         self.session.project = Some(project);
         self.ui.view.fit = true;
+        self.ui.sch.path.clear();
         self.touch();
         vec![
             AppEffect::ReadFiles {
@@ -518,27 +786,143 @@ impl Kicad {
             AppEffect::ListDirectory {
                 window,
                 tab: 0,
+                path: dir.clone(),
+            },
+            // Where the project's footprint libraries keep their `.kicad_mod` files.
+            AppEffect::ListTree {
+                window,
                 path: dir,
+                depth: 2,
             },
         ]
     }
+    /// Once both the `fp-lib-table` and the folder listing are in, read every footprint
+    /// of every project footprint library.
+    fn read_fp_libs(&mut self, window: u64) -> Vec<AppEffect> {
+        let (Some(table), Some(tree), Some(project)) = (
+            self.session.fp_table.take(),
+            self.session.project_tree.clone(),
+            self.session.project.clone(),
+        ) else {
+            return vec![];
+        };
+        let mut paths = vec![];
+        for (name, dir) in table {
+            let dir = dir.trim_end_matches('/').to_owned();
+            for entry in &tree {
+                if let Some(file) = entry.strip_prefix(&format!("{dir}/")) {
+                    if file.ends_with(".kicad_mod") && !file.contains('/') {
+                        paths.push(format!("{}/{entry}", project.dir));
+                    }
+                }
+            }
+            if !self.session.fp_libs.iter().any(|l| l.name == name) {
+                self.session.fp_libs.push(FpLib {
+                    name,
+                    dir,
+                    footprints: vec![],
+                    dirty: false,
+                });
+            }
+        }
+        if paths.is_empty() {
+            return vec![];
+        }
+        vec![AppEffect::ReadFiles {
+            window,
+            tag: "fplibs".into(),
+            paths,
+        }]
+    }
+    /// Read the sheet files the design names that are not loaded yet.
+    fn read_missing_sheets(&mut self, window: u64) -> Vec<AppEffect> {
+        let Some(project) = self.session.project.clone() else {
+            return vec![];
+        };
+        let mut missing = vec![];
+        for (_, _, _, s) in self.session.schematic.sheets_flat() {
+            for sh in &s.sheets {
+                // A sheet read from a file has no contents until its file arrives.
+                if sh.uid == 0 && !missing.contains(&sh.file) {
+                    missing.push(sh.file.clone());
+                }
+            }
+        }
+        if missing.is_empty() {
+            return vec![];
+        }
+        vec![AppEffect::ReadFiles {
+            window,
+            tag: "sheets".into(),
+            paths: missing
+                .iter()
+                .map(|f| format!("{}/{f}", project.dir))
+                .collect(),
+        }]
+    }
     pub fn files_read(
         &mut self,
-        _window: u64,
+        window: u64,
         tag: &str,
         files: Vec<(String, Result<String, String>)>,
     ) -> Vec<AppEffect> {
-        if tag != "open" {
-            return vec![];
+        match tag {
+            "sheets" => return self.sheets_read(window, files),
+            "symlibs" => {
+                for (path, result) in files {
+                    let file = path.rsplit('/').next().unwrap_or(&path).to_owned();
+                    let Some(lib) = self.session.sym_libs.iter_mut().find(|l| l.file == file)
+                    else {
+                        continue;
+                    };
+                    match result
+                        .map_err(|e| e.to_string())
+                        .and_then(|t| files::read_symbol_lib(&t, &lib.name))
+                    {
+                        Ok(symbols) => lib.symbols = symbols,
+                        Err(e) => self.ui.status = format!("{file}: {e}"),
+                    }
+                }
+                self.touch();
+                return vec![];
+            }
+            "fplibs" => {
+                for (path, result) in files {
+                    let mut parts = path.rsplit('/');
+                    let _file = parts.next();
+                    let dir = parts.next().unwrap_or("").to_owned();
+                    let Some(lib) = self.session.fp_libs.iter_mut().find(|l| l.dir == dir) else {
+                        continue;
+                    };
+                    match result
+                        .map_err(|e| e.to_string())
+                        .and_then(|t| files::read_footprint(&t, &lib.name))
+                    {
+                        Ok(f) => {
+                            lib.footprints.retain(|x| x.id != f.id);
+                            lib.footprints.push(f);
+                            lib.footprints.sort_by(|a, b| a.id.cmp(&b.id));
+                        }
+                        Err(e) => self.ui.status = format!("{path}: {e}"),
+                    }
+                }
+                self.touch();
+                return vec![];
+            }
+            "open" => {}
+            _ => return vec![],
         }
         let mut notes = vec![];
+        let mut effects = vec![];
         for (path, result) in files {
             let text = match result {
                 Ok(t) => t,
                 Err(e) => {
                     if path.ends_with(".kicad_pro") {
                         self.session.problem = Some(format!("{path}: {e}"));
-                    } else {
+                    } else if path.ends_with("fp-lib-table") {
+                        self.session.fp_table = Some(vec![]);
+                    } else if !path.ends_with("lib-table") {
                         notes.push(format!(
                             "{} not found; starting a new one",
                             path.rsplit('/').next().unwrap_or(&path)
@@ -547,6 +931,48 @@ impl Kicad {
                     continue;
                 }
             };
+            if path.ends_with("sym-lib-table") {
+                match files::read_lib_table(&text) {
+                    Ok(libs) => {
+                        let dir = self
+                            .session
+                            .project
+                            .as_ref()
+                            .map(|p| p.dir.clone())
+                            .unwrap_or_default();
+                        let mut paths = vec![];
+                        for (name, file) in libs {
+                            paths.push(format!("{dir}/{file}"));
+                            self.session.sym_libs.push(SymLib {
+                                name,
+                                file,
+                                symbols: vec![],
+                                dirty: false,
+                            });
+                        }
+                        if !paths.is_empty() {
+                            effects.push(AppEffect::ReadFiles {
+                                window,
+                                tag: "symlibs".into(),
+                                paths,
+                            });
+                        }
+                    }
+                    Err(e) => notes.push(format!("sym-lib-table: {e}")),
+                }
+                continue;
+            }
+            if path.ends_with("fp-lib-table") {
+                match files::read_lib_table(&text) {
+                    Ok(libs) => self.session.fp_table = Some(libs),
+                    Err(e) => {
+                        self.session.fp_table = Some(vec![]);
+                        notes.push(format!("fp-lib-table: {e}"));
+                    }
+                }
+                effects.extend(self.read_fp_libs(window));
+                continue;
+            }
             if path.ends_with(".kicad_pro") {
                 match files::read_project(&text) {
                     Ok(rules) => self.session.board.rules = rules,
@@ -591,8 +1017,40 @@ impl Kicad {
             (None, false) => notes.join("; "),
         };
         self.ui.view.fit = true;
+        effects.extend(self.read_missing_sheets(window));
         self.touch();
-        vec![]
+        effects
+    }
+    /// Sheet files of the hierarchy, as they arrive: each goes into the sheet symbols
+    /// that name it, and the sheets it holds are read in turn.
+    fn sheets_read(
+        &mut self,
+        window: u64,
+        files: Vec<(String, Result<String, String>)>,
+    ) -> Vec<AppEffect> {
+        for (path, result) in files {
+            let file = path.rsplit('/').next().unwrap_or(&path).to_owned();
+            let sheet = match result.map_err(|e| e.to_string()).and_then(|t| {
+                files::read_schematic(&t).map(|(s, w)| {
+                    if !w.is_empty() {
+                        self.ui.status = w.join("; ");
+                    }
+                    s
+                })
+            }) {
+                Ok(s) => s,
+                Err(e) => {
+                    // A missing sheet file is an empty sheet, as KiCad makes one.
+                    self.ui.status = format!("{file}: {e}; the sheet is empty");
+                    let seed = format!("{}{file}", self.session.schematic.uuid);
+                    Schematic::new(&seed)
+                }
+            };
+            self.session.schematic.attach_sheet(&file, &sheet);
+        }
+        let more = self.read_missing_sheets(window);
+        self.touch();
+        more
     }
     /// The project folder's listing, for the tree.
     pub fn listed(&mut self, entries: Vec<String>) {
@@ -601,10 +1059,17 @@ impl Kicad {
     }
     pub fn tree_listed(
         &mut self,
-        _window: u64,
-        _path: &str,
+        window: u64,
+        path: &str,
         result: Result<Vec<String>, String>,
     ) -> Vec<AppEffect> {
+        let project_dir = self.session.project.as_ref().map(|p| p.dir.clone());
+        if project_dir.as_deref() == Some(path.trim_end_matches('/')) {
+            self.session.project_tree = Some(result.unwrap_or_default());
+            let effects = self.read_fp_libs(window);
+            self.touch();
+            return effects;
+        }
         match result {
             Ok(entries) => {
                 let root = self.session.projects_dir.trim_end_matches('/').to_owned();
@@ -622,16 +1087,57 @@ impl Kicad {
     pub fn written(&mut self, path: &str) {
         self.ui.status = format!("Saved {path}");
     }
+    /// Save the whole hierarchy: the root file and one file per sheet.
     fn save_schematic(&mut self, window: u64) -> Result<Vec<AppEffect>, String> {
         let project = self.session.project.clone().ok_or("No project is open")?;
-        let text = files::write_schematic(&self.session.schematic, &project.name);
+        let root_file = format!("{}.kicad_sch", project.name);
+        let mut effects: Vec<AppEffect> =
+            files::write_design(&self.session.schematic, &project.name, &root_file)
+                .into_iter()
+                .map(|(file, content)| AppEffect::WriteFile {
+                    window,
+                    path: format!("{}/{file}", project.dir),
+                    content,
+                })
+                .collect();
         self.session.sch_dirty = false;
+        self.touch();
+        effects.push(AppEffect::ListDirectory {
+            window,
+            tab: 0,
+            path: project.dir,
+        });
+        Ok(effects)
+    }
+    /// Write a project symbol library and the table that names every one.
+    fn save_sym_lib(&mut self, window: u64, name: &str) -> Result<Vec<AppEffect>, String> {
+        let project = self.session.project.clone().ok_or("No project is open")?;
+        let lib = self
+            .session
+            .sym_libs
+            .iter_mut()
+            .find(|l| l.name == name)
+            .ok_or("no such library")?;
+        lib.dirty = false;
+        let content = files::write_symbol_lib(&lib.symbols);
+        let path = format!("{}/{}", project.dir, lib.file);
+        let table: Vec<(String, String)> = self
+            .session
+            .sym_libs
+            .iter()
+            .map(|l| (l.name.clone(), l.file.clone()))
+            .collect();
         self.touch();
         Ok(vec![
             AppEffect::WriteFile {
                 window,
-                path: project.file("kicad_sch"),
-                content: text,
+                path,
+                content,
+            },
+            AppEffect::WriteFile {
+                window,
+                path: format!("{}/sym-lib-table", project.dir),
+                content: files::write_lib_table(false, &table),
             },
             AppEffect::ListDirectory {
                 window,
@@ -639,6 +1145,47 @@ impl Kicad {
                 path: project.dir,
             },
         ])
+    }
+    /// Write a project footprint library (one `.kicad_mod` per footprint) and the table.
+    fn save_fp_lib(&mut self, window: u64, name: &str) -> Result<Vec<AppEffect>, String> {
+        let project = self.session.project.clone().ok_or("No project is open")?;
+        let lib = self
+            .session
+            .fp_libs
+            .iter_mut()
+            .find(|l| l.name == name)
+            .ok_or("no such library")?;
+        lib.dirty = false;
+        let dir = format!("{}/{}", project.dir, lib.dir);
+        let mut effects = vec![AppEffect::CreateDirectory {
+            window,
+            path: dir.clone(),
+        }];
+        for f in &lib.footprints {
+            effects.push(AppEffect::WriteFile {
+                window,
+                path: format!("{dir}/{}.kicad_mod", f.name()),
+                content: files::write_footprint(f),
+            });
+        }
+        let table: Vec<(String, String)> = self
+            .session
+            .fp_libs
+            .iter()
+            .map(|l| (l.name.clone(), l.dir.clone()))
+            .collect();
+        effects.push(AppEffect::WriteFile {
+            window,
+            path: format!("{}/fp-lib-table", project.dir),
+            content: files::write_lib_table(true, &table),
+        });
+        effects.push(AppEffect::ListDirectory {
+            window,
+            tab: 0,
+            path: project.dir,
+        });
+        self.touch();
+        Ok(effects)
     }
     fn save_board(&mut self, window: u64) -> Result<Vec<AppEffect>, String> {
         let project = self.session.project.clone().ok_or("No project is open")?;
@@ -674,7 +1221,8 @@ impl Kicad {
     }
     fn open_update_dialog(&mut self) {
         let mut preview = self.session.board.clone();
-        let changes = preview.update_from_schematic(&self.session.schematic, true);
+        let libs = self.session.project_footprints();
+        let changes = preview.update_from_schematic_with(&self.session.schematic, true, &libs);
         self.ui.dialog = Some(Dialog::UpdatePcb {
             changes,
             applied: false,
@@ -750,6 +1298,9 @@ impl Kicad {
             (_, Frame::Schematic) => self.sch_key(window, key),
             (_, Frame::Pcb) => self.pcb_key(window, key),
             (_, Frame::Simulator) => self.sim_key(window, key),
+            (_, Frame::SymbolEditor) => self.symed_key(window, key),
+            (_, Frame::FootprintEditor) => self.fped_key(window, key),
+            (_, Frame::Viewer3d) => self.v3d_key(window, key),
             (_, Frame::ProjectManager) => match key {
                 "Ctrl+n" | "Meta+n" => self.command(window, "pm:new", clock_us),
                 "Ctrl+o" | "Meta+o" => self.command(window, "pm:open", clock_us),
@@ -808,6 +1359,8 @@ impl Kicad {
             match self.frame {
                 Frame::Schematic => self.sch_activate(window),
                 Frame::Pcb => self.pcb_activate(window),
+                Frame::SymbolEditor => self.symed_activate(window),
+                Frame::FootprintEditor => self.fped_activate(window),
                 _ => Ok(vec![]),
             }
         } else if let Some(rest) = command.strip_prefix("pm:file:") {
@@ -830,70 +1383,12 @@ impl Kicad {
     pub fn drags(&self, target: &str) -> bool {
         target.starts_with("kicad:canvas:")
     }
-    /// The wheel over a canvas, with KiCad's default mouse settings: it zooms about the
-    /// pointer (the world point under it stays under it), Shift+wheel pans up and down
-    /// and Ctrl+wheel pans left and right; a sideways turn pans sideways.
-    pub fn wheel(
-        &mut self,
-        target: &str,
-        x: i32,
-        y: i32,
-        wheel: crate::Wheel,
-    ) -> Result<bool, String> {
-        let Some(rest) = target.strip_prefix("kicad:canvas:") else {
-            return Ok(false);
-        };
-        let parts: Vec<&str> = rest.split(':').collect();
-        let (min, max) = match parts[0] {
-            "sch" => (sch::MIN_ZOOM, sch::MAX_ZOOM),
-            "pcb" => (pcb::MIN_ZOOM, pcb::MAX_ZOOM),
-            _ => return Ok(false),
-        };
-        if self.ui.dialog.is_some() {
-            return Ok(false);
-        }
-        let Some(mut v) = View::from_args(&parts[1..]) else {
-            return Ok(false);
-        };
-        if let (Some(w), Some(h)) = (
-            parts.get(4).and_then(|v| v.parse().ok()),
-            parts.get(5).and_then(|v| v.parse().ok()),
-        ) {
-            self.ui.canvas = (w, h);
-        }
-        let before = v;
-        let (pan_x, pan_y) = if wheel.ctrl {
-            (wheel.dy + wheel.dx, 0)
-        } else if wheel.shift {
-            (wheel.dx, wheel.dy)
-        } else {
-            (wheel.dx, 0)
-        };
-        if pan_x != 0 || pan_y != 0 {
-            let z = v.zoom.max(1);
-            v.x0 += i64::from(pan_x) * 1000 / z;
-            v.y0 += i64::from(pan_y) * 1000 / z;
-            v.fit = false;
-        } else {
-            let at = v.world(x, y);
-            let notches = crate::wheel_steps(-wheel.dy, 120);
-            for _ in 0..notches.unsigned_abs().min(10) {
-                if notches > 0 {
-                    v.zoom_about(at, 5, 4, min, max);
-                } else {
-                    v.zoom_about(at, 4, 5, min, max);
-                }
-            }
-        }
-        self.ui.view = v;
-        Ok(v != before)
-    }
     pub fn hover(&mut self, target: &str, x: i32, y: i32) -> bool {
         let Some(rest) = target.strip_prefix("kicad:canvas:") else {
             return false;
         };
         let parts: Vec<&str> = rest.split(':').collect();
-        if !matches!(parts[0], "sch" | "pcb") || self.ui.dialog.is_some() {
+        if !matches!(parts[0], "sch" | "pcb" | "symed" | "fped") || self.ui.dialog.is_some() {
             return false;
         }
         let Some(view) = View::from_args(&parts[1..]) else {
@@ -915,7 +1410,94 @@ impl Kicad {
             return false;
         }
         self.ui.hover = Some(snapped);
+        // The walkaround router's path follows the pointer.
+        if self.frame == Frame::Pcb {
+            self.update_route_preview();
+        }
         true
+    }
+    /// A wheel turn over a canvas, with KiCad's default mouse settings: zoom about the
+    /// pointer, Shift+wheel pans up and down, Ctrl+wheel pans left and right, and a
+    /// sideways turn pans sideways. Each notch is one step. `false` when there is no
+    /// canvas under the pointer.
+    pub fn wheel(
+        &mut self,
+        target: &str,
+        x: i32,
+        y: i32,
+        wheel: crate::Wheel,
+    ) -> Result<bool, String> {
+        let (delta, shift, ctrl) = if wheel.dy == 0 && wheel.dx != 0 {
+            (wheel.dx, false, true)
+        } else {
+            (wheel.dy, wheel.shift, wheel.ctrl)
+        };
+        if delta == 0 {
+            return Ok(false);
+        }
+        let notches = crate::wheel_steps(delta, 120).unsigned_abs().clamp(1, 10);
+        let mut changed = false;
+        for _ in 0..notches {
+            changed |= self.wheel_with(target, x, y, delta.signum() * 120, shift, ctrl)?;
+        }
+        Ok(changed)
+    }
+    pub fn wheel_with(
+        &mut self,
+        target: &str,
+        x: i32,
+        y: i32,
+        delta: i32,
+        shift: bool,
+        ctrl: bool,
+    ) -> Result<bool, String> {
+        let Some(rest) = target.strip_prefix("kicad:canvas:") else {
+            return Ok(false);
+        };
+        let parts: Vec<&str> = rest.split(':').collect();
+        if parts[0] == "3d" {
+            self.v3d_wheel(&parts[1..], x, y, delta);
+            return Ok(true);
+        }
+        if !matches!(parts[0], "sch" | "pcb" | "symed" | "fped") || delta == 0 {
+            return Ok(false);
+        }
+        let view = View::from_args(&parts[1..]).ok_or("bad canvas view")?;
+        let mut v = view;
+        if shift || ctrl {
+            // A notch pans a tenth of the canvas.
+            let (w, h) = (
+                parts
+                    .get(4)
+                    .and_then(|s| s.parse::<i64>().ok())
+                    .unwrap_or(800),
+                parts
+                    .get(5)
+                    .and_then(|s| s.parse::<i64>().ok())
+                    .unwrap_or(600),
+            );
+            let step = |px: i64| px * 1000 / 10 / v.zoom.max(1);
+            if shift {
+                v.y0 += delta.signum() as i64 * step(h);
+            } else {
+                v.x0 += delta.signum() as i64 * step(w);
+            }
+            v.fit = false;
+        } else {
+            let at = v.world(x, y);
+            let (min, max) = match parts[0] {
+                "pcb" | "fped" => (2, 800),
+                _ => (20, 2400),
+            };
+            // Wheel up (negative delta) zooms in, as a mouse wheel does in KiCad.
+            if delta < 0 {
+                v.zoom_about(at, 5, 4, min, max);
+            } else {
+                v.zoom_about(at, 4, 5, min, max);
+            }
+        }
+        self.ui.view = v;
+        Ok(true)
     }
     pub fn pointer(
         &mut self,
@@ -940,7 +1522,7 @@ impl Kicad {
         self.ui.menu = None;
         let before = self.session.clone();
         let result = match frame {
-            "sch" | "pcb" => {
+            "sch" | "pcb" | "symed" | "fped" => {
                 let view = View::from_args(&parts[1..]).ok_or("bad canvas view")?;
                 if let (Some(w), Some(h)) = (
                     parts.get(4).and_then(|v| v.parse().ok()),
@@ -951,12 +1533,14 @@ impl Kicad {
                 // The view the canvas was painted with is the one the pointer used.
                 self.ui.view = view;
                 let at = self.canvas_world(view.world(x, y));
-                if frame == "sch" {
-                    self.sch_pointer(window, phase, at)
-                } else {
-                    self.pcb_pointer(window, phase, at)
+                match frame {
+                    "sch" => self.sch_pointer(window, phase, at),
+                    "pcb" => self.pcb_pointer(window, phase, at),
+                    "symed" => self.symed_pointer(window, phase, at),
+                    _ => self.fped_pointer(window, phase, at),
                 }
             }
+            "3d" => self.v3d_pointer(phase, &parts[1..], x, y),
             "plot" => self.plot_pointer(phase, &parts[1..], x),
             _ => Err("unknown canvas".into()),
         };
@@ -969,15 +1553,16 @@ impl Kicad {
     /// in mils directly; the board view works in micrometres over nanometre geometry.
     fn canvas_world(&self, p: Pt) -> Pt {
         match self.frame {
-            Frame::Pcb => Pt::new(p.x * 1000, p.y * 1000),
+            Frame::Pcb | Frame::FootprintEditor => Pt::new(p.x * 1000, p.y * 1000),
             _ => p,
         }
     }
     /// Snap a world point the way the frame's tools do.
     fn snap(&self, p: Pt, hover: bool) -> Pt {
         match self.frame {
-            Frame::Schematic => p.snap(cw_eda::schematic::GRID),
+            Frame::Schematic | Frame::SymbolEditor => p.snap(cw_eda::schematic::GRID),
             Frame::Pcb => self.pcb_snap(p, hover),
+            Frame::FootprintEditor => p.snap(self.ui.fped.grid.max(1)),
             _ => p,
         }
     }
@@ -1024,6 +1609,9 @@ impl Kicad {
             "sch" => self.sch_command(window, rest),
             "pcb" => self.pcb_command(window, rest),
             "sim" => self.sim_command(window, rest),
+            "symed" => self.symed_command(window, rest),
+            "fped" => self.fped_command(window, rest),
+            "v3d" => self.v3d_command(window, rest),
             "noop" => Err("this control is disabled".into()),
             other => Err(format!("unknown KiCad command {other}")),
         }
@@ -1055,14 +1643,27 @@ impl Kicad {
             | Dialog::Annotate { .. }
             | Dialog::Erc { .. }
             | Dialog::Netlist { .. }
-            | Dialog::Bom { .. } => self.sch_dialog(window, rest, clock_us),
+            | Dialog::Bom { .. }
+            | Dialog::SheetProperties { .. }
+            | Dialog::SheetPin { .. } => self.sch_dialog(window, rest, clock_us),
             Dialog::UpdatePcb { .. }
             | Dialog::Drc { .. }
             | Dialog::Plot { .. }
             | Dialog::Drill { .. }
             | Dialog::BoardSetup { .. }
-            | Dialog::ZoneProperties { .. } => self.pcb_dialog(window, rest),
+            | Dialog::ZoneProperties { .. }
+            | Dialog::FootprintProperties { .. }
+            | Dialog::RouterSettings { .. } => self.pcb_dialog(window, rest),
             Dialog::SimSettings { .. } | Dialog::AddSignals { .. } => self.sim_dialog(window, rest),
+            Dialog::NewLibrary { fp: false, .. }
+            | Dialog::NewSymbol { .. }
+            | Dialog::PinProperties { .. }
+            | Dialog::SymbolFields { .. }
+            | Dialog::SymText { .. } => self.symed_dialog(window, rest),
+            Dialog::NewLibrary { fp: true, .. }
+            | Dialog::NewFootprint { .. }
+            | Dialog::PadProperties { .. }
+            | Dialog::FootprintFields { .. } => self.fped_dialog(window, rest),
         }
     }
 
@@ -1073,6 +1674,9 @@ impl Kicad {
             Frame::Schematic => self.render_sch(p, env),
             Frame::Pcb => self.render_pcb(p, env),
             Frame::Simulator => self.render_sim(p, env),
+            Frame::SymbolEditor => self.render_symed(p, env),
+            Frame::FootprintEditor => self.render_fped(p, env),
+            Frame::Viewer3d => self.render_v3d(p, env),
         }
         self.render_dialog(p, env);
     }
@@ -1095,7 +1699,17 @@ impl Kicad {
             Dialog::SimSettings { .. } | Dialog::AddSignals { .. } => {
                 self.render_sim_dialog(p, env, dialog)
             }
-            _ => self.render_pcb_dialog(p, env, dialog),
+            Dialog::UpdatePcb { .. }
+            | Dialog::Drc { .. }
+            | Dialog::Plot { .. }
+            | Dialog::Drill { .. }
+            | Dialog::BoardSetup { .. }
+            | Dialog::ZoneProperties { .. } => self.render_pcb_dialog(p, env, dialog),
+            Dialog::RouterSettings { walkaround } => {
+                self.render_router_settings(p, env, *walkaround)
+            }
+            // Dialogs of plain labelled fields and a few choices, drawn the one way.
+            other => self.render_form_dialog(p, env, other),
         }
         p.z -= 50;
     }
@@ -1123,6 +1737,9 @@ impl Kicad {
             Frame::Schematic => self.sch_page(page),
             Frame::Pcb => self.pcb_page(page),
             Frame::Simulator => self.sim_page(page),
+            Frame::SymbolEditor => self.symed_page(page),
+            Frame::FootprintEditor => self.fped_page(page),
+            Frame::Viewer3d => self.v3d_page(page),
         }
         if let Some(d) = &self.ui.dialog {
             page.elements.push(E::Heading {
@@ -1131,19 +1748,7 @@ impl Kicad {
                 level: 2,
             });
             let mut dd = d.clone();
-            let names: Vec<String> = match d {
-                Dialog::NewProject { .. } => vec!["name".into()],
-                Dialog::Chooser { .. } => vec!["filter".into()],
-                Dialog::Label { .. } => vec!["text".into()],
-                Dialog::Plot { .. } => vec!["dir".into()],
-                Dialog::ZoneProperties { .. } => vec!["clearance".into()],
-                Dialog::SymbolProperties { fields, .. }
-                | Dialog::BoardSetup { fields, .. }
-                | Dialog::SimSettings { fields, .. } => {
-                    fields.iter().map(|(k, _)| k.clone()).collect()
-                }
-                _ => vec![],
-            };
+            let names: Vec<String> = d.field_names();
             for n in names {
                 let value = dd.field_mut(&n).cloned().unwrap_or_default();
                 page.elements.push(E::Input {

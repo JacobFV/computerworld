@@ -225,14 +225,16 @@ cold-start percentile.
 
 | Packaged artifact | Raw bytes | Gzip bytes |
 |---|---:|---:|
-| Browser Wasm, standard services + renderer/fonts | 11,355,891 | 5,403,366 |
-| Browser JS glue | 42,215 | 6,531 |
-| CJK/emoji font pack, 3 files (fetched on demand) | 6,751,696 | 3,613,294 |
+| Browser Wasm, standard services + renderer/fonts | 19,727,850 | 8,378,969 |
+| Browser JS glue | 44,560 | 7,051 |
+| Font pack, 20 files (fetched on demand) | 23,363,740 | 12,961,365 |
 
 Measured with `gzip -9` on a `pkg/web` built by `scripts/build-wasm.sh` from the current
 source. The fonts, wallpapers, icons and symbol masks are embedded in the Wasm, except
-the CJK/emoji font pack in `pkg/web/fonts/`, which a page fetches only if it wants Han,
-kana, Hangul or emoji glyphs (see "Complex scripts" below).
+the font pack in `pkg/web/fonts/`, whose files a page fetches only if it wants their
+glyphs: Han, kana and Hangul (and their bold and regional forms), emoji (monochrome
+and colour) and eight further scripts (see "Complex scripts" and "Italic, colour
+emoji, CJK forms and more scripts" below).
 
 **Complex scripts, before and after.** Hebrew, Arabic, Thai, Devanagari, CJK and emoji
 support (fallback faces, bidi, `rustybuzz` shaping, CJK line breaking) grew the module
@@ -255,6 +257,47 @@ their property data. The pack itself — Noto Sans SC subset to 10,269 common Ha
 (2,190,576 gzip), all 11,172 Hangul syllables in Noto Sans KR (855,949) and Noto Emoji
 (566,769) — would have taken the module to about 9 MB gzipped; kept separate, it costs
 nothing unless used. Native builds embed it.
+
+**Italic, colour emoji, CJK forms and more scripts, before and after.** Italic and
+bold-italic faces, the COLRv1 colour emoji renderer, CJK bold and Traditional
+Chinese/Japanese/Korean glyph forms, terminal shaping and bidi, and Georgian, Armenian,
+Bengali (embedded) plus Tamil, Gurmukhi, Lao, Khmer, Gujarati, Ethiopic, Myanmar and
+Sinhala (pack) grew the module by 6.9% gzipped. Both builds are `scripts/build-wasm.sh`
+with the same toolchain (Rust 1.97.1, wasm-bindgen 0.2.128), the "before" from
+`7aeec57`:
+
+| Module | Raw bytes | Gzip bytes |
+|---|---:|---:|
+| Before (`7aeec57`) | 18,634,805 | 7,835,005 |
+| After | 19,727,850 | 8,378,969 |
+| Change | +1,093,045 (+5.9%) | +543,964 (+6.9%) |
+
+Where it went (standalone `gzip -9` of each file): the eight platform italics
+(210,644 raw / 138,207 gzip) and DejaVu's two obliques (209,004 / 127,429); Noto Sans
+Georgian, Armenian and Bengali in two weights (297,068 / 159,808); and eleven new
+layout stubs (238,476 / 90,320) — for the locale Han faces, whose bold twins share
+them, and for the eight pack scripts. That is 955,192 raw of font data; the other
+~138,000 raw is code and tables: the COLR painter (`src/colr.rs`), the terminal cell
+layout, the italic advance table, a 2.6 KB Traditional-only Han bitset and the East
+Asian Width ranges. Tamil, Gurmukhi, Lao and Khmer were first embedded too, which cost
+128 KB gzip of module; they moved to the pack, where their stubs cost 17 KB.
+
+The pack grew from 3 files (6,751,696 raw / 3,613,294 gzip) to 20 (23,363,740 /
+12,961,365). The largest additions are Noto Color Emoji (4,991,984 / 2,825,172; its
+CBDT bitmap build would be 10.7 MB), Noto Sans SC bold (3,518,020 / 2,219,356) and KR
+bold (2,365,908 / 872,952). The locale faces hold only glyphs drawn differently from
+Noto Sans SC within each locale's common set: 2,573 for Traditional Chinese (624,023
+gzip), 1,772 for Japanese (355,927) and 2,832 for Korean hanja (608,669), each again in
+bold. None of it is fetched unless a page draws those glyphs; the browser demo waits
+at boot only for regular SC and KR and the two emoji faces (6.4 MB gzip, of which the
+colour emoji are 2.8 MB) and fetches the rest behind them.
+
+Runtime, measured in Node on this build with the pack installed: painting eight colour
+emoji in a fresh renderer (so every glyph is rasterized from its COLR paint graph)
+takes 2.7, 4.1 and 7.2 ms p50 at 16, 24 and 48 px, and the colour face costs nothing
+to load (it is parsed lazily, not prepared by `fontdue`). The first frame needing a
+bold CJK face pays the same `fontdue` preparation as the regular one (~350 ms for SC
+bold, first use only). Latin rows and all other pinned frames are unchanged.
 
 A first build embedded each Noto face twice (1.23 MB of fonts for 0.72 MB of files):
 `include_bytes!` behind a `const` is re-materialized at every inlined use site. The

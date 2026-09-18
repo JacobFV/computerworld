@@ -223,21 +223,49 @@ fn number(sql: &str, start: usize) -> Result<(Tok, usize), SqlError> {
     ))
 }
 
-/// Split a script into complete statements (text including the trailing `;`), the
-/// way `sqlite3_complete` decides where one ends. Trailing text without a `;` is
-/// returned as a final statement. Triggers' inner semicolons are not special here
-/// because triggers are not supported.
-pub fn split_statements(sql: &str) -> Vec<(usize, String)> {
+/// Token classes `sqlite3_complete` tells apart.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Class {
+    Semi,
+    Ws,
+    Other,
+    Explain,
+    Create,
+    Temp,
+    Trigger,
+    End,
+}
+/// `sqlite3_complete`'s state machine: a `;` inside `CREATE TRIGGER … BEGIN … END`
+/// only ends the statement when it follows `END`.
+fn step(state: usize, c: Class) -> usize {
+    const TRANS: [[usize; 8]; 8] = [
+        // Semi Ws Other Explain Create Temp Trigger End
+        [1, 0, 2, 3, 4, 2, 2, 2], // 0 invalid
+        [1, 1, 2, 3, 4, 2, 2, 2], // 1 start
+        [1, 2, 2, 2, 2, 2, 2, 2], // 2 normal
+        [1, 3, 3, 2, 4, 2, 2, 2], // 3 explain
+        [1, 4, 2, 2, 2, 4, 5, 2], // 4 create
+        [6, 5, 5, 5, 5, 5, 5, 5], // 5 trigger
+        [6, 6, 5, 5, 5, 5, 5, 7], // 6 semi
+        [1, 7, 5, 5, 5, 5, 5, 5], // 7 end
+    ];
+    TRANS[state][c as usize]
+}
+/// Classified tokens, each with the byte offset just past it, and whether every
+/// quote, bracket and comment was closed.
+fn classes(sql: &str) -> (Vec<(Class, usize)>, bool) {
     let b = sql.as_bytes();
     let mut out = Vec::new();
-    let mut start = 0;
     let mut i = 0;
+    let word = |c: u8| c.is_ascii_alphanumeric() || c == b'_' || c == b'$' || c >= 0x80;
     while i < b.len() {
         match b[i] {
-            b'\'' | b'"' | b'`' => {
-                let q = b[i];
+            q @ (b'\'' | b'"' | b'`') => {
                 i += 1;
-                while i < b.len() {
+                loop {
+                    if i >= b.len() {
+                        return (out, false);
+                    }
                     if b[i] == q {
                         if b.get(i + 1) == Some(&q) {
                             i += 2;
@@ -248,31 +276,81 @@ pub fn split_statements(sql: &str) -> Vec<(usize, String)> {
                     i += 1;
                 }
                 i += 1;
+                out.push((Class::Other, i));
             }
             b'[' => {
                 while i < b.len() && b[i] != b']' {
                     i += 1;
                 }
+                if i >= b.len() {
+                    return (out, false);
+                }
                 i += 1;
+                out.push((Class::Other, i));
             }
             b'-' if b.get(i + 1) == Some(&b'-') => {
                 while i < b.len() && b[i] != b'\n' {
                     i += 1;
                 }
+                out.push((Class::Ws, i));
             }
             b'/' if b.get(i + 1) == Some(&b'*') => {
                 i += 2;
                 while i < b.len() && !(b[i] == b'*' && b.get(i + 1) == Some(&b'/')) {
                     i += 1;
                 }
+                if i >= b.len() {
+                    return (out, false);
+                }
                 i += 2;
+                out.push((Class::Ws, i));
             }
             b';' => {
                 i += 1;
-                out.push((start, sql[start..i].to_owned()));
-                start = i;
+                out.push((Class::Semi, i));
             }
-            _ => i += 1,
+            c if c.is_ascii_whitespace() => {
+                i += 1;
+                out.push((Class::Ws, i));
+            }
+            c if word(c) => {
+                let start = i;
+                while i < b.len() && word(b[i]) {
+                    i += 1;
+                }
+                let class = match sql[start..i].to_ascii_uppercase().as_str() {
+                    "EXPLAIN" => Class::Explain,
+                    "CREATE" => Class::Create,
+                    "TEMP" | "TEMPORARY" => Class::Temp,
+                    "TRIGGER" => Class::Trigger,
+                    "END" => Class::End,
+                    _ => Class::Other,
+                };
+                out.push((class, i));
+            }
+            _ => {
+                i += 1;
+                out.push((Class::Other, i));
+            }
+        }
+    }
+    (out, true)
+}
+/// Split a script into complete statements (text including the trailing `;`), the
+/// way `sqlite3_complete` decides where one ends: a `;` inside a string, a comment or
+/// a trigger's `BEGIN … END` body does not end one. Trailing text without a `;` is
+/// returned as a final statement.
+pub fn split_statements(sql: &str) -> Vec<(usize, String)> {
+    let (toks, _) = classes(sql);
+    let mut out = Vec::new();
+    let mut start = 0;
+    let mut state = 0;
+    for (class, end) in toks {
+        state = step(state, class);
+        if class == Class::Semi && state == 1 {
+            out.push((start, sql[start..end].to_owned()));
+            start = end;
+            state = 0;
         }
     }
     let rest = &sql[start.min(sql.len())..];
@@ -281,62 +359,11 @@ pub fn split_statements(sql: &str) -> Vec<(usize, String)> {
     }
     out
 }
-/// `sqlite3_complete`: does the text end with a `;` that is outside quotes and
-/// comments (ignoring whitespace and comments after it)?
+/// `sqlite3_complete`: does the text end with a `;` that closes a statement, outside
+/// quotes, comments and trigger bodies (ignoring whitespace and comments after it)?
 pub fn is_complete(sql: &str) -> bool {
-    let b = sql.as_bytes();
-    let mut i = 0;
-    let mut complete = false;
-    while i < b.len() {
-        match b[i] {
-            q @ (b'\'' | b'"' | b'`') => {
-                i += 1;
-                loop {
-                    if i >= b.len() {
-                        return false;
-                    }
-                    if b[i] == q {
-                        if b.get(i + 1) == Some(&q) {
-                            i += 2;
-                            continue;
-                        }
-                        break;
-                    }
-                    i += 1;
-                }
-                complete = false;
-            }
-            b'[' => {
-                while i < b.len() && b[i] != b']' {
-                    i += 1;
-                }
-                if i >= b.len() {
-                    return false;
-                }
-                complete = false;
-            }
-            b'-' if b.get(i + 1) == Some(&b'-') => {
-                while i < b.len() && b[i] != b'\n' {
-                    i += 1;
-                }
-            }
-            b'/' if b.get(i + 1) == Some(&b'*') => {
-                i += 2;
-                while i < b.len() && !(b[i] == b'*' && b.get(i + 1) == Some(&b'/')) {
-                    i += 1;
-                }
-                if i >= b.len() {
-                    return false;
-                }
-                i += 1;
-            }
-            b';' => complete = true,
-            c if c.is_ascii_whitespace() => {}
-            _ => complete = false,
-        }
-        i += 1;
-    }
-    complete
+    let (toks, closed) = classes(sql);
+    closed && toks.iter().fold(0, |st, (c, _)| step(st, *c)) == 1
 }
 /// Whether text holds nothing but whitespace and comments.
 pub fn is_blank(sql: &str) -> bool {

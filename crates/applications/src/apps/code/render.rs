@@ -189,13 +189,18 @@ pub fn pal(dark: bool) -> Pal {
 /// how an editor lays a line out: `\tx` is one tab stop then an `x`, not two characters.
 pub fn columns(text: &str, tab: usize) -> usize {
     let tab = tab.max(1);
-    text.chars().fold(0, |col, c| {
-        if c == '\t' {
-            col + tab - col % tab
-        } else {
-            col + 1
+    let mut col = 0;
+    for (i, part) in text.split('\t').enumerate() {
+        if i > 0 {
+            col = col + tab - col % tab;
         }
-    })
+        col += cells(part);
+    }
+    col
+}
+/// The columns one character takes: two for a wide one, none for a combining mark.
+fn char_cells(c: char) -> usize {
+    cells(c.encode_utf8(&mut [0u8; 4]))
 }
 /// The byte offset in `text` at display column `col`, rounded to the nearer character
 /// boundary: the inverse of `columns`, for turning a click into a caret.
@@ -206,10 +211,10 @@ pub fn byte_at_column(text: &str, col: usize, tab: usize) -> usize {
         let next = if c == '\t' {
             at + tab - at % tab
         } else {
-            at + 1
+            at + char_cells(c)
         };
         if col < next {
-            // Past the middle of a wide tab, the caret belongs after it.
+            // Past the middle of a wide tab or character, the caret belongs after it.
             return if col * 2 >= at + next {
                 i + c.len_utf8()
             } else {
@@ -232,7 +237,7 @@ fn expand_tabs(text: &str, start_col: usize, tab: usize) -> String {
             col = stop;
         } else {
             out.push(c);
-            col += 1;
+            col += char_cells(c);
         }
     }
     out
@@ -249,13 +254,17 @@ fn bold(p: &mut Painter, x: i32, y: i32, w: u32, text: &str, size: u16, c: Color
     }
     p.label(x, y, w, text, size, c, true, Align::Left)
 }
+fn cells(text: &str) -> usize {
+    cw_scene::text::terminal::columns(text)
+}
 fn mono(p: &mut Painter, x: i32, y: i32, text: &str, size: u16, c: Color) {
     if text.is_empty() {
         return;
     }
     let (cw, ch) = text_cell(size);
+    // Cells, not characters: wide characters take two (see `cw_scene::text::terminal`).
     p.node(
-        Rect::new(x, y, cw * text.chars().count() as u32 + 2, ch + 2),
+        Rect::new(x, y, cw * cells(text) as u32 + 2, ch + 2),
         Primitive::Text {
             text: text.into(),
             size,
@@ -1534,17 +1543,21 @@ fn tabs(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, group: usize) {
                 p.label(x + 8, r.y + 11, 20, glyph, 10, c, true, Align::Left);
             }
         }
-        // A preview tab's title is set apart the way VS Code italicises it.
+        // A preview tab's title is set in italic, as VS Code sets it apart.
         let title = if tab.preview { pal.tab_dim } else { fg };
-        label(
-            p,
-            x + 30,
-            r.y + 9,
-            tw.saturating_sub(64),
-            &tab.name(),
-            13,
-            title,
-        );
+        let room = tw.saturating_sub(64);
+        if room > 0 {
+            p.label(
+                x + 30,
+                r.y + 9,
+                room,
+                &tab.name(),
+                13,
+                title,
+                cw_scene::Style::new(false, tab.preview, cw_scene::Lang::Auto),
+                Align::Left,
+            );
+        }
         let close = Rect::new(x + tw as i32 - 28, r.y + 7, 20, 20);
         if tab.dirty() {
             p.circle(close.x + 10, close.y + 10, 4, fg);
@@ -1940,7 +1953,8 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
     let line_of = |pos: usize| line_starts.partition_point(|s| *s <= pos).saturating_sub(1);
     let caret_line = line_of(cursor);
     let tab_size = app.settings.tab_size.max(1);
-    // Columns on screen, with a tab running on to the next tab stop.
+    // Columns on screen: a tab runs on to the next tab stop, and a wide character or an
+    // emoji takes two cells.
     let col_in = |from: usize, to: usize| columns(&text[from..to], tab_size);
     for (i, &(s, e)) in rows.iter().enumerate().skip(first).take(cap) {
         let y = r.y + ((i - first) as u32 * rh) as i32;
@@ -2067,20 +2081,26 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
                 continue;
             }
             let start_col = col_in(ls, ls + a).saturating_sub(col0);
-            // Tabs are laid out to their stops, so a run's width is its columns, not
-            // its characters.
-            let run: Vec<char> = expand_tabs(&line_text[a..b], start_col + col0, tab_size)
-                .chars()
-                .collect();
-            let end_col = start_col + run.len();
+            // Tabs are laid out to their stops, so the run is painted with its tabs
+            // expanded to the spaces that reach the next one.
+            let run: String = expand_tabs(&line_text[a..b], start_col + col0, tab_size);
+            let end_col = start_col + cells(&run);
             if end_col <= hs || start_col >= hs + vc {
                 continue;
             }
-            let from = hs.saturating_sub(start_col);
-            let to = run.len().min(hs + vc - start_col);
-            let visible: String = run[from..to].iter().collect();
-            let x = tx + ((start_col + from - hs) as u32 * cw) as i32;
-            mono(p, x, ty, &visible, size, color);
+            // The cells of the run inside the horizontal scroll window, by cluster.
+            let (from, to) = (hs.saturating_sub(start_col), hs + vc - start_col);
+            let clusters = cw_scene::text::terminal::cluster_columns(&run);
+            let Some(&(first, first_col)) = clusters.iter().find(|c| c.1 >= from) else {
+                continue;
+            };
+            let last = clusters
+                .iter()
+                .find(|c| c.1 >= to)
+                .map_or(run.len(), |c| c.0);
+            let visible = &run[first..last.max(first)];
+            let x = tx + ((start_col + first_col - hs) as u32 * cw) as i32;
+            mono(p, x, ty, visible, size, color);
         }
         // `editor.renderWhitespace`: a dot for every space and an arrow for every tab.
         if app.settings.render_whitespace {
@@ -2089,7 +2109,7 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
                 let width = if c == '\t' {
                     tab_size - col % tab_size
                 } else {
-                    1
+                    char_cells(c)
                 };
                 if matches!(c, ' ' | '\t') && col >= hs && col < hs + vc {
                     let x = tx + ((col - hs) as u32 * cw) as i32;
@@ -2454,12 +2474,16 @@ fn panel(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             let skip = app.output.len().saturating_sub(cap);
             let cols = (body.width.saturating_sub(24) / cw) as usize;
             for (i, line) in app.output.iter().skip(skip).enumerate() {
-                let shown: String = line.chars().take(cols).collect();
+                // The first row's worth of cells: a wide character is never split.
+                let shown = match cw_scene::text::terminal::wrap(line, cols).first() {
+                    Some(row) if cols > 0 => &line[row.clone()],
+                    _ => "",
+                };
                 mono(
                     p,
                     body.x + 12,
                     body.y + (i as u32 * rh) as i32,
-                    &shown,
+                    shown,
                     TERM_SIZE,
                     pal.fg,
                 );
@@ -2583,12 +2607,12 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     let mut lines: Vec<TermLine> = Vec::new();
     let wrap = |lines: &mut Vec<TermLine>, text: &str, c: Color| {
         for raw in text.trim_end_matches('\n').split('\n') {
-            let chars: Vec<char> = raw.chars().collect();
-            if chars.is_empty() {
+            if raw.is_empty() {
                 lines.push((vec![], None));
+                continue;
             }
-            for chunk in chars.chunks(cols) {
-                lines.push((vec![(chunk.iter().collect(), c)], None));
+            for row in cw_scene::wrap_text(raw, cols) {
+                lines.push((vec![(row, c)], None));
             }
         }
     };
@@ -2599,7 +2623,7 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             (format!("{prompt} "), prompt_color),
             (entry.command.clone(), pal.fg),
         ];
-        let total: usize = echo.iter().map(|(t, _)| t.chars().count()).sum();
+        let total: usize = echo.iter().map(|(t, _)| cells(t)).sum();
         if total > cols {
             let joined: String = echo.iter().map(|(t, _)| t.clone()).collect();
             let start = lines.len();
@@ -2638,12 +2662,12 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         let mut x = x0;
         for (text, c) in spans {
             mono(p, x, y, text, TERM_SIZE, *c);
-            x += (text.chars().count() as u32 * cw) as i32;
+            x += (cells(text) as u32 * cw) as i32;
         }
         y += rh as i32;
     }
     if scroll == 0 {
-        let prompt_w = (prompt.chars().count() as u32 * cw) as i32;
+        let prompt_w = (cells(&prompt) as u32 * cw) as i32;
         mono(p, x0, y, &prompt, TERM_SIZE, prompt_color);
         mono(p, x0 + prompt_w, y, &term.input, TERM_SIZE, pal.fg);
         p.region(
@@ -2656,12 +2680,11 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             "code:terminal-line",
             "Terminal input",
         );
-        let before = term
-            .input
-            .get(..term.cursor.min(term.input.len()))
-            .unwrap_or("")
-            .chars()
-            .count() as i32;
+        let before = cells(
+            term.input
+                .get(..term.cursor.min(term.input.len()))
+                .unwrap_or(""),
+        ) as i32;
         let caret = Rect::new(x0 + prompt_w + before * cw as i32, y, cw, rh);
         if app.focus == Focus::Terminal {
             p.box_(caret, Color(pal.fg.0, pal.fg.1, pal.fg.2, 200), 0);

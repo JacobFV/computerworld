@@ -5,7 +5,15 @@ const pretty = value => JSON.stringify(value, (_, v) => typeof v === 'bigint' ? 
 let world, saved, machine, scrollY = 0, environments = new Map(), definition = initialDefinition;
 let presentations = {...initialDefinition.metadata?.device_presentations}, savedPresentation, savedSessions;
 const seed = 2026;
-const kind = id => presentations[id] ?? (id.includes('server') ? 'server' : 'desktop');
+// What a device is: as the world or the device states it, else what the engine assumes
+// (a phone OS is a phone, a computer with no graphical profile is a headless server,
+// anything else a desktop computer).
+const kind = id => {
+  const computer = definition.computers.find(c => c.id === id);
+  const family = definition.profiles.find(p => p.id === computer?.profile)?.family;
+  if (family === 'ios' || family === 'android') return 'phone';
+  return presentations[id] ?? computer?.presentation ?? (computer?.profile?.startsWith('virtual-') ? 'desktop' : 'server');
+};
 const dimensions = id => kind(id)==='phone' ? [390,780] : [960,640];
 const config = id => ({actor: definition.computers.find(c => c.id === id).user,machines:[id],actions:['terminal.v1','browser.v1','keyboard.v1','pointer.v1','application.v1','filesystem.v1','http.v1'],observations:['terminal.v1','semantic.v1','browser.v1'],action_budget:1000000});
 const env = () => environments.get(machine);
@@ -123,7 +131,7 @@ function addDevice({id,profile,user,type='desktop',connectTo='app-server'}) {
   let octet=20;const used=new Set(definition.network.nodes.map(n=>n.address));while(used.has(`10.0.2.${octet}`)&&octet<255)octet++;
   if(octet===255)throw Error('No address available in the demo subnet.');
   const address=`10.0.2.${octet}`;
-  const computer={id,profile,address,user,initial_files:{'notes.txt':`Welcome ${user}.\nInternal site: http://intranet.internal/\n`},installed_apps:['terminal','browser','editor','files','desktop',...(profile.startsWith('virtual-')?['mail','calendar','chat','docs']:[])],packages:['coreutils','git','curl']};
+  const computer={id,profile,address,user,presentation:type,initial_files:{'notes.txt':`Welcome ${user}.\nInternal site: http://intranet.internal/\n`},installed_apps:['terminal','browser','editor','files','desktop',...(profile.startsWith('virtual-')?['mail','calendar','chat','docs']:[])],packages:['coreutils','git','curl']};
   const node={id,address,zone:'local'};
   const links=connectTo?[{from:connectTo,to:id,bidirectional:true,latency_us:10,loss_per_million:0}]:[];
   world.addComputer(computer,node,links);presentations[id]=type;definition=world.definition();environments.set(id,world.environment(config(id)));
@@ -179,10 +187,16 @@ $('zoom').oninput=()=>{const value=Number($('zoom').value);$('zoom-label').value
 new ResizeObserver(()=>requestAnimationFrame(drawLinks)).observe($('network-map'));
 try {
   await init();
-  // The CJK/emoji font pack is not in the Wasm module. Fetch it during boot, in
-  // parallel with the first paint, so the episode itself makes no requests; until a
-  // file arrives its glyphs draw as boxes (layout is already final).
-  const fontPack=Promise.all(fontPackStatus().files.filter(f=>!f.installed).map(async f=>{const r=await fetch(new URL(`../../pkg/web/${f.path}`,import.meta.url));if(r.ok)installFont(new Uint8Array(await r.arrayBuffer()));})).catch(error=>console.warn('font pack unavailable',error));
+  // The font pack is not in the Wasm module. Fetch it during boot, in parallel with
+  // the first paint, so the episode itself makes no requests; until a file arrives its
+  // glyphs draw as boxes (layout is already final). Boot waits for the everyday files
+  // (regular CJK and both emoji faces); the bold, locale-form and extra-script files
+  // follow in the background and repaint when they land.
+  const everyday=new Set(['noto-sans-sc.ttf','noto-sans-kr.ttf','noto-emoji.ttf','noto-color-emoji.ttf']);
+  const fetchFonts=files=>Promise.all(files.map(async f=>{const r=await fetch(new URL(`../../pkg/web/${f.path}`,import.meta.url));if(r.ok)installFont(new Uint8Array(await r.arrayBuffer()));})).catch(error=>console.warn('font pack unavailable',error));
+  const pending=fontPackStatus().files.filter(f=>!f.installed);
+  const fontPack=fetchFonts(pending.filter(f=>everyday.has(f.file)));
+  fontPack.then(()=>fetchFonts(pending.filter(f=>!everyday.has(f.file)))).then(()=>{if(window.demoReady)refresh();});
   world=new World(initialDefinition,seed);definition=world.definition();sessions();
   for(const c of definition.computers){if(kind(c.id)==='server')environments.get(c.id).step([{family:'application.v1',op:'launch',machine:c.id,payload:{kind:'terminal'}}]);}
   buildMap();select(definition.computers[0].id);$('loading').hidden=true;$('status').textContent='● Running locally';

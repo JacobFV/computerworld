@@ -222,15 +222,24 @@ stream, so every replay agrees.
 
 The engine implements tables with `PRIMARY KEY`, `NOT NULL`, `UNIQUE`, `CHECK`,
 `DEFAULT`, `COLLATE` and `REFERENCES` (enforced with `PRAGMA foreign_keys = ON`,
-including `CASCADE`, `SET NULL` and `SET DEFAULT`), `AUTOINCREMENT`, B-tree indexes the
-planner uses for equality, `IN` and range lookups (`EXPLAIN QUERY PLAN` shows the
-choice), views, `ALTER TABLE` (rename, add, rename and drop column), joins (inner, left,
-right, full, cross, `USING`, `NATURAL`), grouping, aggregates, compound selects, scalar,
-`IN` and `EXISTS` subqueries, recursive CTEs, upsert, `RETURNING`, transactions and
-savepoints. Refused by name rather than half-done: triggers, window functions,
-`WITHOUT ROWID` tables, partial and expression indexes, generated columns, `ATTACH`,
-virtual tables, JSON operators and bytecode `EXPLAIN`. Foreign keys are checked
-immediately rather than deferred to the end of the statement.
+including `CASCADE`, `SET NULL` and `SET DEFAULT`), `AUTOINCREMENT`, `WITHOUT ROWID`
+tables (stored, as SQLite stores them, as an index B-tree in primary key order),
+B-tree indexes the planner uses for equality, `IN` and range lookups and to avoid
+sorts (`EXPLAIN QUERY PLAN` shows the choice, including `USING COVERING INDEX` when
+the index holds every column the query reads and `USING PRIMARY KEY` for a WITHOUT
+ROWID table), views, triggers (`BEFORE`, `AFTER` and `INSTEAD OF` on `INSERT`,
+`UPDATE [OF columns]` and `DELETE`, `FOR EACH ROW` with `WHEN`, `NEW` and `OLD`, and
+`RAISE(IGNORE | ABORT | FAIL | ROLLBACK, message)`; the newest fires first,
+`recursive_triggers` is off, foreign key actions fire the child's triggers, and a
+view with `INSTEAD OF` triggers takes writes), `ALTER TABLE` (rename, add, rename and
+drop column; renames rewrite triggers, indexes and the views that read the table,
+quoting the new name as the statement did), joins (inner, left, right, full, cross,
+`USING`, `NATURAL`), grouping, aggregates, compound selects, scalar, `IN` and `EXISTS`
+subqueries, recursive CTEs, upsert, `RETURNING`, transactions and savepoints. Refused
+by name rather than half-done: window functions, partial and expression indexes,
+generated columns, `ATTACH`, virtual tables, JSON operators and bytecode `EXPLAIN`.
+Foreign keys are checked immediately rather than deferred to the end of the
+statement.
 
 ## Language runtimes
 
