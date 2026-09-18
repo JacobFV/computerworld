@@ -451,7 +451,13 @@ mod icon_table_tests {
             let side = expected_side(id);
             assert_eq!((frame.width, frame.height), (side, side), "{id}");
             assert_eq!(frame.rgba.len(), (side * side * 4) as usize, "{id}");
-            let opaque = frame.rgba.chunks_exact(4).filter(|px| px[3] >= 128).count();
+            let opaque = frame
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .filter(|px| px[3] >= 128)
+                .count();
             // An id that decodes but draws nothing is the failure this catches;
             // the thinnest artwork bundled (a Windows silhouette) covers a tenth.
             assert!(
@@ -541,7 +547,7 @@ mod icon_table_tests {
             // Wallpapers are opaque: JPEG carries no alpha and the renderer
             // composites them as a fully covering background.
             assert!(
-                frame.rgba.chunks_exact(4).all(|px| px[3] == 255),
+                frame.rgba.as_chunks::<4>().0.iter().all(|px| px[3] == 255),
                 "{id} decoded a non-opaque pixel"
             );
             assert_eq!(format!("{:x}", Sha256::digest(&frame.rgba)), digest, "{id}");

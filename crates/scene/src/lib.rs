@@ -1137,12 +1137,10 @@ impl std::io::Write for Digest {
             self.mix(word);
             self.len = 0;
         }
-        let mut words = rest.chunks_exact(8);
-        for word in &mut words {
-            let word = u64::from_le_bytes(word.try_into().expect("chunks_exact(8)"));
-            self.mix(word);
+        let (words, tail) = rest.as_chunks::<8>();
+        for word in words {
+            self.mix(u64::from_le_bytes(*word));
         }
-        let tail = words.remainder();
         self.word[..tail.len()].copy_from_slice(tail);
         self.len = tail.len();
         Ok(buf.len())

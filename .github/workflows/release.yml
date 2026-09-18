@@ -53,6 +53,11 @@ jobs:
           architecture: ${{ matrix.os == 'macos-14' && 'arm64' || 'x64' }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # rust-cache restores `target/`; a previous release's wheels must not be
+      # smoke-tested or uploaded as this one's.
+      - name: Clear release outputs restored from the cache
+        shell: bash
+        run: rm -rf target/release-wheels target/release-wheel-venv target/release-python-evidence
       - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
@@ -91,6 +96,10 @@ jobs:
         run: |
           BINDGEN_VERSION=$(python -c 'import tomllib; d=tomllib.load(open("Cargo.lock","rb")); print(next(p["version"] for p in d["package"] if p["name"] == "wasm-bindgen"))')
           cargo install wasm-bindgen-cli --version "$BINDGEN_VERSION" --locked
+      # rust-cache restores `target/`; a previous release's archives and unpacked
+      # bundles must not be tested or uploaded as this one's.
+      - name: Clear release outputs restored from the cache
+        run: rm -rf target/release-assets target/release-unpacked target/release-node-evidence
       - run: bash scripts/build-wasm.sh
       - run: node examples/browser/build.mjs
       - run: python scripts/package-release.py

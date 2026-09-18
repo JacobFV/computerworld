@@ -60,8 +60,8 @@ fn tile(asset: &str) -> cw_render::Frame {
 fn ink(frame: &cw_render::Frame) -> (usize, usize) {
     let mut painted = 0;
     let mut colors = BTreeSet::new();
-    for px in frame.rgba.chunks_exact(4) {
-        if px != [BACKDROP.0, BACKDROP.1, BACKDROP.2, BACKDROP.3] {
+    for px in frame.rgba.as_chunks::<4>().0 {
+        if *px != [BACKDROP.0, BACKDROP.1, BACKDROP.2, BACKDROP.3] {
             painted += 1;
             colors.insert([px[0], px[1], px[2]]);
         }
