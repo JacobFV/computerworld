@@ -718,3 +718,132 @@ fn open_folder_browses_the_machine_and_opens_what_is_chosen() {
         .find("code:cmd:workbench.action.files.openFolder")
         .is_some());
 }
+
+#[test]
+fn splitting_the_editor_paints_two_groups_of_one_document() {
+    let mut d = Desk::new("carol-ubuntu", "carol");
+    d.launch();
+    d.click("code:tree:main.py");
+    // Split from the command palette, as a person would.
+    d.key("Ctrl+Shift+P");
+    d.typed("split editor right");
+    d.key("Enter");
+    // Two editors are on screen, side by side, and the right one has the focus.
+    let scene = d.world.scene(&d.actor, W, H).unwrap();
+    let mut editors: Vec<(String, cw_scene::Rect)> = scene
+        .nodes
+        .iter()
+        .filter_map(|n| {
+            let i = n.interaction.as_deref()?;
+            let at = i.find(":content:code:editor:")?;
+            Some((i[at + 9..].to_owned(), n.transform.bounds(n.bounds)))
+        })
+        .collect();
+    editors.sort_by_key(|(_, r)| r.x);
+    assert_eq!(editors.len(), 2, "{editors:?}");
+    assert!(editors[0].1.x + editors[0].1.width as i32 <= editors[1].1.x);
+    assert!(editors[0].0.starts_with("code:editor:0:"));
+    assert!(editors[1].0.starts_with("code:editor:1:"));
+    let code = d.code();
+    assert_eq!(code["focus_group"], 1);
+    assert_eq!(code["tabs"].as_array().unwrap().len(), 2);
+    // Typing in the right-hand view changes the left-hand one too: it is one file.
+    let r = editors[1].1;
+    d.click_at(r.x + 1, r.y + 1);
+    d.typed("# split");
+    d.key("Enter");
+    let code = d.code();
+    for tab in code["tabs"].as_array().unwrap() {
+        assert!(tab["doc"]["text"].as_str().unwrap().starts_with("# split"));
+    }
+    // Saving writes that one file once.
+    d.key("Ctrl+s");
+    assert!(d
+        .file("/home/carol/project/main.py")
+        .starts_with("# split\nimport sys"));
+    // Clicking in the left-hand view moves the focus back to its group.
+    let r = editors[0].1;
+    d.click_at(r.x + 1, r.y + 1);
+    assert_eq!(d.code()["focus_group"], 0);
+}
+
+#[test]
+fn several_cursors_change_every_occurrence_at_once() {
+    let mut d = Desk::new("carol-ubuntu", "carol");
+    d.launch();
+    d.click("code:tree:main.py");
+    let (_, r) = d.locate("code:editor:");
+    // The caret goes into `main` on the `def main():` line (the fourth row).
+    let (cw, rh) = (9, 19);
+    d.click_at(r.x + 5 * cw + 1, r.y + 3 * rh + rh / 2);
+    // Ctrl+D selects the word, again adds the call below it.
+    d.key("Ctrl+d");
+    d.key("Ctrl+d");
+    let carets = d.code()["tabs"][0]["doc"]["carets"]
+        .as_array()
+        .unwrap()
+        .len();
+    assert_eq!(carets, 1, "the primary caret plus one more");
+    d.typed("start");
+    let text = d.code()["tabs"][0]["doc"]["text"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(text.contains("def start():"), "{text}");
+    assert!(text.contains("\nstart()\n"), "{text}");
+    assert!(!text.contains("main"), "{text}");
+    // One undo takes back both edits, as VS Code does.
+    d.key("Ctrl+z");
+    assert_eq!(d.code()["tabs"][0]["doc"]["text"], MAIN_PY);
+    d.key("Ctrl+Shift+Z");
+    d.key("Ctrl+s");
+    let on_disk = d.file("/home/carol/project/main.py");
+    assert!(on_disk.contains("def start():") && on_disk.contains("\nstart()\n"));
+}
+
+#[test]
+fn right_clicking_the_explorer_opens_its_menu_and_its_entries_act() {
+    let mut d = Desk::new("carol-ubuntu", "carol");
+    d.launch();
+    d.click("code:tree:src");
+    let r = d.find("code:tree:src/app.js").expect("the file is listed");
+    let (x, y) = (r.x + r.width as i32 / 2, r.y + r.height as i32 / 2);
+    for op in ["down", "up"] {
+        d.act(
+            "pointer.v1",
+            op,
+            json!({"x": x, "y": y, "width": W, "height": H, "button": 2}),
+        );
+    }
+    let code = d.code();
+    assert_eq!(code["context"], "explorer");
+    assert_eq!(code["selected"], "src/app.js");
+    assert!(d.find("code:cmd:copyFilePath").is_some());
+    assert!(d.find("code:cmd:openInIntegratedTerminal").is_some());
+    // Copy Path puts the machine's own path on the machine's clipboard.
+    d.click("code:cmd:copyFilePath");
+    let session = d.world.interfaces().session(&d.actor).unwrap();
+    assert_eq!(
+        session.machines["carol-ubuntu"]
+            .desktop
+            .clipboard_text
+            .as_deref(),
+        Some("/home/carol/project/src/app.js")
+    );
+    assert_eq!(d.code()["context"], Value::Null);
+    // Open in Integrated Terminal really runs the machine's shell in that folder.
+    for op in ["down", "up"] {
+        d.act(
+            "pointer.v1",
+            op,
+            json!({"x": x, "y": y, "width": W, "height": H, "button": 2}),
+        );
+    }
+    d.click("code:cmd:openInIntegratedTerminal");
+    d.typed("pwd");
+    d.key("Enter");
+    let out = d.transcript();
+    let last = out.last().expect("the shell answered");
+    assert_eq!(last["command"], "pwd");
+    assert_eq!(last["stdout"], "/home/carol/project/src\n");
+}

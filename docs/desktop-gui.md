@@ -187,15 +187,37 @@ nothing it opens `~/project` when the machine has one and the Welcome page other
   missing interpreter shows the shell's own `command not found` and exit 127.
 - Problems are what tools reported: CPython and Node tracebacks and bash line errors
   from runs, and the JSON parser's error for an open JSON file. Each opens its line.
-- Source Control runs `git status`, `git add`, `git commit`, `git init`, `git branch`
-  and `git checkout` in the workspace and logs them in the Output panel.
+- Source Control runs `git status`, `git add`, `git commit`, `git init`, `git branch`,
+  `git checkout`, `git reset` (Unstage) and `git restore`/`git checkout --` (Discard
+  Changes; a new file is trashed instead) in the workspace and logs them in the Output
+  panel.
+- The editor area splits right and down into up to four groups (`Ctrl+\`, View: Split
+  Editor Right/Down, Move Editor into Next/Previous Group, Focus *n*th Editor Group).
+  A file open in two groups is one document: an edit in one appears in the other, and
+  one undo takes it back in both.
+- The minimap is a scaled map of the file's lines drawn from the same tokens as the
+  text; pressing or dragging it scrolls the editor to that part of the file.
+- Multiple cursors: Alt+click adds one, `Ctrl+Alt+Up`/`Down` add one above or below,
+  `Ctrl+D` adds the next occurrence of the selection, `Ctrl+Shift+L` all of them, and
+  `Escape` drops the extras. Typing, pasting, Backspace, Delete and the arrows act at
+  every cursor, and each keystroke is one undo step.
+- Tabs in the text are tab stops (`editor.tabSize` columns), including where a click
+  lands; `editor.renderWhitespace` (View: Toggle Render Whitespace) draws spaces as
+  middle dots and tabs as arrows.
+- A right press opens the context menu for what is under it: the Explorer's (New File,
+  New Folder, Rename, Delete, Copy Path, Reveal in the file manager, Open in Integrated
+  Terminal) or the editor's (Cut, Copy, Paste, Go to Definition, Command Palette). Go to
+  Definition reads the workspace and opens where the name under the caret is defined
+  (`def`/`class`, `function`, `const`/`let`/`var`, `fn`, `struct`, `enum`, `trait` and
+  `impl`), and says so when nothing defines it.
 - Settings (`workbench.colorTheme`, `editor.fontSize`, `editor.tabSize`,
   `editor.wordWrap`) persist to VS Code's own `settings.json` for the platform
   (`~/.config/Code/User`, `~/Library/Application Support/Code/User`,
   `~/AppData/Roaming/Code/User`) and are read back at launch.
 
-Not implemented, and so not drawn: extensions, the debugger (Run executes without one),
-split editors, the minimap, multiple cursors and the Accounts menu.
+Not implemented, and so not drawn: extensions, the debugger (Run executes without
+one), the Accounts menu, and italic preview tabs (the renderer has no italic face yet,
+so a preview tab is dimmed instead).
 
 Launchers, search, task switching and platform panels expose semantic hit regions.
 Mobile profiles implement Home, recent apps and supported vertical swipes for

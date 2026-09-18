@@ -417,6 +417,7 @@ impl NativeApp {
     /// Whether `target` follows a pointer drag (a canvas, a slider).
     pub fn drags(&self, target: &str) -> bool {
         match self {
+            Self::Code(a) => a.drags(target),
             Self::Kicad(a) => a.drags(target),
             Self::Freecad(a) => a.drags(target),
             Self::Spreadsheet(_) | Self::Excel(_) => sheet::Book::drags(target),
@@ -499,11 +500,19 @@ impl NativeApp {
         if let Self::Freecad(a) = self {
             a.pointer_button(button);
         }
+        if let Self::Code(a) = self {
+            a.button = button;
+        }
     }
     /// Whether a secondary-button press on `target` belongs to the application (a
     /// right-drag that pans a 3D view) rather than opening the context menu.
     pub fn takes_secondary(&self, target: &str) -> bool {
-        matches!(self, Self::Freecad(a) if a.drags(target))
+        match self {
+            Self::Freecad(a) => a.drags(target),
+            // Visual Studio Code has context menus of its own.
+            Self::Code(a) => a.takes_secondary(target),
+            _ => false,
+        }
     }
     /// A wheel turn over `target`, at (`x`, `y`) inside it, for applications that give
     /// the wheel a meaning of their own; `false` leaves it to the platform, which
@@ -555,6 +564,9 @@ impl NativeApp {
     /// Modifier keys (`imaging::MOD_*` bits) held for the pointer press about to reach
     /// a drag surface: an image editor's Ctrl- or Option-click sets a clone source.
     pub fn pointer_modifiers(&mut self, modifiers: u8) {
+        if let Self::Code(a) = self {
+            a.modifiers = modifiers;
+        }
         if let Some(s) = self.studio_mut() {
             s.modifiers = modifiers;
         }
@@ -571,6 +583,9 @@ impl NativeApp {
     ) -> Result<Vec<AppEffect>, String> {
         if let Self::Freecad(a) = self {
             return a.pointer(window, target, phase, x, y);
+        }
+        if let Self::Code(a) = self {
+            return a.pointer(target, phase, x, y);
         }
         if let Some(book) = self.book_mut() {
             return book.pointer(target, phase, x, y);

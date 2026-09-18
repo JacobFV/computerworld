@@ -1132,6 +1132,8 @@ impl Environment {
                     Some(_) => return Err(SimError::invalid("modifiers are a list of key names")),
                 };
                 self.machine_mut(id, machine)?.desktop.pointer_modifiers = modifiers;
+                self.machine_mut(id, machine)?.desktop.pointer_button =
+                    p.get("button").and_then(integer_u64).unwrap_or(0).min(2) as u8;
                 let released_press = if action.op == "up" {
                     self.machine_mut(id, machine)?.pointer_press.take()
                 } else {
@@ -1296,6 +1298,11 @@ impl Environment {
                             return Ok(json!({"cursor":cursor}));
                         }
                     }
+                }
+                // The secondary button opens a menu on the press. Its release activates
+                // nothing, so it never clicks what happens to be under the pointer.
+                if action.op == "up" && p.get("button").and_then(integer_u64) == Some(2) {
+                    return Ok(Value::Null);
                 }
                 let scene = self.scene(id, width, height)?;
                 if action.op == "move" {

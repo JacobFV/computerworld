@@ -636,11 +636,11 @@ fn clipboard_and_drag_selection_go_through_the_desktop() {
         vec![("/work/a.txt".into(), Ok("hello world".into()))],
     )
     .unwrap();
-    d.click("code:editor:0:0:0:30").unwrap();
+    d.click("code:editor:0:0:0:0:30").unwrap();
     // Press at column 0, release at column 5: "hello" is selected.
     let (cw, _) = render::cell(14, Platform::Linux);
-    d.press_at("code:editor:0:0:0:30", 0, 2).unwrap();
-    d.click_at("code:editor:0:0:0:30", 5 * cw as i32, 2)
+    d.press_at("code:editor:0:0:0:0:30", 0, 2).unwrap();
+    d.click_at("code:editor:0:0:0:0:30", 5 * cw as i32, 2)
         .unwrap();
     let code = |d: &DesktopState| match &d.windows[&id].state {
         AppState::Native(NativeApp::Code(c)) => c.clone(),
@@ -729,4 +729,391 @@ fn every_painted_control_is_a_real_target_or_announced_disabled() {
             probe.click(W, t, 0).unwrap_or_else(|e| panic!("{t}: {e}"));
         }
     }
+}
+
+/// The text of the active editor.
+fn text(app: &Code) -> String {
+    app.active_tab().unwrap().doc.text.clone()
+}
+/// Every caret, in text order.
+fn carets(app: &Code) -> Vec<usize> {
+    let doc = &app.active_tab().unwrap().doc;
+    let mut all: Vec<usize> = doc.all_carets().into_iter().map(|(c, _)| c).collect();
+    all.sort();
+    all
+}
+
+#[test]
+fn several_cursors_type_delete_and_undo_as_one_edit() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "one\ntwo\nthree\n");
+    app.run_command(W, "editor.action.insertCursorBelow")
+        .unwrap();
+    app.run_command(W, "editor.action.insertCursorBelow")
+        .unwrap();
+    assert_eq!(
+        carets(&app),
+        [0, 4, 8],
+        "one caret at the start of each line"
+    );
+    // Typing happens at every caret, and the undo history holds it as one step.
+    app.text_effects(W, "#").unwrap();
+    app.text_effects(W, " ").unwrap();
+    assert_eq!(text(&app), "# one\n# two\n# three\n");
+    assert_eq!(carets(&app), [2, 8, 14]);
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "#one\n#two\n#three\n");
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "one\ntwo\nthree\n");
+    app.run_command(W, "redo").unwrap();
+    assert_eq!(text(&app), "#one\n#two\n#three\n");
+    // Backspace at every caret, and the carets move together.
+    let mut app2 = workspace();
+    open(&mut app2, "main.py", "one\ntwo\nthree\n");
+    app2.run_command(W, "editor.action.insertCursorBelow")
+        .unwrap();
+    app2.text_effects(W, "x").unwrap();
+    app2.key(W, "ArrowRight", 0).unwrap();
+    assert_eq!(carets(&app2), [2, 7]);
+    app2.key(W, "Backspace", 0).unwrap();
+    assert_eq!(text(&app2), "xne\nxwo\nthree\n");
+    // Escape leaves one cursor.
+    app2.key(W, "Escape", 0).unwrap();
+    assert_eq!(carets(&app2).len(), 1);
+}
+
+#[test]
+fn ctrl_d_adds_the_next_occurrence_and_ctrl_shift_l_takes_them_all() {
+    let mut app = workspace();
+    open(
+        &mut app,
+        "main.py",
+        "value = 1\nprint(value)\nvalue += value\n",
+    );
+    // With nothing selected the first press selects the word at the caret.
+    app.run_command(W, "editor.action.addSelectionToNextFindMatch")
+        .unwrap();
+    assert_eq!(app.active_tab().unwrap().doc.selected_text(), "value");
+    app.run_command(W, "editor.action.addSelectionToNextFindMatch")
+        .unwrap();
+    assert_eq!(carets(&app).len(), 2);
+    // Typing replaces every selected occurrence.
+    app.text_effects(W, "total").unwrap();
+    assert_eq!(text(&app), "total = 1\nprint(total)\nvalue += value\n");
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "value = 1\nprint(value)\nvalue += value\n");
+    // Select all occurrences: four of them, and one edit changes them all.
+    let mut app = workspace();
+    open(
+        &mut app,
+        "main.py",
+        "value = 1\nprint(value)\nvalue += value\n",
+    );
+    app.run_command(W, "editor.action.selectHighlights")
+        .unwrap();
+    assert_eq!(carets(&app).len(), 4);
+    app.text_effects(W, "n").unwrap();
+    assert_eq!(text(&app), "n = 1\nprint(n)\nn += n\n");
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "value = 1\nprint(value)\nvalue += value\n");
+}
+
+#[test]
+fn alt_click_adds_a_cursor_and_a_plain_click_takes_them_away() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "one\ntwo\nthree\n");
+    let (cw, rh) = render::cell(app.settings.font_size, app.platform);
+    let target = "code:editor:0:0:0:0:30";
+    // A plain click puts one caret on line 2, column 1.
+    app.press_at(target, cw as i32, rh as i32).unwrap();
+    app.click_at(W, target, cw as i32, rh as i32, 0).unwrap();
+    assert_eq!(carets(&app), [5]);
+    // Alt held, the next click adds a second caret rather than moving the first.
+    app.modifiers = crate::apps::imaging::MOD_ALT;
+    app.press_at(target, cw as i32, 2 * rh as i32).unwrap();
+    app.click_at(W, target, cw as i32, 2 * rh as i32, 0)
+        .unwrap();
+    assert_eq!(carets(&app), [5, 9]);
+    app.text_effects(W, "!").unwrap();
+    assert_eq!(text(&app), "one\nt!wo\nt!hree\n");
+    // Without Alt the extra cursors go away again.
+    app.modifiers = 0;
+    app.press_at(target, cw as i32, 0).unwrap();
+    app.click_at(W, target, cw as i32, 0, 0).unwrap();
+    assert_eq!(carets(&app), [1]);
+}
+
+/// Paint the workbench and hand back its scene.
+fn painted(app: &Code) -> cw_scene::Scene {
+    let mut p = Painter::themed(DesktopTheme::Ubuntu, 1200, 800, 1);
+    render::render(
+        app,
+        &mut p,
+        &crate::AppEnv {
+            theme: DesktopTheme::Ubuntu,
+            width: 1200,
+            height: 800,
+            clock_us: 0,
+            settings: &crate::SystemSettings::DEFAULT,
+            clipboard: None,
+            share_to: None,
+            editor: None,
+            pointer: None,
+            files: Default::default(),
+        },
+    );
+    p.scene
+}
+fn targets(scene: &cw_scene::Scene) -> Vec<String> {
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| n.interaction.clone())
+        .collect()
+}
+
+#[test]
+fn splitting_the_editor_gives_each_group_its_own_editors() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "print(1)\n");
+    assert_eq!(app.group_count(), 1);
+    app.run_command(W, "workbench.action.splitEditorRight")
+        .unwrap();
+    assert_eq!(app.group_count(), 2);
+    assert_eq!(app.focus_group, 1, "the new group takes the focus");
+    assert!(matches!(&app.layout, Slot::Split { row: true, children } if children.len() == 2));
+    // Both groups show the file, and the two editors are painted side by side.
+    assert_eq!(app.group_tabs(0).len(), 1);
+    assert_eq!(app.group_tabs(1).len(), 1);
+    let scene = painted(&app);
+    let editors: Vec<String> = targets(&scene)
+        .into_iter()
+        .filter(|t| t.starts_with("code:editor:"))
+        .collect();
+    assert_eq!(editors.len(), 2, "{editors:?}");
+    assert!(editors.iter().any(|t| t.starts_with("code:editor:0:")));
+    assert!(editors.iter().any(|t| t.starts_with("code:editor:1:")));
+    // The two views are one document, as they are in VS Code: typing in the focused
+    // group shows up in the other, and so does undo.
+    app.active_mut().unwrap().doc.set(0, false);
+    app.text_effects(W, "# ").unwrap();
+    let other = app.group_tabs(0)[0];
+    assert_eq!(app.tabs[other].doc.text, "# print(1)\n");
+    assert!(app.tabs[other].dirty());
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(app.tabs[other].doc.text, "print(1)\n");
+    // Opening another file only touches the focused group.
+    open(&mut app, "README.md", "# hi\n");
+    assert_eq!(app.group_tabs(0).len(), 1);
+    assert_eq!(app.group_tabs(1).len(), 2);
+    // Focusing a group brings back its editor.
+    app.run_command(W, "workbench.action.focusFirstEditorGroup")
+        .unwrap();
+    assert_eq!(app.focus_group, 0);
+    assert_eq!(
+        app.active_tab().unwrap().path,
+        "/home/alice/project/main.py"
+    );
+    app.run_command(W, "workbench.action.focusNextGroup")
+        .unwrap();
+    assert_eq!(app.focus_group, 1);
+    assert_eq!(app.active_tab().unwrap().name(), "README.md");
+    // Move it to the other group: it leaves this one and lands there.
+    app.run_command(W, "workbench.action.moveEditorToPreviousGroup")
+        .unwrap();
+    assert_eq!(app.focus_group, 0);
+    assert_eq!(app.active_tab().unwrap().name(), "README.md");
+    assert_eq!(app.group_tabs(0).len(), 2);
+    assert_eq!(app.group_tabs(1).len(), 1);
+    // Closing the last editor of a group closes the group with it.
+    app.go_to_group(1);
+    let only = app.group_tabs(1)[0];
+    app.close_tab(only, true).unwrap();
+    assert_eq!(app.group_count(), 1);
+    assert_eq!(app.layout, Slot::Leaf(0));
+    assert_eq!(app.group_tabs(0).len(), 2);
+    // A third group splits downwards under the second.
+    app.run_command(W, "workbench.action.splitEditorDown")
+        .unwrap();
+    assert!(matches!(&app.layout, Slot::Split { row: false, .. }));
+    assert_eq!(app.group_count(), 2);
+}
+
+#[test]
+fn the_minimap_is_a_real_map_that_scrolls_the_editor() {
+    let mut app = workspace();
+    let long: String = (0..200).map(|i| format!("line {i}\n")).collect();
+    open(&mut app, "main.py", &long);
+    let scene = painted(&app);
+    let map = targets(&scene)
+        .into_iter()
+        .find(|t| t.starts_with("code:minimap:"))
+        .expect("the minimap is painted");
+    assert!(app.drags(&map));
+    assert_eq!(app.active_tab().unwrap().scroll, 0);
+    // Pressing half way down the map scrolls the editor to that part of the file.
+    app.pointer(&map, crate::PointerPhase::Down, 0, 300)
+        .unwrap();
+    let scrolled = app.active_tab().unwrap().scroll;
+    assert!(scrolled > 100, "scrolled to row {scrolled}");
+    // Dragging back up moves it again, and the view no longer follows the caret.
+    app.pointer(&map, crate::PointerPhase::Move, 0, 40).unwrap();
+    assert!(app.active_tab().unwrap().scroll < scrolled);
+    assert!(!app.active_tab().unwrap().follow);
+}
+
+#[test]
+fn right_clicking_opens_the_explorers_and_the_editors_own_menus() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "def helper():\n    pass\n");
+    // The Explorer's menu, on the row that was pressed.
+    app.button = 2;
+    app.press_at("code:tree:src/app.js", 0, 0).unwrap();
+    assert_eq!(app.context, Some(ContextKind::Explorer));
+    assert_eq!(app.selected.as_deref(), Some("src/app.js"));
+    let scene = painted(&app);
+    let shown = targets(&scene);
+    for id in [
+        "explorer.newFile",
+        "renameFile",
+        "deleteFile",
+        "copyFilePath",
+        "revealFileInOS",
+        "openInIntegratedTerminal",
+    ] {
+        assert!(
+            shown.iter().any(|t| t == &format!("code:cmd:{id}")),
+            "{id} is not in the menu: {shown:?}"
+        );
+    }
+    // Copy Path really copies the machine path.
+    let effects = app.click(W, "code:cmd:copyFilePath", 0).unwrap();
+    assert!(matches!(&effects[0], AppEffect::CopyText { text, .. }
+        if text == "/home/alice/project/src/app.js"));
+    assert_eq!(app.context, None, "the menu closes when an entry is chosen");
+    // Reveal in the file manager opens it on the containing folder.
+    app.button = 2;
+    app.press_at("code:tree:src/app.js", 0, 0).unwrap();
+    let effects = app.click(W, "code:cmd:revealFileInOS", 0).unwrap();
+    assert!(
+        matches!(&effects[0], AppEffect::Launch { kind, argument, .. }
+        if kind == "files" && argument == "/home/alice/project/src")
+    );
+    // Open in Integrated Terminal starts a shell in that folder.
+    app.button = 2;
+    app.press_at("code:tree:src/app.js", 0, 0).unwrap();
+    let effects = app
+        .click(W, "code:cmd:openInIntegratedTerminal", 0)
+        .unwrap();
+    assert!(matches!(&effects[0], AppEffect::ShellRun { cwd, .. }
+        if cwd == "/home/alice/project/src"));
+    assert_eq!(app.terminals[app.term].cwd, "/home/alice/project/src");
+    // The editor's own menu, at the caret the right click placed.
+    app.button = 2;
+    app.press_at("code:editor:0:0:0:0:30", 0, 0).unwrap();
+    assert_eq!(app.context, Some(ContextKind::Editor));
+    let shown = targets(&painted(&app));
+    for id in [
+        "editor.action.clipboardCopyAction",
+        "editor.action.revealDefinition",
+        "workbench.action.showCommands",
+    ] {
+        assert!(shown.iter().any(|t| t == &format!("code:cmd:{id}")), "{id}");
+    }
+    // Clicking away closes it.
+    app.click(W, "code:menu-close", 0).unwrap();
+    assert_eq!(app.context, None);
+}
+
+#[test]
+fn go_to_definition_finds_where_the_workspace_defines_the_name() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "from util import helper\n\nhelper()\n");
+    // The caret on the call.
+    app.active_mut()
+        .unwrap()
+        .doc
+        .set("from util import helper\n\nhel".len(), false);
+    let effects = app
+        .run_command(W, "editor.action.revealDefinition")
+        .unwrap();
+    let AppEffect::ReadFiles { tag, paths, .. } = &effects[0] else {
+        panic!("it reads the workspace: {effects:?}");
+    };
+    assert_eq!(tag, "definition:helper");
+    assert!(paths.iter().any(|p| p.ends_with("src/util.py")));
+    let files = vec![
+        (
+            "/home/alice/project/README.md".to_owned(),
+            Ok("helper\n".to_owned()),
+        ),
+        (
+            "/home/alice/project/src/util.py".to_owned(),
+            Ok("import os\n\n\ndef helper():\n    return 1\n".to_owned()),
+        ),
+    ];
+    app.files_read(W, "definition:helper", files);
+    // The editor opened the file where it is defined, with the name selected.
+    let tab = app.active_tab().unwrap();
+    assert_eq!(tab.path, "/home/alice/project/src/util.py");
+    assert_eq!(tab.reveal, Some((4, 5, 6)));
+    // A name nothing defines says so instead of pretending.
+    app.files_read(
+        W,
+        "definition:nowhere",
+        vec![(
+            "/home/alice/project/README.md".to_owned(),
+            Ok("text\n".to_owned()),
+        )],
+    );
+    assert_eq!(
+        app.notice.as_deref(),
+        Some("No definition found for 'nowhere'")
+    );
+    assert_eq!(definition_in("class Widget:\n", "Widget"), Some((1, 7)));
+    assert_eq!(definition_in("let total = 1;\n", "total"), Some((1, 5)));
+    assert_eq!(definition_in("run() {\n  :\n}\n", "run"), Some((1, 1)));
+    assert_eq!(definition_in("print(helper)\n", "helper"), None);
+}
+
+#[test]
+fn tabs_are_tab_stops_and_whitespace_can_be_seen() {
+    assert_eq!(render::columns("\tx", 4), 5);
+    assert_eq!(render::columns("ab\tx", 4), 5);
+    assert_eq!(render::byte_at_column("\tx", 4, 4), 1);
+    assert_eq!(
+        render::byte_at_column("\tx", 1, 4),
+        0,
+        "the near half of a tab"
+    );
+    let mut app = workspace();
+    open(&mut app, "main.py", "def f():\n\treturn 1\n");
+    // A click at column 4 of the second line is before the `return`, past the tab.
+    let target = "code:editor:0:0:0:0:30";
+    let (cw, rh) = render::cell(app.settings.font_size, app.platform);
+    app.press_at(target, 4 * cw as i32, rh as i32).unwrap();
+    app.click_at(W, target, 4 * cw as i32, rh as i32, 0)
+        .unwrap();
+    assert_eq!(app.active_tab().unwrap().doc.cursor, "def f():\n\t".len());
+    // Whitespace is invisible until it is asked for.
+    let shown = |app: &Code| {
+        painted(app).nodes.iter().any(|n| {
+            matches!(&n.primitive,
+            cw_scene::Primitive::Text { text, .. } if text.contains('→'))
+        })
+    };
+    assert!(!shown(&app));
+    let effects = app
+        .run_command(W, "editor.action.toggleRenderWhitespace")
+        .unwrap();
+    assert!(app.settings.render_whitespace);
+    assert!(shown(&app), "the tab is drawn as an arrow");
+    // And it is saved where VS Code saves it.
+    let written = effects.iter().find_map(|e| match e {
+        AppEffect::WriteFile { content, .. } => Some(content.clone()),
+        _ => None,
+    });
+    assert!(written
+        .unwrap()
+        .contains("\"editor.renderWhitespace\": \"all\""));
 }

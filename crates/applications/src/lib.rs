@@ -825,6 +825,10 @@ pub struct DesktopState {
     /// `pointer.v1`'s `modifiers`, handed to an application's drag surface on a press.
     #[serde(default, skip_serializing_if = "is_zero_u8")]
     pub pointer_modifiers: u8,
+    /// The button of the latest pointer action (0 left, 1 middle, 2 right), handed to an
+    /// application on a press so a right click can open its own context menu.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub pointer_button: u8,
     /// Home folder of this machine's user; empty falls back to the root.
     #[serde(default)]
     pub home: String,
@@ -1973,8 +1977,14 @@ impl DesktopState {
     /// A pointer pressed on a control of the focused window, before it is released.
     pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
         let id = self.focused.ok_or("no focused window")?;
+        let modifiers = self.pointer_modifiers;
+        let button = self.pointer_button;
         match self.windows.get_mut(&id).map(|w| &mut w.state) {
-            Some(AppState::Native(app)) => app.press_at(target, dx, dy),
+            Some(AppState::Native(app)) => {
+                app.pointer_modifiers(modifiers);
+                app.pointer_button(button);
+                app.press_at(target, dx, dy)
+            }
             _ => Ok(()),
         }
     }
@@ -3673,8 +3683,8 @@ impl DesktopState {
             .map(|w| &mut w.state)
             .filter(|_| !target.starts_with("focus:"))
         {
+            app.pointer_modifiers(modifiers);
             if app.drags(target) {
-                app.pointer_modifiers(modifiers);
                 let mut effects = app.pointer(id, target, PointerPhase::Down, dx, dy, clock)?;
                 effects.extend(app.pointer(id, target, PointerPhase::Up, dx, dy, clock)?);
                 return self.native_effects(effects);

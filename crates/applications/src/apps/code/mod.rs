@@ -32,6 +32,8 @@ const FIELD_LIMIT: usize = 512;
 const TEXT_LIMIT: usize = 1 << 20;
 const TERMINAL_LIMIT: usize = 5;
 const TREE_DEPTH: u32 = 12;
+/// Editor groups a window may be split into.
+const GROUP_LIMIT: usize = 4;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -75,6 +77,12 @@ pub enum TabKind {
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tab {
+    /// Identity that survives the list moving under it, so a group can name its editor.
+    #[serde(default)]
+    pub id: u32,
+    /// The editor group this tab is open in; 0 until the editor is split.
+    #[serde(default)]
+    pub group: usize,
     /// Absolute path; `Untitled-N` for an untitled buffer.
     pub path: String,
     pub kind: TabKind,
@@ -215,6 +223,42 @@ pub struct Inline {
     pub from: Option<String>,
     pub value: String,
 }
+/// Which context menu is open, and what it is about.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextKind {
+    /// A right click on an Explorer row (`Workbench::selected` names it).
+    Explorer,
+    /// A right click in the text of the active editor.
+    Editor,
+}
+impl ContextKind {
+    /// The commands the menu offers, `-` being a separator, in VS Code's order.
+    pub fn items(self) -> &'static [&'static str] {
+        match self {
+            Self::Explorer => &[
+                "explorer.newFile",
+                "explorer.newFolder",
+                "-",
+                "renameFile",
+                "deleteFile",
+                "-",
+                "copyFilePath",
+                "revealFileInOS",
+                "openInIntegratedTerminal",
+            ],
+            Self::Editor => &[
+                "editor.action.clipboardCutAction",
+                "editor.action.clipboardCopyAction",
+                "editor.action.clipboardPasteAction",
+                "-",
+                "editor.action.revealDefinition",
+                "-",
+                "workbench.action.showCommands",
+            ],
+        }
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Dialog {
     pub message: String,
@@ -228,6 +272,9 @@ pub struct Settings {
     pub font_size: u16,
     pub word_wrap: bool,
     pub tab_size: usize,
+    /// `editor.renderWhitespace`: draw a dot for every space and an arrow for every tab.
+    #[serde(default)]
+    pub render_whitespace: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -236,6 +283,7 @@ impl Default for Settings {
             font_size: 14,
             word_wrap: false,
             tab_size: 4,
+            render_whitespace: false,
         }
     }
 }
@@ -256,6 +304,119 @@ pub struct QuickItem {
     pub action: String,
     /// Character positions of `label` the query matched.
     pub hits: Vec<usize>,
+}
+
+/// One editor group: the tabs whose `group` is its index, and which of them it shows.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Group {
+    /// `Tab::id` of the editor on show, or `None` for an empty group.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active: Option<u32>,
+}
+/// How the groups divide the editor area: a leaf is one group, a split is groups side by
+/// side (`row`) or stacked. Splitting beside a group that is already in a split of that
+/// direction joins that split, as VS Code's grid does.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Slot {
+    Leaf(usize),
+    Split { row: bool, children: Vec<Slot> },
+}
+impl Default for Slot {
+    fn default() -> Self {
+        Self::Leaf(0)
+    }
+}
+/// A place on screen as `(x, y, width, height)`.
+pub type Area = (i32, i32, u32, u32);
+/// An editor group and where it is painted.
+pub type GroupRect = (usize, Area);
+
+impl Slot {
+    /// The groups it holds, left to right and top to bottom.
+    pub fn leaves(&self, out: &mut Vec<usize>) {
+        match self {
+            Self::Leaf(group) => out.push(*group),
+            Self::Split { children, .. } => children.iter().for_each(|c| c.leaves(out)),
+        }
+    }
+    /// Put `new` beside `group`, splitting along `row`. Returns whether it was placed.
+    fn split(&mut self, group: usize, new: usize, row: bool) -> bool {
+        match self {
+            Self::Leaf(g) if *g == group => {
+                *self = Self::Split {
+                    row,
+                    children: vec![Self::Leaf(group), Self::Leaf(new)],
+                };
+                true
+            }
+            Self::Leaf(_) => false,
+            Self::Split {
+                row: axis,
+                children,
+            } => {
+                if *axis == row {
+                    if let Some(at) = children
+                        .iter()
+                        .position(|c| matches!(c, Self::Leaf(g) if *g == group))
+                    {
+                        children.insert(at + 1, Self::Leaf(new));
+                        return true;
+                    }
+                }
+                children.iter_mut().any(|c| c.split(group, new, row))
+            }
+        }
+    }
+    /// Drop `group` and collapse a split left with one child.
+    fn remove(&mut self, group: usize) -> bool {
+        let Self::Split { children, .. } = self else {
+            return false;
+        };
+        let before = children.len();
+        children.retain(|c| !matches!(c, Self::Leaf(g) if *g == group));
+        let mut removed = children.len() != before;
+        for child in children.iter_mut() {
+            removed |= child.remove(group);
+        }
+        if children.len() == 1 {
+            *self = children.remove(0);
+        }
+        removed
+    }
+    /// Groups numbered above `gone` move down one, so ids stay the list's indices.
+    fn renumber(&mut self, gone: usize) {
+        match self {
+            Self::Leaf(g) => {
+                if *g > gone {
+                    *g -= 1;
+                }
+            }
+            Self::Split { children, .. } => children.iter_mut().for_each(|c| c.renumber(gone)),
+        }
+    }
+    /// Where each group is painted inside `r`, dividing it equally at each split.
+    pub fn rects(&self, r: Area, out: &mut Vec<GroupRect>) {
+        match self {
+            Self::Leaf(group) => out.push((*group, r)),
+            Self::Split { row, children } => {
+                let n = children.len().max(1) as u32;
+                for (i, child) in children.iter().enumerate() {
+                    let i = i as u32;
+                    let part = if *row {
+                        let x0 = r.2 * i / n;
+                        let x1 = r.2 * (i + 1) / n;
+                        (r.0 + x0 as i32, r.1, x1 - x0, r.3)
+                    } else {
+                        let y0 = r.3 * i / n;
+                        let y1 = r.3 * (i + 1) / n;
+                        (r.0, r.1 + y0 as i32, r.2, y1 - y0)
+                    };
+                    child.rects(part, out);
+                }
+            }
+        }
+    }
 }
 
 /// Visual Studio Code as the desktop holds it: the workbench behind one pointer, so a
@@ -296,7 +457,20 @@ pub struct Workbench {
     pub expanded: BTreeSet<String>,
     pub selected: Option<String>,
     pub tabs: Vec<Tab>,
+    /// The editor on show in the focused group, as an index into `tabs`.
     pub active: Option<usize>,
+    /// The editor groups; there is always at least one.
+    #[serde(default)]
+    pub groups: Vec<Group>,
+    /// Which group the keyboard, the active editor and a new editor belong to.
+    #[serde(default)]
+    pub focus_group: usize,
+    /// How the groups divide the editor area.
+    #[serde(default)]
+    pub layout: Slot,
+    /// Next `Tab::id`.
+    #[serde(default)]
+    pub next_tab: u32,
     pub view: View,
     pub sidebar: bool,
     pub panel: PanelTab,
@@ -334,6 +508,18 @@ pub struct Workbench {
     pub writes: Vec<(String, String)>,
     /// The window this instance draws in, for effects raised outside an input event.
     pub window: u64,
+    /// Modifier keys held for the pointer press about to arrive: Alt+click adds a cursor.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub modifiers: u8,
+    /// The button of that press: 2 is the right one, which opens a context menu.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub button: u8,
+    /// The open context menu (a right click on the Explorer or in the editor).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<ContextKind>,
+}
+fn is_zero_u8(v: &u8) -> bool {
+    *v == 0
 }
 
 pub fn basename(path: &str) -> &str {
@@ -511,6 +697,166 @@ impl Workbench {
     pub fn active_tab(&self) -> Option<&Tab> {
         self.active.and_then(|i| self.tabs.get(i))
     }
+    /// How many editor groups there are; there is always at least one.
+    pub fn group_count(&self) -> usize {
+        self.groups.len().max(1)
+    }
+    /// The tabs of one group, as indices into `tabs`, in the order they were opened.
+    pub fn group_tabs(&self, group: usize) -> Vec<usize> {
+        self.tabs
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.group == group)
+            .map(|(i, _)| i)
+            .collect()
+    }
+    /// The editor a group shows, as an index into `tabs`.
+    pub fn group_active(&self, group: usize) -> Option<usize> {
+        if group == self.focus_group {
+            return self.active;
+        }
+        let id = self.groups.get(group)?.active?;
+        self.tabs.iter().position(|t| t.id == id)
+    }
+    /// Show `index` in the focused group. Every path that changes which editor is on
+    /// show goes through here, so the group and the workbench never disagree.
+    fn set_active(&mut self, index: Option<usize>) {
+        if self.groups.is_empty() {
+            self.groups.push(Group::default());
+        }
+        self.focus_group = self.focus_group.min(self.groups.len() - 1);
+        // An editor is shown by the group it belongs to.
+        if let Some(group) = index.and_then(|i| self.tabs.get(i)).map(|t| t.group) {
+            self.focus_group = group.min(self.groups.len() - 1);
+        }
+        self.active = index;
+        let id = index.and_then(|i| self.tabs.get(i)).map(|t| t.id);
+        let focus = self.focus_group;
+        self.groups[focus].active = id;
+    }
+    /// Recompute `active` from the focused group's editor: after the tab list moved.
+    fn sync_active(&mut self) {
+        if self.groups.is_empty() {
+            self.groups.push(Group::default());
+        }
+        self.focus_group = self.focus_group.min(self.groups.len() - 1);
+        let id = self.groups[self.focus_group].active;
+        self.active = id.and_then(|id| self.tabs.iter().position(|t| t.id == id));
+    }
+    /// Where each group is painted inside the editor area. A layout that does not name
+    /// every group (an old snapshot, say) falls back to one group filling the area.
+    pub fn group_rects(&self, area: Area) -> Vec<GroupRect> {
+        let mut leaves = vec![];
+        self.layout.leaves(&mut leaves);
+        let mut sorted = leaves.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        if sorted != (0..self.group_count()).collect::<Vec<_>>() {
+            return vec![(self.focus_group.min(self.group_count() - 1), area)];
+        }
+        let mut out = vec![];
+        self.layout.rects(area, &mut out);
+        out
+    }
+    /// One file open in two groups is one document, as it is in VS Code: after anything
+    /// that can edit it, the other views take the new text and its undo history, keeping
+    /// their own caret (clamped into the text that is now there).
+    fn sync_siblings(&mut self) {
+        let Some(i) = self.active else { return };
+        let Some(source) = self.tabs.get(i) else {
+            return;
+        };
+        if source.kind != TabKind::File {
+            return;
+        }
+        let (path, doc, saved) = (
+            source.path.clone(),
+            source.doc.clone(),
+            source.saved.clone(),
+        );
+        for (j, tab) in self.tabs.iter_mut().enumerate() {
+            if j == i || tab.kind != TabKind::File || tab.path != path {
+                continue;
+            }
+            if tab.doc.text == doc.text && tab.saved == saved {
+                continue;
+            }
+            let (cursor, anchor) = (tab.doc.cursor, tab.doc.anchor);
+            tab.doc = doc.clone();
+            tab.doc.carets.clear();
+            tab.doc.set(anchor, false);
+            tab.doc.set(cursor, anchor != cursor);
+            tab.saved = saved.clone();
+        }
+    }
+    /// Give a group the focus, and with it whatever editor it shows.
+    fn go_to_group(&mut self, group: usize) {
+        if group >= self.group_count() {
+            return;
+        }
+        self.focus_group = group;
+        self.focus = Focus::Editor;
+        self.sync_active();
+    }
+    /// A fresh tab identity.
+    fn new_tab_id(&mut self) -> u32 {
+        self.next_tab = self.next_tab.wrapping_add(1);
+        self.next_tab
+    }
+    /// Split the focused group, putting a copy of its editor in a new group beside it
+    /// (`row`) or below it, and focus the new group, as VS Code's Split Editor does.
+    fn split_group(&mut self, row: bool) -> Result<Vec<AppEffect>, String> {
+        if self.groups.is_empty() {
+            self.groups.push(Group::default());
+        }
+        if self.groups.len() >= GROUP_LIMIT {
+            return Err(format!("at most {GROUP_LIMIT} editor groups"));
+        }
+        let from = self.focus_group;
+        let new = self.groups.len();
+        if !self.layout.split(from, new, row) {
+            // A layout that lost track of the group starts again from one row.
+            self.layout = Slot::Split {
+                row,
+                children: vec![Slot::Leaf(from), Slot::Leaf(new)],
+            };
+        }
+        self.groups.push(Group::default());
+        // The editor on show is opened in the new group too, at the same place in it.
+        if let Some(source) = self.active.and_then(|i| self.tabs.get(i)).cloned() {
+            let id = self.new_tab_id();
+            let tab = Tab {
+                id,
+                group: new,
+                preview: false,
+                ..source
+            };
+            self.tabs.push(tab);
+            self.groups[new].active = Some(id);
+        }
+        self.focus_group = new;
+        self.focus = Focus::Editor;
+        self.sync_active();
+        Ok(vec![])
+    }
+    /// Close a group, giving its editors to the group before it (VS Code keeps the
+    /// editors and closes the empty group).
+    fn close_group(&mut self, group: usize) {
+        if self.group_count() <= 1 || group >= self.groups.len() {
+            return;
+        }
+        self.layout.remove(group);
+        self.layout.renumber(group);
+        self.groups.remove(group);
+        self.tabs.retain(|t| t.group != group);
+        for tab in &mut self.tabs {
+            if tab.group > group {
+                tab.group -= 1;
+            }
+        }
+        self.focus_group = self.focus_group.min(self.groups.len() - 1);
+        self.sync_active();
+    }
     fn active_mut(&mut self) -> Option<&mut Tab> {
         self.active.and_then(move |i| self.tabs.get_mut(i))
     }
@@ -664,6 +1010,10 @@ impl Workbench {
             "search" => {
                 self.search_files(files);
                 vec![]
+            }
+            _ if tag.starts_with("definition:") => {
+                let word = tag.trim_start_matches("definition:").to_owned();
+                self.reveal_definition(window, &word, files)
             }
             "replace" => self.replace_in_files(window, files),
             _ => vec![],
@@ -880,6 +1230,12 @@ impl Workbench {
         if let Some(tab) = value.get("editor.tabSize").and_then(|v| v.as_u64()) {
             self.settings.tab_size = tab.clamp(1, 8) as usize;
         }
+        if let Some(show) = value
+            .get("editor.renderWhitespace")
+            .and_then(|v| v.as_str())
+        {
+            self.settings.render_whitespace = show != "none";
+        }
     }
     pub fn settings_json(&self) -> String {
         let value = serde_json::json!({
@@ -887,6 +1243,7 @@ impl Workbench {
             "editor.fontSize": self.settings.font_size,
             "editor.wordWrap": if self.settings.word_wrap { "on" } else { "off" },
             "editor.tabSize": self.settings.tab_size,
+            "editor.renderWhitespace": if self.settings.render_whitespace { "all" } else { "none" },
         });
         let mut out = serde_json::to_string_pretty(&value).unwrap_or_default();
         out.push('\n');
@@ -929,12 +1286,13 @@ impl Workbench {
     ) -> Vec<AppEffect> {
         self.focus = Focus::Editor;
         self.menu = None;
+        // An editor already open in this group is the one that is shown.
         if let Some(i) = self
             .tabs
             .iter()
-            .position(|t| t.kind == TabKind::File && t.path == path)
+            .position(|t| t.kind == TabKind::File && t.path == path && t.group == self.focus_group)
         {
-            self.active = Some(i);
+            self.set_active(Some(i));
             let tab = &mut self.tabs[i];
             if pin {
                 tab.preview = false;
@@ -949,7 +1307,10 @@ impl Workbench {
             self.follow_caret();
             return vec![];
         }
+        let id = self.new_tab_id();
         let tab = Tab {
+            id,
+            group: self.focus_group,
             path: path.to_owned(),
             kind: TabKind::File,
             preview: !pin,
@@ -957,10 +1318,11 @@ impl Workbench {
             reveal: reveal_at,
             ..Tab::default()
         };
+        // A preview tab is replaced only inside the group it belongs to.
         let slot = self
             .tabs
             .iter()
-            .position(|t| t.preview && !t.dirty())
+            .position(|t| t.preview && !t.dirty() && t.group == self.focus_group)
             .filter(|_| !pin);
         let index = match slot {
             Some(i) => {
@@ -975,7 +1337,7 @@ impl Workbench {
                 at
             }
         };
-        self.active = Some(index);
+        self.set_active(Some(index));
         if let Some(rel) = self.rel(path) {
             self.selected = Some(rel.clone());
             // Reveal it in the tree, as `explorer.autoReveal` does.
@@ -1008,13 +1370,35 @@ impl Workbench {
             });
             return Ok(());
         }
+        let group = self.tabs[index].group;
+        let gone = self.tabs[index].id;
+        // Where the closed editor sat among its group's, so its neighbour takes over.
+        let siblings: Vec<u32> = self
+            .tabs
+            .iter()
+            .filter(|t| t.group == group)
+            .map(|t| t.id)
+            .collect();
+        let at = siblings.iter().position(|id| *id == gone).unwrap_or(0);
         self.tabs.remove(index);
-        self.active = match self.active {
-            _ if self.tabs.is_empty() => None,
-            Some(a) if a > index => Some(a - 1),
-            Some(a) if a == index => Some(index.min(self.tabs.len() - 1)),
-            other => other,
-        };
+        for g in 0..self.groups.len() {
+            if self.groups[g].active != Some(gone) {
+                continue;
+            }
+            let mine: Vec<u32> = self
+                .tabs
+                .iter()
+                .filter(|t| t.group == g)
+                .map(|t| t.id)
+                .collect();
+            self.groups[g].active = mine.get(at.min(mine.len().saturating_sub(1))).copied();
+        }
+        // A split group with nothing left in it closes, as VS Code closes it.
+        if self.group_count() > 1 && !self.tabs.iter().any(|t| t.group == group) {
+            self.close_group(group);
+        } else {
+            self.sync_active();
+        }
         if self.tabs.is_empty() {
             self.find = None;
         }
@@ -1025,7 +1409,7 @@ impl Workbench {
         match tab.kind {
             TabKind::Settings => return Ok(vec![]),
             TabKind::Untitled => {
-                self.active = Some(index);
+                self.set_active(Some(index));
                 return self.open_quick(QuickMode::SaveAs, &self.default_save_path());
             }
             TabKind::File => {}
@@ -1187,6 +1571,43 @@ impl Workbench {
             tag: "search".into(),
             paths,
         }]
+    }
+    /// Where `word` is defined, if the workspace defines it: the first file, by name,
+    /// that has a definition of it in its language's shape. The editor that is open on
+    /// a file is what is searched, so an unsaved definition counts.
+    fn reveal_definition(
+        &mut self,
+        window: u64,
+        word: &str,
+        files: Vec<(String, Result<String, String>)>,
+    ) -> Vec<AppEffect> {
+        let mut found: Option<(String, usize, usize)> = None;
+        for (path, result) in files {
+            let text = match self
+                .tabs
+                .iter()
+                .find(|t| t.kind == TabKind::File && t.path == path && t.loaded)
+            {
+                Some(tab) => tab.doc.text.clone(),
+                None => match result {
+                    Ok(text) => text.replace("\r\n", "\n"),
+                    Err(_) => continue,
+                },
+            };
+            if let Some((line, col)) = definition_in(&text, word) {
+                found = Some((path, line, col));
+                break;
+            }
+        }
+        match found {
+            Some((path, line, col)) => {
+                self.open_file(window, &path, true, Some((line, col, word.len())))
+            }
+            None => {
+                self.notice = Some(format!("No definition found for '{word}'"));
+                vec![]
+            }
+        }
     }
     fn search_files(&mut self, files: Vec<(String, Result<String, String>)>) {
         let mut total = 0;
@@ -1692,6 +2113,19 @@ impl Workbench {
             "workbench.action.closeAllEditors"
             | "workbench.action.nextEditor"
             | "workbench.action.previousEditor" => !self.tabs.is_empty(),
+            "workbench.action.splitEditorRight" | "workbench.action.splitEditorDown" => {
+                tab.is_some() && self.group_count() < GROUP_LIMIT
+            }
+            "workbench.action.moveEditorToNextGroup"
+            | "workbench.action.moveEditorToPreviousGroup" => {
+                tab.is_some() && (self.group_count() > 1 || self.group_count() < GROUP_LIMIT)
+            }
+            "workbench.action.focusNextGroup" | "workbench.action.focusPreviousGroup" => {
+                self.group_count() > 1
+            }
+            "workbench.action.focusFirstEditorGroup" => true,
+            "workbench.action.focusSecondEditorGroup" => self.group_count() > 1,
+            "workbench.action.focusThirdEditorGroup" => self.group_count() > 2,
             "undo" => editor && tab.is_some_and(|t| !t.doc.undo.is_empty()),
             "redo" => editor && tab.is_some_and(|t| !t.doc.redo.is_empty()),
             "editor.action.clipboardPasteAction" => editor || self.focus != Focus::Editor,
@@ -1709,6 +2143,10 @@ impl Workbench {
             | "editor.action.indentLines"
             | "editor.action.outdentLines"
             | "editor.action.jumpToBracket"
+            | "editor.action.insertCursorAbove"
+            | "editor.action.insertCursorBelow"
+            | "editor.action.addSelectionToNextFindMatch"
+            | "editor.action.selectHighlights"
             | "editor.action.indentUsingSpaces"
             | "workbench.action.editor.changeEOL"
             | "workbench.action.gotoLine" => editor,
@@ -1722,7 +2160,15 @@ impl Workbench {
             | "workbench.files.action.collapseExplorerFolders"
             | "workbench.action.findInFiles"
             | "workbench.action.quickOpen" => folder,
-            "renameFile" | "deleteFile" => folder && self.selected.is_some(),
+            "renameFile"
+            | "deleteFile"
+            | "copyFilePath"
+            | "revealFileInOS"
+            | "openInIntegratedTerminal" => folder && self.selected.is_some(),
+            // Go to Definition needs a word under the caret to look for.
+            "editor.action.revealDefinition" => {
+                folder && editor && tab.is_some_and(|t| !t.doc.word_at_cursor().is_empty())
+            }
             "workbench.action.terminal.kill" | "workbench.action.terminal.clear" => {
                 !self.terminals.is_empty()
             }
@@ -1750,12 +2196,24 @@ impl Workbench {
             "workbench.action.files.revert" | "workbench.action.files.saveAll" => {
                 "No unsaved changes"
             }
-            "renameFile" | "deleteFile" => "Select a file in the Explorer first",
+            "renameFile"
+            | "deleteFile"
+            | "copyFilePath"
+            | "revealFileInOS"
+            | "openInIntegratedTerminal" => "Select a file in the Explorer first",
+            "editor.action.revealDefinition" => "Put the caret on a name first",
             "git.init" => "The folder already has a repository, or no folder is open",
             "git.stageAll" | "git.commit" | "git.cleanAll" => "There are no changes",
             "git.unstageAll" => "Nothing is staged",
             "git.checkout" | "git.refresh" => "No repository is open",
             "workbench.action.terminal.new" => "The terminal limit is reached",
+            "workbench.action.splitEditorRight" | "workbench.action.splitEditorDown" => {
+                "Open an editor first, or close a group"
+            }
+            "workbench.action.focusNextGroup"
+            | "workbench.action.focusPreviousGroup"
+            | "workbench.action.focusSecondEditorGroup"
+            | "workbench.action.focusThirdEditorGroup" => "The editor is not split that far",
             "workbench.action.terminal.kill" | "workbench.action.terminal.clear" => {
                 "No terminal is open"
             }
@@ -1779,8 +2237,15 @@ impl Workbench {
         ids
     }
     pub fn run_command(&mut self, window: u64, id: &str) -> Result<Vec<AppEffect>, String> {
+        let out = self.command_in(window, id);
+        self.sync_siblings();
+        out
+    }
+    fn command_in(&mut self, window: u64, id: &str) -> Result<Vec<AppEffect>, String> {
         self.enabled(id).map_err(str::to_owned)?;
+        // Choosing an entry closes the menu it was chosen from, as VS Code does.
         self.menu = None;
+        self.context = None;
         let tab_size = self.settings.tab_size;
         let lang = self.active_tab().map_or(Language::PlainText, |t| t.lang);
         let edit = |app: &mut Self, f: &dyn Fn(&mut Doc)| -> Result<Vec<AppEffect>, String> {
@@ -1802,9 +2267,12 @@ impl Workbench {
                     .active
                     .map_or(self.tabs.len(), |a| a + 1)
                     .min(self.tabs.len());
+                let id = self.new_tab_id();
                 self.tabs.insert(
                     at,
                     Tab {
+                        id,
+                        group: self.focus_group,
                         path: name,
                         kind: TabKind::Untitled,
                         loaded: true,
@@ -1812,7 +2280,7 @@ impl Workbench {
                         ..Tab::default()
                     },
                 );
-                self.active = Some(at);
+                self.set_active(Some(at));
                 self.focus = Focus::Editor;
                 Ok(vec![])
             }
@@ -1911,11 +2379,14 @@ impl Workbench {
             }
             "workbench.action.closeAllEditors" => {
                 if let Some(i) = self.tabs.iter().position(Tab::dirty) {
-                    self.active = Some(i);
+                    self.set_active(Some(i));
                     self.close_tab(i, false)?;
                     return Ok(vec![]);
                 }
                 self.tabs.clear();
+                self.groups = vec![Group::default()];
+                self.focus_group = 0;
+                self.layout = Slot::default();
                 self.active = None;
                 self.find = None;
                 Ok(vec![])
@@ -1925,14 +2396,97 @@ impl Workbench {
                 Ok(vec![])
             }
             "workbench.action.nextEditor" | "workbench.action.previousEditor" => {
-                let n = self.tabs.len();
-                let a = self.active.unwrap_or(0);
-                self.active = Some(if id.ends_with("nextEditor") {
-                    (a + 1) % n
+                // Within the focused group, as VS Code steps through a group's tabs.
+                let mine = self.group_tabs(self.focus_group);
+                if mine.is_empty() {
+                    return Err("this group has no editors".into());
+                }
+                let at = self
+                    .active
+                    .and_then(|a| mine.iter().position(|i| *i == a))
+                    .unwrap_or(0);
+                let next = if id.ends_with("nextEditor") {
+                    (at + 1) % mine.len()
                 } else {
-                    (a + n - 1) % n
-                });
+                    (at + mine.len() - 1) % mine.len()
+                };
+                self.set_active(Some(mine[next]));
                 self.focus = Focus::Editor;
+                Ok(vec![])
+            }
+            // Splitting, moving an editor between groups, and focusing one.
+            "workbench.action.splitEditorRight" => self.split_group(true),
+            "workbench.action.splitEditorDown" => self.split_group(false),
+            "workbench.action.moveEditorToNextGroup"
+            | "workbench.action.moveEditorToPreviousGroup" => {
+                let index = self.active.ok_or("no editor is open")?;
+                let next = id.ends_with("NextGroup");
+                let count = self.group_count();
+                let to = if next {
+                    (self.focus_group + 1) % count
+                } else {
+                    (self.focus_group + count - 1) % count
+                };
+                if to == self.focus_group {
+                    // Moving an editor out of the only group splits first, as it does
+                    // in VS Code.
+                    self.split_group(true)?;
+                    let to = self.focus_group;
+                    self.tabs[index].group = to;
+                    // The copy the split made of it is the one that was moved.
+                    if let Some(extra) = self
+                        .tabs
+                        .iter()
+                        .rposition(|t| t.group == to && t.id != self.tabs[index].id)
+                    {
+                        self.tabs.remove(extra);
+                    }
+                    self.groups[to].active = Some(self.tabs[index].id);
+                    self.sync_active();
+                    return Ok(vec![]);
+                }
+                let id = self.tabs[index].id;
+                self.tabs[index].group = to;
+                self.groups[to].active = Some(id);
+                let from = self.focus_group;
+                if !self.tabs.iter().any(|t| t.group == from) {
+                    self.close_group(from);
+                } else {
+                    let mine = self.group_tabs(from);
+                    self.groups[from].active = mine.first().map(|i| self.tabs[*i].id);
+                }
+                self.focus_group = self
+                    .tabs
+                    .iter()
+                    .position(|t| t.id == id)
+                    .map(|i| self.tabs[i].group)
+                    .unwrap_or(0);
+                self.sync_active();
+                Ok(vec![])
+            }
+            "workbench.action.focusNextGroup" | "workbench.action.focusPreviousGroup" => {
+                let count = self.group_count();
+                let next = id.ends_with("NextGroup");
+                let to = if next {
+                    (self.focus_group + 1) % count
+                } else {
+                    (self.focus_group + count - 1) % count
+                };
+                self.go_to_group(to);
+                Ok(vec![])
+            }
+            "workbench.action.focusFirstEditorGroup"
+            | "workbench.action.focusSecondEditorGroup"
+            | "workbench.action.focusThirdEditorGroup" => {
+                let want = match id {
+                    _ if id.ends_with("FirstEditorGroup") => 0,
+                    _ if id.ends_with("SecondEditorGroup") => 1,
+                    _ => 2,
+                };
+                if want >= self.group_count() {
+                    return Err("there is no such editor group".into());
+                }
+                self.go_to_group(want);
                 Ok(vec![])
             }
             "undo" => edit(self, &|d| {
@@ -2005,6 +2559,119 @@ impl Workbench {
                 Ok(vec![])
             }
             "editor.action.commentLine" => edit(self, &|d| d.toggle_comment(lang)),
+            // Multi-cursor: a caret on the line above or below, the next occurrence of
+            // what is selected, or every occurrence of it at once.
+            "editor.action.insertCursorAbove" | "editor.action.insertCursorBelow" => {
+                let up = id.ends_with("Above");
+                let tab = self.editor_mut()?;
+                let d = &mut tab.doc;
+                let (edge, _) = if up {
+                    d.all_carets()
+                        .into_iter()
+                        .min_by_key(|(c, _)| *c)
+                        .unwrap_or((d.cursor, d.anchor))
+                } else {
+                    d.all_carets()
+                        .into_iter()
+                        .max_by_key(|(c, _)| *c)
+                        .unwrap_or((d.cursor, d.anchor))
+                };
+                let col = d.col_of(edge);
+                let line = d.line_of(edge);
+                if up && line == 0 {
+                    return Err("there is no line above".into());
+                }
+                if !up && line + 1 >= d.line_count() {
+                    return Err("there is no line below".into());
+                }
+                let (start, _) = d.line_range(if up { line - 1 } else { line + 1 });
+                let at = d.at_col(start, col);
+                d.add_caret(at, at);
+                self.follow_caret();
+                Ok(vec![])
+            }
+            "editor.action.addSelectionToNextFindMatch" => {
+                let tab = self.editor_mut()?;
+                let d = &mut tab.doc;
+                // With nothing selected, the first press selects the word at the caret.
+                if !d.has_selection() {
+                    let start = d.word_left(d.cursor);
+                    let end = d.word_right(start);
+                    if start == end {
+                        return Err("put the caret in a word first".into());
+                    }
+                    d.set(start, false);
+                    d.set(end, true);
+                    self.follow_caret();
+                    return Ok(vec![]);
+                }
+                let needle = d.selected_text().to_owned();
+                let carets = d.all_carets();
+                let last = carets.iter().map(|(c, _)| *c).max().unwrap_or(d.cursor);
+                let taken: Vec<usize> = carets.iter().map(|(c, a)| (*c).min(*a)).collect();
+                let mut at = find_all(
+                    &d.text,
+                    &needle,
+                    FindOptions {
+                        case: true,
+                        ..Default::default()
+                    },
+                )
+                .unwrap_or_default();
+                at.retain(|(s, _)| !taken.contains(s));
+                let next = at
+                    .iter()
+                    .find(|(s, _)| *s >= last)
+                    .or_else(|| at.first())
+                    .copied();
+                match next {
+                    Some((s, e)) => {
+                        d.add_caret(e, s);
+                        self.follow_caret();
+                        Ok(vec![])
+                    }
+                    None => Err(format!("no more occurrences of {needle}")),
+                }
+            }
+            "editor.action.selectHighlights" => {
+                let tab = self.editor_mut()?;
+                let d = &mut tab.doc;
+                let needle = if d.has_selection() {
+                    d.selected_text().to_owned()
+                } else {
+                    let start = d.word_left(d.cursor);
+                    let end = d.word_right(start);
+                    d.text[start..end].to_owned()
+                };
+                if needle.trim().is_empty() {
+                    return Err("select something to find first".into());
+                }
+                let hits = find_all(
+                    &d.text,
+                    &needle,
+                    FindOptions {
+                        case: true,
+                        ..Default::default()
+                    },
+                )
+                .unwrap_or_default();
+                if hits.is_empty() {
+                    return Err(format!("no occurrences of {needle}"));
+                }
+                d.clear_carets();
+                let (first_s, first_e) = hits[0];
+                d.set(first_s, false);
+                d.set(first_e, true);
+                for (s, e) in hits.into_iter().skip(1) {
+                    d.add_caret(e, s);
+                }
+                self.follow_caret();
+                Ok(vec![])
+            }
+            "removeSecondaryCursors" => {
+                self.editor_mut()?.doc.clear_carets();
+                Ok(vec![])
+            }
             "editor.action.selectAll" => edit(self, &|d| d.select_all()),
             "editor.action.copyLinesUpAction" => edit(self, &|d| d.copy_lines(true)),
             "editor.action.copyLinesDownAction" => edit(self, &|d| d.copy_lines(false)),
@@ -2116,6 +2783,10 @@ impl Workbench {
                 self.settings.word_wrap = !self.settings.word_wrap;
                 Ok(self.save_settings(window))
             }
+            "editor.action.toggleRenderWhitespace" => {
+                self.settings.render_whitespace = !self.settings.render_whitespace;
+                Ok(self.save_settings(window))
+            }
             "workbench.action.selectTheme" => {
                 let effects = self.open_quick(QuickMode::Theme, "")?;
                 if let Some(q) = &mut self.quick {
@@ -2125,22 +2796,25 @@ impl Workbench {
             }
             "workbench.action.openSettings" => {
                 if let Some(i) = self.tabs.iter().position(|t| t.kind == TabKind::Settings) {
-                    self.active = Some(i);
+                    self.set_active(Some(i));
                 } else {
                     let at = self
                         .active
                         .map_or(self.tabs.len(), |a| a + 1)
                         .min(self.tabs.len());
+                    let id = self.new_tab_id();
                     self.tabs.insert(
                         at,
                         Tab {
+                            id,
+                            group: self.focus_group,
                             path: "Settings".into(),
                             kind: TabKind::Settings,
                             loaded: true,
                             ..Tab::default()
                         },
                     );
-                    self.active = Some(at);
+                    self.set_active(Some(at));
                 }
                 Ok(vec![])
             }
@@ -2220,6 +2894,70 @@ impl Workbench {
                 let mut effects = self.git_command(window, "branches", "git branch".into())?;
                 effects.extend(self.open_quick(QuickMode::Branch, "")?);
                 Ok(effects)
+            }
+            // The Explorer's context menu, beyond what the Explorer already does.
+            "copyFilePath" => {
+                let rel = self.selected.clone().ok_or("nothing is selected")?;
+                let path = self.abs(&rel);
+                self.notice = Some(format!("Copied {path}"));
+                Ok(vec![AppEffect::CopyText { window, text: path }])
+            }
+            "revealFileInOS" => {
+                let rel = self.selected.clone().ok_or("nothing is selected")?;
+                let folder = if self.is_dir(&rel) {
+                    self.abs(&rel)
+                } else {
+                    self.abs(parent(&rel))
+                };
+                Ok(vec![AppEffect::Launch {
+                    window,
+                    kind: "files".into(),
+                    argument: folder,
+                }])
+            }
+            "openInIntegratedTerminal" => {
+                let rel = self.selected.clone().ok_or("nothing is selected")?;
+                let folder = if self.is_dir(&rel) {
+                    self.abs(&rel)
+                } else {
+                    self.abs(parent(&rel))
+                };
+                let mut effects = self.new_terminal(window)?;
+                // The new terminal opens in the folder that was right-clicked.
+                if let Some(term) = self.terminals.get_mut(self.term) {
+                    term.cwd = folder.clone();
+                }
+                for effect in &mut effects {
+                    if let AppEffect::ShellRun { cwd, .. } = effect {
+                        *cwd = folder.clone();
+                    }
+                }
+                Ok(effects)
+            }
+            // Go to Definition: the workspace is searched for where the name under the
+            // caret is defined, in the shapes its language defines things in.
+            "editor.action.revealDefinition" => {
+                let word = self
+                    .active_tab()
+                    .map(|t| t.doc.word_at_cursor())
+                    .unwrap_or_default();
+                if word.is_empty() {
+                    return Err("put the caret on a name first".into());
+                }
+                let paths: Vec<String> = self
+                    .files()
+                    .into_iter()
+                    .take(SEARCH_FILES)
+                    .map(|f| self.abs(f))
+                    .collect();
+                if paths.is_empty() {
+                    return Err("open a folder first".into());
+                }
+                Ok(vec![AppEffect::ReadFiles {
+                    window,
+                    tag: format!("definition:{word}"),
+                    paths,
+                }])
             }
             "workbench.action.showAboutDialog" => {
                 self.dialog = Some(Dialog {
@@ -2462,6 +3200,11 @@ impl Workbench {
     }
     /// Typed text goes to whatever has focus.
     pub fn text_effects(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
+        let out = self.text_in(window, text);
+        self.sync_siblings();
+        out
+    }
+    fn text_in(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
         self.menu = None;
         // `Ctrl+K` then a typed `f` is the chord, not an `f` in the document.
         if self.chord && text.chars().count() == 1 {
@@ -2535,16 +3278,19 @@ impl Workbench {
                     return Err("the document is too large to type into".into());
                 }
                 let lang = tab.lang;
-                let mut chars = text.chars();
-                match (chars.next(), chars.next()) {
-                    (Some('\n'), None) => tab.doc.newline(lang, tab_size),
-                    (Some('\t'), None) => tab.doc.indent(tab_size),
-                    // One character is a keystroke: brackets close and are typed over.
-                    (Some(c), None) => tab.doc.type_char(c, lang),
-                    // A run of text arrives as it was written, the way a paste does, so
-                    // its own indentation is not indented again.
-                    _ => tab.doc.insert(&text.replace("\r\n", "\n")),
-                }
+                // Typed at every caret, as VS Code types at every cursor.
+                tab.doc.at_each(|d| {
+                    let mut chars = text.chars();
+                    match (chars.next(), chars.next()) {
+                        (Some('\n'), None) => d.newline(lang, tab_size),
+                        (Some('\t'), None) => d.indent(tab_size),
+                        // One character is a keystroke: brackets close and are typed over.
+                        (Some(c), None) => d.type_char(c, lang),
+                        // A run of text arrives as it was written, the way a paste does,
+                        // so its own indentation is not indented again.
+                        _ => d.insert(&text.replace("\r\n", "\n")),
+                    }
+                });
                 tab.preview = false;
                 self.follow_caret();
                 Ok(vec![])
@@ -2552,11 +3298,17 @@ impl Workbench {
         }
     }
     pub fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
+        let out = self.paste_in(window, text);
+        self.sync_siblings();
+        out
+    }
+    fn paste_in(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
         match self.focus {
             Focus::Editor | Focus::Explorer => {
                 self.focus = Focus::Editor;
                 let tab = self.editor_mut()?;
-                tab.doc.insert(&text.replace("\r\n", "\n"));
+                let pasted = text.replace("\r\n", "\n");
+                tab.doc.at_each(|d| d.insert(&pasted));
                 tab.preview = false;
                 self.follow_caret();
                 Ok(vec![])
@@ -2564,12 +3316,12 @@ impl Workbench {
             _ => self.text_effects(window, &text.replace(['\n', '\r'], " ")),
         }
     }
-    pub fn key(
-        &mut self,
-        window: u64,
-        key: &str,
-        _clock_us: u64,
-    ) -> Result<Vec<AppEffect>, String> {
+    pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
+        let out = self.key_in(window, key, clock_us);
+        self.sync_siblings();
+        out
+    }
+    fn key_in(&mut self, window: u64, key: &str, _clock_us: u64) -> Result<Vec<AppEffect>, String> {
         let key = commands::normalize(key);
         // A printable key with no modifier is typing, unless it finishes a chord.
         if !self.chord {
@@ -2704,6 +3456,11 @@ impl Workbench {
             return vec![];
         }
         if let Some(tab) = self.active_mut() {
+            // Escape drops the extra cursors first, as it does in VS Code.
+            if !tab.doc.carets.is_empty() {
+                tab.doc.clear_carets();
+                return vec![];
+            }
             let c = tab.doc.cursor;
             tab.doc.set(c, false);
         }
@@ -3043,35 +3800,48 @@ impl Workbench {
         let shift = key.contains("shift+");
         let base = key.replace("shift+", "");
         let mut edited = true;
+        // Every caret moves, and every caret edits: one keystroke, one undo step.
         match base.as_str() {
-            "arrowleft" => d.left(shift),
-            "arrowright" => d.right(shift),
-            "arrowup" => d.vertical(-1, shift),
-            "arrowdown" => d.vertical(1, shift),
-            "ctrl+arrowleft" => d.set(d.word_left(d.cursor), shift),
-            "ctrl+arrowright" => d.set(d.word_right(d.cursor), shift),
-            "home" => d.home(shift),
-            "end" => d.end(shift),
-            "ctrl+home" => d.set(0, shift),
-            "ctrl+end" => d.set(d.text.len(), shift),
-            "pageup" => d.vertical(-page, shift),
-            "pagedown" => d.vertical(page, shift),
-            "backspace" => d.backspace(tab_size),
-            "delete" => d.delete(),
-            "ctrl+backspace" => d.delete_word_left(),
-            "ctrl+delete" => d.delete_word_right(),
-            "enter" if !shift => d.newline(lang, tab_size),
-            "enter" => d.newline(lang, tab_size),
-            "ctrl+enter" if !shift => d.insert_line_below(tab_size, lang),
-            "ctrl+enter" => {
+            "arrowleft" => d.move_each(|d| d.left(shift)),
+            "arrowright" => d.move_each(|d| d.right(shift)),
+            "arrowup" => d.move_each(|d| d.vertical(-1, shift)),
+            "arrowdown" => d.move_each(|d| d.vertical(1, shift)),
+            "ctrl+arrowleft" => d.move_each(|d| d.set(d.word_left(d.cursor), shift)),
+            "ctrl+arrowright" => d.move_each(|d| d.set(d.word_right(d.cursor), shift)),
+            "home" => d.move_each(|d| d.home(shift)),
+            "end" => d.move_each(|d| d.end(shift)),
+            "ctrl+home" => {
+                d.clear_carets();
+                d.set(0, shift)
+            }
+            "ctrl+end" => {
+                d.clear_carets();
+                d.set(d.text.len(), shift)
+            }
+            "pageup" => {
+                d.clear_carets();
+                d.vertical(-page, shift)
+            }
+            "pagedown" => {
+                d.clear_carets();
+                d.vertical(page, shift)
+            }
+            "backspace" => d.at_each(|d| d.backspace(tab_size)),
+            "delete" => d.at_each(|d| d.delete()),
+            "ctrl+backspace" => d.at_each(|d| d.delete_word_left()),
+            "ctrl+delete" => d.at_each(|d| d.delete_word_right()),
+            "enter" => d.at_each(|d| d.newline(lang, tab_size)),
+            "ctrl+enter" if !shift => d.at_each(|d| d.insert_line_below(tab_size, lang)),
+            "ctrl+enter" => d.at_each(|d| {
                 let start = d.line_start(d.cursor);
                 d.set(start, false);
                 d.insert("\n");
                 d.set(start, false);
-            }
-            "tab" if !shift => d.indent(tab_size),
-            "tab" => d.outdent(tab_size),
+            }),
+            "tab" if !shift => d.at_each(|d| d.indent(tab_size)),
+            "tab" => d.at_each(|d| d.outdent(tab_size)),
             "ctrl+l" => {
+                d.clear_carets();
                 let (a, b) = d.selection();
                 let s = d.line_start(a);
                 let e = (d.line_end(b) + 1).min(d.text.len());
@@ -3101,8 +3871,9 @@ impl Workbench {
 
     // ----- pointer ---------------------------------------------------------------------
 
-    /// Map a point in the editor's text area to a byte offset. `code:editor:<first
-    /// row>:<first column>:<wrap columns>:<visible rows>` is how the view painted it.
+    /// Map a point in the editor's text area to a byte offset. `code:editor:<group>:
+    /// <first row>:<first column>:<wrap columns>:<visible rows>` is how the view
+    /// painted it, and the group it names takes the focus.
     fn editor_point(&mut self, target: &str, dx: i32, dy: i32) -> Option<usize> {
         let mut parts = target.strip_prefix("code:editor:")?.split(':');
         let mut num = || {
@@ -3111,7 +3882,10 @@ impl Workbench {
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(0)
         };
-        let (first, hscroll, wrap, rows) = (num(), num(), num(), num());
+        let (group, first, hscroll, wrap, rows) = (num(), num(), num(), num(), num());
+        if group < self.group_count() && group != self.focus_group {
+            self.go_to_group(group);
+        }
         if rows > 0 {
             self.page = rows;
         }
@@ -3129,19 +3903,81 @@ impl Workbench {
             return Some(text.len());
         };
         let content = &text[start..end];
-        Some(match content.char_indices().nth(col) {
-            Some((i, _)) => start + i,
-            None if rows.get(row + 1).is_some_and(|(next, _)| *next == end) => content
+        // Columns on screen count tab stops, so a click past a tab lands where it looks.
+        let width = render::columns(content, self.settings.tab_size);
+        Some(if col < width {
+            start + render::byte_at_column(content, col, self.settings.tab_size)
+        } else if rows.get(row + 1).is_some_and(|(next, _)| *next == end) {
+            // A soft-wrapped row ends before its last character, which belongs to it.
+            content
                 .char_indices()
                 .next_back()
-                .map_or(start, |(i, _)| start + i),
-            None => end,
+                .map_or(start, |(i, _)| start + i)
+        } else {
+            end
         })
+    }
+    /// Whether `target` follows the pointer while it is held: the minimap.
+    pub fn drags(&self, target: &str) -> bool {
+        target.starts_with("code:minimap:")
+    }
+    /// The pointer on the minimap: press or drag anywhere on it and the editor scrolls
+    /// to the row under the pointer, which is what VS Code's minimap does.
+    pub fn pointer(
+        &mut self,
+        target: &str,
+        phase: crate::PointerPhase,
+        _x: i32,
+        y: i32,
+    ) -> Result<Vec<AppEffect>, String> {
+        let mut parts = target
+            .strip_prefix("code:minimap:")
+            .ok_or("that surface is not the minimap")?
+            .split(':');
+        let mut num = || {
+            parts
+                .next()
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(0)
+        };
+        let (group, map_first, _holds) = (num(), num(), num());
+        if group < self.group_count() && group != self.focus_group {
+            self.go_to_group(group);
+        }
+        if phase == crate::PointerPhase::Cancel {
+            return Ok(vec![]);
+        }
+        let page = self.page.max(1);
+        let wrap = if self.settings.word_wrap {
+            self.wrap_cols
+        } else {
+            0
+        };
+        let tab = self.active_mut().ok_or("no editor is open")?;
+        let rows = crate::editor_rows(&tab.doc.text, wrap);
+        let row = map_first + (y.max(0) as u32 / render::MINIMAP_ROW) as usize;
+        // The pointer marks the middle of the view, as dragging the map does.
+        tab.scroll = row
+            .saturating_sub(page / 2)
+            .min(rows.len().saturating_sub(1));
+        tab.follow = false;
+        self.focus = Focus::Editor;
+        Ok(vec![])
     }
     /// A wheel turn over the editor or the terminal moves it by whole rows (the view
     /// stops following the caret, as a scrollbar drag does); the Explorer and Search
     /// lists are panes the platform scrolls. Returns whether anything moved.
     pub fn wheel(&mut self, target: &str, wheel: crate::Wheel) -> Result<bool, String> {
+        if let Some(group) = target
+            .strip_prefix("code:editor:")
+            .and_then(|rest| rest.split(':').next())
+            .and_then(|g| g.parse::<usize>().ok())
+        {
+            // The wheel turns the group it is over, which takes the focus with it.
+            if group < self.group_count() && group != self.focus_group {
+                self.go_to_group(group);
+            }
+        }
         if target.starts_with("code:editor") {
             let (_, row_h) = render::cell(self.settings.font_size, self.platform);
             let lines = wheel.lines(row_h as i32);
@@ -3179,8 +4015,45 @@ impl Workbench {
         }
         Ok(false)
     }
-    /// A press in the text area puts the caret there and anchors a drag selection.
+    /// Whether a right press on `target` belongs to Visual Studio Code: its own context
+    /// menus, rather than the desktop's.
+    pub fn takes_secondary(&self, target: &str) -> bool {
+        target.starts_with("code:tree:") || target.starts_with("code:editor:")
+    }
+    /// A press in the text area puts the caret there and anchors a drag selection;
+    /// held with Alt it adds a cursor there instead, as VS Code's Alt+click does. The
+    /// right button opens the context menu for what was pressed.
     pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
+        if self.button == 2 {
+            if let Some(rel) = target.strip_prefix("code:tree:") {
+                if self.exists(rel) {
+                    self.selected = Some(rel.to_owned());
+                    self.focus = Focus::Explorer;
+                    self.context = Some(ContextKind::Explorer);
+                }
+                return Ok(());
+            }
+            if target.starts_with("code:editor:") {
+                // The caret goes where the press landed, then the menu opens there.
+                if let Some(pos) = self.editor_point(target, dx, dy) {
+                    if let Some(tab) = self.active_mut() {
+                        let inside = {
+                            let (a, b) = tab.doc.selection();
+                            pos >= a && pos < b
+                        };
+                        if !inside {
+                            tab.doc.clear_carets();
+                            tab.doc.set(pos, false);
+                        }
+                    }
+                }
+                self.focus = Focus::Editor;
+                self.context = Some(ContextKind::Editor);
+                return Ok(());
+            }
+            return Ok(());
+        }
+        self.context = None;
         if !target.starts_with("code:editor:") {
             return Ok(());
         }
@@ -3189,10 +4062,16 @@ impl Workbench {
             .ok_or("no editor is open")?;
         self.focus = Focus::Editor;
         self.menu = None;
+        let alt = self.modifiers & crate::apps::imaging::MOD_ALT != 0;
         if let Some(tab) = self.active_mut() {
-            tab.doc.set(pos, false);
+            if alt {
+                tab.doc.add_caret(pos, pos);
+            } else {
+                tab.doc.clear_carets();
+                tab.doc.set(pos, false);
+            }
         }
-        self.press = Some(pos);
+        self.press = if alt { None } else { Some(pos) };
         Ok(())
     }
     pub fn click_at(
@@ -3211,13 +4090,21 @@ impl Workbench {
             self.menu = None;
             self.chord = false;
             let anchor = self.press.take();
+            let alt = self.modifiers & crate::apps::imaging::MOD_ALT != 0;
             if let Some(tab) = self.active_mut() {
                 match anchor {
                     Some(a) => {
                         tab.doc.set(a, false);
                         tab.doc.set(pos, true);
                     }
-                    None => tab.doc.set(pos, false),
+                    // The release of an Alt+click leaves the cursor it added alone.
+                    None if alt => {
+                        tab.doc.add_caret(pos, pos);
+                    }
+                    None => {
+                        tab.doc.clear_carets();
+                        tab.doc.set(pos, false);
+                    }
                 }
             }
             return Ok(vec![]);
@@ -3251,7 +4138,7 @@ impl Workbench {
         {
             let tab = self.tabs.get_mut(i).ok_or("no such editor")?;
             tab.preview = false;
-            self.active = Some(i);
+            self.set_active(Some(i));
             return Ok(vec![]);
         }
         if target.starts_with("code:editor:") {
@@ -3276,9 +4163,13 @@ impl Workbench {
             .ok_or("interaction does not belong to Visual Studio Code")?;
         self.chord = false;
         let (verb, arg) = command.split_once(':').unwrap_or((command, ""));
-        // Anything but a menu entry closes an open menu.
+        // Anything but a menu entry closes an open menu, and any click at all closes
+        // the context menu, exactly as a click does anywhere in VS Code.
         if verb != "menu" && verb != "cmd" {
             self.menu = None;
+        }
+        if verb != "cmd" {
+            self.context = None;
         }
         if self.dialog.is_some() && verb != "dialog" {
             return Err("a dialog is open".into());
@@ -3298,6 +4189,7 @@ impl Workbench {
             }
             "menu-close" => {
                 self.menu = None;
+                self.context = None;
                 Ok(vec![])
             }
             "activity" => {
@@ -3350,8 +4242,17 @@ impl Workbench {
                 if i >= self.tabs.len() {
                     return Err("no such editor".into());
                 }
-                self.active = Some(i);
+                self.set_active(Some(i));
                 self.focus = Focus::Editor;
+                Ok(vec![])
+            }
+            // A click anywhere in a group's editor area gives that group the focus.
+            "group" => {
+                let g: usize = arg.parse().map_err(|_| "invalid editor group")?;
+                if g >= self.group_count() {
+                    return Err("no such editor group".into());
+                }
+                self.go_to_group(g);
                 Ok(vec![])
             }
             "tab-close" => {
@@ -3379,7 +4280,12 @@ impl Workbench {
                 Ok(vec![])
             }
             "scroll" => {
-                let row: usize = arg.parse().map_err(|_| "invalid scroll position")?;
+                let (group, row) = arg.split_once(':').unwrap_or(("0", arg));
+                let group: usize = group.parse().map_err(|_| "invalid editor group")?;
+                if group < self.group_count() && group != self.focus_group {
+                    self.go_to_group(group);
+                }
+                let row: usize = row.parse().map_err(|_| "invalid scroll position")?;
                 let tab = self.active_mut().ok_or("no editor is open")?;
                 tab.scroll = row.min(tab.doc.line_count() * 4);
                 tab.follow = false;
@@ -3641,6 +4547,9 @@ impl Workbench {
                         self.settings.font_size = self.settings.font_size.saturating_sub(1).max(8)
                     }
                     ("wrap", _) => self.settings.word_wrap = !self.settings.word_wrap,
+                    ("whitespace", _) => {
+                        self.settings.render_whitespace = !self.settings.render_whitespace
+                    }
                     ("tab", v) => {
                         self.settings.tab_size = v
                             .parse::<usize>()
@@ -3888,6 +4797,47 @@ fn excluded(entry: &str) -> bool {
         || e.ends_with("/.git")
         || e == ".DS_Store"
         || e.ends_with("/.DS_Store")
+}
+/// Where `text` defines `word`, as a 1-based line and column, in the shapes the
+/// languages this editor knows define things in: `def`, `class`, `function`, `fn`,
+/// `struct`, `enum`, `trait`, `type`, `const`, `let`, `var`, a shell function, or a
+/// plain assignment at the left margin. Purely syntactic, and honest about it: it finds
+/// what a person reading the file would point at.
+pub fn definition_in(text: &str, word: &str) -> Option<(usize, usize)> {
+    const KEYWORDS: [&str; 14] = [
+        "def", "class", "fn", "function", "struct", "enum", "trait", "type", "const", "let", "var",
+        "static", "mod", "impl",
+    ];
+    if word.is_empty() {
+        return None;
+    }
+    for (n, line) in text.lines().enumerate() {
+        let mut from = 0;
+        while let Some(at) = line[from..].find(word).map(|i| i + from) {
+            from = at + word.len();
+            let before = &line[..at];
+            let after = &line[at + word.len()..];
+            let bounded = !before.ends_with(buffer::is_word) && !after.starts_with(buffer::is_word);
+            if !bounded {
+                continue;
+            }
+            let keyword = before
+                .trim_end()
+                .rsplit(|c: char| !buffer::is_word(c))
+                .next()
+                .unwrap_or("");
+            let head = before.trim().is_empty();
+            let assignment = head && {
+                let rest = after.trim_start();
+                rest.starts_with('=') && !rest.starts_with("==") && !rest.starts_with("=>")
+            };
+            let shell_function = head && after.trim_start().starts_with("()");
+            if KEYWORDS.contains(&keyword) || assignment || shell_function {
+                return Some((n + 1, before.chars().count() + 1));
+            }
+        }
+    }
+    None
 }
 /// Put the caret at a 1-based line and column, selecting `len` bytes from there.
 fn reveal(doc: &mut Doc, (line, col, len): (usize, usize, usize)) {
