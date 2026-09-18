@@ -14,6 +14,7 @@ pub mod clock;
 pub mod code;
 pub mod contacts;
 pub mod docs;
+pub mod freecad;
 pub mod imaging;
 pub mod mail;
 pub mod maps;
@@ -54,6 +55,9 @@ pub struct AppEnv<'a> {
     /// The installed image editor a photo's Edit button hands the file to (Paint,
     /// Preview, GIMP…), or `None` when the machine has none.
     pub editor: Option<&'static str>,
+    /// Where the pointer is over this window's content, when it is (content
+    /// coordinates), so an application can show what it would pick before a click.
+    pub pointer: Option<(i32, i32)>,
 }
 /// What a file manager may know beyond its own tab. Every field is read from the
 /// machine when the frame is drawn, so a sidebar never offers a folder that is gone.
@@ -230,6 +234,7 @@ macro_rules! native_apps {
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
                     Self::Code(a) => a.click_at(window, target, dx, dy, clock_us),
+                    Self::Freecad(a) => a.click_at(window, target, dx, dy, clock_us),
                     other => other.click(window, target, clock_us),
                 }
             }
@@ -250,6 +255,7 @@ macro_rules! native_apps {
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
                     Self::Code(a) => a.activate(window, target, clock_us),
+                    Self::Freecad(a) => a.activate(window, target, clock_us),
                     other => other.click(window, target, clock_us),
                 }
             }
@@ -283,6 +289,7 @@ macro_rules! native_apps {
                         ("panel".into(), if a.panel_open { "1" } else { "0" }.into()),
                         ("enabled".into(), a.enabled_menu_commands().join(",")),
                     ],
+                    Self::Freecad(a) => a.chrome(),
                     _ => vec![],
                 }
             }
@@ -326,6 +333,7 @@ native_apps! {
     Maps => maps,
     Weather => weather,
     Code => code,
+    Freecad => freecad,
     Paint => imaging,
     Preview => imaging,
     Pixelmator => imaging,
@@ -371,7 +379,47 @@ impl NativeApp {
     }
     /// Whether `target` follows a pointer drag (a canvas, a slider).
     pub fn drags(&self, target: &str) -> bool {
-        self.studio().is_some_and(|s| s.drags(target))
+        match self {
+            Self::Freecad(a) => a.drags(target),
+            other => other.studio().is_some_and(|s| s.drags(target)),
+        }
+    }
+    /// The button (0 left, 1 middle, 2 right) of a press about to reach a drag surface.
+    pub fn pointer_button(&mut self, button: u8) {
+        if let Self::Freecad(a) = self {
+            a.pointer_button(button);
+        }
+    }
+    /// Whether a secondary-button press on `target` belongs to the application (a
+    /// right-drag that pans a 3D view) rather than opening the context menu.
+    pub fn takes_secondary(&self, target: &str) -> bool {
+        matches!(self, Self::Freecad(a) if a.drags(target))
+    }
+    /// A wheel turn over `target`; `false` when the application has no use for it.
+    pub fn wheel(&mut self, target: &str, x: i32, y: i32, delta: i32) -> Result<bool, String> {
+        match self {
+            Self::Freecad(a) => a.wheel(target, x, y, delta),
+            _ => Ok(false),
+        }
+    }
+    /// Bytes of a file this application asked to read, or why they could not be read.
+    pub fn bytes_loaded(
+        &mut self,
+        path: &str,
+        result: Result<Vec<u8>, String>,
+    ) -> Result<(), String> {
+        match self {
+            Self::Freecad(a) => a.bytes_loaded(path, result),
+            _ => Err("this application reads no files as bytes".into()),
+        }
+    }
+    /// Menu entries this application puts in the Mac's global menu bar panel `panel`.
+    #[allow(clippy::type_complexity)]
+    pub fn mac_menu(&self, panel: &str) -> Option<Vec<freecad::MenuEntry>> {
+        match self {
+            Self::Freecad(a) => a.mac_menu(panel),
+            _ => None,
+        }
     }
     /// A pointer press, move or release on a drag surface, relative to its top-left.
     pub fn pointer(
@@ -383,6 +431,9 @@ impl NativeApp {
         y: i32,
         _clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        if let Self::Freecad(a) = self {
+            return a.pointer(window, target, phase, x, y);
+        }
         let studio = self
             .studio_mut()
             .ok_or("this application has no drag surfaces")?;
@@ -395,6 +446,10 @@ impl NativeApp {
     }
     /// A folder listing an image editor's file sheet asked for.
     pub fn listed(&mut self, entries: Vec<String>) -> Result<(), String> {
+        if let Self::Freecad(a) = self {
+            a.listed(entries);
+            return Ok(());
+        }
         let studio = self.studio_mut().ok_or("window is not a file manager")?;
         studio.listed(entries);
         Ok(())

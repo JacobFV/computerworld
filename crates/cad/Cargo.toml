@@ -1,0 +1,10 @@
+[package]
+name = "cw-cad"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Deterministic parametric CAD kernel: sketch constraint solver, mesh CSG solids, Part Design features and exchange formats"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

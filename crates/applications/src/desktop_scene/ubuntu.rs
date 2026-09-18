@@ -18,12 +18,13 @@ const LIGHT: Color = Color::rgb(246, 246, 246);
 /// Width of the Files sidebar; shared with the Files client area.
 pub const FILES_SIDEBAR: u32 = 180;
 /// Every application this shell can present, in Activities grid order.
-const APPS: [(&str, &str); 20] = [
+const APPS: [(&str, &str); 21] = [
     ("browser", "Firefox"),
     ("files", "Files"),
     ("terminal", "Terminal"),
     ("editor", "Text Editor"),
     ("code", "Visual Studio Code"),
+    ("freecad", "FreeCAD"),
     ("mail", "Thunderbird Mail"),
     ("calendar", "Calendar"),
     ("chat", "Chat"),
@@ -420,7 +421,8 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
         }
         top += 160;
     }
-    let columns = ((width - 68 - 100) / 150).clamp(1, 6);
+    // Six columns from 1000 px up, so the whole grid of 21 fits a 768 px screen.
+    let columns = ((width - 68 - 100) / 136).clamp(1, 6);
     let cell = ((width - 68 - 100) / columns).min(160);
     let start = centre - columns * cell / 2;
     let query = ctx.search.to_lowercase();

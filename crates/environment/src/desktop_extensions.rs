@@ -135,6 +135,7 @@ impl Environment {
             (_, "maps") => "Maps",
             (_, "weather") => "Weather",
             (_, "code") => "Visual Studio Code",
+            (_, "freecad") => "FreeCAD",
             (_, "paint") => "Paint",
             (_, "preview") => "Preview",
             (_, "pixelmator") => "Pixelmator Pro",

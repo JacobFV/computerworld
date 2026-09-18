@@ -383,6 +383,7 @@ fn every_painted_control_is_one_the_model_accepts() {
                     clipboard: None,
                     share_to: None,
                     editor: None,
+                    pointer: None,
                     files: Default::default(),
                 },
             );

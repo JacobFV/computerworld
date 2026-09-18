@@ -91,6 +91,7 @@ export default {
         "files",
         "desktop",
         "code",
+        "freecad",
         "mail",
         "calendar",
         "chat",
@@ -135,6 +136,7 @@ export default {
         "files",
         "desktop",
         "code",
+        "freecad",
         "mail",
         "calendar",
         "chat",
@@ -178,6 +180,7 @@ export default {
         "files",
         "desktop",
         "code",
+        "freecad",
         "mail",
         "calendar",
         "chat",
@@ -29450,6 +29453,13 @@ export default {
         "kind": "native",
         "url": "",
         "icon": "code"
+      },
+      {
+        "id": "freecad",
+        "label": "FreeCAD",
+        "kind": "native",
+        "url": "",
+        "icon": "freecad"
       },
       {
         "id": "paint",

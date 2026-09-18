@@ -35,10 +35,12 @@ const nativeApps=[
  {id:'maps',label:'Maps',kind:'native',url:'http://maps.google.com/',icon:'maps'},
  {id:'weather',label:'Weather',kind:'native',url:'http://weather.com/',icon:'weather'},
  // Visual Studio Code edits the machine's own files and runs them in its own shell.
- {id:'code',label:'Visual Studio Code',kind:'native',url:'',icon:'code'}
+ {id:'code',label:'Visual Studio Code',kind:'native',url:'',icon:'code'},
+ // FreeCAD models parts parametrically and reads and writes CAD files on the machine.
+ {id:'freecad',label:'FreeCAD',kind:'native',url:'',icon:'freecad'}
 ];
-// Phones have no desktop editor: Code is installed on the three desktop profiles only.
-const desktopOnly=new Set(['code']);
+// Phones have no desktop editor or CAD: Code and FreeCAD are on the three desktops only.
+const desktopOnly=new Set(['code','freecad']);
 const desktopProfiles=new Set(profiles.slice(0,3).map(p=>p.id));
 definition.metadata={...definition.metadata,desktop_apps:nativeApps,device_presentations:{'alice-mac':'desktop','bob-windows':'desktop','carol-ubuntu':'laptop','app-server':'server','git-server':'server','alice-phone':'phone','bob-android':'phone'}};
 for(const computer of definition.computers){

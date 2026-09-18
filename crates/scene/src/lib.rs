@@ -843,7 +843,7 @@ impl Scene {
             n.revision = 0;
         }
         for i in 0..self.nodes.len() {
-            self.nodes[i].revision = digest(&self.nodes[i]);
+            self.nodes[i].revision = node_digest(&self.nodes[i]);
         }
         self.digest = 0;
         self.digest = digest(&(
@@ -1154,6 +1154,29 @@ fn mix(a: u64, b: u64) -> u64 {
     ((a ^ b).wrapping_mul(K)) | 1
 }
 /// Content digest. Never 0, which is reserved for "unstamped".
+/// A node's content digest. Pixel buffers are hashed as raw bytes rather than through
+/// their JSON form: a view's worth of RGBA is megabytes, and spelling every byte out as
+/// decimal text first made stamping a scene with one picture cost more than drawing it.
+fn node_digest(n: &Node) -> u64 {
+    let Primitive::Image {
+        width,
+        height,
+        rgba,
+    } = &n.primitive
+    else {
+        return digest(n);
+    };
+    let mut hasher = Digest::new();
+    let mut shell = n.clone();
+    shell.primitive = Primitive::Image {
+        width: *width,
+        height: *height,
+        rgba: Vec::new(),
+    };
+    let _ = serde_json::to_writer(&mut hasher, &shell);
+    let _ = std::io::Write::write_all(&mut hasher, rgba);
+    hasher.finish()
+}
 pub fn digest(value: &impl Serialize) -> u64 {
     let mut hasher = Digest::new();
     // Serialization of these contracts cannot fail; a failure would only shorten the

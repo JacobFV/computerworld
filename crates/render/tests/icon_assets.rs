@@ -34,8 +34,11 @@ const APPS: [&str; 22] = [
     "code",
 ];
 /// Applications only one platform ships: each has artwork in that platform's set.
-const PLATFORM_APPS: [(&str, &str); 6] = [
+const PLATFORM_APPS: [(&str, &str); 9] = [
     ("windows", "paint"),
+    ("windows", "freecad"),
+    ("macos", "freecad"),
+    ("ubuntu", "freecad"),
     ("macos", "preview"),
     ("macos", "pixelmator"),
     ("ubuntu", "gimp"),

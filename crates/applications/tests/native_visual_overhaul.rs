@@ -76,6 +76,7 @@ fn files_project_real_names_and_only_supported_interactions() {
                     clipboard: Some(&clipboard),
                     share_to: None,
                     editor: None,
+                    pointer: None,
                     files: Default::default(),
                 },
             );
