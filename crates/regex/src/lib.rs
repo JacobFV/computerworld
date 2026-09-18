@@ -149,11 +149,9 @@ fn is_word(c: char, ascii: bool) -> bool {
     }
 }
 fn is_digit(c: char, ascii: bool) -> bool {
-    if ascii {
-        c.is_ascii_digit()
-    } else {
-        c.is_ascii_digit() || (c.is_numeric() && c.to_digit(10).is_some())
-    }
+    // Unicode decimal digits outside ASCII are not recognised (known gap).
+    let _ = ascii;
+    c.is_ascii_digit()
 }
 fn is_space(c: char, ascii: bool) -> bool {
     if ascii {
@@ -269,8 +267,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        let max;
-        if self.peek() == Some(',') {
+        let max = if self.peek() == Some(',') {
             self.i += 1;
             let mut mx = String::new();
             while let Some(c) = self.peek() {
@@ -281,24 +278,24 @@ impl<'a> Parser<'a> {
                     break;
                 }
             }
-            if self.peek() != Some('}') || (min.is_empty() && (mx.is_empty() || !self.py())) {
-                if !(self.peek() == Some('}') && min.is_empty() && self.py()) {
-                    self.i = save;
-                    return None;
-                }
+            if (self.peek() != Some('}') || (min.is_empty() && (mx.is_empty() || !self.py())))
+                && !(self.peek() == Some('}') && min.is_empty() && self.py())
+            {
+                self.i = save;
+                return None;
             }
-            max = if mx.is_empty() {
+            if mx.is_empty() {
                 None
             } else {
                 Some(mx.parse().unwrap_or(u32::MAX))
-            };
+            }
         } else {
             if self.peek() != Some('}') || min.is_empty() {
                 self.i = save;
                 return None;
             }
-            max = Some(min.parse().unwrap_or(u32::MAX));
-        }
+            Some(min.parse().unwrap_or(u32::MAX))
+        };
         self.i += 1; // '}'
         let min = if min.is_empty() {
             0

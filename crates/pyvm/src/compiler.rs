@@ -563,8 +563,6 @@ impl SymBuilder {
                             || self.scopes[target].globals.contains(n)
                         {
                             self.scopes[si].globals.insert(n.clone());
-                        } else if self.scopes[target].kind != ScopeKind::Comprehension {
-                            self.scopes[si].nonlocals.insert(n.clone());
                         } else {
                             self.scopes[si].nonlocals.insert(n.clone());
                         }
@@ -1731,7 +1729,10 @@ impl<'a> Compiler<'a> {
         } else if let Some(i) = u.freevars.iter().position(|c| &**c == name) {
             u.cellvars.len() + i
         } else {
-            panic!("closure name {name} missing in {} cells={:?} frees={:?}", u.qualname, u.cellvars, u.freevars);
+            panic!(
+                "closure name {name} missing in {} cells={:?} frees={:?}",
+                u.qualname, u.cellvars, u.freevars
+            );
         };
         self.emit(Op::LoadClosure(idx as u32));
     }
@@ -2349,6 +2350,7 @@ impl<'a> Compiler<'a> {
         self.emit(Op::Call(1));
         Ok(())
     }
+    #[allow(clippy::only_used_in_recursion)]
     fn comp_loop(
         &mut self,
         gens: &[Comprehension],

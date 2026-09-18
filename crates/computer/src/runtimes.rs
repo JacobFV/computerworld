@@ -77,7 +77,9 @@ impl ScriptHost for MachineHost<'_> {
         }
         let user = c.user.clone();
         if append {
-            c.vfs.append_as(&p, data, &user, self.tick).map_err(fs_error)
+            c.vfs
+                .append_as(&p, data, &user, self.tick)
+                .map_err(fs_error)
         } else {
             c.vfs.write_as(&p, data, &user, self.tick).map_err(fs_error)
         }
@@ -224,7 +226,11 @@ pub fn run_runtime(
     let env: Vec<(String, String)> = computer
         .env
         .iter()
-        .filter(|(k, _)| k.chars().next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_'))
+        .filter(|(k, _)| {
+            k.chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        })
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
     let invocation = Invocation {
@@ -235,11 +241,7 @@ pub fn run_runtime(
     let mut host = MachineHost::new(computer, shell, tick);
     let out: Outcome = match runtime {
         Runtime::Python => cw_pyvm::run(&mut host, &invocation),
-        Runtime::Node => Outcome {
-            stdout: String::new(),
-            stderr: "node: this runtime is not available on this machine\n".into(),
-            exit_code: 127,
-        },
+        Runtime::Node => cw_jsvm::run(&mut host, &invocation),
     };
     CommandResult {
         stdout: out.stdout,

@@ -12,5 +12,6 @@ regex = "1"
 cw-protocol = { path = "../protocol" }
 cw-script-host = { path = "../script-host" }
 cw-pyvm = { path = "../pyvm" }
+cw-jsvm = { path = "../jsvm" }
 [dev-dependencies]
 proptest.workspace = true

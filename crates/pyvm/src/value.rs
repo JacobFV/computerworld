@@ -423,6 +423,7 @@ impl Dict {
         }
     }
     /// Fast lookup when keys compare primitively (the common case).
+    #[allow(clippy::result_unit_err)]
     pub fn find_fast(&self, hash: i64, key: &Value) -> Result<Option<usize>, ()> {
         let check = |i: u32| -> Result<bool, ()> {
             let e = self.entries[i as usize].as_ref().unwrap();
@@ -712,10 +713,8 @@ impl SetData {
                             None => return Probe::Check(j, k.clone()),
                         }
                     }
-                    SetSlot::Dummy => {
-                        if freeslot.is_none() {
-                            freeslot = Some(j);
-                        }
+                    SetSlot::Dummy if freeslot.is_none() => {
+                        freeslot = Some(j);
                     }
                     _ => {}
                 }
@@ -872,6 +871,9 @@ pub struct RangeObj {
     pub step: i64,
 }
 impl RangeObj {
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     pub fn len(&self) -> i64 {
         let (lo, hi, step) = (self.start as i128, self.stop as i128, self.step as i128);
         let n = if step > 0 && lo < hi {

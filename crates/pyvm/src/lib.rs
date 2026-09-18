@@ -679,72 +679,73 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     } else {
         invocation.stdin.clone()
     };
-    let mut argv0 = String::new();
-    let (src, filename) =
-        match &target {
-            Target::Code(code, flag) => {
-                argv0 = if flag == "-c" {
-                    "-c".into()
-                } else if flag == "-" {
-                    "-".into()
+    let argv0: String;
+    let (src, filename) = match &target {
+        Target::Code(code, flag) => {
+            argv0 = if flag == "-c" {
+                "-c".into()
+            } else if flag == "-" {
+                "-".into()
+            } else {
+                String::new()
+            };
+            (
+                Some(code.clone()),
+                if flag == "-c" {
+                    "<string>".to_string()
                 } else {
-                    String::new()
-                };
-                (
-                    Some(code.clone()),
-                    if flag == "-c" {
-                        "<string>".to_string()
-                    } else {
-                        "<stdin>".to_string()
-                    },
-                )
-            }
-            Target::File(path) => {
-                let abs = host.resolve(path);
-                match host.stat(path) {
-                    Ok(st) if st.is_dir => {
-                        // A directory needs __main__.py.
-                        let main = format!("{}/__main__.py", abs.trim_end_matches('/'));
-                        match host.read_file(&main) {
-                            Ok(b) => {
-                                argv0 = path.clone();
-                                (Some(String::from_utf8_lossy(&b).into_owned()), main)
-                            }
-                            Err(_) => return Outcome {
+                    "<stdin>".to_string()
+                },
+            )
+        }
+        Target::File(path) => {
+            let abs = host.resolve(path);
+            match host.stat(path) {
+                Ok(st) if st.is_dir => {
+                    // A directory needs __main__.py.
+                    let main = format!("{}/__main__.py", abs.trim_end_matches('/'));
+                    match host.read_file(&main) {
+                        Ok(b) => {
+                            argv0 = path.clone();
+                            (Some(String::from_utf8_lossy(&b).into_owned()), main)
+                        }
+                        Err(_) => {
+                            return Outcome {
                                 stdout: String::new(),
                                 stderr: format!(
                                     "/usr/bin/python3: can't find '__main__' module in '{abs}'\n"
                                 ),
                                 exit_code: 1,
-                            },
-                        }
-                    }
-                    _ => match host.read_file(path) {
-                        Ok(b) => {
-                            argv0 = path.clone();
-                            let text = String::from_utf8_lossy(&b).into_owned();
-                            (Some(text), abs)
-                        }
-                        Err(e) => {
-                            return Outcome {
-                                stdout: String::new(),
-                                stderr: format!(
-                                    "/usr/bin/python3: can't open file {}: [Errno {}] {}\n",
-                                    format::str_repr(&abs),
-                                    e.kind.errno(),
-                                    e.kind.strerror()
-                                ),
-                                exit_code: 2,
                             }
                         }
-                    },
+                    }
                 }
+                _ => match host.read_file(path) {
+                    Ok(b) => {
+                        argv0 = path.clone();
+                        let text = String::from_utf8_lossy(&b).into_owned();
+                        (Some(text), abs)
+                    }
+                    Err(e) => {
+                        return Outcome {
+                            stdout: String::new(),
+                            stderr: format!(
+                                "/usr/bin/python3: can't open file {}: [Errno {}] {}\n",
+                                format::str_repr(&abs),
+                                e.kind.errno(),
+                                e.kind.strerror()
+                            ),
+                            exit_code: 2,
+                        }
+                    }
+                },
             }
-            Target::Module(m) => {
-                argv0 = m.clone();
-                (None, String::new())
-            }
-        };
+        }
+        Target::Module(m) => {
+            argv0 = m.clone();
+            (None, String::new())
+        }
+    };
     let mut argv = vec![argv0];
     argv.extend(program_args);
     let host_ptr = host;

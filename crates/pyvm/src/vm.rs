@@ -1751,8 +1751,8 @@ impl<'h> Vm<'h> {
         if let Some(s) = crate::format::suggest(name, &candidates) {
             msg.push_str(&format!(". Did you mean: '{s}'?"));
         }
-        let e = err("NameError", msg);
-        e
+
+        err("NameError", msg)
     }
 
     fn do_raise(&mut self, f: &mut Frame, n: u32) -> Box<PyErr> {
@@ -1944,7 +1944,11 @@ impl<'h> Vm<'h> {
             out.push((code.filename.clone(), line_of(code, *pc), code.name.clone()));
         }
         for fr in self.frames.iter().rev() {
-            out.push((fr.code.filename.clone(), line_of(&fr.code, fr.pc), fr.code.name.clone()));
+            out.push((
+                fr.code.filename.clone(),
+                line_of(&fr.code, fr.pc),
+                fr.code.name.clone(),
+            ));
         }
         out
     }

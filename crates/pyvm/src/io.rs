@@ -157,14 +157,8 @@ pub fn readline(vm: &mut Vm, f: &Ref<FileObj>, limit: i64) -> PyResult<Value> {
         };
         let mut end = end;
         if limit >= 0 {
-            let mut chars = 0;
-            for (i, c) in rest.char_indices() {
-                if chars == limit as usize {
-                    end = end.min(i);
-                    break;
-                }
-                chars += 1;
-                let _ = c;
+            if let Some((i, _)) = rest.char_indices().nth(limit as usize) {
+                end = end.min(i);
             }
         }
         let line = rest[..end].to_string();

@@ -1198,7 +1198,7 @@ fn b_build_class(vm: &mut Vm, mut a: Args) -> PyResult<Value> {
     let cls = if Rc::ptr_eq(&meta, &vm.t.type_) {
         type_new(vm, &meta, &name.s, bases, &ns, &kwds)?
     } else {
-        let v = vm.call_kw(
+        vm.call_kw(
             &Value::Class(meta.clone()),
             vec![
                 Value::Str(name.clone()),
@@ -1206,8 +1206,7 @@ fn b_build_class(vm: &mut Vm, mut a: Args) -> PyResult<Value> {
                 Value::Dict(ns),
             ],
             kwds,
-        )?;
-        v
+        )?
     };
     if let Value::Cell(c) = cell {
         *c.borrow_mut() = cls.clone();

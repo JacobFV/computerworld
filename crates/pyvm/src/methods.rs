@@ -10,9 +10,6 @@ use std::rc::Rc;
 fn this(vm: &Vm, a: &Args) -> Value {
     vm.base_value(&a.args[0])
 }
-fn arg(a: &Args, i: usize) -> Option<&Value> {
-    a.args.get(i)
-}
 fn nargs(a: &Args, name: &str, min: usize, max: usize) -> PyResult<()> {
     let n = a.args.len().saturating_sub(1);
     if !a.kwargs.is_empty() {
@@ -165,10 +162,6 @@ fn d_repr(vm: &mut Vm, a: Args) -> PyResult<Value> {
         return Ok(Value::string(vm.default_repr(&v)));
     }
     Ok(Value::string(vm.repr(&v)?))
-}
-fn d_str(vm: &mut Vm, a: Args) -> PyResult<Value> {
-    let v = this(vm, &a);
-    Ok(Value::string(vm.str_of(&v)?))
 }
 fn d_iter(vm: &mut Vm, a: Args) -> PyResult<Value> {
     let v = this(vm, &a);
@@ -1720,12 +1713,7 @@ fn str_isascii(vm: &mut Vm, a: Args) -> PyResult<Value> {
     pred(vm, &a, |c| c.is_ascii(), true)
 }
 fn str_isdecimal(vm: &mut Vm, a: Args) -> PyResult<Value> {
-    pred(
-        vm,
-        &a,
-        |c| c.is_ascii_digit() || (c.is_numeric() && c.to_digit(10).is_some()),
-        false,
-    )
+    pred(vm, &a, |c| c.is_ascii_digit(), false)
 }
 fn str_isdigit(vm: &mut Vm, a: Args) -> PyResult<Value> {
     pred(
@@ -1913,7 +1901,7 @@ fn bytes_hex(vm: &mut Vm, a: Args) -> PyResult<Value> {
 fn bytes_fromhex(vm: &mut Vm, a: Args) -> PyResult<Value> {
     let s = str_arg(vm, &a.args[1], "fromhex", 1)?;
     let clean: String = s.s.chars().filter(|c| !c.is_whitespace()).collect();
-    if clean.len() % 2 != 0 {
+    if !clean.len().is_multiple_of(2) {
         return Err(value_err("non-hexadecimal number found in fromhex() arg"));
     }
     let mut out = vec![];

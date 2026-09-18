@@ -42,7 +42,11 @@ fn run_program(name: &str) {
         // os.listdir order is unspecified; the simulated one is sorted.
         s.replace("['out.txt', 'main.py']", "['main.py', 'out.txt']")
     };
-    assert_eq!(fix(&out.stdout), fix(&expected.stdout), "{name}: stdout differs");
+    assert_eq!(
+        fix(&out.stdout),
+        fix(&expected.stdout),
+        "{name}: stdout differs"
+    );
     assert_eq!(out.stderr, expected.stderr, "{name}: stderr differs");
     assert_eq!(out.exit_code, expected.exit, "{name}: exit status differs");
 }

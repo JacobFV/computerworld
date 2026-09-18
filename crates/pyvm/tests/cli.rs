@@ -24,7 +24,11 @@ fn version_and_inline_code() {
     let mut h = MemoryHost::default();
     let out = run(&mut h, &["--version"], "");
     assert_eq!((out.stdout.as_str(), out.exit_code), ("Python 3.12.3\n", 0));
-    let out = run(&mut h, &["-c", "import sys; print(sys.argv, 6 * 7)", "a", "b"], "");
+    let out = run(
+        &mut h,
+        &["-c", "import sys; print(sys.argv, 6 * 7)", "a", "b"],
+        "",
+    );
     assert_eq!(out.stdout, "['-c', 'a', 'b'] 42\n");
     let out = run(&mut h, &["-c", "print(undefined)"], "");
     assert_eq!(out.exit_code, 1);
@@ -78,9 +82,8 @@ fn infinite_loops_stop_with_a_timeout_error() {
     let out = script("n = 0\nwhile True:\n    n += 1\n");
     assert_eq!(out.exit_code, cw_pyvm::TIMEOUT_EXIT);
     assert!(
-        out.stderr.starts_with(
-            "Traceback (most recent call last):\n  File \"/home/user/main.py\", line"
-        ),
+        out.stderr
+            .starts_with("Traceback (most recent call last):\n  File \"/home/user/main.py\", line"),
         "{}",
         out.stderr
     );
@@ -100,7 +103,9 @@ fn deep_recursion_is_a_recursion_error_not_a_crash() {
     assert!(out
         .stderr
         .ends_with("RecursionError: maximum recursion depth exceeded\n"));
-    assert!(out.stderr.contains("[Previous line repeated 996 more times]"));
+    assert!(out
+        .stderr
+        .contains("[Previous line repeated 996 more times]"));
     // Recursion through natively-driven calls (generators, sort keys, dunders).
     let out = script(
         "def walk(n):\n    if n:\n        yield from walk(n - 1)\n    yield n\nprint(sum(walk(120)))\n\nclass N:\n    def __init__(self, k): self.k = k\n    def __eq__(self, o): return self.k == 0 or N(self.k - 1) == N(o.k - 1)\nprint(N(100) == N(100))\ndef g(n):\n    return sorted([n], key=lambda x: g(x - 1) if x else 0)\nprint(g(60))\n",
@@ -124,7 +129,10 @@ fn unseeded_random_is_deterministic_per_world_seed() {
     host.write_file("/home/user/main.py", src.as_bytes(), false)
         .unwrap();
     let c = run(&mut host, &["main.py"], "");
-    assert_ne!(a.stdout, c.stdout, "a different world seed gives a different stream");
+    assert_ne!(
+        a.stdout, c.stdout,
+        "a different world seed gives a different stream"
+    );
     // Seeded streams match CPython exactly.
     let out = script("import random\nrandom.seed(1)\nprint(random.random(), random.randrange(100), random.choice('xyz'))\n");
     assert_eq!(out.stdout, "0.13436424411240122 97 x\n");
@@ -144,10 +152,18 @@ fn user_modules_and_packages_import_from_the_script_directory() {
     let mut h = MemoryHost::default();
     h.mkdir("/home/user/proj", false).unwrap();
     h.mkdir("/home/user/proj/pkg", false).unwrap();
-    h.write_file("/home/user/proj/helpers.py", b"def double(x):\n    return 2 * x\nNAME = 'helpers'\n", false)
-        .unwrap();
-    h.write_file("/home/user/proj/pkg/__init__.py", b"from .core import VALUE\n", false)
-        .unwrap();
+    h.write_file(
+        "/home/user/proj/helpers.py",
+        b"def double(x):\n    return 2 * x\nNAME = 'helpers'\n",
+        false,
+    )
+    .unwrap();
+    h.write_file(
+        "/home/user/proj/pkg/__init__.py",
+        b"from .core import VALUE\n",
+        false,
+    )
+    .unwrap();
     h.write_file("/home/user/proj/pkg/core.py", b"VALUE = 42\n", false)
         .unwrap();
     h.write_file(
@@ -183,8 +199,12 @@ fn syntax_warnings_and_errors_use_cpython_format() {
 #[test]
 fn files_written_without_close_are_flushed_at_exit() {
     let mut h = MemoryHost::default();
-    h.write_file("/home/user/main.py", b"f = open('out.txt', 'w')\nf.write('kept')\n", false)
-        .unwrap();
+    h.write_file(
+        "/home/user/main.py",
+        b"f = open('out.txt', 'w')\nf.write('kept')\n",
+        false,
+    )
+    .unwrap();
     let out = run(&mut h, &["main.py"], "");
     assert_eq!(out.exit_code, 0);
     assert_eq!(h.files["/home/user/out.txt"], b"kept");

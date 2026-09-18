@@ -748,7 +748,7 @@ pub fn seq_getitem(vm: &mut Vm, obj: &Value, idx: &Value) -> PyResult<Value> {
         Value::Big(_) => {
             return Err(err(
                 "IndexError",
-                format!("cannot fit 'int' into an index-sized integer"),
+                "cannot fit 'int' into an index-sized integer".to_string(),
             ))
         }
         Value::Instance(_) if vm.lookup_special(idx, "__index__").is_some() => vm.index_of(idx)?,
@@ -936,7 +936,7 @@ pub fn exc_str(vm: &mut Vm, v: &Value) -> PyResult<String> {
     if is("OSError") && args.len() >= 2 {
         if let Value::Int(no) = &args[0] {
             let strerror = vm.str_of(&args[1])?;
-            if let Some(Value::Str(_)) | Some(Value::Bytes(_)) = args.get(2).map(|a| a) {
+            if let Some(Value::Str(_)) | Some(Value::Bytes(_)) = args.get(2) {
                 let fname = vm.repr(&args[2])?;
                 return Ok(format!("[Errno {no}] {strerror}: {fname}"));
             }

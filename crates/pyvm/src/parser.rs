@@ -1028,11 +1028,11 @@ impl Parser {
                     }
                     return Ok(s(StmtKind::ImportFrom(module, names, level)));
                 }
-                "print" => {
+                "print"
                     // Python 2 print statement gets CPython's targeted hint.
                     if matches!(self.peek_tok(1), Tok::Str(_) | Tok::Int(..) | Tok::Name(_))
                         && !matches!(self.peek_tok(1), Tok::Name(k) if KEYWORDS.contains(&k.as_str()) && k != "None" && k != "True" && k != "False")
-                    {
+                    => {
                         let mut e = SyntaxErr::new(
                             "Missing parentheses in call to 'print'. Did you mean print(...)?",
                             t.line,
@@ -1041,7 +1041,6 @@ impl Parser {
                         e.end_col = t.col + 1;
                         return Err(e);
                     }
-                }
                 _ => {}
             }
         }

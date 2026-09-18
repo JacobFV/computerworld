@@ -789,7 +789,7 @@ impl<'h> Vm<'h> {
                         0 => i64::from(e == 0),
                         1 => 1,
                         _ => {
-                            if e % 2 == 0 {
+                            if e.is_multiple_of(2) {
                                 1
                             } else {
                                 -1
@@ -1280,7 +1280,7 @@ impl<'h> Vm<'h> {
             Value::Dict(d) => !d.borrow().is_empty(),
             Value::Set(s) => !s.borrow().is_empty(),
             Value::FrozenSet(s) => !s.is_empty(),
-            Value::Range(r) => r.len() > 0,
+            Value::Range(r) => !r.is_empty(),
             Value::DictView(dv) => !dv.0.borrow().is_empty(),
             Value::Instance(_) | Value::Native(_) => {
                 if let Some(r) = self.call_special(v, "__bool__", vec![])? {
@@ -2686,7 +2686,8 @@ impl<'h> Vm<'h> {
     pub fn big_to_str(&self, b: &BigInt) -> PyResult<String> {
         // CPython refuses to print ints beyond sys.get_int_max_str_digits().
         if self.int_max_str_digits > 0
-            && b.bit_length() as f64 * 0.30103 > self.int_max_str_digits as f64 + 1.0
+            && b.bit_length() as f64 * std::f64::consts::LOG10_2
+                > self.int_max_str_digits as f64 + 1.0
         {
             let s = b.to_str_radix(10);
             let digits = s.trim_start_matches('-').len();

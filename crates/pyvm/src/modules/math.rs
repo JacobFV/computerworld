@@ -16,10 +16,8 @@ fn f(vm: &mut Vm, a: &Args, i: usize, fname: &str) -> PyResult<f64> {
         Some(Num::C(..)) => Err(type_err("must be real number, not complex")),
         Some(n) => vm.num_to_f64(&n),
         None => {
-            if let Some(r) = vm.call_special(v, "__float__", vec![])? {
-                if let Value::Float(x) = r {
-                    return Ok(x);
-                }
+            if let Some(Value::Float(x)) = vm.call_special(v, "__float__", vec![])? {
+                return Ok(x);
             }
             if let Some(r) = vm.call_special(v, "__index__", vec![])? {
                 return crate::bfuncs::float_from(vm, &r);
@@ -62,9 +60,9 @@ fn to_big(vm: &mut Vm, v: &Value, fname: &str) -> PyResult<BigInt> {
         Value::Int(i) => Ok(BigInt::from_i64(*i)),
         Value::Bool(b) => Ok(BigInt::from_i64(*b as i64)),
         Value::Big(b) => Ok((**b).clone()),
-        Value::Float(_) => Err(type_err(format!(
-            "'float' object cannot be interpreted as an integer"
-        ))),
+        Value::Float(_) => Err(type_err(
+            "'float' object cannot be interpreted as an integer".to_string(),
+        )),
         other => {
             let _ = fname;
             Ok(BigInt::from_i64(vm.index_of(other)?))

@@ -33,3 +33,6 @@ opt-level = 2
 
 [profile.dev.package.cw-regex]
 opt-level = 2
+
+[profile.dev.package.cw-jsvm]
+opt-level = 2

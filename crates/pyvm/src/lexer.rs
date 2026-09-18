@@ -457,12 +457,9 @@ impl<'a> Lexer<'a> {
         }
         if is_id_start(ch) {
             let _ = start;
+            let _ = is_float;
             return Err(SyntaxErr::new(
-                if is_float {
-                    "invalid decimal literal"
-                } else {
-                    "invalid decimal literal"
-                },
+                "invalid decimal literal",
                 line + self.base_line,
                 self.col() - 1,
             ));

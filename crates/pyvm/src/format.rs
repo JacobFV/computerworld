@@ -181,7 +181,7 @@ fn substitution_cost(a: u8, b: u8) -> usize {
     if a == b {
         return 0;
     }
-    if a.to_ascii_lowercase() == b.to_ascii_lowercase() {
+    if a.eq_ignore_ascii_case(&b) {
         return CASE_COST;
     }
     MOVE_COST
@@ -378,7 +378,7 @@ fn group_digits(int_part: &str, sep: char, every: usize) -> String {
     let chars: Vec<char> = int_part.chars().collect();
     let mut out = String::new();
     for (i, ch) in chars.iter().enumerate() {
-        if i > 0 && (chars.len() - i) % every == 0 {
+        if i > 0 && (chars.len() - i).is_multiple_of(every) {
             out.push(sep);
         }
         out.push(*ch);
@@ -436,11 +436,8 @@ pub fn format_value(vm: &mut Vm, v: &Value, spec: &str) -> PyResult<String> {
                     "Alternate form (#) not allowed in string format specifier",
                 ));
             }
-            if s.grouping.is_some() {
-                return Err(value_err(format!(
-                    "Cannot specify '{}' with 's'.",
-                    s.grouping.unwrap()
-                )));
+            if let Some(g) = s.grouping {
+                return Err(value_err(format!("Cannot specify '{g}' with 's'.")));
             }
             if s.align == Some('=') {
                 return Err(value_err(
@@ -469,14 +466,11 @@ pub fn format_value(vm: &mut Vm, v: &Value, spec: &str) -> PyResult<String> {
                 Value::Big(b) => (**b).clone(),
                 _ => unreachable!(),
             };
-            match s.ty {
-                Some('e' | 'E' | 'f' | 'F' | 'g' | 'G' | '%') => {
-                    let f = big
-                        .to_f64()
-                        .ok_or_else(|| err("OverflowError", "int too large to convert to float"))?;
-                    return format_float(f, &s);
-                }
-                _ => {}
+            if let Some('e' | 'E' | 'f' | 'F' | 'g' | 'G' | '%') = s.ty {
+                let f = big
+                    .to_f64()
+                    .ok_or_else(|| err("OverflowError", "int too large to convert to float"))?;
+                return format_float(f, &s);
             }
             format_int(&big, &s)
         }
@@ -676,10 +670,7 @@ fn float_body(f: f64, ty: Option<char>, prec: Option<usize>, alt: bool) -> Strin
             }
         }
         None => match prec {
-            None => {
-                let r = float_repr(f);
-                r
-            }
+            None => float_repr(f),
             Some(p) => {
                 let p = p.max(1);
                 let exp = if f == 0.0 { 0 } else { exp_after_round(f, p) };

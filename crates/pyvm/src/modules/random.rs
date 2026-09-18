@@ -99,7 +99,7 @@ impl Mt {
     pub fn seed_big(&mut self, n: &BigInt) {
         let bytes = n
             .abs()
-            .to_bytes_le(((n.bit_length() + 7) / 8 + 1) as usize, false)
+            .to_bytes_le((n.bit_length().div_ceil(8) + 1) as usize, false)
             .unwrap_or_default();
         let mut key: Vec<u32> = bytes
             .chunks(4)

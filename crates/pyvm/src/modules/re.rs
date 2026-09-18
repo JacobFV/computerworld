@@ -205,6 +205,7 @@ enum Mode {
     Full,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn exec_at(
     vm: &mut Vm,
     pv: &Value,
