@@ -8,6 +8,7 @@ license.workspace = true
 cw-scene = { path = "../scene" }
 cw-protocol = { path = "../protocol" }
 cw-sdk = { path = "../sdk" }
+cw-raster = { path = "../raster" }
 serde.workspace = true
 serde_json.workspace = true
 regex = "1"

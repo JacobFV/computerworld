@@ -40,6 +40,8 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/macos/maps",
     "icon/macos/weather",
     "icon/macos/code",
+    "icon/macos/preview",
+    "icon/macos/pixelmator",
     "icon/windows/files",
     "icon/windows/browser",
     "icon/windows/terminal",
@@ -62,6 +64,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/windows/maps",
     "icon/windows/weather",
     "icon/windows/code",
+    "icon/windows/paint",
     "icon/ubuntu/files",
     "icon/ubuntu/browser",
     "icon/ubuntu/terminal",
@@ -84,6 +87,8 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/ubuntu/maps",
     "icon/ubuntu/weather",
     "icon/ubuntu/code",
+    "icon/ubuntu/gimp",
+    "icon/ubuntu/pinta",
     "icon/ios/files",
     "icon/ios/browser",
     "icon/ios/terminal",
@@ -128,6 +133,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/android/maps",
     "icon/android/weather",
     "icon/android/code",
+    "icon/android/sketchbook",
 ];
 fn bytes(id: &str) -> Option<&'static [u8]> {
     Some(match id {
@@ -178,6 +184,8 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
             include_bytes!("../assets/icons/macos-weather.png")
         }
         "icon/macos/code" | "icon/code" => include_bytes!("../assets/icons/macos-code.png"),
+        "icon/macos/preview" => include_bytes!("../assets/icons/macos-preview.png"),
+        "icon/macos/pixelmator" => include_bytes!("../assets/icons/macos-pixelmator.png"),
         "wallpaper/windows" => include_bytes!("../assets/wallpapers/windows.jpg"),
         "icon/windows/files" => include_bytes!("../assets/icons/windows-files.png"),
         "icon/windows/browser" => include_bytes!("../assets/icons/windows-browser.png"),
@@ -213,6 +221,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/windows/maps" => include_bytes!("../assets/icons/windows-maps.png"),
         "icon/windows/weather" => include_bytes!("../assets/icons/windows-weather.png"),
         "icon/windows/code" => include_bytes!("../assets/icons/windows-code.png"),
+        "icon/windows/paint" => include_bytes!("../assets/icons/windows-paint.png"),
         "wallpaper/ubuntu" => include_bytes!("../assets/wallpapers/ubuntu.jpg"),
         "icon/ubuntu/files" => include_bytes!("../assets/icons/ubuntu-files.png"),
         "icon/ubuntu/browser" => include_bytes!("../assets/icons/ubuntu-browser.png"),
@@ -248,6 +257,8 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/ubuntu/maps" => include_bytes!("../assets/icons/ubuntu-maps.png"),
         "icon/ubuntu/weather" => include_bytes!("../assets/icons/ubuntu-weather.png"),
         "icon/ubuntu/code" => include_bytes!("../assets/icons/ubuntu-code.png"),
+        "icon/ubuntu/gimp" => include_bytes!("../assets/icons/ubuntu-gimp.png"),
+        "icon/ubuntu/pinta" => include_bytes!("../assets/icons/ubuntu-pinta.png"),
         "wallpaper/ios" => include_bytes!("../assets/wallpapers/ios.jpg"),
         "icon/ios/files" => include_bytes!("../assets/icons/ios-files.png"),
         "icon/ios/browser" => include_bytes!("../assets/icons/ios-browser.png"),
@@ -314,6 +325,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/android/maps" => include_bytes!("../assets/icons/android-maps.png"),
         "icon/android/weather" => include_bytes!("../assets/icons/android-weather.png"),
         "icon/android/code" => include_bytes!("../assets/icons/android-code.png"),
+        "icon/android/sketchbook" => include_bytes!("../assets/icons/android-sketchbook.png"),
         _ => {
             return SYMBOLS
                 .iter()

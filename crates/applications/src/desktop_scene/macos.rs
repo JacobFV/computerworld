@@ -15,7 +15,7 @@ const TOOLBAR_INACTIVE: Color = Color::rgb(238, 238, 239);
 /// Width of the Finder sidebar; shared with the Finder client area.
 pub const FINDER_SIDEBAR: u32 = 172;
 /// Every application this shell can present, in Launchpad order.
-const APPS: [(&str, &str); 18] = [
+const APPS: [(&str, &str); 20] = [
     ("files", "Finder"),
     ("browser", "Safari"),
     ("mail", "Mail"),
@@ -28,6 +28,8 @@ const APPS: [(&str, &str); 18] = [
     ("terminal", "Terminal"),
     ("code", "Visual Studio Code"),
     ("photos", "Photos"),
+    ("preview", "Preview"),
+    ("pixelmator", "Pixelmator Pro"),
     ("music", "Music"),
     ("maps", "Maps"),
     ("weather", "Weather"),
@@ -2011,7 +2013,8 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         ],
     };
     entries.retain(|(_, action, _)| {
-        action != "shell:save" || front.is_some_and(|w| w.kind == "editor")
+        action != "shell:save"
+            || front.is_some_and(|w| matches!(w.kind.as_str(), "editor" | "preview" | "pixelmator"))
     });
     while entries.last().is_some_and(|(label, _, _)| label.is_empty()) {
         entries.pop();

@@ -14,6 +14,7 @@ pub mod clock;
 pub mod code;
 pub mod contacts;
 pub mod docs;
+pub mod imaging;
 pub mod mail;
 pub mod maps;
 pub mod music;
@@ -50,6 +51,9 @@ pub struct AppEnv<'a> {
     pub share_to: Option<&'static str>,
     /// Places a file manager's sidebar offers, read from the machine as it is now.
     pub files: FilesEnv<'a>,
+    /// The installed image editor a photo's Edit button hands the file to (Paint,
+    /// Preview, GIMP…), or `None` when the machine has none.
+    pub editor: Option<&'static str>,
 }
 /// What a file manager may know beyond its own tab. Every field is read from the
 /// machine when the frame is drawn, so a sidebar never offers a folder that is gone.
@@ -197,15 +201,21 @@ macro_rules! native_apps {
             ) -> Result<(), String> {
                 match self {
                     Self::Photos(a) => a.image(path, width, height, rgba),
-                    _ => Err("this application shows no images".into()),
+                    other => match other.studio_mut() {
+                        Some(studio) => studio.image(path, width, height, rgba),
+                        None => Err("this application shows no images".into()),
+                    },
                 }
             }
             /// One file could not be decoded. That is about the file, not the library, so
             /// it marks the file rather than putting the whole application offline.
             pub fn image_failed(&mut self, path: &str, reason: &str) {
                 match self {
-                    Self::Photos(a) => a.image_failed(path),
-                    other => other.offline(path, reason),
+                    Self::Photos(a) => a.image_failed(path, reason),
+                    other => match other.studio_mut() {
+                        Some(studio) => studio.image_failed(path, reason),
+                        None => other.offline(path, reason),
+                    },
                 }
             }
             /// A click that carries where inside its control it landed, for controls
@@ -316,16 +326,110 @@ native_apps! {
     Maps => maps,
     Weather => weather,
     Code => code,
+    Paint => imaging,
+    Preview => imaging,
+    Pixelmator => imaging,
+    Gimp => imaging,
+    Pinta => imaging,
+    Sketchbook => imaging,
 }
 
+/// Hooks only image applications have: drag surfaces, rasterised text, finished saves
+/// and folder listings for their file sheets.
 impl NativeApp {
+    fn studio(&self) -> Option<&imaging::Studio> {
+        match self {
+            Self::Paint(a) => Some(a.0.as_ref()),
+            Self::Preview(a) => Some(a.0.as_ref()),
+            Self::Pixelmator(a) => Some(a.0.as_ref()),
+            Self::Gimp(a) => Some(a.0.as_ref()),
+            Self::Pinta(a) => Some(a.0.as_ref()),
+            Self::Sketchbook(a) => Some(a.0.as_ref()),
+            Self::Photos(a) => a.editing.as_deref(),
+            _ => None,
+        }
+    }
+    fn studio_mut(&mut self) -> Option<&mut imaging::Studio> {
+        match self {
+            Self::Paint(a) => Some(a.0.as_mut()),
+            Self::Preview(a) => Some(a.0.as_mut()),
+            Self::Pixelmator(a) => Some(a.0.as_mut()),
+            Self::Gimp(a) => Some(a.0.as_mut()),
+            Self::Pinta(a) => Some(a.0.as_mut()),
+            Self::Sketchbook(a) => Some(a.0.as_mut()),
+            Self::Photos(a) => a.editing.as_deref_mut(),
+            _ => None,
+        }
+    }
+    /// Whether a keystroke inserts text. An image editor takes text only while its text
+    /// tool or a file name is being typed, so a phone shows no keyboard over a canvas.
+    pub fn accepts_text(&self) -> bool {
+        match self {
+            Self::Photos(a) => a.editing.as_ref().is_some_and(|e| e.accepts_text()),
+            other => other.studio().is_none_or(|s| s.accepts_text()),
+        }
+    }
+    /// Whether `target` follows a pointer drag (a canvas, a slider).
+    pub fn drags(&self, target: &str) -> bool {
+        self.studio().is_some_and(|s| s.drags(target))
+    }
+    /// A pointer press, move or release on a drag surface, relative to its top-left.
+    pub fn pointer(
+        &mut self,
+        window: u64,
+        target: &str,
+        phase: crate::PointerPhase,
+        x: i32,
+        y: i32,
+        _clock_us: u64,
+    ) -> Result<Vec<AppEffect>, String> {
+        let studio = self
+            .studio_mut()
+            .ok_or("this application has no drag surfaces")?;
+        let command = target
+            .strip_prefix(studio.product.prefix())
+            .and_then(|t| t.strip_prefix(':'))
+            .ok_or("that surface belongs to another application")?
+            .to_owned();
+        studio.pointer(window, &command, phase, x, y)
+    }
+    /// A folder listing an image editor's file sheet asked for.
+    pub fn listed(&mut self, entries: Vec<String>) -> Result<(), String> {
+        let studio = self.studio_mut().ok_or("window is not a file manager")?;
+        studio.listed(entries);
+        Ok(())
+    }
+    /// A picture this application encoded was written.
+    pub fn image_saved(&mut self, window: u64, path: &str) -> Result<Vec<AppEffect>, String> {
+        match self {
+            Self::Photos(a) => a.image_saved(window, path),
+            other => {
+                let studio = other
+                    .studio_mut()
+                    .ok_or("this application saves no images")?;
+                studio.saved(path);
+                Ok(vec![])
+            }
+        }
+    }
+    /// Glyph coverage for text this application asked to have rasterised.
+    pub fn text_rasterized(
+        &mut self,
+        width: u32,
+        height: u32,
+        alpha: Vec<u8>,
+    ) -> Result<(), String> {
+        self.studio_mut()
+            .ok_or("this application draws no text into images")?
+            .text_rasterized(width, height, alpha)
+    }
     /// Whether keystrokes insert text. Every application but the music player has a
     /// field that is always ready for typing; the player takes text only while its search
     /// or playlist-title field is focused, so a phone shows no keyboard over it otherwise.
     pub fn takes_text(&self) -> bool {
         match self {
             Self::Music(app) => app.takes_text(),
-            _ => true,
+            other => other.accepts_text(),
         }
     }
 }

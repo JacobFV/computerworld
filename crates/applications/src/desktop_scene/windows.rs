@@ -22,7 +22,7 @@ const PINNED: [(&str, &str); 6] = [
     ("code", "Visual Studio Code"),
 ];
 /// Every application Start can present, in its pinned-grid order.
-const APPS: [(&str, &str); 18] = [
+const APPS: [(&str, &str); 19] = [
     ("browser", "Edge"),
     ("files", "File Explorer"),
     ("terminal", "Terminal"),
@@ -35,6 +35,7 @@ const APPS: [(&str, &str); 18] = [
     ("notes", "Sticky Notes"),
     ("contacts", "People"),
     ("photos", "Photos"),
+    ("paint", "Paint"),
     ("music", "Media Player"),
     ("maps", "Maps"),
     ("weather", "Weather"),
@@ -452,17 +453,42 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
     }
     let columns: u32 = if width < 460 { 4 } else { 6 };
     let stride = (width.saturating_sub(64) / columns) as i32;
-    for (index, (kind, label)) in APPS
+    // Pinned apps come in pages of three rows, as Start pages them; the dots at the
+    // right edge turn the page, and the page shown is clamped to the pages there are.
+    let rows = ((height as i32 - 124 - 64) / 78).clamp(1, 3) as usize;
+    let per_page = columns as usize * rows;
+    let pinned: Vec<&(&str, &str)> = APPS
         .iter()
         .filter(|(kind, _)| ctx.installed(kind))
+        .collect();
+    let pages = pinned.len().div_ceil(per_page).max(1);
+    let page = (ctx.home_page as usize).min(pages - 1);
+    if pages > 1 {
+        for i in 0..pages {
+            let dot = Rect::new(x + width as i32 - 30, y + 150 + i as i32 * 18, 14, 14);
+            p.button(
+                dot,
+                Color::TRANSPARENT,
+                7,
+                &format!("shell:home-page:{i}"),
+                &format!("Pinned page {} of {pages}", i + 1),
+            );
+            p.circle(
+                dot.x + 7,
+                dot.y + 7,
+                if i == page { 4 } else { 3 },
+                if i == page { INK } else { MUTED },
+            );
+        }
+    }
+    for (index, (kind, label)) in pinned
+        .iter()
+        .skip(page * per_page)
+        .take(per_page)
         .enumerate()
     {
         let ix = x + 32 + index as i32 % columns as i32 * stride;
         let iy = y + 124 + (index as i32 / columns as i32) * 78;
-        // Three rows, as Start pages its pins; All apps carries the overflow.
-        if index as u32 >= columns * 3 || iy + 76 > y + height as i32 - 64 {
-            break;
-        }
         let action = format!("shell:launch:{kind}");
         let slot = Rect::new(ix + 2, iy, stride as u32 - 4, 74);
         if ctx.hovered(slot) {
@@ -2149,11 +2175,17 @@ mod tests {
         ctx.launcher_open = true;
         let mut p = Painter::new(1280, 800);
         chrome(&mut p, &ctx);
-        let launches = actions(&p);
+        // Start pins three rows a page; the page dots reach the rest.
+        let mut launches: Vec<String> = actions(&p).iter().map(|a| a.to_string()).collect();
+        assert!(launches.iter().any(|a| a == "shell:home-page:1"));
+        ctx.home_page = 1;
+        let mut second = Painter::new(1280, 800);
+        chrome(&mut second, &ctx);
+        launches.extend(actions(&second).iter().map(|a| a.to_string()));
         for (kind, _) in APPS {
             assert!(
-                launches.contains(&format!("shell:launch:{kind}").as_str()),
-                "Start hides {kind}"
+                launches.contains(&format!("shell:launch:{kind}")),
+                "Start's pinned pages hide {kind}"
             );
         }
         // The taskbar pins a handful; everything else lives behind Start and search.
@@ -2308,6 +2340,7 @@ mod tests {
                             | POWER_MENU
                     ) || action.starts_with("shell:month:")
                         || action.starts_with("shell:workspace:")
+                        || action.starts_with("shell:home-page:")
                         || action.starts_with("shell:notice:")
                         || action.starts_with("shell:launch:")
                         || action.starts_with("shell:open:")

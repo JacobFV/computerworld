@@ -689,6 +689,7 @@ fn every_painted_control_is_a_real_target_or_announced_disabled() {
             settings: &settings,
             clipboard: None,
             share_to: None,
+            editor: None,
             files: Default::default(),
         };
         let scene = app_content_with(&state, &env);

@@ -148,7 +148,7 @@ is reachable either from a painted control or from `application.v1 shell`.
 | `shell:panel:<name>` | Open a panel: `apple`, `file`, `edit`, `view`, `go` (Finder's Go menu), `window`, `help`, `spotlight`, `control`, `quick`, `calendar`, `notifications`, `settings`, `overview`, `context`, `power`, `app-menu` (GNOME header-bar primary menu), `app-settings` (Notepad settings), `page` (iOS Safari "AA"). On iOS `calendar` is Today View (search and widgets) and `notifications` Notification Center (the notices), and a phone's panel other than `search` is modal: the soft keyboard goes down under it and keystrokes reach nothing behind it until it closes. Choosing an entry in a drop-down menu (`file`, `edit`, `view`, `format`, `app-menu`) closes it |
 | `shell:search` / `shell:settings` / `shell:overview` / `shell:notifications` / `shell:quick-settings` | Panel shortcuts |
 | `shell:gesture:home` / `shell:gesture:overview` / `shell:gesture:notifications` / `shell:gesture:control-center` | Phone **gesture affordances**: the iPhone home indicator and the phones' status bars. A pointer reaches them by *dragging* from them (see Touch gestures below); a tap on one does nothing, as a tap on the glass does nothing. Named here, one performs what that swipe would do right now: `home` puts away a pulled-down sheet (Notification Center, Control Center, Search), returns Today View or the App Library to the first page, and otherwise goes home — from the home screen itself, to its first page; `overview` opens the App Switcher; `notifications` pulls down Notification Center, or on Android the shade and, pulled again, Quick Settings; `control-center` pulls down Control Center. Painted with the semantic role `gesture` |
-| `shell:home-page:<n>` | Show page `<n>` (0 first) of the iOS home screen, closing the App Library or any panel. iOS paints one page dot per page above the dock, each carrying this target; the scene marks the current one `selected`. A page past the last shows the last. Returns `{"page"}` |
+| `shell:home-page:<n>` | Show page `<n>` (0 first) of the iOS home screen, closing the App Library or any panel. iOS paints one page dot per page above the dock, each carrying this target; the scene marks the current one `selected`. A page past the last shows the last. On Windows it pages Start's pinned apps (three rows a page, dots at the right edge) and Start stays open. Returns `{"page"}` |
 | `shell:mobile-back` | The platform Back action (Android's navigation bar ◁): close a panel or the launcher, else go back in the browser tab's history, else up one folder in the file manager, else leave the application for the home screen |
 | `shell:back` / `shell:forward` / `shell:reload` / `shell:address` | Browser navigation, refused when there is no history or no page |
 | `shell:tab:new` / `shell:tab:select:<i>` / `shell:tab:close:<i>` | Browser tabs |
@@ -219,10 +219,48 @@ its own indentation is not indented again.
 `kind` accepts `text_editor` as an alias for `editor` and `file_manager` for
 `files`. Built-in window kinds are `browser`, `files`, `editor`, `terminal`, plus
 the native applications (`calendar`, `mail`, `chat`, `docs`, `notes`, `contacts`,
-`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`) listed
-by the `native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also declare `desktop_apps`
-metadata aliases that launch a browser window at a fixed URL. Launching a kind the
-machine does not have installed is `not_found`.
+`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, and the image
+editors `paint`, `preview`, `pixelmator`, `gimp`, `pinta`, `sketchbook`) listed by the
+`native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also
+declare `desktop_apps` metadata aliases that launch a browser window at a fixed URL.
+Launching a kind the machine does not have installed is `not_found`.
+
+#### Image editor controls
+
+The image editors are interfaces over one engine (`crates/raster`): Windows 11 Paint
+(`paint:`), macOS Preview (`preview:`) and Pixelmator Pro (`pixelmator:`), GIMP
+(`gimp:`) and Pinta (`pinta:`) on Ubuntu, Sketchbook (`sketchbook:`) on Android, and
+the phones' photo editors inside Photos (`photos:edit:`). Launched with an image path
+as `argument`, an editor opens that file (PNG or JPEG). Every control is
+`window:<id>:content:<prefix>:<command>`; a command the product does not have (Paint's
+Gaussian blur, GIMP's shape tools) is refused.
+
+| Command | Effect |
+|---|---|
+| `tool:<tool>` | `select-rect`, `select-ellipse`, `lasso`, `wand`, `move`, `crop`, `pencil`, `brush`, `airbrush`, `pen`, `marker`, `highlighter`, `eraser`, `fill`, `text`, `picker`, `zoom`, `pan`, `shape` — each product offers its own subset |
+| `shape:<kind>` | Shape tool: `line`, `arrow`, `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `triangle`, `right-triangle`, `diamond`, `pentagon`, `hexagon`, `right-arrow`, `left-arrow`, `up-arrow`, `down-arrow`, `star`, `heart` |
+| `outline:none\|solid`, `fill:none\|solid`, `fill-style:outline\|fill\|both`, `antialias`, `bold`, `merged`, `mode:<replace\|add\|subtract\|intersect>` | Tool options |
+| `color:<rrggbb>`, `fg:<rrggbb>`, `bg:<rrggbb>`, `slot:1\|2`, `swap-colors`, `reset-colors` | Colours: the active slot, foreground, background (Paint's Color 1 and Color 2) |
+| `set:<param>:<value>` | Set a tool option (`size`, `hardness`, `opacity`, `tolerance`, `font-size`, `zoom`, `layer-opacity`), a field of the open dialog, or a phone editor's adjustment |
+| `undo`, `redo`, `new`, `open`, `open:<name>`, `folder:<name>`, `folder-up`, `save`, `save-as`, `save-confirm`, `cancel`, `close-panel` | History and files. Saving writes PNG through the environment's encoder; a file that is not a PNG is never overwritten, the Save sheet names a new one. Typing goes to the sheet's name field |
+| `select-all`, `select-none`, `select-invert`, `delete`, `crop-selection`, `crop-apply`, `copy`, `cut`, `paste` | Selection and clipboard. Copy puts pixels on the machine clipboard (shared by every editor); paste adds them as a new layer |
+| `rotate:cw\|ccw\|180`, `flip:h\|v`, `flatten` | Whole-image operations |
+| `dialog:<id>`, `apply`, `reset`, `action:<id>` | Parameter dialogs (`brightness-contrast`, `exposure`, `levels`, `curves`, `hue-saturation`, `saturation`, `color-balance`, `temperature`, `shadows-highlights`, `threshold`, `posterize`, `gaussian-blur`, `box-blur`, `sharpen`, `unsharp-mask`, `median`, `noise-reduction`, `pixelate`, `vignette`, `resize`, `rotate`, `new-image`, `color`, `adjust-color`) preview colour changes on the canvas until `apply`; one-shot actions are `invert`, `grayscale`, `auto-levels`, `sepia`, `edge-detect`, `emboss`, `sharpen` |
+| `layer:new\|delete\|duplicate\|up\|down\|merge`, `layer:select:<i>`, `layer:toggle:<i>`, `layer:blend:<mode>`, `layers` | Layers (bottom layer is 0); blend modes `normal`, `multiply`, `screen`, `overlay`, `add`, `darken`, `lighten` |
+| `zoom:in\|out[:<w>:<h>]`, `zoom:fit`, `zoom:<percent>` | View zoom |
+| `menu:<id>`, `tab:<id>`, `text:commit\|cancel` | Open an editor's own menu or panel tab; finish or drop text being typed |
+| `focus:<adjustment>`, `preset:<id>`, `look:reset`, `look:aspect:<id>`, `look:rotate`, `look:flip`, `look:done` | Phone editors: pick the adjustment the dial or slider drives, a filter or suggestion, crop to an aspect, and save (iOS Done overwrites a PNG; Google Photos' Save copy writes `<name>-edited.png`) |
+| `photos:begin-edit:ios\|android`, `photos:edit-with:<kind>`, `photos:edit:discard` | Photos' Edit button: edit in place on a phone, or open the photo in the platform's installed editor on a desktop (announced disabled when none is installed) |
+
+**Drag surfaces.** `canvas:<w>:<h>` (the image view), `slider:<param>:<width>`,
+`dial:<param>`, `curve:<w>:<h>`, `hscroll:…` and `vscroll:…` follow the pointer:
+`pointer.v1 down` on one captures the pointer — on a phone too, before any gesture —
+and every `move` and the `up` are delivered to it relative to where it was painted,
+even outside it. A brush paints along the drag, a selection or shape spans it, a
+slider takes the value under the pointer. `click` on a surface is a press and release
+at one point (a dot, a fill, a colour pick). The text tool types where it was
+clicked; `keyboard.v1 type` fills it and `Enter` stamps the glyphs, rasterised in the
+platform's font by the renderer. A drag on the canvas reports the `crosshair` cursor.
 
 ### `keyboard.v1`
 
@@ -250,8 +288,8 @@ a themed desktop; `Alt+Tab` cycles windows.
 `x`/`y` are clamped to ±32768; `width`/`height` default to 1024×768 and are capped
 at 8192. Coordinates are in the same viewport you pass to `scene(width, height)` —
 hit testing runs against that scene, so the actor aims using only what it can see.
-`cursor` is one of `default`, `pointer`, `text`, `grab`, `grabbing`, `ns-resize`,
-`ew-resize`, `nesw-resize`, `nwse-resize`.
+`cursor` is one of `default`, `pointer`, `text`, `grab`, `grabbing`, `crosshair` (an
+image editor's canvas), `ns-resize`, `ew-resize`, `nesw-resize`, `nwse-resize`.
 
 Behaviour worth knowing:
 
@@ -287,7 +325,9 @@ Behaviour worth knowing:
   - On both, a card swiped up in the overview / App Switcher closes that application.
     Tapping the space around the cards goes home.
 - Window `drag` and `resize:<edge>` operations capture the pointer between `down` and
-  `up`; while captured, `move`/`up` bypass hit testing.
+  `up`; while captured, `move`/`up` bypass hit testing. So do an application's drag
+  surfaces (an image editor's canvas and sliders; see *Image editor controls*), and a
+  drag that starts on one is never taken for a touch gesture.
 
 #### Interaction targets
 

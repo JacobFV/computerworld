@@ -211,6 +211,37 @@ pub enum AppEffect {
     Paste {
         window: u64,
     },
+    /// Encode pixels as PNG and write them to `path`. Encoding needs the rasterizer, so
+    /// the environment does it; the application only hands over what it drew.
+    WriteImage {
+        window: u64,
+        path: String,
+        width: u32,
+        height: u32,
+        #[serde(skip)]
+        rgba: Vec<u8>,
+    },
+    /// Rasterise a line of text in the platform's bundled font and hand back its
+    /// coverage, so a text tool stamps exactly the glyphs the renderer draws.
+    RasterText {
+        window: u64,
+        text: String,
+        size: u16,
+        bold: bool,
+    },
+    /// Put pixels on the machine's clipboard.
+    CopyImage {
+        window: u64,
+        width: u32,
+        height: u32,
+        #[serde(skip)]
+        rgba: Vec<u8>,
+    },
+    /// Ask for the picture on the machine's clipboard; it arrives as an image delivery
+    /// for the path `clipboard:`, or as a failure naming why there is none.
+    PasteImage {
+        window: u64,
+    },
 }
 /// What a `ShellRun` produced: the finished command (`None` when only the prompt was
 /// asked for), where the session stands afterwards and the prompt it would print next.
@@ -222,6 +253,10 @@ pub struct ShellOutcome {
     /// The command was `clear`: the session's screen is wiped rather than written to.
     pub clear: bool,
 }
+/// The path a pasted picture is delivered under.
+pub const CLIPBOARD_IMAGE: &str = "clipboard:";
+/// The path a failed `RasterText` is reported under.
+pub const TEXT_IMAGE: &str = "text:";
 impl AppEffect {
     /// Applications may only speak the methods the services implement.
     pub fn validate(&self) -> Result<(), String> {
@@ -309,12 +344,27 @@ pub struct Clipboard {
     pub paths: Vec<String>,
     /// A cut moves on paste; a copy duplicates.
     pub cut: bool,
+    /// Pixels copied from an image editor. A clipboard holds files or a picture, and
+    /// copying one replaces the other, as on every desktop.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<cw_raster::Canvas>,
 }
 impl Clipboard {
     /// Bounded at `CLIPBOARD_LIMIT`: a clipboard holds a handful of paths, not a tree.
     pub fn new(mut paths: Vec<String>, cut: bool) -> Self {
         paths.truncate(CLIPBOARD_LIMIT);
-        Self { paths, cut }
+        Self {
+            paths,
+            cut,
+            image: None,
+        }
+    }
+    pub fn picture(image: cw_raster::Canvas) -> Self {
+        Self {
+            paths: vec![],
+            cut: false,
+            image: Some(image),
+        }
     }
 }
 /// One folder view inside a file manager window, with its own listing,
@@ -1006,6 +1056,15 @@ pub enum WindowSnap {
     Left,
     Right,
     Full,
+}
+/// Where a pointer is in a press on an application's drag surface.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PointerPhase {
+    Down,
+    Move,
+    Up,
+    /// The drag was abandoned; an application discards what it was building.
+    Cancel,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PointerCapture {
@@ -1797,6 +1856,103 @@ impl DesktopState {
             _ => Err("window is not a native application".into()),
         }
     }
+    /// A picture the application encoded was written to `path`.
+    pub fn image_saved(&mut self, id: u64, path: &str) -> Result<Vec<AppEffect>, String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.image_saved(id, path),
+            _ => Err("window is not a native application".into()),
+        }
+    }
+    /// Coverage of a line of text the application asked to have rasterised.
+    pub fn text_rasterized(
+        &mut self,
+        id: u64,
+        width: u32,
+        height: u32,
+        alpha: Vec<u8>,
+    ) -> Result<(), String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.text_rasterized(width, height, alpha),
+            _ => Err("window is not a native application".into()),
+        }
+    }
+    /// Whether `target` inside window `id` is a surface that follows a drag (a canvas,
+    /// a slider) rather than a button that fires on release.
+    pub fn app_drags(&self, id: u64, target: &str) -> bool {
+        matches!(
+            self.windows.get(&id).map(|w| &w.state),
+            Some(AppState::Native(app)) if app.drags(target)
+        )
+    }
+    /// Pointer pressed on an application drag surface. `bounds` is where the surface
+    /// was painted; every later position is delivered relative to its top-left, so a
+    /// drag that leaves the surface still maps to the same coordinates.
+    pub fn app_pointer_down(
+        &mut self,
+        id: u64,
+        target: &str,
+        x: i32,
+        y: i32,
+        bounds: cw_scene::Rect,
+    ) -> Result<Vec<AppEffect>, String> {
+        self.focus(id)?;
+        let clock = self.clock_us;
+        let effects = match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.pointer(
+                id,
+                target,
+                PointerPhase::Down,
+                x - bounds.x,
+                y - bounds.y,
+                clock,
+            )?,
+            _ => return Err("window is not a native application".into()),
+        };
+        self.pointer_capture = Some(PointerCapture {
+            window: id,
+            operation: format!("app:{target}"),
+            start_x: x,
+            start_y: y,
+            original: bounds,
+            moved: false,
+        });
+        Ok(effects)
+    }
+    /// Whether the pointer is captured by an application drag surface.
+    pub fn app_captured(&self) -> bool {
+        self.pointer_capture
+            .as_ref()
+            .is_some_and(|c| c.operation.starts_with("app:"))
+    }
+    /// Move or release a captured application drag. `None` when no application holds
+    /// the pointer.
+    pub fn app_pointer(
+        &mut self,
+        phase: PointerPhase,
+        x: i32,
+        y: i32,
+    ) -> Option<Result<Vec<AppEffect>, String>> {
+        let capture = self.pointer_capture.clone()?;
+        let target = capture.operation.strip_prefix("app:")?.to_owned();
+        if phase != PointerPhase::Move {
+            self.pointer_capture = None;
+        } else if let Some(c) = &mut self.pointer_capture {
+            c.moved = true;
+        }
+        let clock = self.clock_us;
+        let window = capture.window;
+        Some(match self.windows.get_mut(&window).map(|w| &mut w.state) {
+            Some(AppState::Native(app)) => app.pointer(
+                window,
+                &target,
+                phase,
+                x - capture.original.x,
+                y - capture.original.y,
+                clock,
+            ),
+            _ => Err("window not found".into()),
+        })
+    }
     /// Deliver an application HTTP reply. Returns follow-up effects, so a successful
     /// mutation can refetch without the shell knowing what the application wanted.
     pub fn http_response(
@@ -1928,6 +2084,7 @@ impl DesktopState {
                 photos.listed(values);
                 Ok(())
             }
+            AppState::Native(app) => app.listed(values),
             _ => Err("window is not a file manager".into()),
         }
     }
@@ -2567,6 +2724,9 @@ impl DesktopState {
         let Some(clipboard) = self.clipboard.clone() else {
             return Err("the clipboard is empty".into());
         };
+        if clipboard.paths.is_empty() {
+            return Err("the clipboard holds a picture, not files".into());
+        }
         let (id, tabs, active) = self.focused_files()?;
         let index = *active;
         let tab = tabs.get_mut(index).ok_or("tab not found")?;
@@ -3035,6 +3195,8 @@ impl DesktopState {
     /// place its caret where the pointer actually landed.
     pub fn click_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
+        // A click on a drag surface is a press and release at one point: a dot from a
+        // brush, a fill, a slider set to where it was clicked.
         let clock = self.clock_us;
         if let Some(AppState::Native(app)) = self
             .windows
@@ -3042,6 +3204,11 @@ impl DesktopState {
             .map(|w| &mut w.state)
             .filter(|_| !target.starts_with("focus:"))
         {
+            if app.drags(target) {
+                let mut effects = app.pointer(id, target, PointerPhase::Down, dx, dy, clock)?;
+                effects.extend(app.pointer(id, target, PointerPhase::Up, dx, dy, clock)?);
+                return self.native_effects(effects);
+            }
             let effects = app.click_at(id, target, dx, dy, clock)?;
             return self.native_effects(effects);
         }

@@ -33,6 +33,15 @@ const APPS: [&str; 22] = [
     "weather",
     "code",
 ];
+/// Applications only one platform ships: each has artwork in that platform's set.
+const PLATFORM_APPS: [(&str, &str); 6] = [
+    ("windows", "paint"),
+    ("macos", "preview"),
+    ("macos", "pixelmator"),
+    ("ubuntu", "gimp"),
+    ("ubuntu", "pinta"),
+    ("android", "sketchbook"),
+];
 /// Spellings kept resolvable for existing call sites, and what they resolve to.
 const ALIASES: [(&str, &str); 6] = [
     ("editor", "docs"),
@@ -95,22 +104,26 @@ fn every_platform_advertises_every_application() {
             assert!(advertised.contains(id.as_str()), "{id} is not advertised");
         }
     }
-    // And nothing is advertised that the two lists above do not cover, so a new
-    // icon cannot be added without being added to every shell.
+    // And nothing is advertised that the lists above do not cover, so a new icon
+    // cannot be added without being added to every shell, or named as one
+    // platform's own application.
     for id in ASSET_IDS.iter().filter(|id| id.starts_with("icon/")) {
         let (platform, app) = id
             .strip_prefix("icon/")
             .and_then(|rest| rest.split_once('/'))
             .unwrap_or_else(|| panic!("{id} is not icon/<platform>/<app>"));
         assert!(PLATFORMS.contains(&platform), "{id} has no shell");
-        assert!(APPS.contains(&app), "{id} is not a known application");
+        assert!(
+            APPS.contains(&app) || PLATFORM_APPS.contains(&(platform, app)),
+            "{id} is not a known application"
+        );
     }
     assert_eq!(
         ASSET_IDS
             .iter()
             .filter(|id| id.starts_with("icon/"))
             .count(),
-        PLATFORMS.len() * APPS.len()
+        PLATFORMS.len() * APPS.len() + PLATFORM_APPS.len()
     );
 }
 
@@ -155,5 +168,18 @@ fn unknown_icon_ids_paint_nothing_and_never_touch_the_host() {
 fn icon_rendering_is_reproducible() {
     for id in ASSET_IDS.iter().filter(|id| id.starts_with("icon/")) {
         assert_eq!(tile(id).rgba, tile(id).rgba, "{id}");
+    }
+}
+
+#[test]
+fn platform_only_applications_have_their_platforms_artwork() {
+    for (platform, app) in PLATFORM_APPS {
+        let id = format!("icon/{platform}/{app}");
+        assert!(ASSET_IDS.contains(&id.as_str()), "{id} is not advertised");
+        let (painted, colors) = ink(&tile(&id));
+        assert!(
+            painted > 4000 && colors > 8,
+            "{id} paints too little ({painted} px, {colors} colours)"
+        );
     }
 }

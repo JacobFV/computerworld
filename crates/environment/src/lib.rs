@@ -100,6 +100,19 @@ pub trait Raster: Send + Sync {
     fn png(&self, scene: &Scene) -> std::result::Result<Vec<u8>, String>;
     /// Decode image bytes to `(width, height, rgba)`.
     fn decode(&self, bytes: &[u8]) -> std::result::Result<(u32, u32, Vec<u8>), String>;
+    /// Encode straight RGBA pixels as a PNG file.
+    fn encode(
+        &self,
+        _width: u32,
+        _height: u32,
+        _rgba: &[u8],
+    ) -> std::result::Result<Vec<u8>, String> {
+        Err("this build cannot encode images".into())
+    }
+    /// Rasterise a scene to `(width, height, rgba)` without encoding it.
+    fn pixels(&self, _scene: &Scene) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+        Err("this build has no rasterizer".into())
+    }
 }
 pub trait ObservationChannel: Send + Sync {
     fn channel(&self) -> &str;
@@ -1019,6 +1032,34 @@ impl Environment {
                 if action.op == "cancel" {
                     self.machine_mut(id, machine)?.touch_start = None;
                 }
+                // A drag surface inside an application (a canvas, a slider) holds the
+                // pointer from press to release: moves and the release go to it before
+                // any shell gesture or hit test, even when they leave its bounds.
+                if matches!(action.op.as_str(), "move" | "up" | "cancel")
+                    && self.session(id)?.machines[machine].desktop.app_captured()
+                {
+                    let phase = match action.op.as_str() {
+                        "move" => cw_applications::PointerPhase::Move,
+                        "up" => cw_applications::PointerPhase::Up,
+                        _ => cw_applications::PointerPhase::Cancel,
+                    };
+                    if phase != cw_applications::PointerPhase::Move {
+                        self.machine_mut(id, machine)?.touch_start = None;
+                    }
+                    let delivered = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .app_pointer(phase, x, y);
+                    if let Some(result) = delivered {
+                        let effects = result.map_err(SimError::invalid)?;
+                        self.effects(id, machine, actor, effects)?;
+                        return Ok(if phase == cw_applications::PointerPhase::Move {
+                            json!({"cursor":"crosshair"})
+                        } else {
+                            Value::Null
+                        });
+                    }
+                }
                 if mobile && action.op == "up" {
                     if let Some(start) = self.machine_mut(id, machine)?.touch_start.take() {
                         let pressed = released_press.as_ref().map(|(target, _)| target.as_str());
@@ -1161,6 +1202,28 @@ impl Environment {
                         .any(|family| family == "application.v1")
                     {
                         return Err(SimError::denied("application interaction is not permitted"));
+                    }
+                    // Pressing an application's drag surface captures the pointer at
+                    // once, on a phone as on a desktop: a finger drawing on a canvas is a
+                    // stroke, not a shell gesture.
+                    if action.op == "down" {
+                        if let Some(content) = operation.strip_prefix("content:") {
+                            if self.session(id)?.machines[machine]
+                                .desktop
+                                .app_drags(window, content)
+                            {
+                                let content = content.to_owned();
+                                self.machine_mut(id, machine)?.touch_start = None;
+                                let effects = self
+                                    .machine_mut(id, machine)?
+                                    .desktop
+                                    .app_pointer_down(window, &content, x, y, hit)
+                                    .map_err(SimError::invalid)?;
+                                self.sync_desktop_visibility(id, machine)?;
+                                self.effects(id, machine, actor, effects)?;
+                                return Ok(Value::Null);
+                            }
+                        }
                     }
                     // A finger coming down only presses; the release decides, so a swipe
                     // that starts on a card or a control is still free to be a gesture.
@@ -1892,6 +1955,117 @@ impl Environment {
                             .map_err(SimError::invalid)?,
                     }
                 }
+                WriteImage {
+                    window,
+                    path,
+                    width,
+                    height,
+                    rgba,
+                } => {
+                    // Encoding needs the rasterizer's codec; the application only drew.
+                    let png = self
+                        .capture
+                        .clone()
+                        .ok_or_else(|| SimError::invalid("this build cannot encode images"))?
+                        .encode(width, height, &rgba)
+                        .map_err(SimError::invalid)?;
+                    self.runtime.write_file(machine, actor, &path, &png)?;
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .image_saved(window, &path)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
+                RasterText {
+                    window,
+                    text,
+                    size,
+                    bold,
+                } => {
+                    // The text tool stamps exactly what the renderer draws: the line is
+                    // rendered white on black in this platform's font and the red channel
+                    // becomes the glyph coverage.
+                    let typeface = self
+                        .desktop_theme(id, machine)
+                        .map(DesktopTheme::typeface)
+                        .unwrap_or_default();
+                    let size = size.clamp(6, 400);
+                    let width = cw_scene::metrics::text_width(typeface, bold, &text, size) + 4;
+                    let height = u32::from(size) + u32::from(size) / 2 + 4;
+                    let outcome = if width > 8192 {
+                        Err("that text is too wide to draw".to_owned())
+                    } else {
+                        let mut scene = Scene::new(width, height);
+                        scene.background = cw_scene::Color::BLACK;
+                        scene.typeface = typeface;
+                        let bounds = cw_scene::Rect::new(1, 1, width - 2, height - 2);
+                        scene.nodes.push(if bold {
+                            cw_scene::Node::ui_text_bold(
+                                1,
+                                bounds,
+                                text,
+                                size,
+                                cw_scene::Color::WHITE,
+                            )
+                        } else {
+                            cw_scene::Node::ui_text(1, bounds, text, size, cw_scene::Color::WHITE)
+                        });
+                        self.capture
+                            .clone()
+                            .ok_or_else(|| "this build cannot draw text into images".to_owned())
+                            .and_then(|raster| raster.pixels(&scene))
+                    };
+                    let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                    match outcome {
+                        Ok((w, h, rgba)) => desktop
+                            .text_rasterized(window, w, h, rgba.chunks(4).map(|p| p[0]).collect())
+                            .map_err(SimError::invalid)?,
+                        Err(reason) => desktop
+                            .image_failed(window, cw_applications::TEXT_IMAGE, &reason)
+                            .map_err(SimError::invalid)?,
+                    }
+                }
+                CopyImage {
+                    window: _,
+                    width,
+                    height,
+                    rgba,
+                } => {
+                    if u64::from(width) * u64::from(height) > 4096 * 4096 {
+                        return Err(SimError::invalid("that is too large to copy"));
+                    }
+                    let picture = cw_raster::Canvas::from_rgba(width, height, rgba)
+                        .map_err(SimError::invalid)?;
+                    self.machine_mut(id, machine)?.desktop.clipboard =
+                        Some(cw_applications::Clipboard::picture(picture));
+                }
+                PasteImage { window } => {
+                    let picture = self.session(id)?.machines[machine]
+                        .desktop
+                        .clipboard
+                        .as_ref()
+                        .and_then(|c| c.image.clone());
+                    let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                    match picture {
+                        Some(picture) => desktop
+                            .image_loaded(
+                                window,
+                                cw_applications::CLIPBOARD_IMAGE,
+                                picture.width(),
+                                picture.height(),
+                                picture.into_pixels(),
+                            )
+                            .map_err(SimError::invalid)?,
+                        None => desktop
+                            .image_failed(
+                                window,
+                                cw_applications::CLIPBOARD_IMAGE,
+                                "The clipboard holds no picture",
+                            )
+                            .map_err(SimError::invalid)?,
+                    }
+                }
                 Launch {
                     window: _,
                     kind,
@@ -2227,6 +2401,20 @@ impl Environment {
                         .into_iter()
                         .find(|k| c.application_available(k))
                 });
+            // The platform's own image editor, first one installed, for Photos' Edit.
+            let editor = self
+                .runtime
+                .computer(&s.focused_machine)
+                .ok()
+                .and_then(|c| {
+                    let kinds: &[&'static str] = match theme {
+                        DesktopTheme::Windows => &["paint"],
+                        DesktopTheme::Macos => &["preview", "pixelmator"],
+                        DesktopTheme::Ubuntu => &["gimp", "pinta"],
+                        DesktopTheme::Ios | DesktopTheme::Android => &[],
+                    };
+                    kinds.iter().copied().find(|k| c.application_available(k))
+                });
             // The places a file manager's sidebar may offer, read from the machine now.
             let home = m.desktop.home_folder();
             let trash = m.desktop.trash_folder();
@@ -2292,6 +2480,7 @@ impl Environment {
                             clipboard: m.desktop.clipboard.as_ref(),
                             share_to,
                             files: files_env.clone(),
+                            editor,
                         },
                     )
                 };
@@ -2560,6 +2749,10 @@ fn cursor_for_target(target: &str, captured: bool) -> &'static str {
     }
     if target == "drag" || target.ends_with(":drag") {
         return if captured { "grabbing" } else { "grab" };
+    }
+    // An image editor's canvas takes aim, not a click.
+    if target.contains(":canvas:") {
+        return "crosshair";
     }
     if target.ends_with("editor-text")
         || target.ends_with("terminal-input")
