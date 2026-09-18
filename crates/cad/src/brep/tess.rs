@@ -197,8 +197,7 @@ pub fn ear_clip2(pts: &[V2], outer: &[usize], holes: &[Vec<usize>]) -> Vec<[usiz
                 }
                 let s = (p - a).dot(d) / len2;
                 let off = (p - a).cross(d).abs() / len2.sqrt();
-                (s > 1e-9 && s < 1.0 - 1e-9 && off <= 1e-9 * (1.0 + len2.sqrt()))
-                    .then_some((ti, k))
+                (s > 1e-9 && s < 1.0 - 1e-9 && off <= 1e-9 * (1.0 + len2.sqrt())).then_some((ti, k))
             })
         });
         if let Some((ti, k)) = hit {
@@ -450,7 +449,14 @@ pub fn tessellate(s: &Solid) -> (Mesh, Topology) {
                     let mid = v2((fu.lo.x + fu.hi.x) / 2.0, (fu.lo.y + fu.hi.y) / 2.0);
                     let (_, a, b) = face.surface.d1(mid.x, mid.y);
                     let before = pts.len();
-                    insert_points(&mut pts, &mut tris, &constrained, &extra, a.len().max(1e-9), b.len().max(1e-9));
+                    insert_points(
+                        &mut pts,
+                        &mut tris,
+                        &constrained,
+                        &extra,
+                        a.len().max(1e-9),
+                        b.len().max(1e-9),
+                    );
                     for q in &pts[before..] {
                         m.verts.push(face.surface.eval(q.x, q.y));
                         ids.push(m.verts.len() as u32 - 1);

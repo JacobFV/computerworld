@@ -480,12 +480,7 @@ impl Freecad {
     pub fn text(&mut self, text: &str) -> Result<(), String> {
         self.0.type_text(text)
     }
-    pub fn key(
-        &mut self,
-        window: u64,
-        key: &str,
-        clock_us: u64,
-    ) -> Result<Vec<AppEffect>, String> {
+    pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
         self.0.clock_us = clock_us;
         self.0.key(window, key)
     }

@@ -129,7 +129,10 @@ pub fn curve_surface(c: &Curve, t0: f64, t1: f64, s: &Surface, tol: f64) -> Curv
         };
         if let Some((qa, qb, qc, cone)) = quad {
             let scale = qa.abs() + qb.abs() + qc.abs();
-            if qa.abs() <= 1e-14 * scale.max(1e-300) && qb.abs() <= 1e-12 * scale && qc.abs() <= tol * tol * 4.0 + 1e-14 * scale {
+            if qa.abs() <= 1e-14 * scale.max(1e-300)
+                && qb.abs() <= 1e-12 * scale
+                && qc.abs() <= tol * tol * 4.0 + 1e-14 * scale
+            {
                 return CurveHit::OnSurface;
             }
             let lo = t0.min(t1);
@@ -215,8 +218,14 @@ fn circle_section(center: V3, axis: V3, x_hint: V3, r: f64) -> Section {
 #[derive(Clone, Copy, Debug)]
 enum Meridian {
     /// Points `p + t d`.
-    Line { p: V2, d: V2 },
-    Circle { c: V2, r: f64 },
+    Line {
+        p: V2,
+        d: V2,
+    },
+    Circle {
+        c: V2,
+        r: f64,
+    },
 }
 
 fn revolution_meridian(s: &Surface) -> Option<(V3, V3, Meridian)> {
@@ -331,7 +340,7 @@ fn coaxial(sa: &Surface, sb: &Surface) -> Option<(V3, V3, Meridian, Meridian)> {
         let shift = (origin - o).dot(k);
         let flip = if axis.dot(k) < 0.0 { -1.0 } else { 1.0 };
         match m {
-            Meridian::Line { p, d } if is_plane => Meridian::Line {
+            Meridian::Line { d, .. } if is_plane => Meridian::Line {
                 p: v2(0.0, shift),
                 d,
             },
@@ -447,10 +456,7 @@ pub fn analytic_sections(sa: &Surface, sb: &Surface, b: &Box3) -> Option<Vec<Sec
                 return Some(vec![]);
             }
             // A point on both planes: solve n1·p = c1, n2·p = c2, d·p = 0.
-            let p = solve3v(
-                [f.z, g.z, d],
-                [f.z.dot(f.origin), g.z.dot(g.origin), 0.0],
-            )?;
+            let p = solve3v([f.z, g.z, d], [f.z.dot(f.origin), g.z.dot(g.origin), 0.0])?;
             Some(line_section(p, d, b).into_iter().collect())
         }
         (Surface::Plane { f }, Surface::Cylinder { f: g, r })
@@ -541,10 +547,7 @@ pub fn analytic_sections(sa: &Surface, sb: &Surface, b: &Box3) -> Option<Vec<Sec
                 return Some(vec![]);
             }
             let hits = meridian_hits(
-                Meridian::Circle {
-                    c: V2::ZERO,
-                    r: *r,
-                },
+                Meridian::Circle { c: V2::ZERO, r: *r },
                 Meridian::Circle {
                     c: v2(dist, 0.0),
                     r: *r2,
@@ -710,6 +713,7 @@ pub fn traced_curve(sa: &Surface, sb: &Surface, pts: Vec<V3>, closed: bool) -> C
 
 /// Intersections of two surfaces near two faces: analytic when possible, else marched
 /// from `seeds` (points known to lie on both) and from a search over both faces.
+#[allow(clippy::too_many_arguments)]
 pub fn surface_sections(
     solid_a: &Solid,
     fa: usize,
@@ -845,11 +849,31 @@ impl<'a> Prepared<'a> {
     /// ambiguous, which only happens for points on the boundary).
     pub fn contains(&self, p: V3) -> Option<bool> {
         let dirs = [
-            V3 { x: 0.577_215_664_9, y: 0.316_227_766_0, z: 0.752_441_1 },
-            V3 { x: -0.213_462_4, y: 0.871_311_9, z: 0.441_876_2 },
-            V3 { x: 0.707_106_2, y: -0.505_971_3, z: 0.494_139_7 },
-            V3 { x: -0.391_625_1, y: -0.617_993_2, z: -0.681_311_5 },
-            V3 { x: 0.911_274_3, y: 0.131_428_8, z: -0.390_249_1 },
+            V3 {
+                x: 0.577_215_664_9,
+                y: 0.316_227_766_0,
+                z: 0.752_441_1,
+            },
+            V3 {
+                x: -0.213_462_4,
+                y: 0.871_311_9,
+                z: 0.441_876_2,
+            },
+            V3 {
+                x: 0.707_106_2,
+                y: -0.505_971_3,
+                z: 0.494_139_7,
+            },
+            V3 {
+                x: -0.391_625_1,
+                y: -0.617_993_2,
+                z: -0.681_311_5,
+            },
+            V3 {
+                x: 0.911_274_3,
+                y: 0.131_428_8,
+                z: -0.390_249_1,
+            },
         ];
         let total = self
             .boxes

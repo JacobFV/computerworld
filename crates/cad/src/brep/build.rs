@@ -11,7 +11,12 @@ use crate::math::{self, v2, Frame, Xform, TAU, V2, V3};
 pub enum Seg2 {
     Line(V2, V2),
     /// From angle `a0` through the signed `sweep` (±2π for a full circle).
-    Arc { c: V2, r: f64, a0: f64, sweep: f64 },
+    Arc {
+        c: V2,
+        r: f64,
+        a0: f64,
+        sweep: f64,
+    },
 }
 impl Seg2 {
     pub fn start(&self) -> V2 {
@@ -199,7 +204,10 @@ pub fn extrude(regions: &[Region2], frame: &Frame, z0: f64, z1: f64) -> Solid {
                             edge: ve[j],
                             rev: false,
                         },
-                        Coedge { edge: et, rev: !rev },
+                        Coedge {
+                            edge: et,
+                            rev: !rev,
+                        },
                         Coedge {
                             edge: ve[i],
                             rev: true,
@@ -394,11 +402,25 @@ pub fn revolve(
                             let (p, q) = (x.point(place(a)), x.point(place(b)));
                             let len = p.dist(q);
                             (
-                                s.add_edge(Curve::Line { o: p, d: (q - p) / len }, 0.0, len, va, vb),
+                                s.add_edge(
+                                    Curve::Line {
+                                        o: p,
+                                        d: (q - p) / len,
+                                    },
+                                    0.0,
+                                    len,
+                                    va,
+                                    vb,
+                                ),
                                 false,
                             )
                         }
-                        Seg2::Arc { c, r, a0, sweep: sw } => {
+                        Seg2::Arc {
+                            c,
+                            r,
+                            a0,
+                            sweep: sw,
+                        } => {
                             let cf = Frame {
                                 origin: x.point(place(c)),
                                 x: x.dir(rot.dir(frame.x)),
@@ -406,9 +428,15 @@ pub fn revolve(
                                 z: x.dir(rot.dir(frame.z)),
                             };
                             if sw >= 0.0 {
-                                (s.add_edge(Curve::Circle { f: cf, r }, a0, a0 + sw, va, vb), false)
+                                (
+                                    s.add_edge(Curve::Circle { f: cf, r }, a0, a0 + sw, va, vb),
+                                    false,
+                                )
                             } else {
-                                (s.add_edge(Curve::Circle { f: cf, r }, a0 + sw, a0, vb, va), true)
+                                (
+                                    s.add_edge(Curve::Circle { f: cf, r }, a0 + sw, a0, vb, va),
+                                    true,
+                                )
                             }
                         }
                     }
@@ -632,7 +660,9 @@ pub fn circle_region(c: V2, r: f64) -> Region2 {
 pub fn polygon_region(pts: &[V2]) -> Region2 {
     let n = pts.len();
     let w = Wire2 {
-        segs: (0..n).map(|i| Seg2::Line(pts[i], pts[(i + 1) % n])).collect(),
+        segs: (0..n)
+            .map(|i| Seg2::Line(pts[i], pts[(i + 1) % n]))
+            .collect(),
     };
     let w = if w.area() < 0.0 { w.reversed() } else { w };
     Region2 {

@@ -129,7 +129,9 @@ fn merged(s: &Solid, group: &[usize], edges: &mut Vec<super::topo::Edge>) -> Opt
         let mut cur = start;
         for _ in 0..rest.len() {
             let end_v = s.co_ends(rest[cur].0).1;
-            if end_v == first_v && lp.len() > 1 || (end_v == first_v && s.edges[rest[cur].0.edge].closed()) {
+            if end_v == first_v && lp.len() > 1
+                || (end_v == first_v && s.edges[rest[cur].0.edge].closed())
+            {
                 break;
             }
             let cands: Vec<usize> = (0..rest.len())
@@ -140,9 +142,7 @@ fn merged(s: &Solid, group: &[usize], edges: &mut Vec<super::topo::Edge>) -> Opt
                 .copied()
                 .find(|&i| rest[i].1 == rest[cur].1)
                 .or(cands.first().copied());
-            let Some(nx) = next else {
-                return None;
-            };
+            let nx = next?;
             used[nx] = true;
             lp.push(rest[nx].0);
             cur = nx;
@@ -241,11 +241,11 @@ fn merge_edges(s: &mut Solid) {
                 at[ed.v1].push(e);
             }
         }
-        for v in 0..s.vertices.len() {
-            if at[v].len() != 2 {
+        for (v, here) in at.iter().enumerate() {
+            if here.len() != 2 {
                 continue;
             }
-            let (e1, e2) = (at[v][0], at[v][1]);
+            let (e1, e2) = (here[0], here[1]);
             if e1 == e2 || s.edges[e1].degenerate || s.edges[e2].degenerate {
                 continue;
             }

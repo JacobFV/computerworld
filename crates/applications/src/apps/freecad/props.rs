@@ -778,10 +778,9 @@ pub(crate) fn set_feature_property(f: &mut Feature, name: &str, text: &str) -> R
                 .find(|c| c.label() == text)
                 .ok_or("unknown chamfer type")?
         }
-        (
-            Feature::Fillet { all_edges, .. } | Feature::Chamfer { all_edges, .. },
-            "UseAllEdges",
-        ) => *all_edges = flag()?,
+        (Feature::Fillet { all_edges, .. } | Feature::Chamfer { all_edges, .. }, "UseAllEdges") => {
+            *all_edges = flag()?
+        }
         (Feature::Hole { diameter, .. }, "Diameter") => *diameter = positive(num(false)?)?,
         (Feature::Hole { depth, .. }, "Depth") => *depth = positive(num(false)?)?,
         (Feature::Hole { through_all, .. }, "DepthType") => *through_all = text == "ThroughAll",

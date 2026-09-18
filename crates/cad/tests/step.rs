@@ -13,7 +13,13 @@ fn close(a: f64, b: f64, rel: f64) -> bool {
 }
 
 fn round_trip(s: &Solid, schema: Schema) -> Solid {
-    let text = step::write(s, "Part", schema, "/home/user/Part.step", "2026-09-18T10:00:00");
+    let text = step::write(
+        s,
+        "Part",
+        schema,
+        "/home/user/Part.step",
+        "2026-09-18T10:00:00",
+    );
     let mut read = step::read(&text).unwrap();
     assert_eq!(read.len(), 1, "one solid");
     let (name, back) = read.remove(0);
@@ -23,7 +29,12 @@ fn round_trip(s: &Solid, schema: Schema) -> Solid {
 
 fn same_solid(a: &Solid, b: &Solid, rel: f64) {
     let (ma, mb) = (mass_props(a), mass_props(b));
-    assert!(close(mb.volume, ma.volume, rel), "{} vs {}", mb.volume, ma.volume);
+    assert!(
+        close(mb.volume, ma.volume, rel),
+        "{} vs {}",
+        mb.volume,
+        ma.volume
+    );
     assert!(close(mb.area, ma.area, rel), "{} vs {}", mb.area, ma.area);
     assert!(
         (mb.center - ma.center).len() <= rel * (1.0 + ma.center.len()) * 10.0,
@@ -43,7 +54,13 @@ fn same_solid(a: &Solid, b: &Solid, rel: f64) {
 #[test]
 fn a_box_writes_the_entities_a_step_reader_expects() {
     let b = cuboid(V3::ZERO, v3(20.0, 10.0, 5.0));
-    let text = step::write(&b, "Box", Schema::Ap214, "/home/carol/Box.step", "2026-09-18T10:00:00");
+    let text = step::write(
+        &b,
+        "Box",
+        Schema::Ap214,
+        "/home/carol/Box.step",
+        "2026-09-18T10:00:00",
+    );
     assert!(text.starts_with("ISO-10303-21;\nHEADER;\n"));
     assert!(text.ends_with("ENDSEC;\nEND-ISO-10303-21;\n"));
     for want in [
@@ -100,7 +117,11 @@ fn a_hand_written_reference_file_reads_as_the_box_it_describes() {
     let i3 = 25.4 * 25.4 * 25.4;
     assert!(close(m.volume, 24.0 * i3, 1e-12), "{}", m.volume);
     assert!(close(m.area, 52.0 * 25.4 * 25.4, 1e-12), "{}", m.area);
-    assert!((m.center - v3(1.0, 1.5, 2.0) * 25.4).len() < 1e-9, "{:?}", m.center);
+    assert!(
+        (m.center - v3(1.0, 1.5, 2.0) * 25.4).len() < 1e-9,
+        "{:?}",
+        m.center
+    );
     // It round trips through our own writer unchanged.
     same_solid(&s, &round_trip(&s, Schema::Ap242), 1e-12);
 }
@@ -143,12 +164,30 @@ fn analytic_solids_round_trip_exactly() {
         }
     }
     // The surfaces are the exact ones, not approximations.
-    let text = step::write(&part, "Part", Schema::Ap214, "p.step", "2026-09-18T10:00:00");
+    let text = step::write(
+        &part,
+        "Part",
+        Schema::Ap214,
+        "p.step",
+        "2026-09-18T10:00:00",
+    );
     assert!(text.contains("CYLINDRICAL_SURFACE"));
     assert!(text.contains("SPHERICAL_SURFACE"));
-    let text = step::write(&cone, "Cone", Schema::Ap214, "c.step", "2026-09-18T10:00:00");
+    let text = step::write(
+        &cone,
+        "Cone",
+        Schema::Ap214,
+        "c.step",
+        "2026-09-18T10:00:00",
+    );
     assert!(text.contains("CONICAL_SURFACE"));
-    let text = step::write(&torus, "Torus", Schema::Ap214, "t.step", "2026-09-18T10:00:00");
+    let text = step::write(
+        &torus,
+        "Torus",
+        Schema::Ap214,
+        "t.step",
+        "2026-09-18T10:00:00",
+    );
     assert!(text.contains("TOROIDAL_SURFACE"));
 }
 
@@ -156,11 +195,21 @@ fn analytic_solids_round_trip_exactly() {
 fn an_oblique_cut_writes_an_ellipse_and_reads_back() {
     let cyl = cylinder(V3::ZERO, V3::Z, 4.0, 10.0);
     // A wedge whose face crosses the cylinder at 45°.
-    let knife = cuboid(v3(-10.0, -10.0, 0.0), v3(10.0, 10.0, 10.0))
-        .transformed(&cw_cad::math::Xform::rotate(v3(0.0, 0.0, 6.0), V3::X, PI / 4.0));
+    let knife = cuboid(v3(-10.0, -10.0, 0.0), v3(10.0, 10.0, 10.0)).transformed(
+        &cw_cad::math::Xform::rotate(v3(0.0, 0.0, 6.0), V3::X, PI / 4.0),
+    );
     let cut = boolean(&cyl, &knife, Op::Difference).unwrap();
-    let text = step::write(&cut, "Cut", Schema::Ap214, "cut.step", "2026-09-18T10:00:00");
-    assert!(text.contains("ELLIPSE('"), "an oblique cut of a cylinder is an ellipse");
+    let text = step::write(
+        &cut,
+        "Cut",
+        Schema::Ap214,
+        "cut.step",
+        "2026-09-18T10:00:00",
+    );
+    assert!(
+        text.contains("ELLIPSE('"),
+        "an oblique cut of a cylinder is an ellipse"
+    );
     let back = round_trip(&cut, Schema::Ap214);
     same_solid(&cut, &back, 1e-11);
 }

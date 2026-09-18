@@ -17,15 +17,14 @@
 //! floating point only in operations IEEE-754 rounds identically on every target (see
 //! [`math`]).
 pub mod brep;
-pub mod csg;
 pub mod document;
 pub mod io;
 pub mod linalg;
 pub mod math;
 pub mod mesh;
 pub mod sketch;
-pub mod step;
 pub mod solid;
+pub mod step;
 pub mod view;
 
 pub use math::{v2, v3, Frame, Xform, V2, V3};

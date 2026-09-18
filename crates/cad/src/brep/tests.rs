@@ -15,7 +15,11 @@ fn a_box_is_exact() {
     let m = mass_props(&b);
     assert!(close(m.volume, 24.0, 1e-13), "{}", m.volume);
     assert!(close(m.area, 2.0 * (6.0 + 8.0 + 12.0), 1e-13), "{}", m.area);
-    assert!((m.center - v3(2.0, 3.5, 5.0)).len() < 1e-12, "{:?}", m.center);
+    assert!(
+        (m.center - v3(2.0, 3.5, 5.0)).len() < 1e-12,
+        "{:?}",
+        m.center
+    );
     let (mesh, topo) = tessellate(&b);
     assert!(mesh.is_watertight(), "{}", mesh.open_edges());
     assert_eq!(topo.faces.len(), 6);
@@ -30,7 +34,11 @@ fn a_cylinder_is_exact_with_a_seam() {
     let m = mass_props(&c);
     assert!(close(m.volume, PI * 25.0 * 10.0, 1e-13), "{}", m.volume);
     assert!(close(m.area, 2.0 * PI * 25.0 + TAU * 5.0 * 10.0, 1e-13));
-    assert!((m.center - v3(0.0, 0.0, 6.0)).len() < 1e-11, "{:?}", m.center);
+    assert!(
+        (m.center - v3(0.0, 0.0, 6.0)).len() < 1e-11,
+        "{:?}",
+        m.center
+    );
     let (mesh, _) = tessellate(&c);
     assert!(mesh.is_watertight(), "{}", mesh.open_edges());
 }
@@ -40,19 +48,43 @@ fn revolved_primitives_are_exact() {
     let s = sphere(v3(1.0, -2.0, 0.5), 3.0);
     s.check().unwrap();
     let m = mass_props(&s);
-    assert!(close(m.volume, 4.0 / 3.0 * PI * 27.0, 1e-12), "{}", m.volume);
+    assert!(
+        close(m.volume, 4.0 / 3.0 * PI * 27.0, 1e-12),
+        "{}",
+        m.volume
+    );
     assert!(close(m.area, 4.0 * PI * 9.0, 1e-12), "{}", m.area);
-    assert!((m.center - v3(1.0, -2.0, 0.5)).len() < 1e-10, "{:?}", m.center);
+    assert!(
+        (m.center - v3(1.0, -2.0, 0.5)).len() < 1e-10,
+        "{:?}",
+        m.center
+    );
     let (mesh, _) = tessellate(&s);
     assert!(mesh.is_watertight(), "{}", mesh.open_edges());
 
     // A torus: a circle of radius 2 at distance 5 from the axis.
     let f = Frame::XZ;
-    let torus = revolve(&[circle_region(v2(5.0, 1.0), 2.0)], &f, V3::ZERO, V3::Z, 0.0, TAU).unwrap();
+    let torus = revolve(
+        &[circle_region(v2(5.0, 1.0), 2.0)],
+        &f,
+        V3::ZERO,
+        V3::Z,
+        0.0,
+        TAU,
+    )
+    .unwrap();
     torus.check().unwrap();
     let m = mass_props(&torus);
-    assert!(close(m.volume, 2.0 * PI * PI * 5.0 * 4.0, 1e-12), "{}", m.volume);
-    assert!(close(m.area, 4.0 * PI * PI * 5.0 * 2.0, 1e-12), "{}", m.area);
+    assert!(
+        close(m.volume, 2.0 * PI * PI * 5.0 * 4.0, 1e-12),
+        "{}",
+        m.volume
+    );
+    assert!(
+        close(m.area, 4.0 * PI * PI * 5.0 * 2.0, 1e-12),
+        "{}",
+        m.area
+    );
     let (mesh, _) = tessellate(&torus);
     assert!(mesh.is_watertight(), "{}", mesh.open_edges());
 
@@ -69,14 +101,27 @@ fn revolved_primitives_are_exact() {
     cone.check().unwrap();
     let m = mass_props(&cone);
     assert!(close(m.volume, PI * 9.0 * 4.0 / 3.0, 1e-12), "{}", m.volume);
-    assert!(close(m.area, PI * 9.0 + PI * 3.0 * 5.0, 1e-12), "{}", m.area);
-    assert!((m.center - v3(0.0, 0.0, 1.0)).len() < 1e-11, "{:?}", m.center);
+    assert!(
+        close(m.area, PI * 9.0 + PI * 3.0 * 5.0, 1e-12),
+        "{}",
+        m.area
+    );
+    assert!(
+        (m.center - v3(0.0, 0.0, 1.0)).len() < 1e-11,
+        "{:?}",
+        m.center
+    );
     let (mesh, _) = tessellate(&cone);
     assert!(mesh.is_watertight(), "{}", mesh.open_edges());
 
     // A quarter of a tube: Pappus.
     let tube = revolve(
-        &[polygon_region(&[v2(5.0, 0.0), v2(15.0, 0.0), v2(15.0, 20.0), v2(5.0, 20.0)])],
+        &[polygon_region(&[
+            v2(5.0, 0.0),
+            v2(15.0, 0.0),
+            v2(15.0, 20.0),
+            v2(5.0, 20.0),
+        ])],
         &f,
         V3::ZERO,
         V3::Z,
@@ -86,7 +131,11 @@ fn revolved_primitives_are_exact() {
     .unwrap();
     tube.check().unwrap();
     let m = mass_props(&tube);
-    assert!(close(m.volume, PI / 4.0 * (225.0 - 25.0) * 20.0, 1e-12), "{}", m.volume);
+    assert!(
+        close(m.volume, PI / 4.0 * (225.0 - 25.0) * 20.0, 1e-12),
+        "{}",
+        m.volume
+    );
     let (mesh, _) = tessellate(&tube);
     assert!(mesh.is_watertight(), "{}", mesh.open_edges());
     let _ = V2::ZERO;
@@ -97,14 +146,22 @@ use super::boolean::{boolean, Op};
 fn solid_ok(s: &super::Solid) {
     s.check().unwrap();
     let (mesh, _) = tessellate(s);
-    assert!(mesh.is_watertight(), "{} open mesh edges", mesh.open_edges());
+    assert!(
+        mesh.is_watertight(),
+        "{} open mesh edges",
+        mesh.open_edges()
+    );
 }
 
 #[test]
 fn overlapping_boxes_and_coplanar_faces() {
     let a = cuboid(v3(0.0, 0.0, 0.0), v3(2.0, 2.0, 2.0));
     let b = cuboid(v3(1.0, 1.0, 1.0), v3(3.0, 3.0, 3.0));
-    for (op, want) in [(Op::Union, 15.0), (Op::Difference, 7.0), (Op::Intersection, 1.0)] {
+    for (op, want) in [
+        (Op::Union, 15.0),
+        (Op::Difference, 7.0),
+        (Op::Intersection, 1.0),
+    ] {
         let r = boolean(&a, &b, op).unwrap();
         solid_ok(&r);
         let m = mass_props(&r);
@@ -140,8 +197,20 @@ fn a_through_hole_and_a_boss() {
     let d = boolean(&plate, &pin, Op::Difference).unwrap();
     solid_ok(&d);
     let m = mass_props(&d);
-    assert!(close(m.volume, 200.0 - PI * 4.0 * 2.0, 1e-12), "{}", m.volume);
-    assert!(close(m.area, 2.0 * (100.0 - 4.0 * PI) + 40.0 * 2.0 + TAU * 2.0 * 2.0, 1e-12), "{}", m.area);
+    assert!(
+        close(m.volume, 200.0 - PI * 4.0 * 2.0, 1e-12),
+        "{}",
+        m.volume
+    );
+    assert!(
+        close(
+            m.area,
+            2.0 * (100.0 - 4.0 * PI) + 40.0 * 2.0 + TAU * 2.0 * 2.0,
+            1e-12
+        ),
+        "{}",
+        m.area
+    );
     // Faces: 6 of the plate and the hole's wall.
     assert_eq!(d.faces.len(), 7);
     let u = boolean(&plate, &pin, Op::Union).unwrap();
@@ -162,20 +231,36 @@ fn sphere_and_box() {
     let h = boolean(&s, &half, Op::Intersection).unwrap();
     solid_ok(&h);
     let m = mass_props(&h);
-    assert!(close(m.volume, 2.0 / 3.0 * PI * 125.0, 1e-12), "{}", m.volume);
-    assert!((m.center.x - 3.0 * 5.0 / 8.0).abs() < 1e-10, "{:?}", m.center);
+    assert!(
+        close(m.volume, 2.0 / 3.0 * PI * 125.0, 1e-12),
+        "{}",
+        m.volume
+    );
+    assert!(
+        (m.center.x - 3.0 * 5.0 / 8.0).abs() < 1e-10,
+        "{:?}",
+        m.center
+    );
     // A cap cut off by a plane across the axis.
     let slab = cuboid(v3(-10.0, -10.0, 3.0), v3(10.0, 10.0, 10.0));
     let cap = boolean(&s, &slab, Op::Intersection).unwrap();
     solid_ok(&cap);
     let hcap = 2.0;
     let want = PI * hcap * hcap * (3.0 * 5.0 - hcap) / 3.0;
-    assert!(close(mass_props(&cap).volume, want, 1e-12), "{}", mass_props(&cap).volume);
+    assert!(
+        close(mass_props(&cap).volume, want, 1e-12),
+        "{}",
+        mass_props(&cap).volume
+    );
     // A box with a spherical dent in a face.
     let block = cuboid(v3(-10.0, -10.0, -10.0), v3(10.0, 10.0, 3.0));
     let d = boolean(&block, &s, Op::Difference).unwrap();
     solid_ok(&d);
-    assert!(close(mass_props(&d).volume, 20.0 * 20.0 * 13.0 - (4.0 / 3.0 * PI * 125.0 - want), 1e-12));
+    assert!(close(
+        mass_props(&d).volume,
+        20.0 * 20.0 * 13.0 - (4.0 / 3.0 * PI * 125.0 - want),
+        1e-12
+    ));
 }
 
 #[test]
@@ -210,7 +295,11 @@ fn cylinders_crossing_and_touching() {
     let round = cylinder(v3(10.0, 0.0, 0.0), V3::Z, 5.0, 4.0);
     let u = boolean(&bx, &round, Op::Union).unwrap();
     solid_ok(&u);
-    assert!(close(mass_props(&u).volume, 400.0 + PI * 25.0 / 2.0 * 4.0, 1e-12));
+    assert!(close(
+        mass_props(&u).volume,
+        400.0 + PI * 25.0 / 2.0 * 4.0,
+        1e-12
+    ));
     // Tangent cylinders side by side (touching along a line) give two solids touching.
     let c2 = cylinder(v3(20.0, 0.0, 0.0), V3::Z, 5.0, 4.0);
     let d = boolean(&round, &c2, Op::Difference).unwrap();
@@ -234,9 +323,16 @@ fn fillets_and_chamfers_on_straight_edges_are_exact() {
     let f = dress(&b, &[e], Dress::Fillet(2.0), "Fillet").unwrap();
     solid_ok(&f);
     let m = mass_props(&f);
-    assert!(close(m.volume, 1000.0 - 4.0 * (1.0 - PI / 4.0) * 20.0, 1e-12), "{}", m.volume);
+    assert!(
+        close(m.volume, 1000.0 - 4.0 * (1.0 - PI / 4.0) * 20.0, 1e-12),
+        "{}",
+        m.volume
+    );
     assert_eq!(f.faces.len(), 7, "six faces and the round");
-    assert!(f.faces.iter().any(|x| matches!(x.surface, super::Surface::Cylinder { .. })));
+    assert!(f
+        .faces
+        .iter()
+        .any(|x| matches!(x.surface, super::Surface::Cylinder { .. })));
     let c = dress(&b, &[e], Dress::Chamfer(2.0, 2.0), "Chamfer").unwrap();
     solid_ok(&c);
     assert!(close(mass_props(&c).volume, 1000.0 - 2.0 * 20.0, 1e-12));
@@ -284,7 +380,11 @@ fn every_edge_of_a_cube_rounded_blends_the_corners_with_spheres() {
     solid_ok(&f);
     let removed = 3.0 * r * r * (1.0 - PI / 4.0) * a - 3.0 * r * r * (1.0 - PI / 4.0) * r
         + (r * r * r - PI / 6.0 * r * r * r);
-    assert!(close(mass_props(&f).volume, a * a * a - removed, 1e-11), "{}", mass_props(&f).volume);
+    assert!(
+        close(mass_props(&f).volume, a * a * a - removed, 1e-11),
+        "{}",
+        mass_props(&f).volume
+    );
     // Chamfering every edge gives the triangular corner facets.
     let c = dress(&b, &all, Dress::Chamfer(1.0, 1.0), "Chamfer").unwrap();
     solid_ok(&c);
@@ -304,13 +404,23 @@ fn round_edges_of_revolved_and_padded_shapes() {
     let a = r * r * (1.0 - PI / 4.0);
     let xbar = (10.0 - 3.0 * PI) / (3.0 * (4.0 - PI)) * r;
     let want = PI * big * big * 10.0 - TAU * (big - xbar) * a;
-    assert!(close(mass_props(&f).volume, want, 1e-12), "{} vs {want}", mass_props(&f).volume);
-    assert!(f.faces.iter().any(|x| matches!(x.surface, super::Surface::Torus { .. })));
+    assert!(
+        close(mass_props(&f).volume, want, 1e-12),
+        "{} vs {want}",
+        mass_props(&f).volume
+    );
+    assert!(f
+        .faces
+        .iter()
+        .any(|x| matches!(x.surface, super::Surface::Torus { .. })));
     let ch = dress(&c, &[rim], Dress::Chamfer(1.0, 1.0), "Chamfer").unwrap();
     solid_ok(&ch);
     let want = PI * big * big * 10.0 - TAU * (big - 1.0 / 3.0) * 0.5;
     assert!(close(mass_props(&ch).volume, want, 1e-12));
-    assert!(ch.faces.iter().any(|x| matches!(x.surface, super::Surface::Cone { .. })));
+    assert!(ch
+        .faces
+        .iter()
+        .any(|x| matches!(x.surface, super::Surface::Cone { .. })));
     // A vertical edge between a flat and a round side (a D profile).
     let bx = cuboid(v3(0.0, -5.0, 0.0), v3(10.0, 5.0, 4.0));
     let round = cylinder(v3(0.0, 0.0, 0.0), V3::Z, 7.0, 4.0);
@@ -320,7 +430,10 @@ fn round_edges_of_revolved_and_padded_shapes() {
     let e = (0..d.edges.len())
         .find(|e| {
             let m = d.edges[*e].mid();
-            matches!(d.edges[*e].curve, super::Curve::Line { .. }) && (m.z - 2.0).abs() < 1e-9 && m.x > 4.0 && m.y > 4.9
+            matches!(d.edges[*e].curve, super::Curve::Line { .. })
+                && (m.z - 2.0).abs() < 1e-9
+                && m.x > 4.0
+                && m.y > 4.9
         })
         .unwrap();
     let f = dress(&d, &[e], Dress::Fillet(1.0), "Fillet").unwrap();
@@ -337,7 +450,11 @@ fn concave_edges_gain_material() {
     let f = dress(&l, &[e], Dress::Fillet(1.5), "Fillet").unwrap();
     solid_ok(&f);
     let want = mass_props(&l).volume + 1.5 * 1.5 * (1.0 - PI / 4.0) * 10.0;
-    assert!(close(mass_props(&f).volume, want, 1e-12), "{} vs {want}", mass_props(&f).volume);
+    assert!(
+        close(mass_props(&f).volume, want, 1e-12),
+        "{} vs {want}",
+        mass_props(&f).volume
+    );
 }
 
 #[test]
@@ -355,140 +472,8 @@ fn a_fillet_between_two_cylinders_rolls_round_the_junction() {
     let v1 = mass_props(&f).volume;
     assert!(v1 > v0, "a concave round adds material: {v1} vs {v0}");
     assert!(v1 - v0 < 1.0, "{}", v1 - v0);
-    assert!(f.faces.iter().any(|x| matches!(x.surface, super::Surface::Pipe { .. })));
-}
-
-#[test]
-#[ignore]
-fn debug_sphere() {
-    {
-        let plate = cuboid(V3::ZERO, v3(20.0, 10.0, 5.0));
-        let f = Frame::XY;
-        let tool = super::build::extrude(&[circle_region(v2(3.0, 5.0), 1.0)], &f, -60.0, 60.0);
-        let prep = super::intersect::Prepared::new(&tool);
-        for p in [
-            v3(3.0, 4.9366, 0.0),
-            v3(3.0, 5.0636, 5.0),
-            v3(3.0, 5.0, 0.0),
-            v3(3.0, 5.0, 1.0),
-        ] {
-            println!("contains {p:?} -> {:?}", prep.contains(p));
-        }
-        match boolean(&plate, &tool, Op::Difference) {
-            Ok(r) => println!("pocket ok faces {} vol {}", r.faces.len(), mass_props(&r).volume),
-            Err(e) => println!("pocket err {e}"),
-        }
-    }
-    {
-        let cube = cuboid(V3::ZERO, v3(2.0, 2.0, 2.0));
-        let ball = sphere(v3(2.0, 2.0, 2.0), 2.0);
-        match boolean(&cube, &ball, Op::Difference) {
-            Ok(r) => println!("corner ok faces {} vol {}", r.faces.len(), mass_props(&r).volume),
-            Err(e) => println!("corner err {e}"),
-        }
-    }
-    let s0 = sphere(V3::ZERO, 5.0);
-    let half = cuboid(v3(0.0, -10.0, -10.0), v3(10.0, 10.0, 10.0));
-    let slab = cuboid(v3(-10.0, -10.0, 3.0), v3(10.0, 10.0, 10.0));
-    let main = cylinder(v3(-10.0, 0.0, 0.0), V3::X, 3.0, 20.0);
-    let branch = cylinder(v3(0.0, 0.0, 0.0), V3::Z, 1.5, 10.0);
-    let through = cylinder(v3(0.0, 0.0, -5.0), V3::Z, 1.5, 10.0);
-    let bx = cuboid(v3(0.0, -5.0, 0.0), v3(10.0, 5.0, 4.0));
-    let round = cylinder(v3(10.0, 0.0, 0.0), V3::Z, 5.0, 4.0);
-    let c2 = cylinder(v3(20.0, 0.0, 0.0), V3::Z, 5.0, 4.0);
-    for (i, s) in [
-        boolean(&main, &branch, Op::Union).unwrap(),
-        boolean(&main, &through, Op::Difference).unwrap(),
-        boolean(&bx, &round, Op::Union).unwrap(),
-        boolean(&round, &c2, Op::Difference).unwrap(),
-    ]
-    .iter()
-    .enumerate()
-    {
-        let (mesh, _) = tessellate(s);
-        println!("case {i}: open {} faces {}", mesh.open_edges(), s.faces.len());
-    }
-    let s = boolean(&main, &through, Op::Difference).unwrap();
-    {
-        let (mesh, tp) = tessellate(&s);
-        let mut count = std::collections::BTreeMap::new();
-        for t in &mesh.tris { for k in 0..3 { *count.entry((t[k], t[(k+1)%3])).or_insert(0) += 1; } }
-        for (&(a,b), n) in &count { if count.get(&(b,a)).copied().unwrap_or(0) != 1 || *n != 1 {
-            let owners: Vec<usize> = mesh.tris.iter().enumerate().filter(|(_, t)| t.contains(&a) && t.contains(&b)).map(|(i, _)| tp.tri_face[i]).collect();
-            println!("OPEN {a}->{b} {:?} {:?} faces {:?}", mesh.verts[a as usize], mesh.verts[b as usize], owners); } }
-        for (i, f) in s.faces.iter().enumerate() {
-            println!("F{i} {} loops {:?}", f.surface.name(), f.loops.iter().map(|l| l.len()).collect::<Vec<_>>());
-        }
-    }
-    let s = boolean(&s0, &slab, Op::Intersection).unwrap();
-    {
-        let fu = super::uv::face_uv(&s, 0);
-        let mut poly = super::uv::loop_polygon(&fu.loops[0]);
-        poly.pop();
-        let ring: Vec<usize> = (0..poly.len()).collect();
-        let tris = super::tess::ear_clip2(&poly, &ring, &[]);
-        let used: std::collections::BTreeSet<usize> = tris.iter().flatten().copied().collect();
-        let tarea: f64 = tris.iter().map(|t| (poly[t[1]] - poly[t[0]]).cross(poly[t[2]] - poly[t[0]]) / 2.0).sum();
-        println!("ring {} tris {} used {} area {} vs {}", poly.len(), tris.len(), used.len(), tarea, super::uv::loop_area(&fu.loops[0]));
-        for t in &tris {
-            let a = (poly[t[1]] - poly[t[0]]).cross(poly[t[2]] - poly[t[0]]);
-            if a <= 0.0 || t.contains(&83) || t.contains(&82) || t.contains(&84) {
-                println!("  tri {:?} {a}", t);
-            }
-        }
-        for i in 0..poly.len() {
-            if !used.contains(&i) {
-                println!(" unused {i} {:?} prev {:?} next {:?}", poly[i], poly[(i + poly.len() - 1) % poly.len()], poly[(i + 1) % poly.len()]);
-            }
-        }
-    }
-    let (mesh, tp) = tessellate(&s);
-    for (i, t) in mesh.tris.iter().enumerate() {
-        if t.contains(&12) {
-            println!("T {i} {:?} face {}", t, tp.tri_face[i]);
-        }
-    }
-    let mut count = std::collections::BTreeMap::new();
-    for t in &mesh.tris { for k in 0..3 { *count.entry((t[k], t[(k+1)%3])).or_insert(0) += 1; } }
-    for (&(a,b), n) in &count { if count.get(&(b,a)).copied().unwrap_or(0) != 1 || *n != 1 { println!("open {a}->{b} {:?} {:?}", mesh.verts[a as usize], mesh.verts[b as usize]); } }
-    for (i, e) in s.edges.iter().enumerate() {
-        println!("edge {i}: {:?} t {}..{} v {} {} deg {}", e.curve.name(), e.t0, e.t1, e.v0, e.v1, e.degenerate);
-    }
-    for (fi, f) in s.faces.iter().enumerate() {
-        println!("face {fi} {} loops {:?}", f.surface.name(), f.loops);
-        let fu = super::uv::face_uv(&s, fi);
-        for l in &fu.loops {
-            for c in l {
-                println!("  co {:?} uv {:?} .. {:?} n={}", c.co, c.uv.first(), c.uv.last(), c.uv.len());
-            }
-        }
-        println!("  sense {} valid {}", fu.sense, fu.valid);
-    }
-    let c = cylinder(v3(0.0, 0.0, 1.0), V3::Z, 5.0, 10.0);
-    let (mesh, topo) = tessellate(&c);
-    let mut count = std::collections::BTreeMap::new();
-    for t in &mesh.tris { for k in 0..3 { *count.entry((t[k], t[(k+1)%3])).or_insert(0) += 1; } }
-    for (&(a,b), n) in &count { if count.get(&(b,a)).copied().unwrap_or(0) != 1 || *n != 1 { println!("open {a}->{b} {:?} {:?}", mesh.verts[a as usize], mesh.verts[b as usize]); } }
-    let fu = super::uv::face_uv(&c, 0);
-    let poly = super::uv::loop_polygon(&fu.loops[0]);
-    println!("sense {} n {}", fu.sense, poly.len());
-    for (i, p) in poly.iter().enumerate() {
-        if i < 3 || i > poly.len() - 4 || (i > 60 && i < 70) {
-            println!("  {i} {:?}", p);
-        }
-    }
-    let ring: Vec<usize> = (0..poly.len()).collect();
-    let tris = super::tess::ear_clip2(&poly, &ring, &[]);
-    for t in &tris {
-        let (a, b, cc) = (poly[t[0]], poly[t[1]], poly[t[2]]);
-        let ar = (b - a).cross(cc - a);
-        if ar <= 0.0 || t.contains(&0) || t.contains(&64) || t.contains(&65) || t.contains(&129) {
-            println!("  ptri {:?} area {ar}", t);
-        }
-    }
-    for (i, t) in mesh.tris.iter().enumerate() {
-        if t.contains(&0) && t.contains(&1) {
-            println!("tri {i} {:?} face {}", t, topo.tri_face[i]);
-        }
-    }
+    assert!(f
+        .faces
+        .iter()
+        .any(|x| matches!(x.surface, super::Surface::Pipe { .. })));
 }

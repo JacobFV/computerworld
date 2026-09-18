@@ -173,9 +173,9 @@ fn basis_ders(span: usize, u: f64, p: usize, nd: usize, knots: &[f64]) -> Vec<Ve
         }
     }
     let mut r = p as f64;
-    for k in 1..=nd.min(p) {
-        for j in 0..=p {
-            ders[k][j] *= r;
+    for (k, row) in ders.iter_mut().enumerate().take(nd.min(p) + 1).skip(1) {
+        for d in row.iter_mut().take(p + 1) {
+            *d *= r;
         }
         r *= (p - k) as f64;
     }
@@ -198,7 +198,9 @@ impl BSplineCurve {
         let n = self.poles.len() - 1;
         let span = find_span(n, p, u, &self.knots);
         let fast = (p <= MAX_DEGREE).then(|| basis_ders1(span, u, p, &self.knots));
-        let slow = fast.is_none().then(|| basis_ders(span, u, p, 1, &self.knots));
+        let slow = fast
+            .is_none()
+            .then(|| basis_ders(span, u, p, 1, &self.knots));
         let b = |k: usize, j: usize| match (&fast, &slow) {
             (Some(f), _) => f[k][j],
             (_, Some(s)) => s[k][j],
@@ -269,17 +271,17 @@ impl BSplineSurface {
         };
         let (mut a, mut au, mut av) = (V3::ZERO, V3::ZERO, V3::ZERO);
         let (mut w, mut wu, mut wv) = (0.0, 0.0, 0.0);
-        for i in 0..=self.du {
-            for j in 0..=self.dv {
+        for (i, (&bu0, &bu1)) in bu[0].iter().zip(bu[1].iter()).enumerate().take(self.du + 1) {
+            for (j, (&bv0, &bv1)) in bv[0].iter().zip(bv[1].iter()).enumerate().take(self.dv + 1) {
                 let (ii, jj) = (su - self.du + i, sv - self.dv + j);
                 let wt = self.weights.as_ref().map_or(1.0, |w| w[ii][jj]);
                 let p = self.poles[ii][jj] * wt;
-                a += p * (bu[0][i] * bv[0][j]);
-                au += p * (bu[1][i] * bv[0][j]);
-                av += p * (bu[0][i] * bv[1][j]);
-                w += wt * bu[0][i] * bv[0][j];
-                wu += wt * bu[1][i] * bv[0][j];
-                wv += wt * bu[0][i] * bv[1][j];
+                a += p * (bu0 * bv0);
+                au += p * (bu1 * bv0);
+                av += p * (bu0 * bv1);
+                w += wt * bu0 * bv0;
+                wu += wt * bu1 * bv0;
+                wv += wt * bu0 * bv1;
             }
         }
         let s = a / w;
@@ -294,11 +296,21 @@ impl BSplineSurface {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Curve {
     /// `o + t d`, `d` unit.
-    Line { o: V3, d: V3 },
+    Line {
+        o: V3,
+        d: V3,
+    },
     /// `o + r (cos t x + sin t y)`.
-    Circle { f: Frame, r: f64 },
+    Circle {
+        f: Frame,
+        r: f64,
+    },
     /// `o + a cos t x + b sin t y`, `a ≥ b`.
-    Ellipse { f: Frame, a: f64, b: f64 },
+    Ellipse {
+        f: Frame,
+        a: f64,
+        b: f64,
+    },
     BSpline(Box<BSplineCurve>),
     Traced(Box<Traced>),
 }
@@ -350,7 +362,7 @@ impl Traced {
         let mut lo = 0usize;
         let mut hi = n - 1;
         if t <= self.ts[0] {
-            hi = 1;
+            lo = 0;
         } else if t >= self.ts[n - 1] {
             lo = n - 2;
         } else {
@@ -414,8 +426,7 @@ impl Traced {
                     let f1 = s.sd(p);
                     let f2 = (p - e).len2() - d * d;
                     let f3 = (p - e).dot(de);
-                    let Some(step) =
-                        solve3v([s.grad(p), (p - e) * 2.0, de], [-f1, -f2, -f3])
+                    let Some(step) = solve3v([s.grad(p), (p - e) * 2.0, de], [-f1, -f2, -f3])
                     else {
                         break;
                     };
@@ -594,7 +605,11 @@ impl Curve {
                 break;
             }
             let step = f / df;
-            let step = if df <= 0.0 { f / d.dot(d).max(1e-300) } else { step };
+            let step = if df <= 0.0 {
+                f / d.dot(d).max(1e-300)
+            } else {
+                step
+            };
             t -= step;
             if step.abs() <= 1e-15 * (1.0 + t.abs()) {
                 break;
@@ -718,15 +733,31 @@ fn frame_keep_sense(f: &Frame, x: &Xform) -> Frame {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Surface {
     /// `o + u x + v y`.
-    Plane { f: Frame },
+    Plane {
+        f: Frame,
+    },
     /// `o + r (cos u x + sin u y) + v z`.
-    Cylinder { f: Frame, r: f64 },
+    Cylinder {
+        f: Frame,
+        r: f64,
+    },
     /// `o + (r + v tan a)(cos u x + sin u y) + v z`: radius `r` at `v = 0`, semi-angle `a`.
-    Cone { f: Frame, r: f64, a: f64 },
+    Cone {
+        f: Frame,
+        r: f64,
+        a: f64,
+    },
     /// `o + r cos v (cos u x + sin u y) + r sin v z`.
-    Sphere { f: Frame, r: f64 },
+    Sphere {
+        f: Frame,
+        r: f64,
+    },
     /// `o + (major + minor cos v)(cos u x + sin u y) + minor sin v z`.
-    Torus { f: Frame, major: f64, minor: f64 },
+    Torus {
+        f: Frame,
+        major: f64,
+        minor: f64,
+    },
     /// `curve` (the generatrix at `u = 0`) turned by `u` about the frame's z axis.
     Revolution {
         f: Frame,
@@ -1055,7 +1086,9 @@ impl Surface {
                 let rho = math::hypot(l.x, l.y);
                 math::hypot(rho - major, l.z) - minor
             }
-            Surface::Pipe { spine, r, t0, t1, .. } => {
+            Surface::Pipe {
+                spine, r, t0, t1, ..
+            } => {
                 let mut t = spine.project(p);
                 if spine.period().is_none() {
                     t = t.clamp(*t0, *t1);
@@ -1179,7 +1212,11 @@ impl Surface {
                         a: *a,
                     }
                 } else {
-                    Surface::Cone { f: nf, r: *r, a: *a }
+                    Surface::Cone {
+                        f: nf,
+                        r: *r,
+                        a: *a,
+                    }
                 }
             }
             Surface::Sphere { f, r } => Surface::Sphere {
@@ -1200,12 +1237,7 @@ impl Surface {
                 t0: *t0,
                 t1: *t1,
             },
-            Surface::Extrusion {
-                curve,
-                dir,
-                t0,
-                t1,
-            } => Surface::Extrusion {
+            Surface::Extrusion { curve, dir, t0, t1 } => Surface::Extrusion {
                 curve: Box::new(curve.transformed(x)),
                 dir: x.dir(*dir).norm(),
                 t0: *t0,

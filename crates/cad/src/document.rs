@@ -1154,7 +1154,7 @@ fn feature_step(
                             (*size, size * math::tan(math::radians(*angle)))
                         }
                     };
-                    if *kind == ChamferType::TwoDistances && !(*size2 > 0.0) {
+                    if *kind == ChamferType::TwoDistances && *size2 <= 0.0 {
                         return Err("Chamfer: Size2 must be greater than zero".into());
                     }
                     if *flip {
@@ -1172,7 +1172,10 @@ fn feature_step(
                 } else {
                     "Fillet not possible on selected shapes"
                 };
-                if e.starts_with("Fillet radius") || e.starts_with("Size must") || e.starts_with("No edges") {
+                if e.starts_with("Fillet radius")
+                    || e.starts_with("Size must")
+                    || e.starts_with("No edges")
+                {
                     e
                 } else {
                     format!("{head} ({})", e.trim_start_matches(&format!("{what}: ")))
@@ -1285,7 +1288,8 @@ fn feature_step(
             let mut tool = Solid::default();
             for c in centers {
                 let at = frame.to_world(c);
-                let one = build::revolve_rz(at, frame.z, &region).map_err(|e| format!("Hole: {e}"))?;
+                let one =
+                    build::revolve_rz(at, frame.z, &region).map_err(|e| format!("Hole: {e}"))?;
                 tool = boolean(&tool, &one, Op::Union).map_err(|e| format!("Hole: {e}"))?;
             }
             model

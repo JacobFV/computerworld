@@ -138,7 +138,10 @@ struct SubFace {
 enum Ref {
     Piece(usize),
     /// A point edge at pool vertex `v` spanning `span` of u.
-    Degenerate { v: usize, span: f64 },
+    Degenerate {
+        v: usize,
+        span: f64,
+    },
 }
 
 /// `a op b`.
@@ -218,7 +221,9 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
                 if !eb.overlaps(&prep_other.boxes[fi]) {
                     continue;
                 }
-                if let CurveHit::Points(ts) = curve_surface(&e.curve, e.t0, e.t1, &f.surface, tol * 0.1) {
+                if let CurveHit::Points(ts) =
+                    curve_surface(&e.curve, e.t0, e.t1, &f.surface, tol * 0.1)
+                {
                     for t in ts {
                         let p = e.curve.eval(t);
                         if classify(other, &prep_other.uvs[fi], fi, p, tol) != Where::Outside {
@@ -251,7 +256,8 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
                 .map(|i| pool.pts[*i])
                 .filter(|p| sa.sd(*p).abs() < tol * 10.0 && sb.sd(*p).abs() < tol * 10.0)
                 .collect();
-            let sections = surface_sections(a, fa, &pa.uvs[fa], b, fb, &pb.uvs[fb], &seeds, &region);
+            let sections =
+                surface_sections(a, fa, &pa.uvs[fa], b, fb, &pb.uvs[fb], &seeds, &region);
             // Where branches of the section cross, both need a vertex.
             let mut near = near;
             if sections.len() > 1 {
@@ -423,10 +429,8 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
     }
     // 5. Rebuild each face from its pieces.
     let mut subs: Vec<SubFace> = Vec::new();
-    for (side, solid, prep, src_of) in [
-        (Side::A, a, &pa, &src_of_a),
-        (Side::B, b, &pb, &src_of_b),
-    ] {
+    for (side, solid, prep, src_of) in [(Side::A, a, &pa, &src_of_a), (Side::B, b, &pb, &src_of_b)]
+    {
         for fi in 0..solid.faces.len() {
             let face = &solid.faces[fi];
             // Boundary loops in pieces.
@@ -515,8 +519,7 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
                 } else {
                     &pb.uvs[sf.face]
                 };
-                super::uv::interior_point(solid, fu, sf.face)
-                    .ok_or("a face has no interior")?
+                super::uv::interior_point(solid, fu, sf.face).ok_or("a face has no interior")?
             }
         };
         let own_sense = if sf.side == Side::A {
@@ -591,7 +594,10 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
                             let pc = &pieces[p];
                             out.add_edge(pc.curve.clone(), pc.t0, pc.t1, pc.v0, pc.v1)
                         });
-                        lo.push(Coedge { edge: e, rev: *flip });
+                        lo.push(Coedge {
+                            edge: e,
+                            rev: *flip,
+                        });
                     }
                     Ref::Degenerate { v, span } => {
                         let e = out.add_degenerate(v);
@@ -667,9 +673,10 @@ fn loops_unsplit(
     src_pieces: &[Vec<(usize, bool)>],
 ) -> bool {
     let _ = loops;
-    face.loops.iter().flatten().all(|c| {
-        solid.edges[c.edge].degenerate || src_pieces[src_of[c.edge]].len() == 1
-    })
+    face.loops
+        .iter()
+        .flatten()
+        .all(|c| solid.edges[c.edge].degenerate || src_pieces[src_of[c.edge]].len() == 1)
 }
 
 /// One outgoing half-edge of the arrangement.
@@ -718,7 +725,10 @@ fn arrange(
                     let pc = &pieces[p];
                     let (a, b) = (vid(&mut tmp, pc.v0), vid(&mut tmp, pc.v1));
                     let e = tmp.add_edge(pc.curve.clone(), pc.t0, pc.t1, a, b);
-                    lo.push(Coedge { edge: e, rev: *flip });
+                    lo.push(Coedge {
+                        edge: e,
+                        rev: *flip,
+                    });
                 }
                 Ref::Degenerate { v, span } => {
                     let a = vid(&mut tmp, v);
@@ -752,7 +762,10 @@ fn arrange(
     let ptol = 1e-7;
     let mut node = |v: usize, q: V2| -> usize {
         for (i, (w, p)) in nodes.iter().enumerate() {
-            if *w == v && (p.x - q.x).abs() <= ptol * (1.0 + q.x.abs()) && (p.y - q.y).abs() <= ptol * (1.0 + q.y.abs()) {
+            if *w == v
+                && (p.x - q.x).abs() <= ptol * (1.0 + q.x.abs())
+                && (p.y - q.y).abs() <= ptol * (1.0 + q.y.abs())
+            {
                 return i;
             }
         }
@@ -1006,7 +1019,9 @@ fn arrange(
     let twin = |i: usize, halves: &Vec<Half>| -> Option<usize> {
         let h = &halves[i];
         halves.iter().position(|g| {
-            g.from == h.to && g.to == h.from && g.boundary.map(|b| !b) == h.boundary
+            g.from == h.to
+                && g.to == h.from
+                && g.boundary.map(|b| !b) == h.boundary
                 && match (g.r, h.r) {
                     (Ref::Piece(a), Ref::Piece(b)) => a == b && g.flip != h.flip,
                     (Ref::Degenerate { v: a, span: s }, Ref::Degenerate { v: b, span: t }) => {
@@ -1040,7 +1055,10 @@ fn arrange(
                 break;
             };
             let list = &out_at[halves[h].to];
-            let pos = list.iter().position(|x| *x == t).ok_or("broken arrangement")?;
+            let pos = list
+                .iter()
+                .position(|x| *x == t)
+                .ok_or("broken arrangement")?;
             h = list[(pos + list.len() - 1) % list.len()];
         }
         if ok && !cyc.is_empty() {
@@ -1121,7 +1139,7 @@ fn region_point(polys: &[Vec<V2>]) -> Option<V2> {
         lo = lo.min(p.y);
         hi = hi.max(p.y);
     }
-    if !(hi > lo) {
+    if hi <= lo {
         return None;
     }
     let mut best: Option<(f64, V2)> = None;

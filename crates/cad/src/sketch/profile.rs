@@ -305,7 +305,12 @@ pub fn exact_regions(s: &Sketch) -> Result<Vec<crate::brep::build::Region2>, Str
                         segs.push(Seg2::Line(b, a));
                     }
                 }
-                Geom::Arc { c, r, start: a0, end: a1 } => {
+                Geom::Arc {
+                    c,
+                    r,
+                    start: a0,
+                    end: a1,
+                } => {
                     let ps = c + V2::polar(a0, r);
                     if from.dist(ps) <= to.dist(ps) {
                         segs.push(Seg2::Arc {

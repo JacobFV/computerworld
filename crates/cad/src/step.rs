@@ -24,7 +24,9 @@ impl Schema {
     fn file_schema(self) -> &'static str {
         match self {
             Schema::Ap214 => "AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }",
-            Schema::Ap242 => "AP242_MANAGED_MODEL_BASED_3D_ENGINEERING_MIM_LF { 1 0 10303 442 3 1 4 }",
+            Schema::Ap242 => {
+                "AP242_MANAGED_MODEL_BASED_3D_ENGINEERING_MIM_LF { 1 0 10303 442 3 1 4 }"
+            }
         }
     }
     fn application(self) -> (&'static str, &'static str, i32) {
@@ -281,8 +283,9 @@ fn solve_points(a: &mut [Vec<f64>], rhs: &[V3]) -> Vec<V3> {
             if k == 0.0 {
                 continue;
             }
-            for c in col..n {
-                a[r][c] -= k * a[col][c];
+            let pivot: Vec<f64> = a[col][col..n].to_vec();
+            for (i, cell) in a[r].iter_mut().enumerate().skip(col) {
+                *cell -= k * pivot[i - col];
             }
             b[r] = b[r] - b[col] * k;
         }
@@ -316,8 +319,8 @@ pub fn interpolate_surface(grid: &[Vec<V3>], du: usize, dv: usize) -> BSplineSur
     let nrows = fitted[0].poles.len();
     let mut poles = vec![vec![V3::ZERO; ncols]; nrows];
     for (j, f) in fitted.iter().enumerate() {
-        for i in 0..nrows {
-            poles[i][j] = f.poles[i];
+        for (i, row) in poles.iter_mut().enumerate().take(nrows) {
+            row[j] = f.poles[i];
         }
     }
     BSplineSurface {
@@ -499,15 +502,9 @@ pub fn write(solid: &Solid, name: &str, schema: Schema, path: &str, stamp: &str)
     let _apd = w.add(format!(
         "APPLICATION_PROTOCOL_DEFINITION('international standard','{app_name}',{year},#{app_context});"
     ));
-    let prod_context = w.add(format!(
-        "PRODUCT_CONTEXT('',#{app_context},'mechanical');"
-    ));
-    let product = w.add(format!(
-        "PRODUCT('{name}','{name}','',(#{prod_context}));"
-    ));
-    let formation = w.add(format!(
-        "PRODUCT_DEFINITION_FORMATION('','',#{product});"
-    ));
+    let prod_context = w.add(format!("PRODUCT_CONTEXT('',#{app_context},'mechanical');"));
+    let product = w.add(format!("PRODUCT('{name}','{name}','',(#{prod_context}));"));
+    let formation = w.add(format!("PRODUCT_DEFINITION_FORMATION('','',#{product});"));
     let def_context = w.add(format!(
         "PRODUCT_DEFINITION_CONTEXT('part definition',#{app_context},'design');"
     ));
@@ -515,9 +512,7 @@ pub fn write(solid: &Solid, name: &str, schema: Schema, path: &str, stamp: &str)
         "PRODUCT_DEFINITION('design','',#{formation},#{def_context});"
     ));
     let shape = w.add(format!("PRODUCT_DEFINITION_SHAPE('','',#{definition});"));
-    let _sdr = w.add(format!(
-        "SHAPE_DEFINITION_REPRESENTATION(#{shape},#{rep});"
-    ));
+    let _sdr = w.add(format!("SHAPE_DEFINITION_REPRESENTATION(#{shape},#{rep});"));
     let _prpc = w.add(format!(
         "PRODUCT_RELATED_PRODUCT_CATEGORY('part','',(#{product}));"
     ));
@@ -566,12 +561,7 @@ fn write_curve(w: &mut Writer, e: &Edge, scale: f64) -> usize {
     }
 }
 
-fn write_surface(
-    w: &mut Writer,
-    s: &Surface,
-    fu: &crate::brep::uv::FaceUV,
-    scale: f64,
-) -> usize {
+fn write_surface(w: &mut Writer, s: &Surface, fu: &crate::brep::uv::FaceUV, scale: f64) -> usize {
     match s {
         Surface::Plane { f } => {
             let a = w.axis2(f);
@@ -1101,9 +1091,7 @@ impl Reader {
                     .map(|p| -> Result<Vec<Vec<f64>>, String> {
                         self.list(&p.args[0])?
                             .iter()
-                            .map(|row| {
-                                self.list(row)?.iter().map(|a| self.num(a)).collect()
-                            })
+                            .map(|row| self.list(row)?.iter().map(|a| self.num(a)).collect())
                             .collect()
                     })
                     .transpose()?;

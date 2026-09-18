@@ -238,6 +238,96 @@ impl Desk {
     }
 }
 
+/// Round an edge picked in the 3D view, then write the exact solid to a STEP file and
+/// read it back in: the volume the kernel reports is the one the geometry has, and the
+/// file on the machine holds the same solid.
+#[test]
+fn fillet_an_edge_and_round_trip_the_solid_through_step() {
+    use cw_cad::v3;
+    let mut d = Desk::new("carol-ubuntu", "carol");
+    d.launch();
+    // A 40 x 20 rectangle, padded 10 mm.
+    d.click("freecad:cmd:PartDesign_NewSketch");
+    d.click("freecad:task:ok");
+    d.click("freecad:cmd:Sketcher_CreateRectangle");
+    let o = d.project(v3(0.0, 0.0, 0.0));
+    d.click_at(o.0, o.1);
+    let far = d.project(v3(36.0, 23.0, 0.0));
+    d.click_at(far.0, far.1);
+    d.key("Escape");
+    d.click("freecad:sk:element:0");
+    d.click("freecad:cmd:Sketcher_ConstrainDistanceX");
+    d.enter("40");
+    d.click("freecad:sk:element:1");
+    d.click("freecad:cmd:Sketcher_ConstrainDistanceY");
+    d.enter("20");
+    d.click("freecad:sk:close");
+    d.click("freecad:cmd:PartDesign_Pad");
+    d.click("freecad:field:task:Length");
+    d.enter("10");
+    d.click("freecad:task:ok");
+    assert!((d.body_volume() - 8000.0).abs() < 1e-9);
+
+    // Pick the top edge along x at y = 0 and round it with a 3 mm radius.
+    d.click("freecad:cmd:Std_ViewIsometric");
+    d.click("freecad:cmd:Std_ViewFitAll");
+    let mid = d.project(v3(20.0, 0.0, 10.0));
+    d.click_at(mid.0, mid.1);
+    let sel = d.state()["selection"][0]["sub"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(sel.starts_with("Edge"), "picked {sel}");
+    d.click("freecad:cmd:PartDesign_Fillet");
+    d.click("freecad:field:task:Radius");
+    d.enter("3");
+    d.click("freecad:task:ok");
+    let want = 8000.0 - (9.0 - std::f64::consts::PI * 9.0 / 4.0) * 40.0;
+    assert!(
+        (d.body_volume() - want).abs() < 1e-9,
+        "{} vs {want}",
+        d.body_volume()
+    );
+
+    // Export it as STEP (the first type the dialog offers), and read the file back.
+    d.click("freecad:tree:Body");
+    d.click("freecad:menu:File");
+    d.click("freecad:cmd:Std_Export");
+    assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents");
+    d.click("freecad:file:ok");
+    let bytes = d.read_file("/home/carol/Documents/Body.step");
+    let text = String::from_utf8(bytes).unwrap();
+    assert!(text.starts_with("ISO-10303-21;"));
+    assert!(text.contains("MANIFOLD_SOLID_BREP('Body'"));
+    assert!(
+        text.contains("CYLINDRICAL_SURFACE"),
+        "the round is a cylinder"
+    );
+    let mut solids = cw_cad::step::read(&text).unwrap();
+    let (_, solid) = solids.remove(0);
+    let m = cw_cad::brep::mass::mass_props(&solid);
+    assert!((m.volume - want).abs() < 1e-9, "{} vs {want}", m.volume);
+    assert_eq!(solid.faces.len(), 7);
+
+    // Import the file back: an exact Part::Feature beside the body.
+    d.click("freecad:menu:File");
+    d.click("freecad:cmd:Std_Import");
+    d.click("freecad:file:entry:Body.step");
+    d.click("freecad:file:ok");
+    let page = d.semantic();
+    assert!(page.contains("[Part::Feature]"), "{page}");
+    let doc: cw_cad::document::Document = serde_json::from_value(d.state()["doc"].clone()).unwrap();
+    let mut doc = doc;
+    let model = cw_cad::document::recompute(&mut doc);
+    let part = doc
+        .objects
+        .iter()
+        .find(|o| matches!(o.feature, cw_cad::document::Feature::Part { .. }))
+        .expect("the imported solid");
+    let shape = &model.shapes[&part.name];
+    assert!((shape.volume() - want).abs() < 1e-9, "{}", shape.volume());
+}
+
 /// Sketch a rectangle, constrain it fully, pad it, pocket a hole through it from a
 /// sketch on its top face, measure the body and export it as STL — all by pointer and
 /// keyboard — then read the file back from the machine and check the solid it holds.
@@ -338,6 +428,9 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     d.click("freecad:menu:File");
     d.click("freecad:cmd:Std_Export");
     assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents");
+    // STEP leads the list of types; pick binary STL.
+    d.click("freecad:choice:open:filetype");
+    d.click("freecad:choice:filetype:2");
     d.click("freecad:file:ok");
     let bytes = d.read_file("/home/carol/Documents/Body.stl");
     assert_eq!(
@@ -357,7 +450,7 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     d.click("freecad:menu:File");
     d.click("freecad:cmd:Std_Export");
     d.click("freecad:choice:open:filetype");
-    d.click("freecad:choice:filetype:1");
+    d.click("freecad:choice:filetype:3");
     d.click("freecad:file:ok");
     let text = String::from_utf8(d.read_file("/home/carol/Documents/Body.ast")).unwrap();
     assert!(text.starts_with("solid Body"));

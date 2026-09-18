@@ -39,8 +39,14 @@ pub enum Dress {
 #[derive(Clone, Copy, Debug)]
 enum Trace {
     /// Through `p` along `d`.
-    Line { p: V2, d: V2 },
-    Circle { c: V2, r: f64 },
+    Line {
+        p: V2,
+        d: V2,
+    },
+    Circle {
+        c: V2,
+        r: f64,
+    },
 }
 
 fn wrap_pi(a: f64) -> f64 {
@@ -49,7 +55,6 @@ fn wrap_pi(a: f64) -> f64 {
 
 /// The face side of an edge: the face, its outward normal and into-face direction at `p`.
 struct Side {
-    face: usize,
     n: V3,
     into: V3,
 }
@@ -61,8 +66,8 @@ fn side_at(s: &Solid, prep: &Prepared, e: usize, face: usize, p: V3, t: f64) -> 
     let tan = if co.rev { -d } else { d }.norm();
     let (u, v) = f.surface.project(p);
     let n = f.surface.normal(u, v) * prep.uvs[face].sense;
+    let _ = face;
     Some(Side {
-        face,
         n,
         into: n.cross(tan).norm(),
     })
@@ -83,7 +88,7 @@ fn section(
 ) -> Result<(Region2, [V2; 2]), String> {
     let (t1, t2) = (into[0].norm(), into[1].norm());
     let phi = math::acos(t1.dot(t2).clamp(-1.0, 1.0));
-    if phi < 1e-3 || phi > PI - 1e-3 {
+    if !(1e-3..=PI - 1e-3).contains(&phi) {
         return Err(format!("{what}: the faces at this edge are tangent"));
     }
     // Along a trace from the edge point into the face: segment to the point `q`.
@@ -156,7 +161,11 @@ fn section(
                     Trace::Circle { c, r } => {
                         // Arc length d from the edge point, turning towards `t`.
                         let a0 = (e - c).angle();
-                        let dir = if (e - c).perp().dot(t) > 0.0 { 1.0 } else { -1.0 };
+                        let dir = if (e - c).perp().dot(t) > 0.0 {
+                            1.0
+                        } else {
+                            -1.0
+                        };
                         c + V2::polar(a0 + dir * d / r, r)
                     }
                 }
@@ -189,7 +198,8 @@ fn trace_hits(a: Trace, b: Trace) -> Vec<V2> {
             }
             vec![p + d * ((q - p).cross(e) / den)]
         }
-        (Trace::Line { p, d }, Trace::Circle { c, r }) | (Trace::Circle { c, r }, Trace::Line { p, d }) => {
+        (Trace::Line { p, d }, Trace::Circle { c, r })
+        | (Trace::Circle { c, r }, Trace::Line { p, d }) => {
             let d = d.norm();
             let w = p - c;
             super::num::quadratic(1.0, 2.0 * w.dot(d), w.dot(w) - r * r)
@@ -214,7 +224,13 @@ fn trace_hits(a: Trace, b: Trace) -> Vec<V2> {
 
 /// A half-space bounded by a face's surface, as a solid big enough to cover `region`:
 /// the side opposite the face's outward normal at `p`.
-fn inner_half_space(s: &Solid, prep: &Prepared, face: usize, p: V3, region: &Box3) -> Option<Solid> {
+fn inner_half_space(
+    s: &Solid,
+    prep: &Prepared,
+    face: usize,
+    p: V3,
+    region: &Box3,
+) -> Option<Solid> {
     let f = &s.faces[face];
     let size = region.diagonal() * 4.0 + 10.0;
     match &f.surface {
@@ -239,7 +255,8 @@ fn inner_half_space(s: &Solid, prep: &Prepared, face: usize, p: V3, region: &Box
             let (u, v) = f.surface.project(p);
             let outward_radial = f.surface.normal(u, v) * prep.uvs[face].sense;
             let radial = (p - cf.origin) - cf.z * (p - cf.origin).dot(cf.z);
-            let base = cf.origin + cf.z * ((region.min.lerp(region.max, 0.5) - cf.origin).dot(cf.z) - size);
+            let base = cf.origin
+                + cf.z * ((region.min.lerp(region.max, 0.5) - cf.origin).dot(cf.z) - size);
             let cyl = super::build::cylinder(base, cf.z, *r, 2.0 * size);
             if outward_radial.dot(radial) > 0.0 {
                 Some(cyl)
@@ -283,8 +300,6 @@ struct Tool {
     /// For corner blends: the edge's section kind and its faces.
     prismatic: bool,
     faces: (usize, usize),
-    /// Contact points of the section at the edge's start and end.
-    ends: [(V3, V3); 2],
 }
 
 /// Clip a tool extended past the edge's ends by the end faces at them.
@@ -326,7 +341,9 @@ fn prismatic_tool(
     let Curve::Line { d, .. } = ed.curve else {
         return Ok(None);
     };
-    let (fa, fb) = s.edge_faces(e).ok_or(format!("{what}: the edge has no faces"))?;
+    let (fa, fb) = s
+        .edge_faces(e)
+        .ok_or(format!("{what}: the edge has no faces"))?;
     let (sa, sb) = (&s.faces[fa].surface, &s.faces[fb].surface);
     if !(sa.extruded_along(d) && sb.extruded_along(d)) || fa == fb {
         return Ok(None);
@@ -342,7 +359,10 @@ fn prismatic_tool(
     let at2 = |q: V3| to2(q - p0);
     let trace = |surf: &Surface, into: V3| -> Trace {
         match surf {
-            Surface::Cylinder { f, r } => Trace::Circle { c: at2(f.origin), r: *r },
+            Surface::Cylinder { f, r } => Trace::Circle {
+                c: at2(f.origin),
+                r: *r,
+            },
             _ => Trace::Line {
                 p: V2::ZERO,
                 d: to2(into),
@@ -361,7 +381,10 @@ fn prismatic_tool(
     // The contacts must lie on their faces along the whole edge.
     let back = |q: V2, s: f64| p0 + x * q.x + y * q.y + d * s;
     for sfrac in [0.25, 0.5, 0.75] {
-        let (c1, c2) = (back(contacts[0], len * sfrac), back(contacts[1], len * sfrac));
+        let (c1, c2) = (
+            back(contacts[0], len * sfrac),
+            back(contacts[1], len * sfrac),
+        );
         if !on_face(s, prep, fa, c1) || !on_face(s, prep, fb, c2) {
             return Err(format!("{what}: the size is too large for this edge"));
         }
@@ -377,11 +400,20 @@ fn prismatic_tool(
         let ends = end_faces(s, e, v);
         !ends.is_empty()
             && ends.iter().all(|&g| match &s.faces[g].surface {
-                Surface::Plane { f } => f.z.cross(d).len() < 1e-9 && (p - f.origin).dot(f.z).abs() < TOL,
+                Surface::Plane { f } => {
+                    f.z.cross(d).len() < 1e-9 && (p - f.origin).dot(f.z).abs() < TOL
+                }
                 _ => false,
             })
     };
-    let margin = region.outer.segs.iter().map(|g| g.start().len()).fold(0.0, f64::max) * 2.0 + 1.0;
+    let margin = region
+        .outer
+        .segs
+        .iter()
+        .map(|g| g.start().len())
+        .fold(0.0, f64::max)
+        * 2.0
+        + 1.0;
     let (sq0, sq1) = (square(ed.v0, p0), square(ed.v1, ed.end()));
     let z0 = if sq0 { 0.0 } else { -margin };
     let z1 = if sq1 { len } else { len + margin };
@@ -394,10 +426,6 @@ fn prismatic_tool(
         convex,
         prismatic: true,
         faces: (fa, fb),
-        ends: [
-            (back(contacts[0], 0.0), back(contacts[1], 0.0)),
-            (back(contacts[0], len), back(contacts[1], len)),
-        ],
     }))
 }
 
@@ -413,7 +441,9 @@ fn revolved_tool(
         return Ok(None);
     };
     let (o, k) = (cf.origin, cf.z);
-    let (fa, fb) = s.edge_faces(e).ok_or(format!("{what}: the edge has no faces"))?;
+    let (fa, fb) = s
+        .edge_faces(e)
+        .ok_or(format!("{what}: the edge has no faces"))?;
     let (sa, sb) = (&s.faces[fa].surface, &s.faces[fb].surface);
     if fa == fb || !(sa.revolved_about(o, k) && sb.revolved_about(o, k)) {
         return Ok(None);
@@ -427,7 +457,10 @@ fn revolved_tool(
     let at2 = |q: V3| to2(q - o);
     let trace = |surf: &Surface, into: V3| -> Trace {
         match surf {
-            Surface::Sphere { f, r } => Trace::Circle { c: at2(f.origin), r: *r },
+            Surface::Sphere { f, r } => Trace::Circle {
+                c: at2(f.origin),
+                r: *r,
+            },
             Surface::Torus { f, major, minor } => Trace::Circle {
                 c: at2(f.origin) + v2(*major, 0.0),
                 r: *minor,
@@ -463,7 +496,9 @@ fn revolved_tool(
     let span = ed.t1 - ed.t0;
     for frac in [0.25, 0.5, 0.75] {
         let ang = span * frac;
-        if !on_face(s, prep, fa, back(contacts[0], ang)) || !on_face(s, prep, fb, back(contacts[1], ang)) {
+        if !on_face(s, prep, fa, back(contacts[0], ang))
+            || !on_face(s, prep, fb, back(contacts[1], ang))
+        {
             return Err(format!("{what}: the size is too large for this edge"));
         }
     }
@@ -482,7 +517,11 @@ fn revolved_tool(
             let ends = end_faces(s, e, v);
             !ends.is_empty()
                 && ends.iter().all(|&g| match &s.faces[g].surface {
-                    Surface::Plane { f } => f.z.dot(k).abs() < 1e-9 && (o - f.origin).dot(f.z).abs() < TOL && (p - f.origin).dot(f.z).abs() < TOL,
+                    Surface::Plane { f } => {
+                        f.z.dot(k).abs() < 1e-9
+                            && (o - f.origin).dot(f.z).abs() < TOL
+                            && (p - f.origin).dot(f.z).abs() < TOL
+                    }
                     _ => false,
                 })
         };
@@ -497,16 +536,11 @@ fn revolved_tool(
             clip_ends(s, prep, e, t, what)?
         }
     };
-    let ends = [
-        (back(contacts[0], 0.0), back(contacts[1], 0.0)),
-        (back(contacts[0], span), back(contacts[1], span)),
-    ];
     Ok(Some(Tool {
         solid: tool,
         convex,
         prismatic: false,
         faces: (fa, fb),
-        ends,
     }))
 }
 
@@ -543,14 +577,24 @@ fn closed_chain(s: &Solid, e: usize) -> Option<Vec<(usize, bool)>> {
                 && (s.edges[x].v0 == at || s.edges[x].v1 == at)
         })?;
         let fwd = s.edges[next].v0 == at;
-        at = if fwd { s.edges[next].v1 } else { s.edges[next].v0 };
+        at = if fwd {
+            s.edges[next].v1
+        } else {
+            s.edges[next].v0
+        };
         chain.push((next, fwd));
     }
     None
 }
 
 /// A rolling-ball tool round a closed chain of edges between two faces of any kind.
-fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) -> Result<Tool, String> {
+fn general_tool(
+    s: &Solid,
+    prep: &Prepared,
+    e: usize,
+    dress: Dress,
+    what: &str,
+) -> Result<Tool, String> {
     let chain = closed_chain(s, e).ok_or(format!(
         "{what}: an edge between these faces can be rounded only where it closes on itself"
     ))?;
@@ -558,7 +602,9 @@ fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) 
         Dress::Fillet(r) => r,
         Dress::Chamfer(d1, d2) => (d1 + d2) / 2.0,
     };
-    let (fa, fb) = s.edge_faces(e).ok_or(format!("{what}: the edge has no faces"))?;
+    let (fa, fb) = s
+        .edge_faces(e)
+        .ok_or(format!("{what}: the edge has no faces"))?;
     let (sa, sb) = (s.faces[fa].surface.clone(), s.faces[fb].surface.clone());
     let ed = &s.edges[e];
     let p0 = ed.start();
@@ -608,7 +654,9 @@ fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) 
                 }
             }
             if (sa.sd(x) - oa).abs() > 1e-7 || (sb.sd(x) - ob).abs() > 1e-7 {
-                return Err(format!("{what}: no ball of this radius rolls along the edge"));
+                return Err(format!(
+                    "{what}: no ball of this radius rolls along the edge"
+                ));
             }
             guide.push(x);
             prev = Some(x);
@@ -656,7 +704,7 @@ fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) 
     let mut tool = Solid::default();
     // The chain's own edges, with their vertices.
     let mut vmap: std::collections::BTreeMap<usize, usize> = Default::default();
-    let mut eloop = Vec::new();
+    let mut eloop: Vec<Coedge> = Vec::new();
     for &(ce, fwd) in &chain {
         let cd = s.edges[ce].clone();
         let v0 = *vmap
@@ -666,7 +714,10 @@ fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) 
             .entry(cd.v1)
             .or_insert_with(|| tool.add_vertex(s.vertices[cd.v1].p));
         let ne = tool.add_edge(cd.curve.clone(), cd.t0, cd.t1, v0, v1);
-        eloop.push(Coedge { edge: ne, rev: !fwd });
+        eloop.push(Coedge {
+            edge: ne,
+            rev: !fwd,
+        });
     }
     let v1 = tool.add_vertex(c1.eval(0.0));
     let v2_ = tool.add_vertex(c2.eval(0.0));
@@ -702,10 +753,22 @@ fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) 
             faces.push(Face {
                 surface: pipe,
                 loops: vec![vec![
-                    Coedge { edge: e1, rev: false },
-                    Coedge { edge: seam, rev: seam_rev },
-                    Coedge { edge: e2, rev: true },
-                    Coedge { edge: seam, rev: !seam_rev },
+                    Coedge {
+                        edge: e1,
+                        rev: false,
+                    },
+                    Coedge {
+                        edge: seam,
+                        rev: seam_rev,
+                    },
+                    Coedge {
+                        edge: e2,
+                        rev: true,
+                    },
+                    Coedge {
+                        edge: seam,
+                        rev: !seam_rev,
+                    },
                 ]],
             });
         }
@@ -718,21 +781,45 @@ fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) 
             };
             let (pa, pb) = (tool.vertices[v1].p, tool.vertices[v2_].p);
             let l = pa.dist(pb);
-            let seam = tool.add_edge(Curve::Line { o: pa, d: (pb - pa) / l }, 0.0, l, v1, v2_);
+            let seam = tool.add_edge(
+                Curve::Line {
+                    o: pa,
+                    d: (pb - pa) / l,
+                },
+                0.0,
+                l,
+                v1,
+                v2_,
+            );
             faces.push(Face {
                 surface: ruled,
                 loops: vec![vec![
-                    Coedge { edge: e1, rev: false },
-                    Coedge { edge: seam, rev: false },
-                    Coedge { edge: e2, rev: true },
-                    Coedge { edge: seam, rev: true },
+                    Coedge {
+                        edge: e1,
+                        rev: false,
+                    },
+                    Coedge {
+                        edge: seam,
+                        rev: false,
+                    },
+                    Coedge {
+                        edge: e2,
+                        rev: true,
+                    },
+                    Coedge {
+                        edge: seam,
+                        rev: true,
+                    },
                 ]],
             });
         }
     }
     // The strips of both faces between the edge and the contact curves.
-    let mut eloop = eloop;
-    faces.extend(strip_faces(&mut tool, &mut eloop, &[(sa.clone(), e1), (sb.clone(), e2)]));
+    faces.extend(strip_faces(
+        &mut tool,
+        &mut eloop,
+        &[(sa.clone(), e1), (sb.clone(), e2)],
+    ));
     tool.faces = faces;
     // Orient: the tool must have positive volume; flip whichever faces disagree.
     orient_tool(&mut tool)?;
@@ -741,14 +828,17 @@ fn general_tool(s: &Solid, prep: &Prepared, e: usize, dress: Dress, what: &str) 
         convex,
         prismatic: false,
         faces: (fa, fb),
-        ends: [(V3::ZERO, V3::ZERO); 2],
     })
 }
 
 /// The strip faces between a closed chain `eloop` and closed contact curves on the same
 /// surfaces: two loops where the strip does not wrap round its surface, else one loop
 /// cut open along a line of constant u (splitting the chain there).
-fn strip_faces(tool: &mut Solid, eloop: &mut Vec<Coedge>, strips: &[(Surface, usize)]) -> Vec<Face> {
+fn strip_faces(
+    tool: &mut Solid,
+    eloop: &mut Vec<Coedge>,
+    strips: &[(Surface, usize)],
+) -> Vec<Face> {
     let valid = |t: &Solid, srf: &Surface, loops: Vec<Vec<Coedge>>| -> bool {
         let tmp = Solid {
             vertices: t.vertices.clone(),
@@ -763,7 +853,13 @@ fn strip_faces(tool: &mut Solid, eloop: &mut Vec<Coedge>, strips: &[(Surface, us
     // Phase 1: where each wrapping strip needs its seam, split the chain.
     let mut seam_at: Vec<Option<usize>> = Vec::new();
     for (srf, ce) in strips {
-        let two = vec![eloop.clone(), vec![Coedge { edge: *ce, rev: true }]];
+        let two = vec![
+            eloop.clone(),
+            vec![Coedge {
+                edge: *ce,
+                rev: true,
+            }],
+        ];
         if valid(tool, srf, two) {
             seam_at.push(None);
             continue;
@@ -799,9 +895,24 @@ fn strip_faces(tool: &mut Solid, eloop: &mut Vec<Coedge>, strips: &[(Surface, us
         tool.edges[c.edge].t1 = t;
         tool.edges[c.edge].v1 = vs;
         let pair = if c.rev {
-            [Coedge { edge: ne, rev: true }, Coedge { edge: c.edge, rev: true }]
+            [
+                Coedge {
+                    edge: ne,
+                    rev: true,
+                },
+                Coedge {
+                    edge: c.edge,
+                    rev: true,
+                },
+            ]
         } else {
-            [c, Coedge { edge: ne, rev: false }]
+            [
+                c,
+                Coedge {
+                    edge: ne,
+                    rev: false,
+                },
+            ]
         };
         eloop.splice(k..=k, pair);
         seam_at.push(Some(vs));
@@ -812,7 +923,13 @@ fn strip_faces(tool: &mut Solid, eloop: &mut Vec<Coedge>, strips: &[(Surface, us
         let Some(vs) = at else {
             faces.push(Face {
                 surface: srf.clone(),
-                loops: vec![eloop.clone(), vec![Coedge { edge: *ce, rev: true }]],
+                loops: vec![
+                    eloop.clone(),
+                    vec![Coedge {
+                        edge: *ce,
+                        rev: true,
+                    }],
+                ],
             });
             continue;
         };
@@ -863,7 +980,11 @@ fn strip_faces(tool: &mut Solid, eloop: &mut Vec<Coedge>, strips: &[(Surface, us
             _ => (
                 Curve::Line {
                     o: if forward { pa } else { pb },
-                    d: if forward { (pb - pa).norm() } else { (pa - pb).norm() },
+                    d: if forward {
+                        (pb - pa).norm()
+                    } else {
+                        (pa - pb).norm()
+                    },
                 },
                 0.0,
                 pa.dist(pb),
@@ -874,8 +995,14 @@ fn strip_faces(tool: &mut Solid, eloop: &mut Vec<Coedge>, strips: &[(Surface, us
         let rev = !forward;
         chain.extend([
             Coedge { edge: seam, rev },
-            Coedge { edge: *ce, rev: true },
-            Coedge { edge: seam, rev: !rev },
+            Coedge {
+                edge: *ce,
+                rev: true,
+            },
+            Coedge {
+                edge: seam,
+                rev: !rev,
+            },
         ]);
         faces.push(Face {
             surface: srf.clone(),
@@ -907,9 +1034,10 @@ fn orient_tool(t: &mut Solid) -> Result<(), String> {
             return Ok(());
         }
     }
-    let why = t.check().err().unwrap_or_else(|| {
-        format!("volume {}", super::mass::mass_props(t).volume)
-    });
+    let why = t
+        .check()
+        .err()
+        .unwrap_or_else(|| format!("volume {}", super::mass::mass_props(t).volume));
     Err(format!("the blend's tool could not be closed ({why})"))
 }
 
@@ -956,10 +1084,17 @@ pub fn dress(s: &Solid, edges: &[usize], dress: Dress, what: &str) -> Result<Sol
         if at.len() != 3 || !at.iter().all(|(_, t)| t.convex && t.prismatic) {
             continue;
         }
-        let mut faces: Vec<usize> = at.iter().flat_map(|(_, t)| [t.faces.0, t.faces.1]).collect();
+        let mut faces: Vec<usize> = at
+            .iter()
+            .flat_map(|(_, t)| [t.faces.0, t.faces.1])
+            .collect();
         faces.sort_unstable();
         faces.dedup();
-        if faces.len() != 3 || !faces.iter().all(|f| matches!(s.faces[*f].surface, Surface::Plane { .. })) {
+        if faces.len() != 3
+            || !faces
+                .iter()
+                .all(|f| matches!(s.faces[*f].surface, Surface::Plane { .. }))
+        {
             continue;
         }
         let equal = match dress {
@@ -1038,7 +1173,8 @@ fn corner_tool(
                 normals[1].dot(p) - r,
                 normals[2].dot(p) - r,
             ];
-            let c = super::num::solve3v(rows, rhs).ok_or("the corner's faces do not meet at a point")?;
+            let c = super::num::solve3v(rows, rhs)
+                .ok_or("the corner's faces do not meet at a point")?;
             // The vertex side of the planes through the centre across each edge.
             for (e, _) in at {
                 let ed = &s.edges[*e];

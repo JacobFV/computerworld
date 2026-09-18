@@ -70,7 +70,9 @@ pub fn face_uv(s: &Solid, f: usize) -> FaceUV {
     for l in &face.loops {
         let n = l.len();
         // Start at a real edge: a degenerate one takes its start from what precedes it.
-        let k0 = (0..n).find(|k| !s.edges[l[*k].edge].degenerate).unwrap_or(0);
+        let k0 = (0..n)
+            .find(|k| !s.edges[l[*k].edge].degenerate)
+            .unwrap_or(0);
         let mut out: Vec<Option<CoUV>> = vec![None; n];
         let mut prev: Option<V2> = None;
         for step in 0..n {
@@ -84,7 +86,11 @@ pub fn face_uv(s: &Solid, f: usize) -> FaceUV {
                 let end = start + v2(span, 0.0);
                 out[k] = Some(CoUV {
                     co: c,
-                    ts: if c.rev { vec![e.t1, e.t0] } else { vec![e.t0, e.t1] },
+                    ts: if c.rev {
+                        vec![e.t1, e.t0]
+                    } else {
+                        vec![e.t0, e.t1]
+                    },
                     pts: vec![p, p],
                     uv: vec![start, end],
                 });
@@ -144,10 +150,7 @@ pub fn face_uv(s: &Solid, f: usize) -> FaceUV {
         }
         let out: Vec<CoUV> = out.into_iter().flatten().collect();
         // The loop must close in the parameter plane.
-        if let (Some(first), Some(last)) = (
-            out.get(k0).and_then(|c| c.uv.first().copied()),
-            prev,
-        ) {
+        if let (Some(first), Some(last)) = (out.get(k0).and_then(|c| c.uv.first().copied()), prev) {
             let scale = 1.0 + first.x.abs() + first.y.abs();
             if (last - first).len() > 1e-6 * scale {
                 valid = false;
@@ -157,12 +160,9 @@ pub fn face_uv(s: &Solid, f: usize) -> FaceUV {
     }
     // Outer loop: the largest by area; inner loops moved into its period window.
     let areas: Vec<f64> = loops.iter().map(|l| loop_area(l)).collect();
-    if let Some(outer) = (0..loops.len()).max_by(|a, b| {
-        areas[*a]
-            .abs()
-            .total_cmp(&areas[*b].abs())
-            .then(b.cmp(a))
-    }) {
+    if let Some(outer) =
+        (0..loops.len()).max_by(|a, b| areas[*a].abs().total_cmp(&areas[*b].abs()).then(b.cmp(a)))
+    {
         loops.swap(0, outer);
     }
     let (mut lo, mut hi) = (
@@ -204,9 +204,7 @@ pub fn face_uv(s: &Solid, f: usize) -> FaceUV {
             }
         }
     }
-    let sense = if areas.iter().map(|a| a.abs()).fold(0.0, f64::max) == 0.0 {
-        1.0
-    } else if loop_area(&loops[0]) >= 0.0 {
+    let sense = if loop_area(&loops[0]) >= 0.0 {
         1.0
     } else {
         -1.0
@@ -420,7 +418,7 @@ pub fn face_box(s: &Solid, fu: &FaceUV, f: usize) -> Box3 {
 pub fn interior_point(s: &Solid, fu: &FaceUV, f: usize) -> Option<(V3, V2)> {
     let polys: Vec<Vec<V2>> = fu.loops.iter().map(|l| loop_polygon(l)).collect();
     let (lo, hi) = (fu.lo, fu.hi);
-    if !(hi.y > lo.y) {
+    if hi.y <= lo.y {
         return None;
     }
     let mut best: Option<(f64, V2)> = None;

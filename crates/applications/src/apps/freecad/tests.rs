@@ -505,7 +505,11 @@ fn files_round_trip_through_the_dialog_and_effects() {
     // STEP, OBJ and SVG.
     for (ty, name, check) in [
         (0, "Body.step", "MANIFOLD_SOLID_BREP"),
-        (1, "Body.stp", "AP242_MANAGED_MODEL_BASED_3D_ENGINEERING_MIM_LF"),
+        (
+            1,
+            "Body.stp",
+            "AP242_MANAGED_MODEL_BASED_3D_ENGINEERING_MIM_LF",
+        ),
         (4, "Body.obj", "o Body"),
         (6, "Body.svg", "<svg"),
     ] {

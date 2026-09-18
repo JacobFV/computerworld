@@ -275,13 +275,24 @@ pub fn roots(
             continue;
         }
         if (fs[i] < 0.0) != (fs[i + 1] < 0.0) {
-            out.push(brent(&mut f, xs[i], xs[i + 1], fs[i], fs[i + 1], xtol * 1e-3));
+            out.push(brent(
+                &mut f,
+                xs[i],
+                xs[i + 1],
+                fs[i],
+                fs[i + 1],
+                xtol * 1e-3,
+            ));
         }
     }
     // Touching roots: |f| has a local minimum between samples with no sign change.
     for i in 1..n {
         let (l, m, r) = (fs[i - 1].abs(), fs[i].abs(), fs[i + 1].abs());
-        if m <= l && m <= r && (fs[i - 1] < 0.0) == (fs[i] < 0.0) && (fs[i] < 0.0) == (fs[i + 1] < 0.0) {
+        if m <= l
+            && m <= r
+            && (fs[i - 1] < 0.0) == (fs[i] < 0.0)
+            && (fs[i] < 0.0) == (fs[i + 1] < 0.0)
+        {
             let x = golden_min(|x| f(x).abs(), xs[i - 1], xs[i + 1], 80);
             if f(x).abs() <= ftol {
                 out.push(x);
@@ -323,7 +334,14 @@ pub fn roots_d(
             continue;
         }
         if (fs[i] < 0.0) != (fs[i + 1] < 0.0) {
-            out.push(brent(&mut f, xs[i], xs[i + 1], fs[i], fs[i + 1], xtol * 1e-3));
+            out.push(brent(
+                &mut f,
+                xs[i],
+                xs[i + 1],
+                fs[i],
+                fs[i + 1],
+                xtol * 1e-3,
+            ));
         }
     }
     // Extrema of f that come close to zero without crossing.
@@ -366,8 +384,9 @@ pub fn solve3(m: [[f64; 3]; 3], b: [f64; 3]) -> Option<[f64; 3]> {
         for r in 0..3 {
             if r != col {
                 let k = a[r][col] / a[col][col];
-                for c in col..4 {
-                    a[r][c] -= k * a[col][c];
+                let pivot = a[col];
+                for (c, cell) in a[r].iter_mut().enumerate().skip(col) {
+                    *cell -= k * pivot[c];
                 }
             }
         }

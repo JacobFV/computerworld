@@ -3,11 +3,11 @@
 pub mod blend;
 pub mod boolean;
 pub mod build;
-pub mod refine;
 pub mod geom;
 pub mod intersect;
 pub mod mass;
 pub mod num;
+pub mod refine;
 pub mod tess;
 pub mod topo;
 pub mod uv;

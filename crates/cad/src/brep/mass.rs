@@ -11,7 +11,7 @@ use super::geom::Surface;
 use super::num;
 use super::topo::Solid;
 use super::uv::{face_uv, CoUV, FaceUV};
-use crate::math::{v2, V2, V3, FRAC_PI_2, PI};
+use crate::math::{v2, FRAC_PI_2, PI, V2, V3};
 
 /// Integrals of one face: [volume flux, x, y, z first-moment fluxes, area, area-weighted
 /// x, y, z].
@@ -160,8 +160,8 @@ fn face_integrals(solid: &Solid, fu: &FaceUV, f: usize, inv: [f64; 3]) -> FaceIn
         }
     }
     // Area terms are unsigned: the loops' sense carries the orientation.
-    for k in 4..8 {
-        acc[k] *= fu.sense;
+    for a in acc.iter_mut().skip(4) {
+        *a *= fu.sense;
     }
     acc
 }
@@ -219,7 +219,11 @@ pub fn mass_props(solid: &Solid) -> MassProps {
     MassProps {
         volume,
         area: tot[4] * l * l,
-        center: if volume.abs() > 0.0 { m / volume } else { V3::ZERO },
+        center: if volume.abs() > 0.0 {
+            m / volume
+        } else {
+            V3::ZERO
+        },
     }
 }
 
