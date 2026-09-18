@@ -230,6 +230,251 @@ fn b_child_output(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     Ok(Value::Undefined)
 }
 
+// ---------------------------------------------------------------- zlib
+
+fn handle_new(vm: &mut Vm, b: Box<dyn std::any::Any>) -> Value {
+    vm.handles.push(Some(b));
+    Value::Num((vm.handles.len() - 1) as f64)
+}
+fn handle_mut<'a, T: 'static>(vm: &'a mut Vm, v: &Value) -> JsResult<&'a mut T> {
+    let i = match v {
+        Value::Num(n) => *n as usize,
+        _ => usize::MAX,
+    };
+    match vm.handles.get_mut(i).and_then(|h| h.as_mut()) {
+        Some(b) => match b.downcast_mut::<T>() {
+            Some(t) => Ok(t),
+            None => Err(Ctl::Throw(Value::str("invalid handle"))),
+        },
+        None => Err(Ctl::Throw(Value::str("invalid handle"))),
+    }
+}
+fn zerr_obj(vm: &mut Vm, e: &cw_zlib::ZError) -> Value {
+    let o = vm.new_object();
+    let (msg, code) = match e {
+        cw_zlib::ZError::Buf => ("unexpected end of file".to_string(), "Z_BUF_ERROR"),
+        cw_zlib::ZError::Stream => ("stream error".to_string(), "Z_STREAM_ERROR"),
+        cw_zlib::ZError::NeedDict(_) => ("Missing dictionary".to_string(), "Z_NEED_DICT"),
+        cw_zlib::ZError::Data(_) => (e.message(), "Z_DATA_ERROR"),
+    };
+    o.set_prop("message", Value::string(msg), ALL);
+    o.set_prop("code", Value::str(code), ALL);
+    o.set_prop("errno", Value::Num(e.code() as f64), ALL);
+    Value::Obj(o)
+}
+
+/// zlibDeflateNew(level, windowBits, memLevel, strategy, wrap(0 raw,1 zlib,2 gzip), dictionary)
+fn b_deflate_new(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let level = vm.to_number(&a.arg(0))? as i32;
+    let wb = vm.to_number(&a.arg(1))? as i32;
+    let mem = vm.to_number(&a.arg(2))? as i32;
+    let strategy = vm.to_number(&a.arg(3))? as i32;
+    let wrap = vm.to_number(&a.arg(4))? as i32;
+    let bits = match wrap {
+        0 => -wb,
+        2 => wb + 16,
+        _ => wb,
+    };
+    let mut d =
+        match cw_zlib::Deflater::new(level, bits, mem, strategy, cw_zlib::HashVariant::Chromium) {
+            Ok(d) => d,
+            Err(_) => return Ok(Value::Null),
+        };
+    if let Value::Obj(o) = a.arg(5) {
+        if let Some(dict) = vm.typed_bytes(&o) {
+            let _ = d.set_dictionary(&dict);
+        }
+    }
+    Ok(handle_new(vm, Box::new(d)))
+}
+
+/// zlibDeflate(handle, input, flush, chunkSize) -> Buffer
+fn b_deflate(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let input = bytes_arg(vm, &a.arg(1))?;
+    let flush =
+        cw_zlib::Flush::from_i32(vm.to_number(&a.arg(2))? as i32).unwrap_or(cw_zlib::Flush::None);
+    let chunk = match a.arg(3) {
+        Value::Num(n) if n >= 64.0 => n as usize,
+        _ => 16384,
+    };
+    let h = a.arg(0);
+    let d: &mut cw_zlib::Deflater = handle_mut(vm, &h)?;
+    let mut call = 0;
+    let out = cw_zlib::deflate_all(
+        d,
+        &input,
+        flush,
+        &cw_zlib::OutputSchedule::node(chunk),
+        &mut call,
+    );
+    match out {
+        Ok(o) => Ok(vm.make_buffer(o)),
+        Err(e) => {
+            let err = zerr_obj(vm, &e);
+            Err(Ctl::Throw(err))
+        }
+    }
+}
+
+/// zlibParams(handle, level, strategy) -> Buffer (what the switch flushed)
+fn b_deflate_params(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let level = vm.to_number(&a.arg(1))? as i32;
+    let strategy = vm.to_number(&a.arg(2))? as i32;
+    let h = a.arg(0);
+    let d: &mut cw_zlib::Deflater = handle_mut(vm, &h)?;
+    let out = d.params(level, strategy).unwrap_or_default();
+    Ok(vm.make_buffer(out))
+}
+
+struct JsInflate {
+    inf: cw_zlib::Inflater,
+    window_bits: i32,
+    dict: Option<Vec<u8>>,
+    /// gunzip: continue with another member after one ends.
+    multi: bool,
+    ended: bool,
+}
+
+/// zlibInflateNew(windowBits (already wrapped: raw negative, gzip +16, auto +32), multi, dictionary)
+fn b_inflate_new(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let wb = vm.to_number(&a.arg(0))? as i32;
+    let multi = a.arg(1).truthy();
+    let dict = match a.arg(2) {
+        Value::Obj(o) => vm.typed_bytes(&o),
+        _ => None,
+    };
+    let mut inf = match cw_zlib::Inflater::new(wb) {
+        Ok(i) => i,
+        Err(_) => return Ok(Value::Null),
+    };
+    if wb < 0 {
+        if let Some(d) = &dict {
+            let _ = inf.set_dictionary(d);
+        }
+    }
+    let h = JsInflate {
+        inf,
+        window_bits: wb,
+        dict,
+        multi,
+        ended: false,
+    };
+    Ok(handle_new(vm, Box::new(h)))
+}
+
+/// zlibInflate(handle, input, finish) -> { out: Buffer, ended } or throws { message, code, errno }
+fn b_inflate(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let input = bytes_arg(vm, &a.arg(1))?;
+    let finish = a.arg(2).truthy();
+    let hv = a.arg(0);
+    let r: Result<(Vec<u8>, bool), cw_zlib::ZError> = {
+        let h: &mut JsInflate = handle_mut(vm, &hv)?;
+        (|| {
+            let mut out = vec![];
+            let mut feed = input.clone();
+            loop {
+                if h.ended {
+                    return Ok((out, true));
+                }
+                let mut p = h.inf.inflate(&feed, &mut out, usize::MAX)?;
+                feed.clear();
+                if let cw_zlib::Progress::NeedDict(_) = p {
+                    match h.dict.clone() {
+                        Some(d) => {
+                            h.inf.set_dictionary(&d)?;
+                            p = h.inf.inflate(&[], &mut out, usize::MAX)?;
+                        }
+                        None => return Err(cw_zlib::ZError::NeedDict(0)),
+                    }
+                }
+                match p {
+                    cw_zlib::Progress::End => {
+                        let rest = h.inf.take_unconsumed();
+                        if h.multi && !rest.is_empty() && !rest.iter().all(|b| *b == 0) {
+                            h.inf = cw_zlib::Inflater::new(h.window_bits)?;
+                            feed = rest;
+                            continue;
+                        }
+                        h.ended = true;
+                        return Ok((out, true));
+                    }
+                    _ => {
+                        if finish {
+                            return Err(cw_zlib::ZError::Buf);
+                        }
+                        return Ok((out, false));
+                    }
+                }
+            }
+        })()
+    };
+    match r {
+        Ok((out, ended)) => {
+            let o = vm.new_object();
+            let b = vm.make_buffer(out);
+            o.set_prop("out", b, ALL);
+            o.set_prop("ended", Value::Bool(ended), ALL);
+            Ok(Value::Obj(o))
+        }
+        Err(e) => {
+            let err = zerr_obj(vm, &e);
+            Err(Ctl::Throw(err))
+        }
+    }
+}
+
+fn b_handle_close(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    if let Value::Num(n) = a.arg(0) {
+        if let Some(slot) = vm.handles.get_mut(n as usize) {
+            *slot = None;
+        }
+    }
+    Ok(Value::Undefined)
+}
+
+/// brotliCompress(input, quality, lgwin, mode, sizeHint) -> Buffer
+fn b_brotli_compress(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let input = bytes_arg(vm, &a.arg(0))?;
+    let q = vm.to_number(&a.arg(1))? as u32;
+    let w = vm.to_number(&a.arg(2))? as u32;
+    let m = vm.to_number(&a.arg(3))? as u32;
+    let hint = match a.arg(4) {
+        Value::Num(n) if n > 0.0 => n as usize,
+        _ => 0,
+    };
+    let out = cw_zlib::brotli_compress(&input, q, w, m, hint);
+    Ok(vm.make_buffer(out))
+}
+
+/// brotliDecompress(input) -> Buffer or throws { message, code, errno }
+fn b_brotli_decompress(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let input = bytes_arg(vm, &a.arg(0))?;
+    match cw_zlib::brotli_decompress(&input) {
+        Ok(o) => Ok(vm.make_buffer(o)),
+        Err(m) => {
+            let o = vm.new_object();
+            let (code, errno) = if m.contains("end of file") {
+                ("ERR_BUF_ERROR", -5.0)
+            } else {
+                ("ERR__ERROR_FORMAT_PADDING_1", -14.0)
+            };
+            o.set_prop("message", Value::string(m), ALL);
+            o.set_prop("code", Value::str(code), ALL);
+            o.set_prop("errno", Value::Num(errno), ALL);
+            Err(Ctl::Throw(Value::Obj(o)))
+        }
+    }
+}
+
+fn b_crc32(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let data = bytes_arg(vm, &a.arg(0))?;
+    let start = match a.arg(1) {
+        Value::Num(n) => n as u32,
+        _ => 0,
+    };
+    Ok(Value::Num(cw_zlib::crc32(start, &data) as f64))
+}
+
 impl<'h> Vm<'h> {
     /// Queues an I/O completion for the poll phase at `now + delay_ms`.
     pub fn schedule_io(&mut self, cb: Value, delay_ms: f64, args: Vec<Value>) {
@@ -263,6 +508,15 @@ pub fn install(vm: &mut Vm, b: &Obj) {
         ("scheduleIo", 2, b_schedule_io),
         ("advance", 1, b_advance),
         ("childOutput", 2, b_child_output),
+        ("zlibDeflateNew", 6, b_deflate_new),
+        ("zlibDeflate", 4, b_deflate),
+        ("zlibParams", 3, b_deflate_params),
+        ("zlibInflateNew", 3, b_inflate_new),
+        ("zlibInflate", 3, b_inflate),
+        ("handleClose", 1, b_handle_close),
+        ("brotliCompress", 5, b_brotli_compress),
+        ("brotliDecompress", 1, b_brotli_decompress),
+        ("crc32", 2, b_crc32),
     ];
     for (n, l, f) in fns {
         vm.method(b, n, *l, *f);

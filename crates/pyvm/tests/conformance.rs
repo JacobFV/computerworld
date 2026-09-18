@@ -66,6 +66,8 @@ macro_rules! programs {
 programs!(
     algorithms,
     classes,
+    compression,
+    urls,
     err_chain,
     err_exit,
     err_name,

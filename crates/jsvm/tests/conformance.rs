@@ -80,6 +80,8 @@ programs!("js":
     strings_regex,
     text_pipeline,
     util_events,
+    web_fetch_classes,
+    zlib_streams,
 );
 
 programs!("mjs": esm_module);

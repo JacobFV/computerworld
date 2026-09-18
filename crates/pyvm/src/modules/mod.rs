@@ -6,7 +6,9 @@ pub mod json;
 pub mod math;
 pub mod random;
 pub mod re;
+pub mod structmod;
 pub mod sys;
+pub mod zlib;
 
 use crate::builtins::native_fn;
 use crate::value::*;
@@ -35,6 +37,7 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("fractions", include_str!("../../lib/fractions.py")),
     ("functools", include_str!("../../lib/functools.py")),
     ("glob", include_str!("../../lib/glob.py")),
+    ("gzip", include_str!("../../lib/gzip.py")),
     ("heapq", include_str!("../../lib/heapq.py")),
     ("http", include_str!("../../lib/http_init.py")),
     ("http.client", include_str!("../../lib/http_client.py")),
@@ -56,6 +59,7 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("ssl", include_str!("../../lib/ssl.py")),
     ("statistics", include_str!("../../lib/statistics.py")),
     ("string", include_str!("../../lib/string.py")),
+    ("struct", include_str!("../../lib/struct.py")),
     ("subprocess", include_str!("../../lib/subprocess.py")),
     ("textwrap", include_str!("../../lib/textwrap.py")),
     ("traceback", include_str!("../../lib/traceback.py")),
@@ -75,6 +79,7 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ),
     ("warnings", include_str!("../../lib/warnings.py")),
     ("weakref", include_str!("../../lib/weakref.py")),
+    ("zlib", include_str!("../../lib/zlib.py")),
 ];
 
 /// Native modules and their constructors.
@@ -89,6 +94,8 @@ fn native_module(vm: &mut Vm, name: &str) -> Option<Value> {
         "re" => re::make(vm),
         "_collections" => collections::make(vm),
         "_cw" => host::make(vm),
+        "_zlib" => zlib::make(vm),
+        "_struct" => structmod::make(vm),
         "gc" => {
             let m = new_module("gc");
             set_fn(&m, "collect", |_, _| Ok(Value::Int(0)));

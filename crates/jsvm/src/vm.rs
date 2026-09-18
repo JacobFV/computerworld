@@ -323,6 +323,8 @@ pub struct Vm<'h> {
     pub open_fds: Vec<Option<(String, usize)>>,
     /// Completion value of `-e` / `-p` / eval programs.
     pub completion: Value,
+    /// State native modules hand out by index (zlib streams, worker queues...).
+    pub handles: Vec<Option<Box<dyn std::any::Any>>>,
 }
 
 impl<'h> Vm<'h> {

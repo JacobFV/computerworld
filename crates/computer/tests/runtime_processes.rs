@@ -95,6 +95,42 @@ fn python_child_output_lands_after_flushed_output() {
 }
 
 #[test]
+fn gzip_commands_and_runtimes_share_the_format() {
+    let mut c = machine();
+    let r = run(&mut c, "cd /home/user/proj && gzip -k a.txt && ls");
+    assert_eq!(r.stdout, "a.txt\na.txt.gz\n", "{}", r.stderr);
+    assert_eq!(
+        run(&mut c, "zcat /home/user/proj/a.txt.gz").stdout,
+        "alpha\nbeta\ngamma\n"
+    );
+    // Python and Node read what gzip wrote, and write what gunzip reads.
+    let r = py(
+        &mut c,
+        "import gzip\nprint(gzip.open('proj/a.txt.gz').read())\nwith gzip.open('proj/py.gz', 'wt') as f:\n    f.write('from python\\n')\n",
+    );
+    assert_eq!(r.stdout, "b'alpha\\nbeta\\ngamma\\n'\n", "{}", r.stderr);
+    assert_eq!(
+        run(&mut c, "zcat /home/user/proj/py.gz").stdout,
+        "from python\n"
+    );
+    let r = js(
+        &mut c,
+        "const fs = require('fs'), zlib = require('zlib');\nconsole.log(zlib.gunzipSync(fs.readFileSync('proj/a.txt.gz')).toString().trim());\nfs.writeFileSync('proj/js.gz', zlib.gzipSync('from node\\n'));\n",
+    );
+    assert_eq!(r.stdout, "alpha\nbeta\ngamma\n", "{}", r.stderr);
+    let r = run(&mut c, "cd /home/user/proj && gunzip js.gz && cat js");
+    assert_eq!(r.stdout, "from node\n", "{}", r.stderr);
+    let r = run(&mut c, "gzip -c /home/user/proj/a.txt");
+    assert_eq!(r.exit_code, 1);
+    assert!(r
+        .stderr
+        .contains("compressed data not written to a terminal"));
+    let r = run(&mut c, "cd /home/user/proj && gzip a.txt");
+    assert_eq!(r.exit_code, 2);
+    assert!(r.stderr.contains("a.txt.gz already exists"), "{}", r.stderr);
+}
+
+#[test]
 fn node_child_process_runs_machine_commands() {
     let mut c = machine();
     let r = js(

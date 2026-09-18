@@ -80,9 +80,10 @@ class Blob {
   _buffer() { return this.#bytes; }
   get size() { return this.#bytes.length; }
   get type() { return this.#type; }
-  text() { return Promise.resolve(this.#bytes.toString('utf8')); }
-  arrayBuffer() { const u = new Uint8Array(this.#bytes); return Promise.resolve(u.buffer); }
-  bytes() { return Promise.resolve(new Uint8Array(this.#bytes)); }
+  // Blob reads go through a stream of the parts: the deepest of the body reads.
+  text() { return after(8, Promise.resolve(this.#bytes.toString('utf8'))); }
+  arrayBuffer() { const u = new Uint8Array(this.#bytes); return after(8, Promise.resolve(u.buffer)); }
+  bytes() { return after(8, Promise.resolve(new Uint8Array(this.#bytes))); }
   slice(start, end, type) { return new Blob([this.#bytes.subarray(start, end)], { type }); }
   stream() { return new ReadableStream({ bytes: this.#bytes }); }
   get [Symbol.toStringTag]() { return 'Blob'; }
@@ -172,20 +173,32 @@ function extractBody(body, headers) {
   return bytes;
 }
 
+// Settles after `n` promise turns. undici reads a body through a stream reader in
+// an async loop, so a read settles a characteristic number of microtask turns
+// later (more for a tee'd branch after clone()), and programs observe that
+// ordering between bodies; the depths here are undici's.
+function after(n, p) {
+  for (let i = 1; i < n; i++) p = p.then((x) => x);
+  return p;
+}
+const PLAIN_READ = 3;
+const TEED_READ = 5;
+
 class Body {
   _initBody(bytes) {
     this._bytes = bytes;
     this._used = false;
+    this._teed = false;
     this._stream = bytes === null ? null : new ReadableStream({ bytes });
   }
   get body() { return this._stream; }
   get bodyUsed() { return this._used; }
   _consume() {
     if (this._used || (this._stream && this._stream.locked)) {
-      return Promise.reject(new TypeError('Body is unusable: Body has already been read'));
+      return after(PLAIN_READ, Promise.reject(new TypeError('Body is unusable: Body has already been read')));
     }
     this._used = true;
-    return Promise.resolve(this._bytes || Buffer.alloc(0));
+    return after(this._teed ? TEED_READ : PLAIN_READ, Promise.resolve(this._bytes || Buffer.alloc(0)));
   }
   text() { return this._consume().then((b) => b.toString('utf8')); }
   json() { return this.text().then((t) => JSON.parse(t)); }
@@ -259,7 +272,11 @@ class Response extends Body {
   get ok() { return this.status >= 200 && this.status <= 299; }
   clone() {
     if (this.bodyUsed) throw new TypeError('Response.clone: Body has already been consumed.');
-    return new Response(this._bytes, { status: this.status, statusText: this.statusText, headers: this.headers, _type: this.type, _url: this.url, _redirected: this.redirected });
+    const r = new Response(this._bytes, { status: this.status, statusText: this.statusText, headers: this.headers, _type: this.type, _url: this.url, _redirected: this.redirected });
+    // Both branches now read through a tee.
+    this._teed = true;
+    r._teed = true;
+    return r;
   }
   static json(data, init = {}) {
     const headers = new Headers(init.headers);

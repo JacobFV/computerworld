@@ -1,0 +1,39 @@
+--- exit: 0
+--- stdout
+ParseResult(scheme='https', netloc='user:pw@Example.COM:8443', path='/a/b', params='params', query='x=1&y=2', fragment='frag')
+https user:pw@Example.COM:8443 example.com 8443 user pw https://user:pw@Example.COM:8443/a/b;params?x=1&y=2#frag
+SplitResult(scheme='', netloc='host', path='/path', query='q', fragment='') SplitResult(scheme='mailto', netloc='', path='someone@example.com', query='', fragment='')
+http://h/p?a=b
+'g' http://a/b/c/g
+'./g' http://a/b/c/g
+'g/' http://a/b/c/g/
+'/g' http://a/g
+'//g' http://g
+'?y' http://a/b/c/d;p?y
+'g?y' http://a/b/c/g?y
+'#s' http://a/b/c/d;p?q#s
+'g#s' http://a/b/c/g#s
+'..' http://a/b/
+'../g' http://a/b/g
+'../..' http://a/
+'../../g' http://a/g
+'../../../g' http://a/g
+'g.' http://a/b/c/g.
+'.g' http://a/b/c/.g
+'g..' http://a/b/c/g..
+'..g' http://a/b/c/..g
+'./../g' http://a/b/g
+'g;x=1/../y' http://a/b/c/y
+'http:g' http://a/b/c/g
+'' http://a/b/c/d;p?q
+a=1+2&b=x%26y&c=%5B%27p%27%2C+%27q%27%5D
+c=p&c=q k=v/w
+a%20b/c%3Fd%3D%C3%A9 a%20b%2Fc a+b%26c %00%FF
+€ x%zz a b+c
+{'a': ['1', '2']} {'a': ['1'], 'b': ['']}
+[('x', ' y'), ('z', 'a b')] DefragResult(url='http://x/y', fragment='z')
+ValueError Invalid IPv6 URL
+['echo', 'hello world', 'a b', 'c d'] 'it'"'"'s' 'a b' c
+404 200 Not Found
+I'm a Teapot 443
+--- stderr

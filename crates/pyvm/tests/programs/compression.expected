@@ -1,0 +1,40 @@
+--- exit: 0
+--- stdout
+-1 1906 789ced97d975 3880974876 True
+0 11638 7801016b2d94 53879229 True
+1 2032 7801ed9a8175 1163722431 True
+6 1906 789ced97d975 3880974876 True
+9 1906 78daed97d975 1253373753 True
+-15 62 764091026
+True
+9 68 3367312526
+True
+31 80 1278877176
+True
+1 789cedd7bb95c3300c44d1565e09f80fd07f631b
+2 780105c1090100300803312b276194a7e0dfd892
+3 780105c1090100300803312b276194a7e0dfd892
+4 7801335030543051b05430345330325530365330
+[2, 53, 0, 22, 6] ffff0300880a8637
+100 True False
+True True b'trailing' b'trailing'
+b'' b'trailingmore' b'more'
+52 True
+zlib.error: Error -3 while decompressing data: incorrect header check
+zlib.error: Error -5 while decompressing data: incomplete or truncated stream
+zlib.error: Error -3 while decompressing data: incorrect data check
+1f8b0800000000000203 80 b'og. !'
+1f8b080040e2010004ff True
+8 02ff b'out.txt\x00\xed\x97\xd9'
+b'0 1 4 9 16' b' 25 36 49 '
+EOFError Compressed file ended before the end-of-stream marker was reached
+feff0200fdffffff03000000fcffffffffffffff0400000000000000
+3fc00000c002000000000000017868656c6c6f026162
+(0, 1, 2, 1541, 2055)
+16 13 12
+8 (1, 2, 3) [(1,), (2,)]
+struct.error: 'B' format requires 0 <= number <= 255
+struct.error: 'h' format requires -32768 <= number <= 32767
+struct.error: 'I' format requires 0 <= number <= 4294967295
+struct.error: unpack requires a buffer of 4 bytes
+--- stderr

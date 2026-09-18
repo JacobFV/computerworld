@@ -89,6 +89,8 @@ pub(crate) const BUILTINS: &[&str] = &[
     "getopts",
     "git",
     "grep",
+    "gunzip",
+    "gzip",
     "head",
     "hostname",
     "ip",
@@ -136,6 +138,7 @@ pub(crate) const BUILTINS: &[&str] = &[
     "wget",
     "which",
     "whoami",
+    "zcat",
 ];
 #[derive(Clone, Debug)]
 enum Token {
@@ -2252,6 +2255,7 @@ fn shell_builtin(
         "getopts" => Some(builtin_getopts(c, args, ctx)),
         "source" | "." => Some(builtin_source(c, args, ctx, t, host, depth)),
         "sqlite3" => Some(crate::sqlite::execute(c, args, input, t)),
+        "gzip" | "gunzip" | "zcat" => Some(crate::gzipcmd::execute(c, args, input, t)),
         _ => None,
     }
 }

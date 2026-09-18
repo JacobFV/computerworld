@@ -8,4 +8,5 @@ description = "A deterministic Python 3 interpreter for simulated computers: byt
 [dependencies]
 cw-script-host = { path = "../script-host" }
 cw-regex = { path = "../regex" }
+cw-zlib = { path = "../zlib" }
 sha2.workspace = true

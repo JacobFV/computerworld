@@ -1,0 +1,34 @@
+--- exit: 0
+--- stdout
+-1 1821 789ced97dbb1 3063374548
+0 11638 7801016b2d94 53879229
+1 1836 7801ed9ac991 3162255635
+6 1821 789ced97dbb1 3063374548
+9 1821 78daed97dbb1 1853019755
+wb 9 GJULyUhVKCzNTM5WSCrKL89TSMuvUMgqzS0oVsgv
+wb 12 SIkLyUhVKCzNTM5WSCrKL89TSMuvUMgqzS0oVsgv
+wb 15 eJwLyUhVKCzNTM5WSCrKL89TSMuvUMgqzS0oVsgv
+strategy 1 789cedd7bb95c3300c44d1565e09f80fd07f631b
+strategy 2 780105c1090100300803312b276194a7e0dfd892
+strategy 3 780105c1090100300803312b276194a7e0dfd892
+strategy 4 7801335030543051b05430345330325530365330
+63 1f8b08000000000000030bc94855282ccd4cce56
+1f8b0800000000000203
+true
+true 1800
+one two
+1800
+52 true
+Error incorrect header check Z_DATA_ERROR -3
+Error unexpected end of file Z_BUF_ERROR -5
+Missing dictionary Z_NEED_DICT 2
+TypeError ERR_INVALID_ARG_TYPE The "buffer" argument must be of type string or an instance of Buffer, TypedArray, DataView, or ArrayBuffer. Received type number (42)
+RangeError ERR_OUT_OF_RANGE The value of "options.level" is out of range. It must be >= -1 and <= 9. Received 12
+907060870 2287455571 1
+true 1b0a00f8a541c2c4c6440901800d
+inflate cb incorrect header check
+gzip cb null 1833
+gzip stream [ 10, 1823 ]
+promisified 69
+inflate stream true
+--- stderr

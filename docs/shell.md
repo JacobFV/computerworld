@@ -129,6 +129,7 @@ every replay.
 | `ln` | `-s` | `-f` `-r` | modelled |
 | `stat` | `-c FMT` / `--format=` / `--printf=`, `-L`; `%n %N %s %b %B %o %f %a %A %F %U %G %u %g %i %h %m %d %X %Y %Z %x %y %z %%` | `-f` `-t` `--cached`, any other conversion | modelled; see *Stat fidelity* below |
 | `find` | `-name -iname -type f\|d -maxdepth` | every other predicate, refused by name | modelled |
+| `gzip` / `gunzip` / `zcat` | `FILE…`, `-d` (`--decompress`), `-c` with `-d` (text to stdout), `-k -f -v -l -t -q`, `-1`…`-9` (`--fast`, `--best`) | compressing to standard output or from standard input (the shell's pipes carry text, not bytes) | modelled with `cw-zlib`: files compressed in place to `NAME.gz` with GNU gzip's header (original name, modification time, OS 3), concatenated members decompressed; the deflate stream is zlib's at the chosen level (GNU gzip's own deflate is not reproduced byte for byte) |
 | `grep` / `select-string` | `-i -v -n -c -l -L -F -E -q -s -h -H -w -x -r -R -e -o -A N -B N -C N`, long forms | `--include` `-P` `-m` | modelled; `0` matched, `1` did not. Context lines are prefixed with `-` where a matching line uses `:`, and `--` separates non-adjacent groups |
 | `sed` | `-n -i -e`; addresses `N`, `$`, `/RE/` and any pair of them; commands `s/RE/REP/[g]`, `p`, `d`, `a TEXT`, `i TEXT`, `y/SET/SET/`, `q [CODE]` | `-r` `-E`, multiple `-e`, `b` `t` `n` `N` `w` `r`, the hold space, backreference addresses | modelled; a range opens on its first address and closes on the next line the second matches. `q CODE` becomes the exit status, and text after `a\\` keeps its leading blanks |
 | `tr` | `-d`, ranges `a-z` | `-s` `-c` | modelled, stdin only |
@@ -257,7 +258,7 @@ callback and promise APIs), `fs/promises`, `path`, `os`, `events`, `util`, `asse
 (`assert/strict`), `readline` (`readline/promises`), `url`, `querystring`,
 `string_decoder`, `stream` (a subset), `buffer`, `crypto` (hashes, HMAC, random),
 `timers`, `timers/promises`, `perf_hooks`, `process`, `child_process`, `http`,
-`https`, `net`, `dns` (`dns/promises`). Globals include `Buffer`, `URL`,
+`https`, `net`, `dns` (`dns/promises`), `zlib`. Globals include `Buffer`, `URL`,
 `URLSearchParams`, `TextEncoder`, `TextDecoder`, `AbortController`, `structuredClone`,
 `atob`/`btoa`, `queueMicrotask`, a `crypto` object, and `fetch` with `Headers`,
 `Request`, `Response`, `FormData`, `Blob`, `File` and a minimal `ReadableStream`.
@@ -316,9 +317,32 @@ an inherited stream lands where CPython's would: after the parent's already-flus
 output (standard output to a pipe is block-buffered, as in CPython), so
 `print('a'); os.system('echo b')` prints `b` first unless the parent flushed.
 
+### Compression
+
+`cw-zlib` is a port of zlib 1.3.1's deflate, so compressed bytes are the real
+library's, byte for byte, at every level, window size, memory level and strategy.
+Node ships Chromium's fork of zlib, whose string hashing differs, and CPython links
+the system zlib; the port reproduces both, so `zlib.deflateSync` in the simulated
+`node` and `zlib.compress` in the simulated `python3` agree with the real programs
+(and with each other's decompressors). `crates/zlib/tests/vectors.json` holds the
+hashes of 434 outputs recorded from CPython 3.12 and Node 24.21 for that check.
+
+* **Python**: `zlib` (`compress`, `decompress`, `compressobj`/`decompressobj` with
+  flush modes, dictionaries, `unused_data`/`unconsumed_tail`, `crc32`, `adler32`),
+  `gzip` (`compress`, `decompress`, `open`, `GzipFile`) and `struct`.
+* **Node**: `zlib` — `deflate`/`inflate`/`gzip`/`gunzip`/`unzip`/`deflateRaw`/
+  `inflateRaw` and brotli, in sync, callback and stream forms, with `crc32`,
+  `constants` and the option checks. Asynchronous results arrive as I/O
+  completions after simulated work proportional to the bytes handled, so several
+  jobs complete in the order their sizes imply.
+* **Brotli** is the `brotli` crate (a port of Google's encoder and decoder); its
+  compressed output is not promised to match the C library bit for bit, though it
+  does for the recorded cases, and anything it produces or accepts is valid brotli.
+* Python's `bz2` and `lzma` are not implemented.
+
 Known gaps shared by both: no threads and no native extensions. `node` does not
 implement `Intl` beyond `en-US` date and number formatting,
-`Atomics`/`SharedArrayBuffer`, `zlib`/`worker_threads`, or the REPL. Strings that
+`Atomics`/`SharedArrayBuffer`, `worker_threads`, or the REPL. Strings that
 contain unpaired UTF-16 surrogates are carried as the
 replacement character. Event-loop orderings that depend on real wall-clock jitter in
 Node (for example `setTimeout(f, 0)` against `setImmediate(g)` from the main module)
