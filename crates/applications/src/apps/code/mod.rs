@@ -1735,7 +1735,8 @@ impl Workbench {
             }
             "git.init" => folder && self.scm.repo == Some(false),
             "git.refresh" => folder,
-            "git.stageAll" => repo && !self.scm.changes.is_empty(),
+            "git.stageAll" | "git.cleanAll" => repo && !self.scm.changes.is_empty(),
+            "git.unstageAll" => repo && !self.scm.staged.is_empty(),
             "git.commit" => repo && (!self.scm.staged.is_empty() || !self.scm.changes.is_empty()),
             "git.checkout" => repo,
             _ => true,
@@ -1751,7 +1752,8 @@ impl Workbench {
             }
             "renameFile" | "deleteFile" => "Select a file in the Explorer first",
             "git.init" => "The folder already has a repository, or no folder is open",
-            "git.stageAll" | "git.commit" => "There are no changes",
+            "git.stageAll" | "git.commit" | "git.cleanAll" => "There are no changes",
+            "git.unstageAll" => "Nothing is staged",
             "git.checkout" | "git.refresh" => "No repository is open",
             "workbench.action.terminal.new" => "The terminal limit is reached",
             "workbench.action.terminal.kill" | "workbench.action.terminal.clear" => {
@@ -2174,6 +2176,22 @@ impl Workbench {
             "git.init" => self.git_command(window, "init", "git init".into()),
             "git.refresh" => self.git_command(window, "status", "git status".into()),
             "git.stageAll" => self.git_command(window, "add", "git add -A".into()),
+            "git.unstageAll" => self.git_command(window, "reset", "git reset".into()),
+            "git.cleanAll" => {
+                let count = self.scm.changes.len();
+                self.dialog = Some(Dialog {
+                    message: format!(
+                        "Are you sure you want to discard ALL changes in {count} file{}?",
+                        if count == 1 { "" } else { "s" }
+                    ),
+                    detail: "This is IRREVERSIBLE! Your current working set will be FOREVER LOST if you proceed.".into(),
+                    buttons: vec![
+                        ("Discard All Changes".into(), "discard-all".into()),
+                        ("Cancel".into(), "cancel".into()),
+                    ],
+                });
+                Ok(vec![])
+            }
             "git.commit" => {
                 let message = self.scm.message.trim().to_owned();
                 if message.is_empty() {
@@ -2258,6 +2276,58 @@ impl Workbench {
                 if self.scm.repo == Some(true) {
                     effects.push(self.git(window, "status", "git status"));
                 }
+                Ok(effects)
+            }
+            // Discard: the file comes back from the index, or, untracked, goes away.
+            "discard" => {
+                let ps = self.powershell();
+                self.git_command(window, "restore", format!("git restore {}", quote(arg, ps)))
+            }
+            "discard-new" => {
+                let abs = self.abs(arg);
+                let prefix = format!("{abs}/");
+                while let Some(i) = self.tabs.iter().position(|t| {
+                    t.kind == TabKind::File && (t.path == abs || t.path.starts_with(&prefix))
+                }) {
+                    self.close_tab(i, true)?;
+                }
+                let mut effects = vec![AppEffect::TrashPath {
+                    window,
+                    path: abs,
+                    trash: self.trash.clone(),
+                }];
+                effects.extend(self.relist(window));
+                effects.push(self.git(window, "status", "git status"));
+                Ok(effects)
+            }
+            "discard-all" => {
+                // Tracked files come back from the index; untracked ones are removed.
+                let ps = self.powershell();
+                let mut effects = vec![];
+                let untracked: Vec<String> = self
+                    .scm
+                    .changes
+                    .iter()
+                    .filter(|(state, _)| *state == 'U')
+                    .map(|(_, path)| path.clone())
+                    .collect();
+                if self.scm.changes.iter().any(|(state, _)| *state != 'U') {
+                    effects.extend(self.git_command(
+                        window,
+                        "restore",
+                        "git restore .".to_string(),
+                    )?);
+                }
+                for path in untracked {
+                    effects.push(AppEffect::TrashPath {
+                        window,
+                        path: self.abs(&path),
+                        trash: self.trash.clone(),
+                    });
+                }
+                let _ = ps;
+                effects.extend(self.relist(window));
+                effects.push(self.git(window, "status", "git status"));
                 Ok(effects)
             }
             "commit-all" => {
@@ -3428,6 +3498,43 @@ impl Workbench {
             "scm-stage" => {
                 let ps = self.powershell();
                 self.git_command(window, "add", format!("git add {}", quote(arg, ps)))
+            }
+            "scm-unstage" => {
+                let ps = self.powershell();
+                self.git_command(
+                    window,
+                    "reset",
+                    format!("git restore --staged {}", quote(arg, ps)),
+                )
+            }
+            // Discarding is destructive, so it asks first, exactly as VS Code does.
+            "scm-discard" => {
+                let untracked = self
+                    .scm
+                    .changes
+                    .iter()
+                    .any(|(state, path)| path == arg && *state == 'U');
+                let name = basename(arg).to_owned();
+                self.dialog = Some(if untracked {
+                    Dialog {
+                        message: format!("Are you sure you want to delete {name}?"),
+                        detail: "This file is not tracked by Git; it is moved to the trash.".into(),
+                        buttons: vec![
+                            ("Delete file".into(), format!("discard-new:{arg}")),
+                            ("Cancel".into(), "cancel".into()),
+                        ],
+                    }
+                } else {
+                    Dialog {
+                        message: format!("Are you sure you want to discard changes in {name}?"),
+                        detail: "This is IRREVERSIBLE! Your current working set will be FOREVER LOST if you proceed.".into(),
+                        buttons: vec![
+                            ("Discard Changes".into(), format!("discard:{arg}")),
+                            ("Cancel".into(), "cancel".into()),
+                        ],
+                    }
+                });
+                Ok(vec![])
             }
             "scm-open" => {
                 let abs = self.abs(arg);

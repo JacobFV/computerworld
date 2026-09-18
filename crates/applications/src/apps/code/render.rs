@@ -1099,7 +1099,27 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                     13,
                     pal.fg,
                 );
-                if !staged {
+                // The group's own buttons: discard or stage everything, or unstage it.
+                if staged {
+                    let b = Rect::new(r.x + r.width as i32 - 58, y, 22, 22);
+                    p.symbol("minus", b.x + 4, b.y + 4, 14, pal.fg);
+                    icon_button(
+                        p,
+                        b,
+                        "code:cmd:git.unstageAll",
+                        "Unstage All Changes",
+                        app.enabled("git.unstageAll"),
+                    );
+                } else {
+                    let b = Rect::new(r.x + r.width as i32 - 82, y, 22, 22);
+                    p.symbol("undo", b.x + 4, b.y + 4, 14, pal.fg);
+                    icon_button(
+                        p,
+                        b,
+                        "code:cmd:git.cleanAll",
+                        "Discard All Changes",
+                        app.enabled("git.cleanAll"),
+                    );
                     let b = Rect::new(r.x + r.width as i32 - 58, y, 22, 22);
                     p.symbol("plus", b.x + 4, b.y + 4, 14, pal.fg);
                     icon_button(
@@ -1137,7 +1157,7 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                     let row = Rect::new(
                         r.x,
                         y,
-                        r.width.saturating_sub(if staged { 0 } else { 50 }),
+                        r.width.saturating_sub(if staged { 50 } else { 74 }),
                         ROW,
                     );
                     let nw = label(
@@ -1172,7 +1192,15 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                     } else {
                         p.region(row, &format!("code:scm-open:{path}"), name);
                     }
-                    if !staged {
+                    // Row buttons: unstage a staged change, or discard and stage one.
+                    if staged {
+                        let b = Rect::new(r.x + r.width as i32 - 44, y, 22, 22);
+                        p.symbol("minus", b.x + 4, b.y + 4, 14, pal.fg);
+                        p.region(b, &format!("code:scm-unstage:{path}"), "Unstage Changes");
+                    } else {
+                        let b = Rect::new(r.x + r.width as i32 - 68, y, 22, 22);
+                        p.symbol("undo", b.x + 4, b.y + 4, 14, pal.fg);
+                        p.region(b, &format!("code:scm-discard:{path}"), "Discard Changes");
                         let b = Rect::new(r.x + r.width as i32 - 44, y, 22, 22);
                         p.symbol("plus", b.x + 4, b.y + 4, 14, pal.fg);
                         p.region(b, &format!("code:scm-stage:{path}"), "Stage Changes");

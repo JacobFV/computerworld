@@ -515,6 +515,92 @@ fn source_control_initialises_stages_and_commits_with_the_machines_git() {
 }
 
 #[test]
+fn source_control_unstages_and_discards_through_the_machines_git() {
+    let mut d = Desk::new("carol-ubuntu", "carol");
+    d.launch();
+    d.click("code:activity:scm");
+    d.click("code:cmd:git.init");
+    d.click("code:cmd:git.stageAll");
+    d.click("code:scm-message");
+    d.typed("First");
+    d.key("Ctrl+Enter");
+    assert_eq!(d.code()["scm"]["changes"].as_array().unwrap().len(), 0);
+    // Change one file and add another, then stage both.
+    d.act(
+        "filesystem.v1",
+        "write",
+        json!({"path": "/home/carol/project/README.md",
+                                           "content": "# Project\n\nchanged\n"}),
+    );
+    d.act(
+        "filesystem.v1",
+        "write",
+        json!({"path": "/home/carol/project/NOTES.md",
+                                           "content": "notes\n"}),
+    );
+    d.click("code:cmd:git.refresh");
+    d.click("code:cmd:git.stageAll");
+    let code = d.code();
+    assert_eq!(
+        code["scm"]["staged"].as_array().unwrap().len(),
+        2,
+        "{}",
+        code["scm"]
+    );
+    // Unstage one: it goes back to Changes, and the file keeps its new text.
+    d.click("code:scm-unstage:README.md");
+    let code = d.code();
+    let staged: Vec<String> = code["scm"]["staged"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c[1].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(staged, ["NOTES.md"]);
+    assert!(code["scm"]["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c[0] == "M" && c[1] == "README.md"));
+    assert!(d.file("/home/carol/project/README.md").contains("changed"));
+    // Unstage the rest, then discard the change: the machine's file comes back.
+    d.click("code:cmd:git.unstageAll");
+    assert_eq!(d.code()["scm"]["staged"].as_array().unwrap().len(), 0);
+    d.click("code:scm-discard:README.md");
+    assert!(!d.code()["dialog"].is_null(), "discarding asks first");
+    d.click("code:dialog:1");
+    assert!(
+        d.file("/home/carol/project/README.md").contains("changed"),
+        "Cancel kept it"
+    );
+    d.click("code:scm-discard:README.md");
+    d.click("code:dialog:0");
+    assert_eq!(
+        d.file("/home/carol/project/README.md"),
+        "# Project\n\nTODO: write docs\n"
+    );
+    // An untracked file is deleted instead, and says so before it is.
+    d.click("code:scm-discard:NOTES.md");
+    let dialog = d.code()["dialog"].clone();
+    assert!(
+        dialog["message"]
+            .as_str()
+            .unwrap()
+            .contains("delete NOTES.md"),
+        "{dialog}"
+    );
+    d.click("code:dialog:0");
+    assert!(d
+        .try_act(
+            "filesystem.v1",
+            "read",
+            json!({"path": "/home/carol/project/NOTES.md"})
+        )
+        .is_err());
+    assert_eq!(d.code()["scm"]["changes"].as_array().unwrap().len(), 0);
+}
+
+#[test]
 fn settings_persist_to_the_users_settings_json() {
     let mut d = Desk::new("carol-ubuntu", "carol");
     d.launch();

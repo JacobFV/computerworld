@@ -81,6 +81,8 @@ commands! {
     ("git.init", "Git: Initialize Repository", "Initialize Repository", ""),
     ("git.refresh", "Git: Refresh", "Refresh", ""),
     ("git.stageAll", "Git: Stage All Changes", "Stage All Changes", ""),
+    ("git.unstageAll", "Git: Unstage All Changes", "Unstage All Changes", ""),
+    ("git.cleanAll", "Git: Discard All Changes", "Discard All Changes", ""),
     ("git.commit", "Git: Commit", "Commit", "Ctrl+Enter"),
     ("git.checkout", "Git: Checkout to...", "Checkout to...", ""),
     ("workbench.action.showAboutDialog", "Help: About", "About", ""),
