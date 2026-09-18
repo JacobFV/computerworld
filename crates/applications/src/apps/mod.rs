@@ -13,6 +13,7 @@ pub mod chat;
 pub mod clock;
 pub mod code;
 pub mod contacts;
+pub mod database;
 pub mod docs;
 pub mod imaging;
 pub mod mail;
@@ -21,6 +22,7 @@ pub mod music;
 pub mod notes;
 pub mod photos;
 pub mod settings;
+pub mod sheet;
 pub mod weather;
 
 /// What an application may read about the machine while it draws itself. Time and the
@@ -250,6 +252,9 @@ macro_rules! native_apps {
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
                     Self::Code(a) => a.activate(window, target, clock_us),
+                    Self::Spreadsheet(a) => a.activate(window, target, clock_us),
+                    Self::Excel(a) => a.activate(window, target, clock_us),
+                    Self::Database(a) => a.activate(window, target, clock_us),
                     other => other.click(window, target, clock_us),
                 }
             }
@@ -264,6 +269,9 @@ macro_rules! native_apps {
             pub fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
                 match self {
                     Self::Code(a) => a.paste(window, text),
+                    Self::Spreadsheet(a) => a.paste(text).map(|()| vec![]),
+                    Self::Excel(a) => a.paste(text).map(|()| vec![]),
+                    Self::Database(a) => a.0.paste(text).map(|()| vec![]),
                     other => other.text(text).map(|()| vec![]),
                 }
             }
@@ -332,6 +340,9 @@ native_apps! {
     Gimp => imaging,
     Pinta => imaging,
     Sketchbook => imaging,
+    Spreadsheet => sheet,
+    Excel => sheet,
+    Database => database,
 }
 
 /// Hooks only image applications have: drag surfaces, rasterised text, finished saves
@@ -366,12 +377,63 @@ impl NativeApp {
     pub fn accepts_text(&self) -> bool {
         match self {
             Self::Photos(a) => a.editing.as_ref().is_some_and(|e| e.accepts_text()),
+            Self::Spreadsheet(a) => a.accepts_text(),
+            Self::Excel(a) => a.accepts_text(),
+            Self::Database(a) => a.0.accepts_text(),
             other => other.studio().is_none_or(|s| s.accepts_text()),
         }
     }
     /// Whether `target` follows a pointer drag (a canvas, a slider).
     pub fn drags(&self, target: &str) -> bool {
-        self.studio().is_some_and(|s| s.drags(target))
+        match self {
+            Self::Spreadsheet(_) | Self::Excel(_) => sheet::Book::drags(target),
+            _ => self.studio().is_some_and(|s| s.drags(target)),
+        }
+    }
+    fn book_mut(&mut self) -> Option<&mut sheet::Book> {
+        match self {
+            Self::Spreadsheet(a) => Some(&mut a.0),
+            Self::Excel(a) => Some(&mut a.0),
+            _ => None,
+        }
+    }
+    /// Applications that work on documents and open on the user's Documents folder
+    /// when launched on nothing.
+    pub fn opens_documents(kind: &str) -> bool {
+        kind == sheet::Spreadsheet::KIND
+            || kind == sheet::Excel::KIND
+            || kind == database::Database::KIND
+    }
+    /// A file's bytes (or why they could not be read) for an application that asked.
+    pub fn bytes(
+        &mut self,
+        _window: u64,
+        path: &str,
+        result: Result<Vec<u8>, String>,
+        clock_us: u64,
+    ) -> Result<Vec<AppEffect>, String> {
+        if let Self::Database(a) = self {
+            a.0.bytes(path, result, clock_us);
+            return Ok(vec![]);
+        }
+        let book = self.book_mut().ok_or("this application reads no files")?;
+        book.bytes(path, result, clock_us);
+        Ok(vec![])
+    }
+    /// A file this application wrote was saved, or could not be.
+    pub fn bytes_saved(
+        &mut self,
+        _window: u64,
+        path: &str,
+        result: Result<(), String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        if let Self::Database(a) = self {
+            a.0.saved(path, result);
+            return Ok(vec![]);
+        }
+        let book = self.book_mut().ok_or("this application writes no files")?;
+        book.saved(path, result);
+        Ok(vec![])
     }
     /// A pointer press, move or release on a drag surface, relative to its top-left.
     pub fn pointer(
@@ -383,6 +445,9 @@ impl NativeApp {
         y: i32,
         _clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        if let Some(book) = self.book_mut() {
+            return book.pointer(target, phase, x, y);
+        }
         let studio = self
             .studio_mut()
             .ok_or("this application has no drag surfaces")?;
@@ -395,6 +460,14 @@ impl NativeApp {
     }
     /// A folder listing an image editor's file sheet asked for.
     pub fn listed(&mut self, entries: Vec<String>) -> Result<(), String> {
+        if let Some(book) = self.book_mut() {
+            book.listed(entries);
+            return Ok(());
+        }
+        if let Self::Database(a) = self {
+            a.0.listed(entries);
+            return Ok(());
+        }
         let studio = self.studio_mut().ok_or("window is not a file manager")?;
         studio.listed(entries);
         Ok(())

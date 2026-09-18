@@ -142,6 +142,8 @@ dependencies = [
  "cw-scene",
  "cw-sdk",
  "cw-services",
+ "cw-sheet",
+ "cw-sql",
  "jpeg-decoder",
  "png",
  "proptest",
@@ -191,10 +193,13 @@ dependencies = [
 name = "cw-applications"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-determinism",
  "cw-protocol",
  "cw-raster",
  "cw-scene",
  "cw-sdk",
+ "cw-sheet",
+ "cw-sql",
  "regex",
  "serde",
  "serde_json",

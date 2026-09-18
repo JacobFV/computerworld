@@ -34,13 +34,24 @@ const APPS: [&str; 22] = [
     "code",
 ];
 /// Applications only one platform ships: each has artwork in that platform's set.
-const PLATFORM_APPS: [(&str, &str); 6] = [
+const PLATFORM_APPS: [(&str, &str); 15] = [
     ("windows", "paint"),
     ("macos", "preview"),
     ("macos", "pixelmator"),
     ("ubuntu", "gimp"),
     ("ubuntu", "pinta"),
     ("android", "sketchbook"),
+    // Each platform's own spreadsheet: Excel, Numbers, LibreOffice Calc, Sheets.
+    ("windows", "spreadsheet"),
+    ("macos", "spreadsheet"),
+    ("ubuntu", "spreadsheet"),
+    ("ios", "spreadsheet"),
+    ("android", "spreadsheet"),
+    ("macos", "excel"),
+    // SQLite clients on the desktops: DB Browser for SQLite and TablePlus.
+    ("windows", "database"),
+    ("ubuntu", "database"),
+    ("macos", "database"),
 ];
 /// Spellings kept resolvable for existing call sites, and what they resolve to.
 const ALIASES: [(&str, &str); 6] = [

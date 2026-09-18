@@ -667,6 +667,16 @@ fn actor_error(e: SimError) -> SimError {
         },
     )
 }
+/// Why a document could not be read or written, in the words a dialog uses. Only the
+/// kind of failure is shown, never the kernel's own message.
+fn file_problem(e: SimError) -> String {
+    match e.code.as_str() {
+        "denied" => "you don't have permission".into(),
+        "not_found" => "the file or its folder does not exist".into(),
+        "quota" | "no_space" => "there is not enough space".into(),
+        _ => "the file could not be accessed".into(),
+    }
+}
 fn string<'a>(payload: &'a Value, key: &str) -> Result<&'a str> {
     payload
         .get(key)
@@ -1333,6 +1343,8 @@ impl Environment {
                 if action.op == "double_click"
                     && !target.starts_with("open:")
                     && !target.starts_with("code:")
+                    && !target.starts_with("sheet:")
+                    && !target.starts_with("db:")
                 {
                     return Ok(Value::Null);
                 }
@@ -1359,12 +1371,15 @@ impl Environment {
                         {
                             if let Some(tab) = window.state.file_tab() {
                                 if let Some(entry) = tab.entries.get(index).filter(|_| opening) {
-                                    // Folders open in the same window; documents need an editor.
+                                    // Folders open in the same window; a document needs the
+                                    // application that opens its kind: workbooks the
+                                    // spreadsheet, databases the database client, the rest
+                                    // the text editor.
                                     if !entry.ends_with('/')
                                         && !self
                                             .runtime
                                             .computer(machine)?
-                                            .application_available("editor")
+                                            .application_available(cw_applications::opener(entry))
                                     {
                                         return Err(SimError::not_found(
                                             "application is not installed",
@@ -1375,7 +1390,10 @@ impl Environment {
                         }
                     }
                     let desktop = &mut self.machine_mut(id, machine)?.desktop;
-                    let effects = if opening {
+                    // A tap on a spreadsheet or database grid selects, as a click does;
+                    // editing takes a second tap (a double click), as on the phones' own.
+                    let grid = target.starts_with("sheet:") || target.starts_with("db:");
+                    let effects = if opening && !(grid && action.op != "double_click") {
                         desktop.activate(&target)
                     } else {
                         desktop.click_at(&target, x - hit.x, y - hit.y)
@@ -1925,6 +1943,33 @@ impl Environment {
                         Some("shell:launch:files".into()),
                     );
                     let _ = window;
+                }
+                ReadBytes { window, path } => {
+                    // A document the machine cannot give (missing, unreadable) is the
+                    // application's to report, not a failure of the click that asked.
+                    let result = self.runtime.read_file(machine, &path).map_err(file_problem);
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .bytes_loaded(window, &path, result)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
+                WriteBytes {
+                    window,
+                    path,
+                    bytes,
+                } => {
+                    let result = self
+                        .runtime
+                        .write_file(machine, actor, &path, &bytes)
+                        .map_err(file_problem);
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .bytes_saved(window, &path, result)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
                 }
                 ReadImage { window, path } => {
                     // A picture is only shown if the machine really holds one and this

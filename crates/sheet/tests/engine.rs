@@ -167,6 +167,10 @@ fn logic_lookup_and_reference_functions() {
     assert_eq!(eval(&mut wb, "=VLOOKUP(59,A1:B5,2,TRUE)"), "F");
     assert_eq!(eval(&mut wb, "=MATCH(72,A1:A5)"), "3");
     assert_eq!(eval(&mut wb, "=VLOOKUP(-1,A1:B5,2)"), "#N/A");
+    // Type 0 is exact whatever the order: the largest value first, not a binary search.
+    let mut wb = book(&[("A1", "5550"), ("A2", "430"), ("A3", "1469"), ("A4", "95")]);
+    assert_eq!(eval(&mut wb, "=MATCH(5550,A1:A4,0)"), "1");
+    assert_eq!(eval(&mut wb, "=MATCH(96,A1:A4,0)"), "#N/A");
 }
 
 #[test]

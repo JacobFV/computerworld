@@ -84,6 +84,34 @@ def editors():
   (OUT/f'{platform}-{name}.svg').write_text(svg)
   cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=size,output_height=size)
 
-if '--editors' not in sys.argv:
- platform_icons()
-editors()
+# Spreadsheets and database clients, each in its platform's idiom: Excel's mark (bare on
+# Windows, over a soft shadow on the Mac), Numbers' bar chart on a green tile, Sheets'
+# folded green page on Android, DB Browser for SQLite's stacked cylinder and TablePlus's
+# ruled table on an amber squircle. Original artwork (MIT), not vendor logos. Ubuntu's
+# LibreOffice Calc icon is Yaru's own and is copied, not drawn. `--office` rebuilds these.
+EXCEL_MARK='<rect x="38" y="16" width="78" height="96" rx="8" fill="#21a366"/><path d="M77 16h31a8 8 0 0 1 8 8v24H77Z" fill="#33c481"/><path d="M77 80h39v24a8 8 0 0 1-8 8H77Z" fill="#107c41"/><path d="M38 48h78M38 80h78M77 16v96" stroke="#185c37" stroke-opacity=".35" stroke-width="2"/><rect x="12" y="36" width="56" height="56" rx="7" fill="#107c41"/><rect x="12" y="36" width="56" height="56" rx="7" fill="none" stroke="#0b5a2f" stroke-width="2"/><path d="m28 51 24 26m0-26-24 26" stroke="#fff" stroke-width="8" stroke-linecap="round"/>'
+NUMBERS_ART='<rect x="28" y="70" width="16" height="34" rx="3" fill="#fff"/><rect x="50" y="46" width="16" height="58" rx="3" fill="#fff"/><rect x="72" y="58" width="16" height="46" rx="3" fill="#e8f7e1"/><rect x="94" y="30" width="16" height="74" rx="3" fill="#fff"/><path d="M22 106h92" stroke="#fff" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"/>'
+CYLINDER='<path d="M26 34v60c0 9 17 16 38 16s38-7 38-16V34Z" fill="#2f78b7"/><path d="M26 54c0 9 17 16 38 16s38-7 38-16M26 74c0 9 17 16 38 16s38-7 38-16" fill="none" stroke="#9fd0f5" stroke-width="3"/><ellipse cx="64" cy="34" rx="38" ry="16" fill="#62aee8"/><ellipse cx="64" cy="34" rx="30" ry="11" fill="#9fd0f5"/><rect x="70" y="72" width="44" height="40" rx="4" fill="#fff" stroke="#23557f" stroke-width="3"/><path d="M70 85h44M70 98h44M85 72v40M100 72v40" stroke="#23557f" stroke-width="2"/><path d="M70 72h44v13H70Z" fill="#cfe6f8"/>'
+OFFICE={
+ ('windows','spreadsheet',128):EXCEL_MARK,
+ ('macos','excel',128):'<g transform="translate(0 3)" opacity=".18"><rect x="38" y="16" width="78" height="96" rx="8"/><rect x="12" y="36" width="56" height="56" rx="7"/></g>'+EXCEL_MARK,
+ ('macos','spreadsheet',128):'<defs><linearGradient id="nb" x2="0" y2="1"><stop stop-color="#4fd46a"/><stop offset="1" stop-color="#1c9f3c"/></linearGradient></defs><rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="url(#nb)"/><rect x="6" y="4" width="116" height="116" rx="26" fill="none" stroke="#fff" stroke-opacity=".32"/>'+NUMBERS_ART,
+ ('ios','spreadsheet',128):'<defs><linearGradient id="nb" x2="0" y2="1"><stop stop-color="#4fd46a"/><stop offset="1" stop-color="#1c9f3c"/></linearGradient></defs><rect x="5" y="4" width="118" height="118" rx="27" fill="url(#nb)"/>'+NUMBERS_ART,
+ ('android','spreadsheet',128):'<circle cx="64" cy="64" r="60" fill="#fff"/><circle cx="64" cy="64" r="60" fill="none" stroke="#dadce0" stroke-width="2"/><path d="M38 20h38l20 20v68a4 4 0 0 1-4 4H38a4 4 0 0 1-4-4V24a4 4 0 0 1 4-4Z" fill="#0f9d58"/><path d="M76 20v16a4 4 0 0 0 4 4h16Z" fill="#87ceac"/><rect x="45" y="58" width="40" height="36" rx="2" fill="#fff"/><path d="M45 70h40M45 82h40M61 58v36" stroke="#0f9d58" stroke-width="4"/>',
+ ('windows','database',128):CYLINDER,
+ ('ubuntu','database',256):'<rect x="16" y="20" width="224" height="224" rx="48" fill="#000" opacity=".16"/><rect x="16" y="14" width="224" height="224" rx="48" fill="#eef2f6"/><rect x="16" y="14" width="224" height="112" rx="48" fill="#f7f9fb"/><g transform="translate(24 20) scale(1.62)">'+CYLINDER+'</g>',
+ ('macos','database',128):'<defs><linearGradient id="tp" x2="0" y2="1"><stop stop-color="#ffcc4d"/><stop offset="1" stop-color="#f29a1f"/></linearGradient></defs><rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="url(#tp)"/><rect x="6" y="4" width="116" height="116" rx="26" fill="none" stroke="#fff" stroke-opacity=".32"/><rect x="24" y="30" width="80" height="68" rx="8" fill="#fff"/><path d="M24 38a8 8 0 0 1 8-8h64a8 8 0 0 1 8 8v12H24Z" fill="#3b4453"/><path d="M24 66h80M24 82h80M52 50v48M78 50v48" stroke="#c9ced6" stroke-width="3"/><circle cx="34" cy="40" r="3" fill="#ff5f57"/><circle cx="43" cy="40" r="3" fill="#febc2e"/><circle cx="52" cy="40" r="3" fill="#28c840"/>',
+}
+def office():
+ for (platform,name,size),art in OFFICE.items():
+  svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 {size} {size}">{art}</svg>'
+  (OUT/f'{platform}-{name}.svg').write_text(svg)
+  cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=size,output_height=size)
+
+if '--office' in sys.argv:
+ office()
+else:
+ if '--editors' not in sys.argv:
+  platform_icons()
+ editors()
+ office()

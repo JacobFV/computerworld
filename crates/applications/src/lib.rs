@@ -229,6 +229,21 @@ pub enum AppEffect {
         size: u16,
         bold: bool,
     },
+    /// Read a file's exact bytes: a workbook or a database is binary, which `ReadFile`'s
+    /// lossy text would destroy. The bytes, or why they could not be read, go to
+    /// `DesktopState::bytes_loaded`.
+    ReadBytes {
+        window: u64,
+        path: String,
+    },
+    /// Write bytes to `path`, replacing what is there; the outcome goes to
+    /// `DesktopState::bytes_saved`, so a failed save is reported rather than assumed.
+    WriteBytes {
+        window: u64,
+        path: String,
+        #[serde(skip)]
+        bytes: Vec<u8>,
+    },
     /// Put pixels on the machine's clipboard.
     CopyImage {
         window: u64,
@@ -1295,6 +1310,19 @@ fn clamp_frame(frame: cw_scene::Rect, area: cw_scene::Rect) -> cw_scene::Rect {
     )
 }
 
+/// The application a file manager opens a document with: spreadsheets for workbooks
+/// and CSV, the database client for SQLite files, the text editor for the rest.
+pub fn opener(name: &str) -> &'static str {
+    let name = name.trim_end_matches('/');
+    if apps::sheet::opens(name) {
+        "spreadsheet"
+    } else if apps::database::opens(name) {
+        "database"
+    } else {
+        "editor"
+    }
+}
+
 impl DesktopState {
     pub fn launch(&mut self, kind: &str, argument: &str) -> Result<(u64, Vec<AppEffect>), String> {
         let id = self.next_id;
@@ -1355,6 +1383,14 @@ impl DesktopState {
             ),
             _ => {
                 let clock = self.clock_us;
+                // Documents applications open on the user's Documents folder.
+                let documents;
+                let argument = if argument.is_empty() && NativeApp::opens_documents(kind) {
+                    documents = format!("{}/Documents", self.home_folder().trim_end_matches('/'));
+                    documents.as_str()
+                } else {
+                    argument
+                };
                 let (mut app, mut effects) = NativeApp::launch(kind, argument, id, clock)
                     .ok_or_else(|| format!("unknown application: {kind}"))?;
                 // Visual Studio Code keeps its settings under the user's home and opens
@@ -1860,6 +1896,31 @@ impl DesktopState {
     pub fn image_saved(&mut self, id: u64, path: &str) -> Result<Vec<AppEffect>, String> {
         match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
             AppState::Native(app) => app.image_saved(id, path),
+            _ => Err("window is not a native application".into()),
+        }
+    }
+    /// The bytes of a file the application asked for, or why they could not be read.
+    pub fn bytes_loaded(
+        &mut self,
+        id: u64,
+        path: &str,
+        result: Result<Vec<u8>, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        let clock = self.clock_us;
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.bytes(id, path, result, clock),
+            _ => Err("window is not a native application".into()),
+        }
+    }
+    /// A `WriteBytes` finished, or failed with the reason.
+    pub fn bytes_saved(
+        &mut self,
+        id: u64,
+        path: &str,
+        result: Result<(), String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.bytes_saved(id, path, result),
             _ => Err("window is not a native application".into()),
         }
     }
@@ -3134,7 +3195,8 @@ impl DesktopState {
             self.show_folder(&target, true)
         } else {
             self.remember(&target);
-            self.launch("editor", &target).map(|(_, effects)| effects)
+            self.launch(opener(&entry), &target)
+                .map(|(_, effects)| effects)
         }
     }
     /// A single click selects, focuses and switches; it never opens anything.

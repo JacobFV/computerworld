@@ -194,6 +194,16 @@ impl Computer {
                 .write(&path, content.as_bytes(), &def.user, 0)
                 .map_err(|e| cw_protocol::SimError::invalid(e.to_string()))?;
         }
+        for (path, bytes) in def.binary_files()? {
+            let path = c.resolve(path);
+            let parent = path.rsplit_once('/').unwrap().0;
+            c.vfs
+                .mkdir_all(parent, &def.user, 0)
+                .map_err(|e| cw_protocol::SimError::invalid(e.to_string()))?;
+            c.vfs
+                .write(&path, &bytes, &def.user, 0)
+                .map_err(|e| cw_protocol::SimError::invalid(e.to_string()))?;
+        }
         for name in &def.packages {
             c.packages.register(Package {
                 name: name.clone(),

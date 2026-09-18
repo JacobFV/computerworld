@@ -141,6 +141,13 @@ impl Environment {
             (_, "gimp") => "GNU Image Manipulation Program",
             (_, "pinta") => "Pinta",
             (_, "sketchbook") => "Sketchbook",
+            (Some(DesktopTheme::Windows), "spreadsheet") => "Excel",
+            (Some(DesktopTheme::Ubuntu), "spreadsheet") => "LibreOffice Calc",
+            (Some(DesktopTheme::Android), "spreadsheet") => "Sheets",
+            (_, "spreadsheet") => "Numbers",
+            (_, "excel") => "Microsoft Excel",
+            (Some(DesktopTheme::Macos), "database") => "TablePlus",
+            (_, "database") => "DB Browser for SQLite",
             (_, other) => {
                 debug_assert!(false, "unnamed native application {other}");
                 "Application"
@@ -483,8 +490,11 @@ impl Environment {
             let page: u32 = page
                 .parse()
                 .map_err(|_| SimError::invalid("invalid home screen page"))?;
-            // Windows' Start pages its pinned apps in place: the menu stays open.
-            let start = self.desktop_theme(id, machine) == Some(DesktopTheme::Windows);
+            // Windows' Start and Ubuntu's app grid page in place: the menu stays open.
+            let start = matches!(
+                self.desktop_theme(id, machine),
+                Some(DesktopTheme::Windows | DesktopTheme::Ubuntu)
+            );
             let desktop = &mut self.machine_mut(id, machine)?.desktop;
             desktop.home_page = page;
             if !start {

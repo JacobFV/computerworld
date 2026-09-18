@@ -18,16 +18,18 @@ const LIGHT: Color = Color::rgb(246, 246, 246);
 /// Width of the Files sidebar; shared with the Files client area.
 pub const FILES_SIDEBAR: u32 = 180;
 /// Every application this shell can present, in Activities grid order.
-const APPS: [(&str, &str); 20] = [
+const APPS: [(&str, &str); 22] = [
     ("browser", "Firefox"),
     ("files", "Files"),
     ("terminal", "Terminal"),
     ("editor", "Text Editor"),
     ("code", "Visual Studio Code"),
+    ("database", "DB Browser for SQLite"),
     ("mail", "Thunderbird Mail"),
     ("calendar", "Calendar"),
     ("chat", "Chat"),
     ("docs", "LibreOffice Writer"),
+    ("spreadsheet", "LibreOffice Calc"),
     ("notes", "Notes"),
     ("contacts", "Contacts"),
     ("photos", "Image Viewer"),
@@ -424,7 +426,7 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
     let cell = ((width - 68 - 100) / columns).min(160);
     let start = centre - columns * cell / 2;
     let query = ctx.search.to_lowercase();
-    for (i, (kind, name)) in APPS
+    let shown: Vec<&(&str, &str)> = APPS
         .iter()
         .filter(|(kind, name)| {
             ctx.installed(kind)
@@ -432,14 +434,22 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
                     || name.to_lowercase().contains(&query)
                     || kind.contains(&query))
         })
+        .collect();
+    // GNOME pages the app grid: as many rows as fit above the workspace switcher, and
+    // dots under the grid for the pages beyond. The page shown is clamped to the pages
+    // there are, so a search that shrinks the grid never lands on an empty page.
+    let rows = ((height - 96 - 110 - (top + 20)) / 140 + 1).max(1);
+    let per_page = (columns * rows) as usize;
+    let pages = shown.len().div_ceil(per_page).max(1);
+    let page = (ctx.home_page as usize).min(pages - 1);
+    for (i, (kind, name)) in shown
+        .iter()
+        .skip(page * per_page)
+        .take(per_page)
         .enumerate()
     {
         let x = start + (i as i32 % columns) * cell;
         let y = top + 20 + (i as i32 / columns) * 140;
-        // Leave the foot of the overview to the workspace switcher.
-        if y + 110 > height - 96 {
-            break;
-        }
         let tile = Rect::new(x + 6, y - 10, cell as u32 - 12, 124);
         if ctx.hovered(tile) {
             p.box_(tile, Color(255, 255, 255, 28), 16);
@@ -464,8 +474,32 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
             Align::Center,
         );
     }
-    // The grid never paginates, so it carries no page indicator. What the foot of the
-    // overview does carry is GNOME's workspace switcher, and those desktops are real.
+    if pages > 1 {
+        let dots_y = top + 20 + rows * 140 - 16;
+        let left = centre - pages as i32 * 10;
+        for i in 0..pages {
+            let dot = Rect::new(left + i as i32 * 20, dots_y, 20, 20);
+            p.button(
+                dot,
+                Color::TRANSPARENT,
+                10,
+                &format!("shell:home-page:{i}"),
+                &format!("Page {} of {pages}", i + 1),
+            );
+            p.circle(
+                dot.x + 10,
+                dot.y + 10,
+                if i == page { 5 } else { 4 },
+                if i == page {
+                    Color::WHITE
+                } else {
+                    Color(255, 255, 255, 110)
+                },
+            );
+        }
+    }
+    // The foot of the overview carries GNOME's workspace switcher, and those desktops
+    // are real.
     if height > 400 {
         workspace_strip(p, ctx, centre, height - 60);
     }
@@ -2095,10 +2129,16 @@ mod tests {
         ctx.launcher_open = true;
         let mut p = Painter::new(1024, 768);
         chrome(&mut p, &ctx);
-        let launches = actions(&p);
+        // The grid pages; its dots reach the rest, and every page together is the grid.
+        let mut launches: Vec<String> = actions(&p).iter().map(|a| a.to_string()).collect();
+        assert!(launches.iter().any(|a| a == "shell:home-page:1"));
+        ctx.home_page = 1;
+        let mut second = Painter::new(1024, 768);
+        chrome(&mut second, &ctx);
+        launches.extend(actions(&second).iter().map(|a| a.to_string()));
         for (kind, _) in APPS {
             assert!(
-                launches.contains(&format!("shell:launch:{kind}").as_str()),
+                launches.contains(&format!("shell:launch:{kind}")),
                 "Activities hides {kind}"
             );
         }

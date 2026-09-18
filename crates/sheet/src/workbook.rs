@@ -1630,7 +1630,11 @@ impl Workbook {
         title: &str,
     ) -> Result<usize, String> {
         self.check_sheet(sheet)?;
-        let right = range.end.col + 2;
+        // Beside the data, not over it: two columns right of whatever the sheet uses.
+        let used = self
+            .used_range(sheet)
+            .map_or(range.end.col, |u| u.end.col.max(range.end.col));
+        let right = used + 2;
         self.book_edit(|wb| {
             let s = &mut wb.sheets[sheet];
             s.charts.push(Chart {

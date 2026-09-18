@@ -219,8 +219,9 @@ its own indentation is not indented again.
 `kind` accepts `text_editor` as an alias for `editor` and `file_manager` for
 `files`. Built-in window kinds are `browser`, `files`, `editor`, `terminal`, plus
 the native applications (`calendar`, `mail`, `chat`, `docs`, `notes`, `contacts`,
-`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, and the image
-editors `paint`, `preview`, `pixelmator`, `gimp`, `pinta`, `sketchbook`) listed by the
+`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, the image
+editors `paint`, `preview`, `pixelmator`, `gimp`, `pinta`, `sketchbook`, the spreadsheets
+`spreadsheet` and `excel`, and the SQLite client `database`) listed by the
 `native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also
 declare `desktop_apps` metadata aliases that launch a browser window at a fixed URL.
 Launching a kind the machine does not have installed is `not_found`.
@@ -261,6 +262,62 @@ slider takes the value under the pointer. `click` on a surface is a press and re
 at one point (a dot, a fill, a colour pick). The text tool types where it was
 clicked; `keyboard.v1 type` fills it and `Enter` stamps the glyphs, rasterised in the
 platform's font by the renderer. A drag on the canvas reports the `crosshair` cursor.
+
+#### Spreadsheet controls
+
+`spreadsheet` is each platform's own spreadsheet over one engine (`crates/sheet`):
+Excel on Windows, Numbers on macOS and iOS, LibreOffice Calc on Ubuntu and Google
+Sheets on Android; `excel` is Microsoft Excel as a second application on the Mac.
+Launched on nothing they open on `~/Documents` (Excel's Open page, Numbers' document
+browser, Calc's Start Center); launched with a `.xlsx`, `.ods` or `.csv` path they open
+that file. Files are real bytes on the machine: new workbooks save as XLSX, or ODS from
+Calc; a file keeps its own format when saved again. Every control is
+`window:<id>:content:sheet:<command>`.
+
+| Command | Effect |
+|---|---|
+| `new:<excel\|numbers\|calc\|sheets>`, `open`, `openfile:<name>`, `folder:<name\|..>`, `closelist`, `save:<product>`, `savecsv`, `savexlsx` | Files: a blank workbook, the document list, a file from it, and saving (`Ctrl+S`). `savecsv` writes the current sheet as CSV |
+| `select:<A1\|A1:B2>`, `col:<letter>`, `row:<n>`, `all`, `namebox`, `tab:<i>`, `rename[:<i>]`, `scroll:<up\|down\|pageup\|pagedown\|left\|right>` | Selection and navigation. The Name Box takes a reference or a name (a new name is defined for the selection); typing renames a tab |
+| `edit[:bar]`, `enter`, `cancel`, `insertfn:<NAME>`, `autosum` | The cell editor and formula bar. Typing over a selected cell starts editing; `Enter`/`Tab` commit (an unclosed parenthesis is closed, as Excel does); a formula that does not parse is kept open with the reason |
+| `cut`, `copy`, `paste`, `undo`, `redo`, `clear`, `clearall`, `clearformats`, `filldown`, `fillright` | Editing. Copy puts tab-separated text on the machine clipboard; pasting it back keeps formulas and formats, with references adjusted |
+| `bold`, `italic`, `underline`, `align:<left\|center\|right>`, `fmt:<general\|number\|currency\|accounting\|percent\|comma\|date\|longdate\|time\|scientific\|text>`, `dec:<more\|less>`, `fill:<rrggbb\|none>`, `color:<rrggbb\|none>` | Formatting the selection |
+| `insert:<rows\|cols\|sheet>`, `delete:<rows\|cols\|sheet\|chart>`, `colwidth:<col>:<px>`, `autofit`, `freeze:<panes\|row\|col\|none>` | Structure. Inserting or deleting rows and columns rewrites every reference to them |
+| `sort:<asc\|desc>`, `filter`, `filterpick:<col>`, `filtertoggle:<col>:<value>` | Sort the current region by the active column (a text header row stays put); AutoFilter with a value list per column |
+| `chart:<column\|bar\|line\|pie>`, `chartsel:<i>`, `charttype:<kind>` | Charts of the selection (or the data around the active cell) |
+| `menu:<id>`, `ribbon:<tab>`, `inspector[:<pane>]`, `zoom:<in\|out\|reset\|percent>`, `gridlines`, `dismiss`, `noop` | Menus, Excel's ribbon tabs and backstage, Numbers' Format and Organize sidebar, view settings, the message dialog |
+
+**Drag surfaces.** `sheet:grid:<row height>:<scale>` is the cell area and
+`sheet:fill:<row height>:<scale>` the fill handle at the corner of the selection. A drag
+on the grid selects from the press to the release (the press stays the active cell);
+while a formula is waiting for an argument (`=SUM(`) a drag inserts the range instead. A
+drag from the fill handle fills the selection in the direction dragged furthest,
+continuing number and date series and adjusting relative references. A double click on
+the grid edits the active cell; on a phone a tap selects and a second tap (a double
+click) edits. Keys follow Excel with `Meta` as `Ctrl`: arrows (with `Shift` to extend,
+`Ctrl` to jump to the edge of the data), `Tab`, `Enter`, `F2`, `Delete`, `Backspace`,
+`PageUp`/`PageDown`, `Ctrl+Home`/`End`, `Ctrl+A`, `Ctrl+C`/`X`/`V`, `Ctrl+Z`/`Y`,
+`Ctrl+B`/`I`/`U`, `Ctrl+D`/`R`, `Alt+=` and `Ctrl+S`.
+
+#### Database controls
+
+`database` is DB Browser for SQLite on Windows and Ubuntu and TablePlus on macOS,
+over the `crates/sql` engine; phones have none. Launched with a `.db`, `.sqlite`,
+`.sqlite3` or `.db3` path it opens that SQLite file. Changes stay in the open
+connection until Write Changes (TablePlus's Commit, `Ctrl+S`) writes the whole file;
+Revert Changes returns to what the file holds. Every control is
+`window:<id>:content:db:<command>`.
+
+| Command | Effect |
+|---|---|
+| `new`, `open`, `openfile:<name>`, `folder:<name\|..>`, `cancel`, `write`, `revert`, `close`, `savechanges`, `discard`, `import`, `exportcsv` | Files. `new` creates `Untitled.db` in the folder at once; `import` makes a table from a CSV file (typed INTEGER, REAL or TEXT by its values); `exportcsv` writes the browsed table as `<table>.csv`; closing with unwritten changes asks first |
+| `tab:<structure\|browse\|pragmas\|execute>`, `menu:<file\|edit\|view\|tools\|tables>`, `dismiss`, `noop` | DB Browser's four tabs and menus; TablePlus's Data and Structure views |
+| `expand:<node>`, `tree:<table:NAME\|index:NAME\|view:NAME>`, `droptable[:<name>]`, `yes`, `no` | The Database Structure tree; Delete Table asks before it drops |
+| `table:<name>`, `cell:<row>:<col>`, `editcell[:<row>:<col>]`, `setnull`, `newrow`, `deleterow`, `sort:<col>`, `filter:<col>`, `clearfilters`, `refresh`, `page:<first\|prev\|next\|last>` | Browse Data. An edited cell is an `UPDATE … WHERE rowid = ?`, so the column's type affinity and the table's constraints decide what is stored (a refused edit is reported). A filter is `LIKE %text%`, or a comparison when it starts with `=`, `<`, `>`, `<=`, `>=`, `<>` or `!=`. Views are read-only |
+| `sql[:start]`, `run`, `runline`, `clearsql`, `results:<up\|down>` | Execute SQL: the editor (typing, `Enter`, arrows), Execute all (`F5`, `Ctrl+Enter`, `Ctrl+R`) and Execute current line (`Shift+F5`); the grid shows the last statement that returned rows and the message pane reports rows, changes or the error with its line |
+| `pragma:foreign_keys`, `pragma:user_version:<up\|down>`, `integrity` | Edit Pragmas and Tools › Integrity Check |
+
+A double click on a grid cell edits it; `Enter` or `Tab` commits, `Escape` cancels,
+`Delete` sets NULL. The shell's `sqlite3` works on the same files.
 
 ### `keyboard.v1`
 

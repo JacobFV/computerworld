@@ -260,10 +260,26 @@ without touching the others. The editors' tool glyphs (`pencil`, `brush`, `bucke
 are original symbols in `generate-symbols.py`, and regenerating the symbol set leaves
 every earlier PNG byte-identical.
 
+The spreadsheets and SQLite clients are each platform's own product too, so each has
+its platform's icon: `windows-spreadsheet` (Excel: a green ruled sheet behind a tile
+with a white X), `macos-excel` (the same mark over a soft shadow), `macos-spreadsheet`
+and `ios-spreadsheet` (Numbers: white bars on a green tile), `android-spreadsheet`
+(Sheets: a folded green page with a white table on the adaptive circle),
+`windows-database` and `ubuntu-database` (DB Browser for SQLite: a stacked blue
+cylinder with a small table, bare on Windows and on a Yaru-like rounded square on
+Ubuntu) and `macos-database` (TablePlus: a ruled table window on an amber squircle).
+They are original artwork under the repository MIT license, drawn in
+`generate-icons.py` (`--office` rebuilds just these), not vendor logos.
+`ubuntu-spreadsheet.png` is the exception: it is Yaru's own LibreOffice Calc icon,
+`256x256/apps/libreoffice-calc.png` from the `yaru-theme-icon` package, copied without
+modification under the Yaru terms above.
+
 Runtime identifiers: `wallpaper/{macos,windows,ubuntu,ios,android}` and
 `icon/{platform}/{files,browser,terminal,docs,mail,calendar,chat,settings,camera,photos,phone,store,launcher,trash,notes,contacts,clock,calculator,music,maps,weather,code}`,
 for all five platforms, plus `icon/windows/paint`, `icon/macos/{preview,pixelmator}`,
-`icon/ubuntu/{gimp,pinta}` and `icon/android/sketchbook`. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
+`icon/ubuntu/{gimp,pinta}` and `icon/android/sketchbook`, and
+`icon/{windows,macos,ubuntu,ios,android}/spreadsheet`, `icon/macos/excel` and
+`icon/{windows,ubuntu,macos}/database`. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
 aliases `notes`, `addressbook` aliases `contacts`, `clocks` aliases `clock` and `calc`
 aliases `calculator`; unqualified `icon/{app}` and `icon/common/{app}` use macOS
 artwork. Unknown names paint nothing and never access a host path or

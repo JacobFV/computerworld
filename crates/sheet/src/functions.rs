@@ -2138,7 +2138,8 @@ pub fn call(ev: &Eval, name: &str, args: &[Expr]) -> Operand {
             let values = vector(&a.grid(1));
             let mode = if name == "MATCH" {
                 match a.num_or(2, 1.0) {
-                    Ok(m) => m.signum() as i64,
+                    // `f64::signum` calls zero positive; MATCH type 0 is an exact match.
+                    Ok(m) => i64::from(m > 0.0) - i64::from(m < 0.0),
                     Err(k) => return e(k),
                 }
             } else {
