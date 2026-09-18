@@ -1,0 +1,11 @@
+[package]
+name = "cw-pyvm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A deterministic Python 3 interpreter for simulated computers: bytecode VM, stdlib, CPython-compatible output."
+
+[dependencies]
+cw-script-host = { path = "../script-host" }
+cw-regex = { path = "../regex" }
+sha2.workspace = true
