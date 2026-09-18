@@ -17,6 +17,7 @@ pub mod database;
 pub mod docs;
 pub mod freecad;
 pub mod imaging;
+pub mod kicad;
 pub mod mail;
 pub mod maps;
 pub mod music;
@@ -237,6 +238,7 @@ macro_rules! native_apps {
                 match self {
                     Self::Code(a) => a.click_at(window, target, dx, dy, clock_us),
                     Self::Freecad(a) => a.click_at(window, target, dx, dy, clock_us),
+                    Self::Kicad(a) => a.click_at(window, target, dx, dy, clock_us),
                     other => other.click(window, target, clock_us),
                 }
             }
@@ -261,6 +263,7 @@ macro_rules! native_apps {
                     Self::Spreadsheet(a) => a.activate(window, target, clock_us),
                     Self::Excel(a) => a.activate(window, target, clock_us),
                     Self::Database(a) => a.activate(window, target, clock_us),
+                    Self::Kicad(a) => a.activate(window, target, clock_us),
                     other => other.click(window, target, clock_us),
                 }
             }
@@ -268,6 +271,7 @@ macro_rules! native_apps {
             pub fn text_effects(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
                 match self {
                     Self::Code(a) => a.text_effects(window, text),
+                    Self::Kicad(a) => a.text_effects(window, text),
                     other => other.text(text).map(|()| vec![]),
                 }
             }
@@ -351,6 +355,7 @@ native_apps! {
     Spreadsheet => sheet,
     Excel => sheet,
     Database => database,
+    Kicad => kicad,
 }
 
 /// Hooks only image applications have: drag surfaces, rasterised text, finished saves
@@ -388,12 +393,14 @@ impl NativeApp {
             Self::Spreadsheet(a) => a.accepts_text(),
             Self::Excel(a) => a.accepts_text(),
             Self::Database(a) => a.0.accepts_text(),
+            Self::Kicad(a) => a.accepts_text(),
             other => other.studio().is_none_or(|s| s.accepts_text()),
         }
     }
     /// Whether `target` follows a pointer drag (a canvas, a slider).
     pub fn drags(&self, target: &str) -> bool {
         match self {
+            Self::Kicad(a) => a.drags(target),
             Self::Freecad(a) => a.drags(target),
             Self::Spreadsheet(_) | Self::Excel(_) => sheet::Book::drags(target),
             other => other.studio().is_some_and(|s| s.drags(target)),
@@ -480,6 +487,22 @@ impl NativeApp {
             _ => None,
         }
     }
+    /// Whether `target` wants to know where the pointer is while no button is down: a
+    /// canvas that draws the wire or track being placed under the cursor.
+    pub fn hovers(&self, target: &str) -> bool {
+        match self {
+            Self::Kicad(a) => a.drags(target),
+            _ => false,
+        }
+    }
+    /// The pointer moved over `target` with no button down, relative to its top-left.
+    /// Returns whether anything on screen changes because of it.
+    pub fn hover(&mut self, target: &str, x: i32, y: i32) -> bool {
+        match self {
+            Self::Kicad(a) => a.hover(target, x, y),
+            _ => false,
+        }
+    }
     /// A pointer press, move or release on a drag surface, relative to its top-left.
     pub fn pointer(
         &mut self,
@@ -488,13 +511,16 @@ impl NativeApp {
         phase: crate::PointerPhase,
         x: i32,
         y: i32,
-        _clock_us: u64,
+        clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
         if let Self::Freecad(a) = self {
             return a.pointer(window, target, phase, x, y);
         }
         if let Some(book) = self.book_mut() {
             return book.pointer(target, phase, x, y);
+        }
+        if let Self::Kicad(a) = self {
+            return a.pointer(window, target, phase, x, y, clock_us);
         }
         let studio = self
             .studio_mut()
@@ -518,6 +544,10 @@ impl NativeApp {
         }
         if let Self::Database(a) = self {
             a.0.listed(entries);
+            return Ok(());
+        }
+        if let Self::Kicad(a) = self {
+            a.listed(entries);
             return Ok(());
         }
         let studio = self.studio_mut().ok_or("window is not a file manager")?;
@@ -555,6 +585,82 @@ impl NativeApp {
         match self {
             Self::Music(app) => app.takes_text(),
             other => other.accepts_text(),
+        }
+    }
+}
+
+/// Hooks for applications that open several windows onto one document — KiCad's
+/// project manager, schematic, board and simulator frames share one open project, as
+/// the real program's frames share one process.
+impl NativeApp {
+    /// Windows with the same link key show one shared document.
+    pub fn link_key(&self) -> Option<&'static str> {
+        match self {
+            Self::Kicad(_) => Some("kicad"),
+            _ => None,
+        }
+    }
+    /// Counts changes to the shared document, so the newest copy wins.
+    pub fn link_revision(&self) -> u64 {
+        match self {
+            Self::Kicad(a) => a.session.revision,
+            _ => 0,
+        }
+    }
+    /// Take the shared document from a sibling window.
+    pub fn share_from(&mut self, other: &NativeApp) {
+        if let (Self::Kicad(a), Self::Kicad(b)) = (self, other) {
+            a.adopt(b);
+        }
+    }
+    /// A launch that should raise an existing window rather than open another: the
+    /// key the new window would have. KiCad opens one editor of each kind.
+    pub fn instance_key(&self) -> Option<String> {
+        match self {
+            Self::Kicad(a) => Some(a.instance_key()),
+            _ => None,
+        }
+    }
+    /// An existing window asked for again with `argument` (Update PCB from the
+    /// schematic raises the board editor with its dialog open).
+    pub fn reopen(&mut self, window: u64, argument: &str) -> Vec<AppEffect> {
+        match self {
+            Self::Kicad(a) => a.reopen(window, argument),
+            _ => vec![],
+        }
+    }
+    /// Files the application asked for with `ReadFiles`.
+    pub fn files_read(
+        &mut self,
+        window: u64,
+        tag: &str,
+        files: Vec<(String, Result<String, String>)>,
+    ) -> Result<Vec<AppEffect>, String> {
+        match self {
+            Self::Kicad(a) => Ok(a.files_read(window, tag, files)),
+            _ => Err("this application reads no files".into()),
+        }
+    }
+    /// A folder tree the application asked for with `ListTree`.
+    pub fn tree_listed(
+        &mut self,
+        window: u64,
+        path: &str,
+        result: Result<Vec<String>, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        match self {
+            Self::Kicad(a) => Ok(a.tree_listed(window, path, result)),
+            _ => Err("this application lists no folder trees".into()),
+        }
+    }
+    /// A file this application wrote reached the disk.
+    pub fn written(&mut self, path: &str) -> bool {
+        match self {
+            Self::Kicad(a) => {
+                a.written(path);
+                true
+            }
+            _ => false,
         }
     }
 }

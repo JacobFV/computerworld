@@ -254,7 +254,7 @@ under a loupe), `macos-pixelmator` (a spectrum swirl on a white squircle),
 and brush) on 256 px Yaru-like rounded squares, and `android-sketchbook` (a pencil
 swoosh on an orange disc). They are original artwork under the repository MIT
 license — renditions in the spirit of each product, not vendor logos, and the two
-Ubuntu ones are not Yaru icons. `generate-icons.py --editors` rebuilds just these six
+Ubuntu ones are not Yaru icons. `generate-icons.py --editors` rebuilds just these (and KiCad's, below)
 without touching the others. The editors' tool glyphs (`pencil`, `brush`, `bucket`,
 `eraser`, `eyedropper`, `select-rect`, `lasso`, `wand`, `crop`, `layers`, `undo`, …)
 are original symbols in `generate-symbols.py`, and regenerating the symbol set leaves
@@ -282,12 +282,18 @@ They are original artwork under the repository MIT license, drawn in
 `256x256/apps/libreoffice-calc.png` from the `yaru-theme-icon` package, copied without
 modification under the Yaru terms above.
 
+KiCad is a desktop program, so it has icons on the three desktops only:
+`macos-kicad` (on a blue squircle), `windows-kicad` (bare) and `ubuntu-kicad` (a 256 px
+Yaru-like rounded square), each a green circuit board carrying an IC with gold traces
+and plated vias. They are original artwork under the repository MIT license, not the
+KiCad project's logo, and live in the same `--editors` table of `generate-icons.py`.
+
 Runtime identifiers: `wallpaper/{macos,windows,ubuntu,ios,android}` and
 `icon/{platform}/{files,browser,terminal,docs,mail,calendar,chat,settings,camera,photos,phone,store,launcher,trash,notes,contacts,clock,calculator,music,maps,weather,code}`,
 for all five platforms, plus `icon/windows/paint`, `icon/macos/{preview,pixelmator}`,
 `icon/ubuntu/{gimp,pinta}`, `icon/android/sketchbook`, `icon/{macos,windows,ubuntu}/freecad`,
 `icon/{windows,macos,ubuntu,ios,android}/spreadsheet`, `icon/macos/excel` and
-`icon/{windows,ubuntu,macos}/database`. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
+`icon/{windows,ubuntu,macos}/database` and `icon/{macos,windows,ubuntu}/kicad`. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
 aliases `notes`, `addressbook` aliases `contacts`, `clocks` aliases `clock` and `calc`
 aliases `calculator`; unqualified `icon/{app}` and `icon/common/{app}` use macOS
 artwork. Unknown names paint nothing and never access a host path or

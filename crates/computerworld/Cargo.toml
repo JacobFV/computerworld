@@ -37,6 +37,7 @@ cw-applications = { path = "../applications" }
 cw-raster = { path = "../raster" }
 cw-sheet = { path = "../sheet" }
 cw-sql = { path = "../sql" }
+cw-eda = { path = "../eda" }
 png = "0.17"
 
 [[example]]

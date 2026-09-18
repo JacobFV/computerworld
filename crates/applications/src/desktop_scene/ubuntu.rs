@@ -18,7 +18,7 @@ const LIGHT: Color = Color::rgb(246, 246, 246);
 /// Width of the Files sidebar; shared with the Files client area.
 pub const FILES_SIDEBAR: u32 = 180;
 /// Every application this shell can present, in Activities grid order.
-const APPS: [(&str, &str); 23] = [
+const APPS: [(&str, &str); 24] = [
     ("browser", "Firefox"),
     ("files", "Files"),
     ("terminal", "Terminal"),
@@ -26,6 +26,7 @@ const APPS: [(&str, &str); 23] = [
     ("code", "Visual Studio Code"),
     ("freecad", "FreeCAD"),
     ("database", "DB Browser for SQLite"),
+    ("kicad", "KiCad"),
     ("mail", "Thunderbird Mail"),
     ("calendar", "Calendar"),
     ("chat", "Chat"),

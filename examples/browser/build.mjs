@@ -37,10 +37,13 @@ const nativeApps=[
  // Visual Studio Code edits the machine's own files and runs them in its own shell.
  {id:'code',label:'Visual Studio Code',kind:'native',url:'',icon:'code'},
  // FreeCAD models parts parametrically and reads and writes CAD files on the machine.
- {id:'freecad',label:'FreeCAD',kind:'native',url:'',icon:'freecad'}
+ {id:'freecad',label:'FreeCAD',kind:'native',url:'',icon:'freecad'},
+ // KiCad designs circuits and boards in the machine's ~/Documents/KiCad folder.
+ {id:'kicad',label:'KiCad',kind:'native',url:'',icon:'kicad'}
 ];
-// Phones have no desktop editor or CAD: Code and FreeCAD are on the three desktops only.
-const desktopOnly=new Set(['code','freecad']);
+// Phones have no desktop editor, CAD or EDA: Code, FreeCAD and KiCad are on the three
+// desktops only.
+const desktopOnly=new Set(['code','freecad','kicad']);
 const desktopProfiles=new Set(profiles.slice(0,3).map(p=>p.id));
 definition.metadata={...definition.metadata,desktop_apps:nativeApps,device_presentations:{'alice-mac':'desktop','bob-windows':'desktop','carol-ubuntu':'laptop','app-server':'server','git-server':'server','alice-phone':'phone','bob-android':'phone'}};
 for(const computer of definition.computers){

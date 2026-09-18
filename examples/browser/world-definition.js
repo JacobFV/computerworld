@@ -106,6 +106,7 @@ export default {
         "music",
         "maps",
         "weather",
+        "kicad",
         "preview",
         "pixelmator",
         "spreadsheet",
@@ -159,6 +160,7 @@ export default {
         "music",
         "maps",
         "weather",
+        "kicad",
         "paint",
         "spreadsheet",
         "database"
@@ -210,6 +212,7 @@ export default {
         "music",
         "maps",
         "weather",
+        "kicad",
         "gimp",
         "pinta",
         "spreadsheet",
@@ -29492,6 +29495,13 @@ export default {
         "kind": "native",
         "url": "",
         "icon": "freecad"
+      },
+      {
+        "id": "kicad",
+        "label": "KiCad",
+        "kind": "native",
+        "url": "",
+        "icon": "kicad"
       },
       {
         "id": "paint",

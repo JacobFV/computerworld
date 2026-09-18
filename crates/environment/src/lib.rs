@@ -389,6 +389,19 @@ impl Environment {
             } else {
                 Err(SimError::denied("action is not permitted"))
             };
+            // Windows that share one document (KiCad's frames) all show the copy the
+            // action changed, whether the action succeeded or stopped part-way.
+            if permitted
+                && self
+                    .session(id)
+                    .ok()
+                    .and_then(|s| s.machines.get(&action.machine))
+                    .is_some_and(|m| m.desktop.needs_settle())
+            {
+                if let Ok(m) = self.machine_mut(id, &action.machine) {
+                    m.desktop.settle_linked();
+                }
+            }
             let effect = before.and_then(|before| {
                 let after = visible(self.session(id).ok()?.machines.get(&action.machine)?);
                 Some(effect_of(&before, &after))
@@ -1220,6 +1233,34 @@ impl Environment {
                 }
                 let scene = self.scene(id, width, height)?;
                 if action.op == "move" {
+                    // A canvas that draws what is being placed under the pointer (a wire,
+                    // a track) follows it even with no button down.
+                    if let Some((window, target, bounds)) = scene.hit_test(x, y).and_then(|n| {
+                        let (window, rest) = n
+                            .interaction
+                            .as_deref()?
+                            .strip_prefix("window:")?
+                            .split_once(':')?;
+                        let target = rest.strip_prefix("content:")?;
+                        Some((
+                            window.parse::<u64>().ok()?,
+                            target.to_owned(),
+                            n.transform.bounds(n.bounds),
+                        ))
+                    }) {
+                        if self.session(id)?.machines[machine]
+                            .desktop
+                            .app_hovers(window, &target)
+                        {
+                            self.machine_mut(id, machine)?.desktop.app_hover(
+                                window,
+                                &target,
+                                x - bounds.x,
+                                y - bounds.y,
+                            );
+                            return Ok(json!({"cursor":"crosshair"}));
+                        }
+                    }
                     return Ok(
                         json!({"cursor":scene.hit_test(x,y).and_then(|n|n.interaction.as_deref()).map(|target|cursor_for_target(target,false)).unwrap_or("default")}),
                     );
@@ -1428,6 +1469,7 @@ impl Environment {
                     && !target.starts_with("freecad:")
                     && !target.starts_with("sheet:")
                     && !target.starts_with("db:")
+                    && !target.starts_with("kicad:")
                 {
                     return Ok(Value::Null);
                 }
