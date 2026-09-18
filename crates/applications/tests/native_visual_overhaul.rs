@@ -75,6 +75,7 @@ fn files_project_real_names_and_only_supported_interactions() {
                     settings: &cw_applications::SystemSettings::DEFAULT,
                     clipboard: Some(&clipboard),
                     share_to: None,
+                    editor: None,
                     files: Default::default(),
                 },
             );

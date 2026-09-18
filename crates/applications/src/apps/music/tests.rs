@@ -382,6 +382,7 @@ fn every_painted_control_is_one_the_model_accepts() {
                     settings: &crate::SystemSettings::DEFAULT,
                     clipboard: None,
                     share_to: None,
+                    editor: None,
                     files: Default::default(),
                 },
             );

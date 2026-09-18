@@ -462,3 +462,71 @@ fn sharing_from_files_hands_over_the_selected_file() {
         assert_eq!(chat["state"]["draft"], "/home/alice", "{theme}");
     }
 }
+
+#[test]
+fn start_pages_its_pinned_apps_and_stays_open() {
+    let mut definition = reference_world();
+    definition.metadata["desktop_themes"] = json!({ "alice-mac": "virtual-windows-11" });
+    // Every Windows application, more than one page of pins holds.
+    for c in &mut definition.computers {
+        if c.id == "alice-mac" {
+            for kind in [
+                "browser",
+                "files",
+                "mail",
+                "calendar",
+                "chat",
+                "docs",
+                "editor",
+                "terminal",
+                "code",
+                "photos",
+                "paint",
+                "music",
+                "maps",
+                "weather",
+                "notes",
+                "contacts",
+                "calculator",
+                "clock",
+                "settings",
+            ] {
+                if !c.installed_apps.iter().any(|a| a == kind) {
+                    c.installed_apps.push(kind.into());
+                }
+            }
+        }
+    }
+    let mut world = World::new(definition, 11).unwrap();
+    let actor = world
+        .environment(EnvironmentConfig::desktop("alice", "alice-mac"))
+        .unwrap();
+    act(&mut world, &actor, "application.v1", "launcher", json!({}));
+    let targets = |world: &World| -> Vec<String> {
+        world
+            .scene(&actor, 1280, 800)
+            .unwrap()
+            .nodes
+            .iter()
+            .filter_map(|n| n.interaction.clone())
+            .collect()
+    };
+    let first = targets(&world);
+    assert!(
+        first.iter().any(|t| t == "shell:home-page:1"),
+        "no second page"
+    );
+    shell(&mut world, &actor, "shell:home-page:1");
+    let state = desktop(&world, &actor);
+    assert_eq!(state["launcher_open"], true, "paging closed Start");
+    let second = targets(&world);
+    assert!(second.iter().any(|t| t.starts_with("shell:launch:")));
+    assert_ne!(first, second, "the second page shows the same apps");
+    assert!(
+        first
+            .iter()
+            .chain(&second)
+            .any(|t| t == "shell:launch:settings"),
+        "Settings is on no page"
+    );
+}

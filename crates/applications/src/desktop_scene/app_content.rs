@@ -1868,6 +1868,7 @@ pub fn app_content(state: &crate::AppState, theme: DesktopTheme, width: u32, hei
             settings: &crate::SystemSettings::DEFAULT,
             clipboard: None,
             share_to: None,
+            editor: None,
             files: Default::default(),
         },
     )
@@ -2075,6 +2076,7 @@ mod tests {
                 settings: &crate::SystemSettings::DEFAULT,
                 clipboard: Some(&clipboard),
                 share_to: None,
+                editor: None,
                 files: Default::default(),
             },
         );

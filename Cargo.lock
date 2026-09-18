@@ -132,14 +132,17 @@ dependencies = [
 name = "computerworld"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-applications",
  "cw-environment",
  "cw-kernel",
  "cw-network",
  "cw-protocol",
+ "cw-raster",
  "cw-render",
  "cw-scene",
  "cw-sdk",
  "cw-services",
+ "jpeg-decoder",
  "png",
  "proptest",
  "serde",
@@ -189,8 +192,10 @@ name = "cw-applications"
 version = "0.1.0-alpha.2"
 dependencies = [
  "cw-protocol",
+ "cw-raster",
  "cw-scene",
  "cw-sdk",
+ "regex",
  "serde",
  "serde_json",
 ]
@@ -246,8 +251,10 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "cw-applications",
  "cw-browser",
+ "cw-computer",
  "cw-kernel",
  "cw-protocol",
+ "cw-raster",
  "cw-scene",
  "cw-sdk",
  "cw-trajectory",
@@ -317,6 +324,14 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "computerworld",
  "pyo3",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cw-raster"
+version = "0.1.0-alpha.2"
+dependencies = [
  "serde",
  "serde_json",
 ]

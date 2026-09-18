@@ -16,7 +16,7 @@ const SHADE_INK: Color = Color::rgb(226, 228, 216);
 /// (application id, name). The id is also the icon id, and every application in the
 /// catalogue now has Pixel artwork of its own, so the drawer can show the whole roster.
 /// The hotseat below still keeps to four.
-const APPS: [(&str, &str); 16] = [
+const APPS: [(&str, &str); 17] = [
     ("browser", "Chrome"),
     ("calculator", "Calculator"),
     ("calendar", "Calendar"),
@@ -31,6 +31,7 @@ const APPS: [(&str, &str); 16] = [
     ("music", "YouTube Music"),
     ("notes", "Keep Notes"),
     ("photos", "Google Photos"),
+    ("sketchbook", "Sketchbook"),
     ("terminal", "Terminal"),
     ("weather", "Weather"),
 ];

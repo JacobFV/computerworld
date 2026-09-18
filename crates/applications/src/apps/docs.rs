@@ -453,6 +453,7 @@ mod tests {
                 settings: &crate::SystemSettings::DEFAULT,
                 clipboard: None,
                 share_to: None,
+                editor: None,
                 files: Default::default(),
             },
         );

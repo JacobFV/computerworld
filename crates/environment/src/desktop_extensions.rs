@@ -134,6 +134,13 @@ impl Environment {
             (_, "music") => "Music",
             (_, "maps") => "Maps",
             (_, "weather") => "Weather",
+            (_, "code") => "Visual Studio Code",
+            (_, "paint") => "Paint",
+            (_, "preview") => "Preview",
+            (_, "pixelmator") => "Pixelmator Pro",
+            (_, "gimp") => "GNU Image Manipulation Program",
+            (_, "pinta") => "Pinta",
+            (_, "sketchbook") => "Sketchbook",
             (_, other) => {
                 debug_assert!(false, "unnamed native application {other}");
                 "Application"
@@ -476,11 +483,15 @@ impl Environment {
             let page: u32 = page
                 .parse()
                 .map_err(|_| SimError::invalid("invalid home screen page"))?;
+            // Windows' Start pages its pinned apps in place: the menu stays open.
+            let start = self.desktop_theme(id, machine) == Some(DesktopTheme::Windows);
             let desktop = &mut self.machine_mut(id, machine)?.desktop;
             desktop.home_page = page;
-            desktop.launcher_open = false;
-            desktop.panel = None;
-            desktop.search.clear();
+            if !start {
+                desktop.launcher_open = false;
+                desktop.panel = None;
+                desktop.search.clear();
+            }
             return Ok(Some(json!({ "page": page })));
         }
         if let Some(name) = target.strip_prefix("shell:panel:") {

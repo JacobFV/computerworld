@@ -85,6 +85,8 @@ pub fn is_image(name: &str) -> bool {
 /// Lines a terminal may be scrolled back by. The view clamps to the output it actually
 /// has; this only stops a stored offset growing without bound.
 const SCROLL_LIMIT: usize = 4096;
+/// Text the clipboard holds. A copy of a whole large file is refused, not truncated.
+const TEXT_CLIPBOARD_LIMIT: usize = 1 << 20;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -175,7 +177,86 @@ pub enum AppEffect {
         path: String,
         trash: String,
     },
+    /// List a folder tree `depth` levels deep, as paths relative to `path` with folders
+    /// marked by a trailing `/`. Delivered to `DesktopState::tree_listed`, path in hand,
+    /// so an application can have several folders in flight.
+    ListTree {
+        window: u64,
+        path: String,
+        depth: u32,
+    },
+    /// Read several files at once; each answer (content or the reason it could not be
+    /// read) comes back with its path to `DesktopState::files_read`, under `tag`.
+    ReadFiles {
+        window: u64,
+        tag: String,
+        paths: Vec<String>,
+    },
+    /// Run a command line in the machine's own shell, as a session whose working
+    /// directory is `cwd`. The machine's global shell stays where it was; `cd` inside
+    /// the session moves only the session. An empty command runs nothing and only asks
+    /// for the prompt. The result goes to `DesktopState::shell_ran` under `tag`.
+    ShellRun {
+        window: u64,
+        tag: String,
+        cwd: String,
+        command: String,
+    },
+    /// Put text on the machine's clipboard.
+    CopyText {
+        window: u64,
+        text: String,
+    },
+    /// Ask for the clipboard's text to be pasted into the window that asked.
+    Paste {
+        window: u64,
+    },
+    /// Encode pixels as PNG and write them to `path`. Encoding needs the rasterizer, so
+    /// the environment does it; the application only hands over what it drew.
+    WriteImage {
+        window: u64,
+        path: String,
+        width: u32,
+        height: u32,
+        #[serde(skip)]
+        rgba: Vec<u8>,
+    },
+    /// Rasterise a line of text in the platform's bundled font and hand back its
+    /// coverage, so a text tool stamps exactly the glyphs the renderer draws.
+    RasterText {
+        window: u64,
+        text: String,
+        size: u16,
+        bold: bool,
+    },
+    /// Put pixels on the machine's clipboard.
+    CopyImage {
+        window: u64,
+        width: u32,
+        height: u32,
+        #[serde(skip)]
+        rgba: Vec<u8>,
+    },
+    /// Ask for the picture on the machine's clipboard; it arrives as an image delivery
+    /// for the path `clipboard:`, or as a failure naming why there is none.
+    PasteImage {
+        window: u64,
+    },
 }
+/// What a `ShellRun` produced: the finished command (`None` when only the prompt was
+/// asked for), where the session stands afterwards and the prompt it would print next.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShellOutcome {
+    pub entry: Option<TerminalEntry>,
+    pub cwd: String,
+    pub prompt: String,
+    /// The command was `clear`: the session's screen is wiped rather than written to.
+    pub clear: bool,
+}
+/// The path a pasted picture is delivered under.
+pub const CLIPBOARD_IMAGE: &str = "clipboard:";
+/// The path a failed `RasterText` is reported under.
+pub const TEXT_IMAGE: &str = "text:";
 impl AppEffect {
     /// Applications may only speak the methods the services implement.
     pub fn validate(&self) -> Result<(), String> {
@@ -263,12 +344,27 @@ pub struct Clipboard {
     pub paths: Vec<String>,
     /// A cut moves on paste; a copy duplicates.
     pub cut: bool,
+    /// Pixels copied from an image editor. A clipboard holds files or a picture, and
+    /// copying one replaces the other, as on every desktop.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<cw_raster::Canvas>,
 }
 impl Clipboard {
     /// Bounded at `CLIPBOARD_LIMIT`: a clipboard holds a handful of paths, not a tree.
     pub fn new(mut paths: Vec<String>, cut: bool) -> Self {
         paths.truncate(CLIPBOARD_LIMIT);
-        Self { paths, cut }
+        Self {
+            paths,
+            cut,
+            image: None,
+        }
+    }
+    pub fn picture(image: cw_raster::Canvas) -> Self {
+        Self {
+            paths: vec![],
+            cut: false,
+            image: Some(image),
+        }
     }
 }
 /// One folder view inside a file manager window, with its own listing,
@@ -713,6 +809,10 @@ pub struct DesktopState {
     /// window. Capped at `CLIPBOARD_LIMIT` paths.
     #[serde(default)]
     pub clipboard: Option<Clipboard>,
+    /// Text cut or copied in an editor, shared by every application on the machine.
+    /// Capped at `TEXT_CLIPBOARD_LIMIT` bytes.
+    #[serde(default)]
+    pub clipboard_text: Option<String>,
     /// Documents opened from a file manager, newest first, capped at `RECENT_LIMIT`.
     /// Real history, not a guess: an entry is only here because it was opened.
     #[serde(default)]
@@ -956,6 +1056,15 @@ pub enum WindowSnap {
     Left,
     Right,
     Full,
+}
+/// Where a pointer is in a press on an application's drag surface.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PointerPhase {
+    Down,
+    Move,
+    Up,
+    /// The drag was abandoned; an application discards what it was building.
+    Cancel,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PointerCapture {
@@ -1246,8 +1355,15 @@ impl DesktopState {
             ),
             _ => {
                 let clock = self.clock_us;
-                let (app, effects) = NativeApp::launch(kind, argument, id, clock)
+                let (mut app, mut effects) = NativeApp::launch(kind, argument, id, clock)
                     .ok_or_else(|| format!("unknown application: {kind}"))?;
+                // Visual Studio Code keeps its settings under the user's home and opens
+                // `~/project` when it is launched on nothing.
+                if let NativeApp::Code(code) = &mut app {
+                    let mut first = code.attach(&self.home_folder(), &self.trash_folder(), id);
+                    first.append(&mut effects);
+                    effects = first;
+                }
                 (AppState::Native(app), effects)
             }
         };
@@ -1583,10 +1699,105 @@ impl DesktopState {
             }
             AppState::Native(app) => {
                 let clock = self.clock_us;
-                effects.extend(app.key(id, key, clock)?);
+                let more = app.key(id, key, clock)?;
+                return self.native_effects(more);
             }
         }
         Ok(effects)
+    }
+    /// Apply the effects an application asks of the desktop itself — the clipboard —
+    /// and hand the rest on to the environment.
+    fn native_effects(&mut self, effects: Vec<AppEffect>) -> Result<Vec<AppEffect>, String> {
+        let mut out = Vec::with_capacity(effects.len());
+        for effect in effects {
+            match effect {
+                AppEffect::CopyText { text, .. } => self.copy_text(&text)?,
+                AppEffect::Paste { window } => {
+                    // Pasting an empty clipboard pastes nothing, as it does everywhere.
+                    let Some(text) = self.clipboard_text.clone() else {
+                        continue;
+                    };
+                    let app = match self.windows.get_mut(&window).map(|w| &mut w.state) {
+                        Some(AppState::Native(app)) => app,
+                        _ => return Err("window is not a native application".into()),
+                    };
+                    out.extend(app.paste(window, &text)?);
+                }
+                other => out.push(other),
+            }
+        }
+        Ok(out)
+    }
+    /// Put text on the machine's clipboard.
+    pub fn copy_text(&mut self, text: &str) -> Result<(), String> {
+        if text.len() > TEXT_CLIPBOARD_LIMIT {
+            return Err("the selection is too large to copy".into());
+        }
+        self.clipboard_text = Some(text.to_owned());
+        Ok(())
+    }
+    /// Typed text, and whatever the focused application needs done because of it.
+    pub fn type_text(&mut self, text: &str) -> Result<Vec<AppEffect>, String> {
+        let id = self.focused.ok_or("no focused window")?;
+        if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
+            let effects = app.text_effects(id, text)?;
+            return self.native_effects(effects);
+        }
+        self.text(text).map(|()| vec![])
+    }
+    /// A pointer pressed on a control of the focused window, before it is released.
+    pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
+        let id = self.focused.ok_or("no focused window")?;
+        match self.windows.get_mut(&id).map(|w| &mut w.state) {
+            Some(AppState::Native(app)) => app.press_at(target, dx, dy),
+            _ => Ok(()),
+        }
+    }
+    fn code_mut(&mut self, id: u64) -> Result<&mut apps::code::Code, String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(NativeApp::Code(code)) => Ok(code),
+            _ => Err("window is not Visual Studio Code".into()),
+        }
+    }
+    /// A folder tree an application asked for arrived, or could not be listed.
+    pub fn tree_listed(
+        &mut self,
+        id: u64,
+        path: &str,
+        depth: u32,
+        result: Result<Vec<String>, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        Ok(self.code_mut(id)?.tree_listed(id, path, depth, result))
+    }
+    /// Files an application asked to read, each with its content or why it failed.
+    pub fn files_read(
+        &mut self,
+        id: u64,
+        tag: &str,
+        files: Vec<(String, Result<String, String>)>,
+    ) -> Result<Vec<AppEffect>, String> {
+        Ok(self.code_mut(id)?.files_read(id, tag, files))
+    }
+    /// A shell session command an application ran finished.
+    pub fn shell_ran(
+        &mut self,
+        id: u64,
+        tag: &str,
+        outcome: ShellOutcome,
+    ) -> Result<Vec<AppEffect>, String> {
+        Ok(self.code_mut(id)?.shell_ran(id, tag, outcome))
+    }
+    /// A write reached the disk. Editors learn which file, so the right one turns clean.
+    pub fn file_written(
+        &mut self,
+        id: u64,
+        path: &str,
+        content: &str,
+    ) -> Result<Vec<AppEffect>, String> {
+        if let Ok(code) = self.code_mut(id) {
+            return Ok(code.written(id, path, content));
+        }
+        self.file_saved(id, content).map(|()| vec![])
     }
     /// Deliver successful effect results. A failed save must not mark an editor clean.
     pub fn file_loaded(&mut self, id: u64, content: String) -> Result<(), String> {
@@ -1617,7 +1828,7 @@ impl DesktopState {
                 }
                 Ok(())
             }
-            AppState::Native(NativeApp::Notes(_)) => Ok(()),
+            AppState::Native(NativeApp::Notes(_) | NativeApp::Code(_)) => Ok(()),
             _ => Err("window is not an editor".into()),
         }
     }
@@ -1644,6 +1855,103 @@ impl DesktopState {
             }
             _ => Err("window is not a native application".into()),
         }
+    }
+    /// A picture the application encoded was written to `path`.
+    pub fn image_saved(&mut self, id: u64, path: &str) -> Result<Vec<AppEffect>, String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.image_saved(id, path),
+            _ => Err("window is not a native application".into()),
+        }
+    }
+    /// Coverage of a line of text the application asked to have rasterised.
+    pub fn text_rasterized(
+        &mut self,
+        id: u64,
+        width: u32,
+        height: u32,
+        alpha: Vec<u8>,
+    ) -> Result<(), String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.text_rasterized(width, height, alpha),
+            _ => Err("window is not a native application".into()),
+        }
+    }
+    /// Whether `target` inside window `id` is a surface that follows a drag (a canvas,
+    /// a slider) rather than a button that fires on release.
+    pub fn app_drags(&self, id: u64, target: &str) -> bool {
+        matches!(
+            self.windows.get(&id).map(|w| &w.state),
+            Some(AppState::Native(app)) if app.drags(target)
+        )
+    }
+    /// Pointer pressed on an application drag surface. `bounds` is where the surface
+    /// was painted; every later position is delivered relative to its top-left, so a
+    /// drag that leaves the surface still maps to the same coordinates.
+    pub fn app_pointer_down(
+        &mut self,
+        id: u64,
+        target: &str,
+        x: i32,
+        y: i32,
+        bounds: cw_scene::Rect,
+    ) -> Result<Vec<AppEffect>, String> {
+        self.focus(id)?;
+        let clock = self.clock_us;
+        let effects = match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.pointer(
+                id,
+                target,
+                PointerPhase::Down,
+                x - bounds.x,
+                y - bounds.y,
+                clock,
+            )?,
+            _ => return Err("window is not a native application".into()),
+        };
+        self.pointer_capture = Some(PointerCapture {
+            window: id,
+            operation: format!("app:{target}"),
+            start_x: x,
+            start_y: y,
+            original: bounds,
+            moved: false,
+        });
+        Ok(effects)
+    }
+    /// Whether the pointer is captured by an application drag surface.
+    pub fn app_captured(&self) -> bool {
+        self.pointer_capture
+            .as_ref()
+            .is_some_and(|c| c.operation.starts_with("app:"))
+    }
+    /// Move or release a captured application drag. `None` when no application holds
+    /// the pointer.
+    pub fn app_pointer(
+        &mut self,
+        phase: PointerPhase,
+        x: i32,
+        y: i32,
+    ) -> Option<Result<Vec<AppEffect>, String>> {
+        let capture = self.pointer_capture.clone()?;
+        let target = capture.operation.strip_prefix("app:")?.to_owned();
+        if phase != PointerPhase::Move {
+            self.pointer_capture = None;
+        } else if let Some(c) = &mut self.pointer_capture {
+            c.moved = true;
+        }
+        let clock = self.clock_us;
+        let window = capture.window;
+        Some(match self.windows.get_mut(&window).map(|w| &mut w.state) {
+            Some(AppState::Native(app)) => app.pointer(
+                window,
+                &target,
+                phase,
+                x - capture.original.x,
+                y - capture.original.y,
+                clock,
+            ),
+            _ => Err("window not found".into()),
+        })
     }
     /// Deliver an application HTTP reply. Returns follow-up effects, so a successful
     /// mutation can refetch without the shell knowing what the application wanted.
@@ -1776,6 +2084,7 @@ impl DesktopState {
                 photos.listed(values);
                 Ok(())
             }
+            AppState::Native(app) => app.listed(values),
             _ => Err("window is not a file manager".into()),
         }
     }
@@ -2415,6 +2724,9 @@ impl DesktopState {
         let Some(clipboard) = self.clipboard.clone() else {
             return Err("the clipboard is empty".into());
         };
+        if clipboard.paths.is_empty() {
+            return Err("the clipboard holds a picture, not files".into());
+        }
         let (id, tabs, active) = self.focused_files()?;
         let index = *active;
         let tab = tabs.get_mut(index).ok_or("tab not found")?;
@@ -2837,7 +3149,8 @@ impl DesktopState {
         if let Some(window) = self.focused.and_then(|id| self.windows.get_mut(&id)) {
             if let AppState::Native(app) = &mut window.state {
                 let (id, clock) = (window.id, self.clock_us);
-                return app.click(id, target, clock);
+                let effects = app.click(id, target, clock)?;
+                return self.native_effects(effects);
             }
         }
         if let Some(command) = target.strip_prefix("files-") {
@@ -2882,6 +3195,23 @@ impl DesktopState {
     /// place its caret where the pointer actually landed.
     pub fn click_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
+        // A click on a drag surface is a press and release at one point: a dot from a
+        // brush, a fill, a slider set to where it was clicked.
+        let clock = self.clock_us;
+        if let Some(AppState::Native(app)) = self
+            .windows
+            .get_mut(&id)
+            .map(|w| &mut w.state)
+            .filter(|_| !target.starts_with("focus:"))
+        {
+            if app.drags(target) {
+                let mut effects = app.pointer(id, target, PointerPhase::Down, dx, dy, clock)?;
+                effects.extend(app.pointer(id, target, PointerPhase::Up, dx, dy, clock)?);
+                return self.native_effects(effects);
+            }
+            let effects = app.click_at(id, target, dx, dy, clock)?;
+            return self.native_effects(effects);
+        }
         // `editor-text:<first row>[:<columns>]`: the scroll position, and the wrap width
         // when the view soft-wraps, both as the view painted them.
         let grid = target.strip_prefix("editor-text").map(|rest| {
@@ -2912,6 +3242,18 @@ impl DesktopState {
     /// A double click opens the thing that was clicked. Anything without a distinct
     /// double-click meaning falls back to the single-click behaviour.
     pub fn activate(&mut self, target: &str) -> Result<Vec<AppEffect>, String> {
+        let clock = self.clock_us;
+        if let Some(id) = self.focused {
+            if let Some(AppState::Native(app)) = self
+                .windows
+                .get_mut(&id)
+                .map(|w| &mut w.state)
+                .filter(|_| !target.starts_with("focus:"))
+            {
+                let effects = app.activate(id, target, clock)?;
+                return self.native_effects(effects);
+            }
+        }
         if target.starts_with("open:") {
             self.click(target)?;
             return self.open_selection();

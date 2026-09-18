@@ -15,7 +15,7 @@ const TOOLBAR_INACTIVE: Color = Color::rgb(238, 238, 239);
 /// Width of the Finder sidebar; shared with the Finder client area.
 pub const FINDER_SIDEBAR: u32 = 172;
 /// Every application this shell can present, in Launchpad order.
-const APPS: [(&str, &str); 17] = [
+const APPS: [(&str, &str); 20] = [
     ("files", "Finder"),
     ("browser", "Safari"),
     ("mail", "Mail"),
@@ -26,7 +26,10 @@ const APPS: [(&str, &str); 17] = [
     ("docs", "Pages"),
     ("editor", "TextEdit"),
     ("terminal", "Terminal"),
+    ("code", "Visual Studio Code"),
     ("photos", "Photos"),
+    ("preview", "Preview"),
+    ("pixelmator", "Pixelmator Pro"),
     ("music", "Music"),
     ("maps", "Maps"),
     ("weather", "Weather"),
@@ -37,9 +40,9 @@ const APPS: [(&str, &str); 17] = [
 /// The Dock keeps the applications a Mac keeps on it, in Sequoia's default order
 /// (Safari, Messages, Mail, Maps, Photos, Calendar, Contacts, Notes, Music, Pages),
 /// then TextEdit and Terminal; Launchpad carries the rest.
-const DOCK: [&str; 12] = [
+const DOCK: [&str; 13] = [
     "browser", "chat", "mail", "maps", "photos", "calendar", "contacts", "notes", "music", "docs",
-    "editor", "terminal",
+    "editor", "terminal", "code",
 ];
 
 fn app_name(kind: &str) -> Option<&'static str> {
@@ -124,6 +127,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let bar = if w.focused { TOOLBAR } else { TOOLBAR_INACTIVE };
     // Body, then the unified 42 px toolbar with only its top corners rounded.
     p.border(r, Color::rgb(252, 252, 253), radius, Color(0, 0, 0, 58));
+    if w.kind == "code" {
+        return crate::apps::code::title_bar(p, ctx, w);
+    }
     let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 41);
     p.box_(inner, bar, radius.saturating_sub(1));
     p.box_(Rect::new(inner.x, r.y + 21, inner.width, 21), bar, 0);
@@ -311,11 +317,14 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             }
         }
     }
-    traffic_lights(p, ctx, w);
+    traffic_lights(p, ctx, w, 0);
 }
 
-fn traffic_lights(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
-    let r = w.rect;
+/// The close, minimise and zoom buttons. `lift` raises them for a title bar shorter
+/// than the standard 42 px toolbar, such as Visual Studio Code's 35 px one.
+pub(crate) fn traffic_lights(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, lift: i32) {
+    let mut r = w.rect;
+    r.y -= lift;
     let group = Rect::new(r.x + 10, r.y + 9, 72, 24);
     let hovered = ctx.hovered(group);
     for (i, (action, label, color, edge, glyph)) in [
@@ -1807,6 +1816,15 @@ fn spaces_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
 fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
     dismiss_layer(p, ctx, "Close menu");
     let front = ctx.windows.iter().find(|w| w.focused);
+    // Visual Studio Code's menus live in the Mac menu bar, and run its own commands.
+    if let Some(w) = front.filter(|w| w.kind == "code") {
+        if let Some((_, _, items)) = crate::apps::code::commands::MENUS
+            .iter()
+            .find(|(name, _, _)| *name == panel)
+        {
+            return code_menu(p, ctx, panel, w, items);
+        }
+    }
     // (label, action, shortcut); an empty label is a separator.
     let mut entries: Vec<(String, String, &str)> = match panel {
         "apple" => vec![
@@ -1995,7 +2013,8 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         ],
     };
     entries.retain(|(_, action, _)| {
-        action != "shell:save" || front.is_some_and(|w| w.kind == "editor")
+        action != "shell:save"
+            || front.is_some_and(|w| matches!(w.kind.as_str(), "editor" | "preview" | "pixelmator"))
     });
     while entries.last().is_some_and(|(label, _, _)| label.is_empty()) {
         entries.pop();
@@ -2050,6 +2069,66 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
             );
         }
         p.region(row, action, label);
+        y += 24;
+    }
+}
+
+/// A Visual Studio Code menu in the Mac menu bar. Each entry dispatches the command
+/// into the window; one the editor cannot run now is shown greyed and announced so.
+fn code_menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str, w: &WindowView, items: &[&str]) {
+    use crate::apps::code::commands::{command, display_keys};
+    let enabled: Vec<&str> = w.chrome("enabled").unwrap_or("").split(',').collect();
+    let desired_x = menu_layout(p, ctx)
+        .iter()
+        .find(|(label, _, _)| label.eq_ignore_ascii_case(panel))
+        .map_or(ctx.width as i32 - 280, |(_, x, _)| *x);
+    let width = 280.min(ctx.width.saturating_sub(16));
+    let x = desired_x
+        .max(8)
+        .min(ctx.width.saturating_sub(width + 8) as i32);
+    let height: u32 = items
+        .iter()
+        .map(|id| if *id == "-" { 11 } else { 24 })
+        .sum::<u32>()
+        + 10;
+    popover(p, Rect::new(x, 29, width, height), 7);
+    let mut y = 34;
+    for id in items {
+        if *id == "-" {
+            p.hline(x + 12, y + 5, width - 24, SEPARATOR);
+            y += 11;
+            continue;
+        }
+        let Some(c) = command(id) else { continue };
+        let row = Rect::new(x + 5, y, width - 10, 24);
+        let live = enabled.contains(id);
+        let hover = live && ctx.hovered(row);
+        if hover {
+            p.box_(row, ACCENT, 5);
+        }
+        let ink = match (hover, live) {
+            (true, _) => Color::WHITE,
+            (false, true) => INK,
+            (false, false) => TERTIARY,
+        };
+        p.left(x + 16, y + 4, width - 100, c.label, 13, ink);
+        let keys = display_keys(c.keys, true);
+        if !keys.is_empty() {
+            p.right(
+                x + width as i32 - 96,
+                y + 4,
+                82,
+                &keys,
+                13,
+                if hover { Color::WHITE } else { TERTIARY },
+            );
+        }
+        if live {
+            p.region(row, &w.action(&format!("content:code:cmd:{id}")), c.label);
+        } else {
+            p.box_(row, Color::TRANSPARENT, 0);
+            p.disabled(&format!("{}: not available right now", c.label));
+        }
         y += 24;
     }
 }
