@@ -11,6 +11,14 @@ pub enum ErrKind {
     Exc(Value),
     /// A builtin exception not yet instantiated.
     Lazy(&'static str, Vec<Value>),
+    /// Not an error: the running thread is blocked. It unwinds to the
+    /// interpreter loop, which saves it and runs another thread; when the wait
+    /// ends the frame resumes with the value pushed for it.
+    Park(Box<crate::sched::ParkInfo>),
+    /// Not an error: nothing can run at this interpreter level, but a thread
+    /// waiting further down the Rust stack can. The level's threads are saved
+    /// and it unwinds so that waiter's loop continues.
+    YieldLevel,
 }
 
 pub struct PyErr {
@@ -132,6 +140,11 @@ pub struct Vm<'h> {
     pub id_map: RefCell<IdMap<usize, (Value, u64)>>,
     pub open_files: Vec<Ref<FileObj>>,
     pub call_sites: Vec<(Rc<Code>, usize)>,
+    /// The thread scheduler, created when a program starts its first thread.
+    pub sched: Option<Box<crate::sched::Scheduler>>,
+    /// Native depth at which a blocking call may park its thread (see
+    /// `call_tracked`); `None` anywhere else.
+    pub park_ok_depth: Option<usize>,
     /// Bytes of `stdout` CPython would already have written to the descriptor.
     pub stdout_flushed: usize,
     /// Standard output is a terminal (line buffered) rather than a pipe.
@@ -243,18 +256,34 @@ impl<'h> Vm<'h> {
 
     /// Runs `f` (and any frames it calls inline) until it returns or yields.
     pub fn execute(&mut self, f: Box<Frame>, pending: Option<Box<PyErr>>) -> PyResult<Exit> {
+        let base = self.frames.len();
+        self.execute_from(f, pending, base)
+    }
+
+    /// Runs `f` over the frames from `base` up: a thread resuming at an
+    /// interpreter level brings its own frames, which are already on the stack.
+    pub fn execute_from(
+        &mut self,
+        f: Box<Frame>,
+        pending: Option<Box<PyErr>>,
+        base: usize,
+    ) -> PyResult<Exit> {
         if self.native_depth > MAX_NATIVE_DEPTH {
             return Err(err("RecursionError", "maximum recursion depth exceeded"));
         }
         self.native_depth += 1;
         self.depth += 1;
-        let r = self.execute_inner(f, pending);
+        let r = self.execute_inner(f, pending, base);
         self.native_depth -= 1;
         r
     }
 
-    fn execute_inner(&mut self, mut f: Box<Frame>, pending: Option<Box<PyErr>>) -> PyResult<Exit> {
-        let base = self.frames.len();
+    fn execute_inner(
+        &mut self,
+        mut f: Box<Frame>,
+        pending: Option<Box<PyErr>>,
+        base: usize,
+    ) -> PyResult<Exit> {
         let mut pending = pending;
         loop {
             let result = match pending.take() {
@@ -273,6 +302,11 @@ impl<'h> Vm<'h> {
                         }))
                     } else {
                         self.fuel -= 1;
+                        // With threads, the quantum decides when to switch; the
+                        // check costs one branch when no thread was ever started.
+                        if self.sched.is_some() && self.sched_step() && self.switchable(base) {
+                            self.switch_threads(&mut f);
+                        }
                         let op = f.code.ops[f.pc];
                         f.pc += 1;
                         self.step(&mut f, op)
@@ -293,6 +327,19 @@ impl<'h> Vm<'h> {
                 Ok(Flow::Return(v)) => {
                     self.depth -= 1;
                     if self.frames.len() == base {
+                        // A thread that returns from its outermost frame ends;
+                        // another thread takes this interpreter level over
+                        // unless the level's own thread is the one that ended.
+                        if self.sched.is_some() && self.switchable(base) {
+                            match self.finish_current_thread(v.clone(), &mut f) {
+                                Ok(true) => continue,
+                                Ok(false) => {}
+                                Err(e) => {
+                                    pending = Some(e);
+                                    continue;
+                                }
+                            }
+                        }
                         return Ok(Exit::Return(v));
                     }
                     let done = std::mem::replace(&mut f, self.frames.pop().unwrap());
@@ -315,6 +362,29 @@ impl<'h> Vm<'h> {
                     return Ok(Exit::Yield(v, f));
                 }
                 Err(mut e) => {
+                    // A blocked thread: save it here and run another one.
+                    if matches!(e.kind, ErrKind::Park(_)) {
+                        let ErrKind::Park(info) = e.kind else {
+                            unreachable!()
+                        };
+                        match self.park_current(&mut f, *info) {
+                            Ok(true) => continue,
+                            Ok(false) => return Err(crate::sched::yield_level()),
+                            Err(e) => {
+                                pending = Some(e);
+                                continue;
+                            }
+                        }
+                    }
+                    // This level has nothing left to run; it unwinds so a
+                    // waiting thread below can carry on. A thread that is still
+                    // alive keeps its stack for whoever resumes it.
+                    if matches!(e.kind, ErrKind::YieldLevel) {
+                        if self.thread_running() {
+                            self.save_running_thread(&mut f);
+                        }
+                        return Err(e);
+                    }
                     if !e.reraise && !e.fatal {
                         self.set_context(&mut e);
                     }
@@ -335,6 +405,17 @@ impl<'h> Vm<'h> {
                         }
                         self.depth -= 1;
                         if self.frames.len() == base {
+                            // A thread that dies takes only itself with it.
+                            if self.sched.is_some() && self.switchable(base) {
+                                match self.fail_current_thread(e, &mut f) {
+                                    Ok(None) => {
+                                        pending = None;
+                                        break;
+                                    }
+                                    Ok(Some(e)) => return Err(e),
+                                    Err(e) => return Err(e),
+                                }
+                            }
                             return Err(e);
                         }
                         f = self.frames.pop().unwrap();
@@ -1417,16 +1498,14 @@ impl<'h> Vm<'h> {
                         "'{tn}' object does not support the context manager protocol{missing}"
                     )));
                 };
+                let _ = h;
                 let exit_bound = self.bind_method(&exit, &mgr);
                 f.stack.push(exit_bound);
-                f.blocks.push(Block {
-                    kind: BlockKind::Finally,
-                    handler: h,
-                    level: f.stack.len() as u32,
-                    exc_depth: 0,
-                });
-                let r = self.call(&enter, vec![mgr])?;
-                f.stack.push(r);
+                // The call instruction that follows runs `__enter__`; the block
+                // that calls `__exit__` is only set up once it has returned, so
+                // a failing `__enter__` never exits a manager it did not enter.
+                let enter_bound = self.bind_method(&enter, &mgr);
+                f.stack.push(enter_bound);
             }
             Op::WithExit => {
                 let exit = Self::pop(f);
@@ -1930,7 +2009,13 @@ impl<'h> Vm<'h> {
         kwargs: Vec<(Rc<str>, Value)>,
     ) -> PyResult<Value> {
         self.call_sites.push((f.code.clone(), f.pc));
+        // A call opcode pops the arguments and pushes the result, so a native
+        // called from here may park the thread: unwinding to the interpreter
+        // loop leaves a frame that resumes by pushing the value it waited for.
+        let saved_park = self.park_ok_depth;
+        self.park_ok_depth = Some(self.native_depth + 1);
         let r = self.call_kw(func, args, kwargs);
+        self.park_ok_depth = saved_park;
         self.call_sites.pop();
         r
     }

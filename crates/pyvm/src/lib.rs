@@ -22,6 +22,7 @@ pub mod methods;
 pub mod modules;
 pub mod ops;
 pub mod parser;
+pub mod sched;
 pub mod value;
 pub mod vm;
 
@@ -114,6 +115,8 @@ impl<'h> Vm<'h> {
             id_map: RefCell::new(Default::default()),
             open_files: vec![],
             call_sites: vec![],
+            sched: None,
+            park_ok_depth: None,
             stdout_flushed: 0,
             line_buffered: false,
         };
@@ -852,6 +855,8 @@ fn run_main(vm: &mut Vm, src: Option<String>, filename: &str, target: &Target) -
         vm.execute(frame, None)?;
         Ok(())
     })();
+    // The interpreter waits for the non-daemon threads before it exits.
+    vm.shutdown_threads();
     match result {
         Ok(()) => 0,
         Err(e) => report(vm, e),

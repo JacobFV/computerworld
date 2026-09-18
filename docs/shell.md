@@ -164,7 +164,7 @@ every replay.
 | `sqlite3` | `[OPTIONS] [FILE [SQL…]]`; SQL and dot-commands on stdin (pipe, heredoc, `<`); `-header -noheader -csv -column -list -line -json -box -table -markdown -tabs -quote -html -ascii -separator SEP -newline SEP -nullvalue TEXT -cmd CMD -init FILE -bail -echo -version -help`; `-batch -readonly -safe` accepted and inert | every other option, refused by name with status `2`; an interactive prompt | modelled: the `cw-sql` engine over the VFS, reading and writing real SQLite 3 files; see *sqlite3* below |
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
-| `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions, threads | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
+| `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
 | `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads` | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
@@ -299,6 +299,36 @@ real vocabularies: `socket.gaierror: [Errno -2] Name or service not known`,
 `TypeError: fetch failed` with the cause attached. A client timeout that the
 simulated latency exceeds raises `TimeoutError: timed out` / `ETIMEDOUT`.
 
+### Threads
+
+Python's `threading` runs on a deterministic green-thread scheduler inside the
+interpreter: `Thread` (with `name`, `daemon`, `join(timeout)`, `is_alive`,
+`ident`, `native_id`), `Lock`, `RLock`, `Condition`, `Event`, `Semaphore`,
+`BoundedSemaphore`, `Barrier`, `Timer`, `local`, `current_thread`,
+`main_thread`, `enumerate`, `active_count`, `excepthook`/`ExceptHookArgs`,
+`stack_size` and `get_ident`; `queue` (`Queue`, `LifoQueue`, `PriorityQueue`,
+`SimpleQueue`, `task_done`/`join`, `shutdown`) and `concurrent.futures`
+(`Future`, `Executor`, `ThreadPoolExecutor`, `map`, `as_completed`, `wait`,
+`FIRST_COMPLETED`/`FIRST_EXCEPTION`/`ALL_COMPLETED`) are built on it.
+
+Only one thread runs at a time, as under CPython's GIL, and the interpreter
+switches between threads after a fixed number of bytecode instructions. That
+quantum derives from the world seed (scaled by `sys.setswitchinterval`), so a
+race — a lost update, an interleaved log, the order two threads leave a
+semaphore — replays exactly the same way every time the world runs, and
+differently under a different seed. `time.sleep` in a thread advances only that
+thread on the simulated clock: three threads sleeping 50 ms each finish after
+50 ms of simulated time, and waits end in deadline order. A thread that raises
+is reported as `threading.excepthook` does (`Exception in thread NAME:` and the
+traceback on standard error) and the program goes on; the interpreter waits for
+non-daemon threads to finish and abandons daemon ones. A wait nothing can
+satisfy is not a hang: the blocked thread gets
+`RuntimeError: deadlock: every thread is waiting and none can make progress`,
+which unwinds its frames (releasing what it held) and is reported like any other
+thread failure.
+
+Node's `worker_threads` is not implemented.
+
 ### Child processes
 
 `subprocess` (`run`, `Popen` with pipes, `communicate`, `call`, `check_call`,
@@ -340,7 +370,7 @@ hashes of 434 outputs recorded from CPython 3.12 and Node 24.21 for that check.
   does for the recorded cases, and anything it produces or accepts is valid brotli.
 * Python's `bz2` and `lzma` are not implemented.
 
-Known gaps shared by both: no threads and no native extensions. `node` does not
+Known gaps shared by both: no native extensions. `node` does not
 implement `Intl` beyond `en-US` date and number formatting,
 `Atomics`/`SharedArrayBuffer`, `worker_threads`, or the REPL. Strings that
 contain unpaired UTF-16 surrogates are carried as the

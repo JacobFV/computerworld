@@ -1624,7 +1624,13 @@ impl<'a> Compiler<'a> {
         let end = self.new_label();
         self.expr(ctx)?;
         let p = self.set_pos(expr_pos(ctx));
+        // SetupWith leaves [__exit__, bound __enter__]; the call that follows is
+        // an ordinary one, so `__enter__` runs on this frame stack (which lets a
+        // thread that blocks in it be suspended like any other call). The block
+        // that runs `__exit__` starts after it returns: a manager whose
+        // `__enter__` raises is never exited.
         self.jump(Op::SetupWith, handler);
+        self.emit(Op::Call(0));
         self.set_pos(p);
         match target {
             Some(t) => self.assign(t)?,
@@ -1632,6 +1638,7 @@ impl<'a> Compiler<'a> {
                 self.emit(Op::Pop);
             }
         }
+        self.jump(Op::SetupFinally, handler);
         self.u().fblocks.push(FBlock::With);
         self.with(rest, body)?;
         self.u().fblocks.pop();

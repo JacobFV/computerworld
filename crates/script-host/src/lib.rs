@@ -499,6 +499,11 @@ pub mod memory {
         }
     }
     impl ScriptHost for MemoryHost {
+        fn scheduler_seed(&mut self) -> u64 {
+            // The toy world's seed decides the preemption quantum, as the
+            // simulated machine's does.
+            self.rng
+        }
         fn read_file(&mut self, path: &str) -> Result<Vec<u8>, FsError> {
             let p = self.resolve(path);
             if self.dirs.contains(&p) {

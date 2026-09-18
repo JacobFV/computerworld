@@ -93,6 +93,27 @@ pub fn make_sys(vm: &mut Vm) -> Value {
         vm.recursion_limit = (n as usize).min(10_000);
         Ok(Value::None)
     });
+    set_fn(&m, "setswitchinterval", |vm, a| {
+        let s = crate::bfuncs::float_from(vm, a.args.first().unwrap_or(&Value::Float(0.005)))?;
+        if s <= 0.0 {
+            return Err(value_err("switch interval must be strictly positive"));
+        }
+        // The quantum scales with the interval, so a program can ask for finer
+        // or coarser interleaving just as CPython's does.
+        vm.start_scheduler();
+        if let Some(sc) = vm.sched.as_mut() {
+            sc.set_switch_interval(s);
+        }
+        Ok(Value::None)
+    });
+    set_fn(&m, "getswitchinterval", |vm, _| {
+        Ok(Value::Float(
+            vm.sched
+                .as_ref()
+                .map(|s| s.switch_interval)
+                .unwrap_or(crate::sched::DEFAULT_SWITCH_INTERVAL),
+        ))
+    });
     set_fn(&m, "get_int_max_str_digits", |vm, _| {
         Ok(Value::Int(vm.int_max_str_digits as i64))
     });
@@ -574,9 +595,8 @@ pub fn make_time(vm: &mut Vm) -> Value {
             return Err(value_err("sleep length must be non-negative"));
         }
         // Simulated time passes for this process only; the world clock is not moved.
-        // Rounded up so a sleep always reaches the deadline it was computed for.
-        vm.time_offset += (s * 1e6).ceil() as i64;
-        Ok(Value::None)
+        // With threads, the others run while this one sleeps.
+        vm.thread_sleep(s)
     });
     fn gm(vm: &mut Vm, a: Args) -> PyResult<Value> {
         let secs = match a.args.first() {

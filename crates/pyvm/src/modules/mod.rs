@@ -8,6 +8,7 @@ pub mod random;
 pub mod re;
 pub mod structmod;
 pub mod sys;
+pub mod thread;
 pub mod zlib;
 
 use crate::builtins::native_fn;
@@ -27,6 +28,11 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     (
         "collections.abc",
         include_str!("../../lib/collections_abc.py"),
+    ),
+    ("concurrent", include_str!("../../lib/concurrent_init.py")),
+    (
+        "concurrent.futures",
+        include_str!("../../lib/concurrent_futures.py"),
     ),
     ("contextlib", include_str!("../../lib/contextlib.py")),
     ("copy", include_str!("../../lib/copy.py")),
@@ -62,6 +68,7 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("struct", include_str!("../../lib/struct.py")),
     ("subprocess", include_str!("../../lib/subprocess.py")),
     ("textwrap", include_str!("../../lib/textwrap.py")),
+    ("threading", include_str!("../../lib/threading.py")),
     ("traceback", include_str!("../../lib/traceback.py")),
     ("types", include_str!("../../lib/types.py")),
     ("typing", include_str!("../../lib/typing.py")),
@@ -96,6 +103,7 @@ fn native_module(vm: &mut Vm, name: &str) -> Option<Value> {
         "_cw" => host::make(vm),
         "_zlib" => zlib::make(vm),
         "_struct" => structmod::make(vm),
+        "_thread" => thread::make(vm),
         "gc" => {
             let m = new_module("gc");
             set_fn(&m, "collect", |_, _| Ok(Value::Int(0)));

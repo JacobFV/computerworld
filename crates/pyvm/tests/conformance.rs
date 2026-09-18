@@ -82,5 +82,6 @@ programs!(
     stdin_io,
     stdlib,
     text_processing,
+    threads,
     tools,
 );
