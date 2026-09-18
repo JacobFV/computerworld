@@ -968,6 +968,17 @@ impl<'h> Vm<'h> {
         Ctl::Throw(Value::Obj(e))
     }
 
+    /// The object behind `require.cache`, shared by every module.
+    fn require_cache(&mut self) -> Obj {
+        if let Some(Value::Obj(o)) = self.global.own_value("%requireCache") {
+            return o;
+        }
+        let o = self.new_object();
+        self.global
+            .set_hidden("%requireCache", Value::Obj(o.clone()));
+        o
+    }
+
     fn cached_module(&self, key: &str) -> Option<Value> {
         self.modules
             .iter()
@@ -985,7 +996,14 @@ impl<'h> Vm<'h> {
             return Err(self.module_not_found(spec, &parents));
         };
         if let Some(m) = self.cached_module(&key) {
-            return self.get_str(&m, "exports");
+            // Deleting a `require.cache` entry makes the next require reload.
+            let evicted = !key.starts_with("node:")
+                && self.require_cache().own_value(&key).is_none()
+                && key != self.main_file;
+            if !evicted {
+                return self.get_str(&m, "exports");
+            }
+            self.modules.retain(|(k, _)| *k != key);
         }
         if let Some(name) = key.strip_prefix("node:") {
             let exports = self.builtin_module(name)?;
@@ -1031,7 +1049,7 @@ impl<'h> Vm<'h> {
             vec![Value::string(dirname(path))],
         );
         f.set_prop("resolve", Value::Obj(resolve), ALL);
-        let cache = self.new_object();
+        let cache = self.require_cache();
         f.set_prop("cache", Value::Obj(cache), ALL);
         if let Some(Value::Obj(m)) = self.cached_module(&self.main_file.clone()) {
             f.set_prop("main", Value::Obj(m), ALL);
@@ -1203,6 +1221,7 @@ impl<'h> Vm<'h> {
         let m = self.make_module_object(path);
         let mv = Value::Obj(m.clone());
         self.modules.push((path.to_string(), mv.clone()));
+        self.require_cache().set_prop(path, mv.clone(), ALL);
         if path.ends_with(".json") {
             let v =
                 match crate::builtins::json::parse_json(self, src.trim_start_matches('\u{feff}')) {
