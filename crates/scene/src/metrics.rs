@@ -2,6 +2,7 @@
 //! table generated from the exact font files the renderer embeds, so layout code can
 //! measure, centre, wrap and truncate text without rasterizing or consulting a host.
 use crate::metrics_data as data;
+use crate::text;
 use serde::{Deserialize, Serialize};
 
 /// Bundled proportional UI font family. Glyphs missing from a family fall back to DejaVu.
@@ -74,49 +75,72 @@ fn width_64(typeface: Typeface, bold: bool, text: &str, size: u16) -> i64 {
         .map(|c| advance(typeface, bold, c, size))
         .sum()
 }
+/// Advance width of one line in 1/64 pixel, through the complex-text path when the
+/// line needs fallback faces, bidi or shaping (see [`crate::text`]).
+fn line_width_64(typeface: Typeface, bold: bool, line: &str, size: u16) -> i64 {
+    if text::is_simple(typeface, bold, line) {
+        width_64(typeface, bold, line, size)
+    } else {
+        text::line_width(typeface, bold, line, size)
+    }
+}
 /// Pixel width of the widest line, rounded up.
 pub fn text_width(typeface: Typeface, bold: bool, text: &str, size: u16) -> u32 {
     text.split('\n')
-        .map(|line| (width_64(typeface, bold, line, size) + 63) / 64)
+        .map(|line| (line_width_64(typeface, bold, line, size) + 63) / 64)
         .max()
         .unwrap_or(0) as u32
 }
 /// Greedy word wrapping shared by layout and rasterization. Newlines are preserved,
-/// breaks fall after spaces, and words wider than a line break between characters.
+/// breaks fall after spaces (and between CJK characters), and words wider than a
+/// line break between characters (grapheme clusters, for complex text).
 pub fn wrap(typeface: Typeface, bold: bool, text: &str, size: u16, width: u32) -> Vec<String> {
-    let limit = i64::from(width) * 64;
-    let mut lines = Vec::new();
-    for paragraph in text.split('\n') {
-        let mut line = String::new();
-        let mut pen = 0i64;
-        for word in paragraph.split_inclusive(' ') {
-            let visible = width_64(typeface, bold, word.trim_end_matches(' '), size);
-            if pen > 0 && pen + visible > limit {
-                lines.push(std::mem::take(&mut line));
-                pen = 0;
-            }
-            if visible > limit {
-                for c in word.chars().filter(|c| *c != '\r') {
-                    let a = advance(typeface, bold, c, size);
-                    if pen > 0 && pen + a > limit {
-                        lines.push(std::mem::take(&mut line));
-                        pen = 0;
-                    }
-                    line.push(c);
-                    pen += a;
-                }
-            } else {
-                line.extend(word.chars().filter(|c| *c != '\r'));
-                pen += width_64(typeface, bold, word, size);
-            }
+    text::block(typeface, bold, text, size, width, false)
+        .into_iter()
+        .map(|line| line.text)
+        .collect()
+}
+/// The original table-only wrapping of one paragraph, used verbatim for text the
+/// complex path is not needed for.
+pub(crate) fn wrap_simple_paragraph(
+    typeface: Typeface,
+    bold: bool,
+    paragraph: &str,
+    size: u16,
+    limit: i64,
+    lines: &mut Vec<String>,
+) {
+    let mut line = String::new();
+    let mut pen = 0i64;
+    for word in paragraph.split_inclusive(' ') {
+        let visible = width_64(typeface, bold, word.trim_end_matches(' '), size);
+        if pen > 0 && pen + visible > limit {
+            lines.push(std::mem::take(&mut line));
+            pen = 0;
         }
-        lines.push(line);
+        if visible > limit {
+            for c in word.chars().filter(|c| *c != '\r') {
+                let a = advance(typeface, bold, c, size);
+                if pen > 0 && pen + a > limit {
+                    lines.push(std::mem::take(&mut line));
+                    pen = 0;
+                }
+                line.push(c);
+                pen += a;
+            }
+        } else {
+            line.extend(word.chars().filter(|c| *c != '\r'));
+            pen += width_64(typeface, bold, word, size);
+        }
     }
-    lines
+    lines.push(line);
 }
 /// Single-line truncation with a trailing ellipsis when `text` exceeds `width` pixels.
 pub fn ellipsize(typeface: Typeface, bold: bool, text: &str, size: u16, width: u32) -> String {
     let text = text.split('\n').next().unwrap_or("");
+    if !text::is_simple(typeface, bold, text) {
+        return text::ellipsize(typeface, bold, text, size, width);
+    }
     let limit = i64::from(width) * 64;
     if width_64(typeface, bold, text, size) <= limit {
         return text.into();

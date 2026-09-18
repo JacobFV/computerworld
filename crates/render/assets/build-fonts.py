@@ -43,11 +43,38 @@ behaviour so an uncovered codepoint can never silently vanish. Subsetting does
 not touch outlines, advances or `unitsPerEm`, so every retained glyph
 rasterizes to exactly the pixels the full master produced.
 
+Scripts beyond DejaVu's set come from Noto (all SIL OFL 1.1), in two tiers:
+
+  * `fonts/noto-{hebrew,arabic,thai,devanagari}-{regular,bold}.ttf` — embedded
+    in every build. They keep their OpenType layout tables (GSUB/GPOS/GDEF),
+    because Arabic joining, lam-alef ligatures, Indic reordering and mark
+    attachment are done by shaping with those tables.
+  * `fonts/pack/noto-{sans-sc,sans-kr,emoji}.ttf` — the CJK/emoji font pack.
+    Native builds embed it; the Wasm build does not, and a page fetches and
+    installs it on demand (see README.md). Han is subset to the union of three
+    national common sets, enumerated from Python's own codecs so the set is
+    reproducible without a data file: GB 2312 (Simplified, 6,763), Big5 level 1
+    (Traditional common, 5,401) and JIS X 0208 levels 1-2 (Japanese, 6,355),
+    10,269 ideographs together. Kana, CJK punctuation and fullwidth forms come
+    from the same face. Hangul is all 11,172 syllables plus compatibility jamo.
+  * `fonts/stubs/*.ttf` — outline-free twins of the pack faces: same glyph
+    order, cmap, advances and GSUB, every outline emptied. They are embedded
+    everywhere, so text *layout* (measurement, wrapping, ellipsis, shaping) is
+    identical whether or not the pack has been fetched; only the pixels of
+    pack glyphs wait for it.
+
+It also writes `crates/scene/src/text/coverage.rs`, the cmap coverage of the
+DejaVu faces as ranges, which is how layout decides where the fallback chain
+leaves DejaVu without embedding DejaVu in the scene crate.
+
 Usage:
   build-fonts.py <source-dir>   rebuild everything (requires the variable fonts)
   build-fonts.py --dejavu-only  rebuild just the DejaVu subsets and the metrics
                                 table, using only files already in the tree
-Requires fontTools; brotli not needed.
+  build-fonts.py --noto <dir>   rebuild the Noto faces, the pack and its stubs
+                                from the masters `fetch-noto-sources.py <dir>`
+                                downloads (pinned commit, pinned SHA-256)
+Requires fontTools (4.55.3 was used); brotli not needed.
 """
 import sys
 from pathlib import Path
@@ -159,8 +186,137 @@ def write_metrics(rows):
             out.write("];\n")
 
 
+COVERAGE = HERE.parents[1] / "scene" / "src" / "text" / "coverage.rs"
+SHAPING = [0x200C, 0x200D, 0x25CC]  # joiners, and the dotted circle a shaper inserts
+NOTO_CORE = [  # name, master, axes per weight, coverage
+    ("hebrew", "NotoSansHebrew-var.ttf", [(0x0590, 0x05FF), (0xFB1D, 0xFB4F)]),
+    ("arabic", "NotoSansArabic-var.ttf", [(0x0600, 0x06FF), (0x0750, 0x077F), (0xFE70, 0xFEFF)]),
+    ("thai", "NotoSansThai-var.ttf", [(0x0E00, 0x0E7F)]),
+    ("devanagari", "NotoSansDevanagari-var.ttf", [(0x0900, 0x097F), (0xA8E0, 0xA8FF)]),
+]
+NOTO_WEIGHTS = [("regular", 400), ("bold", 700)]
+CJK_BASE = [
+    (0x3000, 0x303F),  # CJK Symbols and Punctuation
+    (0x3040, 0x309F),  # Hiragana
+    (0x30A0, 0x30FF),  # Katakana
+    (0x31F0, 0x31FF),  # Katakana Phonetic Extensions
+    (0xFF00, 0xFFEF),  # Halfwidth and Fullwidth Forms
+]
+HANGUL = [(0xAC00, 0xD7A3), (0x3130, 0x318F)]
+
+
+def codec_set(codec, lead, trail):
+    """Every character a double-byte codec maps, straight from Python's tables."""
+    out = set()
+    for a in lead:
+        for b in trail:
+            try:
+                s = bytes([a, b]).decode(codec)
+            except UnicodeDecodeError:
+                continue
+            if len(s) == 1:
+                out.add(ord(s))
+    return out
+
+
+def common_han():
+    han = lambda s: {c for c in s if 0x3400 <= c <= 0x9FFF or 0xF900 <= c <= 0xFAFF}
+    gb2312 = han(codec_set("gb2312", range(0xA1, 0xF8), range(0xA1, 0xFF)))
+    big5_level1 = han(codec_set("big5", range(0xA4, 0xC7), [*range(0x40, 0x7F), *range(0xA1, 0xFF)]))
+    jisx0208 = han(codec_set("euc_jp", range(0xA1, 0xFF), range(0xA1, 0xFF)))
+    union = gb2312 | big5_level1 | jisx0208
+    print(f"han: GB 2312 {len(gb2312)}, Big5 level 1 {len(big5_level1)}, "
+          f"JIS X 0208 {len(jisx0208)}, union {len(union)}")
+    return union
+
+
+def noto_subset(font, unicodes, layout):
+    options = subset.Options()
+    options.hinting = False
+    options.layout_features = ["*"] if layout else []
+    options.name_IDs = [0, 1, 2, 3, 4, 5, 6, 13, 14]
+    options.notdef_outline = True
+    options.glyph_names = False
+    sub = subset.Subsetter(options)
+    sub.populate(unicodes=sorted(unicodes))
+    sub.subset(font)
+    return font
+
+
+def stub(path, out):
+    """Outline-free twin: identical glyph order, cmap, hmtx advances and layout
+    tables, so shaping it yields exactly the glyph ids and positions shaping the
+    full face would. Only outlines (and side bearings) are dropped."""
+    from fontTools.ttLib.tables._g_l_y_f import Glyph
+    font = TTFont(path)
+    order = font.getGlyphOrder()
+    for name in order:
+        font["glyf"][name] = Glyph()
+        font["hmtx"][name] = (font["hmtx"][name][0], 0)
+    for tag in ["vhea", "vmtx", "BASE", "STAT", "gasp", "prep", "fpgm", "cvt ", "DSIG"]:
+        if tag in font:
+            del font[tag]
+    font.save(out)
+
+
+def ranges_of(cmap):
+    out = []
+    for c in sorted(cmap):
+        if out and out[-1][1] + 1 == c:
+            out[-1][1] = c
+        else:
+            out.append([c, c])
+    return out
+
+
+def write_coverage():
+    with open(COVERAGE, "w") as out:
+        out.write("// Generated by crates/render/assets/build-fonts.py; do not edit.\n")
+        out.write("// Inclusive codepoint ranges each embedded DejaVu face maps in its cmap.\n")
+        for ident, name in [("DEJAVU_SANS", "dejavu-sans.ttf"), ("DEJAVU_SANS_BOLD", "dejavu-sans-bold.ttf"),
+                            ("DEJAVU_MONO", "dejavu-mono.ttf")]:
+            ranges = ranges_of(TTFont(OUT / name).getBestCmap())
+            out.write(f"pub static {ident}: &[(u32, u32)] = &[\n")
+            for i in range(0, len(ranges), 6):
+                out.write("    " + " ".join(f"({a}, {b})," for a, b in ranges[i:i + 6]) + "\n")
+            out.write("];\n")
+
+
+def build_noto(src):
+    src = Path(src)
+    for name, master, ranges in NOTO_CORE:
+        for weight, wght in NOTO_WEIGHTS:
+            font = instancer.instantiateVariableFont(TTFont(src / master), {"wght": wght, "wdth": 100})
+            noto_subset(font, codepoints(ranges) + SHAPING, layout=True)
+            path = OUT / f"noto-{name}-{weight}.ttf"
+            font.save(path)
+            print(f"{path.name:30s} {path.stat().st_size:>10,}")
+    (OUT / "pack").mkdir(exist_ok=True)
+    (OUT / "stubs").mkdir(exist_ok=True)
+    emoji = TTFont(src / "NotoEmoji-var.ttf")
+    pack = [
+        ("noto-sans-sc.ttf", "NotoSansSC-var.ttf", {"wght": 400}, set(codepoints(CJK_BASE)) | common_han(), False),
+        ("noto-sans-kr.ttf", "NotoSansKR-var.ttf", {"wght": 400}, set(codepoints(HANGUL)), False),
+        ("noto-emoji.ttf", "NotoEmoji-var.ttf", {"wght": 400}, set(emoji.getBestCmap()), True),
+    ]
+    for out_name, master, axes, unicodes, layout in pack:
+        font = instancer.instantiateVariableFont(TTFont(src / master), axes)
+        noto_subset(font, unicodes, layout)
+        path = OUT / "pack" / out_name
+        font.save(path)
+        stub(path, OUT / "stubs" / out_name)
+        print(f"{'pack/' + out_name:30s} {path.stat().st_size:>10,}   stub "
+              f"{(OUT / 'stubs' / out_name).stat().st_size:>8,}")
+    for text in src.glob("NOTO*-OFL.txt"):
+        (OUT / text.name).write_bytes(text.read_bytes())
+    write_coverage()
+
+
 def main(argv):
     OUT.mkdir(exist_ok=True)
+    if argv[:1] == ["--noto"]:
+        build_noto(argv[1])
+        return
     dejavu_only = "--dejavu-only" in argv
     rows = []
     if not dejavu_only:

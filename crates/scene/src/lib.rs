@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 pub mod metrics;
+pub mod text;
 #[rustfmt::skip]
 mod metrics_data;
 pub use metrics::Typeface;

@@ -18,8 +18,8 @@ jpeg-decoder = { version = "0.3", default-features = false, features = [
 ] }
 fontdue = "=0.9.3"
 serde.workspace = true
+sha2.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
-sha2.workspace = true
 proptest.workspace = true

@@ -5,9 +5,13 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+rustybuzz = "=0.14.1"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+unicode-bidi = "0.3"
+unicode-bidi-mirroring = "0.2"
+unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
 
 [dev-dependencies]
 proptest.workspace = true
