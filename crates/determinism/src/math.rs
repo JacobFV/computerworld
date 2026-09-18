@@ -10,6 +10,10 @@
 //! `exp`, the sine/cosine kernels, the argument reduction and `atan` follow fdlibm (Sun
 //! Microsystems, freely redistributable); `ln` and `pow` go through a double-double
 //! logarithm so `pow` stays within about one ulp even for large exponents.
+// The constants are fdlibm's, written with every digit it publishes so each one names
+// its exact double; truncating them or swapping in `std::f64::consts` would change
+// nothing numerically but would hide where they come from.
+#![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 /// Error-free sum: `a + b == hi + lo` exactly.
 fn two_sum(a: f64, b: f64) -> (f64, f64) {

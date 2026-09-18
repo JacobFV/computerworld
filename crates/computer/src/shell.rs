@@ -116,6 +116,7 @@ pub(crate) const BUILTINS: &[&str] = &[
     "sleep",
     "sort",
     "source",
+    "sqlite3",
     "stat",
     "sudo",
     "systemctl",
@@ -1111,6 +1112,7 @@ fn reads_stdin(c: &Computer, args: &[String]) -> bool {
         "tr" | "cut" => true,
         "cat" | "type" | "get-content" => args.len() == 1,
         "grep" | "select-string" | "sed" | "head" | "tail" | "wc" | "sort" | "uniq" => !named_file,
+        "sqlite3" => crate::sqlite::reads_stdin(args),
         _ => false,
     }
 }
@@ -2202,6 +2204,7 @@ fn shell_builtin(
         "local" => Some(builtin_local(c, args, ctx)),
         "getopts" => Some(builtin_getopts(c, args, ctx)),
         "source" | "." => Some(builtin_source(c, args, ctx, t, host, depth)),
+        "sqlite3" => Some(crate::sqlite::execute(c, args, input, t)),
         _ => None,
     }
 }

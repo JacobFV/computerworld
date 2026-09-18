@@ -3,6 +3,7 @@ pub mod git;
 pub mod packages;
 pub mod process;
 pub mod shell;
+mod sqlite;
 pub mod vfs;
 use cw_protocol::{HttpRequest, HttpResponse};
 pub use packages::*;
