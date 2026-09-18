@@ -129,7 +129,7 @@ pub struct Vm<'h> {
     pub set_finger: usize,
     pub output_limit: usize,
     pub classes: Vec<std::rc::Weak<Class>>,
-    pub id_map: RefCell<IdMap<usize, (Value, usize)>>,
+    pub id_map: RefCell<IdMap<usize, (Value, u64)>>,
     pub open_files: Vec<Ref<FileObj>>,
     pub call_sites: Vec<(Rc<Code>, usize)>,
 }

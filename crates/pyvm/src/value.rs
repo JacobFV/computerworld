@@ -133,12 +133,13 @@ impl Value {
     pub fn id(&self) -> usize {
         use Value::*;
         let p: usize = match self {
+            // Identity keys only; the Python-visible id() is Vm::object_id.
             Undefined => 1,
-            None => 0x9f7ee0,
-            NotImplemented => 0x9f8030,
-            Ellipsis => 0x9f8040,
-            Bool(b) => 0x9f5fe0 + *b as usize * 32,
-            Int(i) => 0x7f00_0000_0000usize.wrapping_add((*i as usize).wrapping_mul(32)),
+            None => 2,
+            NotImplemented => 3,
+            Ellipsis => 4,
+            Bool(b) => 5 + *b as usize,
+            Int(i) => *i as usize,
             Float(f) => f.to_bits() as usize,
             Complex(a, _) => a.to_bits() as usize ^ 0x55,
             Big(r) => Rc::as_ptr(r) as usize,

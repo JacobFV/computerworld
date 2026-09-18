@@ -118,19 +118,20 @@ impl<'h> Vm<'h> {
     /// `id()`: value-derived for immediates; for heap objects a sequence number
     /// assigned on first request. The object is kept alive so its address can
     /// never be reused, which keeps ids (and default hashes) deterministic.
-    pub fn object_id(&self, v: &Value) -> usize {
+    /// Identical on every platform (64-bit arithmetic, never pointer values).
+    pub fn object_id(&self, v: &Value) -> u64 {
         match v {
-            Value::None
-            | Value::Bool(_)
-            | Value::Int(_)
-            | Value::Float(_)
-            | Value::NotImplemented
-            | Value::Ellipsis
-            | Value::Undefined => v.id(),
+            Value::None => 0x9f7ee0,
+            Value::NotImplemented => 0x9f8030,
+            Value::Ellipsis => 0x9f8040,
+            Value::Undefined => 1,
+            Value::Bool(b) => 0x9f5fe0 + *b as u64 * 32,
+            Value::Int(i) => 0x7f00_0000_0000u64.wrapping_add((*i as u64).wrapping_mul(32)),
+            Value::Float(f) => f.to_bits(),
             _ => {
                 let p = v.id();
                 let mut m = self.id_map.borrow_mut();
-                let n = m.len();
+                let n = m.len() as u64;
                 m.entry(p)
                     .or_insert_with(|| (v.clone(), 0x7f3a_2c00_0000 + n * 0x30))
                     .1
