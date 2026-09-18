@@ -821,12 +821,22 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     }
     p.hline(x, top + 26, content, LINE);
     let footer = if t == DesktopTheme::Ubuntu { 0 } else { 26 };
-    let body = top + 27;
+    let viewport = Rect::new(
+        x,
+        top + 27,
+        content,
+        h.saturating_sub((top + 27) as u32 + footer).max(1),
+    );
+    // Every row is painted in a pane that scrolls; each folder keeps its own place, so
+    // Back returns to where the list was.
+    let pane = p.pane(&folder_pane(path, tab.scope), viewport);
+    let body = pane.top();
     if tab.view == crate::FileView::Grid {
         grid(
             p,
+            env,
             &l,
-            Rect::new(x, body, content, h.saturating_sub(body as u32 + footer)),
+            Rect::new(x, body, content, viewport.height),
             tab,
             &rows_shown,
         );
@@ -834,9 +844,9 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     let rows = if tab.view == crate::FileView::Grid {
         0
     } else {
-        h.saturating_sub(body as u32 + footer) / l.row
+        rows_shown.len()
     };
-    for (i, index) in rows_shown.iter().copied().take(rows as usize).enumerate() {
+    for (i, index) in rows_shown.iter().copied().take(rows).enumerate() {
         let entry = &entries[index];
         let y = body + (i as u32 * l.row) as i32;
         let directory = entry.ends_with('/');
@@ -997,6 +1007,7 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         };
         p.center(x, body + 60, content, empty, 15, FAINT);
     }
+    p.end_pane(pane, None);
     if footer > 0 {
         let fy = h.saturating_sub(footer) as i32;
         p.box_(
@@ -1084,13 +1095,32 @@ fn kind_label(t: DesktopTheme, entry: &str) -> String {
     }
 }
 
+/// The scroll pane a folder's listing is painted in: one per place, named by a stable
+/// digest of the path because a pane name is a single segment.
+fn folder_pane(path: &str, scope: crate::FileScope) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in format!("{scope:?}{path}").bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("files-{hash:016x}")
+}
+
 /// Icon grid. Same rows, same order, same `open:<i>` targets as the list — only the
 /// arrangement differs, so switching view cannot move a file out from under a click.
-fn grid(p: &mut Painter, l: &Look, area: Rect, tab: &crate::FileTab, rows: &[usize]) {
+/// GNOME Files marks a starred item with a star on its icon, and the selected item
+/// carries the star button too, so starring does not need the list's star column.
+fn grid(
+    p: &mut Painter,
+    env: &crate::AppEnv<'_>,
+    l: &Look,
+    area: Rect,
+    tab: &crate::FileTab,
+    rows: &[usize],
+) {
     const CELL: u32 = 96;
     let columns = (area.width / CELL).max(1);
-    let capacity = (columns * (area.height / CELL).max(1)) as usize;
-    for (i, index) in rows.iter().copied().take(capacity).enumerate() {
+    let stars = env.theme == DesktopTheme::Ubuntu;
+    for (i, index) in rows.iter().copied().enumerate() {
         let entry = &tab.entries[index];
         let cell = Rect::new(
             area.x + (i as u32 % columns * CELL) as i32,
@@ -1120,6 +1150,37 @@ fn grid(p: &mut Painter, l: &Look, area: Rect, tab: &crate::FileTab, rows: &[usi
             false,
             Align::Center,
         );
+        if stars {
+            let path = if tab.scope.absolute() {
+                entry_name(entry).to_owned()
+            } else {
+                tab.child(entry_name(entry))
+            };
+            let starred = env.files.starred(&path);
+            if starred || tab.selected == Some(index) {
+                let star = Rect::new(cell.x + CELL as i32 - 30, cell.y + 8, 22, 22);
+                p.region_above(
+                    star,
+                    &format!("files-star:{i}"),
+                    &format!(
+                        "{} {}",
+                        if starred { "Unstar" } else { "Star" },
+                        entry_name(entry)
+                            .trim_end_matches('/')
+                            .rsplit('/')
+                            .next()
+                            .unwrap_or_default()
+                    ),
+                );
+                p.symbol(
+                    if starred { "star" } else { "star-outline" },
+                    star.x + 3,
+                    star.y + 3,
+                    16,
+                    if starred { INK } else { MUTED },
+                );
+            }
+        }
     }
 }
 
@@ -1140,27 +1201,31 @@ fn files_mobile(
         Color::rgb(248, 250, 240)
     };
     let recents = tab.scope == crate::FileScope::Recents;
+    let tab_bar = if ios { 50 } else { 0 };
     let mut top;
-    if ios {
-        // Leading crumb, large title and search field. Recents is not a folder, so it
-        // gets no enclosing-folder crumb to climb out of.
-        if recents {
-            p.strong(16, 40, w.saturating_sub(32), "Recents", 32, INK);
+    // The listing scrolls; on iOS the large title and the search field scroll with it,
+    // and the title collapses into the navigation bar (which carries the crumb back to
+    // the enclosing folder) once it has gone under it.
+    let titled = ios.then(|| {
+        let title = if recents {
+            "Recents"
         } else {
-            p.button(
-                Rect::new(4, 0, 170, 36),
-                Color::TRANSPARENT,
-                8,
-                "files-up",
-                "Enclosing folder",
-            );
-            p.symbol("chevron-left", 8, 7, 20, l.accent);
-            p.left(28, 7, 140, parent(path, l.root), 17, l.accent);
-            p.strong(16, 40, w.saturating_sub(32), current(path, l.root), 32, INK);
-        }
+            current(path, l.root)
+        };
+        let pane = p
+            .pane(
+                &folder_pane(path, tab.scope),
+                Rect::new(0, 0, w, h.saturating_sub(tab_bar).max(1)),
+            )
+            .titled(title, 44);
+        p.strong(16, pane.top() + 4, w.saturating_sub(32), title, 32, INK);
+        pane
+    });
+    if let Some(pane) = &titled {
+        let y0 = pane.top() - 90 + 54;
         // Real field: typing lands in `tab.query` and the rows below are what survives
         // it, so nothing on this screen is outside the filter it advertises.
-        let field = Rect::new(16, 90, w.saturating_sub(32), 36);
+        let field = Rect::new(16, y0 + 90, w.saturating_sub(32), 36);
         p.box_(field, Color(118, 118, 128, 30), 10);
         p.region(field, "files-search", "Search");
         p.symbol("search", field.x + 8, field.y + 10, 16, FAINT);
@@ -1189,7 +1254,7 @@ fn files_mobile(
             p.button(clear, Color::TRANSPARENT, 11, "files-search-clear", "Clear");
             p.symbol("close", clear.x + 5, clear.y + 5, 12, MUTED);
         }
-        top = 138;
+        top = y0 + 138;
     } else {
         // Breadcrumb chips: storage root, enclosing folder, current folder.
         let mut cx = 16;
@@ -1235,11 +1300,21 @@ fn files_mobile(
             cx += width as i32 + 10;
         }
         p.hline(0, 42, w, LINE);
-        top = 50;
+        top = 0;
     }
-    let tab_bar = if ios { 50 } else { 0 };
-    let rows = h.saturating_sub(top as u32 + tab_bar) / l.row;
-    for (i, index) in rows_shown.iter().copied().take(rows as usize).enumerate() {
+    // Android's crumbs stay put over the list; iOS's title scrolls with it.
+    let pane = match titled {
+        Some(pane) => pane,
+        None => {
+            let pane = p.pane(
+                &folder_pane(path, tab.scope),
+                Rect::new(0, 43, w, h.saturating_sub(43).max(1)),
+            );
+            top = pane.top() + 7;
+            pane
+        }
+    };
+    for (i, index) in rows_shown.iter().copied().enumerate() {
         let entry = &entries[index];
         let y = top + (i as u32 * l.row) as i32;
         let directory = entry.ends_with('/');
@@ -1309,6 +1384,7 @@ fn files_mobile(
         };
         p.center(0, top + 70, w, empty, 17, MUTED);
     }
+    p.end_pane(pane, None);
     top = h.saturating_sub(tab_bar) as i32;
     if ios {
         p.box_(Rect::new(0, top, w, tab_bar), Color(249, 249, 249, 245), 0);
@@ -1876,8 +1952,17 @@ pub fn app_content(state: &crate::AppState, theme: DesktopTheme, width: u32, hei
 }
 /// The same projection, with the machine facts a native application is allowed to read.
 pub fn app_content_with(state: &crate::AppState, env: &crate::AppEnv<'_>) -> Scene {
+    app_content_scrolled(state, env, &crate::Scroll::default())
+}
+/// The projection of a window whose panes are scrolled to `scroll`.
+pub fn app_content_scrolled(
+    state: &crate::AppState,
+    env: &crate::AppEnv<'_>,
+    scroll: &crate::Scroll,
+) -> Scene {
     let (theme, width, height) = (env.theme, env.width, env.height);
     let mut p = Painter::themed(theme, width, height, 1_u64 << 52);
+    p.scroll = scroll.clone();
     match state {
         crate::AppState::Native(app) => app.render(&mut p, env),
         crate::AppState::Files { tabs, active } => files(&mut p, env, tabs, *active),

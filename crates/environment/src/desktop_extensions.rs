@@ -276,11 +276,23 @@ impl Environment {
             }
             return Ok(true);
         }
-        // A phone's system surface is modal: typing reaches nothing behind it.
+        // A phone's system surface is modal: typing reaches nothing behind it. Nor does
+        // it reach an application with no text field focused: a phone has no keyboard
+        // up then, and nothing on screen would take the characters.
         let phone = self
             .desktop_theme(id, machine)
             .is_some_and(DesktopTheme::mobile);
-        Ok(phone && phone_overlay(&self.session(id)?.machines[machine]))
+        let m = &self.session(id)?.machines[machine];
+        let fieldless = m.active_app.is_none()
+            && !m.address_focused
+            && !m.browser_visible
+            && m.desktop
+                .focused
+                .and_then(|w| m.desktop.windows.get(&w))
+                .is_some_and(|w| {
+                    matches!(&w.state, cw_applications::AppState::Native(app) if !app.takes_text(true))
+                });
+        Ok(phone && (phone_overlay(m) || fieldless))
     }
 
     pub(crate) fn desktop_panel_key(
@@ -324,6 +336,153 @@ impl Environment {
             _ => {}
         }
         Ok(true)
+    }
+
+    /// A control of a phone's Recents screen. `slot:<n>` centres a card (or, at -1,
+    /// the Clear all slot past the oldest), `clear` closes every application,
+    /// `select` toggles Select mode on the centred card, `copy` puts that card's text
+    /// on the clipboard, and `screenshot` captures the centred application itself.
+    fn recents_action(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        what: &str,
+    ) -> Result<Value> {
+        let open = self.session(id)?.machines[machine].desktop.panel.as_deref() == Some("overview");
+        if !open {
+            return Err(SimError::invalid("Recents is not open"));
+        }
+        let order = self.session(id)?.machines[machine]
+            .desktop
+            .ordered_windows();
+        let desktop = &self.session(id)?.machines[machine].desktop;
+        let centred = desktop.overview.slot.unwrap_or_else(|| {
+            desktop
+                .focused
+                .and_then(|f| order.iter().position(|w| *w == f))
+                .unwrap_or(order.len().saturating_sub(1)) as i32
+        });
+        let card = usize::try_from(centred)
+            .ok()
+            .and_then(|i| order.get(i).copied());
+        if let Some(slot) = what.strip_prefix("slot:") {
+            let slot: i32 = slot
+                .parse()
+                .map_err(|_| SimError::invalid("invalid Recents slot"))?;
+            if order.is_empty() || slot < -1 || slot >= order.len() as i32 {
+                return Err(SimError::invalid("no such Recents slot"));
+            }
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            desktop.overview.slot = Some(slot);
+            desktop.overview.select = false;
+            return Ok(Value::Null);
+        }
+        match what {
+            "clear" => {
+                if order.is_empty() {
+                    return Err(SimError::invalid("there are no recent applications"));
+                }
+                for window in order {
+                    self.machine_mut(id, machine)?
+                        .desktop
+                        .close(window)
+                        .map_err(SimError::invalid)?;
+                }
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                desktop.panel = None;
+                desktop.overview = Default::default();
+                desktop.home();
+                self.sync_desktop_visibility(id, machine)?;
+                Ok(Value::Null)
+            }
+            "select" => {
+                card.ok_or_else(|| SimError::invalid("no application card is centred"))?;
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                desktop.overview.select = !desktop.overview.select;
+                Ok(Value::Null)
+            }
+            "copy" => {
+                let window =
+                    card.ok_or_else(|| SimError::invalid("no application card is centred"))?;
+                if !self.session(id)?.machines[machine].desktop.overview.select {
+                    return Err(SimError::invalid("Select is not on"));
+                }
+                let text = self.window_text(id, machine, window)?;
+                if text.is_empty() {
+                    return Err(SimError::invalid("this card shows no text to copy"));
+                }
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                desktop.copy_text(&text).map_err(SimError::invalid)?;
+                desktop.overview.select = false;
+                Ok(json!({ "copied": text }))
+            }
+            "screenshot" => {
+                // What Recents captures is the application, not the carousel over it:
+                // the card's application is shown alone for the capture, and Recents
+                // comes back over it afterwards.
+                let window =
+                    card.ok_or_else(|| SimError::invalid("no application card is centred"))?;
+                let saved = self.session(id)?.machines[machine].desktop.clone();
+                {
+                    let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                    desktop.focus(window).map_err(SimError::invalid)?;
+                }
+                let result = self.effects(
+                    id,
+                    machine,
+                    actor,
+                    vec![cw_applications::AppEffect::Screenshot {
+                        window,
+                        path: String::new(),
+                    }],
+                );
+                let notices = self.session(id)?.machines[machine]
+                    .desktop
+                    .notifications
+                    .clone();
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                *desktop = saved;
+                desktop.notifications = notices;
+                result.map(|()| Value::Null)
+            }
+            _ => Err(SimError::invalid("unknown Recents control")),
+        }
+    }
+    /// The text window `window` shows, from its semantic projection (a browser's from
+    /// the page it has loaded).
+    fn window_text(&self, id: &str, machine: &str, window: u64) -> Result<String> {
+        let m = &self.session(id)?.machines[machine];
+        let state = &m
+            .desktop
+            .windows
+            .get(&window)
+            .ok_or_else(|| SimError::invalid("window not found"))?
+            .state;
+        if let AppState::Browser { .. } = state {
+            let browser = if m.active_browser_window == Some(window) {
+                &m.browser
+            } else {
+                m.browser_windows.get(&window).unwrap_or(&m.browser)
+            };
+            return Ok(browser
+                .page()
+                .map(cw_applications::page_text)
+                .unwrap_or_default());
+        }
+        let mut page = m
+            .desktop
+            .window_page(window)
+            .ok_or_else(|| SimError::invalid("window not found"))?;
+        // The window list the desktop projection starts with is the shell's, not the card's.
+        page.elements.retain(|e| {
+            !matches!(e, cw_protocol::PageElement::Button { id, .. } if id.starts_with("focus:"))
+        });
+        if let AppState::Native(app) = state {
+            page.elements.clear();
+            app.page(&mut page);
+        }
+        Ok(cw_applications::page_text(&page))
     }
 
     /// What a finger dragged from `from` to `to` on a phone amounts to, as the shell
@@ -426,6 +585,47 @@ impl Environment {
                 }
                 if d.focused.is_some() && panel.is_none() && from.1 > h - 40 && dx > 0 {
                     return target("shell:switcher");
+                }
+                Ok(None)
+            }
+            // Sideways on Android: Recents walks its carousel (past the oldest card is
+            // Clear all), and the home screen walks its pages.
+            DesktopTheme::Android if horizontal => {
+                if panel == Some("overview") {
+                    let order = d.ordered_windows();
+                    if order.is_empty() {
+                        return Ok(None);
+                    }
+                    let centred = d.overview.slot.unwrap_or_else(|| {
+                        d.focused
+                            .and_then(|f| order.iter().position(|w| *w == f))
+                            .unwrap_or(order.len() - 1) as i32
+                    });
+                    // The content follows the finger: a swipe to the right brings the
+                    // older cards (and then Clear all) in from the left.
+                    let next = if dx > 0 { centred - 1 } else { centred + 1 };
+                    if next < -1 || next >= order.len() as i32 {
+                        return Ok(None);
+                    }
+                    return Ok(Some(format!("shell:recents:slot:{next}")));
+                }
+                if home {
+                    let installed: Vec<String> = self
+                        .desktop_catalog(id, machine)
+                        .into_iter()
+                        .map(|app| app.id)
+                        .collect();
+                    let pages = home_page_count(theme, &installed, size.0, size.1).max(1);
+                    let page = d.home_page.min(pages - 1);
+                    return Ok(match (dx < 0, page) {
+                        (true, page) if page + 1 < pages => {
+                            Some(format!("shell:home-page:{}", page + 1))
+                        }
+                        (false, page) if page > 0 => Some(format!("shell:home-page:{}", page - 1)),
+                        // Past the last page there is nothing; before the first, Pixel's
+                        // Discover feed, which this world has no service for.
+                        _ => None,
+                    });
                 }
                 Ok(None)
             }
@@ -534,9 +734,13 @@ impl Environment {
                 "page" => "page",
                 _ => return Err(SimError::invalid("unknown shell panel")),
             };
-            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let m = self.machine_mut(id, machine)?;
+            let at = m.pointer_position;
+            let desktop = &mut m.desktop;
             let closing = desktop.panel.as_deref() == Some(name);
             desktop.panel = if closing { None } else { Some(name.into()) };
+            desktop.panel_at = if closing { None } else { at };
+            desktop.overview = Default::default();
             // A power flyout sits over an open launcher rather than replacing it, which
             // is what Start does; every other panel takes the screen.
             desktop.panel_over_launcher = !closing && name == "power" && desktop.launcher_open;
@@ -932,6 +1136,10 @@ impl Environment {
                 self.sync_desktop_visibility(id, machine)?;
                 Ok(Some(Value::Null))
             }
+            // Pixel Recents: the carousel, Clear all, Select and Screenshot.
+            recents if recents.starts_with("shell:recents:") => self
+                .recents_action(id, machine, actor, &recents["shell:recents:".len()..])
+                .map(Some),
             "shell:dismiss" => {
                 let desktop = &mut self.machine_mut(id, machine)?.desktop;
                 desktop.panel = None;

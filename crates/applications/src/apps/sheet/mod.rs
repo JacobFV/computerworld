@@ -980,6 +980,34 @@ impl Book {
     pub fn drags(target: &str) -> bool {
         target.starts_with("sheet:grid:") || target.starts_with("sheet:fill:")
     }
+    /// A wheel turn over the grid or its headers: three rows a notch, as Excel, Calc
+    /// and Numbers scroll; with Shift (or a sideways turn) columns instead; with Ctrl
+    /// it zooms, ten percent a notch. Frozen rows and columns never scroll away.
+    pub fn wheel(&mut self, target: &str, wheel: crate::Wheel) -> Result<bool, String> {
+        if !["sheet:grid:", "sheet:fill:", "sheet:col:", "sheet:row:"]
+            .iter()
+            .any(|p| target.starts_with(p))
+        {
+            return Ok(false);
+        }
+        let before = (self.scroll, self.zoom);
+        let (fr, fc) = self.sheet_ref().freeze;
+        if wheel.ctrl {
+            let notches = crate::wheel_steps(-wheel.dy, 120);
+            self.zoom = (self.zoom as i64 + i64::from(notches) * 10).clamp(10, 400) as u32;
+        } else if wheel.horizontal() != 0 {
+            let cols = crate::wheel_steps(wheel.horizontal(), 120);
+            self.scroll.1 = (i64::from(self.scroll.1.max(fc)) + i64::from(cols))
+                .clamp(i64::from(fc), i64::from(cw_sheet::MAX_COLS - 1))
+                as u32;
+        } else {
+            let rows = crate::wheel_steps(wheel.dy, 40);
+            self.scroll.0 = (i64::from(self.scroll.0.max(fr)) + i64::from(rows))
+                .clamp(i64::from(fr), i64::from(cw_sheet::MAX_ROWS - 1))
+                as u32;
+        }
+        Ok(before != (self.scroll, self.zoom))
+    }
     /// Map a point inside the cell area (not counting headers) to a cell.
     fn cell_at(&self, geom: Geom, x: i32, y: i32) -> Cell {
         let sheet = self.sheet_ref();

@@ -31,21 +31,20 @@ pub fn render(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
         8,
         LINE,
     );
-    let mark = p.scene.nodes.len();
+    // The page scrolls inside its card; each view keeps its own place.
+    let pane = p.pane(&app.view_pane(), page);
     body(
         app,
         p,
         env,
         Rect::new(
             page.x + 28,
-            page.y + 20,
+            pane.top() + 20,
             page.width.saturating_sub(56),
             page.height.saturating_sub(20),
         ),
     );
-    for n in &mut p.scene.nodes[mark..] {
-        n.clip = Some(n.clip.and_then(|c| c.intersection(page)).unwrap_or(page));
-    }
+    p.end_pane(pane, None);
     player_bar(
         app,
         p,
@@ -279,9 +278,6 @@ fn tiles(p: &mut Painter, area: Rect, mut y: i32, cards: &[Tile]) -> i32 {
     let size = 150u32;
     let per = ((area.width + 16) / (size + 16)).max(1);
     for chunk in cards.chunks(per as usize) {
-        if y > area.y + area.height as i32 {
-            break;
-        }
         for (i, (key, title, sub, target, round)) in chunk.iter().enumerate() {
             let x = area.x + (i as u32 * (size + 16)) as i32;
             p.button(
@@ -329,9 +325,6 @@ fn table(
     p.right(area.x + w as i32 - 92, y, 50, "Time", 12, MUTED);
     y += 24;
     for (i, t) in tracks.iter().enumerate() {
-        if y + 40 > area.y + area.height as i32 {
-            break;
-        }
         let r = Rect::new(area.x, y, w, 40);
         let current = live.as_ref().is_some_and(|l| l.id == t.id);
         art::row(
@@ -778,9 +771,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
             let mut y = y;
             for (i, id) in player.queue.iter().enumerate() {
                 let Some(t) = c.track(id) else { continue };
-                if y + 40 > area.y + area.height as i32 {
-                    break;
-                }
                 let r = Rect::new(area.x, y, area.width, 40);
                 p.button(
                     r,

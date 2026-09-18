@@ -1,6 +1,6 @@
 //! Mail client over the `mail` service. Messages, folders, read state and sending are all
 //! real service records; an empty mailbox renders empty rather than inventing senders.
-use super::look::{action, header, look, notice, FAINT, INK, LINE, MUTED};
+use super::look::{action, look, notice, screen, FAINT, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -224,6 +224,11 @@ impl Mail {
                 self.compose = None;
                 Ok(vec![])
             }
+            // A phone's back button: from the message to the list it was opened from.
+            "back" => {
+                self.selected.take().ok_or("no message is open")?;
+                Ok(vec![])
+            }
             "send" => {
                 let compose = self.compose.clone().ok_or("no message is being written")?;
                 let to: Vec<_> = compose
@@ -408,12 +413,31 @@ impl Mail {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let top = header(p, theme, &l, width, &self.title(theme));
         let sidebar = if theme.mobile() || width < 560 {
             0
         } else {
             168
         };
+        let list_w = if width.saturating_sub(sidebar) > 620 {
+            320
+        } else {
+            width.saturating_sub(sidebar)
+        };
+        let reading = list_w < width.saturating_sub(sidebar);
+        let open = self
+            .selected
+            .as_ref()
+            .and_then(|id| self.messages.iter().find(|m| &m.id == id));
+        // Without room for a reading pane (a phone), an open message is the screen.
+        if let (false, Some(message)) = (reading, open) {
+            self.message(p, &l, width, height, message, 0, 0, true);
+            if let Some(compose) = &self.compose {
+                self.composer(p, &l, width, height, compose);
+            }
+            return;
+        }
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let top = screen.top;
         if sidebar > 0 {
             p.box_(Rect::new(0, top, sidebar, height), l.chrome, 0);
             p.vline(sidebar as i32 - 1, top, height, LINE);
@@ -463,22 +487,20 @@ impl Mail {
             );
         }
         let x = sidebar as i32;
-        let list_w = if width.saturating_sub(sidebar) > 620 {
-            320
-        } else {
-            width.saturating_sub(sidebar)
-        };
         if let Some(text) = self.status.notice() {
             notice(p, width.saturating_sub(sidebar), top + 20, text);
         }
         if self.messages.is_empty() && self.status.notice().is_none() {
             notice(p, width.saturating_sub(sidebar), top + 30, "No messages");
         }
-        let mut y = top + 6;
+        // Each mailbox keeps its own place in its list.
+        let list = screen.column(
+            p,
+            &format!("list-{}", self.folder),
+            Rect::new(x, top, list_w, (height as i32 - top).max(1) as u32),
+        );
+        let mut y = list.top + 6;
         for message in &self.messages {
-            if y as u32 + l.row + 14 > height {
-                break;
-            }
             let r = Rect::new(x + 4, y, list_w.saturating_sub(8), l.row + 14);
             let on = self.selected.as_deref() == Some(message.id.as_str());
             p.button(
@@ -512,57 +534,14 @@ impl Mail {
             p.hline(r.x, r.y + r.height as i32, r.width, LINE);
             y += r.height as i32 + 1;
         }
+        list.end(p);
+        screen.end(p);
         // Reading pane, when the window is wide enough for one.
-        if list_w < width.saturating_sub(sidebar) {
+        if reading {
             let pane = x + list_w as i32;
             p.vline(pane, top, height, LINE);
-            match self
-                .selected
-                .as_ref()
-                .and_then(|id| self.messages.iter().find(|m| &m.id == id))
-            {
-                Some(message) => {
-                    p.strong(
-                        pane + 16,
-                        top + 12,
-                        width.saturating_sub(pane as u32 + 32),
-                        &message.subject,
-                        16,
-                        INK,
-                    );
-                    p.left(
-                        pane + 16,
-                        top + 36,
-                        width.saturating_sub(pane as u32 + 32),
-                        &format!("From {} to {}", message.sender, message.to.join(", ")),
-                        12,
-                        MUTED,
-                    );
-                    action(
-                        p,
-                        &l,
-                        Rect::new(pane + 16, top + 58, 76, 26),
-                        "Reply",
-                        "mail:reply",
-                        false,
-                    );
-                    action(
-                        p,
-                        &l,
-                        Rect::new(pane + 100, top + 58, 84, 26),
-                        "Archive",
-                        "mail:archive",
-                        false,
-                    );
-                    p.paragraph(
-                        pane + 16,
-                        top + 96,
-                        width.saturating_sub(pane as u32 + 32),
-                        &message.body,
-                        13,
-                        INK,
-                    );
-                }
+            match open {
+                Some(message) => self.message(p, &l, width, height, message, pane, top, false),
                 None => notice(
                     p,
                     width.saturating_sub(pane as u32),
@@ -574,6 +553,77 @@ impl Mail {
         if let Some(compose) = &self.compose {
             self.composer(p, &l, width, height, compose);
         }
+    }
+    /// One message from `x` rightwards and `top` down, its body scrolling when it is
+    /// long; `back` adds the phone's way back to the list.
+    #[allow(clippy::too_many_arguments)]
+    fn message(
+        &self,
+        p: &mut Painter,
+        l: &super::look::Look,
+        width: u32,
+        height: u32,
+        message: &Message,
+        x: i32,
+        top: i32,
+        back: bool,
+    ) {
+        let area = Rect::new(
+            x,
+            top,
+            width.saturating_sub(x as u32),
+            (height as i32 - top).max(1) as u32,
+        );
+        let pane = p.pane("message", area);
+        let mut y = pane.top();
+        let text_w = width.saturating_sub(x as u32 + 32);
+        if back {
+            let r = Rect::new(x + 4, y + 6, 120, 30);
+            p.button(
+                r,
+                Color::TRANSPARENT,
+                l.radius,
+                "mail:back",
+                "Back to the list",
+            );
+            p.symbol("chevron-left", r.x + 2, r.y + 5, 20, l.accent);
+            p.left(
+                r.x + 24,
+                r.y + 6,
+                96,
+                &title_case(&self.folder),
+                15,
+                l.accent,
+            );
+            y += 40;
+        }
+        p.strong(x + 16, y + 12, text_w, &message.subject, 16, INK);
+        p.left(
+            x + 16,
+            y + 36,
+            text_w,
+            &format!("From {} to {}", message.sender, message.to.join(", ")),
+            12,
+            MUTED,
+        );
+        action(
+            p,
+            l,
+            Rect::new(x + 16, y + 58, 76, 26),
+            "Reply",
+            "mail:reply",
+            false,
+        );
+        action(
+            p,
+            l,
+            Rect::new(x + 100, y + 58, 84, 26),
+            "Archive",
+            "mail:archive",
+            false,
+        );
+        p.paragraph(x + 16, y + 96, text_w, &message.body, 13, INK);
+        p.end_pane(pane, None);
     }
     fn composer(
         &self,

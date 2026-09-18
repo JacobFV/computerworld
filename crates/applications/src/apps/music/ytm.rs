@@ -50,11 +50,15 @@ pub fn render(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
         0
     };
     let area = Rect::new(0, 0, w, h.saturating_sub(nav + mini));
-    let mark = p.scene.nodes.len();
-    body(app, p, env, area);
-    for n in &mut p.scene.nodes[mark..] {
-        n.clip = Some(n.clip.and_then(|c| c.intersection(area)).unwrap_or(area));
-    }
+    // The view scrolls over the bars; each view keeps its own place.
+    let pane = p.pane(&app.view_pane(), area);
+    body(
+        app,
+        p,
+        env,
+        Rect::new(area.x, pane.top(), area.width, area.height),
+    );
+    p.end_pane(pane, None);
     let bottom = h.saturating_sub(nav) as i32;
     if mini > 0 {
         mini_player(app, p, env, Rect::new(0, bottom - mini as i32, w, mini));
@@ -281,7 +285,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
         p.left(PAD, y - 6, area.width, notice, 12, MUTED);
         y += 12;
     }
-    let bottom = area.y + area.height as i32;
     match &app.view {
         View::Home => {
             let tags = c.tags();
@@ -325,9 +328,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
                 None => "charts".into(),
             };
             for t in picks.iter().take(4) {
-                if y + 60 > bottom {
-                    break;
-                }
                 y = song(app, p, env, area, y, t, &context, None);
             }
             y += 16;
@@ -383,9 +383,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
                     cell,
                     44,
                 );
-                if r.y + 44 > bottom {
-                    break;
-                }
                 p.button(
                     r,
                     Color::rgb(41, 41, 41),
@@ -401,9 +398,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
             let mut top: Vec<&Track> = c.tracks.iter().collect();
             top.sort_by_key(|t| std::cmp::Reverse(t.plays));
             for (i, t) in top.iter().enumerate() {
-                if y + 60 > bottom {
-                    break;
-                }
                 y = song(app, p, env, area, y, t, "charts", Some((i + 1).to_string()));
             }
         }
@@ -430,9 +424,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
                 Some((saved, format!("music:save-album:{id}"))),
             );
             for (i, t) in tracks.iter().enumerate() {
-                if y + 60 > bottom {
-                    break;
-                }
                 y = song(
                     app,
                     p,
@@ -471,9 +462,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
                 y = actions(p, area, y, &format!("playlist:{id}"), None);
             }
             for t in tracks {
-                if y + 60 > bottom {
-                    break;
-                }
                 y = song(app, p, env, area, y, t, &format!("playlist:{id}"), None);
             }
         }
@@ -502,9 +490,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
                 y = actions(p, area, y, "liked", None);
             }
             for t in tracks {
-                if y + 60 > bottom {
-                    break;
-                }
                 y = song(app, p, env, area, y, t, "liked", None);
             }
         }
@@ -567,9 +552,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
             y += 56;
             y = heading(p, area, y, "Songs");
             for t in c.top_songs(id).into_iter().take(4) {
-                if y + 60 > bottom {
-                    break;
-                }
                 y = song(app, p, env, area, y, t, &format!("artist:{id}"), None);
             }
             y += 12;
@@ -724,7 +706,6 @@ fn library(
     shelf_: Shelf,
 ) {
     let c = &app.catalog;
-    let bottom = area.y + area.height as i32;
     p.strong(PAD, y, area.width, "Library", 26, INK);
     y += 44;
     let tabs: Vec<(String, String, bool)> = [
@@ -773,9 +754,6 @@ fn library(
                 )
             }));
             for (key, title, sub, target) in rows {
-                if y + 68 > bottom {
-                    break;
-                }
                 p.button(
                     Rect::new(0, y, area.width, 68),
                     Color::TRANSPARENT,
@@ -818,9 +796,6 @@ fn library(
             p.strong(r.x + 40, r.y + 9, 100, "Shuffle all", 14, Color::BLACK);
             y += 52;
             for t in songs {
-                if y + 60 > bottom {
-                    break;
-                }
                 y = song(app, p, env, area, y, t, "library", None);
             }
         }
@@ -850,9 +825,6 @@ fn library(
                 }
             }
             for a in artists {
-                if y + 68 > bottom {
-                    break;
-                }
                 p.button(
                     Rect::new(0, y, area.width, 68),
                     Color::TRANSPARENT,
@@ -883,9 +855,6 @@ fn grid(p: &mut Painter, area: Rect, mut y: i32, cards: &[Card], empty: &str) {
     }
     let size = (area.width - PAD as u32 * 2 - 12) / 2;
     for chunk in cards.chunks(2) {
-        if y > area.y + area.height as i32 {
-            break;
-        }
         for (i, (key, title, sub, target, round)) in chunk.iter().enumerate() {
             tile(
                 p,
@@ -953,7 +922,6 @@ fn search(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, mut
         );
     }
     y += 60;
-    let bottom = area.y + area.height as i32;
     match &app.results {
         Some(r) if r.is_empty() => {
             p.center(
@@ -990,9 +958,6 @@ fn search(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, mut
             if !r.tracks.is_empty() {
                 y = heading(p, area, y, "Songs");
                 for t in r.tracks.iter().filter_map(|t| c.track(t)).take(4) {
-                    if y + 60 > bottom {
-                        break;
-                    }
                     y = song(
                         app,
                         p,
@@ -1035,9 +1000,6 @@ fn search(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, mut
                     cell,
                     44,
                 );
-                if r.y + 44 > bottom {
-                    break;
-                }
                 p.button(
                     r,
                     Color::rgb(41, 41, 41),
@@ -1072,12 +1034,8 @@ fn up_next(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, mu
         y += 26;
     }
     let index = app.live(env.clock_us).map_or(player.index, |l| l.index);
-    let bottom = area.y + area.height as i32;
     for (i, id) in player.queue.iter().enumerate().skip(index) {
         let Some(t) = c.track(id) else { continue };
-        if y + 60 > bottom {
-            break;
-        }
         let r = Rect::new(0, y, area.width, 60);
         p.button(
             r,

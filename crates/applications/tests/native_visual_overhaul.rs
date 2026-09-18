@@ -136,12 +136,19 @@ fn files_project_real_names_and_only_supported_interactions() {
         // iOS reaches the folder through its Browse tab, which returns to the folder
         // the tab was in rather than jumping to the root; every other shell has a
         // root row in its sidebar or breadcrumb.
-        assert!(actions.contains(&"files-root") || actions.contains(&"files-browse"));
-        // Finder climbs from its Go menu and Files from its path bar, both drawn by
-        // the shell; every other client area carries its own Up.
+        assert!(
+            actions.contains(&"files-root") || actions.contains(&"files-browse"),
+            "{theme:?} {actions:?}"
+        );
+        // Finder climbs from its Go menu, Files from its path bar and iOS Files from
+        // the navigation bar's back chevron, all drawn by the shell; every other client
+        // area carries its own Up.
         assert!(
             actions.contains(&"files-up")
-                || matches!(theme, DesktopTheme::Macos | DesktopTheme::Ubuntu)
+                || matches!(
+                    theme,
+                    DesktopTheme::Macos | DesktopTheme::Ubuntu | DesktopTheme::Ios
+                )
         );
         assert!(actions.contains(&"open:0"));
         assert!(actions.contains(&"open:1"));

@@ -830,6 +830,64 @@ impl Kicad {
     pub fn drags(&self, target: &str) -> bool {
         target.starts_with("kicad:canvas:")
     }
+    /// The wheel over a canvas, with KiCad's default mouse settings: it zooms about the
+    /// pointer (the world point under it stays under it), Shift+wheel pans up and down
+    /// and Ctrl+wheel pans left and right; a sideways turn pans sideways.
+    pub fn wheel(
+        &mut self,
+        target: &str,
+        x: i32,
+        y: i32,
+        wheel: crate::Wheel,
+    ) -> Result<bool, String> {
+        let Some(rest) = target.strip_prefix("kicad:canvas:") else {
+            return Ok(false);
+        };
+        let parts: Vec<&str> = rest.split(':').collect();
+        let (min, max) = match parts[0] {
+            "sch" => (sch::MIN_ZOOM, sch::MAX_ZOOM),
+            "pcb" => (pcb::MIN_ZOOM, pcb::MAX_ZOOM),
+            _ => return Ok(false),
+        };
+        if self.ui.dialog.is_some() {
+            return Ok(false);
+        }
+        let Some(mut v) = View::from_args(&parts[1..]) else {
+            return Ok(false);
+        };
+        if let (Some(w), Some(h)) = (
+            parts.get(4).and_then(|v| v.parse().ok()),
+            parts.get(5).and_then(|v| v.parse().ok()),
+        ) {
+            self.ui.canvas = (w, h);
+        }
+        let before = v;
+        let (pan_x, pan_y) = if wheel.ctrl {
+            (wheel.dy + wheel.dx, 0)
+        } else if wheel.shift {
+            (wheel.dx, wheel.dy)
+        } else {
+            (wheel.dx, 0)
+        };
+        if pan_x != 0 || pan_y != 0 {
+            let z = v.zoom.max(1);
+            v.x0 += i64::from(pan_x) * 1000 / z;
+            v.y0 += i64::from(pan_y) * 1000 / z;
+            v.fit = false;
+        } else {
+            let at = v.world(x, y);
+            let notches = crate::wheel_steps(-wheel.dy, 120);
+            for _ in 0..notches.unsigned_abs().min(10) {
+                if notches > 0 {
+                    v.zoom_about(at, 5, 4, min, max);
+                } else {
+                    v.zoom_about(at, 4, 5, min, max);
+                }
+            }
+        }
+        self.ui.view = v;
+        Ok(v != before)
+    }
     pub fn hover(&mut self, target: &str, x: i32, y: i32) -> bool {
         let Some(rest) = target.strip_prefix("kicad:canvas:") else {
             return false;

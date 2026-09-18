@@ -233,6 +233,38 @@ impl Client {
         (client, effects)
     }
     /// Whether a text field has focus: the SQL editor, a filter box or a cell editor.
+    /// A wheel turn over a data grid scrolls its rows, three a notch: Browse Data's
+    /// table, or the Execute SQL results. Elsewhere the wheel is not the grid's.
+    pub fn wheel(&mut self, target: &str, wheel: crate::Wheel) -> Result<bool, String> {
+        if !["db:cell", "db:sort", "db:filter"]
+            .iter()
+            .any(|p| target.starts_with(p))
+            || wheel.dy == 0
+        {
+            return Ok(false);
+        }
+        let rows = i64::from(crate::wheel_steps(wheel.dy, 40));
+        let step = |at: usize, total: usize| {
+            (at as i64 + rows).clamp(0, total.saturating_sub(1) as i64) as usize
+        };
+        match self.tab {
+            Tab::Browse => {
+                let total = self.rows(0, 0).map_or(0, |r| r.total);
+                let next = step(self.offset, total);
+                let moved = next != self.offset;
+                self.offset = next;
+                Ok(moved)
+            }
+            Tab::Execute => {
+                let total = self.result.as_ref().map_or(0, |r| r.rows.len());
+                let next = step(self.result_offset, total);
+                let moved = next != self.result_offset;
+                self.result_offset = next;
+                Ok(moved)
+            }
+            _ => Ok(false),
+        }
+    }
     pub fn accepts_text(&self) -> bool {
         self.dialog.is_none()
             && self.dialog_files.is_none()

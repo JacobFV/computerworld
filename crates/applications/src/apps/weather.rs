@@ -4,7 +4,7 @@
 //! Fahrenheit degrees and are converted with the same integer formula the service uses, so
 //! a Celsius reading here and a Celsius reading on the site are the same number. A machine
 //! that cannot reach the service shows that, and a world with no cities shows no cities.
-use super::look::{action, chip, header, look, notice, FAINT, INK, LINE, MUTED};
+use super::look::{action, chip, look, notice, screen, FAINT, INK, LINE, MUTED};
 use super::Status;
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -398,7 +398,8 @@ impl Weather {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let mut top = header(p, theme, &l, width, &self.title(theme));
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let mut top = screen.top;
         // Units and refresh: one toolbar on a desktop, one row of pills on a phone.
         let bar = if theme.mobile() { 44 } else { 36 };
         p.box_(Rect::new(0, top, width, bar), l.chrome, 0);
@@ -430,6 +431,7 @@ impl Weather {
         }
         if self.cities.is_empty() {
             notice(p, width, top + 24, "No locations");
+            screen.end(p);
             return;
         }
         // A desktop keeps the city list in a sidebar; a phone puts it in a scrolling strip.
@@ -439,7 +441,24 @@ impl Weather {
             210
         };
         if side > 0 {
-            self.sidebar(p, &l, top, side as u32, height);
+            p.box_(
+                Rect::new(
+                    0,
+                    top,
+                    side as u32,
+                    height.saturating_sub(top.max(0) as u32),
+                ),
+                l.chrome,
+                0,
+            );
+            p.vline(side, top, height, LINE);
+            let cities = screen.column(
+                p,
+                "cities",
+                Rect::new(0, top, side as u32, (height as i32 - top).max(1) as u32),
+            );
+            self.sidebar(p, &l, cities.top, side as u32);
+            cities.end(p);
         } else {
             top = self.strip(p, &l, top, width);
         }
@@ -447,23 +466,22 @@ impl Weather {
             side,
             top,
             width.saturating_sub(side as u32),
-            height.saturating_sub(top.max(0) as u32),
+            (height as i32 - top).max(1) as u32,
         );
-        self.detail(p, theme, &l, body);
+        let detail = screen.column(p, "detail", body);
+        self.detail(
+            p,
+            theme,
+            &l,
+            Rect::new(body.x, detail.top, body.width, body.height),
+        );
+        detail.end(p);
+        screen.end(p);
     }
-    fn sidebar(&self, p: &mut Painter, l: &super::look::Look, top: i32, side: u32, height: u32) {
-        p.box_(
-            Rect::new(0, top, side, height.saturating_sub(top.max(0) as u32)),
-            l.chrome,
-            0,
-        );
-        p.vline(side as i32, top, height, LINE);
+    fn sidebar(&self, p: &mut Painter, l: &super::look::Look, top: i32, side: u32) {
         let mut y = top + 6;
         let current = self.current().map(|c| c.id.clone());
         for city in &self.cities {
-            if y as u32 + 44 > height {
-                break;
-            }
             let on = current.as_deref() == Some(city.id.as_str());
             let r = Rect::new(5, y, side - 10, 42);
             p.button(
@@ -520,26 +538,28 @@ impl Weather {
             y += 44;
         }
     }
-    /// The phone's city strip: one pill per city, the chosen one engaged.
+    /// The phone's cities: one pill per city, the chosen one engaged, wrapping onto as
+    /// many rows as they need so every city stays reachable.
     fn strip(&self, p: &mut Painter, l: &super::look::Look, top: i32, width: u32) -> i32 {
         let current = self.current().map(|c| c.id.clone());
-        let mut x = 12;
+        let (mut x, mut y) = (12, top + 8);
         for city in &self.cities {
             let w = p.measure(&city.city, 12, false) + 26;
-            if x + w as i32 > width as i32 - 12 {
-                break;
+            if x > 12 && x + w as i32 > width as i32 - 12 {
+                x = 12;
+                y += 38;
             }
             chip(
                 p,
                 l,
-                Rect::new(x, top + 8, w, 30),
+                Rect::new(x, y, w, 30),
                 &city.city,
                 &format!("weather:city:{}", city.id),
                 current.as_deref() == Some(city.id.as_str()),
             );
             x += w as i32 + 8;
         }
-        top + 46
+        y + 38
     }
     fn detail(&self, p: &mut Painter, theme: DesktopTheme, l: &super::look::Look, r: Rect) {
         let Some(city) = self.current() else {
@@ -589,9 +609,6 @@ impl Weather {
         );
         y += 38;
         for alert in self.current_alerts() {
-            if y as u32 + 52 > r.y as u32 + r.height {
-                return;
-            }
             let acked = self.acknowledged.contains(&alert.id);
             let card = Rect::new(r.x + 12, y, r.width.saturating_sub(24), 48);
             p.box_(
@@ -647,9 +664,6 @@ impl Weather {
         });
         let span = (hi - lo).max(1);
         for day in &city.days {
-            if y as u32 + 26 > r.y as u32 + r.height {
-                break;
-            }
             p.left(r.x + 16, y + 4, 62, &day.day, 12, INK);
             p.left(r.x + 82, y + 5, 90, &day.cond, 11, MUTED);
             if day.precip_pct > 0 {

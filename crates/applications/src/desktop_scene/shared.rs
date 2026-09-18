@@ -160,6 +160,14 @@ pub struct ShellOptions {
     pub home: String,
     /// Documents the user really opened, newest first (`DesktopState::recents`).
     pub recents: Vec<String>,
+    /// The machine runs on a battery (a laptop or a phone), so the shell shows one. A
+    /// desktop computer has none and its shell shows no battery at all.
+    pub battery: bool,
+    /// Where the pointer was when the open panel was opened: a context menu stays where
+    /// it was summoned while the pointer moves over its entries.
+    pub anchor: Option<(i32, i32)>,
+    /// A phone's Recents carousel position and Select mode.
+    pub overview: crate::Overview,
 }
 /// Words a phone keyboard offers to complete, most common first. A fixed list, so two
 /// machines typing the same letters are offered the same words.
@@ -454,6 +462,12 @@ pub struct ShellContext<'a> {
     pub user: &'a str,
     pub home: &'a str,
     pub recents: &'a [String],
+    /// The machine has a battery to report (a laptop or a phone).
+    pub battery: bool,
+    /// Where the open panel was summoned; a context menu is drawn there.
+    pub anchor: Option<(i32, i32)>,
+    /// A phone's Recents carousel position and Select mode.
+    pub overview: crate::Overview,
 }
 impl ShellContext<'_> {
     pub fn selected(&self, id: &str) -> bool {
@@ -702,6 +716,10 @@ pub struct Painter {
     pub scene: Scene,
     pub next: u64,
     pub z: i32,
+    /// Platform whose idiom scroll bars are drawn in.
+    pub theme: DesktopTheme,
+    /// Where the window being painted has each of its panes scrolled to.
+    pub scroll: super::scroll::Scroll,
 }
 /// Horizontal placement of a single-line label inside its box.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -745,12 +763,15 @@ impl Painter {
             scene: Scene::new(width, height),
             next: 1 << 60,
             z: 0,
+            theme: DesktopTheme::Macos,
+            scroll: Default::default(),
         }
     }
     pub fn themed(theme: DesktopTheme, width: u32, height: u32, first_id: u64) -> Self {
         let mut p = Self::new(width, height);
         p.next = first_id;
         p.scene.typeface = theme.typeface();
+        p.theme = theme;
         p
     }
     pub fn typeface(&self) -> Typeface {

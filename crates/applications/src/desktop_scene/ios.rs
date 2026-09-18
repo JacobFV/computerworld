@@ -1843,8 +1843,19 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         "editor" => "",
         kind => app_name(kind).unwrap_or(window.title.as_str()),
     };
-    p.strong_center(90, 62, ctx.width.saturating_sub(180), title, 17, ink);
-    if !dark && window.kind != "files" {
+    // An application with a large title shows it in its content, not twice: the bar
+    // stays clear until the large title has scrolled under it, and then carries the
+    // title inline over a hairline, as UINavigationBar does.
+    let large = window
+        .content
+        .as_ref()
+        .and_then(|c| c.scrolls.iter().find(|a| a.title.is_some()));
+    let inline = large.is_none_or(|a| a.title_collapsed());
+    if inline {
+        let title = large.and_then(|a| a.title.as_deref()).unwrap_or(title);
+        p.strong_center(90, 62, ctx.width.saturating_sub(180), title, 17, ink);
+    }
+    if !dark && window.kind != "files" && inline {
         p.hline(0, 95, ctx.width, HAIRLINE);
     }
     // In Files the chevron pops one folder, exactly like the crumb the content draws;
@@ -2346,6 +2357,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         };
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         background(&mut p, &ctx);
@@ -2409,6 +2423,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         }
     }
     fn ids(p: &Painter) -> Vec<String> {

@@ -450,7 +450,13 @@ impl Maps {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let mut top = header(p, theme, &l, width, &self.title(theme));
+        // The map is the content: Apple Maps has no title over it (the navigation bar
+        // names the app once), the other platforms keep their app bar.
+        let mut top = if theme == DesktopTheme::Ios {
+            0
+        } else {
+            header(p, theme, &l, width, &self.title(theme))
+        };
         // Search sits over the canvas on every platform, because a map is the content.
         let bar = if theme.mobile() { 48 } else { 38 };
         p.box_(Rect::new(0, top, width, bar), l.chrome, 0);
@@ -517,11 +523,22 @@ impl Maps {
         };
         self.canvas(p, theme, &l, canvas);
         let list = if stacked {
-            Rect::new(0, canvas.y + canvas.height as i32, width, height)
+            let y = canvas.y + canvas.height as i32;
+            Rect::new(0, y, width, (height as i32 - y).max(1) as u32)
         } else {
-            Rect::new(0, top, list_w, height)
+            Rect::new(0, top, list_w, (height as i32 - top).max(1) as u32)
         };
         self.list(p, theme, &l, list);
+    }
+    /// The place list beside or under the map, scrolling when it outgrows its room.
+    fn list(&self, p: &mut Painter, theme: DesktopTheme, l: &super::look::Look, r: Rect) {
+        p.box_(Rect::new(r.x, r.y, r.width, r.height), l.surface, 0);
+        if theme.mobile() {
+            p.hline(r.x, r.y, r.width, LINE);
+        }
+        let pane = p.pane("places", r);
+        self.list_body(p, l, Rect::new(r.x, pane.top(), r.width, r.height));
+        p.end_pane(pane, None);
     }
     /// The map itself: every place the service sent, plotted from its own micro-degrees.
     fn canvas(&self, p: &mut Painter, theme: DesktopTheme, l: &super::look::Look, r: Rect) {
@@ -590,11 +607,7 @@ impl Maps {
             }
         }
     }
-    fn list(&self, p: &mut Painter, theme: DesktopTheme, l: &super::look::Look, r: Rect) {
-        p.box_(Rect::new(r.x, r.y, r.width, r.height), l.surface, 0);
-        if theme.mobile() {
-            p.hline(r.x, r.y, r.width, LINE);
-        }
+    fn list_body(&self, p: &mut Painter, l: &super::look::Look, r: Rect) {
         let mut y = r.y + 8;
         // Travel modes: four real prices the service quotes, one of which is engaged.
         let mut x = r.x + 8;
@@ -656,9 +669,6 @@ impl Maps {
             );
             y += 22;
             for step in &route.steps {
-                if y as u32 + 18 > r.y as u32 + r.height {
-                    return;
-                }
                 p.left(
                     r.x + 10,
                     y,
@@ -678,9 +688,6 @@ impl Maps {
         }
         let row = l.row.max(44);
         for place in places {
-            if y as u32 + row > r.y as u32 + r.height {
-                break;
-            }
             let on = self.selected.as_deref() == Some(place.id.as_str());
             let card = Rect::new(r.x + 6, y, r.width.saturating_sub(12), row);
             p.button(
@@ -747,9 +754,6 @@ impl Maps {
             );
             y += row as i32 + 1;
             if on {
-                if y as u32 + 30 > r.y as u32 + r.height {
-                    break;
-                }
                 p.left(
                     card.x + 10,
                     y,

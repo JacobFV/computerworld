@@ -397,7 +397,9 @@ fn every_painted_control_is_one_the_model_accepts() {
                 !targets.is_empty(),
                 "{name} on {theme:?} paints no controls"
             );
-            for target in targets {
+            // A pane's scroll bar is the window's, not the player's: the platform
+            // drags it (see `desktop_scene::scroll`).
+            for target in targets.into_iter().filter(|t| !t.starts_with("pane:")) {
                 let mut app = state.clone();
                 assert!(
                     app.click(1, &target, 3 * S).is_ok(),

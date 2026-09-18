@@ -1,8 +1,9 @@
 //! Native OS shell composition. Application scenes retain independent state and coordinates.
 use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
+pub mod scroll;
 pub mod shared;
-pub use app_content::{app_content, app_content_with};
+pub use app_content::{app_content, app_content_scrolled, app_content_with};
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 mod android;
 mod ios;
@@ -145,11 +146,13 @@ fn default_frame(theme: DesktopTheme, width: u32, height: u32, maximized: bool) 
     )
 }
 /// Pages of a paged home screen at this screen size, for these installed applications
-/// (empty meaning all). Only iOS pages its home screen; every other shell has one.
+/// (empty meaning all). iOS and Pixel Launcher page their home screens; the desktop
+/// shells have one.
 /// The router asks this so a swipe walks exactly the pages the shell paints.
 pub fn home_page_count(theme: DesktopTheme, installed: &[String], width: u32, height: u32) -> u32 {
     match theme {
         DesktopTheme::Ios => ios::home_pages(installed, width, height),
+        DesktopTheme::Android => android::home_pages(installed, width, height),
         _ => 1,
     }
 }
@@ -263,6 +266,9 @@ pub fn render_desktop_with_options(
         user: &options.user,
         home: &options.home,
         recents: &options.recents,
+        battery: options.battery,
+        anchor: options.anchor,
+        overview: options.overview,
     };
     let mut p = Painter::themed(theme, width, height, 1 << 60);
     background(&mut p, &ctx);
@@ -317,6 +323,22 @@ pub fn render_desktop_with_options(
                     }
                 }
                 p.scene.nodes.push(n);
+            }
+            // Panes move with the content and take the window's namespace.
+            for area in &content.scrolls {
+                let bounds = Rect::new(
+                    area.bounds.x + r.x,
+                    area.bounds.y + r.y,
+                    area.bounds.width,
+                    area.bounds.height,
+                );
+                if let Some(bounds) = bounds.intersection(r) {
+                    let mut area = area.clone();
+                    area.bounds = bounds;
+                    area.target = w.action(&format!("content:{}", area.target));
+                    area.window = Some(w.id);
+                    p.scene.scrolls.push(area);
+                }
             }
         }
         // Client pixels follow the frame's rounded silhouette, inside its hairline.

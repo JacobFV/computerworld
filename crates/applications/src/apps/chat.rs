@@ -1,5 +1,5 @@
 //! Messages over the `chat` service: real channels, real messages, real sending.
-use super::look::{action, header, look, notice, FAINT, INK, LINE, MUTED};
+use super::look::{action, look, notice, screen_from_end, FAINT, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -34,6 +34,10 @@ pub struct Chat {
     pub channel: Channel,
     pub draft: String,
     pub status: Status,
+    /// The composer has been tapped, so on a phone it has the keyboard. A desktop's
+    /// composer has the focus whenever a conversation is open.
+    #[serde(default)]
+    pub composing: bool,
 }
 impl Chat {
     pub const KIND: &'static str = "chat";
@@ -53,6 +57,7 @@ impl Chat {
             channel: Channel::default(),
             draft,
             status: Status::Loading,
+            composing: false,
         };
         let effects = vec![app.request(window, "channels", "GET", "/api/channels", String::new())];
         (app, effects)
@@ -145,6 +150,9 @@ impl Chat {
         }
     }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
+        if self.open.is_none() {
+            return Err("no conversation is open to write in".into());
+        }
         push_bounded(&mut self.draft, text, 4096);
         Ok(())
     }
@@ -178,7 +186,13 @@ impl Chat {
                     String::new(),
                 )])
             }
-            "compose" => Ok(vec![]),
+            "compose" => {
+                if self.open.is_none() {
+                    return Err("no conversation is open to write in".into());
+                }
+                self.composing = true;
+                Ok(vec![])
+            }
             "send" => {
                 let id = self.open.clone().ok_or("no channel is open")?;
                 if self.draft.trim().is_empty() {
@@ -199,6 +213,7 @@ impl Chat {
                         return Err("channel not found".into());
                     }
                     self.open = Some(id.to_owned());
+                    self.composing = false;
                     self.status = Status::Loading;
                     return Ok(vec![self.open_channel(window, id)]);
                 }
@@ -267,7 +282,17 @@ impl Chat {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let top = header(p, theme, &l, width, &self.title(theme));
+        let composer_h: i32 = 46;
+        // A conversation opens on its newest message; older ones are a scroll away.
+        let screen = screen_from_end(
+            p,
+            theme,
+            &l,
+            width,
+            height as i32 - composer_h,
+            &self.title(theme),
+        );
+        let top = screen.top;
         let sidebar = if theme.mobile() || width < 520 {
             0
         } else {
@@ -277,11 +302,18 @@ impl Chat {
             p.box_(Rect::new(0, top, sidebar, height), l.chrome, 0);
             p.vline(sidebar as i32 - 1, top, height, LINE);
             p.left(14, top + 10, sidebar - 24, "Channels", 11, MUTED);
+            let list = screen.column(
+                p,
+                "channels",
+                Rect::new(
+                    0,
+                    top + 28,
+                    sidebar,
+                    (height as i32 - top - 76).max(1) as u32,
+                ),
+            );
             for (index, (id, title)) in self.channels.iter().enumerate() {
-                let r = Rect::new(8, top + 30 + index as i32 * 30, sidebar - 16, 28);
-                if r.y as u32 + 28 > height {
-                    break;
-                }
+                let r = Rect::new(8, list.top + 2 + index as i32 * 30, sidebar - 16, 28);
                 let on = self.open.as_deref() == Some(id.as_str());
                 p.button(
                     r,
@@ -299,6 +331,7 @@ impl Chat {
                     if on { l.accent } else { INK },
                 );
             }
+            list.end(p);
             action(
                 p,
                 &l,
@@ -313,11 +346,20 @@ impl Chat {
         if let Some(text) = self.status.notice() {
             notice(p, pane, top + 16, text);
         }
-        let composer_h: i32 = 46;
-        let mut y = top + 8;
         if self.channel.messages.is_empty() && self.status.notice().is_none() {
             notice(p, pane, top + 30, "No messages yet");
         }
+        let messages = screen.column_from_end(
+            p,
+            "messages",
+            Rect::new(
+                x,
+                top,
+                pane,
+                (height as i32 - composer_h - top).max(1) as u32,
+            ),
+        );
+        let mut y = messages.top + 8;
         for post in &self.channel.messages {
             let text_w = pane.saturating_sub(32);
             let lines = p
@@ -325,9 +367,6 @@ impl Chat {
                 .div_ceil(text_w.max(1))
                 .max(1);
             let h = 22 + lines * 18;
-            if y + h as i32 + composer_h > height as i32 {
-                break;
-            }
             p.strong(x + 16, y, text_w, &post.author, 12, l.accent);
             p.paragraph(x + 16, y + 16, text_w, &post.text, 13, INK);
             // Reactions are a real service route, so the control is real.
@@ -342,13 +381,25 @@ impl Chat {
             p.center(react.x, react.y + 2, react.width, "+1", 11, MUTED);
             y += h as i32 + 6;
         }
+        messages.end(p);
+        screen.end(p);
         let bar = Rect::new(
             x + 10,
             height as i32 - composer_h + 6,
             pane.saturating_sub(96),
             32,
         );
-        p.border(bar, Color::WHITE, l.radius, LINE);
+        let focused = self.open.is_some() && (self.composing || !theme.mobile());
+        p.border(
+            bar,
+            Color::WHITE,
+            l.radius,
+            if focused && theme.mobile() {
+                l.accent
+            } else {
+                LINE
+            },
+        );
         p.region(bar, "chat:compose", "Message");
         p.left(
             bar.x + 10,
