@@ -357,6 +357,7 @@ dependencies = [
 name = "cw-raster"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "jpeg-decoder",
  "serde",
  "serde_json",
 ]

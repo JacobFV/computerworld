@@ -1097,6 +1097,20 @@ impl Environment {
                     .unwrap_or(768)
                     .min(8192) as u32;
                 self.machine_mut(id, machine)?.pointer_position = Some((x, y));
+                // Keys held with the pointer (`["ctrl"]`, `["alt"]`…): an image editor's
+                // Ctrl- or Option-click sets a clone source.
+                let modifiers = match p.get("modifiers") {
+                    None | Some(Value::Null) => 0,
+                    Some(Value::Array(names)) => {
+                        let names: Vec<&str> = names.iter().filter_map(Value::as_str).collect();
+                        if names.len() != p["modifiers"].as_array().map_or(0, Vec::len) {
+                            return Err(SimError::invalid("modifiers are key names"));
+                        }
+                        cw_applications::modifier_bits(&names).map_err(SimError::invalid)?
+                    }
+                    Some(_) => return Err(SimError::invalid("modifiers are a list of key names")),
+                };
+                self.machine_mut(id, machine)?.desktop.pointer_modifiers = modifiers;
                 let released_press = if action.op == "up" {
                     self.machine_mut(id, machine)?.pointer_press.take()
                 } else {

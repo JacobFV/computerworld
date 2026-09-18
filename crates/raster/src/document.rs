@@ -6,6 +6,8 @@ use crate::adjust::{self, Adjustment};
 use crate::blend::{self, BlendMode};
 use crate::draw::{self, Brush, BrushKind, Shape};
 use crate::filter::{self, Filter};
+use crate::gradient::Gradient;
+use crate::heal;
 use crate::mask::{Mask, SelectMode, P16};
 use crate::transform::{self, Resample};
 use crate::{check_size, Canvas, IRect, Rgba, TRANSPARENT};
@@ -122,6 +124,27 @@ struct Stroke {
     last: P16,
     carry: i64,
     touched: Option<IRect>,
+    #[serde(default)]
+    mode: StrokeMode,
+    /// What a clone or heal samples when it samples every layer (Sample merged); the
+    /// layer as it was when the stroke began otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    source: Option<Canvas>,
+}
+
+/// What a brush stroke does with the pixels under it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum StrokeMode {
+    /// Paint the brush colour (or erase).
+    #[default]
+    Paint,
+    /// Clone stamp: copy the pixels `(dx, dy)` away from each one painted.
+    Clone { dx: i32, dy: i32 },
+    /// Heal: copy them, blended to match the colour around the brush.
+    Heal { dx: i32, dy: i32 },
+    /// Repair: mark an area; on release it is rebuilt from its surroundings.
+    Repair,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,6 +179,37 @@ impl Document {
     /// An opened picture, as a single layer called `name`.
     pub fn from_canvas(canvas: Canvas, name: &str) -> Self {
         Self::from_layer(Layer::new(name, canvas))
+    }
+    /// A document of several layers, bottom first, every one `width` x `height`: what a
+    /// layered file (GIMP's XCF) opens as.
+    pub fn from_layers(
+        width: u32,
+        height: u32,
+        layers: Vec<Layer>,
+        active: usize,
+    ) -> Result<Self, String> {
+        check_size(width, height)?;
+        if layers.is_empty() {
+            return Err("an image needs at least one layer".into());
+        }
+        if layers.len() > LAYER_LIMIT {
+            return Err(format!("at most {LAYER_LIMIT} layers"));
+        }
+        if layers
+            .iter()
+            .any(|l| l.canvas.width() != width || l.canvas.height() != height)
+        {
+            return Err("every layer must be the size of the image".into());
+        }
+        Ok(Self {
+            width,
+            height,
+            active: active.min(layers.len() - 1),
+            layers,
+            selection: None,
+            history: History::default(),
+            stroke: None,
+        })
     }
     fn from_layer(layer: Layer) -> Self {
         Self {
@@ -219,6 +273,26 @@ impl Document {
             out = blend::composite(
                 out,
                 layer.canvas.get(x, y),
+                crate::fmath::percent255(layer.opacity),
+                layer.blend,
+            );
+        }
+        out
+    }
+    /// Like [`Self::pixel`], with the active layer's pixels read from `active` instead:
+    /// how an edit that is not yet made (a dialog's preview, a move being dragged)
+    /// would look.
+    pub fn pixel_with(&self, x: i32, y: i32, active: &Canvas) -> Rgba {
+        let mut out = TRANSPARENT;
+        for (i, layer) in self.layers.iter().enumerate().filter(|(_, l)| l.visible) {
+            let src = if i == self.active {
+                active.get(x, y)
+            } else {
+                layer.canvas.get(x, y)
+            };
+            out = blend::composite(
+                out,
+                src,
                 crate::fmath::percent255(layer.opacity),
                 layer.blend,
             );
@@ -409,9 +483,16 @@ impl Document {
 
     /// Pointer down with a brush, at sub16 `p`.
     pub fn begin_stroke(&mut self, brush: Brush, p: P16) {
+        self.begin_stroke_with(brush, p, StrokeMode::Paint, false);
+    }
+    /// Pointer down with a clone, heal or repair brush. `merged` samples the image as
+    /// shown rather than the active layer.
+    pub fn begin_stroke_with(&mut self, brush: Brush, p: P16, mode: StrokeMode, merged: bool) {
         self.end_stroke();
         let layer = self.active;
         let before = self.layers[layer].canvas.clone();
+        let source = (merged && matches!(mode, StrokeMode::Clone { .. } | StrokeMode::Heal { .. }))
+            .then(|| self.composite());
         self.stroke = Some(Stroke {
             brush,
             layer,
@@ -420,8 +501,17 @@ impl Document {
             last: p,
             carry: 0,
             touched: None,
+            mode,
+            source,
         });
         self.dab_at(&[p]);
+    }
+    /// The coverage a repair stroke has marked so far, for the view to show.
+    pub fn repair_mask(&self) -> Option<&Mask> {
+        self.stroke
+            .as_ref()
+            .filter(|s| s.mode == StrokeMode::Repair)
+            .map(|s| &s.mask)
     }
     /// Pointer moved while stroking.
     pub fn stroke_to(&mut self, p: P16) {
@@ -450,27 +540,77 @@ impl Document {
         stroke.touched = Some(stroke.touched.map_or(area, |t| t.union(&area)));
         let brush = stroke.brush;
         let (mask, before) = (&stroke.mask, &stroke.before);
-        draw::apply_coverage(
-            &mut self.layers[stroke.layer].canvas,
-            Some(before),
-            area,
-            self.selection.as_ref(),
-            brush.kind,
-            brush.color,
-            brush.opacity,
-            brush.blend,
-            |x, y| mask.get(x, y),
-        );
+        let sample = stroke.source.as_ref().unwrap_or(before);
+        let layer = &mut self.layers[stroke.layer].canvas;
+        match stroke.mode {
+            StrokeMode::Paint => {
+                draw::apply_coverage(
+                    layer,
+                    Some(before),
+                    area,
+                    self.selection.as_ref(),
+                    brush.kind,
+                    brush.color,
+                    brush.opacity,
+                    brush.blend,
+                    |x, y| mask.get(x, y),
+                );
+            }
+            StrokeMode::Clone { dx, dy } => {
+                draw::apply_colors(
+                    layer,
+                    Some(before),
+                    area,
+                    self.selection.as_ref(),
+                    BrushKind::Paint,
+                    brush.opacity,
+                    BlendMode::Normal,
+                    |x, y| (mask.get(x, y), sample.get(x + dx, y + dy)),
+                );
+            }
+            StrokeMode::Heal { dx, dy } => {
+                // Each pointer event heals the dabs it laid, against the layer as it
+                // now is, as GIMP heals dab by dab.
+                let cov = |x: i32, y: i32| {
+                    points
+                        .iter()
+                        .map(|p| brush.dab_coverage(p.0, p.1, x, y))
+                        .max()
+                        .unwrap_or(0)
+                };
+                let src = |x: i32, y: i32| sample.get_clamped(x + dx, y + dy);
+                heal::heal(
+                    layer,
+                    area,
+                    &cov,
+                    &src,
+                    brush.opacity,
+                    self.selection.as_ref(),
+                );
+            }
+            // Repair only marks; it rebuilds on release.
+            StrokeMode::Repair => {}
+        }
     }
     /// Pointer up: the stroke becomes one undoable step.
     pub fn end_stroke(&mut self) -> Option<IRect> {
         let stroke = self.stroke.take()?;
-        let touched = stroke.touched?;
+        let mut touched = stroke.touched?;
+        if stroke.mode == StrokeMode::Repair {
+            let mut hole = stroke.mask.clone();
+            if let Some(sel) = &self.selection {
+                hole.combine(sel, SelectMode::Intersect);
+            }
+            touched = heal::inpaint(&mut self.layers[stroke.layer].canvas, &hole)?;
+        }
         let pixels = stroke.before.region(touched)?;
-        let label = match stroke.brush.kind {
-            BrushKind::Erase => "Eraser",
-            BrushKind::Paint if !stroke.brush.antialias => "Pencil",
-            BrushKind::Paint => "Brush",
+        let label = match (stroke.mode, stroke.brush.kind) {
+            (StrokeMode::Clone { .. }, _) => "Clone",
+            (StrokeMode::Heal { .. }, _) => "Heal",
+            (StrokeMode::Repair, _) => "Repair",
+            (_, BrushKind::Erase) => "Eraser",
+            (_, BrushKind::Paint) if !stroke.brush.antialias => "Pencil",
+            (_, BrushKind::Paint) => "Brush",
         };
         self.record(
             label,
@@ -499,6 +639,23 @@ impl Document {
         self.edit_active("Fill", |layer, sel| {
             draw::bucket_fill(layer, &sample, x, y, color, tolerance, sel)
         })
+    }
+    /// Any local edit of the active layer through the selection, recorded as one step
+    /// of the pixels it reports touching (none if it changed nothing).
+    pub fn edit_layer(
+        &mut self,
+        label: &str,
+        f: impl FnOnce(&mut Canvas, Option<&Mask>) -> Option<IRect>,
+    ) -> Option<IRect> {
+        self.edit_active(label, f)
+    }
+    pub fn gradient(&mut self, gradient: &Gradient) -> Option<IRect> {
+        self.edit_active("Gradient", |layer, sel| gradient.apply(layer, sel))
+    }
+    /// Select the area a closed path (or shape outline) encloses.
+    pub fn select_polygon(&mut self, points: &[P16], mode: SelectMode) {
+        let mask = Mask::polygon(self.width, self.height, points);
+        self.select(mask, mode);
     }
     pub fn shape(&mut self, shape: &Shape) -> Option<IRect> {
         self.edit_active("Shape", |layer, sel| shape.draw(layer, sel))
@@ -943,6 +1100,73 @@ mod tests {
         d.redo().unwrap();
         assert_eq!(d.pixel(4, 2), BLACK);
         assert!(!d.can_redo());
+    }
+    #[test]
+    fn clone_heal_and_repair_strokes_are_single_steps() {
+        // A 4x4 checker patch at (2, 2) on white; clone it 20 px to the right.
+        let mut d = Document::new(40, 12, Some(WHITE)).unwrap();
+        for y in 2..6 {
+            for x in 2..6 {
+                if (x + y) % 2 == 0 {
+                    d.layers[0].canvas.set(x, y, BLACK);
+                }
+            }
+        }
+        let original = d.composite();
+        let brush = Brush {
+            size: 6,
+            antialias: false,
+            ..Brush::default()
+        };
+        d.begin_stroke_with(
+            brush,
+            at(24, 4),
+            StrokeMode::Clone { dx: -20, dy: 0 },
+            false,
+        );
+        d.stroke_to(at(25, 4));
+        d.end_stroke().unwrap();
+        for y in 2..6 {
+            for x in 2..6 {
+                assert_eq!(d.pixel(x + 20, y), original.get(x, y), "{x},{y}");
+            }
+        }
+        assert_eq!(d.undo_label(), Some("Clone"));
+        d.undo().unwrap();
+        assert_eq!(d.composite(), original);
+        // Healing the same patch onto grey keeps the checks, lifted to the grey.
+        let grey = [150, 150, 150, 255];
+        for y in 0..12 {
+            for x in 16..40 {
+                d.layers[0].canvas.set(x, y, grey);
+            }
+        }
+        let soft = Brush {
+            size: 8,
+            antialias: false,
+            ..Brush::default()
+        };
+        d.begin_stroke_with(soft, at(24, 4), StrokeMode::Heal { dx: -20, dy: 0 }, false);
+        d.end_stroke().unwrap();
+        // White source (255) becomes grey (150): its checks, black, become 150 - 255.
+        assert_eq!(d.pixel(23, 4), [150, 150, 150, 255]);
+        assert_eq!(d.pixel(22, 4), [0, 0, 0, 255]);
+        assert_eq!(d.undo_label(), Some("Heal"));
+        // Repair only marks while dragging, then rebuilds on release.
+        let mut d = Document::new(30, 30, Some([40, 80, 120, 255])).unwrap();
+        d.layers[0].canvas.set(15, 15, [255, 0, 0, 255]);
+        let brush = Brush {
+            size: 5,
+            ..Brush::default()
+        };
+        d.begin_stroke_with(brush, at(15, 15), StrokeMode::Repair, false);
+        assert!(d.repair_mask().is_some());
+        assert_eq!(d.pixel(15, 15), [255, 0, 0, 255], "not until release");
+        d.end_stroke().unwrap();
+        assert_eq!(d.pixel(15, 15), [40, 80, 120, 255]);
+        assert_eq!(d.undo_label(), Some("Repair"));
+        d.undo().unwrap();
+        assert_eq!(d.pixel(15, 15), [255, 0, 0, 255]);
     }
     #[test]
     fn stroke_opacity_is_a_ceiling_not_a_buildup() {

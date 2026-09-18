@@ -2,7 +2,7 @@
 //! zoom, the selection's marching ants, the drag in progress), and a small kit of
 //! controls each product styles with its own [`Skin`]. Every control here dispatches a
 //! command the [`Studio`] really handles, or is painted disabled with its reason.
-use super::{dialog_params, look, preview_adjustments, Gesture, Panel, Product, Studio};
+use super::{dialog_params, look, Format, Gesture, Panel, Product, Studio, Tool};
 use crate::desktop_scene::{shared::Align, Painter};
 use cw_raster::document::checker;
 use cw_raster::mask::Mask;
@@ -80,6 +80,9 @@ pub fn dialog_title(product: Product, id: &str) -> String {
         "color" if gimp => "Change Foreground Color",
         "color" => "Colors",
         "adjust-color" => "Adjust Color",
+        "jpeg" => "Export Image as JPEG",
+        "jpeg-quality" => "JPEG Quality",
+        "stroke-path" => "Stroke Path",
         other => other,
     }
     .to_owned()
@@ -119,6 +122,9 @@ pub fn param_label(id: &str) -> &str {
         "background" => "White background",
         "sepia" => "Sepia",
         "sharpness" => "Sharpness",
+        "quality" => "Quality",
+        "line-width" => "Line width",
+        "antialias" => "Antialiasing",
         "r" => "Red",
         "g" => "Green",
         "b" => "Blue",
@@ -149,15 +155,30 @@ fn view_bitmap(studio: &Studio, vw: u32, vh: u32) -> Option<(Rect, Canvas)> {
     let map = |v: i32, o: i32| -> i32 { ((2 * i64::from(v - o) + 1) * 100 / (2 * z)) as i32 };
     let cols: Vec<i32> = (x0..x1).map(|vx| map(vx, ox)).collect();
     let rows: Vec<i32> = (y0..y1).map(|vy| map(vy, oy)).collect();
-    // Colour first, without the checkerboard, so adjustments preview on the image.
+    // Colour first, without the checkerboard. An edit being previewed (a dialog, a
+    // move, a gradient) shows through its stand-in for the active layer.
+    let preview = studio.preview_layer();
     let mut img = Canvas::new(w, h);
     for (j, iy) in rows.iter().enumerate() {
         for (i, ix) in cols.iter().enumerate() {
-            img.set(i as i32, j as i32, doc.pixel(*ix, *iy));
+            let px = match &preview {
+                Some(layer) => doc.pixel_with(*ix, *iy, layer),
+                None => doc.pixel(*ix, *iy),
+            };
+            img.set(i as i32, j as i32, px);
         }
     }
-    for adj in preview_adjustments(studio.panel.as_ref()) {
-        cw_raster::adjust::apply(&mut img, &adj, None);
+    // A repair stroke shows the area it will rebuild, tinted, until it is released.
+    if let Some(mask) = doc.repair_mask() {
+        for (j, iy) in rows.iter().enumerate() {
+            for (i, ix) in cols.iter().enumerate() {
+                let k = u32::from(mask.get(*ix, *iy)) * 150 / 255;
+                if k > 0 {
+                    let p = img.get(i as i32, j as i32);
+                    img.set(i as i32, j as i32, blend::mix(p, [255, 70, 90, 255], k));
+                }
+            }
+        }
     }
     if matches!(studio.product, Product::IosPhotos | Product::GooglePhotos)
         && !look::is_identity(studio)
@@ -207,8 +228,17 @@ fn to_view(studio: &Studio, vw: u32, vh: u32, p: (i64, i64)) -> (i32, i32) {
 /// The editing surface: the image, what overlays it, and the drag target that turns
 /// pointer drags into strokes, selections and shapes. `page` draws the paper shadow
 /// Paint and Pinta put under the image.
-pub fn canvas(p: &mut Painter, s: &Skin, r: Rect, studio: &Studio, page: bool) {
-    canvas_with(p, s, r, studio, page, true);
+/// `pointer` is where the pointer is over the frame, if it is: the brush outline and
+/// the clone source marker follow it while it is over the canvas.
+pub fn canvas(
+    p: &mut Painter,
+    s: &Skin,
+    r: Rect,
+    studio: &Studio,
+    page: bool,
+    pointer: Option<(i32, i32)>,
+) {
+    canvas_with(p, s, r, studio, page, true, pointer);
 }
 /// The canvas; `interactive` is false where the image is only shown (a phone editor's
 /// Adjust and Filters tabs), so no drag surface is painted over it.
@@ -219,6 +249,7 @@ pub fn canvas_with(
     studio: &Studio,
     page: bool,
     interactive: bool,
+    pointer: Option<(i32, i32)>,
 ) {
     p.box_(r, s.backdrop, 0);
     let (vw, vh) = (r.width.max(1), r.height.max(1));
@@ -241,6 +272,9 @@ pub fn canvas_with(
     overlays(p, r, studio);
     if !interactive {
         return;
+    }
+    if pointer.is_some_and(|(x, y)| r.contains(x, y)) {
+        tip(p, r, studio);
     }
     let label = match studio.tool {
         super::Tool::Text => "Image canvas (click to type)",
@@ -265,7 +299,9 @@ fn overlays(p: &mut Painter, r: Rect, studio: &Studio) {
             } else {
                 dash
             };
-            if *tool == super::Tool::Shape && studio.shape.open() {
+            if *tool == Tool::Gradient {
+                // Drawn below as the gradient's line.
+            } else if *tool == super::Tool::Shape && studio.shape.open() {
                 p.line(vec![a, b], color, studio.size.clamp(1, 40) as u16);
             } else if *tool == super::Tool::EllipseSelect
                 || (*tool == super::Tool::Shape
@@ -297,7 +333,77 @@ fn overlays(p: &mut Painter, r: Rect, studio: &Studio) {
                 p.line(pts, dash, 1);
             }
         }
+        Some(Gesture::Freehand { points }) => {
+            let mut pts: Vec<(i32, i32)> = points.iter().map(|q| at(*q)).collect();
+            if let Some(first) = pts.first().copied() {
+                pts.push(first);
+            }
+            if pts.len() > 2 {
+                p.line(pts, rgba(studio.primary), studio.size.clamp(1, 40) as u16);
+            }
+        }
         _ => {}
+    }
+    // A curve being bent: the curve as it will be drawn, and its points as handles.
+    if let Some(curve) = &studio.curve {
+        let flat = if studio.product == Product::Paint {
+            let q = &curve.points;
+            cw_raster::path::cubic(q[0], q[1], q[2], q[3])
+        } else {
+            cw_raster::path::Path::through(&curve.points, false).flatten()
+        };
+        let pts: Vec<(i32, i32)> = flat.iter().map(|q| at(*q)).collect();
+        p.line(pts, rgba(studio.primary), studio.size.clamp(1, 40) as u16);
+        let handles: Vec<_> = if studio.product == Product::Paint {
+            vec![curve.points[0], curve.points[3]]
+        } else {
+            curve.points.clone()
+        };
+        for q in handles {
+            let (x, y) = at(q);
+            p.box_(Rect::new(x - 3, y - 3, 7, 7), Color::WHITE, 0);
+            p.border(Rect::new(x - 3, y - 3, 7, 7), Color::TRANSPARENT, 0, dash);
+        }
+    }
+    // GIMP's path: its outline, anchors as squares, handles as circles on stalks.
+    if let Some(path) = &studio.path_edit {
+        let pts: Vec<(i32, i32)> = path.flatten().iter().map(|q| at(*q)).collect();
+        if pts.len() > 1 {
+            p.line(pts, Color(40, 120, 220, 255), 1);
+        }
+        let editing = studio.tool == Tool::Paths;
+        for a in &path.anchors {
+            let (x, y) = at(a.point);
+            if editing {
+                for h in [a.cin, a.cout] {
+                    if h != a.point {
+                        let (hx, hy) = at(h);
+                        p.line(vec![(x, y), (hx, hy)], Color(40, 120, 220, 200), 1);
+                        p.ring(hx, hy, 3, 1, Color(40, 120, 220, 255));
+                    }
+                }
+            }
+            p.border(
+                Rect::new(x - 3, y - 3, 7, 7),
+                Color::WHITE,
+                0,
+                Color(40, 120, 220, 255),
+            );
+        }
+    }
+    // The gradient line being dragged, end to end.
+    if let Some(Gesture::Span {
+        tool: Tool::Gradient,
+        start,
+        end,
+    }) = &studio.gesture
+    {
+        let (a, b) = (at(*start), at(*end));
+        p.line(vec![a, b], dash, 1);
+        for (x, y) in [a, b] {
+            p.circle(x, y, 4, Color::WHITE);
+            p.ring(x, y, 4, 1, dash);
+        }
     }
     if let Some(crop) = studio.crop {
         let a = at(((crop.x as i64) * 16, (crop.y as i64) * 16));
@@ -351,6 +457,46 @@ fn overlays(p: &mut Painter, r: Rect, studio: &Studio) {
                 rgba(studio.primary),
                 0,
             );
+        }
+    }
+}
+
+/// What follows the pointer over the canvas: the outline of the brush tip at its size
+/// on screen, and a clone's source marker (where the brush is copying from).
+fn tip(p: &mut Painter, r: Rect, studio: &Studio) {
+    let Some(hover) = studio.hover else {
+        return;
+    };
+    let (vw, vh) = (r.width.max(1), r.height.max(1));
+    let z = studio.effective_zoom(vw, vh).max(1);
+    let at = |pt: (i64, i64)| {
+        let (x, y) = to_view(studio, vw, vh, pt);
+        (r.x + x, r.y + y)
+    };
+    if studio.tool.has_tip() {
+        let (x, y) = at(hover);
+        let radius = (studio.brush().size * z / 200).max(1);
+        p.ring(x, y, radius + 1, 1, Color(255, 255, 255, 200));
+        p.ring(x, y, radius, 1, Color(0, 0, 0, 200));
+    }
+    if matches!(studio.tool, Tool::Clone | Tool::Heal) {
+        // While a stroke runs the marker moves with the brush; otherwise it sits on
+        // the source point, or where an aligned clone will sample next.
+        let marker = match (studio.retouch.active, studio.retouch.source) {
+            (Some((dx, dy)), _) => {
+                Some((hover.0 + i64::from(dx) * 16, hover.1 + i64::from(dy) * 16))
+            }
+            (None, Some((sx, sy))) => Some(match studio.retouch.offset {
+                Some((dx, dy)) => (hover.0 + i64::from(dx) * 16, hover.1 + i64::from(dy) * 16),
+                None => super::centre(sx, sy),
+            }),
+            _ => None,
+        };
+        if let Some(m) = marker {
+            let (x, y) = at(m);
+            p.line(vec![(x - 7, y), (x + 7, y)], Color(0, 0, 0, 220), 1);
+            p.line(vec![(x, y - 7), (x, y + 7)], Color(0, 0, 0, 220), 1);
+            p.ring(x, y, 4, 1, Color(255, 255, 255, 220));
         }
     }
 }
@@ -765,9 +911,21 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
     };
     let params = dialog_params(id);
     let row = 44;
-    let extra = if id == "curves" { 170 } else { 0 };
+    // GIMP's image-changing dialogs carry a Preview checkbox.
+    let previewable = matches!(
+        super::operation(id, values),
+        Some(super::Operation::Adjust(_) | super::Operation::Filter(_))
+    );
+    let preview_box = studio.product == Product::Gimp && previewable;
+    let extra = if id == "curves" { 170 + 32 } else { 0 } + if preview_box { 30 } else { 0 };
     let w = 380.min(width.saturating_sub(24)).max(240);
-    let h = (56 + params.len() as u32 * row + extra + 56).min(height.saturating_sub(16));
+    // Curves draws its points on the graph, not as rows.
+    let rows = if id == "curves" {
+        0
+    } else {
+        params.len() as u32
+    };
+    let h = (56 + rows * row + extra + 56).min(height.saturating_sub(16));
     let r = Rect::new(
         (width as i32 - w as i32) / 2,
         (height as i32 - h as i32) / 2,
@@ -795,6 +953,28 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
     );
     let mut y = r.y + 44;
     if id == "curves" {
+        let channel = values.get("channel").copied().unwrap_or(0);
+        p.label(
+            r.x + 16,
+            y + 5,
+            60,
+            "Channel",
+            s.font - 1,
+            s.text,
+            false,
+            Align::Left,
+        );
+        for (i, name) in ["Value", "Red", "Green", "Blue"].iter().enumerate() {
+            chip(
+                p,
+                s,
+                Rect::new(r.x + 76 + i as i32 * 70, y, 64, 22),
+                name,
+                &studio.target(&format!("set:channel:{i}")),
+                channel == i as i32,
+            );
+        }
+        y += 32;
         let g = Rect::new(r.x + 16, y, w - 32, 160);
         p.box_(g, Color(0, 0, 0, 16), 2);
         for i in 1..4 {
@@ -861,6 +1041,31 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
                         Rect::new(rr.x + 70 + i as i32 * 92, rr.y + 12, 86, 22),
                         name,
                         &studio.target(&format!("set:range:{i}")),
+                        value == i as i32,
+                    );
+                }
+            }
+            ("subsampling", _, _) => {
+                p.label(
+                    rr.x,
+                    rr.y,
+                    120,
+                    "Subsampling",
+                    s.font - 1,
+                    s.text,
+                    false,
+                    Align::Left,
+                );
+                for (i, name) in ["4:4:4 (best quality)", "4:2:0 (chroma quartered)"]
+                    .iter()
+                    .enumerate()
+                {
+                    chip(
+                        p,
+                        s,
+                        Rect::new(rr.x + i as i32 * 170, rr.y + 14, 164, 22),
+                        name,
+                        &studio.target(&format!("set:subsampling:{i}")),
                         value == i as i32,
                     );
                 }
@@ -986,6 +1191,30 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
         );
     }
     let by = r.y + h as i32 - 44;
+    if preview_box {
+        let bx = Rect::new(r.x + 16, by - 30, 18, 18);
+        p.button(
+            bx,
+            if studio.preview { s.accent } else { s.panel },
+            3,
+            &studio.target("preview-toggle"),
+            "Preview",
+        );
+        p.border(bx, Color::TRANSPARENT, 3, s.line);
+        if studio.preview {
+            p.symbol("check", bx.x + 2, bx.y + 2, 14, s.on_accent);
+        }
+        p.label(
+            bx.x + 26,
+            bx.y + 1,
+            100,
+            "Preview",
+            s.font,
+            s.text,
+            false,
+            Align::Left,
+        );
+    }
     button(
         p,
         s,
@@ -1017,21 +1246,44 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
 
 /// The Open or Save sheet over the editor.
 pub fn chooser(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u32) {
-    let (title, folder, entries, name, loading) = match &studio.panel {
+    let (title, folder, entries, name, loading, export) = match &studio.panel {
         Some(Panel::Open {
             folder,
             entries,
             loading,
-        }) => ("Open", folder, entries, None, *loading),
+        }) => ("Open", folder, entries, None, *loading, false),
         Some(Panel::Save {
             folder,
             entries,
             name,
-        }) => ("Save As", folder, entries, Some(name), false),
+            export,
+        }) => (
+            match (studio.product, *export) {
+                (Product::Gimp, true) => "Export Image",
+                (Product::Gimp, false) => "Save Image",
+                (Product::Preview | Product::Pixelmator, _) => "Export",
+                _ => "Save As",
+            },
+            folder,
+            entries,
+            Some(name),
+            false,
+            *export,
+        ),
         _ => return,
     };
     let w = 520.min(width.saturating_sub(24)).max(260);
     let h = 420.min(height.saturating_sub(24)).max(200);
+    // The save sheet's bottom: the name, the format, and what the format asks.
+    let format = name.and_then(|n| Format::of(n));
+    let quality_row = matches!(studio.product, Product::Preview | Product::Pixelmator)
+        && format == Some(Format::Jpeg);
+    let xcf_row = studio.product == Product::Gimp && !export && name.is_some();
+    let bottom = if name.is_some() {
+        96 + if quality_row || xcf_row { 36 } else { 0 }
+    } else {
+        52
+    };
     let r = Rect::new(
         (width as i32 - w as i32) / 2,
         (height as i32 - h as i32) / 2,
@@ -1073,12 +1325,7 @@ pub fn chooser(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u
         false,
         Align::Left,
     );
-    let list = Rect::new(
-        r.x + 16,
-        r.y + 74,
-        w - 32,
-        h - 74 - if name.is_some() { 96 } else { 52 },
-    );
+    let list = Rect::new(r.x + 16, r.y + 74, w - 32, h - 74 - bottom);
     p.border(list, s.bg, 4, s.line);
     let mut y = list.y + 4;
     if loading {
@@ -1141,9 +1388,10 @@ pub fn chooser(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u
         y += 26;
     }
     if let Some(name) = name {
+        let y0 = r.y + h as i32 - bottom as i32;
         p.label(
             r.x + 16,
-            r.y + h as i32 - 86,
+            y0 + 10,
             80,
             "Save as:",
             s.font,
@@ -1151,7 +1399,7 @@ pub fn chooser(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u
             false,
             Align::Left,
         );
-        let field = Rect::new(r.x + 90, r.y + h as i32 - 92, w - 106, 28);
+        let field = Rect::new(r.x + 90, y0 + 4, w - 106, 28);
         p.border(field, s.bg, 4, s.accent);
         p.label(
             field.x + 8,
@@ -1169,16 +1417,50 @@ pub fn chooser(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u
             s.text,
             0,
         );
+        // The format is the name's extension; each chip rewrites it.
         p.label(
             r.x + 16,
-            r.y + h as i32 - 56,
-            200,
-            "Format: PNG",
+            y0 + 45,
+            70,
+            "Format:",
             s.font - 1,
             s.muted,
             false,
             Align::Left,
         );
+        let mut fx = r.x + 90;
+        for f in studio.product.save_formats(export) {
+            chip(
+                p,
+                s,
+                Rect::new(fx, y0 + 40, 58, 24),
+                f.label(),
+                &studio.target(&format!("format:{}", f.extension())),
+                format == Some(*f),
+            );
+            fx += 62;
+        }
+        if quality_row {
+            slider(
+                p,
+                s,
+                Rect::new(r.x + 16, y0 + 72, 280, 34),
+                studio,
+                "Quality",
+                "jpeg-quality",
+                true,
+            );
+        }
+        if xcf_row {
+            chip(
+                p,
+                s,
+                Rect::new(r.x + 16, y0 + 78, 290, 24),
+                "Save using better but slower compression",
+                &studio.target("xcf-compression"),
+                studio.xcf_zlib,
+            );
+        }
     }
     let by = r.y + h as i32 - 42;
     button(
@@ -1194,7 +1476,11 @@ pub fn chooser(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u
             p,
             s,
             Rect::new(r.x + w as i32 - 98, by, 82, 28),
-            "Save",
+            if export || matches!(studio.product, Product::Preview | Product::Pixelmator) {
+                "Export"
+            } else {
+                "Save"
+            },
             &studio.target("save-confirm"),
             true,
         );

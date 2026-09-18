@@ -436,6 +436,10 @@ impl NativeApp {
             a.0.bytes(path, result, clock_us);
             return Ok(vec![]);
         }
+        if let Some(studio) = self.studio_mut() {
+            studio.bytes_loaded(path, result);
+            return Ok(vec![]);
+        }
         let book = self.book_mut().ok_or("this application reads no files")?;
         book.bytes(path, result, clock_us);
         Ok(vec![])
@@ -455,6 +459,10 @@ impl NativeApp {
         }
         if let Self::Database(a) = self {
             a.0.saved(path, result);
+            return Ok(vec![]);
+        }
+        if let Some(studio) = self.studio_mut() {
+            studio.bytes_saved(path, result);
             return Ok(vec![]);
         }
         let book = self.book_mut().ok_or("this application writes no files")?;
@@ -492,7 +500,7 @@ impl NativeApp {
     pub fn hovers(&self, target: &str) -> bool {
         match self {
             Self::Kicad(a) => a.drags(target),
-            _ => false,
+            other => other.studio().is_some_and(|s| s.hovers(target)),
         }
     }
     /// The pointer moved over `target` with no button down, relative to its top-left.
@@ -500,7 +508,14 @@ impl NativeApp {
     pub fn hover(&mut self, target: &str, x: i32, y: i32) -> bool {
         match self {
             Self::Kicad(a) => a.hover(target, x, y),
-            _ => false,
+            other => other.studio_mut().is_some_and(|s| s.hover(target, x, y)),
+        }
+    }
+    /// Modifier keys (`imaging::MOD_*` bits) held for the pointer press about to reach
+    /// a drag surface: an image editor's Ctrl- or Option-click sets a clone source.
+    pub fn pointer_modifiers(&mut self, modifiers: u8) {
+        if let Some(s) = self.studio_mut() {
+            s.modifiers = modifiers;
         }
     }
     /// A pointer press, move or release on a drag surface, relative to its top-left.

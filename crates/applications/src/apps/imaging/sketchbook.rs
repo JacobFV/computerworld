@@ -58,7 +58,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     let bar = 52;
     let area = Rect::new(0, bar, w, h.saturating_sub(bar as u32));
     if doc.is_some() {
-        view::canvas(p, &s, area, st, false);
+        view::canvas(p, &s, area, st, false, env.pointer);
     } else {
         p.box_(area, s.backdrop, 0);
     }

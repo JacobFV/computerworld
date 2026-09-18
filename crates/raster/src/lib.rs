@@ -11,13 +11,20 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod adjust;
 pub mod blend;
+pub mod bmp;
 pub mod codec;
 pub mod document;
 pub mod draw;
 pub mod filter;
 pub mod fmath;
+pub mod gradient;
+pub mod heal;
+pub mod jpeg;
 pub mod mask;
+pub mod path;
 pub mod transform;
+pub mod xcf;
+pub mod zlib;
 
 pub use adjust::Adjustment;
 pub use blend::BlendMode;

@@ -286,21 +286,25 @@ The image editors are interfaces over one engine (`crates/raster`): Windows 11 P
 (`paint:`), macOS Preview (`preview:`) and Pixelmator Pro (`pixelmator:`), GIMP
 (`gimp:`) and Pinta (`pinta:`) on Ubuntu, Sketchbook (`sketchbook:`) on Android, and
 the phones' photo editors inside Photos (`photos:edit:`). Launched with an image path
-as `argument`, an editor opens that file (PNG or JPEG). Every control is
+as `argument`, an editor opens that file (PNG or JPEG; BMP on the desktops; GIMP's
+layered XCF in GIMP). Every control is
 `window:<id>:content:<prefix>:<command>`; a command the product does not have (Paint's
 Gaussian blur, GIMP's shape tools) is refused.
 
 | Command | Effect |
 |---|---|
-| `tool:<tool>` | `select-rect`, `select-ellipse`, `lasso`, `wand`, `move`, `crop`, `pencil`, `brush`, `airbrush`, `pen`, `marker`, `highlighter`, `eraser`, `fill`, `text`, `picker`, `zoom`, `pan`, `shape` — each product offers its own subset |
-| `shape:<kind>` | Shape tool: `line`, `arrow`, `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `triangle`, `right-triangle`, `diamond`, `pentagon`, `hexagon`, `right-arrow`, `left-arrow`, `up-arrow`, `down-arrow`, `star`, `heart` |
+| `tool:<tool>` | `select-rect`, `select-ellipse`, `lasso`, `wand`, `move`, `crop`, `pencil`, `brush`, `airbrush`, `pen`, `marker`, `highlighter`, `eraser`, `fill`, `text`, `picker`, `zoom`, `pan`, `shape`, `gradient` (GIMP, Pinta, Pixelmator), `clone` (GIMP, Pinta's Clone Stamp, Pixelmator), `heal` (GIMP), `repair` (Pixelmator: paint over something and it is rebuilt from its surroundings on release), `paths` (GIMP) — each product offers its own subset |
+| `shape:<kind>` | Shape tool: `line`, `arrow`, `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `triangle`, `right-triangle`, `diamond`, `pentagon`, `hexagon`, `right-arrow`, `left-arrow`, `up-arrow`, `down-arrow`, `star`, `heart`, `curve` (Paint: drag a line, then two drags bend it), `freeform` (Pinta), `polyline`. Pinta's `line` stays editable after the drag: drag its points, press on it to add one, `Enter` (or `curve-edit:commit`) draws it, `Escape` (`curve-edit:cancel`) drops it |
+| `gradient-shape:<linear\|bilinear\|radial\|square\|diamond\|conical-sym\|conical-asym>`, `gradient-repeat:<none\|sawtooth\|triangular\|truncate>`, `gradient-colors:fg-bg\|fg-transparent`, `gradient-reverse` | Gradient options. A drag lays the ramp from press to release through the selection, previewed on the canvas while dragging |
+| `aligned[:on\|off]`, `clone-source:<x>:<y>` | Clone and heal: aligned (the offset of the first stroke is kept) or not (every stroke starts from the source). The source is set by a modifier-click on the canvas — `pointer.v1` `modifiers: ["ctrl"]` in GIMP and Pinta, `["alt"]` (Option) in Pixelmator — or by `clone-source` |
+| `path:select\|fill\|stroke\|close\|delete` | GIMP's path: Select ▸ From Path, Edit ▸ Fill Path / Stroke Path… (a `stroke-path` dialog with `line-width`), close it, delete it. With the Paths tool a click adds an anchor, a drag from it pulls handles, a drag on an anchor or handle moves it, Ctrl-click on the first anchor closes the path |
 | `outline:none\|solid`, `fill:none\|solid`, `fill-style:outline\|fill\|both`, `antialias`, `bold`, `merged`, `mode:<replace\|add\|subtract\|intersect>` | Tool options |
 | `color:<rrggbb>`, `fg:<rrggbb>`, `bg:<rrggbb>`, `slot:1\|2`, `swap-colors`, `reset-colors` | Colours: the active slot, foreground, background (Paint's Color 1 and Color 2) |
 | `set:<param>:<value>` | Set a tool option (`size`, `hardness`, `opacity`, `tolerance`, `font-size`, `zoom`, `layer-opacity`), a field of the open dialog, or a phone editor's adjustment |
-| `undo`, `redo`, `new`, `open`, `open:<name>`, `folder:<name>`, `folder-up`, `save`, `save-as`, `save-confirm`, `cancel`, `close-panel` | History and files. Saving writes PNG through the environment's encoder; a file that is not a PNG is never overwritten, the Save sheet names a new one. Typing goes to the sheet's name field |
+| `undo`, `redo`, `new`, `open`, `open:<name>`, `folder:<name>`, `folder-up`, `save`, `save-as`, `save-as:<ext>`, `export`, `overwrite`, `format:<png\|jpg\|bmp\|xcf>`, `xcf-compression`, `save-confirm`, `cancel`, `close-panel` | History and files. The save sheet's name field takes typing; its extension is the format and `format:` chips rewrite it. PNG goes through the environment's encoder; JPEG (the engine's baseline encoder), BMP and XCF are encoded by the engine and written as bytes. Paint saves PNG, JPEG and BMP; Preview and Pixelmator export PNG and JPEG with a quality slider (`set:jpeg-quality:<1-100>`); Pinta saves PNG, JPEG (then a `jpeg-quality` dialog) and BMP; GIMP saves XCF (layers, modes, opacity, visibility; RLE tiles, or zlib with `xcf-compression`), exports PNG, JPEG (then its `jpeg` dialog with `quality` and `subsampling` 4:4:4/4:2:0) and BMP, and `overwrite` re-exports the file it came from. A file is only saved in place in a format the product saves |
 | `select-all`, `select-none`, `select-invert`, `delete`, `crop-selection`, `crop-apply`, `copy`, `cut`, `paste` | Selection and clipboard. Copy puts pixels on the machine clipboard (shared by every editor); paste adds them as a new layer |
 | `rotate:cw\|ccw\|180`, `flip:h\|v`, `flatten` | Whole-image operations |
-| `dialog:<id>`, `apply`, `reset`, `action:<id>` | Parameter dialogs (`brightness-contrast`, `exposure`, `levels`, `curves`, `hue-saturation`, `saturation`, `color-balance`, `temperature`, `shadows-highlights`, `threshold`, `posterize`, `gaussian-blur`, `box-blur`, `sharpen`, `unsharp-mask`, `median`, `noise-reduction`, `pixelate`, `vignette`, `resize`, `rotate`, `new-image`, `color`, `adjust-color`) preview colour changes on the canvas until `apply`; one-shot actions are `invert`, `grayscale`, `auto-levels`, `sepia`, `edge-detect`, `emboss`, `sharpen` |
+| `dialog:<id>`, `apply`, `reset`, `action:<id>` | Parameter dialogs (`brightness-contrast`, `exposure`, `levels`, `curves`, `hue-saturation`, `saturation`, `color-balance`, `temperature`, `shadows-highlights`, `threshold`, `posterize`, `gaussian-blur`, `box-blur`, `sharpen`, `unsharp-mask`, `median`, `noise-reduction`, `pixelate`, `vignette`, `resize`, `rotate`, `new-image`, `color`, `adjust-color`) preview their adjustment or filter on the canvas while their values change (GIMP's `preview-toggle` is its Preview checkbox) and change nothing until `apply`, which commits exactly what was previewed; `cancel` leaves the image as it was. `curves` has a `channel` (0 value, 1 red, 2 green, 3 blue); one-shot actions are `invert`, `grayscale`, `auto-levels`, `sepia`, `edge-detect`, `emboss`, `sharpen` |
 | `layer:new\|delete\|duplicate\|up\|down\|merge`, `layer:select:<i>`, `layer:toggle:<i>`, `layer:blend:<mode>`, `layers` | Layers (bottom layer is 0); blend modes `normal`, `multiply`, `screen`, `overlay`, `add`, `darken`, `lighten` |
 | `zoom:in\|out[:<w>:<h>]`, `zoom:fit`, `zoom:<percent>` | View zoom |
 | `menu:<id>`, `tab:<id>`, `text:commit\|cancel` | Open an editor's own menu or panel tab; finish or drop text being typed |
@@ -316,6 +320,10 @@ slider takes the value under the pointer. `click` on a surface is a press and re
 at one point (a dot, a fill, a colour pick). The text tool types where it was
 clicked; `keyboard.v1 type` fills it and `Enter` stamps the glyphs, rasterised in the
 platform's font by the renderer. A drag on the canvas reports the `crosshair` cursor.
+`pointer.v1 move` over the canvas with no button down is delivered to it too: Paint,
+GIMP and Pinta show the pixel under the pointer in their status bars, and the desktop
+editors outline the brush tip (and a clone's source) under the pointer. The Move tool
+shows the layer moving during the drag.
 
 #### Spreadsheet controls
 
@@ -390,7 +398,7 @@ a themed desktop; `Alt+Tab` cycles windows.
 | Op | Payload | Returns |
 |---|---|---|
 | `move` | `{"x": i64, "y": i64, "width"?: u64, "height"?: u64}` | `{"cursor": string}` |
-| `down` | same, plus `{"button"?: u64}` | `null` |
+| `down` | same, plus `{"button"?: u64, "modifiers"?: ["ctrl" \| "alt" \| "shift" \| "meta"]}` (`modifiers` is accepted on every op; an unknown name is `invalid`) | `null` |
 | `up` | same | `null`, `{"cursor": …}` while a drag is captured, or the target's own result |
 | `click` | same | the target's result |
 | `double_click` | same | the target's result |

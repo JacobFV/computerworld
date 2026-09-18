@@ -118,6 +118,7 @@ fn states(product: Product) -> Vec<Studio> {
         folder: "Pictures".into(),
         name: "x.png".into(),
         entries: vec!["x.png".into()],
+        export: false,
     });
     out.push(save);
     for tab in [
@@ -136,6 +137,61 @@ fn states(product: Product) -> Vec<Studio> {
     for tool in product.tools() {
         let mut s = base.clone();
         s.tool = *tool;
+        out.push(s);
+    }
+    // A save sheet for each format the product writes, and GIMP's Export sheet.
+    for export in [false, true] {
+        for format in product.save_formats(export) {
+            let mut s = base.clone();
+            s.panel = Some(Panel::Save {
+                folder: "Pictures".into(),
+                name: format!("x.{}", format.extension()),
+                entries: vec![],
+                export,
+            });
+            out.push(s);
+        }
+    }
+    // Export options waiting on a JPEG, a path being drawn, a curve being bent, a
+    // clone source set, and the Paths tab.
+    let mut jpeg = base.clone();
+    jpeg.pending = Some("Pictures/x.jpg".into());
+    jpeg.show_dialog(
+        if product == Product::Gimp {
+            "jpeg"
+        } else {
+            "jpeg-quality"
+        },
+        BTreeMap::new(),
+    )
+    .unwrap();
+    out.push(jpeg);
+    for tool in [
+        Tool::Paths,
+        Tool::Clone,
+        Tool::Heal,
+        Tool::Gradient,
+        Tool::Shape,
+    ] {
+        if !product.tools().contains(&tool) {
+            continue;
+        }
+        let mut s = base.clone();
+        s.tool = tool;
+        s.tab = "paths".into();
+        s.retouch.source = Some((3, 4));
+        s.path_edit = Some(Path {
+            anchors: vec![
+                Anchor::corner(centre(2, 2)),
+                Anchor::corner(centre(20, 2)),
+                Anchor::corner(centre(20, 20)),
+            ],
+            closed: false,
+        });
+        s.curve = Some(CurveEdit {
+            points: vec![centre(1, 1), centre(5, 5), centre(9, 1), centre(12, 9)],
+            bends: 1,
+        });
         out.push(s);
     }
     let mut layered = base;
@@ -262,7 +318,10 @@ fn dialogs_preview_then_apply_exactly_once() {
     s.command(1, "dialog:brightness-contrast").unwrap();
     s.command(1, "set:brightness:50").unwrap();
     // Previewed, not yet applied.
-    assert_eq!(preview_adjustments(s.panel.as_ref()).len(), 1);
+    assert_eq!(
+        s.preview_layer().map(|l| l.get(0, 0)),
+        Some([178, 178, 178, 255])
+    );
     assert_eq!(s.doc.as_ref().unwrap().pixel(0, 0), [100, 100, 100, 255]);
     s.command(1, "apply").unwrap();
     // 100 + (255 - 100) / 2 = 177.5 -> 178.
@@ -340,9 +399,26 @@ fn saving_names_a_png_and_marks_the_document_clean() {
     assert!(
         matches!(&effects[0], AppEffect::WriteImage { path, .. } if path == "Pictures/drawing.png")
     );
-    // A JPEG original is never overwritten with PNG bytes.
+    // A JPEG original saves in place as a JPEG, never as PNG bytes.
     s.path = "Pictures/photo.jpg".into();
-    assert!(s.save_target().is_none());
+    let effects = s.command(1, "save").unwrap();
+    let AppEffect::WriteBytes { path, bytes, .. } = &effects[0] else {
+        panic!("not a byte write");
+    };
+    assert_eq!(path, "Pictures/photo.jpg");
+    assert_eq!(&bytes[..3], &[0xff, 0xd8, 0xff]);
+    // GIMP saves only XCF; a PNG it opened is exported, or overwritten on request.
+    let mut g = studio(Product::Gimp);
+    g.path = "Pictures/photo.png".into();
+    assert!(g.save_target().is_none());
+    assert_eq!(g.overwrite_target().as_deref(), Some("Pictures/photo.png"));
+    let effects = g.command(1, "save").unwrap();
+    assert!(matches!(&effects[0], AppEffect::ListDirectory { .. }));
+    let Some(Panel::Save { name, export, .. }) = &g.panel else {
+        panic!("no save sheet");
+    };
+    assert_eq!((name.as_str(), *export), ("photo.xcf", false));
+    assert!(g.command(1, "format:png").is_err(), "Save is XCF only");
 }
 
 #[test]
@@ -485,4 +561,526 @@ fn studios_round_trip_through_snapshots() {
         let (app, _) = crate::NativeApp::launch(kind, "", 1, 0).expect("launches");
         assert_eq!(app.kind(), kind);
     }
+}
+
+/// A drag through `points` on a 40x30 canvas shown at 100% (view = image pixels).
+fn drag(s: &mut Studio, points: &[(i32, i32)]) {
+    let (first, last) = (points[0], points[points.len() - 1]);
+    s.pointer(1, "canvas:40:30", PointerPhase::Down, first.0, first.1)
+        .unwrap();
+    for p in &points[1..] {
+        s.pointer(1, "canvas:40:30", PointerPhase::Move, p.0, p.1)
+            .unwrap();
+    }
+    s.pointer(1, "canvas:40:30", PointerPhase::Up, last.0, last.1)
+        .unwrap();
+}
+/// A drag through the centres of image pixels: the 40x30 image at 200% in an 80x60
+/// view, where view pixel `2x + 1` is the centre of image pixel `x`.
+fn drag_px(s: &mut Studio, pixels: &[(i32, i32)]) {
+    s.zoom = 200;
+    let at = |(x, y): (i32, i32)| (2 * x + 1, 2 * y + 1);
+    let (first, last) = (at(pixels[0]), at(pixels[pixels.len() - 1]));
+    s.pointer(1, "canvas:80:60", PointerPhase::Down, first.0, first.1)
+        .unwrap();
+    for p in &pixels[1..] {
+        let (x, y) = at(*p);
+        s.pointer(1, "canvas:80:60", PointerPhase::Move, x, y)
+            .unwrap();
+    }
+    s.pointer(1, "canvas:80:60", PointerPhase::Up, last.0, last.1)
+        .unwrap();
+}
+fn at100(product: Product) -> Studio {
+    let mut s = studio(product);
+    s.zoom = 100;
+    s
+}
+fn painted(s: &Studio, theme: DesktopTheme, pointer: Option<(i32, i32)>) -> cw_scene::Scene {
+    let mut p = Painter::themed(theme, 1100, 760, 0);
+    let mut e = env(theme, 1100, 760);
+    e.pointer = pointer;
+    s.render(&mut p, &e);
+    p.scene
+}
+/// Every primitive the render painted, as text.
+fn painted_text(s: &Studio, theme: DesktopTheme, pointer: Option<(i32, i32)>) -> String {
+    painted(s, theme, pointer)
+        .nodes
+        .iter()
+        .map(|n| format!("{:?}", n.primitive))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+/// The canvas's painted rectangle and target.
+fn canvas_node(s: &Studio, theme: DesktopTheme) -> (cw_scene::Rect, String) {
+    let mut p = Painter::themed(theme, 1100, 760, 0);
+    s.render(&mut p, &env(theme, 1100, 760));
+    p.scene
+        .nodes
+        .iter()
+        .find_map(|n| {
+            let t = n.interaction.as_deref()?;
+            t.contains(":canvas:").then(|| (n.bounds, t.to_owned()))
+        })
+        .unwrap()
+}
+
+#[test]
+fn hovering_the_canvas_reports_the_pointer_and_outlines_the_brush() {
+    for (product, theme, expect) in [
+        (Product::Paint, DesktopTheme::Windows, "12, 7px"),
+        (Product::Gimp, DesktopTheme::Ubuntu, "12, 7"),
+        (Product::Pinta, DesktopTheme::Ubuntu, "12, 7"),
+    ] {
+        let mut s = at100(product);
+        s.tool = Tool::Brush;
+        s.size = 10;
+        let (r, target) = canvas_node(&s, theme);
+        assert!(s.hovers(&target));
+        assert!(!s.hovers(&s.target("slider:size:100")));
+        let (ox, oy) = s.origin(r.width, r.height);
+        assert!(s.hover(&target, ox + 12, oy + 7), "the view changes");
+        assert!(!s.hover(&target, ox + 12, oy + 7), "same place, no change");
+        let pointer = (r.x + ox + 12, r.y + oy + 7);
+        let text = painted_text(&s, theme, Some(pointer));
+        assert!(text.contains(expect), "{product:?} shows {expect}");
+        // The brush outline: a ring of the brush's radius (10 px at 100%) around the
+        // pointer, only while it is over the canvas.
+        let ring = cw_scene::Rect::new(pointer.0 - 5, pointer.1 - 5, 10, 10);
+        let rings =
+            |scene: &cw_scene::Scene| scene.nodes.iter().filter(|n| n.bounds == ring).count();
+        assert_eq!(
+            rings(&painted(&s, theme, Some(pointer))),
+            1,
+            "{product:?} outlines the brush"
+        );
+        assert_eq!(rings(&painted(&s, theme, Some((2, 2)))), 0);
+        // Off the canvas the readout is blank.
+        let away = painted_text(&s, theme, Some((2, 2)));
+        assert!(!away.contains(expect), "{product:?} blanks the readout");
+    }
+    // Nothing is open: nothing to hover.
+    let empty = Studio::new(Product::Gimp);
+    assert!(!empty.hovers("gimp:canvas:40:30"));
+}
+
+#[test]
+fn filter_dialogs_preview_live_and_cancel_restores_exactly() {
+    for product in [Product::Gimp, Product::Pinta, Product::Pixelmator] {
+        let mut s = at100(product);
+        s.doc.as_mut().unwrap().select(
+            Mask::rect(40, 30, IRect::new(0, 0, 20, 30)),
+            SelectMode::Replace,
+        );
+        s.doc
+            .as_mut()
+            .unwrap()
+            .fill(10, 10, [0, 0, 0, 255], 0, false);
+        let before = s.doc.clone().unwrap();
+        s.command(1, "dialog:gaussian-blur").unwrap();
+        s.command(1, "set:radius:4").unwrap();
+        let preview = s.preview_layer().expect("a filter previews");
+        // Blurred across the selection's edge inside it; untouched outside.
+        assert_ne!(
+            preview.get(19, 10),
+            before.active_layer().canvas.get(19, 10)
+        );
+        assert_eq!(preview.get(21, 10), cw_raster::WHITE);
+        assert_eq!(
+            s.doc.as_ref().unwrap(),
+            &before,
+            "the document is untouched"
+        );
+        if product == Product::Gimp {
+            s.command(1, "preview-toggle").unwrap();
+            assert!(s.preview_layer().is_none(), "Preview unticked");
+            s.command(1, "preview-toggle").unwrap();
+        }
+        s.command(1, "cancel").unwrap();
+        assert!(s.preview_layer().is_none());
+        assert_eq!(s.doc.as_ref().unwrap(), &before, "Cancel restores exactly");
+        // OK commits exactly what was previewed, as one step.
+        s.command(1, "dialog:gaussian-blur").unwrap();
+        s.command(1, "set:radius:4").unwrap();
+        let preview = s.preview_layer().unwrap();
+        s.command(1, "apply").unwrap();
+        let doc = s.doc.as_ref().unwrap();
+        assert_eq!(doc.active_layer().canvas, preview);
+        assert_eq!(doc.undo_label(), Some("Gaussian Blur"));
+    }
+}
+
+#[test]
+fn the_move_tool_shows_the_layer_moving_during_the_drag() {
+    let mut s = at100(Product::Pinta);
+    s.doc
+        .as_mut()
+        .unwrap()
+        .fill(0, 0, [0, 0, 255, 255], 0, false);
+    s.doc.as_mut().unwrap().select(
+        Mask::rect(40, 30, IRect::new(2, 2, 3, 3)),
+        SelectMode::Replace,
+    );
+    s.doc
+        .as_mut()
+        .unwrap()
+        .fill(3, 3, [255, 0, 0, 255], 0, false);
+    s.doc.as_mut().unwrap().select_none();
+    let before = s.doc.clone().unwrap();
+    s.command(1, "tool:move").unwrap();
+    s.pointer(1, "canvas:40:30", PointerPhase::Down, 3, 3)
+        .unwrap();
+    s.pointer(1, "canvas:40:30", PointerPhase::Move, 13, 8)
+        .unwrap();
+    let shown = s.preview_layer().expect("the moving layer shows");
+    assert_eq!(shown.get(13, 8), [255, 0, 0, 255]);
+    assert_eq!(
+        shown.get(3, 3),
+        [0, 0, 0, 0],
+        "the layer moved away from here"
+    );
+    assert_eq!(s.doc.as_ref().unwrap(), &before, "not moved until release");
+    s.pointer(1, "canvas:40:30", PointerPhase::Up, 13, 8)
+        .unwrap();
+    assert_eq!(s.doc.as_ref().unwrap().active_layer().canvas, shown);
+    assert!(s.preview_layer().is_none());
+}
+
+#[test]
+fn gradients_preview_while_dragged_and_paint_on_release() {
+    let mut s = at100(Product::Gimp);
+    s.command(1, "tool:gradient").unwrap();
+    s.command(1, "reset-colors").unwrap();
+    s.pointer(1, "canvas:40:30", PointerPhase::Down, 0, 5)
+        .unwrap();
+    s.pointer(1, "canvas:40:30", PointerPhase::Move, 40, 5)
+        .unwrap();
+    let shown = s
+        .preview_layer()
+        .expect("the gradient shows while dragging");
+    assert!(shown.get(1, 0)[0] < 20 && shown.get(38, 29)[0] > 235);
+    assert_eq!(s.doc.as_ref().unwrap().pixel(1, 0), cw_raster::WHITE);
+    s.pointer(1, "canvas:40:30", PointerPhase::Up, 40, 5)
+        .unwrap();
+    let doc = s.doc.as_ref().unwrap();
+    assert_eq!(doc.active_layer().canvas, shown);
+    assert_eq!(doc.undo_label(), Some("Gradient"));
+    // FG to Transparent, radial, triangular, reversed: each changes the result.
+    for command in [
+        "gradient-colors:fg-transparent",
+        "gradient-shape:radial",
+        "gradient-repeat:triangular",
+        "gradient-reverse",
+    ] {
+        s.command(1, command).unwrap();
+    }
+    assert!(s.gradient.transparent && s.gradient.reverse);
+    s.pointer(1, "canvas:40:30", PointerPhase::Down, 20, 15)
+        .unwrap();
+    s.pointer(1, "canvas:40:30", PointerPhase::Move, 30, 15)
+        .unwrap();
+    let radial = s.preview_layer().unwrap();
+    // Reversed FG to Transparent: nearly clear at the centre, solid 10 px out.
+    let before = s.doc.as_ref().unwrap().pixel(20, 15);
+    let centre_px = radial.get(20, 15);
+    assert!(
+        centre_px[0].abs_diff(before[0]) < 30,
+        "{centre_px:?} vs {before:?}"
+    );
+    assert!(radial.get(29, 15)[0] < 20, "{:?}", radial.get(29, 15));
+    s.pointer(1, "canvas:40:30", PointerPhase::Cancel, 30, 15)
+        .unwrap();
+    assert!(s.command(1, "gradient-shape:spiral").is_err());
+}
+
+#[test]
+fn a_clone_source_is_set_by_modifier_click_and_strokes_copy_from_it() {
+    let red = [255, 0, 0, 255];
+    let setup = |product| {
+        let mut s = at100(product);
+        let d = s.doc.as_mut().unwrap();
+        d.select(
+            Mask::rect(40, 30, IRect::new(5, 5, 3, 3)),
+            SelectMode::Replace,
+        );
+        d.fill(6, 6, [255, 0, 0, 255], 0, false);
+        d.select_none();
+        s.command(1, "tool:clone").unwrap();
+        s.size = 1;
+        s
+    };
+    let mut s = setup(Product::Gimp);
+    // No source yet: the brush refuses to paint and says how to set one.
+    drag_px(&mut s, &[(20, 10), (22, 10)]);
+    assert_eq!(s.doc.as_ref().unwrap().pixel(20, 10), cw_raster::WHITE);
+    assert!(s.status.as_deref().unwrap().contains("Ctrl-click"));
+    // Ctrl-click sets it; the click paints nothing.
+    s.modifiers = MOD_CTRL;
+    drag_px(&mut s, &[(6, 6)]);
+    s.modifiers = 0;
+    assert_eq!(s.retouch.source, Some((6, 6)));
+    drag_px(&mut s, &[(20, 10), (21, 10), (22, 10)]);
+    let doc = s.doc.as_ref().unwrap();
+    assert_eq!(doc.pixel(20, 10), red, "(6, 6)");
+    assert_eq!(doc.pixel(21, 10), red, "(7, 6)");
+    assert_eq!(
+        doc.pixel(22, 10),
+        cw_raster::WHITE,
+        "(8, 6) is outside the patch"
+    );
+    assert_eq!(doc.undo_label(), Some("Clone"));
+    // Non-aligned (GIMP's default): the next stroke starts from the source again.
+    drag_px(&mut s, &[(30, 20)]);
+    assert_eq!(s.doc.as_ref().unwrap().pixel(30, 20), red);
+    // Aligned: the first stroke's offset is kept, so a stroke elsewhere samples
+    // elsewhere.
+    s.command(1, "aligned:on").unwrap();
+    drag_px(&mut s, &[(20, 20)]);
+    drag_px(&mut s, &[(26, 26)]);
+    let doc = s.doc.as_ref().unwrap();
+    assert_eq!(doc.pixel(20, 20), red);
+    assert_eq!(
+        doc.pixel(26, 26),
+        cw_raster::WHITE,
+        "(12, 12) through the offset"
+    );
+    // Pixelmator sets its source with Option, not Ctrl.
+    let mut m = setup(Product::Pixelmator);
+    m.modifiers = MOD_CTRL;
+    drag_px(&mut m, &[(6, 6)]);
+    assert_eq!(m.retouch.source, None);
+    m.modifiers = MOD_ALT;
+    drag_px(&mut m, &[(6, 6)]);
+    assert_eq!(m.retouch.source, Some((6, 6)));
+    // Pinta's Clone Stamp: Ctrl, as GIMP.
+    let mut p = setup(Product::Pinta);
+    p.modifiers = MOD_CTRL;
+    drag_px(&mut p, &[(5, 5)]);
+    p.modifiers = 0;
+    drag_px(&mut p, &[(30, 3)]);
+    assert_eq!(p.doc.as_ref().unwrap().pixel(30, 3), red);
+}
+
+#[test]
+fn heal_and_repair_retouch_through_the_ui() {
+    // GIMP's Heal: texture from the source, colour from where it lands.
+    let mut s = at100(Product::Gimp);
+    {
+        let d = s.doc.as_mut().unwrap();
+        d.select(
+            Mask::rect(40, 30, IRect::new(20, 0, 20, 30)),
+            SelectMode::Replace,
+        );
+        d.fill(30, 10, [100, 100, 100, 255], 0, false);
+        d.select_none();
+    }
+    s.command(1, "tool:heal").unwrap();
+    s.size = 5;
+    s.modifiers = MOD_CTRL;
+    drag(&mut s, &[(8, 15)]);
+    s.modifiers = 0;
+    drag(&mut s, &[(30, 15)]);
+    let doc = s.doc.as_ref().unwrap();
+    // White healed onto grey becomes grey, not white.
+    assert_eq!(doc.pixel(30, 15), [100, 100, 100, 255]);
+    assert_eq!(doc.undo_label(), Some("Heal"));
+    // Pixelmator's Repair: the blemish is gone on release.
+    let mut m = at100(Product::Pixelmator);
+    m.doc.as_mut().unwrap().select(
+        Mask::rect(40, 30, IRect::new(18, 12, 3, 3)),
+        SelectMode::Replace,
+    );
+    m.doc
+        .as_mut()
+        .unwrap()
+        .fill(19, 13, [0, 0, 0, 255], 0, false);
+    m.doc.as_mut().unwrap().select_none();
+    m.command(1, "tool:repair").unwrap();
+    m.size = 8;
+    m.pointer(1, "canvas:40:30", PointerPhase::Down, 19, 13)
+        .unwrap();
+    assert!(m.doc.as_ref().unwrap().repair_mask().is_some());
+    assert_eq!(m.doc.as_ref().unwrap().pixel(19, 13), [0, 0, 0, 255]);
+    m.pointer(1, "canvas:40:30", PointerPhase::Up, 19, 13)
+        .unwrap();
+    assert_eq!(m.doc.as_ref().unwrap().pixel(19, 13), cw_raster::WHITE);
+    assert_eq!(m.doc.as_ref().unwrap().undo_label(), Some("Repair"));
+}
+
+#[test]
+fn gimp_paths_are_drawn_closed_and_stroked_filled_or_selected() {
+    let mut s = at100(Product::Gimp);
+    s.command(1, "tool:paths").unwrap();
+    assert!(s.command(1, "path:fill").is_err(), "no path yet");
+    for p in [(5, 5), (30, 5), (30, 25), (5, 25)] {
+        drag(&mut s, &[p]);
+    }
+    assert_eq!(s.path_edit.as_ref().unwrap().anchors.len(), 4);
+    // A plain click on the first anchor only takes it; Ctrl-click closes the path.
+    drag(&mut s, &[(5, 5)]);
+    assert!(!s.path_edit.as_ref().unwrap().closed);
+    s.modifiers = MOD_CTRL;
+    drag(&mut s, &[(5, 5)]);
+    s.modifiers = 0;
+    assert!(s.path_edit.as_ref().unwrap().closed);
+    // Dragging an anchor moves it.
+    drag(&mut s, &[(30, 25), (32, 27)]);
+    // At 100% a view pixel's top-left corner is the image point it names.
+    assert_eq!(
+        s.path_edit.as_ref().unwrap().anchors[2].point,
+        (32 * 16, 27 * 16)
+    );
+    drag(&mut s, &[(32, 27), (30, 25)]);
+    s.command(1, "path:select").unwrap();
+    let sel = s.doc.as_ref().unwrap().selection().unwrap().clone();
+    assert_eq!(sel.get(15, 15), 255);
+    assert_eq!(sel.get(2, 2), 0);
+    s.command(1, "select-none").unwrap();
+    s.command(1, "color:ff0000").unwrap();
+    s.command(1, "path:fill").unwrap();
+    assert_eq!(s.doc.as_ref().unwrap().pixel(15, 15), [255, 0, 0, 255]);
+    assert_eq!(s.doc.as_ref().unwrap().undo_label(), Some("Fill Path"));
+    s.command(1, "undo").unwrap();
+    s.command(1, "color:0000ff").unwrap();
+    s.command(1, "path:stroke").unwrap();
+    s.command(1, "set:line-width:2").unwrap();
+    s.command(1, "apply").unwrap();
+    let doc = s.doc.as_ref().unwrap();
+    assert_eq!(doc.pixel(15, 5), [0, 0, 255, 255], "on the top edge");
+    assert_eq!(doc.pixel(15, 15), cw_raster::WHITE, "inside is not filled");
+    assert_eq!(doc.undo_label(), Some("Stroke Path"));
+    // A new anchor dragged out pulls smooth handles.
+    s.command(1, "path:delete").unwrap();
+    drag(&mut s, &[(10, 10), (14, 10)]);
+    let a = s.path_edit.as_ref().unwrap().anchors[0];
+    assert_eq!((a.cout, a.cin), ((14 * 16, 160), (6 * 16, 160)));
+    assert!(studio(Product::Pinta).command(1, "path:fill").is_err());
+}
+
+#[test]
+fn paint_curves_bend_twice_and_pinta_curves_take_control_points() {
+    let mut s = at100(Product::Paint);
+    s.command(1, "shape:curve").unwrap();
+    s.size = 1;
+    drag(&mut s, &[(2, 15), (37, 15)]);
+    assert!(s.curve.is_some());
+    assert!(!s.doc.as_ref().unwrap().can_undo(), "not drawn yet");
+    drag(&mut s, &[(12, 2)]);
+    assert!(s.curve.is_some(), "one bend placed");
+    drag(&mut s, &[(27, 28)]);
+    assert!(s.curve.is_none(), "the second bend draws it");
+    let doc = s.doc.as_ref().unwrap();
+    let dark = |x: i32, ys: std::ops::Range<i32>| ys.into_iter().any(|y| doc.pixel(x, y)[0] < 128);
+    assert!(dark(12, 5..12), "bent up on the left");
+    assert!(dark(27, 18..25), "bent down on the right");
+    assert!(!dark(20, 0..14) || !dark(20, 17..30), "an S, not a line");
+
+    let mut p = at100(Product::Pinta);
+    p.command(1, "shape:line").unwrap();
+    p.size = 1;
+    drag(&mut p, &[(2, 15), (37, 15)]);
+    assert_eq!(p.curve.as_ref().unwrap().points.len(), 2);
+    // Press on the line and drag: a new control point, pulled up.
+    drag(&mut p, &[(20, 15), (20, 5)]);
+    assert_eq!(p.curve.as_ref().unwrap().points.len(), 3);
+    p.key(1, "Enter").unwrap();
+    assert!(p.curve.is_none());
+    let doc = p.doc.as_ref().unwrap();
+    assert!(
+        (3..8).any(|y| doc.pixel(20, y)[0] < 128),
+        "through the new point"
+    );
+    // Freeform: a closed shape through the drag, filled with the secondary colour.
+    p.command(1, "shape:freeform").unwrap();
+    p.command(1, "fill-style:fill").unwrap();
+    p.secondary = [0, 200, 0, 255];
+    drag(&mut p, &[(5, 20), (15, 20), (15, 28), (5, 28)]);
+    assert_eq!(p.doc.as_ref().unwrap().pixel(10, 24), [0, 200, 0, 255]);
+}
+
+#[test]
+fn every_format_is_written_and_read_back() {
+    // GIMP: two layers saved as XCF reopen as the same layers.
+    let mut g = at100(Product::Gimp);
+    g.command(1, "layer:new").unwrap();
+    g.command(1, "color:ff0000").unwrap();
+    g.command(1, "tool:pencil").unwrap();
+    drag(&mut g, &[(3, 3), (9, 3)]);
+    g.command(1, "layer:blend:multiply").unwrap();
+    g.command(1, "save").unwrap();
+    assert!(matches!(&g.panel, Some(Panel::Save { name, .. }) if name == "Untitled.xcf"));
+    g.command(1, "xcf-compression").unwrap();
+    let effects = g.command(1, "save-confirm").unwrap();
+    let AppEffect::WriteBytes { path, bytes, .. } = &effects[0] else {
+        panic!("not a byte write");
+    };
+    assert_eq!(path, "Pictures/Untitled.xcf");
+    assert_eq!(&bytes[..9], b"gimp xcf ");
+    g.bytes_saved(path, Ok(()));
+    assert_eq!(g.save_target().as_deref(), Some("Pictures/Untitled.xcf"));
+    let (mut again, effects) = Studio::launch(Product::Gimp, "Pictures/Untitled.xcf", 2);
+    assert!(matches!(&effects[0], AppEffect::ReadBytes { .. }));
+    again.bytes_loaded("Pictures/Untitled.xcf", Ok(bytes.clone()));
+    let back = again.doc.as_ref().unwrap();
+    assert_eq!(back.layers(), g.doc.as_ref().unwrap().layers());
+    // Export As JPEG asks for quality and subsampling, then writes a JPEG.
+    g.command(1, "export").unwrap();
+    g.command(1, "format:jpg").unwrap();
+    assert!(g.command(1, "save-confirm").unwrap().is_empty());
+    assert!(matches!(&g.panel, Some(Panel::Dialog { id, .. }) if id == "jpeg"));
+    g.command(1, "set:quality:75").unwrap();
+    g.command(1, "set:subsampling:1").unwrap();
+    let effects = g.command(1, "apply").unwrap();
+    let AppEffect::WriteBytes { path, bytes, .. } = &effects[0] else {
+        panic!("not a byte write");
+    };
+    assert_eq!(path, "Pictures/Untitled.jpg");
+    assert_eq!(&bytes[..2], &[0xff, 0xd8]);
+    assert_eq!((g.quality(), g.subsampling), (75, Subsampling::Quartered));
+    // Paint: Save as ▸ BMP picture, and the bitmap opens again.
+    let mut p = at100(Product::Paint);
+    p.command(1, "color:00ff00").unwrap();
+    p.command(1, "tool:pencil").unwrap();
+    drag(&mut p, &[(4, 4)]);
+    p.command(1, "save-as:bmp").unwrap();
+    let effects = p.command(1, "save-confirm").unwrap();
+    let AppEffect::WriteBytes { path, bytes, .. } = &effects[0] else {
+        panic!("not a byte write");
+    };
+    assert_eq!(path, "Pictures/Untitled.bmp");
+    let (mut q, _) = Studio::launch(Product::Paint, "Pictures/Untitled.bmp", 3);
+    q.bytes_loaded(path, Ok(bytes.clone()));
+    assert_eq!(
+        q.doc.as_ref().unwrap().composite(),
+        p.doc.as_ref().unwrap().composite()
+    );
+    // Pinta's JPEG Quality dialog; Preview's quality slider lives in its sheet.
+    let mut pinta = at100(Product::Pinta);
+    pinta.command(1, "save-as:jpg").unwrap();
+    pinta.command(1, "save-confirm").unwrap();
+    assert!(matches!(&pinta.panel, Some(Panel::Dialog { id, .. }) if id == "jpeg-quality"));
+    assert_eq!(pinta.param("quality"), 85);
+    pinta.command(1, "cancel").unwrap();
+    assert!(pinta.pending.is_none());
+    let mut preview = at100(Product::Preview);
+    preview.command(1, "save-as:jpg").unwrap();
+    preview.command(1, "set:jpeg-quality:40").unwrap();
+    let effects = preview.command(1, "save-confirm").unwrap();
+    assert!(matches!(&effects[0], AppEffect::WriteBytes { path, .. } if path.ends_with(".jpg")));
+    assert!(
+        preview.command(1, "format:bmp").is_err(),
+        "Preview writes no bitmaps"
+    );
+    // What cannot be read says so.
+    let (mut bad, _) = Studio::launch(Product::Gimp, "Pictures/bad.xcf", 4);
+    bad.bytes_loaded("Pictures/bad.xcf", Ok(b"not an xcf".to_vec()));
+    assert!(bad.doc.is_none());
+    assert!(bad
+        .status
+        .as_deref()
+        .unwrap()
+        .contains("could not be opened"));
+    assert!(Product::Gimp.opens("a.xcf") && !Product::Pinta.opens("a.xcf"));
+    assert!(Product::Paint.opens("a.bmp") && !Product::IosPhotos.opens("a.bmp"));
 }
