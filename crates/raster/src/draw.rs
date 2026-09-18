@@ -149,10 +149,36 @@ pub fn apply_coverage(
     mode: BlendMode,
     cov: impl Fn(i32, i32) -> u8,
 ) -> Option<IRect> {
+    apply_colors(
+        layer,
+        before,
+        area,
+        selection,
+        brush_kind,
+        opacity,
+        mode,
+        |x, y| (cov(x, y), color),
+    )
+}
+
+/// Like [`apply_coverage`], with a colour of its own at every pixel: a gradient, or the
+/// pixels a clone stamp copies.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_colors(
+    layer: &mut Canvas,
+    before: Option<&Canvas>,
+    area: IRect,
+    selection: Option<&Mask>,
+    brush_kind: BrushKind,
+    opacity: u8,
+    mode: BlendMode,
+    cov_color: impl Fn(i32, i32) -> (u8, Rgba),
+) -> Option<IRect> {
     let area = area.clip(layer.width(), layer.height())?;
     for y in area.y..area.bottom() {
         for x in area.x..area.right() {
-            let mut c = u32::from(cov(x, y));
+            let (cv, color) = cov_color(x, y);
+            let mut c = u32::from(cv);
             if let Some(sel) = selection {
                 c = div255(c * u32::from(sel.get(x, y)));
             }
@@ -249,9 +275,16 @@ pub enum ShapeKind {
     DownArrow,
     Star,
     Heart,
+    /// A cubic Bézier: `points` are the start, two control points and the end (Paint's
+    /// Curve). Two points draw it straight.
+    Curve,
+    /// A closed shape through freehand points (Pinta's Freeform Shape).
+    Freeform,
+    /// An open line through every point (a stroked path, Pinta's Line/Curve).
+    Polyline,
 }
 impl ShapeKind {
-    pub const ALL: [ShapeKind; 17] = [
+    pub const ALL: [ShapeKind; 20] = [
         Self::Line,
         Self::Arrow,
         Self::Rectangle,
@@ -269,6 +302,9 @@ impl ShapeKind {
         Self::DownArrow,
         Self::Star,
         Self::Heart,
+        Self::Curve,
+        Self::Freeform,
+        Self::Polyline,
     ];
     pub fn id(self) -> &'static str {
         match self {
@@ -289,6 +325,9 @@ impl ShapeKind {
             Self::DownArrow => "down-arrow",
             Self::Star => "star",
             Self::Heart => "heart",
+            Self::Curve => "curve",
+            Self::Freeform => "freeform",
+            Self::Polyline => "polyline",
         }
     }
     pub fn parse(id: &str) -> Option<Self> {
@@ -296,7 +335,10 @@ impl ShapeKind {
     }
     /// Line-like shapes have an outline and no interior.
     pub fn open(self) -> bool {
-        matches!(self, Self::Line | Self::Arrow)
+        matches!(
+            self,
+            Self::Line | Self::Arrow | Self::Curve | Self::Polyline
+        )
     }
 }
 
@@ -407,8 +449,20 @@ impl Shape {
     }
     /// The polygon a closed non-rectangular, non-elliptic shape is drawn as.
     pub fn outline_points(&self) -> Vec<P16> {
-        if self.kind == ShapeKind::Polygon {
-            return self.points.clone();
+        match self.kind {
+            ShapeKind::Polygon | ShapeKind::Freeform | ShapeKind::Polyline => {
+                return self.points.clone()
+            }
+            ShapeKind::Curve => {
+                let p = &self.points;
+                return match p.len() {
+                    0 | 1 => p.clone(),
+                    2 => p.clone(),
+                    3 => crate::path::cubic(p[0], p[1], p[1], p[2]),
+                    _ => crate::path::cubic(p[0], p[1], p[2], p[3]),
+                };
+            }
+            _ => {}
         }
         let Some((x0, y0, x1, y1)) = self.corners() else {
             return vec![];
@@ -468,6 +522,13 @@ impl Shape {
                     (near_segment(*a, *b, half, x, y), false)
                 }
             }
+            ShapeKind::Polyline | ShapeKind::Curve => {
+                // Curves are flattened to a polyline before drawing (see `draw`).
+                let pts = &self.points;
+                let edge = pts.len() == 1 && near_segment(pts[0], pts[0], half, x, y)
+                    || pts.windows(2).any(|w| near_segment(w[0], w[1], half, x, y));
+                (edge, false)
+            }
             ShapeKind::Rectangle | ShapeKind::RoundedRectangle => {
                 let Some((x0, y0, x1, y1)) = self.corners() else {
                     return (false, false);
@@ -510,6 +571,62 @@ impl Shape {
     }
     /// Paint the shape onto `layer`: its fill, then its outline over it.
     pub fn draw(&self, layer: &mut Canvas, selection: Option<&Mask>) -> Option<IRect> {
+        if self.kind == ShapeKind::Curve {
+            let flat = Shape {
+                kind: ShapeKind::Polyline,
+                points: self.outline_points(),
+                ..self.clone()
+            };
+            return flat.draw(layer, selection);
+        }
+        if self.kind == ShapeKind::Polyline {
+            // Segment by segment into one coverage mask: a long path costs its length,
+            // not its length times its bounding box.
+            let color = self.outline?;
+            let half = self.half16();
+            let mut mask = Mask::empty(layer.width(), layer.height());
+            let mut touched: Option<IRect> = None;
+            let segments: Vec<(P16, P16)> = if self.points.len() == 1 {
+                vec![(self.points[0], self.points[0])]
+            } else {
+                self.points.windows(2).map(|w| (w[0], w[1])).collect()
+            };
+            for (a, b) in segments {
+                let pad = half + 32;
+                let Some(r) = sub16_bounds(
+                    a.0.min(b.0) - pad,
+                    a.1.min(b.1) - pad,
+                    a.0.max(b.0) + pad,
+                    a.1.max(b.1) + pad,
+                    layer.width(),
+                    layer.height(),
+                ) else {
+                    continue;
+                };
+                for y in r.y..r.bottom() {
+                    for x in r.x..r.right() {
+                        let c = coverage(x, y, self.antialias, &|sx, sy| {
+                            near_segment(a, b, half, sx, sy)
+                        });
+                        if c > 0 {
+                            mask.raise(x, y, c);
+                        }
+                    }
+                }
+                touched = Some(touched.map_or(r, |t| t.union(&r)));
+            }
+            return apply_coverage(
+                layer,
+                None,
+                touched?,
+                selection,
+                BrushKind::Paint,
+                color,
+                255,
+                BlendMode::Normal,
+                |x, y| mask.get(x, y),
+            );
+        }
         let area = self.area(layer.width(), layer.height())?;
         let fill = self.fill.filter(|_| !self.kind.open());
         let mut touched: Option<IRect> = None;

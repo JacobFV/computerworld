@@ -74,6 +74,23 @@ pub const QUICK_ACCESS: [&str; 6] = [
     "Videos",
 ];
 /// What Explorer's Gallery collects: image files, by extension, the way it decides.
+fn is_zero_u8(v: &u8) -> bool {
+    *v == 0
+}
+/// `pointer.v1`'s `modifiers` names as bits: `ctrl`, `alt` (Option), `shift`, `meta`
+/// (Command). Unknown names are refused.
+pub fn modifier_bits(names: &[&str]) -> Result<u8, String> {
+    names.iter().try_fold(0u8, |bits, name| {
+        Ok(bits
+            | match name.to_ascii_lowercase().as_str() {
+                "ctrl" | "control" => apps::imaging::MOD_CTRL,
+                "alt" | "option" => apps::imaging::MOD_ALT,
+                "shift" => apps::imaging::MOD_SHIFT,
+                "meta" | "cmd" | "command" | "super" => apps::imaging::MOD_META,
+                other => return Err(format!("unknown modifier {other}")),
+            })
+    })
+}
 pub fn is_image(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
     [
@@ -794,6 +811,10 @@ pub struct DesktopState {
     pub stacking: Vec<u64>,
     #[serde(default)]
     pub pointer_capture: Option<PointerCapture>,
+    /// Modifier keys the latest pointer action held (`apps::imaging::MOD_*` bits):
+    /// `pointer.v1`'s `modifiers`, handed to an application's drag surface on a press.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub pointer_modifiers: u8,
     /// Home folder of this machine's user; empty falls back to the root.
     #[serde(default)]
     pub home: String,
@@ -2057,8 +2078,10 @@ impl DesktopState {
     ) -> Result<Vec<AppEffect>, String> {
         self.focus(id)?;
         let clock = self.clock_us;
+        let modifiers = self.pointer_modifiers;
         if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
             app.pointer_button(button);
+            app.pointer_modifiers(modifiers);
         }
         let effects = match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
             AppState::Native(app) => app.pointer(
@@ -3447,6 +3470,7 @@ impl DesktopState {
         // A click on a drag surface is a press and release at one point: a dot from a
         // brush, a fill, a slider set to where it was clicked.
         let clock = self.clock_us;
+        let modifiers = self.pointer_modifiers;
         if let Some(AppState::Native(app)) = self
             .windows
             .get_mut(&id)
@@ -3454,6 +3478,7 @@ impl DesktopState {
             .filter(|_| !target.starts_with("focus:"))
         {
             if app.drags(target) {
+                app.pointer_modifiers(modifiers);
                 let mut effects = app.pointer(id, target, PointerPhase::Down, dx, dy, clock)?;
                 effects.extend(app.pointer(id, target, PointerPhase::Up, dx, dy, clock)?);
                 return self.native_effects(effects);

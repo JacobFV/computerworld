@@ -131,7 +131,8 @@ pub fn render_photo_editor(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>
 
 fn photo(st: &Studio, p: &mut Painter, s: &Skin, r: Rect) {
     if st.doc.is_some() {
-        view::canvas_with(p, s, r, st, false, st.tab == "markup");
+        // A finger has no hover: nothing follows it between touches.
+        view::canvas_with(p, s, r, st, false, st.tab == "markup", None);
     } else {
         let text = match (&st.loading, &st.status) {
             (_, Some(msg)) => msg.clone(),

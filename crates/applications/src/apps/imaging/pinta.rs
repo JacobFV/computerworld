@@ -93,6 +93,7 @@ fn palette_tools() -> Vec<(Tool, Option<ShapeKind>, &'static str, &'static str)>
         (Tool::Pencil, None, "Pencil", "pencil"),
         (Tool::Eraser, None, "Eraser", "eraser"),
         (Tool::Fill, None, "Paint Bucket", "bucket"),
+        (Tool::Gradient, None, "Gradient", "contrast"),
         (Tool::Picker, None, "Color Picker", "eyedropper"),
         (Tool::Text, None, "Text", "text-tool"),
         (
@@ -119,6 +120,13 @@ fn palette_tools() -> Vec<(Tool, Option<ShapeKind>, &'static str, &'static str)>
             "Ellipse",
             "select-ellipse",
         ),
+        (
+            Tool::Shape,
+            Some(ShapeKind::Freeform),
+            "Freeform Shape",
+            "edit",
+        ),
+        (Tool::Clone, None, "Clone Stamp", "stamp"),
     ]
 }
 
@@ -224,7 +232,27 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         .unwrap_or("");
     p.strong(ox, ty + 12, 130, name, 12, s.text);
     ox += 136;
-    if st.tool.paints() || st.tool == Tool::Shape {
+    if st.tool == Tool::Gradient {
+        use cw_raster::gradient::GradientShape as G;
+        for (label, shape) in [
+            ("Linear", G::Linear),
+            ("Linear Reflected", G::BiLinear),
+            ("Linear Diamond", G::Diamond),
+            ("Radial", G::Radial),
+            ("Conical", G::ConicalAsymmetric),
+        ] {
+            let bw = p.measure(label, 11, false) + 18;
+            view::chip(
+                p,
+                &s,
+                Rect::new(ox, ty + 8, bw, 24),
+                label,
+                &t(&format!("gradient-shape:{}", shape.id())),
+                st.gradient.shape == shape,
+            );
+            ox += bw as i32 + 4;
+        }
+    } else if st.tool.paints() || st.tool == Tool::Shape || st.tool == Tool::Clone {
         p.label(
             ox,
             ty + 12,
@@ -264,7 +292,20 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             st.antialias,
         );
         ox += 112;
-        if st.tool == Tool::Shape {
+        let hint = match (st.tool, &st.curve) {
+            (Tool::Clone, _) if st.retouch.source.is_none() => {
+                Some("Ctrl-click to set the origin, then paint")
+            }
+            (Tool::Clone, _) => Some("Ctrl-click to set a new origin"),
+            (Tool::Shape, Some(_)) => {
+                Some("Drag a point, click the line to add one; Enter to finalize")
+            }
+            _ => None,
+        };
+        if let Some(hint) = hint {
+            p.label(ox, ty + 12, 360, hint, 11, s.muted, false, Align::Left);
+        }
+        if st.tool == Tool::Shape && st.curve.is_none() {
             for (label, outline, fill) in [
                 ("Outline", true, false),
                 ("Fill", false, true),
@@ -452,7 +493,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
     let area = Rect::new(cx, top + 34, cw, body_h.saturating_sub(34));
     if open {
-        view::canvas(p, &s, area, st, true);
+        view::canvas(p, &s, area, st, true, env.pointer);
         view::scrollbars(p, &s, area, st);
     } else {
         p.box_(area, s.backdrop, 0);
@@ -624,6 +665,12 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         false,
     );
     let mut sx = 80 + 12 * 22 + 90;
+    // Cursor position, then selection size, as Pinta's status bar reads.
+    p.symbol("move", sx, sy + 20, 16, s.muted);
+    if let Some((x, y)) = st.pointer_pixel(area, env.pointer) {
+        p.left(sx + 20, sy + 20, 100, &format!("{x}, {y}"), 12, s.text);
+    }
+    sx += 110;
     if let Some(sel) = view::selection_text(st) {
         p.symbol("select-rect", sx, sy + 20, 16, s.muted);
         p.left(sx + 20, sy + 20, 120, &sel, 12, s.text);

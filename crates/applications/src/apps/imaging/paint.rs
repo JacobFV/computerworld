@@ -65,8 +65,9 @@ pub const PALETTE: [[u8; 3]; 20] = [
     [200, 191, 231],
 ];
 /// The shapes gallery, in Paint's order.
-const SHAPES: [ShapeKind; 15] = [
+const SHAPES: [ShapeKind; 16] = [
     ShapeKind::Line,
+    ShapeKind::Curve,
     ShapeKind::Ellipse,
     ShapeKind::Rectangle,
     ShapeKind::RoundedRectangle,
@@ -90,6 +91,14 @@ pub fn shape_glyph(p: &mut Painter, r: Rect, kind: ShapeKind, color: Color) {
     let pts: Vec<(i32, i32)> = match kind {
         ShapeKind::Line => vec![(x0, y0 + h), (x0 + w, y0)],
         ShapeKind::Arrow => vec![(x0, y0 + h), (x0 + w, y0)],
+        // An S-bend, flattened in sub-pixel units as the tool flattens its curve.
+        ShapeKind::Curve => {
+            let (w, h) = (i64::from(w) * 16, i64::from(h) * 16);
+            cw_raster::path::cubic((0, h), (w / 3, -h), (w * 2 / 3, 2 * h), (w, 0))
+                .iter()
+                .map(|(x, y)| (x0 + (*x / 16) as i32, y0 + (*y / 16) as i32))
+                .collect()
+        }
         ShapeKind::Ellipse => (0..=24)
             .map(|i| {
                 let a = i * 15;
@@ -346,8 +355,8 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     if w > 760 {
         for (i, kind) in SHAPES.iter().enumerate() {
             let r = Rect::new(
-                x + (i as i32 % 5) * 24,
-                top + 6 + (i as i32 / 5) * 23,
+                x + (i as i32 % 6) * 24,
+                top + 6 + (i as i32 / 6) * 23,
                 22,
                 22,
             );
@@ -361,7 +370,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             );
             shape_glyph(p, r, *kind, s.text);
         }
-        let ox = x + 124;
+        let ox = x + 148;
         view::chip(
             p,
             &s,
@@ -382,8 +391,8 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             &t("menu:fill"),
             false,
         );
-        caption(p, &s, x, cap_y, 194, "Shapes");
-        x += 202;
+        caption(p, &s, x, cap_y, 218, "Shapes");
+        x += 226;
         divider(p, &s, x, top);
         x += 8;
     } else {
@@ -484,7 +493,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     let pane = if st.layers_open { 240.min(w / 3) } else { 0 };
     let area = Rect::new(0, body_top, w.saturating_sub(pane), body_h);
     if st.doc.is_some() {
-        view::canvas(p, &s, area, st, true);
+        view::canvas(p, &s, area, st, true, env.pointer);
         view::scrollbars(p, &s, area, st);
     } else {
         p.box_(area, s.backdrop, 0);
@@ -577,6 +586,12 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     p.box_(Rect::new(0, sy, w, status_h), s.bar, 0);
     p.hline(0, sy, w, s.line);
     let mut sx = 12;
+    // Where the pointer is on the picture, while it is over it.
+    p.symbol("move", sx, sy + 8, 16, s.muted);
+    if let Some((x, y)) = st.pointer_pixel(area, env.pointer) {
+        p.left(sx + 22, sy + 8, 110, &format!("{x}, {y}px"), 12, s.text);
+    }
+    sx += 130;
     if let Some(sel) = view::selection_text(st) {
         p.symbol("select-rect", sx, sy + 8, 16, s.muted);
         p.left(sx + 22, sy + 8, 120, &sel, 12, s.text);
@@ -659,6 +674,10 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin, has_sel: bool) {
                 Item::new("Save as", "save-as")
                     .key("Ctrl+Shift+S")
                     .when(open, "No image is open"),
+                Item::separator(),
+                Item::new("Save as PNG picture", "save-as:png").when(open, "No image is open"),
+                Item::new("Save as JPEG picture", "save-as:jpg").when(open, "No image is open"),
+                Item::new("Save as BMP picture", "save-as:bmp").when(open, "No image is open"),
             ],
         ),
         "edit" => (

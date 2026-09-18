@@ -10,3 +10,8 @@ serde.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+# The reference decoder the encoder's output is checked against, built as the renderer
+# builds it.
+jpeg-decoder = { version = "0.3", default-features = false, features = [
+    "platform_independent",
+] }

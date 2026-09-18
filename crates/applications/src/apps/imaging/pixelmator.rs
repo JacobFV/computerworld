@@ -26,15 +26,18 @@ fn skin() -> Skin {
 }
 
 /// The tools grid: label, symbol, and what choosing it does.
-const GRID: [(&str, &str, &str); 12] = [
+const GRID: [(&str, &str, &str); 15] = [
     ("Arrange", "move", "tool:move"),
     ("Adjust Colors", "sliders", "tab:adjust"),
     ("Effects", "filters", "tab:effects"),
     ("Select", "select-rect", "tool:select-rect"),
     ("Crop", "crop", "tool:crop"),
+    ("Repair", "magic", "tool:repair"),
+    ("Clone", "stamp", "tool:clone"),
     ("Paint", "brush", "tool:brush"),
     ("Erase", "eraser", "tool:eraser"),
     ("Fill", "bucket", "tool:fill"),
+    ("Gradient", "contrast", "tool:gradient"),
     ("Shapes", "shapes", "tool:shape"),
     ("Type", "text-tool", "tool:text"),
     ("Color Picker", "eyedropper", "tool:picker"),
@@ -201,7 +204,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
 
     // The image.
     if open {
-        view::canvas(p, &s, area, st, false);
+        view::canvas(p, &s, area, st, false, env.pointer);
         view::scrollbars(p, &s, area, st);
     } else {
         p.box_(area, s.backdrop, 0);
@@ -365,6 +368,9 @@ fn options(st: &Studio, p: &mut Painter, s: &Skin, ox: i32, mut y: i32, ow: u32)
         Tool::Shape => "Shapes",
         Tool::Text => "Type",
         Tool::Picker => "Color Picker",
+        Tool::Gradient => "Gradient",
+        Tool::Clone => "Clone",
+        Tool::Repair => "Repair",
         _ => "Zoom",
     };
     p.strong(ox, y, ow, title, 13, s.text);
@@ -684,6 +690,140 @@ fn options(st: &Studio, p: &mut Painter, s: &Skin, ox: i32, mut y: i32, ow: u32)
                 "Sample all layers",
                 &t("merged"),
                 st.merged,
+            );
+        }
+        Tool::Gradient => {
+            use cw_raster::gradient::GradientShape as G;
+            for (i, (label, shape)) in [
+                ("Linear", G::Linear),
+                ("Radial", G::Radial),
+                ("Angle", G::ConicalAsymmetric),
+            ]
+            .iter()
+            .enumerate()
+            {
+                view::chip(
+                    p,
+                    s,
+                    Rect::new(ox + i as i32 * (ow as i32 / 3), y, ow / 3 - 3, 24),
+                    label,
+                    &t(&format!("gradient-shape:{}", shape.id())),
+                    st.gradient.shape == *shape,
+                );
+            }
+            y += 32;
+            for (i, (label, command, on)) in [
+                (
+                    "Color to Color",
+                    "gradient-colors:fg-bg",
+                    !st.gradient.transparent,
+                ),
+                (
+                    "Color to Clear",
+                    "gradient-colors:fg-transparent",
+                    st.gradient.transparent,
+                ),
+            ]
+            .iter()
+            .enumerate()
+            {
+                view::chip(
+                    p,
+                    s,
+                    Rect::new(ox + i as i32 * (ow as i32 / 2 + 2), y, ow / 2 - 2, 24),
+                    label,
+                    &t(command),
+                    *on,
+                );
+            }
+            y += 32;
+            color_well(p, y);
+            y += 30;
+            view::chip(
+                p,
+                s,
+                Rect::new(ox, y, ow, 24),
+                "Reverse",
+                &t("gradient-reverse"),
+                st.gradient.reverse,
+            );
+            y += 32;
+            view::slider(
+                p,
+                s,
+                Rect::new(ox, y, ow, 34),
+                st,
+                "Opacity",
+                "opacity",
+                true,
+            );
+        }
+        Tool::Clone | Tool::Repair => {
+            view::slider(p, s, Rect::new(ox, y, ow, 34), st, "Size", "size", true);
+            y += 40;
+            if st.tool == Tool::Repair {
+                p.paragraph(
+                    ox,
+                    y,
+                    ow,
+                    "Paint over what to remove; it is rebuilt from what surrounds it when you let go.",
+                    11,
+                    s.muted,
+                );
+                return;
+            }
+            view::slider(
+                p,
+                s,
+                Rect::new(ox, y, ow, 34),
+                st,
+                "Opacity",
+                "opacity",
+                true,
+            );
+            y += 40;
+            view::slider(
+                p,
+                s,
+                Rect::new(ox, y, ow, 34),
+                st,
+                "Hardness",
+                "hardness",
+                true,
+            );
+            y += 40;
+            view::chip(
+                p,
+                s,
+                Rect::new(ox, y, ow, 24),
+                "Sample all layers",
+                &t("merged"),
+                st.merged,
+            );
+            y += 30;
+            view::chip(
+                p,
+                s,
+                Rect::new(ox, y, ow, 24),
+                "Fix source position",
+                &t(if st.retouch.aligned {
+                    "aligned:off"
+                } else {
+                    "aligned:on"
+                }),
+                !st.retouch.aligned,
+            );
+            y += 32;
+            p.paragraph(
+                ox,
+                y,
+                ow,
+                match st.retouch.source {
+                    Some(_) => "Option-click to choose another source.",
+                    None => "Option-click the image to choose the source.",
+                },
+                11,
+                s.muted,
             );
         }
         _ => {

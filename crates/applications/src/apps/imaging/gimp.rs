@@ -55,6 +55,10 @@ fn tool_name(tool: Tool) -> &'static str {
         Tool::Picker => "Color Picker",
         Tool::Zoom => "Zoom",
         Tool::Pan => "Pan",
+        Tool::Gradient => "Gradient",
+        Tool::Clone => "Clone",
+        Tool::Heal => "Heal",
+        Tool::Paths => "Paths",
         _ => "Tool",
     }
 }
@@ -324,6 +328,156 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             &t("merged"),
             st.merged,
         );
+    } else if matches!(st.tool, Tool::Clone | Tool::Heal) {
+        for (label, param, y_off) in [
+            ("Opacity", "opacity", 0),
+            ("Size", "size", 40),
+            ("Hardness", "hardness", 80),
+        ] {
+            view::slider(
+                p,
+                &s,
+                Rect::new(8, y + y_off, ow, 34),
+                st,
+                label,
+                param,
+                true,
+            );
+        }
+        y += 122;
+        view::chip(
+            p,
+            &s,
+            Rect::new(8, y, ow, 22),
+            "Sample merged",
+            &t("merged"),
+            st.merged,
+        );
+        y += 30;
+        p.label(8, y, ow, "Alignment:", 11, s.muted, false, Align::Left);
+        y += 18;
+        for (i, (label, aligned)) in [("None", false), ("Aligned", true)].iter().enumerate() {
+            view::chip(
+                p,
+                &s,
+                Rect::new(8 + i as i32 * (ow as i32 / 2), y, ow / 2 - 4, 22),
+                label,
+                &t(if *aligned {
+                    "aligned:on"
+                } else {
+                    "aligned:off"
+                }),
+                st.retouch.aligned == *aligned,
+            );
+        }
+        y += 32;
+        let note = match st.retouch.source {
+            Some((sx, sy)) => format!("Source: {sx}, {sy}. Ctrl-click to set another."),
+            None => "Ctrl-click the image to set the source.".to_owned(),
+        };
+        p.paragraph(8, y, ow, &note, 11, s.muted);
+    } else if st.tool == Tool::Gradient {
+        view::slider(
+            p,
+            &s,
+            Rect::new(8, y, ow, 34),
+            st,
+            "Opacity",
+            "opacity",
+            true,
+        );
+        y += 42;
+        for (i, (label, command, on)) in [
+            (
+                "FG to BG (RGB)",
+                "gradient-colors:fg-bg",
+                !st.gradient.transparent,
+            ),
+            (
+                "FG to Transparent",
+                "gradient-colors:fg-transparent",
+                st.gradient.transparent,
+            ),
+            ("Reverse", "gradient-reverse", st.gradient.reverse),
+        ]
+        .iter()
+        .enumerate()
+        {
+            view::chip(
+                p,
+                &s,
+                Rect::new(8, y + i as i32 * 26, ow, 22),
+                label,
+                &t(command),
+                *on,
+            );
+        }
+        y += 84;
+        p.label(8, y, ow, "Shape:", 11, s.muted, false, Align::Left);
+        y += 18;
+        use cw_raster::gradient::{GradientShape as G, Repeat as R};
+        for (i, (label, shape)) in [
+            ("Linear", G::Linear),
+            ("Bi-linear", G::BiLinear),
+            ("Radial", G::Radial),
+            ("Square", G::Square),
+            ("Conical (sym)", G::ConicalSymmetric),
+            ("Conical (asym)", G::ConicalAsymmetric),
+        ]
+        .iter()
+        .enumerate()
+        {
+            view::chip(
+                p,
+                &s,
+                Rect::new(
+                    8 + (i as i32 % 2) * (ow as i32 / 2),
+                    y + (i as i32 / 2) * 26,
+                    ow / 2 - 4,
+                    22,
+                ),
+                label,
+                &t(&format!("gradient-shape:{}", shape.id())),
+                st.gradient.shape == *shape,
+            );
+        }
+        y += 84;
+        p.label(8, y, ow, "Repeat:", 11, s.muted, false, Align::Left);
+        y += 18;
+        for (i, (label, repeat)) in [
+            ("None (extend)", R::None),
+            ("Sawtooth wave", R::Sawtooth),
+            ("Triangular wave", R::Triangular),
+            ("Truncate", R::Truncate),
+        ]
+        .iter()
+        .enumerate()
+        {
+            view::chip(
+                p,
+                &s,
+                Rect::new(
+                    8 + (i as i32 % 2) * (ow as i32 / 2),
+                    y + (i as i32 / 2) * 26,
+                    ow / 2 - 4,
+                    22,
+                ),
+                label,
+                &t(&format!("gradient-repeat:{}", repeat.id())),
+                st.gradient.repeat == *repeat,
+            );
+        }
+    } else if st.tool == Tool::Paths {
+        p.paragraph(
+            8,
+            y,
+            ow,
+            "Design: click to add anchors, drag to pull handles; Ctrl-click the first anchor to close.",
+            11,
+            s.muted,
+        );
+        y += 60;
+        path_buttons(st, p, &s, 8, y, ow);
     }
 
     // Image tab, rulers, canvas.
@@ -392,7 +546,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             }
             k += 1;
         }
-        view::canvas(p, &s, area, st, false);
+        view::canvas(p, &s, area, st, false, env.pointer);
         view::scrollbars(p, &s, area, st);
     } else {
         let empty = Rect::new(cx, top, cw, body_h);
@@ -445,25 +599,26 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     p.box_(Rect::new(rx, top, right, body_h), s.panel, 0);
     p.vline(rx, top, body_h, s.line);
     let undo_tab = st.tab == "undo";
+    let paths_tab = st.tab == "paths";
     let mut tx = rx + 4;
     for (id, label, live) in [
         ("layers", "Layers", true),
         ("channels", "Channels", false),
-        ("paths", "Paths", false),
+        ("paths", "Paths", true),
         ("undo", "Undo", true),
     ] {
         let bw = p.measure(label, 11, false) + 14;
         let r = Rect::new(tx, top + 4, bw, 22);
-        let on = if id == "undo" {
-            undo_tab
-        } else {
-            id == "layers" && !undo_tab
+        let on = match id {
+            "undo" => undo_tab,
+            "paths" => paths_tab,
+            _ => !undo_tab && !paths_tab,
         };
         if live {
             view::chip(p, &s, r, label, &t(&format!("tab:{id}")), on);
         } else {
             p.box_(r, Color::TRANSPARENT, 2);
-            p.disabled("Channels and paths are not edited in this GIMP");
+            p.disabled("Channels are not edited in this GIMP");
             p.label(
                 r.x,
                 r.y + 4,
@@ -479,7 +634,42 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
     let dy = top + 32;
     if let Some(doc) = &st.doc {
-        if undo_tab {
+        if paths_tab {
+            let mut y = dy + 4;
+            match &st.path_edit {
+                Some(path) => {
+                    p.box_(Rect::new(rx + 4, y, right - 8, 26), s.selected, 2);
+                    p.symbol("edit", rx + 10, y + 5, 16, s.text);
+                    p.label(
+                        rx + 32,
+                        y + 6,
+                        right - 40,
+                        &format!(
+                            "Unnamed ({} anchors{})",
+                            path.anchors.len(),
+                            if path.closed { ", closed" } else { "" }
+                        ),
+                        12,
+                        s.text,
+                        false,
+                        Align::Left,
+                    );
+                    y += 34;
+                }
+                None => {
+                    p.paragraph(
+                        rx + 8,
+                        y,
+                        right - 16,
+                        "No paths. Draw one with the Paths tool.",
+                        11,
+                        s.muted,
+                    );
+                    y += 40;
+                }
+            }
+            path_buttons(st, p, &s, rx + 8, y, right - 16);
+        } else if undo_tab {
             let mut y = dy + 4;
             for (i, step) in std::iter::once("[ Base Image ]")
                 .chain(doc.undo_steps())
@@ -583,12 +773,18 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     p.box_(Rect::new(0, sy, w, status_h), s.bar, 0);
     p.hline(0, sy, w, s.line);
     if st.doc.is_some() {
-        p.left(8, sy + 5, 30, "px", 11, s.text);
+        // The pointer's image coordinates, blank while it is off the canvas.
+        let coords = st
+            .pointer_pixel(area, env.pointer)
+            .map(|(x, y)| format!("{x}, {y}"))
+            .unwrap_or_default();
+        p.label(8, sy + 5, 76, &coords, 11, s.text, false, Align::Right);
+        p.left(90, sy + 5, 30, "px", 11, s.text);
         let z = st.effective_zoom(area.width, area.height);
         view::chip(
             p,
             &s,
-            Rect::new(40, sy + 2, 64, 20),
+            Rect::new(116, sy + 2, 64, 20),
             &format!("{z}% ▾"),
             &t("menu:view"),
             false,
@@ -597,7 +793,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             .status
             .clone()
             .unwrap_or_else(|| format!("{} ({})", st.document_name(), view::size_text(st)));
-        p.left(114, sy + 5, w.saturating_sub(124), &msg, 11, s.text);
+        p.left(190, sy + 5, w.saturating_sub(200), &msg, 11, s.text);
     } else {
         view::status(p, &s, 8, sy + 5, w - 16, st);
     }
@@ -605,6 +801,41 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     menus(st, p, &s);
     view::dialog(p, &s, st, w, h);
     view::chooser(p, &s, st, w, h);
+}
+
+/// The Paths dialog's actions, live when there is a path to act on.
+fn path_buttons(st: &Studio, p: &mut Painter, s: &Skin, x: i32, mut y: i32, w: u32) {
+    let ready = st.path_edit.as_ref().is_some_and(|p| p.anchors.len() >= 2);
+    for (label, command) in [
+        ("Selection from Path", "path:select"),
+        ("Fill Path", "path:fill"),
+        ("Stroke Path…", "path:stroke"),
+        ("Close Path", "path:close"),
+        ("Delete Path", "path:delete"),
+    ] {
+        let r = Rect::new(x, y, w, 24);
+        let live = match command {
+            "path:delete" => st.path_edit.is_some(),
+            "path:close" => ready && st.path_edit.as_ref().is_some_and(|p| !p.closed),
+            _ => ready,
+        };
+        if live {
+            view::button(p, s, r, label, &st.target(command), false);
+        } else {
+            view::inert(
+                p,
+                s,
+                r,
+                label,
+                if command == "path:close" && ready {
+                    "The path is already closed"
+                } else {
+                    "Draw a path with the Paths tool first"
+                },
+            );
+        }
+        y += 28;
+    }
 }
 
 fn gimp_mode(mode: cw_raster::BlendMode) -> &'static str {
@@ -630,8 +861,10 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
         .and_then(|d| d.redo_label())
         .map(|l| format!("Redo {l}"));
     let overwrite = st
-        .save_target()
+        .overwrite_target()
         .map(|p| format!("Overwrite {}", p.rsplit('/').next().unwrap_or("")));
+    let has_path = st.path_edit.as_ref().is_some_and(|p| p.anchors.len() >= 2);
+    let no_path = "There is no path; draw one with the Paths tool";
     let no = "No image is open";
     let adj =
         |label: &'static str, id: &str| Item::new(label, &format!("dialog:{id}")).when(open, no);
@@ -642,19 +875,17 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
             Item::new("New…", "dialog:new-image").key("Ctrl+N"),
             Item::new("Open…", "open").key("Ctrl+O"),
             Item::separator(),
-            Item {
-                label: "Save",
-                command: Some("noop".into()),
-                why: "GIMP's XCF format is not available here; use Export As",
-                shortcut: "Ctrl+S",
-                checked: false,
-            },
+            Item::new("Save", "save").key("Ctrl+S").when(open, no),
+            Item::new("Save As…", "save-as")
+                .key("Shift+Ctrl+S")
+                .when(open, no),
+            Item::separator(),
             match &overwrite {
-                Some(label) => Item::new(label, "save"),
-                None => Item::new("Overwrite", "save")
-                    .when(false, "The image did not come from a PNG file"),
+                Some(label) => Item::new(label, "overwrite"),
+                None => Item::new("Overwrite", "overwrite")
+                    .when(false, "The image did not come from a PNG, JPEG or BMP file"),
             },
-            Item::new("Export As…", "save-as")
+            Item::new("Export As…", "export")
                 .key("Shift+Ctrl+E")
                 .when(open, no),
         ],
@@ -678,6 +909,9 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
             Item::new("Clear", "delete")
                 .key("Delete")
                 .when(has_sel, "Nothing is selected"),
+            Item::separator(),
+            Item::new("Fill Path", "path:fill").when(has_path, no_path),
+            Item::new("Stroke Path…", "path:stroke").when(has_path, no_path),
         ],
         "select" => vec![
             Item::new("All", "select-all").key("Ctrl+A").when(open, no),
@@ -687,6 +921,7 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
             Item::new("Invert", "select-invert")
                 .key("Ctrl+I")
                 .when(open, no),
+            Item::new("From Path", "path:select").when(has_path, no_path),
         ],
         "view" => vec![
             Item::new("Zoom In", "zoom:in").key("+").when(open, no),
