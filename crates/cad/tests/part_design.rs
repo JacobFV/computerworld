@@ -1,7 +1,7 @@
 //! Part Design features against analytic volumes and areas, recompute after edits, and
 //! watertight results.
 use cw_cad::document::*;
-use cw_cad::math::{v2, v3, PI, TAU};
+use cw_cad::math::{v2, v3, PI, V3};
 use cw_cad::sketch::{tools, Constraint, ConstraintType as T, Pos, Sketch};
 use cw_cad::solid::EdgeKind;
 
@@ -164,7 +164,7 @@ fn a_sketch_on_a_face_follows_the_face_when_the_pad_changes() {
 }
 
 #[test]
-fn revolution_and_groove_match_their_polygonal_volumes() {
+fn revolution_and_groove_match_their_exact_volumes() {
     let (mut doc, body) = with_body("Unnamed");
     // A 10 x 20 rectangle from radius 5 to 15, revolved about the sketch's V axis.
     let mut s = Sketch::default();
@@ -256,12 +256,12 @@ fn fillet_and_chamfer_remove_exactly_their_sections() {
         let removed = if chamfer {
             2.0 * 2.0 / 2.0 * 20.0
         } else {
-            // The square corner minus the quarter disc, the disc as its polygon.
+            // The square corner minus the quarter disc: exactly.
             (4.0 - circle_area(2.0) / 4.0) * 20.0
         };
         let got = 1000.0 - m.volume();
         assert!(
-            (got - removed).abs() < 0.02 * removed,
+            (got - removed).abs() < 1e-9,
             "{chamfer}: removed {got}, want {removed}"
         );
         if !chamfer {
@@ -272,6 +272,103 @@ fn fillet_and_chamfer_remove_exactly_their_sections() {
             )));
         }
     }
+}
+
+#[test]
+fn chamfer_types_and_rounding_every_edge() {
+    // Two distances and distance-and-angle take the sizes FreeCAD's properties name.
+    for (kind, size, size2, angle, flip, want) in [
+        (ChamferType::Equal, 2.0, 0.0, 0.0, false, 2.0 * 2.0 / 2.0),
+        (ChamferType::TwoDistances, 1.0, 3.0, 0.0, false, 1.5),
+        (ChamferType::TwoDistances, 1.0, 3.0, 0.0, true, 1.5),
+        (
+            ChamferType::DistanceAngle,
+            2.0,
+            0.0,
+            30.0,
+            false,
+            2.0 * 2.0 * (PI / 6.0).tan() / 2.0,
+        ),
+    ] {
+        let (mut doc, body, p) = padded_box();
+        let model = recompute(&mut doc);
+        let s = shape(&model, &p);
+        let e = (0..s.topo.edges.len())
+            .find(|i| (SubRef::edge(&s.topo, &s.mesh, *i).center - v3(10.0, 0.0, 5.0)).len() < 1e-9)
+            .unwrap();
+        let f = doc
+            .add_to_body(
+                &body,
+                Feature::Chamfer {
+                    edges: vec![SubRef::edge(&s.topo, &s.mesh, e)],
+                    size,
+                    kind,
+                    size2,
+                    angle,
+                    flip,
+                    all_edges: false,
+                },
+            )
+            .unwrap();
+        let model = recompute(&mut doc);
+        ok(&model, &[&f]);
+        let got = 1000.0 - model.body_shape[&body].volume();
+        assert!(
+            (got - want * 20.0).abs() < 1e-9,
+            "{kind:?} flip {flip}: {got} vs {}",
+            want * 20.0
+        );
+    }
+    // Flipping the two distances mirrors the bevel: the same volume, a different shape.
+    let two = |flip: bool| -> V3 {
+        let (mut doc, body, p) = padded_box();
+        let model = recompute(&mut doc);
+        let s = shape(&model, &p);
+        let e = (0..s.topo.edges.len())
+            .find(|i| (SubRef::edge(&s.topo, &s.mesh, *i).center - v3(10.0, 0.0, 5.0)).len() < 1e-9)
+            .unwrap();
+        doc.add_to_body(
+            &body,
+            Feature::Chamfer {
+                edges: vec![SubRef::edge(&s.topo, &s.mesh, e)],
+                size: 1.0,
+                kind: ChamferType::TwoDistances,
+                size2: 3.0,
+                angle: 45.0,
+                flip,
+                all_edges: false,
+            },
+        )
+        .unwrap();
+        let model = recompute(&mut doc);
+        model.body_shape[&body].center_of_mass().unwrap()
+    };
+    let (a, b) = (two(false), two(true));
+    assert!((a - b).len() > 0.01, "{a:?} vs {b:?}");
+    // Rounding every edge needs no selection at all.
+    let (mut doc, body, _) = padded_box();
+    let f = doc
+        .add_to_body(
+            &body,
+            Feature::Fillet {
+                edges: vec![],
+                radius: 1.0,
+                all_edges: true,
+            },
+        )
+        .unwrap();
+    let model = recompute(&mut doc);
+    ok(&model, &[&f]);
+    let s = &model.body_shape[&body];
+    // Six faces, twelve rounds, eight corners.
+    assert_eq!(s.topo.faces.len(), 26);
+    let (a, b, c) = (20.0 - 2.0, 10.0 - 2.0, 5.0 - 2.0);
+    let r = 1.0;
+    let want = a * b * c
+        + 2.0 * r * (a * b + b * c + c * a)
+        + PI * r * r * (a + b + c)
+        + 4.0 / 3.0 * PI * r * r * r;
+    assert!((s.volume() - want).abs() < 1e-9, "{} vs {want}", s.volume());
 }
 
 #[test]
