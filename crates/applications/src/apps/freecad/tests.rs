@@ -568,6 +568,446 @@ fn files_round_trip_through_the_dialog_and_effects() {
     assert!(matches!(fresh.dialog, Some(Dialog::Message { .. })));
 }
 
+fn file_dialog(c: &Cad) -> &files::FileDialog {
+    match &c.dialog {
+        Some(Dialog::File(d)) => d,
+        other => panic!("no file dialog: {other:?}"),
+    }
+}
+fn listing_of(effects: &[AppEffect]) -> Option<&str> {
+    effects.iter().rev().find_map(|e| match e {
+        AppEffect::ListDirectory { path, .. } => Some(path.as_str()),
+        _ => None,
+    })
+}
+
+#[test]
+fn file_dialog_history_places_path_bar_and_up() {
+    let mut c = cad();
+    let effects = c.run(W, "Std_SaveAs").unwrap();
+    assert_eq!(listing_of(&effects), Some("/home/carol/Documents"));
+    c.listed(vec!["Parts/".into(), "a.FCStd.json".into()]);
+    // A sidebar place, a path bar segment, Up: each lists the machine's folder.
+    let e = c.file_command(W, "place:/home/carol/Desktop").unwrap();
+    assert_eq!(listing_of(&e), Some("/home/carol/Desktop"));
+    assert!(file_dialog(&c).loading && file_dialog(&c).entries.is_empty());
+    c.listed(vec![]);
+    let e = c.file_command(W, "crumb:/home").unwrap();
+    assert_eq!(listing_of(&e), Some("/home"));
+    let e = c.file_command(W, "up").unwrap();
+    assert_eq!(listing_of(&e), Some("/"));
+    assert!(c.file_command(W, "up").is_err(), "nothing above the root");
+    // Back walks the way it came, Forward returns; a new step drops Forward.
+    let back = |c: &mut Cad| {
+        let e = c.file_command(W, "back").unwrap();
+        listing_of(&e).unwrap().to_owned()
+    };
+    assert_eq!(back(&mut c), "/home");
+    assert_eq!(back(&mut c), "/home/carol/Desktop");
+    assert_eq!(back(&mut c), "/home/carol/Documents");
+    assert!(c.file_command(W, "back").is_err());
+    let e = c.file_command(W, "forward").unwrap();
+    assert_eq!(listing_of(&e), Some("/home/carol/Desktop"));
+    assert_eq!(file_dialog(&c).forward.len(), 2);
+    c.file_command(W, "place:/home/carol/Music").unwrap();
+    assert!(file_dialog(&c).forward.is_empty());
+    assert!(c.file_command(W, "forward").is_err());
+    // The keyboard's history keys do the same.
+    c.key(W, "Alt+ArrowLeft").unwrap();
+    assert_eq!(file_dialog(&c).folder, "/home/carol/Desktop");
+    c.key(W, "Ctrl+]").unwrap();
+    assert_eq!(file_dialog(&c).folder, "/home/carol/Music");
+    // What was typed in the name box survives the trip.
+    c.type_text("Bracket").unwrap();
+    c.file_command(W, "place:/home/carol/Documents").unwrap();
+    assert_eq!(file_dialog(&c).name, "Bracket");
+    // Explorer's Home: the pinned folders the home folder really has.
+    c.file_command(W, "home").unwrap();
+    c.listed(vec![
+        "Videos/".into(),
+        "Documents/".into(),
+        "notes.txt".into(),
+        ".config/".into(),
+        "Desktop/".into(),
+    ]);
+    let d = file_dialog(&c);
+    assert!(d.home_view);
+    assert_eq!(d.visible(), vec!["Desktop/", "Documents/", "Videos/"]);
+    assert!(c.file_command(W, "up").is_err());
+    assert!(
+        c.file_command(W, "ok").is_err(),
+        "Home is not a folder to save in"
+    );
+    c.file_command(W, "open:Documents/").unwrap();
+    let d = file_dialog(&c);
+    assert!(!d.home_view);
+    assert_eq!(d.folder, "/home/carol/Documents");
+    c.file_command(W, "back").unwrap();
+    assert!(file_dialog(&c).home_view, "Back returns to Home");
+}
+
+#[test]
+fn file_dialog_new_folder_the_platform_way() {
+    // Explorer: "New folder" at once, the next free name, selected, listed again.
+    let mut c = cad();
+    c.run(W, "Std_SaveAs").unwrap();
+    c.listed(vec!["New folder/".into(), "new folder (2)/".into()]);
+    let e = c.file_command(W, "new-folder").unwrap();
+    assert!(matches!(&e[0], AppEffect::CreateDirectory { path, .. }
+        if path == "/home/carol/Documents/New folder (3)"));
+    assert_eq!(listing_of(&e), Some("/home/carol/Documents"));
+    assert_eq!(file_dialog(&c).selected.as_deref(), Some("New folder (3)/"));
+    // The Mac sheet and GTK's popover: a name, checked, then into the new folder.
+    c.platform = Some(DesktopTheme::Macos);
+    c.listed(vec!["Parts/".into(), "a.FCStd.json".into()]);
+    c.file_command(W, "folder-prompt:untitled folder").unwrap();
+    assert!(file_dialog(&c).prompt.is_some());
+    assert_eq!(c.field.as_ref().unwrap().text, "untitled folder");
+    c.type_text("Parts").unwrap();
+    let refused = c.key(W, "Enter").unwrap_err();
+    assert!(refused.contains("already taken"), "{refused}");
+    assert_eq!(
+        file_dialog(&c).prompt.as_ref().unwrap().error.as_deref(),
+        Some(refused.as_str())
+    );
+    assert_eq!(
+        c.field.as_ref().unwrap().text,
+        "Parts",
+        "the box keeps the name"
+    );
+    c.key(W, "Backspace").unwrap();
+    c.type_text("s/x").unwrap();
+    assert!(c.key(W, "Enter").unwrap_err().contains("“/”"));
+    for _ in 0..2 {
+        c.key(W, "Backspace").unwrap();
+    }
+    c.type_text("Jigs").unwrap();
+    let e = c.key(W, "Enter").unwrap();
+    assert!(matches!(&e[0], AppEffect::CreateDirectory { path, .. }
+        if path == "/home/carol/Documents/PartsJigs"));
+    assert_eq!(listing_of(&e), Some("/home/carol/Documents/PartsJigs"));
+    let d = file_dialog(&c);
+    assert!(d.prompt.is_none());
+    assert_eq!(d.folder, "/home/carol/Documents/PartsJigs");
+    assert!(matches!(
+        c.field,
+        Some(Field {
+            target: FieldTarget::FileName,
+            ..
+        })
+    ));
+    // Escape closes the prompt, not the dialog; GTK words a clash its own way.
+    c.platform = Some(DesktopTheme::Ubuntu);
+    c.listed(vec!["x/".into(), "y.FCStd.json".into()]);
+    c.file_command(W, "folder-prompt:").unwrap();
+    c.key(W, "Escape").unwrap();
+    assert!(file_dialog(&c).prompt.is_none());
+    c.file_command(W, "folder-prompt:").unwrap();
+    c.type_text("y.FCStd.json").unwrap();
+    assert_eq!(
+        c.file_command(W, "folder-create").unwrap_err(),
+        "A file with that name already exists"
+    );
+    // Anything else in the dialog closes the popover.
+    c.file_command(W, "entry:x/").unwrap();
+    assert!(file_dialog(&c).prompt.is_none());
+}
+
+#[test]
+fn file_dialog_type_filter_changes_listing_and_extension() {
+    let mut c = padded();
+    c.command(W, "tree:Body", None).unwrap();
+    c.run(W, "Std_Export").unwrap();
+    c.listed(vec![
+        "dir/".into(),
+        "a.stl".into(),
+        "b.obj".into(),
+        "c.svg".into(),
+    ]);
+    assert_eq!(file_dialog(&c).visible(), vec!["dir/", "a.stl"]);
+    assert_eq!(file_dialog(&c).name, "Body.stl");
+    // A name typed but not committed takes the new extension.
+    c.type_text("Plate").unwrap();
+    c.command(W, "choice:filetype:2", None).unwrap();
+    let d = file_dialog(&c);
+    assert_eq!(d.visible(), vec!["dir/", "b.obj"]);
+    assert_eq!(d.name, "Plate.obj");
+    assert_eq!(c.field.as_ref().unwrap().text, "Plate.obj");
+    c.command(W, "choice:filetype:4", None).unwrap();
+    assert_eq!(file_dialog(&c).visible(), vec!["dir/", "c.svg"]);
+    assert!(c.file_command(W, "type:9").is_err());
+}
+
+#[test]
+fn saving_over_a_file_asks_first_in_each_platforms_words() {
+    for (platform, enter_replaces) in [
+        (DesktopTheme::Macos, false),
+        (DesktopTheme::Windows, false),
+        (DesktopTheme::Ubuntu, true),
+    ] {
+        let mut c = cad();
+        c.platform = Some(platform);
+        c.run(W, "Std_SaveAs").unwrap();
+        c.listed(vec!["Unnamed.FCStd.json".into()]);
+        // Save over the existing file: the question comes up and takes the keyboard.
+        let e = c.key(W, "Enter").unwrap();
+        assert!(e.is_empty());
+        assert_eq!(
+            file_dialog(&c).confirm.as_deref(),
+            Some("Unnamed.FCStd.json")
+        );
+        assert!(c.field.is_none());
+        assert!(c.file_command(W, "ok").is_err(), "the question is modal");
+        assert!(c.file_command(W, "place:/").is_err());
+        assert!(
+            c.type_text("0").is_err(),
+            "no view shortcut behind a dialog"
+        );
+        let e = c.key(W, "Enter").unwrap();
+        if enter_replaces {
+            assert!(matches!(&e[0], AppEffect::WriteFile { path, .. }
+                if path == "/home/carol/Documents/Unnamed.FCStd.json"));
+            assert!(c.dialog.is_none());
+            continue;
+        }
+        // Return is Cancel / No: back in the dialog, the name box has the keyboard.
+        assert!(e.is_empty(), "{platform:?}");
+        assert!(file_dialog(&c).confirm.is_none());
+        assert!(c.field.is_some());
+        c.key(W, "Enter").unwrap();
+        c.key(W, "Escape").unwrap();
+        assert!(file_dialog(&c).confirm.is_none(), "Escape answers No");
+        assert!(c.dialog.is_some());
+        c.key(W, "Enter").unwrap();
+        let e = c.file_command(W, "replace").unwrap();
+        assert!(matches!(&e[0], AppEffect::WriteFile { .. }));
+        assert!(c.dialog.is_none());
+    }
+    // Windows ignores case; another name saves at once.
+    let mut c = cad();
+    c.platform = Some(DesktopTheme::Windows);
+    c.run(W, "Std_SaveAs").unwrap();
+    c.listed(vec!["UNNAMED.fcstd.json".into()]);
+    c.key(W, "Enter").unwrap();
+    assert!(file_dialog(&c).confirm.is_some());
+    c.file_command(W, "keep").unwrap();
+    c.type_text("Other").unwrap();
+    let e = c.key(W, "Enter").unwrap();
+    assert!(
+        matches!(&e[0], AppEffect::WriteFile { path, .. } if path.ends_with("/Other.FCStd.json"))
+    );
+}
+
+/// A folder of `n` documents, `part-000.FCStd.json` onwards.
+fn many(n: usize) -> Vec<String> {
+    (0..n).map(|i| format!("part-{i:03}.FCStd.json")).collect()
+}
+/// The rows the dialog paints, read off the scene, in order.
+fn painted_rows(c: &Cad, theme: DesktopTheme) -> Vec<String> {
+    let app = NativeApp::Freecad(Freecad(Box::new(c.clone())));
+    let settings = crate::SystemSettings::DEFAULT;
+    let env = crate::AppEnv {
+        theme,
+        width: 1100,
+        height: 700,
+        clock_us: 0,
+        settings: &settings,
+        clipboard: None,
+        share_to: None,
+        files: Default::default(),
+        editor: None,
+        pointer: None,
+    };
+    let scene = app_content_with(&AppState::Native(app), &env);
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| {
+            n.interaction
+                .as_deref()?
+                .strip_prefix("freecad:file:entry:")
+        })
+        .map(str::to_owned)
+        .collect()
+}
+fn painted_target(c: &Cad, theme: DesktopTheme, prefix: &str) -> Option<String> {
+    let app = NativeApp::Freecad(Freecad(Box::new(c.clone())));
+    let settings = crate::SystemSettings::DEFAULT;
+    let env = crate::AppEnv {
+        theme,
+        width: 1100,
+        height: 700,
+        clock_us: 0,
+        settings: &settings,
+        clipboard: None,
+        share_to: None,
+        files: Default::default(),
+        editor: None,
+        pointer: None,
+    };
+    let scene = app_content_with(&AppState::Native(app), &env);
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| n.interaction.clone())
+        .find(|t| t.starts_with(prefix))
+}
+
+#[test]
+fn a_long_folder_scrolls_by_wheel_bar_and_keyboard() {
+    for theme in [
+        DesktopTheme::Macos,
+        DesktopTheme::Windows,
+        DesktopTheme::Ubuntu,
+    ] {
+        let mut c = cad();
+        c.platform = Some(theme);
+        c.run(W, "Std_Open").unwrap();
+        c.listed(many(80));
+        let first = painted_rows(&c, theme);
+        assert_eq!(first[0], "part-000.FCStd.json", "{theme:?}");
+        assert!(first.len() < 80, "{theme:?}: the list overflows");
+        let cap = first.len();
+        // The painted list says how many rows it shows.
+        let list = painted_target(&c, theme, "freecad:file:list:").unwrap();
+        assert_eq!(list, format!("freecad:file:list:{cap}"));
+        c.command(W, list.strip_prefix("freecad:").unwrap(), None)
+            .unwrap();
+        assert_eq!(file_dialog(&c).page, cap);
+        // The wheel: a notch is three rows.
+        let mut app = Freecad(Box::new(c.clone()));
+        assert!(app
+            .wheel("freecad:file:entry:part-001.FCStd.json", 0, 0, 120)
+            .unwrap());
+        c = *app.0;
+        assert_eq!(painted_rows(&c, theme)[0], "part-003.FCStd.json");
+        // The scrollbar: a click at the bottom of the track shows the last rows.
+        let bar = painted_target(&c, theme, "freecad:file:scrollbar:").unwrap();
+        let height: i32 = bar.rsplit(':').next().unwrap().parse().unwrap();
+        c.command(W, bar.strip_prefix("freecad:").unwrap(), Some((4, height)))
+            .unwrap();
+        let rows = painted_rows(&c, theme);
+        assert_eq!(rows.last().unwrap(), "part-079.FCStd.json", "{theme:?}");
+        // Windows' arrows step a row.
+        if theme == DesktopTheme::Windows {
+            c.command(W, "file:scroll-by:-1", None).unwrap();
+            assert_eq!(
+                painted_rows(&c, theme).last().unwrap(),
+                "part-078.FCStd.json"
+            );
+        }
+        // The keyboard: Home, Page Down, End keep the selection in view.
+        c.key(W, "Home").unwrap();
+        assert_eq!(painted_rows(&c, theme)[0], "part-000.FCStd.json");
+        c.key(W, "PageDown").unwrap();
+        let sel = file_dialog(&c).selected.clone().unwrap();
+        assert_eq!(sel, format!("part-{:03}.FCStd.json", cap - 1));
+        assert!(painted_rows(&c, theme).contains(&sel));
+        c.key(W, "ArrowDown").unwrap();
+        let sel = file_dialog(&c).selected.clone().unwrap();
+        assert!(painted_rows(&c, theme).contains(&sel), "{theme:?}: {sel}");
+        c.key(W, "End").unwrap();
+        let rows = painted_rows(&c, theme);
+        assert_eq!(rows.last().unwrap(), "part-079.FCStd.json");
+        c.key(W, "ArrowUp").unwrap();
+        assert_eq!(
+            file_dialog(&c).selected.as_deref(),
+            Some("part-078.FCStd.json")
+        );
+        // The last row, reached by scrolling, opens.
+        c.key(W, "End").unwrap();
+        let e = c.key(W, "Enter").unwrap();
+        assert!(
+            matches!(&e[0], AppEffect::ReadBytes { path, .. }
+                if path == "/home/carol/Documents/part-079.FCStd.json"),
+            "{theme:?}: {e:?}"
+        );
+    }
+}
+
+#[test]
+fn a_short_window_scrolls_the_sidebar() {
+    for theme in [
+        DesktopTheme::Macos,
+        DesktopTheme::Windows,
+        DesktopTheme::Ubuntu,
+    ] {
+        let mut c = cad();
+        c.platform = Some(theme);
+        c.run(W, "Std_SaveAs").unwrap();
+        c.listed(vec![]);
+        let settings = crate::SystemSettings::DEFAULT;
+        let places = |c: &Cad| -> Vec<String> {
+            let files = crate::FilesEnv {
+                home: "/home/carol",
+                folders: crate::standard_folders(theme)
+                    .iter()
+                    .map(|s| (*s).to_owned())
+                    .collect(),
+                trash: "/home/carol/.local/share/Trash/files".into(),
+                starred: &[],
+            };
+            let env = crate::AppEnv {
+                theme,
+                width: 900,
+                height: 330,
+                clock_us: 0,
+                settings: &settings,
+                clipboard: None,
+                share_to: None,
+                files,
+                editor: None,
+                pointer: None,
+            };
+            let app = NativeApp::Freecad(Freecad(Box::new(c.clone())));
+            app_content_with(&AppState::Native(app), &env)
+                .nodes
+                .iter()
+                .filter_map(|n| n.interaction.clone())
+                .filter(|t| {
+                    t.starts_with("freecad:file:place:")
+                        || t == "freecad:file:home"
+                        || t.starts_with("freecad:file:side-scrollbar:")
+                })
+                .collect()
+        };
+        let before = places(&c);
+        assert!(
+            before.iter().any(|t| t.contains("side-scrollbar")),
+            "{theme:?}: {before:?}"
+        );
+        let mut app = Freecad(Box::new(c));
+        assert!(app.wheel(&before[0], 0, 0, 120).unwrap());
+        let c = *app.0;
+        assert!(file_dialog(&c).side_scroll > 0);
+        let after = places(&c);
+        assert_ne!(before[0], after[0], "{theme:?}: the sidebar moved");
+    }
+}
+
+#[test]
+fn open_dialog_selects_enters_and_opens() {
+    let mut c = cad();
+    c.run(W, "Std_Open").unwrap();
+    c.listed(vec!["Parts/".into(), "x.FCStd.json".into(), "y.stl".into()]);
+    assert_eq!(file_dialog(&c).visible(), vec!["Parts/", "x.FCStd.json"]);
+    // A click selects; Open with a folder selected goes into it.
+    c.file_command(W, "entry:Parts/").unwrap();
+    assert_eq!(file_dialog(&c).folder, "/home/carol/Documents");
+    let e = c.file_command(W, "ok").unwrap();
+    assert_eq!(listing_of(&e), Some("/home/carol/Documents/Parts"));
+    c.listed(vec!["b.FCStd.json".into()]);
+    // A double click on a file opens it.
+    let e = c.double_click(W, "file:entry:b.FCStd.json").unwrap();
+    assert!(matches!(&e[0], AppEffect::ReadBytes { path, .. }
+        if path == "/home/carol/Documents/Parts/b.FCStd.json"));
+    assert!(c.dialog.is_none());
+    // Escape cancels an open dialog.
+    c.run(W, "Std_Open").unwrap();
+    c.key(W, "Escape").unwrap();
+    assert!(c.dialog.is_none());
+}
+
 #[test]
 fn new_with_unsaved_changes_asks_first() {
     let mut c = padded();
@@ -633,7 +1073,53 @@ fn states() -> Vec<(&'static str, Cad)> {
     f.listed(vec!["a/".into(), "b.stl".into()]);
     out.push(("file dialog", f.clone()));
     f.menu = Some("dd:filetype".into());
-    out.push(("file types", f));
+    out.push(("file types", f.clone()));
+    f.menu = Some("dd:filepath".into());
+    out.push(("folder pop-up", f.clone()));
+    f.menu = None;
+    f.file_command(W, "entry:a/").unwrap();
+    out.push(("folder selected", f.clone()));
+    let mut s = c.clone();
+    s.run(W, "Std_SaveAs").unwrap();
+    s.listed(vec!["Parts/".into(), "Unnamed.FCStd.json".into()]);
+    s.file_command(W, "place:/home/carol/Desktop").unwrap();
+    s.listed(vec![]);
+    s.file_command(W, "back").unwrap();
+    s.listed(vec!["Parts/".into(), "Unnamed.FCStd.json".into()]);
+    out.push(("save as with history", s.clone()));
+    let mut n = s.clone();
+    n.file_command(W, "folder-prompt:untitled folder").unwrap();
+    out.push(("new folder prompt", n.clone()));
+    n.type_text("Parts").unwrap();
+    n.file_command(W, "folder-create").unwrap_err();
+    out.push(("new folder refused", n));
+    let mut k = s.clone();
+    k.key(W, "Enter").unwrap();
+    out.push(("replace question", k));
+    let mut m = s.clone();
+    m.file_command(W, "collapse").unwrap();
+    out.push(("collapsed save panel", m));
+    let mut h = s.clone();
+    h.file_command(W, "home").unwrap();
+    h.listed(vec!["Desktop/".into(), "Documents/".into()]);
+    out.push(("explorer home", h));
+    let mut o = c.clone();
+    o.modified = false;
+    o.run(W, "Std_Open").unwrap();
+    o.listed(vec!["Parts/".into(), "x.FCStd.json".into()]);
+    o.file_command(W, "entry:x.FCStd.json").unwrap();
+    out.push(("open with a file chosen", o));
+    let mut l = c.clone();
+    l.modified = false;
+    l.run(W, "Std_Open").unwrap();
+    l.listed(many(60));
+    out.push(("long folder", l.clone()));
+    l.command(W, "file:scroll-by:20", None).unwrap();
+    out.push(("long folder scrolled", l));
+    let mut i = c.clone();
+    i.run(W, "Std_Import").unwrap();
+    i.listed(vec!["m.stl".into(), "d.dxf".into()]);
+    out.push(("import", i));
     let mut d = c.clone();
     d.dialog = Some(Dialog::About);
     out.push(("about", d));
@@ -665,8 +1151,20 @@ fn every_painted_control_is_one_the_application_accepts() {
         DesktopTheme::Macos,
     ] {
         for (label, state) in states() {
-            let app = NativeApp::Freecad(Freecad(Box::new(state.clone())));
+            let mut state = state.clone();
+            state.platform = Some(theme);
+            let app = NativeApp::Freecad(Freecad(Box::new(state)));
             let settings = crate::SystemSettings::DEFAULT;
+            // The machine's standard places, so the dialogs' sidebars are populated.
+            let files = crate::FilesEnv {
+                home: "/home/carol",
+                folders: crate::standard_folders(theme)
+                    .iter()
+                    .map(|s| (*s).to_owned())
+                    .collect(),
+                trash: "/home/carol/.local/share/Trash/files".into(),
+                starred: &[],
+            };
             let env = crate::AppEnv {
                 theme,
                 width: 1100,
@@ -675,7 +1173,7 @@ fn every_painted_control_is_one_the_application_accepts() {
                 settings: &settings,
                 clipboard: None,
                 share_to: None,
-                files: Default::default(),
+                files,
                 editor: None,
                 pointer: Some((600, 300)),
             };
