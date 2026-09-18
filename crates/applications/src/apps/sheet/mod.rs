@@ -261,6 +261,20 @@ impl Book {
     pub fn document(&self) -> String {
         self.path.clone().unwrap_or_default()
     }
+    /// The window title each product gives an open workbook.
+    pub fn window_title(&self, theme: DesktopTheme) -> String {
+        let flavor = self.flavor(theme);
+        let product = flavor.product(theme);
+        if self.name.is_empty() || self.browsing || theme.mobile() {
+            return product.into();
+        }
+        match (flavor, theme) {
+            (Flavor::Excel, DesktopTheme::Macos) => self.name.clone(),
+            (Flavor::Excel, _) => format!("{} - Excel", stem(&self.name)),
+            (Flavor::Numbers, _) => stem(&self.name).to_owned(),
+            _ => format!("{} - {product}", self.name),
+        }
+    }
     pub fn caption(&self) -> String {
         self.name.clone()
     }
@@ -1915,7 +1929,7 @@ macro_rules! spreadsheet_app {
                 Self::KIND
             }
             pub fn title(&self, theme: DesktopTheme) -> String {
-                self.0.flavor(theme).product(theme).into()
+                self.0.window_title(theme)
             }
             pub fn document(&self) -> String {
                 self.0.document()

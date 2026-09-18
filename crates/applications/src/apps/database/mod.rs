@@ -1555,7 +1555,11 @@ impl Database {
         if tableplus(theme) {
             "TablePlus".into()
         } else {
-            "DB Browser for SQLite".into()
+            match &self.0.path {
+                // DB Browser titles itself with the database's full path.
+                Some(path) if self.0.db.is_some() => format!("DB Browser for SQLite - {path}"),
+                _ => "DB Browser for SQLite".into(),
+            }
         }
     }
     pub fn document(&self) -> String {
