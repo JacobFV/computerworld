@@ -191,6 +191,98 @@ fn overlapping_boxes_and_coplanar_faces() {
 }
 
 #[test]
+fn degenerate_pairs_come_out_right() {
+    let a = cuboid(V3::ZERO, v3(4.0, 3.0, 2.0));
+    // The same solid twice: union and intersection give it back, difference nothing.
+    let b = cuboid(V3::ZERO, v3(4.0, 3.0, 2.0));
+    for (op, want) in [(Op::Union, 24.0), (Op::Intersection, 24.0)] {
+        let r = boolean(&a, &b, op).unwrap();
+        solid_ok(&r);
+        assert!(close(mass_props(&r).volume, want, 1e-12), "{op:?}");
+        assert_eq!(r.faces.len(), 6, "{op:?}");
+    }
+    let empty = boolean(&a, &b, Op::Difference).unwrap();
+    assert!(empty.is_empty() || mass_props(&empty).volume.abs() < 1e-12);
+    // A cut that takes a whole face away: the top, exactly.
+    let lid = cuboid(v3(0.0, 0.0, 1.0), v3(4.0, 3.0, 2.0));
+    let d = boolean(&a, &lid, Op::Difference).unwrap();
+    solid_ok(&d);
+    assert!(close(mass_props(&d).volume, 12.0, 1e-12));
+    assert_eq!(d.faces.len(), 6, "still a plain box");
+    // A cut that would leave two solids.
+    let saw = cuboid(v3(1.5, -1.0, -1.0), v3(2.5, 4.0, 3.0));
+    let two = boolean(&a, &saw, Op::Difference).unwrap();
+    assert_eq!(two.lumps().len(), 2, "the saw cuts it in half");
+    // A plane exactly tangent to a cylinder: the cut takes nothing away.
+    let c = cylinder(V3::ZERO, V3::Z, 2.0, 5.0);
+    let knife = cuboid(v3(2.0, -5.0, -1.0), v3(7.0, 5.0, 6.0));
+    let t = boolean(&c, &knife, Op::Difference).unwrap();
+    solid_ok(&t);
+    assert!(close(mass_props(&t).volume, PI * 4.0 * 5.0, 1e-12));
+    // A box whose corner touches a sphere at one point.
+    let ball = sphere(v3(0.0, 0.0, 0.0), 3.0);
+    let corner = cuboid(v3(3.0, -1.0, -1.0), v3(6.0, 1.0, 1.0));
+    let u = boolean(&ball, &corner, Op::Union).unwrap();
+    assert_eq!(u.lumps().len(), 2, "they meet at a point only");
+    // A tube: a narrower cylinder taken out of a wider coaxial one.
+    let outer = cylinder(V3::ZERO, V3::Z, 5.0, 10.0);
+    let inner = cylinder(v3(0.0, 0.0, -1.0), V3::Z, 3.0, 12.0);
+    let tube = boolean(&outer, &inner, Op::Difference).unwrap();
+    solid_ok(&tube);
+    assert_eq!(tube.lumps().len(), 1);
+    assert!(close(
+        mass_props(&tube).volume,
+        PI * (25.0 - 9.0) * 10.0,
+        1e-12
+    ));
+    assert_eq!(tube.faces.len(), 4, "two walls and two annular ends");
+    // A bore through a ball.
+    let ball = sphere(V3::ZERO, 4.0);
+    let bore = cylinder(v3(0.0, 0.0, -6.0), V3::Z, 1.5, 12.0);
+    let bead = boolean(&ball, &bore, Op::Difference).unwrap();
+    solid_ok(&bead);
+    // The ball less the cylinder inside it and the two caps it removes.
+    let h = (16.0f64 - 2.25).sqrt();
+    let cap = PI * (4.0 - h) * (4.0 - h) * (3.0 * 4.0 - (4.0 - h)) / 3.0;
+    let want = 4.0 / 3.0 * PI * 64.0 - (PI * 2.25 * 2.0 * h + 2.0 * cap);
+    assert!(
+        close(mass_props(&bead).volume, want, 1e-12),
+        "{} vs {want}",
+        mass_props(&bead).volume
+    );
+    // A box turned 45° cutting a cylinder: nothing lines up with anything.
+    let post = cylinder(V3::ZERO, V3::Z, 3.0, 10.0);
+    let blade = cuboid(v3(-10.0, -0.75, 3.0), v3(10.0, 0.75, 7.0)).transformed(
+        &crate::math::Xform::rotate(v3(0.0, 0.0, 5.0), V3::Z, PI / 4.0),
+    );
+    let slotted = boolean(&post, &blade, Op::Difference).unwrap();
+    solid_ok(&slotted);
+    // The slab takes a chord of the disc, 1.5 wide, over its 4 mm height.
+    let w = 0.75f64;
+    let chord = 2.0 * (w * (9.0 - w * w).sqrt() + 9.0 * (w / 3.0).asin());
+    let removed = chord * 4.0;
+    assert!(
+        close(
+            mass_props(&slotted).volume,
+            PI * 9.0 * 10.0 - removed,
+            1e-12
+        ),
+        "{}",
+        mass_props(&slotted).volume
+    );
+    // A hole exactly at the edge of a face: its wall is tangent to the side.
+    let plate = cuboid(V3::ZERO, v3(10.0, 10.0, 2.0));
+    let flush = cylinder(v3(2.0, 0.0, -1.0), V3::Z, 2.0, 4.0);
+    let d = boolean(&plate, &flush, Op::Difference).unwrap();
+    solid_ok(&d);
+    assert!(
+        close(mass_props(&d).volume, 200.0 - PI * 4.0 * 2.0 / 2.0, 1e-12),
+        "{}",
+        mass_props(&d).volume
+    );
+}
+
+#[test]
 fn a_through_hole_and_a_boss() {
     let plate = cuboid(v3(0.0, 0.0, 0.0), v3(10.0, 10.0, 2.0));
     let pin = cylinder(v3(5.0, 5.0, -1.0), V3::Z, 2.0, 4.0);
@@ -421,6 +513,27 @@ fn round_edges_of_revolved_and_padded_shapes() {
         .faces
         .iter()
         .any(|x| matches!(x.surface, super::Surface::Cone { .. })));
+    // The rim of a hole: the round grows outwards from the hole's wall.
+    let plate = cuboid(V3::ZERO, v3(20.0, 20.0, 5.0));
+    let bore = cylinder(v3(10.0, 10.0, -1.0), V3::Z, 4.0, 7.0);
+    let holed = boolean(&plate, &bore, Op::Difference).unwrap();
+    let rim = (0..holed.edges.len())
+        .find(|e| {
+            holed.edges[*e].closed()
+                && (holed.edges[*e].start().z - 5.0).abs() < 1e-9
+                && holed.edges[*e].start().dist(v3(10.0, 10.0, 5.0)) < 5.0
+        })
+        .unwrap();
+    let f = dress(&holed, &[rim], Dress::Fillet(1.0), "Fillet").unwrap();
+    solid_ok(&f);
+    let a = 1.0 - PI / 4.0;
+    let xbar = (10.0 - 3.0 * PI) / (3.0 * (4.0 - PI));
+    let want = mass_props(&holed).volume - TAU * (4.0 + xbar) * a;
+    assert!(
+        close(mass_props(&f).volume, want, 1e-12),
+        "{} vs {want}",
+        mass_props(&f).volume
+    );
     // A vertical edge between a flat and a round side (a D profile).
     let bx = cuboid(v3(0.0, -5.0, 0.0), v3(10.0, 5.0, 4.0));
     let round = cylinder(v3(0.0, 0.0, 0.0), V3::Z, 7.0, 4.0);
