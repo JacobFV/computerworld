@@ -163,8 +163,8 @@ every replay.
 | `sqlite3` | `[OPTIONS] [FILE [SQL…]]`; SQL and dot-commands on stdin (pipe, heredoc, `<`); `-header -noheader -csv -column -list -line -json -box -table -markdown -tabs -quote -html -ascii -separator SEP -newline SEP -nullvalue TEXT -cmd CMD -init FILE -bail -echo -version -help`; `-batch -readonly -safe` accepted and inert | every other option, refused by name with status `2`; an interactive prompt | modelled: the `cw-sql` engine over the VFS, reading and writing real SQLite 3 files; see *sqlite3* below |
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
-| `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions, threads, sockets, subprocesses | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
-| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads`, networking modules, `child_process` (fails with `ENOSYS`) | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
+| `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions, threads | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
+| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads` | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
 
@@ -256,15 +256,70 @@ labelled statements, getters and setters, ES modules with top-level `await` and 
 callback and promise APIs), `fs/promises`, `path`, `os`, `events`, `util`, `assert`
 (`assert/strict`), `readline` (`readline/promises`), `url`, `querystring`,
 `string_decoder`, `stream` (a subset), `buffer`, `crypto` (hashes, HMAC, random),
-`timers`, `timers/promises`, `perf_hooks`, `process` and `child_process` (which refuses
-with `ENOSYS`). Globals include `Buffer`, `URL`, `URLSearchParams`, `TextEncoder`,
-`TextDecoder`, `AbortController`, `structuredClone`, `atob`/`btoa`, `queueMicrotask`
-and a `crypto` object.
+`timers`, `timers/promises`, `perf_hooks`, `process`, `child_process`, `http`,
+`https`, `net`, `dns` (`dns/promises`). Globals include `Buffer`, `URL`,
+`URLSearchParams`, `TextEncoder`, `TextDecoder`, `AbortController`, `structuredClone`,
+`atob`/`btoa`, `queueMicrotask`, a `crypto` object, and `fetch` with `Headers`,
+`Request`, `Response`, `FormData`, `Blob`, `File` and a minimal `ReadableStream`.
 
-Known gaps shared by both: no network access, no subprocesses, no threads and no
-native extensions. `node` does not implement `Intl` beyond `en-US` date and number
-formatting, `Atomics`/`SharedArrayBuffer`, `http`/`net`/`dns`/`zlib`/`worker_threads`,
-or the REPL. Strings that contain unpaired UTF-16 surrogates are carried as the
+### Network
+
+Both runtimes reach the simulated network exactly as the machine's other clients do
+(the browser, `curl`): every request goes through the world's DNS, routes, gateway
+policy and listeners, reaches the service's handler, and takes the simulated time the
+world charges for it. Nothing reaches the host.
+
+* **Python**: `urllib.request` (`urlopen`, `Request`, openers and handlers, redirects,
+  `HTTPError`/`URLError`, `file:` and `data:` URLs), `urllib.parse`, `http.client`
+  (`HTTPConnection`, `HTTPSConnection`), `http.HTTPStatus`, `ssl` (contexts that carry
+  settings), and `socket` (`getaddrinfo`, `gethostbyname` and friends against the
+  world's DNS; `create_connection`, `connect`, `sendall`, `recv`, `makefile`).
+* **Node**: `http`/`https` (`request`, `get`, `Agent`, `IncomingMessage`,
+  `createServer`), global `fetch` (redirects, `AbortSignal`), `net` (`Socket`,
+  `connect`, `createServer`) and `dns` (`lookup`, `resolve4`/`resolve6`/`resolve`,
+  `reverse`, promises). Replies arrive as I/O completions at their simulated time.
+
+A TCP connection to another machine is accepted or refused by the world (DNS, route,
+a listening service). Every simulated service speaks HTTP, so the bytes written on a
+socket are parsed as HTTP/1.x requests and each one is carried through the world's
+network; the answer comes back as HTTP/1.1 bytes (`Content-Length`, `Connection`
+honoured). Bytes that are not HTTP get `400 Bad Request` and the connection closes, as
+a web server would. UDP datagrams to other machines are sent and lost (no UDP
+services exist). Servers a program creates (`socket.bind`/`listen`/`accept`,
+`http.createServer`, `net.createServer`) accept connections from that same program:
+other machines cannot reach a process that lives for one command.
+
+TLS follows the browser's model: an `https://` request goes to port 443 of the host
+and the world decides whether anything answers there; in the reference world the
+services listen on port 80, so `https://` is refused (`ECONNREFUSED`,
+`[Errno 111] Connection refused`) exactly as the browser sees it. Errors carry the
+real vocabularies: `socket.gaierror: [Errno -2] Name or service not known`,
+`getaddrinfo ENOTFOUND host`, `connect ECONNREFUSED 10.0.1.10:443`,
+`TypeError: fetch failed` with the cause attached. A client timeout that the
+simulated latency exceeds raises `TimeoutError: timed out` / `ETIMEDOUT`.
+
+### Child processes
+
+`subprocess` (`run`, `Popen` with pipes, `communicate`, `call`, `check_call`,
+`check_output`, `getoutput`, `getstatusoutput`; `shell=`, `cwd=`, `env=`, `input=`,
+`text=`, `timeout=`), `os.system` and `os.popen` in Python, and `child_process`
+(`spawn`, `exec`, `execFile`, `fork`, `spawnSync`, `execSync`, `execFileSync`, with
+`stdio` pipes, `input`, `cwd`, `env`, `encoding`, exit codes) in Node run the machine's
+own shell commands — builtins, scripts, pipelines and nested `python3`/`node` — one
+nesting level below the program (the shell's 32-level cap applies). A child runs to
+completion when it starts: `Popen` with `stdin=PIPE` starts once its input is closed,
+and asynchronous Node children deliver their output and exit as I/O completions at
+the simulated time the child took. A child's virtual run time (its sleeps, timers and
+network waits) is charged to the parent's clock, which is what `timeout=` compares
+against; a timed-out child has still run to its end. Output a Python child writes to
+an inherited stream lands where CPython's would: after the parent's already-flushed
+output (standard output to a pipe is block-buffered, as in CPython), so
+`print('a'); os.system('echo b')` prints `b` first unless the parent flushed.
+
+Known gaps shared by both: no threads and no native extensions. `node` does not
+implement `Intl` beyond `en-US` date and number formatting,
+`Atomics`/`SharedArrayBuffer`, `zlib`/`worker_threads`, or the REPL. Strings that
+contain unpaired UTF-16 surrogates are carried as the
 replacement character. Event-loop orderings that depend on real wall-clock jitter in
 Node (for example `setTimeout(f, 0)` against `setImmediate(g)` from the main module)
 are resolved one fixed way: the main module is taken to run for one millisecond.

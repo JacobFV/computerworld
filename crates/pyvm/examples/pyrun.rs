@@ -18,6 +18,7 @@ fn main() {
             args: a,
             env: vec![],
             stdin,
+            ..Default::default()
         },
     );
     print!("{}", out.stdout);

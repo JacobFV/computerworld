@@ -1082,6 +1082,7 @@ pub fn make_binding(vm: &mut Vm) -> Obj {
         vm.method(&b, n, *l, *f);
     }
     let _ = dirname;
+    crate::hostio::install(vm, &b);
     b
 }
 

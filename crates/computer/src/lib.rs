@@ -61,6 +61,43 @@ pub trait ShellHost {
     fn entropy(&mut self) -> u64 {
         0x5eed_c0de_2026_0917
     }
+    /// The world tick right now (it moves while a request is in flight).
+    fn now_tick(&self) -> Option<u64> {
+        None
+    }
+    /// An HTTP exchange whose failure keeps the world's error code (`dns`,
+    /// `connection_refused`, `unreachable`, `network_denied`, `packet_loss`…).
+    fn http_exchange(&mut self, request: HttpRequest) -> Result<HttpResponse, NetFailure> {
+        self.http(request).map_err(|message| NetFailure {
+            code: "network".into(),
+            message,
+        })
+    }
+    /// Name resolution against the world's DNS from this machine.
+    fn resolve_name(&mut self, name: &str) -> Result<Vec<String>, NetFailure> {
+        let _ = name;
+        Err(NetFailure::unavailable())
+    }
+    /// Checks that a TCP connection to `host:port` would be accepted; returns the
+    /// destination address.
+    fn probe_tcp(&mut self, host: &str, port: u16) -> Result<String, NetFailure> {
+        let _ = (host, port);
+        Err(NetFailure::unavailable())
+    }
+}
+/// A failed network operation, with the world's error code.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NetFailure {
+    pub code: String,
+    pub message: String,
+}
+impl NetFailure {
+    pub fn unavailable() -> Self {
+        Self {
+            code: "unavailable".into(),
+            message: "network adapter unavailable".into(),
+        }
+    }
 }
 pub struct OfflineHost;
 impl ShellHost for OfflineHost {
@@ -122,6 +159,15 @@ pub struct Computer {
     pub installed_apps: std::collections::BTreeSet<String>,
     #[serde(default)]
     pub hardware: Hardware,
+    /// Virtual time language runtimes spent during the command now running (their
+    /// sleeps, timers and network waits). A parent runtime waiting on a child
+    /// process reads it; it is scratch state of one command, never persisted.
+    #[serde(skip)]
+    pub runtime_elapsed_micros: u64,
+    /// Standard input of the command now running is the terminal (set by the
+    /// terminal for a line that is a single program invocation); never persisted.
+    #[serde(skip)]
+    pub tty: bool,
 }
 impl Computer {
     pub fn validate(&self) -> cw_protocol::Result<()> {
@@ -173,6 +219,8 @@ impl Computer {
             packages: PackageManager::default(),
             installed_apps: std::collections::BTreeSet::new(),
             hardware: Hardware::default(),
+            runtime_elapsed_micros: 0,
+            tty: false,
         }
     }
     pub fn from_definition(

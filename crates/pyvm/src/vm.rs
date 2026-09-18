@@ -132,6 +132,10 @@ pub struct Vm<'h> {
     pub id_map: RefCell<IdMap<usize, (Value, u64)>>,
     pub open_files: Vec<Ref<FileObj>>,
     pub call_sites: Vec<(Rc<Code>, usize)>,
+    /// Bytes of `stdout` CPython would already have written to the descriptor.
+    pub stdout_flushed: usize,
+    /// Standard output is a terminal (line buffered) rather than a pipe.
+    pub line_buffered: bool,
 }
 
 impl<'h> Vm<'h> {
@@ -2030,6 +2034,25 @@ impl<'h> Vm<'h> {
             return;
         }
         self.stdout.push_str(s);
+        // What CPython's buffered stdout would have written out by now: every
+        // complete line on a terminal, whole 8 KiB blocks on a pipe.
+        if self.line_buffered {
+            if let Some(i) = self.stdout.rfind('\n') {
+                self.stdout_flushed = self.stdout_flushed.max(i + 1);
+            }
+        } else if self.stdout.len() - self.stdout_flushed >= 8192 {
+            self.stdout_flushed = self.stdout.len();
+        }
+    }
+    /// Output a child process wrote straight to our standard output: it lands
+    /// after what we have flushed, before what is still in our buffer.
+    pub fn write_child_stdout(&mut self, s: &str) {
+        if self.stdout.len() + s.len() > self.output_limit {
+            return;
+        }
+        let at = self.stdout_flushed.min(self.stdout.len());
+        self.stdout.insert_str(at, s);
+        self.stdout_flushed = at + s.len();
     }
     pub fn write_stderr(&mut self, s: &str) {
         if self.stderr.len() + s.len() > self.output_limit {

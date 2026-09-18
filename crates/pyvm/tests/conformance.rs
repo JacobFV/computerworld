@@ -36,6 +36,7 @@ fn run_program(name: &str) {
             args: vec!["main.py".into()],
             env: vec![],
             stdin,
+            ..Default::default()
         },
     );
     let fix = |s: &str| {

@@ -16,6 +16,7 @@ pub mod call;
 pub mod compiler;
 pub mod conv;
 pub mod fs;
+pub mod hostio;
 pub mod inspect;
 pub mod interp;
 pub mod lexer;
@@ -114,6 +115,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: format!("{NODE_VERSION}\n"),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-h" | "--help" => {
@@ -121,6 +124,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: USAGE.into(),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-e" | "--eval" | "-p" | "--print" | "-pe" => {
@@ -130,6 +135,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                         stdout: String::new(),
                         stderr: format!("node: {a} requires an argument\n"),
                         exit_code: 9,
+                        awaiting_input: false,
+                        elapsed_micros: 0,
                     };
                 };
                 target = Some((Target::Eval(code.clone(), print), i + 2));
@@ -193,6 +200,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: String::new(),
                     stderr: format!("/usr/bin/node: bad option: {a}\n"),
                     exit_code: 9,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 };
             }
             _ => {
@@ -246,6 +255,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
         stdout: std::mem::take(&mut vm.stdout),
         stderr: std::mem::take(&mut vm.stderr),
         exit_code: code,
+        awaiting_input: false,
+        elapsed_micros: (vm.clock().max(0.0) * 1000.0) as u64,
     }
 }
 

@@ -787,12 +787,51 @@ pub fn execute(
 ) -> CommandResult {
     execute_inner(c, source, tick, host, 0)
 }
+/// Runs a child process's command line (`subprocess`, `child_process`) one level
+/// below the process that spawned it, with `stdin` as the stream its commands read.
+pub fn execute_child(
+    c: &mut Computer,
+    source: &str,
+    stdin: &str,
+    tick: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+) -> CommandResult {
+    execute_with_input(c, source, tick, host, depth + 1, Some(stdin.to_string()))
+}
+/// Whether `name` is something the shell can run: an in-process command, a file on
+/// `PATH`, or a path to an existing file.
+pub fn command_exists(c: &Computer, name: &str) -> bool {
+    if name.contains('/') {
+        return c.vfs.exists(&c.resolve(name));
+    }
+    if BUILTINS.contains(&name.to_ascii_lowercase().as_str()) {
+        return true;
+    }
+    let separator = if c.dialect == "powershell" { ';' } else { ':' };
+    c.env
+        .get("PATH")
+        .map(String::as_str)
+        .unwrap_or("/bin:/usr/bin")
+        .split(separator)
+        .any(|dir| c.vfs.exists(&c.resolve(&format!("{dir}/{name}"))))
+}
 fn execute_inner(
     c: &mut Computer,
     source: &str,
     tick: u64,
     host: &mut dyn ShellHost,
     depth: usize,
+) -> CommandResult {
+    execute_with_input(c, source, tick, host, depth, None)
+}
+fn execute_with_input(
+    c: &mut Computer,
+    source: &str,
+    tick: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+    stdin: Option<String>,
 ) -> CommandResult {
     if depth > 32 {
         return CommandResult::new("shell: execution nesting exceeds 32\n", 2);
@@ -853,7 +892,10 @@ fn execute_inner(
         };
     }
     let mut total = CommandResult::default();
-    let mut ctx = Ctx::default();
+    let mut ctx = Ctx {
+        stdin: stdin.filter(|s| !s.is_empty()),
+        ..Ctx::default()
+    };
     let mut previous = run_nodes(c, &nodes, &mut ctx, tick, host, depth, &mut total, 0);
     // A budget is the only signal that survives every frame; it becomes the status.
     if let Flow::Budget(message) = &ctx.flow {
@@ -1114,9 +1156,11 @@ fn reads_stdin(c: &Computer, args: &[String]) -> bool {
     match args[0].to_ascii_lowercase().as_str() {
         "tr" | "cut" => true,
         "cat" | "type" | "get-content" => args.len() == 1,
+        "sh" | "bash" => true,
         "grep" | "select-string" | "sed" | "head" | "tail" | "wc" | "sort" | "uniq" => !named_file,
         "sqlite3" => crate::sqlite::reads_stdin(args),
-        _ => false,
+        // A program's standard input is the stream, whether or not it reads it.
+        _ => crate::runtimes::runtime_for(&args[0]).is_some(),
     }
 }
 /// Sends a result's two streams where its descriptor table points. Two descriptors
@@ -2576,7 +2620,7 @@ fn run(
     let args = &a[1..];
     // Language runtimes: `python3 …`, `node …`, also by absolute path.
     if let Some(runtime) = crate::runtimes::runtime_for(&a[0]) {
-        let r = crate::runtimes::run_runtime(runtime, c, host, args, input, t);
+        let r = crate::runtimes::run_runtime(runtime, c, host, args, input, t, depth);
         return runtime_result(r);
     }
     let required = |i: usize| {
@@ -3132,7 +3176,7 @@ fn run(
                 c.env
                     .insert("#".into(), operands.len().saturating_sub(1).to_string());
             }
-            let r = execute_inner(c, &source, t, host, depth + 1);
+            let r = execute_with_input(c, &source, t, host, depth + 1, Some(input.to_string()));
             c.env = saved_env;
             c.cwd = saved_cwd;
             if r.exit_code == 0 && r.stderr.is_empty() {
@@ -3171,7 +3215,8 @@ fn run(
                     path.clone()
                 }];
                 script_args.extend(args.iter().cloned());
-                let r = crate::runtimes::run_runtime(runtime, c, host, &script_args, input, t);
+                let r =
+                    crate::runtimes::run_runtime(runtime, c, host, &script_args, input, t, depth);
                 return runtime_result(r);
             }
             if source.starts_with("#!cw-package\n") {
@@ -3202,7 +3247,7 @@ fn run(
                 c.env.insert(i.to_string(), arg.clone());
             }
             c.env.insert("#".into(), args.len().to_string());
-            let r = execute_inner(c, &source, t, host, depth + 1);
+            let r = execute_with_input(c, &source, t, host, depth + 1, Some(input.to_string()));
             c.env = old;
             c.cwd = old_cwd;
             if r.exit_code == 0 && r.stderr.is_empty() {

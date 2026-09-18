@@ -114,6 +114,8 @@ impl<'h> Vm<'h> {
             id_map: RefCell::new(Default::default()),
             open_files: vec![],
             call_sites: vec![],
+            stdout_flushed: 0,
+            line_buffered: false,
         };
         bfuncs::install(&mut vm);
         methods::install(&mut vm);
@@ -607,6 +609,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: format!("{VERSION}\n"),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-h" | "--help" | "-?" => {
@@ -616,6 +620,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     ),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-c" => {
@@ -624,6 +630,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                         stdout: String::new(),
                         stderr: format!("Argument expected for the -c option\n{USAGE}Try `python -h' for more information.\n"),
                         exit_code: 2,
+                        awaiting_input: false,
+                        elapsed_micros: 0,
                     };
                 };
                 target = Some((Target::Code(code.clone(), "-c".into()), i + 2));
@@ -635,6 +643,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                         stdout: String::new(),
                         stderr: format!("Argument expected for the -m option\n{USAGE}Try `python -h' for more information.\n"),
                         exit_code: 2,
+                        awaiting_input: false,
+                        elapsed_micros: 0,
                     };
                 };
                 target = Some((Target::Module(m.clone()), i + 2));
@@ -656,6 +666,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: String::new(),
                     stderr: format!("Unknown option: -{bad}\n{USAGE}Try `python -h' for more information.\n"),
                     exit_code: 2,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 };
             }
             _ => {
@@ -716,6 +728,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                                     "/usr/bin/python3: can't find '__main__' module in '{abs}'\n"
                                 ),
                                 exit_code: 1,
+                                awaiting_input: false,
+                                elapsed_micros: 0,
                             }
                         }
                     }
@@ -736,6 +750,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                                 e.kind.strerror()
                             ),
                             exit_code: 2,
+                            awaiting_input: false,
+                            elapsed_micros: 0,
                         }
                     }
                 },
@@ -768,11 +784,14 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     io::flush_all(&mut vm);
     let stdout = std::mem::take(&mut vm.stdout);
     let stderr = std::mem::take(&mut vm.stderr);
+    let elapsed_micros = vm.time_offset.max(0) as u64;
     vm.teardown();
     Outcome {
         stdout,
         stderr,
         exit_code: outcome,
+        awaiting_input: false,
+        elapsed_micros,
     }
 }
 
@@ -920,6 +939,7 @@ pub fn run_source(
             args: a,
             env: vec![],
             stdin: stdin.to_string(),
+            ..Default::default()
         },
     )
 }

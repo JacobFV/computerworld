@@ -140,6 +140,15 @@ class DataView {
   setBigUint64(o, v, le) { DataView.#set(this, 'BigUint64', o, v, !!le); }
 }
 Object.defineProperty(globalThis, 'DataView', { value: DataView, writable: true, configurable: true, enumerable: false });
+{
+  const typedIsView = ArrayBuffer.isView;
+  Object.defineProperty(ArrayBuffer, 'isView', {
+    value: { isView(x) { return typedIsView(x) || x instanceof DataView; } }.isView,
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
 
 
 // ---- Buffer
@@ -554,4 +563,18 @@ const defs = {
 };
 for (const k of Object.keys(defs)) {
   Object.defineProperty(globalThis, k, { value: defs[k], writable: true, configurable: true, enumerable: false });
+}
+
+// fetch and its classes load on first use (they carry the http stack with them).
+for (const name of ['fetch', 'Headers', 'Request', 'Response', 'FormData', 'Blob', 'File', 'ReadableStream']) {
+  const settle = (v) => {
+    Object.defineProperty(globalThis, name, { value: v, writable: true, configurable: true, enumerable: false });
+    return v;
+  };
+  Object.defineProperty(globalThis, name, {
+    configurable: true,
+    enumerable: false,
+    get() { return settle(require('internal/fetch')[name]); },
+    set(v) { settle(v); },
+  });
 }

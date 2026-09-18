@@ -598,6 +598,13 @@ pub fn install(vm: &mut Vm) {
     let abc = vm.make_ctor("ArrayBuffer", 1, array_buffer_ctor, &abp);
     vm.getter(&abp, "byteLength", byte_length);
     vm.method(&abp, "slice", 2, ab_slice);
+    // DataView (defined in the bootstrap) is added to this there.
+    vm.method(&abc, "isView", 1, |_vm, a| {
+        Ok(Value::Bool(matches!(
+            a.arg(0),
+            Value::Obj(o) if matches!(o.borrow().kind, Kind::TypedArray { .. })
+        )))
+    });
     abp.set_sym(&tag, Value::str("ArrayBuffer"), CONFIGURABLE);
     vm.set_global("ArrayBuffer", Value::Obj(abc));
     // %TypedArray%

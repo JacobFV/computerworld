@@ -35,6 +35,7 @@ fn main() {
                 args: args[1..].to_vec(),
                 env: vec![],
                 stdin,
+                ..Default::default()
             },
         );
         print!("{}", out.stdout);
@@ -78,6 +79,7 @@ fn main() {
             args: a,
             env: vec![],
             stdin,
+            ..Default::default()
         },
     );
     print!("{}", out.stdout);

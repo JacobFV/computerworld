@@ -37,6 +37,7 @@ fn run_program(name: &str, ext: &str) {
             args: vec![main],
             env: vec![],
             stdin,
+            ..Default::default()
         },
     );
     assert_eq!(out.stdout, expected.stdout, "{name}: stdout differs");

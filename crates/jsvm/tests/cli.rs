@@ -8,6 +8,7 @@ fn run(host: &mut MemoryHost, args: &[&str], stdin: &str) -> Outcome {
             args: args.iter().map(|s| s.to_string()).collect(),
             env: vec![],
             stdin: stdin.to_string(),
+            ..Default::default()
         },
     )
 }

@@ -1,8 +1,11 @@
 //! Language runtimes (`python3`, `node`) wired to a computer: the interpreter
 //! sees this machine's VFS, the world clock and the world's entropy, and nothing
 //! of the host.
-use crate::{normalize_path, CommandResult, Computer, ShellHost, VfsError};
-use cw_script_host::{FileStat, FsError, FsErrorKind, Invocation, Outcome, ScriptHost};
+use crate::{normalize_path, CommandResult, Computer, NetFailure, ShellHost, VfsError};
+use cw_script_host::{
+    FileStat, FsError, FsErrorKind, HttpRequest, HttpResponse, Invocation, NetError, NetErrorKind,
+    Outcome, ScriptHost, SpawnProgram, SpawnRequest, TcpConnection,
+};
 
 /// The script host for one interpreter run. The working directory is the
 /// process's own: a program's `os.chdir` does not move the shell.
@@ -12,7 +15,28 @@ pub struct MachineHost<'a> {
     pub cwd: String,
     pub tick: u64,
     pub pid: u64,
+    /// Shell nesting depth of the command that started the interpreter; child
+    /// processes run one level deeper, so runaway recursion hits the shell's cap.
+    pub depth: usize,
     seed: Option<u64>,
+    next_port: u16,
+}
+
+/// The world's error code for a failed exchange, in the runtimes' vocabulary.
+fn net_error(f: NetFailure) -> NetError {
+    let kind = match f.code.as_str() {
+        "dns" => NetErrorKind::NameNotFound,
+        "connection_refused" | "not_found" => NetErrorKind::Refused,
+        "unreachable" => NetErrorKind::Unreachable,
+        "network_denied" | "denied" => NetErrorKind::Denied,
+        "packet_loss" | "would_block" => NetErrorKind::Reset,
+        "timeout" => NetErrorKind::TimedOut,
+        "invalid" => NetErrorKind::Invalid,
+        "unavailable" => NetErrorKind::Unavailable,
+        _ if f.message.contains("unavailable") => NetErrorKind::Unavailable,
+        _ => NetErrorKind::Reset,
+    };
+    NetError::new(kind, f.message)
 }
 
 fn fs_error(e: VfsError) -> FsError {
@@ -43,8 +67,27 @@ impl<'a> MachineHost<'a> {
             cwd,
             tick,
             pid,
+            depth: 0,
             seed: None,
+            next_port: 0,
         }
+    }
+    /// Elapsed world time across `f`, when the host can tell.
+    fn timed<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> (T, u64) {
+        let before = self.shell.now_tick();
+        let v = f(self);
+        let after = self.shell.now_tick();
+        let elapsed = match (before, after) {
+            (Some(a), Some(b)) => b.saturating_sub(a),
+            _ => 0,
+        };
+        (v, elapsed)
+    }
+    /// An ephemeral port, deterministic per run (Linux's range starts at 32768).
+    fn ephemeral_port(&mut self) -> u16 {
+        let base = 32768 + (self.pid % 20000) as u16;
+        self.next_port = self.next_port.wrapping_add(1);
+        base.wrapping_add(self.next_port)
     }
     fn stat_of(&self, m: crate::Metadata) -> FileStat {
         FileStat {
@@ -178,6 +221,135 @@ impl ScriptHost for MachineHost<'_> {
     fn os_family(&self) -> String {
         self.computer.os_family.clone()
     }
+    fn local_address(&self) -> String {
+        self.computer.hardware.ipv4.clone()
+    }
+    fn http(&mut self, request: &HttpRequest) -> Result<HttpResponse, NetError> {
+        let mut headers = std::collections::BTreeMap::<String, String>::new();
+        for (k, v) in &request.headers {
+            let key = k.to_ascii_lowercase();
+            match headers.get_mut(&key) {
+                Some(existing) => {
+                    existing.push_str(", ");
+                    existing.push_str(v);
+                }
+                None => {
+                    headers.insert(key, v.clone());
+                }
+            }
+        }
+        let wire = cw_protocol::HttpRequest {
+            method: request.method.clone(),
+            url: request.url.clone(),
+            headers,
+            body: request.body.clone(),
+        };
+        let (result, elapsed) = self.timed(|h| h.shell.http_exchange(wire));
+        let response = result.map_err(net_error)?;
+        if request.timeout_micros.is_some_and(|t| elapsed > t) {
+            return Err(NetError::new(
+                NetErrorKind::TimedOut,
+                format!("{} timed out", request.url),
+            ));
+        }
+        Ok(HttpResponse {
+            status: response.status,
+            headers: response.headers.into_iter().collect(),
+            body: response.body,
+            elapsed_micros: elapsed,
+        })
+    }
+    fn resolve_host(&mut self, name: &str) -> Result<Vec<String>, NetError> {
+        self.shell.resolve_name(name).map_err(net_error)
+    }
+    fn tcp_connect(&mut self, host: &str, port: u16) -> Result<TcpConnection, NetError> {
+        let (result, elapsed) = self.timed(|h| h.shell.probe_tcp(host, port));
+        let remote_address = result.map_err(net_error)?;
+        let local_address = if remote_address.starts_with("127.") {
+            "127.0.0.1".to_string()
+        } else {
+            self.computer.hardware.ipv4.clone()
+        };
+        Ok(TcpConnection {
+            remote_address,
+            remote_port: port,
+            local_address,
+            local_port: self.ephemeral_port(),
+            elapsed_micros: elapsed,
+        })
+    }
+    fn spawn(&mut self, request: &SpawnRequest) -> Result<Outcome, FsError> {
+        let line = match &request.program {
+            SpawnProgram::Shell(line) => line.clone(),
+            SpawnProgram::Argv(argv) => {
+                let Some(program) = argv.first() else {
+                    return Err(FsError::new(FsErrorKind::NotFound));
+                };
+                // The lookup sees the child's own PATH and working directory.
+                let saved = (self.computer.cwd.clone(), self.computer.env.clone());
+                self.computer.cwd = match &request.cwd {
+                    Some(d) => normalize_path(&self.cwd, d),
+                    None => self.cwd.clone(),
+                };
+                if let Some(env) = &request.env {
+                    if let Some((_, path)) = env.iter().find(|(k, _)| k == "PATH") {
+                        self.computer.env.insert("PATH".into(), path.clone());
+                    }
+                }
+                let exists = crate::shell::command_exists(self.computer, program);
+                (self.computer.cwd, self.computer.env) = saved;
+                if !exists {
+                    return Err(FsError::new(FsErrorKind::NotFound));
+                }
+                argv.iter()
+                    .map(|a| cw_script_host::shell_quote(a))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }
+        };
+        let cwd = match &request.cwd {
+            Some(d) => {
+                let p = normalize_path(&self.cwd, d);
+                match self.computer.vfs.stat(&p) {
+                    Ok(m) if m.is_dir => p,
+                    Ok(_) => return Err(FsError::new(FsErrorKind::NotADirectory)),
+                    Err(_) => return Err(FsError::new(FsErrorKind::NotFound)),
+                }
+            }
+            None => self.cwd.clone(),
+        };
+        let saved_cwd = std::mem::replace(&mut self.computer.cwd, cwd);
+        let saved_env = match &request.env {
+            Some(env) => Some(std::mem::replace(
+                &mut self.computer.env,
+                env.iter().cloned().collect(),
+            )),
+            None => None,
+        };
+        let before = self.computer.runtime_elapsed_micros;
+        let r = crate::shell::execute_child(
+            self.computer,
+            &line,
+            &request.stdin,
+            self.tick,
+            self.shell,
+            self.depth,
+        );
+        self.computer.cwd = saved_cwd;
+        if let Some(env) = saved_env {
+            self.computer.env = env;
+        }
+        let elapsed = self.computer.runtime_elapsed_micros.saturating_sub(before);
+        // The parent's own run accounts for this time when it reports its outcome.
+        self.computer.runtime_elapsed_micros = before;
+        Ok(Outcome {
+            elapsed_micros: elapsed,
+            ..Outcome::new(r.stdout, r.stderr, r.exit_code)
+        })
+    }
+    fn scheduler_seed(&mut self) -> u64 {
+        self.shell.entropy()
+    }
 }
 
 /// Which interpreter a command name (or a shebang) selects.
@@ -222,6 +394,7 @@ pub fn run_runtime(
     args: &[String],
     stdin: &str,
     tick: u64,
+    depth: usize,
 ) -> CommandResult {
     let env: Vec<(String, String)> = computer
         .env
@@ -237,12 +410,17 @@ pub fn run_runtime(
         args: args.to_vec(),
         env,
         stdin: stdin.to_string(),
+        ..Invocation::default()
     };
     let mut host = MachineHost::new(computer, shell, tick);
+    host.depth = depth;
     let out: Outcome = match runtime {
         Runtime::Python => cw_pyvm::run(&mut host, &invocation),
         Runtime::Node => cw_jsvm::run(&mut host, &invocation),
     };
+    computer.runtime_elapsed_micros = computer
+        .runtime_elapsed_micros
+        .saturating_add(out.elapsed_micros);
     CommandResult {
         stdout: out.stdout,
         stderr: out.stderr,

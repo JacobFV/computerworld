@@ -1,6 +1,7 @@
 //! The import system and the standard library: native modules written in Rust
 //! and pure-Python modules embedded as source.
 pub mod collections;
+pub mod host;
 pub mod json;
 pub mod math;
 pub mod random;
@@ -35,6 +36,8 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("functools", include_str!("../../lib/functools.py")),
     ("glob", include_str!("../../lib/glob.py")),
     ("heapq", include_str!("../../lib/heapq.py")),
+    ("http", include_str!("../../lib/http_init.py")),
+    ("http.client", include_str!("../../lib/http_client.py")),
     ("io", include_str!("../../lib/io.py")),
     ("itertools", include_str!("../../lib/itertools.py")),
     ("keyword", include_str!("../../lib/keyword.py")),
@@ -47,14 +50,29 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("pprint", include_str!("../../lib/pprint.py")),
     ("queue", include_str!("../../lib/queue.py")),
     ("random", include_str!("../../lib/random.py")),
+    ("shlex", include_str!("../../lib/shlex.py")),
     ("shutil", include_str!("../../lib/shutil.py")),
+    ("socket", include_str!("../../lib/socket.py")),
+    ("ssl", include_str!("../../lib/ssl.py")),
     ("statistics", include_str!("../../lib/statistics.py")),
     ("string", include_str!("../../lib/string.py")),
+    ("subprocess", include_str!("../../lib/subprocess.py")),
     ("textwrap", include_str!("../../lib/textwrap.py")),
     ("traceback", include_str!("../../lib/traceback.py")),
     ("types", include_str!("../../lib/types.py")),
     ("typing", include_str!("../../lib/typing.py")),
     ("unittest", include_str!("../../lib/unittest.py")),
+    ("urllib", include_str!("../../lib/urllib_init.py")),
+    ("urllib.error", include_str!("../../lib/urllib_error.py")),
+    ("urllib.parse", include_str!("../../lib/urllib_parse.py")),
+    (
+        "urllib.request",
+        include_str!("../../lib/urllib_request.py"),
+    ),
+    (
+        "urllib.response",
+        include_str!("../../lib/urllib_response.py"),
+    ),
     ("warnings", include_str!("../../lib/warnings.py")),
     ("weakref", include_str!("../../lib/weakref.py")),
 ];
@@ -70,6 +88,7 @@ fn native_module(vm: &mut Vm, name: &str) -> Option<Value> {
         "json" => json::make(vm),
         "re" => re::make(vm),
         "_collections" => collections::make(vm),
+        "_cw" => host::make(vm),
         "gc" => {
             let m = new_module("gc");
             set_fn(&m, "collect", |_, _| Ok(Value::Int(0)));

@@ -44,6 +44,7 @@ pub const BUILTINS: &[&str] = &[
     "async_hooks",
     "cluster",
     "dns",
+    "dns/promises",
     "diagnostics_channel",
     "test",
     "sys",
@@ -62,6 +63,13 @@ fn js_module_source(name: &str) -> Option<&'static str> {
         "stream" => include_str!("../js/stream.js"),
         "timers/promises" => include_str!("../js/timers_promises.js"),
         "child_process" => include_str!("../js/child_process.js"),
+        "dns" => include_str!("../js/dns.js"),
+        "dns/promises" => "module.exports = require('dns').promises;",
+        "net" => include_str!("../js/net.js"),
+        "http" => include_str!("../js/http.js"),
+        "https" => include_str!("../js/https.js"),
+        "internal/fetch" => include_str!("../js/fetch.js"),
+        "internal/httpwire" => include_str!("../js/httpwire.js"),
         _ => return None,
     })
 }
@@ -899,6 +907,13 @@ impl<'h> Vm<'h> {
     /// Resolves a specifier to a builtin name or an absolute file path.
     pub fn resolve_module(&mut self, spec: &str, dir: &str) -> Option<String> {
         let bare = spec.strip_prefix("node:").unwrap_or(spec);
+        // Internal modules are visible to the built-in modules only.
+        if bare.starts_with("internal/")
+            && dir.starts_with("/node_internal")
+            && js_module_source(bare).is_some()
+        {
+            return Some(format!("node:{bare}"));
+        }
         if spec.starts_with("node:") || BUILTINS.contains(&bare) {
             if BUILTINS.contains(&bare) {
                 return Some(format!("node:{bare}"));
@@ -1581,8 +1596,22 @@ impl<'h> Vm<'h> {
             if ran {
                 self.drain_after(None)?;
             }
-            // Poll phase: completed I/O, one callback at a time.
-            while let Some(i) = self.timers.iter().position(|t| t.io) {
+            // Poll phase: completed I/O, one callback at a time, in the order the
+            // completions arrived (network replies land at their simulated time).
+            let poll_now = self.clock();
+            while let Some(i) = self
+                .timers
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.io && t.when <= poll_now)
+                .min_by(|a, b| {
+                    a.1.when
+                        .partial_cmp(&b.1.when)
+                        .unwrap()
+                        .then(a.1.seq.cmp(&b.1.seq))
+                })
+                .map(|(i, _)| i)
+            {
                 self.fire_timer(i)?;
                 self.drain_after(None)?;
                 ran = true;

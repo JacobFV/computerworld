@@ -1248,15 +1248,18 @@ impl Runtime {
             self.close_process_network(&machine, pid);
         }
     }
-    fn close_process_network(&mut self, machine: &str, pid: u64) {
-        let node = self
-            .definition
+    /// The network node a computer sits on.
+    fn node_of(&self, machine: &str) -> String {
+        self.definition
             .computers
             .iter()
             .find(|c| c.id == machine)
             .map(|c| c.node_id())
             .unwrap_or(machine)
-            .to_owned();
+            .to_owned()
+    }
+    fn close_process_network(&mut self, machine: &str, pid: u64) {
+        let node = self.node_of(machine);
         let tick = self.tick();
         let start = self.state.network.traces().len();
         Arc::make_mut(&mut Arc::make_mut(&mut self.state).network).close_process(&node, pid, tick);
@@ -1332,5 +1335,58 @@ impl ShellHost for RuntimeShell<'_> {
     }
     fn cleanup_process(&mut self, pid: u64) {
         self.runtime.close_process_network(&self.machine, pid);
+    }
+    fn now_tick(&self) -> Option<u64> {
+        Some(self.runtime.tick())
+    }
+    fn http_exchange(
+        &mut self,
+        request: HttpRequest,
+    ) -> std::result::Result<HttpResponse, cw_computer::NetFailure> {
+        self.runtime
+            .http(&self.machine, &self.actor, request)
+            .map_err(|e| cw_computer::NetFailure {
+                code: e.code,
+                message: e.message,
+            })
+    }
+    fn resolve_name(
+        &mut self,
+        name: &str,
+    ) -> std::result::Result<Vec<String>, cw_computer::NetFailure> {
+        let node = self.runtime.node_of(&self.machine);
+        let tick = self.runtime.tick();
+        let start = self.runtime.state.network.traces().len();
+        let r = Arc::make_mut(&mut Arc::make_mut(&mut self.runtime.state).network)
+            .resolve(&node, name, tick);
+        self.runtime
+            .capture_network_events(start, Some(&self.actor));
+        r.map_err(|e| {
+            let e = SimError::from(e);
+            cw_computer::NetFailure {
+                code: e.code,
+                message: e.message,
+            }
+        })
+    }
+    fn probe_tcp(
+        &mut self,
+        host: &str,
+        port: u16,
+    ) -> std::result::Result<String, cw_computer::NetFailure> {
+        let node = self.runtime.node_of(&self.machine);
+        let tick = self.runtime.tick();
+        let start = self.runtime.state.network.traces().len();
+        let r = Arc::make_mut(&mut Arc::make_mut(&mut self.runtime.state).network)
+            .probe_tcp(&node, host, port, tick);
+        self.runtime
+            .capture_network_events(start, Some(&self.actor));
+        r.map(|(address, _)| address).map_err(|e| {
+            let e = SimError::from(e);
+            cw_computer::NetFailure {
+                code: e.code,
+                message: e.message,
+            }
+        })
     }
 }

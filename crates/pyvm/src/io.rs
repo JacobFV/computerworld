@@ -121,6 +121,10 @@ fn file_write(vm: &mut Vm, f: &Ref<FileObj>, v: &Value) -> PyResult<usize> {
 }
 
 pub fn flush(vm: &mut Vm, f: &Ref<FileObj>) -> PyResult<()> {
+    if f.borrow().std == Some(1) {
+        vm.stdout_flushed = vm.stdout.len();
+        return Ok(());
+    }
     let (path, data) = {
         let mut fo = f.borrow_mut();
         if fo.std.is_some() || !fo.writable || !fo.dirty {
