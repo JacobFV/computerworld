@@ -66,6 +66,59 @@ fn find_span(n: usize, p: usize, u: f64, knots: &[f64]) -> usize {
     mid
 }
 
+/// Highest B-spline degree the fixed-size working arrays handle.
+const MAX_DEGREE: usize = 15;
+/// Basis functions and their first derivatives at `u` (Piegl & Tiller A2.3), without
+/// allocating: B-splines are evaluated in the innermost loops of the mass integrals.
+type Ders = [[f64; MAX_DEGREE + 1]; 2];
+fn basis_ders1(span: usize, u: f64, p: usize, knots: &[f64]) -> Ders {
+    let mut ndu = [[0.0f64; MAX_DEGREE + 1]; MAX_DEGREE + 1];
+    let mut left = [0.0f64; MAX_DEGREE + 1];
+    let mut right = [0.0f64; MAX_DEGREE + 1];
+    ndu[0][0] = 1.0;
+    for j in 1..=p {
+        left[j] = u - knots[span + 1 - j];
+        right[j] = knots[span + j] - u;
+        let mut saved = 0.0;
+        for r in 0..j {
+            ndu[j][r] = right[r + 1] + left[j - r];
+            let temp = if ndu[j][r] != 0.0 {
+                ndu[r][j - 1] / ndu[j][r]
+            } else {
+                0.0
+            };
+            ndu[r][j] = saved + right[r + 1] * temp;
+            saved = left[j - r] * temp;
+        }
+        ndu[j][j] = saved;
+    }
+    let mut out = [[0.0f64; MAX_DEGREE + 1]; 2];
+    for j in 0..=p {
+        out[0][j] = ndu[j][p];
+    }
+    // First derivative (the k = 1 row of A2.3).
+    for r in 0..=p {
+        let mut d = 0.0;
+        let rk = r as i64 - 1;
+        let pk = p as i64 - 1;
+        let mut a0 = 0.0;
+        if r >= 1 {
+            a0 = 1.0 / ndu[(pk + 1) as usize][rk as usize];
+            d = a0 * ndu[rk as usize][pk as usize];
+        }
+        let j1 = if rk >= -1 { 1 } else { (-rk) as usize };
+        let j2 = if (r as i64 - 1) <= pk { 0 } else { p - r };
+        let _ = (j1, j2);
+        if r as i64 <= pk {
+            let ak = -1.0 / ndu[(pk + 1) as usize][r];
+            d += ak * ndu[r][pk as usize];
+        }
+        let _ = a0;
+        out[1][r] = d * p as f64;
+    }
+    out
+}
+
 /// Basis functions and their derivatives up to `nd` at `u` (Piegl & Tiller A2.3).
 fn basis_ders(span: usize, u: f64, p: usize, nd: usize, knots: &[f64]) -> Vec<Vec<f64>> {
     let mut ndu = vec![vec![0.0; p + 1]; p + 1];
@@ -144,16 +197,22 @@ impl BSplineCurve {
         let p = self.degree;
         let n = self.poles.len() - 1;
         let span = find_span(n, p, u, &self.knots);
-        let ders = basis_ders(span, u, p, 1, &self.knots);
+        let fast = (p <= MAX_DEGREE).then(|| basis_ders1(span, u, p, &self.knots));
+        let slow = fast.is_none().then(|| basis_ders(span, u, p, 1, &self.knots));
+        let b = |k: usize, j: usize| match (&fast, &slow) {
+            (Some(f), _) => f[k][j],
+            (_, Some(s)) => s[k][j],
+            _ => 0.0,
+        };
         let (mut a, mut da) = (V3::ZERO, V3::ZERO);
         let (mut w, mut dw) = (0.0, 0.0);
         for j in 0..=p {
             let i = span - p + j;
             let wi = self.w(i);
-            a += self.poles[i] * (ders[0][j] * wi);
-            da += self.poles[i] * (ders[1][j] * wi);
-            w += ders[0][j] * wi;
-            dw += ders[1][j] * wi;
+            a += self.poles[i] * (b(0, j) * wi);
+            da += self.poles[i] * (b(1, j) * wi);
+            w += b(0, j) * wi;
+            dw += b(1, j) * wi;
         }
         let c = a / w;
         (c, (da - c * dw) / w)
@@ -186,8 +245,28 @@ impl BSplineSurface {
         let nv = self.poles[0].len() - 1;
         let su = find_span(nu, self.du, u, &self.ku);
         let sv = find_span(nv, self.dv, v, &self.kv);
-        let bu = basis_ders(su, u, self.du, 1, &self.ku);
-        let bv = basis_ders(sv, v, self.dv, 1, &self.kv);
+        let (bu, bv) = if self.du <= MAX_DEGREE && self.dv <= MAX_DEGREE {
+            (
+                basis_ders1(su, u, self.du, &self.ku),
+                basis_ders1(sv, v, self.dv, &self.kv),
+            )
+        } else {
+            let (a, b) = (
+                basis_ders(su, u, self.du, 1, &self.ku),
+                basis_ders(sv, v, self.dv, 1, &self.kv),
+            );
+            let mut fa = [[0.0; MAX_DEGREE + 1]; 2];
+            let mut fb = [[0.0; MAX_DEGREE + 1]; 2];
+            for k in 0..2 {
+                for j in 0..=self.du.min(MAX_DEGREE) {
+                    fa[k][j] = a[k][j];
+                }
+                for j in 0..=self.dv.min(MAX_DEGREE) {
+                    fb[k][j] = b[k][j];
+                }
+            }
+            (fa, fb)
+        };
         let (mut a, mut au, mut av) = (V3::ZERO, V3::ZERO, V3::ZERO);
         let (mut w, mut wu, mut wv) = (0.0, 0.0, 0.0);
         for i in 0..=self.du {

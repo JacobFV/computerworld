@@ -40,11 +40,14 @@ pub fn filters(p: Purpose) -> &'static [(&'static str, &'static str)] {
     match p {
         Purpose::Open | Purpose::SaveAs => &[("FreeCAD document (*.FCStd.json)", "FCStd.json")],
         Purpose::Import => &[
+            ("STEP with colors (*.step *.stp)", "step"),
             ("STL Mesh (*.stl)", "stl"),
             ("Alias Mesh (*.obj)", "obj"),
             ("Autodesk DXF 2D (*.dxf)", "dxf"),
         ],
         Purpose::Export => &[
+            ("STEP with colors (*.step)", "step"),
+            ("STEP AP242 (*.stp)", "stp"),
             ("STL Mesh (*.stl)", "stl"),
             ("ASCII STL (*.ast)", "ast"),
             ("Alias Mesh (*.obj)", "obj"),
@@ -204,7 +207,7 @@ impl Cad {
                     .export_target()
                     .map(|(n, _)| self.label_of(&n))
                     .unwrap_or_else(|| self.doc.label.clone());
-                format!("{base}.stl")
+                format!("{base}.{}", filters(Purpose::Export)[0].1)
             }
             _ => String::new(),
         };
@@ -405,6 +408,21 @@ impl Cad {
             }
             Purpose::Export => self.export(window, &path, ext),
         }
+    }
+
+    /// The world's date and time, as a STEP header records it.
+    pub(crate) fn timestamp(&self) -> String {
+        let d = crate::desktop_scene::shared::CalendarDate::from_clock(self.clock_us);
+        let secs = self.clock_us / 1_000_000 % 86_400;
+        format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
+            d.year,
+            d.month,
+            d.day,
+            secs / 3600,
+            secs / 60 % 60,
+            secs % 60
+        )
     }
 
     fn write_document(&mut self, window: u64, path: &str) -> Vec<AppEffect> {
@@ -608,6 +626,42 @@ impl Cad {
                         }
                         Err(e) => fail(self, format!("{path}: {e}")),
                     }
+                } else if lower.ends_with(".step") || lower.ends_with(".stp") {
+                    let text = String::from_utf8_lossy(&bytes);
+                    match cw_cad::step::read(&text) {
+                        Ok(solids) => {
+                            self.checkpoint("Import");
+                            let mut names = Vec::new();
+                            for (shape_name, solid) in solids {
+                                let name = self.doc.add(Feature::Part {
+                                    solid: Arc::new(solid),
+                                });
+                                if let Some(o) = self.doc.get_mut(&name) {
+                                    o.label = if shape_name.is_empty() {
+                                        label.clone()
+                                    } else {
+                                        shape_name
+                                    };
+                                }
+                                names.push(name);
+                            }
+                            self.recompute();
+                            self.fit_all();
+                            self.selection = names
+                                .iter()
+                                .map(|n| Sel {
+                                    object: n.clone(),
+                                    sub: String::new(),
+                                    point: V3::ZERO,
+                                })
+                                .collect();
+                            self.log(
+                                ReportKind::Log,
+                                &format!("Imported {path} as {}", names.join(", ")),
+                            );
+                        }
+                        Err(e) => fail(self, format!("{path}: {e}")),
+                    }
                 } else {
                     let mesh = if lower.ends_with(".obj") {
                         io::read_obj(&String::from_utf8_lossy(&bytes))
@@ -647,7 +701,7 @@ impl Cad {
             .iter()
             .filter(|o| match &o.feature {
                 Feature::Body { .. } => model.body_shape.contains_key(&o.name),
-                Feature::Mesh { .. } | Feature::Sketch { .. } => true,
+                Feature::Mesh { .. } | Feature::Part { .. } | Feature::Sketch { .. } => true,
                 f => f.is_solid_feature() && model.shapes.contains_key(&o.name),
             })
             .map(|o| o.name.clone())
@@ -709,6 +763,24 @@ impl Cad {
                     window,
                     path: path.into(),
                     content: cw_cad::view::svg(&self.camera, &refs, true),
+                }
+            }
+            "step" | "stp" => {
+                let (name, shape) = self.export_target().ok_or("Select an object to export")?;
+                let label = self.label_of(&name);
+                let solid = shape
+                    .solid
+                    .as_ref()
+                    .ok_or("STEP holds exact solids; this object is a mesh")?;
+                let schema = if ext == "stp" {
+                    cw_cad::step::Schema::Ap242
+                } else {
+                    cw_cad::step::Schema::Ap214
+                };
+                AppEffect::WriteFile {
+                    window,
+                    path: path.into(),
+                    content: cw_cad::step::write(solid, &label, schema, path, &self.timestamp()),
                 }
             }
             _ => {

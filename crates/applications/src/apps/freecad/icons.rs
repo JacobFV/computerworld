@@ -528,6 +528,24 @@ pub fn draw(p: &mut Painter, id: &str, x: i32, y: i32, size: u32, enabled: bool)
                 None,
             );
         }
+        "Part::Feature" => {
+            // A solid brick, as FreeCAD's Part shapes are drawn.
+            g.poly(
+                &[(2.0, 5.0), (8.0, 2.0), (14.0, 5.0), (8.0, 8.0)],
+                Color::rgb(203, 214, 226),
+                Some(GRAY),
+            );
+            g.poly(
+                &[(2.0, 5.0), (8.0, 8.0), (8.0, 14.0), (2.0, 11.0)],
+                Color::rgb(160, 176, 192),
+                Some(GRAY),
+            );
+            g.poly(
+                &[(14.0, 5.0), (8.0, 8.0), (8.0, 14.0), (14.0, 11.0)],
+                Color::rgb(132, 151, 171),
+                Some(GRAY),
+            );
+        }
         "Mesh::Feature" => {
             g.poly(
                 &[(2.0, 13.0), (8.0, 2.0), (14.0, 13.0)],

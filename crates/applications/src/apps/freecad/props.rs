@@ -90,7 +90,10 @@ impl Cad {
                 Kind::Bool(o.visible),
             )];
             if o.feature.is_solid_feature()
-                || matches!(o.feature, Feature::Body { .. } | Feature::Mesh { .. })
+                || matches!(
+                    o.feature,
+                    Feature::Body { .. } | Feature::Mesh { .. } | Feature::Part { .. }
+                )
             {
                 v.push(row(
                     "Display Options",
@@ -485,6 +488,31 @@ impl Cad {
                     "Occurrences",
                     occurrences.to_string(),
                     Kind::Number,
+                ));
+            }
+            Feature::Part { solid } => {
+                v.push(row(
+                    "Shape",
+                    "Faces",
+                    solid.faces.len().to_string(),
+                    Kind::ReadOnly,
+                ));
+                v.push(row(
+                    "Shape",
+                    "Edges",
+                    solid
+                        .edges
+                        .iter()
+                        .filter(|e| !e.degenerate)
+                        .count()
+                        .to_string(),
+                    Kind::ReadOnly,
+                ));
+                v.push(row(
+                    "Shape",
+                    "Vertexes",
+                    solid.vertices.len().to_string(),
+                    Kind::ReadOnly,
                 ));
             }
             Feature::Mesh { mesh } => {

@@ -40,7 +40,7 @@ fn inner_pieces(s: &Surface, span: f64) -> usize {
         }
         _ => {
             let (_, _, v0, v1) = s.domain();
-            ((span / ((v1 - v0).abs() / 8.0).max(1e-9)).ceil() as usize).clamp(1, 64)
+            ((span / ((v1 - v0).abs() / 4.0).max(1e-9)).ceil() as usize).clamp(1, 8)
         }
     }
 }
@@ -106,9 +106,25 @@ fn coedge_uv(s: &Surface, c: &CoUV, curve_d1: (V3, V3), t: f64) -> (V2, V2) {
     (q, dq)
 }
 
+/// How hard to work on a face: analytic surfaces are smooth and exact, so the quadrature
+/// converges at once; a fitted B-spline (a blend written to and read back from a file)
+/// carries its own approximation error, and chasing it to rounding would never end.
+fn effort(s: &Surface) -> (f64, u32) {
+    match s {
+        Surface::Plane { .. }
+        | Surface::Cylinder { .. }
+        | Surface::Cone { .. }
+        | Surface::Sphere { .. }
+        | Surface::Torus { .. } => (1e-13, 18),
+        Surface::Pipe { .. } | Surface::Ruled { .. } => (1e-11, 10),
+        _ => (1e-9, 7),
+    }
+}
+
 /// A face's flux and area integrals, scaled by `inv` = [1/L³, 1/L⁴, 1/L²].
 fn face_integrals(solid: &Solid, fu: &FaceUV, f: usize, inv: [f64; 3]) -> FaceIntegrals {
     let s = &solid.faces[f].surface;
+    let (tol, depth) = effort(s);
     let v0 = fu.lo.y;
     let mut acc = [0.0; 8];
     for l in &fu.loops {
@@ -121,14 +137,14 @@ fn face_integrals(solid: &Solid, fu: &FaceUV, f: usize, inv: [f64; 3]) -> FaceIn
                 if du == 0.0 {
                     continue;
                 }
-                num::integrate_adaptive(0.0, 1.0, 1e-13, 16, |w| {
+                num::integrate_adaptive(0.0, 1.0, tol, depth, |w| {
                     let q = a + (b - a) * w;
                     let h = inner(s, q.x, v0, q.y, inv);
                     h.map(|x| -x * du)
                 })
             } else {
                 let (t0, t1) = (c.ts[0], *c.ts.last().unwrap());
-                num::integrate_adaptive(t0, t1, 1e-13, 18, |t| {
+                num::integrate_adaptive(t0, t1, tol, depth, |t| {
                     let d = e.curve.d1(t);
                     let (q, dq) = coedge_uv(s, c, d, t);
                     if dq.x == 0.0 {

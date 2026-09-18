@@ -24,6 +24,7 @@ pub mod linalg;
 pub mod math;
 pub mod mesh;
 pub mod sketch;
+pub mod step;
 pub mod solid;
 pub mod view;
 

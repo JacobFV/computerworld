@@ -483,6 +483,9 @@ fn files_round_trip_through_the_dialog_and_effects() {
         matches!(&effects[0], AppEffect::ListDirectory { path, .. } if path == "/home/carol/Documents")
     );
     c.listed(vec!["notes/".into(), "old.stl".into(), "readme.txt".into()]);
+    // STEP comes first in the list of types, as FreeCAD's export dialog offers it.
+    assert_eq!(file_dialog(&c).extension(), "step");
+    c.command(W, "choice:filetype:2", None).unwrap();
     let Some(Dialog::File(d)) = &c.dialog else {
         panic!()
     };
@@ -499,8 +502,13 @@ fn files_round_trip_through_the_dialog_and_effects() {
     let mesh = cw_cad::io::read_stl(bytes).unwrap();
     assert!((mesh.volume() - 8000.0).abs() < 1e-3);
     c.written(path);
-    // OBJ and SVG.
-    for (ty, name, check) in [(2, "Body.obj", "o Body"), (4, "Body.svg", "<svg")] {
+    // STEP, OBJ and SVG.
+    for (ty, name, check) in [
+        (0, "Body.step", "MANIFOLD_SOLID_BREP"),
+        (1, "Body.stp", "AP242_MANAGED_MODEL_BASED_3D_ENGINEERING_MIM_LF"),
+        (4, "Body.obj", "o Body"),
+        (6, "Body.svg", "<svg"),
+    ] {
         c.run(W, "Std_Export").unwrap();
         c.file_command(W, &format!("type:{ty}")).unwrap();
         let effects = c.file_command(W, "ok").unwrap();
@@ -513,7 +521,7 @@ fn files_round_trip_through_the_dialog_and_effects() {
     // DXF exports a sketch.
     c.command(W, "tree:Sketch", None).unwrap();
     c.run(W, "Std_Export").unwrap();
-    c.file_command(W, "type:3").unwrap();
+    c.file_command(W, "type:5").unwrap();
     let effects = c.file_command(W, "ok").unwrap();
     let AppEffect::WriteFile { content, .. } = &effects[0] else {
         panic!()
@@ -713,6 +721,60 @@ fn file_dialog_new_folder_the_platform_way() {
 }
 
 #[test]
+fn step_exports_the_exact_solid_and_imports_it_back() {
+    let mut c = padded();
+    c.clock_us = 1_700_000_000_000_000;
+    c.command(W, "tree:Body", None).unwrap();
+    c.run(W, "Std_Export").unwrap();
+    c.listed(vec![]);
+    let effects = c.file_command(W, "ok").unwrap();
+    let AppEffect::WriteFile { path, content, .. } = &effects[0] else {
+        panic!("{effects:?}")
+    };
+    assert_eq!(path, "/home/carol/Documents/Body.step");
+    assert!(content.contains("MANIFOLD_SOLID_BREP('Body'"));
+    // The header carries the world's date, not the host's.
+    let stamp = c.timestamp();
+    assert!(content.contains(&stamp), "{stamp}");
+    assert_eq!(stamp.len(), 19);
+    let text = content.clone();
+    c.written(path);
+    // Import it: an exact Part::Feature with the same volume.
+    c.run(W, "Std_Import").unwrap();
+    c.listed(vec!["Body.step".into()]);
+    c.file_command(W, "entry:Body.step").unwrap();
+    let effects = c.file_command(W, "ok").unwrap();
+    let AppEffect::ReadBytes { path, .. } = &effects[0] else {
+        panic!()
+    };
+    let path = path.clone();
+    c.bytes_loaded(&path, Ok(text.into_bytes())).unwrap();
+    let part = c
+        .doc
+        .objects
+        .iter()
+        .find(|o| matches!(o.feature, Feature::Part { .. }))
+        .expect("an imported solid");
+    assert_eq!(part.label, "Body");
+    let model = c.model();
+    let shape = &model.shapes[&part.name];
+    assert!((shape.volume() - 8000.0).abs() < 1e-9, "{}", shape.volume());
+    assert_eq!(shape.topo.faces.len(), 6);
+    // It can be measured and exported again.
+    c.selection = vec![Sel {
+        object: part.name.clone(),
+        sub: String::new(),
+        point: V3::ZERO,
+    }];
+    let m = c.measurements();
+    let volume = m
+        .iter()
+        .find(|(k, _)| k.contains("volume"))
+        .map(|(_, v)| v.clone());
+    assert_eq!(volume.as_deref(), Some("8000 mm³"));
+}
+
+#[test]
 fn file_dialog_type_filter_changes_listing_and_extension() {
     let mut c = padded();
     c.command(W, "tree:Body", None).unwrap();
@@ -722,17 +784,20 @@ fn file_dialog_type_filter_changes_listing_and_extension() {
         "a.stl".into(),
         "b.obj".into(),
         "c.svg".into(),
+        "d.step".into(),
     ]);
+    assert_eq!(file_dialog(&c).visible(), vec!["dir/", "d.step"]);
+    assert_eq!(file_dialog(&c).name, "Body.step");
+    c.command(W, "choice:filetype:2", None).unwrap();
     assert_eq!(file_dialog(&c).visible(), vec!["dir/", "a.stl"]);
-    assert_eq!(file_dialog(&c).name, "Body.stl");
     // A name typed but not committed takes the new extension.
     c.type_text("Plate").unwrap();
-    c.command(W, "choice:filetype:2", None).unwrap();
+    c.command(W, "choice:filetype:4", None).unwrap();
     let d = file_dialog(&c);
     assert_eq!(d.visible(), vec!["dir/", "b.obj"]);
     assert_eq!(d.name, "Plate.obj");
     assert_eq!(c.field.as_ref().unwrap().text, "Plate.obj");
-    c.command(W, "choice:filetype:4", None).unwrap();
+    c.command(W, "choice:filetype:6", None).unwrap();
     assert_eq!(file_dialog(&c).visible(), vec!["dir/", "c.svg"]);
     assert!(c.file_command(W, "type:9").is_err());
 }

@@ -445,6 +445,12 @@ pub enum Feature {
         #[serde(rename = "Mesh")]
         mesh: Arc<Mesh>,
     },
+    /// An imported exact solid, outside any body (FreeCAD's `Part::Feature`).
+    #[serde(rename = "Part::Feature")]
+    Part {
+        #[serde(rename = "Shape")]
+        solid: Arc<Solid>,
+    },
 }
 impl Feature {
     pub fn type_id(&self) -> &'static str {
@@ -462,6 +468,7 @@ impl Feature {
             Feature::LinearPattern { .. } => "PartDesign::LinearPattern",
             Feature::PolarPattern { .. } => "PartDesign::PolarPattern",
             Feature::Mesh { .. } => "Mesh::Feature",
+            Feature::Part { .. } => "Part::Feature",
         }
     }
     /// The base name FreeCAD gives a new object of this type.
@@ -480,6 +487,7 @@ impl Feature {
             Feature::LinearPattern { .. } => "LinearPattern",
             Feature::PolarPattern { .. } => "PolarPattern",
             Feature::Mesh { .. } => "Mesh",
+            Feature::Part { .. } => "Part",
         }
     }
     /// The sketch a sketch-based feature consumes.
@@ -505,7 +513,10 @@ impl Feature {
     pub fn is_solid_feature(&self) -> bool {
         !matches!(
             self,
-            Feature::Body { .. } | Feature::Sketch { .. } | Feature::Mesh { .. }
+            Feature::Body { .. }
+                | Feature::Sketch { .. }
+                | Feature::Mesh { .. }
+                | Feature::Part { .. }
         )
     }
 }
@@ -803,11 +814,20 @@ pub fn recompute(doc: &mut Document) -> Model {
     let bodies: Vec<String> = doc.bodies().into_iter().map(str::to_owned).collect();
     // Sketches outside bodies, and meshes.
     for o in &doc.objects {
-        if let Feature::Mesh { mesh } = &o.feature {
-            model
-                .shapes
-                .insert(o.name.clone(), Shape::new((**mesh).clone()));
-            model.status.insert(o.name.clone(), Status::Ok);
+        match &o.feature {
+            Feature::Mesh { mesh } => {
+                model
+                    .shapes
+                    .insert(o.name.clone(), Shape::new((**mesh).clone()));
+                model.status.insert(o.name.clone(), Status::Ok);
+            }
+            Feature::Part { solid } => {
+                model
+                    .shapes
+                    .insert(o.name.clone(), Shape::from_solid((**solid).clone()));
+                model.status.insert(o.name.clone(), Status::Ok);
+            }
+            _ => {}
         }
     }
     for body in bodies {
@@ -920,7 +940,7 @@ fn feature_step(
         Ok(Some(Shape::from_solid(s)))
     };
     match &object.feature {
-        Feature::Body { .. } | Feature::Mesh { .. } => Ok(None),
+        Feature::Body { .. } | Feature::Mesh { .. } | Feature::Part { .. } => Ok(None),
         Feature::Sketch {
             support,
             offset,

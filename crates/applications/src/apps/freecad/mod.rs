@@ -358,6 +358,9 @@ pub struct Cad {
     /// Bumped on every document change; keys the derived model.
     #[serde(default)]
     pub rev: u64,
+    /// The world's clock at the last interaction: what a file's timestamp records.
+    #[serde(default)]
+    pub clock_us: u64,
     /// Width the 3D view was last painted at, so keyboard zoom centres on it.
     #[serde(default)]
     pub view_size: (u32, u32),
@@ -395,7 +398,7 @@ impl std::ops::DerefMut for Freecad {
 
 impl Freecad {
     pub const KIND: &'static str = "freecad";
-    pub fn launch(argument: &str, window: u64, _clock_us: u64) -> (Self, Vec<AppEffect>) {
+    pub fn launch(argument: &str, window: u64, clock_us: u64) -> (Self, Vec<AppEffect>) {
         let (doc, body) = document::with_body("Unnamed");
         let mut cad = Cad {
             doc,
@@ -425,6 +428,7 @@ impl Freecad {
             platform: None,
             active_body: Some(body),
             rev: 0,
+            clock_us,
             view_size: (0, 0),
             io_read: None,
             after_save: None,
@@ -480,16 +484,18 @@ impl Freecad {
         &mut self,
         window: u64,
         key: &str,
-        _clock_us: u64,
+        clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        self.0.clock_us = clock_us;
         self.0.key(window, key)
     }
     pub fn click(
         &mut self,
         window: u64,
         target: &str,
-        _clock_us: u64,
+        clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        self.0.clock_us = clock_us;
         let command = target
             .strip_prefix("freecad:")
             .ok_or("interaction does not belong to FreeCAD")?
