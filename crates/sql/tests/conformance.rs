@@ -539,3 +539,394 @@ fn a_database_survives_the_sqlite_file_format() {
         "file is not a database"
     );
 }
+
+#[test]
+fn triggers_fire_per_row_with_new_and_old() {
+    let mut d = db("create table t(a primary key, b); create table log(msg);
+        create trigger t1 after insert on t begin insert into log values('t1 '||new.a); end;
+        create trigger t2 after insert on t begin insert into log values('t2 '||new.a); end;");
+    d.execute("insert into t values (1, 5)").unwrap();
+    // The newest trigger fires first; changes() counts only the statement's own rows.
+    assert_eq!(rows(&mut d, "select * from log"), ["t2 1", "t1 1"]);
+    assert_eq!(rows(&mut d, "select changes()"), ["1"]);
+    d.execute("drop trigger t2; delete from log;").unwrap();
+    d.execute("create trigger t7 after update of b on t begin insert into log values(old.b||'->'||new.b); end")
+        .unwrap();
+    d.execute("update t set b = 9").unwrap();
+    // UPDATE OF b only fires when the SET list names b.
+    d.execute("update t set a = a").unwrap();
+    assert_eq!(rows(&mut d, "select * from log"), ["5->9"]);
+    // BEFORE triggers with WHEN, RAISE(IGNORE) skipping just that row.
+    d.execute(
+        "create trigger ig before insert on t when new.a = 99 begin select raise(ignore); end",
+    )
+    .unwrap();
+    d.execute("insert into t values (99, 1), (98, 1)").unwrap();
+    assert_eq!(rows(&mut d, "select a from t order by a"), ["1", "98"]);
+    // RAISE(FAIL) keeps the rows before it; RAISE(ABORT) undoes the statement.
+    d.execute("create trigger fl before insert on t when new.a = 77 begin select raise(fail, 'failing'); end;
+               create trigger ab before insert on t when new.a = 55 begin select raise(abort, 'aborting'); end;")
+        .unwrap();
+    let e = d
+        .execute("insert into t values (76, 1), (77, 1), (78, 1)")
+        .unwrap_err();
+    assert_eq!((e.message.as_str(), e.code), ("failing", 19));
+    let e = d
+        .execute("insert into t values (54, 1), (55, 1)")
+        .unwrap_err();
+    assert_eq!(e.message, "aborting");
+    assert_eq!(
+        rows(&mut d, "select a from t order by a"),
+        ["1", "76", "98"]
+    );
+    assert_eq!(
+        err(&mut d, "select raise(abort, 'x')"),
+        "RAISE() may only be used within a trigger-program"
+    );
+    // A BEFORE INSERT trigger sees an automatic rowid as -1; last_insert_rowid() is
+    // the statement's own row, whatever its triggers inserted.
+    d.execute("create table x(i integer primary key, v);
+               create trigger bx before insert on x begin insert into log values ('new.i='||quote(new.i)); end;
+               create trigger ax after insert on x begin insert into log values ('after.i='||new.i); end;
+               insert into x(v) values ('q'), ('r');")
+        .unwrap();
+    assert_eq!(rows(&mut d, "select last_insert_rowid()"), ["2"]);
+    assert_eq!(
+        rows(&mut d, "select * from log where msg like '%.i=%'"),
+        ["new.i=-1", "after.i=1", "new.i=-1", "after.i=2"]
+    );
+    // Dropping a table drops its triggers.
+    d.execute("drop table x").unwrap();
+    assert_eq!(
+        rows(
+            &mut d,
+            "select name from sqlite_schema where type = 'trigger' order by name"
+        ),
+        ["ab", "fl", "ig", "t1", "t7"]
+    );
+}
+
+#[test]
+fn triggers_refuse_what_sqlite_refuses() {
+    let mut d = db("create table t(a); create view v as select * from t;
+        create trigger t1 after insert on t begin select 1; end;");
+    assert_eq!(
+        err(
+            &mut d,
+            "create trigger t1 after insert on t begin select 1; end"
+        ),
+        "trigger t1 already exists"
+    );
+    assert_eq!(
+        err(
+            &mut d,
+            "create trigger x instead of insert on t begin select 1; end"
+        ),
+        "cannot create INSTEAD OF trigger on table: t"
+    );
+    assert_eq!(
+        err(
+            &mut d,
+            "create trigger x before insert on v begin select 1; end"
+        ),
+        "cannot create BEFORE trigger on view: v"
+    );
+    assert_eq!(
+        err(
+            &mut d,
+            "create trigger x after insert on nope begin select 1; end"
+        ),
+        "no such table: main.nope"
+    );
+    assert_eq!(err(&mut d, "drop trigger nope"), "no such trigger: nope");
+    d.execute("drop trigger if exists nope").unwrap();
+    // A program naming a missing table fails when it runs, in the main schema's words.
+    d.execute("create trigger bad after insert on t begin insert into nope values (1); end")
+        .unwrap();
+    assert_eq!(
+        err(&mut d, "insert into t values (1)"),
+        "no such table: main.nope"
+    );
+    assert_eq!(
+        err(&mut d, "alter table t rename to t2"),
+        "error in trigger bad: no such table: main.nope"
+    );
+    // A script with trigger bodies splits at the END that closes each one.
+    let stmts = cw_sql::lexer::split_statements(
+        "create trigger a after insert on t begin select 1; select 2; end; select 3;",
+    );
+    assert_eq!(stmts.len(), 2);
+    assert!(cw_sql::lexer::is_complete(
+        "create trigger a after insert on t begin select 1; end;"
+    ));
+    assert!(!cw_sql::lexer::is_complete(
+        "create trigger a after insert on t begin select 1;"
+    ));
+}
+
+#[test]
+fn instead_of_triggers_make_views_writable() {
+    let mut d = db("create table t(a primary key, b); create table log(msg);
+        create view v as select * from t;
+        create trigger vi instead of insert on v begin insert into t values (new.a*10, new.b); end;
+        create trigger vd instead of delete on v begin delete from t where a = old.a; end;
+        create trigger vu instead of update of b on v begin update t set b = new.b + 100 where a = old.a; end;
+        create trigger del after delete on t begin insert into log values ('gone '||old.a); end;");
+    d.execute("insert into v values (3, 4), (5, 6)").unwrap();
+    // Rows a view's triggers write are not the statement's own changes.
+    assert_eq!(rows(&mut d, "select changes()"), ["0"]);
+    d.execute("delete from v where a = 50; update v set b = 5 where a = 30;")
+        .unwrap();
+    assert_eq!(rows(&mut d, "select * from t"), ["30|105"]);
+    assert_eq!(rows(&mut d, "select * from log"), ["gone 50"]);
+    assert!(err(
+        &mut d,
+        "create view w as select 1 as x; insert into w values (1)"
+    )
+    .contains("cannot modify w because it is a view"));
+}
+
+#[test]
+fn triggers_do_not_recurse_and_follow_renames() {
+    let mut d = db(
+        "create table cnt(n); insert into cnt values (0);
+        create trigger rec after update on cnt when new.n < 5 begin update cnt set n = n + 1; end;",
+    );
+    // recursive_triggers is off: the trigger's own update does not fire it again.
+    d.execute("update cnt set n = 1").unwrap();
+    assert_eq!(rows(&mut d, "select n from cnt"), ["2"]);
+    d.execute("alter table cnt rename to counter").unwrap();
+    assert_eq!(
+        rows(&mut d, "select tbl_name, sql from sqlite_schema where type = 'trigger'"),
+        ["counter|CREATE TRIGGER rec after update on \"counter\" when new.n < 5 begin update \"counter\" set n = n + 1; end"]
+    );
+    d.execute("update counter set n = 0").unwrap();
+    assert_eq!(rows(&mut d, "select n from counter"), ["1"]);
+    // Foreign key actions fire the child's triggers.
+    let mut d = db("pragma foreign_keys = on;
+        create table p(id integer primary key);
+        create table c(pid references p(id) on delete cascade, tag);
+        create table log(msg);
+        create trigger cd after delete on c begin insert into log values ('child '||old.tag); end;
+        insert into p values (1); insert into c values (1, 'x'), (1, 'y');");
+    d.execute("delete from p").unwrap();
+    assert_eq!(rows(&mut d, "select * from log"), ["child x", "child y"]);
+}
+
+#[test]
+fn without_rowid_tables_are_keyed_by_their_primary_key() {
+    let mut d = db(
+        "create table w(k text primary key collate nocase, n int, note) without rowid;
+        create index wn on w(n);
+        insert into w values ('beta', 2, 'x'), ('Alpha', 1, 'y'), ('gamma', 3, null);",
+    );
+    // Rows come back in key order, not insertion order.
+    assert_eq!(
+        rows(&mut d, "select * from w"),
+        ["Alpha|1|y", "beta|2|x", "gamma|3|"]
+    );
+    assert_eq!(
+        err(&mut d, "insert into w values ('ALPHA', 9, 'dup')"),
+        "UNIQUE constraint failed: w.k"
+    );
+    assert_eq!(
+        err(&mut d, "insert into w values (null, 9, 'nul')"),
+        "NOT NULL constraint failed: w.k"
+    );
+    assert_eq!(err(&mut d, "select rowid from w"), "no such column: rowid");
+    assert_eq!(
+        err(&mut d, "insert into w(rowid, k) values (5, 'q')"),
+        "table w has no column named rowid"
+    );
+    assert_eq!(
+        rows(&mut d, "pragma table_info(w)"),
+        ["0|k|TEXT|1||1", "1|n|INT|0||0", "2|note||0||0"]
+    );
+    assert_eq!(
+        rows(&mut d, "pragma index_list(w)"),
+        ["0|wn|0|c|0", "1|sqlite_autoindex_w_1|1|pk|0"]
+    );
+    d.execute("update w set n = n * 10 where k = 'GAMMA'; delete from w where k = 'beta';")
+        .unwrap();
+    assert_eq!(rows(&mut d, "select * from w"), ["Alpha|1|y", "gamma|30|"]);
+    // Inserting into a WITHOUT ROWID table leaves last_insert_rowid() alone.
+    assert_eq!(rows(&mut d, "select last_insert_rowid()"), ["0"]);
+    assert_eq!(
+        err(&mut d, "create table bad(a) without rowid"),
+        "PRIMARY KEY missing on table bad"
+    );
+    assert_eq!(
+        err(
+            &mut d,
+            "create table bad(a integer primary key autoincrement) without rowid"
+        ),
+        "AUTOINCREMENT not allowed on WITHOUT ROWID tables"
+    );
+    assert_eq!(rows(&mut d, "pragma integrity_check"), ["ok"]);
+}
+
+#[test]
+fn the_plan_marks_covering_indexes_as_sqlite_does() {
+    let mut d = db("create table t(id integer primary key, v, w, x);
+        create index iv on t(v);
+        create index ivw on t(v, w);
+        create table u(a, b);
+        create index ua on u(a, b);
+        create table w(k primary key, b, c) without rowid;
+        create index wb on w(b);");
+    let plan = |d: &mut Database, sql: &str| {
+        d.query(&format!("explain query plan {sql}"))
+            .unwrap()
+            .rows
+            .iter()
+            .map(|r| r[3].to_text())
+            .collect::<Vec<_>>()
+    };
+    for (sql, expected) in [
+        (
+            "select v from t where v = 1",
+            vec!["SEARCH t USING COVERING INDEX iv (v=?)"],
+        ),
+        (
+            "select v, w from t where v = 1",
+            vec!["SEARCH t USING COVERING INDEX ivw (v=?)"],
+        ),
+        (
+            "select id, v from t where v = 1",
+            vec!["SEARCH t USING COVERING INDEX iv (v=?)"],
+        ),
+        (
+            "select x from t where v = 1",
+            vec!["SEARCH t USING INDEX ivw (v=?)"],
+        ),
+        ("select v from t", vec!["SCAN t USING COVERING INDEX iv"]),
+        (
+            "select count(*) from t",
+            vec!["SCAN t USING COVERING INDEX iv"],
+        ),
+        ("select * from t", vec!["SCAN t"]),
+        (
+            "select w from t where v > 3",
+            vec!["SEARCH t USING COVERING INDEX ivw (v>?)"],
+        ),
+        (
+            "select count(*) from t where w = 2",
+            vec!["SCAN t USING COVERING INDEX ivw"],
+        ),
+        ("select * from t order by v", vec!["SCAN t USING INDEX iv"]),
+        ("select * from t order by id", vec!["SCAN t"]),
+        (
+            "select * from t where v = 3 order by id",
+            vec!["SEARCH t USING INDEX iv (v=?)"],
+        ),
+        (
+            "select x from t where v > 3 order by w",
+            vec![
+                "SEARCH t USING INDEX iv (v>?)",
+                "USE TEMP B-TREE FOR ORDER BY",
+            ],
+        ),
+        (
+            "select v, count(*) from t group by v",
+            vec!["SCAN t USING COVERING INDEX iv"],
+        ),
+        (
+            "select * from t where v in (1, 2) order by v",
+            vec!["SEARCH t USING INDEX ivw (v=?)"],
+        ),
+        (
+            "select x from t order by x",
+            vec!["SCAN t", "USE TEMP B-TREE FOR ORDER BY"],
+        ),
+        ("select * from u", vec!["SCAN u"]),
+        (
+            "select a from u order by a desc",
+            vec!["SCAN u USING COVERING INDEX ua"],
+        ),
+        (
+            "select b from u where a = 1 order by b",
+            vec!["SEARCH u USING COVERING INDEX ua (a=?)"],
+        ),
+        (
+            "select * from w where k = 1",
+            vec!["SEARCH w USING PRIMARY KEY (k=?)"],
+        ),
+        (
+            "select k from w where b = 1",
+            vec!["SEARCH w USING COVERING INDEX wb (b=?)"],
+        ),
+        (
+            "select c from w where b = 1",
+            vec!["SEARCH w USING INDEX wb (b=?)"],
+        ),
+        ("select * from w", vec!["SCAN w"]),
+    ] {
+        assert_eq!(plan(&mut d, sql), expected, "{sql}");
+    }
+    // A covering scan reads the index, so rows come back in its order.
+    d.execute("insert into t values (1, 'c', 1, 0), (2, 'a', 2, 0), (3, 'b', 3, 0)")
+        .unwrap();
+    assert_eq!(rows(&mut d, "select v from t"), ["a", "b", "c"]);
+    assert_eq!(
+        rows(&mut d, "select v from t where v in ('c', 'a')"),
+        ["a", "c"]
+    );
+}
+
+#[test]
+fn triggers_and_without_rowid_tables_survive_the_file_format() {
+    // Written by SQLite 3.45.1 itself: WITHOUT ROWID tables spread over interior
+    // pages, a secondary and a unique index on them, triggers and a view.
+    let fixture = include_bytes!("fixtures/triggers-without-rowid.db");
+    let mut d = Database::open(fixture).unwrap();
+    assert_eq!(rows(&mut d, "pragma integrity_check"), ["ok"]);
+    assert_eq!(
+        rows(&mut d, "select count(*), sum(a) from p"),
+        ["403|80204"]
+    );
+    assert_eq!(
+        rows(&mut d, "select * from p where b = 'z'"),
+        ["1|z|10", "2|z|20"]
+    );
+    assert_eq!(rows(&mut d, "select k from w"), ["Alpha", "beta", "gamma"]);
+    assert_eq!(
+        rows(&mut d, "select type, name from sqlite_schema"),
+        [
+            "table|w",
+            "table|p",
+            "index|wn",
+            "index|pc",
+            "table|log",
+            "trigger|wi",
+            "view|vw",
+            "trigger|vwi"
+        ]
+    );
+    d.execute("insert into vw values ('delta', 4)").unwrap();
+    assert_eq!(
+        rows(&mut d, "select * from log"),
+        ["ins beta", "ins Alpha", "ins gamma", "ins delta"]
+    );
+    // And back: what this engine writes reads back the same, byte for byte stable.
+    let bytes = d.to_bytes();
+    assert_eq!(bytes, d.to_bytes());
+    let mut back = Database::open(&bytes).unwrap();
+    // (Rows of a WITHOUT ROWID table are renumbered in key order on reading, so the
+    // comparison is by content.)
+    assert_eq!(
+        rows(&mut back, "select * from w"),
+        rows(&mut d, "select * from w")
+    );
+    assert_eq!(rows(&mut back, "pragma integrity_check"), ["ok"]);
+    assert_eq!(
+        rows(&mut back, "select k, n from w where n = 4"),
+        ["delta|4"]
+    );
+    assert_eq!(
+        err(&mut back, "insert into p values (1, 'z', 99)"),
+        "UNIQUE constraint failed: p.b, p.a"
+    );
+    back.execute("insert into w values ('epsilon', 5, null)")
+        .unwrap();
+    assert_eq!(rows(&mut back, "select count(*) from log"), ["5"]);
+}

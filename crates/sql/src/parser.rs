@@ -1077,8 +1077,8 @@ impl<'a> Parser<'a> {
                 sql,
             })));
         }
-        if self.is_kw("TRIGGER") {
-            return Err(SqlError::new("triggers are not supported by this engine"));
+        if self.eat_kw("TRIGGER") {
+            return self.create_trigger(temporary);
         }
         if self.is_kw("VIRTUAL") {
             return Err(SqlError::new(
@@ -1086,6 +1086,105 @@ impl<'a> Parser<'a> {
             ));
         }
         Err(self.error_here())
+    }
+    /// `CREATE [TEMP] TRIGGER [IF NOT EXISTS] name [BEFORE|AFTER|INSTEAD OF]
+    /// DELETE|INSERT|UPDATE [OF col, …] ON table [FOR EACH ROW] [WHEN expr]
+    /// BEGIN stmt; … END`, with `CREATE TRIGGER` already read.
+    fn create_trigger(&mut self, temporary: bool) -> Result<Stmt, SqlError> {
+        let if_not_exists = self.if_not_exists()?;
+        let name_start = self.peek().start;
+        let name = self.qualified_name()?;
+        let timing = if self.eat_kw("BEFORE") {
+            TriggerTiming::Before
+        } else if self.eat_kw("AFTER") {
+            TriggerTiming::After
+        } else if self.eat_kw("INSTEAD") {
+            self.expect_kw("OF")?;
+            TriggerTiming::InsteadOf
+        } else {
+            TriggerTiming::Before
+        };
+        let event = if self.eat_kw("INSERT") {
+            TriggerEvent::Insert
+        } else if self.eat_kw("DELETE") {
+            TriggerEvent::Delete
+        } else if self.eat_kw("UPDATE") {
+            let mut cols = Vec::new();
+            if self.eat_kw("OF") {
+                loop {
+                    cols.push(self.name()?);
+                    if !self.eat_op(",") {
+                        break;
+                    }
+                }
+            }
+            TriggerEvent::Update(cols)
+        } else {
+            return Err(self.error_here());
+        };
+        self.expect_kw("ON")?;
+        let table = self.qualified_name()?;
+        if self.eat_kw("FOR") {
+            self.expect_kw("EACH")?;
+            // SQLite has row triggers only; FOR EACH STATEMENT is a syntax error there too.
+            if !self.eat_kw("ROW") {
+                return Err(self.error_here());
+            }
+        }
+        let when = if self.eat_kw("WHEN") {
+            Some(self.expr()?)
+        } else {
+            None
+        };
+        self.expect_kw("BEGIN")?;
+        let mut body = Vec::new();
+        loop {
+            if self.eat_kw("END") {
+                break;
+            }
+            let at = self.peek().start;
+            let stmt = self.statement()?;
+            let cte = match &stmt {
+                Stmt::Insert(i) => i.with.is_some(),
+                Stmt::Update(u) => u.with.is_some(),
+                Stmt::Delete(d) => d.with.is_some(),
+                Stmt::Select(s) => s.with.is_some(),
+                _ => {
+                    let t = &self.sql[at..];
+                    let word = t.split_whitespace().next().unwrap_or("");
+                    return Err(SqlError::syntax_at(
+                        format!("near \"{word}\": syntax error"),
+                        at,
+                    ));
+                }
+            };
+            if cte {
+                return Err(SqlError::syntax_at(
+                    "near \"WITH\": cannot use WITH clause in a trigger program",
+                    at,
+                ));
+            }
+            body.push(stmt);
+            if !self.eat_semi() {
+                return Err(self.error_here());
+            }
+        }
+        if body.is_empty() {
+            return Err(self.error_here());
+        }
+        let sql = format!("CREATE TRIGGER {}", self.text_from(name_start));
+        Ok(Stmt::CreateTrigger(Box::new(CreateTrigger {
+            name,
+            if_not_exists,
+            temporary,
+            timing,
+            event,
+            table,
+            when,
+            body,
+            sql,
+            name_at: name_start,
+        })))
     }
     /// `(col [COLLATE c] [ASC|DESC], ...)` including the closing parenthesis.
     fn indexed_columns(&mut self) -> Result<Vec<IndexedColumn>, SqlError> {
@@ -1820,8 +1919,33 @@ impl<'a> Parser<'a> {
                             let e = self.primary()?;
                             return Ok(Expr::Unary(UnOp::Not, Box::new(e)));
                         }
-                        "RAISE" => {
-                            return Err(SqlError::new("RAISE() may only be used within a trigger"))
+                        "RAISE" if self.is_op_at(1, "(") => {
+                            self.next();
+                            self.next();
+                            let t = self.next();
+                            let kind = match t.keyword().as_deref() {
+                                Some("IGNORE") => RaiseKind::Ignore,
+                                Some("ROLLBACK") => RaiseKind::Rollback,
+                                Some("ABORT") => RaiseKind::Abort,
+                                Some("FAIL") => RaiseKind::Fail,
+                                _ => {
+                                    return Err(SqlError::syntax_at(
+                                        format!(
+                                            "near \"{}\": syntax error",
+                                            &self.sql[t.start..t.end]
+                                        ),
+                                        t.start,
+                                    ))
+                                }
+                            };
+                            let message = if kind == RaiseKind::Ignore {
+                                None
+                            } else {
+                                self.expect_op(",")?;
+                                Some(self.any_name()?)
+                            };
+                            self.expect_op(")")?;
+                            return Ok(Expr::Raise(kind, message));
                         }
                         _ => {}
                     }

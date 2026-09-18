@@ -10,6 +10,7 @@ pub enum Stmt {
     CreateTable(Box<CreateTable>),
     CreateIndex(Box<CreateIndex>),
     CreateView(Box<CreateView>),
+    CreateTrigger(Box<CreateTrigger>),
     Drop {
         kind: ObjectKind,
         name: String,
@@ -273,6 +274,43 @@ pub struct CreateView {
     pub select: Box<Select>,
     pub sql: String,
 }
+/// When a trigger fires relative to the row change.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TriggerTiming {
+    Before,
+    After,
+    InsteadOf,
+}
+/// The change a trigger watches; an UPDATE trigger may name the columns it watches.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TriggerEvent {
+    Insert,
+    Delete,
+    Update(Vec<String>),
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct CreateTrigger {
+    pub name: String,
+    pub if_not_exists: bool,
+    pub temporary: bool,
+    pub timing: TriggerTiming,
+    pub event: TriggerEvent,
+    pub table: String,
+    pub when: Option<Expr>,
+    /// The trigger program: INSERT, UPDATE, DELETE and SELECT statements.
+    pub body: Vec<Stmt>,
+    pub sql: String,
+    /// Byte offset of the trigger's name in the statement, where errors point.
+    pub name_at: usize,
+}
+/// `RAISE(...)`'s first argument.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RaiseKind {
+    Ignore,
+    Rollback,
+    Abort,
+    Fail,
+}
 #[derive(Clone, Debug, PartialEq)]
 pub enum AlterTable {
     Rename {
@@ -398,6 +436,15 @@ pub enum Expr {
     },
     /// `(a, b)` row value, only valid in comparisons.
     Row(Vec<Expr>),
+    /// `RAISE(IGNORE)` or `RAISE(ABORT|FAIL|ROLLBACK, 'message')` in a trigger program.
+    Raise(RaiseKind, Option<String>),
+    /// A trigger's `NEW.x` or `OLD.x`, bound to the row's value with the column's
+    /// affinity and collation.
+    Bound {
+        value: Value,
+        affinity: Option<crate::value::Affinity>,
+        collation: crate::value::Collation,
+    },
 }
 impl Expr {
     pub fn lit(v: Value) -> Self {
@@ -473,6 +520,8 @@ impl Expr {
                 }
             }
             Self::Literal(_)
+            | Self::Raise(..)
+            | Self::Bound { .. }
             | Self::Column { .. }
             | Self::Param(_)
             | Self::Exists(_)
