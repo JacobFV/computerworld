@@ -429,6 +429,29 @@ impl Environment {
                 },
             });
         }
+        // Work an application does between actions — a video export encoding its next
+        // frames — advances once per step, so its progress is a function of the steps
+        // taken and replays exactly.
+        let machines: Vec<String> = self.session(id)?.machines.keys().cloned().collect();
+        for machine in machines {
+            let busy = self
+                .session(id)?
+                .machines
+                .get(&machine)
+                .is_some_and(|m| m.desktop.busy());
+            if !busy {
+                continue;
+            }
+            let effects = self.machine_mut(id, &machine)?.desktop.background();
+            if let Err(e) = self.effects(id, &machine, &config.actor, effects) {
+                self.runtime.record_event(
+                    "application.background_failed",
+                    Some(&machine),
+                    Some(&config.actor),
+                    json!({"session":id,"error":actor_error(e).message}),
+                );
+            }
+        }
         let state_hash = if self.verify_steps {
             self.state_hash()?
         } else {

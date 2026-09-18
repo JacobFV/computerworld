@@ -25,6 +25,7 @@ pub mod notes;
 pub mod photos;
 pub mod settings;
 pub mod sheet;
+pub mod video;
 pub mod weather;
 
 /// What an application may read about the machine while it draws itself. Time and the
@@ -219,6 +220,11 @@ macro_rules! native_apps {
             pub fn image_failed(&mut self, path: &str, reason: &str) {
                 match self {
                     Self::Photos(a) => a.image_failed(path, reason),
+                    other if other.video().is_some() && path == crate::TEXT_IMAGE => {
+                        if let Some(v) = other.video_mut() {
+                            v.text_failed(reason);
+                        }
+                    }
                     other => match other.studio_mut() {
                         Some(studio) => studio.image_failed(path, reason),
                         None => other.offline(path, reason),
@@ -272,6 +278,9 @@ macro_rules! native_apps {
                 match self {
                     Self::Code(a) => a.text_effects(window, text),
                     Self::Kicad(a) => a.text_effects(window, text),
+                    other if other.video().is_some() => {
+                        other.video_mut().unwrap().text(window, text)
+                    }
                     other => other.text(text).map(|()| vec![]),
                 }
             }
@@ -282,6 +291,9 @@ macro_rules! native_apps {
                     Self::Spreadsheet(a) => a.paste(text).map(|()| vec![]),
                     Self::Excel(a) => a.paste(text).map(|()| vec![]),
                     Self::Database(a) => a.0.paste(text).map(|()| vec![]),
+                    other if other.video().is_some() => {
+                        other.video_mut().unwrap().text(window, text)
+                    }
                     other => other.text(text).map(|()| vec![]),
                 }
             }
@@ -356,6 +368,10 @@ native_apps! {
     Excel => sheet,
     Database => database,
     Kicad => kicad,
+    Clipchamp => video,
+    Imovie => video,
+    Kdenlive => video,
+    VideoEditor => video,
 }
 
 /// Hooks only image applications have: drag surfaces, rasterised text, finished saves
@@ -394,6 +410,7 @@ impl NativeApp {
             Self::Excel(a) => a.accepts_text(),
             Self::Database(a) => a.0.accepts_text(),
             Self::Kicad(a) => a.accepts_text(),
+            other if other.video().is_some() => other.video().unwrap().accepts_text(),
             other => other.studio().is_none_or(|s| s.accepts_text()),
         }
     }
@@ -403,6 +420,7 @@ impl NativeApp {
             Self::Kicad(a) => a.drags(target),
             Self::Freecad(a) => a.drags(target),
             Self::Spreadsheet(_) | Self::Excel(_) => sheet::Book::drags(target),
+            other if other.video().is_some() => video::Editor::drags(target),
             other => other.studio().is_some_and(|s| s.drags(target)),
         }
     }
@@ -423,7 +441,7 @@ impl NativeApp {
     /// A file's bytes (or why they could not be read) for an application that asked.
     pub fn bytes(
         &mut self,
-        _window: u64,
+        window: u64,
         path: &str,
         result: Result<Vec<u8>, String>,
         clock_us: u64,
@@ -435,6 +453,9 @@ impl NativeApp {
         if let Self::Database(a) = self {
             a.0.bytes(path, result, clock_us);
             return Ok(vec![]);
+        }
+        if let Some(v) = self.video_mut() {
+            return v.bytes(window, path, result);
         }
         let book = self.book_mut().ok_or("this application reads no files")?;
         book.bytes(path, result, clock_us);
@@ -455,6 +476,10 @@ impl NativeApp {
         }
         if let Self::Database(a) = self {
             a.0.saved(path, result);
+            return Ok(vec![]);
+        }
+        if let Some(v) = self.video_mut() {
+            v.saved(path, result);
             return Ok(vec![]);
         }
         let book = self.book_mut().ok_or("this application writes no files")?;
@@ -522,6 +547,14 @@ impl NativeApp {
         if let Self::Kicad(a) = self {
             return a.pointer(window, target, phase, x, y, clock_us);
         }
+        if let Some(v) = self.video_mut() {
+            let command = target
+                .strip_prefix(video::PREFIX)
+                .and_then(|t| t.strip_prefix(':'))
+                .ok_or("that surface belongs to another application")?
+                .to_owned();
+            return v.pointer(window, &command, phase, x, y, clock_us);
+        }
         let studio = self
             .studio_mut()
             .ok_or("this application has no drag surfaces")?;
@@ -550,6 +583,10 @@ impl NativeApp {
             a.listed(entries);
             return Ok(());
         }
+        if let Some(v) = self.video_mut() {
+            v.listed(entries);
+            return Ok(());
+        }
         let studio = self.studio_mut().ok_or("window is not a file manager")?;
         studio.listed(entries);
         Ok(())
@@ -574,9 +611,41 @@ impl NativeApp {
         height: u32,
         alpha: Vec<u8>,
     ) -> Result<(), String> {
+        if let Some(v) = self.video_mut() {
+            return v.text_rasterized(width, height, alpha);
+        }
         self.studio_mut()
             .ok_or("this application draws no text into images")?
             .text_rasterized(width, height, alpha)
+    }
+    /// The video editors, whichever platform's.
+    pub fn video(&self) -> Option<&video::Editor> {
+        match self {
+            Self::Clipchamp(a) => Some(&a.0),
+            Self::Imovie(a) => Some(&a.0),
+            Self::Kdenlive(a) => Some(&a.0),
+            Self::VideoEditor(a) => Some(&a.0),
+            _ => None,
+        }
+    }
+    pub fn video_mut(&mut self) -> Option<&mut video::Editor> {
+        match self {
+            Self::Clipchamp(a) => Some(&mut a.0),
+            Self::Imovie(a) => Some(&mut a.0),
+            Self::Kdenlive(a) => Some(&mut a.0),
+            Self::VideoEditor(a) => Some(&mut a.0),
+            _ => None,
+        }
+    }
+    /// Whether the application has work to do between actions (a video export).
+    pub fn busy(&self) -> bool {
+        self.video().is_some_and(video::Editor::busy)
+    }
+    /// One simulation step of the application's background work.
+    pub fn background(&mut self, window: u64) -> Vec<AppEffect> {
+        self.video_mut()
+            .map(|v| v.background(window))
+            .unwrap_or_default()
     }
     /// Whether keystrokes insert text. Every application but the music player has a
     /// field that is always ready for typing; the player takes text only while its search

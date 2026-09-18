@@ -42,6 +42,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/macos/code",
     "icon/macos/preview",
     "icon/macos/pixelmator",
+    "icon/macos/imovie",
     "icon/macos/freecad",
     "icon/macos/spreadsheet",
     "icon/macos/excel",
@@ -70,6 +71,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/windows/weather",
     "icon/windows/code",
     "icon/windows/paint",
+    "icon/windows/clipchamp",
     "icon/windows/freecad",
     "icon/windows/spreadsheet",
     "icon/windows/database",
@@ -97,6 +99,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/ubuntu/weather",
     "icon/ubuntu/code",
     "icon/ubuntu/gimp",
+    "icon/ubuntu/kdenlive",
     "icon/ubuntu/pinta",
     "icon/ubuntu/freecad",
     "icon/ubuntu/spreadsheet",
@@ -125,6 +128,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/ios/weather",
     "icon/ios/code",
     "icon/ios/spreadsheet",
+    "icon/ios/imovie",
     "icon/android/files",
     "icon/android/browser",
     "icon/android/terminal",
@@ -148,6 +152,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/android/weather",
     "icon/android/code",
     "icon/android/sketchbook",
+    "icon/android/videoeditor",
     "icon/android/spreadsheet",
 ];
 fn bytes(id: &str) -> Option<&'static [u8]> {
@@ -201,6 +206,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/macos/code" | "icon/code" => include_bytes!("../assets/icons/macos-code.png"),
         "icon/macos/preview" => include_bytes!("../assets/icons/macos-preview.png"),
         "icon/macos/pixelmator" => include_bytes!("../assets/icons/macos-pixelmator.png"),
+        "icon/macos/imovie" => include_bytes!("../assets/icons/macos-imovie.png"),
         "icon/macos/freecad" => include_bytes!("../assets/icons/macos-freecad.png"),
         "icon/macos/spreadsheet" => include_bytes!("../assets/icons/macos-spreadsheet.png"),
         "icon/macos/excel" => include_bytes!("../assets/icons/macos-excel.png"),
@@ -242,6 +248,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/windows/weather" => include_bytes!("../assets/icons/windows-weather.png"),
         "icon/windows/code" => include_bytes!("../assets/icons/windows-code.png"),
         "icon/windows/paint" => include_bytes!("../assets/icons/windows-paint.png"),
+        "icon/windows/clipchamp" => include_bytes!("../assets/icons/windows-clipchamp.png"),
         "icon/windows/freecad" => include_bytes!("../assets/icons/windows-freecad.png"),
         "icon/windows/spreadsheet" => include_bytes!("../assets/icons/windows-spreadsheet.png"),
         "icon/windows/database" => include_bytes!("../assets/icons/windows-database.png"),
@@ -282,6 +289,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/ubuntu/weather" => include_bytes!("../assets/icons/ubuntu-weather.png"),
         "icon/ubuntu/code" => include_bytes!("../assets/icons/ubuntu-code.png"),
         "icon/ubuntu/gimp" => include_bytes!("../assets/icons/ubuntu-gimp.png"),
+        "icon/ubuntu/kdenlive" => include_bytes!("../assets/icons/ubuntu-kdenlive.png"),
         "icon/ubuntu/kicad" => include_bytes!("../assets/icons/ubuntu-kicad.png"),
         "icon/ubuntu/pinta" => include_bytes!("../assets/icons/ubuntu-pinta.png"),
         "icon/ubuntu/freecad" => include_bytes!("../assets/icons/ubuntu-freecad.png"),
@@ -319,6 +327,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/ios/weather" => include_bytes!("../assets/icons/ios-weather.png"),
         "icon/ios/code" => include_bytes!("../assets/icons/ios-code.png"),
         "icon/ios/spreadsheet" => include_bytes!("../assets/icons/ios-spreadsheet.png"),
+        "icon/ios/imovie" => include_bytes!("../assets/icons/ios-imovie.png"),
         "wallpaper/android" => include_bytes!("../assets/wallpapers/android.jpg"),
         "icon/android/files" => include_bytes!("../assets/icons/android-files.png"),
         "icon/android/browser" => include_bytes!("../assets/icons/android-browser.png"),
@@ -355,6 +364,9 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/android/weather" => include_bytes!("../assets/icons/android-weather.png"),
         "icon/android/code" => include_bytes!("../assets/icons/android-code.png"),
         "icon/android/sketchbook" => include_bytes!("../assets/icons/android-sketchbook.png"),
+        "icon/android/videoeditor" => {
+            include_bytes!("../assets/icons/android-videoeditor.png")
+        }
         "icon/android/spreadsheet" => include_bytes!("../assets/icons/android-spreadsheet.png"),
         _ => {
             return SYMBOLS

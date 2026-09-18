@@ -151,6 +151,10 @@ impl Environment {
             (_, "excel") => "Microsoft Excel",
             (Some(DesktopTheme::Macos), "database") => "TablePlus",
             (_, "database") => "DB Browser for SQLite",
+            (_, "clipchamp") => "Clipchamp",
+            (_, "imovie") => "iMovie",
+            (_, "kdenlive") => "Kdenlive",
+            (_, "videoeditor") => "Video Editor",
             (_, other) => {
                 debug_assert!(false, "unnamed native application {other}");
                 "Application"

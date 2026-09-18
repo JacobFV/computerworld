@@ -34,7 +34,7 @@ const APPS: [&str; 22] = [
     "code",
 ];
 /// Applications only one platform ships: each has artwork in that platform's set.
-const PLATFORM_APPS: [(&str, &str); 21] = [
+const PLATFORM_APPS: [(&str, &str); 26] = [
     ("macos", "kicad"),
     ("windows", "kicad"),
     ("ubuntu", "kicad"),
@@ -47,6 +47,13 @@ const PLATFORM_APPS: [(&str, &str); 21] = [
     ("ubuntu", "gimp"),
     ("ubuntu", "pinta"),
     ("android", "sketchbook"),
+    // Each platform's video editor: Clipchamp, iMovie (Mac and phone), Kdenlive and
+    // the Android editor.
+    ("windows", "clipchamp"),
+    ("macos", "imovie"),
+    ("ios", "imovie"),
+    ("ubuntu", "kdenlive"),
+    ("android", "videoeditor"),
     // Each platform's own spreadsheet: Excel, Numbers, LibreOffice Calc, Sheets.
     ("windows", "spreadsheet"),
     ("macos", "spreadsheet"),

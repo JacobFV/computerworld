@@ -304,6 +304,45 @@ fn warp(src: &Canvas, width: u32, height: u32, m: [i64; 4], clamp: bool) -> Canv
     out
 }
 
+/// Place `src` on a transparent `width` x `height` canvas through a general affine map,
+/// sampled bilinearly on premultiplied colour. `inverse` is the 2x2 linear part of the
+/// output-to-source map in 16.16 fixed point; `anchor` is where the source's centre
+/// lands, in 16.16 output pixel coordinates. A video compositor positions, scales and
+/// rotates a clip with this; the same integer arithmetic runs on every target.
+pub fn affine(
+    src: &Canvas,
+    width: u32,
+    height: u32,
+    inverse: [i64; 4],
+    anchor: (i64, i64),
+) -> Canvas {
+    let pre = premultiply(src);
+    let mut out = Canvas::new(width, height);
+    let (scx, scy) = (
+        i64::from(src.width()) * FIX / 2,
+        i64::from(src.height()) * FIX / 2,
+    );
+    let m = inverse;
+    for y in 0..height as i64 {
+        let py = y * FIX + FIX / 2 - anchor.1;
+        for x in 0..width as i64 {
+            let px = x * FIX + FIX / 2 - anchor.0;
+            let sx = ((m[0] * px + m[1] * py) >> 16) + scx;
+            let sy = ((m[2] * px + m[3] * py) >> 16) + scy;
+            // Skip taps wholly outside the source: nothing there to blend.
+            if sx < -FIX || sy < -FIX || sx > scx * 2 + FIX || sy > scy * 2 + FIX {
+                continue;
+            }
+            out.set(
+                x as i32,
+                y as i32,
+                unpremultiply(sample(src, &pre, sx, sy, false)),
+            );
+        }
+    }
+    out
+}
+
 fn angle(centidegrees: i32) -> (f64, f64) {
     let rad = f64::from(centidegrees) / 100.0 * fmath::PI / 180.0;
     (fmath::cos(rad), fmath::sin(rad))
