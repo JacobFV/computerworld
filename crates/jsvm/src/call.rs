@@ -78,6 +78,18 @@ impl<'h> Vm<'h> {
         new_target: Value,
         kind: FrameKind,
     ) -> Frame {
+        // V8 compiles a function body the first time it runs: that costs
+        // simulated time, which is what makes the event loop's orderings follow
+        // from the program rather than from a fixed assumption.
+        if !code.compiled.get() {
+            code.compiled.set(true);
+            // Node's own builtins are in V8's startup snapshot: they are
+            // already compiled, so only the program's own code is charged.
+            if !code.file.starts_with("node:") {
+                let bytes = code.own_bytes as usize;
+                self.charge_compile(bytes);
+            }
+        }
         let n = code.nlocals as usize;
         let mut locals = vec![Local::V(Value::Undefined); n];
         if let Some(k) = code.simple_params {

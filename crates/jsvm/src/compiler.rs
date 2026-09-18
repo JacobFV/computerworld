@@ -774,6 +774,8 @@ impl<'a> Compiler<'a> {
             set_target(&mut fs.ops[i], pc);
         }
         let ntemplates = fs.templates.len();
+        let nested: usize = fs.codes.iter().map(|c| c.source.len()).sum();
+        let own_bytes = source.len().saturating_sub(nested) as u32;
         Rc::new(Code {
             name,
             ops: fs.ops,
@@ -802,6 +804,8 @@ impl<'a> Compiler<'a> {
             templates: fs.templates,
             is_top: fs.is_top,
             needs_args: false,
+            compiled: std::cell::Cell::new(false),
+            own_bytes,
         })
     }
 

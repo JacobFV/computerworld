@@ -370,13 +370,36 @@ hashes of 434 outputs recorded from CPython 3.12 and Node 24.21 for that check.
   does for the recorded cases, and anything it produces or accepts is valid brotli.
 * Python's `bz2` and `lzma` are not implemented.
 
+### Event-loop timing
+
+Node's loop phases (timers, poll, check), `process.nextTick` and promise jobs
+run in Node's order, and *when* a callback is due follows from what the program
+costs in simulated time rather than from any fixed assumption:
+
+* executing code costs 100,000 interpreter instructions per millisecond;
+* preparing a function body the first time it runs costs a millisecond per
+  kibibyte of its own source — V8 compiles it then, and Node reaches into the
+  internals a body that size needs. Node's own builtins are in V8's startup
+  snapshot and cost nothing; resolving and reading each module of the program
+  costs 0.05 ms;
+* simulated I/O (a network reply, a compression job, a child process) costs the
+  time the world says it takes.
+
+So `setTimeout(f, 0)` against `setImmediate(g)` from the main module — the case
+that depends on wall-clock jitter in real Node — comes out of the program: a
+short program reaches the first turn before the 1 ms timer is due and the
+immediate wins, while one that loads or computes for longer than a millisecond
+sees the timer fire first. A timer started inside a callback counts from the
+moment it is started, as `Environment::GetNow` does, so work done in a callback
+pushes back what was queued behind it. The rates are model constants (not
+measurements of any real machine); they are calibrated so that the orderings
+recorded from Node 24.21 in `crates/jsvm/tests/programs` come out the same way.
+
 Known gaps shared by both: no native extensions. `node` does not
 implement `Intl` beyond `en-US` date and number formatting,
 `Atomics`/`SharedArrayBuffer`, `worker_threads`, or the REPL. Strings that
 contain unpaired UTF-16 surrogates are carried as the
-replacement character. Event-loop orderings that depend on real wall-clock jitter in
-Node (for example `setTimeout(f, 0)` against `setImmediate(g)` from the main module)
-are resolved one fixed way: the main module is taken to run for one millisecond.
+replacement character.
 
 ## Clock
 

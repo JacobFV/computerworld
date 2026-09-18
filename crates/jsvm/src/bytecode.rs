@@ -266,4 +266,11 @@ pub struct Code {
     pub is_top: bool,
     /// Uses `arguments`, so the frame keeps its argument list.
     pub needs_args: bool,
+    /// Whether this body has already been charged its compile cost: V8 compiles
+    /// a function the first time it runs, and the simulation charges for it
+    /// then (see `Vm::charge_compile`).
+    pub compiled: std::cell::Cell<bool>,
+    /// Bytes of source that belong to this body alone (nested functions carry
+    /// their own), which is what that charge is proportional to.
+    pub own_bytes: u32,
 }

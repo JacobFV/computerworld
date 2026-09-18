@@ -670,7 +670,8 @@ fn add_timer(vm: &mut Vm, a: &Args, repeat: bool, immediate: bool) -> JsResult<V
         );
     }
     vm.timer_seq += 1;
-    // Node reads a fresh loop time when a timer starts.
+    // `Environment::GetNow` updates the loop clock before a timer starts, so
+    // the due time counts from now, not from the turn's cached time.
     let when = vm.clock() + delay;
     vm.timers.push(Timer {
         id,
@@ -1259,6 +1260,7 @@ impl<'h> Vm<'h> {
             Ok(b) => b,
             Err(_) => return Err(self.module_not_found(path, &[])),
         };
+        self.charge_module_load(bytes.len());
         let src = String::from_utf8_lossy(&bytes).into_owned();
         let m = self.make_module_object(path);
         let mv = Value::Obj(m.clone());
@@ -1576,6 +1578,7 @@ impl<'h> Vm<'h> {
     pub fn event_loop(&mut self) -> JsResult<()> {
         loop {
             self.drain_after(None)?;
+            // Each turn starts by reading the clock (`uv__update_time`).
             let now = self.clock();
             let mut ran = false;
             // Timers phase: due timers by time then creation order; Node

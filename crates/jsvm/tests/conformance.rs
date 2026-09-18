@@ -70,6 +70,7 @@ programs!("js":
     err_type,
     err_unhandled_rejection,
     event_loop,
+    event_loop_time,
     exit_code,
     inspect,
     json,

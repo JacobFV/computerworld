@@ -70,6 +70,13 @@ pub struct Frame {
 
 /// Instructions per virtual millisecond.
 pub const STEPS_PER_MS: f64 = 100_000.0;
+/// What loading one module costs before a line of it runs: resolving the
+/// specifier and reading the file.
+pub const MODULE_LOAD_MS: f64 = 0.05;
+/// What preparing a kibibyte of source costs the first time it runs: compiling
+/// it, and the internals a body that size reaches for. Calibrated so that the
+/// event-loop orderings recorded from Node 24.21 come out the same way.
+pub const COMPILE_MS_PER_KIB: f64 = 1.0;
 
 pub const TIMEOUT_FRAME: u8 = 1;
 pub const IMMEDIATE_FRAME: u8 = 2;
@@ -926,6 +933,20 @@ impl<'h> Vm<'h> {
             self.clock_steps = self.steps;
         }
         self.elapsed_ms
+    }
+
+    /// Charges what resolving and reading one module costs, before a line of it
+    /// runs.
+    pub fn charge_module_load(&mut self, _bytes: usize) {
+        let _ = self.clock();
+        self.elapsed_ms += MODULE_LOAD_MS;
+    }
+
+    /// Charges what preparing one function body costs the first time it runs:
+    /// V8 compiles it then, and Node pulls in the internals it reaches for.
+    pub fn charge_compile(&mut self, bytes: usize) {
+        let _ = self.clock();
+        self.elapsed_ms += (bytes as f64 / 1024.0) * COMPILE_MS_PER_KIB;
     }
 
     pub fn now_ms(&mut self) -> f64 {
