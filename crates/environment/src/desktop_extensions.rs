@@ -135,6 +135,8 @@ impl Environment {
             (_, "maps") => "Maps",
             (_, "weather") => "Weather",
             (_, "code") => "Visual Studio Code",
+            (Some(DesktopTheme::Windows), "kicad") => "KiCad 8.0",
+            (_, "kicad") => "KiCad",
             (_, "paint") => "Paint",
             (_, "preview") => "Preview",
             (_, "pixelmator") => "Pixelmator Pro",

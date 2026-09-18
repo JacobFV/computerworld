@@ -104,6 +104,7 @@ export default {
         "music",
         "maps",
         "weather",
+        "kicad",
         "preview",
         "pixelmator"
       ],
@@ -148,6 +149,7 @@ export default {
         "music",
         "maps",
         "weather",
+        "kicad",
         "paint"
       ],
       "packages": [
@@ -191,6 +193,7 @@ export default {
         "music",
         "maps",
         "weather",
+        "kicad",
         "gimp",
         "pinta"
       ],
@@ -29450,6 +29453,13 @@ export default {
         "kind": "native",
         "url": "",
         "icon": "code"
+      },
+      {
+        "id": "kicad",
+        "label": "KiCad",
+        "kind": "native",
+        "url": "",
+        "icon": "kicad"
       },
       {
         "id": "paint",

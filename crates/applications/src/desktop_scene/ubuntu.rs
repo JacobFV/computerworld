@@ -18,12 +18,13 @@ const LIGHT: Color = Color::rgb(246, 246, 246);
 /// Width of the Files sidebar; shared with the Files client area.
 pub const FILES_SIDEBAR: u32 = 180;
 /// Every application this shell can present, in Activities grid order.
-const APPS: [(&str, &str); 20] = [
+const APPS: [(&str, &str); 21] = [
     ("browser", "Firefox"),
     ("files", "Files"),
     ("terminal", "Terminal"),
     ("editor", "Text Editor"),
     ("code", "Visual Studio Code"),
+    ("kicad", "KiCad"),
     ("mail", "Thunderbird Mail"),
     ("calendar", "Calendar"),
     ("chat", "Chat"),
@@ -424,7 +425,7 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
     let cell = ((width - 68 - 100) / columns).min(160);
     let start = centre - columns * cell / 2;
     let query = ctx.search.to_lowercase();
-    for (i, (kind, name)) in APPS
+    let shown: Vec<&(&str, &str)> = APPS
         .iter()
         .filter(|(kind, name)| {
             ctx.installed(kind)
@@ -432,10 +433,18 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
                     || name.to_lowercase().contains(&query)
                     || kind.contains(&query))
         })
-        .enumerate()
-    {
+        .collect();
+    // Rows tighten (down to 104 px, icon and label) before any tile falls off the
+    // foot, since the grid never paginates.
+    let rows = (shown.len() as i32 + columns - 1) / columns;
+    let pitch = if rows > 1 {
+        ((height - 96 - 110 - (top + 20)) / (rows - 1)).clamp(104, 140)
+    } else {
+        140
+    };
+    for (i, (kind, name)) in shown.into_iter().enumerate() {
         let x = start + (i as i32 % columns) * cell;
-        let y = top + 20 + (i as i32 / columns) * 140;
+        let y = top + 20 + (i as i32 / columns) * pitch;
         // Leave the foot of the overview to the workspace switcher.
         if y + 110 > height - 96 {
             break;

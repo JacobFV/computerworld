@@ -51,7 +51,8 @@ with click-to-select and double-click-to-open), `editor`/`text_editor` (saved fr
 and `browser`. The other fourteen are `NativeApp` kinds listed by the `native_apps!`
 macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `chat`, `docs`,
 `notes`, `contacts`, `settings`, `calculator`, `clock`, `photos`, `music`, `maps`,
-`weather` and `code`. Each is backed by a world service or the machine's own files
+`weather`, `code` and `kicad` (plus the image editors). Each is backed by a world
+service or the machine's own files
 rather than a static mock. Browser applications obtain supported pages through simulated DNS,
 networking and HTTP.
 
@@ -97,6 +98,31 @@ themselves from it: bash's `user@host:~/dir$` (GNOME Terminal's title is
 `user@host: ~/dir`), zsh's `user@host dir %` on a Mac (Terminal's title is
 `user — -zsh`), and PowerShell's `PS C:\path>` (Windows Terminal's tab reads
 "Windows PowerShell").
+
+### KiCad
+
+`kicad` is KiCad 8, installed on the reference world's macOS, Windows and Ubuntu
+desktops (not the phones). Its engine is `crates/eda`, a pure crate: schematic
+capture with connectivity, ERC, KiCad and SPICE netlists and a BOM; a SPICE-class
+simulator (modified nodal analysis, dense LU with partial pivoting, Newton–Raphson with
+junction limiting, gmin and source stepping; diode, BJT, level-1 MOSFET, controlled
+sources; DC operating point and sweep, AC, trapezoidal/backward-Euler transient) whose
+arithmetic avoids platform `libm` so waveforms are bit-identical everywhere; and board
+layout with update from schematic, ratsnest, 45° routing, raster zone fill with thermal
+reliefs, DRC, Gerber RS-274X/Excellon output and SVG plots.
+
+- Each frame is its own window — project manager, Schematic Editor, PCB Editor,
+  Simulator — over one open project; after every action the desktop copies the frame
+  that changed to the others (`NativeApp::share_from`), so a schematic edit is what the
+  board editor's Update PCB and the simulator see.
+- Projects live in `~/Documents/KiCad/<name>/` as `<name>.kicad_pro` (JSON, with the
+  design rules), `.kicad_sch` and `.kicad_pcb` (KiCad 8 S-expressions, file versions
+  20231120 and 20240108) and are read with `ReadFiles`, so a missing schematic or board
+  is a new one rather than an error. Exports go next to them (`.net`, `.cir`, `.csv`,
+  `gerbers/`).
+- The canvases are drag surfaces whose targets carry the view they were painted with,
+  and they follow the pointer with no button down (`NativeApp::hovers`), so the wire,
+  track or symbol being placed is drawn under it.
 
 ### Visual Studio Code
 

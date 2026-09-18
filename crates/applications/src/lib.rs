@@ -1355,8 +1355,55 @@ impl DesktopState {
             ),
             _ => {
                 let clock = self.clock_us;
+                // KiCad keeps its projects under the user's Documents folder.
+                let kicad_home;
+                let argument = if kind == apps::kicad::Kicad::KIND && argument.is_empty() {
+                    kicad_home = format!(
+                        "{}/Documents/KiCad",
+                        self.home_folder().trim_end_matches('/')
+                    );
+                    kicad_home.as_str()
+                } else {
+                    argument
+                };
                 let (mut app, mut effects) = NativeApp::launch(kind, argument, id, clock)
                     .ok_or_else(|| format!("unknown application: {kind}"))?;
+                // One editor of each kind per open project: asking again raises it.
+                if let Some(key) = app.instance_key() {
+                    let existing = self.windows.values().find_map(|w| match &w.state {
+                        AppState::Native(other) if other.instance_key().as_ref() == Some(&key) => {
+                            Some(w.id)
+                        }
+                        _ => None,
+                    });
+                    if let Some(existing) = existing {
+                        self.focus(existing)?;
+                        let window = self.windows.get_mut(&existing).expect("focused window");
+                        let AppState::Native(other) = &mut window.state else {
+                            unreachable!("instance keys belong to native applications")
+                        };
+                        let effects = other.reopen(existing, argument);
+                        return Ok((existing, effects));
+                    }
+                }
+                // A new frame of an application whose windows share one document starts
+                // on that document, not on a fresh load of it.
+                if let Some(link) = app.link_key() {
+                    let sibling = self
+                        .windows
+                        .values()
+                        .filter_map(|w| match &w.state {
+                            AppState::Native(other) if other.link_key() == Some(link) => {
+                                Some(other)
+                            }
+                            _ => None,
+                        })
+                        .max_by_key(|other| other.link_revision());
+                    if let Some(sibling) = sibling {
+                        app.share_from(sibling);
+                        effects = app.reopen(id, argument);
+                    }
+                }
                 // Visual Studio Code keeps its settings under the user's home and opens
                 // `~/project` when it is launched on nothing.
                 if let NativeApp::Code(code) = &mut app {
@@ -1767,6 +1814,11 @@ impl DesktopState {
         depth: u32,
         result: Result<Vec<String>, String>,
     ) -> Result<Vec<AppEffect>, String> {
+        if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
+            if !matches!(app, NativeApp::Code(_)) {
+                return app.tree_listed(id, path, result);
+            }
+        }
         Ok(self.code_mut(id)?.tree_listed(id, path, depth, result))
     }
     /// Files an application asked to read, each with its content or why it failed.
@@ -1776,6 +1828,11 @@ impl DesktopState {
         tag: &str,
         files: Vec<(String, Result<String, String>)>,
     ) -> Result<Vec<AppEffect>, String> {
+        if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
+            if !matches!(app, NativeApp::Code(_)) {
+                return app.files_read(id, tag, files);
+            }
+        }
         Ok(self.code_mut(id)?.files_read(id, tag, files))
     }
     /// A shell session command an application ran finished.
@@ -1796,6 +1853,11 @@ impl DesktopState {
     ) -> Result<Vec<AppEffect>, String> {
         if let Ok(code) = self.code_mut(id) {
             return Ok(code.written(id, path, content));
+        }
+        if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
+            if app.written(path) {
+                return Ok(vec![]);
+            }
         }
         self.file_saved(id, content).map(|()| vec![])
     }
@@ -1917,6 +1979,72 @@ impl DesktopState {
             moved: false,
         });
         Ok(effects)
+    }
+    /// Whether `target` inside window `id` tracks a pointer that is merely passing over.
+    pub fn app_hovers(&self, id: u64, target: &str) -> bool {
+        matches!(
+            self.windows.get(&id).map(|w| &w.state),
+            Some(AppState::Native(app)) if app.hovers(target)
+        )
+    }
+    /// The pointer passed over a hover surface, `x`/`y` relative to its top-left.
+    /// Returns whether the application's view changed.
+    pub fn app_hover(&mut self, id: u64, target: &str, x: i32, y: i32) -> bool {
+        match self.windows.get_mut(&id).map(|w| &mut w.state) {
+            Some(AppState::Native(app)) => app.hover(target, x, y),
+            _ => false,
+        }
+    }
+    /// The newest revision of each shared document, and whether any window lags it.
+    fn linked_newest(&self) -> Vec<(u64, &'static str, u64)> {
+        let mut newest: BTreeMap<&'static str, (u64, u64)> = BTreeMap::new();
+        for w in self.windows.values() {
+            if let AppState::Native(app) = &w.state {
+                if let Some(key) = app.link_key() {
+                    let rev = app.link_revision();
+                    let entry = newest.entry(key).or_insert((rev, w.id));
+                    if rev > entry.0 {
+                        *entry = (rev, w.id);
+                    }
+                }
+            }
+        }
+        newest
+            .into_iter()
+            .map(|(key, (rev, id))| (id, key, rev))
+            .collect()
+    }
+    /// Whether some window shows an older copy of a document another window changed.
+    pub fn needs_settle(&self) -> bool {
+        let newest = self.linked_newest();
+        self.windows.values().any(|w| match &w.state {
+            AppState::Native(app) => app.link_key().is_some_and(|key| {
+                newest
+                    .iter()
+                    .any(|(_, k, rev)| *k == key && app.link_revision() < *rev)
+            }),
+            _ => false,
+        })
+    }
+    /// Bring every window that shares a document up to the newest copy of it, so an
+    /// edit made in one frame shows in every other frame of that application.
+    pub fn settle_linked(&mut self) {
+        for (source, key, rev) in self.linked_newest() {
+            let Some(AppState::Native(from)) = self.windows.get(&source).map(|w| w.state.clone())
+            else {
+                continue;
+            };
+            for w in self.windows.values_mut() {
+                if w.id == source {
+                    continue;
+                }
+                if let AppState::Native(app) = &mut w.state {
+                    if app.link_key() == Some(key) && app.link_revision() < rev {
+                        app.share_from(&from);
+                    }
+                }
+            }
+        }
     }
     /// Whether the pointer is captured by an application drag surface.
     pub fn app_captured(&self) -> bool {

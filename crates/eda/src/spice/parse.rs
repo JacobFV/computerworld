@@ -28,9 +28,16 @@ fn tokenize(text: &str) -> Vec<String> {
 /// Physical lines to cards: the title, comments and continuations resolved.
 fn cards(text: &str) -> (String, Vec<Card>) {
     let mut lines = text.lines().enumerate();
+    // The first line is the title; KiCad writes it as a `.title` card.
     let title = lines
         .next()
-        .map(|(_, l)| l.trim().to_owned())
+        .map(|(_, l)| {
+            let l = l.trim();
+            match l.get(..7) {
+                Some(head) if head.eq_ignore_ascii_case(".title ") => l[7..].trim().to_owned(),
+                _ => l.to_owned(),
+            }
+        })
         .unwrap_or_default();
     let mut out: Vec<Card> = Vec::new();
     let mut in_control = false;

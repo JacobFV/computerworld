@@ -33,8 +33,12 @@ const APPS: [&str; 22] = [
     "weather",
     "code",
 ];
-/// Applications only one platform ships: each has artwork in that platform's set.
-const PLATFORM_APPS: [(&str, &str); 6] = [
+/// Applications only some platforms ship: each has artwork in those platforms' sets.
+/// KiCad is a desktop program, so the phones have no icon for it.
+const PLATFORM_APPS: [(&str, &str); 9] = [
+    ("macos", "kicad"),
+    ("windows", "kicad"),
+    ("ubuntu", "kicad"),
     ("windows", "paint"),
     ("macos", "preview"),
     ("macos", "pixelmator"),

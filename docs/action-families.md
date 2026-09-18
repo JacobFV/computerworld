@@ -216,10 +216,40 @@ character is a keystroke (brackets and quotes close and are typed over, `Enter` 
 indentation); a longer `keyboard.v1 type` is inserted as written, the way a paste is, so
 its own indentation is not indented again.
 
+KiCad controls (kind `kicad`), reached as `window:<id>:content:<target>`. KiCad opens one
+window per frame — project manager, Schematic Editor, PCB Editor, Simulator — all over
+the one open project. A control whose command cannot run now is painted disabled with
+the reason; while a dialog is open only its own controls act:
+
+| Target | Effect |
+|---|---|
+| `kicad:menu:<title>` | Open or close a menu of the frame's menu bar (`File`, `Edit`, `View`, `Place`, `Route`, `Inspect`, `Tools`, `Simulation`, `Help`) |
+| `kicad:pm:new`, `kicad:pm:open`, `kicad:pm:close`, `kicad:pm:refresh`, `kicad:pm:folder` | Project manager: New Project and Open Project dialogs over `~/Documents/KiCad`, close the project, re-list its folder, show it in the file manager |
+| `kicad:pm:launch:<sch\|pcb>`, `kicad:pm:file:<i>` | Open the Schematic or PCB Editor (or raise it); select a project tree row — a double click opens a `.kicad_sch`/`.kicad_pcb` in its editor |
+| `kicad:canvas:sch:<x0>:<y0>:<zoom>:<w>:<h>` | The schematic sheet. The arguments are the view it was painted with (mils at the left/top edge, pixels per 1000 mils, canvas size). A drag surface: `pointer.v1 down`/`move`/`up` drive the current tool (select, box-select and drag-move with the select tool), a `click` is a press and release at one point, `move` with no button down draws the wire or symbol being placed under the pointer, and a `double_click` finishes a wire or opens a symbol's or label's properties |
+| `kicad:sch:tool:<select\|symbol\|power\|wire\|label\|global\|noconnect\|junction>` | Schematic tools. Symbol and power open the symbol chooser; a wire ends on a pin or wire, with a double click, or with `End` |
+| `kicad:sch:<save\|undo\|redo\|rotate\|mirror-x\|mirror-y\|delete\|properties>` | Edit commands on the selection (keys `Ctrl+S`, `Ctrl+Z`/`Ctrl+Y`, `R`, `X`, `Y`, `Del`, `E`) |
+| `kicad:sch:zoom:<in\|out\|fit\|objects>[:<view>]`, `kicad:sch:<grid\|units\|posture\|auto-annotate>` | View: zoom about the canvas centre (`F1`/`F2` zoom about the pointer, `Home`, `Ctrl+Home`); grid, display units, wire posture and automatic annotation toggles |
+| `kicad:sch:<annotate\|erc\|netlist\|bom>` | Annotate Schematic, Electrical Rules Checker, Export Netlist (KiCad `.net` or SPICE `.cir`) and Generate BOM (`.csv`) dialogs |
+| `kicad:sch:<simulator\|update-pcb\|pcb>` | Open the Simulator; Update PCB from Schematic (raises the PCB Editor with its update dialog); switch to the PCB Editor |
+| `kicad:canvas:pcb:<x0>:<y0>:<zoom>:<w>:<h>` | The board, in micrometres and pixels per millimetre; the same pointer contract as the schematic canvas. The route tool starts on a pad or track, adds 45° corners on clicks and ends on a pad or track of the same net (or with a double click, `End`); `V` while routing drops a via and changes layer |
+| `kicad:pcb:tool:<select\|route\|via\|zone\|line\|rect>` | PCB tools; lines and rectangles are drawn on the active layer (a rectangle on `Edge.Cuts` is the board outline); a zone closes on its first corner or a double click and asks for its net, layer and clearance |
+| `kicad:pcb:layer:<layer>`, `kicad:pcb:eye:<layer>` | Appearance panel: make a layer active, show or hide it |
+| `kicad:pcb:<save\|undo\|redo\|rotate\|flip\|delete\|width\|grid\|posture\|ratsnest\|fill\|unfill>` | Edit and view commands (keys `R`, `F`, `Del`, `W`, `/`, `B`, `Ctrl+B`, `X` for the router, `PageUp`/`PageDown` for the copper layer) |
+| `kicad:pcb:zoom:<in\|out\|fit>[:<view>]`, `kicad:pcb:<update\|drc\|plot\|drill\|setup\|schematic>` | Zoom; Update PCB from Schematic, Design Rules Checker, Plot (Gerber RS-274X or SVG), Generate Drill Files (Excellon), Board Setup (design rules) dialogs; switch to the schematic |
+| `kicad:sim:<run\|settings\|probe\|signals>`, `kicad:sim:cursor:<0\|1>`, `kicad:sim:toggle:<signal>` | Simulator: run, the analysis dialog (operating point, DC sweep, AC, transient), probe (arms the schematic's probe tool: a click on a wire or pin plots its voltage), Add Signals, show/hide a cursor, take a signal off the plot |
+| `kicad:canvas:plot:<x0>:<x1>:<w>:<lin\|log>` | The plot area: a drag moves the nearest cursor along the x axis |
+| `kicad:dlg:<ok\|cancel>` and the dialog's own `kicad:dlg:<command>[:<arg>]`, `kicad:field:<name>` | Dialog buttons, list rows and check boxes; a field click focuses it for `keyboard.v1 type` (`Backspace`, `Enter` for OK, `Escape` to cancel) |
+| `kicad:about` | Help ▸ About KiCad |
+
+Typed letters with no dialog field focused are the frame's hotkeys (`W` wire, `A` symbol,
+`P` power, `L` label, `Q` no-connect, `J` junction in the schematic; `R` run and `P`
+probe in the simulator).
+
 `kind` accepts `text_editor` as an alias for `editor` and `file_manager` for
 `files`. Built-in window kinds are `browser`, `files`, `editor`, `terminal`, plus
 the native applications (`calendar`, `mail`, `chat`, `docs`, `notes`, `contacts`,
-`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, and the image
+`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, `kicad`, and the image
 editors `paint`, `preview`, `pixelmator`, `gimp`, `pinta`, `sketchbook`) listed by the
 `native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also
 declare `desktop_apps` metadata aliases that launch a browser window at a fixed URL.

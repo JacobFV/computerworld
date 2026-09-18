@@ -34,6 +34,7 @@ proptest.workspace = true
 cw-network = { path = "../network" }
 cw-applications = { path = "../applications" }
 cw-raster = { path = "../raster" }
+cw-eda = { path = "../eda" }
 png = "0.17"
 
 [[example]]

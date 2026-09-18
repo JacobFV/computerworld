@@ -133,6 +133,7 @@ name = "computerworld"
 version = "0.1.0-alpha.2"
 dependencies = [
  "cw-applications",
+ "cw-eda",
  "cw-environment",
  "cw-kernel",
  "cw-network",
@@ -191,6 +192,7 @@ dependencies = [
 name = "cw-applications"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-eda",
  "cw-protocol",
  "cw-raster",
  "cw-scene",
