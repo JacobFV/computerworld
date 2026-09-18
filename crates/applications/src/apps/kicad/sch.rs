@@ -1,6 +1,8 @@
-//! The Schematic Editor: a sheet with grid and title block, symbols from the library,
-//! wires with junctions, labels, annotation, ERC, netlists, BOM, and the way to the
-//! board editor and the simulator.
+//! The Schematic Editor: a sheet with grid and title block, symbols from the library
+//! (and the project's own libraries), wires, buses and bus entries with junctions,
+//! labels (local, global, hierarchical), hierarchical sheets with their pins and the
+//! navigation between them, annotation, ERC, netlists, BOM, and the way to the board
+//! editor and the simulator.
 use super::draw::{self, Cv};
 use super::widgets::{self as w, chrome, MenuItem};
 use super::{act, icons, live_items, Dialog, Drag, Kicad, View};
@@ -10,19 +12,22 @@ use cw_eda::connectivity;
 use cw_eda::erc;
 use cw_eda::geom::{Pt, Rect as WRect, Xf};
 use cw_eda::netlist;
-use cw_eda::schematic::{ortho, Item, LabelKind, GRID, SHEET_H, SHEET_W};
-use cw_eda::symbols;
+use cw_eda::schematic::{
+    global_id, ortho, Item, LabelKind, Schematic, SheetPin, GRID, SHEET_H, SHEET_W,
+};
+use cw_eda::symbols::{self, PinType, Spice};
 use cw_scene::{Color, Rect};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SchUi {
-    /// `select`, `symbol`, `power`, `wire`, `label`, `global`, `noconnect`, `junction`.
+    /// `select`, `symbol`, `power`, `wire`, `bus`, `entry`, `label`, `global`, `hlabel`,
+    /// `noconnect`, `junction`, `sheet`, `sheetpin`.
     pub tool: String,
     pub selection: Vec<Item>,
     /// A library symbol attached to the cursor, waiting to be placed.
     pub placing: Option<(String, Xf)>,
-    /// Corner points of the wire being drawn.
+    /// Corner points of the wire or bus being drawn.
     pub wire: Vec<Pt>,
     pub vertical_first: bool,
     /// 0 mm, 1 mils, 2 inches.
@@ -30,10 +35,27 @@ pub struct SchUi {
     pub grid_hidden: bool,
     /// Annotation of newly placed symbols is on unless turned off.
     pub no_auto_annotate: bool,
+    /// The sheet being edited, as sheet-symbol ids from the root (empty: the root).
+    #[serde(default)]
+    pub path: Vec<u64>,
+    /// First corner of a sheet symbol being drawn.
+    #[serde(default)]
+    pub sheet_start: Option<Pt>,
+    /// Which way a new bus entry leans, in quarter turns.
+    #[serde(default)]
+    pub entry_dir: u8,
 }
 
 const MIN_ZOOM: i64 = 20;
 const MAX_ZOOM: i64 = 2400;
+pub(super) const HIER_W: u32 = 180;
+/// The four ways a bus entry leans, from its bus end.
+const ENTRY_DIRS: [Pt; 4] = [
+    Pt::new(100, 100),
+    Pt::new(100, -100),
+    Pt::new(-100, -100),
+    Pt::new(-100, 100),
+];
 
 pub(super) fn units_label(u: u8) -> &'static str {
     match u {
@@ -50,13 +72,40 @@ pub(super) fn show(v: i64, u: u8) -> String {
         _ => format!("{:.4}", v as f64 * 0.0254),
     }
 }
+/// The keyword a label or pin shape has in KiCad's dialogs and files.
+pub(super) fn shape_name(t: PinType) -> &'static str {
+    match t {
+        PinType::Input => "input",
+        PinType::Output => "output",
+        PinType::TriState => "tri_state",
+        PinType::Passive => "passive",
+        _ => "bidirectional",
+    }
+}
+pub(super) fn parse_shape(s: &str) -> Option<PinType> {
+    Some(match s {
+        "input" => PinType::Input,
+        "output" => PinType::Output,
+        "bidirectional" => PinType::Bidirectional,
+        "tri_state" => PinType::TriState,
+        "passive" => PinType::Passive,
+        _ => return None,
+    })
+}
+pub(super) const SHAPES: [&str; 5] = ["input", "output", "bidirectional", "tri_state", "passive"];
 
-fn canvas(width: u32, height: u32) -> Rect {
+/// Whether the design has sub-sheets, so the hierarchy navigator is shown.
+pub(super) fn hierarchical(k: &Kicad) -> bool {
+    !k.session.schematic.sheets.is_empty() || !k.ui.sch.path.is_empty()
+}
+
+pub(super) fn canvas_for(k: &Kicad, width: u32, height: u32) -> Rect {
     let top = (w::MENU_H + w::TOOL_H) as i32;
+    let panel = if hierarchical(k) { HIER_W + 1 } else { 0 };
     Rect::new(
-        w::SIDE_W as i32 + 1,
+        w::SIDE_W as i32 + 1 + panel as i32,
         top,
-        width.saturating_sub(2 * w::SIDE_W + 2),
+        width.saturating_sub(2 * w::SIDE_W + 2 + panel),
         height.saturating_sub(w::MENU_H + w::TOOL_H + w::STATUS_H),
     )
 }
@@ -68,6 +117,30 @@ impl Kicad {
         } else {
             &self.ui.sch.tool
         }
+    }
+    /// The sheet the editor shows (the root when the path no longer leads anywhere).
+    pub(super) fn sheet(&self) -> &Schematic {
+        self.session
+            .schematic
+            .at_path(&self.ui.sch.path)
+            .unwrap_or(&self.session.schematic)
+    }
+    pub(super) fn sheet_mut(&mut self) -> &mut Schematic {
+        if self.session.schematic.at_path(&self.ui.sch.path).is_none() {
+            self.ui.sch.path.clear();
+        }
+        let path = self.ui.sch.path.clone();
+        self.session
+            .schematic
+            .at_path_mut(&path)
+            .expect("the path was just checked")
+    }
+    /// This sheet's instance identity, for looking its items up in the connectivity.
+    fn sheet_uid(&self) -> u32 {
+        self.session.schematic.uid_at(&self.ui.sch.path)
+    }
+    pub(super) fn sheet_path_name(&self) -> String {
+        self.session.schematic.path_name(&self.ui.sch.path)
     }
     /// The view the canvas paints with: the stored one, or the page fitted.
     pub(super) fn sch_view(&self, cw: u32, ch: u32) -> View {
@@ -84,25 +157,26 @@ impl Kicad {
         self.session.erc = None;
     }
     fn selected(&self) -> Vec<Item> {
-        live_items(&self.session.schematic, &self.ui.sch.selection)
+        live_items(self.sheet(), &self.ui.sch.selection)
     }
     fn hit_tolerance(&self) -> i64 {
         (4000 / self.ui.view.zoom.max(1)).max(15)
     }
     /// Net name under a point: a wire, pin or label there.
     fn net_at(&self, at: Pt) -> Option<String> {
-        let s = &self.session.schematic;
-        let conn = connectivity::analyze(s);
+        let s = self.sheet();
+        let uid = self.sheet_uid();
+        let conn = connectivity::analyze(&self.session.schematic);
         let tol = self.hit_tolerance();
         for item in s.hit(at, tol) {
             match item {
                 Item::Wire(id) => {
-                    if let Some(i) = conn.wire_net.get(&id) {
+                    if let Some(i) = conn.wire_net.get(&global_id(uid, id)) {
                         return Some(conn.nets[*i].name.clone());
                     }
                 }
                 Item::Label(id) => {
-                    if let Some(i) = conn.label_net.get(&id) {
+                    if let Some(i) = conn.label_net.get(&global_id(uid, id)) {
                         return Some(conn.nets[*i].name.clone());
                     }
                 }
@@ -110,7 +184,7 @@ impl Kicad {
                     let sym = s.symbol(id)?;
                     for (pin, p) in sym.pins() {
                         if p.manhattan(at) <= tol * 2 {
-                            if let Some(n) = conn.net_of_pin(id, pin.number) {
+                            if let Some(n) = conn.net_of_pin(global_id(uid, id), &pin.number) {
                                 return Some(n.name.clone());
                             }
                         }
@@ -121,9 +195,10 @@ impl Kicad {
         }
         None
     }
-    /// Whether a point is somewhere a wire can end: a pin, a wire, a label, a junction.
+    /// Whether a point is somewhere a wire can end: a pin, a wire, a label, a junction,
+    /// a sheet pin or a bus entry.
     fn connects_at(&self, at: Pt) -> bool {
-        let s = &self.session.schematic;
+        let s = self.sheet();
         s.connection_points().contains(&at)
             || s.wires
                 .iter()
@@ -135,17 +210,28 @@ impl Kicad {
         if pts.len() < 2 {
             return;
         }
+        let bus = self.tool() == "bus";
         self.sch_edit();
+        let sheet = self.sheet_mut();
         for pair in pts.windows(2) {
-            self.session.schematic.add_wire(pair[0], pair[1]);
+            if bus {
+                sheet.add_bus(pair[0], pair[1]);
+            } else {
+                sheet.add_wire(pair[0], pair[1]);
+            }
         }
-        self.session.schematic.cleanup_junctions();
-        self.ui.status = format!("Wire of {} segment(s) added", pts.len() - 1);
+        sheet.cleanup_junctions();
+        self.ui.status = format!(
+            "{} of {} segment(s) added",
+            if bus { "Bus" } else { "Wire" },
+            pts.len() - 1
+        );
     }
     fn set_tool(&mut self, tool: &str) {
         self.ui.sch.tool = tool.to_owned();
         self.ui.sch.wire.clear();
         self.ui.sch.placing = None;
+        self.ui.sch.sheet_start = None;
         self.ui.drag = None;
         if tool != "select" {
             self.ui.sch.selection.clear();
@@ -158,24 +244,23 @@ impl Kicad {
         let Some((lib_id, xf)) = self.ui.sch.placing.take() else {
             return;
         };
+        let Some((lib, local)) = self.session.find_symbol(&lib_id) else {
+            self.ui.status = format!("{lib_id} is not in any library");
+            return;
+        };
         self.sch_edit();
-        match self.session.schematic.place(&lib_id, at, xf) {
-            Ok(id) => {
-                if !self.ui.sch.no_auto_annotate {
-                    self.session.schematic.annotate(true, false);
-                }
-                self.session.schematic.cleanup_junctions();
-                let r = self
-                    .session
-                    .schematic
-                    .symbol(id)
-                    .map(|s| s.reference().to_owned())
-                    .unwrap_or_default();
-                self.ui.status = format!("Placed {r} ({lib_id})");
-                self.ui.sch.selection = vec![Item::Symbol(id)];
-            }
-            Err(e) => self.ui.status = e,
+        let id = self.sheet_mut().place_symbol(&lib, local, at, xf);
+        if !self.ui.sch.no_auto_annotate {
+            self.session.schematic.annotate(true, false);
         }
+        self.sheet_mut().cleanup_junctions();
+        let r = self
+            .sheet()
+            .symbol(id)
+            .map(|s| s.reference().to_owned())
+            .unwrap_or_default();
+        self.ui.status = format!("Placed {r} ({lib_id})");
+        self.ui.sch.selection = vec![Item::Symbol(id)];
     }
     fn probe(&mut self, at: Pt) -> Result<Vec<AppEffect>, String> {
         let net = self
@@ -187,6 +272,20 @@ impl Kicad {
         }
         self.ui.status = format!("Probed {signal}");
         Ok(vec![])
+    }
+    fn open_label(&mut self, pos: Pt, kind: LabelKind) {
+        self.ui.dialog = Some(Dialog::Label {
+            pos,
+            kind,
+            shape: if kind == LabelKind::Local {
+                PinType::Passive
+            } else {
+                PinType::Input
+            },
+            text: String::new(),
+            edit: None,
+        });
+        self.ui.focus = Some("text".into());
     }
 
     pub(super) fn sch_pointer(
@@ -206,7 +305,7 @@ impl Kicad {
         match self.tool().to_owned().as_str() {
             "select" => match phase {
                 PointerPhase::Down => {
-                    let hits = self.session.schematic.hit(at, self.hit_tolerance());
+                    let hits = self.sheet().hit(at, self.hit_tolerance());
                     match hits.first() {
                         Some(item) => {
                             if !self.ui.sch.selection.contains(item) {
@@ -239,7 +338,7 @@ impl Kicad {
                             let items = self.selected();
                             if d != Pt::default() && !items.is_empty() {
                                 self.sch_edit();
-                                self.session.schematic.move_items(&items, d, true);
+                                self.sheet_mut().move_items(&items, d, true);
                                 self.ui.status = format!("Moved {} item(s)", items.len());
                             } else {
                                 self.ui.status = describe_selection(self);
@@ -249,7 +348,7 @@ impl Kicad {
                             let r = WRect::new(start, at);
                             if r.width() > self.hit_tolerance() || r.height() > self.hit_tolerance()
                             {
-                                self.ui.sch.selection = self.session.schematic.inside(&r);
+                                self.ui.sch.selection = self.sheet().inside(&r);
                             }
                             self.ui.status = describe_selection(self);
                         }
@@ -262,7 +361,7 @@ impl Kicad {
                     Ok(vec![])
                 }
             },
-            "wire" => {
+            "wire" | "bus" => {
                 if phase != PointerPhase::Up {
                     return Ok(vec![]);
                 }
@@ -270,7 +369,10 @@ impl Kicad {
                 match self.ui.sch.wire.last().copied() {
                     None => {
                         self.ui.sch.wire.push(p);
-                        self.ui.status = "Click to add wire corners; click a pin or wire, or double-click, to finish".into();
+                        self.ui.status = format!(
+                            "Click to add {} corners; click a pin, wire or entry, or double-click, to finish",
+                            if self.tool() == "bus" { "bus" } else { "wire" }
+                        );
                     }
                     Some(last) if last == p => {}
                     Some(last) => {
@@ -285,6 +387,16 @@ impl Kicad {
                 }
                 Ok(vec![])
             }
+            "entry" => {
+                if phase == PointerPhase::Up {
+                    let size = ENTRY_DIRS[(self.ui.sch.entry_dir % 4) as usize];
+                    self.sch_edit();
+                    let id = self.sheet_mut().add_bus_entry(snapped, size);
+                    self.ui.sch.selection = vec![Item::BusEntry(id)];
+                    self.ui.status = "Bus entry added; R turns the next one".into();
+                }
+                Ok(vec![])
+            }
             "symbol" | "power" => {
                 if phase != PointerPhase::Up {
                     return Ok(vec![]);
@@ -296,15 +408,19 @@ impl Kicad {
                 }
                 Ok(vec![])
             }
-            "label" | "global" => {
+            "label" | "global" | "hlabel" => {
                 if phase == PointerPhase::Up {
-                    self.ui.dialog = Some(Dialog::Label {
-                        pos: snapped,
-                        global: self.tool() == "global",
-                        text: String::new(),
-                        edit: None,
-                    });
-                    self.ui.focus = Some("text".into());
+                    let kind = match self.tool() {
+                        "global" => LabelKind::Global,
+                        "hlabel" => LabelKind::Hierarchical,
+                        _ => LabelKind::Local,
+                    };
+                    if kind == LabelKind::Hierarchical && self.ui.sch.path.is_empty() {
+                        return Err(
+                            "hierarchical labels belong in a sub-sheet: enter one first".into()
+                        );
+                    }
+                    self.open_label(snapped, kind);
                 }
                 Ok(vec![])
             }
@@ -312,11 +428,81 @@ impl Kicad {
                 if phase == PointerPhase::Up {
                     self.sch_edit();
                     if self.tool() == "noconnect" {
-                        self.session.schematic.add_no_connect(snapped);
+                        self.sheet_mut().add_no_connect(snapped);
                     } else {
-                        self.session.schematic.add_junction(snapped);
+                        self.sheet_mut().add_junction(snapped);
                     }
                 }
+                Ok(vec![])
+            }
+            "sheet" => {
+                if phase != PointerPhase::Up {
+                    return Ok(vec![]);
+                }
+                match self.ui.sch.sheet_start {
+                    None => {
+                        self.ui.sch.sheet_start = Some(snapped);
+                        self.ui.status = "Click the opposite corner of the sheet".into();
+                    }
+                    Some(a) => {
+                        let r = WRect::new(a, snapped);
+                        if r.width() < 500 || r.height() < 300 {
+                            return Err("a sheet needs at least 500 × 300 mils".into());
+                        }
+                        self.ui.sch.sheet_start = None;
+                        let n = self.session.schematic.sheet_files().len() + 1;
+                        let project = self
+                            .session
+                            .project
+                            .as_ref()
+                            .map(|p| p.name.clone())
+                            .unwrap_or_else(|| "untitled".into());
+                        self.ui.dialog = Some(Dialog::SheetProperties {
+                            edit: None,
+                            pos: r.min,
+                            size: Pt::new(r.width(), r.height()),
+                            fields: vec![
+                                ("Sheet name".into(), format!("Sheet{n}")),
+                                ("Sheet file".into(), format!("{project}-sheet{n}.kicad_sch")),
+                            ],
+                            error: String::new(),
+                        });
+                        self.ui.focus = Some("Sheet name".into());
+                    }
+                }
+                Ok(vec![])
+            }
+            "sheetpin" => {
+                if phase != PointerPhase::Up {
+                    return Ok(vec![]);
+                }
+                let tol = self.hit_tolerance();
+                let sheet = self
+                    .sheet()
+                    .sheets
+                    .iter()
+                    .find(|s| s.rect().inflate(tol).contains(at))
+                    .ok_or("click on the edge of a sheet to add a pin")?;
+                let pos = sheet.edge_point(at);
+                // KiCad offers the sheet's hierarchical labels that have no pin yet.
+                let unplaced = sheet
+                    .contents
+                    .labels
+                    .iter()
+                    .filter(|l| l.kind == LabelKind::Hierarchical)
+                    .find(|l| !sheet.pins.iter().any(|p| p.name == l.text));
+                let (name, shape) = unplaced
+                    .map(|l| (l.text.clone(), l.shape))
+                    .unwrap_or((String::new(), PinType::Input));
+                let id = sheet.id;
+                self.ui.dialog = Some(Dialog::SheetPin {
+                    sheet: id,
+                    pos,
+                    shape,
+                    fields: vec![("Name".into(), name)],
+                    error: String::new(),
+                });
+                self.ui.focus = Some("Name".into());
                 Ok(vec![])
             }
             other => Err(format!("unknown schematic tool {other}")),
@@ -324,7 +510,7 @@ impl Kicad {
     }
     pub(super) fn sch_activate(&mut self, _window: u64) -> Result<Vec<AppEffect>, String> {
         match self.tool() {
-            "wire" => {
+            "wire" | "bus" => {
                 self.finish_wire();
                 Ok(vec![])
             }
@@ -332,17 +518,19 @@ impl Kicad {
                 let sel = self.selected();
                 match sel.as_slice() {
                     [Item::Symbol(id)] => self.open_properties(*id),
+                    // Double-clicking a sheet opens it, as in KiCad.
+                    [Item::Sheet(id)] => self.enter_sheet(*id),
                     [Item::Label(id)] => {
                         let l = self
-                            .session
-                            .schematic
+                            .sheet()
                             .labels
                             .iter()
                             .find(|l| l.id == *id)
                             .ok_or("label not found")?;
                         self.ui.dialog = Some(Dialog::Label {
                             pos: l.pos,
-                            global: l.kind == LabelKind::Global,
+                            kind: l.kind,
+                            shape: l.shape,
                             text: l.text.clone(),
                             edit: Some(l.id),
                         });
@@ -354,6 +542,20 @@ impl Kicad {
             }
         }
     }
+    fn enter_sheet(&mut self, id: u64) -> Result<Vec<AppEffect>, String> {
+        let name = self
+            .sheet()
+            .sheet(id)
+            .map(|s| s.name.clone())
+            .ok_or("sheet not found")?;
+        self.ui.sch.path.push(id);
+        self.ui.sch.selection.clear();
+        self.ui.sch.wire.clear();
+        self.ui.view.fit = true;
+        self.ui.status = format!("Sheet {}", self.sheet_path_name());
+        let _ = name;
+        Ok(vec![])
+    }
     fn open_chooser(&mut self, power: bool) {
         self.ui.dialog = Some(Dialog::Chooser {
             power,
@@ -364,11 +566,7 @@ impl Kicad {
         self.ui.focus = Some("filter".into());
     }
     fn open_properties(&mut self, id: u64) -> Result<Vec<AppEffect>, String> {
-        let s = self
-            .session
-            .schematic
-            .symbol(id)
-            .ok_or("symbol not found")?;
+        let s = self.sheet().symbol(id).ok_or("symbol not found")?;
         self.ui.dialog = Some(Dialog::SymbolProperties {
             id,
             fields: s
@@ -380,9 +578,25 @@ impl Kicad {
             on_board: s.on_board,
             in_bom: s.in_bom,
             dnp: s.dnp,
+            unit: s.unit,
             error: String::new(),
         });
         self.ui.focus = Some("Value".into());
+        Ok(vec![])
+    }
+    fn open_sheet_properties(&mut self, id: u64) -> Result<Vec<AppEffect>, String> {
+        let s = self.sheet().sheet(id).ok_or("sheet not found")?;
+        self.ui.dialog = Some(Dialog::SheetProperties {
+            edit: Some(id),
+            pos: s.pos,
+            size: s.size,
+            fields: vec![
+                ("Sheet name".into(), s.name.clone()),
+                ("Sheet file".into(), s.file.clone()),
+            ],
+            error: String::new(),
+        });
+        self.ui.focus = Some("Sheet name".into());
         Ok(vec![])
     }
     fn transform_selection(&mut self, op: Xf) -> Result<Vec<AppEffect>, String> {
@@ -390,13 +604,18 @@ impl Kicad {
             *xf = xf.then(op);
             return Ok(vec![]);
         }
+        if self.tool() == "entry" && op == Xf::ROT_CCW {
+            self.ui.sch.entry_dir = (self.ui.sch.entry_dir + 1) % 4;
+            return Ok(vec![]);
+        }
         let sel = self.selected();
         if sel.is_empty() {
             return Err("select a symbol or label first".into());
         }
         self.sch_edit();
-        self.session.schematic.transform(&sel, op);
-        self.session.schematic.cleanup_junctions();
+        let sheet = self.sheet_mut();
+        sheet.transform(&sel, op);
+        sheet.cleanup_junctions();
         Ok(vec![])
     }
     fn zoom(&mut self, dir: &str, args: &[&str]) -> Result<Vec<AppEffect>, String> {
@@ -417,7 +636,7 @@ impl Kicad {
             }
             "objects" => {
                 // Zoom to fit what is drawn, not the whole sheet.
-                let s = &self.session.schematic;
+                let s = self.sheet();
                 let mut r: Option<WRect> = None;
                 let mut add = |b: WRect| r = Some(r.map_or(b, |x| x.union(&b)));
                 for sym in &s.symbols {
@@ -428,6 +647,9 @@ impl Kicad {
                 }
                 for l in &s.labels {
                     add(WRect::around(l.pos, 100, 100));
+                }
+                for sh in &s.sheets {
+                    add(sh.rect());
                 }
                 let r = r.ok_or("the sheet is empty")?.inflate(200);
                 self.ui.view = View::fitted(r.min, r.max, cw, ch);
@@ -491,14 +713,15 @@ impl Kicad {
                     return Err("nothing is selected".into());
                 }
                 self.sch_edit();
-                let n = self.session.schematic.delete(&sel);
+                let n = self.sheet_mut().delete(&sel);
                 self.ui.sch.selection.clear();
                 self.ui.status = format!("Deleted {n} item(s)");
                 Ok(vec![])
             }
             "properties" => match self.selected().as_slice() {
                 [Item::Symbol(id)] => self.open_properties(*id),
-                _ => Err("select one symbol to edit its properties".into()),
+                [Item::Sheet(id)] => self.open_sheet_properties(*id),
+                _ => Err("select one symbol or sheet to edit its properties".into()),
             },
             "tool" => {
                 let tool = parts.get(1).copied().unwrap_or("select");
@@ -508,17 +731,67 @@ impl Kicad {
                         | "symbol"
                         | "power"
                         | "wire"
+                        | "bus"
+                        | "entry"
                         | "label"
                         | "global"
+                        | "hlabel"
                         | "noconnect"
                         | "junction"
+                        | "sheet"
+                        | "sheetpin"
                 ) {
                     return Err(format!("unknown tool {tool}"));
+                }
+                if tool == "hlabel" && self.ui.sch.path.is_empty() {
+                    return Err("hierarchical labels belong in a sub-sheet: enter one first".into());
+                }
+                if tool == "sheetpin" && self.sheet().sheets.is_empty() {
+                    return Err("this sheet has no sheet symbols to add pins to".into());
                 }
                 self.set_tool(tool);
                 if matches!(tool, "symbol" | "power") {
                     self.open_chooser(tool == "power");
                 }
+                Ok(vec![])
+            }
+            "enter" => {
+                let id = match parts.get(1).and_then(|v| v.parse().ok()) {
+                    Some(id) => id,
+                    None => match self.selected().as_slice() {
+                        [Item::Sheet(id)] => *id,
+                        _ => return Err("select a sheet to enter it".into()),
+                    },
+                };
+                self.enter_sheet(id)
+            }
+            "leave" => {
+                if self.ui.sch.path.pop().is_none() {
+                    return Err("this is the root sheet".into());
+                }
+                self.ui.sch.selection.clear();
+                self.ui.sch.wire.clear();
+                self.ui.view.fit = true;
+                self.ui.status = format!("Sheet {}", self.sheet_path_name());
+                Ok(vec![])
+            }
+            "goto" => {
+                let i: usize = parts
+                    .get(1)
+                    .and_then(|v| v.parse().ok())
+                    .ok_or("bad sheet")?;
+                let path = self
+                    .session
+                    .schematic
+                    .sheets_flat()
+                    .get(i)
+                    .map(|x| x.1.clone())
+                    .ok_or("sheet not found")?;
+                self.ui.sch.path = path;
+                self.ui.sch.selection.clear();
+                self.ui.sch.wire.clear();
+                self.ui.view.fit = true;
+                self.ui.status = format!("Sheet {}", self.sheet_path_name());
                 Ok(vec![])
             }
             "units" => {
@@ -563,6 +836,8 @@ impl Kicad {
             "update-pcb" => self.launch_frame(window, "pcb-update"),
             "pcb" => self.launch_frame(window, "pcb"),
             "simulator" => self.launch_frame(window, "sim"),
+            "symed" => self.launch_frame(window, "symed"),
+            "fped" => self.launch_frame(window, "fped"),
             other => Err(format!("unknown schematic command {other}")),
         }
     }
@@ -576,18 +851,23 @@ impl Kicad {
             "Ctrl+z" | "Meta+z" => "undo",
             "Ctrl+y" | "Ctrl+Shift+z" | "Meta+Shift+z" => "redo",
             "w" | "W" => "tool:wire",
+            "b" | "B" => "tool:bus",
+            "z" | "Z" => "tool:entry",
             "a" | "A" => "tool:symbol",
             "p" | "P" => "tool:power",
             "l" | "L" => "tool:label",
             "Ctrl+l" | "Meta+l" => "tool:global",
+            "h" | "H" => "tool:hlabel",
+            "s" | "S" => "tool:sheet",
             "q" | "Q" => "tool:noconnect",
             "j" | "J" => "tool:junction",
+            "Alt+Backspace" => "leave",
             "/" => "posture",
             "Home" => "zoom:fit",
             "Ctrl+Home" | "Meta+Home" => "zoom:objects",
             "F1" | "+" | "=" => "zoom:in",
             "F2" | "-" => "zoom:out",
-            "End" | "Enter" if self.tool() == "wire" => {
+            "End" | "Enter" if matches!(self.tool(), "wire" | "bus") => {
                 self.finish_wire();
                 return Ok(vec![]);
             }
@@ -595,9 +875,13 @@ impl Kicad {
                 if self.session.sim.probing {
                     self.session.sim.probing = false;
                     self.ui.status = "Probe tool ended".into();
-                } else if !self.ui.sch.wire.is_empty() || self.ui.sch.placing.is_some() {
+                } else if !self.ui.sch.wire.is_empty()
+                    || self.ui.sch.placing.is_some()
+                    || self.ui.sch.sheet_start.is_some()
+                {
                     self.ui.sch.wire.clear();
                     self.ui.sch.placing = None;
+                    self.ui.sch.sheet_start = None;
                 } else if self.tool() != "select" {
                     self.set_tool("select");
                 } else {
@@ -626,7 +910,10 @@ impl Kicad {
                 mut collapsed,
             } => match cmd {
                 "pick" => {
-                    let lib = symbols::find(arg).ok_or("symbol not in the library")?;
+                    let (lib, _) = self
+                        .session
+                        .find_symbol(arg)
+                        .ok_or("symbol not in the library")?;
                     if lib.power != power && power {
                         return Err("choose a power symbol".into());
                     }
@@ -673,15 +960,36 @@ impl Kicad {
                 mut on_board,
                 mut in_bom,
                 mut dnp,
+                mut unit,
                 ..
             } => match cmd {
-                "toggle" => {
-                    match arg {
-                        "exclude_sim" => exclude_sim = !exclude_sim,
-                        "on_board" => on_board = !on_board,
-                        "in_bom" => in_bom = !in_bom,
-                        "dnp" => dnp = !dnp,
-                        other => return Err(format!("unknown option {other}")),
+                "toggle" | "footprint" | "unit" => {
+                    match (cmd, arg) {
+                        ("toggle", "exclude_sim") => exclude_sim = !exclude_sim,
+                        ("toggle", "on_board") => on_board = !on_board,
+                        ("toggle", "in_bom") => in_bom = !in_bom,
+                        ("toggle", "dnp") => dnp = !dnp,
+                        ("toggle", other) => return Err(format!("unknown option {other}")),
+                        ("footprint", fp) => {
+                            if !fp.is_empty() && self.session.find_footprint(fp).is_none() {
+                                return Err("footprint not in any library".into());
+                            }
+                            if let Some(f) = fields.iter_mut().find(|(k, _)| k == "Footprint") {
+                                f.1 = fp.to_owned();
+                            }
+                        }
+                        (_, n) => {
+                            let units = self
+                                .sheet()
+                                .symbol(id)
+                                .and_then(|s| s.lib())
+                                .map_or(1, |l| l.units);
+                            let n: u32 = n.parse().map_err(|_| "bad unit")?;
+                            if n == 0 || n > units {
+                                return Err(format!("the part has {units} unit(s)"));
+                            }
+                            unit = n;
+                        }
                     }
                     self.ui.dialog = Some(Dialog::SymbolProperties {
                         id,
@@ -690,26 +998,7 @@ impl Kicad {
                         on_board,
                         in_bom,
                         dnp,
-                        error: String::new(),
-                    });
-                    Ok(vec![])
-                }
-                "footprint" => {
-                    let fp = if arg.is_empty() || cw_eda::footprints::find(arg).is_some() {
-                        arg.to_owned()
-                    } else {
-                        return Err("footprint not in the library".into());
-                    };
-                    if let Some(f) = fields.iter_mut().find(|(k, _)| k == "Footprint") {
-                        f.1 = fp;
-                    }
-                    self.ui.dialog = Some(Dialog::SymbolProperties {
-                        id,
-                        fields,
-                        exclude_sim,
-                        on_board,
-                        in_bom,
-                        dnp,
+                        unit,
                         error: String::new(),
                     });
                     Ok(vec![])
@@ -720,12 +1009,22 @@ impl Kicad {
                         .find(|(k, _)| k == "Reference")
                         .map(|(_, v)| v.trim().to_owned())
                         .unwrap_or_default();
+                    let spice = self
+                        .sheet()
+                        .symbol(id)
+                        .and_then(|s| s.lib())
+                        .map(|l| l.spice);
+                    let params = fields
+                        .iter()
+                        .find(|(k, _)| k == "Sim.Params")
+                        .map(|(_, v)| v.trim().to_owned())
+                        .unwrap_or_default();
                     let error = if reference.is_empty() {
-                        Some("A reference designator is required.")
+                        Some("A reference designator is required.".to_owned())
                     } else if reference.contains(char::is_whitespace) {
-                        Some("Reference designators cannot contain spaces.")
+                        Some("Reference designators cannot contain spaces.".to_owned())
                     } else {
-                        None
+                        spice.and_then(|s| check_model(s, &params).err())
                     };
                     if let Some(e) = error {
                         self.ui.dialog = Some(Dialog::SymbolProperties {
@@ -735,16 +1034,13 @@ impl Kicad {
                             on_board,
                             in_bom,
                             dnp,
-                            error: e.into(),
+                            unit,
+                            error: e,
                         });
                         return Ok(vec![]);
                     }
                     self.sch_edit();
-                    let s = self
-                        .session
-                        .schematic
-                        .symbol_mut(id)
-                        .ok_or("symbol not found")?;
+                    let s = self.sheet_mut().symbol_mut(id).ok_or("symbol not found")?;
                     for (k, v) in &fields {
                         s.set_field(k, v.trim());
                     }
@@ -752,6 +1048,8 @@ impl Kicad {
                     s.on_board = on_board;
                     s.in_bom = in_bom;
                     s.dnp = dnp;
+                    s.unit = unit.max(1);
+                    self.sheet_mut().cleanup_junctions();
                     self.ui.status = format!("{reference} updated");
                     self.close_dialog();
                     Ok(vec![])
@@ -760,35 +1058,47 @@ impl Kicad {
             },
             Dialog::Label {
                 pos,
-                global,
+                kind,
+                mut shape,
                 text,
                 edit,
             } => match cmd {
+                "shape" => {
+                    shape = parse_shape(arg).ok_or("unknown shape")?;
+                    self.ui.dialog = Some(Dialog::Label {
+                        pos,
+                        kind,
+                        shape,
+                        text,
+                        edit,
+                    });
+                    Ok(vec![])
+                }
                 "ok" => {
                     let text = text.trim().to_owned();
                     if text.is_empty() {
                         return Err("a label needs text".into());
                     }
+                    if text.contains('[') && cw_eda::schematic::bus_members(&text).is_none() {
+                        return Err(format!(
+                            "'{text}' is not a bus name: write a vector as NAME[0..7]"
+                        ));
+                    }
                     self.sch_edit();
                     match edit {
                         Some(id) => {
-                            if let Some(l) = self
-                                .session
-                                .schematic
-                                .labels
-                                .iter_mut()
-                                .find(|l| l.id == id)
+                            if let Some(l) = self.sheet_mut().labels.iter_mut().find(|l| l.id == id)
                             {
                                 l.text = text;
+                                l.shape = shape;
                             }
                         }
                         None => {
-                            let kind = if global {
-                                LabelKind::Global
-                            } else {
-                                LabelKind::Local
-                            };
-                            let id = self.session.schematic.add_label(pos, &text, kind);
+                            let sheet = self.sheet_mut();
+                            let id = sheet.add_label(pos, &text, kind);
+                            if let Some(l) = sheet.labels.iter_mut().find(|l| l.id == id) {
+                                l.shape = shape;
+                            }
                             self.ui.sch.selection = vec![Item::Label(id)];
                         }
                     }
@@ -796,6 +1106,149 @@ impl Kicad {
                     Ok(vec![])
                 }
                 other => Err(format!("unknown label command {other}")),
+            },
+            Dialog::SheetProperties {
+                edit,
+                pos,
+                size,
+                fields,
+                ..
+            } => match cmd {
+                "ok" => {
+                    let d = self.ui.dialog.clone().expect("open");
+                    let name = d.value("Sheet name");
+                    let mut file = d.value("Sheet file");
+                    if !file.is_empty() && !file.ends_with(".kicad_sch") {
+                        file.push_str(".kicad_sch");
+                    }
+                    let taken = self
+                        .session
+                        .schematic
+                        .sheet_files()
+                        .iter()
+                        .filter(|f| **f == file)
+                        .count();
+                    let own = edit
+                        .and_then(|id| self.sheet().sheet(id))
+                        .map(|s| s.file == file)
+                        .unwrap_or(false);
+                    let project_file = self
+                        .session
+                        .project
+                        .as_ref()
+                        .map(|p| format!("{}.kicad_sch", p.name))
+                        .unwrap_or_default();
+                    let error = if name.is_empty() {
+                        Some("A sheet needs a name.".to_owned())
+                    } else if name.contains('/') {
+                        Some("A sheet name cannot contain '/'.".to_owned())
+                    } else if file.is_empty() || file.contains('/') {
+                        Some("A sheet file is a file name in the project folder.".to_owned())
+                    } else if file == project_file || (taken > 0 && !own) {
+                        Some(format!(
+                            "{file} is already used by another sheet; reusing a sheet in several places is not supported here"
+                        ))
+                    } else if self
+                        .sheet()
+                        .sheets
+                        .iter()
+                        .any(|s| s.name == name && Some(s.id) != edit)
+                    {
+                        Some(format!("A sheet named '{name}' is already on this sheet."))
+                    } else {
+                        None
+                    };
+                    if let Some(e) = error {
+                        self.ui.dialog = Some(Dialog::SheetProperties {
+                            edit,
+                            pos,
+                            size,
+                            fields,
+                            error: e,
+                        });
+                        return Ok(vec![]);
+                    }
+                    self.sch_edit();
+                    match edit {
+                        Some(id) => {
+                            let s = self.sheet_mut().sheet_mut(id).ok_or("sheet not found")?;
+                            s.name = name.clone();
+                            s.file = file;
+                        }
+                        None => {
+                            let id = self.sheet_mut().add_sheet(pos, size, &name, &file)?;
+                            self.ui.sch.selection = vec![Item::Sheet(id)];
+                        }
+                    }
+                    self.ui.status = format!("Sheet {name} ready; double-click it to open it");
+                    self.close_dialog();
+                    Ok(vec![])
+                }
+                other => Err(format!("unknown sheet command {other}")),
+            },
+            Dialog::SheetPin {
+                sheet,
+                pos,
+                mut shape,
+                fields,
+                ..
+            } => match cmd {
+                "shape" => {
+                    shape = parse_shape(arg).ok_or("unknown shape")?;
+                    self.ui.dialog = Some(Dialog::SheetPin {
+                        sheet,
+                        pos,
+                        shape,
+                        fields,
+                        error: String::new(),
+                    });
+                    Ok(vec![])
+                }
+                "ok" => {
+                    let name = self
+                        .ui
+                        .dialog
+                        .as_ref()
+                        .map(|d| d.value("Name"))
+                        .unwrap_or_default();
+                    let s = self.sheet().sheet(sheet).ok_or("sheet not found")?;
+                    let error = if name.is_empty() {
+                        Some("A sheet pin needs a name.".to_owned())
+                    } else if s.pins.iter().any(|p| p.name == name) {
+                        Some(format!("The sheet already has a pin {name}."))
+                    } else if s.pins.iter().any(|p| p.pos == pos) {
+                        Some("Another pin is already there.".to_owned())
+                    } else if name.contains('[') && cw_eda::schematic::bus_members(&name).is_none()
+                    {
+                        Some(format!(
+                            "'{name}' is not a bus name: write a vector as NAME[0..7]"
+                        ))
+                    } else {
+                        None
+                    };
+                    if let Some(e) = error {
+                        self.ui.dialog = Some(Dialog::SheetPin {
+                            sheet,
+                            pos,
+                            shape,
+                            fields,
+                            error: e,
+                        });
+                        return Ok(vec![]);
+                    }
+                    self.sch_edit();
+                    let s = self.sheet_mut().sheet_mut(sheet).ok_or("sheet not found")?;
+                    s.pins.push(SheetPin {
+                        name: name.clone(),
+                        shape,
+                        pos,
+                    });
+                    self.sheet_mut().cleanup_junctions();
+                    self.ui.status = format!("Sheet pin {name} added");
+                    self.close_dialog();
+                    Ok(vec![])
+                }
+                other => Err(format!("unknown sheet pin command {other}")),
             },
             Dialog::Annotate {
                 by_x,
@@ -871,17 +1324,26 @@ impl Kicad {
                         .erc
                         .as_ref()
                         .and_then(|v| v.get(i))
-                        .ok_or("violation not found")?
-                        .pos;
-                    // Centre the view on the marker.
+                        .cloned()
+                        .ok_or("violation not found")?;
+                    // Go to the marker's sheet and centre the view on it.
+                    if let Some((_, path, _, _)) = self
+                        .session
+                        .schematic
+                        .sheets_flat()
+                        .into_iter()
+                        .find(|x| x.0 == v.sheet)
+                    {
+                        self.ui.sch.path = path;
+                    }
                     let (cw, ch) = if self.ui.canvas.0 > 0 {
                         self.ui.canvas
                     } else {
                         (900, 600)
                     };
                     let mut view = self.sch_view(cw, ch);
-                    view.x0 = v.x - (cw as i64 * 1000 / 2 / view.zoom.max(1));
-                    view.y0 = v.y - (ch as i64 * 1000 / 2 / view.zoom.max(1));
+                    view.x0 = v.pos.x - (cw as i64 * 1000 / 2 / view.zoom.max(1));
+                    view.y0 = v.pos.y - (ch as i64 * 1000 / 2 / view.zoom.max(1));
                     view.fit = false;
                     self.ui.view = view;
                     self.ui.dialog = Some(Dialog::Erc { selected: Some(i) });
@@ -982,7 +1444,7 @@ impl Kicad {
         let (w, h) = (env.width, env.height);
         let c = chrome(env.theme);
         p.scene.background = c.bar;
-        let area = canvas(w, h);
+        let area = canvas_for(self, w, h);
         let view = self.sch_view(area.width, area.height);
         let cv = Cv {
             ox: area.x,
@@ -1060,8 +1522,9 @@ impl Kicad {
                 ),
                 (
                     icons::zoom_objects,
-                    if self.session.schematic.symbols.is_empty()
-                        && self.session.schematic.wires.is_empty()
+                    if self.sheet().symbols.is_empty()
+                        && self.sheet().wires.is_empty()
+                        && self.sheet().sheets.is_empty()
                     {
                         Err("the sheet is empty")
                     } else {
@@ -1114,6 +1577,27 @@ impl Kicad {
                     "Update PCB with changes made to schematic (F8)",
                 ),
                 (icons::board, proj("kicad:sch:pcb"), "Switch to PCB Editor"),
+            ],
+            vec![
+                (
+                    icons::leave_sheet,
+                    if self.ui.sch.path.is_empty() {
+                        Err("this is the root sheet")
+                    } else {
+                        Ok("kicad:sch:leave".into())
+                    },
+                    "Leave sheet (Alt+Backspace)",
+                ),
+                (
+                    icons::symbol_editor,
+                    proj("kicad:sch:symed"),
+                    "Symbol Editor",
+                ),
+                (
+                    icons::footprint_editor,
+                    proj("kicad:sch:fped"),
+                    "Footprint Editor",
+                ),
             ],
         ];
         for (gi, group) in groups.into_iter().enumerate() {
@@ -1172,18 +1656,89 @@ impl Kicad {
             (icons::junction, "junction", "Add a junction (J)"),
             (icons::label, "label", "Add a label (L)"),
             (icons::global_label, "global", "Add a global label (Ctrl+L)"),
+            (icons::hier_label, "hlabel", "Add a hierarchical label (H)"),
+            (icons::bus, "bus", "Add a bus (B)"),
+            (icons::bus_entry, "entry", "Add a wire to bus entry (Z)"),
+            (icons::sheet, "sheet", "Add a hierarchical sheet (S)"),
+            (icons::sheet_pin, "sheetpin", "Add a sheet pin"),
         ] {
+            let target = match tool {
+                "hlabel" if self.ui.sch.path.is_empty() => {
+                    Err("hierarchical labels belong in a sub-sheet")
+                }
+                "sheetpin" if self.sheet().sheets.is_empty() => {
+                    Err("this sheet has no sheet symbols")
+                }
+                _ => Ok(format!("kicad:sch:tool:{tool}")),
+            };
             w::tool(
                 p,
                 &c,
                 rx + 3,
                 y,
                 icon,
-                Ok(format!("kicad:sch:tool:{tool}")),
+                target,
                 tip,
                 self.tool() == tool && !self.session.sim.probing,
             );
             y += 32;
+        }
+        // Hierarchy navigator: every sheet of the design, the current one marked.
+        if hierarchical(self) {
+            let px = w::SIDE_W as i32 + 1;
+            let panel = Rect::new(px, area.y, HIER_W, area.height);
+            p.box_(panel, c.panel, 0);
+            p.vline(px + HIER_W as i32, area.y, area.height, w::EDGE);
+            p.label(
+                px + 8,
+                area.y + 6,
+                HIER_W - 16,
+                "Hierarchy",
+                12,
+                w::MUTED,
+                true,
+                Align::Left,
+            );
+            let current = self.sheet_path_name();
+            let mut y = area.y + 28;
+            for (i, (path, ids, _, _)) in self.session.schematic.sheets_flat().iter().enumerate() {
+                let depth = ids.len() as i32;
+                let name = if ids.is_empty() {
+                    "Root".to_owned()
+                } else {
+                    path.trim_end_matches('/')
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or("")
+                        .to_owned()
+                };
+                let r = Rect::new(px + 4, y, HIER_W - 8, 22);
+                p.button(
+                    r,
+                    if *path == current {
+                        c.selection
+                    } else {
+                        Color::TRANSPARENT
+                    },
+                    2,
+                    &format!("kicad:sch:goto:{i}"),
+                    &format!("Sheet {path}"),
+                );
+                p.label(
+                    r.x + 4 + depth * 12,
+                    y + 2,
+                    r.width.saturating_sub(8 + depth as u32 * 12),
+                    &format!("{name}  {}", i + 1),
+                    13,
+                    w::INK,
+                    *path == current,
+                    Align::Left,
+                );
+                y += 23;
+                if y > area.y + area.height as i32 - 24 {
+                    break;
+                }
+            }
         }
         // Status bar.
         let u = self.ui.sch.units;
@@ -1196,10 +1751,15 @@ impl Kicad {
                 "symbol" => "Add a symbol",
                 "power" => "Add a power port",
                 "wire" => "Add a wire",
+                "bus" => "Add a bus",
+                "entry" => "Add a wire to bus entry",
                 "noconnect" => "Add a no-connection flag",
                 "junction" => "Add a junction",
                 "label" => "Add a label",
                 "global" => "Add a global label",
+                "hlabel" => "Add a hierarchical label",
+                "sheet" => "Add a sheet",
+                "sheetpin" => "Add a sheet pin",
                 _ => "",
             }
             .to_owned()
@@ -1229,7 +1789,7 @@ impl Kicad {
     }
 
     fn paint_sheet(&self, p: &mut Painter, cv: &Cv) {
-        let s = &self.session.schematic;
+        let s = self.sheet();
         p.box_(Rect::new(cv.ox, cv.oy, cv.w, cv.h), draw::SCH_BG, 0);
         // Grid dots, coarsened until there are few enough to paint.
         if !self.ui.sch.grid_hidden {
@@ -1380,10 +1940,25 @@ impl Kicad {
             .map(|p| p.name.clone())
             .unwrap_or_default();
         let tb = &s.title_block;
+        let sheets = self.session.schematic.sheets_flat();
+        let here = self.sheet_path_name();
+        let page = sheets.iter().position(|x| x.0 == here).unwrap_or(0) + 1;
+        // The file this sheet is saved in: the project's for the root, the sheet
+        // symbol's own file below it.
+        let file = match self.ui.sch.path.split_last() {
+            None => format!("{name}.kicad_sch"),
+            Some((last, parent)) => self
+                .session
+                .schematic
+                .at_path(parent)
+                .and_then(|s| s.sheet(*last))
+                .map(|s| s.file.clone())
+                .unwrap_or_default(),
+        };
         cv.text(
             p,
             Pt::new(tx0 + 60, ty0 + 150),
-            "Sheet: /",
+            &format!("Sheet: {here}"),
             50,
             draw::SHEET,
             Align::Left,
@@ -1391,7 +1966,7 @@ impl Kicad {
         cv.text(
             p,
             Pt::new(tx0 + 60, ty0 + 450),
-            &format!("File: {name}.kicad_sch"),
+            &format!("File: {file}"),
             50,
             draw::SHEET,
             Align::Left,
@@ -1423,7 +1998,7 @@ impl Kicad {
         cv.text(
             p,
             Pt::new(tx1 - 600, ty0 + 1190),
-            "Id: 1/1",
+            &format!("Id: {page}/{}", sheets.len()),
             40,
             draw::SHEET,
             Align::Left,
@@ -1454,6 +2029,12 @@ impl Kicad {
                     .iter()
                     .find(|t| t.id == *id)
                     .map(|t| WRect::around(t.pos, 60, 60)),
+                Item::Sheet(id) => s.sheet(*id).map(|x| x.rect().inflate(20)),
+                Item::BusEntry(id) => s
+                    .bus_entries
+                    .iter()
+                    .find(|e| e.id == *id)
+                    .map(|e| WRect::new(e.pos, e.end()).inflate(20)),
             };
             if let Some(r) = r {
                 let (x0, y0) = cv.pt(r.min);
@@ -1480,7 +2061,52 @@ impl Kicad {
         };
         for wire in &s.wires {
             let d = moved(Item::Wire(wire.id));
-            cv.stroke(p, &[wire.a.add(d), wire.b.add(d)], draw::WIRE, 6, 2);
+            if wire.bus {
+                cv.stroke(p, &[wire.a.add(d), wire.b.add(d)], draw::BUS, 12, 3);
+            } else {
+                cv.stroke(p, &[wire.a.add(d), wire.b.add(d)], draw::WIRE, 6, 2);
+            }
+        }
+        for e in &s.bus_entries {
+            let d = moved(Item::BusEntry(e.id));
+            cv.stroke(p, &[e.pos.add(d), e.end().add(d)], draw::BUS, 6, 2);
+        }
+        // Sheet symbols: the box, its name above and file below, and its pins.
+        for sh in &s.sheets {
+            let d = moved(Item::Sheet(sh.id));
+            let r = sh.rect();
+            let (a, b) = (r.min.add(d), r.max.add(d));
+            let pts = [a, Pt::new(b.x, a.y), b, Pt::new(a.x, b.y), a];
+            cv.fill(p, &pts[..4], draw::SHEET_FILL);
+            cv.stroke(p, &pts, draw::SHEET_EDGE, 12, 2);
+            cv.text(
+                p,
+                a.add(Pt::new(0, -30)),
+                &format!("Sheetname: {}", sh.name),
+                50,
+                draw::FIELD,
+                Align::Left,
+            );
+            cv.text(
+                p,
+                Pt::new(a.x, b.y + 90),
+                &format!("Sheetfile: {}", sh.file),
+                50,
+                draw::FIELD,
+                Align::Left,
+            );
+            for pin in &sh.pins {
+                let at = pin.pos.add(d);
+                let side = sh.side_of(pin.pos);
+                draw::port_shape(p, cv, at, side, pin.shape, draw::SHEET_EDGE, true);
+                let (off, align) = match side {
+                    0 => (Pt::new(120, 0), Align::Left),
+                    1 => (Pt::new(-120, 0), Align::Right),
+                    2 => (Pt::new(0, 150), Align::Center),
+                    _ => (Pt::new(0, -110), Align::Center),
+                };
+                cv.text(p, at.add(off), &pin.name, 50, draw::SHEET_EDGE, align);
+            }
         }
         for t in &s.texts {
             cv.text(
@@ -1495,7 +2121,16 @@ impl Kicad {
         for sym in &s.symbols {
             if let Some(lib) = sym.lib() {
                 let d = moved(Item::Symbol(sym.id));
-                draw::symbol(p, cv, lib, sym.pos.add(d), sym.xf, Some(&sym.fields), false);
+                draw::symbol_unit(
+                    p,
+                    cv,
+                    lib,
+                    sym.unit,
+                    sym.pos.add(d),
+                    sym.xf,
+                    Some(&sym.fields),
+                    false,
+                );
             }
         }
         for j in &s.junctions {
@@ -1557,11 +2192,29 @@ impl Kicad {
                         if right { Align::Right } else { Align::Left },
                     );
                 }
+                LabelKind::Hierarchical => {
+                    // KiCad draws the shape flag at the connection point, the name
+                    // beyond it.
+                    let side = if right { 1 } else { 0 };
+                    draw::port_shape(p, cv, at, side, l.shape, draw::HIER, false);
+                    let dir = if right { -1 } else { 1 };
+                    cv.text(
+                        p,
+                        at.add(Pt::new(dir * 120, 0)),
+                        &l.text,
+                        size,
+                        draw::HIER,
+                        if right { Align::Right } else { Align::Left },
+                    );
+                }
             }
         }
         // ERC markers.
         if let Some(v) = &self.session.erc {
             for (i, x) in v.iter().enumerate() {
+                if x.sheet != here {
+                    continue;
+                }
                 let color = if x.severity == erc::Severity::Error {
                     Color::rgb(255, 0, 0)
                 } else {
@@ -1588,11 +2241,23 @@ impl Kicad {
                 for (_, q) in ortho(*last, hover, self.ui.sch.vertical_first) {
                     pts.push(q);
                 }
-                cv.stroke(p, &pts, draw::WIRE, 6, 2);
+                if self.tool() == "bus" {
+                    cv.stroke(p, &pts, draw::BUS, 12, 3);
+                } else {
+                    cv.stroke(p, &pts, draw::WIRE, 6, 2);
+                }
+            }
+            if self.tool() == "entry" {
+                let size = ENTRY_DIRS[(self.ui.sch.entry_dir % 4) as usize];
+                cv.stroke(p, &[hover, hover.add(size)], Color(0, 0, 132, 140), 6, 2);
+            }
+            if let Some(a) = self.ui.sch.sheet_start {
+                let pts = [a, Pt::new(hover.x, a.y), hover, Pt::new(a.x, hover.y), a];
+                cv.stroke(p, &pts, draw::SHEET_EDGE, 12, 2);
             }
             if let Some((lib_id, xf)) = &self.ui.sch.placing {
-                if let Some(lib) = symbols::find(lib_id) {
-                    draw::symbol(p, cv, lib, hover, *xf, None, true);
+                if let Some((lib, _)) = self.session.find_symbol(lib_id) {
+                    draw::symbol(p, cv, &lib, hover, *xf, None, true);
                 }
             }
             if let Some(Drag::Box { start, at }) = &self.ui.drag {
@@ -1670,10 +2335,28 @@ impl Kicad {
                 let needle = filter.to_ascii_lowercase();
                 let mut y = list.y + 2;
                 let bottom = list.y + list.height as i32 - 22;
+                // The project's own libraries come first, as KiCad lists them.
+                let mut libs: Vec<(String, Vec<&symbols::LibSymbol>)> = self
+                    .session
+                    .sym_libs
+                    .iter()
+                    .map(|l| (l.name.clone(), l.symbols.iter().collect()))
+                    .collect();
                 for lib in symbols::libraries() {
-                    let items: Vec<_> = symbols::library()
+                    libs.push((
+                        lib.to_owned(),
+                        symbols::library()
+                            .iter()
+                            .filter(|s| s.library() == lib)
+                            .collect(),
+                    ));
+                }
+                for (lib, all) in &libs {
+                    let lib = lib.as_str();
+                    let items: Vec<&symbols::LibSymbol> = all
                         .iter()
-                        .filter(|s| s.library() == lib && s.power == *power)
+                        .copied()
+                        .filter(|s| s.power == *power)
                         .filter(|s| {
                             needle.is_empty()
                                 || s.lib_id.to_ascii_lowercase().contains(&needle)
@@ -1722,13 +2405,13 @@ impl Kicad {
                             break;
                         }
                         let r = Rect::new(list.x + 18, y, lw - 20, 22);
-                        let on = selected.as_deref() == Some(s.lib_id);
+                        let on = selected.as_deref() == Some(s.lib_id.as_str());
                         p.button(
                             r,
                             if on { c.selection } else { Color::TRANSPARENT },
                             2,
                             &format!("kicad:dlg:pick:{}", s.lib_id),
-                            s.lib_id,
+                            &s.lib_id,
                         );
                         p.label(
                             r.x + 4,
@@ -1744,7 +2427,7 @@ impl Kicad {
                             r.x + 150,
                             y + 3,
                             r.width.saturating_sub(154),
-                            s.description,
+                            &s.description,
                             12,
                             w::MUTED,
                             false,
@@ -1757,7 +2440,10 @@ impl Kicad {
                 let px = body.x + lw as i32 + 12;
                 let prev = Rect::new(px, body.y, lw, (body.height - 42) * 2 / 3);
                 p.border(prev, draw::SCH_BG, 2, w::EDGE);
-                if let Some(lib) = selected.as_deref().and_then(symbols::find) {
+                if let Some((lib, _)) = selected
+                    .as_deref()
+                    .and_then(|l| self.session.find_symbol(l))
+                {
                     let (lo, hi) = lib.bounds();
                     let view = View::fitted(
                         Pt::new(lo.0 - 100, -hi.1 - 100),
@@ -1772,14 +2458,14 @@ impl Kicad {
                         h: prev.height,
                         view,
                     };
-                    draw::symbol(p, &cv, lib, Pt::new(0, 0), Xf::IDENTITY, None, false);
+                    draw::symbol(p, &cv, &lib, Pt::new(0, 0), Xf::IDENTITY, None, false);
                     let ty = prev.y + prev.height as i32 + 8;
-                    p.label(px, ty, lw, lib.lib_id, 13, w::INK, true, Align::Left);
-                    p.paragraph(px, ty + 22, lw, lib.description, 12, w::MUTED);
+                    p.label(px, ty, lw, &lib.lib_id, 13, w::INK, true, Align::Left);
+                    p.paragraph(px, ty + 22, lw, &lib.description, 12, w::MUTED);
                     let fp = if lib.footprint.is_empty() {
                         "(no footprint)"
                     } else {
-                        lib.footprint
+                        &lib.footprint
                     };
                     p.label(
                         px,
@@ -1838,9 +2524,18 @@ impl Kicad {
                 on_board,
                 in_bom,
                 dnp,
+                unit,
                 error,
             } => {
-                let body = w::dialog(p, &c, env.theme, w, h, 620, 470, dialog.title());
+                let units = self
+                    .sheet()
+                    .symbol(*id)
+                    .and_then(|s| s.lib())
+                    .map_or(1, |l| l.units);
+                let tall = 470
+                    + fields.len().saturating_sub(5) as u32 * 32
+                    + if units > 1 { 34 } else { 0 };
+                let body = w::dialog(p, &c, env.theme, w, h, 620, tall, dialog.title());
                 p.label(body.x, body.y, 140, "Name", 12, w::MUTED, true, Align::Left);
                 p.label(
                     body.x + 150,
@@ -1866,7 +2561,7 @@ impl Kicad {
                     y += 32;
                 }
                 // Footprints this symbol is drawn for, one click to assign.
-                let lib = self.session.schematic.symbol(*id).and_then(|s| s.lib());
+                let lib = self.sheet().symbol(*id).and_then(|s| s.lib());
                 if let Some(lib) = lib.filter(|l| !l.footprints.is_empty()) {
                     p.label(
                         body.x,
@@ -1879,7 +2574,7 @@ impl Kicad {
                         Align::Left,
                     );
                     let mut fx = body.x + 150;
-                    for fp in lib.footprints {
+                    for fp in &lib.footprints {
                         let name = fp.split(':').nth(1).unwrap_or(fp);
                         let tw = (p.measure(name, 12, false) + 16).min(body.width / 2);
                         let r = Rect::new(fx, y, tw, 24);
@@ -1889,7 +2584,7 @@ impl Kicad {
                             if current { c.selection } else { w::WHITE },
                             3,
                             &format!("kicad:dlg:footprint:{fp}"),
-                            fp,
+                            fp.as_str(),
                         );
                         p.border(r, Color::TRANSPARENT, 3, w::EDGE);
                         p.label(r.x, y + 4, tw, name, 12, w::INK, false, Align::Center);
@@ -1934,6 +2629,24 @@ impl Kicad {
                     *dnp,
                     "kicad:dlg:toggle:dnp",
                 );
+                if units > 1 {
+                    y += 30;
+                    p.label(body.x, y + 1, 60, "Unit:", 13, w::INK, false, Align::Left);
+                    let mut ux = body.x + 60;
+                    for u in 1..=units {
+                        let letter = cw_eda::symbols::LibSymbol::unit_letter(u);
+                        w::radio(
+                            p,
+                            &c,
+                            ux,
+                            y,
+                            &format!("Unit {letter}"),
+                            *unit == u,
+                            &format!("kicad:dlg:unit:{u}"),
+                        );
+                        ux += 90;
+                    }
+                }
                 if !error.is_empty() {
                     p.label(
                         body.x,
@@ -1948,8 +2661,20 @@ impl Kicad {
                 }
                 ok_cancel(p, body, "OK");
             }
-            Dialog::Label { text, .. } => {
-                let body = w::dialog(p, &c, env.theme, w, h, 440, 170, dialog.title());
+            Dialog::Label {
+                text, kind, shape, ..
+            } => {
+                let local = *kind == LabelKind::Local;
+                let body = w::dialog(
+                    p,
+                    &c,
+                    env.theme,
+                    w,
+                    h,
+                    480,
+                    if local { 170 } else { 230 },
+                    dialog.title(),
+                );
                 w::label_field(
                     p,
                     &c,
@@ -1962,6 +2687,37 @@ impl Kicad {
                     "text",
                     focus == Some("text"),
                 );
+                if !local {
+                    // Global and hierarchical labels have an electrical shape.
+                    p.label(
+                        body.x,
+                        body.y + 38,
+                        80,
+                        "Shape:",
+                        13,
+                        w::INK,
+                        false,
+                        Align::Left,
+                    );
+                    let mut x = body.x + 80;
+                    let mut y = body.y + 36;
+                    for s in SHAPES {
+                        w::radio(
+                            p,
+                            &c,
+                            x,
+                            y,
+                            s,
+                            shape_name(*shape) == s,
+                            &format!("kicad:dlg:shape:{s}"),
+                        );
+                        x += 120;
+                        if x > body.x + body.width as i32 - 100 {
+                            x = body.x + 80;
+                            y += 24;
+                        }
+                    }
+                }
                 ok_cancel(p, body, "OK");
             }
             Dialog::Annotate { by_x, reset, log } => {
@@ -2314,6 +3070,14 @@ impl Kicad {
             ("kicad:sch:tool:global", "Add Global Label"),
             ("kicad:sch:tool:noconnect", "Add No Connect"),
             ("kicad:sch:tool:junction", "Add Junction"),
+            ("kicad:sch:tool:bus", "Add Bus"),
+            ("kicad:sch:tool:entry", "Add Bus Entry"),
+            ("kicad:sch:tool:hlabel", "Add Hierarchical Label"),
+            ("kicad:sch:tool:sheet", "Add Sheet"),
+            ("kicad:sch:tool:sheetpin", "Add Sheet Pin"),
+            ("kicad:sch:leave", "Leave Sheet"),
+            ("kicad:sch:symed", "Symbol Editor"),
+            ("kicad:sch:fped", "Footprint Editor"),
             ("kicad:sch:annotate", "Annotate"),
             ("kicad:sch:erc", "ERC"),
             ("kicad:sch:netlist", "Export Netlist"),
@@ -2327,13 +3091,25 @@ impl Kicad {
                 action: act(id),
             });
         }
-        let s = &self.session.schematic;
+        page.elements.push(E::Text {
+            id: "kicad-sheet".into(),
+            text: format!("Sheet {}", self.sheet_path_name()),
+        });
+        for (i, (path, _, _, _)) in self.session.schematic.sheets_flat().iter().enumerate() {
+            let id = format!("kicad:sch:goto:{i}");
+            page.elements.push(E::Button {
+                id: id.clone(),
+                text: format!("Go to sheet {path}"),
+                action: act(&id),
+            });
+        }
+        let s = self.sheet();
         for sym in &s.symbols {
             page.elements.push(E::Text {
                 id: format!("kicad-symbol-{}", sym.id),
                 text: format!(
                     "{} {} ({}) at {}, {} mils",
-                    sym.reference(),
+                    sym.unit_reference(),
                     sym.value(),
                     sym.lib_id,
                     sym.pos.x,
@@ -2341,11 +3117,30 @@ impl Kicad {
                 ),
             });
         }
+        for sh in &s.sheets {
+            let id = format!("kicad:sch:enter:{}", sh.id);
+            page.elements.push(E::Button {
+                id: id.clone(),
+                text: format!(
+                    "Open sheet {} ({}), pins {}",
+                    sh.name,
+                    sh.file,
+                    sh.pins
+                        .iter()
+                        .map(|p| p.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                action: act(&id),
+            });
+        }
         page.elements.push(E::Text {
             id: "kicad-wires".into(),
             text: format!(
-                "{} wires, {} labels, {} junctions",
-                s.wires.len(),
+                "{} wires, {} buses, {} bus entries, {} labels, {} junctions",
+                s.wires.iter().filter(|w| !w.bus).count(),
+                s.wires.iter().filter(|w| w.bus).count(),
+                s.bus_entries.len(),
                 s.labels.len(),
                 s.junctions.len()
             ),
@@ -2359,11 +3154,15 @@ impl Kicad {
             }
         }
         if let Some(Dialog::Chooser { power, .. }) = &self.ui.dialog {
-            for lib in symbols::library().iter().filter(|l| l.power == *power) {
+            let project = self.session.sym_libs.iter().flat_map(|l| l.symbols.iter());
+            for lib in project
+                .chain(symbols::library().iter())
+                .filter(|l| l.power == *power)
+            {
                 let id = format!("kicad:dlg:pick:{}", lib.lib_id);
                 page.elements.push(E::Button {
                     id: id.clone(),
-                    text: lib.lib_id.into(),
+                    text: lib.lib_id.clone(),
                     action: act(&id),
                 });
             }
@@ -2371,15 +3170,41 @@ impl Kicad {
     }
 }
 
+/// Whether a symbol's `Sim.Params` make a model the simulator accepts.
+pub(super) fn check_model(spice: Spice, params: &str) -> Result<(), String> {
+    let kind = match spice {
+        Spice::Diode => "D",
+        Spice::Npn => "NPN",
+        Spice::Pnp => "PNP",
+        Spice::Nmos => "NMOS",
+        Spice::Pmos => "PMOS",
+        _ => return Ok(()),
+    };
+    cw_eda::spice::parse(&format!(
+        "check\n.model m {kind}({params})\nR1 a 0 1\n.op\n.end"
+    ))
+    .map(|_| ())
+    .map_err(|e| format!("Sim.Params: {}", e.trim_start_matches("line 2: ")))
+}
+
 fn describe_selection(k: &Kicad) -> String {
     let sel = k.selected();
     match sel.as_slice() {
         [] => String::new(),
         [Item::Symbol(id)] => k
-            .session
-            .schematic
+            .sheet()
             .symbol(*id)
-            .map(|s| format!("{} {} ({})", s.reference(), s.value(), s.lib_id))
+            .map(|s| format!("{} {} ({})", s.unit_reference(), s.value(), s.lib_id))
+            .unwrap_or_default(),
+        [Item::Sheet(id)] => k
+            .sheet()
+            .sheet(*id)
+            .map(|s| {
+                format!(
+                    "Sheet {} ({}); double-click to open it, E for its properties",
+                    s.name, s.file
+                )
+            })
             .unwrap_or_default(),
         items => format!("{} items selected", items.len()),
     }
@@ -2453,8 +3278,9 @@ fn sch_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                 MenuItem::new(
                     "Zoom to Objects",
                     "Ctrl+Home",
-                    if k.session.schematic.symbols.is_empty()
-                        && k.session.schematic.wires.is_empty()
+                    if k.sheet().symbols.is_empty()
+                        && k.sheet().wires.is_empty()
+                        && k.sheet().sheets.is_empty()
                     {
                         Err("the sheet is empty")
                     } else {
@@ -2462,6 +3288,16 @@ fn sch_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                     },
                 ),
                 MenuItem::new("Show Grid", "", Ok("kicad:sch:grid".into())).sep(),
+                MenuItem::new(
+                    "Leave Sheet",
+                    "Alt+Backspace",
+                    if k.ui.sch.path.is_empty() {
+                        Err("this is the root sheet")
+                    } else {
+                        Ok("kicad:sch:leave".into())
+                    },
+                )
+                .sep(),
             ],
         ),
         (
@@ -2482,6 +3318,31 @@ fn sch_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                     "Ctrl+L",
                     Ok("kicad:sch:tool:global".into()),
                 ),
+                MenuItem::new(
+                    "Add Hierarchical Label",
+                    "H",
+                    if k.ui.sch.path.is_empty() {
+                        Err("hierarchical labels belong in a sub-sheet")
+                    } else {
+                        Ok("kicad:sch:tool:hlabel".into())
+                    },
+                ),
+                MenuItem::new("Add Bus", "B", Ok("kicad:sch:tool:bus".into())).sep(),
+                MenuItem::new(
+                    "Add Wire to Bus Entry",
+                    "Z",
+                    Ok("kicad:sch:tool:entry".into()),
+                ),
+                MenuItem::new("Add Sheet", "S", Ok("kicad:sch:tool:sheet".into())).sep(),
+                MenuItem::new(
+                    "Add Sheet Pin",
+                    "",
+                    if k.sheet().sheets.is_empty() {
+                        Err("this sheet has no sheet symbols")
+                    } else {
+                        Ok("kicad:sch:tool:sheetpin".into())
+                    },
+                ),
             ],
         ),
         (
@@ -2501,6 +3362,8 @@ fn sch_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                 ),
                 MenuItem::new("Switch to PCB Editor", "", proj("kicad:sch:pcb")),
                 MenuItem::new("Annotate Schematic...", "", Ok("kicad:sch:annotate".into())).sep(),
+                MenuItem::new("Symbol Editor", "", proj("kicad:sch:symed")).sep(),
+                MenuItem::new("Footprint Editor", "", proj("kicad:sch:fped")),
             ],
         ),
         (

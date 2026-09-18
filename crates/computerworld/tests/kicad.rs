@@ -205,6 +205,47 @@ impl Desk {
             b.y + ((y / 1000 - y0) * z / 1000) as i32,
         )
     }
+    /// Screen pixel for a Symbol Editor point in library mils (Y up).
+    fn symed(&self, x: i64, y: i64) -> (i32, i32) {
+        let (b, x0, y0, z) = self.canvas("symed");
+        (
+            b.x + ((x - x0) * z / 1000) as i32,
+            b.y + ((-y - y0) * z / 1000) as i32,
+        )
+    }
+    /// Screen pixel for a Footprint Editor point in nanometres.
+    fn fped(&self, x: i64, y: i64) -> (i32, i32) {
+        let (b, x0, y0, z) = self.canvas("fped");
+        (
+            b.x + ((x / 1000 - x0) * z / 1000) as i32,
+            b.y + ((y / 1000 - y0) * z / 1000) as i32,
+        )
+    }
+    /// The pixels of the focused window's 3D view.
+    fn view3d_pixels(&self) -> Vec<u8> {
+        let want = format!("window:{}:content:kicad:canvas:3d:", self.focused());
+        let scene = self.scene();
+        let canvas = scene
+            .nodes
+            .iter()
+            .find(|n| {
+                n.interaction
+                    .as_deref()
+                    .is_some_and(|i| i.starts_with(&want))
+            })
+            .expect("a 3D canvas");
+        let b = canvas.transform.bounds(canvas.bounds);
+        scene
+            .nodes
+            .iter()
+            .find_map(|n| match &n.primitive {
+                cw_scene::Primitive::Image { rgba, .. } if n.transform.bounds(n.bounds) == b => {
+                    Some(rgba.clone())
+                }
+                _ => None,
+            })
+            .expect("the 3D view is an image")
+    }
     fn click_sch(&mut self, x: i64, y: i64) {
         let (px, py) = self.sch(x, y);
         self.pointer("click", px, py);
@@ -569,6 +610,30 @@ fn an_rc_filter_goes_from_schematic_through_simulation_to_gerbers() {
     assert_eq!(on_disk, live);
     let listing = d.kicad(Frame::ProjectManager).session.listing;
     assert!(listing.contains(&"gerbers/".to_owned()), "{listing:?}");
+
+    // ---- Any angle ------------------------------------------------------------------
+    // R1 turned 45° with Ctrl+R: its second pad is flashed 10.16 mm from the first
+    // along the turned axis, up and to the right on the board.
+    d.focus(Frame::Pcb);
+    let r1 = pad("R1", "1");
+    d.click_pcb(r1.x + 3 * MM, r1.y + MM);
+    d.key("Ctrl+r");
+    let b = d.kicad(Frame::Pcb).session.board;
+    let f = b.footprints.iter().find(|f| f.reference == "R1").unwrap();
+    assert_eq!(f.angle, 450, "Ctrl+R turns by 45°");
+    d.click("kicad:pcb:plot");
+    d.click("kicad:dlg:plot");
+    d.click("kicad:dlg:cancel");
+    let text = d.file(&format!("{dir}/gerbers/rcfilter-F_Cu.gbr"));
+    cw_eda::gerber::parse(&text).unwrap();
+    let pos = |n: &str| f.pad_pos(f.pads.iter().find(|p| p.number == n).unwrap());
+    let (p1, p2) = (pos("1"), pos("2"));
+    // 10.16 mm · cos 45° = 7.184 mm, to the nanometre.
+    assert_eq!((p2.x - p1.x, p2.y - p1.y), (7_184_205, -7_184_205));
+    for p in [p1, p2] {
+        let flash = format!("X{}Y{}D03*", p.x, -p.y);
+        assert!(text.contains(&flash), "no pad flashed at {flash}");
+    }
 }
 
 #[test]
@@ -649,4 +714,266 @@ fn the_three_desktops_have_kicad_and_the_phones_do_not() {
         .contains(&c["profile"].as_str().unwrap());
         assert_eq!(has, desktop, "{}", c["id"]);
     }
+}
+
+#[test]
+fn the_library_editors_make_a_part_the_schematic_board_and_3d_viewer_use() {
+    const MM: i64 = 1_000_000;
+    let mut d = desk("carol-ubuntu", "virtual-ubuntu-24", "/home/carol");
+    d.act("application.v1", "launch", json!({"kind": "kicad"}));
+    d.maximize(Frame::ProjectManager);
+    d.click("kicad:pm:new");
+    d.replace_field("name", "parts");
+    d.click("kicad:dlg:ok");
+    let dir = format!("{}/Documents/KiCad/parts", d.home);
+
+    // ---- Symbol Editor: an inverter with four pins -----------------------------------
+    d.click("kicad:pm:launch:symed");
+    d.maximize(Frame::SymbolEditor);
+    d.click("kicad:symed:new-lib");
+    d.text("mylib");
+    d.click("kicad:dlg:ok");
+    let table = d.file(&format!("{dir}/sym-lib-table"));
+    assert!(table.contains("mylib.kicad_sym"), "{table}");
+    d.click("kicad:symed:new-symbol");
+    d.text("INV");
+    d.click("kicad:dlg:ok");
+    d.click("kicad:symed:tool:rect");
+    let (x, y) = d.symed(-200, 200);
+    d.pointer("click", x, y);
+    let (x, y) = d.symed(200, -200);
+    d.pointer("click", x, y);
+    d.click("kicad:symed:tool:pin");
+    for (at, name, number, orient, kind) in [
+        ((-500, 0), "A", "1", "0", "input"),
+        ((500, 0), "Y", "2", "180", "output"),
+        ((0, 500), "VCC", "3", "270", "power_in"),
+        ((0, -500), "GND", "4", "90", "power_in"),
+    ] {
+        let (x, y) = d.symed(at.0, at.1);
+        d.pointer("click", x, y);
+        d.replace_field("Name", name);
+        d.replace_field("Number", number);
+        d.replace_field("Length (mils)", "300");
+        d.click(&format!("kicad:dlg:kind:{kind}"));
+        d.click(&format!("kicad:dlg:orient:{orient}"));
+        d.click("kicad:dlg:ok");
+    }
+    d.click("kicad:symed:properties");
+    d.replace_field("Footprint", "mylib:SOT");
+    d.click("kicad:dlg:model:NOT");
+    d.click("kicad:dlg:ok");
+    d.key("Ctrl+s");
+    let k = d.kicad(Frame::SymbolEditor);
+    let sym = k.session.sym_libs[0].symbols[0].clone();
+    assert_eq!(sym.lib_id, "mylib:INV");
+    assert_eq!(sym.pins.len(), 4);
+    let a = sym.pin("1").unwrap();
+    assert_eq!(
+        (a.at, a.angle, a.length, a.name.as_str()),
+        ((-500, 0), 0, 300, "A")
+    );
+    assert_eq!(
+        sym.pin("4").unwrap().kind,
+        cw_eda::symbols::PinType::PowerIn
+    );
+    assert_eq!(sym.graphics.len(), 1, "the body rectangle");
+    let text = d.file(&format!("{dir}/mylib.kicad_sym"));
+    assert!(text.starts_with("(kicad_symbol_lib"), "{text}");
+    let back = cw_eda::files::read_symbol_lib(&text, "mylib").unwrap();
+    assert_eq!(back, vec![sym.clone()], "the library does not read back");
+
+    // ---- Footprint Editor: four SMD pads, a body and a courtyard ---------------------
+    d.focus(Frame::ProjectManager);
+    d.click("kicad:pm:launch:fped");
+    d.maximize(Frame::FootprintEditor);
+    d.click("kicad:fped:new-lib");
+    d.text("mylib");
+    d.click("kicad:dlg:ok");
+    d.click("kicad:fped:new-footprint");
+    d.text("SOT");
+    d.click("kicad:dlg:ok");
+    d.click("kicad:fped:tool:pad");
+    for at in [(-2 * MM, 0), (2 * MM, 0), (0, -2 * MM), (0, 2 * MM)] {
+        let (x, y) = d.fped(at.0, at.1);
+        d.pointer("click", x, y);
+        d.replace_field("Size X (mm)", "1");
+        d.replace_field("Size Y (mm)", "0.6");
+        d.click("kicad:dlg:ok");
+    }
+    d.click("kicad:fped:tool:fab");
+    for at in [(-MM, -MM), (MM, MM)] {
+        let (x, y) = d.fped(at.0, at.1);
+        d.pointer("click", x, y);
+    }
+    d.click("kicad:fped:fit-courtyard");
+    d.click("kicad:fped:properties");
+    d.replace_field("Body height (mm)", "1.2");
+    d.click("kicad:dlg:ok");
+    d.key("Ctrl+s");
+    let fp = d.kicad(Frame::FootprintEditor).session.fp_libs[0].footprints[0].clone();
+    assert_eq!(fp.id, "mylib:SOT");
+    let mut pads: Vec<(String, (i64, i64))> =
+        fp.pads.iter().map(|p| (p.number.clone(), p.at)).collect();
+    pads.sort();
+    assert_eq!(
+        pads,
+        vec![
+            ("1".into(), (-2 * MM, 0)),
+            ("2".into(), (2 * MM, 0)),
+            ("3".into(), (0, -2 * MM)),
+            ("4".into(), (0, 2 * MM)),
+        ]
+    );
+    assert_eq!(fp.fab, ((-MM, -MM), (MM, MM)));
+    assert_eq!(fp.height, 1_200_000);
+    assert!(fp.courtyard.0 .0 <= -2_750_000 && fp.courtyard.1 .1 >= 2_550_000);
+    let text = d.file(&format!("{dir}/mylib.pretty/SOT.kicad_mod"));
+    assert_eq!(cw_eda::files::read_footprint(&text, "mylib").unwrap(), fp);
+    assert!(d
+        .file(&format!("{dir}/fp-lib-table"))
+        .contains("mylib.pretty"));
+
+    // ---- The schematic places the new symbol, and the board its footprint -------------
+    d.focus(Frame::ProjectManager);
+    d.click("kicad:pm:launch:sch");
+    d.maximize(Frame::Schematic);
+    d.place("symbol", "INV", "mylib:INV", (3000, 3000), false);
+    d.key("Escape");
+    let s = d.kicad(Frame::Schematic).session.schematic;
+    let u1 = s.by_reference("U1").expect("U1 placed");
+    assert_eq!(u1.lib_id, "mylib:INV");
+    assert_eq!(
+        u1.local.as_deref(),
+        Some(&sym),
+        "the definition travels with it"
+    );
+    d.click("kicad:sch:update-pcb");
+    d.maximize(Frame::Pcb);
+    d.click("kicad:dlg:apply");
+    d.click("kicad:dlg:ok");
+    let b = d.kicad(Frame::Pcb).session.board;
+    assert_eq!(b.footprints.len(), 1);
+    assert_eq!(b.footprints[0].fp_id, "mylib:SOT");
+    assert_eq!(b.footprints[0].pads.len(), 4);
+    assert_eq!(b.footprints[0].height, 1_200_000);
+
+    // ---- 3D Viewer ------------------------------------------------------------------
+    d.click("kicad:pcb:3d");
+    d.maximize(Frame::Viewer3d);
+    let top = d.view3d_pixels();
+    assert_eq!(
+        top,
+        d.view3d_pixels(),
+        "the same view painted twice differs"
+    );
+    let (b, _) = d.find("kicad:canvas:3d:", true).unwrap();
+    let c = (b.x + b.width as i32 / 2, b.y + b.height as i32 / 2);
+    d.drag(c, (c.0 + 60, c.1 - 40));
+    let v = d.kicad(Frame::Viewer3d).ui.v3d;
+    assert_eq!((v.yaw, v.pitch), (3300, 700), "the drag orbits");
+    let turned = d.view3d_pixels();
+    assert_ne!(top, turned);
+    d.click("kicad:v3d:toggle:bodies");
+    assert_ne!(
+        turned,
+        d.view3d_pixels(),
+        "hiding the bodies changes nothing"
+    );
+    d.click("kicad:v3d:toggle:bodies");
+    d.click("kicad:v3d:view:top");
+    assert_eq!(
+        top,
+        d.view3d_pixels(),
+        "the top view comes back pixel for pixel"
+    );
+    // The wheel zooms in about the pointer.
+    let r = d.act(
+        "pointer.v1",
+        "wheel",
+        json!({"x": c.0, "y": c.1, "width": W, "height": H, "delta_y": -120}),
+    );
+    assert_eq!(r["handled"], json!(true));
+    let v = d.kicad(Frame::Viewer3d).ui.v3d;
+    assert!(v.zoom_um > 0, "the wheel did not zoom");
+    assert_ne!(top, d.view3d_pixels());
+}
+
+#[test]
+fn a_hierarchical_sheet_carries_a_net_between_sheets() {
+    let mut d = desk("alice-mac", "virtual-macos-golden-gate", "/Users/alice");
+    d.act("application.v1", "launch", json!({"kind": "kicad"}));
+    d.maximize(Frame::ProjectManager);
+    d.click("kicad:pm:new");
+    d.replace_field("name", "hier");
+    d.click("kicad:dlg:ok");
+    let dir = format!("{}/Documents/KiCad/hier", d.home);
+    d.click("kicad:pm:launch:sch");
+    d.maximize(Frame::Schematic);
+    let (x, y) = d.sch(3500, 3000);
+    d.pointer("move", x, y);
+    d.key("F1");
+    // A sheet, drawn corner to corner.
+    d.click("kicad:sch:tool:sheet");
+    d.click_sch(3500, 2000);
+    d.click_sch(5500, 3500);
+    d.click("kicad:dlg:ok");
+    d.click("kicad:sch:tool:select");
+    d.click_sch(4500, 2700);
+    let (x, y) = d.sch(4500, 2700);
+    d.double_click(x, y);
+    assert_eq!(
+        d.kicad(Frame::Schematic).ui.sch.path.len(),
+        1,
+        "entered the sheet"
+    );
+    // Inside: a resistor whose pin 1 carries the hierarchical label SIG.
+    d.place("symbol", "resistor", "Device:R", (3000, 3000), false);
+    d.key("Escape");
+    d.click("kicad:sch:tool:hlabel");
+    d.click_sch(3000, 2850);
+    d.text("SIG");
+    d.click("kicad:dlg:ok");
+    d.key("Alt+Backspace");
+    assert!(
+        d.kicad(Frame::Schematic).ui.sch.path.is_empty(),
+        "back on the root"
+    );
+    // The sheet pin offers the label; a root resistor is wired to it.
+    d.click("kicad:sch:tool:sheetpin");
+    d.click_sch(3500, 2500);
+    d.click("kicad:dlg:ok");
+    d.place("symbol", "resistor", "Device:R", (2000, 3000), false);
+    d.key("Escape");
+    d.click("kicad:sch:tool:wire");
+    d.click_sch(2000, 2850);
+    d.click_sch(2000, 2500);
+    d.click_sch(3500, 2500);
+    let (x, y) = d.sch(3500, 2500);
+    d.double_click(x, y);
+    let s = d.kicad(Frame::Schematic).session.schematic;
+    assert_eq!(s.sheets.len(), 1);
+    assert_eq!(s.sheets[0].pins.len(), 1);
+    assert_eq!(s.sheets[0].pins[0].name, "SIG");
+    let conn = cw_eda::connectivity::analyze(&s);
+    let inner = conn.net_of_ref_pin("R1", "1").expect("R1.1 is on a net");
+    let outer = conn.net_of_ref_pin("R2", "1").expect("R2.1 is on a net");
+    assert_eq!(inner.name, outer.name, "the sheet pin joins the two sheets");
+    assert_eq!(inner.pins.len(), 2);
+    // ERC finds no hierarchy problem; the design saves as two files.
+    d.click("kicad:sch:erc");
+    d.click("kicad:dlg:run");
+    let erc = d.kicad(Frame::Schematic).session.erc.expect("ERC ran");
+    assert!(
+        !erc.iter().any(|v| v.message.contains("ierarchical")),
+        "{erc:#?}"
+    );
+    d.click("kicad:dlg:ok");
+    d.key("Ctrl+s");
+    let root = d.file(&format!("{dir}/hier.kicad_sch"));
+    assert!(root.contains("(sheet") && root.contains("hier-sheet1.kicad_sch"));
+    let child = d.file(&format!("{dir}/hier-sheet1.kicad_sch"));
+    assert!(child.contains("(hierarchical_label \"SIG\""), "{child}");
+    let net = cw_eda::netlist::kicad_netlist(&s, "hier.kicad_sch", "");
+    assert!(net.contains("/Sheet1/"), "{net}");
 }

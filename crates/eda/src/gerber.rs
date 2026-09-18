@@ -3,7 +3,7 @@
 //! board house's CAM tool would reject.
 use crate::footprints::{PadKind, PadShape};
 use crate::geom::{mm, Pt};
-use crate::pcb::{Board, DrawShape, Layer};
+use crate::pcb::{Board, DrawShape, Layer, Shape};
 use std::collections::BTreeMap;
 
 const VERSION: &str = "8.0.4";
@@ -78,10 +78,28 @@ fn operations(board: &Board, layer: Layer) -> Vec<Op> {
                 false
             };
             if on {
-                ops.push(Op::Flash(
-                    pad_aperture(pad.shape, f.pad_size(pad)),
-                    f.pad_pos(pad),
-                ));
+                let round = pad.shape == PadShape::Circle
+                    || (pad.shape == PadShape::Oval && pad.size.0 == pad.size.1);
+                if f.orthogonal() || round {
+                    ops.push(Op::Flash(
+                        pad_aperture(pad.shape, f.pad_size(pad)),
+                        f.pad_pos(pad),
+                    ));
+                } else {
+                    // A pad at an angle no aperture template has: a rectangle becomes
+                    // a region with its turned corners, an oval a stroke along its axis
+                    // drawn with a round aperture its width, as KiCad's plotter does.
+                    match f.pad_shape(pad) {
+                        Shape::Seg { a, b, r } => {
+                            ops.push(Op::Draw(Aperture::Circle(2 * r), a, b));
+                        }
+                        other => {
+                            if let Some(c) = other.corners() {
+                                ops.push(Op::Region(vec![c[0], c[1], c[2], c[3], c[0]]));
+                            }
+                        }
+                    }
+                }
             }
         }
         for l in &f.lines {

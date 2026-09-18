@@ -476,6 +476,7 @@ impl NativeApp {
     pub fn wheel(&mut self, target: &str, x: i32, y: i32, delta: i32) -> Result<bool, String> {
         match self {
             Self::Freecad(a) => a.wheel(target, x, y, delta),
+            Self::Kicad(a) => a.wheel(target, x, y, delta),
             _ => Ok(false),
         }
     }
