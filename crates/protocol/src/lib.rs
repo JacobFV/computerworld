@@ -82,12 +82,27 @@ pub struct ComputerDefinition {
     pub node: String,
     #[serde(default)]
     pub initial_files: BTreeMap<String, String>,
+    /// Files whose bytes are not text (a workbook, a database), base64-encoded, under
+    /// the same paths `initial_files` takes.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub initial_binary_files: BTreeMap<String, String>,
     #[serde(default)]
     pub installed_apps: Vec<String>,
     #[serde(default)]
     pub packages: Vec<String>,
 }
 impl ComputerDefinition {
+    /// The seeded files that are not text, decoded.
+    pub fn binary_files(&self) -> Result<Vec<(&str, Vec<u8>)>> {
+        self.initial_binary_files
+            .iter()
+            .map(|(path, text)| {
+                decode_base64(text)
+                    .map(|bytes| (path.as_str(), bytes))
+                    .map_err(|e| SimError::invalid(format!("{path}: {e}")))
+            })
+            .collect()
+    }
     pub fn node_id(&self) -> &str {
         if self.node.is_empty() {
             &self.id
@@ -310,6 +325,33 @@ pub const MAX_PAGE_GAP: u32 = 128;
 pub const MAX_GRID_COLUMNS: u32 = 12;
 pub const MAX_PAGE_EXTENT: u32 = 8192;
 /// `#rrggbb` or `#rrggbbaa`; nothing else, so renderers never guess.
+/// Standard base64 (RFC 4648, padded or not; whitespace ignored), as world files carry
+/// binary seeds.
+pub fn decode_base64(text: &str) -> std::result::Result<Vec<u8>, String> {
+    let mut out = Vec::with_capacity(text.len() / 4 * 3);
+    let mut acc = 0u32;
+    let mut bits = 0u32;
+    for c in text.bytes() {
+        let v = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => break,
+            b' ' | b'\n' | b'\r' | b'\t' => continue,
+            _ => return Err(format!("invalid base64 character {:?}", c as char)),
+        };
+        acc = (acc << 6) | u32::from(v);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    Ok(out)
+}
 pub fn valid_color(value: &str) -> bool {
     matches!(value.len(), 7 | 9)
         && value.starts_with('#')
@@ -1090,6 +1132,15 @@ pub fn valid_dns_target(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn base64_decodes_padded_unpadded_and_wrapped_text() {
+        assert_eq!(super::decode_base64("TWFu").unwrap(), b"Man");
+        assert_eq!(super::decode_base64("TWE=").unwrap(), b"Ma");
+        assert_eq!(super::decode_base64("TQ").unwrap(), b"M");
+        assert_eq!(super::decode_base64("TW\nFu").unwrap(), b"Man");
+        assert_eq!(super::decode_base64("AP8=").unwrap(), [0, 255]);
+        assert!(super::decode_base64("T*").is_err());
+    }
     use super::*;
     #[test]
     fn response_page_roundtrip() {

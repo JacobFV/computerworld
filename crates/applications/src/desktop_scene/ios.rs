@@ -17,10 +17,11 @@ const STOPS: u32 = 11;
 /// (application id, icon asset, name). Every application in the catalogue now has its
 /// own artwork, so the whole roster is drawn on SpringBoard. The last four populate the
 /// dock when installed, which is what keeps the home screen looking like a phone.
-const APPS: [(&str, &str, &str); 17] = [
+const APPS: [(&str, &str, &str); 18] = [
     ("calendar", "calendar", "Calendar"),
     ("notes", "notes", "Notes"),
     ("docs", "docs", "Pages"),
+    ("spreadsheet", "spreadsheet", "Numbers"),
     ("files", "files", "Files"),
     ("photos", "photos", "Photos"),
     ("music", "music", "Music"),
@@ -41,7 +42,10 @@ const APPS: [(&str, &str, &str); 17] = [
 /// name a plate carries is stable and `shell:group:<name>` can expand the same set
 /// twice running — a category cut out of the grid by position could not promise that.
 const LIBRARY_GROUPS: [(&str, &[&str]); 6] = [
-    ("Productivity", &["calendar", "notes", "docs", "contacts"]),
+    (
+        "Productivity",
+        &["calendar", "notes", "docs", "spreadsheet", "contacts"],
+    ),
     ("Utilities", &["files", "clock", "calculator", "settings"]),
     ("Social", &["mail", "chat", "browser"]),
     ("Photo & Video", &["photos", "music"]),

@@ -143,6 +143,8 @@ dependencies = [
  "cw-scene",
  "cw-sdk",
  "cw-services",
+ "cw-sheet",
+ "cw-sql",
  "jpeg-decoder",
  "png",
  "proptest",
@@ -193,10 +195,13 @@ name = "cw-applications"
 version = "0.1.0-alpha.2"
 dependencies = [
  "cw-cad",
+ "cw-determinism",
  "cw-protocol",
  "cw-raster",
  "cw-scene",
  "cw-sdk",
+ "cw-sheet",
+ "cw-sql",
  "regex",
  "serde",
  "serde_json",
@@ -237,6 +242,7 @@ name = "cw-computer"
 version = "0.1.0-alpha.2"
 dependencies = [
  "cw-protocol",
+ "cw-sql",
  "proptest",
  "regex",
  "serde",
@@ -623,6 +629,24 @@ dependencies = [
  "cw-service-social",
  "cw-service-static-site",
  "cw-service-wiki",
+ "serde_json",
+]
+
+[[package]]
+name = "cw-sheet"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "cw-determinism",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cw-sql"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "cw-determinism",
+ "serde",
  "serde_json",
 ]
 

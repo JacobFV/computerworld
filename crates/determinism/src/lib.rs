@@ -1,4 +1,5 @@
 //! Host-independent logical time, SplitMix64 streams and ordered continuations.
+pub mod math;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;

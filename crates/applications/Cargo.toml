@@ -10,6 +10,9 @@ cw-protocol = { path = "../protocol" }
 cw-sdk = { path = "../sdk" }
 cw-cad = { path = "../cad" }
 cw-raster = { path = "../raster" }
+cw-sheet = { path = "../sheet" }
+cw-determinism = { path = "../determinism" }
+cw-sql = { path = "../sql" }
 serde.workspace = true
 serde_json.workspace = true
 regex = "1"

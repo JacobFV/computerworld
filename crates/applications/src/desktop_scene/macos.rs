@@ -15,7 +15,7 @@ const TOOLBAR_INACTIVE: Color = Color::rgb(238, 238, 239);
 /// Width of the Finder sidebar; shared with the Finder client area.
 pub const FINDER_SIDEBAR: u32 = 172;
 /// Every application this shell can present, in Launchpad order.
-const APPS: [(&str, &str); 21] = [
+const APPS: [(&str, &str); 24] = [
     ("files", "Finder"),
     ("browser", "Safari"),
     ("mail", "Mail"),
@@ -24,10 +24,13 @@ const APPS: [(&str, &str); 21] = [
     ("chat", "Messages"),
     ("contacts", "Contacts"),
     ("docs", "Pages"),
+    ("spreadsheet", "Numbers"),
     ("editor", "TextEdit"),
     ("terminal", "Terminal"),
     ("code", "Visual Studio Code"),
     ("freecad", "FreeCAD"),
+    ("excel", "Microsoft Excel"),
+    ("database", "TablePlus"),
     ("photos", "Photos"),
     ("preview", "Preview"),
     ("pixelmator", "Pixelmator Pro"),

@@ -13,6 +13,7 @@ pub mod chat;
 pub mod clock;
 pub mod code;
 pub mod contacts;
+pub mod database;
 pub mod docs;
 pub mod freecad;
 pub mod imaging;
@@ -22,6 +23,7 @@ pub mod music;
 pub mod notes;
 pub mod photos;
 pub mod settings;
+pub mod sheet;
 pub mod weather;
 
 /// What an application may read about the machine while it draws itself. Time and the
@@ -256,6 +258,9 @@ macro_rules! native_apps {
                 match self {
                     Self::Code(a) => a.activate(window, target, clock_us),
                     Self::Freecad(a) => a.activate(window, target, clock_us),
+                    Self::Spreadsheet(a) => a.activate(window, target, clock_us),
+                    Self::Excel(a) => a.activate(window, target, clock_us),
+                    Self::Database(a) => a.activate(window, target, clock_us),
                     other => other.click(window, target, clock_us),
                 }
             }
@@ -270,6 +275,9 @@ macro_rules! native_apps {
             pub fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
                 match self {
                     Self::Code(a) => a.paste(window, text),
+                    Self::Spreadsheet(a) => a.paste(text).map(|()| vec![]),
+                    Self::Excel(a) => a.paste(text).map(|()| vec![]),
+                    Self::Database(a) => a.0.paste(text).map(|()| vec![]),
                     other => other.text(text).map(|()| vec![]),
                 }
             }
@@ -340,6 +348,9 @@ native_apps! {
     Gimp => imaging,
     Pinta => imaging,
     Sketchbook => imaging,
+    Spreadsheet => sheet,
+    Excel => sheet,
+    Database => database,
 }
 
 /// Hooks only image applications have: drag surfaces, rasterised text, finished saves
@@ -374,6 +385,9 @@ impl NativeApp {
     pub fn accepts_text(&self) -> bool {
         match self {
             Self::Photos(a) => a.editing.as_ref().is_some_and(|e| e.accepts_text()),
+            Self::Spreadsheet(a) => a.accepts_text(),
+            Self::Excel(a) => a.accepts_text(),
+            Self::Database(a) => a.0.accepts_text(),
             other => other.studio().is_none_or(|s| s.accepts_text()),
         }
     }
@@ -381,8 +395,64 @@ impl NativeApp {
     pub fn drags(&self, target: &str) -> bool {
         match self {
             Self::Freecad(a) => a.drags(target),
+            Self::Spreadsheet(_) | Self::Excel(_) => sheet::Book::drags(target),
             other => other.studio().is_some_and(|s| s.drags(target)),
         }
+    }
+    fn book_mut(&mut self) -> Option<&mut sheet::Book> {
+        match self {
+            Self::Spreadsheet(a) => Some(&mut a.0),
+            Self::Excel(a) => Some(&mut a.0),
+            _ => None,
+        }
+    }
+    /// Applications that work on documents and open on the user's Documents folder
+    /// when launched on nothing.
+    pub fn opens_documents(kind: &str) -> bool {
+        kind == sheet::Spreadsheet::KIND
+            || kind == sheet::Excel::KIND
+            || kind == database::Database::KIND
+    }
+    /// A file's bytes (or why they could not be read) for an application that asked.
+    pub fn bytes(
+        &mut self,
+        _window: u64,
+        path: &str,
+        result: Result<Vec<u8>, String>,
+        clock_us: u64,
+    ) -> Result<Vec<AppEffect>, String> {
+        if let Self::Freecad(a) = self {
+            a.bytes_loaded(path, result)?;
+            return Ok(vec![]);
+        }
+        if let Self::Database(a) = self {
+            a.0.bytes(path, result, clock_us);
+            return Ok(vec![]);
+        }
+        let book = self.book_mut().ok_or("this application reads no files")?;
+        book.bytes(path, result, clock_us);
+        Ok(vec![])
+    }
+    /// A file this application wrote was saved, or could not be.
+    pub fn bytes_saved(
+        &mut self,
+        _window: u64,
+        path: &str,
+        result: Result<(), String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        // FreeCAD reports a failed write in its Report view; the action fails with it.
+        if let Self::Freecad(a) = self {
+            result?;
+            a.written(path);
+            return Ok(vec![]);
+        }
+        if let Self::Database(a) = self {
+            a.0.saved(path, result);
+            return Ok(vec![]);
+        }
+        let book = self.book_mut().ok_or("this application writes no files")?;
+        book.saved(path, result);
+        Ok(vec![])
     }
     /// The button (0 left, 1 middle, 2 right) of a press about to reach a drag surface.
     pub fn pointer_button(&mut self, button: u8) {
@@ -400,17 +470,6 @@ impl NativeApp {
         match self {
             Self::Freecad(a) => a.wheel(target, x, y, delta),
             _ => Ok(false),
-        }
-    }
-    /// Bytes of a file this application asked to read, or why they could not be read.
-    pub fn bytes_loaded(
-        &mut self,
-        path: &str,
-        result: Result<Vec<u8>, String>,
-    ) -> Result<(), String> {
-        match self {
-            Self::Freecad(a) => a.bytes_loaded(path, result),
-            _ => Err("this application reads no files as bytes".into()),
         }
     }
     /// Menu entries this application puts in the Mac's global menu bar panel `panel`.
@@ -434,6 +493,9 @@ impl NativeApp {
         if let Self::Freecad(a) = self {
             return a.pointer(window, target, phase, x, y);
         }
+        if let Some(book) = self.book_mut() {
+            return book.pointer(target, phase, x, y);
+        }
         let studio = self
             .studio_mut()
             .ok_or("this application has no drag surfaces")?;
@@ -448,6 +510,14 @@ impl NativeApp {
     pub fn listed(&mut self, entries: Vec<String>) -> Result<(), String> {
         if let Self::Freecad(a) = self {
             a.listed(entries);
+            return Ok(());
+        }
+        if let Some(book) = self.book_mut() {
+            book.listed(entries);
+            return Ok(());
+        }
+        if let Self::Database(a) = self {
+            a.0.listed(entries);
             return Ok(());
         }
         let studio = self.studio_mut().ok_or("window is not a file manager")?;

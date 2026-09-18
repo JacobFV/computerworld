@@ -462,6 +462,7 @@ fn every_documented_command_resolves() {
         "sleep",
         "systemctl",
         "apt",
+        "sqlite3",
     ] {
         assert_eq!(
             ok(&mut c, &format!("which {name}")),
@@ -1059,4 +1060,63 @@ fn head_and_tail_take_a_bare_count_as_well_as_dash_n() {
     assert_eq!(ok(&mut c, "cat /tmp/five.txt | head -1"), "a\n");
     // A count that is not a count still fails loudly rather than being ignored.
     refused(&mut c, "head -x /tmp/five.txt", "x");
+}
+
+#[test]
+fn sqlite3_keeps_real_database_files_on_the_machine() {
+    let mut c = machine();
+    ok(
+        &mut c,
+        "sqlite3 /home/user/shop.db 'create table t(a, b); insert into t values (1, 2), (3, 4)'",
+    );
+    assert_eq!(
+        ok(&mut c, "sqlite3 /home/user/shop.db 'select a + b from t'"),
+        "3\n7\n"
+    );
+    // A real SQLite 3 file: whole 4 KiB pages, table and schema on separate ones.
+    assert_eq!(ok(&mut c, "stat -c %s /home/user/shop.db"), "8192\n");
+    assert_eq!(
+        ok(&mut c, "grep -c 'SQLite format 3' /home/user/shop.db"),
+        "1\n"
+    );
+    // SQL and dot-commands arrive on standard input from a pipe, a heredoc or a file.
+    assert_eq!(
+        ok(
+            &mut c,
+            "printf '.tables\\nselect count(*) from t;\\n' | sqlite3 /home/user/shop.db"
+        ),
+        "t\n2\n"
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user; sqlite3 shop.db <<EOF\n.headers on\n.mode csv\nselect * from t where a = 3;\nEOF"),
+        "a,b\r\n3,4\r\n"
+    );
+    ok(&mut c, "printf 'x,y\\n5,6\\n' > /home/user/in.csv");
+    assert_eq!(
+        ok(&mut c, "sqlite3 /home/user/shop.db '.import --csv /home/user/in.csv pts' 'select x * y from pts'"),
+        "30\n"
+    );
+    // Reading never creates a database; writing does.
+    assert_eq!(ok(&mut c, "sqlite3 /home/user/none.db 'select 1'"), "1\n");
+    assert_eq!(run(&mut c, "test -e /home/user/none.db").exit_code, 1);
+    // 'now' is the simulated clock, never the host's.
+    assert_eq!(
+        ok(&mut c, "sqlite3 :memory: \"select datetime('now')\""),
+        "2026-09-17 09:00:00\n"
+    );
+    let r = run(&mut c, "sqlite3 /home/user/shop.db 'select * from missing'");
+    assert_eq!(r.exit_code, 1);
+    assert_eq!(r.stderr, "Error: in prepare, no such table: missing\n");
+    refused(&mut c, "sqlite3 -bogus /home/user/shop.db", "-bogus");
+    // The file's permissions apply: a read-only database refuses writes.
+    ok(&mut c, "chmod 444 /home/user/shop.db");
+    let r = run(&mut c, "sqlite3 /home/user/shop.db 'delete from t'");
+    assert_ne!(r.exit_code, 0);
+    assert_eq!(
+        ok(
+            &mut c,
+            "sqlite3 /home/user/shop.db 'select count(*) from t'"
+        ),
+        "2\n"
+    );
 }
