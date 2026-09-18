@@ -847,3 +847,69 @@ fn right_clicking_the_explorer_opens_its_menu_and_its_entries_act() {
     assert_eq!(last["command"], "pwd");
     assert_eq!(last["stdout"], "/home/carol/project/src\n");
 }
+
+#[test]
+fn run_and_debug_keeps_breakpoints_and_says_what_the_machine_cannot_do() {
+    let mut d = Desk::new("carol-ubuntu", "carol");
+    d.launch();
+    d.click("code:tree:main.py");
+    // A click in the gutter sets a breakpoint on that line.
+    d.click("code:gutter:0:5");
+    let code = d.code();
+    let points = code["debug"]["breakpoints"].as_array().unwrap();
+    assert_eq!(points.len(), 1);
+    assert_eq!(points[0]["line"], 5);
+    assert_eq!(points[0]["path"], "/home/carol/project/main.py");
+    // The Run and Debug view lists it and offers to make a launch.json.
+    d.click("code:activity:run");
+    assert_eq!(d.code()["view"], "run");
+    assert!(d.find("code:cmd:debug.addConfiguration").is_some());
+    assert!(d.find("code:bp-remove:0").is_some());
+    d.click("code:cmd:debug.addConfiguration");
+    let written = d.file("/home/carol/project/.vscode/launch.json");
+    assert!(written.contains("\"type\": \"python\""), "{written}");
+    assert!(written.contains("${workspaceFolder}/main.py"), "{written}");
+    // F5 asks this machine's debugger, which has no adapter for Python: it says so and
+    // runs the program instead of pretending to stop on the breakpoint.
+    d.click("code:tab:0");
+    d.key("F5");
+    let code = d.code();
+    assert!(
+        code["debug"]["session"].is_null(),
+        "nothing is pretending to be stopped"
+    );
+    let notice = code["notice"].as_str().unwrap_or_default();
+    assert!(
+        notice.contains("no debug adapter") && notice.contains("running without debugging"),
+        "{notice}"
+    );
+    // The program really ran, in the machine's own shell.
+    let last = d.transcript().last().cloned().unwrap();
+    assert_eq!(last["command"], "python3 main.py");
+    // The Run and Debug view says what the machine said, rather than showing a stopped
+    // program: there is no debug toolbar, because nothing is being debugged.
+    let scene = d.world.scene(&d.actor, W, H).unwrap();
+    let text: Vec<String> = scene
+        .nodes
+        .iter()
+        .filter_map(|n| n.painted_text().map(str::to_owned))
+        .collect();
+    assert!(
+        text.iter().any(|t| t.contains("no debug adapter")),
+        "{text:?}"
+    );
+    assert!(
+        d.find("code:cmd:workbench.action.debug.stepOver").is_none(),
+        "nothing is being debugged, so there is no toolbar to step with"
+    );
+    assert_eq!(
+        d.code()["debug"]["session"],
+        Value::Null,
+        "and no session either"
+    );
+    // The breakpoint outlived all of that.
+    assert_eq!(
+        d.code()["debug"]["breakpoints"].as_array().unwrap().len(),
+        1
+    );
+}

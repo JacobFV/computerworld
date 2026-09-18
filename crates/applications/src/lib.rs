@@ -275,6 +275,15 @@ pub enum AppEffect {
     PasteImage {
         window: u64,
     },
+    /// A Run and Debug request for the machine's debugger (`cw_computer::Computer::debug`):
+    /// launch a program, step it, read its variables, evaluate an expression in a frame.
+    /// The reply, or the reason there is none, goes to `DesktopState::debug_reply` under
+    /// `tag`, which says what the application asked for.
+    Debug {
+        window: u64,
+        tag: String,
+        request: cw_protocol::debug::Request,
+    },
 }
 /// What a `ShellRun` produced: the finished command (`None` when only the prompt was
 /// asked for), where the session stands afterwards and the prompt it would print next.
@@ -2070,6 +2079,15 @@ impl DesktopState {
         outcome: ShellOutcome,
     ) -> Result<Vec<AppEffect>, String> {
         Ok(self.code_mut(id)?.shell_ran(id, tag, outcome))
+    }
+    /// What the machine's debugger answered a `Debug` effect with.
+    pub fn debug_reply(
+        &mut self,
+        id: u64,
+        tag: &str,
+        reply: Result<cw_protocol::debug::Reply, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        Ok(self.code_mut(id)?.debug_reply(id, tag, reply))
     }
     /// A write reached the disk. Editors learn which file, so the right one turns clean.
     pub fn file_written(

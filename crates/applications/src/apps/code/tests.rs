@@ -251,8 +251,24 @@ fn run_saves_then_executes_the_file_and_tracebacks_become_problems() {
     let mut app = workspace();
     open(&mut app, "main.py", "print(x)\n");
     app.text_effects(W, "#").unwrap();
-    let effects = app.key(W, "F5", 0).unwrap();
-    // Saved first, then a terminal session is started and the file run in it.
+    // F5 is Start Debugging: it asks the machine's debugger first.
+    let asked = app.key(W, "F5", 0).unwrap();
+    assert!(matches!(
+        &asked[0],
+        AppEffect::Debug { request, .. }
+            if matches!(request, cw_protocol::debug::Request::Launch(l) if l.kind == "python")
+    ));
+    // This machine has none, so it says so and runs the file the way Run does: saved
+    // first, then a terminal session is started and the file run in it.
+    let effects = app.debug_reply(
+        W,
+        "launch",
+        Err("no debug adapter for Python is installed on this machine".into()),
+    );
+    assert_eq!(
+        app.notice.as_deref(),
+        Some("no debug adapter for Python is installed on this machine; running without debugging")
+    );
     let AppEffect::WriteFile { path, content, .. } = &effects[0] else {
         panic!("saved first")
     };
@@ -1150,4 +1166,322 @@ fn a_preview_tab_title_is_italic_and_a_pinned_one_upright() {
     assert_eq!(title_style(&app), 1);
     app.activate(W, "code:tab:0", 0).unwrap();
     assert_eq!(title_style(&app), 0);
+}
+
+use cw_protocol::debug::{Frame, Reply, Request, Scope, State, Step, Stopped, Variable};
+
+/// The launch a Start Debugging asked the machine for.
+fn launch_of(effects: &[AppEffect]) -> cw_protocol::debug::Launch {
+    match effects.first() {
+        Some(AppEffect::Debug { request, .. }) => match request {
+            Request::Launch(l) => l.clone(),
+            other => panic!("not a launch: {other:?}"),
+        },
+        other => panic!("nothing was asked of the debugger: {other:?}"),
+    }
+}
+fn requests(effects: &[AppEffect]) -> Vec<Request> {
+    effects
+        .iter()
+        .filter_map(|e| match e {
+            AppEffect::Debug { request, .. } => Some(request.clone()),
+            _ => None,
+        })
+        .collect()
+}
+/// Where a program is stopped, as an adapter would report it.
+fn stopped_at(line: u32, reason: Stopped) -> State {
+    State {
+        stopped: reason,
+        frames: vec![
+            Frame {
+                id: 1,
+                name: "main".into(),
+                path: "/home/alice/project/main.py".into(),
+                line,
+            },
+            Frame {
+                id: 2,
+                name: "<module>".into(),
+                path: "/home/alice/project/main.py".into(),
+                line: 9,
+            },
+        ],
+        scopes: vec![Scope {
+            name: "Locals".into(),
+            reference: 100,
+            expensive: false,
+        }],
+        output: String::new(),
+    }
+}
+
+#[test]
+fn breakpoints_are_kept_whether_or_not_anything_is_running() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "a = 1\nb = 2\nprint(a + b)\n");
+    // The gutter is a target on every painted row.
+    let shown = targets(&painted(&app));
+    assert!(shown.iter().any(|t| t == "code:gutter:0:2"), "{shown:?}");
+    // A click on it sets a breakpoint; another takes it away.
+    app.click(W, "code:gutter:0:2", 0).unwrap();
+    assert_eq!(app.debug.breakpoints.len(), 1);
+    assert_eq!(app.debug.breakpoints[0].line, 2);
+    assert_eq!(app.debug.breakpoints[0].path, "/home/alice/project/main.py");
+    app.click(W, "code:gutter:0:2", 0).unwrap();
+    assert!(app.debug.breakpoints.is_empty());
+    // F9 sets one where the caret is.
+    app.active_mut().unwrap().doc.set("a = 1\nb".len(), false);
+    app.key(W, "F9", 0).unwrap();
+    assert_eq!(app.debug.breakpoints[0].line, 2);
+    // A condition is asked for and kept, and the breakpoint says so.
+    app.run_command(W, "editor.debug.action.conditionalBreakpoint")
+        .unwrap();
+    assert_eq!(app.focus, Focus::Debug);
+    app.text_effects(W, "b > 1").unwrap();
+    app.key(W, "Enter", 0).unwrap();
+    assert_eq!(app.debug.breakpoints[0].condition.as_deref(), Some("b > 1"));
+    assert!(app.debug.prompt.is_none());
+    // The view lists it, with the file and line it is on.
+    app.run_command(W, "workbench.view.debug").unwrap();
+    let scene = painted(&app);
+    assert!(scene.nodes.iter().any(|n| n
+        .painted_text()
+        .is_some_and(|t| t.contains("main.py:2") && t.contains("b > 1"))));
+    // Remove All Breakpoints clears them.
+    app.click(
+        W,
+        "code:cmd:workbench.debug.viewlet.action.removeAllBreakpoints",
+        0,
+    )
+    .unwrap();
+    assert!(app.debug.breakpoints.is_empty());
+    assert_eq!(
+        app.enabled("workbench.debug.viewlet.action.removeAllBreakpoints"),
+        Err("There are no breakpoints")
+    );
+}
+
+#[test]
+fn the_debugger_view_shows_only_what_the_machine_reported() {
+    let mut app = workspace();
+    open(
+        &mut app,
+        "main.py",
+        "def main():\n    x = 1\n    return x\n\n\nmain()\n",
+    );
+    app.click(W, "code:gutter:0:3", 0).unwrap();
+    // Start Debugging asks for the program, with the breakpoints that are set.
+    let asked = app.run_command(W, "workbench.action.debug.start").unwrap();
+    let launch = launch_of(&asked);
+    assert_eq!(launch.kind, "python");
+    assert_eq!(launch.program, "/home/alice/project/main.py");
+    assert_eq!(launch.cwd, "/home/alice/project");
+    assert_eq!(launch.breakpoints.len(), 1);
+    assert_eq!(launch.breakpoints[0].line, 3);
+    // Until the machine answers, nothing pretends to be stopped anywhere.
+    assert!(app.debug.busy);
+    assert_eq!(
+        app.enabled("workbench.action.debug.stepOver"),
+        Err("The program is running")
+    );
+    // The machine stops it on the breakpoint.
+    let effects = app.debug_reply(
+        W,
+        "launch",
+        Ok(Reply::Launched {
+            session: 7,
+            state: stopped_at(
+                3,
+                Stopped::Breakpoint {
+                    path: "/home/alice/project/main.py".into(),
+                    line: 3,
+                },
+            ),
+        }),
+    );
+    let session = app.debug.session.as_ref().expect("a session");
+    assert_eq!(session.id, 7);
+    assert_eq!(session.frames.len(), 2);
+    assert_eq!(
+        app.active_tab().unwrap().path,
+        "/home/alice/project/main.py"
+    );
+    // Locals are asked for at once, because the view shows them expanded.
+    assert!(requests(&effects).iter().any(|r| matches!(
+        r,
+        Request::Variables {
+            session: 7,
+            reference: 100
+        }
+    )));
+    app.debug_reply(
+        W,
+        "vars:100",
+        Ok(Reply::Variables {
+            variables: vec![
+                Variable {
+                    name: "x".into(),
+                    value: "1".into(),
+                    kind: "int".into(),
+                    reference: 0,
+                },
+                Variable {
+                    name: "rows".into(),
+                    value: "[1, 2]".into(),
+                    kind: "list".into(),
+                    reference: 101,
+                },
+            ],
+        }),
+    );
+    let text: Vec<String> = painted(&app)
+        .nodes
+        .iter()
+        .filter_map(|n| n.painted_text().map(str::to_owned))
+        .collect();
+    assert!(text.iter().any(|t| t.contains("x: 1")), "{text:?}");
+    assert!(
+        text.iter().any(|t| t.contains("main  main.py:3")),
+        "{text:?}"
+    );
+    assert!(text.iter().any(|t| t == "Paused on breakpoint"), "{text:?}");
+    // The toolbar's buttons are real now.
+    let shown = targets(&painted(&app));
+    for id in [
+        "continue", "stepOver", "stepInto", "stepOut", "restart", "stop",
+    ] {
+        let target = format!("code:cmd:workbench.action.debug.{id}");
+        assert!(shown.contains(&target), "{target} is not painted");
+    }
+    // Expanding a value asks the machine what it holds.
+    let effects = app.click(W, "code:var:101", 0).unwrap();
+    assert!(requests(&effects)
+        .iter()
+        .any(|r| matches!(r, Request::Variables { reference: 101, .. })));
+    // A step is a step request, and what comes back is what is shown.
+    let effects = app
+        .run_command(W, "workbench.action.debug.stepOver")
+        .unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Resume {
+            session: 7,
+            step: Step::Over
+        })
+    ));
+    app.debug_reply(
+        W,
+        "resume",
+        Ok(Reply::Stopped {
+            state: State {
+                output: "1\n".into(),
+                ..stopped_at(4, Stopped::Step)
+            },
+        }),
+    );
+    assert_eq!(app.debug.session.as_ref().unwrap().frames[0].line, 4);
+    assert!(app
+        .debug
+        .console
+        .iter()
+        .any(|l| l.text == "1" && l.kind == debug::ConsoleKind::Output));
+    // Another frame of the stack can be looked at.
+    app.click(W, "code:frame:1", 0).unwrap();
+    assert_eq!(app.debug.session.as_ref().unwrap().frame, 1);
+    // A watch expression is evaluated where the program is stopped.
+    app.run_command(W, "workbench.debug.viewlet.action.addWatchExpression")
+        .unwrap();
+    app.text_effects(W, "x * 2").unwrap();
+    let effects = app.key(W, "Enter", 0).unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Evaluate { expression, context, .. })
+            if expression == "x * 2" && context == "watch"
+    ));
+    app.debug_reply(
+        W,
+        "watch:0",
+        Ok(Reply::Evaluated {
+            result: Variable {
+                name: "x * 2".into(),
+                value: "2".into(),
+                kind: "int".into(),
+                reference: 0,
+            },
+        }),
+    );
+    assert_eq!(app.debug.watches[0].value.as_deref(), Some("2"));
+    // The Debug Console evaluates in the frame on show.
+    app.run_command(W, "workbench.debug.action.toggleRepl")
+        .unwrap();
+    assert_eq!(app.panel, PanelTab::Debug);
+    app.text_effects(W, "x + 1").unwrap();
+    let effects = app.key(W, "Enter", 0).unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Evaluate { expression, context, .. })
+            if expression == "x + 1" && context == "repl"
+    ));
+    app.debug_reply(
+        W,
+        "repl",
+        Ok(Reply::Evaluated {
+            result: Variable {
+                name: "x + 1".into(),
+                value: "2".into(),
+                kind: "int".into(),
+                reference: 0,
+            },
+        }),
+    );
+    assert!(app
+        .debug
+        .console
+        .iter()
+        .any(|l| l.text == "2" && l.kind == debug::ConsoleKind::Result));
+    // A failed evaluation is the debugger's own words, not a guess.
+    app.debug_reply(W, "repl", Err("name 'zz' is not defined".into()));
+    assert!(app
+        .debug
+        .console
+        .iter()
+        .any(|l| l.text == "name 'zz' is not defined" && l.kind == debug::ConsoleKind::Error));
+    // Stopping ends the session, and the toolbar goes with it.
+    let effects = app.run_command(W, "workbench.action.debug.stop").unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Terminate { session: 7 })
+    ));
+    app.debug_reply(W, "terminate", Ok(Reply::Terminated));
+    assert!(app.debug.session.is_none());
+    assert!(
+        !targets(&painted(&app)).contains(&"code:cmd:workbench.action.debug.stepOver".to_owned())
+    );
+    // The breakpoint outlived the session, as VS Code's do.
+    assert_eq!(app.debug.breakpoints.len(), 1);
+}
+
+#[test]
+fn a_launch_json_is_written_and_read_back() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "print(1)\n");
+    let effects = app.run_command(W, "debug.addConfiguration").unwrap();
+    let written = effects
+        .iter()
+        .find_map(|e| match e {
+            AppEffect::WriteFile { path, content, .. } => Some((path.clone(), content.clone())),
+            _ => None,
+        })
+        .expect("it writes the file VS Code writes");
+    assert_eq!(written.0, "/home/alice/project/.vscode/launch.json");
+    assert!(written.1.contains("\"type\": \"python\""));
+    assert!(written.1.contains("${workspaceFolder}/main.py"));
+    // What was written is what is read back.
+    let configs = debug::parse_launch_json(&written.1);
+    assert_eq!(configs.len(), 1);
+    assert_eq!(configs[0].kind, "python");
+    assert_eq!(configs[0].program, "${workspaceFolder}/main.py");
+    // A file that is not JSON gives no configurations rather than a guess.
+    assert!(debug::parse_launch_json("nonsense").is_empty());
 }

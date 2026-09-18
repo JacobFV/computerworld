@@ -84,6 +84,11 @@ pub struct Pal {
     pub option_on: Color,
     /// The dots and arrows of `editor.renderWhitespace`, and the minimap's ink.
     pub whitespace: Color,
+    /// A breakpoint's dot, and a disabled or unverified one's.
+    pub bp: Color,
+    pub bp_off: Color,
+    /// The line the debugger has the program stopped on.
+    pub stopped: Color,
 }
 pub fn pal(dark: bool) -> Pal {
     if dark {
@@ -133,6 +138,9 @@ pub fn pal(dark: bool) -> Pal {
             term_red: hex(0xF14C4C),
             option_on: Color(36, 137, 219, 130),
             whitespace: hex(0x404040),
+            bp: hex(0xE51400),
+            bp_off: hex(0x848484),
+            stopped: Color(255, 213, 0, 45),
         }
     } else {
         Pal {
@@ -181,6 +189,9 @@ pub fn pal(dark: bool) -> Pal {
             term_red: hex(0xCD3131),
             option_on: hex(0xBED6ED),
             whitespace: hex(0xC8C8C8),
+            bp: hex(0xE51400),
+            bp_off: hex(0x848484),
+            stopped: Color(255, 213, 0, 60),
         }
     }
 }
@@ -419,6 +430,8 @@ pub fn render(app: &Workbench, p: &mut Painter, env: &crate::AppEnv<'_>) {
     for (g, (gx, gy, gw, gh)) in app.group_rects((area.x, area.y, area.width, area.height)) {
         editor_group(app, p, &pal, Rect::new(gx, gy, gw, gh), g);
     }
+    // A session floats its toolbar over the editors, as VS Code does.
+    debug_toolbar(app, p, &pal, area);
     if panel_h > 0 {
         let r = Rect::new(mx, area.height as i32, mw, panel_h);
         panel(app, p, &pal, r);
@@ -1290,75 +1303,578 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     }
 }
 
+/// The Run and Debug view: what will run, what it is stopped on, and the breakpoints
+/// and watch expressions that hold whether or not anything is running.
 fn run_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     section_title(p, pal, r, "RUN AND DEBUG");
-    let mut y = r.y + 44;
-    let runnable = app.enabled("workbench.action.debug.run");
-    let b = Rect::new(r.x + 20, y, r.width.saturating_sub(40), 28);
-    match runnable {
-        Ok(()) => button(
-            p,
-            pal,
-            b,
-            "Run Active File",
-            "code:cmd:workbench.action.debug.run",
-        ),
-        Err(why) => {
-            p.box_(b, Color(pal.accent.0, pal.accent.1, pal.accent.2, 110), 2);
-            p.disabled(&format!("Run Active File: {why}"));
-            p.label(
-                b.x,
-                b.y + 6,
-                b.width,
-                "Run Active File",
-                13,
-                Color(255, 255, 255, 150),
-                false,
-                Align::Center,
+    let w = r.width.saturating_sub(24);
+    let mut y = r.y + 36;
+    let session = app.debug.session.as_ref();
+    if session.is_none() {
+        // Nothing is running: the button that starts one, and how to configure it.
+        let b = Rect::new(r.x + 12, y, w, 28);
+        match app.enabled("workbench.action.debug.start") {
+            Ok(()) => button(
+                p,
+                pal,
+                b,
+                "Run and Debug",
+                "code:cmd:workbench.action.debug.start",
+            ),
+            Err(why) => {
+                p.box_(b, Color(pal.accent.0, pal.accent.1, pal.accent.2, 110), 2);
+                p.disabled(&format!("Run and Debug: {why}"));
+                p.label(
+                    b.x,
+                    b.y + 6,
+                    b.width,
+                    "Run and Debug",
+                    13,
+                    Color(255, 255, 255, 150),
+                    false,
+                    Align::Center,
+                );
+            }
+        }
+        y += 36;
+        if app.debug.configs.is_empty() {
+            let hh = p.paragraph(r.x + 12, y, w, "To customize Run and Debug", 12, pal.desc);
+            let link = Rect::new(r.x + 12, y + hh as i32, w, 20);
+            label(
+                p,
+                link.x,
+                link.y,
+                w,
+                "create a launch.json file",
+                12,
+                pal.link,
             );
+            icon_button(
+                p,
+                link,
+                "code:cmd:debug.addConfiguration",
+                "create a launch.json file",
+                app.enabled("debug.addConfiguration"),
+            );
+            y += hh as i32 + 26;
+        } else {
+            for (i, config) in app.debug.configs.iter().enumerate().take(6) {
+                let row = Rect::new(r.x + 12, y, w, 22);
+                if i == app.debug.config {
+                    p.box_(row, pal.list_active, 2);
+                }
+                label(
+                    p,
+                    row.x + 6,
+                    row.y + 3,
+                    w.saturating_sub(12),
+                    &format!("{} ({})", config.name, config.kind),
+                    12,
+                    pal.fg,
+                );
+                p.region(
+                    row,
+                    &format!("code:debug-config:{i}"),
+                    &format!("Configuration: {}", config.name),
+                );
+                y += 24;
+            }
+            y += 6;
         }
     }
-    y += 40;
-    let hh = p.paragraph(
-        r.x + 20,
-        y,
+    // What the machine last said about a request that failed.
+    if let Some(error) = &app.debug.error {
+        let hh = p.paragraph(r.x + 12, y, w, error, 12, pal.error);
+        y += hh as i32 + 10;
+    }
+    if let Some(session) = session {
+        y = variables_section(app, p, pal, r, y, session);
+    }
+    y = watch_section(app, p, pal, r, y);
+    if let Some(session) = session {
+        y = stack_section(app, p, pal, r, y, session);
+    }
+    breakpoints_section(app, p, pal, r, y);
+}
+
+/// A section header in the Run and Debug view, with its chevron.
+fn debug_header(p: &mut Painter, pal: &Pal, r: Rect, y: i32, title: &str) -> i32 {
+    p.symbol("chevron-down", r.x + 6, y + 3, 12, pal.fg);
+    bold(
+        p,
+        r.x + 22,
+        y + 2,
         r.width.saturating_sub(40),
-        "Runs the file in the integrated terminal with the machine's own python3, node or bash. There is no debug adapter on this machine, so breakpoints are not available.",
+        title,
+        11,
+        pal.fg,
+    );
+    y + 22
+}
+
+/// Every variable of the frame on show, with what an expanded one holds.
+fn variables_section(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    y: i32,
+    session: &super::debug::Session,
+) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "VARIABLES");
+    let bottom = r.y + r.height as i32;
+    for scope in &session.scopes {
+        if y > bottom - 20 {
+            return y;
+        }
+        y = variable_row(app, p, pal, r, y, 0, &scope.name, "", scope.reference, true);
+        if app.debug.expanded.contains(&scope.reference) {
+            y = children(app, p, pal, r, y, 1, scope.reference, bottom);
+        }
+    }
+    y + 8
+}
+/// The children of a reference, and of whatever of them is expanded.
+#[allow(clippy::too_many_arguments)]
+fn children(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    mut y: i32,
+    depth: i32,
+    reference: u64,
+    bottom: i32,
+) -> i32 {
+    let Some(values) = app.debug.values.get(&reference) else {
+        label(
+            p,
+            r.x + 22 + depth * 12,
+            y + 3,
+            r.width.saturating_sub(40),
+            "Loading...",
+            12,
+            pal.desc,
+        );
+        return y + 20;
+    };
+    for v in values {
+        if y > bottom - 20 {
+            return y;
+        }
+        y = variable_row(
+            app,
+            p,
+            pal,
+            r,
+            y,
+            depth,
+            &v.name,
+            &v.value,
+            v.reference,
+            false,
+        );
+        if v.reference != 0 && app.debug.expanded.contains(&v.reference) {
+            y = children(app, p, pal, r, y, depth + 1, v.reference, bottom);
+        }
+    }
+    y
+}
+#[allow(clippy::too_many_arguments)]
+fn variable_row(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    y: i32,
+    depth: i32,
+    name: &str,
+    value: &str,
+    reference: u64,
+    scope: bool,
+) -> i32 {
+    let row = Rect::new(r.x, y, r.width, 20);
+    let x = r.x + 10 + depth * 12;
+    if reference != 0 {
+        let open = app.debug.expanded.contains(&reference);
+        p.symbol(
+            if open {
+                "chevron-down"
+            } else {
+                "chevron-right"
+            },
+            x,
+            y + 4,
+            12,
+            pal.fg,
+        );
+    }
+    let text = if value.is_empty() {
+        name.to_owned()
+    } else {
+        format!("{name}: {value}")
+    };
+    label(
+        p,
+        x + 14,
+        y + 3,
+        r.width.saturating_sub((x - r.x) as u32 + 24),
+        &text,
         12,
+        if scope { pal.fg } else { pal.desc },
+    );
+    if reference != 0 {
+        p.region(
+            row,
+            &format!("code:var:{reference}"),
+            &format!("Expand {name}"),
+        );
+    }
+    y + 20
+}
+
+/// The watch list: expressions evaluated in the frame on show.
+fn watch_section(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, y: i32) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "WATCH");
+    let add = Rect::new(r.x + r.width as i32 - 28, y - 22, 20, 20);
+    p.symbol("plus", add.x + 4, add.y + 4, 12, pal.fg);
+    icon_button(
+        p,
+        add,
+        "code:cmd:workbench.debug.viewlet.action.addWatchExpression",
+        "Add Expression",
+        app.enabled("workbench.debug.viewlet.action.addWatchExpression"),
+    );
+    if let Some(prompt) = app
+        .debug
+        .prompt
+        .as_ref()
+        .filter(|p| matches!(p.kind, super::debug::PromptKind::Watch))
+    {
+        let box_ = Rect::new(r.x + 12, y, r.width.saturating_sub(24), 24);
+        input_box(
+            p,
+            pal,
+            box_,
+            &prompt.value,
+            prompt.label(),
+            app.focus == Focus::Debug,
+            "code:debug-prompt",
+            prompt.label(),
+        );
+        y += 28;
+    }
+    for (i, watch) in app.debug.watches.iter().enumerate() {
+        let row = Rect::new(r.x, y, r.width, 20);
+        let text = match &watch.value {
+            Some(v) => format!("{}: {v}", watch.expression),
+            None => format!("{}: not available", watch.expression),
+        };
+        label(
+            p,
+            r.x + 22,
+            y + 3,
+            r.width.saturating_sub(56),
+            &text,
+            12,
+            if watch.failed { pal.error } else { pal.fg },
+        );
+        let remove = Rect::new(r.x + r.width as i32 - 28, y, 20, 20);
+        p.symbol("close", remove.x + 4, remove.y + 4, 12, pal.desc);
+        p.region(
+            remove,
+            &format!("code:watch-remove:{i}"),
+            &format!("Remove watch {}", watch.expression),
+        );
+        if watch.reference != 0 {
+            p.region(
+                Rect::new(row.x, row.y, row.width.saturating_sub(32), row.height),
+                &format!("code:var:{}", watch.reference),
+                &format!("Expand {}", watch.expression),
+            );
+        }
+        y += 20;
+    }
+    y + 8
+}
+
+/// The call stack, innermost frame first.
+fn stack_section(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    y: i32,
+    session: &super::debug::Session,
+) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "CALL STACK");
+    let reason = match (&session.stopped, app.debug.busy) {
+        (_, true) => "Running".to_owned(),
+        (Some(stopped), _) => stopped.label(),
+        (None, _) => "Starting".to_owned(),
+    };
+    label(
+        p,
+        r.x + 22,
+        y + 2,
+        r.width.saturating_sub(40),
+        &reason,
+        11,
         pal.desc,
     );
-    y += hh as i32 + 14;
-    if let Some((command, code)) = &app.last_run {
-        bold(
-            p,
-            r.x + 20,
-            y,
-            r.width.saturating_sub(40),
-            "LAST RUN",
-            11,
-            pal.fg,
-        );
+    y += 18;
+    for (i, frame) in session.frames.iter().enumerate().take(12) {
+        let row = Rect::new(r.x, y, r.width, 20);
+        if i == session.frame {
+            p.box_(row, pal.list_active, 0);
+        }
         label(
             p,
-            r.x + 20,
-            y + 20,
+            r.x + 22,
+            y + 3,
             r.width.saturating_sub(40),
-            command,
+            &format!(
+                "{}  {}:{}",
+                frame.name,
+                super::basename(&frame.path),
+                frame.line
+            ),
             12,
             pal.fg,
         );
+        p.region(
+            row,
+            &format!("code:frame:{i}"),
+            &format!("Frame {}", frame.name),
+        );
+        y += 20;
+    }
+    y + 8
+}
+
+/// The breakpoints, and the exception filters above them.
+fn breakpoints_section(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, y: i32) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "BREAKPOINTS");
+    let clear = Rect::new(r.x + r.width as i32 - 28, y - 22, 20, 20);
+    p.symbol("close", clear.x + 4, clear.y + 4, 12, pal.fg);
+    icon_button(
+        p,
+        clear,
+        "code:cmd:workbench.debug.viewlet.action.removeAllBreakpoints",
+        "Remove All Breakpoints",
+        app.enabled("workbench.debug.viewlet.action.removeAllBreakpoints"),
+    );
+    let bottom = r.y + r.height as i32;
+    for (name, on, target, what) in [
+        (
+            "Raised Exceptions",
+            app.debug.exceptions.raised,
+            "code:exception:raised",
+            "Stop wherever an exception is raised",
+        ),
+        (
+            "Uncaught Exceptions",
+            app.debug.exceptions.uncaught,
+            "code:exception:uncaught",
+            "Stop on an exception nothing handles",
+        ),
+    ] {
+        let row = Rect::new(r.x, y, r.width, 20);
+        check(p, pal, Rect::new(r.x + 8, y + 4, 12, 12), on);
         label(
             p,
-            r.x + 20,
-            y + 38,
+            r.x + 26,
+            y + 3,
             r.width.saturating_sub(40),
-            &format!("Exit code {code}"),
+            name,
             12,
-            if *code == 0 { pal.untracked } else { pal.error },
+            pal.fg,
         );
+        p.region(row, target, what);
+        y += 20;
+    }
+    for (i, point) in app.debug.breakpoints.iter().enumerate() {
+        if y > bottom - 20 {
+            break;
+        }
+        check(p, pal, Rect::new(r.x + 8, y + 4, 12, 12), point.enabled);
+        p.region(
+            Rect::new(r.x, y, 26, 20),
+            &format!("code:bp:{i}"),
+            &format!(
+                "{} the breakpoint at {}:{}",
+                if point.enabled { "Disable" } else { "Enable" },
+                super::basename(&point.path),
+                point.line
+            ),
+        );
+        let text = match &point.condition {
+            Some(c) => format!("{}:{}  when {c}", super::basename(&point.path), point.line),
+            None => format!("{}:{}", super::basename(&point.path), point.line),
+        };
+        label(
+            p,
+            r.x + 26,
+            y + 3,
+            r.width.saturating_sub(60),
+            &text,
+            12,
+            if point.verified == Some(false) {
+                pal.desc
+            } else {
+                pal.fg
+            },
+        );
+        p.region(
+            Rect::new(r.x + 26, y, r.width.saturating_sub(58), 20),
+            &format!("code:bp-open:{i}"),
+            "Open the breakpoint's line",
+        );
+        let remove = Rect::new(r.x + r.width as i32 - 28, y, 20, 20);
+        p.symbol("close", remove.x + 4, remove.y + 4, 12, pal.desc);
+        p.region(remove, &format!("code:bp-remove:{i}"), "Remove breakpoint");
+        y += 20;
+    }
+    if app.debug.breakpoints.is_empty() {
+        label(
+            p,
+            r.x + 22,
+            y + 3,
+            r.width.saturating_sub(40),
+            "No breakpoints. Click a line's gutter to set one.",
+            12,
+            pal.desc,
+        );
+        y += 20;
+    }
+    y
+}
+
+/// A tick box, on or off.
+fn check(p: &mut Painter, pal: &Pal, r: Rect, on: bool) {
+    p.border(
+        r,
+        if on { pal.accent } else { pal.input },
+        2,
+        pal.input_border,
+    );
+    if on {
+        p.symbol("check", r.x, r.y, 12, pal.button_fg);
     }
 }
 
+/// The Debug Console: what the program wrote, and what was evaluated in its frame.
+fn debug_console(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
+    let (cw, rh) = terminal_cell();
+    let input_h = 26;
+    let body = Rect::new(r.x, r.y, r.width, r.height.saturating_sub(input_h));
+    let cap = (body.height / rh).max(1) as usize;
+    let skip = app.debug.console.len().saturating_sub(cap);
+    let cols = (body.width.saturating_sub(24) / cw) as usize;
+    for (i, line) in app.debug.console.iter().skip(skip).enumerate() {
+        let colour = match line.kind {
+            super::debug::ConsoleKind::Error => pal.error,
+            super::debug::ConsoleKind::Input => pal.link,
+            super::debug::ConsoleKind::Result => pal.fg,
+            super::debug::ConsoleKind::Output => pal.fg,
+        };
+        let prefix = match line.kind {
+            super::debug::ConsoleKind::Input => "> ",
+            super::debug::ConsoleKind::Result => "< ",
+            _ => "",
+        };
+        let text = format!("{prefix}{}", line.text);
+        let shown: String = text.chars().take(cols).collect();
+        mono(
+            p,
+            body.x + 12,
+            body.y + (i as u32 * rh) as i32,
+            &shown,
+            TERM_SIZE,
+            colour,
+        );
+    }
+    let input = Rect::new(
+        r.x + 8,
+        r.y + body.height as i32,
+        r.width.saturating_sub(16),
+        24,
+    );
+    input_box(
+        p,
+        pal,
+        input,
+        &app.debug.input,
+        "Evaluate an expression in the selected frame",
+        app.focus == Focus::Debug && app.debug.prompt.is_none(),
+        "code:repl-input",
+        "Debug Console input",
+    );
+}
+
+/// The floating toolbar a session puts over the editor.
+fn debug_toolbar(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
+    let Some(session) = app.debug.session.as_ref() else {
+        return;
+    };
+    let buttons: [(&str, &str, &str); 6] = [
+        (
+            if app.debug.busy {
+                "workbench.action.debug.pause"
+            } else {
+                "workbench.action.debug.continue"
+            },
+            if app.debug.busy { "Pause" } else { "Continue" },
+            "play",
+        ),
+        ("workbench.action.debug.stepOver", "Step Over", "over"),
+        ("workbench.action.debug.stepInto", "Step Into", "into"),
+        ("workbench.action.debug.stepOut", "Step Out", "out"),
+        ("workbench.action.debug.restart", "Restart", "reload"),
+        ("workbench.action.debug.stop", "Stop", "stop"),
+    ];
+    let (bw, bh) = (30u32, 28u32);
+    let width = bw * buttons.len() as u32 + 16;
+    let bar = Rect::new(
+        r.x + (r.width.saturating_sub(width) / 2) as i32,
+        r.y + 4,
+        width,
+        bh + 8,
+    );
+    p.box_(bar, pal.widget, 4);
+    p.border(bar, Color::TRANSPARENT, 4, pal.widget_border);
+    for (i, (command, name, icon)) in buttons.into_iter().enumerate() {
+        let b = Rect::new(bar.x + 8 + (i as u32 * bw) as i32, bar.y + 4, bw, bh);
+        let enabled = app.enabled(command);
+        let colour = if enabled.is_ok() { pal.fg } else { pal.desc };
+        let (x, y) = (b.x + 8, b.y + 6);
+        match icon {
+            "play" if app.debug.busy => p.symbol("pause", x, y, 16, colour),
+            "play" => icons::play(p, x, y, 16, colour),
+            "over" => icons::step_over(p, x, y, 16, colour),
+            "into" => icons::step_into(p, x, y, 16, colour),
+            "out" => icons::step_out(p, x, y, 16, colour),
+            "reload" => p.symbol("reload", x, y, 16, colour),
+            _ => icons::stop(p, x, y, 16, colour),
+        }
+        icon_button(p, b, &format!("code:cmd:{command}"), name, enabled);
+    }
+    // What it is stopped on, beside the toolbar, so the state is never only a colour.
+    let text = match (&session.stopped, app.debug.busy) {
+        (_, true) => "Running".to_owned(),
+        (Some(stopped), _) => stopped.label(),
+        (None, _) => "Starting".to_owned(),
+    };
+    label(
+        p,
+        bar.x + bar.width as i32 + 8,
+        bar.y + 10,
+        220,
+        &text,
+        11,
+        pal.desc,
+    );
+}
 fn editor_group(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, group: usize) {
     p.box_(Rect::new(r.x, r.y, r.width, TABS_H), pal.tab_inactive, 0);
     // The groups are divided by a hairline, as VS Code divides them.
@@ -1938,6 +2454,15 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
         vec![]
     };
     let bracket = tab.doc.matching_bracket();
+    // Where the debugger has the program stopped, when it is in this file.
+    let stopped_line = app
+        .debug
+        .session
+        .as_ref()
+        .filter(|s| !s.ended)
+        .and_then(super::debug::Session::at)
+        .filter(|(path, _)| *path == tab.path)
+        .map(|(_, line)| line);
     let problems: Vec<_> = app
         .problems_all()
         .into_iter()
@@ -1993,6 +2518,10 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
                 );
             }
         }
+        // The line the program is stopped on, as the debugger reported it.
+        if stopped_line == Some(line as u32 + 1) && starts_line {
+            p.box_(Rect::new(r.x, y, r.width, rh), pal.stopped, 0);
+        }
         // Selections, including the newline at the end of a fully selected row.
         for (from, to) in selections.iter().copied() {
             if from > e || to < s {
@@ -2039,6 +2568,34 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
             }
         }
         if starts_line {
+            // The gutter: a breakpoint dot where there is one, and a place to click for
+            // one where there is not.
+            let point = app.debug.at(&tab.path, line as u32 + 1);
+            let dot = Rect::new(r.x + 2, y + (rh as i32 - 12) / 2, 14, 12);
+            if let Some(point) = point {
+                let colour = match (point.enabled, point.verified) {
+                    (false, _) => pal.bp_off,
+                    (true, Some(false)) => pal.bp_off,
+                    _ => pal.bp,
+                };
+                p.circle(dot.x + 6, dot.y + 6, 5, colour);
+                if point.condition.is_some() {
+                    // A conditional breakpoint carries the mark VS Code puts on it.
+                    mono(p, dot.x + 3, ty, "=", 9, pal.editor);
+                }
+            }
+            let what = match point {
+                None => "Set a breakpoint on this line".to_owned(),
+                Some(b) => match &b.condition {
+                    Some(c) => format!("Remove the breakpoint (stops when {c})"),
+                    None => "Remove the breakpoint on this line".to_owned(),
+                },
+            };
+            p.region(
+                Rect::new(r.x, y, 16, rh),
+                &format!("code:gutter:{group}:{}", line + 1),
+                &what,
+            );
             let n = (line + 1).to_string();
             let nx = r.x + 18 + (digits as usize - n.len()) as i32 * cw as i32;
             mono(
@@ -2403,6 +2960,7 @@ fn panel(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         (PanelTab::Problems, "PROBLEMS"),
         (PanelTab::Output, "OUTPUT"),
         (PanelTab::Terminal, "TERMINAL"),
+        (PanelTab::Debug, "DEBUG CONSOLE"),
     ] {
         let on = app.panel == tab;
         let tw = p.measure(title, 11, false);
@@ -2434,6 +2992,7 @@ fn panel(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             PanelTab::Problems => "problems",
             PanelTab::Output => "output",
             PanelTab::Terminal => "terminal",
+            PanelTab::Debug => "debug",
         };
         p.region(
             Rect::new(x, r.y + 4, width, 28),
@@ -2468,6 +3027,7 @@ fn panel(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     match app.panel {
         PanelTab::Terminal => terminal(app, p, pal, body),
         PanelTab::Problems => problems_panel(app, p, pal, body),
+        PanelTab::Debug => debug_console(app, p, pal, body),
         PanelTab::Output => {
             let (cw, rh) = terminal_cell();
             let cap = (body.height / rh).max(1) as usize;

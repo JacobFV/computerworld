@@ -764,6 +764,8 @@ impl NativeApp {
                 code::Focus::Quick => Some("code:quick".into()),
                 code::Focus::Find | code::Focus::Replace => Some("code:find".into()),
                 code::Focus::Inline => Some("code:inline".into()),
+                code::Focus::Debug if a.debug.prompt.is_some() => Some("code:debug-prompt".into()),
+                code::Focus::Debug => Some("code:repl-input".into()),
             },
             Self::Freecad(a) => field(a.0.field.is_some(), "freecad:field"),
             // No field anywhere: typed digits on a desktop are the calculator's keys,

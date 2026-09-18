@@ -5,6 +5,7 @@
 //! on screen is a stand-in: a control either does what it says or is shown disabled.
 pub mod buffer;
 pub mod commands;
+pub mod debug;
 pub mod frame;
 mod icons;
 pub mod problems;
@@ -51,6 +52,8 @@ pub enum PanelTab {
     Output,
     #[default]
     Terminal,
+    /// The Debug Console: the program's output, and expressions evaluated in its frame.
+    Debug,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -59,6 +62,9 @@ pub enum Focus {
     Editor,
     Explorer,
     Terminal,
+    /// The Debug Console's input, or a Run and Debug prompt (a watch expression, a
+    /// breakpoint's condition).
+    Debug,
     Search,
     SearchReplace,
     ScmMessage,
@@ -517,6 +523,9 @@ pub struct Workbench {
     /// The open context menu (a right click on the Explorer or in the editor).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context: Option<ContextKind>,
+    /// Breakpoints, the debug session and what the Run and Debug view shows of it.
+    #[serde(default)]
+    pub debug: debug::Debug,
 }
 fn is_zero_u8(v: &u8) -> bool {
     *v == 0
@@ -2173,9 +2182,37 @@ impl Workbench {
                 !self.terminals.is_empty()
             }
             "workbench.action.terminal.new" => self.terminals.len() < TERMINAL_LIMIT,
-            "workbench.action.terminal.runActiveFile"
-            | "workbench.action.debug.start"
-            | "workbench.action.debug.run" => runnable,
+            "workbench.action.terminal.runActiveFile" | "workbench.action.debug.run" => runnable,
+            // F5 starts a program under the debugger, carries the one that is stopped
+            // on, or runs a file no debugger takes.
+            "workbench.action.debug.start" => match &self.debug.session {
+                Some(s) if !s.ended => !self.debug.busy,
+                _ => self.debug_config().is_ok() || runnable,
+            },
+            "workbench.action.debug.continue"
+            | "workbench.action.debug.stepOver"
+            | "workbench.action.debug.stepInto"
+            | "workbench.action.debug.stepOut" => {
+                self.debug.session.as_ref().is_some_and(|s| !s.ended) && !self.debug.busy
+            }
+            "workbench.action.debug.pause" => {
+                self.debug.session.as_ref().is_some_and(|s| !s.ended) && self.debug.busy
+            }
+            "workbench.action.debug.stop" | "workbench.action.debug.restart" => {
+                self.debug.session.is_some()
+            }
+            "editor.debug.action.toggleBreakpoint"
+            | "editor.debug.action.conditionalBreakpoint" => editor,
+            "workbench.debug.viewlet.action.removeAllBreakpoints" => {
+                !self.debug.breakpoints.is_empty()
+            }
+            "workbench.debug.viewlet.action.removeAllWatchExpressions" => {
+                !self.debug.watches.is_empty()
+            }
+            "workbench.debug.viewlet.action.addWatchExpression" => {
+                self.debug.watches.len() < debug::WATCH_LIMIT
+            }
+            "debug.addConfiguration" => folder && self.debug_config().is_ok(),
             "python.execInTerminal" => {
                 tab.is_some_and(|t| t.kind == TabKind::File && t.lang == Language::Python)
             }
@@ -2218,9 +2255,29 @@ impl Workbench {
                 "No terminal is open"
             }
             "workbench.action.terminal.runActiveFile"
-            | "workbench.action.debug.start"
             | "workbench.action.debug.run"
             | "python.execInTerminal" => "Open a Python, JavaScript or shell file to run it",
+            "workbench.action.debug.start" => "Open a Python, JavaScript or shell file to run it",
+            "debug.addConfiguration" => "Open a Python or JavaScript file to debug it",
+            "workbench.action.debug.continue"
+            | "workbench.action.debug.stepOver"
+            | "workbench.action.debug.stepInto"
+            | "workbench.action.debug.stepOut" => {
+                if self.debug.busy {
+                    "The program is running"
+                } else {
+                    "Nothing is stopped in the debugger"
+                }
+            }
+            "workbench.action.debug.pause" => "The program is not running",
+            "workbench.action.debug.stop" | "workbench.action.debug.restart" => {
+                "Nothing is being debugged"
+            }
+            "editor.debug.action.toggleBreakpoint"
+            | "editor.debug.action.conditionalBreakpoint" => "Open a file to set a breakpoint in",
+            "workbench.debug.viewlet.action.removeAllBreakpoints" => "There are no breakpoints",
+            "workbench.debug.viewlet.action.removeAllWatchExpressions" => "There are no watches",
+            "workbench.debug.viewlet.action.addWatchExpression" => "The watch list is full",
             _ if !folder => "Open a folder first",
             _ => "Open a text editor first",
         })
@@ -2777,8 +2834,84 @@ impl Workbench {
             }
             "workbench.action.terminal.runActiveFile"
             | "python.execInTerminal"
-            | "workbench.action.debug.start"
             | "workbench.action.debug.run" => self.run_active(window),
+            "workbench.action.debug.start" | "workbench.action.debug.continue" => {
+                self.debug_start(window)
+            }
+            "workbench.action.debug.stepOver" => {
+                self.debug_resume(window, cw_protocol::debug::Step::Over)
+            }
+            "workbench.action.debug.stepInto" => {
+                self.debug_resume(window, cw_protocol::debug::Step::Into)
+            }
+            "workbench.action.debug.stepOut" => {
+                self.debug_resume(window, cw_protocol::debug::Step::Out)
+            }
+            "workbench.action.debug.pause" => self.debug_pause(window),
+            "workbench.action.debug.stop" => self.debug_stop(window),
+            "workbench.action.debug.restart" => self.debug_restart(window),
+            "editor.debug.action.toggleBreakpoint" => {
+                let (path, line) = self.caret_line()?;
+                self.breakpoint_at(window, &path, line)
+            }
+            "editor.debug.action.conditionalBreakpoint" => {
+                let (path, line) = self.caret_line()?;
+                let value = self
+                    .debug
+                    .at(&path, line)
+                    .and_then(|b| b.condition.clone())
+                    .unwrap_or_default();
+                self.view = View::Run;
+                self.sidebar = true;
+                self.focus = Focus::Debug;
+                self.debug.prompt = Some(debug::Prompt {
+                    kind: debug::PromptKind::Condition { path, line },
+                    value,
+                });
+                Ok(vec![])
+            }
+            "workbench.debug.viewlet.action.removeAllBreakpoints" => {
+                let paths: Vec<String> = {
+                    let mut p: Vec<String> = self
+                        .debug
+                        .breakpoints
+                        .iter()
+                        .map(|b| b.path.clone())
+                        .collect();
+                    p.sort();
+                    p.dedup();
+                    p
+                };
+                self.debug.breakpoints.clear();
+                let mut effects = vec![];
+                for path in paths {
+                    effects.extend(self.send_breakpoints(window, &path));
+                }
+                Ok(effects)
+            }
+            "workbench.debug.viewlet.action.addWatchExpression" => {
+                self.view = View::Run;
+                self.sidebar = true;
+                self.debug.prompt = Some(debug::Prompt {
+                    kind: debug::PromptKind::Watch,
+                    value: String::new(),
+                });
+                self.focus = Focus::Debug;
+                Ok(vec![])
+            }
+            "workbench.debug.viewlet.action.removeAllWatchExpressions" => {
+                self.debug.watches.clear();
+                Ok(vec![])
+            }
+            "workbench.debug.action.toggleRepl" => {
+                self.panel_open = !(self.panel_open && self.panel == PanelTab::Debug);
+                self.panel = PanelTab::Debug;
+                if self.panel_open {
+                    self.focus = Focus::Debug;
+                }
+                Ok(vec![])
+            }
+            "debug.addConfiguration" => self.create_launch_json(window),
             "editor.action.toggleWordWrap" => {
                 self.settings.word_wrap = !self.settings.word_wrap;
                 Ok(self.save_settings(window))
@@ -3255,6 +3388,15 @@ impl Workbench {
                 let inline = self.inline.as_mut().ok_or("nothing is being named")?;
                 bounded(&mut inline.value, text, FIELD_LIMIT).map(|_| vec![])
             }
+            Focus::Debug => {
+                // A box that is open takes the typing; otherwise it is the console's
+                // own input line.
+                match &mut self.debug.prompt {
+                    Some(prompt) => bounded(&mut prompt.value, text, FIELD_LIMIT)?,
+                    None => bounded(&mut self.debug.input, text, FIELD_LIMIT)?,
+                }
+                Ok(vec![])
+            }
             Focus::Terminal => {
                 let term = self
                     .terminals
@@ -3375,7 +3517,11 @@ impl Workbench {
                     return Ok(effects);
                 }
             }
-            Focus::Search | Focus::SearchReplace | Focus::ScmMessage | Focus::Inline => {
+            Focus::Search
+            | Focus::SearchReplace
+            | Focus::ScmMessage
+            | Focus::Inline
+            | Focus::Debug => {
                 if let Some(effects) = self.field_key(window, &key)? {
                     return Ok(effects);
                 }
@@ -3643,6 +3789,19 @@ impl Workbench {
                 Ok(Some(vec![]))
             }
             (Focus::Inline, "enter") => self.commit_inline(window).map(Some),
+            (Focus::Debug, "backspace") => {
+                match &mut self.debug.prompt {
+                    Some(prompt) => pop_char(&mut prompt.value),
+                    None => pop_char(&mut self.debug.input),
+                }
+                Ok(Some(vec![]))
+            }
+            (Focus::Debug, "enter") => self.debug_commit(window).map(Some),
+            (Focus::Debug, "escape") => {
+                self.debug.prompt = None;
+                self.focus = Focus::Editor;
+                Ok(Some(vec![]))
+            }
             _ => Ok(None),
         }
     }
@@ -4401,6 +4560,96 @@ impl Workbench {
                 self.focus = Focus::ScmMessage;
                 Ok(vec![])
             }
+            // ----- Run and Debug -------------------------------------------------------
+            // The gutter: a click where VS Code puts its breakpoint dots.
+            "gutter" => {
+                let (group, line) = arg.split_once(':').ok_or("invalid gutter target")?;
+                let group: usize = group.parse().map_err(|_| "invalid editor group")?;
+                let line: u32 = line.parse().map_err(|_| "invalid line")?;
+                if group < self.group_count() && group != self.focus_group {
+                    self.go_to_group(group);
+                }
+                let path = self
+                    .active_tab()
+                    .filter(|t| t.kind == TabKind::File)
+                    .map(|t| t.path.clone())
+                    .ok_or("that editor holds no file")?;
+                self.breakpoint_at(window, &path, line)
+            }
+            "bp" => {
+                let i: usize = arg.parse().map_err(|_| "invalid breakpoint")?;
+                let point = self
+                    .debug
+                    .breakpoints
+                    .get_mut(i)
+                    .ok_or("no such breakpoint")?;
+                point.enabled = !point.enabled;
+                let path = point.path.clone();
+                Ok(self.send_breakpoints(window, &path))
+            }
+            "bp-remove" => {
+                let i: usize = arg.parse().map_err(|_| "invalid breakpoint")?;
+                if i >= self.debug.breakpoints.len() {
+                    return Err("no such breakpoint".into());
+                }
+                let path = self.debug.breakpoints.remove(i).path;
+                Ok(self.send_breakpoints(window, &path))
+            }
+            "bp-open" => {
+                let i: usize = arg.parse().map_err(|_| "invalid breakpoint")?;
+                let point = self.debug.breakpoints.get(i).ok_or("no such breakpoint")?;
+                let (path, line) = (point.path.clone(), point.line as usize);
+                Ok(self.open_file(window, &path, false, Some((line, 1, 0))))
+            }
+            "exception" => {
+                match arg {
+                    "uncaught" => {
+                        self.debug.exceptions.uncaught = !self.debug.exceptions.uncaught;
+                    }
+                    "raised" => self.debug.exceptions.raised = !self.debug.exceptions.raised,
+                    _ => return Err(format!("unknown exception filter {arg}")),
+                }
+                Ok(self.send_exceptions(window))
+            }
+            "frame" => {
+                let i: usize = arg.parse().map_err(|_| "invalid frame")?;
+                self.select_frame(window, i)
+            }
+            "var" => {
+                let reference: u64 = arg.parse().map_err(|_| "invalid variable")?;
+                Ok(self.debug_expand(window, reference))
+            }
+            "watch-remove" => {
+                let i: usize = arg.parse().map_err(|_| "invalid watch")?;
+                if i >= self.debug.watches.len() {
+                    return Err("no such watch".into());
+                }
+                self.debug.watches.remove(i);
+                Ok(vec![])
+            }
+            "debug-config" => {
+                let i: usize = arg.parse().map_err(|_| "invalid configuration")?;
+                if i >= self.debug.configs.len() {
+                    return Err("no such launch configuration".into());
+                }
+                self.debug.config = i;
+                Ok(vec![])
+            }
+            "repl-input" => {
+                self.focus = Focus::Debug;
+                self.debug.prompt = None;
+                Ok(vec![])
+            }
+            "debug-prompt" => {
+                self.focus = Focus::Debug;
+                Ok(vec![])
+            }
+            "debug-prompt-ok" => self.debug_commit(window),
+            "debug-prompt-close" => {
+                self.debug.prompt = None;
+                self.focus = Focus::Editor;
+                Ok(vec![])
+            }
             "scm-stage" => {
                 let ps = self.powershell();
                 self.git_command(window, "add", format!("git add {}", quote(arg, ps)))
@@ -4451,9 +4700,13 @@ impl Workbench {
                     "problems" => PanelTab::Problems,
                     "output" => PanelTab::Output,
                     "terminal" => PanelTab::Terminal,
+                    "debug" => PanelTab::Debug,
                     _ => return Err(format!("unknown panel {arg}")),
                 };
                 self.panel_open = true;
+                if self.panel == PanelTab::Debug {
+                    self.focus = Focus::Debug;
+                }
                 if self.panel == PanelTab::Terminal {
                     self.focus = Focus::Terminal;
                     return self.ensure_terminal(window);
@@ -4720,6 +4973,14 @@ impl Workbench {
                             format!("code:problem:{i}"),
                             format!("{}:{}:{} {}", p.path, p.line, p.col, p.message),
                         ));
+                    }
+                }
+                PanelTab::Debug => {
+                    for (i, line) in self.debug.console.iter().enumerate() {
+                        page.elements.push(E::Text {
+                            id: format!("code-repl-{i}"),
+                            text: line.text.clone(),
+                        });
                     }
                 }
                 PanelTab::Output => page.elements.push(E::Text {

@@ -215,7 +215,17 @@ nothing it opens `~/project` when the machine has one and the Welcome page other
   (`~/.config/Code/User`, `~/Library/Application Support/Code/User`,
   `~/AppData/Roaming/Code/User`) and are read back at launch.
 
-Not implemented, and so not drawn: extensions, the debugger (Run executes without one)
+- Run and Debug keeps breakpoints (a click in the gutter, `F9`, or a condition through
+  Add Conditional Breakpoint), the exception filters, the watch list and the Debug
+  Console, and sends every one of them to the machine's debug adapter
+  (`cw_computer::debug`, see [debugging](debugging.md)). No adapter is installed for
+  this build's Python and JavaScript runtimes yet, so nothing stops anywhere: the view
+  reports the machine's own reason and `F5` runs the file in the integrated terminal, as
+  Run Without Debugging does. Breakpoints are kept regardless, and the call stack,
+  variables, watch values and Debug Console only ever show what a reply said.
+
+Not implemented, and so not drawn: extensions, a debug adapter for the interpreters
+(the view and the machine's half of the seam are there; see [debugging](debugging.md))
 and the Accounts menu.
 
 Launchers, search, task switching and platform panels expose semantic hit regions.

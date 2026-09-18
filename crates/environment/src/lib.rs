@@ -2414,6 +2414,24 @@ impl Environment {
                         .map_err(SimError::invalid)?;
                     pending.extend(more);
                 }
+                Debug {
+                    window,
+                    tag,
+                    request,
+                } => {
+                    // The machine's debugger, or the reason it has none: either way the
+                    // view is told, and shows only what came back.
+                    let reply = self
+                        .runtime
+                        .debug(machine, actor, &request)
+                        .map_err(|e| e.message);
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .debug_reply(window, &tag, reply)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
                 CopyText { text, .. } => {
                     self.machine_mut(id, machine)?
                         .desktop

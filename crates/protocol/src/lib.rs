@@ -2,6 +2,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
+pub mod debug;
+
 pub const SCHEMA_VERSION: u32 = 1;
 pub const PAGE_MEDIA_TYPE: &str = "application/vnd.computerworld.page+json";
 /// A page image: JSON `{width, height, rgba}`, straight-alpha RGBA8, row-major.

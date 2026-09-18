@@ -784,6 +784,25 @@ impl Runtime {
             || SimError::not_found(format!("computer {machine}")),
         )?))
     }
+    /// Serve one Run and Debug request on `machine`: the machine hands it to the debug
+    /// adapter for the program's runtime, or says why it has none.
+    pub fn debug(
+        &mut self,
+        machine: &str,
+        actor: &str,
+        request: &cw_protocol::debug::Request,
+    ) -> Result<cw_protocol::debug::Reply> {
+        let tick = self.tick();
+        self.event(
+            "debug.request",
+            Some(machine),
+            Some(actor),
+            serde_json::to_value(request).unwrap_or_default(),
+        );
+        self.computer_mut(machine)?
+            .debug(tick, request)
+            .map_err(SimError::invalid)
+    }
     pub fn execute(&mut self, machine: &str, actor: &str, command: &str) -> Result<CommandResult> {
         self.computer(machine)?;
         self.event(
