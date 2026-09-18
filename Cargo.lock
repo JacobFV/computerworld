@@ -216,6 +216,8 @@ name = "cw-computer"
 version = "0.1.0-alpha.2"
 dependencies = [
  "cw-protocol",
+ "cw-pyvm",
+ "cw-script-host",
  "proptest",
  "regex",
  "serde",

@@ -98,6 +98,7 @@ pub(crate) const BUILTINS: &[&str] = &[
     "ls",
     "mkdir",
     "mv",
+    "node",
     "npm",
     "nproc",
     "pip",
@@ -105,6 +106,8 @@ pub(crate) const BUILTINS: &[&str] = &[
     "printf",
     "ps",
     "pwd",
+    "python",
+    "python3",
     "read",
     "return",
     "rm",
@@ -2568,6 +2571,11 @@ fn run(
         return Err(Fail::new(format!("command not found: {}", a[0]), 127));
     }
     let args = &a[1..];
+    // Language runtimes: `python3 …`, `node …`, also by absolute path.
+    if let Some(runtime) = crate::runtimes::runtime_for(&a[0]) {
+        let r = crate::runtimes::run_runtime(runtime, c, host, args, input, t);
+        return runtime_result(r);
+    }
     let required = |i: usize| {
         args.get(i)
             .map(String::as_str)
@@ -3151,6 +3159,18 @@ fn run(
                 .map_err(|e| Fail::new(e.to_string(), 126))?;
             let source = String::from_utf8(c.vfs.read_as(&path, &c.user).map_err(err)?)
                 .map_err(|_| Fail::new("unsupported binary executable", 126))?;
+            // `#!/usr/bin/env python3` and friends run under the named runtime,
+            // which receives the script path as the shell resolved it.
+            if let Some(runtime) = crate::runtimes::shebang_runtime(&source) {
+                let mut script_args = vec![if a[0].contains('/') {
+                    a[0].clone()
+                } else {
+                    path.clone()
+                }];
+                script_args.extend(args.iter().cloned());
+                let r = crate::runtimes::run_runtime(runtime, c, host, &script_args, input, t);
+                return runtime_result(r);
+            }
             if source.starts_with("#!cw-package\n") {
                 let name = source.lines().nth(1).ok_or("invalid package executable")?;
                 if args.iter().any(|s| s == "--version" || s == "-V") {
@@ -3226,6 +3246,16 @@ mod tests {
         let r=execute(&mut c,"git init; echo one > a; git add a; git commit -m first; git branch other; echo two > a; git add a; git commit -m second; git checkout other; cat a",1,&mut OfflineHost);
         assert_eq!(r.exit_code, 0, "{}", r.stderr);
         assert!(r.stdout.ends_with("one\n"));
+    }
+}
+
+/// A runtime's streams and status pass through untouched: its diagnostics are
+/// its own (a Python traceback, a Node stack), never prefixed by the shell.
+fn runtime_result(r: CommandResult) -> Result<String, Fail> {
+    if r.exit_code == 0 && r.stderr.is_empty() {
+        Ok(r.stdout)
+    } else {
+        Err(Fail::nested(r))
     }
 }
 

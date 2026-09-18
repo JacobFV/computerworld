@@ -1296,6 +1296,11 @@ impl ShellHost for RuntimeShell<'_> {
         self.runtime.advance(ticks).map_err(|e| e.to_string())?;
         Ok(self.runtime.tick())
     }
+    fn entropy(&mut self) -> u64 {
+        Arc::make_mut(&mut self.runtime.state)
+            .determinism
+            .next_u64(&format!("computer/{}/entropy", self.machine))
+    }
     fn cleanup_process(&mut self, pid: u64) {
         self.runtime.close_process_network(&self.machine, pid);
     }

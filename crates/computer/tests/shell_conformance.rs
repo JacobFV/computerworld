@@ -462,6 +462,9 @@ fn every_documented_command_resolves() {
         "sleep",
         "systemctl",
         "apt",
+        "python3",
+        "python",
+        "node",
     ] {
         assert_eq!(
             ok(&mut c, &format!("which {name}")),
@@ -1059,4 +1062,123 @@ fn head_and_tail_take_a_bare_count_as_well_as_dash_n() {
     assert_eq!(ok(&mut c, "cat /tmp/five.txt | head -1"), "a\n");
     // A count that is not a count still fails loudly rather than being ignored.
     refused(&mut c, "head -x /tmp/five.txt", "x");
+}
+
+#[test]
+fn python3_runs_programs_against_the_machine() {
+    let mut c = machine();
+    // Inline code, version, and the conventional aliases.
+    assert_eq!(ok(&mut c, "python3 -c 'print(6 * 7)'"), "42\n");
+    assert_eq!(ok(&mut c, "python --version"), "Python 3.12.3\n");
+    assert_eq!(
+        ok(&mut c, "/usr/bin/python3 -c 'import sys; print(sys.argv)' x"),
+        "['-c', 'x']\n"
+    );
+    // A script file with arguments sees the simulated filesystem and cwd.
+    run(
+        &mut c,
+        "printf 'import sys, os\\nprint(sys.argv[1:], os.getcwd())\\nprint(open(\"proj/a.txt\").read().split())\\n' > /home/user/main.py",
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user && python3 main.py one two"),
+        "['one', 'two'] /home/user\n['alpha', 'beta', 'gamma']\n"
+    );
+    // Pipes feed stdin; output flows on through the pipeline.
+    assert_eq!(
+        ok(
+            &mut c,
+            "cat /home/user/proj/a.txt | python3 -c 'import sys; print(len(sys.stdin.read().splitlines()))'"
+        ),
+        "3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "python3 -c 'for i in range(3): print(i)' | wc -l"),
+        "3\n"
+    );
+    assert_eq!(ok(&mut c, "echo 'print(1 + 1)' | python3"), "2\n");
+    // Files a program writes land in the VFS.
+    ok(
+        &mut c,
+        "python3 -c 'open(\"/tmp/py-out.txt\", \"w\").write(\"from python\\n\")'",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/py-out.txt"), "from python\n");
+    // Redirection of the runtime's own streams.
+    run(
+        &mut c,
+        "python3 -c 'import sys; print(\"err\", file=sys.stderr); print(\"out\")' > /tmp/o 2> /tmp/e",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/o"), "out\n");
+    assert_eq!(ok(&mut c, "cat /tmp/e"), "err\n");
+    // A program's chdir does not move the shell.
+    ok(
+        &mut c,
+        "cd /home/user && python3 -c 'import os; os.chdir(\"/tmp\")'",
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user && python3 -c 'pass' && pwd"),
+        "/home/user\n"
+    );
+}
+
+#[test]
+fn python3_reports_errors_and_exit_codes_like_cpython() {
+    let mut c = machine();
+    run(
+        &mut c,
+        "printf 'def f(x):\\n    return x / 0\\n\\nprint(\"before\")\\nf(1)\\n' > /home/user/bad.py",
+    );
+    let r = run(&mut c, "cd /home/user && python3 bad.py");
+    assert_eq!(r.exit_code, 1);
+    assert_eq!(r.stdout, "before\n");
+    assert_eq!(
+        r.stderr,
+        "Traceback (most recent call last):\n  File \"/home/user/bad.py\", line 5, in <module>\n    f(1)\n  File \"/home/user/bad.py\", line 2, in f\n    return x / 0\n           ~~^~~\nZeroDivisionError: division by zero\n"
+    );
+    assert_eq!(
+        run(&mut c, "python3 -c 'import sys; sys.exit(7)'").exit_code,
+        7
+    );
+    assert_eq!(
+        run(&mut c, "python3 -c 'raise SystemExit(\"bye\")'").stderr,
+        "bye\n"
+    );
+    let r = run(&mut c, "python3 /nope.py");
+    assert_eq!(r.exit_code, 2);
+    assert_eq!(
+        r.stderr,
+        "/usr/bin/python3: can't open file '/nope.py': [Errno 2] No such file or directory\n"
+    );
+    // The shell's status logic sees the runtime's status.
+    assert_eq!(
+        ok(&mut c, "python3 -c 'import sys; sys.exit(1)' || echo failed"),
+        "failed\n"
+    );
+    // An infinite loop ends deterministically on the step budget.
+    let r = run(&mut c, "python3 -c 'while True: pass'");
+    assert_eq!(r.exit_code, 124);
+    assert!(r
+        .stderr
+        .contains("TimeoutError: execution step limit exceeded"));
+}
+
+#[test]
+fn shebang_scripts_run_under_their_interpreter() {
+    let mut c = machine();
+    run(
+        &mut c,
+        "printf '#!/usr/bin/env python3\\nimport sys\\nprint(\"hi from\", sys.argv[0], sys.argv[1:])\\n' > /home/user/hello; chmod 755 /home/user/hello",
+    );
+    assert_eq!(
+        ok(&mut c, "/home/user/hello a b"),
+        "hi from /home/user/hello ['a', 'b']\n"
+    );
+    run(
+        &mut c,
+        "mkdir -p /home/user/bin; printf '#!/usr/bin/python3\\nprint(\"on PATH\")\\n' > /home/user/bin/tool; chmod +x /home/user/bin/tool",
+    );
+    assert_eq!(ok(&mut c, "PATH=/home/user/bin:/usr/bin tool"), "on PATH\n");
+    assert_eq!(
+        ok(&mut c, "which python3 node"),
+        "/usr/bin/python3\n/usr/bin/node\n"
+    );
 }
