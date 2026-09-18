@@ -277,6 +277,15 @@ pub struct Vm<'h> {
     pub stderr: String,
     pub stdin: Option<String>,
     pub stdin_consumed: bool,
+    /// How much of `stdin` the program has read, line by line.
+    pub stdin_pos: usize,
+    /// Standard input is a terminal: a read past what has been typed suspends
+    /// the run instead of seeing end-of-file, and a bare `node` is the console.
+    pub interactive: bool,
+    /// End-of-file was typed after the input that is there.
+    pub stdin_eof: bool,
+    /// The run stopped because it wants a line nobody has typed yet.
+    pub awaiting_input: bool,
     pub steps: u64,
     pub budget: u64,
     pub native_depth: usize,
@@ -947,6 +956,14 @@ impl<'h> Vm<'h> {
     pub fn charge_compile(&mut self, bytes: usize) {
         let _ = self.clock();
         self.elapsed_ms += (bytes as f64 / 1024.0) * COMPILE_MS_PER_KIB;
+    }
+
+    /// Stops the run because it wants a line nobody has typed yet. Like
+    /// `process.exit`, it is not catchable: no `try` may turn a pause into an
+    /// error. The run is resumed by replaying it with the line appended.
+    pub fn need_input(&mut self) -> Ctl {
+        self.awaiting_input = true;
+        Ctl::Exit(0)
     }
 
     pub fn now_ms(&mut self) -> f64 {

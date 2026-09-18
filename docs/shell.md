@@ -165,7 +165,7 @@ every replay.
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
 | `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
-| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads` | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
+| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | `--inspect`, `--watch`, `--test`, native addons, `worker_threads` | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
 
@@ -370,6 +370,38 @@ hashes of 434 outputs recorded from CPython 3.12 and Node 24.21 for that check.
   does for the recorded cases, and anything it produces or accepts is valid brotli.
 * Python's `bz2` and `lzma` are not implemented.
 
+### Consoles and reading from the terminal
+
+`python3` and `node` with nothing to run start their console when standard input
+is the terminal (a pipe or a redirect still means "read a program"), and a
+program that reads a line — `input()`, `sys.stdin`, `process.stdin`,
+`readline`'s `question` — stops until the next line is typed. Both print what
+CPython 3.12 and Node 24.21 print: the same banner, the same prompts (`>>> ` and
+`... `, `> ` and `| `), values echoed with `repr()` and `util.inspect`,
+`Traceback (most recent call last):` and `Uncaught TypeError: …`, Node's dot
+commands (`.help`, `.break`, `.clear`, `.exit`). At a terminal both streams are
+one screen, so an interactive run returns one stream with prompts, output and
+errors interleaved in the order they appear. The shell's prompt while a console
+is open is the console's, and the terminal's next line goes to it rather than to
+the shell; `exit()`, `.exit` or a Ctrl-D line (`\u0004`) ends it.
+
+An interpreter cannot be kept alive between two actions of the world (its heap
+is not serializable, and a snapshot may be restored anywhere), so a waiting
+session is resumed by *replay*: the program is run again from the start with the
+new line appended to its input, and every host call the earlier lines made —
+files written, requests sent, the clock, the world's entropy — is answered from
+a journal recorded the first time instead of being made again. The interpreter
+is deterministic, so the replay reaches the same place; only what the new line
+produced is shown. Two consequences are worth knowing: a session is part of the
+machine's state and survives a snapshot, and a console line that runs for a long
+time is re-run (not re-executed against the world) on every later line.
+
+In the Node console a binding a line makes (`const x = 1`, `function f() {}`,
+`class C {}`) is copied into the global object when the line finishes, which is
+how the next line sees it; a closure that later changes such a binding does not
+change what the next line reads. Top-level `await` is not transformed, so it
+yields a promise rather than its value.
+
 ### Event-loop timing
 
 Node's loop phases (timers, poll, check), `process.nextTick` and promise jobs
@@ -397,7 +429,7 @@ recorded from Node 24.21 in `crates/jsvm/tests/programs` come out the same way.
 
 Known gaps shared by both: no native extensions. `node` does not
 implement `Intl` beyond `en-US` date and number formatting,
-`Atomics`/`SharedArrayBuffer`, `worker_threads`, or the REPL. Strings that
+`Atomics`/`SharedArrayBuffer` or `worker_threads`. Strings that
 contain unpaired UTF-16 surrogates are carried as the
 replacement character.
 

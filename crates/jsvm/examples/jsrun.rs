@@ -35,9 +35,13 @@ fn main() {
                 args: args[1..].to_vec(),
                 env: vec![],
                 stdin,
-                ..Default::default()
+                interactive: std::env::var("JSRUN_INTERACTIVE").is_ok(),
+                eof: std::env::var("JSRUN_EOF").is_ok(),
             },
         );
+        if out.awaiting_input {
+            eprintln!("[awaiting input]");
+        }
         print!("{}", out.stdout);
         eprint!("{}", out.stderr);
         std::process::exit(out.exit_code);

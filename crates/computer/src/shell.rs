@@ -788,6 +788,11 @@ pub fn execute(
     tick: u64,
     host: &mut dyn ShellHost,
 ) -> CommandResult {
+    // A line typed while a runtime is waiting for input is that runtime's, not
+    // the shell's.
+    if c.session.is_some() {
+        return crate::runtimes::session_line(c, source, tick, host);
+    }
     execute_inner(c, source, tick, host, 0)
 }
 /// Runs a child process's command line (`subprocess`, `child_process`) one level

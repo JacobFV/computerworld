@@ -200,23 +200,15 @@ fn read_file_sync(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let target = a.arg(0);
     if let Value::Num(fd) = target {
         if fd == 0.0 {
-            let s = if vm.stdin_consumed {
-                String::new()
-            } else {
-                vm.stdin.clone().unwrap_or_default()
-            };
-            vm.stdin_consumed = true;
+            let v = crate::node::stdin_rest(vm)?;
+            let s = vm.to_str(&v)?;
             return decode_bytes(vm, s.into_bytes(), enc.as_deref());
         }
     }
     let p = path_arg(vm, &target)?;
     if is_stdin_path(&p) {
-        let s = if vm.stdin_consumed {
-            String::new()
-        } else {
-            vm.stdin.clone().unwrap_or_default()
-        };
-        vm.stdin_consumed = true;
+        let v = crate::node::stdin_rest(vm)?;
+        let s = vm.to_str(&v)?;
         return decode_bytes(vm, s.into_bytes(), enc.as_deref());
     }
     match vm.host.read_file(&p) {
@@ -855,13 +847,8 @@ fn read_sync(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     };
     let off = vm.to_integer(&a.arg(2))?.max(0.0) as usize;
     let data: Vec<u8> = if let Value::Num(0.0) = fdv {
-        let s = if vm.stdin_consumed {
-            String::new()
-        } else {
-            vm.stdin.clone().unwrap_or_default()
-        };
-        vm.stdin_consumed = true;
-        s.into_bytes()
+        let v = crate::node::stdin_rest(vm)?;
+        vm.to_str(&v)?.into_bytes()
     } else {
         match fd_path(vm, &fdv) {
             Some((i, p, pos)) => {

@@ -158,6 +158,9 @@ cp.execFile('node', ['-e', 'process.exit(9)'], (err) => console.log('execFile', 
     assert_eq!(r.stderr, "");
     assert_eq!(
         r.stdout,
-        "\"a.txt\\n\"\n3\n\"cba\\n\" 2 null\nstatus 5 Command failed: exit 5\nENOENT spawnSync no-such-program\n/tmp\nhi\nexec null \"async\\n\"\nclose 0 \"to child\\n[err]done\\n\"\nexecFile 9\n"
+        // The two children finish in the order their simulated run times imply:
+        // the nested `node` is done before the shell child, which only starts
+        // once its input is closed.
+        "\"a.txt\\n\"\n3\n\"cba\\n\" 2 null\nstatus 5 Command failed: exit 5\nENOENT spawnSync no-such-program\n/tmp\nhi\nexec null \"async\\n\"\nexecFile 9\nclose 0 \"to child\\n[err]done\\n\"\n"
     );
 }

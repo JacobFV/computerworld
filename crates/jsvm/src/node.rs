@@ -578,11 +578,43 @@ fn stream_write(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 }
 
 fn read_stdin(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    stdin_rest(vm)
+}
+
+/// Everything left on standard input. At a terminal that means everything up to
+/// an end-of-file that may not have been typed yet, so the run may suspend.
+pub fn stdin_rest(vm: &mut Vm) -> JsResult<Value> {
+    if vm.interactive {
+        if !vm.stdin_eof {
+            return Err(vm.need_input());
+        }
+        let stdin = vm.stdin.clone().unwrap_or_default();
+        let rest = stdin[vm.stdin_pos.min(stdin.len())..].to_string();
+        vm.stdin_pos = stdin.len();
+        return Ok(Value::string(rest));
+    }
     if vm.stdin_consumed {
         return Ok(Value::str(""));
     }
     vm.stdin_consumed = true;
     Ok(Value::string(vm.stdin.clone().unwrap_or_default()))
+}
+
+/// One typed line (with its newline), `null` at end-of-file. At a terminal a
+/// line nobody has typed yet suspends the run.
+fn read_line(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    let stdin = vm.stdin.clone().unwrap_or_default();
+    if vm.stdin_pos >= stdin.len() {
+        if vm.interactive && !vm.stdin_eof {
+            return Err(vm.need_input());
+        }
+        return Ok(Value::Null);
+    }
+    let rest = &stdin[vm.stdin_pos..];
+    let end = rest.find('\n').map(|p| p + 1).unwrap_or(rest.len());
+    let line = rest[..end].to_string();
+    vm.stdin_pos += end;
+    Ok(Value::string(line))
 }
 
 fn emit_warning(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -2119,6 +2151,10 @@ pub fn install(vm: &mut Vm) {
         p.set_prop(name, Value::Obj(s), ALL);
     }
     vm.method(&p, "%readStdin", 0, read_stdin);
+    vm.method(&p, "%readLine", 0, read_line);
+    vm.method(&p, "%isInteractive", 0, |vm, _a| {
+        Ok(Value::Bool(vm.interactive))
+    });
     vm.process = Some(p.clone());
     vm.set_global("process", Value::Obj(p));
     // util.inspect is reachable for custom inspectors.

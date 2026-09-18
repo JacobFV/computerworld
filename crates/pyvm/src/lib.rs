@@ -22,6 +22,7 @@ pub mod methods;
 pub mod modules;
 pub mod ops;
 pub mod parser;
+pub mod repl;
 pub mod sched;
 pub mod value;
 pub mod vm;
@@ -36,6 +37,17 @@ pub const VERSION: &str = "Python 3.12.3";
 pub const TIMEOUT_EXIT: i32 = 124;
 
 const USAGE: &str = "usage: python3 [option] ... [-c cmd | -m mod | file | -] [arg] ...\n";
+
+/// Stops the run because it wants a line nobody has typed yet. The signal is
+/// uncatchable: no `except` may turn a pause into an error.
+pub fn need_input(vm: &mut Vm) -> Box<PyErr> {
+    vm.awaiting_input = true;
+    Box::new(PyErr {
+        kind: ErrKind::Lazy("EOFError", vec![Value::str("EOF when reading a line")]),
+        reraise: false,
+        fatal: true,
+    })
+}
 
 /// Compiles source to a code object, raising SyntaxError on failure.
 pub fn compile_source(vm: &mut Vm, src: &str, filename: &str, mode: &str) -> PyResult<Rc<Code>> {
@@ -119,6 +131,9 @@ impl<'h> Vm<'h> {
             park_ok_depth: None,
             stdout_flushed: 0,
             line_buffered: false,
+            interactive: false,
+            stdin_eof: false,
+            awaiting_input: false,
         };
         bfuncs::install(&mut vm);
         methods::install(&mut vm);
@@ -597,6 +612,8 @@ enum Target {
     Code(String, String),
     Module(String),
     File(String),
+    /// The interactive interpreter (a bare `python3` at a terminal).
+    Repl,
 }
 
 /// Runs `python3 <args>` against the host and returns both streams and the status.
@@ -681,6 +698,9 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     }
     let (target, rest) = match target {
         Some(t) => t,
+        // A bare `python3` at a terminal is the console; from a pipe or a file
+        // it is a program on standard input.
+        None if invocation.interactive => (Target::Repl, args.len()),
         None => (
             Target::Code(invocation.stdin.clone(), "".into()),
             args.len(),
@@ -764,11 +784,18 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
             argv0 = m.clone();
             (None, String::new())
         }
+        Target::Repl => {
+            argv0 = String::new();
+            (None, "<stdin>".to_string())
+        }
     };
     let mut argv = vec![argv0];
     argv.extend(program_args);
     let host_ptr = host;
     let mut vm = Vm::new(host_ptr, argv, invocation.env.clone(), stdin);
+    vm.interactive = invocation.interactive;
+    vm.stdin_eof = invocation.eof;
+    vm.line_buffered |= invocation.interactive;
     let script_dir = match &target {
         Target::File(_) => filename
             .rsplit_once('/')
@@ -788,12 +815,13 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     let stdout = std::mem::take(&mut vm.stdout);
     let stderr = std::mem::take(&mut vm.stderr);
     let elapsed_micros = vm.time_offset.max(0) as u64;
+    let awaiting_input = vm.awaiting_input;
     vm.teardown();
     Outcome {
         stdout,
         stderr,
         exit_code: outcome,
-        awaiting_input: false,
+        awaiting_input,
         elapsed_micros,
     }
 }
@@ -829,6 +857,14 @@ fn run_main(vm: &mut Vm, src: Option<String>, filename: &str, target: &Target) -
     main.dict.borrow_mut().set_str("__package__", Value::None);
     main.dict.borrow_mut().set_str("__spec__", Value::None);
     main.dict.borrow_mut().set_str("__loader__", Value::None);
+    if matches!(target, Target::Repl) {
+        vm.modules
+            .borrow_mut()
+            .set_str("__main__", Value::Module(main.clone()));
+        let status = repl::run(vm, main.dict.clone());
+        vm.shutdown_threads();
+        return status;
+    }
     let result: PyResult<()> = (|| {
         let (src, filename) = match target {
             Target::Module(name) => {
@@ -859,6 +895,9 @@ fn run_main(vm: &mut Vm, src: Option<String>, filename: &str, target: &Target) -
     vm.shutdown_threads();
     match result {
         Ok(()) => 0,
+        // A run that stopped for a line nobody has typed yet is not an error:
+        // what it printed stands, and it continues when the line arrives.
+        Err(_) if vm.awaiting_input => 0,
         Err(e) => report(vm, e),
     }
 }

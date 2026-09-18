@@ -784,6 +784,23 @@ impl Runtime {
             || SimError::not_found(format!("computer {machine}")),
         )?))
     }
+    /// A line typed at a terminal: standard input is that terminal, so a bare
+    /// `python3` or `node` starts a console and a program may stop for a line
+    /// that has not been typed yet (see `Computer::session_prompt`).
+    pub fn execute_at_terminal(
+        &mut self,
+        machine: &str,
+        actor: &str,
+        command: &str,
+    ) -> Result<CommandResult> {
+        self.computer_mut(machine)?.tty = true;
+        let result = self.execute(machine, actor, command);
+        if let Ok(c) = self.computer_mut(machine) {
+            c.tty = false;
+        }
+        result
+    }
+
     pub fn execute(&mut self, machine: &str, actor: &str, command: &str) -> Result<CommandResult> {
         self.computer(machine)?;
         self.event(

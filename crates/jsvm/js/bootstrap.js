@@ -10,6 +10,13 @@ EventEmitter.init.call(process);
 
 const readStdin = process['%readStdin'];
 delete process['%readStdin'];
+const readLine = process['%readLine'];
+delete process['%readLine'];
+const isInteractive = process['%isInteractive'];
+delete process['%isInteractive'];
+// Whether input is a terminal is known once the run starts, not while this
+// file is being set up.
+const terminalInput = isInteractive;
 
 const stdin = new EventEmitter();
 let stdinEncoding = null;
@@ -20,6 +27,25 @@ stdin.readable = true;
 stdin.setEncoding = function setEncoding(enc) { stdinEncoding = enc || 'utf8'; return this; };
 function deliverStdin() {
   if (stdinDone) return;
+  if (terminalInput()) {
+    // At a terminal input arrives a line at a time, and only an end-of-file
+    // ends the stream; a line nobody has typed yet suspends the run.
+    if (stdin.listenerCount('data') === 0 && stdin.listenerCount('readable') === 0) {
+      stdinScheduled = false;
+      return;
+    }
+    const line = readLine();
+    if (line === null) {
+      stdinDone = true;
+      stdin.readable = false;
+      stdin.emit('end');
+      stdin.emit('close');
+      return;
+    }
+    stdin.emit('data', stdinEncoding ? line : Buffer.from(line));
+    setImmediate(deliverStdin);
+    return;
+  }
   stdinDone = true;
   const data = readStdin();
   if (data.length) stdin.emit('data', stdinEncoding ? data : Buffer.from(data));
@@ -42,6 +68,11 @@ stdin.ref = function ref() { return this; };
 stdin.setRawMode = function setRawMode() { return this; };
 let stdinReadBuffer = null;
 stdin.read = function read() {
+  if (terminalInput()) {
+    const line = readLine();
+    if (line === null) return null;
+    return stdinEncoding ? line : Buffer.from(line);
+  }
   if (stdinReadBuffer === null) {
     const d = readStdin();
     stdinReadBuffer = d;
@@ -55,6 +86,15 @@ stdin.pipe = function pipe(dest) {
   return dest;
 };
 stdin[Symbol.asyncIterator] = async function* () {
+  if (terminalInput()) {
+    for (;;) {
+      const line = readLine();
+      if (line === null) break;
+      yield stdinEncoding ? line : Buffer.from(line);
+    }
+    stdinDone = true;
+    return;
+  }
   stdinDone = true;
   const d = readStdin();
   if (d.length) yield stdinEncoding ? d : Buffer.from(d);

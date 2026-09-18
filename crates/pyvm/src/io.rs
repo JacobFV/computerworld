@@ -145,15 +145,23 @@ pub fn flush_all(vm: &mut Vm) {
     }
 }
 
-fn read_stdin_rest(vm: &mut Vm) -> String {
+fn read_stdin_rest(vm: &mut Vm) -> PyResult<String> {
+    // Reading to end-of-file at a terminal means reading until one is typed.
+    if vm.interactive && !vm.stdin_eof {
+        return Err(crate::need_input(vm));
+    }
     let rest = vm.stdin[vm.stdin_pos..].to_string();
     vm.stdin_pos = vm.stdin.len();
-    rest
+    Ok(rest)
 }
 
 pub fn readline(vm: &mut Vm, f: &Ref<FileObj>, limit: i64) -> PyResult<Value> {
     let std = f.borrow().std;
     if std == Some(0) {
+        if vm.interactive && !vm.stdin_eof && vm.stdin_pos >= vm.stdin.len() {
+            // Nobody has typed the next line yet: suspend the run for it.
+            return Err(crate::need_input(vm));
+        }
         let rest = &vm.stdin[vm.stdin_pos..];
         let end = match rest.find('\n') {
             Some(p) => p + 1,
@@ -314,7 +322,7 @@ fn f_read(vm: &mut Vm, a: Args) -> PyResult<Value> {
         Some(v) => to_int_arg(vm, v)?,
     };
     if f.borrow().std == Some(0) {
-        let rest = read_stdin_rest(vm);
+        let rest = read_stdin_rest(vm)?;
         if size >= 0 {
             let s: String = rest.chars().take(size as usize).collect();
             vm.stdin_pos -= rest.len() - s.len();

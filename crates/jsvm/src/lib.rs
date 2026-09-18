@@ -28,6 +28,7 @@ pub mod promise;
 pub mod props;
 pub mod realm;
 pub mod regexp;
+pub mod repl;
 pub mod value;
 pub mod vm;
 
@@ -63,6 +64,8 @@ enum Target {
     File(String),
     Eval(String, bool),
     Stdin,
+    /// The console (a bare `node` at a terminal).
+    Repl,
 }
 
 /// Options that take no argument and are accepted (and ignored).
@@ -107,6 +110,7 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     let mut preload: Vec<String> = vec![];
     let mut input_module = false;
     let mut stack_limit = None;
+    let mut force_repl = false;
     while i < args.len() {
         let a = args[i].as_str();
         match a {
@@ -152,7 +156,10 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                 }
                 i += 2;
             }
-            "-i" | "--interactive" => i += 1,
+            "-i" | "--interactive" => {
+                force_repl = true;
+                i += 1;
+            }
             "--" => {
                 if let Some(f) = args.get(i + 1) {
                     target = Some((Target::File(f.clone()), i + 2));
@@ -210,7 +217,13 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
             }
         }
     }
-    let (target, rest) = target.unwrap_or((Target::Stdin, args.len()));
+    let (target, rest) = target.unwrap_or(if invocation.interactive || force_repl {
+        // A bare `node` at a terminal is the console; from a pipe or a file it
+        // is a program on standard input.
+        (Target::Repl, args.len())
+    } else {
+        (Target::Stdin, args.len())
+    });
     let script_args: Vec<String> = args[rest.min(args.len())..].to_vec();
     let reads_program = matches!(target, Target::Stdin);
     let stdin = if reads_program {
@@ -237,6 +250,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     }
     argv.extend(script_args);
     let mut vm = Vm::new(host, argv, invocation.env.clone(), stdin);
+    vm.interactive = invocation.interactive;
+    vm.stdin_eof = invocation.eof;
     if let Some(n) = stack_limit {
         vm.stack_limit = n;
     }
@@ -251,11 +266,12 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
         input_module,
     );
     let code = finish(&mut vm, result);
+    let awaiting_input = vm.awaiting_input;
     Outcome {
         stdout: std::mem::take(&mut vm.stdout),
         stderr: std::mem::take(&mut vm.stderr),
-        exit_code: code,
-        awaiting_input: false,
+        exit_code: if awaiting_input { 0 } else { code },
+        awaiting_input,
         elapsed_micros: (vm.clock().max(0.0) * 1000.0) as u64,
     }
 }
@@ -318,6 +334,10 @@ fn run_program(
                 vm.stdout.push('\n');
             }
             Ok(())
+        }
+        Target::Repl => {
+            vm.tail = Tail::Eval;
+            repl::run(vm)
         }
         Target::Stdin => {
             vm.tail = Tail::Eval;

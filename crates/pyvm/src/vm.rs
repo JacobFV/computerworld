@@ -149,6 +149,13 @@ pub struct Vm<'h> {
     pub stdout_flushed: usize,
     /// Standard output is a terminal (line buffered) rather than a pipe.
     pub line_buffered: bool,
+    /// Standard input is a terminal: a read past the end of what has been typed
+    /// suspends the run instead of seeing end-of-file.
+    pub interactive: bool,
+    /// End-of-file was typed after the input that is there.
+    pub stdin_eof: bool,
+    /// The run stopped because it wants a line nobody has typed yet.
+    pub awaiting_input: bool,
 }
 
 impl<'h> Vm<'h> {
@@ -2140,6 +2147,21 @@ impl<'h> Vm<'h> {
         self.stdout_flushed = at + s.len();
     }
     pub fn write_stderr(&mut self, s: &str) {
+        // At a terminal both streams are the same screen: keeping one buffer
+        // keeps prompts, echoed values and tracebacks in the order they appear.
+        if self.interactive {
+            // Unbuffered, like CPython's stderr: it lands after what stdout has
+            // already flushed.
+            let at = self.stdout_flushed.min(self.stdout.len());
+            if at == self.stdout.len() {
+                self.write_stdout(s);
+                self.stdout_flushed = self.stdout.len();
+            } else {
+                self.stdout.insert_str(at, s);
+                self.stdout_flushed = at + s.len();
+            }
+            return;
+        }
         if self.stderr.len() + s.len() > self.output_limit {
             return;
         }

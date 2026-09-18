@@ -169,6 +169,11 @@ pub struct Computer {
     /// terminal for a line that is a single program invocation); never persisted.
     #[serde(skip)]
     pub tty: bool,
+    /// A `python3` or `node` run waiting for the next line typed at the
+    /// terminal (a console, or a program that called `input()`): the next line
+    /// goes to it instead of to the shell.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<runtimes::RuntimeSession>,
 }
 impl Computer {
     pub fn validate(&self) -> cw_protocol::Result<()> {
@@ -222,6 +227,7 @@ impl Computer {
             hardware: Hardware::default(),
             runtime_elapsed_micros: 0,
             tty: false,
+            session: None,
         }
     }
     pub fn from_definition(
@@ -279,6 +285,11 @@ impl Computer {
     }
     pub fn execute(&mut self, command: &str, tick: u64, host: &mut dyn ShellHost) -> CommandResult {
         shell::execute(self, command, tick, host)
+    }
+    /// What the terminal prints before the next line: the prompt of the runtime
+    /// session that is waiting for it, if there is one.
+    pub fn session_prompt(&self) -> Option<&str> {
+        self.session.as_ref().map(|s| s.prompt.as_str())
     }
     pub fn resolve(&self, path: &str) -> String {
         normalize_path(&self.cwd, path)
