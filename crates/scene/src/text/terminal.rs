@@ -107,6 +107,33 @@ pub fn columns(line: &str) -> usize {
         .sum()
 }
 
+/// Byte offset and starting cell of every cluster of a line, in logical order: the
+/// places a caret can stand, and the cells in front of each.
+pub fn cluster_columns(line: &str) -> Vec<(usize, usize)> {
+    let mut col = 0;
+    let mut out = Vec::new();
+    if is_simple(line) {
+        for (i, _) in line.char_indices() {
+            out.push((i, col));
+            col += 1;
+        }
+        return out;
+    }
+    for unit in units(line, Lang::Auto) {
+        out.push((unit.text.start, col));
+        col += unit.width as usize;
+    }
+    out
+}
+
+/// The byte offset of the first cluster at or past `column` cells, if any.
+pub fn byte_at_column(line: &str, column: usize) -> Option<usize> {
+    cluster_columns(line)
+        .into_iter()
+        .find(|&(_, col)| col >= column)
+        .map(|(byte, _)| byte)
+}
+
 /// Wrap one line (no `\n`) into rows of at most `max_columns` cells, as byte
 /// ranges. A cluster is never split; one wider than a row still gets a row.
 pub fn wrap(line: &str, max_columns: usize) -> Vec<Range<usize>> {

@@ -3952,7 +3952,8 @@ fn attach_buffer(scene: &mut Scene, buffer: &mut TextBuffer, content: Rect) {
 fn caret_after(anchor: &Node, offset: u32) -> Caret {
     let (cw, ch) = anchor.cell().unwrap_or_else(|| cw_scene::text_cell(13));
     let b = anchor.painted_bounds();
-    let painted = anchor.painted_text().unwrap_or("").chars().count() as u32;
+    // Cells on the node's grid: a wide character (CJK, emoji) takes two.
+    let painted = cw_scene::text::terminal::columns(anchor.painted_text().unwrap_or("")) as u32;
     Caret {
         bounds: Rect::new(
             b.x.saturating_add((painted * cw) as i32),

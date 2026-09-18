@@ -2143,6 +2143,12 @@ mod tests {
             crate::caret_for_column("echo 中文", 9 * 8),
             "echo 中文".len()
         );
+        // The editor soft-wraps and places its caret on the same cells.
+        let text = "中文中文中文";
+        assert_eq!(crate::editor_rows(text, 5), [(0, 6), (6, 12), (12, 18)]);
+        assert_eq!(crate::editor_caret_cell(text, 9, 5), (1, 2));
+        assert_eq!(crate::caret_for_point_wrapped(text, 0, 5, 2 * 8, 18), 9);
+        assert_eq!(crate::editor_rows("e\u{301}xyz", 3), [(0, 5), (5, 6)]);
     }
     /// The scrollbar really scrolls, and the caret really sits where `cursor` says.
     #[test]
