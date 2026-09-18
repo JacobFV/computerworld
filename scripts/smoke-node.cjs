@@ -107,5 +107,28 @@ dynamic.reset(42);
 assert(!dynamic.definition().computers.some(c=>c.id==='test-phone'));
 assert.equal(phone.addComputer,undefined);
 assert.equal(phone.removeComputer,undefined);
+// Complex scripts: Hebrew/Arabic/Thai/Devanagari are in the module; CJK and emoji are
+// the on-demand font pack. Before the pack is installed those glyphs are boxes; once
+// it is, the frame must equal the native renderer's pinned hash for the same scene
+// (crates/render/src/script_tests.rs, multi_script_scene_is_pinned).
+const { installFont, fontPackStatus } = require('../pkg/node/computerworld.js');
+const scriptsScene = JSON.parse(fs.readFileSync(path.join(__dirname,'../crates/render/tests/scripts-scene.json'),'utf8'));
+const sha256 = bytes => require('node:crypto').createHash('sha256').update(bytes).digest('hex');
+const nativeScriptsHash = 'fda858fa9ee69f896f751e6c579144c8ca46dfbf208949e0fd9a29acc38351e4';
+const scriptRenderer = new SceneRenderer();
+const beforePack = sha256(scriptRenderer.render(scriptsScene).rgba);
+assert.notEqual(beforePack, nativeScriptsHash, 'CJK/emoji drew without the pack');
+const packBefore = fontPackStatus();
+assert.deepEqual([...packBefore.missing].sort(), ['noto-emoji.ttf','noto-sans-kr.ttf','noto-sans-sc.ttf']);
+assert.throws(()=>installFont(new Uint8Array([1,2,3])));
+for (const file of packBefore.files) {
+  const bytes = fs.readFileSync(path.join(__dirname,'../pkg/node',file.path));
+  assert.equal(sha256(bytes), file.sha256);
+  assert.equal(installFont(bytes), file.file);
+}
+assert.deepEqual(fontPackStatus().missing, []);
+// The retained renderer notices the new pack and repaints its cached text.
+assert.equal(sha256(scriptRenderer.render(scriptsScene).rgba), nativeScriptsHash);
+assert.equal(sha256(new SceneRenderer().render(scriptsScene).rgba), nativeScriptsHash);
 if (process.argv[2]) fs.writeFileSync(process.argv[2],JSON.stringify({hash:afterHash,snapshot:portable,topologyHash,topologyCheckpoint}));
 console.log(JSON.stringify({runtime:'wasm',hash:afterHash,rgba_bytes:frame.rgba.length}));

@@ -28,15 +28,25 @@ later nodes win equal-z ties. It operates without generating pixels.
 revision and produces damaged rectangles. Invalid revision/duplicate-ID updates
 are rejected atomically. The rasterizer can use damage to update the existing
 frame; compare full and incremental output in tests when adding primitives.
-Eleven font files are embedded, not one: DejaVu Sans, DejaVu Sans Bold and
-DejaVu Sans Mono, plus regular and bold Inter, Open Sans, Roboto and Ubuntu for the
-per-platform shells. They ship under three licenses (DejaVu, SIL OFL 1.1 and the
-Ubuntu Font Licence 1.0); all notices are in
-[`crates/render/assets`](../crates/render/assets), which is the authoritative list.
+Nineteen font files are embedded, not one: DejaVu Sans, DejaVu Sans Bold and
+DejaVu Sans Mono, regular and bold Inter, Open Sans, Roboto and Ubuntu for the
+per-platform shells, and regular and bold Noto Sans Hebrew, Arabic, Thai and
+Devanagari. Noto Sans SC (Han and kana), Noto Sans KR (Hangul) and Noto Emoji form a
+CJK/emoji *font pack* that native builds embed and the Wasm build fetches on demand.
+They ship under three licenses (DejaVu, SIL OFL 1.1 and the Ubuntu Font Licence
+1.0); all notices are in [`crates/render/assets`](../crates/render/assets), which is
+the authoritative list and documents the fallback chain and the pack.
+
+`UiText` is laid out by `cw_scene::text`: a deterministic fallback chain, Unicode
+bidirectional reordering (right-to-left paragraphs and mixed runs), OpenType shaping
+with `rustybuzz` (Arabic joining and lam-alef, Indic reordering and conjuncts, Thai
+and Hebrew mark attachment, emoji ZWJ/flag/keycap/skin-tone ligatures) and line
+breaking between CJK characters with kinsoku. Scene metrics and the renderer share
+that one layout, so measured widths, wraps and ellipses are exactly what is drawn.
 
 This is a deliberately smaller layout and text system than a web browser. It does
-not claim complete CSS, advanced script shaping, arbitrary DOM execution or
-browser compositor compatibility. Native pages should be designed for this
+not claim complete CSS, vertical or justified text, per-language glyph selection,
+arbitrary DOM execution or browser compositor compatibility. Native pages should be designed for this
 contract. A real-browser adapter would be an optional compatibility backend and
 must not become the state model for ordinary synthetic services.
 
@@ -51,8 +61,9 @@ aspect-preserving crop with bilinear filtering. Polygon paths support fills and
 strokes, antialiased. `fontdue` is pinned and uses the bundled fonts.
 Glyph/text-mask caches are bounded. The checked raster API rejects frames above
 16,777,216 pixels. Text wraps and ellipsizes on measured advances for `UiText`, on
-fixed cells for `Text`, with fallback for unavailable glyphs; bidirectional layout
-and a shaping engine are outside the current contract.
+fixed cells for `Text`, with fallback for unavailable glyphs. `Text` (the terminal
+face) falls back to the same faces glyph by glyph but is not shaped or reordered,
+and draws a wide CJK or emoji glyph scaled down into its single cell.
 
 ## OS desktop scenes
 

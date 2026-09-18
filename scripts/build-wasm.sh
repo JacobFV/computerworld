@@ -56,10 +56,20 @@ for package in pkg/web pkg/node; do
   cp LICENSE "$package/notices/PROJECT-LICENSE.txt"
   cp crates/render/assets/FONT-LICENSE.txt crates/render/assets/YARU-COPYRIGHT.txt crates/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt crates/render/assets/fonts/*.txt "$package/notices/"
   cp crates/render/assets/README.md "$package/notices/ASSET-ATTRIBUTION.md"
+  # The CJK/emoji font pack is not in the module (native builds embed it). Pages
+  # fetch `fonts/<file>` on demand and hand the bytes to `installFont`; see
+  # crates/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
+  mkdir -p "$package/fonts"
+  cp crates/render/assets/fonts/pack/*.ttf "$package/fonts/"
 done
 
 for package in pkg/web pkg/node; do
   raw=$(wc -c <"$package/computerworld_bg.wasm")
   gz=$(gzip -9 -c "$package/computerworld_bg.wasm" | wc -c)
   printf '%s %12d raw %12d gzip -9\n' "$package" "$raw" "$gz"
+done
+for font in pkg/web/fonts/*.ttf; do
+  raw=$(wc -c <"$font")
+  gz=$(gzip -9 -c "$font" | wc -c)
+  printf '%s %12d raw %12d gzip -9 (font pack, fetched on demand)\n' "$font" "$raw" "$gz"
 done

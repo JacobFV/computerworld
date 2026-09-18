@@ -1,4 +1,4 @@
-import init, { World } from '../../pkg/web/computerworld.js';
+import init, { World, installFont, fontPackStatus } from '../../pkg/web/computerworld.js';
 import initialDefinition from './world-definition.js';
 const $ = id => document.getElementById(id);
 const pretty = value => JSON.stringify(value, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2);
@@ -178,8 +178,14 @@ $('remove-device').onclick=protect(()=>removeDevice());
 $('zoom').oninput=()=>{const value=Number($('zoom').value);$('zoom-label').value=`${value}%`;$('network-map').style.zoom=value/100;requestAnimationFrame(drawLinks);};
 new ResizeObserver(()=>requestAnimationFrame(drawLinks)).observe($('network-map'));
 try {
-  await init();world=new World(initialDefinition,seed);definition=world.definition();sessions();
+  await init();
+  // The CJK/emoji font pack is not in the Wasm module. Fetch it during boot, in
+  // parallel with the first paint, so the episode itself makes no requests; until a
+  // file arrives its glyphs draw as boxes (layout is already final).
+  const fontPack=Promise.all(fontPackStatus().files.filter(f=>!f.installed).map(async f=>{const r=await fetch(new URL(`../../pkg/web/${f.path}`,import.meta.url));if(r.ok)installFont(new Uint8Array(await r.arrayBuffer()));})).catch(error=>console.warn('font pack unavailable',error));
+  world=new World(initialDefinition,seed);definition=world.definition();sessions();
   for(const c of definition.computers){if(kind(c.id)==='server')environments.get(c.id).step([{family:'application.v1',op:'launch',machine:c.id,payload:{kind:'terminal'}}]);}
   buildMap();select(definition.computers[0].id);$('loading').hidden=true;$('status').textContent='● Running locally';
+  await fontPack;refresh();
   window.computerworldDemo={get world(){return world;},get env(){return env();},get machine(){return machine;},get definition(){return definition;},select,act,navigate,refresh,addDevice,removeDevice,buildMap};window.demoReady=true;
 } catch(error){$('loading').textContent=`Runtime could not start: ${error}`;$('status').textContent='Initialization failed';console.error(error);window.demoError=String(error);}

@@ -1,11 +1,18 @@
 //! Deterministic portable CPU compositor. No browser, GPU, host font or clock.
 //! A renderer owns disposable glyph/text caches and a retained RGBA framebuffer.
 mod assets;
+mod font_pack;
 mod glyph_fit;
+#[cfg(test)]
+mod script_tests;
 mod symbols;
 pub use assets::{ASSET_IDS, SYMBOLS};
 use cw_scene::{
-    metrics, text_cell, wrap_text, Color, Damage, Node, Primitive, Rect, Scene, Transform, Typeface,
+    text::{self as shaping, FaceId, GlyphRef},
+    text_cell, wrap_text, Color, Damage, Node, Primitive, Rect, Scene, Transform, Typeface,
+};
+pub use font_pack::{
+    font_pack_status, install_font, FontPackError, FontPackStatus, PackFile, FONT_PACK,
 };
 use fontdue::{Font, FontSettings};
 use serde::{Deserialize, Serialize};
@@ -86,7 +93,11 @@ pub struct Renderer {
     bold_font: Option<Font>,
     faces: [Option<Font>; 8],
     glyphs: BTreeMap<(u8, char, u16), Arc<Glyph>>,
+    /// Shaped glyphs of the fallback faces, by glyph id.
+    shaped: BTreeMap<(FaceId, u16, u16), Arc<Glyph>>,
     texts: BTreeMap<TextKey, Arc<Mask>>,
+    /// Font-pack generation the cached text masks were drawn with.
+    pack_generation: u32,
     assets: BTreeMap<(String, u32, u32), Arc<Frame>>,
     shadows: BTreeMap<(u32, u32, u32, u32), Arc<Mask>>,
     frame: Frame,
@@ -107,7 +118,9 @@ impl Renderer {
             bold_font: None,
             faces: Default::default(),
             glyphs: BTreeMap::new(),
+            shaped: BTreeMap::new(),
             texts: BTreeMap::new(),
+            pack_generation: font_pack::generation(),
             assets: BTreeMap::new(),
             shadows: BTreeMap::new(),
             frame: Frame::default(),
@@ -129,7 +142,19 @@ impl Renderer {
         self.render_full(scene);
         &self.frame
     }
+    /// A font-pack file arrived since the cached text was drawn: its boxes are stale.
+    fn pack_changed(&mut self) -> bool {
+        let generation = font_pack::generation();
+        if generation == self.pack_generation {
+            return false;
+        }
+        self.pack_generation = generation;
+        self.texts.clear();
+        self.glyphs.clear();
+        true
+    }
     fn render_full(&mut self, scene: &Scene) {
+        self.pack_changed();
         self.allocate(scene);
         let area = Rect::new(0, 0, scene.width, scene.height);
         self.paint(scene, &[area]);
@@ -139,6 +164,7 @@ impl Renderer {
     /// missing prior frame falls back to full repaint. Patches supply this contract.
     pub fn render_incremental(&mut self, scene: &Scene, damage: &Damage) -> &Frame {
         if self.revision.is_none()
+            || self.pack_changed()
             || self.frame.width != scene.width
             || self.frame.height != scene.height
         {
@@ -173,6 +199,20 @@ impl Renderer {
             None
         };
         let ui = face.map_or(ui, |f| 3 + f as u8);
+        // Terminal text has no shaping, but a character DejaVu Sans Mono lacks still
+        // draws from the fallback chain rather than as a box.
+        let fallback = if ui == 0 && !shaping::dejavu_mono_covers(c) {
+            shaping::script_face(false, c).and_then(|face| {
+                let font = font_pack::face_font(face);
+                if font.is_none() {
+                    font_pack::note_missing(face);
+                }
+                font.map(|font| (face, font))
+            })
+        } else {
+            None
+        };
+        let ui = fallback.map_or(ui, |(face, _)| 16 + face as u8);
         if let Some(g) = self.glyphs.get(&(ui, c, size)) {
             return g.clone();
         }
@@ -181,7 +221,9 @@ impl Renderer {
         {
             self.glyphs.clear()
         }
-        let font = if let Some(face) = face {
+        let font = if let Some((_, font)) = fallback {
+            font
+        } else if let Some(face) = face {
             self.faces[face].get_or_insert_with(|| {
                 Font::from_bytes(FACE_BYTES[face], FontSettings::default())
                     .expect("bundled platform font is valid")
@@ -202,7 +244,23 @@ impl Renderer {
         } else {
             &self.font
         };
-        let (metrics, alpha) = font.rasterize(c, size as f32);
+        // A fallback glyph in a fixed terminal cell (CJK and emoji are a full em wide,
+        // the cell 0.6 em) is drawn at the whole pixel size that fits the cell, so it
+        // never overprints its neighbours. IEEE f32 multiply/divide/floor are exact
+        // and identical on every target.
+        let px = match fallback {
+            Some(_) => {
+                let cell = text_cell(size).0 as f32;
+                let advance = font.metrics(c, size as f32).advance_width;
+                if advance > cell {
+                    (size as f32 * cell / advance).floor().max(1.0)
+                } else {
+                    size as f32
+                }
+            }
+            None => size as f32,
+        };
+        let (metrics, alpha) = font.rasterize(c, px);
         // Terminal frames are what vision consumers OCR, so the fixed-pitch face is
         // grid-fitted; proportional UI text keeps the rasterizer's own output.
         let (metrics, alpha) = if ui == 0 {
@@ -213,6 +271,26 @@ impl Renderer {
         let glyph = Arc::new(Glyph { metrics, alpha });
         self.glyphs.insert((ui, c, size), glyph.clone());
         glyph
+    }
+    /// A shaped glyph of a fallback face, or `None` while its pack file is absent.
+    fn shaped_glyph(&mut self, face: FaceId, index: u16, size: u16) -> Option<Arc<Glyph>> {
+        let key = (face, index, size.clamp(1, 256));
+        if let Some(g) = self.shaped.get(&key) {
+            return Some(g.clone());
+        }
+        let Some(font) = font_pack::face_font(face) else {
+            font_pack::note_missing(face);
+            return None;
+        };
+        if self.shaped.len() >= 8192
+            || self.shaped.values().map(|g| g.alpha.len()).sum::<usize>() > 8 * 1024 * 1024
+        {
+            self.shaped.clear()
+        }
+        let (metrics, alpha) = font.rasterize_indexed(index, key.2 as f32);
+        let glyph = Arc::new(Glyph { metrics, alpha });
+        self.shaped.insert(key, glyph.clone());
+        Some(glyph)
     }
     fn text(
         &mut self,
@@ -258,17 +336,34 @@ impl Renderer {
             // code, avoiding platform floating-point drift. Raster origins are integers.
             let bold = ui == 2;
             let line_height = size as i64 + (size as i64 + 3) / 4;
-            let lines = metrics::wrap(typeface, bold, text, size, width);
+            // Wrapping, fallback faces, bidi order and shaping all come from the same
+            // layout the scene metrics measure with; Latin text takes its original
+            // per-character path through it unchanged.
+            let lines = shaping::layout(typeface, bold, text, size, width);
             for (row, line) in lines.iter().enumerate() {
                 let baseline = size as i64 + row as i64 * line_height;
                 if baseline - size as i64 >= height as i64 {
                     break;
                 }
-                let mut pen = 0i64;
-                for c in line.chars() {
-                    let g = self.glyph(if c == '\t' { ' ' } else { c }, size, ui, typeface);
-                    let x = (pen + 32) / 64 + g.metrics.xmin as i64;
-                    let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
+                for placed in &line.glyphs {
+                    let g = match (placed.face, placed.glyph) {
+                        (None, GlyphRef::Char(c)) => {
+                            self.glyph(if c == '\t' { ' ' } else { c }, size, ui, typeface)
+                        }
+                        (Some(face), GlyphRef::Index(index)) => {
+                            match self.shaped_glyph(face, index, size) {
+                                Some(g) => g,
+                                // Pack file not installed yet: a box holds the place.
+                                None => self.glyph('\u{FFFF}', size, ui, Typeface::DejaVu),
+                            }
+                        }
+                        _ => continue,
+                    };
+                    let x = (placed.x + 32).div_euclid(64) + g.metrics.xmin as i64;
+                    let y = baseline
+                        - (placed.y + 32).div_euclid(64)
+                        - g.metrics.height as i64
+                        - g.metrics.ymin as i64;
                     for gy in 0..g.metrics.height {
                         let py = y + gy as i64;
                         if py < 0 || py >= height as i64 {
@@ -283,7 +378,6 @@ impl Renderer {
                             }
                         }
                     }
-                    pen += metrics::advance(typeface, bold, c, size);
                 }
             }
         } else {
@@ -1356,15 +1450,16 @@ mod tests {
             UI_FONT_SHA256
         );
     }
-    /// The DejaVu faces are subset (see `assets/build-fonts.py`), and DejaVu is
-    /// the last fallback, so a codepoint outside the coverage set has nowhere
-    /// left to go. It must then draw `.notdef` — a visible hollow box — rather
-    /// than nothing at all, because a glyph that silently renders as blank is
-    /// indistinguishable from a rendering bug and unreadable to an OCR consumer.
+    /// DejaVu is subset (see `assets/build-fonts.py`) and the Noto fallback faces
+    /// cover Hebrew, Arabic, Thai, Devanagari, CJK and emoji; a codepoint outside
+    /// all of them has nowhere left to go. It must then draw `.notdef` — a visible
+    /// hollow box — rather than nothing at all, because a glyph that silently renders
+    /// as blank is indistinguishable from a rendering bug and unreadable to an OCR
+    /// consumer. (`script_tests` pins that the covered scripts draw real glyphs.)
     #[test]
     fn uncovered_codepoints_draw_a_visible_notdef_box() {
-        // Scripts the full masters carried and the subset deliberately drops.
-        for uncovered in ['\u{05D0}', '\u{0627}', '\u{10A0}', '\u{0E01}', '\u{4E2D}'] {
+        // Georgian, Armenian, Ethiopic, Cherokee, Khmer: covered by no bundled face.
+        for uncovered in ['\u{10A0}', '\u{0531}', '\u{1200}', '\u{13A0}', '\u{1780}'] {
             for ui in [0u8, 1, 2] {
                 let mut renderer = Renderer::new();
                 let glyph = renderer.glyph(uncovered, 24, ui, Typeface::DejaVu);
@@ -1376,7 +1471,7 @@ mod tests {
                 );
                 // Every uncovered codepoint maps to glyph 0, so they are the
                 // same mark: predictable, not merely non-empty.
-                let other = renderer.glyph('\u{0905}', 24, ui, Typeface::DejaVu);
+                let other = renderer.glyph('\u{10D0}', 24, ui, Typeface::DejaVu);
                 assert_eq!(
                     glyph.alpha, other.alpha,
                     "U+{:04X} at ui={ui} is not the shared .notdef",
@@ -1388,7 +1483,7 @@ mod tests {
         // above would pass with the whole face replaced by boxes.
         let mut renderer = Renderer::new();
         let lambda = renderer.glyph('\u{03BB}', 24, 1, Typeface::DejaVu);
-        let notdef = renderer.glyph('\u{05D0}', 24, 1, Typeface::DejaVu);
+        let notdef = renderer.glyph('\u{10A0}', 24, 1, Typeface::DejaVu);
         assert_ne!(lambda.alpha, notdef.alpha, "λ must not be .notdef");
     }
     #[test]
@@ -1813,7 +1908,8 @@ mod fidelity_tests {
             Color::BLACK,
         ));
         let frame = Renderer::new().render(&scene);
-        let lines = metrics::wrap(Typeface::Inter, false, "checklist after release", 14, 120);
+        let lines =
+            cw_scene::metrics::wrap(Typeface::Inter, false, "checklist after release", 14, 120);
         assert_eq!(lines, ["checklist after ", "release"]);
         let inked = |y0: u32, y1: u32| {
             (y0..y1).any(|y| (0..120).any(|x| frame.pixel(x, y).unwrap()[0] < 128))

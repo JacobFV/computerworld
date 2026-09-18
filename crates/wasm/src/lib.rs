@@ -350,6 +350,42 @@ impl Default for JsSceneRenderer {
     }
 }
 
+/// Install one file of the CJK/emoji font pack (`fonts/<file>` beside this module).
+/// The Wasm build does not embed those faces; until a file is installed its glyphs
+/// draw as `.notdef` boxes, while layout is already final. Bytes are identified by
+/// SHA-256, so only the exact files this build was made with are accepted, and every
+/// renderer drops its cached text on the next frame. Returns the file name.
+#[wasm_bindgen(js_name = installFont)]
+pub fn install_font(bytes: &[u8]) -> Result<String, JsValue> {
+    cw_render::install_font(bytes)
+        .map(|file| file.file.to_owned())
+        .map_err(error)
+}
+
+/// The font pack: every file with its SHA-256 and size, which are installed, and
+/// which renderers have needed but not had (fetch exactly those, then re-render).
+#[wasm_bindgen(js_name = fontPackStatus)]
+pub fn font_pack_status() -> Result<JsValue, JsValue> {
+    let status = cw_render::font_pack_status();
+    let files: Vec<serde_json::Value> = cw_render::FONT_PACK
+        .iter()
+        .map(|file| {
+            serde_json::json!({
+                "file": file.file,
+                "path": format!("fonts/{}", file.file),
+                "sha256": file.sha256,
+                "bytes": file.bytes,
+                "installed": status.installed.contains(&file.file),
+            })
+        })
+        .collect();
+    encode(&serde_json::json!({
+        "files": files,
+        "installed": status.installed,
+        "missing": status.missing,
+    }))
+}
+
 /// Version of the canonical engine embedded in this binding.
 #[wasm_bindgen(js_name = engineVersion)]
 pub fn engine_version() -> String {

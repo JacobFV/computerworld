@@ -1,0 +1,19 @@
+{
+  "width": 440,
+  "height": 380,
+  "revision": 0,
+  "background": [250, 250, 247, 255],
+  "nodes": [
+    {"id": 1, "bounds": {"x": 6, "y": 4, "width": 300, "height": 26}, "primitive": {"kind": "ui_text", "text": "שלום עולם (Hebrew) 123", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 2, "bounds": {"x": 6, "y": 32, "width": 300, "height": 30}, "primitive": {"kind": "ui_text", "text": "مرحبا بالعالم، لا بأس", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 3, "bounds": {"x": 6, "y": 64, "width": 300, "height": 30}, "primitive": {"kind": "ui_text", "text": "สวัสดีชาวโลก กี่ กำ", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 4, "bounds": {"x": 6, "y": 96, "width": 300, "height": 30}, "primitive": {"kind": "ui_text", "text": "नमस्ते दुनिया क्षत्रिय कि", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 5, "bounds": {"x": 6, "y": 128, "width": 300, "height": 26}, "primitive": {"kind": "ui_text", "text": "简体中文 · 繁體中文 · 日本語のテキスト", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 6, "bounds": {"x": 6, "y": 156, "width": 300, "height": 26}, "primitive": {"kind": "ui_text", "text": "안녕하세요 세계", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 7, "bounds": {"x": 6, "y": 184, "width": 300, "height": 28}, "primitive": {"kind": "ui_text", "text": "Emoji 😀 👍🏽 🇯🇵 👨‍👩‍👧 ❤️ 1️⃣", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 8, "bounds": {"x": 6, "y": 214, "width": 420, "height": 28}, "primitive": {"kind": "ui_text_bold", "text": "שלום مرحبا สวัสดี नमस्ते 中文 한국어", "size": 18, "color": [20, 24, 32, 255]}},
+    {"id": 9, "bounds": {"x": 6, "y": 246, "width": 420, "height": 22}, "primitive": {"kind": "text", "text": "$ echo 中文 ok 😀 שלום", "size": 14, "color": [20, 24, 32, 255]}},
+    {"id": 10, "bounds": {"x": 312, "y": 4, "width": 120, "height": 200}, "primitive": {"kind": "ui_text", "text": "日本語の文章は単語の間に空白を置かないので、文字の間で折り返します。", "size": 16, "color": [20, 24, 32, 255]}},
+    {"id": 11, "bounds": {"x": 6, "y": 272, "width": 200, "height": 100}, "primitive": {"kind": "ui_text", "text": "עברית עם English באמצע, ושוב עברית.", "size": 16, "color": [20, 24, 32, 255]}}
+  ]
+}

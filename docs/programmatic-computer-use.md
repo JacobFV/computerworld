@@ -168,6 +168,19 @@ try {
 }
 ```
 
+Text in Hebrew, Arabic, Thai and Devanagari renders out of the box. Han, kana, Hangul
+and emoji glyphs come from a font pack that ships beside the Wasm module in `fonts/`
+rather than inside it (Python and native Rust embed it). Install it once per process,
+before rendering or when `fontPackStatus().missing` lists a file; layout, scenes and
+observations are identical either way, only those glyphs draw as boxes until then:
+
+```js
+import init, { installFont, fontPackStatus } from './computerworld.js';
+await init();
+for (const f of fontPackStatus().files)
+  installFont(new Uint8Array(await (await fetch(f.path)).arrayBuffer()));
+```
+
 The generated Wasm objects expose `free()`. Release temporary frames in long
 runs; keep the world/session alive until the episode finishes. Python bindings
 return `bytes` and follow ordinary Python object lifetime. These handles are
