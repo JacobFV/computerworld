@@ -399,6 +399,12 @@ Calc; a file keeps its own format when saved again. Every control is
 | `insert:<rows\|cols\|sheet>`, `delete:<rows\|cols\|sheet\|chart>`, `colwidth:<col>:<px>`, `autofit`, `freeze:<panes\|row\|col\|none>` | Structure. Inserting or deleting rows and columns rewrites every reference to them |
 | `sort:<asc\|desc>`, `filter`, `filterpick:<col>`, `filtertoggle:<col>:<value>` | Sort the current region by the active column (a text header row stays put); AutoFilter with a value list per column |
 | `chart:<column\|bar\|line\|pie>`, `chartsel:<i>`, `charttype:<kind>` | Charts of the selection (or the data around the active cell) |
+| `merge:<center\|across\|cells\|down>`, `merge!:<mode>`, `unmerge` | Merge & Center, Merge Across (one merge per row), Merge Cells and Sheets' Merge vertically. Merging cells that hold more than the top-left value asks first (`merge!` is the confirmed form) and keeps only that value; a merge is selected, navigated and sorted around as one cell, as Excel does. Center Across Selection is `Align::CenterAcross` |
+| `border:<bottom\|top\|left\|right\|none\|all\|outside\|thickoutside\|inside\|insideh\|insidev\|doublebottom\|thickbottom\|topbottom\|topthickbottom\|topdoublebottom>`, `borderline:<thin\|medium\|thick\|double\|dotted\|dashed\|hair\|mediumDashed\|dashDot\|mediumDashDot\|dashDotDot\|mediumDashDotDot\|slantDashDot>`, `bordercolor:<rrggbb\|auto>`, `drawborder:<border\|grid\|erase\|off>` | Cell borders: Excel's presets in the current line style and colour; Draw Border mode draws on the grid by dragging |
+| `cf:<greater\|less\|between\|equal\|text\|date\|duplicate\|top\|toppct\|bottom\|bottompct\|above\|below\|formula>`, `cf:bar:<rrggbb>`, `cf:scale:<id>`, `cf:icons:<set>`, `cfclear:<selection\|sheet>`, `cfmanage`, `cfrule:<i>`, `cfdelete`, `cfup`, `cfdown`, `cfstop` | Conditional formatting: rule dialogs (Highlight Cells, Top/Bottom, New Rule with a formula), data bars, colour scales, icon sets, and the Rules Manager (select, delete, reorder, Stop If True) |
+| `dialog:<ok\|cancel>`, `dialog:field:<i>`, `dialog:preset:<id>`, `dialog:choice:<id>`, `dialog:<newsheet\|existing>`, `dialog:delim:<tab\|comma\|semicolon\|space>`, `dialog:mergeruns` | The open dialog: typing fills the focused field, `Tab` moves, `Enter` is OK and `Escape` Cancel. A refused OK reports why and keeps the dialog |
+| `pivot:<new\|refresh\|refreshall\|delete\|pane>`, `pivotfield:<k>`, `pivotarea:<k>:<rows\|cols\|values\|filters\|remove>`, `pivotagg:<i>:<sum\|count\|average\|max\|min>`, `pivotfilter:<k>`, `pivothide:<k>:<item>` | Pivot tables from the selection, onto a new or an existing sheet; the field list ticks a field into Rows (text) or Values (numbers), moves it between areas, changes the summary and hides items. Refresh rereads the source; Sheets and Numbers refresh on every change |
+| `calcnow`, `ttc` | Calculate Now (`F9`) and Text to Columns on one column |
 | `menu:<id>`, `ribbon:<tab>`, `inspector[:<pane>]`, `zoom:<in\|out\|reset\|percent>`, `gridlines`, `dismiss`, `noop` | Menus, Excel's ribbon tabs and backstage, Numbers' Format and Organize sidebar, view settings, the message dialog |
 
 **Drag surfaces.** `sheet:grid:<row height>:<scale>` is the cell area and
@@ -406,7 +412,14 @@ Calc; a file keeps its own format when saved again. Every control is
 on the grid selects from the press to the release (the press stays the active cell);
 while a formula is waiting for an argument (`=SUM(`) a drag inserts the range instead. A
 drag from the fill handle fills the selection in the direction dragged furthest,
-continuing number and date series and adjusting relative references. A double click on
+continuing number and date series and adjusting relative references.
+`sheet:chartmove:<i>:<row height>:<scale>` is a chart: pressing selects it and a drag
+moves it, landing on the cells (and offsets into them) under its new corners.
+`sheet:chartsize:<i>:<handle>:<row height>:<scale>` are the eight sizing handles of the
+selected chart, clockwise from the top-left (0) to the left edge (7). In Draw Border
+mode a drag on the grid draws the outline (or grid, or erases) of the cells it spans.
+While a formula is typed its references are coloured in the editor and their cells
+outlined in the same colours. A double click on
 the grid edits the active cell; on a phone a tap selects and a second tap (a double
 click) edits. Keys follow Excel with `Meta` as `Ctrl`: arrows (with `Shift` to extend,
 `Ctrl` to jump to the edge of the data), `Tab`, `Enter`, `F2`, `Delete`, `Backspace`,
@@ -426,10 +439,13 @@ Revert Changes returns to what the file holds. Every control is
 |---|---|
 | `new`, `open`, `openfile:<name>`, `folder:<name\|..>`, `cancel`, `write`, `revert`, `close`, `savechanges`, `discard`, `import`, `exportcsv` | Files. `new` creates `Untitled.db` in the folder at once; `import` makes a table from a CSV file (typed INTEGER, REAL or TEXT by its values); `exportcsv` writes the browsed table as `<table>.csv`; closing with unwritten changes asks first |
 | `tab:<structure\|browse\|pragmas\|execute>`, `menu:<file\|edit\|view\|tools\|tables>`, `dismiss`, `noop` | DB Browser's four tabs and menus; TablePlus's Data and Structure views |
-| `expand:<node>`, `tree:<table:NAME\|index:NAME\|view:NAME>`, `droptable[:<name>]`, `yes`, `no` | The Database Structure tree; Delete Table asks before it drops |
-| `table:<name>`, `cell:<row>:<col>`, `editcell[:<row>:<col>]`, `setnull`, `newrow`, `deleterow`, `sort:<col>`, `filter:<col>`, `clearfilters`, `refresh`, `page:<first\|prev\|next\|last>` | Browse Data. An edited cell is an `UPDATE … WHERE rowid = ?`, so the column's type affinity and the table's constraints decide what is stored (a refused edit is reported). A filter is `LIKE %text%`, or a comparison when it starts with `=`, `<`, `>`, `<=`, `>=`, `<>` or `!=`. Views are read-only |
+| `expand:<node>`, `tree:<table:NAME\|index:NAME\|view:NAME\|trigger:NAME>`, `droptable[:<name>]`, `yes`, `no` | The Database Structure tree (Tables, Indices, Views, Triggers); Delete Table asks before it drops |
+| `table:<name>`, `cell:<row>:<col>`, `editcell[:<row>:<col>]`, `setnull`, `newrow`, `deleterow`, `sort:<col>`, `filter:<col>`, `clearfilters`, `refresh`, `page:<first\|prev\|next\|last>` | Browse Data. An edited cell is an `UPDATE … WHERE rowid = ?` (by primary key in a `WITHOUT ROWID` table, whose rows are shown in key order), so the column's type affinity and the table's constraints decide what is stored (a refused edit is reported). A filter is `LIKE %text%`, or a comparison when it starts with `=`, `<`, `>`, `<=`, `>=`, `<>` or `!=`. Views are read-only |
 | `sql[:start]`, `run`, `runline`, `clearsql`, `results:<up\|down>` | Execute SQL: the editor (typing, `Enter`, arrows), Execute all (`F5`, `Ctrl+Enter`, `Ctrl+R`) and Execute current line (`Shift+F5`); the grid shows the last statement that returned rows and the message pane reports rows, changes or the error with its line |
 | `pragma:foreign_keys`, `pragma:user_version:<up\|down>`, `integrity` | Edit Pragmas and Tools › Integrity Check |
+| `createtable`, `modifytable[:<name>]`, `design:<name\|add\|remove\|top\|up\|down\|bottom\|withoutrowid\|ok\|cancel>`, `design:cell:<field>:<col>`, `design:type:<field>:<INTEGER\|TEXT\|BLOB\|REAL\|NUMERIC>` | DB Browser's Edit Table Definition dialog. Columns are Name, Type, NN, PK, AI, U, Default, Check, Collation, Foreign Key (0–9): a click on a text cell selects it (typing replaces it, a double click edits at the end), on a check box toggles it; `Tab` moves along the text cells and `Enter` leaves the cell, then is OK. OK writes the `CREATE TABLE` DB Browser writes, or for a change `ALTER TABLE` (rename table or column, add or drop column) where SQLite can and otherwise SQLite's twelve-step rebuild (`sqlb_temp_table_N`, copy, drop, rename, indexes, triggers and views back, `foreign_key_check`). A refused change is reported and changes nothing |
+| `createindex[:<table>]`, `index:<name\|unique\|ok\|cancel>`, `index:table:<name>`, `index:col:<column>`, `index:order:<i>` | Edit Index Definition: name, table, Unique, the index columns (a click adds or removes one) and each one's ASC/DESC. The partial index clause is painted disabled: the engine has no partial indexes |
+| `struct:cell:<row>:<col>`, `struct:addcol`, `struct:delcol`, `struct:dropindex:<name>` | TablePlus's Structure view: column_name, data_type, is_nullable, column_default, primary_key, foreign_key (0–5) are edited in place and staged; Commit (`Cmd+S`) applies them as above and writes the file, Discard drops them |
 
 A double click on a grid cell edits it; `Enter` or `Tab` commits, `Escape` cancels,
 `Delete` sets NULL. The shell's `sqlite3` works on the same files.

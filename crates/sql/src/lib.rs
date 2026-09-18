@@ -17,6 +17,7 @@ mod func;
 pub mod lexer;
 pub mod parser;
 mod schema;
+mod trigger;
 pub mod value;
 
 pub use func::SCALAR_FUNCTIONS;
@@ -40,6 +41,9 @@ pub struct SqlError {
     pub offset: Option<usize>,
     /// SQLite's primary result code: 1 error, 19 constraint, 20 mismatch, 26 not a database.
     pub code: i32,
+    /// Set when a trigger program's `RAISE()` produced this error: how the statement
+    /// that fired the trigger must end.
+    pub raise: Option<ast::RaiseKind>,
 }
 impl SqlError {
     pub fn new(message: impl Into<String>) -> Self {
@@ -47,6 +51,7 @@ impl SqlError {
             message: message.into(),
             offset: None,
             code: 1,
+            raise: None,
         }
     }
     pub fn syntax_at(message: impl Into<String>, offset: usize) -> Self {
@@ -54,6 +59,16 @@ impl SqlError {
             message: message.into(),
             offset: Some(offset),
             code: 1,
+            raise: None,
+        }
+    }
+    /// `RAISE(kind, message)`: a constraint error (19) carrying how to end the statement.
+    pub fn raise(kind: ast::RaiseKind, message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            offset: None,
+            code: 19,
+            raise: Some(kind),
         }
     }
     pub fn with_code(mut self, code: i32) -> Self {
@@ -223,6 +238,8 @@ impl Database {
     fn settle(&mut self, env: &Env) {
         self.rng = env.rng.get();
         self.last_insert_rowid = env.last_insert_rowid.get();
+        // Rows changed by trigger programs count in total_changes().
+        self.total_changes = env.total_changes.get();
     }
     fn run(&mut self, stmt: &Stmt, text: &str, params: &[Value]) -> Result<Output, SqlError> {
         let env = self.env();
@@ -246,6 +263,7 @@ impl Database {
                     ctes: Rc::new(Vec::new()),
                     plan: None,
                     depth: 0,
+                    shape: None,
                 };
                 exec::select(&ctx, s, None).map(|rel| Output {
                     columns: rel.cols.into_iter().map(|c| c.name).collect(),
@@ -261,6 +279,7 @@ impl Database {
                 .and_then(|ctes| dml::delete(&mut self.state, &dml::Run { ctes, ..run }, d)),
             Stmt::CreateTable(ct) => dml::create_table(&mut self.state, &run, ct),
             Stmt::CreateIndex(ci) => dml::create_index(&mut self.state, ci),
+            Stmt::CreateTrigger(ct) => trigger::create(&mut self.state, ct),
             Stmt::CreateView(cv) => {
                 let select_text = view_select_text(&cv.sql);
                 dml::create_view(&mut self.state, &run, cv, select_text)
@@ -360,8 +379,21 @@ impl Database {
                 Ok(o)
             }
             Err(e) => {
+                // RAISE() in a trigger program decides how the statement ends: FAIL keeps
+                // what it changed so far, ROLLBACK ends the whole transaction.
+                let conflict = match e.raise {
+                    Some(ast::RaiseKind::Fail) => Some(ast::Conflict::Fail),
+                    Some(ast::RaiseKind::Rollback) => Some(ast::Conflict::Rollback),
+                    Some(_) => Some(ast::Conflict::Abort),
+                    None => conflict,
+                };
                 match conflict {
-                    Some(ast::Conflict::Fail) => {}
+                    Some(ast::Conflict::Fail) => {
+                        // The rows changed before the failure stay, and count.
+                        let direct = env.direct.get() as i64;
+                        self.changes = direct;
+                        self.total_changes += direct;
+                    }
                     Some(ast::Conflict::Rollback) if e.code == 19 => {
                         if self.in_transaction() {
                             self.rollback_all();
@@ -392,6 +424,7 @@ impl Database {
                     ctes: Rc::new(Vec::new()),
                     plan: Some(&notes),
                     depth: 0,
+                    shape: None,
                 };
                 exec::select(&ctx, s, None)?;
             }
@@ -507,7 +540,14 @@ impl Database {
                         out.rows.push(vec![
                             Value::Integer(i as i64),
                             Value::Text(c.name.clone()),
-                            Value::Text(c.decl_type.clone()),
+                            // SQLite keeps the six standard type names in its own
+                            // spelling (the ones STRICT tables allow).
+                            Value::Text(match c.decl_type.to_ascii_uppercase().as_str() {
+                                t @ ("ANY" | "BLOB" | "INT" | "INTEGER" | "REAL" | "TEXT") => {
+                                    t.to_owned()
+                                }
+                                _ => c.decl_type.clone(),
+                            }),
                             Value::Integer(i64::from(c.not_null)),
                             c.default.clone().map_or(Value::Null, Value::Text),
                             Value::Integer(c.primary_key as i64),
@@ -623,9 +663,10 @@ impl Database {
                     ..Output::default()
                 };
                 for e in self.schema() {
-                    if e.kind == "index" {
+                    if e.kind == "index" || e.kind == "trigger" {
                         continue;
                     }
+                    let without_rowid = e.kind == "table" && !self.has_rowid(&e.name);
                     let ncol = if e.kind == "table" {
                         self.state.tables[&e.name.to_ascii_lowercase()]
                             .columns
@@ -638,7 +679,7 @@ impl Database {
                         Value::Text(e.name.clone()),
                         Value::Text(e.kind.clone()),
                         Value::Integer(ncol as i64),
-                        Value::Integer(0),
+                        Value::Integer(i64::from(without_rowid)),
                         Value::Integer(0),
                     ]);
                 }
@@ -778,11 +819,15 @@ impl Database {
             ));
         }
         for i in self.state.indexes.values() {
-            let table = self
-                .state
-                .tables
-                .get(&i.table)
-                .map_or(i.table.clone(), |t| t.name.clone());
+            let owner = self.state.tables.get(&i.table);
+            // A WITHOUT ROWID table is its own primary key index: no row of its own.
+            if owner.is_some_and(|t| t.without_rowid) && i.origin == IndexOrigin::PrimaryKey {
+                continue;
+            }
+            if owner.is_some_and(|t| t.temp) {
+                continue;
+            }
+            let table = owner.map_or(i.table.clone(), |t| t.name.clone());
             out.push((
                 i.ordinal,
                 SchemaEntry {
@@ -801,6 +846,27 @@ impl Database {
                     name: v.name.clone(),
                     table: v.name.clone(),
                     sql: Some(v.sql.clone()),
+                },
+            ));
+        }
+        for t in self.state.triggers.values() {
+            if t.temp {
+                continue;
+            }
+            let table = self
+                .state
+                .tables
+                .get(&t.table)
+                .map(|x| x.name.clone())
+                .or_else(|| self.state.views.get(&t.table).map(|v| v.name.clone()))
+                .unwrap_or_else(|| t.table.clone());
+            out.push((
+                t.ordinal,
+                SchemaEntry {
+                    kind: "trigger".into(),
+                    name: t.name.clone(),
+                    table,
+                    sql: Some(t.sql.clone()),
                 },
             ));
         }
@@ -862,9 +928,28 @@ impl Database {
             .get(&table.to_ascii_lowercase())
             .map(|t| t.rows.len())
     }
-    /// Whether `name` is a table with a rowid (every table here has one).
+    /// Whether `name` is a table (rather than a view).
     pub fn is_table(&self, name: &str) -> bool {
         self.state.tables.contains_key(&name.to_ascii_lowercase())
+    }
+    /// Whether `name` is a table with a rowid (not a view or a WITHOUT ROWID table).
+    pub fn has_rowid(&self, name: &str) -> bool {
+        self.state
+            .tables
+            .get(&name.to_ascii_lowercase())
+            .is_some_and(|t| !t.without_rowid)
+    }
+    /// Triggers on a table or view: (name, CREATE TRIGGER text), oldest first.
+    pub fn triggers_of(&self, table: &str) -> Vec<(String, String)> {
+        let mut v: Vec<(u64, String, String)> = self
+            .state
+            .triggers
+            .values()
+            .filter(|t| t.table.eq_ignore_ascii_case(table))
+            .map(|t| (t.ordinal, t.name.clone(), t.sql.clone()))
+            .collect();
+        v.sort();
+        v.into_iter().map(|(_, n, s)| (n, s)).collect()
     }
 }
 fn with_ctes(
@@ -883,6 +968,7 @@ fn with_ctes(
         ctes: Rc::new(Vec::new()),
         plan: None,
         depth: 0,
+        shape: None,
     };
     // Each CTE is materialised by selecting everything from it, in a context that
     // already holds the ones before it.
@@ -945,10 +1031,14 @@ pub(crate) fn schema_rows(state: &State) -> Vec<Vec<Value>> {
     db.schema()
         .into_iter()
         .map(|e| {
-            let root = roots
-                .get(&e.name.to_ascii_lowercase())
-                .copied()
-                .unwrap_or(0);
+            let root = if e.kind == "table" || e.kind == "index" {
+                roots
+                    .get(&e.name.to_ascii_lowercase())
+                    .copied()
+                    .unwrap_or(0)
+            } else {
+                0
+            };
             vec![
                 Value::Text(e.kind),
                 Value::Text(e.name),

@@ -28,9 +28,15 @@ pub fn table_cols(table: &Table, alias: &str) -> Vec<ColMeta> {
             merged: false,
         })
         .collect();
+    // A WITHOUT ROWID table keeps its internal row number where the rowid would be,
+    // under a name no SQL can spell.
     cols.push(ColMeta {
         table: Some(alias.to_owned()),
-        name: "rowid".into(),
+        name: if table.without_rowid {
+            "\u{0}row".into()
+        } else {
+            "rowid".into()
+        },
         affinity: Some(Affinity::Integer),
         collation: Collation::Binary,
         hidden: true,
@@ -662,6 +668,227 @@ fn with_aliases(e: &Expr, aliases: &[(String, &Expr)], cols: &[ColMeta]) -> Expr
     }
 }
 
+/// Visit every expression of a SELECT, descending into its subqueries.
+fn select_exprs(s: &Select, f: &mut dyn FnMut(&Expr)) {
+    if let Some(w) = &s.with {
+        for c in &w.ctes {
+            select_exprs(&c.select, f);
+        }
+    }
+    core_exprs(&s.first, f);
+    for (_, c) in &s.compounds {
+        core_exprs(c, f);
+    }
+    for t in &s.order_by {
+        expr_deep(&t.expr, f);
+    }
+    for e in s.limit.iter().chain(s.offset.iter()) {
+        expr_deep(e, f);
+    }
+}
+fn core_exprs(c: &SelectCore, f: &mut dyn FnMut(&Expr)) {
+    match c {
+        SelectCore::Values(rows) => {
+            for e in rows.iter().flatten() {
+                expr_deep(e, f);
+            }
+        }
+        SelectCore::Select {
+            columns,
+            from,
+            filter,
+            group_by,
+            having,
+            ..
+        } => {
+            for rc in columns {
+                if let ResultCol::Expr { expr, .. } = rc {
+                    expr_deep(expr, f);
+                }
+            }
+            if let Some(fr) = from {
+                from_exprs(fr, f);
+            }
+            for e in filter.iter().chain(group_by.iter()).chain(having.iter()) {
+                expr_deep(e, f);
+            }
+        }
+    }
+}
+fn from_exprs(item: &FromItem, f: &mut dyn FnMut(&Expr)) {
+    match item {
+        FromItem::Table { .. } => {}
+        FromItem::Subquery { select, .. } => select_exprs(select, f),
+        FromItem::Join {
+            left,
+            right,
+            constraint,
+            ..
+        } => {
+            from_exprs(left, f);
+            from_exprs(right, f);
+            if let JoinConstraint::On(e) = constraint {
+                expr_deep(e, f);
+            }
+        }
+    }
+}
+fn expr_deep(e: &Expr, f: &mut dyn FnMut(&Expr)) {
+    e.walk(&mut |x| {
+        f(x);
+        match x {
+            Expr::Exists(s) | Expr::Subquery(s) | Expr::InSelect { select: s, .. } => {
+                select_exprs(s, f)
+            }
+            _ => {}
+        }
+    });
+}
+/// What a SELECT core reads from each base table in its FROM clause, and the orders
+/// it asks for, so the planner can pick covering indexes and skip sorts. Names are
+/// over-approximated: an unqualified name counts for every table that has it.
+#[allow(clippy::too_many_arguments)]
+fn shape_of(
+    ctx: &Ctx,
+    columns: &[ResultCol],
+    from: &FromItem,
+    filter: Option<&Expr>,
+    group_by: &[Expr],
+    having: Option<&Expr>,
+    order_by: &[OrderTerm],
+) -> crate::eval::Shape {
+    use std::collections::{BTreeMap, BTreeSet};
+    let none = JoinConstraint::None;
+    let mut items = Vec::new();
+    flatten(from, &mut items, &none);
+    let mut tables: Vec<(String, Arc<Table>)> = Vec::new();
+    for (_, constraint, item) in &items {
+        if let FromItem::Table { name, alias } = item {
+            let key = name.to_ascii_lowercase();
+            if ctx.ctes.iter().any(|(n, _)| *n == key) {
+                continue;
+            }
+            if let Some(t) = ctx.state.tables.get(&key) {
+                let shown = alias.clone().unwrap_or_else(|| name.clone());
+                tables.push((shown.to_ascii_lowercase(), t.clone()));
+            }
+        }
+        if matches!(constraint, JoinConstraint::Natural) {
+            tables.clear();
+            break;
+        }
+    }
+    let mut needed: BTreeMap<String, Option<BTreeSet<String>>> = tables
+        .iter()
+        .map(|(a, _)| (a.clone(), Some(BTreeSet::new())))
+        .collect();
+    let add =
+        |q: Option<&str>, name: &str, needed: &mut BTreeMap<String, Option<BTreeSet<String>>>| {
+            for (alias, t) in &tables {
+                let mine = match q {
+                    Some(q) => q.eq_ignore_ascii_case(alias),
+                    None => t.column(name).is_some() || t.is_rowid_name(name),
+                };
+                if mine {
+                    if let Some(Some(set)) = needed.get_mut(alias) {
+                        set.insert(name.to_ascii_lowercase());
+                    }
+                }
+            }
+        };
+    for rc in columns {
+        match rc {
+            ResultCol::Star => {
+                for v in needed.values_mut() {
+                    *v = None;
+                }
+            }
+            ResultCol::TableStar(t) => {
+                if let Some(v) = needed.get_mut(&t.to_ascii_lowercase()) {
+                    *v = None;
+                }
+            }
+            ResultCol::Expr { .. } => {}
+        }
+    }
+    for (_, constraint, _) in &items {
+        if let JoinConstraint::Using(cols) = constraint {
+            for c in cols {
+                add(None, c, &mut needed);
+            }
+        }
+    }
+    let mut visit = |e: &Expr| {
+        if let Expr::Column { table, name } = e {
+            add(table.as_deref(), name, &mut needed);
+        }
+    };
+    for rc in columns {
+        if let ResultCol::Expr { expr, .. } = rc {
+            expr_deep(expr, &mut visit);
+        }
+    }
+    from_exprs(from, &mut visit);
+    for e in filter.into_iter().chain(group_by.iter()).chain(having) {
+        expr_deep(e, &mut visit);
+    }
+    for t in order_by {
+        expr_deep(&t.expr, &mut visit);
+    }
+    // An ORDER BY term may name a result column by number or by its alias.
+    let plain = |e: &Expr| -> Option<(Option<String>, String)> {
+        let e = match e {
+            Expr::Literal(Value::Integer(k)) if *k >= 1 => match columns.get(*k as usize - 1) {
+                Some(ResultCol::Expr { expr, .. }) => expr,
+                _ => return None,
+            },
+            Expr::Column { table: None, name } => columns
+                .iter()
+                .find_map(|rc| match rc {
+                    ResultCol::Expr {
+                        expr,
+                        alias: Some(a),
+                        ..
+                    } if a.eq_ignore_ascii_case(name) => Some(expr),
+                    _ => None,
+                })
+                .unwrap_or(e),
+            e => e,
+        };
+        match e {
+            Expr::Column { table, name } => Some((table.clone(), name.clone())),
+            _ => None,
+        }
+    };
+    let order = if order_by.is_empty() {
+        None
+    } else {
+        order_by
+            .iter()
+            .map(|t| {
+                // Only SQLite's default NULL placement comes out of an index.
+                if t.nulls_first.is_some_and(|nf| nf == t.desc) {
+                    return None;
+                }
+                plain(&t.expr).map(|(q, n)| (q, n, t.desc))
+            })
+            .collect()
+    };
+    let group = if group_by.is_empty() {
+        None
+    } else {
+        group_by.iter().map(plain).collect()
+    };
+    crate::eval::Shape {
+        needed,
+        order,
+        group,
+        single: items.len() == 1 && tables.len() == 1,
+        ordered: std::cell::Cell::new(false),
+        grouped: std::cell::Cell::new(false),
+    }
+}
+
 /// One SELECT core: output columns and rows, each with its ORDER BY keys.
 fn core(
     ctx: &Ctx,
@@ -698,8 +925,25 @@ fn core(
             having,
         } => (distinct, columns, from, filter, group_by, having),
     };
+    let shape = from.as_ref().map(|f| {
+        Rc::new(shape_of(
+            ctx,
+            columns,
+            f,
+            filter.as_ref(),
+            group_by,
+            having.as_ref(),
+            order_by,
+        ))
+    });
     let source = match from {
-        Some(f) => from_relation(ctx, f, filter.as_ref(), outer)?,
+        Some(f) => {
+            let planned = Ctx {
+                shape: shape.clone(),
+                ..ctx.clone()
+            };
+            from_relation(&planned, f, filter.as_ref(), outer)?
+        }
         None => Relation {
             cols: vec![],
             rows: vec![vec![]],
@@ -936,8 +1180,9 @@ fn core(
         out.push((vals, keys));
         Ok(())
     };
+    let index_grouped = shape.as_ref().is_some_and(|s| s.grouped.get());
     if grouped {
-        if !group_by.is_empty() {
+        if !group_by.is_empty() && !index_grouped {
             ctx.note("USE TEMP B-TREE FOR GROUP BY");
         }
         // Group rows by their key, in key order as SQLite's sorter produces them.
@@ -1037,7 +1282,17 @@ fn core(
                 })
             })
             .collect();
-        ctx.note("USE TEMP B-TREE FOR ORDER BY");
+        // No sort is noted when the rows already arrive in order: from the access
+        // path, or from grouping on the same leading terms.
+        let from_path = !grouped && !*distinct && shape.as_ref().is_some_and(|s| s.ordered.get());
+        let from_groups = !group_by.is_empty()
+            && order_by.len() <= group_by.len()
+            && order_by.iter().zip(group_by.iter()).all(|(o, g)| {
+                o.nulls_first.is_none() && explicit_collation(&o.expr).is_none() && o.expr == *g
+            });
+        if !from_path && !from_groups {
+            ctx.note("USE TEMP B-TREE FOR ORDER BY");
+        }
         sort_rows(&mut out, order_by, &collations);
     }
     Ok((out_cols, out))
@@ -1425,11 +1680,225 @@ enum Bound<'a> {
     Range(Option<(&'a Expr, bool)>, Option<(&'a Expr, bool)>),
 }
 struct Path<'a> {
-    /// `None` targets the rowid.
+    /// `None` with bounds targets the rowid; `None` without bounds scans the table.
     index: Option<Arc<Index>>,
     /// Equality (or IN) bounds on leading key columns, then an optional range.
     bounds: Vec<Bound<'a>>,
     detail: String,
+    /// The rows come out in the order the query's ORDER BY asks for.
+    ordered: bool,
+    /// The rows come out grouped as the query's GROUP BY asks for.
+    grouped: bool,
+}
+/// How a search path compares: key columns used, order kept, covering, width, age.
+type Rank = (usize, bool, bool, i32, u64);
+/// A column a query reads from one table: `None` is the rowid.
+type Col = Option<usize>;
+/// What one query needs from one table, resolved to its columns.
+struct Needs {
+    /// Columns read; `None` when every column is (or the query is not known).
+    read: Option<Vec<Col>>,
+    /// ORDER BY as (column, descending), when every term is a plain column of it.
+    order: Option<Vec<(Col, bool)>>,
+    /// GROUP BY columns, when every term is a plain column of it.
+    group: Option<Vec<Col>>,
+}
+fn needs(ctx: &Ctx, table: &Table, alias: &str) -> Needs {
+    let none = Needs {
+        read: None,
+        order: None,
+        group: None,
+    };
+    let Some(shape) = ctx.shape.as_ref() else {
+        return none;
+    };
+    let key = alias.to_ascii_lowercase();
+    let resolve = |name: &str| -> Option<Col> {
+        match table.column(name) {
+            Some(i) if Some(i) == table.ipk => Some(None),
+            Some(i) => Some(Some(i)),
+            None if table.is_rowid_name(name) => Some(None),
+            None => None,
+        }
+    };
+    let read = match shape.needed.get(&key) {
+        Some(Some(names)) => {
+            let mut v = Vec::new();
+            for n in names {
+                if let Some(c) = resolve(n) {
+                    v.push(c);
+                }
+            }
+            Some(v)
+        }
+        _ => None,
+    };
+    let mine = |q: &Option<String>| q.as_ref().is_none_or(|q| q.eq_ignore_ascii_case(alias));
+    let order = if shape.single {
+        shape.order.as_ref().and_then(|terms| {
+            terms
+                .iter()
+                .map(|(q, n, desc)| {
+                    if mine(q) {
+                        resolve(n).map(|c| (c, *desc))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        })
+    } else {
+        None
+    };
+    let group = if shape.single {
+        shape.group.as_ref().and_then(|terms| {
+            terms
+                .iter()
+                .map(|(q, n)| if mine(q) { resolve(n) } else { None })
+                .collect()
+        })
+    } else {
+        None
+    };
+    Needs { read, order, group }
+}
+/// SQLite's `sqlite3LogEst`: ten times the base-2 logarithm, as its cost model uses.
+fn log_est(mut x: u64) -> i32 {
+    const A: [i32; 8] = [0, 2, 3, 5, 6, 7, 8, 9];
+    let mut y = 40;
+    if x < 8 {
+        if x < 2 {
+            return 0;
+        }
+        while x < 8 {
+            y -= 10;
+            x <<= 1;
+        }
+    } else {
+        while x > 255 {
+            y += 40;
+            x >>= 4;
+        }
+        while x > 15 {
+            y += 10;
+            x >>= 1;
+        }
+    }
+    A[(x & 7) as usize] + y - 10
+}
+/// Estimated row widths, as SQLite compares a table's with an index's.
+fn table_width(table: &Table) -> i32 {
+    let w: u32 = table
+        .columns
+        .iter()
+        .map(|c| crate::schema::size_estimate(&c.decl_type))
+        .sum::<u32>()
+        + u32::from(table.ipk.is_none() && !table.without_rowid);
+    log_est(u64::from(w) * 4)
+}
+fn index_width(table: &Table, index: &Index) -> i32 {
+    let mut w: u32 = index
+        .columns
+        .iter()
+        .map(|c| crate::schema::size_estimate(&table.columns[c.column].decl_type))
+        .sum();
+    if table.without_rowid {
+        for pk in &table.primary_key {
+            if !index.columns.iter().any(|c| c.column == *pk) {
+                w += crate::schema::size_estimate(&table.columns[*pk].decl_type);
+            }
+        }
+    } else {
+        w += 1;
+    }
+    log_est(u64::from(w) * 4)
+}
+/// The PRIMARY KEY of a WITHOUT ROWID table: the table itself, not a separate index.
+fn is_table_key(table: &Table, index: &Index) -> bool {
+    table.without_rowid && index.origin == crate::schema::IndexOrigin::PrimaryKey
+}
+/// Whether an index holds every column the query reads, so the table is never visited.
+fn covers(table: &Table, index: &Index, read: &Option<Vec<Col>>) -> bool {
+    let Some(read) = read else {
+        return false;
+    };
+    read.iter().all(|c| match c {
+        None => !table.without_rowid,
+        Some(c) => {
+            index.columns.iter().any(|ic| ic.column == *c)
+                || (table.without_rowid && table.primary_key.contains(c))
+        }
+    })
+}
+/// The order an access path delivers rows in: each column with its direction.
+fn delivered(table: &Table, index: Option<&Index>) -> Vec<(Col, bool)> {
+    match index {
+        None if table.without_rowid => table
+            .primary_key
+            .iter()
+            .zip(&table.pk_order)
+            .map(|(c, (_, d))| (Some(*c), *d))
+            .collect(),
+        None => vec![(None, false)],
+        Some(i) => {
+            let mut v: Vec<(Col, bool)> =
+                i.columns.iter().map(|c| (Some(c.column), c.desc)).collect();
+            if table.without_rowid {
+                for (pk, (_, d)) in table.primary_key.iter().zip(&table.pk_order) {
+                    if !i.columns.iter().any(|c| c.column == *pk) {
+                        v.push((Some(*pk), *d));
+                    }
+                }
+            } else {
+                v.push((None, false));
+            }
+            v
+        }
+    }
+}
+/// Does `order` follow from rows delivered in `given` order, when the first `fixed`
+/// columns are pinned to one value each? A uniform reversal counts: the rows can be
+/// read backwards.
+fn in_order(given: &[(Col, bool)], fixed: usize, order: &[(Col, bool)]) -> bool {
+    let pinned: Vec<Col> = given[..fixed.min(given.len())]
+        .iter()
+        .map(|(c, _)| *c)
+        .collect();
+    let mut at = fixed.min(given.len());
+    let mut flip: Option<bool> = None;
+    for (c, desc) in order {
+        if pinned.contains(c) {
+            continue;
+        }
+        let Some((g, gd)) = given.get(at) else {
+            return false;
+        };
+        if g != c {
+            return false;
+        }
+        let f = desc != gd;
+        if flip.is_some_and(|x| x != f) {
+            return false;
+        }
+        flip = Some(f);
+        at += 1;
+    }
+    true
+}
+/// Does `group` (in any order) follow from rows delivered in `given` order?
+fn in_groups(given: &[(Col, bool)], fixed: usize, group: &[Col]) -> bool {
+    let fixed = fixed.min(given.len());
+    let loose: Vec<Col> = group
+        .iter()
+        .filter(|c| !given[..fixed].iter().any(|(g, _)| g == *c))
+        .copied()
+        .collect();
+    let next: Vec<Col> = given[fixed..]
+        .iter()
+        .take(loose.len())
+        .map(|(c, _)| *c)
+        .collect();
+    next.len() == loose.len() && loose.iter().all(|c| next.contains(c))
 }
 fn plan<'a>(
     table: &Table,
@@ -1438,6 +1907,7 @@ fn plan<'a>(
     terms: &[&'a Expr],
     cols: &[ColMeta],
     left: &[ColMeta],
+    needs: &Needs,
 ) -> Option<Path<'a>> {
     // (column or rowid, operator, other side)
     let mut facts: Vec<(Option<usize>, BinOp, &'a Expr)> = Vec::new();
@@ -1560,20 +2030,47 @@ fn plan<'a>(
         }
         parts.join(" AND ")
     };
+    // Columns pinned to one value by an equality bound deliver no order of their own.
+    let pinned = |bounds: &[Bound]| {
+        bounds
+            .iter()
+            .take_while(|b| matches!(b, Bound::Eq(_)))
+            .count()
+    };
+    let judge = |given: &[(Col, bool)], fixed: usize| -> (bool, bool) {
+        (
+            needs
+                .order
+                .as_ref()
+                .is_some_and(|o| in_order(given, fixed, o)),
+            needs
+                .group
+                .as_ref()
+                .is_some_and(|g| in_groups(given, fixed, g)),
+        )
+    };
     // The rowid is the best path there is.
-    if let Some(b) = eq_for(None).or_else(|| range_for(None)) {
-        let detail = format!(
-            "SEARCH {alias} USING INTEGER PRIMARY KEY ({})",
-            describe(&["rowid".into()], std::slice::from_ref(&b))
-        );
-        return Some(Path {
-            index: None,
-            bounds: vec![b],
-            detail,
-        });
+    if !table.without_rowid {
+        if let Some(b) = eq_for(None).or_else(|| range_for(None)) {
+            let detail = format!(
+                "SEARCH {alias} USING INTEGER PRIMARY KEY ({})",
+                describe(&["rowid".into()], std::slice::from_ref(&b))
+            );
+            let fixed = usize::from(matches!(b, Bound::Eq(_)));
+            let (ordered, grouped) = judge(&delivered(table, None), fixed);
+            return Some(Path {
+                index: None,
+                bounds: vec![b],
+                detail,
+                ordered,
+                grouped,
+            });
+        }
     }
-    // Otherwise the index with the longest usable prefix; ties go to the earliest.
-    let mut best: Option<(usize, Path)> = None;
+    // Otherwise the index with the longest usable prefix. Among equals, one that holds
+    // every column the query reads wins, then the narrower, then the newer (SQLite
+    // keeps a table's indexes newest first).
+    let mut best: Option<(Rank, Path)> = None;
     for index in indexes {
         let mut bounds = Vec::new();
         let mut names = Vec::new();
@@ -1603,23 +2100,116 @@ fn plan<'a>(
         {
             score += 1;
         }
-        if best.as_ref().is_none_or(|(s, _)| score > *s) {
-            let detail = format!(
-                "SEARCH {alias} USING INDEX {} ({})",
-                index.name,
-                describe(&names, &bounds)
-            );
+        let own_key = is_table_key(table, index);
+        let covering = !own_key && covers(table, index, &needs.read);
+        // A path that already delivers the ORDER BY saves a sort. Width counts when
+        // the index is read at length (it covers the query, or a range walks it);
+        // otherwise the row lookups dominate and SQLite takes the first index found,
+        // the newest.
+        let fixed = pinned(&bounds);
+        let (ordered, grouped) = judge(&delivered(table, Some(index)), fixed);
+        let walks = matches!(bounds.last(), Some(Bound::Range(..)));
+        let width = if covering || walks {
+            -index_width(table, index)
+        } else {
+            0
+        };
+        let rank = (score, ordered || grouped, covering, width, index.ordinal);
+        if best.as_ref().is_none_or(|(r, _)| rank > *r) {
+            let detail = if own_key {
+                format!(
+                    "SEARCH {alias} USING PRIMARY KEY ({})",
+                    describe(&names, &bounds)
+                )
+            } else {
+                format!(
+                    "SEARCH {alias} USING {}INDEX {} ({})",
+                    if covering { "COVERING " } else { "" },
+                    index.name,
+                    describe(&names, &bounds)
+                )
+            };
             best = Some((
-                score,
+                rank,
                 Path {
                     index: Some(index.clone()),
                     bounds,
                     detail,
+                    ordered,
+                    grouped,
                 },
             ));
         }
     }
     best.map(|(_, p)| p)
+}
+/// A full scan: of the table, or of an index when its order saves a sort or it holds
+/// every column read in narrower rows than the table's, as SQLite chooses.
+fn scan<'a>(table: &Table, alias: &str, indexes: &[Arc<Index>], needs: &Needs) -> Path<'a> {
+    let judge = |given: &[(Col, bool)]| -> (bool, bool) {
+        (
+            needs.order.as_ref().is_some_and(|o| in_order(given, 0, o)),
+            needs.group.as_ref().is_some_and(|g| in_groups(given, 0, g)),
+        )
+    };
+    let (ordered, grouped) = judge(&delivered(table, None));
+    let plain = |ordered, grouped| Path {
+        index: None,
+        bounds: vec![],
+        detail: format!("SCAN {alias}"),
+        ordered,
+        grouped,
+    };
+    let secondary: Vec<&Arc<Index>> = indexes.iter().filter(|i| !is_table_key(table, i)).collect();
+    let via = |index: &Arc<Index>, ordered, grouped| {
+        let covering = covers(table, index, &needs.read);
+        Path {
+            index: Some((*index).clone()),
+            bounds: vec![],
+            detail: format!(
+                "SCAN {alias} USING {}INDEX {}",
+                if covering { "COVERING " } else { "" },
+                index.name
+            ),
+            ordered,
+            grouped,
+        }
+    };
+    if ordered || grouped {
+        return plain(ordered, grouped);
+    }
+    {
+        // An index whose order is the one asked for spares the sort.
+        let mut useful: Vec<(&&Arc<Index>, bool, bool)> = secondary
+            .iter()
+            .map(|i| {
+                let (o, g) = judge(&delivered(table, Some(i)));
+                (i, o, g)
+            })
+            .filter(|(_, o, g)| *o || *g)
+            .collect();
+        useful.sort_by_key(|(i, o, g)| {
+            (
+                std::cmp::Reverse((*o, *g, covers(table, i, &needs.read))),
+                index_width(table, i),
+                std::cmp::Reverse(i.ordinal),
+            )
+        });
+        if let Some((i, o, g)) = useful.first() {
+            return via(i, *o, *g);
+        }
+    }
+    // An index holding every column read in narrower rows is cheaper to read.
+    let width = table_width(table);
+    let mut narrow: Vec<&&Arc<Index>> = secondary
+        .iter()
+        .filter(|i| covers(table, i, &needs.read) && index_width(table, i) < width)
+        .collect();
+    narrow.sort_by_key(|i| (index_width(table, i), std::cmp::Reverse(i.ordinal)));
+    match narrow.first() {
+        Some(i) => via(i, false, false),
+        None => plain(false, false),
+    }
 }
 /// Rowids a path selects, evaluating its bound expressions in `scope`.
 fn run_path(
@@ -1719,6 +2309,8 @@ fn run_path(
                                 vals.push(v);
                             }
                         }
+                        // SQLite probes an IN list in key order, so rows come out sorted.
+                        vals.sort_by(|a, b| compare(a, b, Collation::Binary));
                         prefixes = prefixes
                             .into_iter()
                             .flat_map(|p| {
@@ -1806,22 +2398,29 @@ pub fn table_candidates(
 ) -> Result<Vec<i64>, SqlError> {
     let cols = table_cols(table, alias);
     let indexes = ctx.state.indexes_of(&table.name);
-    match plan(table, alias, &indexes, terms, &cols, left) {
-        Some(path) => {
-            if note {
-                ctx.note(path.detail.clone());
-            }
-            // A key that cannot be evaluated here (it names a table joined later) makes
-            // the path unusable, not the query wrong: fall back to scanning.
-            Ok(run_path(ctx, table, &path, scope)
-                .unwrap_or_else(|_| table.rows.keys().copied().collect()))
+    let needs = needs(ctx, table, alias);
+    let path = plan(table, alias, &indexes, terms, &cols, left, &needs)
+        .unwrap_or_else(|| scan(table, alias, &indexes, &needs));
+    if note {
+        ctx.note(path.detail.clone());
+        if let Some(shape) = &ctx.shape {
+            shape.ordered.set(path.ordered);
+            shape.grouped.set(path.grouped);
         }
-        None => {
-            if note {
-                ctx.note(format!("SCAN {alias}"));
-            }
-            Ok(table.rows.keys().copied().collect())
-        }
+    }
+    match (&path.index, path.bounds.is_empty()) {
+        (None, true) => Ok(table.scan_ids()),
+        (Some(index), true) => Ok(index
+            .entries
+            .iter()
+            .filter_map(|k| match k.0.last() {
+                Some(Value::Integer(id)) => Some(*id),
+                _ => None,
+            })
+            .collect()),
+        // A key that cannot be evaluated here (it names a table joined later) makes
+        // the path unusable, not the query wrong: fall back to scanning.
+        _ => Ok(run_path(ctx, table, &path, scope).unwrap_or_else(|_| table.scan_ids())),
     }
 }
 
@@ -1931,10 +2530,15 @@ pub fn from_relation(
                 right_ids = vec![];
             }
             SourceData::Table(t, _) => {
-                right_ids = t.rows.keys().copied().collect();
+                right_ids = t.scan_ids();
                 right_rows = vec![];
             }
         }
+        let pos_of: std::collections::HashMap<i64, usize> = right_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (*id, i))
+            .collect();
         let mut noted = false;
         for left_row in &rows {
             let left_scope = Scope {
@@ -1958,7 +2562,7 @@ pub fn from_relation(
                     noted = true;
                     ids.into_iter()
                         .map(|id| {
-                            let pos = right_ids.binary_search(&id).unwrap_or(0);
+                            let pos = pos_of.get(&id).copied().unwrap_or(0);
                             (pos, table_row(t, id, &t.rows[&id]))
                         })
                         .collect()
@@ -2015,6 +2619,24 @@ pub fn from_relation(
                 let mut combined = left_row.clone();
                 combined.extend(std::iter::repeat_n(Value::Null, width));
                 next_rows.push(combined);
+            }
+        }
+        // With no rows on the left the path was never needed; the plan still shows it.
+        if !noted {
+            if let Some(t) = &table {
+                if any_right {
+                    ctx.note(format!("SCAN {alias}"));
+                } else {
+                    table_candidates(
+                        ctx,
+                        t,
+                        &alias,
+                        &terms,
+                        if n == 0 { &empty_cols } else { &cols },
+                        None,
+                        true,
+                    )?;
+                }
             }
         }
         if matches!(kind, JoinKind::Right | JoinKind::Full) {

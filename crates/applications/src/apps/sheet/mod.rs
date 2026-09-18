@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 
 mod chart;
 mod chrome;
+mod features;
 mod grid;
+mod panels;
 #[cfg(test)]
 mod tests;
 
@@ -120,6 +122,69 @@ pub enum Drag {
     /// Pointing at cells while typing a formula: the reference being inserted
     /// replaces the text from `at` on.
     Point { at: usize, from: Cell },
+    /// Moving a chart (`handle` none) or resizing it by one of its eight handles
+    /// (0 top-left, clockwise to 7 left): where the press was and where the pointer is,
+    /// in the chart surface's own coordinates.
+    Chart {
+        index: usize,
+        handle: Option<u8>,
+        from: (i32, i32),
+        to: (i32, i32),
+    },
+    /// Drawing borders with the pen (Excel's Draw Border tools): the cells dragged over.
+    Border { from: Cell, to: Cell },
+}
+/// The pen border presets and Draw Border use: Excel's Line Style and Line Color.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Pen {
+    pub line: cw_sheet::Line,
+    pub color: [u8; 3],
+}
+impl Default for Pen {
+    fn default() -> Self {
+        Self {
+            line: cw_sheet::Line::Thin,
+            color: [0, 0, 0],
+        }
+    }
+}
+/// Excel's Draw Borders tools: what a drag on the grid does while one is chosen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DrawMode {
+    /// Draw Border: an outline around the dragged range.
+    Border,
+    /// Draw Border Grid: every edge of the dragged range.
+    Grid,
+    /// Erase Border.
+    Erase,
+}
+/// A dialog in front of the grid; typing goes to its focused field.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SheetDialog {
+    /// A conditional formatting rule being set up: its kind (`greater`, `between`,
+    /// `text`, `date`, `duplicate`, `top`, `formula`, …), its text fields, which one has
+    /// focus, the chosen format preset and any other choice (a period, unique/duplicate).
+    Rule {
+        kind: String,
+        fields: Vec<String>,
+        focus: usize,
+        preset: String,
+        choice: String,
+    },
+    /// The Conditional Formatting Rules Manager.
+    Rules { selected: Option<usize> },
+    /// Create PivotTable: the source range, and where the report goes (a new sheet, or
+    /// the cell in `place`).
+    Pivot {
+        source: String,
+        new_sheet: bool,
+        place: String,
+        focus: usize,
+    },
+    /// Text to Columns, with its delimiter.
+    TextToColumns { delimiter: String, merge_runs: bool },
+    /// A question with OK and Cancel: OK runs `then`.
+    Confirm { message: String, then: String },
 }
 /// The folder a spreadsheet lists for Open, and what it found there.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -169,6 +234,17 @@ pub struct Book {
     /// it, because the model itself never sees the theme.
     #[serde(default)]
     pub product: Option<String>,
+    #[serde(default)]
+    pub pen: Pen,
+    /// A Draw Borders tool is chosen: drags on the grid draw instead of selecting.
+    #[serde(default)]
+    pub draw: Option<DrawMode>,
+    #[serde(default)]
+    pub dialog: Option<SheetDialog>,
+    /// The PivotTable field list is closed (it opens whenever the active cell is in a
+    /// pivot table, until closed).
+    #[serde(default)]
+    pub pivot_pane_closed: bool,
 }
 
 fn ext(path: &str) -> String {
@@ -236,6 +312,10 @@ impl Book {
             inspector: false,
             gridlines: true,
             product: None,
+            pen: Pen::default(),
+            draw: None,
+            dialog: None,
+            pivot_pane_closed: false,
         };
         let mut effects = vec![AppEffect::ListDirectory {
             window,
@@ -282,10 +362,21 @@ impl Book {
     /// being renamed. Typing over a selected cell also starts the editor, as Excel's
     /// Enter mode does, but no field is focused until it has.
     pub fn accepts_text(&self) -> bool {
-        self.editing.is_some() || self.name_box.is_some() || self.renaming.is_some()
+        self.editing.is_some()
+            || self.name_box.is_some()
+            || self.renaming.is_some()
+            || self
+                .dialog
+                .as_ref()
+                .is_some_and(features::dialog_takes_text)
     }
+    /// The selected range, grown to hold every merged area it touches, as Excel's is.
     pub fn selection(&self) -> Range {
-        Range::new(self.anchor, self.active)
+        let r = Range::new(self.anchor, self.active);
+        if u64::from(r.rows()) * u64::from(r.cols()) > 1_000_000 {
+            return r;
+        }
+        self.sheet_ref().expand_merges(r)
     }
     fn sheet_ref(&self) -> &cw_sheet::Sheet {
         &self.workbook.sheets[self.sheet.min(self.workbook.sheets.len() - 1)]
@@ -472,6 +563,13 @@ impl Book {
             push_bounded(name, text, 31);
             return Ok(());
         }
+        if self.dialog.is_some() {
+            return if self.dialog_text(text) {
+                Ok(())
+            } else {
+                Err("this dialog takes no typing".into())
+            };
+        }
         if self.browsing {
             return Err("choose a workbook first".into());
         }
@@ -483,6 +581,15 @@ impl Book {
     }
     fn move_active(&mut self, dr: i64, dc: i64, extend: bool) {
         let hidden = self.hidden();
+        // Out of a merged cell, a step starts from its far edge.
+        let from = match self.sheet_ref().merge_at(self.active) {
+            Some(m) if !extend => Cell::new(
+                if dr > 0 { m.end.row } else { m.start.row },
+                if dc > 0 { m.end.col } else { m.start.col },
+            ),
+            _ => self.active,
+        };
+        self.active = from;
         let mut row = i64::from(self.active.row);
         let step = dr.signum();
         let mut left = dr.abs();
@@ -499,6 +606,10 @@ impl Book {
         let col = (i64::from(self.active.col) + dc).clamp(0, i64::from(cw_sheet::MAX_COLS) - 1);
         self.active = Cell::new(row as u32, col as u32);
         if !extend {
+            // Into a merged cell: it is selected whole, active at its top-left.
+            if let Some(m) = self.sheet_ref().merge_at(self.active) {
+                self.active = m.start;
+            }
             self.anchor = self.active;
         }
         self.chart = None;
@@ -636,6 +747,15 @@ impl Book {
             self.insert_text(text.lines().next().unwrap_or(""));
             return Ok(());
         }
+        if self.dialog.is_some() {
+            self.dialog_text(text.lines().next().unwrap_or(""));
+            return Ok(());
+        }
+        let result = self.paste_cells(text);
+        self.workbook.refresh_auto_pivots();
+        result
+    }
+    fn paste_cells(&mut self, text: &str) -> Result<(), String> {
         let target = self.selection();
         if let Some((sheet, clip, cut, from, copied)) = self.clip.clone() {
             if copied == text {
@@ -775,6 +895,16 @@ impl Book {
         if self.message.is_some() && matches!(key.as_str(), "Enter" | "Escape") {
             self.message = None;
             return Ok(vec![]);
+        }
+        if self.dialog.is_some() {
+            return self.dialog_key(window, &key, clock_us, flavor);
+        }
+        if key == "Escape" && self.draw.is_some() {
+            self.draw = None;
+            return Ok(vec![]);
+        }
+        if key == "F9" && self.editing.is_none() {
+            return self.command(window, "calcnow", clock_us, flavor);
         }
         if let Some(name) = self.name_box.clone() {
             match key.as_str() {
@@ -978,7 +1108,141 @@ impl Book {
 
     /// Whether `target` is a drag surface: the cell grid and the fill handle.
     pub fn drags(target: &str) -> bool {
-        target.starts_with("sheet:grid:") || target.starts_with("sheet:fill:")
+        target.starts_with("sheet:grid:")
+            || target.starts_with("sheet:fill:")
+            || target.starts_with("sheet:chartmove:")
+            || target.starts_with("sheet:chartsize:")
+    }
+    /// A chart's corners in sheet pixels at 100%: x0, y0, x1, y1.
+    pub fn chart_box(&self, chart: &cw_sheet::Chart) -> (i64, i64, i64, i64) {
+        let sheet = self.sheet_ref();
+        let x = |col: u32, off: u32| -> i64 {
+            (0..col).map(|c| i64::from(sheet.col_width(c))).sum::<i64>() + i64::from(off)
+        };
+        let y = |row: u32, off: u32| -> i64 {
+            i64::from(row) * i64::from(cw_sheet::workbook::ROW_HEIGHT) + i64::from(off)
+        };
+        let ((a, ax, ay), (b, bx, by)) = chart.corners();
+        (x(a.col, ax), y(a.row, ay), x(b.col, bx), y(b.row, by))
+    }
+    /// A point in sheet pixels as the cell it falls in and the offset into it.
+    fn sheet_point(&self, x: i64, y: i64) -> (Cell, u32, u32) {
+        let sheet = self.sheet_ref();
+        let mut left = x.max(0);
+        let mut col = 0u32;
+        while col < cw_sheet::MAX_COLS - 1 && left >= i64::from(sheet.col_width(col)) {
+            left -= i64::from(sheet.col_width(col));
+            col += 1;
+        }
+        let h = i64::from(cw_sheet::workbook::ROW_HEIGHT);
+        let y = y.max(0);
+        let row = ((y / h) as u32).min(cw_sheet::MAX_ROWS - 1);
+        (Cell::new(row, col), left as u32, (y % h) as u32)
+    }
+    /// Where a chart drag leaves the chart: its box in sheet pixels.
+    pub fn dragged_box(&self, geom: Geom) -> Option<(usize, (i64, i64, i64, i64))> {
+        let Some(Drag::Chart {
+            index,
+            handle,
+            from,
+            to,
+        }) = &self.drag
+        else {
+            return None;
+        };
+        let chart = self.sheet_ref().charts.get(*index)?;
+        let (mut x0, mut y0, mut x1, mut y1) = self.chart_box(chart);
+        let dx = i64::from(to.0 - from.0) * 100 / i64::from(geom.scale.max(1));
+        let dy = i64::from(to.1 - from.1) * i64::from(cw_sheet::workbook::ROW_HEIGHT)
+            / i64::from(geom.row_h.max(1));
+        match handle {
+            None => {
+                let (w, h) = (x1 - x0, y1 - y0);
+                x0 = (x0 + dx).max(0);
+                y0 = (y0 + dy).max(0);
+                x1 = x0 + w;
+                y1 = y0 + h;
+            }
+            Some(k) => {
+                // Handles run clockwise from the top-left corner.
+                if matches!(k, 0 | 6 | 7) {
+                    x0 = (x0 + dx).clamp(0, x1 - 20);
+                }
+                if matches!(k, 2..=4) {
+                    x1 = (x1 + dx).max(x0 + 20);
+                }
+                if matches!(k, 0..=2) {
+                    y0 = (y0 + dy).clamp(0, y1 - 20);
+                }
+                if matches!(k, 4..=6) {
+                    y1 = (y1 + dy).max(y0 + 20);
+                }
+            }
+        }
+        Some((*index, (x0, y0, x1, y1)))
+    }
+    fn chart_pointer(
+        &mut self,
+        target: &str,
+        phase: crate::PointerPhase,
+        x: i32,
+        y: i32,
+    ) -> Result<Vec<AppEffect>, String> {
+        use crate::PointerPhase::*;
+        let geom = Geom::from_target(target).ok_or("malformed chart surface")?;
+        let mut parts = target.split(':').skip(2);
+        let index: usize = parts
+            .next()
+            .and_then(|i| i.parse().ok())
+            .ok_or("malformed chart surface")?;
+        let handle: Option<u8> = if target.starts_with("sheet:chartsize:") {
+            Some(
+                parts
+                    .next()
+                    .and_then(|h| h.parse().ok())
+                    .ok_or("malformed handle")?,
+            )
+        } else {
+            None
+        };
+        if index >= self.sheet_ref().charts.len() {
+            return Err("no such chart".into());
+        }
+        match phase {
+            Down => {
+                self.commit_edit();
+                self.menu = None;
+                self.chart = Some(index);
+                self.drag = Some(Drag::Chart {
+                    index,
+                    handle,
+                    from: (x, y),
+                    to: (x, y),
+                });
+            }
+            Move => {
+                if let Some(Drag::Chart { to, .. }) = &mut self.drag {
+                    *to = (x, y);
+                }
+            }
+            Up => {
+                if let Some(Drag::Chart { to, .. }) = &mut self.drag {
+                    *to = (x, y);
+                }
+                let moved = matches!(&self.drag, Some(Drag::Chart { from, to, .. })
+                    if (from.0 - to.0).abs() > 1 || (from.1 - to.1).abs() > 1);
+                let placed = self.dragged_box(geom);
+                self.drag = None;
+                if let (true, Some((i, (x0, y0, x1, y1)))) = (moved, placed) {
+                    let a = self.sheet_point(x0, y0);
+                    let b = self.sheet_point(x1, y1);
+                    self.workbook.place_chart(self.sheet, i, a, b)?;
+                    self.modified = true;
+                }
+            }
+            Cancel => self.drag = None,
+        }
+        Ok(vec![])
     }
     /// A wheel turn over the grid or its headers: three rows a notch, as Excel, Calc
     /// and Numbers scroll; with Shift (or a sideways turn) columns instead; with Ctrl
@@ -1119,6 +1383,12 @@ impl Book {
         y: i32,
     ) -> Result<Vec<AppEffect>, String> {
         use crate::PointerPhase::*;
+        if self.dialog.is_some() {
+            return Err("answer the dialog first".into());
+        }
+        if target.starts_with("sheet:chartmove:") || target.starts_with("sheet:chartsize:") {
+            return self.chart_pointer(target, phase, x, y);
+        }
         let geom = Geom::from_target(target).ok_or("malformed grid surface")?;
         if target.starts_with("sheet:fill:") {
             // Coordinates are relative to the handle; it sits on the selection's corner.
@@ -1172,6 +1442,12 @@ impl Book {
                 if !self.commit_edit() {
                     return Ok(vec![]);
                 }
+                if self.draw.is_some() {
+                    self.drag = Some(Drag::Border { from: at, to: at });
+                    return Ok(vec![]);
+                }
+                // A press in a merged cell selects the whole of it, active at its corner.
+                let at = self.sheet_ref().merge_at(at).map_or(at, |m| m.start);
                 self.active = at;
                 self.anchor = at;
                 self.drag = Some(Drag::Select);
@@ -1181,6 +1457,14 @@ impl Book {
                     Some(Drag::Select) => {
                         // The anchor stays where the press was; the active corner follows.
                         self.active = at;
+                    }
+                    Some(Drag::Border { from, .. }) => {
+                        self.drag = Some(Drag::Border { from, to: at });
+                        if phase == Up {
+                            self.drag = None;
+                            self.draw_borders(Range::new(from, at))?;
+                        }
+                        return Ok(vec![]);
                     }
                     Some(Drag::Point { at: pos, from }) => {
                         let r = Range::new(from, at);
@@ -1295,6 +1579,15 @@ impl Book {
                 return Ok(vec![]);
             }
             _ => {}
+        }
+        // A dialog is modal: only its own controls work until it is answered.
+        if self.dialog.is_some()
+            && !matches!(
+                verb,
+                "noop" | "dialog" | "cfrule" | "cfdelete" | "cfup" | "cfdown" | "cfstop"
+            )
+        {
+            return Err("answer the dialog first".into());
         }
         if verb != "noop" {
             self.menu = None;
@@ -1577,9 +1870,14 @@ impl Book {
                         )
                     });
                 let by = self.active.col.clamp(range.start.col, range.end.col);
-                self.workbook
-                    .sort(self.sheet, range, by, arg != "desc", header)?;
-                self.modified = true;
+                // A range the sort cannot take (merged cells) gets a message box.
+                match self
+                    .workbook
+                    .sort(self.sheet, range, by, arg != "desc", header)
+                {
+                    Ok(()) => self.modified = true,
+                    Err(e) => self.message = Some(e),
+                }
             }
             "filter" => {
                 self.commit_edit();
@@ -1810,8 +2108,17 @@ impl Book {
                 let path = format!("{}/{base}.xlsx", self.folder.path);
                 return Ok(self.save_to(window, path, flavor, false));
             }
-            other => return Err(format!("unknown spreadsheet command {other}")),
+            other => {
+                let result = self
+                    .feature_command(window, other, arg, clock_us, flavor)
+                    .unwrap_or_else(|| Err(format!("unknown spreadsheet command {other}")));
+                if result.is_ok() {
+                    self.workbook.refresh_auto_pivots();
+                }
+                return result;
+            }
         }
+        self.workbook.refresh_auto_pivots();
         Ok(vec![])
     }
     fn chart_title(&self, range: Range) -> String {
@@ -1978,7 +2285,9 @@ macro_rules! spreadsheet_app {
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
                 let flavor = self.0.product_flavor();
-                self.0.key(window, key, clock_us, Some(flavor))
+                let out = self.0.key(window, key, clock_us, Some(flavor));
+                self.0.workbook.refresh_auto_pivots();
+                out
             }
             pub fn click(
                 &mut self,

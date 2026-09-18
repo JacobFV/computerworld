@@ -13,9 +13,13 @@ use cw_sql::Value;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+mod design_view;
+pub mod designer;
+mod structure;
 #[cfg(test)]
 mod tests;
 mod view;
+pub use designer::{DesignFocus, Field, IndexDesign, TableDesign};
 
 /// Clock origin: tick 0 of the world is 2026-09-17 09:00:00 UTC.
 const EPOCH_UNIX_US: i64 = 1_789_635_600_000_000;
@@ -138,6 +142,12 @@ pub struct Client {
     pub dialog: Option<Dialog>,
     pub message: Option<String>,
     pub menu: Option<String>,
+    /// DB Browser's Edit Table Definition dialog, or TablePlus's staged structure.
+    #[serde(default)]
+    pub design: Option<TableDesign>,
+    /// DB Browser's Edit Index Definition dialog (TablePlus's New Index).
+    #[serde(default)]
+    pub index_design: Option<IndexDesign>,
 }
 
 fn ext(path: &str) -> String {
@@ -213,6 +223,8 @@ impl Client {
             dialog: None,
             message: None,
             menu: None,
+            design: None,
+            index_design: None,
         };
         let mut effects = vec![AppEffect::ListDirectory {
             window,
@@ -266,6 +278,14 @@ impl Client {
         }
     }
     pub fn accepts_text(&self) -> bool {
+        if let Some(d) = &self.index_design {
+            return matches!(d.focus, DesignFocus::Name | DesignFocus::Where);
+        }
+        if let Some(d) = &self.design {
+            if !d.inline || self.tab == Tab::Structure {
+                return matches!(d.focus, DesignFocus::Name | DesignFocus::Cell(..));
+            }
+        }
         self.dialog.is_none()
             && self.dialog_files.is_none()
             && (self.edit.is_some()
@@ -275,6 +295,9 @@ impl Client {
                 ))
     }
     pub fn modified(&self) -> bool {
+        if self.staged_structure() {
+            return true;
+        }
         match (&self.db, &self.saved) {
             (Some(d), Some(s)) => !d.same_content(s),
             (Some(_), None) => true,
@@ -377,6 +400,15 @@ impl Client {
     }
     fn write(&mut self, window: u64) -> Result<Vec<AppEffect>, String> {
         self.commit_cell()?;
+        // TablePlus: Commit runs the staged structure change first.
+        if self.staged_structure() {
+            // A refused change is reported and nothing is written.
+            if self.apply_design().is_err() {
+                return Ok(vec![]);
+            }
+        } else if self.design.as_ref().is_some_and(|d| d.inline) {
+            self.design = None;
+        }
         let db = self.db.as_ref().ok_or("no database is open")?;
         let path = self.path.clone().ok_or("the database has no file")?;
         let mut effects = Vec::new();
@@ -420,6 +452,8 @@ impl Client {
         self.table = None;
         self.reset_views();
         self.dialog = None;
+        self.design = None;
+        self.index_design = None;
     }
     /// Create a table from a CSV file: named after the file, columns from its header
     /// row, typed INTEGER, REAL or TEXT by what the column holds. A table of that name
@@ -615,6 +649,8 @@ impl Client {
             .map(|c| c.name)
             .collect();
         let view = !db.is_table(table);
+        // A WITHOUT ROWID table's rows are found and ordered by their primary key.
+        let keyed = !view && !db.has_rowid(table);
         let (filter, params) = self.where_clause(&columns);
         let order = match self.sort {
             Some((c, asc)) if c < columns.len() => {
@@ -624,6 +660,7 @@ impl Client {
                     if asc { "ASC" } else { "DESC" }
                 )
             }
+            _ if keyed => format!(" ORDER BY {}", Self::key_columns(db, table).join(", ")),
             _ if !view => " ORDER BY rowid".to_string(),
             _ => String::new(),
         };
@@ -639,7 +676,7 @@ impl Client {
             .and_then(|r| r.first())
             .and_then(Value::to_i64)
             .unwrap_or(0) as usize;
-        let select = if view { "*" } else { "rowid, *" };
+        let select = if view || keyed { "*" } else { "rowid, *" };
         let out = scratch
             .execute_one(
                 &format!(
@@ -653,7 +690,7 @@ impl Client {
             .rows
             .into_iter()
             .map(|mut r| {
-                if view {
+                if view || keyed {
                     (None, r)
                 } else {
                     let id = r.remove(0).to_i64();
@@ -666,6 +703,51 @@ impl Client {
             rows,
             total,
         })
+    }
+    /// A table's primary key columns, quoted, in key order.
+    fn key_columns(db: &cw_sql::Database, table: &str) -> Vec<String> {
+        let mut cols: Vec<(usize, String)> = db
+            .table_info(table)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|c| c.primary_key > 0)
+            .map(|c| (c.primary_key, ident(&c.name)))
+            .collect();
+        cols.sort();
+        cols.into_iter().map(|(_, c)| c).collect()
+    }
+    /// The WHERE clause that finds one Browse Data row: by rowid, or by primary key in
+    /// a WITHOUT ROWID table.
+    fn locate(&self, row: usize) -> Result<(String, Vec<Value>), String> {
+        let rows = self.rows(row, 1)?;
+        let (rowid, values) = rows
+            .rows
+            .first()
+            .cloned()
+            .ok_or("that row is no longer there")?;
+        if let Some(id) = rowid {
+            return Ok(("rowid = ?".into(), vec![Value::Integer(id)]));
+        }
+        let db = self.db.as_ref().ok_or("no database is open")?;
+        let table = self.table.as_deref().unwrap_or_default();
+        let info = db.table_info(table).unwrap_or_default();
+        let mut parts = Vec::new();
+        let mut params = Vec::new();
+        let mut keys: Vec<(usize, usize)> = info
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.primary_key > 0)
+            .map(|(i, c)| (c.primary_key, i))
+            .collect();
+        keys.sort();
+        for (_, i) in keys {
+            parts.push(format!("{} = ?", ident(&info[i].name)));
+            params.push(values.get(i).cloned().unwrap_or(Value::Null));
+        }
+        if parts.is_empty() {
+            return Err("that row has no rowid".into());
+        }
+        Ok((parts.join(" AND "), params))
     }
     fn row_at(&self, row: usize) -> Result<(Option<i64>, Vec<Value>), String> {
         self.rows(row, 1)?
@@ -714,23 +796,18 @@ impl Client {
             return Err(why);
         }
         let rows = self.rows(row, 1)?;
-        let (Some(rowid), _) = rows
-            .rows
-            .first()
-            .cloned()
-            .ok_or("that row is no longer there")?
-        else {
-            return Err("that row has no rowid".into());
-        };
+        let (found, key) = self.locate(row)?;
         let column = rows.columns.get(col).ok_or("no such column")?.clone();
         let table = self.table.clone().unwrap_or_default();
         let db = self.db_mut()?;
         let sql = format!(
-            "UPDATE {} SET {} = ? WHERE rowid = ?",
+            "UPDATE {} SET {} = ? WHERE {found}",
             ident(&table),
             ident(&column)
         );
-        if let Err(e) = db.execute_one(&sql, &[value, Value::Integer(rowid)]) {
+        let mut params = vec![value];
+        params.extend(key);
+        if let Err(e) = db.execute_one(&sql, &params) {
             self.message = Some(format!("Error changing data:\n{}", e.message));
         }
         Ok(())
@@ -754,6 +831,22 @@ impl Client {
     fn choose_table(&mut self, name: &str) -> Result<(), String> {
         if !self.tables().iter().any(|t| t == name) {
             return Err(format!("no such table: {name}"));
+        }
+        if self.staged_structure()
+            && self.design.as_ref().and_then(|d| d.original.as_deref()) != Some(name)
+        {
+            let staged = self
+                .design
+                .as_ref()
+                .and_then(|d| d.original.clone())
+                .unwrap_or_default();
+            self.message = Some(format!(
+                "The structure of {staged} has changes that are not committed.\nCommit (⌘S) or discard them first."
+            ));
+            return Ok(());
+        }
+        if self.design.as_ref().is_some_and(|d| d.inline) && !self.staged_structure() {
+            self.design = None;
         }
         self.commit_cell()?;
         if self.table.as_deref() != Some(name) {
@@ -935,6 +1028,12 @@ impl Client {
         if self.dialog.is_some() || self.dialog_files.is_some() {
             return Err("answer the dialog first".into());
         }
+        if self.message.is_some() {
+            return Err("dismiss the message first".into());
+        }
+        if let Some(r) = self.design_text(text) {
+            return r;
+        }
         match self.focus {
             Focus::Sql if self.tab == Tab::Execute => {
                 let mut t = String::new();
@@ -999,6 +1098,12 @@ impl Client {
         if self.message.is_some() && matches!(key.as_str(), "Enter" | "Escape") {
             self.message = None;
             return Ok(vec![]);
+        }
+        if let Some(r) = self.design_key(&key) {
+            return r;
+        }
+        if self.designing() {
+            return Err("finish the designer dialog first".into());
         }
         if self.dialog.is_some() || self.dialog_files.is_some() {
             if key == "Escape" {
@@ -1128,6 +1233,9 @@ impl Client {
             "noop" => return Ok(vec![]),
             _ => {}
         }
+        if self.designing() && !matches!(verb, "design" | "index") {
+            return Err("finish the designer dialog first".into());
+        }
         self.menu = None;
         let needs_db = !matches!(
             verb,
@@ -1145,6 +1253,9 @@ impl Client {
         );
         if needs_db && self.db.is_none() {
             return Err("open or create a database first".into());
+        }
+        if let Some(r) = self.structure_command(verb, arg) {
+            return r;
         }
         match verb {
             "tab" => {
@@ -1252,6 +1363,9 @@ impl Client {
             "write" => return self.write(window),
             "revert" => {
                 self.edit = None;
+                if self.design.as_ref().is_some_and(|d| d.inline) {
+                    self.design = None;
+                }
                 self.db = self.saved.clone();
                 if let Some(t) = &self.table {
                     if !self.tables().contains(t) {
@@ -1380,20 +1494,39 @@ impl Client {
                 }
                 let table = self.table.clone().ok_or("choose a table first")?;
                 let db = self.db_mut()?;
+                let keyed = !db.has_rowid(&table);
+                let mut scratch = db.clone();
                 // As DB Browser does: columns that must not be NULL and have no default
-                // start as 0 or an empty string, everything else takes its default.
+                // start as 0 or an empty string, everything else takes its default. A
+                // WITHOUT ROWID table's key has no rowid to fall back on: a number key
+                // takes the next number.
                 let required: Vec<(String, Value)> = db
                     .table_info(&table)
                     .unwrap_or_default()
                     .into_iter()
                     .filter(|c| {
                         // An INTEGER PRIMARY KEY is the rowid, which SQLite assigns.
-                        let rowid =
-                            c.primary_key > 0 && c.decl_type.eq_ignore_ascii_case("INTEGER");
-                        c.not_null && c.default.is_none() && !rowid
+                        let rowid = !keyed
+                            && c.primary_key > 0
+                            && c.decl_type.eq_ignore_ascii_case("INTEGER");
+                        (c.not_null || (keyed && c.primary_key > 0))
+                            && c.default.is_none()
+                            && !rowid
                     })
                     .map(|c| {
-                        let blank = if cw_sql::Affinity::from_type(&c.decl_type).numeric() {
+                        let numeric = cw_sql::Affinity::from_type(&c.decl_type).numeric();
+                        let blank = if keyed && c.primary_key > 0 && numeric {
+                            scratch
+                                .query(&format!(
+                                    "SELECT coalesce(max({}), 0) + 1 FROM {}",
+                                    ident(&c.name),
+                                    ident(&table)
+                                ))
+                                .ok()
+                                .and_then(|o| o.rows.into_iter().next())
+                                .and_then(|r| r.into_iter().next())
+                                .unwrap_or(Value::Integer(1))
+                        } else if numeric {
                             Value::Integer(0)
                         } else {
                             Value::Text(String::new())
@@ -1401,6 +1534,7 @@ impl Client {
                         (c.name, blank)
                     })
                     .collect();
+                let db = self.db_mut()?;
                 let sql = if required.is_empty() {
                     format!("INSERT INTO {} DEFAULT VALUES", ident(&table))
                 } else {
@@ -1431,13 +1565,12 @@ impl Client {
                     return Err(why);
                 }
                 let (r, _) = self.cell.ok_or("select a record first")?;
-                let (rowid, _) = self.row_at(r)?;
-                let rowid = rowid.ok_or("that row has no rowid")?;
+                let (found, key) = self.locate(r)?;
                 let table = self.table.clone().unwrap_or_default();
                 let db = self.db_mut()?;
                 if let Err(e) = db.execute_one(
-                    &format!("DELETE FROM {} WHERE rowid = ?", ident(&table)),
-                    &[Value::Integer(rowid)],
+                    &format!("DELETE FROM {} WHERE {found}", ident(&table)),
+                    &key,
                 ) {
                     self.message = Some(format!("Deletion failed:\n{}", e.message));
                 } else {
@@ -1555,6 +1688,9 @@ impl Client {
         target: &str,
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        if let Some(r) = self.design_activate(target) {
+            return r;
+        }
         if let Some(cell) = target.strip_prefix("db:cell:") {
             return self.command(window, &format!("editcell:{cell}"), clock_us);
         }

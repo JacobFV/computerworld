@@ -599,10 +599,20 @@ fn menu_items(c: &Client, name: &str) -> Vec<(String, Result<String, String>)> {
             s("Close Database\tCtrl+W", need_db(c, "close")),
         ],
         "edit" => vec![
+            s("Create Table...", need_db(c, "createtable")),
             s(
-                "Create Table...",
-                Err("the table designer is not modeled; use CREATE TABLE in Execute SQL".into()),
+                "Modify Table...",
+                match c
+                    .tree_selected
+                    .as_deref()
+                    .and_then(|t| t.strip_prefix("table:"))
+                    .filter(|t| c.db.as_ref().is_some_and(|d| d.is_table(t)))
+                {
+                    Some(t) => Ok(format!("modifytable:{t}")),
+                    None => Err("select a table in Database Structure first".into()),
+                },
             ),
+            s("Create Index...", need_db(c, "createindex")),
             s(
                 "Delete Table...",
                 match c
@@ -681,19 +691,21 @@ fn structure(c: &Client, p: &mut Painter, r: Rect, st: &Style) {
         .tree_selected
         .as_deref()
         .and_then(|t| t.strip_prefix("table:"));
-    let designer =
-        "the table designer is not modeled; use CREATE TABLE or ALTER TABLE in Execute SQL";
+    let modifiable = selected_table.filter(|t| c.db.as_ref().is_some_and(|d| d.is_table(t)));
     sub_toolbar(
         p,
         Rect::new(r.x, r.y, r.width, 30),
         &[
-            ("Create Table", "plus", Err(designer.into())),
+            ("Create Table", "plus", need_db(c, "createtable")),
+            ("Create Index", "list-view", need_db(c, "createindex")),
             (
-                "Create Index",
-                "list-view",
-                Err("the index designer is not modeled; use CREATE INDEX in Execute SQL".into()),
+                "Modify Table",
+                "edit",
+                match modifiable {
+                    Some(t) => Ok(format!("modifytable:{t}")),
+                    None => Err("select a table in the tree first".into()),
+                },
             ),
-            ("Modify Table", "edit", Err(designer.into())),
             (
                 "Delete Table",
                 "trash",
@@ -799,10 +811,11 @@ fn structure(c: &Client, p: &mut Painter, r: Rect, st: &Style) {
         );
         y += row_h;
     };
-    let groups: [(&str, &str, &str); 3] = [
+    let groups: [(&str, &str, &str); 4] = [
         ("tables", "Tables", "table"),
         ("indexes", "Indices", "index"),
         ("views", "Views", "view"),
+        ("triggers", "Triggers", "trigger"),
     ];
     for (node, title, kind) in groups {
         let items: Vec<&cw_sql::SchemaEntry> = schema.iter().filter(|e| e.kind == kind).collect();
@@ -864,7 +877,6 @@ fn structure(c: &Client, p: &mut Painter, r: Rect, st: &Style) {
             }
         }
     }
-    row(p, 0, None, None, "Triggers (0)", "", "", true);
 }
 fn browse(c: &Client, p: &mut Painter, r: Rect, st: &Style) {
     // Table chooser and record commands.
@@ -1540,7 +1552,7 @@ fn tableplus_window(c: &Client, p: &mut Painter, env: &AppEnv<'_>) {
             );
             results(c, p, grid_r, msg_r, &st);
         }
-        Tab::Structure => structure_table(c, db, p, content, &st),
+        Tab::Structure => super::design_view::tableplus_structure(c, db, p, content, st.accent),
         _ => {
             let n = fits(content.height, &st, false);
             match c.rows(c.offset, n) {
@@ -1708,71 +1720,6 @@ fn tableplus_window(c: &Client, p: &mut Painter, env: &AppEnv<'_>) {
         }
     }
 }
-fn structure_table(c: &Client, db: &cw_sql::Database, p: &mut Painter, r: Rect, st: &Style) {
-    let Some(table) = &c.table else {
-        p.center(r.x, r.y + 40, r.width, "Choose a table", 12, MUTED);
-        return;
-    };
-    let cols = db.table_info(table).unwrap_or_default();
-    let columns: Vec<String> = [
-        "#",
-        "column_name",
-        "data_type",
-        "is_nullable",
-        "column_default",
-        "primary_key",
-    ]
-    .iter()
-    .map(|s| s.to_string())
-    .collect();
-    let rows: Vec<Vec<Value>> = cols
-        .iter()
-        .enumerate()
-        .map(|(i, col)| {
-            vec![
-                Value::Integer(i as i64 + 1),
-                Value::Text(col.name.clone()),
-                Value::Text(col.decl_type.clone()),
-                Value::Text(if col.not_null { "NO" } else { "YES" }.into()),
-                col.default.clone().map_or(Value::Null, Value::Text),
-                Value::Text(if col.primary_key > 0 { "YES" } else { "" }.into()),
-            ]
-        })
-        .collect();
-    let spec = GridSpec {
-        columns: &columns,
-        rows,
-        first: 0,
-        cells: false,
-        selected: None,
-        edit: None,
-        sort: None,
-        filters: None,
-        row_numbers: false,
-    };
-    let top = (cols.len() as u32 + 2) * st.row_h + 4;
-    grid(
-        p,
-        Rect::new(r.x, r.y, r.width, top.min(r.height)),
-        &spec,
-        st,
-    );
-    // The statement that made it, under the columns.
-    if let Some(entry) = db.schema().into_iter().find(|e| &e.name == table) {
-        let y = r.y + top as i32 + 8;
-        if y + 40 < r.y + r.height as i32 {
-            p.left(r.x + 10, y, 200, "Definition", 11, MUTED);
-            p.paragraph(
-                r.x + 10,
-                y + 18,
-                r.width.saturating_sub(20),
-                &entry.sql.unwrap_or_default(),
-                12,
-                INK,
-            );
-        }
-    }
-}
 fn welcome(c: &Client, p: &mut Painter, env: &AppEnv<'_>, st: &Style) {
     let (w, h) = (env.width, env.height);
     p.box_(Rect::new(0, 0, w, h), Color::rgb(246, 246, 248), 0);
@@ -1923,6 +1870,15 @@ fn overlays(c: &Client, p: &mut Painter, env: &AppEnv<'_>) {
         );
         return;
     }
+    if c.designing() {
+        scrim(p);
+        super::design_view::table_dialog(c, p, w, h, accent);
+        super::design_view::index_dialog(c, p, w, h, accent);
+        if let Some(m) = &c.message {
+            message_box(p, m, w, h, accent);
+        }
+        return;
+    }
     if let Some(d) = &c.dialog {
         scrim(p);
         let dw = 420.min(w.saturating_sub(20));
@@ -1983,30 +1939,40 @@ fn overlays(c: &Client, p: &mut Painter, env: &AppEnv<'_>) {
     }
     if let Some(m) = &c.message {
         scrim(p);
-        let dw = 420.min(w.saturating_sub(20));
-        let lines = m.lines().count().min(12) as u32;
-        let dh = 90 + lines * 18;
-        let r = Rect::new((w as i32 - dw as i32) / 2, h as i32 / 3 - 60, dw, dh);
-        p.drop_shadow(r, 8, 16, 70, 4);
-        p.box_(r, Color::WHITE, 8);
-        let mut y = r.y + 16;
-        for line in m.lines().take(12) {
-            p.left(r.x + 16, y, dw - 32, line, 12, INK);
-            y += 18;
-        }
-        button(
-            p,
-            Rect::new(r.x + dw as i32 - 92, r.y + dh as i32 - 40, 76, 28),
-            "OK",
-            "db:dismiss",
-            true,
-        );
+        message_box(p, m, w, h, accent);
     }
     if c.loading.is_some() || c.importing.is_some() {
         p.center(0, h as i32 - 60, w, "Reading…", 12, MUTED);
     }
 }
 
+fn message_box(p: &mut Painter, m: &str, w: u32, h: u32, accent: Color) {
+    p.box_(Rect::new(0, 0, w, h), Color(0, 0, 0, 30), 0);
+    p.region(Rect::new(0, 0, w, h), "db:noop", "Message");
+    let dw = 420.min(w.saturating_sub(20));
+    let lines = m.lines().count().min(12) as u32;
+    let dh = 90 + lines * 18;
+    let r = Rect::new((w as i32 - dw as i32) / 2, h as i32 / 3 - 60, dw, dh);
+    p.drop_shadow(r, 8, 16, 70, 4);
+    p.box_(r, Color::WHITE, 8);
+    let mut y = r.y + 16;
+    for line in m.lines().take(12) {
+        p.left(r.x + 16, y, dw - 32, line, 12, INK);
+        y += 18;
+    }
+    let ok = Rect::new(r.x + dw as i32 - 92, r.y + dh as i32 - 40, 76, 28);
+    p.button(ok, accent, 4, "db:dismiss", "OK");
+    p.label(
+        ok.x,
+        ok.y + 6,
+        ok.width,
+        "OK",
+        12,
+        Color::WHITE,
+        true,
+        Align::Center,
+    );
+}
 /// Semantic projection: what is open, its tables, the browse rows and the last result.
 pub fn page(c: &Client, page: &mut cw_protocol::Page) {
     use cw_protocol::PageElement as E;

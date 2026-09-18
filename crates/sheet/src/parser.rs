@@ -589,6 +589,70 @@ impl P {
     }
 }
 /// Parse formula text (with or without the leading `=`).
+/// A reference as it appears in formula text being typed: its byte span, the sheet it
+/// names (if any) and the cells it covers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RefSpan {
+    pub start: usize,
+    pub end: usize,
+    pub sheet: Option<String>,
+    pub range: crate::address::Range,
+}
+/// Every cell or range reference in formula text, even text that does not parse yet
+/// (a formula still being typed), skipping string literals and names such as
+/// `LOG10`. The editor colours each one and outlines its cells, as Excel does.
+pub fn reference_spans(text: &str) -> Vec<RefSpan> {
+    let mut out = Vec::new();
+    let b = text.as_bytes();
+    let mut i = 0;
+    let word = |c: u8| c.is_ascii_alphanumeric() || c == b'_' || c == b'.' || c == b'$';
+    while i < b.len() {
+        let c = b[i];
+        if c == b'"' {
+            i += 1;
+            while i < b.len() {
+                if b[i] == b'"' {
+                    if b.get(i + 1) == Some(&b'"') {
+                        i += 2;
+                        continue;
+                    }
+                    break;
+                }
+                i += 1;
+            }
+            i += 1;
+            continue;
+        }
+        let at_start = i == 0 || !word(b[i - 1]) && b[i - 1] != b'\'' && b[i - 1] != b'!';
+        if at_start && (c.is_ascii_alphanumeric() || c == b'$' || c == b'\'' || c == b'_') {
+            if let Some((tok, n, sheet)) = reference(&text[i..]) {
+                let range = match tok {
+                    Tok::Ref(_, r) => crate::address::Range::single(r.cell()),
+                    Tok::Range(_, a, z, _) => crate::address::Range::new(a.cell(), z.cell()),
+                    _ => {
+                        i += 1;
+                        continue;
+                    }
+                };
+                out.push(RefSpan {
+                    start: i,
+                    end: i + n,
+                    sheet,
+                    range,
+                });
+                i += n;
+                continue;
+            }
+            // Skip the rest of a name so its tail is not read as a reference.
+            while i < b.len() && (word(b[i]) || b[i] == b'\'') {
+                i += 1;
+            }
+            continue;
+        }
+        i += text[i..].chars().next().map_or(1, char::len_utf8);
+    }
+    out
+}
 pub fn parse(text: &str) -> Result<Expr, String> {
     let body = text.strip_prefix('=').unwrap_or(text);
     let mut p = P {
@@ -756,6 +820,29 @@ mod tests {
     use super::*;
     fn round(text: &str) -> String {
         print(&parse(text).unwrap_or_else(|e| panic!("{text}: {e}")))
+    }
+    #[test]
+    fn references_are_found_in_formulas_still_being_typed() {
+        let text = "=SUM(B2:B5)+C2*'My Sheet'!$C$3+LOG10(\"A1\")+SUM(D";
+        let spans: Vec<(String, Option<String>, String)> = reference_spans(text)
+            .into_iter()
+            .map(|s| (text[s.start..s.end].to_owned(), s.sheet, s.range.a1()))
+            .collect();
+        assert_eq!(
+            spans,
+            vec![
+                ("B2:B5".into(), None, "B2:B5".into()),
+                ("C2".into(), None, "C2".into()),
+                (
+                    "'My Sheet'!$C$3".into(),
+                    Some("My Sheet".into()),
+                    "C3".into()
+                ),
+            ]
+        );
+        // A reference typed so far is coloured as soon as it is one.
+        assert_eq!(reference_spans("=A1+").len(), 1);
+        assert!(reference_spans("=\"B2\"&X").is_empty());
     }
     #[test]
     fn formulas_parse_and_print_back() {
