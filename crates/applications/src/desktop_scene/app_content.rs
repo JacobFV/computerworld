@@ -479,7 +479,13 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                 "Forward",
                 tab.can_go_forward(),
             ),
-            ("arrow-up", "files-up", "Up one level", has_parent(path)),
+            // Home and Gallery are views, not folders in a tree: Up is greyed there.
+            (
+                "arrow-up",
+                "files-up",
+                "Up one level",
+                has_parent(path) && tab.scope == crate::FileScope::Folder,
+            ),
             ("reload", "files-reload", "Refresh", true),
         ]
         .into_iter()

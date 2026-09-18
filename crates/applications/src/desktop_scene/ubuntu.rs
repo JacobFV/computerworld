@@ -37,9 +37,11 @@ const APPS: [(&str, &str); 17] = [
     ("clock", "Clocks"),
     ("settings", "Settings"),
 ];
-/// The favourites the Ubuntu dock keeps; Activities carries the whole grid.
-const DOCK: [&str; 8] = [
-    "browser", "files", "terminal", "editor", "mail", "calendar", "chat", "docs",
+/// The favourites the Ubuntu dock keeps, in 24.04's default order (Firefox,
+/// Thunderbird, Files, Rhythmbox, LibreOffice Writer), then Terminal and Text Editor;
+/// Activities carries the whole grid.
+const DOCK: [&str; 7] = [
+    "browser", "mail", "files", "music", "docs", "terminal", "editor",
 ];
 
 fn basename(path: &str) -> &str {
@@ -250,9 +252,10 @@ fn dock(p: &mut Painter, ctx: &ShellContext<'_>) {
         ctx.height.saturating_sub(32),
         Color(255, 255, 255, 18),
     );
-    for (i, (kind, name)) in APPS
+    for (i, (kind, name)) in DOCK
         .iter()
-        .filter(|(kind, _)| DOCK.contains(kind) && ctx.installed(kind))
+        .filter_map(|kind| APPS.iter().find(|(k, _)| k == kind))
+        .filter(|(kind, _)| ctx.installed(kind))
         .enumerate()
     {
         let y = 43 + i as i32 * 59;
@@ -1471,7 +1474,12 @@ fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
     .iter()
     .enumerate()
     {
-        let bx = x + width as i32 - 16 - (4 - i as i32) * 44 + 8;
+        // GNOME 46: screenshot, settings and lock from the left, power alone at the right.
+        let bx = if i == 3 {
+            x + width as i32 - 16 - 36
+        } else {
+            x + 16 + i as i32 * 44
+        };
         let hit = Rect::new(bx, r.y + 16, 36, 36);
         p.circle(
             bx + 18,
@@ -1735,10 +1743,18 @@ mod tests {
         let ctx = context(&windows, false);
         let mut painter = Painter::new(1024, 768);
         chrome(&mut painter, &ctx);
+        // The Terminal slot, wherever the dock's order puts it, raises the latest window.
+        let slot = painter
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == "Terminal"))
+            .expect("a Terminal slot");
+        let b = slot.bounds;
         assert_eq!(
             painter
                 .scene
-                .hit_test(32, 185)
+                .hit_test(32, b.y + b.height as i32 / 2)
                 .and_then(|n| n.interaction.as_deref()),
             Some("window:19:focus")
         );
@@ -1762,11 +1778,11 @@ mod tests {
                 .hit_test(x, y)
                 .and_then(|n| n.interaction.as_deref())
         };
-        // Bare popover background between the battery pill and the round buttons.
-        assert_eq!(hit(800, 60), Some("shell:noop"));
+        // Bare popover background between the lock and power buttons.
+        assert_eq!(hit(900, 60), Some("shell:noop"));
         assert_eq!(hit(300, 500), Some("shell:dismiss"));
         assert_eq!(
-            hit(1024 - 8 - 16 - 3 * 44 + 8 + 18, 72),
+            hit(1024 - 8 - 360 + 16 + 44 + 18, 72),
             Some("shell:settings")
         );
     }
@@ -1798,23 +1814,11 @@ mod tests {
         }
         // No battery pill: the machine has no battery. Screenshot, Settings, lock
         // and power off all change the machine.
-        assert_eq!(hit(656 + 40, 72), Some("shell:noop"));
-        assert_eq!(
-            hit(656 + 360 - 16 - 3 * 44 + 8 + 18, 72),
-            Some("shell:settings")
-        );
-        assert_eq!(
-            hit(656 + 360 - 16 - 4 * 44 + 8 + 18, 72),
-            Some("shell:screenshot")
-        );
-        assert_eq!(
-            hit(656 + 360 - 16 - 2 * 44 + 8 + 18, 72),
-            Some("shell:power:lock")
-        );
-        assert_eq!(
-            hit(656 + 360 - 16 - 44 + 8 + 18, 72),
-            Some("shell:power:off")
-        );
+        assert_eq!(hit(656 + 240, 72), Some("shell:noop"));
+        assert_eq!(hit(656 + 16 + 44 + 18, 72), Some("shell:settings"));
+        assert_eq!(hit(656 + 16 + 18, 72), Some("shell:screenshot"));
+        assert_eq!(hit(656 + 16 + 2 * 44 + 18, 72), Some("shell:power:lock"));
+        assert_eq!(hit(656 + 360 - 16 - 18, 72), Some("shell:power:off"));
     }
     #[test]
     fn sliders_are_discrete_stops_that_set_the_level_they_paint() {

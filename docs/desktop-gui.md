@@ -89,6 +89,12 @@ star adds to (`DesktopState::starred`). AirDrop, iCloud, Applications, Tags,
 OneDrive and Network have nothing behind them in the simulator and are omitted
 rather than painted. Dot files are hidden until `Ctrl+H`.
 
+Terminal windows print the prompt the machine's default shell prints, and title
+themselves from it: bash's `user@host:~/dir$` (GNOME Terminal's title is
+`user@host: ~/dir`), zsh's `user@host dir %` on a Mac (Terminal's title is
+`user — -zsh`), and PowerShell's `PS C:\path>` (Windows Terminal's tab reads
+"Windows PowerShell").
+
 Launchers, search, task switching and platform panels expose semantic hit regions.
 Mobile profiles implement Home, recent apps and supported vertical swipes for
 launcher/control panels. Mobile apps are full-screen, not movable desktop windows.

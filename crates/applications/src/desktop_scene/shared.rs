@@ -56,7 +56,11 @@ impl WindowView {
         if line.starts_with("PS ") {
             return None;
         }
-        let (who, dir) = line.split_once(':')?;
+        // zsh prints `user@host dir`; bash prints `user@host:dir`.
+        let (who, dir) = match line.split_once(' ') {
+            Some((who, dir)) if !who.contains(':') => (who, dir.trim()),
+            _ => line.split_once(':')?,
+        };
         let (user, host) = who.split_once('@')?;
         let home = self.home.trim_end_matches('/');
         let dir = if !home.is_empty() && (dir == home || dir.starts_with(&format!("{home}/"))) {

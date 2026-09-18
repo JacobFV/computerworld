@@ -496,15 +496,31 @@ pub fn shell_prompt(user: &str, host: &str, cwd: &str, dialect: &str) -> String 
     }
     format!("{user}@{host}:{cwd}$")
 }
-/// The same prompt with the home folder written `~`, as bash's default `\w` writes it
-/// (`alice@host:~/src$`). PowerShell has no such abbreviation and is unchanged.
+/// The prompt each platform's default shell prints, with the home folder written `~`:
+/// bash's `\u@\h:\w\$` (`alice@host:~/src$`) for `posix`, zsh's `%n@%m %1~ %#`
+/// (`alice@host src %`) for `zsh`, the default shell of a Mac, and PowerShell's
+/// `PS C:\path>`, which has no such abbreviation.
 pub fn shell_prompt_at(user: &str, host: &str, cwd: &str, home: &str, dialect: &str) -> String {
     let home = home.trim_end_matches('/');
     let under = !home.is_empty() && (cwd == home || cwd.starts_with(&format!("{home}/")));
-    if dialect == "powershell" || !under {
-        return shell_prompt(user, host, cwd, dialect);
+    match dialect {
+        "zsh" => {
+            // `%1~`: the last component, or `~` at home and `/` at the root.
+            let dir = if under && cwd.len() == home.len() {
+                "~"
+            } else {
+                cwd.trim_end_matches('/')
+                    .rsplit('/')
+                    .next()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("/")
+            };
+            format!("{user}@{host} {dir} %")
+        }
+        "powershell" => shell_prompt(user, host, cwd, dialect),
+        _ if under => format!("{user}@{host}:~{}$", &cwd[home.len()..]),
+        _ => shell_prompt(user, host, cwd, dialect),
     }
-    format!("{user}@{host}:~{}$", &cwd[home.len()..])
 }
 /// One finished command in a terminal session: the prompt as it stood when the command
 /// ran, the command itself, both streams and the exit status. `exit_code` is the point —
@@ -1848,6 +1864,17 @@ mod tests {
         ] {
             assert_eq!(
                 shell_prompt_at("alice", "box", cwd, "/home/alice", "posix"),
+                want
+            );
+        }
+        for (cwd, want) in [
+            ("/Users/alice", "alice@mac ~ %"),
+            ("/Users/alice/src", "alice@mac src %"),
+            ("/tmp", "alice@mac tmp %"),
+            ("/", "alice@mac / %"),
+        ] {
+            assert_eq!(
+                shell_prompt_at("alice", "mac", cwd, "/Users/alice", "zsh"),
                 want
             );
         }
@@ -3360,6 +3387,116 @@ mod file_manager_tests {
         let restored: DesktopState =
             serde_json::from_str(&serde_json::to_string(&d).unwrap()).unwrap();
         assert_eq!(d, restored);
+    }
+    /// A star is keyed by the absolute path, folders keep their separator, the same
+    /// star again takes it off, and the Starred list follows at once.
+    #[test]
+    fn stars_toggle_by_path_and_the_starred_list_follows() {
+        let mut d = files(&["notes.txt", "src/"]);
+        d.click("files-star:1").unwrap();
+        d.click("files-star:0").unwrap();
+        // Newest first: the list reads in the order things were starred.
+        assert_eq!(d.starred, ["/work/notes.txt", "/work/src/"]);
+        assert!(d.is_starred("/work/src"));
+        d.click("files-starred").unwrap();
+        assert_eq!(tab(&d).scope, FileScope::Starred);
+        assert_eq!(tab(&d).entries, d.starred);
+        // Rows in a list are absolute, so opening a starred folder goes there.
+        d.click("open:1").unwrap();
+        assert_eq!(tab(&d).selected_path().unwrap(), "/work/src");
+        // Unstarring from the list takes the row off, and the selection stays put.
+        d.click("files-star:0").unwrap();
+        assert_eq!(tab(&d).entries, ["/work/src/"]);
+        assert_eq!(tab(&d).selection().unwrap(), "/work/src/");
+        // Nothing selected, nothing to star; and the list is not a folder to edit.
+        d.click("files-star").unwrap();
+        assert!(d.starred.is_empty());
+        assert!(d.click("files-star").is_err());
+        assert!(d.click("files-new-folder").is_err());
+        let restored: DesktopState =
+            serde_json::from_str(&serde_json::to_string(&d).unwrap()).unwrap();
+        assert_eq!(d, restored);
+    }
+    /// Explorer's Home and Gallery are shaped from a real listing when it lands.
+    #[test]
+    fn home_and_gallery_are_views_over_real_listings() {
+        let mut d = files(&["x.txt"]);
+        let id = d.focused.unwrap();
+        d.starred = vec!["/work/x.txt".into()];
+        d.recents = vec!["/work/x.txt".into(), "/home/alice/a.txt".into()];
+        let effects = d.click("files-quick-access").unwrap();
+        assert!(matches!(
+            &effects[..],
+            [AppEffect::ListDirectory { path, .. }] if path == "/home/alice"
+        ));
+        // Only the pinned folders the listing holds, in pinned order, then the
+        // favourites, then the recents, each path once.
+        d.directory_loaded(
+            id,
+            0,
+            vec![
+                "Music/".into(),
+                "Desktop/".into(),
+                "notes/".into(),
+                "a.txt".into(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            tab(&d).entries,
+            [
+                "/home/alice/Desktop/",
+                "/home/alice/Music/",
+                "/work/x.txt",
+                "/home/alice/a.txt"
+            ]
+        );
+        assert!(d.click("files-paste").is_err());
+        d.click("files-gallery").unwrap();
+        d.directory_loaded(
+            id,
+            0,
+            vec![
+                "a.PNG".into(),
+                "b.txt".into(),
+                "c.jpg".into(),
+                "d.png/".into(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(tab(&d).path, "/home/alice/Pictures");
+        assert_eq!(tab(&d).entries, ["a.PNG", "c.jpg"]);
+        d.click("open:1").unwrap();
+        assert_eq!(
+            tab(&d).selected_path().unwrap(),
+            "/home/alice/Pictures/c.jpg"
+        );
+        // Reload re-reads the view, not the folder under it.
+        let effects = d.click("files-reload").unwrap();
+        assert_eq!(tab(&d).scope, FileScope::Gallery);
+        assert_eq!(effects.len(), 1);
+    }
+    #[test]
+    fn dot_files_are_hidden_until_the_tab_shows_them() {
+        let mut d = files(&[".cache/", "a.txt", ".profile"]);
+        assert_eq!(tab(&d).display().len(), 1);
+        assert_eq!(tab(&d).listed(), 1);
+        d.click("open:0").unwrap();
+        assert_eq!(tab(&d).selection().unwrap(), "a.txt");
+        d.key("Ctrl+h").unwrap();
+        assert_eq!(tab(&d).display().len(), 3);
+        assert_eq!(tab(&d).listed(), 3);
+        d.click("files-hidden").unwrap();
+        assert_eq!(tab(&d).display().len(), 1);
+        // The trash place is a folder like any other, with its own title.
+        d.click("files-trash").unwrap();
+        assert_eq!(tab(&d).path, "/home/alice/.local/share/Trash/files");
+        let t = desktop_scene::DesktopTheme::Windows;
+        assert_eq!(
+            tab(&d).title(t, "/home/alice", &d.trash_folder()),
+            "Recycle Bin"
+        );
+        assert!(tab(&d).is_place(&d.trash_folder()));
     }
 }
 

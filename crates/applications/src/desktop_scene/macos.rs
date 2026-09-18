@@ -34,9 +34,12 @@ const APPS: [(&str, &str); 17] = [
     ("clock", "Clock"),
     ("settings", "System Settings"),
 ];
-/// The Dock keeps the applications a Mac keeps on it; Launchpad carries the rest.
-const DOCK: [&str; 9] = [
-    "browser", "mail", "calendar", "notes", "chat", "contacts", "docs", "editor", "terminal",
+/// The Dock keeps the applications a Mac keeps on it, in Sequoia's default order
+/// (Safari, Messages, Mail, Maps, Photos, Calendar, Contacts, Notes, Music, Pages),
+/// then TextEdit and Terminal; Launchpad carries the rest.
+const DOCK: [&str; 12] = [
+    "browser", "chat", "mail", "maps", "photos", "calendar", "contacts", "notes", "music", "docs",
+    "editor", "terminal",
 ];
 
 fn app_name(kind: &str) -> Option<&'static str> {
@@ -889,7 +892,10 @@ fn dock(p: &mut Painter, ctx: &ShellContext<'_>) {
     // (kind, label, action override). Launchpad and Settings are shell surfaces.
     let mut items: Vec<(&str, &str, Option<&str>)> = vec![("files", "Finder", None)];
     items.push(("launcher", "Launchpad", Some("shell:launcher")));
-    for (kind, label) in APPS.iter().filter(|(kind, _)| DOCK.contains(kind)) {
+    for (kind, label) in DOCK
+        .iter()
+        .filter_map(|kind| APPS.iter().find(|(k, _)| k == kind))
+    {
         items.push((kind, label, None));
     }
     items.push(("settings", "System Settings", Some("shell:settings")));
@@ -1471,7 +1477,8 @@ fn notification_center(p: &mut Painter, ctx: &ShellContext<'_>) {
         clock.x + 16,
         clock.y + 96,
         clock.width - 32,
-        "Cupertino",
+        // The world keeps one clock and no place: the widget names no city.
+        "Today",
         12,
         SECONDARY,
     );

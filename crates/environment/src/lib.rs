@@ -301,7 +301,7 @@ impl Environment {
                 &computer.id,
                 &computer.cwd,
                 &session.desktop.home,
-                &computer.dialect,
+                prompt_dialect(&computer.os_family, &computer.dialect),
             );
         }
         session
@@ -534,6 +534,15 @@ const BUILTIN_FAMILIES: &[&str] = &[
     "keyboard.v1",
     "pointer.v1",
 ];
+/// Whose prompt a machine's terminal prints: a Mac's POSIX shell is zsh, so it prints
+/// zsh's; every other machine prints its own dialect's.
+fn prompt_dialect<'a>(os_family: &str, dialect: &'a str) -> &'a str {
+    if os_family == "macos" && dialect == "posix" {
+        "zsh"
+    } else {
+        dialect
+    }
+}
 /// File name a download lands under: the URL's last path segment, or the host when the
 /// URL names no file. Never a guess about content type.
 fn download_name(url: &str) -> String {
@@ -1451,7 +1460,13 @@ impl Environment {
                     let next = {
                         let c = self.runtime.computer(machine)?;
                         let home = c.env.get("HOME").map_or("", String::as_str);
-                        cw_applications::shell_prompt_at(&c.user, &c.id, &c.cwd, home, &c.dialect)
+                        cw_applications::shell_prompt_at(
+                            &c.user,
+                            &c.id,
+                            &c.cwd,
+                            home,
+                            prompt_dialect(&c.os_family, &c.dialect),
+                        )
                     };
                     let desktop = &mut self.machine_mut(id, machine)?.desktop;
                     desktop.prompt = next;
