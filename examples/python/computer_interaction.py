@@ -27,7 +27,7 @@ parser.add_argument('--url', default='http://intranet.internal/')
 parser.add_argument('--output', type=Path, default=ROOT / 'target/python-demo')
 parser.add_argument('--compare', type=Path, help='JavaScript output directory to verify cross-language parity')
 args = parser.parse_args()
-definition = json.loads(args.world.read_text())
+definition = json.loads(args.world.read_text(encoding='utf-8'))
 computer = next(c for c in definition['computers'] if c['id'] == args.machine)
 definition.setdefault('metadata', {}).setdefault('desktop_themes', {})[args.machine] = 'virtual-macos-golden-gate'
 world = World(definition, 42)
@@ -102,8 +102,8 @@ summary = dict(stateHash=state_hash, pixelHash=pixel_hash, steps=len(actions), w
 args.output.mkdir(parents=True, exist_ok=True)
 for name, value in dict(observation=observation, scene=scene, actions=actions,
                         trajectory=world.trajectory(), summary=summary).items():
-    (args.output / f'{name}.json').write_text(json.dumps(value, indent=2) + '\n')
-(args.output / 'snapshot.json').write_text(world.export_snapshot())
+    (args.output / f'{name}.json').write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
+(args.output / 'snapshot.json').write_text(world.export_snapshot(), encoding='utf-8')
 (args.output / 'frame.rgba').write_bytes(rgba)
 rgb = bytearray(width * height * 3)
 for i in range(width * height):
@@ -112,14 +112,14 @@ for i in range(width * height):
 if args.compare:
     def load_javascript(name):
         # The demo JSON exporter tags JS BigInts rather than rounding node IDs.
-        return json.loads((args.compare / name).read_text(),
+        return json.loads((args.compare / name).read_text(encoding='utf-8'),
                           object_hook=lambda v: int(v['$bigint']) if set(v) == {'$bigint'} else v)
     assert summary == load_javascript('summary.json')
     assert actions == load_javascript('actions.json')
     assert scene == load_javascript('scene.json')
     assert observation == load_javascript('observation.json')
     imported = World(definition, 0)
-    imported.import_snapshot((args.compare / 'snapshot.json').read_text())
+    imported.import_snapshot((args.compare / 'snapshot.json').read_text(encoding='utf-8'))
     assert imported.state_hash() == state_hash
     assert imported.session(env.id).observe() == observation
 print(json.dumps(dict(output=str(args.output), **summary, replay=True, fork=True,

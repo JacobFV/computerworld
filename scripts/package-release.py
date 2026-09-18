@@ -15,7 +15,7 @@ parser.add_argument('--output', type=Path, default=ROOT / 'target/release-assets
 args = parser.parse_args()
 out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=True)
-version = tomllib.loads((ROOT / 'Cargo.toml').read_text())['workspace']['package']['version']
+version = tomllib.loads((ROOT / 'Cargo.toml').read_text(encoding='utf-8'))['workspace']['package']['version']
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
 manifest = dict(version=version, source_commit=commit, engine='canonical Rust runtime', prerelease=True)
 staging = ROOT / 'target/release-staging'
@@ -32,15 +32,15 @@ for target in ('web', 'node'):
     shutil.copytree(ROOT / 'examples/javascript', package / 'examples/javascript')
     # The distributed demo's relative paths deliberately match its source layout.
     demo = package / 'examples/javascript/computer-interaction.mjs'
-    demo.write_text(demo.read_text().replace('`${root}/pkg/node/computerworld.js`', '`${root}/computerworld.js`'))
+    demo.write_text(demo.read_text(encoding='utf-8').replace('`${root}/pkg/node/computerworld.js`', '`${root}/computerworld.js`'))
     metadata = dict(name=f'@jacobfv/computerworld-{target}', version=version,
                     description='Deterministic synthetic computer worlds: canonical Rust via WebAssembly',
                     license='MIT', repository='https://github.com/JacobFV/computerworld',
                     main='computerworld.js', types='computerworld.d.ts',
                     files=['*.js', '*.wasm', '*.ts', '*.md', 'LICENSE', 'notices', 'worlds', 'examples', 'release.json'])
     metadata['type'] = 'module' if target == 'web' else 'commonjs'
-    (package / 'package.json').write_text(json.dumps(metadata, indent=2) + '\n')
-    (package / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    (package / 'package.json').write_text(json.dumps(metadata, indent=2) + '\n', encoding='utf-8')
+    (package / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     usage = ("import init, { World } from './computerworld.js';\nawait init();\nconst definition = await fetch('./worlds/company-2026/world.json').then(r => r.json());" if target == 'web' else
              "const { World } = require('./computerworld.js');\nconst definition = require('./worlds/company-2026/world.json');")
     (package / 'README.md').write_text(f'''# Computerworld {version} — {target} Wasm
@@ -62,7 +62,7 @@ env.free(); world.free();
 
 See PROGRAMMATIC-USE.md, generated TypeScript declarations, and notices/ for third-party licenses.
 World handles are privileged; give acting agents only configured environment handles.
-''')
+''', encoding='utf-8')
     with tarfile.open(out / f'{name}.tar.gz', 'w:gz') as archive:
         archive.add(package, arcname=name)
 
@@ -72,12 +72,12 @@ demo = staging / name
 shutil.copytree(ROOT / 'examples/browser', demo / 'examples/browser', ignore=shutil.ignore_patterns('.openai'))
 shutil.copytree(ROOT / 'pkg/web', demo / 'pkg/web')
 shutil.copy(ROOT / 'LICENSE', demo / 'LICENSE')
-(demo / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n')
-(demo / 'index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=examples/browser/"><a href="examples/browser/">Open Computerworld</a>\n')
-(demo / 'README.md').write_text(f'# Computerworld {version} browser demo\n\nRun `python -m http.server 8000` in this directory and open http://localhost:8000/.\nThe HTTP server serves static files only. Simulation runs entirely in your browser via Rust/Wasm.\nNo Node installation, simulation backend, API key, or real outbound network access is required.\nSource commit: `{commit}`. See pkg/web/notices/ for third-party licenses.\n')
+(demo / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+(demo / 'index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=examples/browser/"><a href="examples/browser/">Open Computerworld</a>\n', encoding='utf-8')
+(demo / 'README.md').write_text(f'# Computerworld {version} browser demo\n\nRun `python -m http.server 8000` in this directory and open http://localhost:8000/.\nThe HTTP server serves static files only. Simulation runs entirely in your browser via Rust/Wasm.\nNo Node installation, simulation backend, API key, or real outbound network access is required.\nSource commit: `{commit}`. See pkg/web/notices/ for third-party licenses.\n', encoding='utf-8')
 with zipfile.ZipFile(out / f'{name}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
     for file in sorted(demo.rglob('*')):
         if file.is_file():
             archive.write(file, file.relative_to(staging))
-(out / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+(out / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
 print(json.dumps(dict(output=str(out), **manifest), indent=2))

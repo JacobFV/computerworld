@@ -15,6 +15,12 @@ versions differ`. Package version `0.1.0a2` and engine version `0.1.0-alpha.2` a
 the same release in PEP 440 and Cargo spellings. Snapshots from `0.1.0-alpha.1` are
 not supported.
 
+The Python examples and release scripts read and write text as UTF-8 explicitly.
+They used the locale's encoding, so on Windows (cp1252) `computer_interaction.py`
+decoded the non-ASCII characters in `world.json` differently and built a different
+world, with a different state hash. `scripts/smoke-bindings.sh` now also runs the
+example under an ASCII locale to catch this on any platform.
+
 ### Editors, application menus and page zoom
 
 - Word wrap (`shell:toggle:word_wrap`, a machine setting): Notepad's View menu and

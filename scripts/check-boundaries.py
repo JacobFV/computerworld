@@ -28,7 +28,7 @@ for directory in [ROOT / 'crates' / name for name in PURE] + sorted((ROOT / 'ser
     manifest = directory / 'Cargo.toml'
     if not manifest.exists():
         continue
-    data = tomllib.loads(manifest.read_text())
+    data = tomllib.loads(manifest.read_text(encoding='utf-8'))
     tables = [data] + list(data.get('target', {}).values())
     for table in tables:
         for name, spec in table.get('dependencies', {}).items():
@@ -39,7 +39,7 @@ for directory in [ROOT / 'crates' / name for name in PURE] + sorted((ROOT / 'ser
         relative = path.relative_to(directory / 'src')
         if relative.parts[0] == 'bin' or relative == Path('main.rs'):
             continue  # Explicit executable transport, outside the pure library.
-        source = path.read_text()
+        source = path.read_text(encoding='utf-8')
         # Conventional trailing unit-test modules are outside the runtime surface.
         source = re.split(r'#\[cfg\(test\)\]\s*(?:mod\s+tests|mod\s+test)\b', source)[0]
         source = re.sub(r'/\*.*?\*/|//[^\n]*', '', source, flags=re.S)

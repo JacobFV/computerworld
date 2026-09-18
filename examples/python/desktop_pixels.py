@@ -25,7 +25,7 @@ checkpoint = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve(
 if not checkpoint.exists():
     raise SystemExit(f'No checkpoint at {checkpoint}. Generate one with:\n'
                      '  bash scripts/build-wasm.sh && node scripts/smoke-desktop-pixels.cjs')
-data = json.loads(checkpoint.read_text())
+data = json.loads(checkpoint.read_text(encoding='utf-8'))
 w = World(data['definition'], 0)
 try:
     w.import_snapshot(data['snapshot'])

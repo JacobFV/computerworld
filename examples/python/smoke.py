@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 from computerworld import World
 root = Path(__file__).resolve().parents[2]
-definition = json.loads((root / 'worlds/company-2026/world.json').read_text())
+definition = json.loads((root / 'worlds/company-2026/world.json').read_text(encoding='utf-8'))
 config = dict(actor='alice', machines=['alice-mac'], actions=['terminal.v1','browser.v1'], observations=['terminal.v1','semantic.v1'])
 actions = [dict(family='terminal.v1',op='execute',machine='alice-mac',payload={'command':'echo binding-parity'})]
 world = World(definition,42)
@@ -35,7 +35,7 @@ except ValueError:
 else:
     raise AssertionError('invalid actions accepted')
 if len(sys.argv)>1:
-    wasm = json.loads(Path(sys.argv[1]).read_text())
+    wasm = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
     assert wasm['hash'] == after_hash, (wasm['hash'],after_hash)
     imported.import_snapshot(wasm['snapshot'])
     assert imported.state_hash() == after_hash

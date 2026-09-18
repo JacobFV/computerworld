@@ -19,3 +19,8 @@ python examples/python/desktop_pixels.py target/binding-checks/desktop.json
 node examples/javascript/computer-interaction.mjs --output target/binding-checks/javascript
 python examples/python/computer_interaction.py --output target/binding-checks/python \
   --compare target/binding-checks/javascript
+# Again under an ASCII locale: Windows decodes text in its locale code page, so an
+# example that reads the UTF-8 world without an explicit encoding builds a different
+# world there. This reproduces that failure on any platform.
+LC_ALL=C PYTHONUTF8=0 python examples/python/computer_interaction.py \
+  --output target/binding-checks/python-ascii-locale --compare target/binding-checks/javascript
