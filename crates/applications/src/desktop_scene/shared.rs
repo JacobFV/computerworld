@@ -16,6 +16,9 @@ pub struct WindowView {
     pub document: String,
     /// Human title of the presented page or document, when the application has one.
     pub caption: String,
+    /// Home folder of the machine's user, so a path bar can start at Home and a title
+    /// can abbreviate it the way the platform does.
+    pub home: String,
     /// Unsaved changes, shown the way each platform marks an edited document.
     pub modified: bool,
     /// The address or search field of this window currently owns keyboard input.
@@ -41,6 +44,41 @@ pub struct WindowView {
     pub zoom: u16,
 }
 impl WindowView {
+    /// `(user, host, directory)` a terminal's prompt names, with the home folder
+    /// written `~` as bash and zsh write it. `None` for a PowerShell prompt, or a
+    /// window that is not showing one.
+    pub fn shell_identity(&self) -> Option<(String, String, String)> {
+        let line = self
+            .caption
+            .trim_end()
+            .trim_end_matches(['$', '%', '#'])
+            .trim_end();
+        if line.starts_with("PS ") {
+            return None;
+        }
+        // zsh prints `user@host dir`; bash prints `user@host:dir`.
+        let (who, dir) = match line.split_once(' ') {
+            Some((who, dir)) if !who.contains(':') => (who, dir.trim()),
+            _ => line.split_once(':')?,
+        };
+        let (user, host) = who.split_once('@')?;
+        let home = self.home.trim_end_matches('/');
+        let dir = if !home.is_empty() && (dir == home || dir.starts_with(&format!("{home}/"))) {
+            format!("~{}", &dir[home.len()..])
+        } else {
+            dir.to_owned()
+        };
+        Some((user.to_owned(), host.to_owned(), dir))
+    }
+    /// A path with the home folder written `~`, as GNOME and macOS subtitles write it.
+    pub fn tilde(&self, path: &str) -> String {
+        let home = self.home.trim_end_matches('/');
+        if !home.is_empty() && (path == home || path.starts_with(&format!("{home}/"))) {
+            format!("~{}", &path[home.len()..])
+        } else {
+            path.to_owned()
+        }
+    }
     /// Page zoom in percent, 100 when unset.
     pub fn zoom_percent(&self) -> u16 {
         if self.zoom == 0 {
@@ -101,6 +139,12 @@ pub struct ShellOptions {
     pub typed: String,
     /// Home screen page a paged launcher (SpringBoard) is showing, 0 first.
     pub home_page: u32,
+    /// The machine's user, for account tiles and lock screens.
+    pub user: String,
+    /// The user's home folder, for menus that go to its standard folders.
+    pub home: String,
+    /// Documents the user really opened, newest first (`DesktopState::recents`).
+    pub recents: Vec<String>,
 }
 /// Words a phone keyboard offers to complete, most common first. A fixed list, so two
 /// machines typing the same letters are offered the same words.
@@ -392,6 +436,9 @@ pub struct ShellContext<'a> {
     pub typed: &'a str,
     /// Home screen page the user swiped to. A shell clamps it to the pages it has.
     pub home_page: u32,
+    pub user: &'a str,
+    pub home: &'a str,
+    pub recents: &'a [String],
 }
 impl ShellContext<'_> {
     pub fn selected(&self, id: &str) -> bool {

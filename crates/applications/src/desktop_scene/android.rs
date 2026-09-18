@@ -1677,6 +1677,9 @@ mod tests {
             panel_over_launcher: false,
             home_page: 0,
             typed: "",
+            user: "alice",
+            home: "/Users/alice",
+            recents: &[],
         }
     }
     /// Every id the scene can actually dispatch, ignoring announced-disabled paint.

@@ -143,9 +143,9 @@ is reachable either from a painted control or from `application.v1 shell`.
 |---|---|
 | `shell:launch:<kind>` | Launch or focus an application |
 | `shell:launch:<kind>/<argument>` | Launch it *on* something: a file manager on a folder, a calendar on a date. Every shell's calendar panel paints each day as `shell:launch:calendar/YYYY-MM-DD`; days before the world began, or with no Calendar installed, carry no target |
-| `shell:open:<kind>` | Desktop icon: select on one click, open on two |
+| `shell:open:<kind>` | Desktop icon: select on one click, open on two. `shell:open:trash` is the Windows Recycle Bin, which opens the trash folder |
 | `shell:home` / `shell:launcher` / `shell:desktop` / `shell:dismiss` | Show the desktop, toggle the launcher, dismiss a panel |
-| `shell:panel:<name>` | Open a panel: `apple`, `file`, `edit`, `view`, `window`, `help`, `spotlight`, `control`, `quick`, `calendar`, `notifications`, `settings`, `overview`, `context`, `power`, `app-menu` (GNOME header-bar primary menu), `app-settings` (Notepad settings), `page` (iOS Safari "AA"). On iOS `calendar` is Today View (search and widgets) and `notifications` Notification Center (the notices), and a phone's panel other than `search` is modal: the soft keyboard goes down under it and keystrokes reach nothing behind it until it closes. Choosing an entry in a drop-down menu (`file`, `edit`, `view`, `format`, `app-menu`) closes it |
+| `shell:panel:<name>` | Open a panel: `apple`, `file`, `edit`, `view`, `go` (Finder's Go menu), `window`, `help`, `spotlight`, `control`, `quick`, `calendar`, `notifications`, `settings`, `overview`, `context`, `power`, `app-menu` (GNOME header-bar primary menu), `app-settings` (Notepad settings), `page` (iOS Safari "AA"). On iOS `calendar` is Today View (search and widgets) and `notifications` Notification Center (the notices), and a phone's panel other than `search` is modal: the soft keyboard goes down under it and keystrokes reach nothing behind it until it closes. Choosing an entry in a drop-down menu (`file`, `edit`, `view`, `format`, `app-menu`) closes it |
 | `shell:search` / `shell:settings` / `shell:overview` / `shell:notifications` / `shell:quick-settings` | Panel shortcuts |
 | `shell:gesture:home` / `shell:gesture:overview` / `shell:gesture:notifications` / `shell:gesture:control-center` | Phone **gesture affordances**: the iPhone home indicator and the phones' status bars. A pointer reaches them by *dragging* from them (see Touch gestures below); a tap on one does nothing, as a tap on the glass does nothing. Named here, one performs what that swipe would do right now: `home` puts away a pulled-down sheet (Notification Center, Control Center, Search), returns Today View or the App Library to the first page, and otherwise goes home — from the home screen itself, to its first page; `overview` opens the App Switcher; `notifications` pulls down Notification Center, or on Android the shade and, pulled again, Quick Settings; `control-center` pulls down Control Center. Painted with the semantic role `gesture` |
 | `shell:home-page:<n>` | Show page `<n>` (0 first) of the iOS home screen, closing the App Library or any panel. iOS paints one page dot per page above the dock, each carrying this target; the scene marks the current one `selected`. A page past the last shows the last. Returns `{"page"}` |
@@ -178,7 +178,9 @@ File manager controls, reached as `window:<id>:content:<target>`: `files-back`,
 `files-forward`, `files-up`, `files-root`, `files-home`, `files-reload`,
 `files-newtab`, `files-tab:<i>`, `files-closetab:<i>`, `files-location:<path>`,
 `files-view`, `files-sort:<key>`, `files-search`, `files-search-clear`,
-`files-recents`, `files-browse`, `files-open`, `files-new-folder`, `files-new-file`,
+`files-recents`, `files-browse`, `files-starred`, `files-star`, `files-star:<i>`,
+`files-quick-access`, `files-gallery`, `files-trash`, `files-hidden`, `files-open`,
+`files-new-folder`, `files-new-file`,
 `files-cut`, `files-copy`, `files-paste`, `files-rename`, `files-delete`, and
 `open:<i>`, which indexes the **displayed** row order rather than the raw listing.
 
@@ -265,9 +267,9 @@ shell is driven, so these strings are part of the actor-facing contract.
 | `window:<id>:drag` \| `:focus` \| `:minimize` \| `:maximize` \| `:close` \| `:resize:{n,s,e,w,ne,nw,se,sw}` | Window frame. Requires `application.v1`. |
 | `window:<id>:content:<target>` | Forwarded into the window's content as `<target>` |
 | `shell:launch:<kind>` | Launch an application (same path as `application.v1 launch`) |
-| `shell:open:<kind>` | Desktop icon: select on click, launch on double-click |
+| `shell:open:<kind>` | Desktop icon: select on click, launch on double-click (`trash` opens the trash folder) |
 | `shell:home`, `shell:launcher`, `shell:switcher`, `shell:minimize`, `shell:maximize`, `shell:close`, `shell:desktop`, `shell:dismiss`, `shell:noop`, `shell:new`, `shell:save`, `shell:mobile-back` | Shell commands |
-| `shell:panel:<name>` where name ∈ `apple file edit view window help spotlight search control quick calendar clock notifications settings overview context power` | Toggle a panel. `shell:menu:<Name>`, `shell:search`, `shell:spotlight`, `shell:settings`, `shell:overview`, `shell:recents`, `shell:notifications`, `shell:control-center`, `shell:quick-settings`, `shell:system` are aliases. |
+| `shell:panel:<name>` where name ∈ `apple file edit view go window help spotlight search control quick calendar clock notifications settings overview context power` | Toggle a panel. `shell:menu:<Name>`, `shell:search`, `shell:spotlight`, `shell:settings`, `shell:overview`, `shell:recents`, `shell:notifications`, `shell:control-center`, `shell:quick-settings`, `shell:system` are aliases. |
 | `shell:toggle:<setting>` | Flip a device switch (wifi, bluetooth, airplane, dark, …). Returns `{"setting","value"}`. |
 | `shell:set:<setting>:<percent>` | Set a level 0–100. Returns `{"setting","value"}`. |
 | `shell:power:{lock,off,shutdown,restart,wake,unlock}` | Changes what the screen actually shows; `off`/`restart` clear windows |
@@ -278,6 +280,9 @@ shell is driven, so these strings are part of the actor-facing contract.
 | `files-search`, `files-search-clear` | Focus the query field, and clear it. Typing goes to `FileTab::query`, which filters the rows. |
 | `files-{new-folder,new-file,cut,copy,paste,rename,delete}` | File manager mutations. Each runs through the kernel under the same access checks as `read_file`/`write_file`, and re-lists the folder afterwards. `delete` moves to `~/.local/share/Trash/files`; nothing is hard-removed. `rename` opens a field committed with `Enter` and cancelled with `Escape`. |
 | `files-recents`, `files-browse` | Switch the tab between the desktop's recent-documents list and the folder it was showing. |
+| `files-starred`, `files-star`, `files-star:<i>` | Files' Starred list (`DesktopState::starred`), and star or unstar the selection or on-screen row `<i>`. A star toggles; unstarring in the Starred list takes the row off it. |
+| `files-quick-access`, `files-gallery` | Explorer's Home (the pinned folders the home folder really holds, then favourites, then recent documents) and Gallery (the image files in `~/Pictures`). Both are views over a real listing, not folders, so mutations are refused in them. |
+| `files-trash`, `files-hidden` | Show the trash folder in the tab, and show or hide dot files (also `Ctrl+H`). Dot files are hidden by default, as in every desktop file manager. |
 | `window:<id>:content:terminal-scroll:<n>`, `terminal-line` | Terminal scrollback position, and the prompt line — a click on it places the input caret. |
 | `shell:address`, `shell:back`, `shell:forward`, `shell:reload` | Browser chrome. History ops require `browser.v1`. |
 | `shell:type:<text>`, `shell:key:<key>` | Re-dispatched as `keyboard.v1` |

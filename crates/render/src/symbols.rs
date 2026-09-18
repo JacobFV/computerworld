@@ -124,6 +124,7 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/eject",
         include_bytes!("../assets/symbols/eject.png"),
     ),
+    ("symbol/film", include_bytes!("../assets/symbols/film.png")),
     ("symbol/flag", include_bytes!("../assets/symbols/flag.png")),
     (
         "symbol/flashlight",
@@ -283,6 +284,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
     (
         "symbol/trash",
         include_bytes!("../assets/symbols/trash.png"),
+    ),
+    (
+        "symbol/ubuntu",
+        include_bytes!("../assets/symbols/ubuntu.png"),
     ),
     (
         "symbol/volume",

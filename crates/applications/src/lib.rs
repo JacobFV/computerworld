@@ -2,7 +2,7 @@
 //! never ambient filesystem access or subprocess execution.
 pub mod apps;
 pub mod desktop_scene;
-pub use apps::{AppEnv, NativeApp};
+pub use apps::{AppEnv, FilesEnv, NativeApp};
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -27,6 +27,61 @@ const STREAM_LIMIT: usize = 4096;
 const FIELD_LIMIT: usize = 64;
 const CLIPBOARD_LIMIT: usize = 32;
 const RECENT_LIMIT: usize = 16;
+const STAR_LIMIT: usize = 64;
+/// The folders a desktop session gives a user's home on first login, per platform:
+/// what `xdg-user-dirs-update` creates on Ubuntu, what a new macOS account and a new
+/// Windows profile hold. Names only; a file manager lists the ones that really exist.
+pub fn standard_folders(theme: desktop_scene::DesktopTheme) -> &'static [&'static str] {
+    use desktop_scene::DesktopTheme::*;
+    match theme {
+        Ubuntu => &[
+            "Desktop",
+            "Documents",
+            "Downloads",
+            "Music",
+            "Pictures",
+            "Public",
+            "Templates",
+            "Videos",
+        ],
+        Macos => &[
+            "Desktop",
+            "Documents",
+            "Downloads",
+            "Movies",
+            "Music",
+            "Pictures",
+            "Public",
+        ],
+        Windows => &[
+            "Desktop",
+            "Documents",
+            "Downloads",
+            "Music",
+            "Pictures",
+            "Videos",
+        ],
+        Ios | Android => &[],
+    }
+}
+/// Explorer's pinned Quick access folders, in the order its Home page shows them.
+pub const QUICK_ACCESS: [&str; 6] = [
+    "Desktop",
+    "Downloads",
+    "Documents",
+    "Pictures",
+    "Music",
+    "Videos",
+];
+/// What Explorer's Gallery collects: image files, by extension, the way it decides.
+pub fn is_image(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    [
+        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".heic", ".tif", ".tiff",
+    ]
+    .iter()
+    .any(|ext| name.ends_with(ext))
+}
 /// Lines a terminal may be scrolled back by. The view clamps to the output it actually
 /// has; this only stops a stored offset growing without bound.
 const SCROLL_LIMIT: usize = 4096;
@@ -172,14 +227,27 @@ impl SortKey {
         }
     }
 }
-/// What a tab is listing. `Recents` holds absolute paths taken from
-/// `DesktopState::recents`, which is why an entry there is not a child of `path`.
+/// What a tab is listing. `Recents`, `Starred` and `QuickAccess` hold absolute paths
+/// taken from desktop state, which is why an entry there is not a child of `path`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FileScope {
     #[default]
     Folder,
     Recents,
+    /// `DesktopState::starred`: Files' Starred, Explorer's Favorites.
+    Starred,
+    /// Explorer's Home: the Quick access folders the home folder really holds, then
+    /// the favourites, then the recent files.
+    QuickAccess,
+    /// Explorer's Gallery: the image files in the Pictures folder, which `path` names.
+    Gallery,
+}
+impl FileScope {
+    /// Entries are absolute paths rather than names inside `path`.
+    pub fn absolute(self) -> bool {
+        matches!(self, Self::Recents | Self::Starred | Self::QuickAccess)
+    }
 }
 /// A rename in progress: the entry it started from, and the name being typed. Held
 /// separately from the entry so a listing arriving mid-edit cannot retarget it.
@@ -235,6 +303,10 @@ pub struct FileTab {
     pub rename: Option<Rename>,
     #[serde(default)]
     pub scope: FileScope,
+    /// Dot files are listed. Off by default, as in Files, Finder and Explorer;
+    /// `files-hidden` (and Ctrl+H) flips it.
+    #[serde(default)]
+    pub show_hidden: bool,
 }
 impl FileTab {
     pub fn new(path: impl Into<String>) -> Self {
@@ -251,6 +323,7 @@ impl FileTab {
             searching: false,
             rename: None,
             scope: FileScope::default(),
+            show_hidden: false,
             path,
         }
     }
@@ -259,6 +332,41 @@ impl FileTab {
     }
     pub fn can_go_forward(&self) -> bool {
         self.position + 1 < self.history.len()
+    }
+    /// What the platform calls what this tab shows: a list's own name, the Trash, the
+    /// computer, or else the folder's name. Used for tab labels and window titles.
+    pub fn title(&self, theme: desktop_scene::DesktopTheme, home: &str, trash: &str) -> String {
+        use desktop_scene::DesktopTheme::*;
+        let at =
+            |p: &str| !p.is_empty() && self.path.trim_end_matches('/') == p.trim_end_matches('/');
+        match self.scope {
+            FileScope::Recents if matches!(theme, Macos | Ios) => "Recents".into(),
+            FileScope::Recents => "Recent".into(),
+            FileScope::Starred if theme == Windows => "Favorites".into(),
+            FileScope::Starred => "Starred".into(),
+            FileScope::QuickAccess => "Home".into(),
+            FileScope::Gallery => "Gallery".into(),
+            FileScope::Folder if at(trash) => match theme {
+                Windows => "Recycle Bin".into(),
+                Android => "Bin".into(),
+                _ => "Trash".into(),
+            },
+            FileScope::Folder if at(home) && theme == Ubuntu => "Home".into(),
+            FileScope::Folder if self.path == "/" => match theme {
+                Macos => "Macintosh HD".into(),
+                Windows => "This PC".into(),
+                Ubuntu => "Computer".into(),
+                Ios => "On My iPhone".into(),
+                Android => "Internal storage".into(),
+            },
+            FileScope::Folder => self.name().to_owned(),
+        }
+    }
+    /// A place that is not an ordinary folder to climb through: a list, a view over a
+    /// listing, or the Trash. Path bars show its name instead of a folder trail.
+    pub fn is_place(&self, trash: &str) -> bool {
+        self.scope != FileScope::Folder
+            || (!trash.is_empty() && self.path.trim_end_matches('/') == trash.trim_end_matches('/'))
     }
     /// Folder name for the tab label; the root keeps its separator.
     pub fn name(&self) -> &str {
@@ -283,7 +391,11 @@ impl FileTab {
     /// that was clicked. Both the painter and the semantic page walk this list.
     pub fn display(&self) -> Vec<usize> {
         let query = self.query.to_lowercase();
+        // A list of paths names what was really opened or starred, dot or not; a folder
+        // listing hides dot files unless the tab shows them.
+        let hide = !self.show_hidden && !self.scope.absolute();
         let mut rows: Vec<usize> = (0..self.entries.len())
+            .filter(|i| !(hide && self.entries[*i].starts_with('.')))
             .filter(|i| query.is_empty() || self.entries[*i].to_lowercase().contains(&query))
             .collect();
         rows.sort_by(|a, b| {
@@ -305,6 +417,15 @@ impl FileTab {
         });
         rows
     }
+    /// How many entries the view lists before any search: everything but the dot files
+    /// it is hiding. A status bar's "N of M" counts against this, not the raw listing.
+    pub fn listed(&self) -> usize {
+        let hide = !self.show_hidden && !self.scope.absolute();
+        self.entries
+            .iter()
+            .filter(|e| !(hide && e.starts_with('.')))
+            .count()
+    }
     /// Screen row of `entries[index]`, or `None` when the filter hides it.
     pub fn row_of(&self, index: usize) -> Option<usize> {
         self.display().into_iter().position(|i| i == index)
@@ -312,9 +433,10 @@ impl FileTab {
     /// Absolute path of the selected entry, in either scope.
     pub fn selected_path(&self) -> Option<String> {
         let entry = entry_name(self.selection()?).to_owned();
-        Some(match self.scope {
-            FileScope::Recents => entry,
-            FileScope::Folder => self.child(&entry),
+        Some(if self.scope.absolute() {
+            entry
+        } else {
+            self.child(&entry)
         })
     }
     /// The field collecting keystrokes, if any. A file manager opens one at a time.
@@ -373,6 +495,32 @@ pub fn shell_prompt(user: &str, host: &str, cwd: &str, dialect: &str) -> String 
         };
     }
     format!("{user}@{host}:{cwd}$")
+}
+/// The prompt each platform's default shell prints, with the home folder written `~`:
+/// bash's `\u@\h:\w\$` (`alice@host:~/src$`) for `posix`, zsh's `%n@%m %1~ %#`
+/// (`alice@host src %`) for `zsh`, the default shell of a Mac, and PowerShell's
+/// `PS C:\path>`, which has no such abbreviation.
+pub fn shell_prompt_at(user: &str, host: &str, cwd: &str, home: &str, dialect: &str) -> String {
+    let home = home.trim_end_matches('/');
+    let under = !home.is_empty() && (cwd == home || cwd.starts_with(&format!("{home}/")));
+    match dialect {
+        "zsh" => {
+            // `%1~`: the last component, or `~` at home and `/` at the root.
+            let dir = if under && cwd.len() == home.len() {
+                "~"
+            } else {
+                cwd.trim_end_matches('/')
+                    .rsplit('/')
+                    .next()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("/")
+            };
+            format!("{user}@{host} {dir} %")
+        }
+        "powershell" => shell_prompt(user, host, cwd, dialect),
+        _ if under => format!("{user}@{host}:~{}$", &cwd[home.len()..]),
+        _ => shell_prompt(user, host, cwd, dialect),
+    }
 }
 /// One finished command in a terminal session: the prompt as it stood when the command
 /// ran, the command itself, both streams and the exit status. `exit_code` is the point —
@@ -569,6 +717,11 @@ pub struct DesktopState {
     /// Real history, not a guess: an entry is only here because it was opened.
     #[serde(default)]
     pub recents: Vec<String>,
+    /// What the user starred (Files' Starred, Explorer's Favorites): absolute paths,
+    /// folders with a trailing `/`, newest first, capped at `STAR_LIMIT`. Only a star
+    /// control puts anything here.
+    #[serde(default)]
+    pub starred: Vec<String>,
     /// Pages the user really saved, shared by every browser window on the machine.
     #[serde(default)]
     pub bookmarks: Vec<Bookmark>,
@@ -1422,6 +1575,9 @@ impl DesktopState {
                     }
                     "Enter" if tab.rename.is_some() => return self.commit_rename(),
                     "Enter" if tab.searching => tab.searching = false,
+                    "Ctrl+h" | "Ctrl+H" if !tab.editing_text() => {
+                        tab.show_hidden = !tab.show_hidden;
+                    }
                     _ => return Err(format!("unsupported file manager key {key}")),
                 }
             }
@@ -1576,14 +1732,36 @@ impl DesktopState {
         mut values: Vec<String>,
     ) -> Result<(), String> {
         values.sort();
+        let (starred, recents) = (self.starred.clone(), self.recents.clone());
         match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
             AppState::Files { tabs, .. } => {
                 let tab = tabs.get_mut(tab).ok_or("tab not found")?;
-                // A listing that arrives while the tab has moved to Recents belongs to
-                // the folder it left; dropping it beats overwriting what is on screen.
-                if tab.scope != FileScope::Folder {
-                    return Ok(());
-                }
+                let values = match tab.scope {
+                    FileScope::Folder => values,
+                    // Home: the pinned folders the listing proves exist, then what the
+                    // user starred, then what they opened, each path once.
+                    FileScope::QuickAccess => {
+                        let base = tab.path.trim_end_matches('/').to_owned();
+                        let mut shown: Vec<String> = QUICK_ACCESS
+                            .iter()
+                            .filter(|name| values.iter().any(|v| *v == format!("{name}/")))
+                            .map(|name| format!("{base}/{name}/"))
+                            .collect();
+                        for entry in starred.into_iter().chain(recents) {
+                            if !shown.iter().any(|s| entry_name(s) == entry_name(&entry)) {
+                                shown.push(entry);
+                            }
+                        }
+                        shown
+                    }
+                    FileScope::Gallery => values
+                        .into_iter()
+                        .filter(|v| !v.ends_with('/') && is_image(v))
+                        .collect(),
+                    // A listing that arrives while the tab has moved to a list belongs
+                    // to the folder it left; dropping it beats overwriting the screen.
+                    FileScope::Recents | FileScope::Starred => return Ok(()),
+                };
                 tab.entries = values;
                 tab.selected = None;
                 // The entry being renamed may not have survived the refresh.
@@ -1685,6 +1863,33 @@ mod tests {
         assert_eq!(
             shell_prompt("alice", "win", "/C:/Users/alice", "powershell"),
             r"PS C:\Users\alice>"
+        );
+        // bash abbreviates the home folder, and only the home folder.
+        for (cwd, want) in [
+            ("/home/alice", "alice@box:~$"),
+            ("/home/alice/src", "alice@box:~/src$"),
+            ("/home/alicea", "alice@box:/home/alicea$"),
+            ("/tmp", "alice@box:/tmp$"),
+        ] {
+            assert_eq!(
+                shell_prompt_at("alice", "box", cwd, "/home/alice", "posix"),
+                want
+            );
+        }
+        for (cwd, want) in [
+            ("/Users/alice", "alice@mac ~ %"),
+            ("/Users/alice/src", "alice@mac src %"),
+            ("/tmp", "alice@mac tmp %"),
+            ("/", "alice@mac / %"),
+        ] {
+            assert_eq!(
+                shell_prompt_at("alice", "mac", cwd, "/Users/alice", "zsh"),
+                want
+            );
+        }
+        assert_eq!(
+            shell_prompt_at("bob", "win", "/C:/Users/bob", "/C:/Users/bob", "powershell"),
+            r"PS C:\Users\bob>"
         );
         let mut d = DesktopState {
             prompt: "alice@box:/home/alice$".into(),
@@ -2132,6 +2337,77 @@ impl DesktopState {
         self.recents.insert(0, path.to_owned());
         self.recents.truncate(RECENT_LIMIT);
     }
+    /// Whether `path` (with or without a trailing `/`) is starred.
+    pub fn is_starred(&self, path: &str) -> bool {
+        let path = entry_name(path);
+        self.starred.iter().any(|s| entry_name(s) == path)
+    }
+    /// Star or unstar an absolute entry (folders end in `/`). Returns the new state.
+    fn toggle_star(&mut self, entry: String) -> bool {
+        if self.is_starred(&entry) {
+            let path = entry_name(&entry).to_owned();
+            self.starred.retain(|s| entry_name(s) != path);
+            return false;
+        }
+        self.starred.insert(0, entry);
+        self.starred.truncate(STAR_LIMIT);
+        true
+    }
+    /// The absolute entry (folders with `/`) at display row `row` of the active tab,
+    /// or the selection when `row` is `None`.
+    fn tab_entry(&self, row: Option<usize>) -> Result<String, String> {
+        let tab = self.focused_tab()?;
+        let index = match row {
+            Some(row) => *tab.display().get(row).ok_or("entry not found")?,
+            None => tab.selected.ok_or("nothing is selected")?,
+        };
+        let entry = tab.entries.get(index).ok_or("entry not found")?;
+        let name = entry_name(entry);
+        let path = if tab.scope.absolute() {
+            name.to_owned()
+        } else {
+            tab.child(name)
+        };
+        Ok(if entry.ends_with('/') {
+            format!("{path}/")
+        } else {
+            path
+        })
+    }
+    /// Show a list the desktop keeps (Recents, Starred) in the active tab. The folder
+    /// the tab was on stays its `path`, so `files-browse` goes back to it.
+    fn show_list(&mut self, scope: FileScope) -> Result<Vec<AppEffect>, String> {
+        let entries = match scope {
+            FileScope::Recents => self.recents.clone(),
+            FileScope::Starred => self.starred.clone(),
+            _ => return Err("not a list".into()),
+        };
+        let tab = self.focused_tab_mut()?;
+        tab.scope = scope;
+        tab.entries = entries;
+        tab.selected = None;
+        tab.query.clear();
+        tab.stop_editing();
+        Ok(vec![])
+    }
+    /// Show a view built from a real listing: Explorer's Home from the home folder,
+    /// its Gallery from Pictures. `directory_loaded` shapes the listing when it lands.
+    fn show_listed(&mut self, scope: FileScope, path: String) -> Result<Vec<AppEffect>, String> {
+        let (id, tabs, active) = self.focused_files()?;
+        let index = *active;
+        let tab = tabs.get_mut(index).ok_or("tab not found")?;
+        tab.scope = scope;
+        tab.path = path.clone();
+        tab.entries.clear();
+        tab.selected = None;
+        tab.query.clear();
+        tab.stop_editing();
+        Ok(vec![AppEffect::ListDirectory {
+            window: id,
+            tab: index,
+            path,
+        }])
+    }
     /// Paste the clipboard into the active folder. A copy that would collide is given a
     /// `(copy)` name from the listing the tab already has; a move that would collide is
     /// refused, because a move that renames itself is a move you did not ask for.
@@ -2143,7 +2419,7 @@ impl DesktopState {
         let index = *active;
         let tab = tabs.get_mut(index).ok_or("tab not found")?;
         if tab.scope != FileScope::Folder {
-            return Err("the Recents list is not a folder".into());
+            return Err("this view is not a folder".into());
         }
         let folder = tab.path.clone();
         let mut effects = vec![];
@@ -2280,8 +2556,38 @@ impl DesktopState {
                 self.show_folder(&home, true)
             }
             "reload" => {
-                let path = self.focused_tab()?.path.clone();
-                self.show_folder(&path, false)
+                let tab = self.focused_tab()?;
+                let (scope, path) = (tab.scope, tab.path.clone());
+                match scope {
+                    FileScope::Folder => self.show_folder(&path, false),
+                    FileScope::Recents | FileScope::Starred => self.show_list(scope),
+                    FileScope::QuickAccess | FileScope::Gallery => self.show_listed(scope, path),
+                }
+            }
+            "starred" => self.show_list(FileScope::Starred),
+            "hidden" => {
+                let tab = self.focused_tab_mut()?;
+                tab.show_hidden = !tab.show_hidden;
+                Ok(vec![])
+            }
+            // Explorer's Home and Gallery: views over real listings of the home folder
+            // and of Pictures, never a picture of what those folders might hold.
+            "quick-access" => {
+                let home = self.home_folder();
+                self.show_listed(FileScope::QuickAccess, home)
+            }
+            "gallery" => {
+                let pictures = format!("{}/Pictures", self.home_folder().trim_end_matches('/'));
+                self.show_listed(FileScope::Gallery, pictures)
+            }
+            "trash" => {
+                let trash = self.trash_folder();
+                self.show_folder(&trash, true)
+            }
+            "star" => {
+                let entry = self.tab_entry(None)?;
+                self.toggle_star(entry);
+                self.refresh_starred_view()
             }
             "back" | "forward" => {
                 let (id, tabs, active) = self.focused_files()?;
@@ -2351,16 +2657,7 @@ impl DesktopState {
                 tab.searching = false;
                 Ok(vec![])
             }
-            "recents" => {
-                let recents = self.recents.clone();
-                let tab = self.focused_tab_mut()?;
-                tab.scope = FileScope::Recents;
-                tab.entries = recents;
-                tab.selected = None;
-                tab.query.clear();
-                tab.stop_editing();
-                Ok(vec![])
-            }
+            "recents" => self.show_list(FileScope::Recents),
             "browse" => {
                 let path = self.focused_tab()?.path.clone();
                 self.show_folder(&path, false)
@@ -2371,7 +2668,7 @@ impl DesktopState {
                 let index = *active;
                 let tab = tabs.get_mut(index).ok_or("tab not found")?;
                 if tab.scope != FileScope::Folder {
-                    return Err("the Recents list is not a folder".into());
+                    return Err("this view is not a folder".into());
                 }
                 let path = tab.path.clone();
                 let name = if folder {
@@ -2412,7 +2709,7 @@ impl DesktopState {
             "rename" => {
                 let tab = self.focused_tab_mut()?;
                 if tab.scope != FileScope::Folder {
-                    return Err("the Recents list is not a folder".into());
+                    return Err("this view is not a folder".into());
                 }
                 let from = entry_name(tab.selection().ok_or("nothing is selected")?).to_owned();
                 tab.searching = false;
@@ -2428,7 +2725,7 @@ impl DesktopState {
                 let index = *active;
                 let tab = tabs.get_mut(index).ok_or("tab not found")?;
                 if tab.scope != FileScope::Folder {
-                    return Err("the Recents list is not a folder".into());
+                    return Err("this view is not a folder".into());
                 }
                 let path = tab.selected_path().ok_or("nothing is selected")?;
                 if path == trash || path.starts_with(&format!("{trash}/")) {
@@ -2449,6 +2746,12 @@ impl DesktopState {
                 ])
             }
             rest => {
+                if let Some(row) = rest.strip_prefix("star:") {
+                    let row: usize = row.parse().map_err(|_| "invalid entry")?;
+                    let entry = self.tab_entry(Some(row))?;
+                    self.toggle_star(entry);
+                    return self.refresh_starred_view();
+                }
                 if let Some(key) = rest.strip_prefix("sort:") {
                     let key = SortKey::parse(key).ok_or("unknown sort key")?;
                     let tab = self.focused_tab_mut()?;
@@ -2497,6 +2800,17 @@ impl DesktopState {
                 Err(format!("unknown file manager command {command}"))
             }
         }
+    }
+    /// A star changed: a tab showing the Starred list shows the list as it now is.
+    fn refresh_starred_view(&mut self) -> Result<Vec<AppEffect>, String> {
+        if self.focused_tab()?.scope == FileScope::Starred {
+            let starred = self.starred.clone();
+            let tab = self.focused_tab_mut()?;
+            let kept = tab.selection().cloned();
+            tab.entries = starred;
+            tab.selected = kept.and_then(|k| tab.entries.iter().position(|e| *e == k));
+        }
+        Ok(vec![])
     }
     /// Open whatever the active tab has selected: folders in place, documents in an
     /// editor. A document opened this way is what makes the Recents list real.
@@ -3082,6 +3396,116 @@ mod file_manager_tests {
         let restored: DesktopState =
             serde_json::from_str(&serde_json::to_string(&d).unwrap()).unwrap();
         assert_eq!(d, restored);
+    }
+    /// A star is keyed by the absolute path, folders keep their separator, the same
+    /// star again takes it off, and the Starred list follows at once.
+    #[test]
+    fn stars_toggle_by_path_and_the_starred_list_follows() {
+        let mut d = files(&["notes.txt", "src/"]);
+        d.click("files-star:1").unwrap();
+        d.click("files-star:0").unwrap();
+        // Newest first: the list reads in the order things were starred.
+        assert_eq!(d.starred, ["/work/notes.txt", "/work/src/"]);
+        assert!(d.is_starred("/work/src"));
+        d.click("files-starred").unwrap();
+        assert_eq!(tab(&d).scope, FileScope::Starred);
+        assert_eq!(tab(&d).entries, d.starred);
+        // Rows in a list are absolute, so opening a starred folder goes there.
+        d.click("open:1").unwrap();
+        assert_eq!(tab(&d).selected_path().unwrap(), "/work/src");
+        // Unstarring from the list takes the row off, and the selection stays put.
+        d.click("files-star:0").unwrap();
+        assert_eq!(tab(&d).entries, ["/work/src/"]);
+        assert_eq!(tab(&d).selection().unwrap(), "/work/src/");
+        // Nothing selected, nothing to star; and the list is not a folder to edit.
+        d.click("files-star").unwrap();
+        assert!(d.starred.is_empty());
+        assert!(d.click("files-star").is_err());
+        assert!(d.click("files-new-folder").is_err());
+        let restored: DesktopState =
+            serde_json::from_str(&serde_json::to_string(&d).unwrap()).unwrap();
+        assert_eq!(d, restored);
+    }
+    /// Explorer's Home and Gallery are shaped from a real listing when it lands.
+    #[test]
+    fn home_and_gallery_are_views_over_real_listings() {
+        let mut d = files(&["x.txt"]);
+        let id = d.focused.unwrap();
+        d.starred = vec!["/work/x.txt".into()];
+        d.recents = vec!["/work/x.txt".into(), "/home/alice/a.txt".into()];
+        let effects = d.click("files-quick-access").unwrap();
+        assert!(matches!(
+            &effects[..],
+            [AppEffect::ListDirectory { path, .. }] if path == "/home/alice"
+        ));
+        // Only the pinned folders the listing holds, in pinned order, then the
+        // favourites, then the recents, each path once.
+        d.directory_loaded(
+            id,
+            0,
+            vec![
+                "Music/".into(),
+                "Desktop/".into(),
+                "notes/".into(),
+                "a.txt".into(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            tab(&d).entries,
+            [
+                "/home/alice/Desktop/",
+                "/home/alice/Music/",
+                "/work/x.txt",
+                "/home/alice/a.txt"
+            ]
+        );
+        assert!(d.click("files-paste").is_err());
+        d.click("files-gallery").unwrap();
+        d.directory_loaded(
+            id,
+            0,
+            vec![
+                "a.PNG".into(),
+                "b.txt".into(),
+                "c.jpg".into(),
+                "d.png/".into(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(tab(&d).path, "/home/alice/Pictures");
+        assert_eq!(tab(&d).entries, ["a.PNG", "c.jpg"]);
+        d.click("open:1").unwrap();
+        assert_eq!(
+            tab(&d).selected_path().unwrap(),
+            "/home/alice/Pictures/c.jpg"
+        );
+        // Reload re-reads the view, not the folder under it.
+        let effects = d.click("files-reload").unwrap();
+        assert_eq!(tab(&d).scope, FileScope::Gallery);
+        assert_eq!(effects.len(), 1);
+    }
+    #[test]
+    fn dot_files_are_hidden_until_the_tab_shows_them() {
+        let mut d = files(&[".cache/", "a.txt", ".profile"]);
+        assert_eq!(tab(&d).display().len(), 1);
+        assert_eq!(tab(&d).listed(), 1);
+        d.click("open:0").unwrap();
+        assert_eq!(tab(&d).selection().unwrap(), "a.txt");
+        d.key("Ctrl+h").unwrap();
+        assert_eq!(tab(&d).display().len(), 3);
+        assert_eq!(tab(&d).listed(), 3);
+        d.click("files-hidden").unwrap();
+        assert_eq!(tab(&d).display().len(), 1);
+        // The trash place is a folder like any other, with its own title.
+        d.click("files-trash").unwrap();
+        assert_eq!(tab(&d).path, "/home/alice/.local/share/Trash/files");
+        let t = desktop_scene::DesktopTheme::Windows;
+        assert_eq!(
+            tab(&d).title(t, "/home/alice", &d.trash_folder()),
+            "Recycle Bin"
+        );
+        assert!(tab(&d).is_place(&d.trash_folder()));
     }
 }
 

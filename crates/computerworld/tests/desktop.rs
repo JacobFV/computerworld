@@ -243,9 +243,9 @@ fn terminal_transcript_carries_prompt_echo_and_exit_status() {
     run(&mut world, &actor, "definitely-not-a-command");
     let observed = page(&world, &actor);
     let lines = texts(&observed);
-    assert!(lines.contains(&"alice@alice-mac:/Users/alice$ cd /tmp".to_string()));
+    assert!(lines.contains(&"alice@alice-mac ~ % cd /tmp".to_string()));
     // The prompt followed the cwd, so the echo of the next command proves the move.
-    assert!(lines.contains(&"alice@alice-mac:/tmp$ definitely-not-a-command".to_string()));
+    assert!(lines.contains(&"alice@alice-mac tmp % definitely-not-a-command".to_string()));
     assert!(lines.contains(&"[exit 0]".to_string()));
     assert!(lines
         .iter()
@@ -258,14 +258,14 @@ fn terminal_transcript_carries_prompt_echo_and_exit_status() {
         .find(|e| e["id"] == "terminal-input")
         .unwrap()
         .clone();
-    assert_eq!(input["label"], "alice@alice-mac:/tmp$");
+    assert_eq!(input["label"], "alice@alice-mac tmp %");
     // The echoed lines are on screen too, not only in the projection.
     let scene = world.scene(&actor, 960, 640).unwrap();
     assert!(scene
         .nodes
         .iter()
         .any(|n| format!("{:?}", n.primitive)
-            .contains("alice@alice-mac:/tmp$ definitely-not-a-command")));
+            .contains("alice@alice-mac tmp % definitely-not-a-command")));
     run(&mut world, &actor, "clear");
     let cleared = page(&world, &actor);
     assert!(!texts(&cleared)
@@ -279,6 +279,6 @@ fn terminal_transcript_carries_prompt_echo_and_exit_status() {
             .iter()
             .find(|e| e["id"] == "terminal-input")
             .unwrap()["label"],
-        "alice@alice-mac:/tmp$"
+        "alice@alice-mac tmp %"
     );
 }

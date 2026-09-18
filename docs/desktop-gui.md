@@ -47,7 +47,7 @@ in session snapshots.
 
 Thirteen window kinds are launchable. Four are built into `DesktopState::launch`:
 `terminal` (output and input), `files`/`file_manager` (tabbed filesystem navigation
-with click-to-select and double-click-to-open), `editor`/`text_editor` (with Save),
+with click-to-select and double-click-to-open), `editor`/`text_editor` (saved from its menus),
 and `browser`. The other nine are `NativeApp` kinds listed by the `native_apps!`
 macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `chat`, `docs`,
 `notes`, `contacts`, `settings`, `calculator` and `clock`. Each is backed by a world
@@ -62,6 +62,38 @@ alias. `kind: "browser"` is a genuine alias: it opens a browser window at a fixe
 URL, and therefore requires both `application.v1` and `browser.v1` grants plus an
 installed `browser`. Any other `kind` is rejected. Either way these remain ordinary
 world services, not special kernel concepts.
+
+### Home folders and file manager places
+
+Creating a desktop session on a machine with a desktop theme is the user's first
+login there. Like `xdg-user-dirs-update` on Ubuntu, a new Windows profile and a new
+macOS account, it makes the platform's standard folders in the home folder, plus
+`~/.local/share/Trash/files`, the folder deletions are moved to: Desktop, Documents,
+Downloads, Music, Pictures, Public, Templates and Videos on Ubuntu; Desktop,
+Documents, Downloads, Movies, Music, Pictures and Public on macOS; Desktop,
+Documents, Downloads, Music, Pictures and Videos on Windows. Only missing folders are
+made, so a second login changes nothing, snapshots carry them, and `reset` logs in
+again. A terminal-only or browser-only session, and a phone, log nobody in.
+
+Each file manager's sidebar holds the platform's standard places, each one a real
+command, and only those whose folder exists right now:
+
+| Shell | Sidebar |
+|---|---|
+| Files (Ubuntu) | Recent, Starred, Home, Desktop, Documents, Downloads, Music, Pictures, Videos, Trash, then Other Locations (the computer's root) |
+| Finder (macOS) | Favorites: Recents, Desktop, Documents, Downloads; Locations: Macintosh HD. The Go menu adds Back, Forward, Enclosing Folder, Home and Computer |
+| File Explorer (Windows) | Home (pinned folders, favourites and recent files), Gallery (images in Pictures), the six pinned folders, This PC |
+
+Recent is the documents really opened from a file manager; Starred is the set a row's
+star adds to (`DesktopState::starred`). AirDrop, iCloud, Applications, Tags,
+OneDrive and Network have nothing behind them in the simulator and are omitted
+rather than painted. Dot files are hidden until `Ctrl+H`.
+
+Terminal windows print the prompt the machine's default shell prints, and title
+themselves from it: bash's `user@host:~/dir$` (GNOME Terminal's title is
+`user@host: ~/dir`), zsh's `user@host dir %` on a Mac (Terminal's title is
+`user — -zsh`), and PowerShell's `PS C:\path>` (Windows Terminal's tab reads
+"Windows PowerShell").
 
 Launchers, search, task switching and platform panels expose semantic hit regions.
 Mobile profiles implement Home, recent apps and supported vertical swipes for

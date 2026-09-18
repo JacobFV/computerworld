@@ -242,6 +242,9 @@ pub fn render_desktop_with_options(
         panel_over_launcher: options.panel_over_launcher,
         typed: &options.typed,
         home_page: options.home_page,
+        user: &options.user,
+        home: &options.home,
+        recents: &options.recents,
     };
     let mut p = Painter::themed(theme, width, height, 1 << 60);
     background(&mut p, &ctx);

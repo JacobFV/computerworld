@@ -5,6 +5,7 @@ use super::{
     shared::{Align, Painter},
     DesktopTheme,
 };
+use crate::entry_name;
 use cw_scene::{Color, Primitive, Rect, Scene};
 
 const INK: Color = Color::rgb(29, 29, 31);
@@ -180,101 +181,259 @@ fn entry_icon(p: &mut Painter, l: &Look, x: i32, y: i32, size: u32, directory: b
     }
 }
 
-/// Sidebar location trail: the root performs `files-root`, the enclosing folder
-/// `files-up`, and the current folder is the selected row.
-fn sidebar(p: &mut Painter, t: DesktopTheme, l: &Look, h: u32, path: &str, count: usize) {
+/// One row of a file manager sidebar: its name, glyph, glyph tint and the command it
+/// runs. `current` lights the row for the place the tab is showing.
+struct Place {
+    label: String,
+    symbol: &'static str,
+    tint: Option<Color>,
+    action: String,
+    current: bool,
+    pinned: bool,
+}
+enum Side {
+    Heading(&'static str),
+    Row(Place),
+    Gap,
+}
+/// Sidebar glyph for a standard home folder.
+fn folder_symbol(name: &str) -> &'static str {
+    match name {
+        "Desktop" => "desktop",
+        "Documents" => "document",
+        "Downloads" => "download",
+        "Music" => "music",
+        "Pictures" => "image",
+        "Videos" | "Movies" => "film",
+        _ => "folder",
+    }
+}
+/// Explorer tints its known folders the way their shell icons are coloured.
+fn explorer_tint(name: &str) -> Color {
+    match name {
+        "Desktop" => Color::rgb(0, 120, 212),
+        "Downloads" => Color::rgb(16, 137, 62),
+        "Documents" => Color::rgb(96, 110, 128),
+        "Pictures" => Color::rgb(0, 153, 188),
+        "Music" => Color::rgb(232, 99, 43),
+        "Videos" => Color::rgb(135, 100, 184),
+        _ => Color::rgb(245, 187, 64),
+    }
+}
+/// The platform's standard sidebar, holding only places that can really be opened:
+/// the lists the desktop keeps, the home folder, the standard folders that exist in it
+/// right now, the Trash and the computer. AirDrop, iCloud, Tags, OneDrive and Network
+/// have nothing behind them in the simulator and are left out rather than faked.
+fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec<Side> {
+    use crate::FileScope;
+    let files = &env.files;
+    let folder_at = |path: &str| {
+        tab.scope == FileScope::Folder
+            && !path.is_empty()
+            && tab.path.trim_end_matches('/') == path.trim_end_matches('/')
+    };
+    let row = |label: &str, symbol: &'static str, action: String, current: bool| {
+        Side::Row(Place {
+            label: label.to_owned(),
+            symbol,
+            tint: None,
+            action,
+            current,
+            pinned: false,
+        })
+    };
+    let standard = |names: &[&str], explorer: bool| -> Vec<Side> {
+        names
+            .iter()
+            .filter(|name| files.has(name))
+            .map(|name| {
+                let path = files.folder(name);
+                Side::Row(Place {
+                    label: (*name).to_owned(),
+                    symbol: folder_symbol(name),
+                    tint: explorer.then(|| explorer_tint(name)),
+                    current: folder_at(&path),
+                    action: format!("files-location:{path}"),
+                    pinned: explorer,
+                })
+            })
+            .collect()
+    };
+    let has_home = !files.home.is_empty() && files.home != "/";
+    let mut out = Vec::new();
+    match t {
+        DesktopTheme::Ubuntu => {
+            out.push(row(
+                "Recent",
+                "clock",
+                "files-recents".into(),
+                tab.scope == FileScope::Recents,
+            ));
+            out.push(row(
+                "Starred",
+                "star",
+                "files-starred".into(),
+                tab.scope == FileScope::Starred,
+            ));
+            if has_home {
+                out.push(row(
+                    "Home",
+                    "home",
+                    "files-home".into(),
+                    folder_at(files.home),
+                ));
+            }
+            out.extend(standard(
+                &[
+                    "Desktop",
+                    "Documents",
+                    "Downloads",
+                    "Music",
+                    "Pictures",
+                    "Videos",
+                ],
+                false,
+            ));
+            if !files.trash.is_empty() {
+                out.push(row(
+                    "Trash",
+                    "trash",
+                    "files-trash".into(),
+                    folder_at(&files.trash),
+                ));
+            }
+            out.push(Side::Gap);
+            out.push(row(
+                "Other Locations",
+                "plus",
+                "files-root".into(),
+                folder_at("/"),
+            ));
+        }
+        DesktopTheme::Macos => {
+            out.push(Side::Heading("Favorites"));
+            out.push(row(
+                "Recents",
+                "clock",
+                "files-recents".into(),
+                tab.scope == FileScope::Recents,
+            ));
+            out.extend(standard(&["Desktop", "Documents", "Downloads"], false));
+            out.push(Side::Heading("Locations"));
+            out.push(row(
+                "Macintosh HD",
+                "drive",
+                "files-root".into(),
+                folder_at("/"),
+            ));
+        }
+        DesktopTheme::Windows => {
+            if has_home {
+                out.push(row(
+                    "Home",
+                    "home",
+                    "files-quick-access".into(),
+                    tab.scope == FileScope::QuickAccess,
+                ));
+                if files.has("Pictures") {
+                    out.push(row(
+                        "Gallery",
+                        "image",
+                        "files-gallery".into(),
+                        tab.scope == FileScope::Gallery,
+                    ));
+                }
+            }
+            out.push(Side::Gap);
+            out.extend(standard(&crate::QUICK_ACCESS, true));
+            out.push(Side::Gap);
+            out.push(row(
+                "This PC",
+                "desktop",
+                "files-root".into(),
+                folder_at("/"),
+            ));
+        }
+        _ => {}
+    }
+    out
+}
+/// Draw the sidebar `places` describes. Every row is a real command; the lit row is
+/// the place the tab is showing, so the sidebar and the listing cannot disagree.
+fn sidebar(p: &mut Painter, env: &crate::AppEnv<'_>, l: &Look, h: u32, tab: &crate::FileTab) {
+    let t = env.theme;
     let side = l.sidebar_width;
     p.box_(Rect::new(0, 0, side, h), l.sidebar, 0);
     p.vline(side as i32 - 1, 0, h, LINE);
-    let heading = match t {
-        DesktopTheme::Macos => "Locations",
-        DesktopTheme::Windows => "",
-        _ => "",
+    let (row, text, icon, radius) = match t {
+        DesktopTheme::Ubuntu => (36, 13, 16, 6),
+        DesktopTheme::Windows => (32, 12, 16, 4),
+        _ => (26, 13, 16, 5),
     };
-    let mut y = 10;
-    if !heading.is_empty() {
-        p.strong(18, y, side - 28, heading, 11, FAINT);
-        y += 22;
+    let mut y = if t == DesktopTheme::Macos { 4 } else { 8 };
+    for item in places(t, env, tab) {
+        if y + row as i32 > h as i32 {
+            break;
+        }
+        match item {
+            Side::Heading(title) => {
+                y += 8;
+                p.strong(18, y, side - 28, title, 11, FAINT);
+                y += 20;
+            }
+            Side::Gap => {
+                y += 6;
+                p.hline(12, y, side - 24, LINE);
+                y += 7;
+            }
+            Side::Row(place) => {
+                let plate = Rect::new(8, y, side - 16, row - 2);
+                p.button(
+                    plate,
+                    if place.current {
+                        l.selection
+                    } else {
+                        Color::TRANSPARENT
+                    },
+                    radius,
+                    &place.action,
+                    &place.label,
+                );
+                let tint = place.tint.unwrap_or(match t {
+                    DesktopTheme::Ubuntu => INK,
+                    _ => l.accent,
+                });
+                let ix = if t == DesktopTheme::Windows { 20 } else { 18 };
+                p.symbol(
+                    place.symbol,
+                    ix,
+                    y + (row as i32 - 2 - icon as i32) / 2,
+                    icon,
+                    tint,
+                );
+                let tx = ix + icon as i32 + 10;
+                p.left(
+                    tx,
+                    y + (row as i32 - 2 - 18) / 2,
+                    (side as i32 - tx - if place.pinned { 30 } else { 12 }).max(0) as u32,
+                    &place.label,
+                    text,
+                    INK,
+                );
+                if place.pinned {
+                    // Explorer marks pinned Quick access folders with a pin.
+                    p.symbol(
+                        "pin",
+                        side as i32 - 32,
+                        y + (row as i32 - 14) / 2,
+                        12,
+                        FAINT,
+                    );
+                }
+                y += row as i32;
+            }
+        }
     }
-    let depth = components(path).len();
-    let row = if t == DesktopTheme::Ubuntu { 36 } else { 30 };
-    let item = |p: &mut Painter,
-                y: i32,
-                symbol: &str,
-                name: &str,
-                selected: bool,
-                action: Option<&str>| {
-        let plate = Rect::new(8, y, side - 16, row - 2);
-        if let Some(action) = action {
-            p.button(plate, Color::TRANSPARENT, 6, action, name);
-        }
-        if selected {
-            p.box_(plate, l.selection, 6);
-        }
-        let tint = if t == DesktopTheme::Ubuntu {
-            INK
-        } else {
-            l.accent
-        };
-        p.symbol(
-            symbol,
-            18,
-            y + (row as i32 - 18) / 2,
-            16,
-            if symbol == "folder" { l.folder } else { tint },
-        );
-        p.left(
-            44,
-            y + (row as i32 - 19) / 2,
-            side.saturating_sub(56),
-            name,
-            13,
-            INK,
-        );
-    };
-    let root_symbol = if t == DesktopTheme::Windows {
-        "desktop"
-    } else {
-        "drive"
-    };
-    item(p, y, root_symbol, l.root, depth == 0, Some("files-root"));
-    y += row as i32;
-    if depth >= 1 {
-        if depth >= 2 {
-            item(
-                p,
-                y,
-                "folder",
-                parent(path, l.root),
-                false,
-                Some("files-up"),
-            );
-            y += row as i32;
-        } else {
-            // The enclosing folder is the root itself: its icon goes up one level.
-            p.region(
-                Rect::new(8, y - row as i32, 32, row - 2),
-                "files-up",
-                "Enclosing folder",
-            );
-        }
-        item(p, y, "folder", current(path, l.root), true, None);
-    } else {
-        p.region(
-            Rect::new(8, y - row as i32, 32, row - 2),
-            "files-up",
-            "Enclosing folder",
-        );
-    }
-    let note = format!("{count} item{}", if count == 1 { "" } else { "s" });
-    p.left(
-        18,
-        h.saturating_sub(28) as i32,
-        side.saturating_sub(30),
-        &note,
-        11,
-        MUTED,
-    );
 }
 
 fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], active: usize) {
@@ -294,8 +453,13 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     let l = look(t);
     let side = if w > 470 { l.sidebar_width } else { 0 };
     if side > 0 {
-        sidebar(p, t, &l, h, path, entries.len());
+        sidebar(p, env, &l, h, tab);
     }
+    // What the platform calls this place, and whether it is one (a list, a view, the
+    // Trash) rather than a folder to show a trail of.
+    let title = tab.title(t, env.files.home, &env.files.trash);
+    let place = tab.is_place(&env.files.trash);
+    let absolute = tab.scope.absolute();
     let x = side as i32;
     let content = w.saturating_sub(side);
     let mut top = 0;
@@ -315,7 +479,13 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                 "Forward",
                 tab.can_go_forward(),
             ),
-            ("arrow-up", "files-up", "Up one level", has_parent(path)),
+            // Home and Gallery are views, not folders in a tree: Up is greyed there.
+            (
+                "arrow-up",
+                "files-up",
+                "Up one level",
+                has_parent(path) && tab.scope == crate::FileScope::Folder,
+            ),
             ("reload", "files-reload", "Refresh", true),
         ]
         .into_iter()
@@ -338,18 +508,38 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         }
         let address = Rect::new(x + 150, 7, content.saturating_sub(150 + 190), 30);
         p.border(address, Color::WHITE, 4, LINE);
-        p.symbol("desktop", address.x + 10, address.y + 8, 14, MUTED);
+        p.symbol(
+            if tab.scope == crate::FileScope::QuickAccess {
+                "home"
+            } else if tab.scope == crate::FileScope::Gallery {
+                "image"
+            } else {
+                "desktop"
+            },
+            address.x + 10,
+            address.y + 8,
+            14,
+            MUTED,
+        );
         let mut cx = address.x + 32;
-        for (part, target) in crumbs(path, l.root) {
+        let trail = if place {
+            // A view is its own root: Explorer's address reads "> Home", not a path.
+            vec![(title.clone(), String::new())]
+        } else {
+            crumbs(path, l.root)
+        };
+        for (part, target) in trail {
             p.symbol("chevron-right", cx, address.y + 10, 10, MUTED);
             cx += 16;
             let width = (address.x + address.width as i32 - cx - 8).max(0) as u32;
             let text = p.left(cx, address.y + 7, width, &part, 12, INK);
-            p.region(
-                Rect::new(cx - 3, address.y + 4, text + 6, 24),
-                &format!("files-location:{target}"),
-                &part,
-            );
+            if !target.is_empty() {
+                p.region(
+                    Rect::new(cx - 3, address.y + 4, text + 6, 24),
+                    &format!("files-location:{target}"),
+                    &part,
+                );
+            }
             cx += text as i32 + 8;
         }
         // Real query field: what is typed lands in `tab.query` and the listing below is
@@ -360,7 +550,7 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         p.symbol("search", search.x + 8, search.y + 8, 13, FAINT);
         let typing = tab.searching && tab.rename.is_none();
         let shown = if tab.query.is_empty() && !typing {
-            format!("Search {}", current(path, l.root))
+            format!("Search {title}")
         } else {
             tab.query.clone()
         };
@@ -577,7 +767,10 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     // Column headers are the sort controls: each one selects its key, and clicking the
     // key already in force reverses it. The arrow says which, so the order on screen is
     // always accounted for by something visible.
-    let kind_x = x + content as i32 - 150;
+    // Files keeps a star column at the right edge of its list; the kind column moves
+    // over for it.
+    let star_column = t == DesktopTheme::Ubuntu && tab.view == crate::FileView::List;
+    let kind_x = x + content as i32 - if star_column { 190 } else { 150 };
     let mark = |key: crate::SortKey| {
         if tab.sort != key {
             ""
@@ -687,6 +880,35 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
             directory,
         );
         let name_x = x + if t == DesktopTheme::Ubuntu { 52 } else { 48 };
+        if star_column {
+            // A real star: `files-star:<row>` adds the row to, or takes it off, the
+            // desktop's starred list, which the Starred place shows.
+            let absolute_path = if absolute {
+                entry_name(entry).to_owned()
+            } else {
+                tab.child(entry_name(entry))
+            };
+            let starred = env.files.starred(&absolute_path);
+            let star = Rect::new(x + content as i32 - 40, y + (l.row as i32 - 28) / 2, 28, 28);
+            p.button(
+                star,
+                Color::TRANSPARENT,
+                14,
+                &format!("files-star:{i}"),
+                &format!(
+                    "{} {}",
+                    if starred { "Unstar" } else { "Star" },
+                    entry_name(entry).rsplit('/').next().unwrap_or_default()
+                ),
+            );
+            p.symbol(
+                if starred { "star" } else { "star-outline" },
+                star.x + 6,
+                star.y + 6,
+                16,
+                if starred { INK } else { FAINT },
+            );
+        }
         // A rename replaces the row's name with the field collecting it, caret and all:
         // what is on screen is the buffer that Enter will commit.
         match &tab.rename {
@@ -712,11 +934,36 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                     0,
                 );
             }
+            _ if absolute => {
+                // A list of paths from all over the machine: the name, then where it
+                // lives, the way Files' Recent and Starred lists read.
+                let full = entry_name(entry);
+                let (folder, name) = full.rsplit_once('/').unwrap_or(("", full));
+                let room = (kind_x - 16 - name_x).max(0) as u32;
+                let used = p.left(name_x, y + (l.row as i32 - 19) / 2, room, name, 13, INK);
+                let home = env.files.home.trim_end_matches('/');
+                let folder = if folder.is_empty() {
+                    "/".to_owned()
+                } else if !home.is_empty() && t != DesktopTheme::Windows && folder.starts_with(home)
+                {
+                    format!("~{}", &folder[home.len()..])
+                } else {
+                    folder.to_owned()
+                };
+                p.left(
+                    name_x + used as i32 + 10,
+                    y + (l.row as i32 - 18) / 2,
+                    room.saturating_sub(used + 10),
+                    &folder,
+                    12,
+                    MUTED,
+                );
+            }
             _ => {
                 p.left(
                     name_x,
                     y + (l.row as i32 - 19) / 2,
-                    content.saturating_sub(220),
+                    (kind_x - 16 - name_x).max(0) as u32,
                     entry.trim_end_matches('/'),
                     13,
                     INK,
@@ -724,13 +971,8 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
             }
         }
         if content > 330 {
-            let kind = match (t, directory) {
-                (DesktopTheme::Windows, true) => "File folder",
-                (_, true) => "Folder",
-                (DesktopTheme::Windows, false) => "File",
-                (_, false) => "Document",
-            };
-            p.left(kind_x, y + (l.row as i32 - 18) / 2, 130, kind, 12, MUTED);
+            let kind = kind_label(t, entry);
+            p.left(kind_x, y + (l.row as i32 - 18) / 2, 130, &kind, 12, MUTED);
         }
     }
     if rows_shown.is_empty() {
@@ -738,10 +980,20 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         // match look identical otherwise, and only one of them is the folder's fault.
         let empty = if !tab.query.is_empty() {
             "No items match your search."
-        } else if t == DesktopTheme::Windows {
-            "This folder is empty."
         } else {
-            "Folder is Empty"
+            match (t, tab.scope) {
+                (DesktopTheme::Windows, crate::FileScope::Gallery) => {
+                    "Photos you save to Pictures will appear here."
+                }
+                (DesktopTheme::Windows, crate::FileScope::Starred) => {
+                    "Files you add to Favorites will appear here."
+                }
+                (DesktopTheme::Windows, _) => "This folder is empty.",
+                (_, crate::FileScope::Recents) => "No Recent Files",
+                (_, crate::FileScope::Starred) => "No Starred Files",
+                _ if place => "Trash is Empty",
+                _ => "Folder is Empty",
+            }
         };
         p.center(x, body + 60, content, empty, 15, FAINT);
     }
@@ -786,10 +1038,10 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                 if rows_shown.len() == 1 { "" } else { "s" },
                 // The filtered count is the count on screen; the total says what it
                 // was filtered out of, rather than letting the two blur.
-                if rows_shown.len() == entries.len() {
+                if rows_shown.len() == tab.listed() {
                     String::new()
                 } else {
-                    format!(" of {}", entries.len())
+                    format!(" of {}", tab.listed())
                 },
                 match tab.selection() {
                     Some(entry) => format!("  ·  {} selected", entry.trim_end_matches('/')),
@@ -798,6 +1050,37 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
             );
             p.left(x + 14, fy + 5, content.saturating_sub(28), &note, 12, MUTED);
         }
+    }
+}
+
+/// What each platform's Kind (Type) column calls an entry, read off the name the way
+/// the platform reads it: by extension. Nothing here is a guess about the contents.
+fn kind_label(t: DesktopTheme, entry: &str) -> String {
+    if entry.ends_with('/') {
+        return if t == DesktopTheme::Windows {
+            "File folder".into()
+        } else {
+            "Folder".into()
+        };
+    }
+    let name = entry.rsplit('/').next().unwrap_or(entry);
+    let ext = name
+        .rsplit_once('.')
+        .filter(|(stem, _)| !stem.is_empty())
+        .map(|(_, ext)| ext.to_ascii_lowercase());
+    match (t, ext.as_deref()) {
+        (DesktopTheme::Windows, Some("txt")) => "Text Document".into(),
+        (DesktopTheme::Windows, Some(ext)) => format!("{} File", ext.to_ascii_uppercase()),
+        (DesktopTheme::Windows, None) => "File".into(),
+        (DesktopTheme::Macos, Some("txt")) => "Plain Text Document".into(),
+        (_, Some("txt")) => "Plain text document".into(),
+        (DesktopTheme::Macos, Some("png")) => "PNG image".into(),
+        (DesktopTheme::Macos, Some("jpg" | "jpeg")) => "JPEG image".into(),
+        (_, Some("png")) => "PNG image".into(),
+        (_, Some("jpg" | "jpeg")) => "JPEG image".into(),
+        (_, Some("md")) => "Markdown document".into(),
+        (_, Some("html" | "htm")) => "HTML document".into(),
+        _ => "Document".into(),
     }
 }
 
@@ -1296,16 +1579,17 @@ fn editor(
         _ => Color::WHITE,
     };
     p.scene.background = paper;
+    // Desktop editors keep their commands in menus: Notepad's menu bar, TextEdit's
+    // menu bar and GNOME Text Editor's primary menu each hold Save. A plain-text
+    // TextEdit window and a Text Editor window are the document and nothing else.
     let toolbar: u32 = match t {
         DesktopTheme::Windows => 36,
-        DesktopTheme::Macos => 30,
-        DesktopTheme::Ubuntu => 0,
+        DesktopTheme::Macos | DesktopTheme::Ubuntu => 0,
         _ => 44,
     };
     let status: u32 = match t {
         DesktopTheme::Windows => 26,
-        DesktopTheme::Ubuntu => 30,
-        DesktopTheme::Macos => 0,
+        DesktopTheme::Ubuntu | DesktopTheme::Macos => 0,
         _ => 46,
     };
     let accent = look(t).accent;
@@ -1354,20 +1638,14 @@ fn editor(
             p.symbol("gear", w.saturating_sub(32) as i32, 10, 16, INK);
             p.hline(0, toolbar as i32 - 1, w, LINE);
         }
-        DesktopTheme::Macos => {
-            p.box_(Rect::new(0, 0, w, toolbar), Color::rgb(246, 246, 247), 0);
-            // TextEdit's format popup has nothing to switch: the document is plain text.
-            p.left(14, 7, 120, "Plain Text", 12, FAINT);
-            p.disabled("Plain Text");
-            p.hline(0, toolbar as i32 - 1, w, LINE);
-        }
-        DesktopTheme::Ubuntu => {}
+        DesktopTheme::Macos | DesktopTheme::Ubuntu => {}
         _ => {
             let name = components(path).last().copied().unwrap_or("New Note");
             p.strong(16, 11, w.saturating_sub(110), name, 17, INK);
         }
     }
-    if path.is_empty() {
+    // Only a phone paints Save; see above.
+    if mobile && path.is_empty() {
         p.left(
             save.x + 8,
             save.y + (save.height as i32 - 18) / 2,
@@ -1377,7 +1655,7 @@ fn editor(
             FAINT,
         );
         p.disabled(save_label);
-    } else {
+    } else if mobile {
         let filled = matches!(t, DesktopTheme::Ubuntu) && dirty;
         p.button(
             save,
@@ -1403,7 +1681,8 @@ fn editor(
             Align::Center,
         );
     }
-    let gutter = if t == DesktopTheme::Ubuntu { 44 } else { 0 };
+    // Line numbers are off by default in every desktop editor modelled here.
+    let gutter = 0;
     if gutter > 0 {
         p.box_(
             Rect::new(
@@ -1461,19 +1740,6 @@ fn editor(
         },
         "Document text",
     );
-    if t == DesktopTheme::Ubuntu {
-        // Current-line highlight, as in GNOME Text Editor.
-        p.box_(
-            Rect::new(
-                0,
-                origin.1 + ((visual - first) as u32 * ROW_H) as i32,
-                w,
-                ROW_H,
-            ),
-            Color(0, 0, 0, 10),
-            0,
-        );
-    }
     // Logical line of the first painted row; a gutter numbers each line once, on the
     // row it starts on, and leaves its soft-wrapped continuations blank.
     let mut line = text[..rows.get(first).map_or(0, |r| r.0)]
@@ -1521,31 +1787,32 @@ fn editor(
         DesktopTheme::Windows => {
             p.box_(Rect::new(0, sy, w, status), Color::rgb(249, 250, 252), 0);
             p.hline(0, sy, w, LINE);
-            // Ln/Col is live; zoom, line endings and encoding are fixed facts about the
-            // model (no zoom level, `String` text, always UTF-8) and open no picker.
-            p.left(14, sy + 5, 160, &position, 12, MUTED);
+            // Ln/Col and the character count are live; zoom, line endings and encoding
+            // are fixed facts about the model (no zoom level, text kept with `\n`
+            // line breaks, always UTF-8) and open no picker.
+            p.left(14, sy + 5, 120, &position, 12, MUTED);
+            let count = text.chars().count();
+            if w > 560 {
+                p.vline(146, sy + 5, 16, LINE);
+                p.left(
+                    158,
+                    sy + 5,
+                    140,
+                    &format!("{count} character{}", if count == 1 { "" } else { "s" }),
+                    12,
+                    MUTED,
+                );
+            }
             if w > 420 {
-                for (i, item) in ["100%", "Windows (CRLF)", "UTF-8"].iter().enumerate() {
-                    let x = w as i32 - 330 + i as i32 * 110;
+                for (i, item) in ["100%", "Unix (LF)", "UTF-8"].iter().enumerate() {
+                    let x = w as i32 - 300 + i as i32 * 100;
                     p.vline(x - 12, sy + 5, 16, LINE);
                     p.left(x, sy + 5, 100, item, 12, FAINT);
                     p.disabled(item);
                 }
             }
         }
-        DesktopTheme::Ubuntu => {
-            p.box_(Rect::new(0, sy, w, status), Color::rgb(250, 250, 250), 0);
-            p.hline(0, sy, w, LINE);
-            p.left(
-                14,
-                sy + 7,
-                200,
-                &format!("{position}{}", if dirty { "  •  Unsaved" } else { "" }),
-                12,
-                MUTED,
-            );
-        }
-        DesktopTheme::Macos => {}
+        DesktopTheme::Ubuntu | DesktopTheme::Macos => {}
         _ => {
             p.hline(0, sy, w, LINE);
             // Only "New note" is real — `shell:new` opens another window of this app.
@@ -1601,6 +1868,7 @@ pub fn app_content(state: &crate::AppState, theme: DesktopTheme, width: u32, hei
             settings: &crate::SystemSettings::DEFAULT,
             clipboard: None,
             share_to: None,
+            files: Default::default(),
         },
     )
 }
@@ -1747,10 +2015,18 @@ mod tests {
         let notes = app_content(&state, DesktopTheme::Ios, 390, 700);
         assert!(actions(&notes).contains(&"shell:new"));
         assert!(unavailable(&notes).contains(&"Insert photo"));
-        assert!(
-            unavailable(&app_content(&state, DesktopTheme::Macos, 620, 400))
-                .contains(&"Plain Text")
-        );
+        // Desktop editors keep Save in their menus (Notepad's File menu, TextEdit's
+        // menu bar, Text Editor's primary menu), so the document area paints none.
+        for theme in [
+            DesktopTheme::Macos,
+            DesktopTheme::Windows,
+            DesktopTheme::Ubuntu,
+        ] {
+            let scene = app_content(&state, theme, 620, 400);
+            assert!(!actions(&scene).contains(&"editor-save"), "{theme:?}");
+        }
+        // Notepad's status bar counts what is really there: `\n` endings, 4 chars.
+        assert!(unavailable(&notepad).contains(&"Unix (LF)"));
     }
 
     /// Nothing that cannot act may look clickable. A command that needs a selection or
@@ -1799,6 +2075,7 @@ mod tests {
                 settings: &crate::SystemSettings::DEFAULT,
                 clipboard: Some(&clipboard),
                 share_to: None,
+                files: Default::default(),
             },
         );
         for action in [

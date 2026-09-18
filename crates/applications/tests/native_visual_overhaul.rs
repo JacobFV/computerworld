@@ -75,6 +75,7 @@ fn files_project_real_names_and_only_supported_interactions() {
                     settings: &cw_applications::SystemSettings::DEFAULT,
                     clipboard: Some(&clipboard),
                     share_to: None,
+                    files: Default::default(),
                 },
             );
             let actions: Vec<_> = scene
@@ -134,7 +135,12 @@ fn files_project_real_names_and_only_supported_interactions() {
         // the tab was in rather than jumping to the root; every other shell has a
         // root row in its sidebar or breadcrumb.
         assert!(actions.contains(&"files-root") || actions.contains(&"files-browse"));
-        assert!(actions.contains(&"files-up"));
+        // Finder climbs from its Go menu and Files from its path bar, both drawn by
+        // the shell; every other client area carries its own Up.
+        assert!(
+            actions.contains(&"files-up")
+                || matches!(theme, DesktopTheme::Macos | DesktopTheme::Ubuntu)
+        );
         assert!(actions.contains(&"open:0"));
         assert!(actions.contains(&"open:1"));
         let row = scene
@@ -210,10 +216,15 @@ fn editors_are_deterministic_handle_unicode_and_expose_save() {
     for theme in THEMES {
         let scene = app_content(&state, theme, 800, 500);
         assert_eq!(scene, app_content(&state, theme, 800, 500));
-        assert!(scene
-            .nodes
-            .iter()
-            .any(|n| n.interaction.as_deref() == Some("editor-save")));
+        // Phones paint Save; desktop editors keep it in their menus.
+        assert_eq!(
+            scene
+                .nodes
+                .iter()
+                .any(|n| n.interaction.as_deref() == Some("editor-save")),
+            theme.mobile(),
+            "{theme:?}"
+        );
         assert!(scene.nodes.iter().any(|n| n
             .interaction
             .as_deref()
