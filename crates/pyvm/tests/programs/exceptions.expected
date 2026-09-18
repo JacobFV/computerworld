@@ -1,0 +1,52 @@
+--- exit: 0
+--- stdout
+NotFound missing x 404 ('missing x',) None True
+  finally for 0
+0 caught ValueError: zero
+  finally for 1
+1 caught ZeroDivisionError: division by zero
+  finally for 2
+2 lookup IndexError: list index out of range
+  finally for 3
+3 lookup KeyError: 'k'
+  finally for 4
+4 caught ValueError: invalid literal for int() with base 10: 'abc'
+  finally for 5
+5 other NameError: name 'undefined_name' is not defined
+  finally for 6
+6 other TypeError: can only concatenate str (not "int") to str
+  finally for 7
+7 other AttributeError: 'NoneType' object has no attribute 'attr'
+  finally for 8
+8 ok
+['try', 'except', 'finally', 'outer inner']
+  cleanup
+else 1
+  finally runs before return
+try
+[0, 'f0', 'f1', 2, 'f2', 'f3']
+TypeError('second') ValueError('first') True
+KeyError('during') ZeroDivisionError None
+[Errno 2] No such file or directory: 'x.txt' 2 No such file or directory x.txt
+FileNotFoundError [Errno 2] No such file or directory: '/definitely/missing.txt'
+assert: math is broken
+9 is not in list
+stop value 5
+  enter a
+  enter b
+  body a
+  exit b None
+  exit a None
+  enter c
+  exit c KeyError
+after suppressed
+  enter d
+  exit d ValueError
+got propagates
+[('lookup', 'IndexError', 'msg'), ('lookup', 'KeyError', "'msg'"), ('arith', 'ZeroDivisionError'), ('other', 'TypeError')]
+True True True
+('a', 'b') ('a', 'b') ValueError('a', 'b') ValueError() 'k'
+1
+  generator finalized
+closed
+--- stderr

@@ -1,0 +1,18 @@
+--- exit: 0
+--- stdout
+quicksort: [3, 3, 9, 10, 27, 38, 43, 82]
+merge_sort: [3, 3, 9, 10, 27, 38, 43, 82]
+sorted desc: [82, 43, 38, 27, 10, 9, 3, 3]
+search 43: 6 search 5: -1
+primes: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59]
+dijkstra: [('A', 0), ('B', 7), ('C', 9), ('D', 20), ('E', 20), ('F', 11)]
+bfs steps: 10
+lcs: 4
+knapsack: 9
+topo: ['pants', 'shirt', 'belt', 'shoes', 'tie', 'jacket']
+perms: ['abc', 'acb', 'bac', 'bca', 'cab', 'cba']
+hanoi moves: 15 [('A', 'B'), ('A', 'C'), ('B', 'C')]
+fib[89]: 1779979416004714189 2**200: 1606938044258990275541962092341162602522202993782792835301376
+factorial 30: 265252859812191058636308480000000
+gcd chain: [6, 1, 25]
+--- stderr

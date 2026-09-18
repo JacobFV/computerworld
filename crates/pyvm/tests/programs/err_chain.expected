@@ -1,0 +1,19 @@
+--- exit: 1
+--- stdout
+80
+handled: missing key 'port' | cause: KeyError('port')
+--- stderr
+Traceback (most recent call last):
+  File "/home/user/main.py", line 7, in load
+    return int(cfg["port"])
+           ^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'eighty'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/main.py", line 19, in <module>
+    load({"port": "eighty"})
+  File "/home/user/main.py", line 11, in load
+    raise ConfigError("port is not a number")
+ConfigError: port is not a number

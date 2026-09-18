@@ -1,0 +1,26 @@
+--- exit: 0
+--- stdout
+rect with area 12.00 Rect('rect')
+square with area 25.00 Square('square')
+circle with area 12.57 Circle('circle')
+circle with area 3.14 Circle('circle')
+count: 4 mro: ['Square', 'Rect', 'Shape', 'object']
+side: 7 49
+error: side must be positive
+not implemented: subclass must implement area
+True False True
+6.28318
+sorted: ['0.9', '1.2.3', '1.2.10', '1.10.0']
+max: 1.10.0 True False
+set: 2
+Vector(5, 7, 9) Vector(2, 4, 6) Vector(3, 6, 9) Vector(-1, -2, -3) 5.0 3 2 [1, 2, 3]
+True True False True Vector(10, 20, 30)
+3 3 2 1
+I say woof! ['D', 'B', 'C', 'A'] ['D', 'B', 'C', 'A', 'object']
+Counter(8) 1 8 False {'value': 8}
+['value']
+True Meta
+100 212.0
+AttributeError: property 'fahrenheit' of 'Temperature' object has no setter
+Temperature Temperature Temperature
+--- stderr

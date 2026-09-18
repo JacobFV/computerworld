@@ -1,0 +1,21 @@
+--- exit: 1
+--- stdout
+start
+orders: 2
+17.0
+orders: 2
+--- stderr
+Traceback (most recent call last):
+  File "/home/user/main.py", line 21, in <module>
+    print(report('[{"qty": 2, "price": 3.5}, {"qty": 1}]'))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/main.py", line 16, in report
+    return total(orders)
+           ^^^^^^^^^^^^^
+  File "/home/user/main.py", line 10, in total
+    return sum(o["qty"] * o["price"] for o in orders)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/main.py", line 10, in <genexpr>
+    return sum(o["qty"] * o["price"] for o in orders)
+                          ~^^^^^^^^^
+KeyError: 'price'

@@ -144,7 +144,16 @@ impl<'h> Vm<'h> {
         if let ErrKind::Lazy(cls, args) = &mut e.kind {
             let cls = self.t.exc(cls);
             let args = std::mem::take(args);
-            let v = self.new_exception(&cls, args);
+            // A Python-level __init__ (e.g. json.JSONDecodeError) must run.
+            let custom = matches!(cls.lookup("__init__"), Some(Value::Func(_)));
+            let v = if custom {
+                match self.call_class(&cls, args.clone(), vec![]) {
+                    Ok(v) => v,
+                    Err(_) => self.new_exception(&cls, args),
+                }
+            } else {
+                self.new_exception(&cls, args)
+            };
             e.kind = ErrKind::Exc(v);
         }
         match &e.kind {

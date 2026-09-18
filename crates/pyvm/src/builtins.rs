@@ -494,7 +494,10 @@ pub fn set_binop(vm: &mut Vm, a: &Value, b: &Value, op: BinOp) -> PyResult<Value
     };
     let db = match b {
         Value::DictView(_) => build_set(vm, &Value::list(set_items(b)))?,
-        _ => set_data_of(b).unwrap_or_default(),
+        _ => match set_data_of(b) {
+            Some(d) => d,
+            None => build_set(vm, b)?,
+        },
     };
     let result_kind = if matches!(a, Value::DictView(_)) {
         &Value::None

@@ -184,16 +184,8 @@ impl<'a> Lexer<'a> {
                 let _ = start;
                 let current = *self.indents.last().unwrap();
                 if width > current {
-                    if self.out.is_empty()
-                        || matches!(self.out.last().map(|t| &t.tok), Some(Tok::Newline))
-                            && !self.expects_block()
-                    {
-                        return Err(SyntaxErr::indent(
-                            "unexpected indent",
-                            self.line + self.base_line,
-                            width,
-                        ));
-                    }
+                    // An unexpected INDENT is the parser's to report, so a
+                    // missing ':' on the line above is diagnosed first.
                     self.indents.push(width);
                     self.push(Tok::Indent, self.line, 0);
                 } else if width < current {

@@ -1026,7 +1026,20 @@ impl<'h> Vm<'h> {
                 }
             }
             (Value::Set(_) | Value::FrozenSet(_), Value::Set(_) | Value::FrozenSet(_), _)
-            | (Value::DictView(_), Value::Set(_) | Value::FrozenSet(_) | Value::DictView(_), _)
+            | (
+                Value::DictView(_),
+                Value::Set(_)
+                | Value::FrozenSet(_)
+                | Value::DictView(_)
+                | Value::List(_)
+                | Value::Tuple(_)
+                | Value::Str(_)
+                | Value::Dict(_)
+                | Value::Range(_)
+                | Value::Iter(_)
+                | Value::Gen(_),
+                BinOp::BitOr | BinOp::BitAnd | BinOp::Sub | BinOp::BitXor,
+            )
             | (Value::Set(_) | Value::FrozenSet(_), Value::DictView(_), _) => {
                 crate::builtins::set_binop(self, a, b, op)
             }
@@ -1318,6 +1331,16 @@ impl<'h> Vm<'h> {
         }
         Ok(Some(match (a, b) {
             (Value::Instance(_), _) | (_, Value::Instance(_)) => return Ok(None),
+            (Value::Big(_) | Value::Float(_), Value::Big(_) | Value::Float(_)) => {
+                match (self.as_num(a), self.as_num(b)) {
+                    (Some(x), Some(y)) => {
+                        let nan = matches!(x, Num::F(f) if f.is_nan())
+                            || matches!(y, Num::F(f) if f.is_nan());
+                        !nan && num_cmp(&x, &y) == Ordering::Equal
+                    }
+                    _ => false,
+                }
+            }
             (Value::List(x), Value::List(y)) => {
                 if Rc::ptr_eq(x, y) {
                     return Ok(Some(true));
@@ -2769,14 +2792,10 @@ impl<'h> Vm<'h> {
             names.sort();
             let n = names.len();
             return Err(type_err(format!(
-                "Can't instantiate abstract class {} with abstract method{} {}",
+                "Can't instantiate abstract class {} without an implementation for abstract method{} {}",
                 cls.name(),
                 if n == 1 { "" } else { "s" },
-                if n == 1 {
-                    names[0].clone()
-                } else {
-                    format!("{} and {}", names[..n - 1].join(", "), names[n - 1])
-                }
+                names.join(", ")
             )));
         }
         let new = cls.lookup("__new__").unwrap_or(Value::None);

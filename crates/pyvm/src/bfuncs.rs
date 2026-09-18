@@ -1429,7 +1429,7 @@ fn object_new(vm: &mut Vm, mut a: Args) -> PyResult<Value> {
             .collect();
         names.sort();
         return Err(type_err(format!(
-            "Can't instantiate abstract class {} with abstract method{} {}",
+            "Can't instantiate abstract class {} without an implementation for abstract method{} {}",
             cls.name(),
             if names.len() == 1 { "" } else { "s" },
             names.join(", ")

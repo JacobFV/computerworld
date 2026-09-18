@@ -585,6 +585,8 @@ pub fn fast_eq(a: &Value, b: &Value) -> Option<bool> {
         (Int(x), Int(y)) => x == y,
         (Bool(x), Bool(y)) => x == y,
         (Int(x), Bool(y)) | (Bool(y), Int(x)) => *x == *y as i64,
+        (Float(x), Bool(y)) | (Bool(y), Float(x)) => *x == *y as i64 as f64,
+        (Big(_), Float(_)) | (Float(_), Big(_)) => return Option::None,
         (Float(x), Float(y)) => x == y,
         (Int(x), Float(y)) | (Float(y), Int(x)) => int_float_eq(*x, *y),
         (Big(x), Big(y)) => x == y,

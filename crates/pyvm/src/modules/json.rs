@@ -493,9 +493,7 @@ impl<'a> Dec<'a> {
                     self.pos += 1;
                     self.ws();
                     if self.s.get(self.pos) == Some(&']') {
-                        return Err(
-                            self.fail("Illegal trailing comma before end of array", self.pos - 1)
-                        );
+                        return Err(self.fail("Expecting value", self.pos));
                     }
                 }
                 Some(']') => {
@@ -537,9 +535,10 @@ impl<'a> Dec<'a> {
                     self.pos += 1;
                     self.ws();
                     if self.s.get(self.pos) == Some(&'}') {
-                        return Err(
-                            self.fail("Illegal trailing comma before end of object", self.pos - 1)
-                        );
+                        return Err(self.fail(
+                            "Expecting property name enclosed in double quotes",
+                            self.pos,
+                        ));
                     }
                 }
                 Some('}') => {

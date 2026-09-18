@@ -27,11 +27,12 @@ class _SpecialForm:
 
 
 class _GenericAlias:
-    def __init__(self, origin, params):
+    def __init__(self, origin, params, name=None):
         self.__origin__ = origin
         if not isinstance(params, tuple):
             params = (params,)
         self.__args__ = params
+        self._alias_name = name
 
     def __repr__(self):
         def r(a):
@@ -43,11 +44,16 @@ class _GenericAlias:
                 return '...'
             return repr(a)
         o = self.__origin__
-        name = r(o) if not isinstance(o, _SpecialForm) else repr(o)
+        if self._alias_name is not None:
+            name = self._alias_name
+        else:
+            name = r(o) if not isinstance(o, _SpecialForm) else repr(o)
+        if o is Optional and len(self.__args__) == 1:
+            return f"typing.Optional[{r(self.__args__[0])}]"
         return f"{name}[{', '.join(r(a) for a in self.__args__)}]"
 
     def __getitem__(self, params):
-        return _GenericAlias(self.__origin__, params)
+        return _GenericAlias(self.__origin__, params, self._alias_name)
 
     def __call__(self, *args, **kwargs):
         return self.__origin__(*args, **kwargs)
@@ -94,7 +100,7 @@ class _Alias:
         self._name = name
 
     def __getitem__(self, params):
-        return _GenericAlias(self.__origin__, params)
+        return _GenericAlias(self.__origin__, params, 'typing.' + self._name)
 
     def __repr__(self):
         return 'typing.' + self._name

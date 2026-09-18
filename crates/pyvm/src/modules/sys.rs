@@ -574,7 +574,8 @@ pub fn make_time(vm: &mut Vm) -> Value {
             return Err(value_err("sleep length must be non-negative"));
         }
         // Simulated time passes for this process only; the world clock is not moved.
-        vm.time_offset += (s * 1e6) as i64;
+        // Rounded up so a sleep always reaches the deadline it was computed for.
+        vm.time_offset += (s * 1e6).ceil() as i64;
         Ok(Value::None)
     });
     fn gm(vm: &mut Vm, a: Args) -> PyResult<Value> {

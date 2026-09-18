@@ -1,0 +1,11 @@
+--- exit: 1
+--- stdout
+--- stderr
+Traceback (most recent call last):
+  File "/home/user/main.py", line 9, in <module>
+    print(compute([1, 2, 3]))
+          ^^^^^^^^^^^^^^^^^^
+  File "/home/user/main.py", line 4, in compute
+    result += v * factr
+                  ^^^^^
+NameError: name 'factr' is not defined. Did you mean: 'factor'?

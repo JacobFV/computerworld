@@ -1,0 +1,55 @@
+--- exit: 0
+--- stdout
+INFO 2024-01-05 alice -
+ERROR 2024-01-05 bob 1024
+WARN 2024-01-05 alice 2048
+ERROR 2024-01-06 carol -
+['alice', 'bob', 'alice', 'carol']
+[('10', '0', '0', '1'), ('10', '0', '0', '7'), ('192', '168', '1', '20')]
+['10.0.0.1', '10.0.0.7', '192.168.1.20']
+on 05/01 and 31/12
+HELLO THERE WORLD of REGEX
+['a', 'b', 'c', 'd'] ['a', ' ', 'b'] ['', 'a', '', 'b', 'c', '']
+123 None True
+('a', None) ('a', '-') (3, 8)
+['foo', 'foo'] ['abc', 'a\nc'] ['a', 'c']
+['Hello', 'HELLO', 'hello'] lots of space
+['<a>', '<b>', '</b>'] ['<a><b></b>'] ['a', 'b']
+1\+1=2\? ('f00 b00', 4) ['10', '20']
+['hi', 'wow'] ['q'] True
+['a.b+c@ex-ample.co.uk', 'x@y.io']
+^(?P<date> 4 [('date', 1), ('level', 3), ('rest', 4), ('time', 2)]
+re.error: missing ), unterminated subpattern at position 0
+{"name": "Widget", "price": 9.99, "tags": ["a", "b"], "stock": null, "active": true, "dims": {"w": 1.5, "h": 2}, "unicode": "caf\u00e9 \u2615", "big": 12345678901234567890}
+{
+  "active": true,
+  "big": 12345678901234567890,
+  "dims": {
+    "h": 2,
+    "w": 1.5
+  },
+  "name": "Widget",
+  "price": 9.99,
+  "stock": null,
+  "tags": [
+    "a",
+    "b"
+  ],
+  "unicode": "café ☕"
+}
+True 1.5 int
+[1,"two",3.0,[null]] "quote\"slash\\\n" 1e+100
+{'a': [1, 2, {'b': None}], 'c': 'é\n', 'd': -1500.0, 'e': True}
+JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 9 (char 8) 8 1 9
+TypeError: Object of type set is not JSON serializable
+{"a": 2, "z": 1} {"1": "bool"} [] 42
+{"x": 1, "y": 2}
+'name,quote,n\r\nAnn,"said ""hi"", then left",3\r\nBob,plain,4.5\r\n'
+[['name', 'quote', 'n'], ['Ann', 'said "hi", then left', '3'], ['Bob', 'plain', '4.5']]
+[{'id': '1', 'score': '90'}, {'id': '2', 'score': '85'}]
+['k,v', 'x,1', 'y,2']
+[('it', 4), ('of', 4), ('the', 4), ('was', 4), ('age', 2)]
+Snake Case To Title cAMELcASEsTRING
+camel_case_string
+HelloWorld True ['a', 'a', 'a', 'b', 'n', 'n'] abn
+--- stderr

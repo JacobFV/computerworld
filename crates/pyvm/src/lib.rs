@@ -353,7 +353,7 @@ fn class_display_name(vm: &Vm, cls: &Rc<Class>) -> String {
         .unwrap_or_else(|| "builtins".into());
     let _ = vm;
     let q = cls.qualname.borrow().to_string();
-    if module == "builtins" {
+    if module == "builtins" || module == "__main__" {
         q
     } else {
         format!("{module}.{q}")
@@ -819,7 +819,10 @@ fn run_main(vm: &mut Vm, src: Option<String>, filename: &str, target: &Target) -
                 .borrow_mut()
                 .set_str("__file__", Value::str(&filename));
         }
-        vm.sources.insert(filename.clone(), src.as_str().into());
+        // CPython 3.12 shows no source lines for -c or stdin programs.
+        if !filename.starts_with('<') {
+            vm.sources.insert(filename.clone(), src.as_str().into());
+        }
         vm.modules
             .borrow_mut()
             .set_str("__main__", Value::Module(main.clone()));
