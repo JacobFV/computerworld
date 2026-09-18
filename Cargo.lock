@@ -191,6 +191,7 @@ dependencies = [
  "cw-protocol",
  "cw-scene",
  "cw-sdk",
+ "regex",
  "serde",
  "serde_json",
 ]
@@ -245,6 +246,7 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "cw-applications",
  "cw-browser",
+ "cw-computer",
  "cw-kernel",
  "cw-protocol",
  "cw-scene",

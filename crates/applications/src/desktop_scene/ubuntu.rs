@@ -18,11 +18,12 @@ const LIGHT: Color = Color::rgb(246, 246, 246);
 /// Width of the Files sidebar; shared with the Files client area.
 pub const FILES_SIDEBAR: u32 = 180;
 /// Every application this shell can present, in Activities grid order.
-const APPS: [(&str, &str); 17] = [
+const APPS: [(&str, &str); 18] = [
     ("browser", "Firefox"),
     ("files", "Files"),
     ("terminal", "Terminal"),
     ("editor", "Text Editor"),
+    ("code", "Visual Studio Code"),
     ("mail", "Thunderbird Mail"),
     ("calendar", "Calendar"),
     ("chat", "Chat"),
@@ -40,8 +41,8 @@ const APPS: [(&str, &str); 17] = [
 /// The favourites the Ubuntu dock keeps, in 24.04's default order (Firefox,
 /// Thunderbird, Files, Rhythmbox, LibreOffice Writer), then Terminal and Text Editor;
 /// Activities carries the whole grid.
-const DOCK: [&str; 7] = [
-    "browser", "mail", "files", "music", "docs", "terminal", "editor",
+const DOCK: [&str; 8] = [
+    "browser", "mail", "files", "music", "docs", "terminal", "editor", "code",
 ];
 
 fn basename(path: &str) -> &str {
@@ -708,6 +709,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         radius,
         Color(0, 0, 0, if w.focused { 110 } else { 70 }),
     );
+    if w.kind == "code" {
+        return crate::apps::code::title_bar(p, ctx, w);
+    }
     let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 45);
     p.box_(inner, header, radius.saturating_sub(1));
     p.box_(Rect::new(inner.x, r.y + 24, inner.width, 22), header, 0);

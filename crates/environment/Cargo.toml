@@ -6,6 +6,7 @@ license.workspace = true
 [dependencies]
 cw-protocol = { path = "../protocol" }
 cw-kernel = { path = "../kernel" }
+cw-computer = { path = "../computer" }
 cw-browser = { path = "../browser" }
 cw-applications = { path = "../applications" }
 cw-scene = { path = "../scene" }

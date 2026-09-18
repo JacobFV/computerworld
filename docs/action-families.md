@@ -184,11 +184,43 @@ File manager controls, reached as `window:<id>:content:<target>`: `files-back`,
 `files-cut`, `files-copy`, `files-paste`, `files-rename`, `files-delete`, and
 `open:<i>`, which indexes the **displayed** row order rather than the raw listing.
 
+Visual Studio Code controls (kind `code`), reached as `window:<id>:content:<target>`.
+Every one dispatches into the same command table the Command Palette, the menus and
+the keybindings use, and a control whose command cannot run now is painted disabled
+with the reason:
+
+| Target | Effect |
+|---|---|
+| `code:cmd:<command id>` | Run a command, e.g. `workbench.action.quickOpen`, `workbench.action.files.save`, `python.execInTerminal`, `git.commit`. The ids are VS Code's own (`crates/applications/src/apps/code/commands.rs`) |
+| `code:menu:<file\|edit\|selection\|view\|go\|run\|terminal\|help\|manage>`, `code:menu-close` | Open a menu from the title bar (Windows, Ubuntu) or the Manage gear; on macOS the same menus hang from the Mac menu bar's File, Edit, View and Help |
+| `code:activity:<explorer\|search\|scm\|run>` | Activity bar; the active view again hides the side bar |
+| `code:tree:<relative path>` | Explorer row: a folder toggles; a file opens in a preview tab on click and pinned on double click |
+| `code:explorer`, `code:inline` | Focus the Explorer (arrow keys, `Enter`, `F2` rename, `Delete` to the trash) or the inline name box of New File, New Folder and Rename |
+| `code:tab:<i>`, `code:tab-close:<i>`, `code:crumb:<folder>` | Editor tabs (a double click pins a preview), close (asks first when unsaved), and a breadcrumb folder revealed in the Explorer |
+| `code:editor:<first row>:<first column>:<wrap columns>:<visible rows>` | The text area. A click places the caret at the character under the pointer; `pointer.v1 down` then `up` inside it selects from the press to the release; a double click selects a word |
+| `code:scroll:<row>` | Scrollbar track: page the editor to that row |
+| `code:find-input`, `code:replace-input`, `code:find:<case\|word\|regex\|prev\|next\|replace\|replace-all\|toggle-replace\|close>` | The find widget (`Ctrl+F`, `Ctrl+H`) |
+| `code:search-input`, `code:search-replace-input`, `code:search:<case\|word\|regex\|toggle-replace\|clear\|collapse>`, `code:search-file:<path>`, `code:search-result:<file>:<hit>`, `code:search-replace-all` | Search view: literal, regex, case and whole-word search over the workspace's files; a result opens its file with the match selected |
+| `code:scm-message`, `code:scm-stage:<path>`, `code:scm-open:<path>` | Source Control, backed by the machine's `git` (`status`, `add`, `commit`, `init`, `branch`, `checkout`) |
+| `code:panel:<problems\|output\|terminal>`, `code:panel-close`, `code:terminal`, `code:terminal-line`, `code:term-tab:<i>`, `code:term-scroll:<n>`, `code:problem:<i>` | The panel. The terminal is a session of the machine's shell with its own working directory; a problem opens its file at its line |
+| `code:status:<branch\|problems\|position\|indent\|eol\|language>` | Status bar items: branch picker, Problems, Go to Line, tab size, line endings, language mode |
+| `code:quick-input`, `code:quick:<i>`, `code:quick-ok`, `code:quick-close` | Quick input: Quick Open (`Ctrl+P`, fuzzy over workspace files, `:` for a line), the Command Palette (`Ctrl+Shift+P`, `>`), and the pickers (theme, language, tab size, line endings, branch, Open Folder, Save As) |
+| `code:dialog:<i>`, `code:notice-close`, `code:settings:<theme\|font\|tab\|wrap>:<value>`, `code:welcome` | Modal dialog buttons, the notification toast, the Settings editor, and the empty editor area |
+
+Keys follow VS Code, with `Meta` treated as `Cmd`, i.e. as `Ctrl`: `Ctrl+S`, `Ctrl+Z`/`Ctrl+Y`,
+`Ctrl+X`/`C`/`V` through the machine's text clipboard, `Tab`/`Shift+Tab`, `Ctrl+/`,
+`Alt+Up`/`Down`, `Shift+Alt+Up`/`Down`, `Ctrl+Shift+K`, `Ctrl+Enter`, `Ctrl+G`, `Ctrl+F`/`H`,
+`F3`, `Ctrl+B`, `Ctrl+J`, ``Ctrl+` ``, `F5`/`Ctrl+F5`, `Alt+Z`, `Ctrl+,` and the `Ctrl+K` chords
+(`Ctrl+K Ctrl+O` Open Folder, `Ctrl+K Ctrl+T` theme, `Ctrl+K M` language). A single typed
+character is a keystroke (brackets and quotes close and are typed over, `Enter` keeps the
+indentation); a longer `keyboard.v1 type` is inserted as written, the way a paste is, so
+its own indentation is not indented again.
+
 `kind` accepts `text_editor` as an alias for `editor` and `file_manager` for
 `files`. Built-in window kinds are `browser`, `files`, `editor`, `terminal`, plus
-the nine native applications (`calendar`, `mail`, `chat`, `docs`, `notes`,
-`contacts`, `settings`, `calculator`, `clock`) listed by the `native_apps!` macro in
-`crates/applications/src/apps/mod.rs`. A world may also declare `desktop_apps`
+the native applications (`calendar`, `mail`, `chat`, `docs`, `notes`, `contacts`,
+`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`) listed
+by the `native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also declare `desktop_apps`
 metadata aliases that launch a browser window at a fixed URL. Launching a kind the
 machine does not have installed is `not_found`.
 

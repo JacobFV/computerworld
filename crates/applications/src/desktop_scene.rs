@@ -6,7 +6,7 @@ pub use app_content::{app_content, app_content_with};
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 mod android;
 mod ios;
-mod macos;
+pub(crate) mod macos;
 mod ubuntu;
 mod windows;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -108,6 +108,16 @@ pub fn window_content_rect_for_kind(theme: DesktopTheme, frame: Rect, kind: &str
     if kind == "music" && theme.mobile() {
         r.y -= PHONE_APP_BAR as i32;
         r.height += PHONE_APP_BAR;
+    }
+    // Visual Studio Code draws its own 35 px title bar in place of the platform's.
+    if kind == "code" && !theme.mobile() {
+        let top = crate::apps::code::frame::TITLE_H;
+        return Rect::new(
+            frame.x + 1,
+            frame.y + top as i32,
+            frame.width.saturating_sub(2).max(1),
+            frame.height.saturating_sub(top + 1).max(1),
+        );
     }
     if kind == "browser" {
         let (top, bottom) = match theme {

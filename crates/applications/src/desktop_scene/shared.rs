@@ -42,6 +42,21 @@ pub struct WindowView {
     pub selection: String,
     /// A browser window's page zoom in percent; 0 in a view that never set it.
     pub zoom: u16,
+    /// The application paints a dark theme of its own, and a frame that draws that
+    /// application's title bar (Visual Studio Code's) draws it to match.
+    pub dark_chrome: bool,
+    /// Named facts an application lends a frame that draws controls on its behalf —
+    /// which of its menus is open, which of its panes are shown — so those controls
+    /// light the state they switch rather than guessing it.
+    pub chrome: Vec<(String, String)>,
+}
+impl WindowView {
+    pub fn chrome(&self, name: &str) -> Option<&str> {
+        self.chrome
+            .iter()
+            .find(|(k, _)| k == name)
+            .map(|(_, v)| v.as_str())
+    }
 }
 impl WindowView {
     /// `(user, host, directory)` a terminal's prompt names, with the home folder

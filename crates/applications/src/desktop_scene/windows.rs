@@ -13,19 +13,21 @@ const CAPTION: Color = Color::rgb(232, 238, 246);
 const CAPTION_INACTIVE: Color = Color::rgb(243, 243, 243);
 const TAB: Color = Color::rgb(249, 250, 252);
 /// Taskbar pins: the handful Windows keeps out of Start.
-const PINNED: [(&str, &str); 5] = [
+const PINNED: [(&str, &str); 6] = [
     ("browser", "Microsoft Edge"),
     ("files", "File Explorer"),
     ("mail", "Outlook"),
     ("terminal", "Terminal"),
     ("editor", "Notepad"),
+    ("code", "Visual Studio Code"),
 ];
 /// Every application Start can present, in its pinned-grid order.
-const APPS: [(&str, &str); 17] = [
+const APPS: [(&str, &str); 18] = [
     ("browser", "Edge"),
     ("files", "File Explorer"),
     ("terminal", "Terminal"),
     ("editor", "Notepad"),
+    ("code", "Visual Studio Code"),
     ("mail", "Outlook"),
     ("calendar", "Calendar"),
     ("chat", "Teams"),
@@ -616,6 +618,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             Color(0, 0, 0, 60)
         },
     );
+    if w.kind == "code" {
+        return crate::apps::code::title_bar(p, ctx, w);
+    }
     let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 37);
     p.box_(inner, caption, radius.saturating_sub(1));
     p.box_(Rect::new(inner.x, r.y + 20, inner.width, 18), caption, 0);

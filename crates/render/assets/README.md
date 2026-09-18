@@ -238,12 +238,17 @@ namespaces, and are likewise generated rather than sourced. `music` (two beamed 
 notes), `maps` (a folded map with a location pin) and `weather` (a sun behind a cloud)
 are the most recent additions and were drawn the same way again: every path and colour
 is written by hand in `generate-icons.py`, rasterized once at 128×128 by CairoSVG, and
-committed. Re-running the generator reproduces all 84 non-Ubuntu PNGs byte for byte on
-CairoSVG 2.9.1, which is how each batch is checked before it lands. DejaVuSans-Bold.ttf uses
+committed. `code` (Visual Studio Code: a ribbon folded into a chevron, in three blues) is
+an original approximation of that mark drawn the same way; it has no tile on macOS and
+Windows, where the product ships its mark bare, and a tile on iOS and Android. Yaru has no
+Visual Studio Code icon — the editor installs its own mark on Ubuntu — so
+`ubuntu-code.png` is the same original artwork rasterized at Yaru's 256×256 rather than a
+copy from the package. Re-running the generator reproduces all 89 generated PNGs byte for
+byte on CairoSVG 2.9.1, which is how each batch is checked before it lands. DejaVuSans-Bold.ttf uses
 the same bundled DejaVu font license as the other fonts (`FONT-LICENSE.txt`).
 
 Runtime identifiers: `wallpaper/{macos,windows,ubuntu,ios,android}` and
-`icon/{platform}/{files,browser,terminal,docs,mail,calendar,chat,settings,camera,photos,phone,store,launcher,trash,notes,contacts,clock,calculator,music,maps,weather}`,
+`icon/{platform}/{files,browser,terminal,docs,mail,calendar,chat,settings,camera,photos,phone,store,launcher,trash,notes,contacts,clock,calculator,music,maps,weather,code}`,
 for all five platforms. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
 aliases `notes`, `addressbook` aliases `contacts`, `clocks` aliases `clock` and `calc`
 aliases `calculator`; unqualified `icon/{app}` and `icon/common/{app}` use macOS
@@ -253,7 +258,7 @@ failing — `crates/render/tests/icon_assets.rs` renders every advertised id and
 it covers the tile with more than one colour, that every platform carries every
 application, and that each alias paints exactly its canonical artwork; the
 `icon_table_tests` in `src/assets.rs` additionally pin each icon's decoded size
-(128×128 original artwork, 256×256 Yaru). All PNGs decode lazily once per process/Wasm instance into immutable shared
+(128×128 original artwork, 256×256 for every Ubuntu icon). All PNGs decode lazily once per process/Wasm instance into immutable shared
 `Arc<Frame>` resources. Scenes contain identifiers, never repeated image bytes.
 
 Icons are reduced with a coverage-weighted box filter, wallpapers fill their bounds with a

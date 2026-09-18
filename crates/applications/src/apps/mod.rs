@@ -11,6 +11,7 @@ pub mod calculator;
 pub mod calendar;
 pub mod chat;
 pub mod clock;
+pub mod code;
 pub mod contacts;
 pub mod docs;
 pub mod mail;
@@ -207,6 +208,74 @@ macro_rules! native_apps {
                     other => other.offline(path, reason),
                 }
             }
+            /// A click that carries where inside its control it landed, for controls
+            /// that place a caret; everything else treats it as a plain click.
+            pub fn click_at(
+                &mut self,
+                window: u64,
+                target: &str,
+                dx: i32,
+                dy: i32,
+                clock_us: u64,
+            ) -> Result<Vec<AppEffect>, String> {
+                match self {
+                    Self::Code(a) => a.click_at(window, target, dx, dy, clock_us),
+                    other => other.click(window, target, clock_us),
+                }
+            }
+            /// A pointer pressed on a control, before it is released: a text view
+            /// anchors a drag selection here.
+            pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
+                match self {
+                    Self::Code(a) => a.press_at(target, dx, dy),
+                    _ => Ok(()),
+                }
+            }
+            /// A double click on one of this application's controls.
+            pub fn activate(
+                &mut self,
+                window: u64,
+                target: &str,
+                clock_us: u64,
+            ) -> Result<Vec<AppEffect>, String> {
+                match self {
+                    Self::Code(a) => a.activate(window, target, clock_us),
+                    other => other.click(window, target, clock_us),
+                }
+            }
+            /// Typed text that may need work done, such as a search as you type.
+            pub fn text_effects(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
+                match self {
+                    Self::Code(a) => a.text_effects(window, text),
+                    other => other.text(text).map(|()| vec![]),
+                }
+            }
+            /// Text from the machine's clipboard, pasted where the application's focus is.
+            pub fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
+                match self {
+                    Self::Code(a) => a.paste(window, text),
+                    other => other.text(text).map(|()| vec![]),
+                }
+            }
+            /// The application draws a dark theme, and its frame should match.
+            pub fn dark_chrome(&self) -> bool {
+                match self {
+                    Self::Code(a) => a.dark(),
+                    _ => false,
+                }
+            }
+            /// Facts a frame drawing this application's title bar needs.
+            pub fn chrome(&self) -> Vec<(String, String)> {
+                match self {
+                    Self::Code(a) => vec![
+                        ("menu".into(), a.menu.clone().unwrap_or_default()),
+                        ("sidebar".into(), if a.sidebar { "1" } else { "0" }.into()),
+                        ("panel".into(), if a.panel_open { "1" } else { "0" }.into()),
+                        ("enabled".into(), a.enabled_menu_commands().join(",")),
+                    ],
+                    _ => vec![],
+                }
+            }
             /// Semantic projection, so an agent can drive the app without pixels.
             pub fn page(&self, page: &mut cw_protocol::Page) {
                 match self { $(Self::$variant(a) => a.page(page),)+ }
@@ -246,6 +315,7 @@ native_apps! {
     Music => music,
     Maps => maps,
     Weather => weather,
+    Code => code,
 }
 
 impl NativeApp {
