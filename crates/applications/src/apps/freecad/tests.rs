@@ -798,6 +798,193 @@ fn saving_over_a_file_asks_first_in_each_platforms_words() {
     );
 }
 
+/// A folder of `n` documents, `part-000.FCStd.json` onwards.
+fn many(n: usize) -> Vec<String> {
+    (0..n).map(|i| format!("part-{i:03}.FCStd.json")).collect()
+}
+/// The rows the dialog paints, read off the scene, in order.
+fn painted_rows(c: &Cad, theme: DesktopTheme) -> Vec<String> {
+    let app = NativeApp::Freecad(Freecad(Box::new(c.clone())));
+    let settings = crate::SystemSettings::DEFAULT;
+    let env = crate::AppEnv {
+        theme,
+        width: 1100,
+        height: 700,
+        clock_us: 0,
+        settings: &settings,
+        clipboard: None,
+        share_to: None,
+        files: Default::default(),
+        editor: None,
+        pointer: None,
+    };
+    let scene = app_content_with(&AppState::Native(app), &env);
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| {
+            n.interaction
+                .as_deref()?
+                .strip_prefix("freecad:file:entry:")
+        })
+        .map(str::to_owned)
+        .collect()
+}
+fn painted_target(c: &Cad, theme: DesktopTheme, prefix: &str) -> Option<String> {
+    let app = NativeApp::Freecad(Freecad(Box::new(c.clone())));
+    let settings = crate::SystemSettings::DEFAULT;
+    let env = crate::AppEnv {
+        theme,
+        width: 1100,
+        height: 700,
+        clock_us: 0,
+        settings: &settings,
+        clipboard: None,
+        share_to: None,
+        files: Default::default(),
+        editor: None,
+        pointer: None,
+    };
+    let scene = app_content_with(&AppState::Native(app), &env);
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| n.interaction.clone())
+        .find(|t| t.starts_with(prefix))
+}
+
+#[test]
+fn a_long_folder_scrolls_by_wheel_bar_and_keyboard() {
+    for theme in [
+        DesktopTheme::Macos,
+        DesktopTheme::Windows,
+        DesktopTheme::Ubuntu,
+    ] {
+        let mut c = cad();
+        c.platform = Some(theme);
+        c.run(W, "Std_Open").unwrap();
+        c.listed(many(80));
+        let first = painted_rows(&c, theme);
+        assert_eq!(first[0], "part-000.FCStd.json", "{theme:?}");
+        assert!(first.len() < 80, "{theme:?}: the list overflows");
+        let cap = first.len();
+        // The painted list says how many rows it shows.
+        let list = painted_target(&c, theme, "freecad:file:list:").unwrap();
+        assert_eq!(list, format!("freecad:file:list:{cap}"));
+        c.command(W, list.strip_prefix("freecad:").unwrap(), None)
+            .unwrap();
+        assert_eq!(file_dialog(&c).page, cap);
+        // The wheel: a notch is three rows.
+        let mut app = Freecad(Box::new(c.clone()));
+        assert!(app
+            .wheel("freecad:file:entry:part-001.FCStd.json", 0, 0, 120)
+            .unwrap());
+        c = *app.0;
+        assert_eq!(painted_rows(&c, theme)[0], "part-003.FCStd.json");
+        // The scrollbar: a click at the bottom of the track shows the last rows.
+        let bar = painted_target(&c, theme, "freecad:file:scrollbar:").unwrap();
+        let height: i32 = bar.rsplit(':').next().unwrap().parse().unwrap();
+        c.command(W, bar.strip_prefix("freecad:").unwrap(), Some((4, height)))
+            .unwrap();
+        let rows = painted_rows(&c, theme);
+        assert_eq!(rows.last().unwrap(), "part-079.FCStd.json", "{theme:?}");
+        // Windows' arrows step a row.
+        if theme == DesktopTheme::Windows {
+            c.command(W, "file:scroll-by:-1", None).unwrap();
+            assert_eq!(
+                painted_rows(&c, theme).last().unwrap(),
+                "part-078.FCStd.json"
+            );
+        }
+        // The keyboard: Home, Page Down, End keep the selection in view.
+        c.key(W, "Home").unwrap();
+        assert_eq!(painted_rows(&c, theme)[0], "part-000.FCStd.json");
+        c.key(W, "PageDown").unwrap();
+        let sel = file_dialog(&c).selected.clone().unwrap();
+        assert_eq!(sel, format!("part-{:03}.FCStd.json", cap - 1));
+        assert!(painted_rows(&c, theme).contains(&sel));
+        c.key(W, "ArrowDown").unwrap();
+        let sel = file_dialog(&c).selected.clone().unwrap();
+        assert!(painted_rows(&c, theme).contains(&sel), "{theme:?}: {sel}");
+        c.key(W, "End").unwrap();
+        let rows = painted_rows(&c, theme);
+        assert_eq!(rows.last().unwrap(), "part-079.FCStd.json");
+        c.key(W, "ArrowUp").unwrap();
+        assert_eq!(
+            file_dialog(&c).selected.as_deref(),
+            Some("part-078.FCStd.json")
+        );
+        // The last row, reached by scrolling, opens.
+        c.key(W, "End").unwrap();
+        let e = c.key(W, "Enter").unwrap();
+        assert!(
+            matches!(&e[0], AppEffect::ReadBytes { path, .. }
+                if path == "/home/carol/Documents/part-079.FCStd.json"),
+            "{theme:?}: {e:?}"
+        );
+    }
+}
+
+#[test]
+fn a_short_window_scrolls_the_sidebar() {
+    for theme in [
+        DesktopTheme::Macos,
+        DesktopTheme::Windows,
+        DesktopTheme::Ubuntu,
+    ] {
+        let mut c = cad();
+        c.platform = Some(theme);
+        c.run(W, "Std_SaveAs").unwrap();
+        c.listed(vec![]);
+        let settings = crate::SystemSettings::DEFAULT;
+        let places = |c: &Cad| -> Vec<String> {
+            let files = crate::FilesEnv {
+                home: "/home/carol",
+                folders: crate::standard_folders(theme)
+                    .iter()
+                    .map(|s| (*s).to_owned())
+                    .collect(),
+                trash: "/home/carol/.local/share/Trash/files".into(),
+                starred: &[],
+            };
+            let env = crate::AppEnv {
+                theme,
+                width: 900,
+                height: 330,
+                clock_us: 0,
+                settings: &settings,
+                clipboard: None,
+                share_to: None,
+                files,
+                editor: None,
+                pointer: None,
+            };
+            let app = NativeApp::Freecad(Freecad(Box::new(c.clone())));
+            app_content_with(&AppState::Native(app), &env)
+                .nodes
+                .iter()
+                .filter_map(|n| n.interaction.clone())
+                .filter(|t| {
+                    t.starts_with("freecad:file:place:")
+                        || t == "freecad:file:home"
+                        || t.starts_with("freecad:file:side-scrollbar:")
+                })
+                .collect()
+        };
+        let before = places(&c);
+        assert!(
+            before.iter().any(|t| t.contains("side-scrollbar")),
+            "{theme:?}: {before:?}"
+        );
+        let mut app = Freecad(Box::new(c));
+        assert!(app.wheel(&before[0], 0, 0, 120).unwrap());
+        let c = *app.0;
+        assert!(file_dialog(&c).side_scroll > 0);
+        let after = places(&c);
+        assert_ne!(before[0], after[0], "{theme:?}: the sidebar moved");
+    }
+}
+
 #[test]
 fn open_dialog_selects_enters_and_opens() {
     let mut c = cad();
@@ -922,6 +1109,13 @@ fn states() -> Vec<(&'static str, Cad)> {
     o.listed(vec!["Parts/".into(), "x.FCStd.json".into()]);
     o.file_command(W, "entry:x.FCStd.json").unwrap();
     out.push(("open with a file chosen", o));
+    let mut l = c.clone();
+    l.modified = false;
+    l.run(W, "Std_Open").unwrap();
+    l.listed(many(60));
+    out.push(("long folder", l.clone()));
+    l.command(W, "file:scroll-by:20", None).unwrap();
+    out.push(("long folder scrolled", l));
     let mut i = c.clone();
     i.run(W, "Std_Import").unwrap();
     i.listed(vec!["m.stl".into(), "d.dxf".into()]);

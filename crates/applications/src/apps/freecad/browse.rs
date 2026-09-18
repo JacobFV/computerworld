@@ -105,6 +105,8 @@ impl Cad {
         d.entries.clear();
         d.error = None;
         d.selected = None;
+        d.scroll = 0;
+        d.reveal = false;
         if !d.purpose.saving() {
             // What Open would open was a file in the folder that was left.
             d.name.clear();
@@ -181,6 +183,9 @@ impl Cad {
                 | "folder-cancel"
                 | "keep"
                 | "collapse"
+                | "list"
+                | "scroll-by"
+                | "side-scroll-by"
         );
         if !known {
             return None;
@@ -299,6 +304,26 @@ impl Cad {
                 d.collapsed = !d.collapsed;
                 Ok(vec![])
             }
+            // A click on the list's empty space: nothing selected. The target carries
+            // how many rows the list shows, so Page Up/Down page by what is on screen.
+            "list" => {
+                d.page = arg.parse().map_err(|_| "bad list size")?;
+                d.selected = None;
+                if !d.purpose.saving() {
+                    d.name.clear();
+                }
+                Ok(vec![])
+            }
+            "scroll-by" => {
+                let n: i64 = arg.parse().map_err(|_| "bad scroll step")?;
+                self.scroll_list(n)?;
+                Ok(vec![])
+            }
+            "side-scroll-by" => {
+                let n: i64 = arg.parse().map_err(|_| "bad scroll step")?;
+                self.scroll_sidebar(n)?;
+                Ok(vec![])
+            }
             _ => unreachable!("browse_command only passes known verbs"),
         }
     }
@@ -399,7 +424,159 @@ impl Cad {
             "Alt+ArrowLeft" | "Ctrl+[" => self.file_command(window, "back"),
             "Alt+ArrowRight" | "Ctrl+]" => self.file_command(window, "forward"),
             "Alt+ArrowUp" | "Ctrl+ArrowUp" => self.file_command(window, "up"),
+            "ArrowUp" | "ArrowDown" | "PageUp" | "PageDown" | "Home" | "End" => {
+                self.move_selection(key)?;
+                Ok(vec![])
+            }
             _ => Err(format!("unsupported key {key} in a dialog")),
+        }
+    }
+
+    /// Up/Down/Page Up/Page Down/Home/End move the selection through the list and
+    /// bring it into view, as each platform's list does.
+    fn move_selection(&mut self, key: &str) -> Result<(), String> {
+        let d = self.file_dialog_mut()?;
+        let rows: Vec<String> = d.visible().into_iter().cloned().collect();
+        if rows.is_empty() {
+            return Err("The folder is empty".into());
+        }
+        let last = rows.len() - 1;
+        let page = d.page_rows();
+        let at = d
+            .selected
+            .as_ref()
+            .and_then(|s| rows.iter().position(|r| r == s));
+        let to = match (key, at) {
+            ("Home", _) => 0,
+            ("End", _) => last,
+            ("ArrowDown", None) | ("PageDown", None) => 0,
+            (_, None) => last,
+            ("ArrowDown", Some(i)) => (i + 1).min(last),
+            ("ArrowUp", Some(i)) => i.saturating_sub(1),
+            ("PageDown", Some(i)) => (i + page.saturating_sub(1).max(1)).min(last),
+            (_, Some(i)) => i.saturating_sub(page.saturating_sub(1).max(1)),
+        };
+        self.select_entry(&rows[to])?;
+        let d = self.file_dialog_mut()?;
+        if to < d.scroll {
+            d.scroll = to;
+        } else if to >= d.scroll + page {
+            d.scroll = to + 1 - page;
+        }
+        d.reveal = true;
+        Ok(())
+    }
+
+    /// Scroll the list by `n` rows (negative: up), within its rows.
+    pub(crate) fn scroll_list(&mut self, n: i64) -> Result<(), String> {
+        let d = self.file_dialog_mut()?;
+        let top = d.max_scroll() as i64;
+        d.scroll = (d.scroll as i64 + n).clamp(0, top) as usize;
+        d.reveal = false;
+        Ok(())
+    }
+    pub(crate) fn scroll_sidebar(&mut self, n: i64) -> Result<(), String> {
+        let most = self.sidebar_rows().saturating_sub(1) as i64;
+        let d = self.file_dialog_mut()?;
+        // The painter also stops once the last place is on screen.
+        d.side_scroll = (d.side_scroll as i64 + n).clamp(0, most) as usize;
+        Ok(())
+    }
+    /// How many rows the dialog's sidebar can hold on this platform: the standard
+    /// places with every standard folder present.
+    pub(crate) fn sidebar_rows(&self) -> usize {
+        let theme = self.platform.unwrap_or(DesktopTheme::Ubuntu);
+        let files = crate::FilesEnv {
+            home: &self.home,
+            folders: crate::standard_folders(theme)
+                .iter()
+                .map(|s| (*s).to_owned())
+                .collect(),
+            trash: "trash".into(),
+            starred: &[],
+        };
+        crate::desktop_scene::standard_places(theme, &files).len()
+    }
+
+    /// A click on a scrollbar's track (`freecad:file:scrollbar:<rows>:<height>`, or
+    /// `side-scrollbar:` for the sidebar): the view jumps so the clicked point of the
+    /// track is the middle of what shows, as a click on GTK's and the Mac's tracks
+    /// does.
+    pub(crate) fn scrollbar_click(
+        &mut self,
+        rest: &str,
+        at: Option<(i32, i32)>,
+    ) -> Result<Vec<AppEffect>, String> {
+        let (side, spec) = match rest.strip_prefix("side-scrollbar:") {
+            Some(spec) => (true, spec),
+            None => (
+                false,
+                rest.strip_prefix("scrollbar:").ok_or("not a scrollbar")?,
+            ),
+        };
+        let nums: Vec<usize> = spec
+            .split(':')
+            .map(|n| n.parse().map_err(|_| "bad scrollbar"))
+            .collect::<Result<_, _>>()?;
+        // List: rows shown, track height. Sidebar: rows shown, rows in all, height.
+        let (rows, side_total, height) = match (side, nums.as_slice()) {
+            (false, [rows, h]) => (*rows, 0, *h as i64),
+            (true, [rows, total, h]) => (*rows, *total, *h as i64),
+            _ => return Err("bad scrollbar".into()),
+        };
+        let (_, dy) = at.unwrap_or((0, 0));
+        let d = self.file_dialog_mut()?;
+        if d.confirm.is_some() || d.prompt.is_some() {
+            return Err("Finish the question first".into());
+        }
+        let total = if side { side_total } else { d.visible().len() };
+        let point = (i64::from(dy).clamp(0, height.max(1)) * total as i64) / height.max(1);
+        let first = (point - rows as i64 / 2).max(0) as usize;
+        if side {
+            d.side_scroll = first.min(total.saturating_sub(rows));
+        } else {
+            d.page = rows;
+            d.scroll = first.min(d.max_scroll());
+            d.reveal = false;
+        }
+        Ok(vec![])
+    }
+
+    /// The wheel over the dialog's list or sidebar; `false` when it is elsewhere.
+    pub(crate) fn file_dialog_wheel(&mut self, target: &str, delta: i32) -> bool {
+        let Some(rest) = target.strip_prefix("freecad:file:") else {
+            return false;
+        };
+        let Some(Dialog::File(d)) = &self.dialog else {
+            return false;
+        };
+        if d.confirm.is_some() {
+            return false;
+        }
+        // A notch (120) moves three rows, as the platforms' lists do by default.
+        let rows = (i64::from(delta) / 40).clamp(-1000, 1000);
+        let rows = if rows == 0 {
+            i64::from(delta.signum())
+        } else {
+            rows
+        };
+        let sidebar =
+            rest.starts_with("place:") || rest == "home" || rest.starts_with("side-scrollbar:");
+        let list = rest.starts_with("entry:")
+            || rest.starts_with("list:")
+            || rest.starts_with("scrollbar:");
+        if sidebar {
+            self.scroll_sidebar(rows).is_ok()
+        } else if list {
+            if let (Some(n), Some(Dialog::File(d))) = (
+                rest.strip_prefix("list:").and_then(|n| n.parse().ok()),
+                &mut self.dialog,
+            ) {
+                d.page = n;
+            }
+            self.scroll_list(rows).is_ok()
+        } else {
+            false
         }
     }
 }

@@ -595,3 +595,69 @@ fn native_file_dialogs_save_and_open_on_every_desktop() {
         assert_eq!(d.state()["doc"]["Label"], "Bracket");
     }
 }
+
+/// A folder longer than the dialog: the wheel over the list and a click on the
+/// scrollbar's track bring the last document into reach, the keyboard walks to it,
+/// and it opens.
+#[test]
+fn a_long_folder_scrolls_in_the_open_dialog() {
+    for (machine, user) in [
+        ("alice-mac", "alice"),
+        ("bob-windows", "bob"),
+        ("carol-ubuntu", "carol"),
+    ] {
+        let mut d = Desk::new(machine, user);
+        d.launch();
+        let home = d.state()["home"].as_str().unwrap().to_owned();
+        // The last document is a real one, saved by FreeCAD; fillers sort before it.
+        d.key("Ctrl+Shift+S");
+        d.typed("zz-last");
+        d.key("Enter");
+        for i in 0..40 {
+            d.act(
+                "filesystem.v1",
+                "write",
+                json!({"path": format!("{home}/Documents/filler-{i:02}.FCStd.json"), "content": "{}"}),
+            );
+        }
+        d.click("freecad:cmd:Std_New");
+        d.key("Ctrl+o");
+        assert!(
+            d.locate("freecad:file:entry:zz-last.FCStd.json").is_none(),
+            "{machine}: the last document starts out of view"
+        );
+        // The wheel over the list.
+        let r = d.at("freecad:file:entry:filler-00.FCStd.json");
+        let wheel = d.act(
+            "pointer.v1",
+            "wheel",
+            json!({"x": r.x + 40, "y": r.y + 5, "width": W, "height": H, "delta_y": 360}),
+        );
+        assert_eq!(wheel["handled"], true);
+        assert!(d
+            .locate("freecad:file:entry:filler-00.FCStd.json")
+            .is_none());
+        assert!(d
+            .locate("freecad:file:entry:filler-09.FCStd.json")
+            .is_some());
+        // A click at the foot of the scrollbar's track: the end of the folder.
+        let bar = d.at("freecad:file:scrollbar:");
+        d.click_at(bar.x + bar.width as i32 / 2, bar.y + bar.height as i32 - 2);
+        assert!(
+            d.locate("freecad:file:entry:zz-last.FCStd.json").is_some(),
+            "{machine}: the scrollbar reaches the end"
+        );
+        // Home, then End, by keyboard, and Return opens it.
+        d.key("Home");
+        assert!(d
+            .locate("freecad:file:entry:filler-00.FCStd.json")
+            .is_some());
+        d.key("End");
+        d.key("Enter");
+        assert!(d.state()["dialog"].is_null(), "{machine}: opened");
+        assert_eq!(
+            d.state()["path"],
+            format!("{home}/Documents/zz-last.FCStd.json").as_str()
+        );
+    }
+}

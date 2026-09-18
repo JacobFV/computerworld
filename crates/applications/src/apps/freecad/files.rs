@@ -91,8 +91,34 @@ pub struct FileDialog {
     /// The Mac save panel folded down to its Where pop-up.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub collapsed: bool,
+    /// Scrolling: the first row of the list and of the sidebar on screen, how many
+    /// list rows the dialog last showed (learned from its painted list), and whether
+    /// the keyboard asked for the selection to be brought into view.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub scroll: usize,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub side_scroll: usize,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub page: usize,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub reveal: bool,
+}
+fn is_zero(n: &usize) -> bool {
+    *n == 0
 }
 impl FileDialog {
+    /// Rows a page holds: what the list last showed, else a typical list's.
+    pub fn page_rows(&self) -> usize {
+        if self.page == 0 {
+            10
+        } else {
+            self.page
+        }
+    }
+    /// The furthest the list scrolls: its last page.
+    pub fn max_scroll(&self) -> usize {
+        self.visible().len().saturating_sub(self.page_rows())
+    }
     pub fn extension(&self) -> &'static str {
         filters(self.purpose)
             .get(self.filter)
@@ -198,6 +224,10 @@ impl Cad {
             prompt: None,
             confirm: None,
             collapsed: false,
+            scroll: 0,
+            side_scroll: 0,
+            page: 0,
+            reveal: false,
         })));
         if purpose.saving() {
             self.field = Some(Field {
@@ -255,6 +285,7 @@ impl Cad {
                 return Err("no such file type".into());
             }
             d.filter = i;
+            d.scroll = 0;
             if d.purpose.saving() {
                 // A name typed but not yet committed is the one that changes extension.
                 if let Some(Field {

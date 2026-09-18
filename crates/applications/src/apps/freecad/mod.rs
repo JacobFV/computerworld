@@ -553,6 +553,10 @@ impl Freecad {
         self.0.button = button;
     }
     pub fn wheel(&mut self, target: &str, x: i32, y: i32, delta: i32) -> Result<bool, String> {
+        // The file dialog's list and sidebar scroll under the wheel.
+        if self.0.file_dialog_wheel(target, delta) {
+            return Ok(true);
+        }
         let Some(size) = view3d::view_size_of(target) else {
             return Ok(false);
         };

@@ -675,6 +675,10 @@ impl Cad {
             return self.dialog_command(window, rest);
         }
         if let Some(rest) = cmd.strip_prefix("file:") {
+            // A scrollbar's track knows where on it the click landed.
+            if rest.starts_with("scrollbar:") || rest.starts_with("side-scrollbar:") {
+                return self.scrollbar_click(rest, at);
+            }
             return self.file_command(window, rest);
         }
         if let Some(rest) = cmd.strip_prefix("field:") {

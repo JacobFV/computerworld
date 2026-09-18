@@ -288,23 +288,27 @@ fn text_box(
     }
     p.region(r, target, label);
 }
-/// Rows of the listing, clipped to `area`, painted by `row`.
+/// Rows of the listing, clipped to `area`, painted by `row`, from the dialog's scroll
+/// position; a list longer than `area` gets the platform's scrollbar at its right.
 fn listing(
     p: &mut Painter,
     area: Rect,
     d: &FileDialog,
     row_h: u32,
+    style: Bar,
     mut row: impl FnMut(&mut Painter, Rect, &str, bool),
 ) {
+    let rows = d.visible();
+    let cap = (area.height / row_h.max(1)).max(1) as usize;
+    let first = first_row(d, rows.len(), cap);
+    // The list's own empty space: a click there selects nothing; the wheel scrolls.
+    p.region(area, &format!("freecad:file:list:{cap}"), "File list");
     let mark = p.scene.nodes.len();
     let mut y = area.y;
-    for e in d.visible() {
-        if y + row_h as i32 > area.y + area.height as i32 {
-            break;
-        }
+    for e in rows.iter().skip(first).take(cap) {
         let r = Rect::new(area.x, y, area.width, row_h);
         let selected = d.selected.as_deref() == Some(e.as_str())
-            || (!e.ends_with('/') && d.selected.is_none() && *e == d.name);
+            || (!e.ends_with('/') && d.selected.is_none() && **e == d.name);
         row(p, r, e, selected);
         p.region(
             r,
@@ -316,6 +320,126 @@ fn listing(
     for n in &mut p.scene.nodes[mark..] {
         n.clip = Some(area);
     }
+    if rows.len() > cap {
+        scrollbar(p, area, first, cap, rows.len(), style, false);
+    }
+}
+/// The first row on screen: the dialog's scroll position, kept within the list, and
+/// moved to the selection when the keyboard asked for it to be shown.
+pub(super) fn first_row(d: &FileDialog, len: usize, cap: usize) -> usize {
+    let mut first = d.scroll.min(len.saturating_sub(cap));
+    if d.reveal {
+        let at = d
+            .selected
+            .as_ref()
+            .and_then(|s| d.visible().iter().position(|e| *e == s));
+        if let Some(i) = at {
+            if i < first {
+                first = i;
+            } else if i >= first + cap {
+                first = i + 1 - cap;
+            }
+        }
+    }
+    first
+}
+/// Which platform's scrollbar to draw.
+#[derive(Clone, Copy, PartialEq)]
+enum Bar {
+    /// The Mac's overlay bar: a rounded thumb over a faint track.
+    Mac,
+    /// Windows 11: a thin track with arrow buttons at each end.
+    Windows,
+    /// GTK 4: a rounded slider in a narrow trough.
+    Gtk,
+}
+/// A scrollbar at the right of `area` for rows `first..first + cap` of `len`. The
+/// track is a real control: a click on it scrolls to that point (the target carries
+/// the rows shown and the track's height, so the click's offset maps to a row), and
+/// Windows' arrows step a row at a time.
+fn scrollbar(
+    p: &mut Painter,
+    area: Rect,
+    first: usize,
+    cap: usize,
+    len: usize,
+    style: Bar,
+    side: bool,
+) {
+    let w = if style == Bar::Windows { 12 } else { 10 };
+    let arrows = if style == Bar::Windows { 14 } else { 0 };
+    let track = Rect::new(
+        area.x + area.width as i32 - w as i32 - 1,
+        area.y + arrows,
+        w,
+        area.height.saturating_sub(2 * arrows as u32),
+    );
+    let (trough, thumb_c) = match style {
+        Bar::Mac => (Color(0, 0, 0, 10), Color(0, 0, 0, 90)),
+        Bar::Windows => (Color::rgb(240, 240, 240), Color::rgb(133, 133, 133)),
+        Bar::Gtk => (Color(0, 0, 0, 12), Color(0, 0, 0, 110)),
+    };
+    p.box_(track, trough, w / 2);
+    let h = track.height.max(1) as usize;
+    let tlen = (h * cap / len.max(1)).clamp(20.min(h), h);
+    let top = if len > cap {
+        (h - tlen) * first / (len - cap)
+    } else {
+        0
+    };
+    p.box_(
+        Rect::new(track.x + 2, track.y + top as i32, w - 4, tlen as u32),
+        thumb_c,
+        (w - 4) / 2,
+    );
+    let target = if side {
+        format!("freecad:file:side-scrollbar:{cap}:{len}:{}", track.height)
+    } else {
+        format!("freecad:file:scrollbar:{cap}:{}", track.height)
+    };
+    p.region_above(track, &target, "Scroll bar");
+    if style == Bar::Windows {
+        let verb = if side { "side-scroll-by" } else { "scroll-by" };
+        let up = Rect::new(track.x, area.y, w, arrows as u32);
+        let down = Rect::new(track.x, track.y + track.height as i32, w, arrows as u32);
+        let (can_up, can_down) = (first > 0, first + cap < len);
+        for (r, sym, step, ok, label) in [
+            (up, "chevron-up", -1, can_up, "Scroll up"),
+            (down, "chevron-down", 1, can_down, "Scroll down"),
+        ] {
+            p.symbol(
+                sym,
+                r.x + 2,
+                r.y + 3,
+                8,
+                Color::rgb(
+                    if ok { 96 } else { 190 },
+                    if ok { 96 } else { 190 },
+                    if ok { 96 } else { 190 },
+                ),
+            );
+            if ok {
+                p.region_above(r, &format!("freecad:file:{verb}:{step}"), label);
+            } else {
+                p.box_(r, Color::TRANSPARENT, 0);
+                p.disabled(&format!("{label}: already at the end"));
+            }
+        }
+    }
+}
+/// The sidebar's places from its scroll position: (places shown, first, rows that
+/// fit, rows in all). Headings and gaps count as rows, which only errs towards
+/// offering the scrollbar a little early.
+fn side_window(
+    items: Vec<Side>,
+    d: &FileDialog,
+    height: u32,
+    row_h: u32,
+) -> (Vec<Side>, usize, usize, usize) {
+    let len = items.len();
+    let cap = (height / row_h.max(1)).max(1) as usize;
+    let first = d.side_scroll.min(len.saturating_sub(cap));
+    (items.into_iter().skip(first).collect(), first, cap, len)
 }
 /// "Loading…", a listing error, or an empty folder, in the list's own voice.
 fn list_notice(p: &mut Painter, area: Rect, d: &FileDialog, empty: &str, ink: Color) {
@@ -598,7 +722,9 @@ fn mac(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::AppE
         p.box_(side, Color::rgb(232, 231, 234), 0);
         p.vline(side.x + side.width as i32, side.y, side.height, MAC_LINE);
         let mut sy = side.y + 4;
-        for item in places(DesktopTheme::Macos, env, d) {
+        let (shown, side_first, side_cap, side_len) =
+            side_window(places(DesktopTheme::Macos, env, d), d, side.height, 24);
+        for item in shown {
             if sy + 24 > side.y + side.height as i32 {
                 break;
             }
@@ -628,6 +754,9 @@ fn mac(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::AppE
                 }
             }
         }
+        if side_len > side_cap {
+            scrollbar(p, side, side_first, side_cap, side_len, Bar::Mac, true);
+        }
         // List view: Name and Kind (the listing carries no dates or sizes).
         let list = Rect::new(
             side.x + side.width as i32 + 1,
@@ -656,7 +785,7 @@ fn mac(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::AppE
         let rows = Rect::new(list.x, list.y + 24, list.width, list.height - 24);
         list_notice(p, rows, d, "", MAC_DIM);
         let mut odd = false;
-        listing(p, rows, d, 22, |p, rr, e, sel| {
+        listing(p, rows, d, 22, Bar::Mac, |p, rr, e, sel| {
             if sel {
                 p.box_(
                     Rect::new(rr.x + 4, rr.y, rr.width - 8, rr.height),
@@ -1134,7 +1263,9 @@ fn windows(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::
     p.box_(pane, Color::rgb(249, 249, 249), 0);
     p.vline(pane.x + pane.width as i32, top, body_h, WIN_LINE);
     let mut sy = top + 4;
-    for item in places(DesktopTheme::Windows, env, d) {
+    let (shown, side_first, side_cap, side_len) =
+        side_window(places(DesktopTheme::Windows, env, d), d, body_h, 30);
+    for item in shown {
         if sy + 30 > top + body_h as i32 {
             break;
         }
@@ -1174,6 +1305,9 @@ fn windows(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::
             }
         }
     }
+    if side_len > side_cap {
+        scrollbar(p, pane, side_first, side_cap, side_len, Bar::Windows, true);
+    }
     let view = Rect::new(
         pane.x + pane.width as i32 + 1,
         top,
@@ -1204,7 +1338,7 @@ fn windows(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::
     }
     let rows = Rect::new(view.x, top + 28, view.width, body_h - 28);
     list_notice(p, rows, d, "This folder is empty.", WIN_DIM);
-    listing(p, rows, d, 28, |p, rr, e, sel| {
+    listing(p, rows, d, 28, Bar::Windows, |p, rr, e, sel| {
         let plate = Rect::new(rr.x + 4, rr.y + 1, rr.width - 8, rr.height - 2);
         if sel {
             p.box_(plate, Color::rgb(204, 232, 255), 4);
@@ -1450,7 +1584,9 @@ fn gnome(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::Ap
     p.box_(side, Color::rgb(242, 242, 242), 0);
     p.vline(side.x + side.width as i32, y, body_h, GTK_LINE);
     let mut sy = y + 6;
-    for item in places(DesktopTheme::Ubuntu, env, d) {
+    let (shown, side_first, side_cap, side_len) =
+        side_window(places(DesktopTheme::Ubuntu, env, d), d, body_h, 34);
+    for item in shown {
         if sy + 34 > y + body_h as i32 {
             break;
         }
@@ -1473,6 +1609,9 @@ fn gnome(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::Ap
                 sy += 34;
             }
         }
+    }
+    if side_len > side_cap {
+        scrollbar(p, side, side_first, side_cap, side_len, Bar::Gtk, true);
     }
     let content = Rect::new(
         side.x + side.width as i32 + 1,
@@ -1598,7 +1737,7 @@ fn gnome(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::Ap
     p.hline(list.x, list.y + 27, list.width, GTK_LINE);
     let rows = Rect::new(list.x, list.y + 28, list.width, list.height - 28);
     list_notice(p, rows, d, "Folder is Empty", GTK_DIM);
-    listing(p, rows, d, 34, |p, rr, e, sel| {
+    listing(p, rows, d, 34, Bar::Gtk, |p, rr, e, sel| {
         if sel {
             p.box_(
                 Rect::new(rr.x + 4, rr.y + 1, rr.width - 8, rr.height - 2),
