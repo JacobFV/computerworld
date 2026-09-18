@@ -294,6 +294,7 @@ mod tests {
                 clipboard: None,
                 share_to: None,
                 editor: None,
+                pointer: None,
                 files: Default::default(),
             },
         );

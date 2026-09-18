@@ -45,13 +45,13 @@ order determine which window receives input. Browser windows keep independent
 navigation state. Window geometry, focus, panels and pointer capture are included
 in session snapshots.
 
-Eighteen window kinds are launchable. Four are built into `DesktopState::launch`:
+Nineteen window kinds are launchable. Four are built into `DesktopState::launch`:
 `terminal` (output and input), `files`/`file_manager` (tabbed filesystem navigation
 with click-to-select and double-click-to-open), `editor`/`text_editor` (saved from its menus),
-and `browser`. The other fourteen are `NativeApp` kinds listed by the `native_apps!`
+and `browser`. The other fifteen are `NativeApp` kinds listed by the `native_apps!`
 macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `chat`, `docs`,
 `notes`, `contacts`, `settings`, `calculator`, `clock`, `photos`, `music`, `maps`,
-`weather` and `code`. Each is backed by a world service or the machine's own files
+`weather`, `code` and `freecad`. Each is backed by a world service or the machine's own files
 rather than a static mock. Browser applications obtain supported pages through simulated DNS,
 networking and HTTP.
 
@@ -154,6 +154,46 @@ Window interactions use `window:<id>:drag`, `window:<id>:resize:<direction>`,
 clients must account for these and occlusion when choosing pointer coordinates.
 The [programmatic guide](programmatic-computer-use.md#pointer-coordinates-windows-and-gestures)
 explains exact transforms and event sequences.
+
+### FreeCAD
+
+`freecad` is installed on the reference world's macOS, Windows and Ubuntu desktops (not
+on the phones). It is FreeCAD 1.0's Part Design workbench and Sketcher in the "FreeCAD
+Light" theme — its menu bar (FreeCAD's File, Edit, View and Help in the Mac menu bar on
+macOS), toolbars that switch to the Sketcher's while a sketch is open, the Combo View
+with the model tree, property editor and task panels, the 3D view with navigation cube
+and axis cross, the report view, and a status bar with preselection, navigation style
+and view size. The model is real, in the `cw-cad` kernel:
+
+- Sketches are FreeCAD's `SketchObject` model (GeoId, PointPos, constraints with
+  First/Second/Third and a value) solved by Levenberg–Marquardt over exact dual-number
+  Jacobians. The task panel reports FreeCAD's solver messages — "Under constrained: n
+  DoFs", "Fully constrained", "Over-constrained: (…)", "Redundant constraints: (…)" —
+  from the Jacobian's rank and row dependencies, and fully constrained geometry turns
+  green. Tools add FreeCAD's automatic constraints (coincident on a snapped point,
+  horizontal/vertical when drawn so); a drag on geometry moves it through the solver.
+- Pad, Pocket (length, two lengths, through all, symmetric, reversed), Revolution,
+  Groove, Hole (counterbore, countersink, drill point), Fillet and Chamfer (straight
+  edges between planes, circular edges between a face and a coaxial cylinder),
+  Mirrored, Linear and Polar Pattern are recomputed in order from their parameters;
+  sketches attach to base planes or to planar faces, and a face or edge reference keeps
+  FreeCAD's element name plus where it was, so it is found again after an upstream edit
+  renumbers the shape. A feature that fails is marked in the tree and reported, as
+  "Result has multiple solids" and the like.
+- Solids are closed triangle meshes whose triangles remember the analytic surface they
+  approximate (curves tessellated at 64 segments per turn). Booleans are BSP-tree CSG,
+  healed to watertight meshes (weld, T-junction insertion, ear clipping, flat-vertex
+  collapse), so volumes, areas and centres of mass are those of the polygonal solid.
+- The 3D view is a z-buffer raster (2× supersampled, headlight shading, depth-tested
+  edges and vertices) delivered as an `Image` primitive; sketches in edit are drawn as
+  vector paths over it. Picking uses the same projection as drawing.
+- Files: the native document is FCStd's `Document.xml` structure as JSON
+  (`*.FCStd.json`); STL (binary and ASCII) and OBJ import as mesh objects and export
+  from any shape; DXF (R12) imports into and exports from sketches; SVG exports a
+  hidden-line projection of the view at 1:1 in millimetres. Binary files move through
+  `AppEffect::ReadBytes` and `WriteBytes`.
+- Undo and Redo cover every document change (30 levels); snapshots hold the document
+  and view, and the model is recomputed from it on restore.
 
 ## Rendering and fidelity
 

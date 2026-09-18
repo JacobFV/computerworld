@@ -24,6 +24,7 @@ fn env(theme: DesktopTheme, width: u32, height: u32) -> AppEnv<'static> {
         share_to: None,
         files: Default::default(),
         editor: None,
+        pointer: None,
     }
 }
 

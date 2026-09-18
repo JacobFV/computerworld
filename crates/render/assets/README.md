@@ -260,10 +260,18 @@ without touching the others. The editors' tool glyphs (`pencil`, `brush`, `bucke
 are original symbols in `generate-symbols.py`, and regenerating the symbol set leaves
 every earlier PNG byte-identical.
 
+FreeCAD exists on the three desktops only, so it has three icons: one original drawing
+(an isometric machined block with a bored hole and a red sketch profile on its top face;
+not FreeCAD's logo) on a macOS squircle (`macos-freecad`), bare as Windows draws app
+marks (`windows-freecad`), and on a 256 px Yaru-like rounded square (`ubuntu-freecad`,
+original artwork, not a Yaru icon). `generate-icons.py --freecad` rebuilds just these
+three. The toolbar and tree pictograms inside the application are vector drawings made
+at runtime (`crates/applications/src/apps/freecad/icons.rs`), not bundled images.
+
 Runtime identifiers: `wallpaper/{macos,windows,ubuntu,ios,android}` and
 `icon/{platform}/{files,browser,terminal,docs,mail,calendar,chat,settings,camera,photos,phone,store,launcher,trash,notes,contacts,clock,calculator,music,maps,weather,code}`,
 for all five platforms, plus `icon/windows/paint`, `icon/macos/{preview,pixelmator}`,
-`icon/ubuntu/{gimp,pinta}` and `icon/android/sketchbook`. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
+`icon/ubuntu/{gimp,pinta}`, `icon/android/sketchbook` and `icon/{macos,windows,ubuntu}/freecad`. `editor` aliases `docs`, `messages` aliases `chat`, `notepad`
 aliases `notes`, `addressbook` aliases `contacts`, `clocks` aliases `clock` and `calc`
 aliases `calculator`; unqualified `icon/{app}` and `icon/common/{app}` use macOS
 artwork. Unknown names paint nothing and never access a host path or

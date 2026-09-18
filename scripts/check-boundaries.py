@@ -10,7 +10,7 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-PURE = ('protocol', 'determinism', 'computer', 'network', 'scene', 'render', 'raster',
+PURE = ('protocol', 'determinism', 'computer', 'network', 'scene', 'render', 'cad', 'raster',
         'sdk', 'browser', 'applications', 'kernel', 'environment', 'trajectory',
         'evaluation', 'services', 'computerworld')
 FORBIDDEN_DEPS = {'tokio', 'async-std', 'reqwest', 'hyper', 'ureq', 'surf',

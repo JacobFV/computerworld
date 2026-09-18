@@ -216,10 +216,34 @@ character is a keystroke (brackets and quotes close and are typed over, `Enter` 
 indentation); a longer `keyboard.v1 type` is inserted as written, the way a paste is, so
 its own indentation is not indented again.
 
+FreeCAD controls (kind `freecad`), reached as `window:<id>:content:<target>`. Commands
+carry FreeCAD's own names; one the document cannot take now (Pocket with no solid,
+Fillet with no edge selected) is painted disabled with the reason, everywhere it appears.
+
+| Target | Effect |
+|---|---|
+| `freecad:cmd:<command>` | Run a command: `Std_New`, `Std_Open`, `Std_Save`, `Std_SaveAs`, `Std_Import`, `Std_Export`, `Std_Undo`, `Std_Redo`, `Std_Delete`, `Std_Refresh`, `Std_SelectAll`, `Std_ViewFitAll`, `Std_ViewFitSelection`, `Std_View{Isometric,Front,Top,Right,Rear,Bottom,Left}`, `Std_OrthographicCamera`, `Std_PerspectiveCamera`, `Std_ToggleVisibility`, `Std_SelBoundingBox`, `Std_AxisCross`, `Std_ReportView`, `Std_Measure`, `Std_About`, `PartDesign_{Body,NewSketch,Pad,Revolution,Pocket,Hole,Groove,Fillet,Chamfer,Mirrored,LinearPattern,PolarPattern,MoveTip}`, `Sketcher_{EditSketch,LeaveSketch,ViewSketch}`, the geometry tools `Sketcher_Create{Point,Line,Arc,3PointArc,Circle,3PointCircle,Polyline,Rectangle,Slot,Fillet}`, `Sketcher_Trimming`, `Sketcher_Extend`, `Sketcher_ToggleConstruction`, the constraints `Sketcher_Constrain{Coincident,PointOnObject,Horizontal,Vertical,Parallel,Perpendicular,Tangent,Equal,Symmetric,Block,Lock,DistanceX,DistanceY,Distance,Radius,Diameter,Angle}`, `Sketcher_ToggleDrivingConstraint`, `Sketcher_SelectConflictingConstraints` (`crates/applications/src/apps/freecad/commands.rs`) |
+| `freecad:menu:<File\|Edit\|View\|Tools\|Part Design\|Sketch\|Help>`, `freecad:menu-close`, `freecad:workbench`, `freecad:wb:<Part Design\|Sketcher>`, `freecad:overflow` | The menu bar (on macOS FreeCAD's File, Edit, View and Help hang from the Mac menu bar), the workbench selector, and the toolbar's overflow of tools that do not fit |
+| `freecad:view:<w>:<h>` | The 3D view, a pointer drag surface painted at `w`×`h`. A click picks a face, edge or vertex (or, in a sketch, a point or edge, or places the active tool's next point); a left drag orbits, a right drag pans (Gesture; middle drag with OpenInventor), and in a sketch a drag on geometry moves it through the solver. `pointer.v1 wheel` over it zooms at the pointer |
+| `freecad:navcube` (a click lands on the face, edge or corner under it), `freecad:navcube-arrow:<left\|right\|up\|down\|cw\|ccw>`, `freecad:navcube-menu`, `freecad:navcube-view:<command>` | The navigation cube: 26 facets turning the view, 15° steps, and its menu (orthographic, perspective, isometric, fit all) |
+| `freecad:tree:<object>` (double click edits it), `freecad:tree-toggle:<object>`, `freecad:tree-eye:<object>`, `freecad:tree:origin:<XY_Plane…>` | The model tree: select, expand, show/hide, the body's Origin |
+| `freecad:tab:<model\|tasks>`, `freecad:prop-tab:<view\|data>`, `freecad:prop:<property>` | Combo View tabs and the property editor. A number or text property opens its edit field, a boolean flips, an enumeration drops down its choices (`freecad:choice:prop/<property>:<value>`); a change recomputes everything downstream |
+| `freecad:task:<ok\|cancel>`, `freecad:task:toggle:<option>`, `freecad:task:plane:<XY_Plane\|XZ_Plane\|YZ_Plane>`, `freecad:task:select:<add\|remove>`, `freecad:task:remove-ref:<i>`, `freecad:task:measure-clear`, `freecad:field:task:<parameter>`, `freecad:choice:open:task/<parameter>`, `freecad:choice:task/<parameter>:<value>` | Task panels: a feature's parameters (previewed live; Cancel restores the document), the plane chooser for a new sketch, a fillet's edge list, the Measure panel |
+| `freecad:sk:constraint:<i>`, `freecad:sk:dim:<i>` (double click edits the value), `freecad:sk:element:<i>`, `freecad:sk:fold:<section>`, `freecad:sk:close`, `freecad:sk:select-free`, `freecad:sk:construction`, `freecad:sk:fillet-radius`, `freecad:field:constraint:<i>` | The Sketcher: constraint and element lists, dimension labels in the view, solver messages ("Under constrained: 2 DoFs" selects the free geometry), construction mode and the fillet tool's radius |
+| `freecad:file:<entry:<name>\|place:<folder>\|up\|type:<i>\|ok\|cancel>`, `freecad:field:file-name`, `freecad:choice:open:filetype`, `freecad:choice:filetype:<i>` | The file dialog: documents (`*.FCStd.json`), import (STL, OBJ, DXF) and export (binary STL, ASCII STL `.ast`, OBJ, DXF of a sketch, hidden-line SVG of the view) over the machine's real folders |
+| `freecad:dialog:<ok\|cancel\|save\|discard\|block>`, `freecad:field-cancel`, `freecad:nav-menu`, `freecad:nav:<Gesture\|OpenInventor>`, `freecad:report-close`, `freecad:report-clear` | Dialogs (a modal dialog answers clicks outside it with `block`), the navigation style menu and the report view |
+
+Keys: `Ctrl+N/O/S/Shift+S/I/E/Z/Y/R/A`, `Delete`, `Escape` (drops the tool in hand, then
+the selection, then leaves the sketch or cancels the task), `Enter` (commits a field,
+finishes a polyline, OKs a task), arrows pan and `PageUp`/`PageDown` zoom. With no
+field focused, typing `0`–`6` turns to the standard views and a space toggles the
+selection's visibility, as FreeCAD's single-key shortcuts do. Typed text goes to the
+focused field; values take units (`25`, `25 mm`, `1 in`, `45 °`, `0.5 rad`).
+
 `kind` accepts `text_editor` as an alias for `editor` and `file_manager` for
 `files`. Built-in window kinds are `browser`, `files`, `editor`, `terminal`, plus
 the native applications (`calendar`, `mail`, `chat`, `docs`, `notes`, `contacts`,
-`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, and the image
+`settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, `freecad`, and the image
 editors `paint`, `preview`, `pixelmator`, `gimp`, `pinta`, `sketchbook`) listed by the
 `native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also
 declare `desktop_apps` metadata aliases that launch a browser window at a fixed URL.
@@ -284,6 +308,7 @@ a themed desktop; `Alt+Tab` cycles windows.
 | `click` | same | the target's result |
 | `double_click` | same | the target's result |
 | `cancel` | same | `null` |
+| `wheel` | same, plus `{"delta_y": i64}` (positive rolls towards the user) | `{"handled": bool}`: whether the control under the pointer used it (FreeCAD's 3D view zooms at the pointer) |
 
 `x`/`y` are clamped to ±32768; `width`/`height` default to 1024×768 and are capped
 at 8192. Coordinates are in the same viewport you pass to `scene(width, height)` —
@@ -300,7 +325,9 @@ Behaviour worth knowing:
   file-manager row *selects*; `double_click` *opens*. On `ios`/`android` themes there
   is no such distinction and a tap opens immediately. `double_click` on a window
   title bar (`window:<id>:drag`) maximizes.
-- **`button: 2` on `down`** opens the context panel.
+- **`button: 2` on `down`** opens the context panel — except over an application drag
+  surface that uses the secondary button (FreeCAD's 3D view pans with a right drag).
+  `button` is passed to drag surfaces, so a middle drag can differ from a left one.
 - **Touch gestures** are synthesized from `down`/`up` on mobile themes (a move of more
   than 70 px, mostly along one axis; a smaller one is a tap). A finger coming down on a
   control only presses it; the release decides whether it was a tap or a swipe.

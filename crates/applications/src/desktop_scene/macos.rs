@@ -15,7 +15,7 @@ const TOOLBAR_INACTIVE: Color = Color::rgb(238, 238, 239);
 /// Width of the Finder sidebar; shared with the Finder client area.
 pub const FINDER_SIDEBAR: u32 = 172;
 /// Every application this shell can present, in Launchpad order.
-const APPS: [(&str, &str); 20] = [
+const APPS: [(&str, &str); 21] = [
     ("files", "Finder"),
     ("browser", "Safari"),
     ("mail", "Mail"),
@@ -27,6 +27,7 @@ const APPS: [(&str, &str); 20] = [
     ("editor", "TextEdit"),
     ("terminal", "Terminal"),
     ("code", "Visual Studio Code"),
+    ("freecad", "FreeCAD"),
     ("photos", "Photos"),
     ("preview", "Preview"),
     ("pixelmator", "Pixelmator Pro"),
@@ -1825,6 +1826,12 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
             return code_menu(p, ctx, panel, w, items);
         }
     }
+    // FreeCAD's File, Edit, View and Help menus, as the window lends them.
+    if let Some(w) = front.filter(|w| w.kind == "freecad") {
+        if let Some(encoded) = w.chrome(&format!("mac:{panel}")) {
+            return freecad_menu(p, ctx, panel, w, encoded);
+        }
+    }
     // (label, action, shortcut); an empty label is a separator.
     let mut entries: Vec<(String, String, &str)> = match panel {
         "apple" => vec![
@@ -2075,6 +2082,85 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
 
 /// A Visual Studio Code menu in the Mac menu bar. Each entry dispatches the command
 /// into the window; one the editor cannot run now is shown greyed and announced so.
+/// A FreeCAD menu in the Mac menu bar: its entries arrive encoded in the window's
+/// chrome (label, target, why disabled, shortcut), and each runs FreeCAD's command.
+fn freecad_menu(
+    p: &mut Painter,
+    ctx: &ShellContext<'_>,
+    panel: &str,
+    w: &WindowView,
+    encoded: &str,
+) {
+    let items: Vec<Vec<&str>> = encoded
+        .split('\u{1e}')
+        .map(|i| i.split('\u{1f}').collect())
+        .collect();
+    let desired_x = menu_layout(p, ctx)
+        .iter()
+        .find(|(label, _, _)| label.eq_ignore_ascii_case(panel))
+        .map_or(ctx.width as i32 - 280, |(_, x, _)| *x);
+    let width = 300.min(ctx.width.saturating_sub(16));
+    let x = desired_x
+        .max(8)
+        .min(ctx.width.saturating_sub(width + 8) as i32);
+    let height: u32 = items
+        .iter()
+        .map(|i| {
+            if i.first().is_none_or(|l| l.is_empty()) {
+                11
+            } else {
+                24
+            }
+        })
+        .sum::<u32>()
+        + 10;
+    popover(p, Rect::new(x, 29, width, height), 7);
+    let mut y = 34;
+    for item in &items {
+        let (label, target, why, keys) = (
+            item.first().copied().unwrap_or(""),
+            item.get(1).copied().unwrap_or(""),
+            item.get(2).copied().unwrap_or(""),
+            item.get(3).copied().unwrap_or(""),
+        );
+        if label.is_empty() {
+            p.hline(x + 12, y + 5, width - 24, SEPARATOR);
+            y += 11;
+            continue;
+        }
+        let row = Rect::new(x + 5, y, width - 10, 24);
+        let live = why.is_empty() && !target.is_empty();
+        let hover = live && ctx.hovered(row);
+        if hover {
+            p.box_(row, ACCENT, 5);
+        }
+        let ink = match (hover, live) {
+            (true, _) => Color::WHITE,
+            (false, true) => INK,
+            (false, false) => TERTIARY,
+        };
+        p.left(x + 16, y + 4, width - 110, label, 13, ink);
+        if !keys.is_empty() {
+            let keys = keys.replace("Ctrl+", "⌘");
+            p.right(
+                x + width as i32 - 100,
+                y + 4,
+                86,
+                &keys,
+                13,
+                if hover { Color::WHITE } else { TERTIARY },
+            );
+        }
+        if live {
+            p.region(row, &w.action(&format!("content:{target}")), label);
+        } else {
+            p.box_(row, Color::TRANSPARENT, 0);
+            p.disabled(&format!("{label}: {why}"));
+        }
+        y += 24;
+    }
+}
+
 fn code_menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str, w: &WindowView, items: &[&str]) {
     use crate::apps::code::commands::{command, display_keys};
     let enabled: Vec<&str> = w.chrome("enabled").unwrap_or("").split(',').collect();

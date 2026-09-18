@@ -1076,31 +1076,52 @@ impl Painter {
             Some((action, label)),
         );
     }
-    pub fn path(&mut self, points: Vec<(i32, i32)>, fill: Color) {
+    /// A path node bounded by its own points (plus `margin` for stroke and
+    /// antialiasing), in coordinates local to those bounds. A path bounded by the whole
+    /// scene would make the renderer visit every pixel for every path; translating by
+    /// whole pixels leaves the painted result identical.
+    fn bounded_path(
+        &mut self,
+        points: Vec<(i32, i32)>,
+        margin: i32,
+        primitive: impl FnOnce(Vec<(i32, i32)>) -> Primitive,
+    ) {
+        let Some(&(fx, fy)) = points.first() else {
+            return;
+        };
+        let (mut x0, mut y0, mut x1, mut y1) = (fx, fy, fx, fy);
+        for &(x, y) in &points {
+            x0 = x0.min(x);
+            y0 = y0.min(y);
+            x1 = x1.max(x);
+            y1 = y1.max(y);
+        }
+        let (x0, y0) = (x0.saturating_sub(margin), y0.saturating_sub(margin));
+        let (x1, y1) = (x1.saturating_add(margin), y1.saturating_add(margin));
+        let local = points.into_iter().map(|(x, y)| (x - x0, y - y0)).collect();
         self.node(
-            Rect::new(0, 0, self.scene.width, self.scene.height),
-            Primitive::Path {
-                points,
-                fill: Some(fill),
-                stroke: None,
-                stroke_width: 0,
-                closed: true,
-            },
+            Rect::new(x0, y0, (x1 - x0).max(1) as u32, (y1 - y0).max(1) as u32),
+            primitive(local),
             None,
         );
     }
+    pub fn path(&mut self, points: Vec<(i32, i32)>, fill: Color) {
+        self.bounded_path(points, 2, |points| Primitive::Path {
+            points,
+            fill: Some(fill),
+            stroke: None,
+            stroke_width: 0,
+            closed: true,
+        });
+    }
     pub fn line(&mut self, points: Vec<(i32, i32)>, color: Color, thickness: u16) {
-        self.node(
-            Rect::new(0, 0, self.scene.width, self.scene.height),
-            Primitive::Path {
-                points,
-                fill: None,
-                stroke: Some(color),
-                stroke_width: thickness,
-                closed: false,
-            },
-            None,
-        );
+        self.bounded_path(points, i32::from(thickness) + 2, |points| Primitive::Path {
+            points,
+            fill: None,
+            stroke: Some(color),
+            stroke_width: thickness,
+            closed: false,
+        });
     }
     pub fn shadow(&mut self, r: Rect, radius: u32) {
         self.node(

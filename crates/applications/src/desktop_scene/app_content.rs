@@ -1869,6 +1869,7 @@ pub fn app_content(state: &crate::AppState, theme: DesktopTheme, width: u32, hei
             clipboard: None,
             share_to: None,
             editor: None,
+            pointer: None,
             files: Default::default(),
         },
     )
@@ -1910,8 +1911,14 @@ pub fn app_content_with(state: &crate::AppState, env: &crate::AppEnv<'_>) -> Sce
         // page, its start page and its chrome; this arm only keeps the match total.
         crate::AppState::Browser { .. } => {}
     }
+    let bounds = Rect::new(0, 0, width, height);
     for n in &mut p.scene.nodes {
-        n.clip = Some(Rect::new(0, 0, width, height));
+        // An application's own clip (a scrolled list, a viewport) is kept, within the
+        // window; a node clipped away entirely keeps an empty clip and paints nothing.
+        n.clip = Some(match n.clip {
+            Some(c) => c.intersection(bounds).unwrap_or(Rect::new(0, 0, 0, 0)),
+            None => bounds,
+        });
         if let Some(s) = &mut n.semantic {
             if n.interaction.as_deref().is_some_and(|i| {
                 i.starts_with("editor-text") || i == "terminal-input" || i == "files-search"
@@ -2077,6 +2084,7 @@ mod tests {
                 clipboard: Some(&clipboard),
                 share_to: None,
                 editor: None,
+                pointer: None,
                 files: Default::default(),
             },
         );

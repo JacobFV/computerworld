@@ -242,6 +242,19 @@ pub enum AppEffect {
     PasteImage {
         window: u64,
     },
+    /// Read a file's bytes exactly as stored (a binary STL, a document); `ReadFile`
+    /// delivers lossy UTF-8. The answer, bytes or the reason there are none, goes to
+    /// `DesktopState::bytes_loaded`, so a missing file is the application's to report.
+    ReadBytes {
+        window: u64,
+        path: String,
+    },
+    /// Write bytes exactly (a binary STL). Reported like `WriteFile`.
+    WriteBytes {
+        window: u64,
+        path: String,
+        bytes: Vec<u8>,
+    },
 }
 /// What a `ShellRun` produced: the finished command (`None` when only the prompt was
 /// asked for), where the session stands afterwards and the prompt it would print next.
@@ -1364,6 +1377,10 @@ impl DesktopState {
                     first.append(&mut effects);
                     effects = first;
                 }
+                // FreeCAD's file dialogs start in the user's Documents folder.
+                if let NativeApp::Freecad(cad) = &mut app {
+                    cad.attach(&self.home_folder());
+                }
                 (AppState::Native(app), effects)
             }
         };
@@ -1797,7 +1814,44 @@ impl DesktopState {
         if let Ok(code) = self.code_mut(id) {
             return Ok(code.written(id, path, content));
         }
+        if let Some(AppState::Native(NativeApp::Freecad(cad))) =
+            self.windows.get_mut(&id).map(|w| &mut w.state)
+        {
+            cad.written(path);
+            return Ok(vec![]);
+        }
         self.file_saved(id, content).map(|()| vec![])
+    }
+    /// Bytes an application asked for with `ReadBytes`, or why it cannot have them.
+    pub fn bytes_loaded(
+        &mut self,
+        id: u64,
+        path: &str,
+        result: Result<Vec<u8>, String>,
+    ) -> Result<(), String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.bytes_loaded(path, result),
+            _ => Err("window is not a native application".into()),
+        }
+    }
+    /// A wheel turn over a control of window `id`, at (`dx`, `dy`) inside it. `false`
+    /// when the application has no use for it there.
+    pub fn wheel(
+        &mut self,
+        id: u64,
+        target: &str,
+        dx: i32,
+        dy: i32,
+        delta: i32,
+    ) -> Result<bool, String> {
+        match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+            AppState::Native(app) => app.wheel(target, dx, dy, delta),
+            _ => Ok(false),
+        }
+    }
+    /// Whether a secondary-button press on `target` of window `id` is the application's.
+    pub fn app_takes_secondary(&self, id: u64, target: &str) -> bool {
+        matches!(self.windows.get(&id).map(|w| &w.state), Some(AppState::Native(app)) if app.takes_secondary(target))
     }
     /// Deliver successful effect results. A failed save must not mark an editor clean.
     pub fn file_loaded(&mut self, id: u64, content: String) -> Result<(), String> {
@@ -1895,8 +1949,23 @@ impl DesktopState {
         y: i32,
         bounds: cw_scene::Rect,
     ) -> Result<Vec<AppEffect>, String> {
+        self.app_pointer_down_with(id, target, x, y, bounds, 0)
+    }
+    /// A press with a particular button (0 left, 1 middle, 2 right).
+    pub fn app_pointer_down_with(
+        &mut self,
+        id: u64,
+        target: &str,
+        x: i32,
+        y: i32,
+        bounds: cw_scene::Rect,
+        button: u8,
+    ) -> Result<Vec<AppEffect>, String> {
         self.focus(id)?;
         let clock = self.clock_us;
+        if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
+            app.pointer_button(button);
+        }
         let effects = match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
             AppState::Native(app) => app.pointer(
                 id,

@@ -993,6 +993,65 @@ impl Environment {
                 self.effects(id, machine, actor, effects)?;
                 Ok(Value::Null)
             }
+            ("pointer.v1", "wheel") => {
+                let coord = |k: &str| -> Result<i32> {
+                    Ok(p.get(k)
+                        .and_then(integer_i64)
+                        .ok_or_else(|| SimError::invalid(format!("{k} required")))?
+                        .clamp(-32768, 32768) as i32)
+                };
+                let (x, y) = (coord("x")?, coord("y")?);
+                let width = p
+                    .get("width")
+                    .and_then(integer_u64)
+                    .unwrap_or(1024)
+                    .min(8192) as u32;
+                let height = p
+                    .get("height")
+                    .and_then(integer_u64)
+                    .unwrap_or(768)
+                    .min(8192) as u32;
+                let delta = p
+                    .get("delta_y")
+                    .and_then(integer_i64)
+                    .unwrap_or(0)
+                    .clamp(-100_000, 100_000) as i32;
+                self.machine_mut(id, machine)?.pointer_position = Some((x, y));
+                let scene = self.scene(id, width, height)?;
+                let Some(node) = scene.hit_test(x, y) else {
+                    return Ok(json!({"handled": false}));
+                };
+                let bounds = node.transform.bounds(node.bounds);
+                let Some((window, inner)) = node
+                    .interaction
+                    .as_deref()
+                    .and_then(|t| t.strip_prefix("window:"))
+                    .and_then(|t| t.split_once(':'))
+                    .and_then(|(w, op)| {
+                        Some((
+                            w.parse::<u64>().ok()?,
+                            op.strip_prefix("content:")?.to_owned(),
+                        ))
+                    })
+                else {
+                    return Ok(json!({"handled": false}));
+                };
+                if !self
+                    .session(id)?
+                    .config
+                    .actions
+                    .iter()
+                    .any(|family| family == "application.v1")
+                {
+                    return Err(SimError::denied("application interaction is not permitted"));
+                }
+                let handled = self
+                    .machine_mut(id, machine)?
+                    .desktop
+                    .wheel(window, &inner, x - bounds.x, y - bounds.y, delta)
+                    .map_err(SimError::invalid)?;
+                Ok(json!({"handled": handled}))
+            }
             ("pointer.v1", "click" | "down" | "move" | "up" | "cancel" | "double_click") => {
                 let x = p
                     .get("x")
@@ -1102,7 +1161,28 @@ impl Environment {
                     }
                 }
                 if action.op == "down" && p.get("button").and_then(integer_u64) == Some(2) {
-                    return self.shell_action(id, machine, actor, "shell:panel:context");
+                    // A right-drag on an application's drag surface that uses it (a 3D
+                    // view pans) belongs to the application, not the context menu.
+                    let scene = self.scene(id, width, height)?;
+                    let secondary = scene
+                        .hit_test(x, y)
+                        .and_then(|n| n.interaction.as_deref())
+                        .and_then(|t| t.strip_prefix("window:"))
+                        .and_then(|t| t.split_once(':'))
+                        .and_then(|(w, op)| {
+                            Some((
+                                w.parse::<u64>().ok()?,
+                                op.strip_prefix("content:")?.to_owned(),
+                            ))
+                        })
+                        .is_some_and(|(w, inner)| {
+                            self.session(id).is_ok_and(|s| {
+                                s.machines[machine].desktop.app_takes_secondary(w, &inner)
+                            })
+                        });
+                    if !secondary {
+                        return self.shell_action(id, machine, actor, "shell:panel:context");
+                    }
                 }
                 if action.op == "cancel" {
                     self.machine_mut(id, machine)?.desktop.pointer_capture = None;
@@ -1214,10 +1294,12 @@ impl Environment {
                             {
                                 let content = content.to_owned();
                                 self.machine_mut(id, machine)?.touch_start = None;
+                                let button =
+                                    p.get("button").and_then(integer_u64).unwrap_or(0).min(2) as u8;
                                 let effects = self
                                     .machine_mut(id, machine)?
                                     .desktop
-                                    .app_pointer_down(window, &content, x, y, hit)
+                                    .app_pointer_down_with(window, &content, x, y, hit, button)
                                     .map_err(SimError::invalid)?;
                                 self.sync_desktop_visibility(id, machine)?;
                                 self.effects(id, machine, actor, effects)?;
@@ -1333,6 +1415,7 @@ impl Environment {
                 if action.op == "double_click"
                     && !target.starts_with("open:")
                     && !target.starts_with("code:")
+                    && !target.starts_with("freecad:")
                 {
                     return Ok(Value::Null);
                 }
@@ -1955,6 +2038,31 @@ impl Environment {
                             .map_err(SimError::invalid)?,
                     }
                 }
+                ReadBytes { window, path } => {
+                    // A missing or unreadable file is the application's to report, so it
+                    // gets the reason rather than a failed action.
+                    let result = self
+                        .runtime
+                        .read_file(machine, &path)
+                        .map_err(|e| actor_error(e).message);
+                    self.machine_mut(id, machine)?
+                        .desktop
+                        .bytes_loaded(window, &path, result)
+                        .map_err(SimError::invalid)?;
+                }
+                WriteBytes {
+                    window,
+                    path,
+                    bytes,
+                } => {
+                    self.runtime.write_file(machine, actor, &path, &bytes)?;
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .file_written(window, &path, "")
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
                 WriteImage {
                     window,
                     path,
@@ -2481,6 +2589,13 @@ impl Environment {
                             share_to,
                             files: files_env.clone(),
                             editor,
+                            // Only the window in front sees the pointer, and only over
+                            // its own content.
+                            pointer: m
+                                .pointer_position
+                                .filter(|_| m.desktop.focused == Some(window_id))
+                                .filter(|(x, y)| content_rect.contains(*x, *y))
+                                .map(|(x, y)| (x - content_rect.x, y - content_rect.y)),
                         },
                     )
                 };

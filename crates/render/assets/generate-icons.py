@@ -84,6 +84,24 @@ def editors():
   (OUT/f'{platform}-{name}.svg').write_text(svg)
   cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=size,output_height=size)
 
+# FreeCAD, on the three desktops: an isometric machined block with a bored hole and a
+# red sketch profile on its top face. Original artwork (MIT), not FreeCAD's logo.
+FREECAD_ART='<path d="M24 50 64 30 104 50 104 92 64 112 24 92Z" fill="#5b6b7e"/><path d="M24 50 64 30 104 50 64 70Z" fill="#e3e9f0"/><path d="M24 50 64 70 64 112 24 92Z" fill="#a7b6c8"/><path d="M64 70 104 50 104 92 64 112Z" fill="#74879d"/><ellipse cx="64" cy="50" rx="15" ry="7.5" fill="#34404e"/><path d="M49 50a15 7.5 0 0 0 30 0" fill="#23303c"/><path d="M34 50 64 35 94 50 64 65Z" fill="none" stroke="#e03131" stroke-width="3.5" stroke-linejoin="round"/><circle cx="64" cy="35" r="4" fill="#e03131"/><circle cx="94" cy="50" r="4" fill="#e03131"/><circle cx="34" cy="50" r="4" fill="#e03131"/><circle cx="64" cy="65" r="4" fill="#e03131"/><path d="M24 50 64 70 104 50M64 70v42" fill="none" stroke="#2b3542" stroke-width="2" stroke-linejoin="round" opacity=".55"/>'
+def freecad():
+ tiles={
+  'macos':('<defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="#fbfcfe"/><stop offset="1" stop-color="#dfe6ee"/></linearGradient></defs><rect x="5" y="6" width="118" height="118" rx="27" fill="#000" opacity=".14"/><rect x="5" y="3" width="118" height="118" rx="27" fill="url(#bg)"/><rect x="6" y="4" width="116" height="116" rx="26" fill="none" stroke="#fff" stroke-opacity=".32"/>',128),
+  'windows':('',128),
+  'ubuntu':('<rect x="8" y="10" width="112" height="112" rx="24" fill="#000" opacity=".16"/><rect x="8" y="7" width="112" height="112" rx="24" fill="#f6f5f4"/>',256),
+ }
+ for platform,(bg,size) in tiles.items():
+  svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 128 128">{bg}{FREECAD_ART}</svg>'
+  (OUT/f'{platform}-freecad.svg').write_text(svg)
+  cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-freecad.png'),output_width=size,output_height=size)
+
+if '--freecad' in sys.argv:
+ freecad()
+ sys.exit(0)
 if '--editors' not in sys.argv:
  platform_icons()
 editors()
+freecad()

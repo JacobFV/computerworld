@@ -159,7 +159,7 @@ $('screen').onpointercancel=protect(e=>{if(!pointerGesture)return;if(pointerFram
 $('screen').ondblclick=protect(e=>{e.preventDefault();pointerStep('double_click',pointerCoordinates(e),true);});
 $('screen').oncontextmenu=e=>e.preventDefault();
 
-$('screen').addEventListener('wheel',protect(e=>{e.preventDefault();scrollY=Math.max(0,scrollY+Math.round(e.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
+$('screen').addEventListener('wheel',protect(e=>{e.preventDefault();if(!env())return;const turned=env().step([{family:'pointer.v1',op:'wheel',machine,payload:{...pointerCoordinates(e),delta_y:Math.round(e.deltaY)}}]);if(turned.outcomes[0]?.value?.handled){paint(env(),$('screen'),...dimensions(machine));return;}scrollY=Math.max(0,scrollY+Math.round(e.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
 $('screen').onkeydown=protect(e=>{if(e.key==='Tab'&&!e.altKey&&!e.metaKey)return;e.preventDefault();const prefix=(e.metaKey?'Meta+':'')+(e.ctrlKey?'Ctrl+':'')+(e.altKey?'Alt+':'')+(e.shiftKey&&e.key.length>1?'Shift+':'');const key=prefix+e.key;act('keyboard.v1',!prefix&&e.key.length===1?'type':'key',!prefix&&e.key.length===1?{text:e.key}:{key});});
 $('keyboard-focus').onclick=()=>{$('text-entry').focus();announce('Text is sent to the focused field in the active application.');};
 $('typing').onsubmit=protect(e=>{e.preventDefault();act('keyboard.v1','type',{text:$('text-entry').value});$('text-entry').value='';});

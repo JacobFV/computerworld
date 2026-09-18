@@ -24,3 +24,8 @@ codegen-units = 1
 
 [profile.dev]
 debug = 1
+
+# The CAD kernel's booleans are compute-bound; unoptimised they make debug builds
+# (and every test that drives the modeller) an order of magnitude slower.
+[profile.dev.package.cw-cad]
+opt-level = 2

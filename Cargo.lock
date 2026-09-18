@@ -133,6 +133,7 @@ name = "computerworld"
 version = "0.1.0-alpha.2"
 dependencies = [
  "cw-applications",
+ "cw-cad",
  "cw-environment",
  "cw-kernel",
  "cw-network",
@@ -191,6 +192,7 @@ dependencies = [
 name = "cw-applications"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-cad",
  "cw-protocol",
  "cw-raster",
  "cw-scene",
@@ -220,6 +222,14 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
+]
+
+[[package]]
+name = "cw-cad"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
