@@ -17,7 +17,7 @@
 use super::geom::{Curve, Surface};
 use super::intersect::{curve_surface, section_crossings, surface_sections, CurveHit, Prepared};
 use super::topo::{edge_params, Box3, Coedge, Edge, Face, Solid, TOL};
-use super::uv::{classify, edge_distance, face_uv, loop_polygon, point_in_polys, Where};
+use super::uv::{classify, face_uv, point_in_polys, Where};
 use crate::math::{v2, V2, V3};
 use std::collections::BTreeMap;
 
@@ -552,15 +552,6 @@ pub fn boolean(a: &Solid, b: &Solid, op: Op) -> Result<Solid, String> {
                 None => return Err("a face could not be classified".into()),
             },
         };
-        #[cfg(test)]
-        if std::env::var("CW_BOOL_DEBUG").is_ok() {
-            println!(
-                "sub {si} side {:?} face {} state {state} at {p:?} uv {uv:?} loops {:?}",
-                sf.side,
-                sf.face,
-                sf.loops.iter().map(|l| l.len()).collect::<Vec<_>>()
-            );
-        }
         let take = match (op, sf.side, state) {
             (Op::Union, _, "out") => Some(false),
             (Op::Union, Side::A, "same") => Some(false),
@@ -1168,11 +1159,4 @@ fn region_point(polys: &[Vec<V2>]) -> Option<V2> {
         }
     }
     best.map(|b| b.1)
-}
-
-#[allow(dead_code)]
-fn unused(_: &[V3], _: usize) -> f64 {
-    let _ = edge_distance;
-    let _ = loop_polygon;
-    0.0
 }

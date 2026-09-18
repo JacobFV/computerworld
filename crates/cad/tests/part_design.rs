@@ -372,6 +372,91 @@ fn chamfer_types_and_rounding_every_edge() {
 }
 
 #[test]
+fn a_blend_that_does_not_fit_is_refused_in_freecads_words() {
+    let dress = |feature: Feature| -> String {
+        let (mut doc, body, p) = padded_box();
+        let model = recompute(&mut doc);
+        let s = shape(&model, &p);
+        let e = (0..s.topo.edges.len())
+            .find(|i| (SubRef::edge(&s.topo, &s.mesh, *i).center - v3(10.0, 0.0, 5.0)).len() < 1e-9)
+            .unwrap();
+        let edges = vec![SubRef::edge(&s.topo, &s.mesh, e)];
+        let feature = match feature {
+            Feature::Fillet {
+                radius, all_edges, ..
+            } => Feature::Fillet {
+                edges,
+                radius,
+                all_edges,
+            },
+            Feature::Chamfer {
+                size,
+                kind,
+                size2,
+                angle,
+                flip,
+                all_edges,
+                ..
+            } => Feature::Chamfer {
+                edges,
+                size,
+                kind,
+                size2,
+                angle,
+                flip,
+                all_edges,
+            },
+            other => other,
+        };
+        let f = doc.add_to_body(&body, feature).unwrap();
+        let model = recompute(&mut doc);
+        model.error(&f).unwrap_or("").to_owned()
+    };
+    let big = dress(Feature::Fillet {
+        edges: vec![],
+        radius: 6.0,
+        all_edges: false,
+    });
+    assert!(
+        big.contains("Fillet not possible on selected shapes"),
+        "{big}"
+    );
+    assert!(big.contains("too large"), "{big}");
+    let zero = dress(Feature::Fillet {
+        edges: vec![],
+        radius: 0.0,
+        all_edges: false,
+    });
+    assert!(
+        zero.contains("Fillet radius must be greater than zero"),
+        "{zero}"
+    );
+    let wide = dress(Feature::Chamfer {
+        edges: vec![],
+        size: 30.0,
+        kind: ChamferType::Equal,
+        size2: 30.0,
+        angle: 45.0,
+        flip: false,
+        all_edges: false,
+    });
+    assert!(wide.contains("Failed to create chamfer"), "{wide}");
+    let bad_angle = dress(Feature::Chamfer {
+        edges: vec![],
+        size: 1.0,
+        kind: ChamferType::DistanceAngle,
+        size2: 1.0,
+        angle: 200.0,
+        flip: false,
+        all_edges: false,
+    });
+    assert!(
+        bad_angle.contains("Angle must be greater than 0 and less than 180"),
+        "{bad_angle}"
+    );
+}
+
+#[test]
 fn a_through_hole_with_a_counterbore() {
     let (mut doc, body, _) = padded_box();
     let mut s = Sketch::default();
@@ -515,6 +600,83 @@ fn a_pad_that_leaves_the_body_is_refused_as_two_solids() {
     let model = recompute(&mut doc);
     assert!(model.error(&far).unwrap().contains("multiple solids"));
     assert!(matches!(model.status[&body], Status::Error(_)));
+}
+
+#[test]
+fn an_edge_reference_survives_an_upstream_change() {
+    let (mut doc, body, p) = padded_box();
+    let model = recompute(&mut doc);
+    let s = shape(&model, &p);
+    // The top edge along x at y = 0.
+    let e = (0..s.topo.edges.len())
+        .find(|i| (SubRef::edge(&s.topo, &s.mesh, *i).center - v3(10.0, 0.0, 5.0)).len() < 1e-9)
+        .unwrap();
+    let f = doc
+        .add_to_body(
+            &body,
+            Feature::Fillet {
+                edges: vec![SubRef::edge(&s.topo, &s.mesh, e)],
+                radius: 2.0,
+                all_edges: false,
+            },
+        )
+        .unwrap();
+    let model = recompute(&mut doc);
+    ok(&model, &[&f]);
+    let corner = 4.0 - PI;
+    assert!((model.body_shape[&body].volume() - (1000.0 - corner * 20.0)).abs() < 1e-9);
+    // Taller and wider: the rounded edge is still the top one at y = 0, and the
+    // reference has been rewritten to where it is now.
+    if let Some(Object {
+        feature: Feature::Pad { length, .. },
+        ..
+    }) = doc.get_mut(&p)
+    {
+        *length = 9.0;
+    }
+    if let Some(Object {
+        feature: Feature::Sketch { sketch, .. },
+        ..
+    }) = doc.get_mut("Sketch")
+    {
+        *sketch = rect(30.0, 10.0);
+    }
+    let model = recompute(&mut doc);
+    ok(&model, &[&f]);
+    assert!(
+        (model.body_shape[&body].volume() - (30.0 * 10.0 * 9.0 - corner * 30.0)).abs() < 1e-9,
+        "{}",
+        model.body_shape[&body].volume()
+    );
+    let Some(Object {
+        feature: Feature::Fillet { edges, .. },
+        ..
+    }) = doc.get(&f)
+    else {
+        panic!()
+    };
+    assert!(
+        (edges[0].center - v3(15.0, 0.0, 9.0)).len() < 1e-9,
+        "{:?}",
+        edges[0]
+    );
+}
+
+#[test]
+fn an_imported_solid_round_trips_through_the_document() {
+    let (mut doc, _, _) = padded_box();
+    let model = recompute(&mut doc);
+    let solid = model.shapes["Pad"].solid.clone().unwrap();
+    let name = doc.add(Feature::Part {
+        solid: solid.clone(),
+    });
+    let text = serde_json::to_string(&doc).unwrap();
+    assert!(text.contains("\"TypeId\":\"Part::Feature\""));
+    let back: Document = serde_json::from_str(&text).unwrap();
+    let mut back = back;
+    let model = recompute(&mut back);
+    assert_eq!(model.status[&name], Status::Ok);
+    assert!((model.shapes[&name].volume() - 1000.0).abs() < 1e-9);
 }
 
 #[test]

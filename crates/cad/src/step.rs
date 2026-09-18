@@ -8,7 +8,7 @@
 //! ruled surface) is written as an interpolating B-spline through samples dense enough
 //! that the deviation is below the file's stated uncertainty.
 use crate::brep::geom::{BSplineCurve, BSplineSurface, Curve, Surface};
-use crate::brep::topo::{Coedge, Edge, Face, Solid, Vertex};
+use crate::brep::topo::{Coedge, Edge, Face, Solid};
 use crate::brep::uv::face_uv;
 use crate::math::{self, v3, Frame, V3};
 use std::collections::BTreeMap;
@@ -1468,6 +1468,3 @@ fn repair_poles(solid: &mut Solid) {
         }
     }
 }
-
-#[allow(dead_code)]
-fn unused(_: &Vertex) {}

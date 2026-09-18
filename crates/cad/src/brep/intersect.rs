@@ -896,13 +896,6 @@ impl<'a> Prepared<'a> {
                     if !total.contains(q) {
                         continue;
                     }
-                    #[cfg(test)]
-                    if std::env::var("CW_RAY_DEBUG").is_ok() {
-                        println!(
-                            "  ray from {p:?} dir {d:?} face {fi} t {t} q {q:?} -> {:?}",
-                            classify(self.solid, &self.uvs[fi], fi, q, TOL * 10.0)
-                        );
-                    }
                     match classify(self.solid, &self.uvs[fi], fi, q, TOL * 10.0) {
                         Where::Inside => {
                             // Grazing hits are ambiguous.
