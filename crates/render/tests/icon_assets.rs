@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 /// The shell namespaces, and every application a shell may place on a home
 /// screen, dock or launcher tile. Both lists are checked against `ASSET_IDS`.
 const PLATFORMS: [&str; 5] = ["macos", "windows", "ubuntu", "ios", "android"];
-const APPS: [&str; 21] = [
+const APPS: [&str; 22] = [
     "files",
     "browser",
     "terminal",
@@ -31,6 +31,7 @@ const APPS: [&str; 21] = [
     "music",
     "maps",
     "weather",
+    "code",
 ];
 /// Spellings kept resolvable for existing call sites, and what they resolve to.
 const ALIASES: [(&str, &str); 6] = [

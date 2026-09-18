@@ -122,6 +122,7 @@ impl Environment {
             (_, "music") => "Music",
             (_, "maps") => "Maps",
             (_, "weather") => "Weather",
+            (_, "code") => "Visual Studio Code",
             (_, other) => {
                 debug_assert!(false, "unnamed native application {other}");
                 "Application"

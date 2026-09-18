@@ -4,7 +4,7 @@ Original artwork released under repository MIT license. Yaru PNGs are separate.
 from pathlib import Path
 import cairosvg
 OUT=Path(__file__).parent/'icons'
-colors={'files':('#75ceff','#0677d8'),'browser':('#4abdfc','#0560d8'),'terminal':('#444952','#17191e'),'docs':('#fdfefe','#d6e3f0'),'mail':('#40c4ff','#086ee9'),'calendar':('#fff','#e7edf4'),'chat':('#6ae268','#16ae39'),'settings':('#aeb4c0','#697383'),'camera':('#e3e6eb','#abb3bc'),'photos':('#fff','#eff3f7'),'phone':('#6cdf65','#0fa834'),'store':('#47baff','#0877ee'),'launcher':('#dfdef2','#7b8196'),'trash':('#e3edf4','#9eb0bf'),'notes':('#ffdc6e','#f5a521'),'contacts':('#e6bd93','#a9713d'),'clock':('#5b6472','#232831'),'calculator':('#9aa4b2','#4e5765'),'music':('#ff8a9b','#e2374f'),'maps':('#84dfa6','#1c9a55'),'weather':('#8fd0ff','#2d7ccd')}
+colors={'files':('#75ceff','#0677d8'),'browser':('#4abdfc','#0560d8'),'terminal':('#444952','#17191e'),'docs':('#fdfefe','#d6e3f0'),'mail':('#40c4ff','#086ee9'),'calendar':('#fff','#e7edf4'),'chat':('#6ae268','#16ae39'),'settings':('#aeb4c0','#697383'),'camera':('#e3e6eb','#abb3bc'),'photos':('#fff','#eff3f7'),'phone':('#6cdf65','#0fa834'),'store':('#47baff','#0877ee'),'launcher':('#dfdef2','#7b8196'),'trash':('#e3edf4','#9eb0bf'),'notes':('#ffdc6e','#f5a521'),'contacts':('#e6bd93','#a9713d'),'clock':('#5b6472','#232831'),'calculator':('#9aa4b2','#4e5765'),'music':('#ff8a9b','#e2374f'),'maps':('#84dfa6','#1c9a55'),'weather':('#8fd0ff','#2d7ccd'),'code':('#ffffff','#e6ecf3')}
 shapes={
 'files':'<path d="M18 33h29l9 10h54v52a9 9 0 0 1-9 9H27a9 9 0 0 1-9-9Z" fill="#e8a333"/><path d="M18 46h92v49a9 9 0 0 1-9 9H27a9 9 0 0 1-9-9Z" fill="url(#folder)"/><path d="M28 57h71" stroke="#fff0be" stroke-width="3"/>',
 'browser':'<circle cx="64" cy="64" r="44" fill="#e9f8ff"/><circle cx="64" cy="64" r="39" fill="#118adc"/><g stroke="#fff" stroke-width="2"><path d="M64 28v8m0 56v8M28 64h8m56 0h8M39 39l6 6m38 38 6 6M39 89l6-6m38-38 6-6"/></g><path d="m82 43-11 28-27 14 12-28Z" fill="#fff"/><path d="m82 43-11 28-15-14Z" fill="#ff555a"/>',
@@ -27,6 +27,7 @@ shapes={
 'music':'<path d="M50 89V38m46 39V27" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M46 33l54-13v17L46 50Z" fill="#fff"/><ellipse cx="39" cy="89" rx="15" ry="12" fill="#fff"/><ellipse cx="85" cy="77" rx="15" ry="12" fill="#fff"/><path d="M46 44l54-13v6L46 50Z" fill="#ffd9de"/>',
 'maps':'<path d="M18 36 47 25v70L18 106Z" fill="#fff"/><path d="M47 25l34 11v70L47 95Z" fill="#dcefe3"/><path d="M81 36l29-11v70l-29 11Z" fill="#fff"/><path d="M18 36 47 25v70L18 106Zm63 0 29-11v70l-29 11Z" fill="none" stroke="#bcd8c7" stroke-width="2"/><path d="M33 63h58" stroke="#f2c14b" stroke-width="5" stroke-linecap="round"/><path d="M64 30a17 17 0 0 0-17 17c0 13 17 32 17 32s17-19 17-32a17 17 0 0 0-17-17Z" fill="#e8453c"/><circle cx="64" cy="47" r="7" fill="#fff"/>',
 'weather':'<circle cx="50" cy="46" r="19" fill="#ffd451"/><g stroke="#ffd451" stroke-width="6" stroke-linecap="round"><path d="M50 15v-8M19 46h-8M28 24l-6-6M72 24l6-6M28 68l-6 6"/></g><path d="M48 99a20 20 0 0 1 1-40 27 27 0 0 1 50 7 17 17 0 0 1-4 33Z" fill="#fff"/><path d="M48 99a20 20 0 0 1 1-40 27 27 0 0 1 50 7 17 17 0 0 1-4 33Z" fill="none" stroke="#dce9f4" stroke-width="2"/>',
+'code':'<polygon points="16.2,49.4 24.5,42.2 89.0,92.1 89.0,109.8" fill="#0065a9" stroke="#0065a9" stroke-width="3" stroke-linejoin="round"/><polygon points="16.2,78.6 24.5,85.8 89.0,35.9 89.0,18.2" fill="#007acc" stroke="#007acc" stroke-width="3" stroke-linejoin="round"/><polygon points="84.8,15.1 111.8,28.6 111.8,99.4 84.8,112.9" fill="#1f9cf0" stroke="#1f9cf0" stroke-width="3" stroke-linejoin="round"/><polygon points="84.8,15.1 91.0,18.2 91.0,109.8 84.8,112.9" fill="#000" opacity=".16"/>',
 }
 for platform in ['macos','windows','ios','android']:
  for name,(a,b) in colors.items():
@@ -45,6 +46,12 @@ for platform in ['macos','windows','ios','android']:
    art='<path d="M109 80c-5 24-37 38-62 22C17 84 18 56 35 35c20-25 63-15 73 12 4 12-1 21-13 25-13 5-38-5-42 9-3 13 38 20 56-1Z" fill="#12b7ba"/><path d="M109 80c-27 12-53 1-55-16-2-17 20-29 35-22-17-21-49-14-61 11-13 28 6 55 34 57 23 1 41-12 47-30Z" fill="#1578df"/><path d="M35 35c26-26 59-10 64 11-22-14-48-1-48 19-16 0-26-13-16-30Z" fill="#48dab7"/>'
   if name=='browser' and platform=='android':
    art='<circle cx="64" cy="64" r="47" fill="#f0c742"/><path d="M64 17a47 47 0 0 1 41 24H64L42 79 23 47a47 47 0 0 1 41-30" fill="#e95446"/><path d="M23 47 46 87h43a47 47 0 0 1-25 24 47 47 0 0 1-41-64" fill="#45a666"/><circle cx="64" cy="64" r="23" fill="#fff"/><circle cx="64" cy="64" r="19" fill="#388ed5"/>'
+  if name=='code' and platform in ('macos','windows'):
+   bg=''  # Visual Studio Code ships its mark bare, with no tile behind it.
   svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">{defs}{bg}{art}</svg>'
   (OUT/f'{platform}-{name}.svg').write_text(svg)
   cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/f'{platform}-{name}.png'),output_width=128,output_height=128)
+# Visual Studio Code on Ubuntu is its own mark, not a Yaru icon, drawn at Yaru's 256 px.
+svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">{shapes["code"]}</svg>'
+(OUT/'ubuntu-code.svg').write_text(svg)
+cairosvg.svg2png(bytestring=svg.encode(),write_to=str(OUT/'ubuntu-code.png'),output_width=256,output_height=256)

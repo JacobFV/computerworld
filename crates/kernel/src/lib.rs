@@ -812,6 +812,35 @@ impl Runtime {
         self.event("terminal.output", Some(machine), Some(actor), json!(result));
         Ok(result)
     }
+    /// Run `command` as a shell session whose working directory is `cwd`, the way an
+    /// application's integrated terminal is its own process: `cd` inside it moves the
+    /// session, never the machine's shell. Returns the result and the session's working
+    /// directory afterwards.
+    pub fn execute_in(
+        &mut self,
+        machine: &str,
+        actor: &str,
+        cwd: &str,
+        command: &str,
+    ) -> Result<(CommandResult, String)> {
+        let dir = {
+            let computer = self.computer(machine)?;
+            let dir = computer.resolve(cwd);
+            computer
+                .vfs
+                .check_access(&dir, &computer.user, true, false, true)
+                .map_err(|e| computer_error(e.to_string()))?;
+            if !computer.vfs.stat(&dir).is_ok_and(|m| m.is_dir) {
+                return Err(SimError::not_found("directory"));
+            }
+            dir
+        };
+        let saved = std::mem::replace(&mut self.computer_mut(machine)?.cwd, dir);
+        let result = self.execute(machine, actor, command);
+        let computer = self.computer_mut(machine)?;
+        let after = std::mem::replace(&mut computer.cwd, saved);
+        Ok((result?, after))
+    }
     pub fn submit_http(
         &mut self,
         machine: &str,

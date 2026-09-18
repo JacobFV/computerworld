@@ -160,7 +160,7 @@ $('screen').ondblclick=protect(e=>{e.preventDefault();pointerStep('double_click'
 $('screen').oncontextmenu=e=>e.preventDefault();
 
 $('screen').addEventListener('wheel',protect(e=>{e.preventDefault();scrollY=Math.max(0,scrollY+Math.round(e.deltaY));act('browser.v1','scroll',{y:scrollY});}),{passive:false});
-$('screen').onkeydown=protect(e=>{if(e.key==='Tab'&&!e.altKey&&!e.metaKey)return;e.preventDefault();const prefix=e.metaKey?'Meta+':e.ctrlKey?'Ctrl+':e.altKey?'Alt+':'';const key=prefix+e.key;act('keyboard.v1',!prefix&&e.key.length===1?'type':'key',!prefix&&e.key.length===1?{text:e.key}:{key});});
+$('screen').onkeydown=protect(e=>{if(e.key==='Tab'&&!e.altKey&&!e.metaKey)return;e.preventDefault();const prefix=(e.metaKey?'Meta+':'')+(e.ctrlKey?'Ctrl+':'')+(e.altKey?'Alt+':'')+(e.shiftKey&&e.key.length>1?'Shift+':'');const key=prefix+e.key;act('keyboard.v1',!prefix&&e.key.length===1?'type':'key',!prefix&&e.key.length===1?{text:e.key}:{key});});
 $('keyboard-focus').onclick=()=>{$('text-entry').focus();announce('Text is sent to the focused field in the active application.');};
 $('typing').onsubmit=protect(e=>{e.preventDefault();act('keyboard.v1','type',{text:$('text-entry').value});$('text-entry').value='';});
 $('pointer-focus').onclick=()=>{$('screen').focus();announce(kind(machine)==='phone'?'Tap the screen to interact.':'Click the screen to interact.');};

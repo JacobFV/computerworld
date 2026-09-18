@@ -77,7 +77,12 @@ export default {
       "initial_files": {
         "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
         "notes.txt": "Welcome alice. Start at http://intranet.internal/\n",
-        "Notes/welcome.txt": "Notes for alice\nThese are real files under the Notes folder.\n"
+        "Notes/welcome.txt": "Notes for alice\nThese are real files under the Notes folder.\n",
+        "project/README.md": "# Project\n\nA small workspace. Run `main.py` with F5, or `bash run.sh` in the terminal.\n",
+        "project/main.py": "import sys\n\n\ndef greet(name: str) -> str:\n    return f\"Hello, {name}!\"\n\n\nif __name__ == \"__main__\":\n    print(greet(sys.argv[1] if len(sys.argv) > 1 else \"world\"))\n",
+        "project/src/app.js": "// TODO: wire this to the page\nfunction add(a, b) {\n  return a + b;\n}\n\nconsole.log(`2 + 3 = ${add(2, 3)}`);\n",
+        "project/run.sh": "#!/bin/bash\necho \"Files in $(pwd):\"\nls\n",
+        "project/package.json": "{\n  \"name\": \"project\",\n  \"version\": \"1.0.0\",\n  \"main\": \"src/app.js\"\n}\n"
       },
       "installed_apps": [
         "terminal",
@@ -85,6 +90,7 @@ export default {
         "editor",
         "files",
         "desktop",
+        "code",
         "mail",
         "calendar",
         "chat",
@@ -113,7 +119,12 @@ export default {
       "initial_files": {
         "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
         "notes.txt": "Welcome bob. Start at http://intranet.internal/\n",
-        "Notes/welcome.txt": "Notes for bob\nThese are real files under the Notes folder.\n"
+        "Notes/welcome.txt": "Notes for bob\nThese are real files under the Notes folder.\n",
+        "project/README.md": "# Project\n\nA small workspace. Run `main.py` with F5, or `bash run.sh` in the terminal.\n",
+        "project/main.py": "import sys\n\n\ndef greet(name: str) -> str:\n    return f\"Hello, {name}!\"\n\n\nif __name__ == \"__main__\":\n    print(greet(sys.argv[1] if len(sys.argv) > 1 else \"world\"))\n",
+        "project/src/app.js": "// TODO: wire this to the page\nfunction add(a, b) {\n  return a + b;\n}\n\nconsole.log(`2 + 3 = ${add(2, 3)}`);\n",
+        "project/run.sh": "#!/bin/bash\necho \"Files in $(pwd):\"\nls\n",
+        "project/package.json": "{\n  \"name\": \"project\",\n  \"version\": \"1.0.0\",\n  \"main\": \"src/app.js\"\n}\n"
       },
       "installed_apps": [
         "terminal",
@@ -121,6 +132,7 @@ export default {
         "editor",
         "files",
         "desktop",
+        "code",
         "mail",
         "calendar",
         "chat",
@@ -149,7 +161,12 @@ export default {
       "initial_files": {
         "launch.txt": "Project: Atlas\nChecklist: launch\nStatus: pending\nDocuments: http://docs.internal/\n",
         "notes.txt": "Welcome carol. Start at http://intranet.internal/\n",
-        "Notes/welcome.txt": "Notes for carol\nThese are real files under the Notes folder.\n"
+        "Notes/welcome.txt": "Notes for carol\nThese are real files under the Notes folder.\n",
+        "project/README.md": "# Project\n\nA small workspace. Run `main.py` with F5, or `bash run.sh` in the terminal.\n",
+        "project/main.py": "import sys\n\n\ndef greet(name: str) -> str:\n    return f\"Hello, {name}!\"\n\n\nif __name__ == \"__main__\":\n    print(greet(sys.argv[1] if len(sys.argv) > 1 else \"world\"))\n",
+        "project/src/app.js": "// TODO: wire this to the page\nfunction add(a, b) {\n  return a + b;\n}\n\nconsole.log(`2 + 3 = ${add(2, 3)}`);\n",
+        "project/run.sh": "#!/bin/bash\necho \"Files in $(pwd):\"\nls\n",
+        "project/package.json": "{\n  \"name\": \"project\",\n  \"version\": \"1.0.0\",\n  \"main\": \"src/app.js\"\n}\n"
       },
       "installed_apps": [
         "terminal",
@@ -157,6 +174,7 @@ export default {
         "editor",
         "files",
         "desktop",
+        "code",
         "mail",
         "calendar",
         "chat",
@@ -25926,6 +25944,13 @@ export default {
         "kind": "native",
         "url": "http://weather.com/",
         "icon": "weather"
+      },
+      {
+        "id": "code",
+        "label": "Visual Studio Code",
+        "kind": "native",
+        "url": "",
+        "icon": "code"
       }
     ],
     "device_presentations": {

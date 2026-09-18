@@ -498,6 +498,70 @@ const BUILTIN_FAMILIES: &[&str] = &[
 ];
 /// File name a download lands under: the URL's last path segment, or the host when the
 /// URL names no file. Never a guess about content type.
+/// Files one `ReadFiles` may return, and bytes across all of them: a workspace search
+/// reads many files, and must not make one action unbounded.
+const READ_FILES_LIMIT: usize = 512;
+const READ_FILES_BYTES: usize = 8 << 20;
+/// Entries one `ListTree` may return; one more than an application keeps tells it the
+/// listing was cut.
+const LIST_TREE_LIMIT: usize = 4001;
+
+/// A folder tree as relative paths, folders marked with `/`, depth first in name order,
+/// walking only what the machine's user may read. Version-control internals and
+/// dependency folders are listed but not descended into.
+fn list_tree(
+    c: &cw_computer::Computer,
+    path: &str,
+    depth: u32,
+) -> std::result::Result<Vec<String>, String> {
+    let base = c.resolve(path);
+    let meta = c
+        .vfs
+        .stat(&base)
+        .map_err(|_| "folder not found".to_owned())?;
+    if !meta.is_dir {
+        return Err("not a folder".into());
+    }
+    c.vfs
+        .check_access(&base, &c.user, true, false, true)
+        .map_err(|_| "folder access denied".to_owned())?;
+    let mut out = Vec::new();
+    let mut stack = vec![(base, String::new(), 0u32)];
+    while let Some((dir, rel, level)) = stack.pop() {
+        let Ok(mut names) = c.vfs.list(&dir) else {
+            continue;
+        };
+        names.sort();
+        let mut folders = Vec::new();
+        for name in names {
+            if out.len() >= LIST_TREE_LIMIT {
+                return Ok(out);
+            }
+            let full = format!("{}/{name}", dir.trim_end_matches('/'));
+            let child = if rel.is_empty() {
+                name.clone()
+            } else {
+                format!("{rel}/{name}")
+            };
+            if c.vfs.stat(&full).is_ok_and(|m| m.is_dir) {
+                out.push(format!("{child}/"));
+                let readable = c
+                    .vfs
+                    .check_access(&full, &c.user, true, false, true)
+                    .is_ok();
+                if level + 1 < depth && readable && name != ".git" && name != "node_modules" {
+                    folders.push((full, child, level + 1));
+                }
+            } else {
+                out.push(child);
+            }
+        }
+        // Popped in name order.
+        stack.extend(folders.into_iter().rev());
+    }
+    Ok(out)
+}
+
 fn download_name(url: &str) -> String {
     let trimmed = url.split(['?', '#']).next().unwrap_or(url);
     let last = trimmed
@@ -780,10 +844,12 @@ impl Environment {
                 } else if self.machine_mut(id, machine)?.browser_visible {
                     self.machine_mut(id, machine)?.browser.text(text)?;
                 } else {
-                    self.machine_mut(id, machine)?
+                    let effects = self
+                        .machine_mut(id, machine)?
                         .desktop
-                        .text(text)
+                        .type_text(text)
                         .map_err(SimError::invalid)?;
+                    self.effects(id, machine, actor, effects)?;
                 }
                 Ok(Value::Null)
             }
@@ -1056,6 +1122,14 @@ impl Environment {
                                 .pointer_down(window, &operation, x, y, area)
                                 .map_err(SimError::invalid)?;
                         }
+                        // A press in a text view anchors a drag selection; the release,
+                        // delivered as the click, extends it to where the pointer let go.
+                        if let Some(inner) = operation.strip_prefix("content:") {
+                            self.machine_mut(id, machine)?
+                                .desktop
+                                .press_at(inner, x - hit.x, y - hit.y)
+                                .map_err(SimError::invalid)?;
+                        }
                         return Ok(Value::Null);
                     }
                     if operation == "drag" && action.op == "double_click" {
@@ -1131,7 +1205,12 @@ impl Environment {
                     self.machine_mut(id, machine)?.desktop.desktop_selection = None;
                     return self.shell_action(id, machine, actor, &target);
                 }
-                if action.op == "double_click" && !target.starts_with("open:") {
+                // Double clicks mean something to file-manager rows and to applications
+                // that give them a meaning of their own (a code editor's tabs and words).
+                if action.op == "double_click"
+                    && !target.starts_with("open:")
+                    && !target.starts_with("code:")
+                {
                     return Ok(Value::Null);
                 }
                 self.machine_mut(id, machine)?.address_focused = false;
@@ -1341,11 +1420,132 @@ impl Environment {
                 } => {
                     self.runtime
                         .write_file(machine, actor, &path, content.as_bytes())?;
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .file_written(window, &path, &content)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
+                ListTree {
+                    window,
+                    path,
+                    depth,
+                } => {
+                    let result = list_tree(self.runtime.computer(machine)?, &path, depth);
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .tree_listed(window, &path, depth, result)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
+                ReadFiles { window, tag, paths } => {
+                    // Each file answers for itself: one unreadable file is that file's
+                    // problem, not the whole request's.
+                    let mut budget_bytes = READ_FILES_BYTES;
+                    let files = paths
+                        .into_iter()
+                        .take(READ_FILES_LIMIT)
+                        .map(|path| {
+                            let result = self
+                                .runtime
+                                .read_file(machine, &path)
+                                .map_err(|e| actor_error(e).message)
+                                .and_then(|bytes| {
+                                    if bytes.len() > budget_bytes {
+                                        return Err("the file is too large to open".into());
+                                    }
+                                    budget_bytes -= bytes.len();
+                                    if bytes.contains(&0) {
+                                        return Err("the file is binary".into());
+                                    }
+                                    String::from_utf8(bytes)
+                                        .map_err(|_| "the file is not UTF-8 text".to_owned())
+                                });
+                            (path, result)
+                        })
+                        .collect();
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .files_read(window, &tag, files)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
+                ShellRun {
+                    window,
+                    tag,
+                    cwd,
+                    command,
+                } => {
+                    let prompt_at = |env: &Self, dir: &str| -> Result<String> {
+                        let c = env.runtime.computer(machine)?;
+                        Ok(cw_applications::shell_prompt(
+                            &c.user, &c.id, dir, &c.dialect,
+                        ))
+                    };
+                    let before = self.runtime.computer(machine)?.resolve(&cwd);
+                    let prompt = prompt_at(self, &before)?;
+                    let outcome = if command.trim().is_empty() {
+                        cw_applications::ShellOutcome {
+                            entry: None,
+                            prompt,
+                            cwd: before,
+                            clear: false,
+                        }
+                    } else {
+                        match self.runtime.execute_in(machine, actor, &cwd, &command) {
+                            Ok((result, after)) => {
+                                let entry = cw_applications::TerminalEntry::new(
+                                    &prompt,
+                                    command,
+                                    &result.stdout,
+                                    &result.stderr,
+                                    result.exit_code,
+                                );
+                                let clear = result.clear;
+                                self.machine_mut(id, machine)?.terminal =
+                                    serde_json::to_value(&result)?;
+                                cw_applications::ShellOutcome {
+                                    entry: Some(entry),
+                                    prompt: prompt_at(self, &after)?,
+                                    cwd: after,
+                                    clear,
+                                }
+                            }
+                            // The session's folder is gone: the shell says so, as a
+                            // shell started in a deleted directory would.
+                            Err(e) => cw_applications::ShellOutcome {
+                                entry: Some(cw_applications::TerminalEntry::new(
+                                    &prompt,
+                                    command,
+                                    "",
+                                    &format!("shell: {}\n", actor_error(e).message),
+                                    1,
+                                )),
+                                prompt,
+                                cwd: before,
+                                clear: false,
+                            },
+                        }
+                    };
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .shell_ran(window, &tag, outcome)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
+                CopyText { text, .. } => {
                     self.machine_mut(id, machine)?
                         .desktop
-                        .file_saved(window, &content)
+                        .copy_text(&text)
                         .map_err(SimError::invalid)?;
                 }
+                // The desktop resolves a paste against its clipboard before the effect
+                // leaves it; one that reaches here has nothing left to do.
+                Paste { .. } => {}
                 ListDirectory { window, tab, path } => {
                     let c = self.runtime.computer(machine)?;
                     let base = c.resolve(&path);
@@ -2074,7 +2274,13 @@ impl Environment {
                         .unwrap_or((false, false)),
                     _ => (false, false),
                 };
+                let (dark_chrome, chrome) = match &window.state {
+                    AppState::Native(app) => (app.dark_chrome(), app.chrome()),
+                    _ => (false, vec![]),
+                };
                 views.push(WindowView {
+                    dark_chrome,
+                    chrome,
                     id: window_id,
                     title,
                     kind: kind.into(),

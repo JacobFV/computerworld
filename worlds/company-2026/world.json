@@ -42,7 +42,8 @@
         "browser",
         "editor",
         "files",
-        "desktop"
+        "desktop",
+        "code"
       ],
       "packages": [
         "coreutils",
@@ -64,7 +65,8 @@
         "browser",
         "editor",
         "files",
-        "desktop"
+        "desktop",
+        "code"
       ],
       "packages": [
         "coreutils",
@@ -86,7 +88,8 @@
         "browser",
         "editor",
         "files",
-        "desktop"
+        "desktop",
+        "code"
       ],
       "packages": [
         "coreutils",

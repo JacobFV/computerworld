@@ -45,23 +45,61 @@ order determine which window receives input. Browser windows keep independent
 navigation state. Window geometry, focus, panels and pointer capture are included
 in session snapshots.
 
-Thirteen window kinds are launchable. Four are built into `DesktopState::launch`:
+Eighteen window kinds are launchable. Four are built into `DesktopState::launch`:
 `terminal` (output and input), `files`/`file_manager` (tabbed filesystem navigation
 with click-to-select and double-click-to-open), `editor`/`text_editor` (with Save),
-and `browser`. The other nine are `NativeApp` kinds listed by the `native_apps!`
+and `browser`. The other fourteen are `NativeApp` kinds listed by the `native_apps!`
 macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `chat`, `docs`,
-`notes`, `contacts`, `settings`, `calculator` and `clock`. Each is backed by a world
-service rather than a static mock, so its contents come through the simulated
-network. Browser applications obtain supported pages through simulated DNS,
+`notes`, `contacts`, `settings`, `calculator`, `clock`, `photos`, `music`, `maps`,
+`weather` and `code`. Each is backed by a world service or the machine's own files
+rather than a static mock. Browser applications obtain supported pages through simulated DNS,
 networking and HTTP.
 
 `metadata.desktop_apps` entries declare a world's application catalog and take a
-`kind`. `kind: "native"` names one of the nine native applications and supplies the
+`kind`. `kind: "native"` names one of the native applications and supplies the
 service URL it should open against; it is launched in its own right, not as an
 alias. `kind: "browser"` is a genuine alias: it opens a browser window at a fixed
 URL, and therefore requires both `application.v1` and `browser.v1` grants plus an
 installed `browser`. Any other `kind` is rejected. Either way these remain ordinary
 world services, not special kernel concepts.
+
+### Visual Studio Code
+
+`code` is installed on the reference world's macOS, Windows and Ubuntu desktops. It
+draws its own 35 px title bar on all three — traffic lights and the command center on
+macOS; the menu bar, command center and window buttons on Windows and Ubuntu — in the
+Dark Modern theme by default (Light Modern from Settings or `Ctrl+K Ctrl+T`). Launched on
+nothing it opens `~/project` when the machine has one and the Welcome page otherwise;
+`shell:launch:code/<folder>` opens a folder. What it shows and does is the machine's:
+
+- The Explorer is a listing of the folder (`AppEffect::ListTree`, which walks the VFS
+  under the user's own read permissions); New File, New Folder, Rename and Delete are
+  `CreateFile`, `CreateDirectory`, `MovePath` and `TrashPath` through the kernel.
+- An editor holds a file's text (`AppEffect::ReadFiles`) and Save writes it back
+  (`WriteFile`); the tab turns clean only when the write is reported done. CRLF files
+  are saved with CRLF. Undo is a history of reversible edits, bounded at 200.
+- Highlighting is a tokenizer per language (Python, JavaScript/TypeScript, Rust, JSON,
+  Markdown with fenced languages, HTML with embedded CSS and JavaScript, CSS, shell)
+  with Dark+/Light+ token colours and bracket pair colourisation.
+- Search reads the workspace's files (up to 512 files and 8 MiB per search) and matches
+  literally or by regular expression, with case and whole-word options.
+- The integrated terminal is a session of the machine's shell (`AppEffect::ShellRun`,
+  `Runtime::execute_in`): the same commands, exit codes and prompt as the Terminal, but
+  with its own working directory, so `cd` in it does not move the machine's shell. Run
+  (`F5`, the editor's Run button, `python.execInTerminal`) saves the file and types
+  `python3 <file>` (`python` on Windows), `node <file>` or `bash <file>` into it. A
+  missing interpreter shows the shell's own `command not found` and exit 127.
+- Problems are what tools reported: CPython and Node tracebacks and bash line errors
+  from runs, and the JSON parser's error for an open JSON file. Each opens its line.
+- Source Control runs `git status`, `git add`, `git commit`, `git init`, `git branch`
+  and `git checkout` in the workspace and logs them in the Output panel.
+- Settings (`workbench.colorTheme`, `editor.fontSize`, `editor.tabSize`,
+  `editor.wordWrap`) persist to VS Code's own `settings.json` for the platform
+  (`~/.config/Code/User`, `~/Library/Application Support/Code/User`,
+  `~/AppData/Roaming/Code/User`) and are read back at launch.
+
+Not implemented, and so not drawn: extensions, the debugger (Run executes without one),
+split editors, the minimap, multiple cursors and the Accounts menu.
 
 Launchers, search, task switching and platform panels expose semantic hit regions.
 Mobile profiles implement Home, recent apps and supported vertical swipes for

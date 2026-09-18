@@ -39,6 +39,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/macos/music",
     "icon/macos/maps",
     "icon/macos/weather",
+    "icon/macos/code",
     "icon/windows/files",
     "icon/windows/browser",
     "icon/windows/terminal",
@@ -60,6 +61,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/windows/music",
     "icon/windows/maps",
     "icon/windows/weather",
+    "icon/windows/code",
     "icon/ubuntu/files",
     "icon/ubuntu/browser",
     "icon/ubuntu/terminal",
@@ -81,6 +83,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/ubuntu/music",
     "icon/ubuntu/maps",
     "icon/ubuntu/weather",
+    "icon/ubuntu/code",
     "icon/ios/files",
     "icon/ios/browser",
     "icon/ios/terminal",
@@ -102,6 +105,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/ios/music",
     "icon/ios/maps",
     "icon/ios/weather",
+    "icon/ios/code",
     "icon/android/files",
     "icon/android/browser",
     "icon/android/terminal",
@@ -123,6 +127,7 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/android/music",
     "icon/android/maps",
     "icon/android/weather",
+    "icon/android/code",
 ];
 fn bytes(id: &str) -> Option<&'static [u8]> {
     Some(match id {
@@ -172,6 +177,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/macos/weather" | "icon/weather" => {
             include_bytes!("../assets/icons/macos-weather.png")
         }
+        "icon/macos/code" | "icon/code" => include_bytes!("../assets/icons/macos-code.png"),
         "wallpaper/windows" => include_bytes!("../assets/wallpapers/windows.jpg"),
         "icon/windows/files" => include_bytes!("../assets/icons/windows-files.png"),
         "icon/windows/browser" => include_bytes!("../assets/icons/windows-browser.png"),
@@ -206,6 +212,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/windows/music" => include_bytes!("../assets/icons/windows-music.png"),
         "icon/windows/maps" => include_bytes!("../assets/icons/windows-maps.png"),
         "icon/windows/weather" => include_bytes!("../assets/icons/windows-weather.png"),
+        "icon/windows/code" => include_bytes!("../assets/icons/windows-code.png"),
         "wallpaper/ubuntu" => include_bytes!("../assets/wallpapers/ubuntu.jpg"),
         "icon/ubuntu/files" => include_bytes!("../assets/icons/ubuntu-files.png"),
         "icon/ubuntu/browser" => include_bytes!("../assets/icons/ubuntu-browser.png"),
@@ -240,6 +247,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/ubuntu/music" => include_bytes!("../assets/icons/ubuntu-music.png"),
         "icon/ubuntu/maps" => include_bytes!("../assets/icons/ubuntu-maps.png"),
         "icon/ubuntu/weather" => include_bytes!("../assets/icons/ubuntu-weather.png"),
+        "icon/ubuntu/code" => include_bytes!("../assets/icons/ubuntu-code.png"),
         "wallpaper/ios" => include_bytes!("../assets/wallpapers/ios.jpg"),
         "icon/ios/files" => include_bytes!("../assets/icons/ios-files.png"),
         "icon/ios/browser" => include_bytes!("../assets/icons/ios-browser.png"),
@@ -270,6 +278,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/ios/music" => include_bytes!("../assets/icons/ios-music.png"),
         "icon/ios/maps" => include_bytes!("../assets/icons/ios-maps.png"),
         "icon/ios/weather" => include_bytes!("../assets/icons/ios-weather.png"),
+        "icon/ios/code" => include_bytes!("../assets/icons/ios-code.png"),
         "wallpaper/android" => include_bytes!("../assets/wallpapers/android.jpg"),
         "icon/android/files" => include_bytes!("../assets/icons/android-files.png"),
         "icon/android/browser" => include_bytes!("../assets/icons/android-browser.png"),
@@ -304,6 +313,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         "icon/android/music" => include_bytes!("../assets/icons/android-music.png"),
         "icon/android/maps" => include_bytes!("../assets/icons/android-maps.png"),
         "icon/android/weather" => include_bytes!("../assets/icons/android-weather.png"),
+        "icon/android/code" => include_bytes!("../assets/icons/android-code.png"),
         _ => {
             return SYMBOLS
                 .iter()
