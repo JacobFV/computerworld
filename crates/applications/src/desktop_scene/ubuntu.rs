@@ -1634,6 +1634,7 @@ mod tests {
             library_group: None,
             bookmarked: false,
             panel_over_launcher: false,
+            home_page: 0,
             typed: "",
         }
     }

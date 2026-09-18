@@ -99,6 +99,8 @@ pub struct ShellOptions {
     /// The end of what the focused field holds before its caret, so a keyboard can
     /// complete the word being typed.
     pub typed: String,
+    /// Home screen page a paged launcher (SpringBoard) is showing, 0 first.
+    pub home_page: u32,
 }
 /// Words a phone keyboard offers to complete, most common first. A fixed list, so two
 /// machines typing the same letters are offered the same words.
@@ -388,6 +390,8 @@ pub struct ShellContext<'a> {
     pub panel_over_launcher: bool,
     /// The end of what the focused field holds before its caret.
     pub typed: &'a str,
+    /// Home screen page the user swiped to. A shell clamps it to the pages it has.
+    pub home_page: u32,
 }
 impl ShellContext<'_> {
     pub fn selected(&self, id: &str) -> bool {

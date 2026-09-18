@@ -2,8 +2,8 @@
 //! Owner inspection and snapshots are deliberately separate from actor observations.
 mod desktop_extensions;
 use cw_applications::desktop_scene::{
-    render_desktop_with_options, window_content_rect_for_kind, work_area, DesktopTheme,
-    ShellOptions, WindowView,
+    home_page_count, render_desktop_with_options, window_content_rect_for_kind, work_area,
+    DesktopTheme, ShellOptions, WindowView,
 };
 use cw_applications::{AppState, DesktopState};
 use cw_browser::BrowserState;
@@ -895,28 +895,43 @@ impl Environment {
                     self.machine_mut(id, machine)?.touch_start = None;
                 }
                 if mobile && action.op == "up" {
-                    if let Some((start_x, start_y)) =
-                        self.machine_mut(id, machine)?.touch_start.take()
-                    {
-                        let dy = y - start_y;
-                        if dy.abs() > 70 && dy.abs() > (x - start_x).abs() {
-                            let state = &self.session(id)?.machines[machine];
-                            let target = if dy > 0 && start_y < 80 {
-                                Some("shell:control-center")
-                            } else if dy < 0 && state.desktop.focused.is_none() {
-                                Some("shell:launcher")
-                            } else if dy < 0 && start_y > height as i32 - 90 {
-                                Some(if dy < -(height as i32 / 3) {
-                                    "shell:overview"
-                                } else {
-                                    "shell:home"
-                                })
-                            } else {
-                                None
-                            };
-                            if let Some(target) = target {
-                                return self.shell_action(id, machine, actor, target);
+                    if let Some(start) = self.machine_mut(id, machine)?.touch_start.take() {
+                        let pressed = released_press.as_ref().map(|(target, _)| target.as_str());
+                        let gesture = self.touch_gesture(
+                            id,
+                            machine,
+                            theme.expect("a phone theme"),
+                            start,
+                            (x, y),
+                            (width, height),
+                            pressed,
+                        )?;
+                        if let Some(target) = gesture {
+                            // A card swiped up in the overview closes that application.
+                            if let Some(window) = target
+                                .strip_prefix("window:")
+                                .and_then(|rest| rest.strip_suffix(":close"))
+                                .and_then(|window| window.parse::<u64>().ok())
+                            {
+                                if !self
+                                    .session(id)?
+                                    .config
+                                    .actions
+                                    .iter()
+                                    .any(|family| family == "application.v1")
+                                {
+                                    return Err(SimError::denied(
+                                        "application interaction is not permitted",
+                                    ));
+                                }
+                                self.machine_mut(id, machine)?
+                                    .desktop
+                                    .close(window)
+                                    .map_err(SimError::invalid)?;
+                                self.sync_desktop_visibility(id, machine)?;
+                                return Ok(Value::Null);
                             }
+                            return self.shell_action(id, machine, actor, &target);
                         }
                     }
                 }
@@ -980,6 +995,7 @@ impl Environment {
                 if !matches!(action.op.as_str(), "down" | "move" | "cancel")
                     && target != "shell:noop"
                     && !target.starts_with("shell:panel:")
+                    && !target.starts_with("shell:gesture:")
                 {
                     self.machine_mut(id, machine)?.desktop.close_menu();
                 }
@@ -1020,6 +1036,11 @@ impl Environment {
                         .any(|family| family == "application.v1")
                     {
                         return Err(SimError::denied("application interaction is not permitted"));
+                    }
+                    // A finger coming down only presses; the release decides, so a swipe
+                    // that starts on a card or a control is still free to be a gesture.
+                    if mobile && action.op == "down" {
+                        return Ok(Value::Null);
                     }
                     self.machine_mut(id, machine)?
                         .desktop
@@ -1083,6 +1104,11 @@ impl Environment {
                 // Pointers on a desktop select on the first click and open on the second;
                 // a touch screen has no such distinction and opens immediately.
                 let opening = mobile || action.op == "double_click";
+                // A gesture affordance — the home indicator, a status bar — is reached by
+                // dragging from it. Tapped, it does what the glass does: nothing.
+                if target.starts_with("shell:gesture:") {
+                    return Ok(Value::Null);
+                }
                 if target.starts_with("shell:") {
                     if let Some(kind) = target.strip_prefix("shell:open:") {
                         let kind = kind.to_owned();
@@ -2143,7 +2169,7 @@ impl Environment {
                     settings: m.desktop.settings,
                     screen: m.desktop.screen,
                     panel_month: m.desktop.panel_month,
-                    text_entry: text_entry_of(m),
+                    text_entry: text_entry_of(m, theme.mobile()),
                     keyboard: m.desktop.keyboard,
                     bookmarks: m.desktop.bookmarks.clone(),
                     downloads: m.desktop.downloads.clone(),
@@ -2153,10 +2179,11 @@ impl Environment {
                     library_group: m.desktop.library_group.clone(),
                     bookmarked: m.browser.url().is_some_and(|url| m.desktop.bookmarked(url)),
                     panel_over_launcher: m.desktop.panel_over_launcher,
-                    typed: typed_of(m),
+                    typed: typed_of(m, theme.mobile()),
+                    home_page: m.desktop.home_page,
                 },
             );
-            self.decorate(&mut scene, m, published);
+            self.decorate(&mut scene, m, published, theme.mobile());
             return Ok(scene);
         }
         let mut scene = if m.browser_visible {
@@ -2949,14 +2976,29 @@ mod window_interaction_tests {
         pointer(&mut env, &id, "up", x, y);
         assert!(env.session(&id).unwrap().machines["a"].desktop.windows[&0].minimized);
     }
-    #[test]
-    fn mobile_swipes_home_drawer_overview_and_shade_are_serialized_actions() {
-        let definition = WorldDefinition::from_json(r#"{"id":"phone","profiles":[{"id":"virtual-ios-18","family":"linux"}],"computers":[{"id":"a","profile":"virtual-ios-18","address":"10.0.0.1","user":"alice","installed_apps":["terminal","editor","browser","files"]}]}"#).unwrap();
+    fn phone(profile: &str) -> (Environment, String) {
+        let definition = WorldDefinition::from_json(&format!(
+            r#"{{"id":"phone","profiles":[{{"id":"{profile}","family":"linux"}}],"computers":[{{"id":"a","profile":"{profile}","address":"10.0.0.1","user":"alice","installed_apps":["terminal","editor","browser","files"]}}]}}"#
+        ))
+        .unwrap();
         let mut env =
             Environment::new(Runtime::new(definition, 42, cw_sdk::Registry::new()).unwrap());
         let id = env
             .environment(EnvironmentConfig::desktop("alice", "a"))
             .unwrap();
+        (env, id)
+    }
+    fn swipe(env: &mut Environment, id: &str, from: (i32, i32), to: (i32, i32)) {
+        pointer(env, id, "down", from.0, from.1);
+        pointer(env, id, "up", to.0, to.1);
+    }
+    fn shell_of(env: &Environment, id: &str) -> (Option<u64>, bool, Option<String>, u32) {
+        let d = &env.session(id).unwrap().machines["a"].desktop;
+        (d.focused, d.launcher_open, d.panel.clone(), d.home_page)
+    }
+    #[test]
+    fn mobile_swipes_home_drawer_overview_and_shade_are_serialized_actions() {
+        let (mut env, id) = phone("virtual-ios-18");
         action(
             &mut env,
             &id,
@@ -2964,28 +3006,66 @@ mod window_interaction_tests {
             "launch",
             json!({"kind":"editor"}),
         );
-        pointer(&mut env, &id, "down", 600, 760);
-        pointer(&mut env, &id, "up", 600, 620);
-        assert_eq!(
-            env.session(&id).unwrap().machines["a"].desktop.focused,
-            None
-        );
-        pointer(&mut env, &id, "down", 600, 650);
-        pointer(&mut env, &id, "up", 600, 450);
-        assert!(
-            env.session(&id).unwrap().machines["a"]
-                .desktop
-                .launcher_open
-        );
-        pointer(&mut env, &id, "down", 600, 20);
-        pointer(&mut env, &id, "up", 600, 200);
-        assert_eq!(
-            env.session(&id).unwrap().machines["a"]
-                .desktop
-                .panel
-                .as_deref(),
-            Some("quick")
-        );
+        // Up from the home indicator goes home.
+        swipe(&mut env, &id, (600, 760), (600, 620));
+        assert_eq!(shell_of(&env, &id), (None, false, None, 0));
+        // Up across the middle of the home screen does nothing on an iPhone.
+        swipe(&mut env, &id, (600, 650), (600, 450));
+        assert_eq!(shell_of(&env, &id), (None, false, None, 0));
+        // Right to left past the last (only) page is the App Library; back again is the
+        // last page.
+        swipe(&mut env, &id, (900, 400), (500, 400));
+        assert_eq!(shell_of(&env, &id), (None, true, None, 0));
+        swipe(&mut env, &id, (300, 400), (700, 400));
+        assert_eq!(shell_of(&env, &id), (None, false, None, 0));
+        // Left to right from the first page is Today View, and back is the first page.
+        swipe(&mut env, &id, (300, 400), (700, 400));
+        assert_eq!(shell_of(&env, &id).2.as_deref(), Some("calendar"));
+        swipe(&mut env, &id, (900, 400), (500, 400));
+        assert_eq!(shell_of(&env, &id), (None, false, None, 0));
+        // Down across the home screen is Search; the home gesture puts it away.
+        swipe(&mut env, &id, (600, 300), (600, 500));
+        assert_eq!(shell_of(&env, &id).2.as_deref(), Some("search"));
+        swipe(&mut env, &id, (600, 780), (600, 700));
+        assert_eq!(shell_of(&env, &id).2, None);
+        // Down from the right of the status bar is Control Center, from the left
+        // Notification Center; a swipe up puts either away.
+        swipe(&mut env, &id, (1100, 20), (1100, 200));
+        assert_eq!(shell_of(&env, &id).2.as_deref(), Some("quick"));
+        swipe(&mut env, &id, (600, 500), (600, 300));
+        assert_eq!(shell_of(&env, &id).2, None);
+        swipe(&mut env, &id, (100, 20), (100, 200));
+        assert_eq!(shell_of(&env, &id).2.as_deref(), Some("notifications"));
+        swipe(&mut env, &id, (600, 500), (600, 300));
+        assert_eq!(shell_of(&env, &id).2, None);
+        // A long swipe up from the bottom is the App Switcher, and a card swiped up in
+        // it closes that application.
+        swipe(&mut env, &id, (600, 780), (600, 300));
+        assert_eq!(shell_of(&env, &id).2.as_deref(), Some("overview"));
+        let (x, y) = position(&env, &id, "window:0:focus");
+        swipe(&mut env, &id, (x, y), (x, y - 200));
+        let d = &env.session(&id).unwrap().machines["a"].desktop;
+        assert!(d.windows.is_empty());
+        assert_eq!(d.panel.as_deref(), Some("overview"));
+    }
+    #[test]
+    fn android_swipes_open_the_shade_then_quick_settings_and_the_drawer() {
+        let (mut env, id) = phone("virtual-android-15");
+        swipe(&mut env, &id, (600, 20), (600, 200));
+        assert_eq!(shell_of(&env, &id).2.as_deref(), Some("notifications"));
+        // A second pull expands the shade into Quick Settings; a swipe up closes it.
+        swipe(&mut env, &id, (600, 100), (600, 400));
+        assert_eq!(shell_of(&env, &id).2.as_deref(), Some("quick"));
+        swipe(&mut env, &id, (600, 500), (600, 300));
+        assert_eq!(shell_of(&env, &id).2, None);
+        // Up the home screen is the app drawer, and down closes it.
+        swipe(&mut env, &id, (600, 600), (600, 300));
+        assert!(shell_of(&env, &id).1);
+        swipe(&mut env, &id, (600, 300), (600, 600));
+        assert!(!shell_of(&env, &id).1);
+        // Swipes that start on the navigation bar are presses of its buttons.
+        swipe(&mut env, &id, (600, 790), (600, 400));
+        assert_eq!(shell_of(&env, &id), (None, false, None, 0));
     }
     #[test]
     fn independent_browser_windows_keep_separate_history_and_storage() {
@@ -3356,9 +3436,12 @@ fn control<'a>(scene: &'a Scene, action: &str) -> Option<&'a Node> {
 /// need this *before* the scene exists, to decide whether to paint a soft keyboard, so
 /// it cannot be read back off the composed scene; `focus_and_text_entry_agree` asserts
 /// this and `focus_of` never disagree.
-fn text_entry_of(m: &MachineSession) -> bool {
+fn text_entry_of(m: &MachineSession, phone: bool) -> bool {
     if m.desktop.launcher_open || m.desktop.panel.as_deref() == Some("search") {
         return true;
+    }
+    if phone && phone_overlay(m) {
+        return false;
     }
     if m.active_app.is_some() {
         return m.focused_input.is_some();
@@ -3389,8 +3472,8 @@ fn text_entry_of(m: &MachineSession) -> bool {
 }
 /// The end of what the field taking keystrokes holds before its caret, following the
 /// same order as `text_entry_of`. Empty where the text is an application's own.
-fn typed_of(m: &MachineSession) -> String {
-    let text = if !text_entry_of(m) {
+fn typed_of(m: &MachineSession, phone: bool) -> String {
+    let text = if !text_entry_of(m, phone) {
         String::new()
     } else if m.desktop.launcher_open || m.desktop.panel.as_deref() == Some("search") {
         m.desktop.search.clone()
@@ -3430,9 +3513,19 @@ fn typed_of(m: &MachineSession) -> String {
     let skip = text.chars().count().saturating_sub(64);
     text.chars().skip(skip).collect()
 }
+/// A phone's system surface over the screen — Control Center, the shade, the App
+/// Switcher, Settings, a sheet — other than Search. It is modal on the device: it has
+/// no text field, the soft keyboard goes down under it, and keystrokes reach nothing
+/// behind it until it is put away.
+pub(crate) fn phone_overlay(m: &MachineSession) -> bool {
+    m.desktop
+        .panel
+        .as_deref()
+        .is_some_and(|panel| panel != "search")
+}
 /// Where the next keystroke is delivered. Mirrors the `keyboard.v1` dispatch order
 /// exactly, so the published answer is what typing would actually do.
-fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow]) -> Focus {
+fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow], phone: bool) -> Focus {
     let window = m
         .desktop
         .focused
@@ -3463,6 +3556,10 @@ fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow]) -> Focus
         focus.role = "searchbox".into();
         focus.label = "Search".into();
         focus.value = Some(m.desktop.search.clone());
+        return focus;
+    }
+    if phone && phone_overlay(m) {
+        bind(&mut focus, "panel", None, false);
         return focus;
     }
     if m.active_app.is_some() {
@@ -3560,7 +3657,7 @@ fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow]) -> Focus
             );
         }
         // A file manager takes text only while it is searching or renaming.
-        Some(files @ AppState::Files { .. }) if text_entry_of(m) => {
+        Some(files @ AppState::Files { .. }) if text_entry_of(m, phone) => {
             let tab = files.file_tab();
             let (control, value) = match tab {
                 Some(tab) if tab.rename.is_some() => {
@@ -3589,6 +3686,15 @@ fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow]) -> Focus
 /// open panels, the selected tab and window, and which control has focus.
 fn annotate_states(scene: &mut Scene, m: &MachineSession, windows: &[SceneWindow], focus: &Focus) {
     let focused = focus.interaction.clone();
+    // The page a paged home screen really shows: the one asked for, within the pages
+    // the shell painted a dot for.
+    let last_page = scene
+        .nodes
+        .iter()
+        .filter_map(|n| n.interaction.as_deref()?.strip_prefix("shell:home-page:"))
+        .filter_map(|page| page.parse::<u32>().ok())
+        .max();
+    let shown_page = last_page.map(|last| m.desktop.home_page.min(last));
     for n in &mut scene.nodes {
         let Some(action) = n.interaction.clone() else {
             continue;
@@ -3617,6 +3723,10 @@ fn annotate_states(scene: &mut Scene, m: &MachineSession, windows: &[SceneWindow
             selected: tab("shell:tab:select:")
                 .or_else(|| tab("files-tab:"))
                 .or_else(|| {
+                    let page: u32 = inner.strip_prefix("shell:home-page:")?.parse().ok()?;
+                    Some(shown_page == Some(page))
+                })
+                .or_else(|| {
                     (local == "focus").then(|| n.window.is_some() && n.window == m.desktop.focused)
                 })
                 .or_else(|| {
@@ -3635,7 +3745,13 @@ fn annotate_states(scene: &mut Scene, m: &MachineSession, windows: &[SceneWindow
 
 impl Environment {
     /// Items 1-6 of the perception contract, applied to a composed desktop scene.
-    fn decorate(&self, scene: &mut Scene, m: &MachineSession, windows: Vec<SceneWindow>) {
+    fn decorate(
+        &self,
+        scene: &mut Scene,
+        m: &MachineSession,
+        windows: Vec<SceneWindow>,
+        phone: bool,
+    ) {
         attribute_windows(scene);
         let mut buffers = Vec::new();
         for w in windows.iter().filter(|w| !w.minimized) {
@@ -3663,7 +3779,7 @@ impl Environment {
             attach_buffer(scene, &mut buffer, w.content);
             buffers.push(buffer);
         }
-        let focus = focus_of(m, scene, &windows);
+        let focus = focus_of(m, scene, &windows, phone);
         annotate_states(scene, m, &windows, &focus);
         scene.windows = windows;
         scene.buffers = buffers;
@@ -3684,6 +3800,7 @@ struct Visible {
     page: u64,
     panel: Option<String>,
     launcher: bool,
+    home_page: u32,
     address_focused: bool,
     focused_input: Option<String>,
     terminal: u64,
@@ -3731,6 +3848,7 @@ fn visible(m: &MachineSession) -> Visible {
         page: cw_scene::digest(&m.custom_page),
         panel: m.desktop.panel.clone(),
         launcher: m.desktop.launcher_open,
+        home_page: m.desktop.home_page,
         address_focused: m.address_focused,
         focused_input: m.focused_input.clone(),
         terminal: cw_scene::digest(&m.terminal),
@@ -3773,11 +3891,13 @@ fn effect_of(before: &Visible, after: &Visible) -> ActionEffect {
     if (
         &before.panel,
         before.launcher,
+        before.home_page,
         before.address_focused,
         &before.focused_input,
     ) != (
         &after.panel,
         after.launcher,
+        after.home_page,
         after.address_focused,
         &after.focused_input,
     ) {

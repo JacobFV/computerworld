@@ -103,35 +103,120 @@ fn home_label(p: &mut Painter, x: i32, y: i32, width: u32, text: &str) {
     p.label(x, y, width, text, 12, Color::WHITE, false, Align::Center);
 }
 
-pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
-    p.asset(Rect::new(0, 0, ctx.width, ctx.height), "wallpaper/ios");
-    // A locked or sleeping display must not announce launchable icons behind it.
-    if ctx.active || !ctx.awake() {
-        return;
+/// The dock's four slots: iOS 18's own defaults, with Mail standing in for Phone, which
+/// this simulation has no telephony to back. Only installed ones are drawn; iOS never
+/// moves another application into the dock on its own.
+const DOCK: [&str; 4] = ["mail", "browser", "chat", "music"];
+
+/// SpringBoard's geometry at one screen size: a four-column grid of up to six rows, the
+/// page dots, and the floating dock. `background` paints from it and `home_pages`
+/// counts from it, so the pages a swipe walks are exactly the pages that are drawn.
+struct Home {
+    grid: Grid,
+    top: i32,
+    pitch: i32,
+    rows: i32,
+    /// Centre line of the page dots.
+    dots: i32,
+    dock: Rect,
+}
+impl Home {
+    fn new(width: u32, height: u32) -> Self {
+        let grid = Grid::new(width);
+        let size = grid.size as i32;
+        let dock_height = (size + 32).min(96);
+        let dock = Rect::new(
+            12,
+            height as i32 - dock_height - 12,
+            width.saturating_sub(24),
+            dock_height as u32,
+        );
+        let dots = dock.y - 24;
+        // The first row starts beneath the status bar; rows then share the height down
+        // to the dots evenly, which is how iOS spreads six rows over a tall phone.
+        let top = if height >= 700 { 72 } else { 60 };
+        let space = (dots - 16 - top).max(0);
+        let rows = (space / (size + 30)).clamp(1, 6);
+        let pitch = (space / rows).min(size + 44);
+        Self {
+            grid,
+            top,
+            pitch,
+            rows,
+            dots,
+            dock,
+        }
     }
-    let width = ctx.width as i32;
-    let height = ctx.height as i32;
-    let grid = Grid::new(ctx.width);
-    let size = grid.size;
-    let top = (height / 10).clamp(66, 84);
-    let row = size as i32 + 38;
-    let installed: Vec<_> = APPS
+    /// The 2×2 Calendar widget on the first page, when the page is tall enough for it.
+    fn widget(&self) -> bool {
+        self.rows >= 2
+    }
+    fn capacity(&self, page: usize) -> usize {
+        let cells = (self.rows * 4) as usize;
+        if page == 0 && self.widget() {
+            cells - 4
+        } else {
+            cells
+        }
+    }
+    /// Column and row of the `index`th icon on `page`, filled row by row around the
+    /// widget, the way SpringBoard flows icons.
+    fn cell(&self, page: usize, index: usize) -> (i32, i32) {
+        let index = index as i32;
+        if page == 0 && self.widget() {
+            if index < 4 {
+                return (2 + index % 2, index / 2);
+            }
+            return ((index - 4) % 4, 2 + (index - 4) / 4);
+        }
+        (index % 4, index / 4)
+    }
+    fn y(&self, row: i32) -> i32 {
+        self.top + row * self.pitch
+    }
+    /// Split the home screen's applications into pages; there is always a first one.
+    fn paginate<T: Copy>(&self, apps: &[T]) -> Vec<Vec<T>> {
+        let mut pages = vec![Vec::new()];
+        for app in apps {
+            let page = pages.len() - 1;
+            if pages[page].len() == self.capacity(page) {
+                pages.push(Vec::new());
+            }
+            pages.last_mut().expect("at least one page").push(*app);
+        }
+        pages
+    }
+}
+type App = &'static (&'static str, &'static str, &'static str);
+/// Installed applications in the dock, and those on the pages, in catalogue order.
+fn springboard(installed: impl Fn(&str) -> bool) -> (Vec<App>, Vec<App>) {
+    let dock = DOCK
         .iter()
-        .filter(|(kind, _, _)| ctx.installed(kind))
+        .filter(|kind| installed(kind))
+        .filter_map(|kind| APPS.iter().find(|(k, _, _)| k == kind))
         .collect();
-    let dock_apps: Vec<_> = installed.iter().rev().take(4).rev().copied().collect();
-    let page: Vec<_> = installed
+    let pages = APPS
         .iter()
-        .filter(|a| installed.len() <= 4 || !dock_apps.contains(a))
-        .copied()
+        .filter(|(kind, _, _)| installed(kind) && !DOCK.contains(kind))
         .collect();
-    // A 2x2 calendar widget driven by the same deterministic clock as the status bar.
+    (dock, pages)
+}
+/// How many home screen pages a phone of this size shows for these applications. An
+/// empty list means every application, as it does for `ShellContext::installed`.
+pub fn home_pages(installed: &[String], width: u32, height: u32) -> u32 {
+    let (_, apps) = springboard(|kind| installed.is_empty() || installed.iter().any(|a| a == kind));
+    Home::new(width, height).paginate(&apps).len() as u32
+}
+
+/// The small Calendar widget, driven by the status bar's own clock.
+fn calendar_widget(p: &mut Painter, ctx: &ShellContext<'_>, home: &Home) {
     let date = ctx.date();
+    let size = home.grid.size as i32;
     let widget = Rect::new(
-        grid.x(0),
-        top,
-        (grid.stride + size as i32) as u32,
-        (row + size as i32) as u32,
+        home.grid.x(0),
+        home.top,
+        (home.grid.stride + size) as u32,
+        (home.pitch + size) as u32,
     );
     p.drop_shadow(widget, 22, 14, 50, 6);
     p.box_(widget, Color::WHITE, 22);
@@ -175,32 +260,55 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
         },
         "Calendar widget",
     );
-    for (i, (kind, _, name)) in page.iter().enumerate() {
-        // The first four icons sit beside the widget; later rows span the page.
-        let (column, line) = if i < 4 {
-            (2 + (i % 2) as i32, (i / 2) as i32)
-        } else {
-            (((i - 4) % 4) as i32, 2 + ((i - 4) / 4) as i32)
-        };
-        let y = top + line * row;
-        if y + row > height - 190 {
-            break;
-        }
-        app(p, grid.x(column), y, size, kind, name, true);
+}
+
+pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
+    p.asset(Rect::new(0, 0, ctx.width, ctx.height), "wallpaper/ios");
+    // A locked or sleeping display must not announce launchable icons behind it, and
+    // the App Library and Today View are screens of their own beside the pages, not
+    // sheets over one, so neither leaves a page of icons underneath.
+    if ctx.active || !ctx.awake() || ctx.launcher_open || ctx.panel == Some("calendar") {
+        return;
     }
-    // Search opens the functional search panel backed by application catalog state.
-    let pill = Rect::new(width / 2 - 39, height - 148, 78, 30);
-    p.glass(
-        pill,
-        15,
-        14,
-        Color(255, 255, 255, 60),
-        Some(Color(255, 255, 255, 40)),
-    );
-    p.region(pill, "shell:search", "Search installed applications");
-    p.symbol("search", pill.x + 11, pill.y + 9, 11, Color::WHITE);
-    p.left(pill.x + 27, pill.y + 7, 50, "Search", 12, Color::WHITE);
-    let dock = Rect::new(12, height - 108, ctx.width - 24, (size + 30).min(96));
+    let width = ctx.width as i32;
+    let home = Home::new(ctx.width, ctx.height);
+    let size = home.grid.size;
+    let (dock_apps, apps) = springboard(|kind| ctx.installed(kind));
+    let pages = home.paginate(&apps);
+    let page = (ctx.home_page as usize).min(pages.len() - 1);
+    if page == 0 && home.widget() {
+        calendar_widget(p, ctx, &home);
+    }
+    for (i, (kind, _, name)) in pages[page].iter().enumerate() {
+        let (column, row) = home.cell(page, i);
+        app(p, home.grid.x(column), home.y(row), size, kind, name, true);
+    }
+    // Page dots. Each one is a real page and tapping one goes there; swiping walks
+    // them too, and past the last one lies the App Library.
+    let count = pages.len() as i32;
+    let spacing = 16;
+    let first = width / 2 - (count - 1) * spacing / 2;
+    for i in 0..count {
+        let current = i as usize == page;
+        let cx = first + i * spacing;
+        p.circle(
+            cx,
+            home.dots,
+            4,
+            if current {
+                Color::WHITE
+            } else {
+                Color(255, 255, 255, 110)
+            },
+        );
+        p.region(
+            Rect::new(cx - spacing / 2, home.dots - 14, spacing as u32, 28),
+            &format!("shell:home-page:{i}"),
+            &format!("Page {} of {count}", i + 1),
+        );
+        announce(p, if current { "Current page" } else { "Page" });
+    }
+    let dock = home.dock;
     p.glass(
         dock,
         34,
@@ -208,13 +316,14 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
         Color(255, 255, 255, 70),
         Some(Color(255, 255, 255, 40)),
     );
+    // A full dock uses the grid's columns; a shorter one centres what it has.
+    let slots = dock_apps.len() as i32;
     for (i, (kind, _, name)) in dock_apps.iter().enumerate() {
-        let slots = dock_apps.len().max(1) as i32;
         let x = if slots == 4 {
-            grid.x(i as i32)
+            home.grid.x(i as i32)
         } else {
-            width / 2 - (slots * grid.stride - (grid.stride - size as i32)) / 2
-                + i as i32 * grid.stride
+            width / 2 - (slots * home.grid.stride - (home.grid.stride - size as i32)) / 2
+                + i as i32 * home.grid.stride
         };
         app(
             p,
@@ -228,35 +337,56 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     }
 }
 
-fn status(p: &mut Painter, ctx: &ShellContext<'_>, color: Color) {
+/// The status bar, reporting the switches the device really holds: the Focus moon
+/// beside the time, the aeroplane in place of the signal bars, no Wi-Fi fan with Wi-Fi
+/// off, and a yellow battery in Low Power Mode. The lock screen and the cover sheet show
+/// the time large beneath it, so there the bar leaves it out, as iOS does.
+fn status(p: &mut Painter, ctx: &ShellContext<'_>, color: Color, show_time: bool) {
     let w = ctx.width as i32;
     let (hour, minute) = ctx.hour_minute();
-    let island = (w / 2 - 62, 126);
-    p.label(
-        8,
-        17,
-        (island.0 - 8) as u32,
-        &format!(
-            "{}:{minute:02}",
-            if hour % 12 == 0 { 12 } else { hour % 12 }
-        ),
-        16,
-        color,
-        true,
-        Align::Center,
+    let island = (w / 2 - 63, 126);
+    let time = format!(
+        "{}:{minute:02}",
+        if hour % 12 == 0 { 12 } else { hour % 12 }
     );
+    let focus = ctx.switch("do_not_disturb");
+    let text = p.measure(&time, 17, true) as i32;
+    let slot = island.0 - 8;
+    let x = 8 + (slot - text - if focus { 20 } else { 0 }) / 2;
+    if show_time {
+        p.label(x, 16, text as u32 + 4, &time, 17, color, true, Align::Left);
+    }
+    if focus {
+        let moon = if show_time {
+            x + text + 5
+        } else {
+            8 + (slot - 14) / 2
+        };
+        p.symbol("moon", moon, 20, 14, color);
+    }
     p.box_(
-        Rect::new(island.0, 11, island.1, 36),
+        Rect::new(island.0, 11, island.1, 37),
         Color::rgb(2, 2, 3),
-        18,
+        19,
     );
     p.circle(w / 2 + 40, 29, 6, Color::rgb(14, 16, 26));
     p.circle(w / 2 + 40, 29, 2, Color::rgb(30, 38, 66));
     let right = island.0 + island.1 as i32;
     let cx = right + (w - right) / 2;
-    p.symbol("cellular", cx - 38, 19, 18, color);
-    p.symbol("wifi", cx - 14, 19, 17, color);
-    p.symbol("battery", cx + 9, 15, 27, color);
+    if ctx.switch("airplane_mode") {
+        p.symbol("airplane", cx - 38, 19, 17, color);
+    } else {
+        p.symbol("cellular", cx - 38, 19, 18, color);
+    }
+    if ctx.switch("wifi") {
+        p.symbol("wifi", cx - 14, 19, 17, color);
+    }
+    let battery = if ctx.switch("battery_saver") {
+        Color::rgb(255, 204, 0)
+    } else {
+        color
+    };
+    p.symbol("battery", cx + 9, 15, 27, battery);
 }
 
 /// Dimmed, blurred wallpaper behind every system panel.
@@ -633,34 +763,22 @@ fn level_row(p: &mut Painter, ctx: &ShellContext<'_>, r: Rect, name: &str, label
 /// Settings. Every row here moves the switch or level the Control Centre draws, so
 /// the two screens can never disagree.
 fn settings(p: &mut Painter, ctx: &ShellContext<'_>) {
-    scrim(
-        p,
-        ctx,
-        Color(18, 18, 26, 150),
-        "shell:dismiss",
-        "Close Settings",
-    );
-    let sheet = Rect::new(0, 44, ctx.width, ctx.height.saturating_sub(44));
+    // Settings is a full-screen application, not a sheet: it has no close button, and
+    // it is left the way every application is, by the home indicator's swipe. Its
+    // backdrop absorbs taps rather than letting them reach what it covers.
+    let sheet = Rect::new(0, 0, ctx.width, ctx.height);
     p.box_(sheet, Color::rgb(242, 242, 247), 0);
+    p.region(sheet, "shell:noop", "Settings");
     p.label(
         20,
-        56,
-        ctx.width.saturating_sub(96),
+        52,
+        ctx.width.saturating_sub(40),
         "Settings",
         30,
         INK,
         true,
         Align::Left,
     );
-    let close = Rect::new(ctx.width as i32 - 54, 58, 34, 34);
-    p.button(
-        close,
-        Color(118, 118, 128, 30),
-        17,
-        "shell:dismiss",
-        "Close Settings",
-    );
-    p.symbol("close", close.x + 10, close.y + 10, 14, GRAY);
     let width = ctx.width.saturating_sub(32);
     let bottom = sheet.y + sheet.height as i32 - 20;
     let mut y = 96;
@@ -731,77 +849,66 @@ fn power_screen(p: &mut Painter, ctx: &ShellContext<'_>) {
         );
         return;
     }
-    p.glass(full, 0, 30, Color(8, 8, 16, 150), None);
+    // The lock screen is the wallpaper itself, barely dimmed, with the time over it;
+    // it hides every application behind it.
+    p.asset(full, "wallpaper/ios");
+    p.box_(full, Color(0, 0, 0, 40), 0);
     p.region(full, "shell:power:wake", "Unlock");
-    status(p, ctx, Color::WHITE);
-    let (hour, minute) = ctx.hour_minute();
-    let date = ctx.date();
+    status(p, ctx, Color::WHITE, false);
     p.symbol(
         "lock",
-        ctx.width as i32 / 2 - 11,
-        88,
-        22,
+        ctx.width as i32 / 2 - 10,
+        58,
+        20,
         Color(255, 255, 255, 210),
     );
-    p.center(
-        0,
-        124,
-        ctx.width,
-        &format!(
-            "{}, {} {}",
-            date.weekday_name(),
-            date.month_name(),
-            date.day
-        ),
-        17,
-        Color(255, 255, 255, 220),
+    lock_clock(p, ctx, 92);
+    // The two lock screen quick actions. The torch is the real switch Control Center
+    // flips; there is no camera in the simulation, so that button says so.
+    let h = ctx.height as i32;
+    let torch = Rect::new(46, h - 104, 50, 50);
+    let lit = ctx.switch("flashlight");
+    p.button(
+        torch,
+        if lit {
+            Color::WHITE
+        } else {
+            Color(20, 20, 26, 110)
+        },
+        25,
+        "shell:toggle:flashlight",
+        "Flashlight",
     );
-    p.label(
-        0,
-        148,
-        ctx.width,
-        &format!(
-            "{}:{minute:02}",
-            if hour % 12 == 0 { 12 } else { hour % 12 }
-        ),
-        (ctx.width / 4).min(96) as u16,
-        Color::WHITE,
-        true,
-        Align::Center,
+    announce(p, if lit { "On" } else { "Off" });
+    p.symbol(
+        "flashlight",
+        torch.x + 14,
+        torch.y + 14,
+        22,
+        if lit { INK } else { Color::WHITE },
     );
-    p.center(
-        0,
-        ctx.height as i32 - 74,
-        ctx.width,
-        "Swipe up to open",
-        15,
-        WHITE70,
-    );
+    let camera = Rect::new(ctx.width as i32 - 96, h - 104, 50, 50);
+    p.box_(camera, Color(20, 20, 26, 110), 25);
+    p.disabled("Camera, no camera in this simulation");
+    p.symbol("camera", camera.x + 14, camera.y + 14, 22, WHITE70);
+    p.center(0, h - 40, ctx.width, "Swipe up to open", 15, WHITE70);
+    // The home indicator: a swipe up from it opens the phone, which is the pointer
+    // gesture the router recognises; a tap here, as anywhere on the glass, also wakes.
     p.box_(
-        Rect::new(ctx.width as i32 / 2 - 70, ctx.height as i32 - 13, 140, 5),
+        Rect::new(ctx.width as i32 / 2 - 67, h - 13, 134, 5),
         Color::WHITE,
         3,
     );
-    p.region(
-        Rect::new(ctx.width as i32 / 2 - 100, ctx.height as i32 - 44, 200, 40),
-        "shell:power:wake",
-        "Unlock",
-    );
 }
 
-fn notification_center(p: &mut Painter, ctx: &ShellContext<'_>) {
-    scrim(
-        p,
-        ctx,
-        Color(10, 12, 24, 120),
-        "shell:dismiss",
-        "Dismiss Notification Center",
-    );
+/// The lock screen's date and large clock, which Notification Center repeats. Returns
+/// the y beneath them.
+fn lock_clock(p: &mut Painter, ctx: &ShellContext<'_>, top: i32) -> i32 {
     let date = ctx.date();
     let (hour, minute) = ctx.hour_minute();
     p.strong_center(
         0,
-        96,
+        top,
         ctx.width,
         &format!(
             "{}, {} {}",
@@ -812,28 +919,49 @@ fn notification_center(p: &mut Painter, ctx: &ShellContext<'_>) {
         19,
         Color(255, 255, 255, 225),
     );
+    let size = (ctx.width / 4).min(96);
     p.label(
         0,
-        112,
+        top + 18,
         ctx.width,
         &format!(
             "{}:{minute:02}",
             if hour % 12 == 0 { 12 } else { hour % 12 }
         ),
-        (ctx.width / 4).min(96) as u16,
+        size as u16,
         Color::WHITE,
         true,
         Align::Center,
     );
-    let mut y = 150 + (ctx.width / 4).min(96) as i32;
-    y += month_grid(p, ctx, y) + 16;
+    top + 18 + size as i32 * 3 / 2
+}
+
+/// Notification Center: the cover sheet pulled down from the top of the screen, the
+/// lock screen's date and time above the notices the machine really posted. Tapping
+/// its empty glass does nothing, as on the device; a swipe up puts it away.
+fn notification_center(p: &mut Painter, ctx: &ShellContext<'_>) {
+    scrim(
+        p,
+        ctx,
+        Color(10, 12, 24, 120),
+        "shell:noop",
+        "Notification Center",
+    );
+    let mut y = lock_clock(p, ctx, 70) + 24;
     if ctx.notifications.is_empty() {
         p.center(0, y + 12, ctx.width, "No Older Notifications", 15, WHITE70);
         return;
     }
-    let unseen = ctx.unseen_notices();
-    if unseen > 0 {
-        let clear = Rect::new(ctx.width as i32 - 156, y - 34, 140, 30);
+    p.strong(
+        24,
+        y,
+        ctx.width - 200,
+        "Notification Center",
+        17,
+        Color::WHITE,
+    );
+    if ctx.unseen_notices() > 0 {
+        let clear = Rect::new(ctx.width as i32 - 156, y - 6, 140, 30);
         p.button(
             clear,
             Color(255, 255, 255, 56),
@@ -850,6 +978,7 @@ fn notification_center(p: &mut Painter, ctx: &ShellContext<'_>) {
             Color::WHITE,
         );
     }
+    y += 40;
     // Every row is a notice an application really posted, and opening one dispatches
     // the action that notice carries rather than a guess about where it came from.
     for (i, notice) in ctx.notifications.iter().enumerate() {
@@ -891,6 +1020,30 @@ fn notification_center(p: &mut Painter, ctx: &ShellContext<'_>) {
             p.circle(row.x + row.width as i32 - 16, row.y + 16, 4, BLUE);
         }
     }
+}
+
+/// Today View: the screen left of the first home screen page. A search field and a
+/// stack of widgets; the month widget pages for real and opens Calendar on a day.
+fn today_view(p: &mut Painter, ctx: &ShellContext<'_>) {
+    scrim(p, ctx, Color(10, 12, 24, 90), "shell:noop", "Today View");
+    let field = Rect::new(16, 60, ctx.width - 32, 40);
+    p.button(
+        field,
+        Color(255, 255, 255, 56),
+        12,
+        "shell:search",
+        "Search",
+    );
+    p.symbol("search", field.x + 12, field.y + 12, 16, WHITE70);
+    p.left(
+        field.x + 36,
+        field.y + 10,
+        field.width - 80,
+        "Search",
+        17,
+        WHITE70,
+    );
+    month_grid(p, ctx, 116);
 }
 
 /// Glyph for whatever posted a notice. The set is small on purpose: a notice names an
@@ -1101,13 +1254,7 @@ fn search(p: &mut Painter, ctx: &ShellContext<'_>) {
 }
 
 fn app_switcher(p: &mut Painter, ctx: &ShellContext<'_>) {
-    scrim(
-        p,
-        ctx,
-        Color(10, 10, 18, 110),
-        "shell:dismiss",
-        "Dismiss App Switcher",
-    );
+    scrim(p, ctx, Color(10, 10, 18, 110), "shell:home", "Home Screen");
     let w = ctx.width as i32;
     if ctx.windows.is_empty() {
         p.center(
@@ -1138,10 +1285,12 @@ fn app_switcher(p: &mut Painter, ctx: &ShellContext<'_>) {
         } else {
             p.box_(card, Color::rgb(250, 250, 252), 26);
         }
+        // A tap switches to the application; a swipe up on its card closes it, which
+        // is the only close the App Switcher has. The router recognises that swipe.
         p.region(
             card,
             &window.action("focus"),
-            &format!("Switch to {}", window.title),
+            &format!("Switch to {}, swipe up to close", window.title),
         );
         p.asset(
             Rect::new(x + 4, top - 42, 32, 32),
@@ -1155,10 +1304,6 @@ fn app_switcher(p: &mut Painter, ctx: &ShellContext<'_>) {
             15,
             Color::WHITE,
         );
-        let close = Rect::new(x + card_width as i32 - 34, top - 40, 30, 30);
-        p.circle(close.x + 15, close.y + 15, 13, Color(255, 255, 255, 60));
-        p.symbol("close", close.x + 9, close.y + 9, 12, Color::WHITE);
-        p.region(close, &window.action("close"), "Close application");
     }
 }
 
@@ -1167,8 +1312,10 @@ fn app_library(p: &mut Painter, ctx: &ShellContext<'_>) {
         p,
         ctx,
         Color(18, 18, 30, 120),
-        "shell:launcher",
-        "Close App Library",
+        // The App Library is a screen, not a sheet: its empty glass does nothing, and
+        // it is left by swiping back to the pages or by the home gesture.
+        "shell:noop",
+        "App Library",
     );
     let field = Rect::new(20, 66, ctx.width - 40, 42);
     p.button(
@@ -1327,13 +1474,38 @@ fn plane_rows(plane: crate::Plane) -> [&'static str; 3] {
     }
 }
 
-/// Key grid at this width: gap, key width, key height, and the keys' own height. Every
-/// plane is four rows tall, so switching one never moves the field above it.
+/// Height of the QuickType bar over the keys.
+const QUICKTYPE: i32 = 40;
+
+/// Key grid at this width: gap, key width, key height, and the keyboard's own height with
+/// its QuickType bar. Every plane is four rows tall, so switching one never moves the
+/// field above it.
 fn key_grid(width: u32) -> (i32, i32, i32, i32) {
     let gap = (width as i32 / 65).clamp(4, 8);
     let key_w = (width as i32 - 6 - gap * 9) / 10;
     let key_h = (key_w * 5 / 4).clamp(32, 46);
-    (gap, key_w, key_h, key_h * 4 + gap * 3 + 24)
+    (gap, key_w, key_h, key_h * 4 + gap * 3 + 24 + QUICKTYPE)
+}
+
+/// QuickType: up to three completions of the word being typed, from the same fixed word
+/// list the Android keyboard uses, each typing the rest of the word and a space through
+/// `shell:insert:`. With nothing to complete the bar stays, empty, as it does on iOS.
+fn quicktype(p: &mut Painter, ctx: &ShellContext<'_>, top: i32) {
+    let w = ctx.width as i32;
+    let slot = w / 3;
+    for (i, (word, action)) in ctx.suggestions(3).iter().enumerate() {
+        let r = Rect::new(
+            i as i32 * slot,
+            top + 2,
+            slot as u32,
+            (QUICKTYPE - 4) as u32,
+        );
+        p.button(r, Color::TRANSPARENT, 8, action, word);
+        p.center(r.x, r.y + 8, r.width, word, 16, INK);
+        if i > 0 {
+            p.vline(r.x, r.y + 8, 20, Color(60, 60, 67, 60));
+        }
+    }
 }
 
 /// Pixels the keyboard takes from the bottom of the screen, 0 when it is down, including
@@ -1447,11 +1619,12 @@ fn keyboard(p: &mut Painter, ctx: &ShellContext<'_>) {
         Color(209, 212, 217, 246),
         None,
     );
+    quicktype(p, ctx, top);
     let heavy = Color::rgb(174, 179, 189);
     let plane = ctx.keyboard.plane;
     let upper = ctx.shifted();
     let wide = kw * 3 / 2;
-    let mut y = top + 12;
+    let mut y = top + QUICKTYPE + 6;
     for (row, keys) in plane_rows(plane).iter().enumerate() {
         let n = keys.chars().count() as i32;
         let x0 = left + (full - (n * kw + (n - 1) * gap)) / 2;
@@ -1520,11 +1693,20 @@ fn keyboard(p: &mut Painter, ctx: &ShellContext<'_>) {
         );
         x += width + gap;
     }
+    // The dictation key beneath the keys, beside the home indicator. There is no speech
+    // input in the simulation, so it is announced off rather than offered.
+    p.symbol(
+        "mic",
+        w - 44,
+        ctx.height as i32 - 31,
+        20,
+        Color(0, 0, 0, 90),
+    );
+    p.disabled("Dictation, no speech input in this simulation");
 }
 
 pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
     let w = ctx.width as i32;
-    let h = ctx.height as i32;
     // A locked or sleeping display hides every window; only a power action returns.
     if !ctx.awake() {
         power_screen(p, ctx);
@@ -1536,7 +1718,8 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
     match ctx.panel {
         Some("overview") => app_switcher(p, ctx),
         Some("search") => search(p, ctx),
-        Some("calendar" | "notifications") => notification_center(p, ctx),
+        Some("calendar") => today_view(p, ctx),
+        Some("notifications") => notification_center(p, ctx),
         Some("settings") => settings(p, ctx),
         // Safari's own sheets, each opened by one button on its toolbar.
         Some("view") if focused_browser(ctx).is_some() => {
@@ -1562,30 +1745,69 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
             .rev()
             .find(|w| !w.minimized)
             .is_some_and(|w| w.kind == "terminal");
-    let fg = if light_content && !dark_app {
+    // Settings is drawn as the light full-screen application it is on the device.
+    let fg = if (light_content && !dark_app) || ctx.panel == Some("settings") {
         INK
     } else {
         Color::WHITE
     };
-    status(p, ctx, fg);
-    p.region(
-        Rect::new(0, 0, (w / 2 - 66).max(1) as u32, 50),
-        "shell:panel:calendar",
-        "Notification Center",
+    status(p, ctx, fg, ctx.panel != Some("notifications"));
+    // The status bar is where the two pull-down gestures start: Notification Center
+    // from the left and middle, Control Center from the right of the Dynamic Island. A
+    // tap there opens neither, exactly as on the glass; see `shell:gesture:*`.
+    gesture(
+        p,
+        Rect::new(0, 0, (w / 2 + 66).max(1) as u32, 50),
+        "shell:gesture:notifications",
+        "Status bar, swipe down for Notification Center",
     );
-    p.region(
+    gesture(
+        p,
         Rect::new(w / 2 + 66, 0, (w / 2 - 66).max(1) as u32, 50),
-        "shell:panel:quick",
-        "Control Center",
+        "shell:gesture:control-center",
+        "Status bar, swipe down for Control Center",
     );
     keyboard(p, ctx);
+    home_indicator(p, ctx, fg);
+}
+
+/// A gesture affordance: an interaction target a pointer reaches by dragging from it,
+/// not by tapping it. The router turns a swipe that starts here into the gesture and
+/// treats a tap as the device does, as nothing; `application.v1 shell` performs it.
+fn gesture(p: &mut Painter, r: Rect, action: &str, label: &str) {
+    p.region(r, action, label);
+    if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+        s.role = "gesture".into();
+    }
+}
+
+/// Whether the home indicator is on screen. It sits over every application and
+/// application-like surface, and over the Notification Center cover sheet, but not on
+/// the home screen, the App Library, Today View, Control Center or the App Switcher.
+fn shows_home_indicator(ctx: &ShellContext<'_>) -> bool {
+    match ctx.panel {
+        Some("notifications" | "settings") => true,
+        Some("view" | "context" | "file" | "page") => focused_browser(ctx).is_some(),
+        Some(_) => false,
+        None => ctx.active && !ctx.launcher_open,
+    }
+}
+
+/// The home indicator, the thin bar along the bottom edge. It is not a button: a swipe
+/// up from it goes home, a longer one opens the App Switcher, and a tap does nothing.
+fn home_indicator(p: &mut Painter, ctx: &ShellContext<'_>, fg: Color) {
+    if !shows_home_indicator(ctx) {
+        return;
+    }
+    let (w, h) = (ctx.width as i32, ctx.height as i32);
     // Over the keyboard's light plate the indicator has to darken to stay visible.
     let bar = if keyboard_height(ctx) > 0 { INK } else { fg };
-    p.box_(Rect::new(w / 2 - 70, h - 13, 140, 5), bar, 3);
-    p.region(
-        Rect::new(w / 2 - 100, h - 32, 200, 32),
-        "shell:home",
-        "Home",
+    p.box_(Rect::new(w / 2 - 67, h - 13, 134, 5), bar, 3);
+    gesture(
+        p,
+        Rect::new(w / 2 - 100, h - 28, 200, 28),
+        "shell:gesture:home",
+        "Home indicator, swipe up to go home",
     );
 }
 
@@ -1621,34 +1843,23 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         p.hline(0, 95, ctx.width, HAIRLINE);
     }
     // In Files the chevron pops one folder, exactly like the crumb the content draws;
-    // at the root there is nowhere to pop to, so no chevron is painted at all.
-    let up = window.kind == "files" && !folder.is_empty();
-    if up || window.kind != "files" {
-        let label = if up {
-            folder
-                .rsplit_once('/')
-                .map(|(parent, _)| parent)
-                .and_then(|parent| parent.rsplit('/').find(|s| !s.is_empty()))
-                .unwrap_or("Browse")
-        } else if window.kind == "editor" {
-            "Notes"
-        } else {
-            "Home"
-        };
-        let action = if up {
-            window.action("content:files-up")
-        } else {
-            "shell:home".to_owned()
-        };
+    // at the root there is nowhere to pop to, so no chevron is painted at all. No other
+    // application gets a way "Home" in its navigation bar: an iPhone has none there, and
+    // leaving an application is the home indicator's swipe.
+    if window.kind == "files" && !folder.is_empty() {
+        let label = folder
+            .rsplit_once('/')
+            .map(|(parent, _)| parent)
+            .and_then(|parent| parent.rsplit('/').find(|s| !s.is_empty()))
+            .unwrap_or("Browse");
         p.symbol("chevron-left", 8, 61, 22, BLUE);
         let text = p.left(29, 62, 80, label, 17, BLUE);
-        p.region(Rect::new(4, 51, text + 34, 42), &action, label);
+        p.region(
+            Rect::new(4, 51, text + 34, 42),
+            &window.action("content:files-up"),
+            label,
+        );
     }
-    // Not an overflow menu: this is the App Library button, and now it looks like one.
-    let more = Rect::new(ctx.width as i32 - 50, 56, 32, 32);
-    p.ring(more.x + 16, more.y + 16, 12, 2, BLUE);
-    p.symbol("apps", more.x + 8, more.y + 8, 16, BLUE);
-    p.region(more, "shell:launcher", "App Library");
 }
 
 /// Safari: address bar beneath the status bar and the standard bottom toolbar.
@@ -2096,7 +2307,7 @@ mod tests {
     use crate::desktop_scene::DesktopTheme;
 
     #[test]
-    fn home_only_exposes_installed_apps_and_keeps_home_hit_target() {
+    fn home_only_exposes_installed_apps_and_shows_no_home_indicator() {
         let installed = vec!["files".to_owned(), "browser".to_owned()];
         let ctx = ShellContext {
             theme: DesktopTheme::Ios,
@@ -2125,6 +2336,7 @@ mod tests {
             library_group: None,
             bookmarked: false,
             panel_over_launcher: false,
+            home_page: 0,
             typed: "",
         };
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
@@ -2142,10 +2354,11 @@ mod tests {
             }
         }
         assert!(launches.contains(&"files".to_owned()) && launches.contains(&"browser".to_owned()));
-        assert_eq!(
-            p.scene.hit_test(195, 830).unwrap().interaction.as_deref(),
-            Some("shell:home")
-        );
+        // The home screen has no home indicator, and nothing on it is a "Home" button.
+        assert!(!p.scene.nodes.iter().any(|n| matches!(
+            n.interaction.as_deref(),
+            Some("shell:home" | "shell:gesture:home")
+        )));
         assert!(p.scene.nodes.iter().any(|node| matches!(&node.primitive, cw_scene::Primitive::UiTextBold {text,..} if text == "9:00")));
     }
 
@@ -2183,6 +2396,7 @@ mod tests {
             library_group: None,
             bookmarked: false,
             panel_over_launcher: false,
+            home_page: 0,
             typed: "",
         }
     }
@@ -2321,13 +2535,16 @@ mod tests {
             "shell:power:lock",
             "shell:power:restart",
             "shell:power:off",
-            "shell:dismiss",
+            "shell:gesture:home",
         ] {
             assert!(
                 painted.iter().any(|id| id == expected),
                 "missing {expected}"
             );
         }
+        // Settings is a full-screen application: it has no close button, and it is left
+        // by the home indicator like every other application.
+        assert!(!painted.iter().any(|id| id == "shell:dismiss"));
         assert_eq!(value(&p, "shell:toggle:wifi").as_deref(), Some("Off"));
         assert_eq!(
             value(&p, "shell:toggle:do_not_disturb").as_deref(),
@@ -2927,7 +3144,21 @@ mod tests {
             notice("chat", "Ready to share", Some("shell:launch:chat"), false),
             notice("screenshot", "Screenshot saved", None, true),
         ];
+        // Today View holds widgets and search, never the notices.
         let mut ctx = phone(&[], Some("calendar"), &settings, crate::ScreenState::Active);
+        ctx.notifications = &notices;
+        let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
+        chrome(&mut p, &ctx);
+        assert!(ids(&p).iter().any(|id| id == "shell:search"));
+        assert!(ids(&p).iter().any(|id| id == "shell:month:next"));
+        assert!(!ids(&p).iter().any(|id| id.starts_with("shell:notice")));
+        // Notification Center, pulled down from the status bar, lists them.
+        let mut ctx = phone(
+            &[],
+            Some("notifications"),
+            &settings,
+            crate::ScreenState::Active,
+        );
         ctx.notifications = &notices;
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         chrome(&mut p, &ctx);
@@ -2944,14 +3175,24 @@ mod tests {
         }
         assert!(shown(&p, "Ready to share") && shown(&p, "Screenshot saved"));
         // Nothing invents a notice: an empty feed says it is empty.
-        let ctx = phone(&[], Some("calendar"), &settings, crate::ScreenState::Active);
+        let ctx = phone(
+            &[],
+            Some("notifications"),
+            &settings,
+            crate::ScreenState::Active,
+        );
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         chrome(&mut p, &ctx);
         assert!(shown(&p, "No Older Notifications"));
         assert!(!ids(&p).iter().any(|id| id.starts_with("shell:notice")));
         // Once every notice is seen there is nothing left to mark.
         let seen = [notice("mail", "Ready to share", None, true)];
-        let mut ctx = phone(&[], Some("calendar"), &settings, crate::ScreenState::Active);
+        let mut ctx = phone(
+            &[],
+            Some("notifications"),
+            &settings,
+            crate::ScreenState::Active,
+        );
         ctx.notifications = &seen;
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         chrome(&mut p, &ctx);
@@ -2987,23 +3228,298 @@ mod tests {
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         window_frame(&mut p, &ctx, &files("/"));
         assert!(p.scene.hit_test(20, 70).is_none());
-        // Every other application keeps a real way back to SpringBoard.
+        // No other application paints a way "Home" or to the App Library in its
+        // navigation bar: an iPhone has neither there.
+        for kind in ["editor", "calendar", "mail", "notes", "terminal"] {
+            let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
+            window_frame(
+                &mut p,
+                &ctx,
+                &WindowView {
+                    id: 4,
+                    title: kind.into(),
+                    kind: kind.into(),
+                    rect: Rect::new(0, 0, 390, 844),
+                    focused: true,
+                    ..Default::default()
+                },
+            );
+            assert!(ids(&p).is_empty(), "{kind} frame paints {:?}", ids(&p));
+        }
+    }
+
+    /// Paint a whole phone: SpringBoard underneath, then the system chrome.
+    fn springboard_at<'a>(ctx: &ShellContext<'a>) -> Painter {
+        let mut p = Painter::themed(DesktopTheme::Ios, ctx.width, ctx.height, 1);
+        background(&mut p, ctx);
+        chrome(&mut p, ctx);
+        p
+    }
+    /// Applications launched by icons, leaving out the Calendar widget.
+    fn launches(p: &Painter) -> Vec<String> {
+        p.scene
+            .nodes
+            .iter()
+            .filter(|n| {
+                !n.semantic
+                    .as_ref()
+                    .is_some_and(|s| s.label == "Calendar widget")
+            })
+            .filter_map(|n| n.interaction.as_deref()?.strip_prefix("shell:launch:"))
+            .map(str::to_owned)
+            .collect()
+    }
+
+    #[test]
+    fn springboard_is_a_four_by_six_grid_over_a_separate_dock() {
+        let settings = crate::SystemSettings::DEFAULT;
+        let home = Home::new(390, 844);
+        assert_eq!(home.rows, 6);
+        // The whole roster fits one page of a tall phone: the widget takes four cells.
+        assert_eq!(home_pages(&[], 390, 844), 1);
+        let ctx = phone(&[], None, &settings, crate::ScreenState::Active);
+        let p = springboard_at(&ctx);
+        let on_screen = launches(&p);
+        for kind in DOCK {
+            assert_eq!(
+                on_screen.iter().filter(|k| *k == kind).count(),
+                1,
+                "{kind} is drawn once, in the dock"
+            );
+        }
+        // Every application is on screen exactly once, dock and page together.
+        let mut all: Vec<_> = on_screen.clone();
+        all.sort();
+        all.dedup();
+        assert_eq!(all.len(), on_screen.len());
+        assert_eq!(on_screen.len(), APPS.len());
+        // Four columns: icons sit on exactly four x positions.
+        let mut columns: Vec<i32> = p
+            .scene
+            .nodes
+            .iter()
+            .filter(|n| {
+                n.interaction
+                    .as_deref()
+                    .is_some_and(|a| a.starts_with("shell:launch:"))
+            })
+            .map(|n| n.bounds.x)
+            .collect();
+        columns.sort();
+        columns.dedup();
+        assert_eq!(columns.len(), 4, "{columns:?}");
+        // Dock icons wear no names; page icons do.
+        assert!(!shown(&p, "Mail") && !shown(&p, "Safari"));
+        assert!(shown(&p, "Notes") && shown(&p, "Calendar"));
+        // One page means one dot, announced as the current page.
+        assert_eq!(
+            value(&p, "shell:home-page:0").as_deref(),
+            Some("Current page")
+        );
+        assert!(!ids(&p).iter().any(|id| id == "shell:home-page:1"));
+    }
+
+    #[test]
+    fn a_shorter_phone_pages_its_icons_and_the_dots_reach_every_page() {
+        let settings = crate::SystemSettings::DEFAULT;
+        let (width, height) = (390, 600);
+        assert_eq!(home_pages(&[], width, height), 2);
+        let mut ctx = phone(&[], None, &settings, crate::ScreenState::Active);
+        ctx.height = height;
+        let first = springboard_at(&ctx);
+        ctx.home_page = 1;
+        let second = springboard_at(&ctx);
+        // The two pages share the dock and nothing else, and between them hold it all.
+        let (a, b) = (launches(&first), launches(&second));
+        let dock: Vec<String> = DOCK.iter().map(|k| k.to_string()).collect();
+        let page_a: Vec<_> = a.iter().filter(|k| !dock.contains(k)).collect();
+        let page_b: Vec<_> = b.iter().filter(|k| !dock.contains(k)).collect();
+        assert!(!page_a.is_empty() && !page_b.is_empty());
+        assert!(page_a.iter().all(|k| !page_b.contains(k)));
+        assert_eq!(page_a.len() + page_b.len() + dock.len(), APPS.len());
+        // The calendar widget lives on the first page only.
+        assert!(first.scene.nodes.iter().any(|n| n
+            .semantic
+            .as_ref()
+            .is_some_and(|s| s.label == "Calendar widget")));
+        assert!(!second.scene.nodes.iter().any(|n| n
+            .semantic
+            .as_ref()
+            .is_some_and(|s| s.label == "Calendar widget")));
+        // Two dots, the current one announced, each a target that sits above the dock.
+        for (p, current) in [(&first, 0), (&second, 1)] {
+            for page in 0..2 {
+                let id = format!("shell:home-page:{page}");
+                let dot = p
+                    .scene
+                    .nodes
+                    .iter()
+                    .find(|n| n.interaction.as_deref() == Some(id.as_str()))
+                    .unwrap();
+                assert!(dot.bounds.y + dot.bounds.height as i32 <= Home::new(width, height).dock.y);
+                assert_eq!(
+                    value(p, &id).as_deref(),
+                    Some(if page == current {
+                        "Current page"
+                    } else {
+                        "Page"
+                    })
+                );
+            }
+        }
+        // A page past the last one shows the last one.
+        ctx.home_page = 9;
+        assert_eq!(launches(&springboard_at(&ctx)), b);
+        // The App Library and Today View are screens of their own, not over a page.
+        ctx.home_page = 0;
+        ctx.launcher_open = true;
+        let library = springboard_at(&ctx);
+        assert!(!ids(&library)
+            .iter()
+            .any(|id| id.starts_with("shell:home-page")));
+        ctx.launcher_open = false;
+        ctx.panel = Some("calendar");
+        let today = springboard_at(&ctx);
+        assert!(!ids(&today)
+            .iter()
+            .any(|id| id.starts_with("shell:home-page")));
+    }
+
+    #[test]
+    fn the_home_indicator_is_a_gesture_affordance_not_a_home_button() {
+        let settings = crate::SystemSettings::DEFAULT;
+        let windows = [phone_window(2, "notes")];
+        let ctx = phone(&windows, None, &settings, crate::ScreenState::Active);
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
-        window_frame(
-            &mut p,
-            &ctx,
-            &WindowView {
-                id: 4,
-                title: "editor".into(),
-                kind: "editor".into(),
-                rect: Rect::new(0, 0, 390, 844),
-                focused: true,
-                ..Default::default()
-            },
+        chrome(&mut p, &ctx);
+        let bar = p.scene.hit_test(195, 836).unwrap();
+        assert_eq!(bar.interaction.as_deref(), Some("shell:gesture:home"));
+        assert_eq!(bar.semantic.as_ref().unwrap().role, "gesture");
+        // Nothing an application screen paints is a tap-to-go-home control.
+        assert!(!ids(&p)
+            .iter()
+            .any(|id| id == "shell:home" || id == "shell:launcher"));
+        // The status bar is where the two pull-downs start, and it is a gesture too.
+        assert_eq!(
+            p.scene.hit_test(40, 20).unwrap().interaction.as_deref(),
+            Some("shell:gesture:notifications")
         );
         assert_eq!(
-            p.scene.hit_test(20, 70).unwrap().interaction.as_deref(),
+            p.scene.hit_test(350, 20).unwrap().interaction.as_deref(),
+            Some("shell:gesture:control-center")
+        );
+        // The indicator is over applications and the cover sheet, but not over
+        // Control Center, the App Switcher or the App Library.
+        for (panel, launcher, shows) in [
+            (Some("notifications"), false, true),
+            (Some("settings"), false, true),
+            (Some("quick"), false, false),
+            (Some("overview"), false, false),
+            (None, true, false),
+        ] {
+            let mut ctx = phone(&windows, panel, &settings, crate::ScreenState::Active);
+            ctx.launcher_open = launcher;
+            let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
+            chrome(&mut p, &ctx);
+            assert_eq!(
+                ids(&p).iter().any(|id| id == "shell:gesture:home"),
+                shows,
+                "{panel:?} launcher {launcher}"
+            );
+        }
+        // The App Switcher has no close buttons: a card is swiped up to close it, and
+        // the space around the cards goes home, as on the device.
+        let ctx = phone(
+            &windows,
+            Some("overview"),
+            &settings,
+            crate::ScreenState::Active,
+        );
+        let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
+        chrome(&mut p, &ctx);
+        assert!(!ids(&p).iter().any(|id| id.ends_with(":close")));
+        assert!(ids(&p).iter().any(|id| id == "window:2:focus"));
+        assert_eq!(
+            p.scene.hit_test(195, 820).unwrap().interaction.as_deref(),
             Some("shell:home")
         );
+    }
+
+    #[test]
+    fn quicktype_completes_the_word_being_typed_and_dictation_is_announced_off() {
+        let settings = crate::SystemSettings::DEFAULT;
+        let windows = [phone_window(2, "terminal")];
+        let mut ctx = phone(&windows, None, &settings, crate::ScreenState::Active);
+        ctx.text_entry = true;
+        ctx.typed = "echo mee";
+        let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
+        chrome(&mut p, &ctx);
+        assert!(ids(&p).iter().any(|id| id == "shell:insert:ting "));
+        assert!(shown(&p, "meeting"));
+        assert!(greyed(&p, "Dictation, no speech input in this simulation"));
+        // The bar sits above the keys, which still start below it.
+        let bar = p
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some("shell:insert:ting "))
+            .unwrap()
+            .bounds;
+        let q = p
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some("shell:type:q"))
+            .unwrap()
+            .bounds;
+        assert!(bar.y + bar.height as i32 <= q.y);
+    }
+
+    #[test]
+    fn the_status_bar_and_lock_screen_report_the_real_switches() {
+        let settings = crate::SystemSettings {
+            airplane_mode: true,
+            wifi: false,
+            do_not_disturb: true,
+            battery_saver: true,
+            flashlight: true,
+            ..crate::SystemSettings::DEFAULT
+        };
+        let symbols = |p: &Painter| -> Vec<(String, cw_scene::Color)> {
+            p.scene
+                .nodes
+                .iter()
+                .filter_map(|n| match &n.primitive {
+                    cw_scene::Primitive::Symbol { asset, color } => {
+                        Some((asset.trim_start_matches("symbol/").to_owned(), *color))
+                    }
+                    _ => None,
+                })
+                .collect()
+        };
+        let ctx = phone(&[], None, &settings, crate::ScreenState::Active);
+        let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
+        chrome(&mut p, &ctx);
+        let drawn = symbols(&p);
+        let has = |name: &str| drawn.iter().any(|(s, _)| s == name);
+        assert!(has("airplane") && has("moon"));
+        assert!(!has("cellular") && !has("wifi"));
+        assert!(drawn
+            .iter()
+            .any(|(s, c)| s == "battery" && *c == Color::rgb(255, 204, 0)));
+        // The lock screen hides the applications, keeps the torch real and says the
+        // camera is not there.
+        let windows = [phone_window(2, "notes")];
+        let ctx = phone(&windows, None, &settings, crate::ScreenState::Locked);
+        let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
+        chrome(&mut p, &ctx);
+        assert_eq!(value(&p, "shell:toggle:flashlight").as_deref(), Some("On"));
+        assert!(greyed(&p, "Camera, no camera in this simulation"));
+        assert!(!ids(&p).iter().any(|id| id.starts_with("window:")));
+        assert!(p
+            .scene
+            .nodes
+            .iter()
+            .any(|n| matches!(&n.primitive, cw_scene::Primitive::AssetImage { asset } if asset == "wallpaper/ios")));
     }
 }
