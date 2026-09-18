@@ -75,6 +75,17 @@ pub fn render(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
     if let Some(draft) = &app.draft {
         art::composer(p, draft, all, &s);
     }
+    if app.popup == Some(super::Popup::Output) {
+        art::output_picker(
+            p,
+            app,
+            DesktopTheme::Windows,
+            env.level("volume"),
+            Rect::new(w as i32 - 330, h as i32 - bar as i32 - 8, 300, 0),
+            all,
+            &s,
+        );
+    }
 }
 
 fn pane(app: &Music, p: &mut Painter, nav: u32, h: u32) {
@@ -977,7 +988,58 @@ fn player_bar(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, r: Rect) {
             art::icon(p, rr, symbol, 16, on(lit), target, label);
         }
     }
+    // Right: Cast to device, mute, the volume slider, then the play queue. The volume is
+    // Media Player's own; Windows mixes it under the master volume.
     let q = Rect::new(r.x + r.width as i32 - 52, y + 14, 32, 32);
+    let slider = Rect::new(q.x - 116, y + 20, 104, 20);
+    let mute = Rect::new(slider.x - 36, y + 14, 32, 32);
+    let cast = Rect::new(mute.x - 40, y + 14, 32, 32);
+    match player {
+        Some(pl) => {
+            art::icon(
+                p,
+                mute,
+                if pl.audible() == 0 {
+                    "volume-mute"
+                } else {
+                    "volume"
+                },
+                16,
+                INK,
+                "music:mute",
+                if pl.muted { "Unmute" } else { "Mute" },
+            );
+            art::volume_slider(
+                p,
+                slider,
+                pl.audible(),
+                "music:volume:",
+                4,
+                ACCENT,
+                Color(0, 0, 0, 60),
+                Some((14, ACCENT)),
+            );
+            art::icon(
+                p,
+                cast,
+                "cast",
+                16,
+                if pl.device.is_empty() { INK } else { ACCENT },
+                "music:output",
+                "Cast to device",
+            );
+        }
+        None => {
+            art::icon_off(p, mute, "volume", 16, INK, "Nothing is playing");
+            p.box_(
+                Rect::new(slider.x, slider.y + 8, slider.width, 4),
+                Color(0, 0, 0, 30),
+                2,
+            );
+            p.disabled("Nothing is playing");
+            art::icon_off(p, cast, "cast", 16, INK, "Nothing is playing");
+        }
+    }
     art::icon(
         p,
         q,

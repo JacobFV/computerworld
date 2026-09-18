@@ -76,6 +76,50 @@ pub fn render(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
     if let Some(draft) = &app.draft {
         art::composer(p, draft, all, &s);
     }
+    if app.popup == Some(super::Popup::Volume) {
+        volume_popover(
+            app,
+            p,
+            Rect::new(w as i32 - 250, head as i32 - 4, 236, 52),
+            all,
+        );
+    }
+}
+
+/// GTK's volume button popover: a slider for Rhythmbox's own stream volume (the sound
+/// server mixes it under the master volume) and a mute toggle.
+fn volume_popover(app: &Music, p: &mut Painter, r: Rect, all: Rect) {
+    let Some(player) = &app.catalog.player else {
+        return;
+    };
+    p.z += 2;
+    p.region(all, "music:popup-close", "Close");
+    p.drop_shadow(r, 10, 12, 60, 4);
+    p.border(r, Color::WHITE, 10, LINE);
+    art::icon(
+        p,
+        Rect::new(r.x + 8, r.y + 10, 32, 32),
+        if player.audible() == 0 {
+            "volume-mute"
+        } else {
+            "volume"
+        },
+        16,
+        INK,
+        "music:mute",
+        if player.muted { "Unmute" } else { "Mute" },
+    );
+    art::volume_slider(
+        p,
+        Rect::new(r.x + 48, r.y + 16, r.width - 64, 20),
+        player.audible(),
+        "music:volume:",
+        4,
+        ORANGE,
+        Color(0, 0, 0, 40),
+        Some((16, Color::WHITE)),
+    );
+    p.z -= 2;
 }
 
 fn flat(p: &mut Painter, r: Rect, symbol: &str, target: &str, label: &str, on: bool) {
@@ -121,7 +165,7 @@ fn header(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, r: Rect) {
         }
     }
     let x = group.x + group.width as i32 + 16;
-    let right = 96;
+    let right = 138;
     let w = (r.width as i32 - x - right).max(80) as u32;
     match (&live, app.now()) {
         (Some(l), Some(t)) => {
@@ -159,8 +203,24 @@ fn header(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, r: Rect) {
             p.label(x, r.y + 20, w, "Not playing", 13, MUTED, false, Align::Left);
         }
     }
-    let rx = r.width as i32 - right + 8;
+    let rx = r.width as i32 - right + 50;
     let repeat = player.map_or(Repeat::Off, |p| p.repeat);
+    let volume = Rect::new(rx - 42, cy, 38, 34);
+    match player {
+        Some(pl) => flat(
+            p,
+            volume,
+            if pl.audible() == 0 {
+                "volume-mute"
+            } else {
+                "volume"
+            },
+            "music:volume-popover",
+            "Volume",
+            app.popup == Some(super::Popup::Volume),
+        ),
+        None => art::icon_off(p, volume, "volume", 16, INK, "Nothing is playing"),
+    }
     if player.is_some() {
         flat(
             p,

@@ -21,5 +21,6 @@ serde.workspace = true
 sha2.workspace = true
 
 [dev-dependencies]
+cw-protocol = { path = "../protocol" }
 serde_json.workspace = true
 proptest.workspace = true

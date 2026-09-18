@@ -124,6 +124,41 @@ reliefs, DRC, Gerber RS-274X/Excellon output and SVG plots.
   and they follow the pointer with no button down (`NativeApp::hovers`), so the wire,
   track or symbol being placed is drawn under it.
 
+### Music
+
+`music` is one player with five faces over the `media` service the world backs it with
+(spotify.com, or music.youtube.com on Android): Apple Music on macOS and iOS, YouTube
+Music on Android, Media Player on Windows 11 and Rhythmbox on Ubuntu. Its controls are
+listed in [action-families.md](action-families.md#music-player-controls).
+
+- **Artwork is real artwork.** Every album, artist and playlist has a cover generated
+  from its id by `crates/artwork`: a palette and a composition (a sunset, a Bauhaus
+  grid, waves, orbits, shards, stripes, a halftone) laid out in a 1000-unit square. The
+  players draw it with the renderer's own shapes at any size, round for an artist's
+  avatar; the sites serve the same composition rasterised from `GET /art/<key>` (see
+  [service-sdk.md](service-sdk.md)), so an album looks the same everywhere.
+- **Volume is state.** The service keeps a volume and a mute with the listener's
+  session, which every player's slider sets and the machine's own output volume then
+  scales — Music's toolbar slider, Media Player's and Rhythmbox's volume buttons. On the
+  phones, where the real players use the device's volume, the slider is the machine's
+  (`shell:set:volume:<pct>`) until the music is playing on a speaker, when it is the
+  session's again.
+- **Lyrics are time-synced.** Catalogue songs carry `[start_ms, line]` lyrics; the line
+  being sung is the last one that has started at the world clock's position, lit in
+  Apple Music's lyrics panel, YouTube Music's LYRICS tab, and spotify.com's lyrics view.
+  Tapping a line seeks to it. A song with none says so, and YouTube Music greys the tab
+  out, as it does.
+- **Casting is real.** The account's speakers are `speaker` services on the network
+  (`crates/../services/speaker`: Living Room, Kitchen, Office TV in the reference
+  world). Opening AirPlay, Cast or Cast to device asks each one whether it is there; one
+  that does not answer is shown disabled with why. Picking one hands it the session —
+  the queue, the position, the repeat mode and the volume — which it carries forward on
+  the same clock with the same calculation, and every later change is sent on. Its own
+  page says what it is playing.
+- **Shelves scroll sideways.** Home's and Explore's shelves are horizontal panes: the
+  wheel's `delta_x` (or Shift with the wheel), the bar along their bottom edge on a
+  desktop, and a sideways swipe on a phone.
+
 ### Visual Studio Code
 
 `code` is installed on the reference world's macOS, Windows and Ubuntu desktops. It

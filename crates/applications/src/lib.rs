@@ -2229,7 +2229,7 @@ impl DesktopState {
             _ if bar => {
                 window
                     .scroll
-                    .drag(target, PointerPhase::Down, y - bounds.y)?;
+                    .drag(target, PointerPhase::Down, x - bounds.x, y - bounds.y)?;
                 vec![]
             }
             AppState::Native(app) => app.pointer(
@@ -2364,7 +2364,12 @@ impl DesktopState {
             return Some(match self.windows.get_mut(&window) {
                 Some(w) => w
                     .scroll
-                    .drag(&target, phase, y - capture.original.y)
+                    .drag(
+                        &target,
+                        phase,
+                        x - capture.original.x,
+                        y - capture.original.y,
+                    )
                     .map(|_| vec![]),
                 None => Err("window not found".into()),
             });
@@ -3654,8 +3659,8 @@ impl DesktopState {
         // thumb jumps there, whatever the window shows.
         if ScrollBar::parse(target).is_some() {
             let window = self.windows.get_mut(&id).ok_or("window not found")?;
-            window.scroll.drag(target, PointerPhase::Down, dy)?;
-            window.scroll.drag(target, PointerPhase::Up, dy)?;
+            window.scroll.drag(target, PointerPhase::Down, dx, dy)?;
+            window.scroll.drag(target, PointerPhase::Up, dx, dy)?;
             return Ok(vec![]);
         }
         // A click on a drag surface is a press and release at one point: a dot from a

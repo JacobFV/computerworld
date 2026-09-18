@@ -452,6 +452,13 @@ impl Environment {
                 );
             }
         }
+        // A page that asked to be refreshed (a music site's player bar, whose position
+        // moves with the clock) is fetched again once its interval of world time has
+        // passed, so what the next observation shows is what the site shows now.
+        let machines: Vec<String> = self.session(id)?.machines.keys().cloned().collect();
+        for machine in machines {
+            self.refresh_pages(id, &machine, &config.actor);
+        }
         let state_hash = if self.verify_steps {
             self.state_hash()?
         } else {
@@ -1197,6 +1204,22 @@ impl Environment {
                             )?;
                             return Ok(Value::Null);
                         }
+                        // A sideways drag moves a shelf that scrolls sideways under it.
+                        if gesture.is_none()
+                            && dx.abs() > SWIPE_SLOP
+                            && self.scroll_at(
+                                id,
+                                machine,
+                                start,
+                                (width, height),
+                                cw_applications::Wheel {
+                                    dx: -dx,
+                                    ..Default::default()
+                                },
+                            )?
+                        {
+                            return Ok(Value::Null);
+                        }
                         if let Some(target) = gesture {
                             // A card swiped up in the overview closes that application.
                             if let Some(window) = target
@@ -1629,7 +1652,7 @@ impl Environment {
         {
             return Ok(true);
         }
-        if wheel.dy == 0 {
+        if wheel.dy == 0 && wheel.dx == 0 {
             return Ok(false);
         }
         let browser = matches!(
@@ -1641,7 +1664,18 @@ impl Environment {
             Some(AppState::Browser { .. })
         );
         for area in scene.scrolls_at(Some(window), x, y) {
-            let next = (area.offset.saturating_add(wheel.dy)).clamp(0, area.max_offset());
+            // A sideways pane takes the wheel's x, or its y with Shift held, as every
+            // desktop does; an upright one takes y, and ignores a Shift-turn.
+            let delta = match (area.horizontal, wheel.dx, wheel.shift) {
+                (true, 0, true) => wheel.dy,
+                (true, dx, _) => dx,
+                (false, _, true) if wheel.dx == 0 => 0,
+                (false, _, _) => wheel.dy,
+            };
+            if delta == 0 {
+                continue;
+            }
+            let next = (area.offset.saturating_add(delta)).clamp(0, area.max_offset());
             if next == area.offset {
                 continue;
             }
@@ -1653,7 +1687,7 @@ impl Environment {
                 continue;
             };
             let m = self.machine_mut(id, machine)?;
-            if browser && pane == "page" {
+            if browser && (pane == "page" || pane.starts_with("row:")) {
                 let tab = if m.active_browser_window == Some(window) {
                     m.browser.tab_mut()
                 } else if let Some(state) = m.browser_windows.get_mut(&window) {
@@ -1661,7 +1695,13 @@ impl Environment {
                 } else {
                     m.browser.tab_mut()
                 };
-                tab.scroll_y = next;
+                match pane.strip_prefix("row:") {
+                    // A shelf on the page that scrolls sideways.
+                    Some(row) => {
+                        tab.scroll_x.insert(row.to_owned(), next);
+                    }
+                    None => tab.scroll_y = next,
+                }
                 return Ok(true);
             }
             return m
@@ -1670,6 +1710,48 @@ impl Environment {
                 .map_err(SimError::invalid);
         }
         Ok(false)
+    }
+    /// Refresh every browser page on `machine` whose `refresh` is due (see
+    /// `cw_browser::BrowserState::refresh`). A failed refresh keeps the page it had.
+    fn refresh_pages(&mut self, id: &str, machine: &str, actor: &str) {
+        let now = self.runtime.tick();
+        let wanted = self
+            .session(id)
+            .ok()
+            .and_then(|s| s.machines.get(machine))
+            .is_some_and(|m| {
+                m.browser.refresh_pending(now)
+                    || m.browser_windows.values().any(|b| b.refresh_pending(now))
+            });
+        if !wanted {
+            return;
+        }
+        let runtime = &mut self.runtime;
+        let Some(state) = Arc::make_mut(&mut self.sessions)
+            .get_mut(id)
+            .and_then(|s| s.machines.get_mut(machine))
+        else {
+            return;
+        };
+        let mut failures = vec![];
+        for browser in std::iter::once(&mut state.browser).chain(state.browser_windows.values_mut())
+        {
+            if !browser.refresh_due(now) {
+                continue;
+            }
+            let mut http = |r| runtime.http(machine, actor, r);
+            if let Err(e) = browser.refresh(now, &mut http) {
+                failures.push(e.message);
+            }
+        }
+        for message in failures {
+            self.runtime.record_event(
+                "browser.refresh_failed",
+                Some(machine),
+                Some(actor),
+                json!({"session": id, "error": message}),
+            );
+        }
     }
     fn browser_action(&mut self, id: &str, actor: &str, a: &ActionEnvelope) -> Result<Value> {
         if !self
@@ -1753,12 +1835,24 @@ impl Environment {
                 }
             }
             "scroll" => {
-                machine.browser.tab_mut().scroll_y =
+                let to = |key: &str| {
                     a.payload
-                        .get("y")
+                        .get(key)
                         .and_then(integer_i64)
                         .unwrap_or(0)
-                        .clamp(0, i32::MAX as i64) as i32;
+                        .clamp(0, i32::MAX as i64) as i32
+                };
+                // `{"row": id, "x": n}` scrolls one of the page's sideways shelves.
+                match a.payload.get("row").and_then(Value::as_str) {
+                    Some(row) => {
+                        machine
+                            .browser
+                            .tab_mut()
+                            .scroll_x
+                            .insert(row.to_owned(), to("x"));
+                    }
+                    None => machine.browser.tab_mut().scroll_y = to("y"),
+                }
             }
             "submit" => machine
                 .browser

@@ -338,7 +338,7 @@ pub fn command(
         let previous = player(state, &actor, now);
         let mut next = Player::start(&context, source, index, now);
         if let Some(previous) = &previous {
-            next.repeat = previous.repeat;
+            next.carry_from(previous);
         }
         let shuffle = flag(body, "shuffle").unwrap_or(previous.is_some_and(|p| p.shuffle));
         if shuffle {
@@ -383,6 +383,22 @@ pub fn command(
                 .parse::<usize>()
                 .map_err(|_| "jump needs an index")?;
             p.jump(index)?;
+        }
+        "volume" => {
+            let level = field(body, "level")
+                .parse::<u8>()
+                .ok()
+                .filter(|l| *l <= 100)
+                .ok_or("volume is a level from 0 to 100")?;
+            p.set_volume(level);
+        }
+        "mute" => p.muted = flag(body, "on").unwrap_or(!p.muted),
+        "output" => {
+            let device = field(body, "device");
+            if !device.is_empty() && record(state, "devices", &device).is_none() {
+                return Err("no such device".into());
+            }
+            p.device = device;
         }
         "queue" => {
             let item = field(body, "item");
@@ -480,7 +496,61 @@ pub fn player_json(state: &Value, p: &Player) -> Value {
         "shuffle": p.shuffle,
         "repeat": p.repeat,
         "tick": p.tick,
+        "volume": p.volume,
+        "muted": p.muted,
+        "device": p.device,
+        "device_name": record(state, "devices", &p.device)
+            .map(|d| web::text(d, "name"))
+            .unwrap_or_default(),
     })
+}
+/// Speakers signed in to this service, as Spotify Connect and Cast list them: the
+/// device's id, what it is called, where it answers on the network and which ways it
+/// can be sent sound (`airplay`, `cast`, `dlna`). Whether it is really there is for
+/// the player to find out by asking it.
+pub fn devices(state: &Value) -> Vec<Value> {
+    keys(state, "devices")
+        .iter()
+        .filter_map(|id| record(state, "devices", id).map(|d| (id, d)))
+        .map(|(id, d)| {
+            json!({
+                "id": id,
+                "name": web::text(d, "name"),
+                "kind": web::text(d, "kind"),
+                "url": web::text(d, "url"),
+                "protocols": web::strings(d, "protocols"),
+            })
+        })
+        .collect()
+}
+/// Lines a lyrics view may hold, and characters a line may run to.
+const LYRIC_LINES: usize = 400;
+const LYRIC_CHARS: usize = 200;
+/// A track's time-synced lyrics: `[start_ms, line]` pairs in the order they are sung.
+/// A seed that is not that shape, or a track with none, has none.
+pub fn lyrics(item: &Value) -> Vec<(u64, String)> {
+    let mut lines: Vec<(u64, String)> = item
+        .get("lyrics")
+        .and_then(Value::as_array)
+        .map(|lines| {
+            lines
+                .iter()
+                .filter_map(|l| {
+                    let pair = l.as_array()?;
+                    let at = pair.first()?.as_u64()?;
+                    let text: String = pair.get(1)?.as_str()?.chars().take(LYRIC_CHARS).collect();
+                    Some((at, text))
+                })
+                .take(LYRIC_LINES)
+                .collect()
+        })
+        .unwrap_or_default();
+    lines.sort_by_key(|(at, _)| *at);
+    lines
+}
+/// The line being sung `position_ms` into the song: the last one that has started.
+pub fn sung(lines: &[(u64, String)], position_ms: u64) -> Option<usize> {
+    lines.iter().rposition(|(at, _)| *at <= position_ms)
 }
 /// Everything a music application shows, in one reply: the catalogue and this listener's
 /// library, likes, playlists, history and player at `now`.
@@ -519,6 +589,7 @@ pub fn snapshot(state: &Value, actor: &str, now: u64) -> Value {
                 "plays": num(i, "plays"),
                 "explicit": i.get("explicit").and_then(Value::as_bool).unwrap_or(false),
                 "tags": web::strings(i, "tags"),
+                "lyrics": lyrics(i),
             })
         })
         .collect();
@@ -549,6 +620,7 @@ pub fn snapshot(state: &Value, actor: &str, now: u64) -> Value {
         "history": strings_at(state, "history", actor),
         "subscriptions": strings_at(state, "subscriptions", actor),
         "player": player(state, actor, now).map(|p| player_json(state, &p)),
+        "devices": devices(state),
     })
 }
 /// Search across tracks, albums, artists and playlists, each list in relevance order.

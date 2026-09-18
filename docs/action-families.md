@@ -109,7 +109,7 @@ window keeps its own history and tabs.
 | `key` | `{"key": string}` | Key into the focused page element |
 | `new_tab` | `{}` | |
 | `switch_tab` / `close_tab` | `{"tab": u64}` | Index |
-| `scroll` | `{"y": i64}` | Clamped to `0..=i32::MAX` |
+| `scroll` | `{"y": i64}`, or `{"row": string, "x": i64}` for a shelf that scrolls sideways | Clamped to `0..=i32::MAX` |
 
 Any other op is `invalid`. Note the cross-family gate: `application.v1 launch` of
 kind `browser`, `keyboard.v1 key` of `Enter` in a focused address bar, and pointer
@@ -322,6 +322,35 @@ import, `Escape` closes a sheet or clears the selection; split is `S` in Clipcha
 Kdenlive; `Shift+Delete` ripple-deletes and `S` toggles snapping in Kdenlive. With no
 field focused, typed letters are these shortcuts.
 
+#### Music player controls
+
+One player (`crates/applications/src/apps/music`) with five faces: Apple Music on macOS
+and iOS, YouTube Music on Android, Media Player on Windows 11 and Rhythmbox on Ubuntu.
+Everything on screen comes from the `media` service the world backs it with
+(spotify.com, or music.youtube.com on Android): `GET /api/catalog` is the catalogue with
+this listener's library, likes, playlists, history, player and speakers, and every
+control is a real request, after which the catalogue is read again. Controls are
+`window:<id>:content:music:<command>`.
+
+| Target | Effect |
+|---|---|
+| `music:home`, `music:new`, `music:radio`, `music:library[:<recent\|playlists\|artists\|albums\|songs>]`, `music:liked`, `music:queue`, `music:back`, `music:expand` | Navigation; `expand` opens a phone's full-screen Now Playing |
+| `music:album:<id>`, `music:artist:<id>`, `music:playlist:<id>`, `music:mood:<tag>`, `music:find:<tag>` | Open a collection; a mood chip filters Home |
+| `music:play:<context>[@<track>]`, `music:shuffle-play:<context>` | Play a context (`album:<id>`, `playlist:<id>`, `artist:<id>`, `station:<id>`, `mood:<tag>`, `library`, `liked`, `charts`, `track`), optionally starting at a track |
+| `music:toggle`, `music:previous`, `music:next`, `music:shuffle`, `music:repeat`, `music:seek:<n>`, `music:jump:<i>` | Transport; `seek` names a thousandth of the track, `jump` a queue position |
+| `music:volume:<pct>`, `music:mute`, `music:volume-popover` | The player's own volume, which the machine's output volume then scales (Rhythmbox's volume button opens the popover). On a phone the Now Playing slider is the phone's own volume instead, `shell:set:volume:<pct>`, until the music is playing on a speaker |
+| `music:output`, `music:output:<device id>`, `music:output:` | AirPlay (macOS, iOS), Cast (Android) or Cast to device (Windows). Opening the picker asks each of the account's speakers whether it is on the network; picking one hands it the session (`POST <speaker>/api/cast`) and then tells the service (`output`); the empty id brings the music back to this device |
+| `music:lyrics`, `music:lyric:<i>`, `music:lyrics-sheet` | Time-synced lyrics: the panel in Apple Music, the LYRICS tab in YouTube Music. The sung line follows the world clock, and a line seeks to where it is sung |
+| `music:like:<id>`, `music:save:<id>`, `music:save-album:<id>`, `music:subscribe:<id>`, `music:play-next:<id>`, `music:play-last:<id>` | Likes, library, following, and the play queue |
+| `music:menu:<id>`, `music:menu-close`, `music:menu-playlists`, `music:add:<playlist>`, `music:remove:<playlist>@<track>` | The song menu ("…", "⋮") and Add to Playlist |
+| `music:search-field`, `music:search`, `music:clear`, `music:compose`, `music:create`, `music:cancel` | Search and the New Playlist sheet |
+| `music:filter-artist:<id\|all>`, `music:filter-album:<id\|all>` | Rhythmbox's Artist and Album browser |
+| `music:reload`, `music:popup-close` | Re-read the catalogue; close a popup |
+
+Keys: `Space` (or `MediaPlayPause`) toggles playback with no field focused,
+`MediaTrackNext`/`MediaTrackPrevious` skip, `Enter` searches or creates, `Escape` closes
+a menu, a popup or the composer.
+
 #### Image editor controls
 
 The image editors are interfaces over one engine (`crates/raster`): Windows 11 Paint
@@ -457,8 +486,8 @@ Behaviour worth knowing:
 
 - **Scrolling is a platform service.** A pane whose content is taller than its view is
   published in `Scene::scrolls` (`ScrollArea`: `target`, `window`, `bounds`, `offset`,
-  `extent`, and on iOS the large `title` that collapses into the navigation bar once
-  `offset >= title_height`). A `wheel` first goes to the application's own use of the
+  `extent`, `horizontal`, and on iOS the large `title` that collapses into the navigation
+  bar once `offset >= title_height`). A `wheel` first goes to the application's own use of the
   wheel, then to the innermost pane under the pointer that can still move that way,
   then outwards. Applications with their own wheel: Visual Studio Code's editor and
   terminal (whole rows), spreadsheets (three rows a notch, Shift for columns, Ctrl
@@ -467,14 +496,21 @@ Behaviour worth knowing:
   across, Ctrl zooms about the pointer), FreeCAD's 3D view (zoom), terminals (lines).
   The browser's page is the `pane:page` area; its offset is `browser.v1 scroll`'s `y`.
   Offsets are window state (`Window::scroll`) and survive snapshots.
+- **Some panes scroll sideways.** A shelf of album covers (Apple Music's and YouTube
+  Music's shelves, and a page `Row` with `Style::scroll_x`) is published `horizontal`:
+  its `offset` and `extent` run along x. `delta_x` moves it, and so does `delta_y` with
+  Shift held; a plain `delta_y` passes it by to the upright pane around it. On a page
+  such a shelf is `pane:row:<row id>`, which `browser.v1 scroll` also takes by name.
 - **Scroll bars are real.** On desktops each overflowing pane paints a thumb sized to
-  the real extent, on a drag surface `window:<id>:content:pane:<name>:<track>:<thumb>:<max>`:
+  the real extent, on a drag surface `window:<id>:content:pane:<name>:<track>:<thumb>:<max>`
+  (`hpane:…`, along the bottom edge, for one that scrolls sideways):
   dragging the thumb scrolls, a press on the track jumps the thumb there, and a named
   click without a point pages forward. Phones paint no bar at rest, as they do not.
 - **Phones scroll under the finger.** A `down`/`up` that moves more than 12 px mostly
   vertically, starts inside an application and is no shell gesture (not from the status
   bar, the home indicator or the navigation bar) scrolls the pane it started on by the
-  distance moved, and taps nothing.
+  distance moved, and taps nothing. A mostly sideways one moves a shelf that scrolls
+  sideways under it the same way.
 - **Text focus is one answer.** A native application reports the text field that has
   the focus (`focus.keyboard.target`, role `textbox`); a phone paints its keyboard
   exactly when there is one, and on a phone `keyboard.v1 type` with none reaches

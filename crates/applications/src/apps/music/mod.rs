@@ -16,6 +16,7 @@ use super::{push_bounded, Status};
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 mod apple;
 mod art;
@@ -31,6 +32,10 @@ const TITLE_LIMIT: usize = 80;
 const HISTORY_LIMIT: usize = 16;
 /// Steps across a scrubber. `music:seek:<n>` seeks to n/SEEK_STEPS of the track.
 pub const SEEK_STEPS: u64 = 1_000;
+/// Lines of lyrics kept per song.
+const LYRIC_LIMIT: usize = 400;
+/// Steps across a volume slider: each sets the volume to a multiple of 5%.
+pub const VOLUME_STEPS: u32 = 20;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -144,6 +149,31 @@ pub struct Track {
     pub plays: u64,
     pub explicit: bool,
     pub tags: Vec<String>,
+    /// Time-synced lyrics, `(start_ms, line)` in the order they are sung; empty when the
+    /// service has none for the song.
+    pub lyrics: Vec<(u64, String)>,
+}
+impl Track {
+    pub fn instrumental(&self) -> bool {
+        self.tags.iter().any(|t| t == "instrumental")
+    }
+    /// The line being sung `position_ms` into the song.
+    pub fn sung(&self, position_ms: u64) -> Option<usize> {
+        self.lyrics.iter().rposition(|(at, _)| *at <= position_ms)
+    }
+}
+/// A speaker the service knows this listener's account can play on. Whether it answers
+/// is found out by asking it (`Music::reachable`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Device {
+    pub id: String,
+    pub name: String,
+    /// `speaker` or `tv`.
+    pub kind: String,
+    pub url: String,
+    /// `airplay`, `cast`, `dlna`.
+    pub protocols: Vec<String>,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -170,6 +200,26 @@ pub struct Player {
     pub repeat: Repeat,
     /// World tick at which `position_ms` was true.
     pub tick: u64,
+    /// The player's own volume, 0 to 100.
+    #[serde(default = "full_volume")]
+    pub volume: u8,
+    pub muted: bool,
+    /// The speaker the session was handed to, empty when it plays here.
+    pub device: String,
+    pub device_name: String,
+}
+fn full_volume() -> u8 {
+    100
+}
+impl Player {
+    /// What reaches the output: nothing when muted.
+    pub fn audible(&self) -> u8 {
+        if self.muted {
+            0
+        } else {
+            self.volume
+        }
+    }
 }
 /// One `GET /api/catalog` reply.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -187,8 +237,13 @@ pub struct Catalog {
     /// Artists this listener subscribes to (YouTube Music) or follows.
     pub subscriptions: Vec<String>,
     pub player: Option<Player>,
+    /// Speakers signed in to the account.
+    pub devices: Vec<Device>,
 }
 impl Catalog {
+    pub fn device(&self, id: &str) -> Option<&Device> {
+        self.devices.iter().find(|d| d.id == id)
+    }
     pub fn track(&self, id: &str) -> Option<&Track> {
         self.tracks.iter().find(|t| t.id == id)
     }
@@ -281,6 +336,10 @@ impl Catalog {
         self.liked.truncate(LIST_LIMIT);
         self.library.truncate(LIST_LIMIT);
         self.history.truncate(LIST_LIMIT);
+        self.devices.truncate(LIST_LIMIT);
+        for track in &mut self.tracks {
+            track.lyrics.truncate(LYRIC_LIMIT);
+        }
     }
 }
 /// A search reply: ids, each list in the service's relevance order.
@@ -343,6 +402,37 @@ pub struct Music {
     pub status: Status,
     /// Set once the first catalogue reply has landed.
     pub loaded: bool,
+    /// Lyrics are showing: Apple Music's lyrics panel, the phones' lyrics view.
+    #[serde(default)]
+    pub lyrics: bool,
+    /// A popup over the player: the output picker, or a volume popover.
+    #[serde(default)]
+    pub popup: Option<Popup>,
+    /// What each device answered when the output picker last asked it: `true` when it
+    /// is on the network and answering. A device not yet heard from is absent.
+    #[serde(default)]
+    pub reachable: BTreeMap<String, bool>,
+}
+/// Popups a player opens over itself.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Popup {
+    /// AirPlay, Cast, "Cast to device": where the sound goes.
+    Output,
+    /// Rhythmbox's volume button popover.
+    Volume,
+}
+/// Which of a device's protocols the platform's player speaks, and what it calls the
+/// device it is running on.
+pub fn output_protocol(theme: DesktopTheme) -> Option<(&'static str, &'static str)> {
+    match theme {
+        DesktopTheme::Macos => Some(("airplay", "This Mac")),
+        DesktopTheme::Ios => Some(("airplay", "iPhone")),
+        DesktopTheme::Android => Some(("cast", "This phone")),
+        DesktopTheme::Windows => Some(("dlna", "This PC")),
+        // Rhythmbox plays on the machine it runs on and casts nowhere.
+        DesktopTheme::Ubuntu => None,
+    }
 }
 
 impl Music {
@@ -368,6 +458,9 @@ impl Music {
             draft: None,
             status: Status::Loading,
             loaded: false,
+            lyrics: false,
+            popup: None,
+            reachable: BTreeMap::new(),
         };
         let effects = vec![app.catalog_request(window)];
         (app, effects)
@@ -487,8 +580,88 @@ impl Music {
     fn player(&self, window: u64, body: serde_json::Value) -> Vec<AppEffect> {
         vec![self.post(window, "/api/player", body)]
     }
-    pub fn offline(&mut self, _tag: &str, reason: &str) {
-        self.status = Status::Offline(reason.to_owned());
+    pub fn offline(&mut self, tag: &str, reason: &str) {
+        // A speaker that does not answer is a fact about the speaker, not the service.
+        if let Some(id) = tag.strip_prefix("probe:") {
+            self.reachable.insert(id.to_owned(), false);
+            return;
+        }
+        let device = |id: &str| {
+            self.catalog
+                .device(id)
+                .map_or_else(|| id.to_owned(), |d| d.name.clone())
+        };
+        self.status = match tag.split_once(':') {
+            Some(("cast", id)) => {
+                self.reachable.insert(id.to_owned(), false);
+                Status::Offline(format!("Couldn't connect to {}: {reason}", device(id)))
+            }
+            Some(("sync", id)) => {
+                Status::Offline(format!("{} is not responding: {reason}", device(id)))
+            }
+            _ => Status::Offline(reason.to_owned()),
+        };
+    }
+    /// The session as a speaker is handed it: the player and what each queued song is.
+    fn session(&self, p: &Player) -> serde_json::Value {
+        let tracks: serde_json::Map<String, serde_json::Value> = p
+            .queue
+            .iter()
+            .filter_map(|id| self.catalog.track(id))
+            .map(|t| {
+                (
+                    t.id.clone(),
+                    serde_json::json!({
+                        "title": t.title,
+                        "artist": self.catalog.artist_name(&t.artist),
+                        "album": self.catalog.album(&t.album).map(|a| a.title.clone()).unwrap_or_default(),
+                        "duration_ms": t.duration_ms,
+                    }),
+                )
+            })
+            .collect();
+        serde_json::json!({
+            "source": self.base,
+            "player": {
+                "item": p.item, "queue": p.queue, "index": p.index, "context": p.context,
+                "position_ms": p.position_ms, "playing": p.playing, "shuffle": p.shuffle,
+                "repeat": p.repeat, "volume": p.volume, "muted": p.muted, "tick": p.tick,
+            },
+            "tracks": tracks,
+        })
+    }
+    fn device_post(
+        &self,
+        window: u64,
+        tag: String,
+        device: &Device,
+        route: &str,
+        body: serde_json::Value,
+    ) -> AppEffect {
+        AppEffect::Http {
+            window,
+            tag,
+            method: "POST".into(),
+            url: format!("{}{route}", device.url.trim_end_matches('/')),
+            body: body.to_string(),
+        }
+    }
+    /// Keep the speaker that is playing the session current: whatever the service now
+    /// says the player is, the speaker is sent.
+    fn sync(&self, window: u64) -> Vec<AppEffect> {
+        let Some(p) = &self.catalog.player else {
+            return vec![];
+        };
+        match self.catalog.device(&p.device) {
+            Some(device) if !p.queue.is_empty() => vec![self.device_post(
+                window,
+                format!("sync:{}", device.id),
+                device,
+                "/api/cast",
+                self.session(p),
+            )],
+            _ => vec![],
+        }
     }
     pub fn http(
         &mut self,
@@ -497,6 +670,48 @@ impl Music {
         status: u16,
         body: &str,
     ) -> Result<Vec<AppEffect>, String> {
+        // Replies from speakers, not from the service.
+        if let Some(id) = tag.strip_prefix("probe:") {
+            self.reachable.insert(id.to_owned(), status == 200);
+            return Ok(vec![]);
+        }
+        if let Some(id) = tag.strip_prefix("cast:") {
+            if status != 200 {
+                self.reachable.insert(id.to_owned(), false);
+                self.status = Status::from_status(status, body);
+                return Ok(vec![]);
+            }
+            // The speaker has the session: the service now sends the sound there, and the
+            // speaker it came from lets it go.
+            let mut effects = vec![];
+            if let Some(previous) = self
+                .catalog
+                .player
+                .as_ref()
+                .and_then(|p| self.catalog.device(&p.device))
+                .filter(|d| d.id != id)
+            {
+                effects.push(self.device_post(
+                    window,
+                    format!("stopped:{}", previous.id),
+                    previous,
+                    "/api/stop",
+                    serde_json::json!({}),
+                ));
+            }
+            effects.extend(self.player(
+                window,
+                serde_json::json!({"action": "output", "device": id}),
+            ));
+            self.status = Status::Loading;
+            return Ok(effects);
+        }
+        if tag.starts_with("sync:") || tag.starts_with("stopped:") {
+            if status != 200 {
+                self.status = Status::from_status(status, body);
+            }
+            return Ok(vec![]);
+        }
         let outcome = Status::from_status(status, body);
         if outcome != Status::Idle {
             // A refused command (nothing queued after this track, say) leaves the screen as
@@ -516,7 +731,7 @@ impl Music {
                         self.menu = None;
                     }
                 }
-                Ok(vec![])
+                Ok(self.sync(window))
             }
             "search" => {
                 let mut results: Results = serde_json::from_str(body).unwrap_or_default();
@@ -575,6 +790,7 @@ impl Music {
                 self.focus = Focus::None;
                 self.draft = None;
                 self.menu = None;
+                self.popup = None;
                 Ok(vec![])
             }
             // Media keys and the players' own shortcuts.
@@ -595,6 +811,7 @@ impl Music {
             }
         }
         self.menu = None;
+        self.popup = None;
         self.focus = Focus::None;
     }
     /// A top-level destination (a tab or a sidebar entry) starts a fresh Back history.
@@ -602,6 +819,7 @@ impl Music {
         self.view = view;
         self.back.clear();
         self.menu = None;
+        self.popup = None;
         self.focus = Focus::None;
     }
     /// Rhythmbox shows an album or artist page as its browser narrowed to it; touching the
@@ -962,6 +1180,120 @@ impl Music {
                     serde_json::json!({ "item": item }),
                 )])
             }
+            // Volume: the player's own, which the service keeps with the session.
+            "volume" => {
+                self.catalog.player.as_ref().ok_or("nothing is playing")?;
+                let level: u8 = arg
+                    .parse()
+                    .ok()
+                    .filter(|l| *l <= 100)
+                    .ok_or("volume is a level from 0 to 100")?;
+                Ok(self.player(
+                    window,
+                    serde_json::json!({"action": "volume", "level": level}),
+                ))
+            }
+            "mute" => {
+                self.catalog.player.as_ref().ok_or("nothing is playing")?;
+                Ok(self.player(window, serde_json::json!({"action": "mute"})))
+            }
+            "volume-popover" => {
+                self.popup = match self.popup {
+                    Some(Popup::Volume) => None,
+                    _ => Some(Popup::Volume),
+                };
+                Ok(vec![])
+            }
+            // Lyrics follow the song playing; a line seeks to where it is sung.
+            "lyrics" => {
+                self.lyrics = !self.lyrics;
+                self.popup = None;
+                Ok(vec![])
+            }
+            "lyric" => {
+                let live = self.live(clock_us).ok_or("nothing is playing")?;
+                let track = self.track(&live.id)?;
+                let index: usize = arg.parse().map_err(|_| "lyric needs a line")?;
+                let (at, _) = track.lyrics.get(index).ok_or("the song has no such line")?;
+                Ok(self.player(
+                    window,
+                    serde_json::json!({"action": "seek", "position_ms": at}),
+                ))
+            }
+            // The output picker: AirPlay, Cast, Cast to device. Opening it asks each of
+            // the account's speakers whether it is there.
+            "output" if arg.is_empty() && !command.ends_with(':') => {
+                if self.popup == Some(Popup::Output) {
+                    self.popup = None;
+                    return Ok(vec![]);
+                }
+                self.popup = Some(Popup::Output);
+                self.menu = None;
+                self.reachable.clear();
+                Ok(self
+                    .catalog
+                    .devices
+                    .iter()
+                    .map(|d| AppEffect::Http {
+                        window,
+                        tag: format!("probe:{}", d.id),
+                        method: "GET".into(),
+                        url: format!("{}/api/status", d.url.trim_end_matches('/')),
+                        body: String::new(),
+                    })
+                    .collect())
+            }
+            "output" => {
+                self.popup = None;
+                let current = self
+                    .catalog
+                    .player
+                    .as_ref()
+                    .map(|p| p.device.clone())
+                    .unwrap_or_default();
+                if arg == current {
+                    return Ok(vec![]);
+                }
+                if arg.is_empty() {
+                    // Back to this device: the speaker lets the session go.
+                    let mut effects = vec![];
+                    if let Some(device) = self.catalog.device(&current) {
+                        effects.push(self.device_post(
+                            window,
+                            format!("stopped:{}", device.id),
+                            device,
+                            "/api/stop",
+                            serde_json::json!({}),
+                        ));
+                    }
+                    effects.extend(self.player(
+                        window,
+                        serde_json::json!({"action": "output", "device": ""}),
+                    ));
+                    return Ok(effects);
+                }
+                let device = self.catalog.device(arg).ok_or("no such device")?;
+                if self.reachable.get(arg) != Some(&true) {
+                    return Err(format!("{} is not available", device.name));
+                }
+                match self.catalog.player.as_ref().filter(|p| !p.queue.is_empty()) {
+                    // Hand the session over first; the service follows once it is there.
+                    Some(p) => Ok(vec![self.device_post(
+                        window,
+                        format!("cast:{}", device.id),
+                        device,
+                        "/api/cast",
+                        self.session(p),
+                    )]),
+                    None => Err("play something first".into()),
+                }
+            }
+            "popup-close" => {
+                self.popup = None;
+                Ok(vec![])
+            }
+            // The lyrics sheet's own surface: a touch on it stays on it.
+            "lyrics-sheet" => Ok(vec![]),
             _ => Err(format!("unknown music command {command}")),
         }
     }
@@ -1004,9 +1336,49 @@ impl Music {
                 ("shuffle", "Shuffle"),
                 ("repeat", "Repeat"),
                 ("queue", "Playing Next"),
+                ("mute", if p.muted { "Unmute" } else { "Mute" }),
+                ("output", "Output"),
+                ("lyrics", "Lyrics"),
             ] {
                 page.elements
                     .push(button(format!("music:{id}"), label.into()));
+            }
+            page.elements.push(E::Text {
+                id: "music-volume".into(),
+                text: format!(
+                    "Volume {}%{}; {}",
+                    p.volume,
+                    if p.muted { " (muted)" } else { "" },
+                    if p.device.is_empty() {
+                        "playing here".to_owned()
+                    } else {
+                        format!("playing on {}", p.device_name)
+                    }
+                ),
+            });
+            if !track.lyrics.is_empty() {
+                page.elements.push(E::Text {
+                    id: "music-lyrics".into(),
+                    text: track
+                        .lyrics
+                        .iter()
+                        .map(|(at, line)| format!("[{}] {line}", clock(*at)))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                });
+            }
+        }
+        if self.popup == Some(Popup::Output) {
+            for d in &self.catalog.devices {
+                let state = match self.reachable.get(&d.id) {
+                    Some(true) => "available",
+                    Some(false) => "not available",
+                    None => "looking",
+                };
+                page.elements.push(button(
+                    format!("music:output:{}", d.id),
+                    format!("{} ({state})", d.name),
+                ));
             }
         }
         page.elements.push(E::Input {

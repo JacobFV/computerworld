@@ -17,6 +17,7 @@ const SKIN: Skin = Skin {
     played: "#ff0000",
     track: "#ffffff33",
     art_radius: 4,
+    like: ("thumb-up", "thumb-up-fill"),
 };
 const BAR: &str = "#212121";
 
@@ -136,7 +137,16 @@ pub fn route(
             (title, "", playlist_page(s, ctx, &list, &back))
         }
         ["watch"] => {
-            let v = web::query(request, "v").unwrap_or_default();
+            let mut v = web::query(request, "v").unwrap_or_default();
+            // A watch page keeping itself current follows the player on to the next song,
+            // as YouTube Music's does.
+            if request.header(cw_protocol::REFRESH_HEADER).is_some() {
+                if let Some(now) = catalog::player(s, &ctx.actor, ctx.tick)
+                    .and_then(|p| p.current().map(str::to_owned))
+                {
+                    v = now;
+                }
+            }
             let Some(item) = record(s, "items", &v) else {
                 return web::error(404, "song not found");
             };
@@ -152,7 +162,7 @@ pub fn route(
     let mut theme = theme.clone();
     theme.background = Some(SKIN.page.into());
     theme.content_width = None;
-    web::themed_page(
+    let response = web::themed_page(
         &if title == "YouTube Music" {
             title.clone()
         } else {
@@ -173,7 +183,8 @@ pub fn route(
             ),
             player_bar(s, ctx, &back),
         ],
-    )
+    )?;
+    Ok(kit::live(response, s, ctx, &back))
 }
 fn top_bar(actor: &str) -> PageElement {
     web::styled_row(
@@ -192,16 +203,18 @@ fn top_bar(actor: &str) -> PageElement {
                     "center",
                     web::style(),
                     vec![
-                        web::thumbnail(
+                        web::icon(
                             "topbar-logo-mark",
-                            "▶",
+                            "play",
+                            "YouTube Music",
                             web::style()
                                 .width(26)
                                 .height(26)
                                 .radius(13)
+                                .padding(6)
                                 .background("#ff0000")
                                 .color("#ffffff")
-                                .size(10),
+                                .size(14),
                         ),
                         bold("topbar-logo-name", "Music", 19, SKIN.ink),
                     ],
@@ -242,7 +255,7 @@ fn top_bar(actor: &str) -> PageElement {
         ],
     )
 }
-fn nav(id: &str, glyph: &str, label: &str, to: &str, on: bool) -> PageElement {
+fn nav(id: &str, icon: &str, label: &str, to: &str, on: bool) -> PageElement {
     web::card_action(
         id,
         web::style()
@@ -256,10 +269,11 @@ fn nav(id: &str, glyph: &str, label: &str, to: &str, on: bool) -> PageElement {
             "center",
             web::style(),
             vec![
-                web::styled(
-                    &format!("{id}-glyph"),
-                    glyph,
-                    web::style().size(18).color(SKIN.ink).width(22),
+                web::icon(
+                    &format!("{id}-icon"),
+                    icon,
+                    label,
+                    web::style().size(22).color(SKIN.ink).width(24),
                 ),
                 bold(&format!("{id}-label"), label, 15, SKIN.ink),
             ],
@@ -279,17 +293,17 @@ fn owner(p: &Value) -> String {
 }
 fn sidebar(state: &Value, actor: &str, section: &str) -> PageElement {
     let mut rows = vec![
-        nav("nav-home", "⌂", "Home", "/", section == "home"),
+        nav("nav-home", "home", "Home", "/", section == "home"),
         nav(
             "nav-explore",
-            "◎",
+            "compass",
             "Explore",
             "/explore",
             section == "explore",
         ),
         nav(
             "nav-library",
-            "♬",
+            "library",
             "Library",
             "/library",
             section == "library",
@@ -299,9 +313,10 @@ fn sidebar(state: &Value, actor: &str, section: &str) -> PageElement {
             "nav-new",
             web::style().padding(10).radius(20).background(SKIN.raised),
             web::visit("/library/playlists"),
-            vec![kit::line_bold(
+            vec![kit::labelled(
                 "nav-new-text",
-                "+  New playlist",
+                "plus",
+                "New playlist",
                 14,
                 SKIN.ink,
             )],
@@ -343,13 +358,16 @@ fn sidebar(state: &Value, actor: &str, section: &str) -> PageElement {
 fn heading(id: &str, title: &str) -> PageElement {
     web::styled(id, title, web::style().size(24).bold().color(SKIN.ink))
 }
+/// A titled shelf of tiles on one line that scrolls sideways, as YouTube Music's do.
+/// `columns` is how many a wide window shows at once.
 fn shelf(id: &str, title: &str, columns: u32, tiles: Vec<PageElement>) -> Vec<PageElement> {
     if tiles.is_empty() {
         return vec![];
     }
+    let _ = columns;
     vec![
         heading(&format!("{id}-heading"), title),
-        web::grid(id, columns, 16, tiles),
+        web::styled_row(id, 16, "start", web::style().scroll_x(), tiles),
     ]
 }
 /// Square (or, for an artist, round) art over a title and one line, the unit every
@@ -357,15 +375,19 @@ fn shelf(id: &str, title: &str, columns: u32, tiles: Vec<PageElement>) -> Vec<Pa
 fn tile(id: &str, of: &str, title: &str, meta: &str, to: String, round: bool) -> PageElement {
     web::card_action(
         id,
-        web::style().padding(0).radius(4).background("#00000000"),
+        web::style()
+            .padding(0)
+            .radius(4)
+            .width(150)
+            .background("#00000000"),
         web::visit(to),
         vec![
             cover(
                 &format!("{id}-art"),
                 of,
                 if round { "" } else { title },
-                (if round { 150 } else { 0 }, 150),
-                if round { 64 } else { 4 },
+                (150, 150),
+                if round { 75 } else { 4 },
             ),
             web::styled(
                 &format!("{id}-title"),
@@ -778,9 +800,10 @@ fn library(state: &Value, ctx: &ServiceContext, tab: &str, back: &str) -> Vec<Pa
                         ("shuffle", "true"),
                         ("return", back),
                     ]),
-                    vec![kit::line_bold(
+                    vec![kit::labelled(
                         "library-shuffle-text",
-                        "⇄  Shuffle all",
+                        "shuffle",
+                        "Shuffle all",
                         14,
                         "#000000",
                     )],
@@ -855,7 +878,7 @@ fn library(state: &Value, ctx: &ServiceContext, tab: &str, back: &str) -> Vec<Pa
                 "library-liked",
                 "liked",
                 "Liked Music",
-                "♪ Auto playlist",
+                "Auto playlist",
                 "/playlist?list=LM".into(),
                 false,
             )];
@@ -890,8 +913,8 @@ fn current(state: &Value, ctx: &ServiceContext) -> Option<catalog_player::Player
     catalog::player(state, &ctx.actor, ctx.tick)
 }
 use super::player as catalog_player;
-fn round(id: &str, glyph: &str, fg: &str, bg: &str, action: PageAction) -> PageElement {
-    kit::control(id, glyph, 18, fg, Some(bg), action)
+fn round(id: &str, icon: &str, label: &str, fg: &str, bg: &str, action: PageAction) -> PageElement {
+    kit::control(id, icon, label, 22, fg, Some(bg), action)
 }
 #[allow(clippy::too_many_arguments)]
 fn header(
@@ -938,7 +961,8 @@ fn play_buttons(
     vec![
         round(
             &format!("{id}-play"),
-            if playing_this { "❚❚" } else { "▶" },
+            if playing_this { "pause" } else { "play" },
+            if playing_this { "Pause" } else { "Play" },
             "#000000",
             SKIN.ink,
             if playing_this {
@@ -960,11 +984,20 @@ fn play_buttons(
                 ("shuffle", "true"),
                 ("return", back),
             ]),
-            vec![kit::line_bold(
-                &format!("{id}-shuffle-text"),
-                "⇄  Shuffle",
-                14,
-                SKIN.ink,
+            vec![web::styled_row(
+                &format!("{id}-shuffle-row"),
+                8,
+                "center",
+                web::style(),
+                vec![
+                    web::icon(
+                        &format!("{id}-shuffle-icon"),
+                        "shuffle",
+                        "Shuffle",
+                        web::style().size(18).color(SKIN.ink).width(18),
+                    ),
+                    kit::line_bold(&format!("{id}-shuffle-text"), "Shuffle", 14, SKIN.ink),
+                ],
             )],
         ),
     ]
@@ -1017,12 +1050,13 @@ fn album_page(
             .border("#ffffff33")
             .background("#00000000"),
         post(format!("/library/albums/{}", album.id), &[("return", back)]),
-        vec![kit::line_bold(
+        vec![kit::labelled(
             "album-save-text",
+            if saved { "check" } else { "plus" },
             if saved {
-                "✓  Saved to library"
+                "Saved to library"
             } else {
-                "+  Save to library"
+                "Save to library"
             },
             14,
             SKIN.ink,
@@ -1118,8 +1152,9 @@ fn playlist_page(state: &Value, ctx: &ServiceContext, list: &str, back: &str) ->
                     ),
                     kit::control(
                         &format!("playlist-remove-{i}"),
-                        "✕",
-                        13,
+                        "close",
+                        "Remove from playlist",
+                        16,
                         SKIN.muted,
                         None,
                         post(
@@ -1144,7 +1179,10 @@ fn artist_page(state: &Value, ctx: &ServiceContext, id: &str, back: &str) -> Vec
     let subs = num(&artist, "subscribers");
     let mut out = vec![web::card(
         "artist-banner",
-        web::style().padding(28).radius(0).background(tint(id)),
+        web::style()
+            .padding(28)
+            .radius(0)
+            .background(kit::shade(&kit::wash(id), 80)),
         vec![
             web::styled(
                 "artist-name",
@@ -1170,9 +1208,10 @@ fn artist_page(state: &Value, ctx: &ServiceContext, id: &str, back: &str) -> Vec
                             ("shuffle", "true"),
                             ("return", back),
                         ]),
-                        vec![kit::line_bold(
+                        vec![kit::labelled(
                             "artist-shuffle-text",
-                            "⇄  Shuffle",
+                            "shuffle",
+                            "Shuffle",
                             14,
                             "#000000",
                         )],
@@ -1282,6 +1321,12 @@ fn watch(state: &Value, ctx: &ServiceContext, v: &str, tab: &str, back: &str) ->
             None => web::card(id, style, children),
         }
     };
+    // A tab keeps the list the song is playing from, so switching tabs never restarts it.
+    let here = match &p {
+        Some(p) if p.current() == Some(v) => watch_url(v, &p.context),
+        _ => format!("/watch?v={v}"),
+    };
+    let lines = catalog::lyrics(&item);
     let tabs = web::grid(
         "tabs",
         3,
@@ -1290,20 +1335,46 @@ fn watch(state: &Value, ctx: &ServiceContext, v: &str, tab: &str, back: &str) ->
             tab_cell(
                 "tab-next",
                 "UP NEXT",
-                tab != "related",
-                Some(format!("/watch?v={v}")),
+                tab != "related" && tab != "lyrics",
+                Some(here.clone()),
             ),
-            tab_cell("tab-lyrics", "LYRICS", false, None),
+            // Greyed out, as YouTube Music does, when the song has no lyrics.
+            tab_cell(
+                "tab-lyrics",
+                "LYRICS",
+                tab == "lyrics",
+                (!lines.is_empty()).then(|| format!("{here}&tab=lyrics")),
+            ),
             tab_cell(
                 "tab-related",
                 "RELATED",
                 tab == "related",
-                Some(format!("/watch?v={v}&tab=related")),
+                Some(format!("{here}&tab=related")),
             ),
         ],
     );
     let mut side = vec![tabs];
-    if tab == "related" {
+    if tab == "lyrics" && !lines.is_empty() {
+        // Time-synced when this is the song playing: the sung line is lit.
+        let at = p
+            .as_ref()
+            .filter(|p| p.current() == Some(v))
+            .and_then(|p| catalog::sung(&lines, p.position_ms));
+        side.extend(kit::lyric_lines(
+            "lyric",
+            &lines,
+            at,
+            18,
+            (SKIN.ink, "#ffffff80", "#ffffffb3"),
+            back,
+        ));
+        side.push(text(
+            "lyrics-source",
+            "Lyrics synced to the music",
+            12,
+            SKIN.muted,
+        ));
+    } else if tab == "related" {
         for id in catalog::station(state, &web::text(&item, "channel"))
             .iter()
             .filter(|id| *id != v)
@@ -1634,21 +1705,7 @@ fn player_bar(state: &Value, ctx: &ServiceContext, back: &str) -> PageElement {
                             ),
                         ],
                     ),
-                    web::card_action(
-                        "bar-like",
-                        web::style()
-                            .width(64)
-                            .padding(8)
-                            .radius(16)
-                            .background(if liked { SKIN.raised } else { "#00000000" }),
-                        post(format!("/items/{}/like", now.id), &[("return", back)]),
-                        vec![kit::line_bold(
-                            "bar-like-text",
-                            if liked { "Liked" } else { "Like" },
-                            12,
-                            SKIN.ink,
-                        )],
-                    ),
+                    kit::like("bar-like", &now.id, liked, 20, &SKIN, back),
                 ],
             ),
             web::styled_row(
@@ -1656,7 +1713,12 @@ fn player_bar(state: &Value, ctx: &ServiceContext, back: &str) -> PageElement {
                 4,
                 "center",
                 web::style().flex(2),
-                vec![web::spacer("bar-right-space", 0), repeat, shuffle],
+                vec![
+                    web::spacer("bar-right-space", 0),
+                    kit::volume(p, &SKIN, back),
+                    repeat,
+                    shuffle,
+                ],
             ),
         ],
     );

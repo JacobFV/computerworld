@@ -72,6 +72,19 @@ pub struct Player {
     pub shuffle: bool,
     #[serde(default)]
     pub repeat: Repeat,
+    /// The player's own volume, 0 to 100: what its slider sets. What reaches the ear is
+    /// this times the output's (the machine's, or the speaker's) volume.
+    #[serde(default = "full")]
+    pub volume: u8,
+    #[serde(default)]
+    pub muted: bool,
+    /// Where the sound goes: empty for the device the listener is using, otherwise the
+    /// id of a speaker from the service's `devices` the session was handed to.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub device: String,
+}
+fn full() -> u8 {
+    100
 }
 
 impl Player {
@@ -92,6 +105,32 @@ impl Player {
             playing: true,
             shuffle: false,
             repeat: Repeat::Off,
+            volume: full(),
+            muted: false,
+            device: String::new(),
+        }
+    }
+    /// A new session keeps what belongs to the listener rather than to what was played:
+    /// the repeat mode, the volume and mute, and where the sound goes.
+    pub fn carry_from(&mut self, previous: &Player) {
+        self.repeat = previous.repeat;
+        self.volume = previous.volume;
+        self.muted = previous.muted;
+        self.device = previous.device.clone();
+    }
+    /// Set the volume; moving the slider off zero unmutes, as every player does.
+    pub fn set_volume(&mut self, level: u8) {
+        self.volume = level.min(100);
+        if self.volume > 0 {
+            self.muted = false;
+        }
+    }
+    /// The level that reaches the output: 0 when muted.
+    pub fn audible(&self) -> u8 {
+        if self.muted {
+            0
+        } else {
+            self.volume
         }
     }
     /// Older seeds only name the track (and maybe the list); give them a queue.
