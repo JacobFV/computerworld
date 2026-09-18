@@ -592,6 +592,10 @@ pub struct DesktopState {
     /// flyout sits over an open Start menu.
     #[serde(default)]
     pub panel_over_launcher: bool,
+    /// Page of a paged phone home screen (SpringBoard) on display, 0 first. Swipes and
+    /// the page dots move it; shells clamp it to the pages the screen really has.
+    #[serde(default)]
+    pub home_page: u32,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Bookmark {
@@ -1173,6 +1177,11 @@ impl DesktopState {
         Ok(())
     }
     pub fn home(&mut self) {
+        // Going home from the home screen itself returns to its first page, as the
+        // gesture does on a phone; from an application it keeps the page it left.
+        if self.focused.is_none() && !self.launcher_open && self.panel.is_none() {
+            self.home_page = 0;
+        }
         self.pointer_capture = None;
         for window in self.windows.values_mut() {
             window.minimized = true;

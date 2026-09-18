@@ -243,7 +243,11 @@ impl Environment {
             }
             return Ok(true);
         }
-        Ok(false)
+        // A phone's system surface is modal: typing reaches nothing behind it.
+        let phone = self
+            .desktop_theme(id, machine)
+            .is_some_and(DesktopTheme::mobile);
+        Ok(phone && phone_overlay(&self.session(id)?.machines[machine]))
     }
 
     pub(crate) fn desktop_panel_key(
@@ -261,7 +265,10 @@ impl Environment {
             return Ok(true);
         }
         if !desktop.launcher_open && desktop.panel.as_deref() != Some("search") {
-            return Ok(false);
+            let phone = self
+                .desktop_theme(id, machine)
+                .is_some_and(DesktopTheme::mobile);
+            return Ok(phone && phone_overlay(&self.session(id)?.machines[machine]));
         }
         match key {
             "Backspace" => {
@@ -286,6 +293,134 @@ impl Environment {
         Ok(true)
     }
 
+    /// What a finger dragged from `from` to `to` on a phone amounts to, as the shell
+    /// target the same gesture names, or `None` when it is no gesture at all (a tap, or
+    /// a drag nothing answers). `pressed` is the control the finger came down on.
+    ///
+    /// iOS: down from the status bar opens Notification Center (left of the Dynamic
+    /// Island's right edge) or Control Center (right of it); up from the bottom edge goes
+    /// home, or opens the App Switcher when it is long; sideways on the home screen walks
+    /// the pages, with Today View before the first and the App Library after the last;
+    /// down on the home screen opens Search; sideways along the bottom edge in an
+    /// application switches to the previous one. Android: down from the status bar, or
+    /// anywhere on the home screen, opens the shade and a second pull expands it; up on
+    /// the home screen opens the app drawer; the navigation bar takes presses, not
+    /// swipes. On both, a card swiped up in the overview closes its application.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn touch_gesture(
+        &self,
+        id: &str,
+        machine: &str,
+        theme: DesktopTheme,
+        from: (i32, i32),
+        to: (i32, i32),
+        size: (u32, u32),
+        pressed: Option<&str>,
+    ) -> Result<Option<String>> {
+        let (dx, dy) = (to.0 - from.0, to.1 - from.1);
+        let (w, h) = (size.0 as i32, size.1 as i32);
+        let vertical = dy.abs() > 70 && dy.abs() > dx.abs();
+        let horizontal = dx.abs() > 70 && dx.abs() > dy.abs();
+        let d = &self.session(id)?.machines[machine].desktop;
+        let target = |t: &str| Ok(Some(t.to_owned()));
+        match d.screen {
+            // Swiping up the lock screen opens the phone; a dark one only wakes on a tap.
+            cw_applications::ScreenState::Locked if vertical && dy < 0 => {
+                return target("shell:power:wake")
+            }
+            cw_applications::ScreenState::Active => {}
+            _ => return Ok(None),
+        }
+        if !vertical && !horizontal {
+            return Ok(None);
+        }
+        let panel = d.panel.as_deref();
+        // The home screen itself: no application in front, nothing pulled over it.
+        let home = d.focused.is_none() && panel.is_none() && !d.launcher_open;
+        if vertical && dy < 0 && panel == Some("overview") {
+            if let Some(window) = pressed
+                .and_then(|t| t.strip_prefix("window:"))
+                .and_then(|rest| rest.strip_suffix(":focus"))
+            {
+                return Ok(Some(format!("window:{window}:close")));
+            }
+        }
+        match theme {
+            DesktopTheme::Ios if vertical => {
+                if dy > 0 && from.1 < 50 {
+                    return target(if from.0 > w / 2 + 66 {
+                        "shell:gesture:control-center"
+                    } else {
+                        "shell:gesture:notifications"
+                    });
+                }
+                if dy < 0 && from.1 > h - 60 {
+                    return target(if dy < -(h / 3) {
+                        "shell:gesture:overview"
+                    } else {
+                        "shell:gesture:home"
+                    });
+                }
+                if dy < 0 && matches!(panel, Some("quick" | "notifications")) {
+                    return target("shell:dismiss");
+                }
+                if dy > 0 && home {
+                    return target("shell:search");
+                }
+                Ok(None)
+            }
+            DesktopTheme::Ios => {
+                let installed: Vec<String> = self
+                    .desktop_catalog(id, machine)
+                    .into_iter()
+                    .map(|app| app.id)
+                    .collect();
+                let pages = home_page_count(theme, &installed, size.0, size.1).max(1);
+                let page = d.home_page.min(pages - 1);
+                if panel == Some("calendar") && dx < 0 {
+                    return target("shell:home-page:0");
+                }
+                if d.launcher_open && panel.is_none() && dx > 0 {
+                    return Ok(Some(format!("shell:home-page:{}", pages - 1)));
+                }
+                if home {
+                    return Ok(Some(match (dx < 0, page) {
+                        (true, page) if page + 1 < pages => format!("shell:home-page:{}", page + 1),
+                        (true, _) => "shell:launcher".to_owned(),
+                        (false, 0) => "shell:panel:calendar".to_owned(),
+                        (false, page) => format!("shell:home-page:{}", page - 1),
+                    }));
+                }
+                if d.focused.is_some() && panel.is_none() && from.1 > h - 40 && dx > 0 {
+                    return target("shell:switcher");
+                }
+                Ok(None)
+            }
+            DesktopTheme::Android if vertical => {
+                if from.1 >= h - cw_applications::desktop_scene::ANDROID_NAV_BAR {
+                    return Ok(None);
+                }
+                if dy > 0 {
+                    if d.launcher_open {
+                        return target("shell:dismiss");
+                    }
+                    if from.1 < 40 || home || panel == Some("notifications") {
+                        return target("shell:gesture:notifications");
+                    }
+                    return Ok(None);
+                }
+                if matches!(panel, Some("quick" | "notifications")) {
+                    return target("shell:dismiss");
+                }
+                if home {
+                    return target("shell:launcher");
+                }
+                Ok(None)
+            }
+            _ => Ok(None),
+        }
+    }
+
     pub(crate) fn desktop_panel_action(
         &mut self,
         id: &str,
@@ -293,6 +428,49 @@ impl Environment {
         actor: &str,
         target: &str,
     ) -> Result<Option<Value>> {
+        // A gesture named rather than dragged: what the same swipe would do right now.
+        if let Some(gesture) = target.strip_prefix("shell:gesture:") {
+            let theme = self.desktop_theme(id, machine);
+            let d = &self.session(id)?.machines[machine].desktop;
+            let panel = d.panel.as_deref();
+            let next = match gesture {
+                // Up from the home indicator: a sheet pulled over the screen goes away,
+                // the App Library returns to the first page, everything else goes home.
+                "home" => match panel {
+                    Some("quick" | "notifications" | "search") => "shell:dismiss",
+                    Some("calendar") => "shell:home-page:0",
+                    None if d.launcher_open => "shell:home-page:0",
+                    _ => "shell:home",
+                },
+                "overview" if panel == Some("overview") => return Ok(Some(Value::Null)),
+                "overview" => "shell:overview",
+                // Android's second pull expands the shade into Quick Settings.
+                "notifications"
+                    if theme == Some(DesktopTheme::Android) && panel == Some("notifications") =>
+                {
+                    "shell:quick-settings"
+                }
+                "notifications" if panel == Some("notifications") => return Ok(Some(Value::Null)),
+                "notifications" => "shell:notifications",
+                "control-center" if panel == Some("quick") => return Ok(Some(Value::Null)),
+                "control-center" => "shell:control-center",
+                _ => return Err(SimError::invalid("unknown gesture")),
+            };
+            return self.shell_action(id, machine, actor, next).map(Some);
+        }
+        // A page of a paged home screen: a page dot, or a swipe between pages. It is the
+        // home screen that is shown, so the App Library and any panel give way to it.
+        if let Some(page) = target.strip_prefix("shell:home-page:") {
+            let page: u32 = page
+                .parse()
+                .map_err(|_| SimError::invalid("invalid home screen page"))?;
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            desktop.home_page = page;
+            desktop.launcher_open = false;
+            desktop.panel = None;
+            desktop.search.clear();
+            return Ok(Some(json!({ "page": page })));
+        }
         if let Some(name) = target.strip_prefix("shell:panel:") {
             let name = match name {
                 "apple" => "apple",
@@ -690,6 +868,24 @@ impl Environment {
                     return self
                         .shell_action(id, machine, actor, "shell:back")
                         .map(Some);
+                }
+                // The file manager's own back stack: the folder above, until the root.
+                let inside_folder = state
+                    .desktop
+                    .focused
+                    .and_then(|window| state.desktop.windows.get(&window))
+                    .is_some_and(|window| {
+                        matches!(window.state, AppState::Files { .. })
+                            && !window.state.file_path().trim_end_matches('/').is_empty()
+                    });
+                if inside_folder {
+                    let effects = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .click("files-up")
+                        .map_err(SimError::invalid)?;
+                    self.effects(id, machine, actor, effects)?;
+                    return Ok(Some(Value::Null));
                 }
                 self.machine_mut(id, machine)?.desktop.home();
                 self.sync_desktop_visibility(id, machine)?;

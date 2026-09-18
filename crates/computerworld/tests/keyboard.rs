@@ -297,3 +297,69 @@ fn a_suggestion_chip_completes_the_word_being_typed() {
     // A finished word offers nothing more.
     assert!(offered(&world).is_empty());
 }
+
+#[test]
+fn a_phone_system_surface_puts_the_keyboard_away_and_takes_no_keystrokes() {
+    for theme in ["virtual-ios-18", "virtual-android-12"] {
+        let (mut world, actor) = world(theme);
+        act(
+            &mut world,
+            &actor,
+            "application.v1",
+            "launch",
+            json!({"kind":"terminal"}),
+        );
+        let painted = |w: &World| {
+            w.scene(&actor, W, H).unwrap().nodes.iter().any(|n| {
+                n.interaction
+                    .as_deref()
+                    .is_some_and(|i| i.starts_with("shell:type:"))
+            })
+        };
+        let published = |w: &World| {
+            w.scene(&actor, W, H)
+                .unwrap()
+                .focus
+                .is_some_and(|f| f.keyboard.text_entry)
+        };
+        assert!(painted(&world) && published(&world), "{theme}");
+        for panel in ["quick", "notifications", "overview", "settings"] {
+            act(
+                &mut world,
+                &actor,
+                "application.v1",
+                "shell",
+                json!({ "target": format!("shell:panel:{panel}") }),
+            );
+            assert!(
+                !painted(&world),
+                "{theme} {panel}: keyboard over a system surface"
+            );
+            assert_eq!(painted(&world), published(&world), "{theme} {panel}");
+            // Typing reaches nothing behind it, exactly as the missing keyboard says.
+            act(
+                &mut world,
+                &actor,
+                "keyboard.v1",
+                "type",
+                json!({"text":"x"}),
+            );
+            assert_eq!(terminal_input(&world, &actor), "", "{theme} {panel}");
+            act(
+                &mut world,
+                &actor,
+                "application.v1",
+                "shell",
+                json!({"target":"shell:dismiss"}),
+            );
+        }
+        act(
+            &mut world,
+            &actor,
+            "keyboard.v1",
+            "type",
+            json!({"text":"ok"}),
+        );
+        assert_eq!(terminal_input(&world, &actor), "ok", "{theme}");
+    }
+}

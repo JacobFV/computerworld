@@ -145,8 +145,11 @@ is reachable either from a painted control or from `application.v1 shell`.
 | `shell:launch:<kind>/<argument>` | Launch it *on* something: a file manager on a folder, a calendar on a date. Every shell's calendar panel paints each day as `shell:launch:calendar/YYYY-MM-DD`; days before the world began, or with no Calendar installed, carry no target |
 | `shell:open:<kind>` | Desktop icon: select on one click, open on two |
 | `shell:home` / `shell:launcher` / `shell:desktop` / `shell:dismiss` | Show the desktop, toggle the launcher, dismiss a panel |
-| `shell:panel:<name>` | Open a panel: `apple`, `file`, `edit`, `view`, `window`, `help`, `spotlight`, `control`, `quick`, `calendar`, `notifications`, `settings`, `overview`, `context`, `power`, `app-menu` (GNOME header-bar primary menu), `app-settings` (Notepad settings), `page` (iOS Safari "AA"). Choosing an entry in a drop-down menu (`file`, `edit`, `view`, `format`, `app-menu`) closes it |
+| `shell:panel:<name>` | Open a panel: `apple`, `file`, `edit`, `view`, `window`, `help`, `spotlight`, `control`, `quick`, `calendar`, `notifications`, `settings`, `overview`, `context`, `power`, `app-menu` (GNOME header-bar primary menu), `app-settings` (Notepad settings), `page` (iOS Safari "AA"). On iOS `calendar` is Today View (search and widgets) and `notifications` Notification Center (the notices), and a phone's panel other than `search` is modal: the soft keyboard goes down under it and keystrokes reach nothing behind it until it closes. Choosing an entry in a drop-down menu (`file`, `edit`, `view`, `format`, `app-menu`) closes it |
 | `shell:search` / `shell:settings` / `shell:overview` / `shell:notifications` / `shell:quick-settings` | Panel shortcuts |
+| `shell:gesture:home` / `shell:gesture:overview` / `shell:gesture:notifications` / `shell:gesture:control-center` | Phone **gesture affordances**: the iPhone home indicator and the phones' status bars. A pointer reaches them by *dragging* from them (see Touch gestures below); a tap on one does nothing, as a tap on the glass does nothing. Named here, one performs what that swipe would do right now: `home` puts away a pulled-down sheet (Notification Center, Control Center, Search), returns Today View or the App Library to the first page, and otherwise goes home — from the home screen itself, to its first page; `overview` opens the App Switcher; `notifications` pulls down Notification Center, or on Android the shade and, pulled again, Quick Settings; `control-center` pulls down Control Center. Painted with the semantic role `gesture` |
+| `shell:home-page:<n>` | Show page `<n>` (0 first) of the iOS home screen, closing the App Library or any panel. iOS paints one page dot per page above the dock, each carrying this target; the scene marks the current one `selected`. A page past the last shows the last. Returns `{"page"}` |
+| `shell:mobile-back` | The platform Back action (Android's navigation bar ◁): close a panel or the launcher, else go back in the browser tab's history, else up one folder in the file manager, else leave the application for the home screen |
 | `shell:back` / `shell:forward` / `shell:reload` / `shell:address` | Browser navigation, refused when there is no history or no page |
 | `shell:tab:new` / `shell:tab:select:<i>` / `shell:tab:close:<i>` | Browser tabs |
 | `shell:toggle:<switch>` | Flip a device switch: `wifi`, `bluetooth`, `airplane_mode`, `do_not_disturb`, `night_light`, `dark_mode`, `rotation_lock`, `flashlight`, `battery_saver`, `hotspot` |
@@ -157,7 +160,7 @@ is reachable either from a painted control or from `application.v1 shell`.
 | `shell:power:lock` / `:off` / `:restart` / `:wake` | Move the display between `Active`, `Locked` and `Off` |
 | `shell:month:prev` / `:next` / `:today` | Page a calendar panel's month grid |
 | `shell:type:<char>` / `shell:key:<key>` | On-screen keyboard: type one character, or send a named key |
-| `shell:insert:<text>` | Insert a whole short line, for a suggestion chip or a paste control; same `keyboard.v1` pipeline as `shell:type:`. The Android keyboard paints up to three chips completing the word before the caret from a fixed word list, each `shell:insert:<rest> ` |
+| `shell:insert:<text>` | Insert a whole short line, for a suggestion chip or a paste control; same `keyboard.v1` pipeline as `shell:type:`. The Android keyboard's suggestion strip and the iOS QuickType bar each paint up to three chips completing the word before the caret from a fixed word list, each `shell:insert:<rest> ` |
 | `shell:key:Shift` / `shell:plane:letters\|numbers\|symbols` | Keyboard modifier and plane |
 | `shell:bookmark` / `shell:bookmark:open:<i>` | Save or reopen a page |
 | `shell:download` | Fetch the page on screen through the gateway and write it to `~/Downloads` |
@@ -226,9 +229,29 @@ Behaviour worth knowing:
   is no such distinction and a tap opens immediately. `double_click` on a window
   title bar (`window:<id>:drag`) maximizes.
 - **`button: 2` on `down`** opens the context panel.
-- **Touch gestures** are synthesized from `down`/`up` on mobile themes: swipe down
-  from the top opens control centre, swipe up opens the launcher or goes home, a long
-  swipe up from the bottom edge opens the overview.
+- **Touch gestures** are synthesized from `down`/`up` on mobile themes (a move of more
+  than 70 px, mostly along one axis; a smaller one is a tap). A finger coming down on a
+  control only presses it; the release decides whether it was a tap or a swipe.
+  - **iOS**: down from the status bar opens Notification Center, or Control Center
+    when it starts right of the Dynamic Island (`shell:gesture:notifications` /
+    `:control-center`); up from the bottom edge — the home indicator — goes home
+    (`shell:gesture:home`), and a swipe longer than a third of the screen opens the App
+    Switcher (`shell:gesture:overview`); up anywhere puts away Notification Center or
+    Control Center. On the home screen, right to left moves to the next page and, past
+    the last, opens the App Library; left to right moves to the previous page and,
+    before the first, opens Today View (panel `calendar`); down opens Search. Left to
+    right in the App Library returns to the last page, right to left in Today View to
+    the first. Left to right along the bottom edge in an application switches to the
+    previous one. The home indicator is painted only where the device shows one: over
+    applications, Settings and Notification Center, not on the home screen.
+  - **Android** (three-button navigation): down from the status bar, or anywhere on
+    the home screen, opens the notification shade, and a second pull expands it to
+    Quick Settings; up closes the shade; up on the home screen opens the app drawer and
+    down closes it. Swipes that start on the 48 px navigation bar are presses of its
+    buttons: Back (`shell:mobile-back`), Home (`shell:home`), Recents
+    (`shell:overview`).
+  - On both, a card swiped up in the overview / App Switcher closes that application.
+    Tapping the space around the cards goes home.
 - Window `drag` and `resize:<edge>` operations capture the pointer between `down` and
   `up`; while captured, `move`/`up` bypass hit testing.
 

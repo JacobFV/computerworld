@@ -1,6 +1,6 @@
-//! Pixel / Android 14 Material You presentation, rendered entirely by the Rust scene
+//! Pixel / Android 15 Material You presentation, rendered entirely by the Rust scene
 //! engine: tonal surfaces derived from the wallpaper, a scalloped clock widget, a
-//! real notification shade with Quick Settings, and gesture navigation.
+//! real notification shade with Quick Settings, and three-button navigation.
 use super::shared::{arc_points, cos1024, sin1024, Align, Painter, ShellContext, WindowView};
 use cw_scene::{Color, Rect};
 
@@ -193,7 +193,7 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     while dock.len() < 4 && !page.is_empty() {
         dock.push(page.remove(0));
     }
-    let row_y = (height - 274).max(cy + diameter / 2 + 24);
+    let row_y = (height - 300).max(cy + diameter / 2 + 24);
     for (i, (kind, label)) in page.iter().take(4).enumerate() {
         app(
             p,
@@ -205,11 +205,12 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
             Some(Color::WHITE),
         );
     }
-    let dock_y = height - 168;
+    // The hotseat and the search bar sit just above the navigation bar.
+    let dock_y = height - 194;
     for (i, (kind, label)) in dock.iter().enumerate() {
         app(p, column(i as i32), dock_y, icon_size, kind, label, None);
     }
-    let search = Rect::new(18, height - 88, ctx.width.saturating_sub(36), 54);
+    let search = Rect::new(18, height - NAV_BAR - 66, ctx.width.saturating_sub(36), 54);
     p.drop_shadow(search, 27, 8, 40, 2);
     p.box_(search, PAPER, 27);
     google(p, search.x + 18, search.y + 16, 22);
@@ -237,11 +238,6 @@ pub fn background(p: &mut Painter, ctx: &ShellContext<'_>) {
     );
     // Lens needs a camera capture; there is no camera application and no capture model.
     p.disabled("Google Lens");
-    p.region(
-        Rect::new(0, height - 118, ctx.width, 26),
-        "shell:launcher",
-        "Swipe up to open all applications",
-    );
 }
 
 fn status(p: &mut Painter, ctx: &ShellContext<'_>, ink: Color) {
@@ -486,14 +482,6 @@ fn shade(p: &mut Painter, ctx: &ShellContext<'_>, expanded: bool) {
         // Eight switches fit one page, so one dot is the truth about how many there are.
         p.circle(w / 2, y + 4, 3, SHADE_INK);
         let foot = y + 18;
-        p.left(
-            24,
-            foot + 8,
-            200,
-            "Android 14",
-            12,
-            Color(226, 228, 216, 150),
-        );
         for (i, (symbol, action, label)) in [
             // Rearranging tiles needs a tile order on the desktop to rearrange; there
             // is none, and this shell must not invent one, so the button is announced off.
@@ -514,7 +502,7 @@ fn shade(p: &mut Painter, ctx: &ShellContext<'_>, expanded: bool) {
             }
         }
     } else {
-        let floor = ctx.height as i32 - 124;
+        let floor = ctx.height as i32 - NAV_BAR - 116;
         if ctx.notifications.is_empty() {
             p.center(
                 0,
@@ -574,7 +562,7 @@ fn shade(p: &mut Painter, ctx: &ShellContext<'_>, expanded: bool) {
                 );
             }
             if ctx.unseen_notices() > 0 {
-                let clear = Rect::new(w / 2 - 78, ctx.height as i32 - 62, 156, 40);
+                let clear = Rect::new(w / 2 - 78, ctx.height as i32 - NAV_BAR - 54, 156, 40);
                 p.border(clear, Color::TRANSPARENT, 20, Color(226, 228, 216, 90));
                 p.center(
                     clear.x,
@@ -587,7 +575,7 @@ fn shade(p: &mut Painter, ctx: &ShellContext<'_>, expanded: bool) {
                 p.region(clear, "shell:notifications:seen", "Mark all as read");
             }
         }
-        let manage = Rect::new(w / 2 - 52, ctx.height as i32 - 110, 104, 40);
+        let manage = Rect::new(w / 2 - 52, ctx.height as i32 - NAV_BAR - 102, 104, 40);
         p.border(manage, Color::TRANSPARENT, 20, Color(226, 228, 216, 90));
         p.center(manage.x, manage.y + 11, 104, "Manage", 14, SHADE_INK);
         p.region(manage, "shell:quick-settings", "Open Quick Settings");
@@ -685,9 +673,9 @@ fn context_sheet(p: &mut Painter, ctx: &ShellContext<'_>) {
         "shell:power:lock".to_owned(),
         "Lock screen".to_owned(),
     ));
-    // The sheet stops short of the gesture bar so no row fights it for taps.
+    // The sheet stops short of the navigation bar so no row fights it for taps.
     let height = 44 + rows.len() as i32 * 56;
-    let top = ctx.height as i32 - height - 28;
+    let top = ctx.height as i32 - height - NAV_BAR;
     p.box_(
         Rect::new(0, top, ctx.width, (height + 56) as u32),
         Color::rgb(30, 34, 28),
@@ -756,7 +744,7 @@ fn settings(p: &mut Painter, ctx: &ShellContext<'_>) {
     let mut y = 184;
     for (key, value) in [
         ("Device name", "Pixel".to_owned()),
-        ("Android version", "14".to_owned()),
+        ("Android version", "15".to_owned()),
         ("Display", format!("{} × {} pixels", ctx.width, ctx.height)),
     ] {
         p.left(24, y, ctx.width - 48, key, 18, INK);
@@ -799,9 +787,6 @@ fn settings(p: &mut Painter, ctx: &ShellContext<'_>) {
         );
         y += 62;
     }
-    let all = Rect::new(24, y + 10, 148, 44);
-    p.button(all, PRIMARY, 22, "shell:launcher", "All applications");
-    p.strong_center(all.x, all.y + 13, 148, "All apps", 14, Color::WHITE);
 }
 
 /// The month grid behind the shade's date. It draws the month the panel is paging —
@@ -903,7 +888,7 @@ fn calendar(p: &mut Painter, ctx: &ShellContext<'_>) {
     }
     if ctx.installed("calendar") {
         let open = Rect::new(24, y + 36 + rows * step, 180, 44);
-        if open.y + 44 < ctx.height as i32 - 40 {
+        if open.y + 44 < ctx.height as i32 - NAV_BAR - 8 {
             p.button(open, PRIMARY, 22, "shell:launch:calendar", "Open Calendar");
             p.strong_center(open.x, open.y + 14, 180, "Open Calendar", 14, Color::WHITE);
         }
@@ -915,7 +900,8 @@ fn overview(p: &mut Painter, ctx: &ShellContext<'_>) {
     let h = ctx.height as i32;
     let full = Rect::new(0, 0, ctx.width, ctx.height);
     p.glass(full, 0, 30, Color(225, 232, 210, 170), None);
-    p.region(full, "shell:dismiss", "Close recent applications");
+    // Tapping the space around the cards goes home, as it does on a Pixel.
+    p.region(full, "shell:home", "Home screen");
     if ctx.windows.is_empty() {
         p.center(0, h / 2 - 12, ctx.width, "No recent items", 18, INK);
         return;
@@ -948,48 +934,23 @@ fn overview(p: &mut Painter, ctx: &ShellContext<'_>) {
         p.region(
             card,
             &window.action("focus"),
-            &format!("Resume {}", window.title),
+            &format!("Resume {}, swipe up to dismiss", window.title),
         );
     }
-    // Both chips are real now: `shell:screenshot` rasterises the display and writes a
-    // PNG, refusing at the observation grant rather than here, and Close closes the card
-    // in front.
-    let chips: [(&str, &str, Option<String>); 2] = [
-        (
-            "screenshot",
-            "Screenshot",
-            Some("shell:screenshot".to_owned()),
-        ),
-        (
-            "close",
-            "Close",
-            ctx.windows.get(selected).map(|w| w.action("close")),
-        ),
-    ];
-    for (i, (symbol, label, action)) in chips.iter().enumerate() {
-        let chip = Rect::new(
-            w / 2 - 132 + i as i32 * 140,
-            124 + card_height as i32 + 22,
-            124,
-            40,
-        );
-        match action {
-            Some(action) => p.button(chip, PAPER, 20, action, label),
-            None => p.box_(chip, PAPER, 20),
-        }
-        p.symbol(symbol, chip.x + 16, chip.y + 12, 16, INK);
-        p.left(chip.x + 40, chip.y + 11, 80, label, 14, INK);
-        if action.is_none() {
-            p.disabled(label);
-        }
-    }
+    // The action row under the cards. `shell:screenshot` rasterises the display and
+    // writes a PNG, refusing at the observation grant rather than here. There is no
+    // Close chip: a card is dismissed by swiping it up, which the router recognises.
+    let chip = Rect::new(w / 2 - 62, 124 + card_height as i32 + 22, 124, 40);
+    p.button(chip, PAPER, 20, "shell:screenshot", "Screenshot");
+    p.symbol("screenshot", chip.x + 16, chip.y + 12, 16, INK);
+    p.left(chip.x + 40, chip.y + 11, 80, "Screenshot", 14, INK);
     // Every live app is addressable, including those outside the horizontal card viewport.
     let count = ctx.windows.len().max(1) as i32;
     let icon_size = (w / (count + 1)).clamp(22, 40) as u32;
     for (i, window) in ctx.windows.iter().enumerate() {
         let x = w * (i as i32 + 1) / (count + 1) - icon_size as i32 / 2;
         p.platform_icon(
-            Rect::new(x, h - 84, icon_size, icon_size),
+            Rect::new(x, h - NAV_BAR - 52, icon_size, icon_size),
             "android",
             &window.kind,
             &window.action("focus"),
@@ -1044,11 +1005,11 @@ fn key_grid(width: u32) -> (i32, i32, i32, i32) {
 }
 
 /// Pixels the keyboard takes from the bottom of the screen, 0 when it is down, including
-/// the gesture strip it leaves clear beneath itself. `ctx.text_entry` is the keystroke
+/// the navigation bar it leaves clear beneath itself. `ctx.text_entry` is the keystroke
 /// router's own answer, hoisted before the scene exists, so a painted keyboard and a real
 /// keystroke cannot disagree; a dark display is the one case it does not cover.
 fn keyboard_height(ctx: &ShellContext<'_>) -> i32 {
-    let total = key_grid(ctx.width).3 + 30;
+    let total = key_grid(ctx.width).3 + NAV_BAR;
     if !ctx.text_entry || !ctx.awake() || total * 2 > ctx.height as i32 {
         return 0;
     }
@@ -1131,9 +1092,9 @@ fn keyboard(p: &mut Painter, ctx: &ShellContext<'_>) {
     let w = ctx.width as i32;
     let full = kw * 10 + gap * 9;
     let left = (w - full) / 2;
-    let top = ctx.height as i32 - 30 - total;
+    let top = ctx.height as i32 - NAV_BAR - total;
     p.box_(
-        Rect::new(0, top, ctx.width, (total + 30) as u32),
+        Rect::new(0, top, ctx.width, total as u32),
         Color::rgb(236, 240, 228),
         0,
     );
@@ -1280,8 +1241,6 @@ fn keyboard(p: &mut Painter, ctx: &ShellContext<'_>) {
 }
 
 pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
-    let w = ctx.width as i32;
-    let h = ctx.height as i32;
     // A dark or off display covers everything, and owns the only way back.
     if !ctx.awake() {
         sleeping(p, ctx);
@@ -1345,36 +1304,87 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
             .is_some_and(|w| w.kind == "terminal");
     let ink = if dark || terminal { SHADE_INK } else { INK };
     status(p, ctx, ink);
-    p.region(
-        Rect::new(w - 110, 0, 110, 38),
-        "shell:quick-settings",
-        "Open quick settings",
-    );
-    p.region(
-        Rect::new(0, 0, 140, 38),
-        "shell:notifications",
-        "Open notifications",
-    );
-    p.region(
-        Rect::new(w - 72, h - 28, 72, 28),
-        "shell:overview",
-        "Recent applications gesture",
-    );
-    p.region(
-        Rect::new(0, h - 28, 72, 28),
-        "shell:mobile-back",
-        "Back gesture",
-    );
-    // The gesture target is generous, even though the visible handle is minimal.
-    p.region(
-        Rect::new(w / 2 - 75, h - 28, 150, 28),
-        "shell:home",
-        "Home gesture",
+    // The status bar is where the shade is pulled down from; a tap on it opens nothing,
+    // as on the device. See `shell:gesture:notifications`.
+    gesture(
+        p,
+        Rect::new(0, 0, ctx.width, 38),
+        "shell:gesture:notifications",
+        "Status bar, swipe down for notifications",
     );
     keyboard(p, ctx);
-    // Over the keyboard's light plate the handle has to darken to stay visible.
-    let handle = if keyboard_height(ctx) > 0 { INK } else { ink };
-    p.box_(Rect::new(w / 2 - 54, h - 12, 108, 4), handle, 2);
+    // The buttons are drawn over whatever is beneath: light over a dark surface or the
+    // wallpaper of the home screen, dark over a light application or sheet.
+    let home = !ctx.active && !ctx.launcher_open && ctx.panel.is_none();
+    let buttons = if dark || terminal {
+        SHADE_INK
+    } else if home {
+        Color::WHITE
+    } else {
+        SOFT
+    };
+    navigation_bar(p, ctx, buttons);
+}
+
+/// A gesture affordance: an interaction target a pointer reaches by dragging from it,
+/// not by tapping it. The router turns a swipe that starts here into the gesture and
+/// treats a tap as the device does, as nothing; `application.v1 shell` performs it.
+fn gesture(p: &mut Painter, r: Rect, action: &str, label: &str) {
+    p.region(r, action, label);
+    if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+        s.role = "gesture".into();
+    }
+}
+
+/// Height of the three-button navigation bar: 48 dp, the platform's own.
+const NAV_BAR: i32 = super::ANDROID_NAV_BAR;
+
+/// Pixel's three-button navigation: Back, Home and Recents, outlined glyphs spread over
+/// the bar. Back is the platform back action — the panel, then the application's own
+/// history, then out of the application — Home goes home, Recents opens the overview.
+fn navigation_bar(p: &mut Painter, ctx: &ShellContext<'_>, ink: Color) {
+    let (w, h) = (ctx.width as i32, ctx.height as i32);
+    let bar = Rect::new(0, h - NAV_BAR, ctx.width, NAV_BAR as u32);
+    // The bar carries the surface beneath it: the keyboard's plate when it is up.
+    let ink = if keyboard_height(ctx) > 0 { SOFT } else { ink };
+    if keyboard_height(ctx) > 0 {
+        p.box_(bar, Color::rgb(236, 240, 228), 0);
+    }
+    let cy = bar.y + NAV_BAR / 2;
+    for (i, (action, label)) in [
+        ("shell:mobile-back", "Back"),
+        ("shell:home", "Home"),
+        ("shell:overview", "Recents"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let cx = w * (i as i32 + 1) / 4;
+        match i {
+            0 => p.line(
+                vec![
+                    (cx + 6, cy - 8),
+                    (cx - 8, cy),
+                    (cx + 6, cy + 8),
+                    (cx + 6, cy - 8),
+                ],
+                ink,
+                2,
+            ),
+            1 => p.ring(cx, cy, 8, 2, ink),
+            _ => p.node(
+                Rect::new(cx - 7, cy - 7, 14, 14),
+                cw_scene::Primitive::RoundedBox {
+                    fill: Color::TRANSPARENT,
+                    border: Some(ink),
+                    border_width: 2,
+                    radius: 2,
+                },
+                None,
+            ),
+        }
+        p.region(Rect::new(cx - 40, bar.y, 80, NAV_BAR as u32), action, label);
+    }
 }
 
 pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView) {
@@ -1385,18 +1395,18 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         return;
     }
     let ink = if dark { SHADE_INK } else { INK };
-    // Material 3 small top app bar beneath the status bar.
-    p.symbol("arrow-left", r.x + 16, r.y + 56, 24, ink);
+    // Material 3 small top app bar beneath the status bar. Only a screen with a parent
+    // wears an up arrow — the file manager inside a folder; an application's root
+    // screen has none, because leaving it is the navigation bar's Back.
     let files_up = window.kind == "files" && !window.document.trim_end_matches('/').is_empty();
-    p.region(
-        Rect::new(r.x + 4, r.y + 44, 48, 48),
-        &if files_up {
-            window.action("content:files-up")
-        } else {
-            "shell:mobile-back".to_owned()
-        },
-        "Back",
-    );
+    if files_up {
+        p.symbol("arrow-left", r.x + 16, r.y + 56, 24, ink);
+        p.region(
+            Rect::new(r.x + 4, r.y + 44, 48, 48),
+            &window.action("content:files-up"),
+            "Navigate up",
+        );
+    }
     let title = match window.kind.as_str() {
         "files" => window
             .document
@@ -1409,8 +1419,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         "editor" => String::new(),
         kind => app_name(kind).map_or_else(|| window.title.clone(), str::to_owned),
     };
+    let title_x = if files_up { r.x + 60 } else { r.x + 20 };
     p.left(
-        r.x + 60,
+        title_x,
         r.y + 55,
         r.width.saturating_sub(160),
         &title,
@@ -1597,7 +1608,7 @@ fn tab_switcher(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let card_height = card_width * 5 / 4;
     for (i, label) in w.tabs.iter().enumerate() {
         let y = 100 + (i / 2) as i32 * (card_height as i32 + 20);
-        if y + card_height as i32 > ctx.height as i32 - 40 {
+        if y + card_height as i32 > ctx.height as i32 - NAV_BAR - 8 {
             break;
         }
         let x = 16 + (i % 2) as i32 * (card_width as i32 + 16);
@@ -1664,6 +1675,7 @@ mod tests {
             library_group: None,
             bookmarked: false,
             panel_over_launcher: false,
+            home_page: 0,
             typed: "",
         }
     }
@@ -1751,9 +1763,65 @@ mod tests {
         chrome(&mut p, &ctx);
         let json = serde_json::to_string(&p.scene).unwrap();
         assert!(json.contains("wallpaper/android"));
-        assert!(json.contains("shell:launcher"));
         assert!(json.contains("shell:home"));
         assert!(json.contains("shell:launch:browser"));
+        // The app drawer is a swipe up the home screen, not an invisible tap strip.
+        assert!(!json.contains("shell:launcher"));
+    }
+
+    #[test]
+    fn three_button_navigation_is_back_home_and_recents_everywhere() {
+        let windows = [phone_window("files")];
+        let notices = [notice("chat", "Ready", false)];
+        let mut contexts = vec![context(None)];
+        for panel in [None, Some("quick"), Some("notifications"), Some("overview")] {
+            let mut ctx = context(panel);
+            ctx.windows = &windows;
+            ctx.active = true;
+            ctx.notifications = &notices;
+            contexts.push(ctx);
+        }
+        let mut typing = context(None);
+        typing.windows = &windows;
+        typing.active = true;
+        typing.text_entry = true;
+        contexts.push(typing);
+        for ctx in &contexts {
+            let p = shell(ctx);
+            let bar = 892 - NAV_BAR / 2;
+            for (x, expected) in [
+                (103, "shell:mobile-back"),
+                (206, "shell:home"),
+                (309, "shell:overview"),
+            ] {
+                let hit = p.scene.hit_test(x, bar).unwrap();
+                assert_eq!(
+                    hit.interaction.as_deref(),
+                    Some(expected),
+                    "panel {:?}, keyboard {}",
+                    ctx.panel,
+                    ctx.text_entry
+                );
+            }
+            // No gesture handle and no tap-to-open strips pretending to be gestures.
+            if ctx.panel.is_none() {
+                let ids = actions(&p);
+                assert!(!ids.iter().any(|a| a == "shell:quick-settings"));
+                assert!(!ids.iter().any(|a| a == "shell:notifications"));
+                assert_eq!(
+                    p.scene.hit_test(200, 12).unwrap().interaction.as_deref(),
+                    Some("shell:gesture:notifications")
+                );
+            }
+        }
+        // The status bar is a gesture affordance, announced as one.
+        let p = shell(&context(None));
+        let status = target(&p, "shell:gesture:notifications");
+        assert_eq!(status.semantic.as_ref().unwrap().role, "gesture");
+        // Applications end above the bar rather than running beneath it.
+        let frame = Rect::new(0, 0, 412, 892);
+        let content = super::super::window_content_rect(DesktopTheme::Android, frame);
+        assert_eq!(content.y + content.height as i32, 892 - NAV_BAR);
     }
     #[test]
     fn notification_shade_is_drawn_and_dismissible() {
@@ -1876,7 +1944,6 @@ mod tests {
         // it has grown to hold — notices, a month grid or a list of device facts.
         let notices = [notice("chat", "Ready to share", false)];
         for panel in [
-            "overview",
             "quick",
             "notifications",
             "calendar",
@@ -1891,6 +1958,12 @@ mod tests {
                 "panel {panel} has no way out"
             );
         }
+        // Tapping around the overview's cards goes home, as it does on a Pixel.
+        let p = shell(&context(Some("overview")));
+        assert_eq!(
+            p.scene.hit_test(206, 100).unwrap().interaction.as_deref(),
+            Some("shell:home")
+        );
     }
     #[test]
     fn the_power_menu_and_the_sleeping_display_are_real() {
@@ -2243,10 +2316,17 @@ mod tests {
         ] {
             assert!(ids.contains(&id.to_owned()), "the app bar lacks {id}");
         }
-        // At the root there is no folder above, so back leaves the application instead.
+        // At the root there is no folder above, so the app bar has no up arrow: leaving
+        // the application is the navigation bar's Back.
         let mut p = Painter::themed(DesktopTheme::Android, 412, 892, 1);
         window_frame(&mut p, &ctx, &phone_window("files"));
-        assert!(actions(&p).contains(&"shell:mobile-back".to_owned()));
+        assert!(!actions(&p)
+            .iter()
+            .any(|a| a == "shell:mobile-back" || a.ends_with("files-up")));
+        // Nor has any other application's root screen.
+        let mut p = Painter::themed(DesktopTheme::Android, 412, 892, 1);
+        window_frame(&mut p, &ctx, &phone_window("calendar"));
+        assert!(!actions(&p).iter().any(|a| a == "shell:mobile-back"));
     }
 
     #[test]
@@ -2256,7 +2336,9 @@ mod tests {
         ctx.windows = &windows;
         let p = shell(&ctx);
         let ids = actions(&p);
-        assert!(ids.contains(&"window:7:close".to_owned()));
+        // A card is dismissed by swiping it up; there is no Close chip on a Pixel.
+        assert!(!ids.contains(&"window:7:close".to_owned()));
+        assert!(ids.contains(&"window:7:focus".to_owned()));
         // The screenshot chip really captures the screen; the grant decides, not the shell.
         assert!(ids.contains(&"shell:screenshot".to_owned()));
         assert!(!greyed(&p, "Screenshot"));
@@ -2275,6 +2357,9 @@ mod tests {
                 "settings lacks {expected}"
             );
         }
+        // Settings has no shortcut to the app drawer; a Pixel's does not either.
+        assert!(!ids.contains(&"shell:launcher".to_owned()));
+        assert!(shows(&p, "15"));
         // Device facts are text. They are neither tappable nor announced as a disabled
         // control, because a reading is not a control that happens to be off.
         for reading in ["Device name", "Android version"] {

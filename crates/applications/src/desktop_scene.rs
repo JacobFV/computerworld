@@ -71,6 +71,9 @@ pub fn work_area(theme: DesktopTheme, width: u32, height: u32) -> Rect {
         height.saturating_sub((y + bottom) as u32).max(1),
     )
 }
+/// Height of Android's three-button navigation bar, 48 dp. Swipes that start on it are
+/// presses of its buttons, not gestures.
+pub const ANDROID_NAV_BAR: i32 = 48;
 pub fn window_content_rect(theme: DesktopTheme, frame: Rect) -> Rect {
     let top = match theme {
         DesktopTheme::Macos => 42,
@@ -78,7 +81,13 @@ pub fn window_content_rect(theme: DesktopTheme, frame: Rect) -> Rect {
         DesktopTheme::Ubuntu => 46,
         _ => 96,
     };
-    let bottom = if theme.mobile() { 32 } else { 1 };
+    // Phones keep their system bar clear: the home indicator on iOS, the 48 dp
+    // three-button navigation bar on Android.
+    let bottom = match theme {
+        DesktopTheme::Ios => 32,
+        DesktopTheme::Android => ANDROID_NAV_BAR,
+        _ => 1,
+    };
     let side = if theme.mobile() { 0 } else { 1 };
     Rect::new(
         frame.x + side,
@@ -116,6 +125,15 @@ fn default_frame(theme: DesktopTheme, width: u32, height: u32, maximized: bool) 
         area.width.saturating_sub(inset * 2).max(1),
         area.height.saturating_sub(top + 24).max(1),
     )
+}
+/// Pages of a paged home screen at this screen size, for these installed applications
+/// (empty meaning all). Only iOS pages its home screen; every other shell has one.
+/// The router asks this so a swipe walks exactly the pages the shell paints.
+pub fn home_page_count(theme: DesktopTheme, installed: &[String], width: u32, height: u32) -> u32 {
+    match theme {
+        DesktopTheme::Ios => ios::home_pages(installed, width, height),
+        _ => 1,
+    }
 }
 pub fn content_rect(theme: DesktopTheme, width: u32, height: u32, maximized: bool) -> Rect {
     window_content_rect(theme, default_frame(theme, width, height, maximized))
@@ -223,6 +241,7 @@ pub fn render_desktop_with_options(
         bookmarked: options.bookmarked,
         panel_over_launcher: options.panel_over_launcher,
         typed: &options.typed,
+        home_page: options.home_page,
     };
     let mut p = Painter::themed(theme, width, height, 1 << 60);
     background(&mut p, &ctx);
