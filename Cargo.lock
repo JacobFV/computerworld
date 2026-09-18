@@ -339,6 +339,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-script-host"
+version = "0.1.0-alpha.2"
+
+[[package]]
 name = "cw-sdk"
 version = "0.1.0-alpha.2"
 dependencies = [

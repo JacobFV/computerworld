@@ -1,0 +1,8 @@
+[package]
+name = "cw-script-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The capability surface an embedded language runtime (python3, node) sees of a simulated computer."
+
+[dependencies]
