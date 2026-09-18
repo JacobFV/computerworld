@@ -286,6 +286,8 @@ pub struct Vm<'h> {
     pub stdin_eof: bool,
     /// The run stopped because it wants a line nobody has typed yet.
     pub awaiting_input: bool,
+    /// The debugger attached to this run, if any.
+    pub debug: Option<Box<crate::debug::Session<'h>>>,
     pub steps: u64,
     pub budget: u64,
     pub native_depth: usize,

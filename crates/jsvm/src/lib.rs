@@ -15,6 +15,7 @@ pub mod bytecode;
 pub mod call;
 pub mod compiler;
 pub mod conv;
+pub mod debug;
 pub mod fs;
 pub mod hostio;
 pub mod inspect;
@@ -103,6 +104,31 @@ fn ignorable(a: &str) -> bool {
 
 /// Runs `node <args>` against the host and returns both streams and the status.
 pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
+    run_with(host, invocation, None)
+}
+
+/// Runs the program under a debugger, which is consulted at every new source
+/// line (see [`debug`]).
+pub fn run_debug<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debugger: &'a mut dyn cw_script_host::debug::Debugger,
+) -> (Outcome, cw_script_host::debug::DebugRunInfo) {
+    let mut info = cw_script_host::debug::DebugRunInfo::default();
+    let out = run_with(host, invocation, Some((debugger, &mut info)));
+    (out, info)
+}
+
+type DebugArgs<'a> = (
+    &'a mut dyn cw_script_host::debug::Debugger,
+    &'a mut cw_script_host::debug::DebugRunInfo,
+);
+
+fn run_with<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debug: Option<DebugArgs<'a>>,
+) -> Outcome {
     let args = &invocation.args;
     let mut i = 0;
     let mut target = None;
@@ -250,6 +276,14 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     }
     argv.extend(script_args);
     let mut vm = Vm::new(host, argv, invocation.env.clone(), stdin);
+    let mut debug_info = None;
+    if let Some((dbg, info)) = debug {
+        let mut session = debug::Session::new(dbg);
+        // `stop_on_entry` waits for the program, not for Node's own setup.
+        session.state.main_path = main_path.clone().unwrap_or_else(|| "[eval]".into());
+        vm.debug = Some(Box::new(session));
+        debug_info = Some(info);
+    }
     vm.interactive = invocation.interactive;
     vm.stdin_eof = invocation.eof;
     if let Some(n) = stack_limit {
@@ -266,6 +300,10 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
         input_module,
     );
     let code = finish(&mut vm, result);
+    if let (Some(slot), Some(session)) = (debug_info.as_mut(), vm.debug.as_ref()) {
+        **slot = session.state.info.clone();
+    }
+    vm.debug = None;
     let awaiting_input = vm.awaiting_input;
     Outcome {
         stdout: std::mem::take(&mut vm.stdout),

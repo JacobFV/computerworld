@@ -1,4 +1,5 @@
 //! Pure, serializable computer substrate. No host filesystem, clock, or process access.
+pub mod debugger;
 pub mod git;
 mod gzipcmd;
 pub mod packages;

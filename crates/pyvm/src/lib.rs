@@ -15,6 +15,7 @@ pub mod bfuncs;
 pub mod bigint;
 pub mod builtins;
 pub mod compiler;
+pub mod debug;
 pub mod format;
 pub mod io;
 pub mod lexer;
@@ -134,6 +135,7 @@ impl<'h> Vm<'h> {
             interactive: false,
             stdin_eof: false,
             awaiting_input: false,
+            debug: None,
         };
         bfuncs::install(&mut vm);
         methods::install(&mut vm);
@@ -618,6 +620,32 @@ enum Target {
 
 /// Runs `python3 <args>` against the host and returns both streams and the status.
 pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
+    run_with(host, invocation, None)
+}
+
+/// Runs the program under a debugger: it is consulted at every new source line
+/// (see [`debug`]). The run is otherwise the same, so a debugged run and a plain
+/// one produce the same output.
+pub fn run_debug<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debugger: &'a mut dyn cw_script_host::debug::Debugger,
+) -> (Outcome, cw_script_host::debug::DebugRunInfo) {
+    let mut info = cw_script_host::debug::DebugRunInfo::default();
+    let out = run_with(host, invocation, Some((debugger, &mut info)));
+    (out, info)
+}
+
+type DebugArgs<'a> = (
+    &'a mut dyn cw_script_host::debug::Debugger,
+    &'a mut cw_script_host::debug::DebugRunInfo,
+);
+
+fn run_with<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debug: Option<DebugArgs<'a>>,
+) -> Outcome {
     let args = &invocation.args;
     let mut i = 0;
     let mut target = None;
@@ -793,6 +821,15 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     argv.extend(program_args);
     let host_ptr = host;
     let mut vm = Vm::new(host_ptr, argv, invocation.env.clone(), stdin);
+    let mut debug_info = None;
+    if let Some((dbg, info)) = debug {
+        let mut session = debug::Session::new(dbg);
+        // `stop_on_entry` waits for the program itself, not the imports the
+        // interpreter runs to set itself up.
+        session.state.main_path = filename.clone();
+        vm.debug = Some(Box::new(session));
+        debug_info = Some(info);
+    }
     vm.interactive = invocation.interactive;
     vm.stdin_eof = invocation.eof;
     vm.line_buffered |= invocation.interactive;
@@ -816,6 +853,10 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     let stderr = std::mem::take(&mut vm.stderr);
     let elapsed_micros = vm.time_offset.max(0) as u64;
     let awaiting_input = vm.awaiting_input;
+    if let (Some(slot), Some(session)) = (debug_info.as_mut(), vm.debug.as_ref()) {
+        **slot = session.state.info.clone();
+    }
+    vm.debug = None;
     vm.teardown();
     Outcome {
         stdout,

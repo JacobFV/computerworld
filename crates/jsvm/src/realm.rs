@@ -133,6 +133,7 @@ impl<'h> Vm<'h> {
             interactive: false,
             stdin_eof: false,
             awaiting_input: false,
+            debug: None,
             steps: 0,
             budget: STEP_BUDGET,
             native_depth: 0,

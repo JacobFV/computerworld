@@ -156,6 +156,8 @@ pub struct Vm<'h> {
     pub stdin_eof: bool,
     /// The run stopped because it wants a line nobody has typed yet.
     pub awaiting_input: bool,
+    /// The debugger attached to this run, if any.
+    pub debug: Option<Box<crate::debug::Session<'h>>>,
 }
 
 impl<'h> Vm<'h> {
@@ -314,6 +316,13 @@ impl<'h> Vm<'h> {
                         if self.sched.is_some() && self.sched_step() && self.switchable(base) {
                             self.switch_threads(&mut f);
                         }
+                        // A debugger sees every source line before it runs.
+                        if self.debug.is_some() {
+                            if let Err(e) = crate::debug::line_hook(self, &mut f) {
+                                pending = Some(e);
+                                continue;
+                            }
+                        }
                         let op = f.code.ops[f.pc];
                         f.pc += 1;
                         self.step(&mut f, op)
@@ -395,6 +404,14 @@ impl<'h> Vm<'h> {
                     if !e.reraise && !e.fatal {
                         self.set_context(&mut e);
                     }
+                    // A debugger that asked for raised exceptions sees this one
+                    // before any handler does.
+                    if self.debug.is_some() && !e.fatal {
+                        let exc = self.materialize(&mut e);
+                        if let Err(stop) = crate::debug::exception_hook(self, &mut f, &exc, false) {
+                            e = stop;
+                        }
+                    }
                     loop {
                         if e.fatal {
                             self.add_traceback(&mut e, &f);
@@ -412,6 +429,12 @@ impl<'h> Vm<'h> {
                         }
                         self.depth -= 1;
                         if self.frames.len() == base {
+                            // Nothing handled it: a debugger watching uncaught
+                            // exceptions stops here, where the frames still are.
+                            if self.debug.is_some() && !e.fatal {
+                                let exc = self.materialize(&mut e);
+                                crate::debug::exception_hook(self, &mut f, &exc, true)?;
+                            }
                             // A thread that dies takes only itself with it.
                             if self.sched.is_some() && self.switchable(base) {
                                 match self.fail_current_thread(e, &mut f) {

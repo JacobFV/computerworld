@@ -402,6 +402,13 @@ how the next line sees it; a closure that later changes such a binding does not
 change what the next line reads. Top-level `await` is not transformed, so it
 yields a promise rather than its value.
 
+### Debugging
+
+Both runtimes can run under a DAP-shaped debugger — breakpoints with conditions,
+hit counts and logpoints, stepping, exception filters, frames, scopes, variables,
+evaluation in a frame and changing a value. See
+[docs/debugging.md](debugging.md).
+
 ### Event-loop timing
 
 Node's loop phases (timers, poll, check), `process.nextTick` and promise jobs
