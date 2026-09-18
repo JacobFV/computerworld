@@ -5,9 +5,10 @@
 //!
 //! **Fallback chain.** For each character, in order: the scene's platform typeface,
 //! DejaVu (regular or bold; italic text tries the italic faces of both first), then
-//! the Noto script faces (matching weight): Hebrew, Arabic, Thai, Lao, Devanagari,
-//! Bengali, Gurmukhi, Tamil, Khmer, Georgian and Armenian embedded, and Gujarati,
-//! Ethiopic, Myanmar and Sinhala from the font pack; Noto Sans SC (Han, kana, CJK
+//! the Noto script faces (matching weight): Hebrew, Arabic, Thai, Devanagari,
+//! Bengali, Georgian and Armenian embedded, and Tamil, Gurmukhi, Lao, Khmer,
+//! Gujarati, Ethiopic, Myanmar and Sinhala from the font pack (regular weight
+//! only); Noto Sans SC (Han, kana, CJK
 //! punctuation) with its Traditional Chinese, Japanese and Korean locale faces;
 //! Noto Sans KR (Hangul) and Noto Emoji. A character none of them maps draws
 //! DejaVu's `.notdef`. Emoji sequences (VS16, ZWJ, skin-tone modifiers, keycaps,
@@ -62,14 +63,6 @@ pub enum FaceId {
     GeorgianBold,
     Armenian,
     ArmenianBold,
-    Tamil,
-    TamilBold,
-    Gurmukhi,
-    GurmukhiBold,
-    Lao,
-    LaoBold,
-    Khmer,
-    KhmerBold,
     /// Noto Sans SC: common Han of GB 2312, Big5 level 1 and JIS X 0208, plus kana,
     /// CJK punctuation and fullwidth forms. Font pack.
     Han,
@@ -93,6 +86,10 @@ pub enum FaceId {
     HanKr,
     HanKrBold,
     /// Font-pack scripts, regular weight only.
+    Tamil,
+    Gurmukhi,
+    Lao,
+    Khmer,
     Gujarati,
     Ethiopic,
     Myanmar,
@@ -109,7 +106,7 @@ macro_rules! font {
 }
 /// Font bytes live in statics, not constants: a constant is materialized at each
 /// use site that survives inlining, which embedded every face twice in the Wasm.
-static EMBEDDED: [&[u8]; 22] = [
+static EMBEDDED: [&[u8]; 14] = [
     font!("noto-hebrew-regular.ttf"),
     font!("noto-hebrew-bold.ttf"),
     font!("noto-arabic-regular.ttf"),
@@ -124,24 +121,20 @@ static EMBEDDED: [&[u8]; 22] = [
     font!("noto-georgian-bold.ttf"),
     font!("noto-armenian-regular.ttf"),
     font!("noto-armenian-bold.ttf"),
-    font!("noto-tamil-regular.ttf"),
-    font!("noto-tamil-bold.ttf"),
-    font!("noto-gurmukhi-regular.ttf"),
-    font!("noto-gurmukhi-bold.ttf"),
-    font!("noto-lao-regular.ttf"),
-    font!("noto-lao-bold.ttf"),
-    font!("noto-khmer-regular.ttf"),
-    font!("noto-khmer-bold.ttf"),
 ];
 /// Outline-free twins of the pack faces, which layout shapes. Bold pack faces share
 /// their regular twin's stub; `ColorEmoji` is never shaped by layout.
-static STUBS: [(FaceId, &[u8]); 10] = [
+static STUBS: [(FaceId, &[u8]); 14] = [
     (FaceId::Han, font!("stubs/noto-sans-sc.ttf")),
     (FaceId::Hangul, font!("stubs/noto-sans-kr.ttf")),
     (FaceId::Emoji, font!("stubs/noto-emoji.ttf")),
     (FaceId::HanTc, font!("stubs/noto-sans-tc.ttf")),
     (FaceId::HanJp, font!("stubs/noto-sans-jp.ttf")),
     (FaceId::HanKr, font!("stubs/noto-sans-kr-han.ttf")),
+    (FaceId::Tamil, font!("stubs/noto-tamil.ttf")),
+    (FaceId::Gurmukhi, font!("stubs/noto-gurmukhi.ttf")),
+    (FaceId::Lao, font!("stubs/noto-lao.ttf")),
+    (FaceId::Khmer, font!("stubs/noto-khmer.ttf")),
     (FaceId::Gujarati, font!("stubs/noto-gujarati.ttf")),
     (FaceId::Ethiopic, font!("stubs/noto-ethiopic.ttf")),
     (FaceId::Myanmar, font!("stubs/noto-myanmar.ttf")),
@@ -149,7 +142,7 @@ static STUBS: [(FaceId, &[u8]); 10] = [
 ];
 
 impl FaceId {
-    pub const COUNT: usize = 38;
+    pub const COUNT: usize = 34;
     /// Every face, in declaration order (`ALL[i] as usize == i`).
     pub const ALL: [FaceId; Self::COUNT] = [
         Self::Hebrew,
@@ -166,14 +159,6 @@ impl FaceId {
         Self::GeorgianBold,
         Self::Armenian,
         Self::ArmenianBold,
-        Self::Tamil,
-        Self::TamilBold,
-        Self::Gurmukhi,
-        Self::GurmukhiBold,
-        Self::Lao,
-        Self::LaoBold,
-        Self::Khmer,
-        Self::KhmerBold,
         Self::Han,
         Self::Hangul,
         Self::Emoji,
@@ -185,6 +170,10 @@ impl FaceId {
         Self::HanJpBold,
         Self::HanKr,
         Self::HanKrBold,
+        Self::Tamil,
+        Self::Gurmukhi,
+        Self::Lao,
+        Self::Khmer,
         Self::Gujarati,
         Self::Ethiopic,
         Self::Myanmar,
@@ -192,7 +181,7 @@ impl FaceId {
         Self::ColorEmoji,
     ];
     /// Faces whose outlines ship in the separately fetched font pack.
-    pub const PACK: [FaceId; 16] = [
+    pub const PACK: [FaceId; 20] = [
         Self::Han,
         Self::Hangul,
         Self::Emoji,
@@ -204,6 +193,10 @@ impl FaceId {
         Self::HanJpBold,
         Self::HanKr,
         Self::HanKrBold,
+        Self::Tamil,
+        Self::Gurmukhi,
+        Self::Lao,
+        Self::Khmer,
         Self::Gujarati,
         Self::Ethiopic,
         Self::Myanmar,
@@ -230,14 +223,6 @@ impl FaceId {
             Self::GeorgianBold => "noto-georgian-bold.ttf",
             Self::Armenian => "noto-armenian-regular.ttf",
             Self::ArmenianBold => "noto-armenian-bold.ttf",
-            Self::Tamil => "noto-tamil-regular.ttf",
-            Self::TamilBold => "noto-tamil-bold.ttf",
-            Self::Gurmukhi => "noto-gurmukhi-regular.ttf",
-            Self::GurmukhiBold => "noto-gurmukhi-bold.ttf",
-            Self::Lao => "noto-lao-regular.ttf",
-            Self::LaoBold => "noto-lao-bold.ttf",
-            Self::Khmer => "noto-khmer-regular.ttf",
-            Self::KhmerBold => "noto-khmer-bold.ttf",
             Self::Han => "noto-sans-sc.ttf",
             Self::Hangul => "noto-sans-kr.ttf",
             Self::Emoji => "noto-emoji.ttf",
@@ -249,6 +234,10 @@ impl FaceId {
             Self::HanJpBold => "noto-sans-jp-bold.ttf",
             Self::HanKr => "noto-sans-kr-han.ttf",
             Self::HanKrBold => "noto-sans-kr-han-bold.ttf",
+            Self::Tamil => "noto-tamil.ttf",
+            Self::Gurmukhi => "noto-gurmukhi.ttf",
+            Self::Lao => "noto-lao.ttf",
+            Self::Khmer => "noto-khmer.ttf",
             Self::Gujarati => "noto-gujarati.ttf",
             Self::Ethiopic => "noto-ethiopic.ttf",
             Self::Myanmar => "noto-myanmar.ttf",
@@ -311,10 +300,6 @@ impl FaceId {
             Self::Bengali => Self::BengaliBold,
             Self::Georgian => Self::GeorgianBold,
             Self::Armenian => Self::ArmenianBold,
-            Self::Tamil => Self::TamilBold,
-            Self::Gurmukhi => Self::GurmukhiBold,
-            Self::Lao => Self::LaoBold,
-            Self::Khmer => Self::KhmerBold,
             Self::Han => Self::HanBold,
             Self::Hangul => Self::HangulBold,
             Self::HanTc => Self::HanTcBold,

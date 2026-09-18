@@ -179,10 +179,16 @@ $('zoom').oninput=()=>{const value=Number($('zoom').value);$('zoom-label').value
 new ResizeObserver(()=>requestAnimationFrame(drawLinks)).observe($('network-map'));
 try {
   await init();
-  // The CJK/emoji font pack is not in the Wasm module. Fetch it during boot, in
-  // parallel with the first paint, so the episode itself makes no requests; until a
-  // file arrives its glyphs draw as boxes (layout is already final).
-  const fontPack=Promise.all(fontPackStatus().files.filter(f=>!f.installed).map(async f=>{const r=await fetch(new URL(`../../pkg/web/${f.path}`,import.meta.url));if(r.ok)installFont(new Uint8Array(await r.arrayBuffer()));})).catch(error=>console.warn('font pack unavailable',error));
+  // The font pack is not in the Wasm module. Fetch it during boot, in parallel with
+  // the first paint, so the episode itself makes no requests; until a file arrives its
+  // glyphs draw as boxes (layout is already final). Boot waits for the everyday files
+  // (regular CJK and both emoji faces); the bold, locale-form and extra-script files
+  // follow in the background and repaint when they land.
+  const everyday=new Set(['noto-sans-sc.ttf','noto-sans-kr.ttf','noto-emoji.ttf','noto-color-emoji.ttf']);
+  const fetchFonts=files=>Promise.all(files.map(async f=>{const r=await fetch(new URL(`../../pkg/web/${f.path}`,import.meta.url));if(r.ok)installFont(new Uint8Array(await r.arrayBuffer()));})).catch(error=>console.warn('font pack unavailable',error));
+  const pending=fontPackStatus().files.filter(f=>!f.installed);
+  const fontPack=fetchFonts(pending.filter(f=>everyday.has(f.file)));
+  fontPack.then(()=>fetchFonts(pending.filter(f=>!everyday.has(f.file)))).then(()=>{if(window.demoReady)refresh();});
   world=new World(initialDefinition,seed);definition=world.definition();sessions();
   for(const c of definition.computers){if(kind(c.id)==='server')environments.get(c.id).step([{family:'application.v1',op:'launch',machine:c.id,payload:{kind:'terminal'}}]);}
   buildMap();select(definition.computers[0].id);$('loading').hidden=true;$('status').textContent='● Running locally';

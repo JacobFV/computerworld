@@ -1,9 +1,10 @@
 //! Outline sources for the fallback faces, and the on-demand font pack.
 //!
-//! The script faces up to Khmer are embedded everywhere. The CJK faces (Simplified
-//! Chinese, its bold, the Traditional Chinese, Japanese and Korean locale faces,
-//! Hangul), the emoji faces (monochrome and colour) and four larger scripts
-//! (Gujarati, Ethiopic, Myanmar, Sinhala) are the font pack (`assets/fonts/pack/`):
+//! Hebrew, Arabic, Thai, Devanagari, Bengali, Georgian and Armenian are embedded
+//! everywhere. The CJK faces (Simplified Chinese, its bold, the Traditional Chinese,
+//! Japanese and Korean locale faces, Hangul), the emoji faces (monochrome and colour)
+//! and eight further scripts (Tamil, Gurmukhi, Lao, Khmer, Gujarati, Ethiopic,
+//! Myanmar, Sinhala) are the font pack (`assets/fonts/pack/`):
 //! the Wasm build leaves them out and a page installs each file with
 //! [`install_font`] once it has fetched it; native builds embed them and never need
 //! to. Layout does not wait for the pack — it shapes the always-embedded stubs (see
@@ -37,7 +38,7 @@ const fn pack(face: FaceId, file: &'static str, sha256: &'static str, bytes: usi
     }
 }
 
-pub const FONT_PACK: [PackFile; 16] = [
+pub const FONT_PACK: [PackFile; 20] = [
     pack(
         FaceId::Han,
         "noto-sans-sc.ttf",
@@ -105,6 +106,30 @@ pub const FONT_PACK: [PackFile; 16] = [
         978_976,
     ),
     pack(
+        FaceId::Tamil,
+        "noto-tamil.ttf",
+        "a7ec5158820dbb20b50224de63b3f409e0fc0eaa7c172f5964b9277ebcb27e2e",
+        38_496,
+    ),
+    pack(
+        FaceId::Gurmukhi,
+        "noto-gurmukhi.ttf",
+        "629fbe717f2546a74dc41f1f42c94ff667f1792231b29f16cedd1e479d2a6064",
+        24_228,
+    ),
+    pack(
+        FaceId::Lao,
+        "noto-lao.ttf",
+        "9ff6157c510f22389373aff217a7fe095aebffc1ec3e7055a5c2a1a368b8dcbb",
+        20_704,
+    ),
+    pack(
+        FaceId::Khmer,
+        "noto-khmer.ttf",
+        "67651a225bb763e44e64fb0ef91f74a06e5c7c183d946c1dc68287e770039145",
+        70_744,
+    ),
+    pack(
         FaceId::Gujarati,
         "noto-gujarati.ttf",
         "17dab1ae66cb5ce757aa102d76acb0e19a2037aa9f0f98741d90648987fadad2",
@@ -147,7 +172,7 @@ macro_rules! pack_bytes {
 }
 /// In statics rather than constants so each file is in the binary exactly once.
 #[cfg(not(target_family = "wasm"))]
-static EMBEDDED: [&[u8]; 16] = pack_bytes![
+static EMBEDDED: [&[u8]; 20] = pack_bytes![
     "noto-sans-sc.ttf",
     "noto-sans-kr.ttf",
     "noto-emoji.ttf",
@@ -159,6 +184,10 @@ static EMBEDDED: [&[u8]; 16] = pack_bytes![
     "noto-sans-jp-bold.ttf",
     "noto-sans-kr-han.ttf",
     "noto-sans-kr-han-bold.ttf",
+    "noto-tamil.ttf",
+    "noto-gurmukhi.ttf",
+    "noto-lao.ttf",
+    "noto-khmer.ttf",
     "noto-gujarati.ttf",
     "noto-ethiopic.ttf",
     "noto-myanmar.ttf",
@@ -174,7 +203,7 @@ fn embedded(_: FaceId) -> Option<&'static [u8]> {
     None
 }
 
-static INSTALLED: [OnceLock<&'static [u8]>; 16] = [const { OnceLock::new() }; 16];
+static INSTALLED: [OnceLock<&'static [u8]>; 20] = [const { OnceLock::new() }; 20];
 /// Bit per pack slot: a renderer needed that face and did not have it.
 static WANTED: AtomicU32 = AtomicU32::new(0);
 static GENERATION: AtomicU32 = AtomicU32::new(0);

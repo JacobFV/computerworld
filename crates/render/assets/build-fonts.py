@@ -79,12 +79,14 @@ leaves DejaVu without embedding DejaVu in the scene crate.
     arrows, box drawing and the rest of DejaVu's coverage stay upright: a
     slanted box-drawing line is a defect, not a style. Their advances go to
     `crates/scene/src/metrics_italic.rs`, the italic twin of the metrics table.
-  * More scripts, chosen by size (both weights, gzip -9 of the subset):
-      embedded: Georgian 39 KB, Armenian 20 KB, Bengali 101 KB, Tamil 35 KB,
-                Gurmukhi 24 KB, Lao 21 KB, Khmer 47 KB
-      pack (regular only): Gujarati 94 KB, Ethiopic 195 KB, Myanmar 97 KB,
-                Sinhala 92 KB for both weights, so they are fetched on demand
-                and only their regular weight is built.
+  * More scripts. Georgian, Armenian and Bengali are embedded in both weights
+    (39 KB, 20 KB and 101 KB gzip -9 for the pair). The rest are candidates
+    whose cost is only worth paying by pages that use them, so they are in the
+    pack, regular weight only, each with an embedded stub for layout (gzip of
+    both weights / of the stub): Tamil 35 KB / 4 KB, Gurmukhi 24 KB / 3 KB,
+    Lao 21 KB / 3 KB, Khmer 47 KB / 7 KB, Gujarati 94 KB / 13 KB, Ethiopic
+    195 KB / 2 KB, Myanmar 97 KB / 20 KB, Sinhala 92 KB / 8 KB. Embedding all
+    eight would have added 605 KB gzip to the module; their stubs add 60 KB.
     Ethiopic is subset without layout tables: it needs no shaping, and its
     kerning alone made the always-embedded stub 172 KB.
   * CJK bold and locale forms. `pack/noto-sans-{sc,kr}-bold.ttf` are the SC
@@ -364,12 +366,12 @@ NOTO_EMBEDDED = [
     ("bengali", "NotoSansBengali-var.ttf", [(0x0980, 0x09FF), (0x0964, 0x0965)], True),
     ("georgian", "NotoSansGeorgian-var.ttf", [(0x10A0, 0x10FF), (0x1C90, 0x1CBF), (0x2D00, 0x2D2F)], True),
     ("armenian", "NotoSansArmenian-var.ttf", [(0x0530, 0x058F), (0xFB13, 0xFB17)], True),
+]
+NOTO_PACKED = [
     ("tamil", "NotoSansTamil-var.ttf", [(0x0B80, 0x0BFF), (0x0964, 0x0965)], True),
     ("gurmukhi", "NotoSansGurmukhi-var.ttf", [(0x0A00, 0x0A7F), (0x0964, 0x0965)], True),
     ("lao", "NotoSansLao-var.ttf", [(0x0E80, 0x0EFF)], True),
     ("khmer", "NotoSansKhmer-var.ttf", [(0x1780, 0x17FF), (0x19E0, 0x19FF)], True),
-]
-NOTO_PACKED = [
     ("gujarati", "NotoSansGujarati-var.ttf", [(0x0A80, 0x0AFF), (0x0964, 0x0965)], True),
     ("ethiopic", "NotoSansEthiopic-var.ttf", [(0x1200, 0x139F), (0x2D80, 0x2DDF)], False),
     ("myanmar", "NotoSansMyanmar-var.ttf", [(0x1000, 0x109F), (0xA9E0, 0xA9FF), (0xAA60, 0xAA7F)], True),

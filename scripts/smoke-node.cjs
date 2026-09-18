@@ -107,8 +107,8 @@ dynamic.reset(42);
 assert(!dynamic.definition().computers.some(c=>c.id==='test-phone'));
 assert.equal(phone.addComputer,undefined);
 assert.equal(phone.removeComputer,undefined);
-// Complex scripts: Hebrew to Khmer are in the module; CJK, emoji and four larger
-// scripts are the on-demand font pack. Before the pack is installed those glyphs are boxes; once
+// Complex scripts: Hebrew, Arabic, Thai, Devanagari, Bengali, Georgian and Armenian
+// are in the module; CJK, emoji and eight more scripts are the on-demand font pack. Before the pack is installed those glyphs are boxes; once
 // it is, the frame must equal the native renderer's pinned hash for the same scene
 // (crates/render/src/script_tests.rs, multi_script_scene_is_pinned).
 const { installFont, fontPackStatus } = require('../pkg/node/computerworld.js');
@@ -121,7 +121,7 @@ assert.notEqual(beforePack, nativeScriptsHash, 'CJK/emoji drew without the pack'
 const packBefore = fontPackStatus();
 // Exactly the files the scene needs: SC/KR and their bold, the Traditional Chinese,
 // Japanese and (bold) Korean locale forms, both emoji faces and the pack scripts.
-assert.deepEqual([...packBefore.missing].sort(), ['noto-color-emoji.ttf','noto-emoji.ttf','noto-ethiopic.ttf','noto-gujarati.ttf','noto-myanmar.ttf','noto-sans-jp.ttf','noto-sans-kr-bold.ttf','noto-sans-kr-han-bold.ttf','noto-sans-kr.ttf','noto-sans-sc-bold.ttf','noto-sans-sc.ttf','noto-sans-tc.ttf','noto-sinhala.ttf']);
+assert.deepEqual([...packBefore.missing].sort(), ['noto-color-emoji.ttf','noto-emoji.ttf','noto-ethiopic.ttf','noto-gujarati.ttf','noto-gurmukhi.ttf','noto-khmer.ttf','noto-lao.ttf','noto-myanmar.ttf','noto-sans-jp.ttf','noto-sans-kr-bold.ttf','noto-sans-kr-han-bold.ttf','noto-sans-kr.ttf','noto-sans-sc-bold.ttf','noto-sans-sc.ttf','noto-sans-tc.ttf','noto-sinhala.ttf','noto-tamil.ttf']);
 assert.throws(()=>installFont(new Uint8Array([1,2,3])));
 for (const file of packBefore.files) {
   const bytes = fs.readFileSync(path.join(__dirname,'../pkg/node',file.path));

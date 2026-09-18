@@ -310,6 +310,10 @@ fn pack_bytes(face: FaceId) -> &'static [u8] {
         FaceId::HanJpBold => pack!("noto-sans-jp-bold.ttf"),
         FaceId::HanKr => pack!("noto-sans-kr-han.ttf"),
         FaceId::HanKrBold => pack!("noto-sans-kr-han-bold.ttf"),
+        FaceId::Tamil => pack!("noto-tamil.ttf"),
+        FaceId::Gurmukhi => pack!("noto-gurmukhi.ttf"),
+        FaceId::Lao => pack!("noto-lao.ttf"),
+        FaceId::Khmer => pack!("noto-khmer.ttf"),
         FaceId::Gujarati => pack!("noto-gujarati.ttf"),
         FaceId::Ethiopic => pack!("noto-ethiopic.ttf"),
         FaceId::Myanmar => pack!("noto-myanmar.ttf"),
@@ -344,7 +348,9 @@ fn stubs_match_their_pack_faces() {
                 "{face:?}"
             );
         }
-        for c in ['中', '한', '😀', 'あ', '骨', 'ક', 'ሀ', 'က', 'ක'] {
+        for c in [
+            '中', '한', '😀', 'あ', '骨', 'ક', 'ሀ', 'က', 'ක', 'க', 'ਕ', 'ກ', 'ក',
+        ] {
             assert_eq!(full.glyph_index(c), stub.glyph_index(c), "{face:?} {c}");
         }
     }
