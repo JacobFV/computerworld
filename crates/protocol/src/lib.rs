@@ -2,8 +2,16 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
+pub mod debug;
+
 pub const SCHEMA_VERSION: u32 = 1;
 pub const PAGE_MEDIA_TYPE: &str = "application/vnd.computerworld.page+json";
+/// A page image: JSON `{width, height, rgba}`, straight-alpha RGBA8, row-major.
+pub const RGBA_MEDIA_TYPE: &str = "application/vnd.computerworld.rgba+json";
+/// Set on a request a browser makes because the page on show asked to be refreshed
+/// (a `refresh: <seconds>; url=<path>` response header), so a site can tell a page
+/// keeping itself current from a person visiting it.
+pub const REFRESH_HEADER: &str = "x-computerworld-refresh";
 pub type Result<T> = std::result::Result<T, SimError>;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 #[error("{code}: {message}")]
@@ -333,6 +341,78 @@ pub const MAX_STYLE_RADIUS: u32 = 512;
 pub const MAX_PAGE_GAP: u32 = 128;
 pub const MAX_GRID_COLUMNS: u32 = 12;
 pub const MAX_PAGE_EXTENT: u32 = 8192;
+/// Glyphs a page's `Icon` may name: the monochrome symbols every renderer bundles
+/// (`symbol/<name>`), tinted with the icon's colour. An unknown name is refused by
+/// `Page::validate` rather than drawn as nothing.
+pub const PAGE_ICONS: &[&str] = &[
+    "arrow-left",
+    "arrow-right",
+    "arrow-up",
+    "bell",
+    "calendar",
+    "cast",
+    "chat",
+    "check",
+    "chevron-down",
+    "chevron-left",
+    "chevron-right",
+    "chevron-up",
+    "clock",
+    "close",
+    "compass",
+    "copy",
+    "document",
+    "download",
+    "edit",
+    "eye",
+    "filters",
+    "flag",
+    "folder",
+    "gear",
+    "globe",
+    "grid-view",
+    "headphones",
+    "heart",
+    "heart-fill",
+    "home",
+    "image",
+    "info",
+    "library",
+    "link",
+    "list-view",
+    "lock",
+    "menu",
+    "mic",
+    "minus",
+    "more",
+    "more-vertical",
+    "music",
+    "pause",
+    "person",
+    "play",
+    "plus",
+    "queue",
+    "radio",
+    "reload",
+    "repeat",
+    "repeat-one",
+    "reply",
+    "search",
+    "send",
+    "share",
+    "shuffle",
+    "skip-next",
+    "skip-previous",
+    "sliders",
+    "star",
+    "star-outline",
+    "tag",
+    "thumb-up",
+    "thumb-up-fill",
+    "trash",
+    "volume",
+    "volume-mute",
+];
 /// `#rrggbb` or `#rrggbbaa`; nothing else, so renderers never guess.
 /// Standard base64 (RFC 4648, padded or not; whitespace ignored), as world files carry
 /// binary seeds.
@@ -403,6 +483,12 @@ pub struct Style {
     /// top-level elements only; anywhere else it is ignored.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pin: Option<String>,
+    /// `true` on a `Row` lays its children out on one line at their own widths
+    /// (`width`, or their min-content width) and, when they run past the row, lets it
+    /// scroll sideways instead of wrapping: a shelf of album covers. The browser
+    /// publishes it as a horizontal scroll area, `pane:row:<row id>`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scroll_x: Option<bool>,
     /// Italic text (`font-style: italic`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub italic: Option<bool>,
@@ -475,6 +561,10 @@ impl Style {
     }
     pub fn pin(mut self, edge: impl Into<String>) -> Self {
         self.pin = Some(edge.into());
+        self
+    }
+    pub fn scroll_x(mut self) -> Self {
+        self.scroll_x = Some(true);
         self
     }
     fn validate(&self) -> Result<()> {
@@ -568,6 +658,7 @@ impl PageElement {
             | Self::Thumbnail { id, .. }
             | Self::Badge { id, .. }
             | Self::Divider { id, .. }
+            | Self::Icon { id, .. }
             | Self::Spacer { id, .. } => id,
         }
     }
@@ -629,6 +720,19 @@ impl Page {
                     } => {
                         style.validate()?;
                         visit(children, ids, depth + 1)?
+                    }
+                    PageElement::Icon {
+                        name, label, style, ..
+                    } => {
+                        style.validate()?;
+                        if !PAGE_ICONS.contains(&name.as_str()) {
+                            return Err(SimError::invalid(format!("unknown page icon {name}")));
+                        }
+                        if label.trim().is_empty() {
+                            return Err(SimError::invalid(
+                                "an icon needs a label to be its accessible name",
+                            ));
+                        }
                     }
                     PageElement::Styled { style, .. }
                     | PageElement::Thumbnail { style, .. }
@@ -763,6 +867,19 @@ pub enum PageElement {
         id: String,
         #[serde(default)]
         style: Style,
+    },
+    /// A glyph from `PAGE_ICONS`, drawn `Style::size` pixels square (20 by default) in
+    /// `Style::color`, padded by `Style::padding` over `Style::background`. `label` is its
+    /// accessible name and is required. With `action` the padded square is one click
+    /// target (a transport button, a like button); without, it is a picture.
+    Icon {
+        id: String,
+        name: String,
+        label: String,
+        #[serde(default)]
+        style: Style,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        action: Option<PageAction>,
     },
     /// Vertical gap.
     Spacer {
@@ -1241,6 +1358,34 @@ mod tests {
             style: Style::default(),
         }];
         assert!(page.validate().is_err());
+    }
+    #[test]
+    fn icons_name_a_bundled_glyph_and_carry_a_label() {
+        let icon = |name: &str, label: &str, style: Style| {
+            let mut page = Page::new("p");
+            page.elements = vec![PageElement::Icon {
+                id: "like".into(),
+                name: name.into(),
+                label: label.into(),
+                style,
+                action: Some(PageAction {
+                    method: "POST".into(),
+                    url: "/items/x/like".into(),
+                    fields: BTreeMap::new(),
+                }),
+            }];
+            page.validate()
+        };
+        assert!(icon("thumb-up", "Like", Style::default()).is_ok());
+        assert!(icon("thumbs-up", "Like", Style::default()).is_err());
+        assert!(icon("thumb-up", " ", Style::default()).is_err());
+        assert!(icon("heart", "Save", Style::default().color("red")).is_err());
+        // It round-trips as the documented `icon` kind.
+        let json = r#"{"kind":"icon","id":"i","name":"play","label":"Play"}"#;
+        let parsed: PageElement = serde_json::from_str(json).unwrap();
+        assert!(
+            matches!(parsed, PageElement::Icon { ref name, ref action, .. } if name == "play" && action.is_none())
+        );
     }
     #[test]
     fn legacy_pages_deserialize_without_theme() {

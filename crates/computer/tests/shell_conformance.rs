@@ -1363,3 +1363,158 @@ fn shebang_scripts_run_under_their_interpreter() {
         "/usr/bin/python3\n/usr/bin/node\n"
     );
 }
+
+/// A repository with one commit: `a.txt` committed, then changed and staged.
+fn repo() -> Computer {
+    let mut c = machine();
+    for line in [
+        "cd /home/user/proj && git init",
+        "cd /home/user/proj && git add a.txt sub/b.txt",
+        "cd /home/user/proj && git commit -m first",
+    ] {
+        let r = run(&mut c, line);
+        assert_eq!(r.exit_code, 0, "{line}: {}", r.stderr);
+    }
+    c
+}
+
+#[test]
+fn git_reset_moves_the_index_the_branch_and_the_worktree() {
+    let mut c = repo();
+    // Stage a change, then unstage it by path: the worktree keeps it.
+    ok(
+        &mut c,
+        "cd /home/user/proj && printf 'alpha\\nbeta\\ndelta\\n' > a.txt",
+    );
+    ok(&mut c, "cd /home/user/proj && git add a.txt");
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\nM  a.txt\n"
+    );
+    let out = ok(&mut c, "cd /home/user/proj && git reset HEAD -- a.txt");
+    assert!(
+        out.contains("Unstaged changes after reset:\nM\ta.txt"),
+        "{out:?}"
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n M a.txt\n"
+    );
+    assert!(ok(&mut c, "cd /home/user/proj && cat a.txt").contains("delta"));
+    // A second commit, then reset --soft: the branch moves, the index does not.
+    ok(
+        &mut c,
+        "cd /home/user/proj && git add a.txt && git commit -m second",
+    );
+    ok(&mut c, "cd /home/user/proj && git reset --soft HEAD~1");
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\nM  a.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git log")
+            .matches("commit ")
+            .count(),
+        1
+    );
+    // --mixed (the default) also resets the index; the file on disk is untouched.
+    ok(&mut c, "cd /home/user/proj && git reset");
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n M a.txt\n"
+    );
+    assert!(ok(&mut c, "cd /home/user/proj && cat a.txt").contains("delta"));
+    // --hard throws the change away.
+    ok(&mut c, "cd /home/user/proj && git reset --hard");
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n"
+    );
+    assert!(ok(&mut c, "cd /home/user/proj && cat a.txt").contains("gamma"));
+    // A hard reset with paths is refused, as git refuses it.
+    let r = run(&mut c, "cd /home/user/proj && git reset --hard -- a.txt");
+    assert_ne!(r.exit_code, 0);
+    assert!(r.stderr.contains("hard reset with paths"), "{}", r.stderr);
+}
+
+#[test]
+fn git_restore_puts_back_the_worktree_and_the_index() {
+    let mut c = repo();
+    ok(
+        &mut c,
+        "cd /home/user/proj && echo changed > a.txt && echo more > sub/b.txt",
+    );
+    // Discard Changes on one file only.
+    ok(&mut c, "cd /home/user/proj && git restore a.txt");
+    assert!(ok(&mut c, "cd /home/user/proj && cat a.txt").contains("gamma"));
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n M sub/b.txt\n"
+    );
+    // A folder stands for everything in it.
+    ok(&mut c, "cd /home/user/proj && git restore sub");
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n"
+    );
+    // Unstage with --staged, keeping the working copy.
+    ok(
+        &mut c,
+        "cd /home/user/proj && echo staged > a.txt && git add a.txt",
+    );
+    ok(&mut c, "cd /home/user/proj && git restore --staged a.txt");
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n M a.txt\n"
+    );
+    assert!(ok(&mut c, "cd /home/user/proj && cat a.txt").contains("staged"));
+    // Both at once puts the file back to HEAD; a new file is untracked again.
+    ok(
+        &mut c,
+        "cd /home/user/proj && git restore --staged --worktree a.txt",
+    );
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n"
+    );
+    ok(
+        &mut c,
+        "cd /home/user/proj && echo new > c.txt && git add c.txt",
+    );
+    ok(&mut c, "cd /home/user/proj && git restore --staged c.txt");
+    assert_eq!(
+        ok(&mut c, "cd /home/user/proj && git status"),
+        "On branch main\n A c.txt\n"
+    );
+    // `git checkout -- <path>` is the same thing.
+    ok(&mut c, "cd /home/user/proj && echo again > a.txt");
+    ok(&mut c, "cd /home/user/proj && git checkout -- a.txt");
+    assert!(ok(&mut c, "cd /home/user/proj && cat a.txt").contains("gamma"));
+    // Restoring nothing in particular is refused rather than guessed at.
+    let r = run(&mut c, "cd /home/user/proj && git restore");
+    assert_ne!(r.exit_code, 0);
+    assert!(r.stderr.contains("specify path"), "{}", r.stderr);
+}
+
+#[test]
+fn git_diff_separates_the_index_from_the_worktree() {
+    let mut c = repo();
+    ok(
+        &mut c,
+        "cd /home/user/proj && echo staged > a.txt && git add a.txt",
+    );
+    ok(&mut c, "cd /home/user/proj && echo working > a.txt");
+    let staged = ok(&mut c, "cd /home/user/proj && git diff --staged");
+    assert!(
+        staged.contains("--- a/a.txt") && staged.contains("+staged"),
+        "{staged:?}"
+    );
+    assert!(!staged.contains("+working"));
+    let cached = ok(&mut c, "cd /home/user/proj && git diff --cached");
+    assert_eq!(cached, staged);
+    let unstaged = ok(&mut c, "cd /home/user/proj && git diff");
+    assert!(
+        unstaged.contains("-staged") && unstaged.contains("+working"),
+        "{unstaged:?}"
+    );
+}

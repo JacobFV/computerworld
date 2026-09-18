@@ -109,7 +109,7 @@ window keeps its own history and tabs.
 | `key` | `{"key": string}` | Key into the focused page element |
 | `new_tab` | `{}` | |
 | `switch_tab` / `close_tab` | `{"tab": u64}` | Index |
-| `scroll` | `{"y": i64}` | Clamped to `0..=i32::MAX` |
+| `scroll` | `{"y": i64}`, or `{"row": string, "x": i64}` for a shelf that scrolls sideways | Clamped to `0..=i32::MAX` |
 
 Any other op is `invalid`. Note the cross-family gate: `application.v1 launch` of
 kind `browser`, `keyboard.v1 key` of `Enter` in a focused address bar, and pointer
@@ -194,15 +194,21 @@ with the reason:
 | `code:cmd:<command id>` | Run a command, e.g. `workbench.action.quickOpen`, `workbench.action.files.save`, `python.execInTerminal`, `git.commit`. The ids are VS Code's own (`crates/applications/src/apps/code/commands.rs`) |
 | `code:menu:<file\|edit\|selection\|view\|go\|run\|terminal\|help\|manage>`, `code:menu-close` | Open a menu from the title bar (Windows, Ubuntu) or the Manage gear; on macOS the same menus hang from the Mac menu bar's File, Edit, View and Help |
 | `code:activity:<explorer\|search\|scm\|run>` | Activity bar; the active view again hides the side bar |
-| `code:tree:<relative path>` | Explorer row: a folder toggles; a file opens in a preview tab on click and pinned on double click |
+| `code:tree:<relative path>` | Explorer row: a folder toggles; a file opens in a preview tab on click and pinned on double click. A `pointer.v1 down` with `"button": 2` opens the Explorer's context menu on that row (New File, New Folder, Rename, Delete, Copy Path, Reveal in the file manager, Open in Integrated Terminal), whose entries are `code:cmd:` targets |
 | `code:explorer`, `code:inline` | Focus the Explorer (arrow keys, `Enter`, `F2` rename, `Delete` to the trash) or the inline name box of New File, New Folder and Rename |
 | `code:tab:<i>`, `code:tab-close:<i>`, `code:crumb:<folder>` | Editor tabs (a double click pins a preview), close (asks first when unsaved), and a breadcrumb folder revealed in the Explorer |
-| `code:editor:<first row>:<first column>:<wrap columns>:<visible rows>` | The text area. A click places the caret at the character under the pointer; `pointer.v1 down` then `up` inside it selects from the press to the release; a double click selects a word |
-| `code:scroll:<row>` | Scrollbar track: page the editor to that row |
+| `code:editor:<group>:<first row>:<first column>:<wrap columns>:<visible rows>` | The text area of an editor group. A click places the caret at the character under the pointer and gives that group the focus; `pointer.v1 down` then `up` inside it selects from the press to the release; a double click selects a word; a press with `"modifiers": ["alt"]` adds a cursor there; `"button": 2` opens the editor's context menu (Cut, Copy, Paste, Go to Definition, Command Palette). Tabs in the text are tab stops, and `editor.renderWhitespace` draws spaces and tabs |
+| `code:scroll:<group>:<row>` | Scrollbar track: page that group's editor to that row |
+| `code:minimap:<group>:<first row>:<rows>` | The minimap. A press scrolls the editor to the part of the file under the pointer, and a drag keeps scrolling it |
+| `code:group:<i>` | An editor group with nothing open in it (Split Editor Right/Down, Move Editor into Next/Previous Group and Focus *n*th Editor Group are `code:cmd:` targets; a file open in two groups is one document) |
 | `code:find-input`, `code:replace-input`, `code:find:<case\|word\|regex\|prev\|next\|replace\|replace-all\|toggle-replace\|close>` | The find widget (`Ctrl+F`, `Ctrl+H`) |
 | `code:search-input`, `code:search-replace-input`, `code:search:<case\|word\|regex\|toggle-replace\|clear\|collapse>`, `code:search-file:<path>`, `code:search-result:<file>:<hit>`, `code:search-replace-all` | Search view: literal, regex, case and whole-word search over the workspace's files; a result opens its file with the match selected |
 | `code:scm-message`, `code:scm-stage:<path>`, `code:scm-open:<path>` | Source Control, backed by the machine's `git` (`status`, `add`, `commit`, `init`, `branch`, `checkout`) |
-| `code:panel:<problems\|output\|terminal>`, `code:panel-close`, `code:terminal`, `code:terminal-line`, `code:term-tab:<i>`, `code:term-scroll:<n>`, `code:problem:<i>` | The panel. The terminal is a session of the machine's shell with its own working directory; a problem opens its file at its line |
+| `code:panel:<problems\|output\|terminal\|debug>`, `code:panel-close`, `code:terminal`, `code:terminal-line`, `code:term-tab:<i>`, `code:term-scroll:<n>`, `code:problem:<i>` | The panel. The terminal is a session of the machine's shell with its own working directory; a problem opens its file at its line; `debug` is the Debug Console |
+| `code:gutter:<group>:<line>` | Set or remove a breakpoint on that line of the editor's file |
+| `code:bp:<i>`, `code:bp-remove:<i>`, `code:bp-open:<i>`, `code:exception:<raised\|uncaught>` | The Run and Debug view's breakpoint list: enable, remove, open its line, and the exception filters |
+| `code:frame:<i>`, `code:var:<reference>`, `code:watch-remove:<i>`, `code:debug-config:<i>` | A frame of the call stack, a variable expanded, a watch expression removed, a launch configuration chosen |
+| `code:repl-input`, `code:debug-prompt`, `code:debug-prompt-ok`, `code:debug-prompt-close` | The Debug Console's input, and the box that asks for a watch expression or a breakpoint's condition |
 | `code:status:<branch\|problems\|position\|indent\|eol\|language>` | Status bar items: branch picker, Problems, Go to Line, tab size, line endings, language mode |
 | `code:quick-input`, `code:quick:<i>`, `code:quick-ok`, `code:quick-close` | Quick input: Quick Open (`Ctrl+P`, fuzzy over workspace files, `:` for a line), the Command Palette (`Ctrl+Shift+P`, `>`), and the pickers (theme, language, tab size, line endings, branch, Open Folder, Save As) |
 | `code:dialog:<i>`, `code:notice-close`, `code:settings:<theme\|font\|tab\|wrap>:<value>`, `code:welcome` | Modal dialog buttons, the notification toast, the Settings editor, and the empty editor area |
@@ -333,6 +339,35 @@ import, `Escape` closes a sheet or clears the selection; split is `S` in Clipcha
 `Meta+B` in iMovie and `Shift+R` in Kdenlive; `J`/`K`/`L` shuttle in iMovie and
 Kdenlive; `Shift+Delete` ripple-deletes and `S` toggles snapping in Kdenlive. With no
 field focused, typed letters are these shortcuts.
+
+#### Music player controls
+
+One player (`crates/applications/src/apps/music`) with five faces: Apple Music on macOS
+and iOS, YouTube Music on Android, Media Player on Windows 11 and Rhythmbox on Ubuntu.
+Everything on screen comes from the `media` service the world backs it with
+(spotify.com, or music.youtube.com on Android): `GET /api/catalog` is the catalogue with
+this listener's library, likes, playlists, history, player and speakers, and every
+control is a real request, after which the catalogue is read again. Controls are
+`window:<id>:content:music:<command>`.
+
+| Target | Effect |
+|---|---|
+| `music:home`, `music:new`, `music:radio`, `music:library[:<recent\|playlists\|artists\|albums\|songs>]`, `music:liked`, `music:queue`, `music:back`, `music:expand` | Navigation; `expand` opens a phone's full-screen Now Playing |
+| `music:album:<id>`, `music:artist:<id>`, `music:playlist:<id>`, `music:mood:<tag>`, `music:find:<tag>` | Open a collection; a mood chip filters Home |
+| `music:play:<context>[@<track>]`, `music:shuffle-play:<context>` | Play a context (`album:<id>`, `playlist:<id>`, `artist:<id>`, `station:<id>`, `mood:<tag>`, `library`, `liked`, `charts`, `track`), optionally starting at a track |
+| `music:toggle`, `music:previous`, `music:next`, `music:shuffle`, `music:repeat`, `music:seek:<n>`, `music:jump:<i>` | Transport; `seek` names a thousandth of the track, `jump` a queue position |
+| `music:volume:<pct>`, `music:mute`, `music:volume-popover` | The player's own volume, which the machine's output volume then scales (Rhythmbox's volume button opens the popover). On a phone the Now Playing slider is the phone's own volume instead, `shell:set:volume:<pct>`, until the music is playing on a speaker |
+| `music:output`, `music:output:<device id>`, `music:output:` | AirPlay (macOS, iOS), Cast (Android) or Cast to device (Windows). Opening the picker asks each of the account's speakers whether it is on the network; picking one hands it the session (`POST <speaker>/api/cast`) and then tells the service (`output`); the empty id brings the music back to this device |
+| `music:lyrics`, `music:lyric:<i>`, `music:lyrics-sheet` | Time-synced lyrics: the panel in Apple Music, the LYRICS tab in YouTube Music. The sung line follows the world clock, and a line seeks to where it is sung |
+| `music:like:<id>`, `music:save:<id>`, `music:save-album:<id>`, `music:subscribe:<id>`, `music:play-next:<id>`, `music:play-last:<id>` | Likes, library, following, and the play queue |
+| `music:menu:<id>`, `music:menu-close`, `music:menu-playlists`, `music:add:<playlist>`, `music:remove:<playlist>@<track>` | The song menu ("…", "⋮") and Add to Playlist |
+| `music:search-field`, `music:search`, `music:clear`, `music:compose`, `music:create`, `music:cancel` | Search and the New Playlist sheet |
+| `music:filter-artist:<id\|all>`, `music:filter-album:<id\|all>` | Rhythmbox's Artist and Album browser |
+| `music:reload`, `music:popup-close` | Re-read the catalogue; close a popup |
+
+Keys: `Space` (or `MediaPlayPause`) toggles playback with no field focused,
+`MediaTrackNext`/`MediaTrackPrevious` skip, `Enter` searches or creates, `Escape` closes
+a menu, a popup or the composer.
 
 #### Image editor controls
 
@@ -488,8 +523,8 @@ Behaviour worth knowing:
 
 - **Scrolling is a platform service.** A pane whose content is taller than its view is
   published in `Scene::scrolls` (`ScrollArea`: `target`, `window`, `bounds`, `offset`,
-  `extent`, and on iOS the large `title` that collapses into the navigation bar once
-  `offset >= title_height`). A `wheel` first goes to the application's own use of the
+  `extent`, `horizontal`, and on iOS the large `title` that collapses into the navigation
+  bar once `offset >= title_height`). A `wheel` first goes to the application's own use of the
   wheel, then to the innermost pane under the pointer that can still move that way,
   then outwards. Applications with their own wheel: Visual Studio Code's editor and
   terminal (whole rows), spreadsheets (three rows a notch, Shift for columns, Ctrl
@@ -505,8 +540,14 @@ Behaviour worth knowing:
   painted first. A video editor's media bin is the `pane:bin` area.
   The browser's page is the `pane:page` area; its offset is `browser.v1 scroll`'s `y`.
   Offsets are window state (`Window::scroll`) and survive snapshots.
+- **Some panes scroll sideways.** A shelf of album covers (Apple Music's and YouTube
+  Music's shelves, and a page `Row` with `Style::scroll_x`) is published `horizontal`:
+  its `offset` and `extent` run along x. `delta_x` moves it, and so does `delta_y` with
+  Shift held; a plain `delta_y` passes it by to the upright pane around it. On a page
+  such a shelf is `pane:row:<row id>`, which `browser.v1 scroll` also takes by name.
 - **Scroll bars are real.** On desktops each overflowing pane paints a thumb sized to
-  the real extent, on a drag surface `window:<id>:content:pane:<name>:<track>:<thumb>:<max>`:
+  the real extent, on a drag surface `window:<id>:content:pane:<name>:<track>:<thumb>:<max>`
+  (`hpane:…`, along the bottom edge, for one that scrolls sideways):
   dragging the thumb scrolls, a press on the track jumps the thumb there, and a named
   click without a point pages forward. Phones paint no bar at rest, as they do not.
 - **Phones scroll under the finger.** A touch that moves more than 12 px mostly
@@ -520,7 +561,8 @@ Behaviour worth knowing:
   60 Hz frame when the clock did not move), and the distance is the platform's
   deceleration (iOS 0.998/ms; Android's OverScroller spline), stopping at an end. A
   finger that rested 40 ms of world clock before lifting does not fling. A `down`/`up`
-  with no `move` between scrolls by exactly the distance moved.
+  with no `move` between scrolls by exactly the distance moved. A mostly sideways touch
+  moves a shelf that scrolls sideways under it the same way.
 - **A phone's Back is the application's first.** Android's Back button (`shell:mobile-back`)
   and iOS's navigation-bar chevron go to the application's parent screen before leaving
   it: Mail's message to its mailbox, a mailbox (iOS) to Mailboxes, Gmail's drawer

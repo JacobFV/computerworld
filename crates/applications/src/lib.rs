@@ -275,6 +275,15 @@ pub enum AppEffect {
     PasteImage {
         window: u64,
     },
+    /// A Run and Debug request for the machine's debugger (`cw_computer::Computer::debug`):
+    /// launch a program, step it, read its variables, evaluate an expression in a frame.
+    /// The reply, or the reason there is none, goes to `DesktopState::debug_reply` under
+    /// `tag`, which says what the application asked for.
+    Debug {
+        window: u64,
+        tag: String,
+        request: cw_protocol::debug::Request,
+    },
 }
 /// What a `ShellRun` produced: the finished command (`None` when only the prompt was
 /// asked for), where the session stands afterwards and the prompt it would print next.
@@ -825,6 +834,10 @@ pub struct DesktopState {
     /// `pointer.v1`'s `modifiers`, handed to an application's drag surface on a press.
     #[serde(default, skip_serializing_if = "is_zero_u8")]
     pub pointer_modifiers: u8,
+    /// The button of the latest pointer action (0 left, 1 middle, 2 right), handed to an
+    /// application on a press so a right click can open its own context menu.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub pointer_button: u8,
     /// Home folder of this machine's user; empty falls back to the root.
     #[serde(default)]
     pub home: String,
@@ -2012,8 +2025,14 @@ impl DesktopState {
     /// A pointer pressed on a control of the focused window, before it is released.
     pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
         let id = self.focused.ok_or("no focused window")?;
+        let modifiers = self.pointer_modifiers;
+        let button = self.pointer_button;
         match self.windows.get_mut(&id).map(|w| &mut w.state) {
-            Some(AppState::Native(app)) => app.press_at(target, dx, dy),
+            Some(AppState::Native(app)) => {
+                app.pointer_modifiers(modifiers);
+                app.pointer_button(button);
+                app.press_at(target, dx, dy)
+            }
             _ => Ok(()),
         }
     }
@@ -2060,6 +2079,15 @@ impl DesktopState {
         outcome: ShellOutcome,
     ) -> Result<Vec<AppEffect>, String> {
         Ok(self.code_mut(id)?.shell_ran(id, tag, outcome))
+    }
+    /// What the machine's debugger answered a `Debug` effect with.
+    pub fn debug_reply(
+        &mut self,
+        id: u64,
+        tag: &str,
+        reply: Result<cw_protocol::debug::Reply, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        Ok(self.code_mut(id)?.debug_reply(id, tag, reply))
     }
     /// A write reached the disk. Editors learn which file, so the right one turns clean.
     pub fn file_written(
@@ -2268,7 +2296,7 @@ impl DesktopState {
             _ if bar => {
                 window
                     .scroll
-                    .drag(target, PointerPhase::Down, y - bounds.y)?;
+                    .drag(target, PointerPhase::Down, x - bounds.x, y - bounds.y)?;
                 vec![]
             }
             AppState::Native(app) => app.pointer(
@@ -2403,7 +2431,12 @@ impl DesktopState {
             return Some(match self.windows.get_mut(&window) {
                 Some(w) => w
                     .scroll
-                    .drag(&target, phase, y - capture.original.y)
+                    .drag(
+                        &target,
+                        phase,
+                        x - capture.original.x,
+                        y - capture.original.y,
+                    )
                     .map(|_| vec![]),
                 None => Err("window not found".into()),
             });
@@ -3693,8 +3726,8 @@ impl DesktopState {
         // thumb jumps there, whatever the window shows.
         if ScrollBar::parse(target).is_some() {
             let window = self.windows.get_mut(&id).ok_or("window not found")?;
-            window.scroll.drag(target, PointerPhase::Down, dy)?;
-            window.scroll.drag(target, PointerPhase::Up, dy)?;
+            window.scroll.drag(target, PointerPhase::Down, dx, dy)?;
+            window.scroll.drag(target, PointerPhase::Up, dx, dy)?;
             return Ok(vec![]);
         }
         // A click on a drag surface is a press and release at one point: a dot from a
@@ -3707,8 +3740,8 @@ impl DesktopState {
             .map(|w| &mut w.state)
             .filter(|_| !target.starts_with("focus:"))
         {
+            app.pointer_modifiers(modifiers);
             if app.drags(target) {
-                app.pointer_modifiers(modifiers);
                 let mut effects = app.pointer(id, target, PointerPhase::Down, dx, dy, clock)?;
                 effects.extend(app.pointer(id, target, PointerPhase::Up, dx, dy, clock)?);
                 return self.native_effects(effects);

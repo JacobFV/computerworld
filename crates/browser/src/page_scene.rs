@@ -130,8 +130,17 @@ fn style_of(e: &PageElement) -> Option<&Style> {
         | PageElement::Styled { style, .. }
         | PageElement::Thumbnail { style, .. }
         | PageElement::Badge { style, .. }
+        | PageElement::Icon { style, .. }
         | PageElement::Divider { style, .. } => Some(style),
         _ => None,
+    }
+}
+/// A width the author fixed: a style's, or a picture's declared size, which a row keeps
+/// rather than stretching the picture across a flex share.
+fn fixed_width(e: &PageElement) -> Option<u32> {
+    match e {
+        PageElement::Image { width, .. } if *width > 0 => Some(*width),
+        _ => style_of(e).and_then(|s| s.width),
     }
 }
 /// Accessible name for a card: the first text its subtree offers.
@@ -144,7 +153,7 @@ fn label_of(children: &[PageElement]) -> String {
             | PageElement::Badge { text, .. }
             | PageElement::Link { text, .. }
             | PageElement::Button { text, .. } => text.clone(),
-            PageElement::Thumbnail { label, .. } => label.clone(),
+            PageElement::Thumbnail { label, .. } | PageElement::Icon { label, .. } => label.clone(),
             PageElement::Row { children, .. }
             | PageElement::Grid { children, .. }
             | PageElement::Card { children, .. }
@@ -162,6 +171,8 @@ struct Layout<'a> {
     scene: Scene,
     fields: &'a BTreeMap<String, String>,
     images: &'a BTreeMap<String, Arc<ImageAsset>>,
+    /// How far each sideways-scrolling row (`Style::scroll_x`) is scrolled, by row id.
+    hscroll: &'a BTreeMap<String, i32>,
     used: BTreeSet<u64>,
     decoration: u64,
     accent: Color,
@@ -291,6 +302,10 @@ impl Layout<'_> {
             // A hairline (a progress bar's segment) carries no caption, so it has no floor.
             PageElement::Thumbnail { style, .. } if style.height.is_some_and(|h| h < 12) => 1,
             PageElement::Thumbnail { .. } => 48,
+            PageElement::Icon { style, .. } => {
+                u32::from(style.size.unwrap_or(20).clamp(6, 96))
+                    + 2 * style.padding.unwrap_or(0).min(64)
+            }
             PageElement::Card {
                 children, style, ..
             } => style.padding.unwrap_or(14).min(64) * 2 + widest(children),
@@ -579,8 +594,12 @@ impl Layout<'_> {
                 ..
             } => {
                 if let Some(a) = self.images.get(asset_id) {
-                    let dw = if *width == 0 { a.width } else { *width }.min(w);
-                    let dh = if *height == 0 { a.height } else { *height }.min(4096);
+                    let natural_w = if *width == 0 { a.width } else { *width };
+                    let natural_h = if *height == 0 { a.height } else { *height };
+                    let dw = natural_w.min(w);
+                    // A picture narrowed to its column keeps its proportions.
+                    let dh = (u64::from(natural_h) * u64::from(dw) / u64::from(natural_w.max(1)))
+                        .min(4096) as u32;
                     self.node(
                         id,
                         Rect::new(x, y, dw, dh),
@@ -601,6 +620,15 @@ impl Layout<'_> {
                     self.text(id, Rect::new(x, y, w, 24), alt, 13, self.muted, false);
                     32
                 }
+            }
+            PageElement::Row {
+                id: row,
+                children,
+                gap,
+                style,
+                ..
+            } if style.scroll_x == Some(true) => {
+                self.scroll_row(row, children, *gap, x, y, w, style, forced)
             }
             PageElement::Row {
                 children,
@@ -883,6 +911,81 @@ impl Layout<'_> {
                 );
                 bh + 6
             }
+            PageElement::Icon {
+                id: target,
+                name,
+                label,
+                style,
+                action,
+            } => {
+                let size = u32::from(style.size.unwrap_or(20).clamp(6, 96));
+                let pad = style.padding.unwrap_or(0).min(64);
+                let bw = style.width.unwrap_or(size + 2 * pad).min(w);
+                let bh = style.height.unwrap_or(size + 2 * pad);
+                let bx = x + Self::offset(style, w, bw);
+                let r = Rect::new(bx, y, bw, bh);
+                let edge = style.border.as_deref().and_then(parse_color);
+                let primitive = Primitive::RoundedBox {
+                    fill: style
+                        .background
+                        .as_deref()
+                        .and_then(parse_color)
+                        .unwrap_or(Color::TRANSPARENT),
+                    border: edge,
+                    border_width: u32::from(edge.is_some()),
+                    radius: style.radius.unwrap_or(bw.min(bh) / 2).min(64),
+                };
+                match action {
+                    Some(action) => {
+                        let role = if action.method.eq_ignore_ascii_case("GET") {
+                            "link"
+                        } else {
+                            "button"
+                        };
+                        self.node(
+                            id,
+                            r,
+                            primitive,
+                            Some(Semantic {
+                                role: role.into(),
+                                label: label.clone(),
+                                focusable: true,
+                                ..Semantic::default()
+                            }),
+                            Some(target),
+                        );
+                    }
+                    None => self.node(
+                        id,
+                        r,
+                        primitive,
+                        Some(Semantic {
+                            role: "img".into(),
+                            label: label.clone(),
+                            ..Semantic::default()
+                        }),
+                        None,
+                    ),
+                }
+                let glyph = self.decoration;
+                self.decoration += 1;
+                self.node(
+                    glyph,
+                    Rect::new(
+                        bx + (bw.saturating_sub(size) / 2) as i32,
+                        y + (bh.saturating_sub(size) / 2) as i32,
+                        size,
+                        size,
+                    ),
+                    Primitive::Symbol {
+                        asset: format!("symbol/{name}"),
+                        color: self.ink_of(style),
+                    },
+                    None,
+                    None,
+                );
+                bh + 6
+            }
             PageElement::Divider { style, .. } => {
                 let colour = style
                     .color
@@ -961,7 +1064,7 @@ impl Layout<'_> {
         let avail = inner.saturating_sub(gap * (children.len() as u32 - 1));
         let fixed: Vec<Option<u32>> = children
             .iter()
-            .map(|c| style_of(c).and_then(|s| s.width).map(|v| v.min(avail)))
+            .map(|c| fixed_width(c).map(|v| v.min(avail)))
             .collect();
         // A flex child never shrinks below its content: those that would are held at
         // their minimum, and the rest share what is left, as `min-width: auto` does.
@@ -1026,6 +1129,72 @@ impl Layout<'_> {
             };
             self.place(child, cx, cy, *cw, forced);
             cx += (*cw + gap) as i32;
+        }
+        box_h
+    }
+    /// A row that scrolls sideways: every child at its own width on one line, shifted by
+    /// the row's scroll offset and clipped to the row, which is published as a
+    /// horizontal scroll area so a wheel or a swipe over it moves it.
+    #[allow(clippy::too_many_arguments)]
+    fn scroll_row(
+        &mut self,
+        row: &str,
+        children: &[PageElement],
+        gap: u32,
+        x: i32,
+        y: i32,
+        w: u32,
+        style: &Style,
+        forced: Option<u32>,
+    ) -> u32 {
+        let w = style.width.map_or(w, |v| v.min(w));
+        let pad = style.padding.unwrap_or(0).min(64);
+        let gap = gap.min(128);
+        let widths: Vec<u32> = children
+            .iter()
+            .map(|c| fixed_width(c).unwrap_or_else(|| self.min_width(c)).max(1))
+            .collect();
+        let heights: Vec<u32> = children
+            .iter()
+            .zip(&widths)
+            .map(|(c, cw)| self.measure(c, *cw, None))
+            .collect();
+        let content =
+            widths.iter().sum::<u32>() + gap * children.len().saturating_sub(1) as u32 + pad * 2;
+        let band = heights.iter().copied().max().unwrap_or(0);
+        let box_h = forced.or(style.height).unwrap_or(band + pad * 2);
+        self.row_decor(x, y, w, box_h, style);
+        let max = content.saturating_sub(w) as i32;
+        let offset = self.hscroll.get(row).copied().unwrap_or(0).clamp(0, max);
+        let view = Rect::new(x, y, w, box_h);
+        let mark = self.scene.nodes.len();
+        let mut cx = x + pad as i32 - offset;
+        for (child, cw) in children.iter().zip(&widths) {
+            // Children wholly outside the row are not drawn at all.
+            if cx + (*cw as i32) > x && cx < x + w as i32 {
+                self.place(child, cx, y + pad as i32, *cw, Some(band));
+            }
+            cx += (*cw + gap) as i32;
+        }
+        if !self.dry {
+            for n in &mut self.scene.nodes[mark..] {
+                n.clip = Some(
+                    n.clip
+                        .unwrap_or(view)
+                        .intersection(view)
+                        .unwrap_or(Rect::new(x, y, 0, 0)),
+                );
+            }
+            self.scene.scrolls.push(cw_scene::ScrollArea {
+                target: format!("pane:row:{row}"),
+                window: None,
+                bounds: view,
+                offset,
+                extent: content.max(w),
+                title: None,
+                title_height: 0,
+                horizontal: true,
+            });
         }
         box_h
     }
@@ -1165,9 +1334,14 @@ pub(super) fn scale(scene: &mut Scene, percent: u32, width: u32, height: u32) {
         }
     }
     // The page still fills the viewport; its offset and extent stay in CSS pixels,
-    // the units `browser.v1 scroll` takes.
+    // the units `browser.v1 scroll` takes. A row that scrolls sideways is drawn larger
+    // or smaller with everything else.
     for area in &mut scene.scrolls {
-        area.bounds = Rect::new(0, 0, width, height);
+        area.bounds = if area.horizontal {
+            rect(area.bounds)
+        } else {
+            Rect::new(0, 0, width, height)
+        };
     }
     scene.width = width;
     scene.height = height;
@@ -1179,6 +1353,26 @@ pub(super) fn layout(
     width: u32,
     height: u32,
     scroll: i32,
+) -> Scene {
+    layout_scrolled(
+        page,
+        fields,
+        images,
+        width,
+        height,
+        scroll,
+        &BTreeMap::new(),
+    )
+}
+/// `layout`, with sideways-scrolling rows at the offsets `hscroll` names.
+pub(super) fn layout_scrolled(
+    page: &Page,
+    fields: &BTreeMap<String, String>,
+    images: &BTreeMap<String, Arc<ImageAsset>>,
+    width: u32,
+    height: u32,
+    scroll: i32,
+    hscroll: &BTreeMap<String, i32>,
 ) -> Scene {
     let theme = page.theme.as_ref();
     let themed = theme.is_some();
@@ -1204,6 +1398,7 @@ pub(super) fn layout(
         scene: Scene::new(width, height),
         fields,
         images,
+        hscroll,
         used: BTreeSet::new(),
         decoration: 1 << 52,
         accent,
@@ -1389,6 +1584,7 @@ pub(super) fn layout(
         extent,
         title: None,
         title_height: 0,
+        horizontal: false,
     });
     p.scene
 }
@@ -1406,6 +1602,52 @@ mod tests {
             text: "cell".into(),
             style,
         }
+    }
+    #[test]
+    fn an_icon_is_a_labelled_button_over_a_tinted_symbol() {
+        let mut page = Page::new("Player");
+        page.elements = vec![PageElement::Icon {
+            id: "like".into(),
+            name: "thumb-up".into(),
+            label: "Like".into(),
+            style: Style::default().size(24).padding(8).color("#ff0000"),
+            action: Some(PageAction {
+                method: "POST".into(),
+                url: "/items/x/like".into(),
+                fields: BTreeMap::new(),
+            }),
+        }];
+        page.validate().unwrap();
+        let s = scene(&page, 400);
+        let button = find(&s, "like");
+        assert_eq!((button.bounds.width, button.bounds.height), (40, 40));
+        let semantic = button.semantic.as_ref().unwrap();
+        assert_eq!(
+            (semantic.role.as_str(), semantic.label.as_str()),
+            ("button", "Like")
+        );
+        let glyph = s
+            .nodes
+            .iter()
+            .find(|n| matches!(&n.primitive, Primitive::Symbol { asset, .. } if asset == "symbol/thumb-up"))
+            .expect("the glyph is drawn");
+        assert_eq!(
+            glyph.bounds,
+            Rect::new(button.bounds.x + 8, button.bounds.y + 8, 24, 24)
+        );
+        assert!(
+            matches!(glyph.primitive, Primitive::Symbol { color, .. } if color == Color::rgb(255, 0, 0))
+        );
+        // Without an action it is a picture with the same name, and no click target.
+        if let PageElement::Icon { action, .. } = &mut page.elements[0] {
+            *action = None;
+        }
+        let s = scene(&page, 400);
+        assert!(s.nodes.iter().all(|n| n.interaction.is_none()));
+        assert!(s.nodes.iter().any(|n| n
+            .semantic
+            .as_ref()
+            .is_some_and(|m| m.role == "img" && m.label == "Like")));
     }
     fn find<'a>(scene: &'a Scene, action: &str) -> &'a Node {
         scene

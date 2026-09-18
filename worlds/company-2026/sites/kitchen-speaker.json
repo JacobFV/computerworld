@@ -1,0 +1,26 @@
+{
+  "id": "kitchen-speaker",
+  "kind": "speaker",
+  "node": "kitchen-speaker",
+  "domains": [
+    "kitchen.speaker.internal"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "10.0.2.21",
+    "zone": "local",
+    "link": {
+      "from": "app-server",
+      "latency_us": 10
+    }
+  },
+  "initial_state": {
+    "name": "Kitchen",
+    "model": "Smart speaker",
+    "protocols": [
+      "cast",
+      "dlna"
+    ],
+    "volume": 50
+  }
+}

@@ -682,10 +682,12 @@ pub struct TextBuffer {
     #[serde(default)]
     pub truncated: bool,
 }
-/// A pane whose content is taller than the part it shows, and how far it is scrolled.
-/// Published so an actor can see that more is there, how much, and where the view is,
-/// without inferring it from a painted scroll bar. `pointer.v1 wheel` over `bounds`
-/// (or, on a phone, a vertical swipe that starts there) moves `offset`.
+/// A pane whose content is taller (or, `horizontal`, wider) than the part it shows, and
+/// how far it is scrolled. Published so an actor can see that more is there, how much,
+/// and where the view is, without inferring it from a painted scroll bar. `pointer.v1
+/// wheel` over `bounds` moves `offset` — `delta_y` for a vertical pane, `delta_x` (or
+/// `delta_y` with Shift held) for a horizontal one — and so does, on a phone, a swipe
+/// along the pane's axis that starts there.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScrollArea {
     /// `pane:<name>` inside an application; the compositor namespaces it the way it
@@ -706,6 +708,9 @@ pub struct ScrollArea {
     /// Height of that large title's band: the offset at which it has collapsed.
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub title_height: u32,
+    /// The pane scrolls sideways: `offset` and `extent` run along x, a shelf of cards.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub horizontal: bool,
 }
 fn is_zero_u32(v: &u32) -> bool {
     *v == 0
@@ -713,7 +718,12 @@ fn is_zero_u32(v: &u32) -> bool {
 impl ScrollArea {
     /// The furthest the content can be scrolled.
     pub fn max_offset(&self) -> i32 {
-        self.extent.saturating_sub(self.bounds.height) as i32
+        let view = if self.horizontal {
+            self.bounds.width
+        } else {
+            self.bounds.height
+        };
+        self.extent.saturating_sub(view) as i32
     }
     /// The large title has scrolled out of the content into the navigation bar.
     pub fn title_collapsed(&self) -> bool {

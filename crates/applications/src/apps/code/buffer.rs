@@ -15,6 +15,10 @@ pub struct Edit {
     /// (cursor, anchor) before and after the edit.
     pub before: (usize, usize),
     pub after: (usize, usize),
+    /// One of several edits made at once by several carets: undone and redone with the
+    /// edit before it, so a multi-cursor change is one step of the history.
+    #[serde(default)]
+    pub group: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,6 +37,11 @@ pub struct Doc {
     /// a run of typing into one undo step.
     #[serde(default)]
     pub typing: bool,
+    /// Extra carets, each `(cursor, anchor)`, beside the primary one: Alt+click,
+    /// `Ctrl+Alt+Up`/`Down`, `Ctrl+D` and `Ctrl+Shift+L` make them, and every edit and
+    /// every move happens at all of them at once.
+    #[serde(default)]
+    pub carets: Vec<(usize, usize)>,
 }
 
 /// Search options shared by the find widget and the Search view.
@@ -147,7 +156,8 @@ impl Doc {
     pub fn position(&self) -> (usize, usize) {
         (self.line_of(self.cursor), self.col_of(self.cursor))
     }
-    fn at_col(&self, line_start: usize, col: usize) -> usize {
+    /// The offset `col` characters into the line that starts at `line_start`.
+    pub fn at_col(&self, line_start: usize, col: usize) -> usize {
         let end = self.line_end(line_start);
         self.text[line_start..end]
             .char_indices()
@@ -208,6 +218,7 @@ impl Doc {
             inserted: inserted.to_owned(),
             before,
             after,
+            group: false,
         });
         if self.undo.len() > UNDO_LIMIT {
             self.undo.remove(0);
@@ -580,6 +591,120 @@ impl Doc {
         self.cursor = self.text.len();
         self.typing = false;
     }
+    /// Every caret, primary first, each `(cursor, anchor)`.
+    pub fn all_carets(&self) -> Vec<(usize, usize)> {
+        let mut out = vec![(self.cursor, self.anchor)];
+        out.extend(self.carets.iter().copied());
+        out
+    }
+    /// Keep the carets in text order, drop duplicates and those the text has outgrown,
+    /// and make the primary the first of them.
+    fn tidy_carets(&mut self, primary: (usize, usize)) {
+        let len = self.text.len();
+        let fix = |mut p: usize| {
+            p = p.min(len);
+            while !self.text.is_char_boundary(p) {
+                p -= 1;
+            }
+            p
+        };
+        let mut all: Vec<(usize, usize)> = std::iter::once(primary)
+            .chain(self.carets.iter().copied())
+            .map(|(c, a)| (fix(c), fix(a)))
+            .collect();
+        all.sort_by_key(|(c, a)| (*c, *a));
+        all.dedup_by_key(|(c, _)| *c);
+        let at = all
+            .iter()
+            .position(|c| *c == (fix(primary.0), fix(primary.1)))
+            .unwrap_or(0);
+        (self.cursor, self.anchor) = all[at];
+        self.carets = all;
+        self.carets.remove(at);
+    }
+    /// Add a caret, unless one is already there. Returns whether it was added.
+    pub fn add_caret(&mut self, cursor: usize, anchor: usize) -> bool {
+        if self.all_carets().iter().any(|(c, _)| *c == cursor) {
+            return false;
+        }
+        let primary = (self.cursor, self.anchor);
+        self.carets.push((cursor, anchor));
+        self.tidy_carets(primary);
+        true
+    }
+    pub fn clear_carets(&mut self) {
+        self.carets.clear();
+    }
+    /// Do `act` at every caret. Edits run from the last caret to the first, so the
+    /// offsets of the ones still to come are untouched, and every caret ends where its
+    /// own edit left it. The whole thing is one undo step.
+    pub fn at_each(&mut self, mut act: impl FnMut(&mut Self)) {
+        if self.carets.is_empty() {
+            act(self);
+            return;
+        }
+        let primary = (self.cursor, self.anchor);
+        let mut carets = self.all_carets();
+        carets.sort_by_key(|(c, _)| std::cmp::Reverse(*c));
+        self.carets.clear();
+        let undo_before = self.undo.len();
+        let mut results: Vec<((usize, usize), isize)> = vec![];
+        let mut primary_at = 0;
+        for (i, (cursor, anchor)) in carets.iter().copied().enumerate() {
+            if (cursor, anchor) == primary {
+                primary_at = i;
+            }
+            self.cursor = cursor;
+            self.anchor = anchor;
+            self.typing = false;
+            let before = self.text.len() as isize;
+            act(self);
+            results.push((
+                (self.cursor, self.anchor),
+                self.text.len() as isize - before,
+            ));
+        }
+        // Everything after the first caret edited text before the carets already done,
+        // so those move by the total length change since.
+        let mut shift = 0isize;
+        for ((cursor, anchor), delta) in results.iter_mut().rev() {
+            *cursor = (*cursor as isize + shift).max(0) as usize;
+            *anchor = (*anchor as isize + shift).max(0) as usize;
+            shift += *delta;
+        }
+        // One step in the history: mark every edit after the first as grouped with it.
+        for edit in self.undo.iter_mut().skip(undo_before + 1) {
+            edit.group = true;
+        }
+        self.carets = results.iter().map(|(caret, _)| *caret).collect();
+        let primary = self.carets.remove(primary_at);
+        self.tidy_carets(primary);
+        self.typing = false;
+    }
+    /// Move every caret with `act`, which moves the primary one.
+    pub fn move_each(&mut self, mut act: impl FnMut(&mut Self)) {
+        if self.carets.is_empty() {
+            act(self);
+            return;
+        }
+        let primary = (self.cursor, self.anchor);
+        let mut moved = vec![];
+        let mut primary_at = 0;
+        let goal = self.goal;
+        for (i, (cursor, anchor)) in self.all_carets().into_iter().enumerate() {
+            if (cursor, anchor) == primary {
+                primary_at = i;
+            }
+            self.cursor = cursor;
+            self.anchor = anchor;
+            self.goal = goal;
+            act(self);
+            moved.push((self.cursor, self.anchor));
+        }
+        self.carets = moved;
+        let primary = self.carets.remove(primary_at.min(self.carets.len()));
+        self.tidy_carets(primary);
+    }
     /// Place the caret; `select` extends the selection from the anchor instead.
     pub fn set(&mut self, pos: usize, select: bool) {
         let mut pos = pos.min(self.text.len());
@@ -684,25 +809,42 @@ impl Doc {
         self.set(pos, false);
     }
     pub fn undo(&mut self) -> bool {
-        let Some(edit) = self.undo.pop() else {
-            return false;
-        };
-        self.text
-            .replace_range(edit.at..edit.at + edit.inserted.len(), &edit.removed);
-        (self.cursor, self.anchor) = edit.before;
-        self.redo.push(edit);
-        self.typing = false;
-        self.goal = None;
-        true
+        let mut any = false;
+        // An edit marked `group` was made with the one before it; undo takes them all.
+        while let Some(edit) = self.undo.pop() {
+            self.text
+                .replace_range(edit.at..edit.at + edit.inserted.len(), &edit.removed);
+            (self.cursor, self.anchor) = edit.before;
+            let grouped = edit.group;
+            self.redo.push(edit);
+            any = true;
+            if !grouped {
+                break;
+            }
+        }
+        if any {
+            self.carets.clear();
+            self.typing = false;
+            self.goal = None;
+        }
+        any
     }
     pub fn redo(&mut self) -> bool {
         let Some(edit) = self.redo.pop() else {
             return false;
         };
-        self.text
-            .replace_range(edit.at..edit.at + edit.removed.len(), &edit.inserted);
-        (self.cursor, self.anchor) = edit.after;
-        self.undo.push(edit);
+        let apply = |d: &mut Self, edit: Edit| {
+            d.text
+                .replace_range(edit.at..edit.at + edit.removed.len(), &edit.inserted);
+            (d.cursor, d.anchor) = edit.after;
+            d.undo.push(edit);
+        };
+        apply(self, edit);
+        while self.redo.last().is_some_and(|next| next.group) {
+            let edit = self.redo.pop().expect("just looked at it");
+            apply(self, edit);
+        }
+        self.carets.clear();
         self.typing = false;
         self.goal = None;
         true

@@ -7,6 +7,11 @@
 //! The pointer side is equally shared: a wheel turn or a phone swipe over a published
 //! area moves its offset (see the environment's router), and the scroll bar is a drag
 //! surface, `pane:<name>:<track>:<thumb>:<max>`, handled here for every application.
+//!
+//! A pane may scroll sideways instead (`Painter::hpane`): a shelf of album covers. Its
+//! offset runs along x, it is published `horizontal`, the wheel's `delta_x` (or Shift
+//! with the wheel) and a sideways swipe move it, and its bar runs along the bottom edge
+//! as `hpane:<name>:<track>:<thumb>:<max>`.
 use super::{DesktopTheme, Painter};
 use crate::PointerPhase;
 use cw_scene::{Color, Node, Primitive, Rect, ScrollArea, Semantic};
@@ -90,11 +95,19 @@ impl Scroll {
     pub fn reset(&mut self, pane: &str) {
         self.offsets.remove(pane);
     }
-    /// A press, move or release on a pane's scroll bar, `y` down its track. A press on
-    /// the thumb grabs it where it was pressed; a press elsewhere on the track centres
-    /// the thumb there (GTK's and macOS's "jump to the spot") and grabs it by its middle.
-    pub fn drag(&mut self, target: &str, phase: PointerPhase, y: i32) -> Result<bool, String> {
+    /// A press, move or release on a pane's scroll bar at (`x`, `y`) from the bar's
+    /// top-left; only the coordinate along its track counts. A press on the thumb grabs
+    /// it where it was pressed; a press elsewhere on the track centres the thumb there
+    /// (GTK's and macOS's "jump to the spot") and grabs it by its middle.
+    pub fn drag(
+        &mut self,
+        target: &str,
+        phase: PointerPhase,
+        x: i32,
+        y: i32,
+    ) -> Result<bool, String> {
         let bar = ScrollBar::parse(target).ok_or("not a scroll bar")?;
+        let y = if bar.horizontal { x } else { y };
         let travel = bar.travel();
         let top = bar.thumb_top(self.offset(bar.pane).min(bar.max));
         match phase {
@@ -138,16 +151,26 @@ pub struct ScrollBar<'a> {
     pub thumb: u32,
     /// The pane's furthest offset.
     pub max: i32,
+    /// The bar runs along the bottom of a sideways-scrolling pane.
+    pub horizontal: bool,
 }
 impl<'a> ScrollBar<'a> {
     pub fn target(&self) -> String {
         format!(
-            "pane:{}:{}:{}:{}",
-            self.pane, self.track, self.thumb, self.max
+            "{}:{}:{}:{}:{}",
+            if self.horizontal { "hpane" } else { "pane" },
+            self.pane,
+            self.track,
+            self.thumb,
+            self.max
         )
     }
     pub fn parse(target: &'a str) -> Option<Self> {
-        let mut parts = target.strip_prefix("pane:")?.split(':');
+        let (horizontal, rest) = match target.strip_prefix("hpane:") {
+            Some(rest) => (true, rest),
+            None => (false, target.strip_prefix("pane:")?),
+        };
+        let mut parts = rest.split(':');
         let pane = parts.next().filter(|p| !p.is_empty())?;
         let track: u32 = parts.next()?.parse().ok()?;
         let thumb: u32 = parts.next()?.parse().ok()?;
@@ -160,6 +183,7 @@ impl<'a> ScrollBar<'a> {
             track,
             thumb,
             max,
+            horizontal,
         })
     }
     fn travel(&self) -> i32 {
@@ -183,11 +207,22 @@ pub struct Pane {
     mark: usize,
     scrolls: usize,
     title: Option<(String, u32)>,
+    /// Scrolls sideways (`Painter::hpane`).
+    pub horizontal: bool,
 }
 impl Pane {
     /// Where content that begins at the pane's top edge is painted.
     pub fn top(&self) -> i32 {
         self.viewport.y - self.offset
+    }
+    /// Where content that begins at a sideways pane's left edge is painted.
+    pub fn left(&self) -> i32 {
+        self.viewport.x - self.offset
+    }
+    /// Whether a column painted at `x`, `width` wide, is at least partly in view of a
+    /// sideways pane.
+    pub fn shows_x(&self, x: i32, width: u32) -> bool {
+        x + width as i32 > self.viewport.x && x < self.viewport.right()
     }
     pub fn bottom(&self) -> i32 {
         self.viewport.bottom()
@@ -216,7 +251,15 @@ impl Painter {
             mark: self.scene.nodes.len(),
             scrolls: self.scene.scrolls.len(),
             title: None,
+            horizontal: false,
         }
+    }
+    /// Open a pane that scrolls sideways over `viewport`: a shelf of cards. Content
+    /// starts at `Pane::left()`.
+    pub fn hpane(&mut self, name: &str, viewport: Rect) -> Pane {
+        let mut pane = self.pane(name, viewport);
+        pane.horizontal = true;
+        pane
     }
     /// Open a pane that shows its end until it is scrolled: a conversation opens on
     /// its newest message.
@@ -234,36 +277,54 @@ impl Painter {
     /// pane is published with a scroll bar when its content does not fit.
     pub fn end_pane(&mut self, pane: Pane, extent: Option<u32>) -> ScrollArea {
         let view = pane.viewport;
+        let across = pane.horizontal;
+        let span = if across { view.width } else { view.height };
+        let start = if across { pane.left() } else { pane.top() };
         let extent = extent.unwrap_or_else(|| {
-            let bottom = self.scene.nodes[pane.mark..]
+            let end = self.scene.nodes[pane.mark..]
                 .iter()
-                .map(|n| n.transform.bounds(n.bounds).bottom())
+                .map(|n| {
+                    let b = n.transform.bounds(n.bounds);
+                    if across {
+                        b.right()
+                    } else {
+                        b.bottom()
+                    }
+                })
                 .max()
-                .unwrap_or(pane.top());
-            let measured = (bottom - pane.top()).max(0) as u32;
+                .unwrap_or(start);
+            let measured = (end - start).max(0) as u32;
             // The padding only matters to content that overflows; a layout sized to
             // fit the viewport does not become scrollable by it.
-            if measured <= view.height {
+            if measured <= span {
                 measured
             } else {
                 measured + END_PADDING
             }
         });
-        let max = extent.saturating_sub(view.height) as i32;
+        let max = extent.saturating_sub(span) as i32;
         let offset = pane.offset.clamp(0, max);
         // A finger pulling past an end displaces the content by the rubber band; only
-        // at that end, and never by more than the viewport.
+        // at that end, and never by more than the viewport along the pane's own axis.
         let stretch = match self.scroll.stretch_of(&pane.name) {
             s if s > 0 && offset == 0 => s,
             s if s < 0 && offset == max => s,
             _ => 0,
         }
-        .clamp(-(view.height as i32), view.height as i32);
-        // Content painted for an offset the extent does not allow comes back down.
+        .clamp(-(span as i32), span as i32);
+        // Content painted for an offset the extent does not allow comes back.
         let shift = pane.offset - offset + stretch;
         let content = self.scene.nodes.split_off(pane.mark);
         for mut n in content {
-            if shift != 0 {
+            if shift != 0 && across {
+                n.transform.tx = n.transform.tx.saturating_add(shift);
+                if let Some(clip) = &mut n.clip {
+                    clip.x = clip.x.saturating_add(shift);
+                }
+                if let Some(rounded) = &mut n.rounded_clip {
+                    rounded.rect.x = rounded.rect.x.saturating_add(shift);
+                }
+            } else if shift != 0 {
                 n.transform.ty = n.transform.ty.saturating_add(shift);
                 if let Some(clip) = &mut n.clip {
                     clip.y = clip.y.saturating_add(shift);
@@ -282,7 +343,11 @@ impl Painter {
         }
         let inner = self.scene.scrolls.split_off(pane.scrolls);
         for mut area in inner {
-            area.bounds.y = area.bounds.y.saturating_add(shift);
+            if across {
+                area.bounds.x = area.bounds.x.saturating_add(shift);
+            } else {
+                area.bounds.y = area.bounds.y.saturating_add(shift);
+            }
             if let Some(bounds) = area.bounds.intersection(view) {
                 area.bounds = bounds;
                 self.scene.scrolls.push(area);
@@ -297,9 +362,14 @@ impl Painter {
             extent,
             title: pane.title.as_ref().map(|_| title),
             title_height,
+            horizontal: across,
         };
         if max > 0 {
-            self.scroll_bar(&pane.name, view, offset, extent);
+            if across {
+                self.hscroll_bar(&pane.name, view, offset, extent);
+            } else {
+                self.scroll_bar(&pane.name, view, offset, extent);
+            }
         }
         self.scene.scrolls.push(area.clone());
         area
@@ -319,6 +389,7 @@ impl Painter {
             track,
             thumb,
             max: extent.saturating_sub(view.height) as i32,
+            horizontal: false,
         };
         let top = view.y + 2 + bar.thumb_top(offset);
         let (width, color) = match self.theme {
@@ -345,6 +416,52 @@ impl Painter {
         n.semantic = Some(Semantic {
             role: "scrollbar".into(),
             label: format!("Scroll {pane}"),
+            value: Some(format!("{offset} of {}", bar.max)),
+            disabled: false,
+            focusable: false,
+        });
+        self.scene.nodes.push(n);
+        self.z = z;
+    }
+    /// A sideways pane's bar, along its bottom edge: the same thumb and track, turned.
+    fn hscroll_bar(&mut self, pane: &str, view: Rect, offset: i32, extent: u32) {
+        if self.theme.mobile() || view.height < 24 || view.width < 24 {
+            return;
+        }
+        let track = view.width.saturating_sub(4);
+        let thumb = (u64::from(track) * u64::from(view.width) / u64::from(extent.max(1)))
+            .clamp(u64::from(MIN_THUMB.min(track)), u64::from(track)) as u32;
+        let bar = ScrollBar {
+            pane,
+            track,
+            thumb,
+            max: extent.saturating_sub(view.width) as i32,
+            horizontal: true,
+        };
+        let left = view.x + 2 + bar.thumb_top(offset);
+        let (height, color) = match self.theme {
+            DesktopTheme::Macos => (7, Color(96, 96, 100, 150)),
+            DesktopTheme::Windows => (6, Color(110, 110, 110, 170)),
+            _ => (6, Color(100, 100, 100, 150)),
+        };
+        let z = self.z;
+        self.z += 3;
+        self.box_(
+            Rect::new(left, view.bottom() - height as i32 - 3, thumb, height),
+            color,
+            height / 2,
+        );
+        let mut n = Node::new(
+            self.next,
+            Rect::new(view.x + 2, view.bottom() - 14, track, 14),
+            Primitive::Region,
+        );
+        self.next += 1;
+        n.z = self.z;
+        n.interaction = Some(bar.target());
+        n.semantic = Some(Semantic {
+            role: "scrollbar".into(),
+            label: format!("Scroll {pane} sideways"),
             value: Some(format!("{offset} of {}", bar.max)),
             disabled: false,
             focusable: false,
@@ -526,23 +643,70 @@ mod tests {
             track: 200,
             thumb: 50,
             max: 600,
+            horizontal: false,
         };
         let target = bar.target();
         assert_eq!(ScrollBar::parse(&target), Some(bar));
         let mut s = Scroll::default();
         // Grab the thumb at its top edge and pull it half way down its travel.
-        s.drag(&target, PointerPhase::Down, 2).unwrap();
+        s.drag(&target, PointerPhase::Down, 0, 2).unwrap();
         assert_eq!(s.offset("list"), 0);
-        s.drag(&target, PointerPhase::Move, 77).unwrap();
+        s.drag(&target, PointerPhase::Move, 0, 77).unwrap();
         assert_eq!(s.offset("list"), 300);
-        s.drag(&target, PointerPhase::Up, 1000).unwrap();
+        s.drag(&target, PointerPhase::Up, 0, 1000).unwrap();
         assert_eq!(s.offset("list"), 600);
         assert!(s.grab.is_none());
         // A press on the track away from the thumb centres the thumb there.
         let mut s = Scroll::default();
-        s.drag(&target, PointerPhase::Down, 100).unwrap();
+        s.drag(&target, PointerPhase::Down, 0, 100).unwrap();
         assert_eq!(s.offset("list"), 300);
         assert!(ScrollBar::parse("pane:list:10:20:5").is_none());
+    }
+
+    #[test]
+    fn a_sideways_pane_clips_along_x_and_its_bar_drags_along_the_bottom() {
+        let mut p = Painter::themed(DesktopTheme::Macos, 800, 400, 1);
+        p.scroll.set("shelf", 250);
+        let pane = p.hpane("shelf", Rect::new(20, 100, 400, 200));
+        for i in 0..8 {
+            p.button(
+                Rect::new(pane.left() + i * 170, 100, 160, 180),
+                Color::WHITE,
+                0,
+                &format!("card:{i}"),
+                "Card",
+            );
+        }
+        let area = p.end_pane(pane, None);
+        assert!(area.horizontal);
+        assert_eq!(area.extent, 8 * 170 - 10 + END_PADDING);
+        assert_eq!(area.offset, 250);
+        // Card 1 starts at 170 - 250 from the left edge; card 0 is gone.
+        let x = |i: usize| {
+            p.scene
+                .nodes
+                .iter()
+                .find(|n| n.interaction.as_deref() == Some(&format!("card:{i}")))
+                .map(|n| n.transform.bounds(n.bounds).x)
+        };
+        assert_eq!(x(0), None);
+        assert_eq!(x(1), Some(20 + 170 - 250));
+        assert_eq!(x(7), None, "past the right edge");
+        let bar = p
+            .scene
+            .nodes
+            .iter()
+            .find_map(|n| n.interaction.as_deref().and_then(ScrollBar::parse))
+            .unwrap();
+        assert!(bar.horizontal && bar.target().starts_with("hpane:shelf:"));
+        let mut s = Scroll::default();
+        s.drag(&bar.target(), PointerPhase::Down, bar.track as i32, 0)
+            .unwrap();
+        assert_eq!(
+            s.offset("shelf"),
+            bar.max,
+            "a press at the far end goes there"
+        );
     }
 
     #[test]

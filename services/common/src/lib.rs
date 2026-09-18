@@ -269,6 +269,32 @@ pub fn badge(id: &str, text: impl Into<String>, style: Style) -> PageElement {
         style,
     }
 }
+/// A glyph from `cw_protocol::PAGE_ICONS`, as a picture named `label`.
+pub fn icon(id: &str, name: &str, label: impl Into<String>, style: Style) -> PageElement {
+    PageElement::Icon {
+        id: id.into(),
+        name: name.into(),
+        label: label.into(),
+        style,
+        action: None,
+    }
+}
+/// An icon that is a button: the padded square is one click target named `label`.
+pub fn icon_action(
+    id: &str,
+    name: &str,
+    label: impl Into<String>,
+    style: Style,
+    action: PageAction,
+) -> PageElement {
+    PageElement::Icon {
+        id: id.into(),
+        name: name.into(),
+        label: label.into(),
+        style,
+        action: Some(action),
+    }
+}
 pub fn divider(id: &str) -> PageElement {
     PageElement::Divider {
         id: id.into(),

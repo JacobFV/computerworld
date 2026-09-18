@@ -17,7 +17,8 @@ fn catalog(player: serde_json::Value) -> String {
         ],
         "tracks": [
             {"id": "cold-reads", "title": "Cold Reads", "artist": "cache-miss", "album": "cold-reads",
-             "duration_ms": 10000, "plays": 9, "tags": ["focus", "lo-fi"]},
+             "duration_ms": 10000, "plays": 9, "tags": ["focus", "lo-fi"],
+             "lyrics": [[1000, "one"], [4000, "two"], [8000, "three"]]},
             {"id": "warm-cache", "title": "Warm Cache", "artist": "cache-miss", "album": "cold-reads",
              "duration_ms": 20000, "plays": 8, "tags": ["sleep"]},
             {"id": "eviction", "title": "Eviction", "artist": "cache-miss", "album": "cold-reads",
@@ -33,7 +34,13 @@ fn catalog(player: serde_json::Value) -> String {
         "library": ["tiling", "cold-reads"],
         "history": ["cold-reads"],
         "subscriptions": ["tessellate"],
-        "player": player
+        "player": player,
+        "devices": [
+            {"id": "livingroom", "name": "Living Room", "kind": "speaker",
+             "url": "http://livingroom.speaker.internal/", "protocols": ["airplay", "cast"]},
+            {"id": "bedroom", "name": "Bedroom", "kind": "speaker",
+             "url": "http://bedroom.speaker.internal/", "protocols": ["airplay"]}
+        ]
     })
     .to_string()
 }
@@ -358,6 +365,18 @@ fn every_painted_control_is_one_the_model_accepts() {
     composing.text("Mix").unwrap();
     states.push(("composer".into(), composing));
     states.push(("nothing playing".into(), app_with(serde_json::Value::Null)));
+    let mut lyrics = base.clone();
+    lyrics.click(1, "music:expand", 0).unwrap();
+    lyrics.click(1, "music:lyrics", 0).unwrap();
+    states.push(("lyrics".into(), lyrics));
+    let mut picker = base.clone();
+    picker.click(1, "music:output", 0).unwrap();
+    picker.http(1, "probe:livingroom", 200, "{}").unwrap();
+    picker.offline("probe:bedroom", "no route to host");
+    states.push(("output picker".into(), picker));
+    let mut popover = base.clone();
+    popover.click(1, "music:volume-popover", 0).unwrap();
+    states.push(("volume popover".into(), popover));
     for theme in [
         DesktopTheme::Macos,
         DesktopTheme::Windows,
@@ -398,8 +417,12 @@ fn every_painted_control_is_one_the_model_accepts() {
                 "{name} on {theme:?} paints no controls"
             );
             // A pane's scroll bar is the window's, not the player's: the platform
-            // drags it (see `desktop_scene::scroll`).
-            for target in targets.into_iter().filter(|t| !t.starts_with("pane:")) {
+            // drags it (see `desktop_scene::scroll`); a phone's volume slider sets the
+            // phone's volume, which the shell owns (`shell:set:volume:<pct>`).
+            for target in targets
+                .into_iter()
+                .filter(|t| !t.starts_with("pane:") && !t.starts_with("shell:"))
+            {
                 let mut app = state.clone();
                 assert!(
                     app.click(1, &target, 3 * S).is_ok(),
@@ -408,4 +431,192 @@ fn every_painted_control_is_one_the_model_accepts() {
             }
         }
     }
+}
+
+#[test]
+fn volume_and_mute_are_the_players_own_and_real_requests() {
+    let mut app = app_with(playing(0, true));
+    assert_eq!(app.catalog.player.as_ref().unwrap().volume, 100);
+    let (method, url, body) = request(&app.click(1, "music:volume:35", 0).unwrap());
+    assert_eq!(
+        (method.as_str(), url.as_str(), body),
+        (
+            "POST",
+            "http://spotify.com/api/player",
+            json!({"action": "volume", "level": 35})
+        )
+    );
+    let (_, _, body) = request(&app.click(1, "music:mute", 0).unwrap());
+    assert_eq!(body, json!({"action": "mute"}));
+    assert!(app.click(1, "music:volume:101", 0).is_err());
+    // The level shown is what reaches the output: nothing while muted.
+    let mut muted = playing(0, true);
+    muted["volume"] = json!(40);
+    muted["muted"] = json!(true);
+    let app = app_with(muted);
+    assert_eq!(app.catalog.player.as_ref().unwrap().audible(), 0);
+    // On a phone the slider is the phone's volume while the music plays there.
+    let (level, target) = art::volume_binding(&app, DesktopTheme::Ios, 70);
+    assert_eq!((level, target), (70, "shell:set:volume:"));
+    let (level, target) = art::volume_binding(&app, DesktopTheme::Macos, 70);
+    assert_eq!((level, target), (0, "music:volume:"));
+    assert!(app_with(serde_json::Value::Null)
+        .click(1, "music:volume:20", 0)
+        .is_err());
+}
+
+#[test]
+fn lyrics_follow_the_world_clock_and_a_line_seeks_to_it() {
+    let mut app = app_with(playing(0, true));
+    let track = app.now().unwrap().clone();
+    assert_eq!(track.sung(500), None);
+    assert_eq!(track.sung(1_000), Some(0));
+    assert_eq!(track.sung(5_000), Some(1));
+    assert_eq!(track.sung(9_999), Some(2));
+    app.click(1, "music:lyrics", 0).unwrap();
+    assert!(app.lyrics);
+    let lit = |app: &Music, clock: u64| -> Vec<String> {
+        let mut p = Painter::themed(DesktopTheme::Macos, 1000, 640, 0);
+        app.render(
+            &mut p,
+            &crate::AppEnv {
+                theme: DesktopTheme::Macos,
+                width: 1000,
+                height: 640,
+                clock_us: clock,
+                settings: &crate::SystemSettings::DEFAULT,
+                clipboard: None,
+                share_to: None,
+                editor: None,
+                pointer: None,
+                files: Default::default(),
+            },
+        );
+        // The sung line is the one drawn in full ink.
+        p.scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                cw_scene::Primitive::UiTextBold { text, color, .. }
+                    if ["one", "two", "three"].contains(&text.as_str())
+                        && *color == cw_scene::Color::rgb(29, 29, 31) =>
+                {
+                    Some(text.clone())
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(lit(&app, 2 * S), ["one"]);
+    assert_eq!(lit(&app, 5 * S), ["two"]);
+    assert_eq!(lit(&app, 9 * S), ["three"]);
+    let (_, _, body) = request(&app.click(1, "music:lyric:1", 9 * S).unwrap());
+    assert_eq!(body, json!({"action": "seek", "position_ms": 4000}));
+    assert!(app.click(1, "music:lyric:9", 9 * S).is_err());
+}
+
+#[test]
+fn casting_asks_the_speakers_hands_the_session_over_and_keeps_it_current() {
+    let mut app = app_with(playing(0, true));
+    // Opening the picker asks every speaker whether it is there.
+    let probes = app.click(1, "music:output", 0).unwrap();
+    let urls: Vec<_> = probes
+        .iter()
+        .map(|e| match e {
+            AppEffect::Http { url, tag, .. } => (tag.clone(), url.clone()),
+            other => panic!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(
+        urls,
+        [
+            (
+                "probe:livingroom".to_owned(),
+                "http://livingroom.speaker.internal/api/status".to_owned()
+            ),
+            (
+                "probe:bedroom".to_owned(),
+                "http://bedroom.speaker.internal/api/status".to_owned()
+            )
+        ]
+    );
+    // One answers; one is not on the network, which is about it, not the service.
+    app.http(1, "probe:livingroom", 200, "{}").unwrap();
+    app.offline("probe:bedroom", "no route to host");
+    assert_eq!(app.status, Status::Idle);
+    assert!(app.click(1, "music:output:bedroom", 0).is_err());
+    // Choosing one sends it the whole session first.
+    let (method, url, body) = request(&app.click(1, "music:output:livingroom", 0).unwrap());
+    assert_eq!(
+        (method.as_str(), url.as_str()),
+        ("POST", "http://livingroom.speaker.internal/api/cast")
+    );
+    assert_eq!(body["source"], "http://spotify.com/");
+    assert_eq!(
+        body["player"]["queue"],
+        json!(["cold-reads", "warm-cache", "eviction"])
+    );
+    assert_eq!(body["tracks"]["warm-cache"]["artist"], "Cache Miss");
+    assert_eq!(body["tracks"]["warm-cache"]["album"], "Cold Reads");
+    // Once it has it, the service is told where the sound now goes.
+    let (_, url, body) = request(&app.http(1, "cast:livingroom", 200, "{}").unwrap());
+    assert_eq!(url, "http://spotify.com/api/player");
+    assert_eq!(body, json!({"action": "output", "device": "livingroom"}));
+    // From then on every fresh catalogue is handed to the speaker too.
+    let mut there = playing(0, true);
+    there["device"] = json!("livingroom");
+    there["device_name"] = json!("Living Room");
+    let synced = app.http(1, "catalog", 200, &catalog(there)).unwrap();
+    assert!(matches!(synced.as_slice(),
+        [AppEffect::Http { tag, url, .. }]
+            if tag == "sync:livingroom" && url == "http://livingroom.speaker.internal/api/cast"));
+    // Back to this device: the speaker lets go and the service plays here again.
+    let back = app.click(1, "music:output:", 0).unwrap();
+    let targets: Vec<_> = back
+        .iter()
+        .map(|e| match e {
+            AppEffect::Http { url, body, .. } => (url.clone(), body.clone()),
+            other => panic!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(targets[0].0, "http://livingroom.speaker.internal/api/stop");
+    assert_eq!(targets[1].0, "http://spotify.com/api/player");
+    assert!(targets[1].1.contains("\"device\":\"\""));
+    // A speaker that stops answering is said to, without taking the player offline for good.
+    app.offline("sync:livingroom", "connection refused");
+    assert!(matches!(&app.status, Status::Offline(why) if why.contains("Living Room")));
+}
+
+#[test]
+fn covers_are_the_same_composition_everywhere_and_avatars_are_round() {
+    let draw = |key: &str, r: cw_scene::Rect, radius: u32| {
+        let mut p = Painter::themed(DesktopTheme::Macos, 400, 400, 0);
+        art::cover(&mut p, r, key, radius);
+        p.scene.nodes
+    };
+    let a = draw("cold-reads", cw_scene::Rect::new(10, 10, 120, 120), 6);
+    assert_eq!(
+        a,
+        draw("cold-reads", cw_scene::Rect::new(10, 10, 120, 120), 6)
+    );
+    assert_ne!(a, draw("tiling", cw_scene::Rect::new(10, 10, 120, 120), 6));
+    assert!(a.len() > 5, "a composition, not a flat tile");
+    // Nothing spills out of the cover's square, and its corners are rounded.
+    for n in &a {
+        let clip = n.clip.unwrap();
+        assert!(clip.x >= 10 && clip.y >= 10 && clip.right() <= 130 && clip.bottom() <= 130);
+        assert_eq!(n.rounded_clip.unwrap().radius, 6);
+    }
+    let mut p = Painter::themed(DesktopTheme::Macos, 400, 400, 0);
+    art::avatar(
+        &mut p,
+        cw_scene::Rect::new(0, 0, 80, 80),
+        "cache-miss",
+        "Cache Miss",
+    );
+    assert!(p
+        .scene
+        .nodes
+        .iter()
+        .all(|n| n.rounded_clip.is_some_and(|c| c.radius == 40)));
 }

@@ -1,4 +1,5 @@
 //! Pure, serializable computer substrate. No host filesystem, clock, or process access.
+pub mod debug;
 pub mod git;
 pub mod packages;
 pub mod process;
@@ -122,6 +123,12 @@ pub struct Computer {
     pub installed_apps: std::collections::BTreeSet<String>,
     #[serde(default)]
     pub hardware: Hardware,
+    /// Programs paused under a debugger (`debug::DebugAdapter`).
+    #[serde(default, skip_serializing_if = "debug_is_empty")]
+    pub debug: debug::DebugTable,
+}
+fn debug_is_empty(t: &debug::DebugTable) -> bool {
+    t.sessions.is_empty() && t.next == 0
 }
 impl Computer {
     pub fn validate(&self) -> cw_protocol::Result<()> {
@@ -173,6 +180,7 @@ impl Computer {
             packages: PackageManager::default(),
             installed_apps: std::collections::BTreeSet::new(),
             hardware: Hardware::default(),
+            debug: debug::DebugTable::default(),
         }
     }
     pub fn from_definition(
