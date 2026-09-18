@@ -325,13 +325,15 @@ impl<'h> Vm<'h> {
     /// Drains `process.nextTick` callbacks and promise jobs.
     pub fn run_microtasks(&mut self) -> JsResult<()> {
         let saved = self.tail;
+        let between = self.drain.between;
+        let tick = self.drain.tick || !self.ticks.is_empty();
         let r = (|| loop {
             while let Some((f, args)) = self.ticks.pop_front() {
-                self.tail = Tail::Tick;
+                self.tail = Tail::Tick(between);
                 self.call(&f, Value::Undefined, args)?;
             }
             while let Some(job) = self.microtasks.pop_front() {
-                self.tail = Tail::Microtask;
+                self.tail = Tail::Microtask(between, tick);
                 self.run_job(job)?;
             }
             if self.ticks.is_empty() && self.microtasks.is_empty() {

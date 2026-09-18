@@ -1,0 +1,30 @@
+--- exit: 0
+--- stdout
+async start
+sync end
+nextTick 1
+nextTick 2
+promise 1
+microtask
+after await 1
+caught handled now
+promise 2
+agen 1
+timeout 0
+immediate
+agen 2
+for await a
+for await b
+timeout 5
+timeout 10
+after sleep 20
+all [1,2,3]
+settled rejected:no,fulfilled:yes
+race fast
+AggregateError All promises were rejected 2
+interval
+interval
+interval
+elapsed >= 1000: true
+exit event 0 26
+--- stderr

@@ -140,6 +140,7 @@ impl<'h> Vm<'h> {
             timer_seq: 0,
             timer_id: 1,
             elapsed_ms: 0.0,
+            clock_steps: 0,
             start_micros,
             pending_rejections: vec![],
             modules: vec![],
@@ -167,7 +168,9 @@ impl<'h> Vm<'h> {
             trace_funcs: vec![],
             exit_code_set: false,
             esm_promises: vec![],
-            timer_frame: false,
+            timer_frame: 0,
+            drain: Drain::default(),
+            out_mark: 0,
             open_fds: vec![],
             completion: Value::Undefined,
         };

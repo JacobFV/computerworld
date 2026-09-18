@@ -48,7 +48,8 @@ fn error_ctor(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let arr = vm.arr(errs);
         e.set_hidden("errors", arr);
     }
-    vm.capture_stack(&e, None);
+    let skip = (!nt.ptr_eq(&a.callee)).then_some(nt);
+    vm.capture_stack(&e, skip.as_ref());
     Ok(Value::Obj(e))
 }
 
@@ -75,9 +76,7 @@ fn capture_stack_trace(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             frames.drain(..=i.min(frames.len() - 1));
         }
     }
-    for t in vm.tail_frames() {
-        frames.push(t.to_string());
-    }
+    vm.append_tail(&mut frames);
     frames.truncate(vm.stack_limit);
     let is_error = matches!(o.borrow().kind, Kind::Error(_));
     if is_error {

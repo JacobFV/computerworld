@@ -131,9 +131,7 @@ fn console_trace(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let (frames, _) = vm.stack_frames(true);
     let mut out = format!("Trace: {s}");
     let mut fr = frames;
-    for t in vm.tail_frames() {
-        fr.push(t.to_string());
-    }
+    vm.append_tail(&mut fr);
     fr.truncate(vm.stack_limit);
     for f in fr {
         out.push_str("\n    at ");
@@ -663,7 +661,8 @@ fn add_timer(vm: &mut Vm, a: &Args, repeat: bool, immediate: bool) -> JsResult<V
         );
     }
     vm.timer_seq += 1;
-    let when = vm.elapsed_ms + delay;
+    // Node reads a fresh loop time when a timer starts.
+    let when = vm.clock() + delay;
     vm.timers.push(Timer {
         id,
         when,
@@ -673,6 +672,8 @@ fn add_timer(vm: &mut Vm, a: &Args, repeat: bool, immediate: bool) -> JsResult<V
         interval: if repeat { Some(delay) } else { None },
         obj: obj.clone(),
         immediate,
+        io: false,
+        dur: delay,
     });
     Ok(Value::Obj(obj))
 }
@@ -735,7 +736,7 @@ fn timer_has_ref(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 fn timer_refresh(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     if let Some(id) = timer_id_of(&a.this) {
-        let now = vm.elapsed_ms;
+        let now = vm.clock();
         vm.timer_seq += 1;
         let seq = vm.timer_seq;
         for t in vm.timers.iter_mut() {
@@ -767,9 +768,9 @@ fn timer_to_primitive(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 }
 
 impl<'h> Vm<'h> {
-    pub fn perf_now(&self) -> f64 {
+    pub fn perf_now(&mut self) -> f64 {
         // Monotonic virtual milliseconds since start (plus a boot offset).
-        30.0 + self.elapsed_ms + (self.steps as f64) / 50_000_000.0
+        30.0 + self.clock()
     }
 
     fn timeout_proto(&mut self, immediate: bool) -> Obj {
@@ -954,9 +955,7 @@ impl<'h> Vm<'h> {
             .position(|f| f.starts_with("Module.require"))
             .unwrap_or(0);
         all.extend(user.into_iter().skip(skip));
-        for t in self.tail_frames() {
-            all.push(t.to_string());
-        }
+        self.append_tail(&mut all);
         all.truncate(self.stack_limit);
         if let Kind::Error(ed) = &mut e.borrow_mut().kind {
             ed.frames = all;
@@ -1184,9 +1183,7 @@ impl<'h> Vm<'h> {
                 frames.push("Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)".into());
                 frames.push("node:internal/main/run_main_module:33:47".into());
             } else {
-                for t in self.tail_frames() {
-                    frames.push(t.to_string());
-                }
+                self.append_tail(&mut frames);
             }
         }
         frames.truncate(self.stack_limit);
@@ -1513,92 +1510,138 @@ impl<'h> Vm<'h> {
 
     // ------------------------------------------------------------ event loop
 
-    /// Runs microtasks, timers and immediates until nothing is pending.
+    /// Runs microtasks, timers and immediates until nothing is pending,
+    /// phase by phase like libuv: due timers, I/O completions, immediates.
     pub fn event_loop(&mut self) -> JsResult<()> {
         loop {
-            self.run_microtasks_checked()?;
-            // Due timers first (by time, then creation order), then
-            // immediates, then advance the clock.
-            let now = self.elapsed_ms;
-            let due = self
+            self.drain_after(None)?;
+            let now = self.clock();
+            let mut ran = false;
+            // Timers phase: due timers by time then creation order; Node
+            // runs ticks and promise jobs between two of them.
+            let mut prev: Option<f64> = None;
+            while let Some(i) = self.next_due_timer(now) {
+                if let Some(d) = prev {
+                    let b = if d == self.timers[i].dur {
+                        Batch::List
+                    } else {
+                        Batch::Lists
+                    };
+                    self.drain_after(Some(b))?;
+                }
+                prev = Some(self.timers[i].dur);
+                self.fire_timer(i)?;
+                ran = true;
+            }
+            if ran {
+                self.drain_after(None)?;
+            }
+            // Poll phase: completed I/O, one callback at a time.
+            while let Some(i) = self.timers.iter().position(|t| t.io) {
+                self.fire_timer(i)?;
+                self.drain_after(None)?;
+                ran = true;
+            }
+            // Check phase: the immediates queued before it started.
+            let ids: Vec<u64> = self
                 .timers
                 .iter()
-                .enumerate()
-                .filter(|(_, t)| !t.immediate && t.when <= now)
-                .min_by(|a, b| {
-                    a.1.when
-                        .partial_cmp(&b.1.when)
-                        .unwrap()
-                        .then(a.1.seq.cmp(&b.1.seq))
-                })
-                .map(|(i, _)| i);
-            if let Some(i) = due {
-                self.fire_timer(i)?;
-                continue;
-            }
-            if let Some(i) = self.timers.iter().position(|t| t.immediate) {
-                self.fire_timer(i)?;
-                continue;
-            }
-            let refed: Vec<usize> = self
-                .timers
-                .iter()
-                .enumerate()
-                .filter(|(_, t)| !matches!(t.obj.own_value("%unref"), Some(Value::Bool(true))))
-                .map(|(i, _)| i)
+                .filter(|t| t.immediate && !t.io)
+                .map(|t| t.id)
                 .collect();
-            if refed.is_empty() {
-                break;
+            let mut first = true;
+            for id in ids {
+                let Some(i) = self.timers.iter().position(|t| t.id == id) else {
+                    continue;
+                };
+                if !first {
+                    self.drain_after(Some(Batch::Immediates))?;
+                }
+                first = false;
+                self.fire_timer(i)?;
+                ran = true;
             }
-            let next = refed
+            if ran {
+                continue;
+            }
+            let next = self
+                .timers
                 .iter()
-                .copied()
-                .min_by(|&a, &b| {
-                    self.timers[a]
-                        .when
-                        .partial_cmp(&self.timers[b].when)
-                        .unwrap()
-                        .then(self.timers[a].seq.cmp(&self.timers[b].seq))
-                })
-                .unwrap();
-            if self.timers[next].when > self.elapsed_ms {
-                self.elapsed_ms = self.timers[next].when;
+                .filter(|t| !matches!(t.obj.own_value("%unref"), Some(Value::Bool(true))))
+                .map(|t| t.when)
+                .min_by(|a, b| a.partial_cmp(b).unwrap());
+            match next {
+                Some(w) => self.elapsed_ms = self.clock().max(w),
+                None => break,
             }
-            self.fire_timer(next)?;
         }
         Ok(())
     }
 
+    fn next_due_timer(&self, now: f64) -> Option<usize> {
+        self.timers
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| !t.immediate && t.when <= now)
+            .min_by(|a, b| {
+                a.1.when
+                    .partial_cmp(&b.1.when)
+                    .unwrap()
+                    .then(a.1.seq.cmp(&b.1.seq))
+            })
+            .map(|(i, _)| i)
+    }
+
+    /// Drains ticks and promise jobs after a callback, in the context Node
+    /// would (between two callbacks of a batch, or after the batch).
+    fn drain_after(&mut self, between: Option<Batch>) -> JsResult<()> {
+        let saved = self.drain;
+        self.drain = Drain {
+            between,
+            tick: self.stdout.len() + self.stderr.len() != self.out_mark,
+        };
+        let r = self.run_microtasks_checked();
+        self.drain = saved;
+        self.out_mark = self.stdout.len() + self.stderr.len();
+        r
+    }
+
     fn fire_timer(&mut self, i: usize) -> JsResult<()> {
         let t = &self.timers[i];
-        let (cb, args, obj, immediate) = (
+        let (cb, args, obj, immediate, io) = (
             t.callback.clone(),
             t.args.clone(),
             t.obj.clone(),
             t.immediate,
+            t.io,
         );
         match t.interval {
             Some(d) => {
                 self.timer_seq += 1;
                 let seq = self.timer_seq;
+                let now = self.clock();
                 let t = &mut self.timers[i];
-                t.when = t.when.max(self.elapsed_ms) + d;
+                t.when = now + d;
                 t.seq = seq;
             }
             None => {
                 self.timers.remove(i);
             }
         }
-        self.tail = if immediate {
-            Tail::Immediate
+        self.out_mark = self.stdout.len() + self.stderr.len();
+        let (tail, frame, this) = if io {
+            (Tail::None, 0, Value::Undefined)
+        } else if immediate {
+            (Tail::Immediate, IMMEDIATE_FRAME, Value::Obj(obj))
         } else {
-            Tail::Timer
+            (Tail::Timer, TIMEOUT_FRAME, Value::Obj(obj))
         };
-        self.timer_frame = !immediate;
-        let r = self.call(&cb, Value::Obj(obj), args);
-        self.timer_frame = false;
+        self.tail = tail;
+        self.timer_frame = frame;
+        let r = self.call(&cb, this, args);
+        self.timer_frame = 0;
         r?;
-        self.tail = Tail::Microtask;
+        self.tail = Tail::Microtask(None, false);
         Ok(())
     }
 

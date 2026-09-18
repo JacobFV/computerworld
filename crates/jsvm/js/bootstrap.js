@@ -69,6 +69,79 @@ process.config = { variables: {} };
 process.allowedNodeEnvironmentFlags = new Set();
 process.report = {};
 
+// ---- DataView
+const dvScratch = new ArrayBuffer(8);
+const dvBytes = new Uint8Array(dvScratch);
+const dvViews = {
+  Int8: new Int8Array(dvScratch), Uint8: new Uint8Array(dvScratch),
+  Int16: new Int16Array(dvScratch), Uint16: new Uint16Array(dvScratch),
+  Int32: new Int32Array(dvScratch), Uint32: new Uint32Array(dvScratch),
+  Float32: new Float32Array(dvScratch), Float64: new Float64Array(dvScratch),
+  BigInt64: new BigInt64Array(dvScratch), BigUint64: new BigUint64Array(dvScratch),
+};
+const dvSizes = { Int8: 1, Uint8: 1, Int16: 2, Uint16: 2, Int32: 4, Uint32: 4, Float32: 4, Float64: 8, BigInt64: 8, BigUint64: 8 };
+const dvToIndex = (v) => {
+  const n = Math.trunc(Number(v)) || 0;
+  if (n < 0 || n > Number.MAX_SAFE_INTEGER) throw new RangeError('Offset is outside the bounds of the DataView');
+  return n;
+};
+class DataView {
+  #bytes;
+  #buffer;
+  constructor(buffer, byteOffset, byteLength) {
+    if (!(buffer instanceof ArrayBuffer)) throw new TypeError('First argument to DataView constructor must be an ArrayBuffer');
+    const off = Math.trunc(Number(byteOffset)) || 0;
+    if (off < 0 || off > buffer.byteLength) throw new RangeError(`Start offset ${byteOffset} is outside the bounds of the buffer`);
+    const len = byteLength === undefined ? buffer.byteLength - off : Math.trunc(Number(byteLength)) || 0;
+    if (len < 0 || off + len > buffer.byteLength) throw new RangeError(`Invalid DataView length ${byteLength}`);
+    this.#buffer = buffer;
+    this.#bytes = new Uint8Array(buffer, off, len);
+  }
+  get buffer() { return this.#buffer; }
+  get byteLength() { return this.#bytes.length; }
+  get byteOffset() { return this.#bytes.byteOffset; }
+  get [Symbol.toStringTag]() { return 'DataView'; }
+  static #get(dv, type, offset, little) {
+    const n = dvSizes[type];
+    const at = dvToIndex(offset);
+    const bytes = dv.#bytes;
+    if (at + n > bytes.length) throw new RangeError('Offset is outside the bounds of the DataView');
+    for (let i = 0; i < n; i++) dvBytes[i] = bytes[at + (little ? i : n - 1 - i)];
+    return dvViews[type][0];
+  }
+  static #set(dv, type, offset, value, little) {
+    const n = dvSizes[type];
+    const at = dvToIndex(offset);
+    const view = dvViews[type];
+    view[0] = type.startsWith('Big') ? BigInt(value) : Number(value);
+    const bytes = dv.#bytes;
+    if (at + n > bytes.length) throw new RangeError('Offset is outside the bounds of the DataView');
+    for (let i = 0; i < n; i++) bytes[at + (little ? i : n - 1 - i)] = dvBytes[i];
+  }
+  getInt8(o) { return DataView.#get(this, 'Int8', o, true); }
+  getUint8(o) { return DataView.#get(this, 'Uint8', o, true); }
+  getInt16(o, le) { return DataView.#get(this, 'Int16', o, !!le); }
+  getUint16(o, le) { return DataView.#get(this, 'Uint16', o, !!le); }
+  getInt32(o, le) { return DataView.#get(this, 'Int32', o, !!le); }
+  getUint32(o, le) { return DataView.#get(this, 'Uint32', o, !!le); }
+  getFloat32(o, le) { return DataView.#get(this, 'Float32', o, !!le); }
+  getFloat64(o, le) { return DataView.#get(this, 'Float64', o, !!le); }
+  getBigInt64(o, le) { return DataView.#get(this, 'BigInt64', o, !!le); }
+  getBigUint64(o, le) { return DataView.#get(this, 'BigUint64', o, !!le); }
+  setInt8(o, v) { DataView.#set(this, 'Int8', o, v, true); }
+  setUint8(o, v) { DataView.#set(this, 'Uint8', o, v, true); }
+  setInt16(o, v, le) { DataView.#set(this, 'Int16', o, v, !!le); }
+  setUint16(o, v, le) { DataView.#set(this, 'Uint16', o, v, !!le); }
+  setInt32(o, v, le) { DataView.#set(this, 'Int32', o, v, !!le); }
+  setUint32(o, v, le) { DataView.#set(this, 'Uint32', o, v, !!le); }
+  setFloat32(o, v, le) { DataView.#set(this, 'Float32', o, v, !!le); }
+  setFloat64(o, v, le) { DataView.#set(this, 'Float64', o, v, !!le); }
+  setBigInt64(o, v, le) { DataView.#set(this, 'BigInt64', o, v, !!le); }
+  setBigUint64(o, v, le) { DataView.#set(this, 'BigUint64', o, v, !!le); }
+}
+Object.defineProperty(globalThis, 'DataView', { value: DataView, writable: true, configurable: true, enumerable: false });
+
+
 // ---- Buffer
 class Buffer extends Uint8Array {
   static from(value, encodingOrOffset, length) {
@@ -156,26 +229,132 @@ class Buffer extends Uint8Array {
     for (let i = sourceStart; i < sourceEnd && targetStart + n < target.length; i++, n++) target[targetStart + n] = this[i];
     return n;
   }
-  readUInt8(o = 0) { return this[o]; }
-  readInt8(o = 0) { const v = this[o]; return v > 127 ? v - 256 : v; }
-  readUInt16LE(o = 0) { return this[o] | (this[o + 1] << 8); }
-  readUInt16BE(o = 0) { return (this[o] << 8) | this[o + 1]; }
-  readUInt32LE(o = 0) { return (this[o] | (this[o + 1] << 8) | (this[o + 2] << 16)) + this[o + 3] * 0x1000000; }
-  readUInt32BE(o = 0) { return this[o] * 0x1000000 + ((this[o + 1] << 16) | (this[o + 2] << 8) | this[o + 3]); }
-  readInt32LE(o = 0) { return this[o] | (this[o + 1] << 8) | (this[o + 2] << 16) | (this[o + 3] << 24); }
-  readInt32BE(o = 0) { return (this[o] << 24) | (this[o + 1] << 16) | (this[o + 2] << 8) | this[o + 3]; }
-  writeUInt8(v, o = 0) { this[o] = v; return o + 1; }
-  writeUInt16LE(v, o = 0) { this[o] = v; this[o + 1] = v >>> 8; return o + 2; }
-  writeUInt16BE(v, o = 0) { this[o] = v >>> 8; this[o + 1] = v; return o + 2; }
-  writeUInt32LE(v, o = 0) { this[o] = v; this[o + 1] = v >>> 8; this[o + 2] = v >>> 16; this[o + 3] = v >>> 24; return o + 4; }
-  writeUInt32BE(v, o = 0) { this[o] = v >>> 24; this[o + 1] = v >>> 16; this[o + 2] = v >>> 8; this[o + 3] = v; return o + 4; }
-  writeInt32LE(v, o = 0) { return this.writeUInt32LE(v >>> 0, o); }
-  writeInt32BE(v, o = 0) { return this.writeUInt32BE(v >>> 0, o); }
 }
-Buffer.prototype.readUint8 = Buffer.prototype.readUInt8;
-Buffer.prototype.readUint16LE = Buffer.prototype.readUInt16LE;
-Buffer.prototype.readUint32LE = Buffer.prototype.readUInt32LE;
 Buffer.poolSize = 8192;
+// Node's numeric accessors on Buffer.
+const bufSep = (s) => {
+  let out = '';
+  let i = s.length;
+  const start = s[0] === '-' ? 1 : 0;
+  for (; i >= start + 4; i -= 3) out = `_${s.slice(i - 3, i)}${out}`;
+  return `${s.slice(0, i)}${out}`;
+};
+function bufRangeError(name, range, received) {
+  let r;
+  if (Number.isInteger(received) && Math.abs(received) > 2 ** 32) r = bufSep(String(received));
+  else if (typeof received === 'bigint') {
+    r = String(received);
+    if (received > 2n ** 32n || received < -(2n ** 32n)) r = bufSep(r);
+    r += 'n';
+  } else r = require('util').inspect(received);
+  const e = new RangeError(`The value of "${name}" is out of range. It must be ${range}. Received ${r}`);
+  e.code = 'ERR_OUT_OF_RANGE';
+  Object.defineProperty(e, 'name', { value: 'RangeError [ERR_OUT_OF_RANGE]', enumerable: false, writable: true, configurable: true });
+  e.stack; // eslint-disable-line no-unused-expressions
+  delete e.name;
+  return e;
+}
+function bufCheckOffset(buf, offset, n) {
+  if (offset === undefined) offset = 0;
+  if (typeof offset !== 'number') {
+    const e = new TypeError(`The "offset" argument must be of type number. Received ${offset === null ? 'null' : `type ${typeof offset} (${require('util').inspect(offset)})`}`);
+    e.code = 'ERR_INVALID_ARG_TYPE';
+    throw e;
+  }
+  const max = buf.length - n;
+  if (!Number.isInteger(offset)) throw bufRangeError('offset', 'an integer', offset);
+  if (max < 0) {
+    const e = new RangeError('Attempt to access memory outside buffer bounds');
+    e.code = 'ERR_BUFFER_OUT_OF_BOUNDS';
+    throw e;
+  }
+  if (offset < 0 || offset > max) throw bufRangeError('offset', `>= 0 and <= ${max}`, offset);
+  return offset;
+}
+function bufView(buf) { return new DataView(buf.buffer, buf.byteOffset, buf.length); }
+const bufTypes = [
+  // [Node name, DataView type, bytes, min, max]
+  ['Int8', 'Int8', 1, -128, 127], ['UInt8', 'Uint8', 1, 0, 255],
+  ['Int16', 'Int16', 2, -32768, 32767], ['UInt16', 'Uint16', 2, 0, 65535],
+  ['Int32', 'Int32', 4, -2147483648, 2147483647], ['UInt32', 'Uint32', 4, 0, 4294967295],
+  ['Float', 'Float32', 4], ['Double', 'Float64', 8],
+  ['BigInt64', 'BigInt64', 8, -(2n ** 63n), 2n ** 63n - 1n], ['BigUInt64', 'BigUint64', 8, 0n, 2n ** 64n - 1n],
+];
+function bufRange(min, max, n) {
+  const big = typeof min === 'bigint' ? 'n' : '';
+  if (n > 4) return min === 0n ? `>= 0n and < 2n ** ${n * 8}n` : `>= -(2n ** ${n * 8 - 1}n) and < 2n ** ${n * 8 - 1}n`;
+  return `>= ${min}${big} and <= ${max}${big}`;
+}
+function bufDefine(name, fn) {
+  Object.defineProperty(fn, 'name', { value: name });
+  Object.defineProperty(Buffer.prototype, name, { value: fn, writable: true, configurable: true, enumerable: true });
+  if (name.includes('UInt')) Object.defineProperty(Buffer.prototype, name.replace('UInt', 'Uint'), { value: fn, writable: true, configurable: true, enumerable: true });
+}
+for (const [nodeName, dvType, n, min, max] of bufTypes) {
+  const ends = n === 1 ? [''] : ['LE', 'BE'];
+  for (const end of ends) {
+    const little = end !== 'BE';
+    bufDefine(`read${nodeName}${end}`, function (offset = 0) {
+      offset = bufCheckOffset(this, offset, n);
+      return bufView(this)[`get${dvType}`](offset, little);
+    });
+    bufDefine(`write${nodeName}${end}`, function (value, offset = 0) {
+      const big = typeof min === 'bigint';
+      if (!big) value = +value;
+      if (min !== undefined && (value < min || value > max)) throw bufRangeError('value', bufRange(min, max, n), value);
+      offset = bufCheckOffset(this, offset, n);
+      if (big && typeof value !== 'bigint') throw new TypeError('Cannot mix BigInt and other types, use explicit conversions');
+      bufView(this)[`set${dvType}`](offset, value, little);
+      return offset + n;
+    });
+  }
+}
+for (const end of ['LE', 'BE']) {
+  const little = end === 'LE';
+  const readU = (buf, offset, n) => {
+    let v = 0;
+    for (let i = 0; i < n; i++) v += buf[offset + (little ? i : n - 1 - i)] * 2 ** (8 * i);
+    return v;
+  };
+  const checkLen = (n) => {
+    if (!Number.isInteger(n) || n < 1 || n > 6) throw bufRangeError('byteLength', '>= 1 and <= 6', n);
+  };
+  bufDefine(`readUInt${end}`, function (offset, byteLength) {
+    checkLen(byteLength);
+    offset = bufCheckOffset(this, offset, byteLength);
+    return readU(this, offset, byteLength);
+  });
+  bufDefine(`readInt${end}`, function (offset, byteLength) {
+    checkLen(byteLength);
+    offset = bufCheckOffset(this, offset, byteLength);
+    const v = readU(this, offset, byteLength);
+    const lim = 2 ** (8 * byteLength - 1);
+    return v >= lim ? v - 2 * lim : v;
+  });
+  const write = (buf, value, offset, n, min, max) => {
+    checkLen(n);
+    value = +value;
+    if (value < min || value > max) {
+      const range = n > 4
+        ? (min === 0 ? `>= 0 and < 2 ** ${n * 8}` : `>= -(2 ** ${n * 8 - 1}) and < 2 ** ${n * 8 - 1}`)
+        : `>= ${min} and <= ${max}`;
+      throw bufRangeError('value', range, value);
+    }
+    offset = bufCheckOffset(buf, offset, n);
+    let v = value < 0 ? value + 2 ** (8 * n) : value;
+    for (let i = 0; i < n; i++) {
+      buf[offset + (little ? i : n - 1 - i)] = v % 256;
+      v = Math.floor(v / 256);
+    }
+    return offset + n;
+  };
+  bufDefine(`writeUInt${end}`, function (value, offset, byteLength) {
+    return write(this, value, offset, byteLength, 0, 2 ** (8 * byteLength) - 1);
+  });
+  bufDefine(`writeInt${end}`, function (value, offset, byteLength) {
+    return write(this, value, offset, byteLength, -(2 ** (8 * byteLength - 1)), 2 ** (8 * byteLength - 1) - 1);
+  });
+}
 binding.setBufferProto(Buffer.prototype);
 Object.defineProperty(globalThis, 'Buffer', { value: Buffer, writable: true, configurable: true, enumerable: false });
 

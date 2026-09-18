@@ -61,11 +61,18 @@ pub struct Frame {
     pub resume: Option<Resume>,
     /// yield* resumption mode: 0 next, 1 throw, 2 return.
     pub ystar_mode: u8,
-    /// Resumed after an await (named "async f" in traces).
+    /// Resumed after an await.
     pub resumed: bool,
-    /// Timer callback frame (`Timeout._onTimeout`).
-    pub timer: bool,
+    /// Timer callback frame: `TIMEOUT_FRAME` (`Timeout._onTimeout`) or
+    /// `IMMEDIATE_FRAME` (`Immediate._onImmediate`).
+    pub timer: u8,
 }
+
+/// Instructions per virtual millisecond.
+pub const STEPS_PER_MS: f64 = 100_000.0;
+
+pub const TIMEOUT_FRAME: u8 = 1;
+pub const IMMEDIATE_FRAME: u8 = 2;
 
 pub struct NativeMark {
     pub depth: usize,
@@ -118,6 +125,27 @@ impl ErrKind {
     ];
 }
 
+/// The internal loop that calls `runNextTicks` between two callbacks.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Batch {
+    /// Between two immediates (`processImmediate`).
+    Immediates,
+    /// Between two timers of the same duration list (`listOnTimeout`).
+    List,
+    /// Between two timer lists (`processTimers`).
+    Lists,
+}
+
+/// How queued ticks and promise jobs are being drained: after a callback
+/// batch (`between: None`) or between two callbacks of one batch; `tick` is
+/// set when Node would run them from `processTicksAndRejections` (a tick
+/// was queued, which every stream write does).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct Drain {
+    pub between: Option<Batch>,
+    pub tick: bool,
+}
+
 /// What sits below user code on the stack (the internal frames Node prints).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Tail {
@@ -125,8 +153,10 @@ pub enum Tail {
     Esm,
     Timer,
     Immediate,
-    Tick,
-    Microtask,
+    /// A `process.nextTick` callback.
+    Tick(Option<Batch>),
+    /// A promise job; `true` when run from `processTicksAndRejections`.
+    Microtask(Option<Batch>, bool),
     Eval,
     /// `node --check`.
     Check,
@@ -142,6 +172,10 @@ pub struct Timer {
     pub interval: Option<f64>,
     pub obj: Obj,
     pub immediate: bool,
+    /// A simulated I/O completion (poll phase), not a user timer.
+    pub io: bool,
+    /// The requested delay: timers of one duration share a Node list.
+    pub dur: f64,
 }
 
 pub enum Job {
@@ -248,6 +282,8 @@ pub struct Vm<'h> {
     pub timer_id: u64,
     /// Virtual milliseconds elapsed (timers advance it).
     pub elapsed_ms: f64,
+    /// Instruction count already folded into `elapsed_ms`.
+    pub clock_steps: u64,
     pub start_micros: i64,
     pub pending_rejections: Vec<Obj>,
     pub modules: Vec<(String, Value)>,
@@ -276,8 +312,12 @@ pub struct Vm<'h> {
     pub trace_funcs: Vec<Option<Obj>>,
     pub exit_code_set: bool,
     pub esm_promises: Vec<Obj>,
-    /// The next frame is a timer callback (named `Timeout._onTimeout`).
-    pub timer_frame: bool,
+    /// The next frame is a timer callback (see `Frame::timer`).
+    pub timer_frame: u8,
+    /// Current drain context for ticks and promise jobs.
+    pub drain: Drain,
+    /// Output length when the current callback started (writes queue ticks).
+    pub out_mark: usize,
     pub open_fds: Vec<Option<(String, usize)>>,
     /// Completion value of `-e` / `-p` / eval programs.
     pub completion: Value,
@@ -604,11 +644,24 @@ impl<'h> Vm<'h> {
                 } else {
                     "Object.<anonymous>".to_string()
                 }
-            } else if timer {
-                if fname.is_empty() {
-                    "Timeout._onTimeout".to_string()
+            } else if timer != 0 {
+                let (owner, method) = if timer == TIMEOUT_FRAME {
+                    ("Timeout", "_onTimeout")
                 } else {
-                    format!("Timeout.{fname} [as _onTimeout]")
+                    ("Immediate", "_onImmediate")
+                };
+                // V8 infers the method alias only for the first segment of
+                // an async immediate callback.
+                if resumed && timer == IMMEDIATE_FRAME {
+                    if fname.is_empty() {
+                        format!("{owner}.<anonymous>")
+                    } else {
+                        format!("{owner}.{fname}")
+                    }
+                } else if fname.is_empty() {
+                    format!("{owner}.{method}")
+                } else {
+                    format!("{owner}.{fname} [as {method}]")
                 }
             } else if construct {
                 format!(
@@ -643,11 +696,6 @@ impl<'h> Vm<'h> {
                     }
                     _ => fname.clone(),
                 }
-            };
-            let name = if resumed && code.is_async && !name.is_empty() {
-                format!("async {name}")
-            } else {
-                name
             };
             if name.is_empty() {
                 out.push(loc);
@@ -697,13 +745,12 @@ impl<'h> Vm<'h> {
                     if is_top {
                         break;
                     }
-                    out.push(format!(
-                        "async {} ({}:{}:{})",
-                        name,
-                        display_file(&file),
-                        pos.line,
-                        pos.col
-                    ));
+                    let loc = format!("{}:{}:{}", display_file(&file), pos.line, pos.col);
+                    out.push(if name.is_empty() {
+                        format!("async {loc}")
+                    } else {
+                        format!("async {name} ({loc})")
+                    });
                     funcs.push(None);
                     match promise {
                         Some(pp) => p = pp,
@@ -716,8 +763,36 @@ impl<'h> Vm<'h> {
         (out, site)
     }
 
-    pub fn tail_frames(&self) -> &'static [&'static str] {
+    pub fn tail_frames(&self) -> Vec<&'static str> {
+        const TICKS: &str = "processTicksAndRejections (node:internal/process/task_queues:85:11)";
+        const JOBS: &str = "processTicksAndRejections (node:internal/process/task_queues:104:5)";
+        const RUN_TICKS: &str = "runNextTicks (node:internal/process/task_queues:69:3)";
+        let between = |b: Batch, first: &[&'static str]| -> Vec<&'static str> {
+            let mut v = first.to_vec();
+            match b {
+                Batch::Immediates => {
+                    v.push("process.processImmediate (node:internal/timers:541:9)")
+                }
+                Batch::List => {
+                    v.push("listOnTimeout (node:internal/timers:644:9)");
+                    v.push("process.processTimers (node:internal/timers:618:7)");
+                }
+                Batch::Lists => v.push("process.processTimers (node:internal/timers:615:9)"),
+            }
+            v
+        };
         match self.tail {
+            Tail::Tick(Some(b)) => return between(b, &[TICKS, RUN_TICKS]),
+            Tail::Microtask(Some(b), true) => return between(b, &[JOBS, RUN_TICKS]),
+            Tail::Microtask(Some(b), false) => {
+                return between(
+                    b,
+                    &["runNextTicks (node:internal/process/task_queues:65:5)"],
+                )
+            }
+            _ => {}
+        }
+        let frames: &'static [&'static str] = match self.tail {
             Tail::Main => &[
                 "Module._compile (node:internal/modules/cjs/loader:1929:14)",
                 "Object..js (node:internal/modules/cjs/loader:2060:10)",
@@ -737,8 +812,11 @@ impl<'h> Vm<'h> {
                 "process.processTimers (node:internal/timers:618:7)",
             ],
             Tail::Immediate => &["process.processImmediate (node:internal/timers:491:21)"],
-            Tail::Tick => {
+            Tail::Tick(_) => {
                 &["process.processTicksAndRejections (node:internal/process/task_queues:85:11)"]
+            }
+            Tail::Microtask(_, true) => {
+                &["process.processTicksAndRejections (node:internal/process/task_queues:104:5)"]
             }
             Tail::Eval => &[
                 "runScriptInThisContext (node:internal/vm:219:10)",
@@ -750,18 +828,37 @@ impl<'h> Vm<'h> {
                 "node:internal/main/eval_string:71:3",
             ],
             Tail::Check => &["checkSyntax (node:internal/main/check_syntax:88:3)"],
-            Tail::Microtask | Tail::None => &[],
-        }
+            Tail::Microtask(..) | Tail::None => &[],
+        };
+        frames.to_vec()
+    }
+
+    /// Appends the internal frames below user code. They precede the
+    /// `async f` frames V8 appends for awaiting callers.
+    pub fn append_tail(&self, frames: &mut Vec<String>) {
+        let at = frames
+            .iter()
+            .position(|f| f.starts_with("async "))
+            .unwrap_or(frames.len());
+        let tail: Vec<String> = self.tail_frames().iter().map(|t| t.to_string()).collect();
+        frames.splice(at..at, tail);
     }
 
     /// Captures the current stack into an error object.
-    pub fn capture_stack(&mut self, e: &Obj, _skip: Option<&Obj>) {
+    /// Frames up to and including `skip_until` (a subclass constructor
+    /// running `super(...)`) are left out, as V8 does.
+    pub fn capture_stack(&mut self, e: &Obj, skip_until: Option<&Obj>) {
         let (mut frames, site) = self.stack_frames(true);
-        // Nested module loads: frames below the innermost module top are
-        // Node's loader; keep user frames only up to the first module top.
-        for t in self.tail_frames() {
-            frames.push(t.to_string());
+        if let Some(f) = skip_until {
+            if let Some(i) = self
+                .trace_funcs
+                .iter()
+                .position(|x| matches!(x, Some(g) if g.ptr_eq(f)))
+            {
+                frames.drain(..=i.min(frames.len().saturating_sub(1)));
+            }
         }
+        self.append_tail(&mut frames);
         frames.truncate(self.stack_limit);
         if let Kind::Error(ed) = &mut e.borrow_mut().kind {
             ed.frames = frames;
@@ -816,8 +913,19 @@ impl<'h> Vm<'h> {
     }
 
     // ------------------------------------------------------------ time
-    pub fn now_ms(&self) -> f64 {
-        (self.start_micros as f64) / 1000.0 + self.elapsed_ms
+    /// Virtual milliseconds since start. Executing code takes time too: the
+    /// clock advances one millisecond per `STEPS_PER_MS` instructions, so
+    /// busy-waiting on `Date.now()` terminates deterministically.
+    pub fn clock(&mut self) -> f64 {
+        if self.steps > self.clock_steps {
+            self.elapsed_ms += (self.steps - self.clock_steps) as f64 / STEPS_PER_MS;
+            self.clock_steps = self.steps;
+        }
+        self.elapsed_ms
+    }
+
+    pub fn now_ms(&mut self) -> f64 {
+        (self.start_micros as f64) / 1000.0 + self.clock()
     }
 
     pub fn random(&mut self) -> f64 {

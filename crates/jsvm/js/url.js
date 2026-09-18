@@ -144,7 +144,7 @@ class URL {
     const qi = rest.indexOf('?');
     if (qi >= 0) { this.#search = rest.slice(qi) === '?' ? '' : encodeComponent(rest.slice(qi), '?!$&\'()*+,;=:@/%'); rest = rest.slice(0, qi); }
     if (rest.startsWith('//') || (isSpecial && this.#protocol !== 'file:')) {
-      rest = rest.replace(/^\/*/, '');
+      rest = this.#protocol === 'file:' && rest.startsWith('//') ? rest.slice(2) : rest.replace(/^[/\\]*/, '');
       const si = rest.search(/[/\\]/);
       let auth = si >= 0 ? rest.slice(0, si) : rest;
       let path = si >= 0 ? rest.slice(si).replace(/\\/g, '/') : '';
@@ -209,6 +209,12 @@ class URL {
   set host(v) { const [h, p] = String(v).split(':'); this.#hostname = h; this.#port = p || ''; }
   get origin() {
     if (this.#protocol in special && this.#protocol !== 'file:') return `${this.#protocol}//${this.host}`;
+    if (this.#protocol === 'blob:') {
+      try {
+        const inner = new URL(this.#pathname);
+        if (inner.protocol === 'http:' || inner.protocol === 'https:') return inner.origin;
+      } catch {}
+    }
     return 'null';
   }
   get pathname() { return this.#pathname; }

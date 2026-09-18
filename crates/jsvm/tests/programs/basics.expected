@@ -1,0 +1,16 @@
+--- exit: 0
+--- stdout
+hello 3 [ 1, 2, 3 ] { a: 1, b: 'x' }
+45
+6765
+[ 6, 10, 16 ] 3
+Rex makes a sound (woof) Dog { name: 'Rex' }
+1 { b: 2, c: 3 }
+Map(2) { 'x' => 1, 'y' => 2 } Set(3) { 1, 2, 3 }
+Cannot read properties of null (reading 'x')
+{"a":[1,{"b":2}]} [ 1, 2 ]
+undefined object function 0.30000000000000004
+sync end
+async done
+then 5
+--- stderr

@@ -1,0 +1,11 @@
+--- exit: 0
+--- stdout
+function function / function
+true true
+undefined undefined undefined undefined
+42 hello esm (1, 2) [ 'Point', 'answer', 'default' ]
+5
+once resolved with [ 'payload', 2 ]
+ERR_MODULE_NOT_FOUND
+module done
+--- stderr

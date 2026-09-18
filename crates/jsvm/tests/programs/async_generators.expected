@@ -1,0 +1,24 @@
+--- exit: 0
+--- stdout
+[ 0, 3, 6, 9 ] [ 0, 1, 2, 3, 4 ]
+{ value: 0, done: false } { value: 1, done: false } { value: 'done early', done: true } { value: undefined, done: true }
+cleanup ran
+What is your name? Hello Ada! Hobby? Ada likes math { value: 'bye', done: true } { value: undefined, done: true }
+[ 'a', 'b', 'inner returned r' ]
+[ 1, 2, 3, 4 ] 4
+iter 1
+iterator closed
+iterator closed
+1 2
+sync code done
+[ [ 'a:10', 'a:30' ], [ 'b:20', 'b:5' ] ]
+tick 0
+tick 1
+tick 2
+[ 'fulfilled ok', 'rejected bad' ]
+caught: inner async failure
+quick any-ok
+from thenable
+{ value: 0, done: false } { value: 1, done: false } { value: undefined, done: true }
+main finished
+--- stderr

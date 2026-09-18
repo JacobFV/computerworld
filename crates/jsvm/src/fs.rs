@@ -62,9 +62,7 @@ fn decorate(vm: &mut Vm, e: &Value, arrow: &str, internal: &[&str]) {
             .collect();
         let mut frames: Vec<String> = internal.iter().map(|s| s.to_string()).collect();
         frames.extend(user);
-        for t in vm.tail_frames() {
-            frames.push(t.to_string());
-        }
+        vm.append_tail(&mut frames);
         frames.truncate(vm.stack_limit);
         if let Kind::Error(ed) = &mut o.borrow_mut().kind {
             ed.frames = frames;
@@ -957,15 +955,18 @@ fn callback_wrapper(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         vm.timer_id += 1;
         vm.timer_seq += 1;
         let obj = vm.new_object();
+        let when = vm.clock();
         vm.timers.push(Timer {
             id,
-            when: vm.elapsed_ms,
+            when,
             seq: vm.timer_seq,
             callback: cb,
             args,
             interval: None,
             obj,
             immediate: true,
+            io: true,
+            dur: 0.0,
         });
     }
     Ok(Value::Undefined)
@@ -988,15 +989,18 @@ fn promise_wrapper(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         vm.timer_id += 1;
         vm.timer_seq += 1;
         let obj = vm.new_object();
+        let when = vm.clock();
         vm.timers.push(Timer {
             id,
-            when: vm.elapsed_ms,
+            when,
             seq: vm.timer_seq,
             callback: Value::Obj(f),
             args: vec![],
             interval: None,
             obj,
             immediate: true,
+            io: true,
+            dur: 0.0,
         });
     };
     match vm.call(&sync, Value::Undefined, a.args.clone()) {

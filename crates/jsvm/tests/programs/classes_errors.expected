@@ -1,0 +1,45 @@
+--- exit: 0
+--- stdout
+valid true
+true true ValidationError Name is required name ValidationError: Name is required ValidationError: Name is required
+false true RangeError Invalid age: -1 undefined RangeError: Invalid age: -1 RangeError: Invalid age: -1
+Error missing thing true [object Error] NotFound
+Error: missing thing Error: missing thing [] {} {"e":{}}
+inner reason true
+ReferenceError undefinedFunction is not defined true
+TypeError: Cannot read properties of undefined (reading 'prop')
+Reduce of empty array with no initial value
+RangeError Invalid array length
+SyntaxError Unexpected end of JSON input
+null is not a function
+o.method is not a function
+q is not a function
+Class constructor A cannot be invoked without 'new'
+Cannot convert a Symbol value to a string
+RangeError The number 1.5 cannot be converted to a BigInt because it is not an integer
+RangeError Invalid count value: -1
+Cannot read private member #p from an object whose class did not declare it
+Cannot define property x, object is not extensible
+Cannot add property 1, object is not extensible
+DataCloneError
+URIError URI malformed
+destructured catch true
+inner finally
+outer caught inner
+finally runs before return
+try
+caught no binding
+true true true TypeError
+derived>base true base
+32 1 {"c":0} Temp {} [ 'constructor', 'fahrenheit', 'toJSON' ]
+mixed M base M 
+hi old true true Legacy { name: 'old' }
+{
+  get: [Function: get x],
+  set: undefined,
+  enumerable: true,
+  configurable: true
+} { value: 1, writable: true, enumerable: false, configurable: false }
+{ a: 1, nested: { b: 3 } } true false
+{ a: 5 } true
+--- stderr

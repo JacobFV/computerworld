@@ -1,0 +1,13 @@
+--- exit: 0
+--- stdout
+primes 17984
+fib(300) 222232244629420445529739893461909967206666939096499764990979600
+sorted ok true [ 36, 61, 69, 79, 113 ]
+[ [ 'dolor', 8334 ], [ 'ipsum', 8334 ], [ 'lorem', 8334 ] ]
+20000 abcdefghijklmnopqrstuvwxyzabcd
+bfs 198
+matrix 12 1
+json 91781 [ 'item0', 'item500', 'item1000', 'item1500' ]
+perms 5040
+regex total 4498500
+--- stderr

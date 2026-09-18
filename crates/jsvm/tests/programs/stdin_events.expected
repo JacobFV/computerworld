@@ -1,0 +1,26 @@
+--- exit: 3
+--- stdout
+added a 1
+first add only
+added b 2
+1 [ 'added' ] true
+error event: boom
+prepended
+multi 3
+true false
+EventEmitter {
+  _events: [Object: null prototype] {},
+  _eventsCount: 0,
+  _maxListeners: undefined,
+  Symbol(shapeMode): false,
+  Symbol(kCapture): false
+}
+[] true number true
+bigint 2 number number
+true true 3
+once promise 42
+lines 7 sum 100 max 40
+words 5
+done without newline
+exiting with 3
+--- stderr

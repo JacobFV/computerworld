@@ -324,10 +324,10 @@ fn run_program(
 /// exit status.
 fn finish(vm: &mut Vm, result: Result<(), Ctl>) -> i32 {
     let r = result.and_then(|_| {
-        vm.tail = Tail::Microtask;
-        // Loading and running the main module takes a few milliseconds in
-        // Node; short timers are already due when the loop first turns.
-        vm.elapsed_ms += 3.0;
+        vm.tail = Tail::Microtask(None, false);
+        // Loading and running the main module takes about a millisecond in
+        // Node; 1 ms timers set by it are due when the loop first turns.
+        vm.elapsed_ms += 1.0;
         vm.event_loop()
     });
     let code = match r {

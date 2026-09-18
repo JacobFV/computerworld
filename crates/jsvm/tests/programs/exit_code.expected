@@ -1,0 +1,6 @@
+--- exit: 7
+--- stdout
+argv length 2 script true
+timer fired, exiting with 7
+exit handler sees 7 7
+--- stderr

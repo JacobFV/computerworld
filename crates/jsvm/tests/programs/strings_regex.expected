@@ -1,0 +1,37 @@
+--- exit: 0
+--- stdout
+[ 'The', 'the', 'The' ] [ 'The quick', 'The', 'quick' ] 16 true
+20 jumps jump 25
+53 sleeps sleep 59
+[ 'w@12', 'x@17', 'v@26', 'g@41', 'g@50' ]
+quick The brown fox jumps over the lazy dog. The dog sleeps. The quick brown fox jumps over the lazy DOG40. The DOG49 sleeps.
+15/01/2024
+[ 'a', 'b', 'c', '' ] [
+  'a', '1', 'b',
+  '2', 'c', '3',
+  ''
+] [ 'one', 'two', 'three' ] [ '' ] [ 'a', 'b', 'c' ]
+xabab| HW 98 Hi
+true true
+Camel Case String snakeCaseHere
+/a+b/g gimsuy [/] \d false
+-a-a-a- .a.b.c. tesT
+% line true 2
+[ { name: 'alice', age: 30 }, { name: 'bob', age: 25 } ] 27.5
+6 RÉSUMÉ 2 1
+[ 'a', 'á', 'b', 'C' ] [ '1', '9', '10' ]
+a%20b%26c%3Dd%2F%C3%A9 ✓ http://x.com/a%20b?q=1&r=%C3%A9 a%20b A
+aGVsbG8= hello aMOpbGxv hi
+undefined ab b de 3 3
+2 1,2 [object Object] null undefined () => 1
+Symbol(d) 123 1,2,3 ,,1
+***trimStart 1  a|
+97 128512 55357 😀 3 4
+true abcd1null true true [ 'a' ]
+"he said \"hi\"\n\t\u0001" {
+	"k": "v"
+} [null,null,null]
+255 35 11111111 1000 5 NaN 5
+Is iT True? a/b/c ba xyyz
+Hello [world] and [42]! a\nb1
+--- stderr

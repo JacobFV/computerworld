@@ -1,0 +1,171 @@
+--- exit: 0
+--- stdout
+{ a: 1, b: { c: { d: [Object] } }, arr: [ [ 1, [Array] ] ] }
+[
+  1,
+  'two',
+  { three: 3 },
+  [ 4 ],
+  null,
+  undefined,
+  true,
+  5n,
+  Symbol(six),
+  [Function (anonymous)],
+  [Function: named],
+  [class K]
+]
+Map(2) { 'key' => { nested: [ 1, 2 ] }, { obj: 1 } => 'val' } Set(3) { 'a', { b: 1 }, [ 2 ] }
+[
+  'a', 'b', 'c', 'd', 'e', 'f',
+  'g', 'h', 'i', 'j', 'k', 'l',
+  'm', 'n', 'o', 'p', 'q', 'r',
+  's', 't', 'u', 'v', 'w', 'x',
+  'y', 'z'
+]
+[
+  { id: 0 },  { id: 1 },
+  { id: 2 },  { id: 3 },
+  { id: 4 },  { id: 5 },
+  { id: 6 },  { id: 7 },
+  { id: 8 },  { id: 9 },
+  { id: 10 }, { id: 11 }
+]
+[
+        0, 1000000,
+  2000000, 3000000,
+  4000000, 5000000,
+  6000000
+]
+[
+  'apple',      'banana',
+  'cherry',     'date',
+  'elderberry', 'fig',
+  'grape',      'honeydew',
+  'kiwi'
+]
+{
+  longKeyNumberOne: 'value one is here',
+  longKeyNumberTwo: 'value two is here',
+  k3: 'v3'
+}
+{
+  '7': 'seven',
+  'key-with-dash': 1,
+  valid_id: 2,
+  '3d': 3,
+  '': 4,
+  'with space': 5,
+  Symbol(sym): 6
+}
+<ref *1> {
+  name: 'root',
+  child: { name: 'child', parent: [Circular *1] },
+  self: [Circular *1]
+}
+<ref *1> [ 1, 2, [Circular *1] ]
+{ a: [Object] } {
+  a: { b: { c: { d: 1 } } }
+}
+'str' [
+  1,
+  2,
+  3
+] {
+  a: 1,
+  b: 2
+}
+x:3:2.5:{"j":1} [ 1, [length]: 1 ] no args %s 1 2 3
+plain message [ 'Error' ]
+[Object: null prototype] {} {} Foo { x: 1 }
+Point<1,2> [ Point<3,4> ] { p: Point<5,6> }
+[ undefined, <1 empty item>, null, <2 empty items>, 3 ] [ <3 empty items> ] Object [Array Iterator] {} [Map Entries] { [ 1, 2 ] } Object [String Iterator] {}
+2020-01-15T10:30:00.000Z /re+/gi [Boolean: true] [Number: -0] [String: 'boxed'] [Symbol: Symbol(bx)] [BigInt: 10n]
+Promise { { v: 1 } } ok Promise { <pending> }
+WeakMap { <items unknown> } WeakSet { <items unknown> } Symbol(Symbol.iterator) Symbol() Symbol(with space)
+[
+       1.5,        -0,
+         0,       NaN,
+  Infinity, -Infinity,
+    1e+100,    5e-324,
+        16
+] [ 1n, -2n ]
+{
+  f: [Function: f],
+  g: [Function: g],
+  h: [AsyncFunction: h],
+  i: [GeneratorFunction: i],
+  j: [Function: max],
+  k: [class k],
+  l: [class Bar extends Array]
+}
+<Buffer 68 69 20 74 68 65 72 65> Uint8Array(3) [ 1, 2, 3 ] Float64Array(2) [ 0, 0 ] ArrayBuffer { [Uint8Contents]: <00 00 00 00>, [byteLength]: 4 } Int16Array(2) [ -1, 300 ]
+ styled next
+% %d%% 50 %s { toString: [Function: toString] }
+true object linux string undefined
+{
+  key0: 0,
+  key1: 1,
+  key2: 2,
+  key3: 3,
+  key4: 4,
+  key5: 5,
+  key6: 6,
+  key7: 7,
+  key8: 8,
+  key9: 9,
+  key10: 10,
+  key11: 11,
+  key12: 12,
+  key13: 13,
+  key14: 14,
+  key15: 15,
+  key16: 16,
+  key17: 17,
+  key18: 18,
+  key19: 19,
+  key20: 20,
+  key21: 21,
+  key22: 22,
+  key23: 23,
+  key24: 24,
+  key25: 25,
+  key26: 26,
+  key27: 27,
+  key28: 28,
+  key29: 29
+}
+[ [ 'nested', 'array' ], [ 'of', 'arrays' ] ] { matrix: [ [ 1, 2, 3 ], [ 4, 5, 6 ], [ 7, 8, 9 ] ] }
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+{
+  s: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+}
+[ { a: 1, b: 2 }, { a: 3, b: 4 } ]
+info
+debug
+Group A
+  inside
+    nested
+outside
+┌─────────┬───┬─────┬──────┐
+│ (index) │ a │ b   │ c    │
+├─────────┼───┼─────┼──────┤
+│ 0       │ 1 │ 'x' │      │
+│ 1       │ 2 │     │ true │
+└─────────┴───┴─────┴──────┘
+┌─────────┬────┬────┐
+│ (index) │ c1 │ c2 │
+├─────────┼────┼────┤
+│ r1      │ 1  │    │
+│ r2      │    │ 2  │
+└─────────┴────┴────┘
+default: 1
+x: 1
+default: 2
+default: 1
+{ deep: [Object] }
+--- stderr
+to stderr { e: 1 }
+warn
+Assertion failed: shown formatted
+Assertion failed
