@@ -1713,6 +1713,17 @@ fn context_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
             if starred { "Unstar" } else { "Star" }.into(),
             w.action("content:files-star"),
         ));
+        // Nautilus's own pair: Move to Trash in a folder, Restore in the Trash. Which
+        // one is offered comes from the window, so the menu never names an action the
+        // file manager would refuse.
+        entries.push(if w.chrome("trash") == Some("1") {
+            ("Restore".into(), w.action("content:files-restore"))
+        } else {
+            (
+                "Move to Trash".into(),
+                w.action("content:files-move-to-trash"),
+            )
+        });
     }
     for (label, action) in [
         ("New Window", "shell:new"),
@@ -2326,6 +2337,52 @@ mod tests {
         assert!(live.contains(&"shell:trash"));
         assert!(live.contains(&"shell:workspace:0"));
         assert!(!labels.contains(&"Page 1 of 1"));
+    }
+
+    /// Nautilus's context menu offers Move to Trash on a file and Restore on a trashed
+    /// one, and never both: which it is comes from the window it is over.
+    #[test]
+    fn the_context_menu_trashes_what_it_is_over_and_restores_what_is_in_the_trash() {
+        for (trash, want, absent) in [
+            (
+                "0",
+                "window:3:content:files-move-to-trash",
+                "window:3:content:files-restore",
+            ),
+            (
+                "1",
+                "window:3:content:files-restore",
+                "window:3:content:files-move-to-trash",
+            ),
+        ] {
+            let windows = [WindowView {
+                id: 3,
+                kind: "files".into(),
+                rect: Rect::new(60, 60, 800, 500),
+                focused: true,
+                selection: "/home/alice/notes.txt".into(),
+                chrome: vec![
+                    ("trash".to_owned(), trash.to_owned()),
+                    ("starred".to_owned(), "0".to_owned()),
+                ],
+                ..Default::default()
+            }];
+            let mut ctx = context(&windows, true);
+            ctx.panel = Some("context");
+            let mut p = Painter::new(1024, 768);
+            chrome(&mut p, &ctx);
+            let live = actions(&p);
+            assert!(live.contains(&want), "{trash}: {live:?}");
+            assert!(!live.contains(&absent), "{trash}: {live:?}");
+        }
+        // Over nothing in particular the menu is about the desktop, not about a file.
+        let mut ctx = context(&[], true);
+        ctx.panel = Some("context");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert!(!actions(&p)
+            .iter()
+            .any(|a| a.contains("files-move-to-trash") || a.contains("files-restore")));
     }
 
     fn notice(app: &str, title: &str, seen: bool) -> crate::Notice {

@@ -2475,22 +2475,57 @@ impl Environment {
                             SimError::denied("directory access denied")
                         });
                     };
+                    // Where a trashed thing came from, when this is the trash. The
+                    // `.trashinfo` records are the only place that fact lives, so a
+                    // Trash view that shows an original path is reading the machine.
+                    let home = c
+                        .env
+                        .get("HOME")
+                        .cloned()
+                        .unwrap_or_else(|| format!("/home/{}", c.user));
+                    let origins: BTreeMap<String, String> =
+                        if base.trim_end_matches('/') == cw_computer::trash::files_dir(&home) {
+                            cw_computer::trash::list(&c.vfs, &home)
+                                .into_iter()
+                                .map(|e| (e.name, e.original))
+                                .collect()
+                        } else {
+                            BTreeMap::new()
+                        };
+                    // The listing carries what the machine really knows about each
+                    // entry: `lstat` for what it is (a symlink stays a symlink) and
+                    // `stat` for the classifier, so a link to a folder still opens
+                    // like one. Nothing here is guessed from a name.
                     let entries = listing
                         .into_iter()
                         .map(|name| {
-                            if c.vfs
-                                .stat(&format!("{}/{}", base.trim_end_matches('/'), name))
-                                .is_ok_and(|m| m.is_dir)
-                            {
-                                format!("{name}/")
-                            } else {
-                                name
+                            let path = format!("{}/{}", base.trim_end_matches('/'), name);
+                            let link = c.vfs.lstat(&path).ok();
+                            let meta = c.vfs.stat(&path).ok();
+                            let is_dir = meta.as_ref().is_some_and(|m| m.is_dir);
+                            let kind = match &link {
+                                Some(m) if m.is_symlink => cw_applications::EntryKind::Symlink,
+                                _ if is_dir => cw_applications::EntryKind::Directory,
+                                _ => cw_applications::EntryKind::File,
+                            };
+                            cw_applications::FileRow {
+                                entry: if is_dir {
+                                    format!("{name}/")
+                                } else {
+                                    name.clone()
+                                },
+                                kind,
+                                // A folder has no byte count any file manager shows.
+                                size: link.as_ref().filter(|_| !is_dir).map(|m| m.size as u64),
+                                mode: link.as_ref().map(|m| m.mode),
+                                modified: link.as_ref().map(|m| m.modified),
+                                original: origins.get(&name).cloned(),
                             }
                         })
                         .collect();
                     self.machine_mut(id, machine)?
                         .desktop
-                        .directory_loaded(window, tab, entries)
+                        .directory_listed(window, tab, entries)
                         .map_err(SimError::invalid)?;
                     // A photo library asks for the pixels of whatever the listing put on
                     // screen; nothing else needs decoding, so nothing else asks.
@@ -2626,6 +2661,14 @@ impl Environment {
                     trash,
                 } => {
                     self.runtime.trash_path(machine, actor, &path, &trash)?;
+                }
+                // Put back is the delete undone, and it is the machine that knows
+                // where: the `.trashinfo` record names the folder, not the view.
+                RestorePath { window: _, path } => {
+                    self.runtime.restore_path(machine, actor, &path)?;
+                }
+                EmptyTrash { window: _ } => {
+                    self.runtime.empty_trash(machine, actor)?;
                 }
                 Download { window, url } => {
                     if !self
@@ -3422,26 +3465,33 @@ impl Environment {
                         (app.dark_chrome(), chrome)
                     }
                     // Whether the selected file is starred, for a context menu that
-                    // offers Star or Unstar on it.
-                    AppState::Files { .. } => (
-                        false,
-                        window
-                            .state
-                            .file_tab()
-                            .and_then(|t| t.selected_path())
-                            .map(|path| {
-                                vec![(
-                                    "starred".to_owned(),
-                                    if m.desktop.is_starred(&path) {
-                                        "1"
-                                    } else {
-                                        "0"
-                                    }
-                                    .to_owned(),
-                                )]
-                            })
-                            .unwrap_or_default(),
-                    ),
+                    // offers Star or Unstar on it, and whether this tab is showing the
+                    // Trash, so a menu can offer Restore there and Move to Trash
+                    // everywhere else rather than painting both and refusing one.
+                    AppState::Files { .. } => {
+                        let tab = window.state.file_tab();
+                        let mut facts = vec![(
+                            "trash".to_owned(),
+                            if tab.is_some_and(|t| t.in_trash(&m.desktop.trash_folder())) {
+                                "1"
+                            } else {
+                                "0"
+                            }
+                            .to_owned(),
+                        )];
+                        if let Some(path) = tab.and_then(|t| t.selected_path()) {
+                            facts.push((
+                                "starred".to_owned(),
+                                if m.desktop.is_starred(&path) {
+                                    "1"
+                                } else {
+                                    "0"
+                                }
+                                .to_owned(),
+                            ));
+                        }
+                        (false, facts)
+                    }
                     _ => (false, vec![]),
                 };
                 views.push(WindowView {

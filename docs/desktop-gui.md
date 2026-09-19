@@ -71,8 +71,10 @@ world services, not special kernel concepts.
 
 Creating a desktop session on a machine with a desktop theme is the user's first
 login there. Like `xdg-user-dirs-update` on Ubuntu, a new Windows profile and a new
-macOS account, it makes the platform's standard folders in the home folder, plus
-`~/.local/share/Trash/files`, the folder deletions are moved to: Desktop, Documents,
+macOS account, it makes the platform's standard folders in the home folder, plus the
+FreeDesktop trash (`~/.local/share/Trash/files` for what was deleted and
+`~/.local/share/Trash/info` for the `.trashinfo` record that makes a restore
+possible): Desktop, Documents,
 Downloads, Music, Pictures, Public, Templates and Videos on Ubuntu; Desktop,
 Documents, Downloads, Movies, Music, Pictures and Public on macOS; Desktop,
 Documents, Downloads, Music, Pictures and Videos on Windows. Only missing folders are
@@ -92,6 +94,27 @@ Recent is the documents really opened from a file manager; Starred is the set a 
 star adds to (`DesktopState::starred`). AirDrop, iCloud, Applications, Tags,
 OneDrive and Network have nothing behind them in the simulator and are omitted
 rather than painted. Dot files are hidden until `Ctrl+H`.
+
+A list view carries four columns, each one a sort control and each one the machine's
+own `stat`: Name, Kind (Type), Size and Date modified. Kind is read from what the
+entry *is* — Folder, Alias/Shortcut/Link, or the extension for an ordinary file —
+rather than guessed from the name, and a row the listing said nothing about draws an
+em dash instead of a zero. Narrow windows drop Date, then Size, then Kind rather than
+squeezing them.
+
+Every file manager can move the selection to the trash and put it back:
+
+| Shell | Move to Trash | Restore |
+|---|---|---|
+| Files (Ubuntu) | `Move to Trash` above the listing, the desktop's context menu, `Delete` | `Restore` and `Empty Trash`, live only in the Trash |
+| Finder (macOS) | `Move to Trash` above the listing and in the File menu (⌘⌫), `Delete` | `Put Back` above the listing and in the File menu |
+| File Explorer (Windows) | `Delete` in the command bar, `Delete` | The command bar's Delete slot becomes `Restore the selected items`, and New file becomes `Empty Recycle Bin` |
+| Files (iOS) / Files (Android) | `Move to Trash` above the listing | `Put Back` / `Restore` |
+
+Deleting writes the FreeDesktop record, so the Trash shows where each row came from
+and a restore puts it back exactly there — the same trash the shell's `trash`,
+`trash-list`, `trash-restore`, `trash-empty` and `gio trash` commands use. `Empty
+Trash` is the only file-manager command that really destroys data.
 
 Terminal windows print the prompt the machine's default shell prints, and title
 themselves from it: bash's `user@host:~/dir$` (GNOME Terminal's title is
@@ -170,7 +193,9 @@ nothing it opens `~/project` when the machine has one and the Welcome page other
 
 - The Explorer is a listing of the folder (`AppEffect::ListTree`, which walks the VFS
   under the user's own read permissions); New File, New Folder, Rename and Delete are
-  `CreateFile`, `CreateDirectory`, `MovePath` and `TrashPath` through the kernel.
+  `CreateFile`, `CreateDirectory`, `MovePath` and `TrashPath` through the kernel, and
+  Delete writes the same `.trashinfo` record every other Move to Trash does, so a file
+  deleted from the Explorer can be put back from the desktop's Trash.
 - An editor holds a file's text (`AppEffect::ReadFiles`) and Save writes it back
   (`WriteFile`); the tab turns clean only when the write is reported done. CRLF files
   are saved with CRLF. Undo is a history of reversible edits, bounded at 200.

@@ -195,6 +195,19 @@ pub enum AppEffect {
         path: String,
         trash: String,
     },
+    /// Put one trashed thing back where it came from. `path` names it the way the view
+    /// has it — its path under `files/` — and the `.trashinfo` record says where that
+    /// is. A delete a user regrets is undone by the machine, not by the file manager
+    /// guessing which folder the file used to be in.
+    RestorePath {
+        window: u64,
+        path: String,
+    },
+    /// Throw the whole trash away for good. The one file-manager command that really
+    /// destroys data, which is why it is its own effect and never a flag on a delete.
+    EmptyTrash {
+        window: u64,
+    },
     /// List a folder tree `depth` levels deep, as paths relative to `path` with folders
     /// marked by a trailing `/`. Delivered to `DesktopState::tree_listed`, path in hand,
     /// so an application can have several folders in flight.
@@ -330,21 +343,28 @@ impl FileView {
         *self == Self::List
     }
 }
-/// The two columns a listing really has. There is deliberately no size or date key: a
-/// listing carries neither, and a column that sorted on invented metadata would be a
-/// lie an observer could not see through.
+/// The columns a listing really has. A listing carries the machine's own metadata —
+/// kind, size and modification time, straight off `stat` — so every one of these keys
+/// sorts on something an observer can read back off the filesystem. A row whose
+/// metadata never arrived sorts last rather than pretending to a size it does not have.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SortKey {
     #[default]
     Name,
     Kind,
+    Size,
+    Modified,
 }
 impl SortKey {
     pub fn parse(name: &str) -> Option<Self> {
         match name {
             "name" => Some(Self::Name),
             "kind" => Some(Self::Kind),
+            "size" => Some(Self::Size),
+            // Finder calls the column "Date Modified" and Explorer "Date modified";
+            // both spellings reach the same key.
+            "modified" | "date" => Some(Self::Modified),
             _ => None,
         }
     }
@@ -352,7 +372,70 @@ impl SortKey {
         match self {
             Self::Name => "name",
             Self::Kind => "kind",
+            Self::Size => "size",
+            Self::Modified => "modified",
         }
+    }
+}
+/// What a listed entry actually is, as `lstat` reports it rather than as its name
+/// suggests. A symbolic link is its own kind: following it would hide the link, and
+/// guessing from the extension would invent a fact the filesystem never stated.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EntryKind {
+    #[default]
+    File,
+    Directory,
+    Symlink,
+}
+impl EntryKind {
+    pub fn is_dir(self) -> bool {
+        self == Self::Directory
+    }
+}
+/// One row of a listing, with the metadata the machine really reported for it. The
+/// `entry` is spelled exactly as `FileTab::entries` spells it — a folder ends in `/` —
+/// so a row and its entry can never drift apart.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileRow {
+    pub entry: String,
+    #[serde(default)]
+    pub kind: EntryKind,
+    /// Bytes, as `stat` reports them. `None` for a folder (no file manager claims a
+    /// byte count for one) and for a row whose metadata never arrived.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    /// Permission bits, `None` when unknown.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<u16>,
+    /// World-clock microseconds of the last write, `None` when unknown.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub modified: Option<u64>,
+    /// Where a trashed item came from, read from its `.trashinfo` record. Only the
+    /// Trash has these, and it is what lets the Trash say where a row used to live.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original: Option<String>,
+}
+impl FileRow {
+    /// A row with nothing but its name: what a list the desktop keeps (Recents,
+    /// Starred) can honestly say, and the fallback for any listing that arrived
+    /// without metadata.
+    pub fn named(entry: impl Into<String>) -> Self {
+        let entry = entry.into();
+        let kind = if entry.ends_with('/') {
+            EntryKind::Directory
+        } else {
+            EntryKind::File
+        };
+        Self {
+            entry,
+            kind,
+            ..Self::default()
+        }
+    }
+    /// The name without the listing's folder marker.
+    pub fn name(&self) -> &str {
+        entry_name(&self.entry)
     }
 }
 /// What a tab is listing. `Recents`, `Starred` and `QuickAccess` hold absolute paths
@@ -421,6 +504,13 @@ pub struct FileTab {
     pub path: String,
     #[serde(default)]
     pub entries: Vec<String>,
+    /// The metadata the machine reported for each entry, in the same order. Kept
+    /// beside `entries` rather than inside it so every existing reader of a listing
+    /// still sees the `name` / `name/` spelling it was written against; `row()` is the
+    /// one way in, and it falls back to a name-only row whenever the two have drifted,
+    /// so a listing set without metadata degrades instead of lying.
+    #[serde(default)]
+    pub rows: Vec<FileRow>,
     /// Index into `entries`, not into the displayed rows: a file stays selected when
     /// the sort or the filter moves it.
     #[serde(default)]
@@ -456,6 +546,7 @@ impl FileTab {
         let path = path.into();
         Self {
             entries: vec![],
+            rows: vec![],
             selected: None,
             history: vec![path.clone()],
             position: 0,
@@ -523,6 +614,40 @@ impl FileTab {
     pub fn selection(&self) -> Option<&String> {
         self.entries.get(self.selected?)
     }
+    /// Replace the listing with rows the machine described. `entries` keeps its old
+    /// spelling so nothing that reads it has to change.
+    pub fn set_rows(&mut self, rows: Vec<FileRow>) {
+        self.entries = rows.iter().map(|r| r.entry.clone()).collect();
+        self.rows = rows;
+    }
+    /// Replace the listing with bare names, for a list the desktop keeps rather than a
+    /// folder the machine described.
+    pub fn set_names(&mut self, names: Vec<String>) {
+        self.rows = names.iter().map(FileRow::named).collect();
+        self.entries = names;
+    }
+    /// The metadata for `entries[index]`. A row whose metadata is missing or has
+    /// drifted out of step comes back as a name-only row: unknown is said as unknown,
+    /// never borrowed from the neighbour.
+    pub fn row(&self, index: usize) -> Option<FileRow> {
+        let entry = self.entries.get(index)?;
+        Some(match self.rows.get(index) {
+            Some(row) if row.entry == *entry => row.clone(),
+            _ => FileRow::named(entry),
+        })
+    }
+    /// Where a trashed row came from, when this tab is showing the Trash and the
+    /// record said.
+    pub fn original_of(&self, index: usize) -> Option<String> {
+        self.rows
+            .get(index)
+            .filter(|row| Some(&row.entry) == self.entries.get(index))
+            .and_then(|row| row.original.clone())
+    }
+    /// Whether this tab is showing the machine's trash folder.
+    pub fn in_trash(&self, trash: &str) -> bool {
+        !trash.is_empty() && self.path.trim_end_matches('/') == trash.trim_end_matches('/')
+    }
     /// Absolute path of `entry` inside this folder.
     pub fn child(&self, entry: &str) -> String {
         format!("{}/{}", self.path.trim_end_matches('/'), entry)
@@ -541,11 +666,24 @@ impl FileTab {
             .filter(|i| !(hide && self.entries[*i].starts_with('.')))
             .filter(|i| query.is_empty() || self.entries[*i].to_lowercase().contains(&query))
             .collect();
+        // Sort keys read off the metadata the listing carried, resolved once so the
+        // comparator does no work that could differ between two calls. `None` is
+        // unknown, and unknown sorts last in either direction rather than posing as
+        // zero bytes or as the epoch.
+        let key = |i: usize| -> (Option<u64>, Option<u64>) {
+            match self.rows.get(i) {
+                Some(row) if Some(&row.entry) == self.entries.get(i) => (row.size, row.modified),
+                _ => (None, None),
+            }
+        };
+        let last = |v: Option<u64>| (v.is_none(), v.unwrap_or(0));
         rows.sort_by(|a, b| {
             let (x, y) = (self.entries[*a].as_str(), self.entries[*b].as_str());
             let order = match self.sort {
                 // Folders before files, then by name, so the Kind column really groups.
                 SortKey::Kind => x.ends_with('/').cmp(&y.ends_with('/')).reverse(),
+                SortKey::Size => last(key(*a).0).cmp(&last(key(*b).0)),
+                SortKey::Modified => last(key(*a).1).cmp(&last(key(*b).1)),
                 SortKey::Name => std::cmp::Ordering::Equal,
             }
             .then_with(|| entry_name(x).cmp(entry_name(y)));
@@ -1971,6 +2109,10 @@ impl DesktopState {
                     "Ctrl+h" | "Ctrl+H" if !tab.editing_text() => {
                         tab.show_hidden = !tab.show_hidden;
                     }
+                    // Delete moves the selection to the trash, as it does in Files,
+                    // Finder and Explorer. Never while a field is collecting keys: in
+                    // a rename, Delete is a character being erased, not a file.
+                    "Delete" if !tab.editing_text() => return self.files_command("move-to-trash"),
                     _ => return Err(format!("unsupported file manager key {key}")),
                 }
             }
@@ -2533,44 +2675,67 @@ impl DesktopState {
         }
         Ok(())
     }
+    /// A listing that arrived as bare names: everything the machine could say about it
+    /// is that these entries are there. Kept so callers that have nothing else to give
+    /// stay honest about it.
     pub fn directory_loaded(
         &mut self,
         id: u64,
         tab: usize,
-        mut values: Vec<String>,
+        values: Vec<String>,
     ) -> Result<(), String> {
-        values.sort();
+        self.directory_listed(id, tab, values.iter().map(FileRow::named).collect())
+    }
+    /// A listing with the metadata the machine really reported for each entry. This is
+    /// the path `AppEffect::ListDirectory` comes back on, so the size, the date and the
+    /// kind a file manager draws are the filesystem's own answer.
+    pub fn directory_listed(
+        &mut self,
+        id: u64,
+        tab: usize,
+        mut rows: Vec<FileRow>,
+    ) -> Result<(), String> {
+        rows.sort_by(|a, b| a.entry.cmp(&b.entry));
+        let values: Vec<String> = rows.iter().map(|r| r.entry.clone()).collect();
         let (starred, recents) = (self.starred.clone(), self.recents.clone());
         match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
             AppState::Files { tabs, .. } => {
                 let tab = tabs.get_mut(tab).ok_or("tab not found")?;
-                let values = match tab.scope {
-                    FileScope::Folder => values,
+                let rows = match tab.scope {
+                    FileScope::Folder => rows,
                     // Home: the pinned folders the listing proves exist, then what the
-                    // user starred, then what they opened, each path once.
+                    // user starred, then what they opened, each path once. The pinned
+                    // folders keep the metadata the listing gave them; a starred or
+                    // recent path is a path this listing says nothing about.
                     FileScope::QuickAccess => {
                         let base = tab.path.trim_end_matches('/').to_owned();
-                        let mut shown: Vec<String> = QUICK_ACCESS
+                        let mut shown: Vec<FileRow> = QUICK_ACCESS
                             .iter()
-                            .filter(|name| values.iter().any(|v| *v == format!("{name}/")))
-                            .map(|name| format!("{base}/{name}/"))
+                            .filter_map(|name| {
+                                let marked = format!("{name}/");
+                                let row = rows.iter().find(|r| r.entry == marked)?;
+                                Some(FileRow {
+                                    entry: format!("{base}/{marked}"),
+                                    ..row.clone()
+                                })
+                            })
                             .collect();
                         for entry in starred.into_iter().chain(recents) {
-                            if !shown.iter().any(|s| entry_name(s) == entry_name(&entry)) {
-                                shown.push(entry);
+                            if !shown.iter().any(|s| s.name() == entry_name(&entry)) {
+                                shown.push(FileRow::named(entry));
                             }
                         }
                         shown
                     }
-                    FileScope::Gallery => values
+                    FileScope::Gallery => rows
                         .into_iter()
-                        .filter(|v| !v.ends_with('/') && is_image(v))
+                        .filter(|r| !r.entry.ends_with('/') && is_image(&r.entry))
                         .collect(),
                     // A listing that arrives while the tab has moved to a list belongs
                     // to the folder it left; dropping it beats overwriting the screen.
                     FileScope::Recents | FileScope::Starred => return Ok(()),
                 };
-                tab.entries = values;
+                tab.set_rows(rows);
                 tab.selected = None;
                 // The entry being renamed may not have survived the refresh.
                 tab.rename = None;
@@ -3200,7 +3365,7 @@ impl DesktopState {
         };
         let tab = self.focused_tab_mut()?;
         tab.scope = scope;
-        tab.entries = entries;
+        tab.set_names(entries);
         tab.selected = None;
         tab.query.clear();
         tab.stop_editing();
@@ -3214,7 +3379,7 @@ impl DesktopState {
         let tab = tabs.get_mut(index).ok_or("tab not found")?;
         tab.scope = scope;
         tab.path = path.clone();
-        tab.entries.clear();
+        tab.set_rows(vec![]);
         tab.selected = None;
         tab.query.clear();
         tab.stop_editing();
@@ -3336,7 +3501,7 @@ impl DesktopState {
         let index = *active;
         let tab = tabs.get_mut(index).ok_or("tab not found")?;
         tab.path = path.clone();
-        tab.entries.clear();
+        tab.set_rows(vec![]);
         tab.selected = None;
         // Moving folders leaves Recents and every text field: a filter typed for one
         // folder must not silently hide the contents of the next.
@@ -3423,7 +3588,7 @@ impl DesktopState {
                 };
                 tab.position = position;
                 tab.path = tab.history[position].clone();
-                tab.entries.clear();
+                tab.set_rows(vec![]);
                 tab.selected = None;
                 tab.scope = FileScope::Folder;
                 tab.query.clear();
@@ -3542,7 +3707,10 @@ impl DesktopState {
                 });
                 Ok(vec![])
             }
-            "delete" => {
+            // "Delete" is what the control has always been called; "Move to Trash" is
+            // what it does. Both spellings reach the same effect, so the action an
+            // observer reads can be as honest as the button.
+            "delete" | "move-to-trash" => {
                 let trash = self.trash_folder();
                 let (id, tabs, active) = self.focused_files()?;
                 let index = *active;
@@ -3568,7 +3736,37 @@ impl DesktopState {
                     },
                 ])
             }
+            // Put back what is selected in the Trash. Only the Trash offers it: a
+            // Restore anywhere else has no record to read, and a control that could
+            // only refuse does not belong on the screen.
+            "restore" => self.restore_row(None),
+            // Really destroy what is in the trash. Refused outside it, so the one
+            // command that loses data cannot be reached from a folder of live files.
+            "empty-trash" => {
+                let trash = self.trash_folder();
+                let (id, tabs, active) = self.focused_files()?;
+                let index = *active;
+                let tab = tabs.get_mut(index).ok_or("tab not found")?;
+                if !tab.in_trash(&trash) {
+                    return Err("this view is not the trash".into());
+                }
+                if tab.entries.is_empty() {
+                    return Err("the trash is already empty".into());
+                }
+                Ok(vec![
+                    AppEffect::EmptyTrash { window: id },
+                    AppEffect::ListDirectory {
+                        window: id,
+                        tab: index,
+                        path: trash,
+                    },
+                ])
+            }
             rest => {
+                if let Some(row) = rest.strip_prefix("restore:") {
+                    let row: usize = row.parse().map_err(|_| "invalid entry")?;
+                    return self.restore_row(Some(row));
+                }
                 if let Some(row) = rest.strip_prefix("star:") {
                     let row: usize = row.parse().map_err(|_| "invalid entry")?;
                     let entry = self.tab_entry(Some(row))?;
@@ -3624,13 +3822,38 @@ impl DesktopState {
             }
         }
     }
+    /// Put one trashed thing back. `row` is a position on screen, or `None` for the
+    /// selection. The machine reads the `.trashinfo` record and decides where it goes;
+    /// the file manager only says which row, and then re-lists the Trash so what is on
+    /// screen afterwards is the trash as it now is.
+    fn restore_row(&mut self, row: Option<usize>) -> Result<Vec<AppEffect>, String> {
+        let trash = self.trash_folder();
+        if !self.focused_tab()?.in_trash(&trash) {
+            return Err("this view is not the trash".into());
+        }
+        let path = self.tab_entry(row)?;
+        let (id, tabs, active) = self.focused_files()?;
+        let index = *active;
+        let _ = tabs.get(index).ok_or("tab not found")?;
+        Ok(vec![
+            AppEffect::RestorePath {
+                window: id,
+                path: path.trim_end_matches('/').to_owned(),
+            },
+            AppEffect::ListDirectory {
+                window: id,
+                tab: index,
+                path: trash,
+            },
+        ])
+    }
     /// A star changed: a tab showing the Starred list shows the list as it now is.
     fn refresh_starred_view(&mut self) -> Result<Vec<AppEffect>, String> {
         if self.focused_tab()?.scope == FileScope::Starred {
             let starred = self.starred.clone();
             let tab = self.focused_tab_mut()?;
             let kept = tab.selection().cloned();
-            tab.entries = starred;
+            tab.set_names(starred);
             tab.selected = kept.and_then(|k| tab.entries.iter().position(|e| *e == k));
         }
         Ok(vec![])
@@ -4239,6 +4462,137 @@ mod file_manager_tests {
         d.directory_loaded(id, 0, vec!["old.txt".into()]).unwrap();
         d.click("open:0").unwrap();
         assert!(d.click("files-delete").is_err());
+    }
+    /// The same trash from either spelling, the Delete key included, and a Restore that
+    /// exists only where there is a record to restore from.
+    #[test]
+    fn move_to_trash_and_restore_are_one_trash_and_refuse_everywhere_else() {
+        let mut d = files(&["notes.txt"]);
+        d.click("open:0").unwrap();
+        let effects = d.click("files-move-to-trash").unwrap();
+        assert!(matches!(
+            &effects[0],
+            AppEffect::TrashPath { path, trash, .. }
+                if path == "/work/notes.txt" && trash == &d.trash_folder()
+        ));
+        // The Delete key is the same command, and only outside a text field.
+        assert!(matches!(
+            &d.key("Delete").unwrap()[0],
+            AppEffect::TrashPath { path, .. } if path == "/work/notes.txt"
+        ));
+        d.click("files-rename").unwrap();
+        assert!(d.key("Delete").is_err(), "Delete deleted a file mid-rename");
+        d.key("Escape").unwrap();
+        // Restore and Empty have no record to read outside the trash, and say so
+        // rather than guessing where a file used to live.
+        assert!(d.click("files-restore").is_err());
+        assert!(d.click("files-restore:0").is_err());
+        assert!(d.click("files-empty-trash").is_err());
+
+        let trash = d.trash_folder();
+        let (id, _) = d.launch("files", &trash).unwrap();
+        d.directory_listed(
+            id,
+            0,
+            vec![FileRow {
+                entry: "old.txt".into(),
+                original: Some("/work/old.txt".into()),
+                ..FileRow::named("old.txt")
+            }],
+        )
+        .unwrap();
+        // Nothing is selected yet, so there is nothing to put back.
+        assert!(d.click("files-restore").is_err());
+        d.click("open:0").unwrap();
+        let effects = d.click("files-restore").unwrap();
+        assert!(
+            matches!(&effects[0], AppEffect::RestorePath { path, .. }
+                if *path == format!("{trash}/old.txt")),
+            "{effects:?}"
+        );
+        // The Trash is re-listed afterwards: what is on screen is the machine's answer.
+        assert!(matches!(&effects[1], AppEffect::ListDirectory { path, .. } if *path == trash));
+        // A row on screen can be named directly, the way a context menu names one.
+        assert!(matches!(
+            &d.click("files-restore:0").unwrap()[0],
+            AppEffect::RestorePath { path, .. } if *path == format!("{trash}/old.txt")
+        ));
+        assert!(matches!(
+            &d.click("files-empty-trash").unwrap()[0],
+            AppEffect::EmptyTrash { .. }
+        ));
+        // The row knows where it came from, which is what the Trash view draws.
+        assert_eq!(
+            d.focused_tab().unwrap().original_of(0).as_deref(),
+            Some("/work/old.txt")
+        );
+        // An empty trash has nothing to empty.
+        d.directory_listed(id, 0, vec![]).unwrap();
+        assert!(d.click("files-empty-trash").is_err());
+    }
+    /// A listing carries the machine's own `stat`, and the Size and Date columns sort
+    /// on it. What the machine said nothing about sorts last instead of posing as zero.
+    #[test]
+    fn a_listing_carries_real_metadata_and_the_new_columns_sort_on_it() {
+        let mut d = DesktopState {
+            home: "/home/alice".into(),
+            ..DesktopState::default()
+        };
+        let (id, _) = d.launch("files", "/work").unwrap();
+        let row = |entry: &str, kind, size, modified| FileRow {
+            entry: entry.into(),
+            kind,
+            size,
+            mode: Some(0o644),
+            modified,
+            original: None,
+        };
+        d.directory_listed(
+            id,
+            0,
+            vec![
+                row("big.bin", EntryKind::File, Some(4096), Some(3_000_000)),
+                row("small.txt", EntryKind::File, Some(12), Some(9_000_000)),
+                row("link", EntryKind::Symlink, Some(9), Some(1_000_000)),
+                row("sub/", EntryKind::Directory, None, Some(5_000_000)),
+            ],
+        )
+        .unwrap();
+        let shown = |d: &DesktopState| -> Vec<String> {
+            let tab = d.focused_tab().unwrap();
+            tab.display()
+                .into_iter()
+                .map(|i| tab.entries[i].clone())
+                .collect()
+        };
+        // The metadata survives the listing, kind and all.
+        let tab = d.focused_tab().unwrap();
+        assert_eq!(tab.entries, ["big.bin", "link", "small.txt", "sub/"]);
+        assert_eq!(tab.row(1).unwrap().kind, EntryKind::Symlink);
+        assert_eq!(tab.row(2).unwrap().size, Some(12));
+        assert_eq!(tab.row(2).unwrap().mode, Some(0o644));
+        assert_eq!(tab.row(3).unwrap().modified, Some(5_000_000));
+        // Smallest first, and the folder — which has no byte count — last.
+        d.click("files-sort:size").unwrap();
+        assert_eq!(shown(&d), ["link", "small.txt", "big.bin", "sub/"]);
+        // Oldest first.
+        d.click("files-sort:modified").unwrap();
+        assert_eq!(shown(&d), ["link", "big.bin", "sub/", "small.txt"]);
+        // The same key again reverses it, exactly as Name and Kind do.
+        d.click("files-sort:modified").unwrap();
+        assert!(d.focused_tab().unwrap().descending);
+        assert_eq!(shown(&d), ["small.txt", "sub/", "big.bin", "link"]);
+        // "date" is the other spelling of the same column.
+        assert_eq!(SortKey::parse("date"), Some(SortKey::Modified));
+        assert_eq!(SortKey::parse("bogus"), None);
+        assert!(d.click("files-sort:bogus").is_err());
+        // A listing given as bare names says nothing it was not told.
+        d.directory_loaded(id, 0, vec!["plain.txt".into()]).unwrap();
+        let only = d.focused_tab().unwrap().row(0).unwrap();
+        assert_eq!(
+            (only.size, only.modified, only.kind),
+            (None, None, EntryKind::File)
+        );
     }
     #[test]
     fn a_rename_only_commits_a_name_that_is_really_a_name() {
