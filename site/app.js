@@ -133,7 +133,7 @@ go(Math.max(named, 0), { quiet: true });
 requestAnimationFrame(() => requestAnimationFrame(() => track.classList.remove('still')));
 
 // The install line and the snippet follow the language tabs.
-const installs = { py: 'pip install computerworld', js: 'npm install computerworld', rs: 'cargo add computerworld --git https://github.com/JacobFV/computerworld --tag v0.1.0' };
+const installs = { py: 'pip install computerworld', js: 'npm install computerworld', rs: 'cargo add computerworld --git https://github.com/JacobFV/computerworld --tag v0.1.1' };
 const install = document.querySelector('#install code');
 const panes = [...document.querySelectorAll('.codebox pre[data-lang]')];
 const langs = [...document.querySelectorAll('.tabs button')];

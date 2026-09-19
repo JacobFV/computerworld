@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 — 2026-09-19
+
+The same engine as 0.1.0 with two more wheels and a docs site. Package and engine
+version are both `0.1.1`; snapshots from 0.1.0 are rejected, as every version's are.
 
 - Wheels for Linux arm64 (manylinux2014) and macOS x86-64 join the release, so
   `pip install computerworld` works on arm64 Linux servers and Intel Macs. The parity

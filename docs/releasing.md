@@ -51,7 +51,7 @@ The current release uses:
 
 | Surface | Version |
 |---|---|
-| Git tag / Cargo / engine / npm | `v0.1.0` / `0.1.0` |
+| Git tag / Cargo / engine / npm | `v0.1.1` / `0.1.1` |
 | Python distribution | `0.1.0` |
 
 A prerelease spells the two differently (`0.1.0-alpha.3` and `0.1.0a3`).

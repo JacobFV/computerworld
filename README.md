@@ -34,13 +34,13 @@ seed, action sequence, viewport): replay it on any platform and get the same byt
 ## Install
 
 ```sh
-pip install computerworld        # Python 3.9+ (Linux x86-64, macOS arm64, Windows x64 at 0.1.0)
+pip install computerworld        # Python 3.9+ (Linux x86-64 and arm64, macOS arm64 and x86-64, Windows x64)
 npm install computerworld        # Node and browsers, one package
 ```
 
 ```toml
 # Rust: not on crates.io yet, so depend on the tag
-computerworld = { git = "https://github.com/JacobFV/computerworld.git", tag = "v0.1.0" }
+computerworld = { git = "https://github.com/JacobFV/computerworld.git", tag = "v0.1.1" }
 ```
 
 Pin the version. This is 0.x: APIs, world schemas and snapshots may change between

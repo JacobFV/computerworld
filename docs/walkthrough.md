@@ -21,7 +21,7 @@ npm install computerworld        # Node and browsers, one package
 
 ```toml
 # Rust: the workspace is not on crates.io yet, so depend on the tag
-computerworld = { git = "https://github.com/JacobFV/computerworld.git", tag = "v0.1.0" }
+computerworld = { git = "https://github.com/JacobFV/computerworld.git", tag = "v0.1.1" }
 ```
 
 Pin the version. Snapshots and state hashes name the engine that made them, and 0.x
