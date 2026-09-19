@@ -57,6 +57,32 @@ impl DesktopTheme {
     pub fn mobile(self) -> bool {
         matches!(self, Self::Ios | Self::Android)
     }
+    /// The name this shell shows for a window: the document it presents, or the
+    /// application's own name when it presents none. This is the same function the
+    /// frame paints with, so the title an agent reads in `Scene::windows` is the
+    /// title on the screen, and neither is ever a bare application id.
+    pub fn window_title(self, w: &WindowView) -> String {
+        match self {
+            Self::Macos => macos::window_title(w),
+            Self::Windows => windows::window_title(w),
+            Self::Ubuntu => ubuntu::window_title(w),
+            Self::Ios => ios::window_title(w),
+            Self::Android => android::window_title(w),
+        }
+    }
+    /// The name this shell paints under an application's launcher icon, or `None`
+    /// when this shell has no icon for that application. This is the *only* source of
+    /// a launcher label: a catalogue an agent reads and the pixels it sees are the
+    /// same table, so searching for what is on screen always finds it.
+    pub fn app_label(self, id: &str) -> Option<&'static str> {
+        match self {
+            Self::Macos => macos::app_name(id),
+            Self::Windows => windows::app_label(id),
+            Self::Ubuntu => ubuntu::app_name(id),
+            Self::Ios => ios::app_name(id),
+            Self::Android => android::app_name(id),
+        }
+    }
     /// The screen a machine of this shell has before anything has said otherwise, in
     /// the logical pixels scenes are laid out in, portrait for a phone: an iPhone's
     /// 390 x 844 points, a Pixel's 412 x 915 dp, and a 1280 x 800 desktop.

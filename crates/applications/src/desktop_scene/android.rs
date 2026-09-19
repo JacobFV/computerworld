@@ -38,7 +38,40 @@ const APPS: [(&str, &str); 19] = [
     ("weather", "Weather"),
 ];
 
-fn app_name(kind: &str) -> Option<&'static str> {
+/// The title this shell paints in a window's app bar. It is left empty where the
+/// application's own content carries the name instead.
+pub(super) fn app_bar_title(w: &WindowView) -> String {
+    match w.kind.as_str() {
+        "files" => w
+            .document
+            .trim_end_matches('/')
+            .rsplit('/')
+            .next()
+            .filter(|s| !s.is_empty())
+            .unwrap_or("Internal storage")
+            .to_owned(),
+        "editor" => String::new(),
+        kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
+    }
+}
+/// The name this window goes by, for a reader that needs one even where the bar
+/// is left blank.
+pub(super) fn window_title(w: &WindowView) -> String {
+    let painted = app_bar_title(w);
+    if !painted.is_empty() {
+        return painted;
+    }
+    if w.kind == "editor" && !w.document.is_empty() {
+        return w
+            .document
+            .rsplit('/')
+            .find(|s| !s.is_empty())
+            .unwrap_or(&w.document)
+            .to_owned();
+    }
+    app_name(&w.kind).map_or_else(|| w.title.clone(), str::to_owned)
+}
+pub(super) fn app_name(kind: &str) -> Option<&'static str> {
     APPS.iter().find(|(k, _)| *k == kind).map(|(_, n)| *n)
 }
 
@@ -1615,18 +1648,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
             "Navigate up",
         );
     }
-    let title = match window.kind.as_str() {
-        "files" => window
-            .document
-            .trim_end_matches('/')
-            .rsplit('/')
-            .next()
-            .filter(|s| !s.is_empty())
-            .unwrap_or("Internal storage")
-            .to_owned(),
-        "editor" => String::new(),
-        kind => app_name(kind).map_or_else(|| window.title.clone(), str::to_owned),
-    };
+    let title = app_bar_title(window);
     let title_x = if files_up || nav.is_some() {
         r.x + 60
     } else {

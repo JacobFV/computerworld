@@ -54,7 +54,40 @@ const LIBRARY_GROUPS: [(&str, &[&str]); 6] = [
     ("Developer", &["terminal", "editor"]),
 ];
 
-fn app_name(kind: &str) -> Option<&'static str> {
+/// The title this shell paints in a window's navigation bar. A phone leaves it
+/// empty where the application's own content carries the name instead.
+pub(super) fn navigation_title(w: &WindowView) -> String {
+    match w.kind.as_str() {
+        // Files names the folder it is showing, taken from the window's real path.
+        "files" => w
+            .document
+            .trim_end_matches('/')
+            .rsplit('/')
+            .find(|s| !s.is_empty())
+            .unwrap_or("Browse")
+            .to_owned(),
+        "editor" => String::new(),
+        kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
+    }
+}
+/// The name this window goes by, for a reader that needs one even where the bar
+/// is left blank.
+pub(super) fn window_title(w: &WindowView) -> String {
+    let painted = navigation_title(w);
+    if !painted.is_empty() {
+        return painted;
+    }
+    if w.kind == "editor" && !w.document.is_empty() {
+        return w
+            .document
+            .rsplit('/')
+            .find(|s| !s.is_empty())
+            .unwrap_or(&w.document)
+            .to_owned();
+    }
+    app_name(&w.kind).map_or_else(|| w.title.clone(), str::to_owned)
+}
+pub(super) fn app_name(kind: &str) -> Option<&'static str> {
     APPS.iter().find(|(k, _, _)| *k == kind).map(|(_, _, n)| *n)
 }
 fn asset(kind: &str) -> &str {
@@ -1834,15 +1867,8 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
     }
     let ink = if dark { Color::WHITE } else { INK };
     let folder = window.document.trim_end_matches('/');
-    let title = match window.kind.as_str() {
-        // Files names the folder it is showing, taken from the window's real path.
-        "files" => folder
-            .rsplit('/')
-            .find(|s| !s.is_empty())
-            .unwrap_or("Browse"),
-        "editor" => "",
-        kind => app_name(kind).unwrap_or(window.title.as_str()),
-    };
+    let title = navigation_title(window);
+    let title = title.as_str();
     // An application with a large title shows it in its content, not twice: the bar
     // stays clear until the large title has scrolled under it, and then carries the
     // title inline over a hairline, as UINavigationBar does.

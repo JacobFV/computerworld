@@ -15,6 +15,9 @@ pub(crate) struct Fail {
     /// name. A nested shell's diagnostics are its own, and are carried through even
     /// when it exits 0, so a script never loses what it printed to stderr.
     raw: bool,
+    /// What a nested run asked the desktop to open, carried out with everything else
+    /// so `sh -c 'xdg-open x'` reaches the desktop the way a bare `xdg-open x` does.
+    open: Vec<String>,
 }
 impl Fail {
     fn new(text: impl Into<String>, code: i32) -> Self {
@@ -23,6 +26,7 @@ impl Fail {
             code,
             out: String::new(),
             raw: false,
+            open: Vec::new(),
         }
     }
     /// Carries a nested run's two streams and status through unchanged.
@@ -32,6 +36,7 @@ impl Fail {
             code: r.exit_code,
             out: r.stdout,
             raw: true,
+            open: r.open,
         }
     }
     fn with_output(mut self, out: String) -> Self {
@@ -60,8 +65,14 @@ impl From<crate::VfsError> for Fail {
 }
 /// Commands implemented in-process. `which` reports a nominal path for these because
 /// the VFS holds no binaries; the roster is the honest answer to "is this available?".
+/// Signals `kill -l` lists and `kill`/`pkill` accept. `STOP` and `KILL` cannot have
+/// their disposition changed, as on a real system.
+pub(crate) const SIGNALS: &[&str] = &[
+    "HUP", "INT", "QUIT", "KILL", "TERM", "STOP", "TSTP", "CONT", "USR1", "USR2",
+];
 pub(crate) const BUILTINS: &[&str] = &[
     ":",
+    "apps",
     "[",
     "[[",
     "apt",
@@ -86,6 +97,7 @@ pub(crate) const BUILTINS: &[&str] = &[
     "export",
     "false",
     "find",
+    "free",
     "getopts",
     "git",
     "grep",
@@ -95,13 +107,16 @@ pub(crate) const BUILTINS: &[&str] = &[
     "kill",
     "ln",
     "local",
+    "lsof",
     "ls",
     "mkdir",
     "mv",
     "node",
     "npm",
     "nproc",
+    "pgrep",
     "pip",
+    "pkill",
     "printenv",
     "printf",
     "ps",
@@ -125,6 +140,7 @@ pub(crate) const BUILTINS: &[&str] = &[
     "systemctl",
     "tail",
     "test",
+    "top",
     "touch",
     "tr",
     "true",
@@ -136,6 +152,7 @@ pub(crate) const BUILTINS: &[&str] = &[
     "wget",
     "which",
     "whoami",
+    "xdg-open",
 ];
 #[derive(Clone, Debug)]
 enum Token {
@@ -816,7 +833,8 @@ fn execute_inner(
         Ok(v) => v,
         Err(e) => return CommandResult::new(format!("shell: {e}\n"), 2),
     };
-    let pid = c.processes.spawn(1, &c.user, source, tick);
+    // A command typed at this machine's shell runs on its one pseudo-terminal.
+    let pid = c.processes.spawn_on(1, &c.user, source, tick, "pts/0");
     if tokens
         .first()
         .is_some_and(|v| matches!(v,Token::Word(parts) if parts.len()==1 && parts[0].0=="sleep"))
@@ -922,6 +940,7 @@ fn run_list(
                 );
                 previous = r.exit_code;
                 total.clear |= r.clear;
+                total.open.extend(r.open.iter().cloned());
                 total.stderr.push_str(&r.stderr);
                 input = r.stdout;
                 // `break`, `continue`, `return` and an exhausted budget stop here.
@@ -1088,6 +1107,7 @@ fn run_tokens(
                     format!("{}: {}\n", args[0], f.text.trim_end_matches('\n'))
                 },
                 exit_code: f.code,
+                open: f.open,
                 ..CommandResult::default()
             },
         }
@@ -1713,6 +1733,7 @@ fn run_node(
             let mut local = CommandResult::default();
             let code = run_node(c, head, ctx, t, host, depth, &mut local, status);
             total.clear |= local.clear;
+            total.open.append(&mut local.open);
             total.stderr.push_str(&local.stderr);
             if ctx.flow != Flow::Normal {
                 total.stdout.push_str(&local.stdout);
@@ -1787,6 +1808,7 @@ fn run_node(
             local.exit_code = code;
             dispatch(c, &mut local, &fds, t);
             total.clear |= local.clear;
+            total.open.append(&mut local.open);
             total.stdout.push_str(&local.stdout);
             total.stderr.push_str(&local.stderr);
             if local.exit_code != code {
@@ -2208,7 +2230,71 @@ fn shell_builtin(
         "getopts" => Some(builtin_getopts(c, args, ctx)),
         "source" | "." => Some(builtin_source(c, args, ctx, t, host, depth)),
         "sqlite3" => Some(crate::sqlite::execute(c, args, input, t)),
+        // `xdg-open` needs to hand a target to the desktop, which no other command does,
+        // so it is built here where a whole CommandResult is available.
+        "xdg-open" | "gio" | "kde-open" => Some(cmd_xdg_open(c, args)),
+        "open" if c.os_family == "macos" => Some(cmd_xdg_open(c, args)),
+        "start" if c.dialect == "powershell" => Some(cmd_xdg_open(c, args)),
         _ => None,
+    }
+}
+/// `xdg-open TARGET` (`open` on macOS, `start` in PowerShell, `gio open`, `kde-open`).
+/// The shell checks what a shell can check — that the target exists and that this
+/// machine has an application to show it with — and records the request. Opening a
+/// window is the desktop's job, and it appends its own refusal when it cannot.
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_xdg_open(c: &Computer, args: &[String]) -> CommandResult {
+    let name = args[0].clone();
+    let rest: Vec<String> = if name == "gio" {
+        match args.get(1).map(String::as_str) {
+            Some("open") => args[2..].to_vec(),
+            Some(other) => {
+                return CommandResult::new(
+                    format!(
+                        "gio: unsupported subcommand `{other}`; this world models `gio open`\n"
+                    ),
+                    2,
+                )
+            }
+            None => Vec::new(),
+        }
+    } else {
+        args[1..].to_vec()
+    };
+    if let Some(flag) = rest.iter().find(|a| a.starts_with('-') && a.len() > 1) {
+        return CommandResult::new(
+            format!(
+                "{name}: unsupported option `{flag}`; {name} takes one target and no options\n"
+            ),
+            2,
+        );
+    }
+    let [target] = rest.as_slice() else {
+        return CommandResult::new(format!("{name}: expected exactly one file or URL\n"), 2);
+    };
+    let url = target.starts_with("http://")
+        || target.starts_with("https://")
+        || target.starts_with("file://");
+    if !url {
+        let path = c.resolve(target);
+        if !c.vfs.exists(&path) {
+            // xdg-open's own status for a target that is not there.
+            return CommandResult::new(format!("{name}: no such file or directory: {target}\n"), 2);
+        }
+    }
+    if c.installed_apps.is_empty() {
+        return CommandResult::new(
+            format!("{name}: no application is installed on this machine to open it with\n"),
+            3,
+        );
+    }
+    CommandResult {
+        open: vec![if url {
+            target.clone()
+        } else {
+            c.resolve(target)
+        }],
+        ..CommandResult::default()
     }
 }
 /// `read [-r] [NAME…]`. Fields are split on whitespace and the last name takes the
@@ -2999,8 +3085,75 @@ fn run(
             }
             Err(Fail::usage("unsupported service operation"))
         }
-        "ps" | "get-process" => cmd_ps(c, args),
+        "ps" | "get-process" => cmd_ps(c, args, t),
+        "top" => cmd_top(c, args, t),
+        "free" => cmd_free(c, args),
+        "lsof" => cmd_lsof(c, args),
+        "apps" => cmd_apps(c, args),
+        // Refused by name rather than faked: each of these would need a model this
+        // world does not have, and a command that quietly does nothing is worse than
+        // one that says what is missing.
+        "nice" | "renice" => Err(Fail::usage(format!(
+            "{}: no scheduler is simulated, so a priority would change nothing; \
+             run the command directly",
+            cmd
+        ))),
+        "jobs" | "bg" | "fg" | "disown" | "wait" => Err(Fail::usage(format!(
+            "{cmd}: job control is not modelled; every command runs to completion \
+             before the next one starts, and `sleep N &` is the only background \
+             process — find it with `ps -e` and end it with `kill`"
+        ))),
+        "vmstat" | "iostat" | "mpstat" | "sar" => Err(Fail::usage(format!(
+            "{cmd}: no paging, block-device or interrupt counters are simulated; \
+             `free` reports memory and `ps`/`top` report the process table"
+        ))),
+        "pgrep" => {
+            let (rows, opts) = pgrep_select("pgrep", c, args)?;
+            if rows.is_empty() {
+                return Err(Fail::new(String::new(), 1));
+            }
+            Ok(rows
+                .iter()
+                .map(|p| {
+                    if flag(&opts, 'l') {
+                        format!("{} {}\n", p.pid, ps_program(&p.command))
+                    } else {
+                        format!("{}\n", p.pid)
+                    }
+                })
+                .collect())
+        }
+        "pkill" => {
+            // `pkill -SIGNAL pattern`: the signal is a leading option, as for `kill`.
+            let mut args = args.to_vec();
+            let mut signal = "TERM".to_string();
+            if let Some(first) = args.first().cloned() {
+                let name = first.trim_start_matches('-');
+                if first.starts_with('-')
+                    && !name.is_empty()
+                    && (name.chars().all(|ch| ch.is_ascii_uppercase())
+                        || name.chars().all(|ch| ch.is_ascii_digit()))
+                {
+                    signal = name.to_string();
+                    args.remove(0);
+                }
+            }
+            let (rows, _) = pgrep_select("pkill", c, &args)?;
+            if rows.is_empty() {
+                return Err(Fail::new(String::new(), 1));
+            }
+            for p in &rows {
+                c.processes.signal(p.pid, &signal, &c.user, t)?;
+                if process_terminated(c, p.pid) {
+                    host.cleanup_process(p.pid);
+                }
+            }
+            Ok(String::new())
+        }
         "kill" | "stop-process" => {
+            if args.first().is_some_and(|a| a == "-l" || a == "--list") {
+                return Ok(format!("{}\n", SIGNALS.join(" ")));
+            }
             let (signal, index) = if required(0)?.starts_with('-') {
                 (
                     required(0)?
@@ -3011,10 +3164,16 @@ fn run(
             } else {
                 ("TERM", 0)
             };
-            let pid = required(index)?.parse().map_err(|_| "invalid pid")?;
-            c.processes.signal(pid, signal, &c.user, t)?;
-            if process_terminated(c, pid) {
-                host.cleanup_process(pid);
+            let pids = &args[index.min(args.len())..];
+            if pids.is_empty() {
+                return Err(Fail::usage("kill: missing pid"));
+            }
+            for operand in pids {
+                let pid = operand.parse().map_err(|_| "invalid pid")?;
+                c.processes.signal(pid, signal, &c.user, t)?;
+                if process_terminated(c, pid) {
+                    host.cleanup_process(pid);
+                }
             }
             Ok(String::new())
         }
@@ -3135,7 +3294,10 @@ fn run(
             let r = execute_inner(c, &source, t, host, depth + 1);
             c.env = saved_env;
             c.cwd = saved_cwd;
-            if r.exit_code == 0 && r.stderr.is_empty() {
+            // A nested run that asked the desktop to open something is carried
+            // through as a `Fail` even at status 0, because that is the only path
+            // that keeps more than its stdout.
+            if r.exit_code == 0 && r.stderr.is_empty() && r.open.is_empty() {
                 Ok(r.stdout)
             } else {
                 Err(Fail::nested(r))
@@ -3205,7 +3367,10 @@ fn run(
             let r = execute_inner(c, &source, t, host, depth + 1);
             c.env = old;
             c.cwd = old_cwd;
-            if r.exit_code == 0 && r.stderr.is_empty() {
+            // A nested run that asked the desktop to open something is carried
+            // through as a `Fail` even at status 0, because that is the only path
+            // that keeps more than its stdout.
+            if r.exit_code == 0 && r.stderr.is_empty() && r.open.is_empty() {
                 Ok(r.stdout)
             } else {
                 Err(Fail::nested(r))
@@ -5337,95 +5502,773 @@ fn cmd_touch(c: &mut Computer, args: &[String], t: u64) -> Result<String, Fail> 
     }
     Ok(String::new())
 }
-/// `ps` column output. No terminal and no CPU accounting are modelled, so TTY is `?`
-/// and TIME is `00:00:00` for every process; everything else is read from the table.
+/// The process table's columns, as `ps -o` names them. Each is read from the table:
+/// nothing here is sampled from a host, and nothing is invented. `%CPU` and `TIME` are
+/// a real counter that this world never charges (see `Process::cpu_us`), so they are
+/// `0.0` and `00:00:00`; `RSS`, `VSZ` and `%MEM` come from the published footprint
+/// model in `crates/computer/src/process.rs`. Documented in `docs/shell.md`.
+const PS_COLUMNS: &[(&str, &str, bool, usize)] = &[
+    // (name, header, right-aligned, minimum width)
+    ("pid", "PID", true, 7),
+    ("ppid", "PPID", true, 7),
+    ("pgid", "PGID", true, 7),
+    ("user", "USER", false, 8),
+    ("uid", "UID", false, 8),
+    ("comm", "COMMAND", false, 0),
+    ("args", "COMMAND", false, 0),
+    ("stat", "STAT", false, 4),
+    ("state", "S", false, 1),
+    ("tty", "TTY", false, 8),
+    ("time", "TIME", true, 8),
+    ("etime", "ELAPSED", true, 11),
+    ("etimes", "ELAPSED", true, 7),
+    ("rss", "RSS", true, 6),
+    ("vsz", "VSZ", true, 7),
+    ("pmem", "%MEM", true, 4),
+    ("pcpu", "%CPU", true, 4),
+    // `C`, System V's CPU utilisation. No scheduler is simulated, so it is always 0.
+    ("c", "C", true, 2),
+    ("start", "START", true, 5),
+];
+/// `ps -o` aliases that name the same column under a different spelling.
+fn ps_canonical(field: &str) -> &str {
+    match field {
+        "ucomm" => "comm",
+        "cmd" | "command" => "args",
+        "s" => "state",
+        "ruser" => "user",
+        "pgrp" => "pgid",
+        "tt" | "tname" => "tty",
+        "cputime" => "time",
+        "rsz" | "rssize" => "rss",
+        "vsize" => "vsz",
+        "%mem" => "pmem",
+        "%cpu" => "pcpu",
+        "stime" | "lstart" | "bsdstart" => "start",
+        other => other,
+    }
+}
+fn ps_header(field: &str) -> Option<&'static str> {
+    PS_COLUMNS
+        .iter()
+        .find(|(name, _, _, _)| *name == field)
+        .map(|(_, header, _, _)| *header)
+}
+fn ps_right(field: &str) -> bool {
+    PS_COLUMNS
+        .iter()
+        .find(|(name, _, _, _)| *name == field)
+        .is_some_and(|(_, _, right, _)| *right)
+}
+fn ps_min_width(field: &str) -> usize {
+    PS_COLUMNS
+        .iter()
+        .find(|(name, _, _, _)| *name == field)
+        .map_or(0, |(_, _, _, width)| *width)
+}
+fn ps_column_names() -> String {
+    PS_COLUMNS
+        .iter()
+        .map(|(name, _, _, _)| *name)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+/// Program name without its arguments or directory, the `comm`/`COMMAND` column.
+fn ps_program(command: &str) -> &str {
+    command
+        .split_whitespace()
+        .find(|word| !word.contains('='))
+        .unwrap_or_default()
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or_default()
+}
+/// `[D-]HH:MM:SS` elapsed, the way `ps` prints `etime`.
+fn ps_elapsed(seconds: u64) -> String {
+    let (days, hours, minutes, secs) = (
+        seconds / 86_400,
+        seconds % 86_400 / 3600,
+        seconds % 3600 / 60,
+        seconds % 60,
+    );
+    if days > 0 {
+        format!("{days}-{hours:02}:{minutes:02}:{secs:02}")
+    } else if hours > 0 {
+        format!("{hours}:{minutes:02}:{secs:02}")
+    } else {
+        format!("{minutes:02}:{secs:02}")
+    }
+}
+fn ps_cell(field: &str, p: &crate::Process, c: &Computer, now: u64) -> String {
+    let elapsed = now.saturating_sub(p.started) / 1_000_000;
+    let defunct = matches!(p.state, crate::ProcessState::Zombie { .. });
+    match field {
+        "pid" => p.pid.to_string(),
+        "ppid" => p.parent.to_string(),
+        "pgid" => p.group.to_string(),
+        "user" => p.owner.clone(),
+        "uid" => {
+            if p.owner == "root" {
+                "0".into()
+            } else {
+                c.hardware.uid.to_string()
+            }
+        }
+        "comm" => ps_program(&p.command).to_owned(),
+        "args" => {
+            if defunct {
+                format!("{} <defunct>", p.command)
+            } else {
+                p.command.clone()
+            }
+        }
+        "stat" | "state" => p.stat_letter().to_string(),
+        "tty" => p.tty_name().to_owned(),
+        "time" => {
+            let s = p.cpu_us / 1_000_000;
+            format!("{:02}:{:02}:{:02}", s / 3600, s % 3600 / 60, s % 60)
+        }
+        "etime" => ps_elapsed(elapsed),
+        "etimes" => elapsed.to_string(),
+        "rss" => (p.rss_bytes / 1024).to_string(),
+        "vsz" => (p.vsz_bytes() / 1024).to_string(),
+        "pmem" => format!(
+            "{:.1}",
+            p.rss_bytes as f64 * 100.0 / c.hardware.memory_bytes.max(1) as f64
+        ),
+        "pcpu" => "0.0".into(),
+        "c" => "0".into(),
+        "start" => {
+            let s = clock(p.started);
+            format!("{:02}:{:02}", s.hour, s.minute)
+        }
+        _ => String::new(),
+    }
+}
+/// The signed key `--sort` orders by. Numeric columns sort numerically; the rest sort
+/// by their printed text, which is what `ps` does.
+fn ps_key(field: &str, p: &crate::Process, c: &Computer, now: u64) -> (i128, String) {
+    let numeric = matches!(
+        field,
+        "pid" | "ppid" | "pgid" | "rss" | "vsz" | "etimes" | "time" | "pcpu" | "uid"
+    );
+    if numeric {
+        let value = match field {
+            "pid" => p.pid as i128,
+            "ppid" => p.parent as i128,
+            "pgid" => p.group as i128,
+            "rss" => p.rss_bytes as i128,
+            "vsz" => p.vsz_bytes() as i128,
+            "etimes" => now.saturating_sub(p.started) as i128,
+            "time" => p.cpu_us as i128,
+            _ => 0,
+        };
+        return (value, String::new());
+    }
+    if field == "pmem" {
+        return (p.rss_bytes as i128, String::new());
+    }
+    (0, ps_cell(field, p, c, now))
+}
+/// The processes a `ps` invocation selects, already sorted.
+struct PsSelection {
+    rows: Vec<crate::Process>,
+}
+fn ps_rows(
+    c: &Computer,
+    now: u64,
+    everyone: bool,
+    pids: &[u64],
+    owners: &[String],
+    sort: &[(bool, String)],
+) -> PsSelection {
+    let mut rows: Vec<crate::Process> = c
+        .processes
+        .list()
+        .into_iter()
+        .filter(|p| pids.is_empty() || pids.contains(&p.pid))
+        .filter(|p| owners.is_empty() || owners.contains(&p.owner))
+        .filter(|p| everyone || !pids.is_empty() || !owners.is_empty() || p.owner == c.user)
+        .collect();
+    if !sort.is_empty() {
+        rows.sort_by(|a, b| {
+            for (descending, field) in sort {
+                let order = ps_key(field, a, c, now).cmp(&ps_key(field, b, c, now));
+                let order = if *descending { order.reverse() } else { order };
+                if order != std::cmp::Ordering::Equal {
+                    return order;
+                }
+            }
+            a.pid.cmp(&b.pid)
+        });
+    }
+    PsSelection { rows }
+}
+/// Lay out columns the way `ps` does: every column but the last is padded to the
+/// widest cell in it, and the last runs to the end of the line.
+fn ps_table(fields: &[String], headers: &[String], cells: &[Vec<String>]) -> String {
+    let widths: Vec<usize> = (0..fields.len())
+        .map(|i| {
+            cells
+                .iter()
+                .map(|row| row[i].chars().count())
+                .chain(std::iter::once(headers[i].chars().count()))
+                .chain(std::iter::once(ps_min_width(&fields[i])))
+                .max()
+                .unwrap_or(0)
+        })
+        .collect();
+    let mut out = String::new();
+    for row in std::iter::once(headers).chain(cells.iter().map(Vec::as_slice)) {
+        let mut line = String::new();
+        for (i, cell) in row.iter().enumerate() {
+            if i > 0 {
+                line.push(' ');
+            }
+            if i + 1 == fields.len() && !ps_right(&fields[i]) {
+                line.push_str(cell);
+            } else if ps_right(&fields[i]) {
+                line.push_str(&" ".repeat(widths[i].saturating_sub(cell.chars().count())));
+                line.push_str(cell);
+            } else {
+                line.push_str(cell);
+                line.push_str(&" ".repeat(widths[i].saturating_sub(cell.chars().count())));
+            }
+        }
+        out.push_str(line.trim_end());
+        out.push('\n');
+    }
+    out
+}
+/// `ps`, `ps aux`, `ps -ef`, `ps -e -o pid,rss,comm --sort=-rss`. Everything printed is
+/// read from the process table; see *Process table* in `docs/shell.md` for the column
+/// schema and for what this world does and does not account for.
 #[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
-fn cmd_ps(c: &Computer, args: &[String]) -> Result<String, Fail> {
+fn cmd_ps(c: &Computer, args: &[String], t: u64) -> Result<String, Fail> {
+    // BSD syntax: a leading option word with no dash, as in `ps aux`.
+    let mut args = args.to_vec();
+    let mut bsd = String::new();
+    if args
+        .first()
+        .is_some_and(|a| !a.is_empty() && a.chars().all(|ch| "auxewfjr".contains(ch)))
+    {
+        bsd = args.remove(0);
+    }
     let (opts, rest) = options(
         "ps",
-        args,
-        "efA",
-        "up",
+        &args,
+        "efAwjr",
+        "upos",
         &[
             ("json", 'j'),
             ("full", 'f'),
             ("user", 'u'),
             ("pid", 'p'),
             ("every", 'e'),
+            ("format", 'o'),
+            ("sort", 's'),
         ],
     )?;
     if let Some(operand) = rest.first() {
         return Err(Fail::usage(format!(
-            "ps: unsupported operand `{operand}`; this world models `ps`, `ps -e`/`-A`, \
-             `ps -f`, `-u USER`, `-p PID` and `--json`"
+            "ps: unsupported operand `{operand}`; this world models `ps`, `ps aux`, \
+             `ps -ef`, `ps -e`/`-A`, `-f`, `-u USER`, `-p PID`, `-o COLUMNS`, \
+             `--sort=[+-]COLUMN` and `--json`"
         )));
     }
-    let pid = match value(&opts, 'p') {
-        Some(v) => Some(
-            v.parse::<u64>()
-                .map_err(|_| Fail::usage("ps: option `-p` expects a pid"))?,
-        ),
-        None => None,
+    let mut pids = Vec::new();
+    for value in opts.iter().filter(|(k, _)| *k == 'p').map(|(_, v)| v) {
+        for part in value.split(',').filter(|s| !s.is_empty()) {
+            pids.push(
+                part.parse::<u64>()
+                    .map_err(|_| Fail::usage("ps: option `-p` expects a pid"))?,
+            );
+        }
+    }
+    let owners: Vec<String> = opts
+        .iter()
+        .filter(|(k, _)| *k == 'u')
+        .flat_map(|(_, v)| v.split(',').map(str::to_owned))
+        .filter(|s| !s.is_empty())
+        .collect();
+    // `ps aux`'s `u` is a format, not a selector; `-u USER` is a selector.
+    let bsd_user = bsd.contains('u');
+    let mut sort: Vec<(bool, String)> = Vec::new();
+    for spec in opts.iter().filter(|(k, _)| *k == 's').map(|(_, v)| v) {
+        for key in spec.split(',').filter(|s| !s.is_empty()) {
+            let (descending, name) = match key.as_bytes()[0] {
+                b'-' => (true, &key[1..]),
+                b'+' => (false, &key[1..]),
+                _ => (false, key),
+            };
+            let name = ps_canonical(name);
+            if ps_header(name).is_none() {
+                return Err(Fail::usage(format!(
+                    "ps: unknown sort column `{name}`; this world sorts by {}",
+                    ps_column_names()
+                )));
+            }
+            sort.push((descending, name.to_owned()));
+        }
+    }
+    let selected: Vec<String> = match value(&opts, 'o') {
+        Some(spec) => {
+            let mut fields = Vec::new();
+            for part in spec.split(',').filter(|s| !s.is_empty()) {
+                // `-o rss=RSS` renames a column; this world takes the column and
+                // refuses the rename rather than printing a header it did not pick.
+                if part.contains('=') {
+                    return Err(Fail::usage(
+                        "ps: `-o` header renaming is not modelled; name the column alone",
+                    ));
+                }
+                let name = ps_canonical(part);
+                if ps_header(name).is_none() {
+                    return Err(Fail::usage(format!(
+                        "ps: unsupported column `{part}`; this world models {}",
+                        ps_column_names()
+                    )));
+                }
+                fields.push(name.to_owned());
+            }
+            if fields.is_empty() {
+                return Err(Fail::usage("ps: option `-o` expects a column list"));
+            }
+            fields
+        }
+        None if bsd_user => [
+            "user", "pid", "pcpu", "pmem", "vsz", "rss", "tty", "stat", "start", "time", "args",
+        ]
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect(),
+        None if flag(&opts, 'f') => ["user", "pid", "ppid", "c", "start", "tty", "time", "args"]
+            .iter()
+            .map(|s| (*s).to_owned())
+            .collect(),
+        None => ["pid", "tty", "time", "args"]
+            .iter()
+            .map(|s| (*s).to_owned())
+            .collect(),
     };
-    let owner = value(&opts, 'u');
     let everyone = flag(&opts, 'e')
         || flag(&opts, 'A')
         || flag(&opts, 'j')
-        || owner.is_some()
-        || pid.is_some();
-    let rows: Vec<crate::Process> = c
-        .processes
-        .list()
-        .into_iter()
-        .filter(|p| pid.is_none_or(|want| p.pid == want))
-        .filter(|p| owner.is_none_or(|want| p.owner == want))
-        .filter(|p| everyone || p.owner == c.user)
-        .collect();
+        || bsd.contains('a')
+        || bsd.contains('x');
+    let selection = ps_rows(c, t, everyone, &pids, &owners, &sort);
     if flag(&opts, 'j') {
-        return Ok(serde_json::to_string_pretty(&rows)
+        return Ok(serde_json::to_string_pretty(&selection.rows)
             .map(|s| s + "\n")
             .map_err(|e| e.to_string())?);
     }
-    let command = |p: &crate::Process| match p.state {
-        // A reaped-but-unwaited process is what `<defunct>` means.
-        crate::ProcessState::Zombie { .. } => format!("{} <defunct>", p.command),
-        _ => p.command.clone(),
+    // System V formats head the command column `CMD`; BSD and `-o` head it `COMMAND`.
+    let short = value(&opts, 'o').is_none() && !bsd_user;
+    let full = short && flag(&opts, 'f');
+    let headers: Vec<String> = selected
+        .iter()
+        .map(|f| match f.as_str() {
+            "args" if short => "CMD".to_owned(),
+            // `-f` heads the start column STIME and the owner column UID, as System V
+            // does; it prints the owner's name there, as `ps -ef` does.
+            "start" if full => "STIME".to_owned(),
+            "user" if full => "UID".to_owned(),
+            _ => ps_header(f).unwrap_or("").to_owned(),
+        })
+        .collect();
+    let cells: Vec<Vec<String>> = selection
+        .rows
+        .iter()
+        .map(|p| selected.iter().map(|f| ps_cell(f, p, c, t)).collect())
+        .collect();
+    Ok(ps_table(&selected, &headers, &cells))
+}
+/// `top -b -n1`: one batch snapshot of the same table `ps` reads. An interactive `top`
+/// would need a terminal this world does not model, so only the batch form exists.
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_top(c: &Computer, args: &[String], t: u64) -> Result<String, Fail> {
+    let (opts, rest) = options(
+        "top",
+        args,
+        "b",
+        "no",
+        &[
+            ("batch-mode", 'b'),
+            ("iterations", 'n'),
+            ("sort-override", 'o'),
+        ],
+    )?;
+    if let Some(operand) = rest.first() {
+        return Err(Fail::usage(format!(
+            "top: unsupported operand `{operand}`; this world models `top -b -n1`"
+        )));
+    }
+    if !flag(&opts, 'b') {
+        return Err(Fail::usage(
+            "top: interactive mode needs a terminal this world does not model; use `top -b -n1`",
+        ));
+    }
+    match value(&opts, 'n') {
+        Some("1") => {}
+        Some(other) => {
+            return Err(Fail::usage(format!(
+                "top: `-n {other}` would need simulated time to pass between samples; \
+                 use `top -b -n1` and advance the clock between snapshots"
+            )))
+        }
+        None => {
+            return Err(Fail::usage(
+                "top: `-b` needs an iteration count; use `top -b -n1`",
+            ))
+        }
+    }
+    let sort = match value(&opts, 'o') {
+        Some(spec) => {
+            let (descending, name) = match spec.as_bytes().first() {
+                Some(b'-') => (true, &spec[1..]),
+                Some(b'+') => (false, &spec[1..]),
+                _ => (true, spec),
+            };
+            let lowered = name.to_lowercase();
+            let name = ps_canonical(&lowered);
+            if ps_header(name).is_none() {
+                return Err(Fail::usage(format!("top: unknown sort column `{spec}`")));
+            }
+            vec![(descending, name.to_owned())]
+        }
+        None => vec![(true, "rss".to_owned())],
     };
-    let full = flag(&opts, 'f');
-    let mut out = if full {
-        format!(
-            "{:<8} {:>7} {:>7}  {:>1} {:<5} {:<8} {:>8} {}\n",
-            "UID", "PID", "PPID", "C", "STIME", "TTY", "TIME", "CMD"
-        )
-    } else {
-        format!("{:>7} {:<8} {:>8} {}\n", "PID", "TTY", "TIME", "CMD")
+    let rows = ps_rows(c, t, true, &[], &[], &sort).rows;
+    let total = c.hardware.memory_bytes;
+    let used: u64 = rows.iter().map(|p| p.rss_bytes).sum();
+    let mib = |bytes: u64| bytes as f64 / (1 << 20) as f64;
+    let counted = |want: char| {
+        rows.iter()
+            .filter(|p| p.stat_letter() == want)
+            .count()
+            .to_string()
     };
-    for p in &rows {
-        let started = clock(p.started);
-        if full {
-            out.push_str(&format!(
-                "{:<8} {:>7} {:>7}  {:>1} {:02}:{:02} {:<8} {:>8} {}\n",
-                p.owner,
-                p.pid,
-                p.parent,
-                0,
-                started.hour,
-                started.minute,
-                "?",
-                "00:00:00",
-                command(p),
-            ));
+    let now = clock(t);
+    let up = t.saturating_sub(c.hardware.boot_tick) / 1_000_000;
+    let mut out = format!(
+        "top - {:02}:{:02}:{:02} up {},  1 user,  load average: 0.00, 0.00, 0.00\n",
+        now.hour,
+        now.minute,
+        now.second,
+        if up >= 3600 {
+            format!("{:2}:{:02}", up / 3600, up % 3600 / 60)
         } else {
+            format!("{} min", up / 60)
+        }
+    );
+    out.push_str(&format!(
+        "Tasks: {:>4} total, {:>4} running, {:>4} sleeping, {:>4} stopped, {:>4} zombie\n",
+        rows.len(),
+        counted('R'),
+        counted('S'),
+        counted('T'),
+        counted('Z'),
+    ));
+    // No scheduler is simulated, so the only honest CPU line is an idle one.
+    out.push_str(
+        "%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st\n",
+    );
+    out.push_str(&format!(
+        "MiB Mem : {:9.1} total, {:9.1} free, {:9.1} used, {:9.1} buff/cache\n",
+        mib(total),
+        mib(total.saturating_sub(used)),
+        mib(used),
+        0.0
+    ));
+    out.push_str(&format!(
+        "MiB Swap: {:9.1} total, {:9.1} free, {:9.1} used. {:9.1} avail Mem\n\n",
+        0.0,
+        0.0,
+        0.0,
+        mib(total.saturating_sub(used))
+    ));
+    // PR and NI are fixed: this world models no scheduler and refuses `nice`.
+    out.push_str("    PID USER      PR  NI    VIRT    RES  S  %CPU  %MEM     TIME+ COMMAND\n");
+    for p in &rows {
+        out.push_str(&format!(
+            "{:>7} {:<9} 20   0 {:>7} {:>6}  {} {:>5} {:>5} {:>9} {}\n",
+            p.pid,
+            p.owner,
+            p.vsz_bytes() / 1024,
+            p.rss_bytes / 1024,
+            p.stat_letter(),
+            "0.0",
+            format!(
+                "{:.1}",
+                p.rss_bytes as f64 * 100.0 / c.hardware.memory_bytes.max(1) as f64
+            ),
+            format!(
+                "{}:{:02}.{:02}",
+                p.cpu_us / 60_000_000,
+                p.cpu_us % 60_000_000 / 1_000_000,
+                p.cpu_us % 1_000_000 / 10_000
+            ),
+            ps_program(&p.command),
+        ));
+    }
+    Ok(out)
+}
+/// The processes a `pgrep`/`pkill` pattern selected, and the options it was given.
+type Matched = (Vec<crate::Process>, Vec<(char, String)>);
+/// The processes `pgrep`/`pkill` select. Matching is a plain substring of the program
+/// name, or of the whole command line with `-f`; this world models no regular
+/// expressions here and says so rather than matching one badly.
+fn pgrep_select(name: &str, c: &Computer, args: &[String]) -> Result<Matched, Fail> {
+    let (opts, rest) = options(
+        name,
+        args,
+        "flxn",
+        "u",
+        &[
+            ("full", 'f'),
+            ("list-name", 'l'),
+            ("exact", 'x'),
+            ("newest", 'n'),
+            ("euid", 'u'),
+        ],
+    )?;
+    let pattern = match rest.as_slice() {
+        [one] => one.clone(),
+        [] if value(&opts, 'u').is_some() => String::new(),
+        [] => return Err(Fail::usage(format!("{name}: missing pattern"))),
+        _ => {
+            return Err(Fail::usage(format!(
+                "{name}: expected one pattern; this world matches a substring, not a regex"
+            )))
+        }
+    };
+    if pattern.contains(['*', '?', '[', '^', '$', '|', '+']) {
+        return Err(Fail::usage(format!(
+            "{name}: regular expressions are not modelled; the pattern is matched as a \
+             plain substring of the program name, or of the command line with `-f`"
+        )));
+    }
+    let owners: Vec<String> = value(&opts, 'u')
+        .map(|v| v.split(',').map(str::to_owned).collect())
+        .unwrap_or_default();
+    let full = flag(&opts, 'f');
+    let exact = flag(&opts, 'x');
+    // `pgrep` never reports itself. The running command is the newest process, the
+    // same convention the interpreters use to name the process they run as.
+    let own = c.processes.list().iter().map(|p| p.pid).max().unwrap_or(0);
+    let mut rows: Vec<crate::Process> = c
+        .processes
+        .list()
+        .into_iter()
+        .filter(|p| p.pid != 1 && p.pid != own)
+        .filter(|p| owners.is_empty() || owners.contains(&p.owner))
+        .filter(|p| {
+            let subject = if full {
+                p.command.as_str()
+            } else {
+                ps_program(&p.command)
+            };
+            if pattern.is_empty() {
+                true
+            } else if exact {
+                subject == pattern
+            } else {
+                subject.contains(&pattern)
+            }
+        })
+        .collect();
+    rows.sort_by_key(|p| p.pid);
+    if flag(&opts, 'n') {
+        rows = rows.into_iter().next_back().into_iter().collect();
+    }
+    Ok((rows, opts))
+}
+/// `free`. Total memory is the machine's fixed `hardware.memory_bytes`; used is the sum
+/// of what the running processes are modelled to hold. No buffers, cache or swap are
+/// simulated, so those columns are zero rather than invented.
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_free(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, rest) = options(
+        "free",
+        args,
+        "bkmgh",
+        "",
+        &[
+            ("bytes", 'b'),
+            ("kibi", 'k'),
+            ("mebi", 'm'),
+            ("gibi", 'g'),
+            ("human", 'h'),
+        ],
+    )?;
+    if let Some(operand) = rest.first() {
+        return Err(Fail::usage(format!(
+            "free: unsupported operand `{operand}`"
+        )));
+    }
+    let total = c.hardware.memory_bytes;
+    let used: u64 = c.processes.list().iter().map(|p| p.rss_bytes).sum();
+    let used = used.min(total);
+    let free = total - used;
+    let show = |bytes: u64| -> String {
+        if flag(&opts, 'h') {
+            let text = human(bytes);
+            if text.chars().last().is_some_and(|ch| ch.is_ascii_digit()) {
+                format!("{text}B")
+            } else {
+                format!("{text}i")
+            }
+        } else if flag(&opts, 'b') {
+            bytes.to_string()
+        } else if flag(&opts, 'm') {
+            (bytes >> 20).to_string()
+        } else if flag(&opts, 'g') {
+            (bytes >> 30).to_string()
+        } else {
+            (bytes >> 10).to_string()
+        }
+    };
+    let mut out = format!(
+        "{:<15}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
+        "", "total", "used", "free", "shared", "buff/cache", "available"
+    );
+    out.push_str(&format!(
+        "{:<15}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}\n",
+        "Mem:",
+        show(total),
+        show(used),
+        show(free),
+        show(0),
+        show(0),
+        show(free)
+    ));
+    out.push_str(&format!(
+        "{:<15}{:>12}{:>12}{:>12}\n",
+        "Swap:",
+        show(0),
+        show(0),
+        show(0)
+    ));
+    Ok(out)
+}
+/// `lsof`-lite: the file descriptors and listening sockets the process table really
+/// holds. `DEVICE` and `SIZE/OFF` are not printed because this world models neither a
+/// device table nor a shared offset; everything shown is read from the table.
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_lsof(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, rest) = options("lsof", args, "n", "pu", &[("pid", 'p'), ("user", 'u')])?;
+    let mut pids = Vec::new();
+    for spec in opts.iter().filter(|(k, _)| *k == 'p').map(|(_, v)| v) {
+        for part in spec.split(',').filter(|s| !s.is_empty()) {
+            pids.push(
+                part.parse::<u64>()
+                    .map_err(|_| Fail::usage("lsof: option `-p` expects a pid"))?,
+            );
+        }
+    }
+    let owners: Vec<&str> = opts
+        .iter()
+        .filter(|(k, _)| *k == 'u')
+        .flat_map(|(_, v)| v.split(','))
+        .filter(|s| !s.is_empty())
+        .collect();
+    let want = rest.first().map(|path| c.resolve(path));
+    let mut out = format!(
+        "{:<12} {:>7} {:<10} {:<5} {:<6} {:>10} {}\n",
+        "COMMAND", "PID", "USER", "FD", "TYPE", "NODE", "NAME"
+    );
+    let mut matched = false;
+    for p in c.processes.list() {
+        if !pids.is_empty() && !pids.contains(&p.pid) {
+            continue;
+        }
+        if !owners.is_empty() && !owners.iter().any(|o| *o == p.owner) {
+            continue;
+        }
+        let mut rows: Vec<(String, &'static str, String, String)> = Vec::new();
+        for (fd, descriptor) in &p.fds {
+            let (kind, name, node) = match descriptor {
+                crate::FileDescriptor::Stdin
+                | crate::FileDescriptor::Stdout
+                | crate::FileDescriptor::Stderr => {
+                    ("CHR", format!("/dev/{}", p.tty_name()), String::new())
+                }
+                crate::FileDescriptor::File { path, .. } => (
+                    if c.vfs.stat(path).is_ok_and(|m| m.is_dir) {
+                        "DIR"
+                    } else {
+                        "REG"
+                    },
+                    path.clone(),
+                    c.vfs
+                        .stat(path)
+                        .map(|m| m.inode.to_string())
+                        .unwrap_or_default(),
+                ),
+                crate::FileDescriptor::Pipe { pipe, write } => (
+                    "FIFO",
+                    format!("pipe:[{pipe}]{}", if *write { " (write)" } else { "" }),
+                    pipe.to_string(),
+                ),
+                crate::FileDescriptor::Socket { listener } => {
+                    ("IPv4", listener.clone(), String::new())
+                }
+            };
+            let suffix = match descriptor {
+                crate::FileDescriptor::Stdin => "r",
+                crate::FileDescriptor::Stdout | crate::FileDescriptor::Stderr => "w",
+                crate::FileDescriptor::File { writable: true, .. } => "u",
+                crate::FileDescriptor::File { .. } => "r",
+                crate::FileDescriptor::Pipe { write: true, .. } => "w",
+                crate::FileDescriptor::Pipe { .. } => "r",
+                crate::FileDescriptor::Socket { .. } => "u",
+            };
+            rows.push((format!("{fd}{suffix}"), kind, node, name));
+        }
+        for listener in &p.listeners {
+            rows.push(("LISTEN".into(), "IPv4", String::new(), listener.clone()));
+        }
+        for (fd, kind, node, name) in rows {
+            if want.as_deref().is_some_and(|w| w != name) {
+                continue;
+            }
+            matched = true;
             out.push_str(&format!(
-                "{:>7} {:<8} {:>8} {}\n",
+                "{:<12} {:>7} {:<10} {:<5} {:<6} {:>10} {}\n",
+                ps_program(&p.command),
                 p.pid,
-                "?",
-                "00:00:00",
-                command(p)
+                p.owner,
+                fd,
+                kind,
+                node,
+                name
             ));
         }
     }
+    if !matched {
+        // lsof's own convention: nothing open is status 1, with no rows printed.
+        return Err(Fail::new(String::new(), 1));
+    }
     Ok(out)
+}
+/// `apps`: the applications this machine has installed, the shell's view of the same
+/// list `application.v1 list` returns. Ids only — a launcher label belongs to a desktop
+/// shell, and this machine's own record is the set of ids.
+#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
+fn cmd_apps(c: &Computer, args: &[String]) -> Result<String, Fail> {
+    let (opts, rest) = options("apps", args, "j", "", &[("json", 'j')])?;
+    if let Some(operand) = rest.first() {
+        return Err(Fail::usage(format!(
+            "apps: unsupported operand `{operand}`"
+        )));
+    }
+    let ids: Vec<&str> = c.installed_apps.iter().map(String::as_str).collect();
+    if flag(&opts, 'j') {
+        return serde_json::to_string(&ids)
+            .map(|s| s + "\n")
+            .map_err(|e| Fail::from(e.to_string()));
+    }
+    Ok(ids.iter().map(|id| format!("{id}\n")).collect::<String>())
 }
 #[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
 fn cmd_uptime(c: &Computer, args: &[String], t: u64) -> Result<String, Fail> {

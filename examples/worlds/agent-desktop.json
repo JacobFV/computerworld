@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "id": "agent-desktop",
+  "profiles": [
+    {
+      "id": "ubuntu",
+      "name": "Ubuntu 24.04 workstation",
+      "family": "linux",
+      "home": "/home/{user}",
+      "case_sensitive": true,
+      "shell": "posix"
+    }
+  ],
+  "computers": [
+    {
+      "id": "workstation",
+      "profile": "ubuntu",
+      "address": "10.0.0.10",
+      "user": "ada",
+      "initial_files": {
+        "Documents/handbook.txt": "Onboarding\n==========\n\n1. Read the notes in ~/Documents.\n2. The team wiki is at http://wiki.internal/.\n3. Report the quarter's totals in report.md.\n",
+        "Documents/expenses.csv": "month,category,amount\nJanuary,travel,1280\nJanuary,software,450\nFebruary,travel,910\nFebruary,software,450\nMarch,travel,1605\nMarch,software,450\n",
+        "Documents/report.md": "# Quarterly report\n\nTotals go here.\n",
+        "notes.txt": "Ask the handbook first: ~/Documents/handbook.txt\n"
+      },
+      "installed_apps": [
+        "terminal",
+        "browser",
+        "files",
+        "editor",
+        "calculator",
+        "calendar",
+        "notes",
+        "photos",
+        "spreadsheet",
+        "code"
+      ],
+      "packages": [
+        "coreutils",
+        "git",
+        "curl"
+      ]
+    }
+  ],
+  "network": {
+    "nodes": [
+      {
+        "id": "workstation",
+        "address": "10.0.0.10",
+        "zone": "local"
+      },
+      {
+        "id": "intranet-server",
+        "address": "10.0.1.10",
+        "zone": "local"
+      }
+    ],
+    "links": [
+      {
+        "from": "workstation",
+        "to": "intranet-server",
+        "bidirectional": true,
+        "latency_us": 10,
+        "loss_per_million": 0
+      }
+    ],
+    "dns": [
+      {
+        "name": "wiki.internal",
+        "address": "10.0.1.10",
+        "ttl_us": 60000000,
+        "resolver": "intranet-server"
+      }
+    ],
+    "routes": [],
+    "gateway": {
+      "allow_local": true,
+      "allow_internet": false,
+      "allow_host": false
+    }
+  },
+  "services": [
+    {
+      "id": "wiki",
+      "kind": "static-site",
+      "node": "intranet-server",
+      "domains": [
+        "wiki.internal"
+      ],
+      "port": 80,
+      "initial_state": {
+        "pages": {
+          "/": {
+            "version": 1,
+            "title": "Team wiki",
+            "elements": [
+              {
+                "kind": "heading",
+                "id": "title",
+                "text": "Team wiki",
+                "level": 1
+              },
+              {
+                "kind": "text",
+                "id": "intro",
+                "text": "Everything the workstation needs is under ~/Documents. Expenses are recorded per month in expenses.csv."
+              },
+              {
+                "kind": "link",
+                "id": "expenses",
+                "text": "Expense policy",
+                "url": "http://wiki.internal/expenses"
+              }
+            ]
+          },
+          "/expenses": {
+            "version": 1,
+            "title": "Expense policy",
+            "elements": [
+              {
+                "kind": "heading",
+                "id": "title",
+                "text": "Expense policy",
+                "level": 1
+              },
+              {
+                "kind": "text",
+                "id": "rule",
+                "text": "Travel and software are reported separately. The quarterly total is the sum of every row in expenses.csv."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "description": "One Ubuntu desktop for one agent: a user, the everyday applications, two seeded documents and an intranet wiki to browse. Copy this file and the session grants in docs/custom-world.md rather than hand-writing a world.",
+    "desktop_themes": {
+      "workstation": "ubuntu"
+    },
+    "device_presentations": {
+      "workstation": {
+        "kind": "laptop"
+      }
+    },
+    "actor_session": {
+      "actor": "ada",
+      "machines": [
+        "workstation"
+      ],
+      "actions": [
+        "terminal.v1",
+        "filesystem.v1",
+        "application.v1",
+        "browser.v1",
+        "keyboard.v1",
+        "pointer.v1",
+        "http.v1"
+      ],
+      "observations": [
+        "terminal.v1",
+        "semantic.v1"
+      ],
+      "action_budget": 1024
+    }
+  }
+}

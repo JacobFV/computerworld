@@ -53,6 +53,10 @@ pub struct MachineSession {
     /// Cleared before each action; never part of the state.
     #[serde(skip)]
     pub scrolled: bool,
+    /// The machine process each open window runs as, so an open application is a real
+    /// entry in `ps` and `kill` on it really closes the window.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub window_processes: BTreeMap<u64, u64>,
 }
 /// A list under a finger. The pane it took (or the application's own wheel use when
 /// no pane can move there), where the finger and the list were when it took it, and
@@ -98,6 +102,7 @@ impl Default for MachineSession {
             touch_scroll: None,
             viewport: None,
             scrolled: false,
+            window_processes: BTreeMap::new(),
         }
     }
 }
@@ -361,9 +366,9 @@ impl Environment {
         session
     }
     pub fn session(&self, id: &str) -> Result<&ActorSession> {
-        self.sessions
-            .get(id)
-            .ok_or_else(|| SimError::denied("unknown actor session"))
+        self.sessions.get(id).ok_or_else(|| {
+            SimError::denied("unknown actor session").because(cw_protocol::reason::UNKNOWN_SESSION)
+        })
     }
     pub fn observe(&self, id: &str) -> Result<Observation> {
         let session = self.session(id)?;
@@ -408,7 +413,8 @@ impl Environment {
     pub fn step(&mut self, id: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
         let config = self.session(id)?.config.clone();
         if actions.len() > config.action_budget as usize {
-            return Err(SimError::denied("action batch exceeds budget"));
+            return Err(SimError::denied("action batch exceeds budget")
+                .because(cw_protocol::reason::BUDGET_EXCEEDED));
         }
         let mut outcomes = Vec::with_capacity(actions.len());
         for (index, action) in actions.iter().enumerate() {
@@ -430,9 +436,19 @@ impl Environment {
                 .flatten();
             let result = if permitted {
                 self.dispatch(id, &config.actor, action)
+            } else if config.machines.contains(&action.machine) {
+                Err(SimError::denied("action is not permitted")
+                    .because(cw_protocol::reason::FAMILY_NOT_GRANTED))
             } else {
-                Err(SimError::denied("action is not permitted"))
+                Err(SimError::denied("action is not permitted")
+                    .because(cw_protocol::reason::MACHINE_NOT_GRANTED))
             };
+            // Windows and machine processes are two views of one fact; reconcile them
+            // after every action, so a `kill` from the shell closes the window it named
+            // and a window that opened is in `ps` before the next observation.
+            if permitted {
+                self.sync_window_processes(id, &action.machine)?;
+            }
             // Windows that share one document (KiCad's frames) all show the copy the
             // action changed, whether the action succeeded or stopped part-way.
             if permitted
@@ -737,7 +753,38 @@ fn download_name(url: &str) -> String {
         safe
     }
 }
+/// Flatten a refusal for the actor. The code is one of four, and the message is a
+/// compile-time constant, so a failing action can never leak world state through its
+/// error text. A `reason` from `cw_protocol::reason` survives — and carries that
+/// vocabulary's own fixed message — so the refusal still says what to do about it.
+/// Resident memory a desktop application is modelled to hold while a window of it is
+/// open, over and above the document that window has loaded. Published, not measured:
+/// the table is in `docs/shell.md` and an agent can predict every number in it.
+fn window_footprint(app: &str) -> u64 {
+    const MB: u64 = 1 << 20;
+    match app {
+        "browser" => 320 * MB,
+        "code" => 180 * MB,
+        "gimp" | "pixelmator" | "sketchbook" | "pinta" | "paint" => 140 * MB,
+        "kdenlive" | "imovie" | "clipchamp" | "videoeditor" => 210 * MB,
+        "freecad" | "kicad" => 240 * MB,
+        "docs" | "spreadsheet" | "excel" | "database" => 120 * MB,
+        "photos" | "preview" | "music" | "maps" => 90 * MB,
+        "files" => 45 * MB,
+        "editor" => 30 * MB,
+        "terminal" => 12 * MB,
+        "calculator" | "clock" | "weather" | "notes" | "contacts" => 24 * MB,
+        _ => 60 * MB,
+    }
+}
 fn actor_error(e: SimError) -> SimError {
+    if let Some((name, code, message)) = e
+        .reason
+        .as_deref()
+        .and_then(|r| cw_protocol::reason::ALL.iter().find(|(n, _, _)| *n == r))
+    {
+        return SimError::new(*code, *message).because(name);
+    }
     let code = match e.code.as_str() {
         "denied" => "denied",
         "not_found" => "not_found",
@@ -790,11 +837,11 @@ impl Environment {
         }
         match (action.family.as_str(), action.op.as_str()) {
             ("terminal.v1", "execute") => {
-                let value = serde_json::to_value(self.runtime.execute(
-                    machine,
-                    actor,
-                    string(p, "command")?,
-                )?)?;
+                let mut result = self
+                    .runtime
+                    .execute(machine, actor, string(p, "command")?)?;
+                self.open_from_shell(id, machine, actor, &mut result)?;
+                let value = serde_json::to_value(&result)?;
                 self.machine_mut(id, machine)?.terminal = value.clone();
                 Ok(value)
             }
@@ -837,6 +884,27 @@ impl Environment {
             }
             ("browser.v1", _) => self.browser_action(id, actor, action),
             ("application.v1", "event") => self.custom_event(id, machine, actor, p),
+            // What is on this machine, what this session may open, and where it cannot
+            // the documented reason why. An agent should never have to guess an id.
+            ("application.v1", "list") => {
+                let all = p.get("installed").and_then(Value::as_bool) == Some(false);
+                Ok(Value::Array(
+                    self.application_inventory(id, machine)
+                        .into_iter()
+                        .filter(|entry| entry.installed || all)
+                        .map(|entry| {
+                            json!({
+                                "id": entry.id,
+                                "label": entry.label,
+                                "kind": entry.kind,
+                                "installed": entry.installed,
+                                "launchable": entry.launchable,
+                                "blocked_by": entry.blocked_by,
+                            })
+                        })
+                        .collect(),
+                ))
+            }
             ("application.v1", "launch") => {
                 let requested = string(p, "kind")?;
                 let alias = self.desktop_alias(id, machine, requested)?;
@@ -855,14 +923,16 @@ impl Environment {
                 {
                     return Err(SimError::denied(
                         "browser application interaction is not permitted",
-                    ));
+                    )
+                    .because(cw_protocol::reason::BROWSER_FAMILY_REQUIRED));
                 }
                 let computer = self.runtime.computer(machine)?;
                 if alias.is_none()
                     && !computer.application_available(requested)
                     && !computer.application_available(canonical)
                 {
-                    return Err(SimError::not_found("application is not installed"));
+                    return Err(SimError::not_found("application is not installed")
+                        .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
                 }
                 if self.app_registry.application(string(p, "kind")?).is_ok() {
                     return self.custom_launch(id, machine, actor, p);
@@ -1286,7 +1356,8 @@ impl Environment {
                                 {
                                     return Err(SimError::denied(
                                         "application interaction is not permitted",
-                                    ));
+                                    )
+                                    .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
                                 }
                                 self.machine_mut(id, machine)?
                                     .desktop
@@ -1453,7 +1524,8 @@ impl Environment {
                         .iter()
                         .any(|family| family == "application.v1")
                     {
-                        return Err(SimError::denied("application interaction is not permitted"));
+                        return Err(SimError::denied("application interaction is not permitted")
+                            .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
                     }
                     // Pressing an application's drag surface captures the pointer at
                     // once, on a phone as on a desktop: a finger drawing on a canvas is a
@@ -1654,7 +1726,8 @@ impl Environment {
                 if let Some(extension) = self.extensions.get(&action.family).cloned() {
                     extension.execute(&mut self.runtime, actor, action)
                 } else {
-                    Err(SimError::invalid("unsupported action operation"))
+                    Err(SimError::invalid("unsupported action operation")
+                        .because(cw_protocol::reason::UNSUPPORTED_OPERATION))
                 }
             }
         }
@@ -1711,7 +1784,8 @@ impl Environment {
             .iter()
             .any(|family| family == "application.v1")
         {
-            return Err(SimError::denied("application interaction is not permitted"));
+            return Err(SimError::denied("application interaction is not permitted")
+                .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
         }
         if self
             .machine_mut(id, machine)?
@@ -2373,7 +2447,8 @@ impl Environment {
                         }
                     } else {
                         match self.runtime.execute_in(machine, actor, &cwd, &command) {
-                            Ok((result, after)) => {
+                            Ok((mut result, after)) => {
+                                self.open_from_shell(id, machine, actor, &mut result)?;
                                 let entry = cw_applications::TerminalEntry::new(
                                     &prompt,
                                     command,
@@ -2509,7 +2584,8 @@ impl Environment {
                     // The prompt is captured before the command runs, so `cd` is echoed
                     // under the directory it was typed in, not the one it moved to.
                     let prompt = self.machine_mut(id, machine)?.desktop.prompt.clone();
-                    let result = self.runtime.execute(machine, actor, &command)?;
+                    let mut result = self.runtime.execute(machine, actor, &command)?;
+                    self.open_from_shell(id, machine, actor, &mut result)?;
                     let entry = cw_applications::TerminalEntry::new(
                         &prompt,
                         command,
@@ -2667,7 +2743,8 @@ impl Environment {
                         .iter()
                         .any(|c| c == "pixels.v1")
                     {
-                        return Err(SimError::denied("pixel capture is not permitted"));
+                        return Err(SimError::denied("pixel capture is not permitted")
+                            .because(cw_protocol::reason::PIXELS_NOT_GRANTED));
                     }
                     // The screen is rasterised from the same scene an observer sees, so a
                     // screenshot cannot show something the actor could not, at the size
@@ -2949,6 +3026,166 @@ impl Environment {
         }
         DesktopTheme::from_profile(configured.unwrap_or(&computer.profile))
     }
+    /// Open what `xdg-open` asked for. The shell can check that a target exists; only
+    /// the interface layer can open a window, and only it knows whether this session is
+    /// allowed to. A refusal is appended to the command's own stderr with the status
+    /// `xdg-open` uses for "no application found", so the shell tells the truth.
+    pub(crate) fn open_from_shell(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        result: &mut cw_computer::CommandResult,
+    ) -> Result<()> {
+        // `dispatch` is past the grant gate `step` applies, so this path applies it
+        // itself: running a command must never be a way to drive applications the
+        // session was not granted.
+        let granted = self
+            .session(id)?
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "application.v1");
+        for target in std::mem::take(&mut result.open) {
+            if !granted {
+                result.stderr.push_str(&format!(
+                    "xdg-open: cannot open {target}: {}\n",
+                    actor_error(
+                        SimError::denied("application interaction is not permitted")
+                            .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED)
+                    )
+                    .message
+                ));
+                result.exit_code = 3;
+                continue;
+            }
+            let url = target.starts_with("http://")
+                || target.starts_with("https://")
+                || target.starts_with("file://");
+            let kind = if url {
+                "browser".to_owned()
+            } else if self
+                .runtime
+                .computer(machine)?
+                .vfs
+                .stat(&target)
+                .is_ok_and(|m| m.is_dir)
+            {
+                "files".to_owned()
+            } else {
+                // The same rule a file manager uses when a document is double-clicked.
+                cw_applications::opener(&target).to_owned()
+            };
+            let launch = ActionEnvelope::new(
+                "application.v1",
+                "launch",
+                machine,
+                json!({"kind":kind,"argument":target}),
+            );
+            if let Err(e) = self.dispatch(id, actor, &launch) {
+                let refusal = actor_error(e);
+                result.stderr.push_str(&format!(
+                    "xdg-open: cannot open {target} with {kind}: {}\n",
+                    refusal.message
+                ));
+                result.exit_code = 3;
+            }
+        }
+        Ok(())
+    }
+    /// Keep the machine's process table and the session's open windows in step, in both
+    /// directions: a window that opened gets a process, a window that closed loses it,
+    /// and a process an actor killed from the shell closes its window. An application on
+    /// the screen is something the machine is running, and `ps` says so.
+    pub(crate) fn sync_window_processes(&mut self, id: &str, machine: &str) -> Result<()> {
+        let Ok(session) = self.session(id) else {
+            return Ok(());
+        };
+        let Some(state) = session.machines.get(machine) else {
+            return Ok(());
+        };
+        // A process that is gone takes its window with it.
+        let killed: Vec<u64> = state
+            .window_processes
+            .iter()
+            .filter(|(window, pid)| {
+                state.desktop.windows.contains_key(window)
+                    && !self.runtime.process_alive(machine, **pid)
+            })
+            .map(|(window, _)| *window)
+            .collect();
+        let closed = !killed.is_empty();
+        for window in killed {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let _ = desktop.close(window);
+            self.machine_mut(id, machine)?
+                .window_processes
+                .remove(&window);
+            self.machine_mut(id, machine)?
+                .browser_windows
+                .remove(&window);
+        }
+        if closed {
+            // The same tidy-up closing a window by hand does: focus, the visible
+            // browser, and any per-window browser state the window owned.
+            self.sync_desktop_visibility(id, machine)?;
+        }
+        // A window that closed ends its process.
+        let ended: Vec<(u64, u64)> = {
+            let state = &self.session(id)?.machines[machine];
+            state
+                .window_processes
+                .iter()
+                .filter(|(window, _)| !state.desktop.windows.contains_key(window))
+                .map(|(window, pid)| (*window, *pid))
+                .collect()
+        };
+        for (window, pid) in ended {
+            self.runtime.end_window_process(machine, pid)?;
+            self.machine_mut(id, machine)?
+                .window_processes
+                .remove(&window);
+        }
+        // A window that opened starts one.
+        let started: Vec<(u64, String, u64)> = {
+            let state = &self.session(id)?.machines[machine];
+            let computer = self.runtime.computer(machine)?;
+            state
+                .desktop
+                .windows
+                .values()
+                .filter(|w| !state.window_processes.contains_key(&w.id))
+                .map(|w| {
+                    let document = presented(&w.state);
+                    // What the window really holds: the bytes of the document it opened.
+                    let holding = computer
+                        .vfs
+                        .stat(&document)
+                        .map(|m| m.size as u64)
+                        .unwrap_or(0);
+                    let command = if document.is_empty() {
+                        w.app_id.clone()
+                    } else {
+                        format!("{} {document}", w.app_id)
+                    };
+                    (
+                        w.id,
+                        command,
+                        holding.saturating_add(window_footprint(&w.app_id)),
+                    )
+                })
+                .collect()
+        };
+        for (window, command, holding) in started {
+            let pid = self
+                .runtime
+                .start_window_process(machine, &command, holding)?;
+            self.machine_mut(id, machine)?
+                .window_processes
+                .insert(window, pid);
+        }
+        Ok(())
+    }
     fn sync_desktop_visibility(&mut self, id: &str, machine: &str) -> Result<()> {
         let state = self.machine_mut(id, machine)?;
         state.browser_visible = state
@@ -2999,7 +3236,8 @@ impl Environment {
             .iter()
             .any(|family| family == "application.v1")
         {
-            return Err(SimError::denied("application interaction is not permitted"));
+            return Err(SimError::denied("application interaction is not permitted")
+                .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
         }
         if let Some(result) = self.desktop_panel_action(id, machine, actor, target)? {
             return Ok(result);
@@ -3026,7 +3264,8 @@ impl Environment {
             if let Some((kind, argument)) = kind.split_once('/') {
                 let (kind, argument) = (kind.to_owned(), argument.to_owned());
                 if !self.runtime.computer(machine)?.application_available(&kind) {
-                    return Err(SimError::not_found("application is not installed"));
+                    return Err(SimError::not_found("application is not installed")
+                        .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
                 }
                 return self.dispatch(
                     id,
@@ -3042,7 +3281,8 @@ impl Environment {
             if self.desktop_alias(id, machine, kind)?.is_none()
                 && !self.runtime.computer(machine)?.application_available(kind)
             {
-                return Err(SimError::not_found("application is not installed"));
+                return Err(SimError::not_found("application is not installed")
+                    .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
             }
             let existing = self.session(id)?.machines[machine]
                 .desktop
@@ -3218,7 +3458,8 @@ impl Environment {
             .iter()
             .any(|c| c == "semantic.v1" || c == "pixels.v1")
         {
-            return Err(SimError::denied("visual observation is not permitted"));
+            return Err(SimError::denied("visual observation is not permitted")
+                .because(cw_protocol::reason::VISUAL_NOT_GRANTED));
         }
         let m = s
             .machines
@@ -4523,7 +4764,9 @@ fn scene_windows(theme: DesktopTheme, views: &[WindowView]) -> Vec<SceneWindow> 
         .enumerate()
         .map(|(z, v)| SceneWindow {
             id: v.id,
-            title: v.title.clone(),
+            // The title the frame paints, not the raw application id the compositor
+            // stores: what an agent reads here is what it can see on the screen.
+            title: theme.window_title(v),
             app: v.kind.clone(),
             bounds: v.rect,
             content: window_content_rect_for_kind(theme, v.rect, &v.kind),

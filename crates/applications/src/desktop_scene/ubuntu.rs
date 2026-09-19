@@ -52,6 +52,10 @@ const DOCK: [&str; 8] = [
     "browser", "mail", "files", "music", "docs", "terminal", "editor", "code",
 ];
 
+pub(super) fn app_name(kind: &str) -> Option<&'static str> {
+    APPS.iter().find(|(k, _)| *k == kind).map(|(_, n)| *n)
+}
+
 fn basename(path: &str) -> &str {
     path.trim_end_matches('/')
         .rsplit('/')
@@ -581,7 +585,7 @@ fn workspace_strip(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32, y: i32)
     }
 }
 
-fn window_title(w: &WindowView) -> String {
+pub(super) fn window_title(w: &WindowView) -> String {
     match w.kind.as_str() {
         "files" if !w.caption.is_empty() => w.caption.clone(),
         "files" if !w.home.is_empty() && w.tilde(&w.document) == "~" => "Home".into(),
@@ -595,7 +599,8 @@ fn window_title(w: &WindowView) -> String {
         "editor" => basename(&w.document).to_owned(),
         "browser" if w.caption.is_empty() => "New Tab".into(),
         "browser" => w.caption.clone(),
-        _ => w.title.clone(),
+        // Anything else names itself with the name its launcher icon carries.
+        kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
     }
 }
 /// Flat libadwaita header bar button with its hover plate.

@@ -55,6 +55,10 @@ def act(family, op, payload):
         raise RuntimeError(outcome.get("error"))
     return outcome.get("value")
 
+# What is here, what this session may open, and the id `launch` takes for each.
+for app in act("application.v1", "list", {}):
+    print(app["id"], app["label"], app["launchable"], app["blocked_by"])
+
 window = act("application.v1", "launch", {"kind": "terminal"})["window"]
 act("keyboard.v1", "type", {"text": "echo hello from the agent"})
 act("keyboard.v1", "key", {"key": "Enter"})
