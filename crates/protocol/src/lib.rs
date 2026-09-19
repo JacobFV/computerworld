@@ -77,6 +77,8 @@ pub mod reason {
     pub const UNSUPPORTED_OPERATION: &str = "unsupported_operation";
     /// The machine this session named has no desktop shell to drive.
     pub const NO_DESKTOP_SHELL: &str = "no_desktop_shell";
+    /// No control on this shell answers to the `target` the action named.
+    pub const UNKNOWN_SHELL_TARGET: &str = "unknown_shell_target";
     /// Every reason, with the code it travels under and the fixed message it carries.
     pub const ALL: &[(&str, &str, &str)] = &[
         (
@@ -129,6 +131,11 @@ pub mod reason {
             NO_DESKTOP_SHELL,
             "invalid",
             "this machine has no desktop shell to drive",
+        ),
+        (
+            UNKNOWN_SHELL_TARGET,
+            "invalid",
+            "no control on this shell answers to that target",
         ),
     ];
     /// The code and fixed message a reason travels with, or `None` when the reason is

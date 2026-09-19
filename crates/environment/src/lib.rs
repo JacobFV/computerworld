@@ -1028,7 +1028,8 @@ impl Environment {
             ("application.v1", "shell") => {
                 let target = string(p, "target")?.to_owned();
                 if !target.starts_with("shell:") && !target.starts_with("window:") {
-                    return Err(SimError::invalid("not a shell interaction target"));
+                    return Err(SimError::invalid("not a shell interaction target")
+                        .because(cw_protocol::reason::UNKNOWN_SHELL_TARGET));
                 }
                 if let Some(rest) = target.strip_prefix("window:") {
                     // Window-namespaced controls belong to the window they name.
@@ -3303,6 +3304,17 @@ impl Environment {
                 &ActionEnvelope::new("keyboard.v1", "type", machine, json!({ "text": text })),
             );
         }
+        // A desktop icon named directly, rather than reached by double-clicking it. The
+        // name says open, so it opens: the Recycle Bin is a folder, the rest are apps.
+        if let Some(kind) = target.strip_prefix("shell:open:") {
+            let open = if kind == "trash" {
+                "shell:trash".to_owned()
+            } else {
+                format!("shell:launch:{kind}")
+            };
+            self.machine_mut(id, machine)?.desktop.desktop_selection = None;
+            return self.shell_action(id, machine, actor, &open);
+        }
         if let Some(kind) = target.strip_prefix("shell:launch:") {
             // `shell:launch:<kind>/<argument>` opens an application on something: a
             // calendar on a date, a file manager on a folder.
@@ -3487,7 +3499,10 @@ impl Environment {
                 }
                 return Ok(Value::Null);
             }
-            _ => return Err(SimError::invalid("unknown shell interaction")),
+            _ => {
+                return Err(SimError::invalid("unknown shell interaction")
+                    .because(cw_protocol::reason::UNKNOWN_SHELL_TARGET))
+            }
         }
         self.sync_desktop_visibility(id, machine)?;
         Ok(Value::Null)

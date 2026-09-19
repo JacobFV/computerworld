@@ -41,6 +41,13 @@ fn every_documented_shell_target_is_one_the_router_recognises() {
         .environment(EnvironmentConfig::desktop("alice", "alice-mac"))
         .unwrap();
     let mut unknown = Vec::new();
+    // A target nobody wrote a handler for, dispatched first so the detector below is
+    // known to fire. Without it an assertion over an always-empty list proves nothing.
+    let canary = dispatch(&mut world, &session, "shell:no-such-control-exists");
+    assert!(
+        canary.as_deref().is_some_and(never_routed),
+        "the unknown-target detector caught nothing for a made-up target: {canary:?}"
+    );
     for target in documented() {
         // Placeholders stand for a shape, not a literal; substitute a real one.
         let concrete = target
@@ -54,40 +61,52 @@ fn every_documented_shell_target_is_one_the_router_recognises() {
             .replace("<i>", "0")
             .replace("<n>", "0")
             .replace("<path>", "/");
-        if concrete.contains('<') {
+        // `shell:*` is how the prose writes "the shell namespace", not a control.
+        if concrete.contains('<') || concrete.ends_with('*') {
             continue;
         }
-        let result = world
-            .step(
-                &session,
-                vec![ActionEnvelope::new(
-                    "application.v1",
-                    "shell",
-                    "alice-mac",
-                    json!({ "target": concrete }),
-                )],
-            )
-            .unwrap();
         // A control may legitimately refuse in this state — no page to bookmark, no
         // window to close. What it must not do is be unrecognised.
-        if let Some(error) = &result.outcomes[0].error {
-            if error.message.contains("invalid action") || error.code == "invalid" {
-                // Distinguish "unknown target" from "not right now" by asking the
-                // router directly: an unknown one names no handler at all.
-                unknown.push(format!("{concrete} -> {}: {}", error.code, error.message));
+        if let Some(refusal) = dispatch(&mut world, &session, &concrete) {
+            if never_routed(&refusal) {
+                unknown.push(format!("{concrete} -> {refusal}"));
             }
         }
     }
     // Targets that are shape-only or need state this fixture lacks are expected to
     // refuse; what this catches is a documented target no handler has ever heard of.
-    let never_routed: Vec<_> = unknown
-        .iter()
-        .filter(|u| u.contains("unknown shell interaction") || u.contains("not a shell"))
-        .collect();
     assert!(
-        never_routed.is_empty(),
-        "documented targets the router does not recognise:\n{never_routed:#?}"
+        unknown.is_empty(),
+        "documented targets the router does not recognise:\n{unknown:#?}"
     );
+}
+
+/// Press one shell target and hand back the refusal it gave, if it refused at all.
+fn dispatch(world: &mut World, session: &str, target: &str) -> Option<String> {
+    let result = world
+        .step(
+            session,
+            vec![ActionEnvelope::new(
+                "application.v1",
+                "shell",
+                "alice-mac",
+                json!({ "target": target }),
+            )],
+        )
+        .unwrap();
+    let error = result.outcomes[0].error.as_ref()?;
+    Some(format!(
+        "{}/{}: {}",
+        error.code,
+        error.reason.as_deref().unwrap_or("-"),
+        error.message
+    ))
+}
+
+/// The refusal the router gives when no handler claims a target at all, as opposed to
+/// a handler that claimed it and said "not in this state".
+fn never_routed(refusal: &str) -> bool {
+    refusal.contains(cw_protocol::reason::UNKNOWN_SHELL_TARGET)
 }
 
 #[test]
