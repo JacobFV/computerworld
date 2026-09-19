@@ -15,13 +15,17 @@ pub mod bfuncs;
 pub mod bigint;
 pub mod builtins;
 pub mod compiler;
+pub mod debug;
 pub mod format;
 pub mod io;
 pub mod lexer;
+pub mod locale_data;
 pub mod methods;
 pub mod modules;
 pub mod ops;
 pub mod parser;
+pub mod repl;
+pub mod sched;
 pub mod value;
 pub mod vm;
 
@@ -35,6 +39,17 @@ pub const VERSION: &str = "Python 3.12.3";
 pub const TIMEOUT_EXIT: i32 = 124;
 
 const USAGE: &str = "usage: python3 [option] ... [-c cmd | -m mod | file | -] [arg] ...\n";
+
+/// Stops the run because it wants a line nobody has typed yet. The signal is
+/// uncatchable: no `except` may turn a pause into an error.
+pub fn need_input(vm: &mut Vm) -> Box<PyErr> {
+    vm.awaiting_input = true;
+    Box::new(PyErr {
+        kind: ErrKind::Lazy("EOFError", vec![Value::str("EOF when reading a line")]),
+        reraise: false,
+        fatal: true,
+    })
+}
 
 /// Compiles source to a code object, raising SyntaxError on failure.
 pub fn compile_source(vm: &mut Vm, src: &str, filename: &str, mode: &str) -> PyResult<Rc<Code>> {
@@ -114,6 +129,15 @@ impl<'h> Vm<'h> {
             id_map: RefCell::new(Default::default()),
             open_files: vec![],
             call_sites: vec![],
+            sched: None,
+            park_ok_depth: None,
+            stdout_flushed: 0,
+            line_buffered: false,
+            interactive: false,
+            stdin_eof: false,
+            awaiting_input: false,
+            debug: None,
+            time_locale: None,
         };
         bfuncs::install(&mut vm);
         methods::install(&mut vm);
@@ -592,10 +616,38 @@ enum Target {
     Code(String, String),
     Module(String),
     File(String),
+    /// The interactive interpreter (a bare `python3` at a terminal).
+    Repl,
 }
 
 /// Runs `python3 <args>` against the host and returns both streams and the status.
 pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
+    run_with(host, invocation, None)
+}
+
+/// Runs the program under a debugger: it is consulted at every new source line
+/// (see [`debug`]). The run is otherwise the same, so a debugged run and a plain
+/// one produce the same output.
+pub fn run_debug<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debugger: &'a mut dyn cw_script_host::debug::Debugger,
+) -> (Outcome, cw_script_host::debug::DebugRunInfo) {
+    let mut info = cw_script_host::debug::DebugRunInfo::default();
+    let out = run_with(host, invocation, Some((debugger, &mut info)));
+    (out, info)
+}
+
+type DebugArgs<'a> = (
+    &'a mut dyn cw_script_host::debug::Debugger,
+    &'a mut cw_script_host::debug::DebugRunInfo,
+);
+
+fn run_with<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debug: Option<DebugArgs<'a>>,
+) -> Outcome {
     let args = &invocation.args;
     let mut i = 0;
     let mut target = None;
@@ -607,6 +659,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: format!("{VERSION}\n"),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-h" | "--help" | "-?" => {
@@ -616,6 +670,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     ),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-c" => {
@@ -624,6 +680,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                         stdout: String::new(),
                         stderr: format!("Argument expected for the -c option\n{USAGE}Try `python -h' for more information.\n"),
                         exit_code: 2,
+                        awaiting_input: false,
+                        elapsed_micros: 0,
                     };
                 };
                 target = Some((Target::Code(code.clone(), "-c".into()), i + 2));
@@ -635,6 +693,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                         stdout: String::new(),
                         stderr: format!("Argument expected for the -m option\n{USAGE}Try `python -h' for more information.\n"),
                         exit_code: 2,
+                        awaiting_input: false,
+                        elapsed_micros: 0,
                     };
                 };
                 target = Some((Target::Module(m.clone()), i + 2));
@@ -656,6 +716,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: String::new(),
                     stderr: format!("Unknown option: -{bad}\n{USAGE}Try `python -h' for more information.\n"),
                     exit_code: 2,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 };
             }
             _ => {
@@ -666,6 +728,9 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     }
     let (target, rest) = match target {
         Some(t) => t,
+        // A bare `python3` at a terminal is the console; from a pipe or a file
+        // it is a program on standard input.
+        None if invocation.interactive => (Target::Repl, args.len()),
         None => (
             Target::Code(invocation.stdin.clone(), "".into()),
             args.len(),
@@ -716,6 +781,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                                     "/usr/bin/python3: can't find '__main__' module in '{abs}'\n"
                                 ),
                                 exit_code: 1,
+                                awaiting_input: false,
+                                elapsed_micros: 0,
                             }
                         }
                     }
@@ -736,6 +803,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                                 e.kind.strerror()
                             ),
                             exit_code: 2,
+                            awaiting_input: false,
+                            elapsed_micros: 0,
                         }
                     }
                 },
@@ -745,11 +814,27 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
             argv0 = m.clone();
             (None, String::new())
         }
+        Target::Repl => {
+            argv0 = String::new();
+            (None, "<stdin>".to_string())
+        }
     };
     let mut argv = vec![argv0];
     argv.extend(program_args);
     let host_ptr = host;
     let mut vm = Vm::new(host_ptr, argv, invocation.env.clone(), stdin);
+    let mut debug_info = None;
+    if let Some((dbg, info)) = debug {
+        let mut session = debug::Session::new(dbg);
+        // `stop_on_entry` waits for the program itself, not the imports the
+        // interpreter runs to set itself up.
+        session.state.main_path = filename.clone();
+        vm.debug = Some(Box::new(session));
+        debug_info = Some(info);
+    }
+    vm.interactive = invocation.interactive;
+    vm.stdin_eof = invocation.eof;
+    vm.line_buffered |= invocation.interactive;
     let script_dir = match &target {
         Target::File(_) => filename
             .rsplit_once('/')
@@ -768,11 +853,19 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     io::flush_all(&mut vm);
     let stdout = std::mem::take(&mut vm.stdout);
     let stderr = std::mem::take(&mut vm.stderr);
+    let elapsed_micros = vm.time_offset.max(0) as u64;
+    let awaiting_input = vm.awaiting_input;
+    if let (Some(slot), Some(session)) = (debug_info.as_mut(), vm.debug.as_ref()) {
+        **slot = session.state.info.clone();
+    }
+    vm.debug = None;
     vm.teardown();
     Outcome {
         stdout,
         stderr,
         exit_code: outcome,
+        awaiting_input,
+        elapsed_micros,
     }
 }
 
@@ -807,6 +900,14 @@ fn run_main(vm: &mut Vm, src: Option<String>, filename: &str, target: &Target) -
     main.dict.borrow_mut().set_str("__package__", Value::None);
     main.dict.borrow_mut().set_str("__spec__", Value::None);
     main.dict.borrow_mut().set_str("__loader__", Value::None);
+    if matches!(target, Target::Repl) {
+        vm.modules
+            .borrow_mut()
+            .set_str("__main__", Value::Module(main.clone()));
+        let status = repl::run(vm, main.dict.clone());
+        vm.shutdown_threads();
+        return status;
+    }
     let result: PyResult<()> = (|| {
         let (src, filename) = match target {
             Target::Module(name) => {
@@ -833,8 +934,13 @@ fn run_main(vm: &mut Vm, src: Option<String>, filename: &str, target: &Target) -
         vm.execute(frame, None)?;
         Ok(())
     })();
+    // The interpreter waits for the non-daemon threads before it exits.
+    vm.shutdown_threads();
     match result {
         Ok(()) => 0,
+        // A run that stopped for a line nobody has typed yet is not an error:
+        // what it printed stands, and it continues when the line arrives.
+        Err(_) if vm.awaiting_input => 0,
         Err(e) => report(vm, e),
     }
 }
@@ -920,6 +1026,7 @@ pub fn run_source(
             args: a,
             env: vec![],
             stdin: stdin.to_string(),
+            ..Default::default()
         },
     )
 }

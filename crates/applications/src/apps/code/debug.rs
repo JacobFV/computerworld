@@ -75,6 +75,9 @@ pub enum ConsoleKind {
     Result,
     /// Why it could not be evaluated, or why the session ended.
     Error,
+    /// The debugger's own narration — what it started, what it exited with. Kept apart
+    /// from the program's output so a traceback is read from the program alone.
+    Notice,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConsoleLine {
@@ -373,6 +376,67 @@ use crate::AppEffect;
 use cw_protocol::debug::{Launch, Reply, Request, Step};
 
 impl Workbench {
+    /// VS Code's launch variables, expanded the way VS Code expands them. A variable
+    /// nobody here defines is left standing, so a configuration that names one is
+    /// visibly wrong rather than quietly pointing somewhere else.
+    pub fn expand_variables(&self, text: &str) -> String {
+        let workspace = self.workspace().unwrap_or(&self.home).to_owned();
+        let file = self
+            .active_tab()
+            .filter(|t| t.kind == TabKind::File)
+            .map(|t| t.path.clone())
+            .unwrap_or_default();
+        let dirname = |p: &str| match p.rsplit_once('/') {
+            Some((head, _)) if !head.is_empty() => head.to_owned(),
+            Some(_) => "/".to_owned(),
+            None => String::new(),
+        };
+        let base = basename(&file).to_owned();
+        let mut out = String::with_capacity(text.len());
+        let mut rest = text;
+        while let Some(start) = rest.find("${") {
+            out.push_str(&rest[..start]);
+            let Some(end) = rest[start..].find('}').map(|i| start + i) else {
+                break;
+            };
+            let name = &rest[start + 2..end];
+            let value = match name {
+                "workspaceFolder" | "cwd" => Some(workspace.clone()),
+                "workspaceFolderBasename" => Some(basename(&workspace).to_string()),
+                "file" => Some(file.clone()),
+                "fileBasename" => Some(base.clone()),
+                "fileBasenameNoExtension" => Some(
+                    base.rsplit_once('.')
+                        .map_or(base.clone(), |(stem, _)| stem.to_owned()),
+                ),
+                "fileExtname" => Some(
+                    base.rsplit_once('.')
+                        .map_or(String::new(), |(_, ext)| format!(".{ext}")),
+                ),
+                "fileDirname" => Some(dirname(&file)),
+                "relativeFile" => Some(self.rel(&file).unwrap_or_else(|| file.clone())),
+                "relativeFileDirname" => {
+                    Some(self.rel(&dirname(&file)).unwrap_or_else(|| dirname(&file)))
+                }
+                "userHome" => Some(self.home.clone()),
+                "pathSeparator" | "/" => Some("/".to_owned()),
+                "lineNumber" => self
+                    .active_tab()
+                    .map(|t| (t.doc.text[..t.doc.cursor].matches('\n').count() + 1).to_string()),
+                // `${env:NAME}` would need the machine's environment, which this view
+                // does not have; it is left standing rather than guessed at.
+                _ => None,
+            };
+            match value {
+                Some(v) => out.push_str(&v),
+                None => out.push_str(&rest[start..=end]),
+            }
+            rest = &rest[end + 1..];
+        }
+        out.push_str(rest);
+        out
+    }
+
     /// The configuration that would run now: the one chosen in the view, or the active
     /// file, which is what VS Code offers before a `launch.json` exists.
     pub fn debug_config(&self) -> Result<Config, String> {
@@ -420,6 +484,24 @@ impl Workbench {
             request,
         }]
     }
+    /// Every unsaved file in the active editor group, written before a launch. This is
+    /// VS Code's `debug.saveBeforeStart` default, and without it a debugger would run
+    /// yesterday's bytes while today's are on screen.
+    fn save_group_before_debug(&mut self, window: u64) -> Result<Vec<AppEffect>, String> {
+        let group = self.active_tab().map(|t| t.group);
+        let dirty: Vec<usize> = self
+            .tabs
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.kind == super::TabKind::File && t.dirty() && Some(t.group) == group)
+            .map(|(i, _)| i)
+            .collect();
+        let mut effects = vec![];
+        for index in dirty {
+            effects.extend(self.save_tab(window, index)?);
+        }
+        Ok(effects)
+    }
     /// F5: start the program, or carry on from where it stopped.
     pub(super) fn debug_start(&mut self, window: u64) -> Result<Vec<AppEffect>, String> {
         if self.debug.session.as_ref().is_some_and(|s| !s.ended) {
@@ -433,17 +515,25 @@ impl Workbench {
                 return self.run_active(window);
             }
         };
-        let program = if config.program.starts_with('/') || config.program.contains(":\\") {
-            config.program.clone()
+        let expanded = self.expand_variables(&config.program);
+        let program = if expanded.starts_with('/') || expanded.contains(":\\") {
+            expanded
         } else {
-            self.abs(&config.program)
+            self.abs(&expanded)
         };
         let cwd = self.workspace().unwrap_or(&self.home).to_owned();
+        // `debug.saveBeforeStart` defaults to saving the editors in the active group,
+        // so the debugger runs the program on screen rather than an older file.
+        let mut effects = self.save_group_before_debug(window)?;
         self.view = super::View::Run;
         self.sidebar = true;
+        // `debug.internalConsoleOptions` opens the Debug Console on the first session,
+        // which is also what puts the panel on screen.
+        self.panel_open = true;
+        self.panel = super::PanelTab::Debug;
         self.debug.console.clear();
         self.debug
-            .say(ConsoleKind::Output, format!("Starting {program}"));
+            .say(ConsoleKind::Notice, format!("Starting {program}"));
         // This is the session being asked for; the machine's reply gives it its id.
         self.debug.session = Some(Session {
             id: 0,
@@ -455,7 +545,7 @@ impl Workbench {
             frame: 0,
             ended: false,
         });
-        Ok(self.ask(
+        effects.extend(self.ask(
             window,
             "launch",
             Request::Launch(Launch {
@@ -467,7 +557,8 @@ impl Workbench {
                 breakpoints: self.debug.all_sources(),
                 exceptions: self.debug.exceptions,
             }),
-        ))
+        ));
+        Ok(effects)
     }
     /// Continue, Step Over, Step Into, Step Out.
     pub(super) fn debug_resume(
@@ -650,7 +741,7 @@ impl Workbench {
                 vec![]
             }
             ("terminate" | "restart", Reply::Terminated) => {
-                self.debug.say(ConsoleKind::Output, "Debug session ended");
+                self.debug.say(ConsoleKind::Notice, "Debug session ended");
                 self.debug.clear_session();
                 if tag == "restart" {
                     return self.debug_start(window).unwrap_or_default();
@@ -697,7 +788,8 @@ impl Workbench {
         self.debug.values.clear();
         self.debug.expanded.clear();
         if ended {
-            self.debug.say(ConsoleKind::Output, state.stopped.label());
+            self.debug.say(ConsoleKind::Notice, state.stopped.label());
+            self.problems_from_console();
             return vec![];
         }
         if let cw_protocol::debug::Stopped::Exception { text } = &state.stopped {
@@ -720,6 +812,29 @@ impl Workbench {
         }
         effects.extend(self.refresh_watches(window));
         effects
+    }
+    /// A program that ended under the debugger reports what it printed the same way a
+    /// program run in the terminal does: a traceback becomes a problem at its line.
+    fn problems_from_console(&mut self) {
+        let Some(session) = self.debug.session.as_ref() else {
+            return;
+        };
+        let runner = match session.kind.as_str() {
+            "python" => "python3",
+            "node" => "node",
+            _ => return,
+        };
+        let text: String = self
+            .debug
+            .console
+            .iter()
+            .filter(|line| line.kind == ConsoleKind::Output)
+            .map(|line| format!("{}\n", line.text))
+            .collect();
+        let cwd = self.workspace().unwrap_or(&self.home).to_owned();
+        let found = super::problems::from_output(runner, "", &text, &cwd);
+        self.problems.retain(|p| p.source == "json");
+        self.problems.extend(found);
     }
     /// The file and 1-based line the caret is on: what a breakpoint command acts on.
     pub(super) fn caret_line(&self) -> Result<(String, u32), String> {

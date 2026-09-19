@@ -1,11 +1,16 @@
 //! The import system and the standard library: native modules written in Rust
 //! and pure-Python modules embedded as source.
 pub mod collections;
+pub mod host;
 pub mod json;
+pub mod localemod;
 pub mod math;
 pub mod random;
 pub mod re;
+pub mod structmod;
 pub mod sys;
+pub mod thread;
+pub mod zlib;
 
 use crate::builtins::native_fn;
 use crate::value::*;
@@ -25,6 +30,11 @@ pub const PY_MODULES: &[(&str, &str)] = &[
         "collections.abc",
         include_str!("../../lib/collections_abc.py"),
     ),
+    ("concurrent", include_str!("../../lib/concurrent_init.py")),
+    (
+        "concurrent.futures",
+        include_str!("../../lib/concurrent_futures.py"),
+    ),
     ("contextlib", include_str!("../../lib/contextlib.py")),
     ("copy", include_str!("../../lib/copy.py")),
     ("csv", include_str!("../../lib/csv.py")),
@@ -34,10 +44,14 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("fractions", include_str!("../../lib/fractions.py")),
     ("functools", include_str!("../../lib/functools.py")),
     ("glob", include_str!("../../lib/glob.py")),
+    ("gzip", include_str!("../../lib/gzip.py")),
     ("heapq", include_str!("../../lib/heapq.py")),
+    ("http", include_str!("../../lib/http_init.py")),
+    ("http.client", include_str!("../../lib/http_client.py")),
     ("io", include_str!("../../lib/io.py")),
     ("itertools", include_str!("../../lib/itertools.py")),
     ("keyword", include_str!("../../lib/keyword.py")),
+    ("locale", include_str!("../../lib/locale.py")),
     ("logging", include_str!("../../lib/logging.py")),
     ("numbers", include_str!("../../lib/numbers.py")),
     ("operator", include_str!("../../lib/operator.py")),
@@ -47,16 +61,35 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("pprint", include_str!("../../lib/pprint.py")),
     ("queue", include_str!("../../lib/queue.py")),
     ("random", include_str!("../../lib/random.py")),
+    ("shlex", include_str!("../../lib/shlex.py")),
     ("shutil", include_str!("../../lib/shutil.py")),
+    ("socket", include_str!("../../lib/socket.py")),
+    ("ssl", include_str!("../../lib/ssl.py")),
     ("statistics", include_str!("../../lib/statistics.py")),
     ("string", include_str!("../../lib/string.py")),
+    ("struct", include_str!("../../lib/struct.py")),
+    ("subprocess", include_str!("../../lib/subprocess.py")),
     ("textwrap", include_str!("../../lib/textwrap.py")),
+    ("threading", include_str!("../../lib/threading.py")),
     ("traceback", include_str!("../../lib/traceback.py")),
     ("types", include_str!("../../lib/types.py")),
     ("typing", include_str!("../../lib/typing.py")),
     ("unittest", include_str!("../../lib/unittest.py")),
+    ("urllib", include_str!("../../lib/urllib_init.py")),
+    ("urllib.error", include_str!("../../lib/urllib_error.py")),
+    ("urllib.parse", include_str!("../../lib/urllib_parse.py")),
+    (
+        "urllib.request",
+        include_str!("../../lib/urllib_request.py"),
+    ),
+    (
+        "urllib.response",
+        include_str!("../../lib/urllib_response.py"),
+    ),
     ("warnings", include_str!("../../lib/warnings.py")),
     ("weakref", include_str!("../../lib/weakref.py")),
+    ("zlib", include_str!("../../lib/zlib.py")),
+    ("zoneinfo", include_str!("../../lib/zoneinfo.py")),
 ];
 
 /// Native modules and their constructors.
@@ -70,6 +103,12 @@ fn native_module(vm: &mut Vm, name: &str) -> Option<Value> {
         "json" => json::make(vm),
         "re" => re::make(vm),
         "_collections" => collections::make(vm),
+        "_cw" => host::make(vm),
+        "_zlib" => zlib::make(vm),
+        "_locale" => localemod::make(vm),
+        "_zoneinfo" => localemod::make_zoneinfo(vm),
+        "_struct" => structmod::make(vm),
+        "_thread" => thread::make(vm),
         "gc" => {
             let m = new_module("gc");
             set_fn(&m, "collect", |_, _| Ok(Value::Int(0)));

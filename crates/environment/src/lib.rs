@@ -2622,7 +2622,7 @@ impl Environment {
                     // The prompt is captured before the command runs, so `cd` is echoed
                     // under the directory it was typed in, not the one it moved to.
                     let prompt = self.machine_mut(id, machine)?.desktop.prompt.clone();
-                    let mut result = self.runtime.execute(machine, actor, &command)?;
+                    let mut result = self.runtime.execute_at_terminal(machine, actor, &command)?;
                     self.open_from_shell(id, machine, actor, &mut result)?;
                     let entry = cw_applications::TerminalEntry::new(
                         &prompt,
@@ -2634,14 +2634,20 @@ impl Environment {
                     let clear = result.clear;
                     let next = {
                         let c = self.runtime.computer(machine)?;
-                        let home = c.env.get("HOME").map_or("", String::as_str);
-                        cw_applications::shell_prompt_at(
-                            &c.user,
-                            &c.id,
-                            &c.cwd,
-                            home,
-                            prompt_dialect(&c.os_family, &c.dialect),
-                        )
+                        // A runtime waiting for input owns the prompt.
+                        match c.session_prompt() {
+                            Some(p) => p.to_string(),
+                            None => {
+                                let home = c.env.get("HOME").map_or("", String::as_str);
+                                cw_applications::shell_prompt_at(
+                                    &c.user,
+                                    &c.id,
+                                    &c.cwd,
+                                    home,
+                                    prompt_dialect(&c.os_family, &c.dialect),
+                                )
+                            }
+                        }
                     };
                     let desktop = &mut self.machine_mut(id, machine)?.desktop;
                     desktop.prompt = next;

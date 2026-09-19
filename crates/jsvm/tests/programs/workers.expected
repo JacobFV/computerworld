@@ -1,0 +1,22 @@
+--- exit: 0
+--- stdout
+main thread true 0 null null
+in worker false 1 {"factor":3}
+file worker 0 ["online",{"seen":{"n":1},"doubled":3},{"seen":{"n":2},"doubled":6}]
+eval worker said late hello
+eval worker exit 7
+error event TypeError no good
+error worker exit 1
+before terminate still here
+terminated exit 1
+channel ports true
+terminate resolved 1
+port1 heard { hello: 'channel' }
+polled {"message":"one"}
+polled {"message":"two"}
+polled undefined
+untransferred port DataCloneError
+over the channel pong:ping
+channel worker exit 0
+done
+--- stderr

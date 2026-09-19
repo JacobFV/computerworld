@@ -14,5 +14,6 @@ cw-sql = { path = "../sql" }
 cw-script-host = { path = "../script-host" }
 cw-pyvm = { path = "../pyvm" }
 cw-jsvm = { path = "../jsvm" }
+cw-zlib = { path = "../zlib" }
 [dev-dependencies]
 proptest.workspace = true

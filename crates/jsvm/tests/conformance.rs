@@ -37,6 +37,7 @@ fn run_program(name: &str, ext: &str) {
             args: vec![main],
             env: vec![],
             stdin,
+            ..Default::default()
         },
     );
     assert_eq!(out.stdout, expected.stdout, "{name}: stdout differs");
@@ -58,6 +59,7 @@ macro_rules! programs {
 programs!("js":
     algorithms,
     async_generators,
+    atomics,
     basics,
     builtins,
     classes_errors,
@@ -69,8 +71,10 @@ programs!("js":
     err_type,
     err_unhandled_rejection,
     event_loop,
+    event_loop_time,
     exit_code,
     inspect,
+    intl,
     json,
     language,
     modules_fs,
@@ -79,6 +83,9 @@ programs!("js":
     strings_regex,
     text_pipeline,
     util_events,
+    web_fetch_classes,
+    workers,
+    zlib_streams,
 );
 
 programs!("mjs": esm_module);

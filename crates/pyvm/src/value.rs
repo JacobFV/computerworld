@@ -1273,5 +1273,7 @@ pub enum NativeKind {
     Match(Rc<crate::modules::re::MatchObj>),
     Random(Box<crate::modules::random::Mt>),
     Deque(std::collections::VecDeque<Value>, Option<usize>),
+    /// State owned by a native module (a compressor, a lock...).
+    Boxed(Box<dyn std::any::Any>),
     Other,
 }

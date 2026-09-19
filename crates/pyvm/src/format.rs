@@ -727,8 +727,16 @@ pub fn format_float(f: f64, s: &Spec) -> PyResult<String> {
 pub fn percent_format(vm: &mut Vm, fmt: &Value, args: &Value) -> PyResult<String> {
     let Value::Str(fs) = fmt else { unreachable!() };
     let chars: Vec<char> = fs.s.chars().collect();
+    let base_tuple = match args {
+        Value::Instance(i) => match &*i.native.borrow() {
+            NativeData::Base(Value::Tuple(t)) => Some((**t).clone()),
+            _ => None,
+        },
+        _ => None,
+    };
     let (items, mapping): (Vec<Value>, Option<Value>) = match args {
         Value::Tuple(t) => ((**t).clone(), None),
+        _ if base_tuple.is_some() => (base_tuple.unwrap_or_default(), None),
         Value::Dict(_) => (vec![args.clone()], Some(args.clone())),
         Value::Instance(i)
             if i.class().lookup("__getitem__").is_some()

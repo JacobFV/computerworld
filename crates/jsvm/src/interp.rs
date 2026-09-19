@@ -77,6 +77,16 @@ impl<'h> Vm<'h> {
 
     /// Delivers an exception to the innermost handler at or above `base`.
     fn throw_into(&mut self, v: Value, base: usize) -> JsResult<Option<Value>> {
+        // A debugger watching raised exceptions sees this one with the frames
+        // that raised it still standing.
+        if self.debug.is_some() {
+            let handled = self
+                .frames
+                .iter()
+                .skip(base)
+                .any(|f| !f.handlers.is_empty());
+            crate::debug::exception_hook(self, &v, !handled)?;
+        }
         loop {
             {
                 let f = top!(self);
@@ -763,6 +773,10 @@ impl<'h> Vm<'h> {
     /// Executes instructions until the base frame completes or suspends.
     fn exec(&mut self, base: usize) -> JsResult<Value> {
         loop {
+            // A debugger sees every source line before it runs.
+            if self.debug.is_some() {
+                crate::debug::line_hook(self)?;
+            }
             let op = {
                 let f = top!(self);
                 let pc = f.pc;

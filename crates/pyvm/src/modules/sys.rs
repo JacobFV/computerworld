@@ -93,6 +93,27 @@ pub fn make_sys(vm: &mut Vm) -> Value {
         vm.recursion_limit = (n as usize).min(10_000);
         Ok(Value::None)
     });
+    set_fn(&m, "setswitchinterval", |vm, a| {
+        let s = crate::bfuncs::float_from(vm, a.args.first().unwrap_or(&Value::Float(0.005)))?;
+        if s <= 0.0 {
+            return Err(value_err("switch interval must be strictly positive"));
+        }
+        // The quantum scales with the interval, so a program can ask for finer
+        // or coarser interleaving just as CPython's does.
+        vm.start_scheduler();
+        if let Some(sc) = vm.sched.as_mut() {
+            sc.set_switch_interval(s);
+        }
+        Ok(Value::None)
+    });
+    set_fn(&m, "getswitchinterval", |vm, _| {
+        Ok(Value::Float(
+            vm.sched
+                .as_ref()
+                .map(|s| s.switch_interval)
+                .unwrap_or(crate::sched::DEFAULT_SWITCH_INTERVAL),
+        ))
+    });
     set_fn(&m, "get_int_max_str_digits", |vm, _| {
         Ok(Value::Int(vm.int_max_str_digits as i64))
     });
@@ -431,6 +452,17 @@ const MONTHS: [&str; 12] = [
 ];
 
 pub fn strftime(fmt: &str, t: &[i64; 8], micros: i64) -> PyResult<String> {
+    strftime_in(fmt, t, micros, None)
+}
+
+/// `strftime` with the names of a locale: `%a`, `%A`, `%b`, `%B`, `%p` and the
+/// `%c`/`%x`/`%X` patterns are the locale's when one is set.
+pub fn strftime_in(
+    fmt: &str,
+    t: &[i64; 8],
+    micros: i64,
+    locale: Option<&'static crate::locale_data::LocaleData>,
+) -> PyResult<String> {
     let [y, mo, d, h, mi, s, wd, yd] = *t;
     let mut out = String::new();
     let mut chars = fmt.chars();
@@ -439,12 +471,46 @@ pub fn strftime(fmt: &str, t: &[i64; 8], micros: i64) -> PyResult<String> {
             out.push(c);
             continue;
         }
-        let Some(k) = chars.next() else {
-            out.push('%');
-            break;
+        // glibc's flags: `-` drops the padding, `_` pads with spaces, `0` with
+        // zeroes, `^` upper-cases what follows.
+        let mut pad: Option<char> = None;
+        let mut upper = false;
+        let mut k = match chars.next() {
+            Some(c) => c,
+            None => {
+                out.push('%');
+                break;
+            }
         };
-        let mon = MONTHS[((mo - 1).rem_euclid(12)) as usize];
-        let day = DAYS[(wd.rem_euclid(7)) as usize];
+        while matches!(k, '-' | '_' | '0' | '^' | '#') {
+            match k {
+                '-' => pad = Some('\0'),
+                '_' => pad = Some(' '),
+                '0' => pad = Some('0'),
+                _ => upper = true,
+            }
+            k = match chars.next() {
+                Some(c) => c,
+                None => break,
+            };
+        }
+        let start = out.len();
+        let mon_index = ((mo - 1).rem_euclid(12)) as usize;
+        // `struct_time`'s weekday counts from Monday; the tables from Sunday.
+        let day_index = (wd.rem_euclid(7)) as usize;
+        let mon = MONTHS[mon_index];
+        let day = DAYS[day_index];
+        let sunday_first = ((wd + 1).rem_euclid(7)) as usize;
+        let (abday, fullday, abmon, fullmon, am_pm) = match locale {
+            Some(l) => (
+                l.abdays[sunday_first],
+                l.days[sunday_first],
+                l.abmonths[mon_index],
+                l.months[mon_index],
+                l.am_pm,
+            ),
+            None => (&day[..3], day, &mon[..3], mon, &["AM", "PM"]),
+        };
         match k {
             'Y' => out.push_str(&y.to_string()),
             'y' => out.push_str(&format!("{:02}", y.rem_euclid(100))),
@@ -456,24 +522,40 @@ pub fn strftime(fmt: &str, t: &[i64; 8], micros: i64) -> PyResult<String> {
             'M' => out.push_str(&format!("{mi:02}")),
             'S' => out.push_str(&format!("{s:02}")),
             'f' => out.push_str(&format!("{micros:06}")),
-            'p' => out.push_str(if h < 12 { "AM" } else { "PM" }),
-            'a' => out.push_str(&day[..3]),
-            'A' => out.push_str(day),
-            'b' | 'h' => out.push_str(&mon[..3]),
-            'B' => out.push_str(mon),
+            'p' => out.push_str(if h < 12 { am_pm[0] } else { am_pm[1] }),
+            'a' => out.push_str(abday),
+            'A' => out.push_str(fullday),
+            'b' | 'h' => out.push_str(abmon),
+            'B' => out.push_str(fullmon),
             'j' => out.push_str(&format!("{yd:03}")),
             'w' => out.push_str(&((wd + 1) % 7).to_string()),
             'u' => out.push_str(&(wd + 1).to_string()),
             'Z' => out.push_str("UTC"),
             'z' => out.push_str("+0000"),
-            'c' => out.push_str(&format!(
-                "{} {} {:2} {h:02}:{mi:02}:{s:02} {y}",
-                &day[..3],
-                &mon[..3],
-                d
-            )),
-            'x' => out.push_str(&format!("{mo:02}/{d:02}/{:02}", y.rem_euclid(100))),
-            'X' | 'T' => out.push_str(&format!("{h:02}:{mi:02}:{s:02}")),
+            'c' => match locale {
+                Some(l) => out.push_str(&strftime_in(l.d_t_fmt, t, micros, Some(l))?),
+                None => out.push_str(&format!(
+                    "{} {} {:2} {h:02}:{mi:02}:{s:02} {y}",
+                    abday, abmon, d
+                )),
+            },
+            'x' => match locale {
+                Some(l) => out.push_str(&strftime_in(l.d_fmt, t, micros, Some(l))?),
+                None => out.push_str(&format!("{mo:02}/{d:02}/{:02}", y.rem_euclid(100))),
+            },
+            'X' => match locale {
+                Some(l) => out.push_str(&strftime_in(l.t_fmt, t, micros, Some(l))?),
+                None => out.push_str(&format!("{h:02}:{mi:02}:{s:02}")),
+            },
+            'r' => match locale {
+                Some(l) => out.push_str(&strftime_in(l.t_fmt_ampm, t, micros, Some(l))?),
+                None => out.push_str(&format!(
+                    "{:02}:{mi:02}:{s:02} {}",
+                    if h % 12 == 0 { 12 } else { h % 12 },
+                    if h < 12 { am_pm[0] } else { am_pm[1] }
+                )),
+            },
+            'T' => out.push_str(&format!("{h:02}:{mi:02}:{s:02}")),
             'D' => out.push_str(&format!("{mo:02}/{d:02}/{:02}", y.rem_euclid(100))),
             'F' => out.push_str(&format!("{y}-{mo:02}-{d:02}")),
             'R' => out.push_str(&format!("{h:02}:{mi:02}")),
@@ -491,6 +573,22 @@ pub fn strftime(fmt: &str, t: &[i64; 8], micros: i64) -> PyResult<String> {
                 out.push('%');
                 out.push(other);
             }
+        }
+        // Apply the flags to what this conversion wrote.
+        if pad.is_some() || upper {
+            let piece = out.split_off(start);
+            let piece = match pad {
+                Some('\0') => piece.trim_start_matches(['0', ' ']).to_string(),
+                Some(' ') => piece.trim_start_matches('0').to_string(),
+                Some('0') => piece.replace(' ', "0"),
+                _ => piece,
+            };
+            let piece = if piece.is_empty() && pad == Some('\0') {
+                "0".to_string()
+            } else {
+                piece
+            };
+            out.push_str(&if upper { piece.to_uppercase() } else { piece });
         }
     }
     Ok(out)
@@ -574,9 +672,8 @@ pub fn make_time(vm: &mut Vm) -> Value {
             return Err(value_err("sleep length must be non-negative"));
         }
         // Simulated time passes for this process only; the world clock is not moved.
-        // Rounded up so a sleep always reaches the deadline it was computed for.
-        vm.time_offset += (s * 1e6).ceil() as i64;
-        Ok(Value::None)
+        // With threads, the others run while this one sleeps.
+        vm.thread_sleep(s)
     });
     fn gm(vm: &mut Vm, a: Args) -> PyResult<Value> {
         let secs = match a.args.first() {
@@ -600,7 +697,8 @@ pub fn make_time(vm: &mut Vm) -> Value {
             Some(v) => tuple_from_struct(vm, v)?,
             None => gmtime_tuple(now_secs(vm).floor() as i64),
         };
-        Ok(Value::string(strftime(&fmt.s, &t, 0)?))
+        let locale = crate::modules::localemod::current_time_locale(vm);
+        Ok(Value::string(strftime_in(&fmt.s, &t, 0, locale)?))
     });
     fn asctime_of(t: &[i64; 8]) -> String {
         format!(

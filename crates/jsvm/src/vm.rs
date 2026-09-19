@@ -70,6 +70,13 @@ pub struct Frame {
 
 /// Instructions per virtual millisecond.
 pub const STEPS_PER_MS: f64 = 100_000.0;
+/// What loading one module costs before a line of it runs: resolving the
+/// specifier and reading the file.
+pub const MODULE_LOAD_MS: f64 = 0.05;
+/// What preparing a kibibyte of source costs the first time it runs: compiling
+/// it, and the internals a body that size reaches for. Calibrated so that the
+/// event-loop orderings recorded from Node 24.21 come out the same way.
+pub const COMPILE_MS_PER_KIB: f64 = 1.0;
 
 pub const TIMEOUT_FRAME: u8 = 1;
 pub const IMMEDIATE_FRAME: u8 = 2;
@@ -270,6 +277,23 @@ pub struct Vm<'h> {
     pub stderr: String,
     pub stdin: Option<String>,
     pub stdin_consumed: bool,
+    /// How much of `stdin` the program has read, line by line.
+    pub stdin_pos: usize,
+    /// Standard input is a terminal: a read past what has been typed suspends
+    /// the run instead of seeing end-of-file, and a bare `node` is the console.
+    pub interactive: bool,
+    /// End-of-file was typed after the input that is there.
+    pub stdin_eof: bool,
+    /// The run stopped because it wants a line nobody has typed yet.
+    pub awaiting_input: bool,
+    /// The debugger attached to this run, if any.
+    pub debug: Option<Box<crate::debug::Session<'h>>>,
+    /// The worker contexts of this run, made on the first `new Worker`.
+    pub workers: Option<crate::workers::Workers>,
+    /// Messages waiting for the context that is running now.
+    pub inbox: std::collections::VecDeque<crate::workers::Envelope>,
+    /// Errors workers threw, to report to their parents.
+    pub worker_errors: Vec<(u32, Value)>,
     pub steps: u64,
     pub budget: u64,
     pub native_depth: usize,
@@ -323,6 +347,8 @@ pub struct Vm<'h> {
     pub open_fds: Vec<Option<(String, usize)>>,
     /// Completion value of `-e` / `-p` / eval programs.
     pub completion: Value,
+    /// State native modules hand out by index (zlib streams, worker queues...).
+    pub handles: Vec<Option<Box<dyn std::any::Any>>>,
 }
 
 impl<'h> Vm<'h> {
@@ -924,6 +950,28 @@ impl<'h> Vm<'h> {
             self.clock_steps = self.steps;
         }
         self.elapsed_ms
+    }
+
+    /// Charges what resolving and reading one module costs, before a line of it
+    /// runs.
+    pub fn charge_module_load(&mut self, _bytes: usize) {
+        let _ = self.clock();
+        self.elapsed_ms += MODULE_LOAD_MS;
+    }
+
+    /// Charges what preparing one function body costs the first time it runs:
+    /// V8 compiles it then, and Node pulls in the internals it reaches for.
+    pub fn charge_compile(&mut self, bytes: usize) {
+        let _ = self.clock();
+        self.elapsed_ms += (bytes as f64 / 1024.0) * COMPILE_MS_PER_KIB;
+    }
+
+    /// Stops the run because it wants a line nobody has typed yet. Like
+    /// `process.exit`, it is not catchable: no `try` may turn a pause into an
+    /// error. The run is resumed by replaying it with the line appended.
+    pub fn need_input(&mut self) -> Ctl {
+        self.awaiting_input = true;
+        Ctl::Exit(0)
     }
 
     pub fn now_ms(&mut self) -> f64 {

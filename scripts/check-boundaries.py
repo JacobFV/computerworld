@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PURE = ('protocol', 'determinism', 'artwork', 'computer', 'network', 'scene', 'render', 'cad', 'raster', 'eda',
         'sdk', 'browser', 'applications', 'kernel', 'environment', 'trajectory',
         'evaluation', 'services', 'computerworld', 'sheet', 'sql', 'script-host', 'pyvm',
-        'jsvm', 'regex', 'video')
+        'jsvm', 'regex', 'video', 'zlib', 'tz')
 FORBIDDEN_DEPS = {'tokio', 'async-std', 'reqwest', 'hyper', 'ureq', 'surf',
                   'getrandom', 'rand', 'chrono', 'web-sys', 'js-sys', 'pyo3'}
 HOST = re.compile(r'\b(?:std\s*::\s*(?:fs|process|thread)|std\s*::\s*net\s*::\s*(?:TcpStream|TcpListener|UdpSocket|ToSocketAddrs)|'

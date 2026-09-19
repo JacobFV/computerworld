@@ -10,6 +10,13 @@ EventEmitter.init.call(process);
 
 const readStdin = process['%readStdin'];
 delete process['%readStdin'];
+const readLine = process['%readLine'];
+delete process['%readLine'];
+const isInteractive = process['%isInteractive'];
+delete process['%isInteractive'];
+// Whether input is a terminal is known once the run starts, not while this
+// file is being set up.
+const terminalInput = isInteractive;
 
 const stdin = new EventEmitter();
 let stdinEncoding = null;
@@ -20,6 +27,25 @@ stdin.readable = true;
 stdin.setEncoding = function setEncoding(enc) { stdinEncoding = enc || 'utf8'; return this; };
 function deliverStdin() {
   if (stdinDone) return;
+  if (terminalInput()) {
+    // At a terminal input arrives a line at a time, and only an end-of-file
+    // ends the stream; a line nobody has typed yet suspends the run.
+    if (stdin.listenerCount('data') === 0 && stdin.listenerCount('readable') === 0) {
+      stdinScheduled = false;
+      return;
+    }
+    const line = readLine();
+    if (line === null) {
+      stdinDone = true;
+      stdin.readable = false;
+      stdin.emit('end');
+      stdin.emit('close');
+      return;
+    }
+    stdin.emit('data', stdinEncoding ? line : Buffer.from(line));
+    setImmediate(deliverStdin);
+    return;
+  }
   stdinDone = true;
   const data = readStdin();
   if (data.length) stdin.emit('data', stdinEncoding ? data : Buffer.from(data));
@@ -42,6 +68,11 @@ stdin.ref = function ref() { return this; };
 stdin.setRawMode = function setRawMode() { return this; };
 let stdinReadBuffer = null;
 stdin.read = function read() {
+  if (terminalInput()) {
+    const line = readLine();
+    if (line === null) return null;
+    return stdinEncoding ? line : Buffer.from(line);
+  }
   if (stdinReadBuffer === null) {
     const d = readStdin();
     stdinReadBuffer = d;
@@ -55,6 +86,15 @@ stdin.pipe = function pipe(dest) {
   return dest;
 };
 stdin[Symbol.asyncIterator] = async function* () {
+  if (terminalInput()) {
+    for (;;) {
+      const line = readLine();
+      if (line === null) break;
+      yield stdinEncoding ? line : Buffer.from(line);
+    }
+    stdinDone = true;
+    return;
+  }
   stdinDone = true;
   const d = readStdin();
   if (d.length) yield stdinEncoding ? d : Buffer.from(d);
@@ -140,6 +180,15 @@ class DataView {
   setBigUint64(o, v, le) { DataView.#set(this, 'BigUint64', o, v, !!le); }
 }
 Object.defineProperty(globalThis, 'DataView', { value: DataView, writable: true, configurable: true, enumerable: false });
+{
+  const typedIsView = ArrayBuffer.isView;
+  Object.defineProperty(ArrayBuffer, 'isView', {
+    value: { isView(x) { return typedIsView(x) || x instanceof DataView; } }.isView,
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
 
 
 // ---- Buffer
@@ -443,94 +492,6 @@ class AbortController {
   }
 }
 
-// ---- Intl (en-US)
-const Intl = {
-  NumberFormat: class NumberFormat {
-    constructor(locale, opts) { this._opts = opts || {}; }
-    format(n) { return typeof n === 'bigint' ? n.toLocaleString() : Number(n).toLocaleString('en-US', this._opts); }
-    formatToParts(n) { return [{ type: 'literal', value: this.format(n) }]; }
-    resolvedOptions() { return { locale: 'en-US', numberingSystem: 'latn', style: this._opts.style || 'decimal', ...this._opts }; }
-  },
-  DateTimeFormat: class DateTimeFormat {
-    constructor(locale, opts) { this._opts = opts || {}; }
-    format(d) {
-      d = d === undefined ? new Date() : new Date(d);
-      const o = this._opts;
-      const hasDate = o.year || o.month || o.day || o.weekday || o.dateStyle;
-      const hasTime = o.hour || o.minute || o.second || o.timeStyle;
-      if (!hasDate && !hasTime) return d.toLocaleDateString('en-US', o);
-      return d.toLocaleString('en-US', o);
-    }
-    resolvedOptions() { return { locale: 'en-US', calendar: 'gregory', numberingSystem: 'latn', timeZone: 'UTC', ...this._opts }; }
-  },
-  Collator: class Collator {
-    constructor(locale, opts) { this._opts = opts || {}; }
-    compare(a, b) {
-      if (this._opts.numeric) {
-        const re = /(\d+)|(\D+)/g;
-        const pa = String(a).match(re) || [];
-        const pb = String(b).match(re) || [];
-        for (let i = 0; i < Math.min(pa.length, pb.length); i++) {
-          const x = pa[i];
-          const y = pb[i];
-          if (/^\d/.test(x) && /^\d/.test(y)) {
-            if (Number(x) !== Number(y)) return Number(x) < Number(y) ? -1 : 1;
-          } else {
-            const c = x.localeCompare(y);
-            if (c) return c;
-          }
-        }
-        return pa.length === pb.length ? 0 : pa.length < pb.length ? -1 : 1;
-      }
-      if (this._opts.sensitivity === 'base' || this._opts.sensitivity === 'accent') {
-        return String(a).toLowerCase().localeCompare(String(b).toLowerCase());
-      }
-      return String(a).localeCompare(String(b));
-    }
-    resolvedOptions() { return { locale: 'en-US', usage: 'sort', sensitivity: 'variant', ...this._opts }; }
-  },
-  PluralRules: class PluralRules {
-    constructor(locale, opts) { this._opts = opts || {}; }
-    select(n) {
-      if (this._opts.type === 'ordinal') {
-        const t = n % 10;
-        const h = n % 100;
-        if (t === 1 && h !== 11) return 'one';
-        if (t === 2 && h !== 12) return 'two';
-        if (t === 3 && h !== 13) return 'few';
-        return 'other';
-      }
-      return n === 1 ? 'one' : 'other';
-    }
-  },
-  RelativeTimeFormat: class RelativeTimeFormat {
-    constructor(locale, opts) { this._opts = opts || {}; }
-    format(v, unit) {
-      unit = String(unit).replace(/s$/, '');
-      const abs = Math.abs(v);
-      const u = abs === 1 ? unit : unit + 's';
-      if (this._opts.numeric === 'auto') {
-        if (v === 0 && unit === 'day') return 'today';
-        if (v === 1 && unit === 'day') return 'tomorrow';
-        if (v === -1 && unit === 'day') return 'yesterday';
-      }
-      return v < 0 ? `${abs} ${u} ago` : `in ${abs} ${u}`;
-    }
-  },
-  ListFormat: class ListFormat {
-    constructor(locale, opts) { this._opts = opts || {}; }
-    format(list) {
-      const a = Array.from(list);
-      const word = this._opts.type === 'disjunction' ? 'or' : 'and';
-      if (a.length <= 1) return a.join('');
-      if (a.length === 2) return `${a[0]} ${word} ${a[1]}`;
-      return `${a.slice(0, -1).join(', ')}, ${word} ${a[a.length - 1]}`;
-    }
-  },
-  getCanonicalLocales: (l) => (l === undefined ? [] : Array.isArray(l) ? l : [l]),
-  supportedValuesOf: () => [],
-};
-Object.defineProperty(Intl, Symbol.toStringTag, { value: 'Intl', configurable: true });
 
 const cryptoGlobal = {
   randomUUID: () => binding.randomUUID(),
@@ -546,7 +507,6 @@ const defs = {
   DOMException,
   Event: EventEmitter.Event,
   EventTarget: EventEmitter.EventTarget,
-  Intl,
   atob,
   btoa,
   crypto: cryptoGlobal,
@@ -554,4 +514,73 @@ const defs = {
 };
 for (const k of Object.keys(defs)) {
   Object.defineProperty(globalThis, k, { value: defs[k], writable: true, configurable: true, enumerable: false });
+}
+
+// Intl loads on first use: it carries the locale data with it.
+{
+  const settle = (v) => {
+    Object.defineProperty(globalThis, 'Intl', { value: v, writable: true, configurable: true, enumerable: false });
+    return v;
+  };
+  Object.defineProperty(globalThis, 'Intl', {
+    configurable: true,
+    enumerable: false,
+    get() { return settle(require('internal/intl').Intl); },
+    set(v) { settle(v); },
+  });
+}
+
+// The locale-aware methods of the built-in prototypes go through Intl, which
+// loads with the first of them that is called.
+{
+  const intl = () => require('internal/intl').Intl;
+  Number.prototype.toLocaleString = function toLocaleString(locales, options) {
+    return new (intl().NumberFormat)(locales, options).format(this);
+  };
+  BigInt.prototype.toLocaleString = function toLocaleString(locales, options) {
+    return new (intl().NumberFormat)(locales, options).format(this);
+  };
+  String.prototype.localeCompare = function localeCompare(that, locales, options) {
+    return new (intl().Collator)(locales, options).compare(String(this), String(that));
+  };
+  const dateDefaults = (options, date, time) => {
+    const o = options === undefined ? {} : Object(options);
+    const has = ['weekday', 'year', 'month', 'day', 'dateStyle'].some((k) => o[k] !== undefined);
+    const hasTime = ['hour', 'minute', 'second', 'timeStyle', 'dayPeriod',
+      'fractionalSecondDigits'].some((k) => o[k] !== undefined);
+    const out = { ...o };
+    if (date && !has && !hasTime) {
+      Object.assign(out, { year: 'numeric', month: 'numeric', day: 'numeric' });
+    }
+    if (time && !hasTime && !has) {
+      Object.assign(out, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+    }
+    return out;
+  };
+  Date.prototype.toLocaleString = function toLocaleString(locales, options) {
+    if (Number.isNaN(this.getTime())) return 'Invalid Date';
+    return new (intl().DateTimeFormat)(locales, dateDefaults(options, true, true)).format(this);
+  };
+  Date.prototype.toLocaleDateString = function toLocaleDateString(locales, options) {
+    if (Number.isNaN(this.getTime())) return 'Invalid Date';
+    return new (intl().DateTimeFormat)(locales, dateDefaults(options, true, false)).format(this);
+  };
+  Date.prototype.toLocaleTimeString = function toLocaleTimeString(locales, options) {
+    if (Number.isNaN(this.getTime())) return 'Invalid Date';
+    return new (intl().DateTimeFormat)(locales, dateDefaults(options, false, true)).format(this);
+  };
+}
+
+// fetch and its classes load on first use (they carry the http stack with them).
+for (const name of ['fetch', 'Headers', 'Request', 'Response', 'FormData', 'Blob', 'File', 'ReadableStream']) {
+  const settle = (v) => {
+    Object.defineProperty(globalThis, name, { value: v, writable: true, configurable: true, enumerable: false });
+    return v;
+  };
+  Object.defineProperty(globalThis, name, {
+    configurable: true,
+    enumerable: false,
+    get() { return settle(require('internal/fetch')[name]); },
+    set(v) { settle(v); },
+  });
 }

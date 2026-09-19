@@ -901,6 +901,15 @@ impl<'h> Vm<'h> {
     /// Native arithmetic; `NotImplemented` when the types don't apply.
     pub fn native_binop(&mut self, a: &Value, b: &Value, op: BinOp) -> PyResult<Value> {
         match (a, b) {
+            // `str.__mod__` formats any object (only a str subclass's `__rmod__`
+            // would get the first chance).
+            (Value::Str(_), Value::Instance(i))
+                if op == BinOp::Mod
+                    && !matches!(&*i.native.borrow(), NativeData::Base(Value::Str(_))) =>
+            {
+                let s = crate::format::percent_format(self, a, b)?;
+                return Ok(Value::string(s));
+            }
             (Value::Instance(_), _) | (_, Value::Instance(_)) => return Ok(Value::NotImplemented),
             _ => {}
         }

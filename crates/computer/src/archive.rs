@@ -53,400 +53,51 @@ fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
 }
 
 // ---------------------------------------------------------------------------
-// CRC-32 (RFC 1952 / PKZIP)
+// Compression: one implementation, `cw-zlib`, shared with `gzip` and the runtimes
 // ---------------------------------------------------------------------------
 
-const fn crc32_table() -> [u32; 256] {
-    let mut table = [0u32; 256];
-    let mut n = 0;
-    while n < 256 {
-        let mut c = n as u32;
-        let mut k = 0;
-        while k < 8 {
-            c = if c & 1 != 0 {
-                0xedb8_8320 ^ (c >> 1)
-            } else {
-                c >> 1
-            };
-            k += 1;
-        }
-        table[n] = c;
-        n += 1;
-    }
-    table
-}
-static CRC32_TABLE: [u32; 256] = crc32_table();
+/// The CRC-32 of RFC 1952 and PKZIP alike.
 fn crc32(bytes: &[u8]) -> u32 {
-    let mut c = 0xffff_ffffu32;
-    for b in bytes {
-        c = CRC32_TABLE[((c ^ u32::from(*b)) & 0xff) as usize] ^ (c >> 8);
-    }
-    c ^ 0xffff_ffff
+    cw_zlib::crc32(0, bytes)
 }
 
-// ---------------------------------------------------------------------------
-// DEFLATE (RFC 1951)
-// ---------------------------------------------------------------------------
-
-/// LSB-first bit reader over a DEFLATE stream.
-struct Bits<'a> {
-    data: &'a [u8],
-    pos: usize,
-}
-impl<'a> Bits<'a> {
-    fn new(data: &'a [u8]) -> Self {
-        Self { data, pos: 0 }
-    }
-    fn bit(&mut self) -> Result<u32, String> {
-        let byte = *self
-            .data
-            .get(self.pos / 8)
-            .ok_or_else(|| "unexpected end of the compressed stream".to_string())?;
-        let value = u32::from(byte >> (self.pos % 8)) & 1;
-        self.pos += 1;
-        Ok(value)
-    }
-    fn bits(&mut self, count: u32) -> Result<u32, String> {
-        let mut value = 0;
-        for i in 0..count {
-            value |= self.bit()? << i;
-        }
-        Ok(value)
-    }
-    fn align(&mut self) {
-        self.pos = self.pos.div_ceil(8) * 8;
-    }
-    fn byte_pos(&self) -> usize {
-        self.pos / 8
-    }
+/// Raw DEFLATE, for a ZIP entry stored with method 8.
+fn inflate(data: &[u8]) -> Result<Vec<u8>, String> {
+    cw_zlib::decompress(data, -15)
+        .map(|(out, _)| out)
+        .map_err(|e| e.message())
 }
 
-/// A canonical Huffman decoder held as zlib's `puff` holds it: a count per code
-/// length, and the symbols ordered by (length, symbol).
-struct Huffman {
-    counts: [u16; 16],
-    symbols: Vec<u16>,
-}
-impl Huffman {
-    fn new(lengths: &[u8]) -> Result<Self, String> {
-        let mut counts = [0u16; 16];
-        for &l in lengths {
-            if l > 15 {
-                return Err("a Huffman code length exceeds 15 bits".into());
-            }
-            counts[l as usize] += 1;
-        }
-        counts[0] = 0;
-        // An incomplete code is legal (the fixed distance table has 30 of 32 codes);
-        // an over-subscribed one is not.
-        let mut left = 1i32;
-        for count in counts.iter().skip(1) {
-            left = (left << 1) - i32::from(*count);
-            if left < 0 {
-                return Err("over-subscribed Huffman code".into());
-            }
-        }
-        let mut offsets = [0u16; 16];
-        for len in 1..15 {
-            offsets[len + 1] = offsets[len] + counts[len];
-        }
-        let mut symbols = vec![0u16; lengths.len()];
-        for (symbol, &l) in lengths.iter().enumerate() {
-            if l != 0 {
-                symbols[offsets[l as usize] as usize] = symbol as u16;
-                offsets[l as usize] += 1;
-            }
-        }
-        Ok(Self { counts, symbols })
-    }
-    fn decode(&self, bits: &mut Bits) -> Result<u16, String> {
-        let (mut code, mut first, mut index) = (0i32, 0i32, 0i32);
-        for len in 1..16 {
-            code |= bits.bit()? as i32;
-            let count = i32::from(self.counts[len]);
-            if code - first < count {
-                return Ok(self.symbols[(index + code - first) as usize]);
-            }
-            index += count;
-            first = (first + count) << 1;
-            code <<= 1;
-        }
-        Err("invalid Huffman code in the compressed stream".into())
-    }
-}
-
-const LENGTH_BASE: [u16; 29] = [
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131,
-    163, 195, 227, 258,
-];
-const LENGTH_EXTRA: [u8; 29] = [
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0,
-];
-const DIST_BASE: [u16; 30] = [
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537,
-    2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
-];
-const DIST_EXTRA: [u8; 30] = [
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13,
-    13,
-];
-/// The order RFC 1951 §3.2.7 stores the code-length code lengths in.
-const CODE_LENGTH_ORDER: [usize; 19] = [
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
-];
-
-/// The literal/length and distance tables of a `BTYPE=01` block, RFC 1951 §3.2.6.
-fn fixed_tables() -> (Huffman, Huffman) {
-    let mut literal = [0u8; 288];
-    for (symbol, length) in literal.iter_mut().enumerate() {
-        *length = match symbol {
-            0..=143 => 8,
-            144..=255 => 9,
-            256..=279 => 7,
-            _ => 8,
-        };
-    }
-    let expect = "the RFC 1951 fixed tables are well formed";
-    (
-        Huffman::new(&literal).expect(expect),
-        Huffman::new(&[5u8; 30]).expect(expect),
-    )
-}
-
-/// The tables of a `BTYPE=10` block: a code-length alphabet, then the literal and
-/// distance lengths it encodes, with the 16/17/18 repeat codes expanded.
-fn dynamic_tables(bits: &mut Bits) -> Result<(Huffman, Huffman), String> {
-    let hlit = bits.bits(5)? as usize + 257;
-    let hdist = bits.bits(5)? as usize + 1;
-    let hclen = bits.bits(4)? as usize + 4;
-    if hlit > 286 || hdist > 30 {
-        return Err("a dynamic block declares more codes than RFC 1951 allows".into());
-    }
-    let mut code_lengths = [0u8; 19];
-    for &slot in CODE_LENGTH_ORDER.iter().take(hclen) {
-        code_lengths[slot] = bits.bits(3)? as u8;
-    }
-    let alphabet = Huffman::new(&code_lengths)?;
-    let mut lengths = vec![0u8; hlit + hdist];
-    let mut i = 0;
-    while i < lengths.len() {
-        let symbol = alphabet.decode(bits)?;
-        let (repeat, value) = match symbol {
-            0..=15 => {
-                lengths[i] = symbol as u8;
-                i += 1;
-                continue;
-            }
-            16 => {
-                if i == 0 {
-                    return Err("a code-length repeat has nothing to repeat".into());
-                }
-                (3 + bits.bits(2)? as usize, lengths[i - 1])
-            }
-            17 => (3 + bits.bits(3)? as usize, 0),
-            18 => (11 + bits.bits(7)? as usize, 0),
-            _ => return Err("invalid code-length symbol".into()),
-        };
-        if i + repeat > lengths.len() {
-            return Err("a code-length repeat overruns the table".into());
-        }
-        lengths[i..i + repeat].fill(value);
-        i += repeat;
-    }
-    Ok((
-        Huffman::new(&lengths[..hlit])?,
-        Huffman::new(&lengths[hlit..])?,
-    ))
-}
-
-/// Real RFC 1951 inflate. Returns the decompressed bytes and the number of whole
-/// bytes consumed, so a gzip trailer or the next ZIP record can be found.
-fn inflate(data: &[u8]) -> Result<(Vec<u8>, usize), String> {
-    let mut bits = Bits::new(data);
-    let mut out: Vec<u8> = Vec::new();
-    loop {
-        let last = bits.bit()? == 1;
-        match bits.bits(2)? {
-            0 => {
-                bits.align();
-                let p = bits.byte_pos();
-                if p + 4 > data.len() {
-                    return Err("truncated stored block".into());
-                }
-                let len = usize::from(u16::from_le_bytes([data[p], data[p + 1]]));
-                let nlen = usize::from(u16::from_le_bytes([data[p + 2], data[p + 3]]));
-                if len ^ 0xffff != nlen {
-                    return Err("stored block length check failed".into());
-                }
-                let end = p + 4 + len;
-                if end > data.len() {
-                    return Err("truncated stored block".into());
-                }
-                out.extend_from_slice(&data[p + 4..end]);
-                bits.pos = end * 8;
-            }
-            kind @ (1 | 2) => {
-                let (literals, distances) = if kind == 1 {
-                    fixed_tables()
-                } else {
-                    dynamic_tables(&mut bits)?
-                };
-                loop {
-                    let symbol = literals.decode(&mut bits)?;
-                    if symbol < 256 {
-                        out.push(symbol as u8);
-                        continue;
-                    }
-                    if symbol == 256 {
-                        break;
-                    }
-                    let i = usize::from(symbol) - 257;
-                    if i >= LENGTH_BASE.len() {
-                        return Err("invalid length code".into());
-                    }
-                    let length = usize::from(LENGTH_BASE[i])
-                        + bits.bits(u32::from(LENGTH_EXTRA[i]))? as usize;
-                    let d = usize::from(distances.decode(&mut bits)?);
-                    if d >= DIST_BASE.len() {
-                        return Err("invalid distance code".into());
-                    }
-                    let distance =
-                        usize::from(DIST_BASE[d]) + bits.bits(u32::from(DIST_EXTRA[d]))? as usize;
-                    if distance == 0 || distance > out.len() {
-                        return Err("a back-reference points before the start of the stream".into());
-                    }
-                    // Overlapping copies are legal and are how runs are encoded, so
-                    // the bytes are appended one at a time.
-                    let from = out.len() - distance;
-                    for k in 0..length {
-                        let byte = out[from + k];
-                        out.push(byte);
-                    }
-                }
-            }
-            _ => return Err("reserved DEFLATE block type".into()),
-        }
-        if last {
-            break;
-        }
-    }
-    bits.align();
-    Ok((out, bits.byte_pos()))
-}
-
-/// DEFLATE as *stored* blocks: `BTYPE=00`, no back-reference search. Interoperable
-/// with every inflater; honest about performing no compression.
-fn deflate_stored(data: &[u8]) -> Vec<u8> {
-    if data.is_empty() {
-        return vec![1, 0, 0, 0xff, 0xff];
-    }
-    let mut out = Vec::with_capacity(data.len() + data.len() / 0xffff * 5 + 5);
-    let mut chunks = data.chunks(0xffff).peekable();
-    while let Some(chunk) = chunks.next() {
-        out.push(u8::from(chunks.peek().is_none()));
-        let len = chunk.len() as u16;
-        out.extend_from_slice(&len.to_le_bytes());
-        out.extend_from_slice(&(!len).to_le_bytes());
-        out.extend_from_slice(chunk);
-    }
-    out
-}
-
-// ---------------------------------------------------------------------------
-// gzip container (RFC 1952)
-// ---------------------------------------------------------------------------
-
-/// One gzip member: magic, CM=8 deflate, no flags, the world-clock MTIME, XFL=0,
-/// OS=3 (Unix), the DEFLATE stream, then CRC32 and ISIZE little-endian.
+/// One gzip member: the RFC 1952 container with the world-clock MTIME and OS=3
+/// (Unix), around a real deflate stream at the default level.
 fn gzip_member(data: &[u8], mtime: u32) -> Vec<u8> {
-    let mut out = vec![0x1f, 0x8b, 0x08, 0x00];
-    out.extend_from_slice(&mtime.to_le_bytes());
-    out.push(0x00);
-    out.push(0x03);
-    out.extend_from_slice(&deflate_stored(data));
-    out.extend_from_slice(&crc32(data).to_le_bytes());
-    out.extend_from_slice(&(data.len() as u32).to_le_bytes());
-    out
-}
-
-/// Decode one member; returns the bytes, the stored MTIME and the offset past the
-/// trailer. Both trailer fields are checked and a mismatch is a loud failure.
-fn gunzip_member(data: &[u8]) -> Result<(Vec<u8>, u32, usize), String> {
-    if data.len() < 18 || data[0] != 0x1f || data[1] != 0x8b {
-        return Err("not in gzip format".into());
-    }
-    if data[2] != 8 {
-        return Err(format!("unknown compression method {}", data[2]));
-    }
-    let flags = data[3];
-    if flags & 0xe0 != 0 {
-        return Err("reserved gzip flag bits are set".into());
-    }
-    let mtime = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
-    let mut p = 10;
-    if flags & 0x04 != 0 {
-        if p + 2 > data.len() {
-            return Err("truncated gzip extra field".into());
-        }
-        p += 2 + usize::from(u16::from_le_bytes([data[p], data[p + 1]]));
-    }
-    for bit in [0x08u8, 0x10] {
-        if flags & bit != 0 {
-            let rest = data
-                .get(p..)
-                .ok_or_else(|| "truncated gzip header".to_string())?;
-            let end = rest
-                .iter()
-                .position(|b| *b == 0)
-                .ok_or_else(|| "truncated gzip header string".to_string())?;
-            p += end + 1;
-        }
-    }
-    if flags & 0x02 != 0 {
-        p += 2; // header CRC16: the whole-member CRC32 below is the real check.
-    }
-    if p >= data.len() {
-        return Err("truncated gzip header".into());
-    }
-    let (out, used) = inflate(&data[p..])?;
-    let end = p + used;
-    if end + 8 > data.len() {
-        return Err("truncated gzip trailer".into());
-    }
-    let stored_crc = u32::from_le_bytes([data[end], data[end + 1], data[end + 2], data[end + 3]]);
-    let stored_size =
-        u32::from_le_bytes([data[end + 4], data[end + 5], data[end + 6], data[end + 7]]);
-    if stored_crc != crc32(&out) {
-        return Err("CRC check failed".into());
-    }
-    if stored_size != out.len() as u32 {
-        return Err("length check failed".into());
-    }
-    Ok((out, mtime, end + 8))
+    let header = cw_zlib::GzHeader {
+        time: mtime,
+        os: 3,
+        ..Default::default()
+    };
+    let mut d = cw_zlib::Deflater::new(6, 31, 8, 0, cw_zlib::HashVariant::Canonical)
+        .expect("the default deflate parameters are valid");
+    d.set_header(header).expect("a header before any input");
+    let mut call = 0;
+    cw_zlib::deflate_all(
+        &mut d,
+        data,
+        cw_zlib::Flush::Finish,
+        &cw_zlib::OutputSchedule(vec![1 << 20]),
+        &mut call,
+    )
+    .expect("deflate of an in-memory buffer cannot fail")
 }
 
 /// A whole gzip file: one or more members, as `cat a.gz b.gz` produces.
-fn gunzip_bytes(data: &[u8]) -> Result<(Vec<u8>, u32), String> {
-    let (mut out, mut mtime, mut p, mut members) = (Vec::new(), 0u32, 0usize, 0usize);
-    while p < data.len() {
-        // Some writers pad the tail with zeros; that is not another member.
-        if data[p..].iter().all(|b| *b == 0) {
-            break;
-        }
-        let (bytes, member_mtime, used) = gunzip_member(&data[p..])?;
-        if members == 0 {
-            mtime = member_mtime;
-        }
-        out.extend_from_slice(&bytes);
-        p += used;
-        members += 1;
-    }
-    if members == 0 {
-        return Err("not in gzip format".into());
-    }
-    Ok((out, mtime))
+fn gunzip_bytes(data: &[u8]) -> Result<Vec<u8>, String> {
+    cw_zlib::gunzip_members(data).map_err(|e| match e {
+        cw_zlib::ZError::Buf => "unexpected end of file".to_string(),
+        cw_zlib::ZError::Data(m) if m.contains("header") => "not in gzip format".into(),
+        other => other.message(),
+    })
 }
-
 // ---------------------------------------------------------------------------
 // ustar
 // ---------------------------------------------------------------------------
@@ -734,9 +385,7 @@ pub(crate) fn tar(c: &mut Computer, args: &[String], t: u64) -> Result<String, F
                 )
             })?;
             let bytes = if gz {
-                gunzip_bytes(&raw)
-                    .map_err(|e| Fail::new(format!("tar: {file}: {e}"), 1))?
-                    .0
+                gunzip_bytes(&raw).map_err(|e| Fail::new(format!("tar: {file}: {e}"), 1))?
             } else {
                 raw
             };
@@ -976,164 +625,6 @@ fn tar_extract(
 }
 
 // ---------------------------------------------------------------------------
-// gzip / gunzip / zcat
-// ---------------------------------------------------------------------------
-
-/// The suffix `gunzip` strips, and what it leaves behind.
-fn strip_gz_suffix(name: &str) -> Option<String> {
-    for (suffix, replacement) in [
-        (".tar.gz", ".tar"),
-        (".tgz", ".tar"),
-        (".taz", ".tar"),
-        (".gz", ""),
-        (".z", ""),
-        (".Z", ""),
-        ("-gz", ""),
-        ("-z", ""),
-    ] {
-        if let Some(stem) = name.strip_suffix(suffix) {
-            if !stem.is_empty() {
-                return Some(format!("{stem}{replacement}"));
-            }
-        }
-    }
-    None
-}
-
-/// `gzip [-k] [-c] [-d] [-f] [-n] [-v] [-1..-9] FILE...`; `gunzip` is `gzip -d` and
-/// `zcat` is `gzip -dc`. Compressing to stdout is refused by name, because a
-/// command's standard output is text here and the bytes could not survive it.
-pub(crate) fn gzip(
-    c: &mut Computer,
-    cmd: &str,
-    args: &[String],
-    input: &str,
-    t: u64,
-) -> Result<String, Fail> {
-    let (opts, operands) = options(
-        cmd,
-        args,
-        "kcdfnv123456789",
-        "",
-        &[
-            ("keep", 'k'),
-            ("stdout", 'c'),
-            ("to-stdout", 'c'),
-            ("decompress", 'd'),
-            ("uncompress", 'd'),
-            ("force", 'f'),
-            ("no-name", 'n'),
-            ("verbose", 'v'),
-            ("fast", '1'),
-            ("best", '9'),
-        ],
-    )?;
-    let decompress = flag(&opts, 'd') || cmd == "gunzip" || cmd == "zcat";
-    let to_stdout = flag(&opts, 'c') || cmd == "zcat" || operands.is_empty();
-    // A command's standard output is text in this shell, so compressed bytes cannot
-    // survive it. Refusing is the honest answer; a corrupt `.gz` that only shows up
-    // when someone tries to read it back is not.
-    if !decompress && to_stdout {
-        return Err(Fail::usage(format!(
-            "{cmd}: cannot write compressed bytes to stdout: this shell's stdout is \
-             text, so name an output file instead"
-        )));
-    }
-    let (keep, force, verbose) = (flag(&opts, 'k'), flag(&opts, 'f'), flag(&opts, 'v'));
-    let no_name = flag(&opts, 'n');
-    let user = c.user.clone();
-    if operands.is_empty() {
-        // Only the decompressing direction reaches here; the other was refused above.
-        let (out, _) = gunzip_bytes(input.as_bytes())
-            .map_err(|e| Fail::new(format!("{cmd}: stdin: {e}"), 1))?;
-        return Ok(String::from_utf8_lossy(&out).into_owned());
-    }
-    let mut out = String::new();
-    for name in &operands {
-        let path = c.resolve(name);
-        let meta = c
-            .vfs
-            .lstat(&path)
-            .map_err(|_| Fail::new(format!("{cmd}: {name}: No such file or directory"), 1))?;
-        if meta.is_dir {
-            return Err(Fail::new(format!("{cmd}: {name} is a directory"), 1));
-        }
-        let bytes = c
-            .vfs
-            .read_as(&path, &user)
-            .map_err(|e| Fail::new(format!("{cmd}: {name}: {e}"), 1))?;
-        let (result, target) = if decompress {
-            let (data, _) =
-                gunzip_bytes(&bytes).map_err(|e| Fail::new(format!("{cmd}: {name}: {e}"), 1))?;
-            let target = strip_gz_suffix(name)
-                .ok_or_else(|| Fail::new(format!("{cmd}: {name}: unknown suffix -- ignored"), 1))?;
-            (data, target)
-        } else {
-            if strip_gz_suffix(name).is_some() {
-                return Err(Fail::new(
-                    format!("{cmd}: {name} already has .gz suffix -- unchanged"),
-                    1,
-                ));
-            }
-            // The stored MTIME is the file's own world-clock modification time.
-            let mtime = if no_name {
-                0
-            } else {
-                unix_seconds(meta.modified) as u32
-            };
-            (gzip_member(&bytes, mtime), format!("{name}.gz"))
-        };
-        if verbose {
-            let ratio = if bytes.is_empty() {
-                0.0
-            } else {
-                100.0 - (result.len() as f64) * 100.0 / (bytes.len() as f64)
-            };
-            let verb = if to_stdout {
-                "written to stdout"
-            } else {
-                "replaced with"
-            };
-            let suffix = if to_stdout {
-                String::new()
-            } else {
-                format!(" {target}")
-            };
-            out.push_str(&format!("{name}:\t{ratio:6.1}% -- {verb}{suffix}\n"));
-        }
-        if to_stdout {
-            out.push_str(&String::from_utf8_lossy(&result));
-            continue;
-        }
-        let target_path = c.resolve(&target);
-        if c.vfs.exists(&target_path) && !force {
-            return Err(Fail::new(
-                format!("{cmd}: {target} already exists; use -f to overwrite"),
-                1,
-            ));
-        }
-        c.vfs
-            .write_as(&target_path, &result, &user, t)
-            .map_err(|e| Fail::new(format!("{cmd}: {target}: {e}"), 1))?;
-        let _ = c.vfs.chmod_as(&target_path, meta.mode, &user);
-        let _ = c.vfs.set_times_as(
-            &target_path,
-            Some(meta.accessed),
-            Some(meta.modified),
-            &user,
-            t,
-            true,
-        );
-        if !keep {
-            c.vfs
-                .remove_as(&path, false, &user)
-                .map_err(|e| Fail::new(format!("{cmd}: {name}: {e}"), 1))?;
-        }
-    }
-    Ok(out)
-}
-
-// ---------------------------------------------------------------------------
 // zip / unzip
 // ---------------------------------------------------------------------------
 
@@ -1229,7 +720,7 @@ fn read_zip(bytes: &[u8]) -> Result<Vec<ZipEntry>, String> {
         let is_dir = name.ends_with('/');
         let data = match method {
             0 => raw.to_vec(),
-            8 => inflate(raw).map_err(|e| format!("{name}: {e}"))?.0,
+            8 => inflate(raw).map_err(|e| format!("{name}: {e}"))?,
             other => return Err(format!("{name}: unsupported compression method {other}")),
         };
         if !is_dir && (crc32(&data) != crc || data.len() != usize_) {
@@ -1962,11 +1453,12 @@ mod tests {
     fn gzip_refuses_a_double_suffix_and_an_unreadable_member() {
         let mut c = machine();
         ok(&mut c, "gzip -k /home/user/proj/a.txt");
+        // gzip's warnings exit 2, as GNU gzip's do; only a real failure exits 1.
         let (_, err, code) = run(&mut c, "gzip /home/user/proj/a.txt.gz");
-        assert_eq!(code, 1, "{err}");
+        assert_eq!(code, 2, "{err}");
         assert!(err.contains("already has .gz suffix"), "{err}");
         let (_, err, code) = run(&mut c, "gzip /home/user/proj/a.txt");
-        assert_eq!(code, 1, "{err}");
+        assert_eq!(code, 2, "{err}");
         assert!(err.contains("already exists"), "{err}");
         c.vfs
             .write(
@@ -1981,8 +1473,8 @@ mod tests {
         assert!(err.contains("not in gzip format"), "{err}");
     }
 
-    /// A fixed-Huffman and a dynamic-Huffman DEFLATE stream produced by zlib, so the
-    /// inflate paths our own stored-block writer never reaches are really exercised.
+    /// A fixed-Huffman and a dynamic-Huffman DEFLATE stream produced by zlib, read
+    /// back through the same seam a ZIP entry and a gzip member go through.
     #[test]
     fn inflate_reads_fixed_and_dynamic_huffman_streams() {
         const FIXED: [u8; 18] = [
@@ -1990,7 +1482,7 @@ mod tests {
             0x90, 0x49, 0x2e, 0x00,
         ];
         assert_eq!((FIXED[0] >> 1) & 3, 1, "the fixture is a BTYPE=01 block");
-        let (out, _) = inflate(&FIXED).expect("fixed-Huffman stream");
+        let out = inflate(&FIXED).expect("fixed-Huffman stream");
         assert_eq!(
             String::from_utf8(out).unwrap(),
             "hello hello hello world world world\n"
@@ -2002,7 +1494,7 @@ mod tests {
             0xfe, 0x7c, 0x0f,
         ];
         assert_eq!((DYNAMIC[0] >> 1) & 3, 2, "the fixture is a BTYPE=10 block");
-        let (out, _) = inflate(&DYNAMIC).expect("dynamic-Huffman stream");
+        let out = inflate(&DYNAMIC).expect("dynamic-Huffman stream");
         assert_eq!(
             String::from_utf8(out).unwrap(),
             "hjiadekkkdcfelhailcakdjlhacjfbefcikibgaf\

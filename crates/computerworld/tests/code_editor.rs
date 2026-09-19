@@ -283,12 +283,13 @@ fn run_executes_the_file_in_the_integrated_terminal_with_the_machines_shell() {
         .as_str()
         .unwrap()
         .ends_with("/home/carol/project$"));
-    // The Python file runs with python3 through F5. Where this machine's shell has no
+    // The Python file runs with python3 through Ctrl+F5, Run Without Debugging (F5
+    // hands it to this machine's debugger instead). Where this machine's shell has no
     // python3 the shell's own `command not found` and 127 are what shows.
     d.click("code:tree:main.py");
     let (_, r) = d.locate("code:editor:");
     d.click_at(r.x + 5, r.y + 5);
-    d.key("F5");
+    d.key("Ctrl+F5");
     let last = d.transcript().last().cloned().unwrap();
     assert_eq!(last["command"], "python3 main.py");
     match last["exit_code"].as_i64().unwrap() {
@@ -849,7 +850,7 @@ fn right_clicking_the_explorer_opens_its_menu_and_its_entries_act() {
 }
 
 #[test]
-fn run_and_debug_keeps_breakpoints_and_says_what_the_machine_cannot_do() {
+fn run_and_debug_stops_on_a_breakpoint_and_keeps_it() {
     let mut d = Desk::new("carol-ubuntu", "carol");
     d.launch();
     d.click("code:tree:main.py");
@@ -869,43 +870,40 @@ fn run_and_debug_keeps_breakpoints_and_says_what_the_machine_cannot_do() {
     let written = d.file("/home/carol/project/.vscode/launch.json");
     assert!(written.contains("\"type\": \"python\""), "{written}");
     assert!(written.contains("${workspaceFolder}/main.py"), "{written}");
-    // F5 asks this machine's debugger, which has no adapter for Python: it says so and
-    // runs the program instead of pretending to stop on the breakpoint.
+    // F5 asks this machine's debugger, which launches the program that configuration
+    // names — `${workspaceFolder}` and all — and stops it on the breakpoint.
     d.click("code:tab:0");
     d.key("F5");
     let code = d.code();
-    assert!(
-        code["debug"]["session"].is_null(),
-        "nothing is pretending to be stopped"
-    );
-    let notice = code["notice"].as_str().unwrap_or_default();
-    assert!(
-        notice.contains("no debug adapter") && notice.contains("running without debugging"),
-        "{notice}"
-    );
-    // The program really ran, in the machine's own shell.
-    let last = d.transcript().last().cloned().unwrap();
-    assert_eq!(last["command"], "python3 main.py");
-    // The Run and Debug view says what the machine said, rather than showing a stopped
-    // program: there is no debug toolbar, because nothing is being debugged.
+    let session = &code["debug"]["session"];
+    assert_eq!(session["kind"], "python", "{code}");
+    assert_eq!(session["program"], "/home/carol/project/main.py");
+    assert_eq!(session["ended"], false);
+    assert_eq!(session["stopped"]["reason"], "breakpoint", "{session}");
+    assert_eq!(session["stopped"]["line"], 5);
+    assert_eq!(session["frames"][0]["line"], 5);
+    // A stopped program has a toolbar to step with, and the editor is on that line.
+    assert!(d.find("code:cmd:workbench.action.debug.stepOver").is_some());
     let scene = d.world.scene(&d.actor, W, H).unwrap();
     let text: Vec<String> = scene
         .nodes
         .iter()
         .filter_map(|n| n.painted_text().map(str::to_owned))
         .collect();
+    assert!(text.iter().any(|t| t.contains("main")), "{text:?}");
+    // Continuing runs it to the end, and the program's own output is in the console.
+    d.key("F5");
+    let code = d.code();
+    assert_eq!(code["debug"]["session"]["ended"], true, "{code}");
+    let console: Vec<String> = code["debug"]["console"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["text"].as_str().unwrap_or_default().to_owned())
+        .collect();
     assert!(
-        text.iter().any(|t| t.contains("no debug adapter")),
-        "{text:?}"
-    );
-    assert!(
-        d.find("code:cmd:workbench.action.debug.stepOver").is_none(),
-        "nothing is being debugged, so there is no toolbar to step with"
-    );
-    assert_eq!(
-        d.code()["debug"]["session"],
-        Value::Null,
-        "and no session either"
+        console.iter().any(|l| l.contains("hello from python")),
+        "{console:?}"
     );
     // The breakpoint outlived all of that.
     assert_eq!(

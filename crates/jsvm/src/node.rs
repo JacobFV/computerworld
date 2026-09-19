@@ -44,6 +44,7 @@ pub const BUILTINS: &[&str] = &[
     "async_hooks",
     "cluster",
     "dns",
+    "dns/promises",
     "diagnostics_channel",
     "test",
     "sys",
@@ -62,6 +63,16 @@ fn js_module_source(name: &str) -> Option<&'static str> {
         "stream" => include_str!("../js/stream.js"),
         "timers/promises" => include_str!("../js/timers_promises.js"),
         "child_process" => include_str!("../js/child_process.js"),
+        "dns" => include_str!("../js/dns.js"),
+        "dns/promises" => "module.exports = require('dns').promises;",
+        "net" => include_str!("../js/net.js"),
+        "http" => include_str!("../js/http.js"),
+        "https" => include_str!("../js/https.js"),
+        "internal/fetch" => include_str!("../js/fetch.js"),
+        "internal/intl" => include_str!("../js/intl.js"),
+        "internal/httpwire" => include_str!("../js/httpwire.js"),
+        "zlib" => include_str!("../js/zlib.js"),
+        "worker_threads" => include_str!("../js/worker_threads.js"),
         _ => return None,
     })
 }
@@ -569,11 +580,43 @@ fn stream_write(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 }
 
 fn read_stdin(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    stdin_rest(vm)
+}
+
+/// Everything left on standard input. At a terminal that means everything up to
+/// an end-of-file that may not have been typed yet, so the run may suspend.
+pub fn stdin_rest(vm: &mut Vm) -> JsResult<Value> {
+    if vm.interactive {
+        if !vm.stdin_eof {
+            return Err(vm.need_input());
+        }
+        let stdin = vm.stdin.clone().unwrap_or_default();
+        let rest = stdin[vm.stdin_pos.min(stdin.len())..].to_string();
+        vm.stdin_pos = stdin.len();
+        return Ok(Value::string(rest));
+    }
     if vm.stdin_consumed {
         return Ok(Value::str(""));
     }
     vm.stdin_consumed = true;
     Ok(Value::string(vm.stdin.clone().unwrap_or_default()))
+}
+
+/// One typed line (with its newline), `null` at end-of-file. At a terminal a
+/// line nobody has typed yet suspends the run.
+fn read_line(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    let stdin = vm.stdin.clone().unwrap_or_default();
+    if vm.stdin_pos >= stdin.len() {
+        if vm.interactive && !vm.stdin_eof {
+            return Err(vm.need_input());
+        }
+        return Ok(Value::Null);
+    }
+    let rest = &stdin[vm.stdin_pos..];
+    let end = rest.find('\n').map(|p| p + 1).unwrap_or(rest.len());
+    let line = rest[..end].to_string();
+    vm.stdin_pos += end;
+    Ok(Value::string(line))
 }
 
 fn emit_warning(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -661,7 +704,8 @@ fn add_timer(vm: &mut Vm, a: &Args, repeat: bool, immediate: bool) -> JsResult<V
         );
     }
     vm.timer_seq += 1;
-    // Node reads a fresh loop time when a timer starts.
+    // `Environment::GetNow` updates the loop clock before a timer starts, so
+    // the due time counts from now, not from the turn's cached time.
     let when = vm.clock() + delay;
     vm.timers.push(Timer {
         id,
@@ -899,6 +943,13 @@ impl<'h> Vm<'h> {
     /// Resolves a specifier to a builtin name or an absolute file path.
     pub fn resolve_module(&mut self, spec: &str, dir: &str) -> Option<String> {
         let bare = spec.strip_prefix("node:").unwrap_or(spec);
+        // Internal modules are visible to the built-in modules only.
+        if bare.starts_with("internal/")
+            && dir.starts_with("/node_internal")
+            && js_module_source(bare).is_some()
+        {
+            return Some(format!("node:{bare}"));
+        }
         if spec.starts_with("node:") || BUILTINS.contains(&bare) {
             if BUILTINS.contains(&bare) {
                 return Some(format!("node:{bare}"));
@@ -1243,6 +1294,7 @@ impl<'h> Vm<'h> {
             Ok(b) => b,
             Err(_) => return Err(self.module_not_found(path, &[])),
         };
+        self.charge_module_load(bytes.len());
         let src = String::from_utf8_lossy(&bytes).into_owned();
         let m = self.make_module_object(path);
         let mv = Value::Obj(m.clone());
@@ -1560,6 +1612,7 @@ impl<'h> Vm<'h> {
     pub fn event_loop(&mut self) -> JsResult<()> {
         loop {
             self.drain_after(None)?;
+            // Each turn starts by reading the clock (`uv__update_time`).
             let now = self.clock();
             let mut ran = false;
             // Timers phase: due timers by time then creation order; Node
@@ -1581,8 +1634,22 @@ impl<'h> Vm<'h> {
             if ran {
                 self.drain_after(None)?;
             }
-            // Poll phase: completed I/O, one callback at a time.
-            while let Some(i) = self.timers.iter().position(|t| t.io) {
+            // Poll phase: completed I/O, one callback at a time, in the order the
+            // completions arrived (network replies land at their simulated time).
+            let poll_now = self.clock();
+            while let Some(i) = self
+                .timers
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.io && t.when <= poll_now)
+                .min_by(|a, b| {
+                    a.1.when
+                        .partial_cmp(&b.1.when)
+                        .unwrap()
+                        .then(a.1.seq.cmp(&b.1.seq))
+                })
+                .map(|(i, _)| i)
+            {
                 self.fire_timer(i)?;
                 self.drain_after(None)?;
                 ran = true;
@@ -1606,18 +1673,58 @@ impl<'h> Vm<'h> {
                 self.fire_timer(i)?;
                 ran = true;
             }
+            // Workers: once this context can do no more, the others take their
+            // turn, and what they send back arrives here.
+            if self.workers.is_some() {
+                // What a worker has written reaches the terminal through its
+                // parent, which passes it on when it next comes round.
+                let mut moved = self.flush_worker_output();
+                moved |= self.worker_events()?;
+                moved |= self.deliver_inbox()?;
+                moved |= self.flush_ports()?;
+                moved |= self.poll_async_waits()?;
+                if !ran && !moved {
+                    moved |= self.run_workers()?;
+                    moved |= self.flush_worker_output();
+                    moved |= self.worker_events()?;
+                    moved |= self.deliver_inbox()?;
+                    moved |= self.flush_ports()?;
+                    moved |= self.poll_async_waits()?;
+                }
+                if moved {
+                    self.drain_after(None)?;
+                    ran = true;
+                }
+            }
             if ran {
                 continue;
             }
-            let next = self
+            let mut next = self
                 .timers
                 .iter()
                 .filter(|t| !matches!(t.obj.own_value("%unref"), Some(Value::Bool(true))))
                 .map(|t| t.when)
                 .min_by(|a, b| a.partial_cmp(b).unwrap());
+            if self.workers.is_some() {
+                // A worker's timer keeps the whole program awake.
+                for w in self.worker_timer_times() {
+                    next = Some(match next {
+                        Some(n) => n.min(w),
+                        None => w,
+                    });
+                }
+            }
             match next {
                 Some(w) => self.elapsed_ms = self.clock().max(w),
-                None => break,
+                None => {
+                    // Nothing anywhere can run: a worker left waiting for a
+                    // message that will never come ends here.
+                    let main = self.workers.is_some() && self.workers_current() == 0;
+                    if main && self.end_idle_workers() {
+                        continue;
+                    }
+                    break;
+                }
             }
         }
         Ok(())
@@ -1639,7 +1746,7 @@ impl<'h> Vm<'h> {
 
     /// Drains ticks and promise jobs after a callback, in the context Node
     /// would (between two callbacks of a batch, or after the batch).
-    fn drain_after(&mut self, between: Option<Batch>) -> JsResult<()> {
+    pub(crate) fn drain_after(&mut self, between: Option<Batch>) -> JsResult<()> {
         let saved = self.drain;
         self.drain = Drain {
             between,
@@ -2086,6 +2193,10 @@ pub fn install(vm: &mut Vm) {
         p.set_prop(name, Value::Obj(s), ALL);
     }
     vm.method(&p, "%readStdin", 0, read_stdin);
+    vm.method(&p, "%readLine", 0, read_line);
+    vm.method(&p, "%isInteractive", 0, |vm, _a| {
+        Ok(Value::Bool(vm.interactive))
+    });
     vm.process = Some(p.clone());
     vm.set_global("process", Value::Obj(p));
     // util.inspect is reachable for custom inspectors.

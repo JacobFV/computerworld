@@ -1034,6 +1034,36 @@ impl Network {
         );
         Ok(ready)
     }
+    /// Whether `source` can open a TCP connection to `host:port` now: DNS, routing,
+    /// link loss and the listener are checked exactly as [`Network::connect`] does,
+    /// but no connection is created. Returns the destination address and the tick
+    /// the handshake completes. Used by runtime sockets, whose bytes are carried as
+    /// HTTP exchanges.
+    pub fn probe_tcp(
+        &mut self,
+        source: &str,
+        host: &str,
+        port: u16,
+        now: u64,
+    ) -> Result<(String, u64)> {
+        self.advance(now);
+        let addresses = self.resolve(source, host, now)?;
+        let address = addresses
+            .first()
+            .ok_or_else(|| NetworkError::Dns(host.into()))?
+            .clone();
+        let destination = self.destination(source, &address)?;
+        let at = self.deliver(source, &destination, &address, self.dns_ready_at.max(now))?;
+        self.listener(&destination, &address, port, Transport::Tcp)?;
+        self.trace(
+            at,
+            source,
+            &destination,
+            "tcp_probe",
+            format!("{address}:{port}"),
+        );
+        Ok((address, at))
+    }
     pub fn connect(
         &mut self,
         source: &str,

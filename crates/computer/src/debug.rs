@@ -11,18 +11,14 @@
 //! interpreter can keep a recipe instead — the program and how far it has run — and
 //! replay it, which is exact because the world is deterministic.
 //!
-//! There are no adapters in this build: `cw-pyvm` and `cw-jsvm` run a program to
-//! completion and have no stepping API, and a debugger belongs in the interpreter that
-//! executes the lines, not in a second one beside it. Until they have one, a machine
-//! answers every debug request with the reason it cannot serve it, and the Run and
-//! Debug view says so rather than pretending to stop anywhere. To finish the wiring:
-//!
-//! 1. Implement [`DebugAdapter`] over the runtime's stepping API (one type per runtime,
-//!    `kind()` returning `python` or `node`).
-//! 2. Return them from [`adapters`].
-//!
-//! Nothing above this file changes: the view, the effects and the environment already
-//! carry every request and reply the protocol has.
+//! Both of this machine's runtimes have an adapter ([`crate::debugger`]): `python3` and
+//! `node` stop, step, and are read and evaluated through their own DAP-shaped debugger
+//! ([`cw_script_host::debug`]). Neither keeps a live interpreter between two requests —
+//! nothing here can — so a session holds the recipe to be back at the stop and replays
+//! the program, with a journal answering the host calls the earlier runs made so that
+//! no file is written twice and no request sent twice. A machine with no adapter for a
+//! runtime still answers with the reason ([`unavailable`]), and the Run and Debug view
+//! says so rather than pretending to stop anywhere.
 use crate::Computer;
 use cw_protocol::debug::{
     ExceptionFilters, Launch, Reply, Request, SourceBreakpoint, State, Step, Variable,
@@ -107,9 +103,12 @@ pub trait DebugAdapter {
     fn terminate(&self, machine: &mut Computer, session: &mut Session);
 }
 
-/// The debug adapters this build has, by runtime. Empty: see this module's note.
+/// The debug adapters this build has, one per language runtime.
 pub fn adapters() -> &'static [&'static dyn DebugAdapter] {
-    &[]
+    &[
+        &crate::debugger::PythonAdapter,
+        &crate::debugger::NodeAdapter,
+    ]
 }
 
 /// Why a machine cannot debug `kind`.

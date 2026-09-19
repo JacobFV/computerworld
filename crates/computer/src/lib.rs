@@ -3,9 +3,11 @@ pub mod archive;
 mod awk;
 mod datautils;
 pub mod debug;
+pub mod debugger;
 pub mod files;
 pub mod find;
 pub mod git;
+mod gzipcmd;
 pub mod packages;
 pub mod process;
 pub mod runtimes;
@@ -76,6 +78,43 @@ pub trait ShellHost {
     fn entropy(&mut self) -> u64 {
         0x5eed_c0de_2026_0917
     }
+    /// The world tick right now (it moves while a request is in flight).
+    fn now_tick(&self) -> Option<u64> {
+        None
+    }
+    /// An HTTP exchange whose failure keeps the world's error code (`dns`,
+    /// `connection_refused`, `unreachable`, `network_denied`, `packet_loss`…).
+    fn http_exchange(&mut self, request: HttpRequest) -> Result<HttpResponse, NetFailure> {
+        self.http(request).map_err(|message| NetFailure {
+            code: "network".into(),
+            message,
+        })
+    }
+    /// Name resolution against the world's DNS from this machine.
+    fn resolve_name(&mut self, name: &str) -> Result<Vec<String>, NetFailure> {
+        let _ = name;
+        Err(NetFailure::unavailable())
+    }
+    /// Checks that a TCP connection to `host:port` would be accepted; returns the
+    /// destination address.
+    fn probe_tcp(&mut self, host: &str, port: u16) -> Result<String, NetFailure> {
+        let _ = (host, port);
+        Err(NetFailure::unavailable())
+    }
+}
+/// A failed network operation, with the world's error code.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NetFailure {
+    pub code: String,
+    pub message: String,
+}
+impl NetFailure {
+    pub fn unavailable() -> Self {
+        Self {
+            code: "unavailable".into(),
+            message: "network adapter unavailable".into(),
+        }
+    }
 }
 pub struct OfflineHost;
 impl ShellHost for OfflineHost {
@@ -137,6 +176,20 @@ pub struct Computer {
     pub installed_apps: std::collections::BTreeSet<String>,
     #[serde(default)]
     pub hardware: Hardware,
+    /// Virtual time language runtimes spent during the command now running (their
+    /// sleeps, timers and network waits). A parent runtime waiting on a child
+    /// process reads it; it is scratch state of one command, never persisted.
+    #[serde(skip)]
+    pub runtime_elapsed_micros: u64,
+    /// Standard input of the command now running is the terminal (set by the
+    /// terminal for a line that is a single program invocation); never persisted.
+    #[serde(skip)]
+    pub tty: bool,
+    /// A `python3` or `node` run waiting for the next line typed at the
+    /// terminal (a console, or a program that called `input()`): the next line
+    /// goes to it instead of to the shell.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<runtimes::RuntimeSession>,
     /// Programs paused under a debugger (`debug::DebugAdapter`).
     #[serde(default, skip_serializing_if = "debug_is_empty")]
     pub debug: debug::DebugTable,
@@ -194,6 +247,9 @@ impl Computer {
             packages: PackageManager::default(),
             installed_apps: std::collections::BTreeSet::new(),
             hardware: Hardware::default(),
+            runtime_elapsed_micros: 0,
+            tty: false,
+            session: None,
             debug: debug::DebugTable::default(),
         }
     }
@@ -252,6 +308,11 @@ impl Computer {
     }
     pub fn execute(&mut self, command: &str, tick: u64, host: &mut dyn ShellHost) -> CommandResult {
         shell::execute(self, command, tick, host)
+    }
+    /// What the terminal prints before the next line: the prompt of the runtime
+    /// session that is waiting for it, if there is one.
+    pub fn session_prompt(&self) -> Option<&str> {
+        self.session.as_ref().map(|s| s.prompt.as_str())
     }
     pub fn resolve(&self, path: &str) -> String {
         normalize_path(&self.cwd, path)

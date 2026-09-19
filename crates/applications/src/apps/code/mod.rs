@@ -1413,7 +1413,7 @@ impl Workbench {
         }
         Ok(())
     }
-    fn save_tab(&mut self, window: u64, index: usize) -> Result<Vec<AppEffect>, String> {
+    pub(super) fn save_tab(&mut self, window: u64, index: usize) -> Result<Vec<AppEffect>, String> {
         let tab = self.tabs.get(index).ok_or("no editor is open")?;
         match tab.kind {
             TabKind::Settings => return Ok(vec![]),
@@ -2904,7 +2904,11 @@ impl Workbench {
                 Ok(vec![])
             }
             "workbench.debug.action.toggleRepl" => {
-                self.panel_open = !(self.panel_open && self.panel == PanelTab::Debug);
+                // VS Code's toggle hides the Debug Console only when it already has the
+                // focus; a console that is merely on screen is focused instead.
+                let focused =
+                    self.panel_open && self.panel == PanelTab::Debug && self.focus == Focus::Debug;
+                self.panel_open = !focused;
                 self.panel = PanelTab::Debug;
                 if self.panel_open {
                     self.focus = Focus::Debug;

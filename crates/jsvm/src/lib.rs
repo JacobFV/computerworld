@@ -15,7 +15,9 @@ pub mod bytecode;
 pub mod call;
 pub mod compiler;
 pub mod conv;
+pub mod debug;
 pub mod fs;
+pub mod hostio;
 pub mod inspect;
 pub mod interp;
 pub mod lexer;
@@ -27,8 +29,10 @@ pub mod promise;
 pub mod props;
 pub mod realm;
 pub mod regexp;
+pub mod repl;
 pub mod value;
 pub mod vm;
+pub mod workers;
 
 use cw_script_host::{Invocation, Outcome, ScriptHost};
 use value::{Ctl, Value};
@@ -62,6 +66,8 @@ enum Target {
     File(String),
     Eval(String, bool),
     Stdin,
+    /// The console (a bare `node` at a terminal).
+    Repl,
 }
 
 /// Options that take no argument and are accepted (and ignored).
@@ -99,6 +105,31 @@ fn ignorable(a: &str) -> bool {
 
 /// Runs `node <args>` against the host and returns both streams and the status.
 pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
+    run_with(host, invocation, None)
+}
+
+/// Runs the program under a debugger, which is consulted at every new source
+/// line (see [`debug`]).
+pub fn run_debug<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debugger: &'a mut dyn cw_script_host::debug::Debugger,
+) -> (Outcome, cw_script_host::debug::DebugRunInfo) {
+    let mut info = cw_script_host::debug::DebugRunInfo::default();
+    let out = run_with(host, invocation, Some((debugger, &mut info)));
+    (out, info)
+}
+
+type DebugArgs<'a> = (
+    &'a mut dyn cw_script_host::debug::Debugger,
+    &'a mut cw_script_host::debug::DebugRunInfo,
+);
+
+fn run_with<'a>(
+    host: &'a mut dyn ScriptHost,
+    invocation: &Invocation,
+    debug: Option<DebugArgs<'a>>,
+) -> Outcome {
     let args = &invocation.args;
     let mut i = 0;
     let mut target = None;
@@ -106,6 +137,7 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     let mut preload: Vec<String> = vec![];
     let mut input_module = false;
     let mut stack_limit = None;
+    let mut force_repl = false;
     while i < args.len() {
         let a = args[i].as_str();
         match a {
@@ -114,6 +146,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: format!("{NODE_VERSION}\n"),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-h" | "--help" => {
@@ -121,6 +155,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: USAGE.into(),
                     stderr: String::new(),
                     exit_code: 0,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 }
             }
             "-e" | "--eval" | "-p" | "--print" | "-pe" => {
@@ -130,6 +166,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                         stdout: String::new(),
                         stderr: format!("node: {a} requires an argument\n"),
                         exit_code: 9,
+                        awaiting_input: false,
+                        elapsed_micros: 0,
                     };
                 };
                 target = Some((Target::Eval(code.clone(), print), i + 2));
@@ -145,7 +183,10 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                 }
                 i += 2;
             }
-            "-i" | "--interactive" => i += 1,
+            "-i" | "--interactive" => {
+                force_repl = true;
+                i += 1;
+            }
             "--" => {
                 if let Some(f) = args.get(i + 1) {
                     target = Some((Target::File(f.clone()), i + 2));
@@ -193,6 +234,8 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
                     stdout: String::new(),
                     stderr: format!("/usr/bin/node: bad option: {a}\n"),
                     exit_code: 9,
+                    awaiting_input: false,
+                    elapsed_micros: 0,
                 };
             }
             _ => {
@@ -201,7 +244,13 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
             }
         }
     }
-    let (target, rest) = target.unwrap_or((Target::Stdin, args.len()));
+    let (target, rest) = target.unwrap_or(if invocation.interactive || force_repl {
+        // A bare `node` at a terminal is the console; from a pipe or a file it
+        // is a program on standard input.
+        (Target::Repl, args.len())
+    } else {
+        (Target::Stdin, args.len())
+    });
     let script_args: Vec<String> = args[rest.min(args.len())..].to_vec();
     let reads_program = matches!(target, Target::Stdin);
     let stdin = if reads_program {
@@ -228,6 +277,16 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
     }
     argv.extend(script_args);
     let mut vm = Vm::new(host, argv, invocation.env.clone(), stdin);
+    let mut debug_info = None;
+    if let Some((dbg, info)) = debug {
+        let mut session = debug::Session::new(dbg);
+        // `stop_on_entry` waits for the program, not for Node's own setup.
+        session.state.main_path = main_path.clone().unwrap_or_else(|| "[eval]".into());
+        vm.debug = Some(Box::new(session));
+        debug_info = Some(info);
+    }
+    vm.interactive = invocation.interactive;
+    vm.stdin_eof = invocation.eof;
     if let Some(n) = stack_limit {
         vm.stack_limit = n;
     }
@@ -242,10 +301,17 @@ pub fn run(host: &mut dyn ScriptHost, invocation: &Invocation) -> Outcome {
         input_module,
     );
     let code = finish(&mut vm, result);
+    if let (Some(slot), Some(session)) = (debug_info.as_mut(), vm.debug.as_ref()) {
+        **slot = session.state.info.clone();
+    }
+    vm.debug = None;
+    let awaiting_input = vm.awaiting_input;
     Outcome {
         stdout: std::mem::take(&mut vm.stdout),
         stderr: std::mem::take(&mut vm.stderr),
-        exit_code: code,
+        exit_code: if awaiting_input { 0 } else { code },
+        awaiting_input,
+        elapsed_micros: (vm.clock().max(0.0) * 1000.0) as u64,
     }
 }
 
@@ -308,6 +374,10 @@ fn run_program(
             }
             Ok(())
         }
+        Target::Repl => {
+            vm.tail = Tail::Eval;
+            repl::run(vm)
+        }
         Target::Stdin => {
             vm.tail = Tail::Eval;
             let code = inv.stdin.clone();
@@ -325,9 +395,6 @@ fn run_program(
 fn finish(vm: &mut Vm, result: Result<(), Ctl>) -> i32 {
     let r = result.and_then(|_| {
         vm.tail = Tail::Microtask(None, false);
-        // Loading and running the main module takes about a millisecond in
-        // Node; 1 ms timers set by it are due when the loop first turns.
-        vm.elapsed_ms += 1.0;
         vm.event_loop()
     });
     let code = match r {

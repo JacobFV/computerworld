@@ -129,6 +129,14 @@ impl<'h> Vm<'h> {
             stderr: String::new(),
             stdin,
             stdin_consumed: false,
+            stdin_pos: 0,
+            interactive: false,
+            stdin_eof: false,
+            awaiting_input: false,
+            debug: None,
+            workers: None,
+            inbox: VecDeque::new(),
+            worker_errors: vec![],
             steps: 0,
             budget: STEP_BUDGET,
             native_depth: 0,
@@ -174,6 +182,7 @@ impl<'h> Vm<'h> {
             out_mark: 0,
             open_fds: vec![],
             completion: Value::Undefined,
+            handles: vec![],
         };
         // The inspect symbol is registered under its key.
         let ic = vm.syms.inspect_custom.clone();
@@ -196,6 +205,7 @@ impl<'h> Vm<'h> {
         crate::builtins::reflect::install(&mut vm);
         crate::builtins::date::install(&mut vm);
         crate::builtins::typed::install(&mut vm);
+        crate::builtins::shared::install(&mut vm);
         crate::regexp::install(&mut vm);
         crate::promise::install(&mut vm);
         crate::node::install(&mut vm);

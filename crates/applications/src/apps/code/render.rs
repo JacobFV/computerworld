@@ -1777,6 +1777,7 @@ fn debug_console(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             super::debug::ConsoleKind::Input => pal.link,
             super::debug::ConsoleKind::Result => pal.fg,
             super::debug::ConsoleKind::Output => pal.fg,
+            super::debug::ConsoleKind::Notice => pal.desc,
         };
         let prefix = match line.kind {
             super::debug::ConsoleKind::Input => "> ",

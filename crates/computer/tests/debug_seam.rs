@@ -1,6 +1,7 @@
-//! The debug seam: a machine keeps the sessions, an adapter moves the program. There
-//! is no adapter for the interpreters yet, so this drives the seam with one of its own
-//! to prove the machine's half — the half the Run and Debug view talks to.
+//! The debug seam: a machine keeps the sessions, an adapter moves the program. This
+//! drives the seam with an adapter of its own, so the machine's half — the half the Run
+//! and Debug view talks to — is proved whatever the language runtimes do; the real
+//! adapters are exercised by `debug_adapters.rs`.
 use cw_computer::debug::{DebugAdapter, Session};
 use cw_computer::Computer;
 use cw_protocol::debug::{
@@ -186,12 +187,13 @@ fn machine() -> Computer {
 #[test]
 fn a_machine_with_no_adapter_says_so_rather_than_pretending() {
     let mut c = machine();
+    // The machine has adapters for the runtimes it runs, and only for those.
     let err = c
         .debug(
             0,
             &Request::Launch(Launch {
-                kind: "python".into(),
-                program: "/home/alice/main.py".into(),
+                kind: "ruby".into(),
+                program: "/home/alice/main.rb".into(),
                 cwd: "/home/alice".into(),
                 stop_on_entry: true,
                 ..Launch::default()
@@ -200,7 +202,7 @@ fn a_machine_with_no_adapter_says_so_rather_than_pretending() {
         .unwrap_err();
     assert_eq!(
         err,
-        "no debug adapter for Python is installed on this machine"
+        "no debug adapter for ruby is installed on this machine"
     );
     assert!(c.debug.sessions.is_empty());
     // And a request about a session nothing started is refused by handle.

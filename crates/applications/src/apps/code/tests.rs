@@ -251,13 +251,21 @@ fn run_saves_then_executes_the_file_and_tracebacks_become_problems() {
     let mut app = workspace();
     open(&mut app, "main.py", "print(x)\n");
     app.text_effects(W, "#").unwrap();
-    // F5 is Start Debugging: it asks the machine's debugger first.
+    // F5 is Start Debugging: the unsaved editor is written (VS Code's
+    // `debug.saveBeforeStart`), then the machine's debugger is asked.
     let asked = app.key(W, "F5", 0).unwrap();
-    assert!(matches!(
-        &asked[0],
-        AppEffect::Debug { request, .. }
-            if matches!(request, cw_protocol::debug::Request::Launch(l) if l.kind == "python")
-    ));
+    assert!(
+        matches!(&asked[0], AppEffect::WriteFile { .. }),
+        "{asked:?}"
+    );
+    assert!(
+        asked.iter().any(|e| matches!(
+            e,
+            AppEffect::Debug { request, .. }
+                if matches!(request, cw_protocol::debug::Request::Launch(l) if l.kind == "python")
+        )),
+        "{asked:?}"
+    );
     // This machine has none, so it says so and runs the file the way Run does: saved
     // first, then a terminal session is started and the file run in it.
     let effects = app.debug_reply(

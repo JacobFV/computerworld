@@ -936,11 +936,7 @@ fn b_byte_length(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 }
 
 fn b_read_stdin(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
-    if vm.stdin_consumed {
-        return Ok(Value::str(""));
-    }
-    vm.stdin_consumed = true;
-    Ok(Value::string(vm.stdin.clone().unwrap_or_default()))
+    crate::node::stdin_rest(vm)
 }
 
 fn b_promise_state(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -1013,8 +1009,8 @@ fn b_has_stdin(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
     ))
 }
 
-fn b_is_tty(_vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
-    Ok(Value::Bool(false))
+fn b_is_tty(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    Ok(Value::Bool(vm.interactive))
 }
 
 fn b_callsite_name(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -1082,6 +1078,8 @@ pub fn make_binding(vm: &mut Vm) -> Obj {
         vm.method(&b, n, *l, *f);
     }
     let _ = dirname;
+    crate::hostio::install(vm, &b);
+    crate::workers::install(vm, &b);
     b
 }
 

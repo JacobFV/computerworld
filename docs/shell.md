@@ -157,10 +157,10 @@ every replay.
 | `uname` | — | `-a` `-r` `-m` and the rest | modelled (the OS family only) |
 | `date` | `+FORMAT`, `-u`; `%Y %y %m %d %e %H %M %S %N %s %F %T %D %a %A %b %B %h %u %w %Z %z %%` | `-d` `-r` `-s`, any other conversion | modelled from the tick; see *Clock* below |
 | `cd` | — | all flags | modelled |
-| `env` / `printenv` | `NAME` | all flags | modelled |
-| `export` / `unset` | — | all flags | modelled |
+| `env` / `printenv` | `NAME` | all flags, and `env NAME=V CMD` (each would need a model this world does not have) | modelled |
+| `export` / `unset` | `NAME=VALUE` / `NAME` | all flags, including `export -f` | modelled |
 | `ls` / `dir` | `-a -A -l -h -d -F -p -1 -i -n -r -t -S -R`, `--color=never\|no\|none\|auto`, `--json`, clusters (`-la`), `--all --almost-all --human-readable --reverse --recursive --directory --classify --inode --numeric-uid-gid` | `-Q` `-c` `-u` `--color=always`, column output, and any short spelling of `--color`/`--json` | modelled; output is always one entry per line (`-1` is the default), `-l` prints mode, link count, owner, group, size, world-clock date and `-> target`, and directories report one 4 KiB allocation unit as their size. `--json` is documented under *ls --json* below |
-| `cat` | — | `-n` `-A` and the rest | modelled; no operand reads stdin |
+| `cat` | `-n -b -E -T -A -s -v`, `--number --number-nonblank --show-ends --show-tabs --show-all --squeeze-blank --show-nonprinting`; `-u` accepted and inert (output is never buffered) | every other flag, refused by name | modelled; no operand reads stdin, `-` names stdin |
 | `touch` | `-a -m` (separate fields), `-c` / `--no-create`, `-d DATE` / `--date`, `-t STAMP`, `-r FILE` / `--reference`, `-h` / `--no-dereference` | `--time=`, relative dates (`yesterday`), timestamps before the epoch | modelled; creates missing files and sets the access and modification ticks. `-d` takes `@SECONDS` or `YYYY-MM-DD[ HH:MM[:SS]]`, `-t` takes `[[CC]YY]MMDDhhmm[.ss]` |
 | `mkdir` | `-p` / `--parents`, `-m MODE` / `--mode` (octal or symbolic), `-v` / `--verbose` | `-Z` | modelled; without `-p` an existing target or a missing parent is an error, and `-m` overrides the umask |
 | `cp` | `-r` `-R` `-a` `-p` `-d` `-L` `-P` `-i` `-n` `-f` `-v` `-t DIR` `-T`, long forms | `-u` `-l` `-s` `--preserve=LIST` `--parents` | modelled; copying into an existing directory keeps the name, a directory without `-r` is refused with `-r not specified; omitting directory 'X'`, `-p` carries mode and timestamps (ownership only for root), `-a` is `-dR -p`, and a new copy without `-p` takes the source's permissions through the umask, losing its setuid/setgid bits as coreutils does |
@@ -177,17 +177,42 @@ every replay.
 | `trash` / `trash-put` / `trash-list` / `trash-restore` / `trash-empty` / `gio trash` | see *The trash* below | `trash-rm`, an age operand on `trash-empty` | modelled against `~/.local/share/Trash` |
 | `stat` | `-c FMT` / `--format=` / `--printf=`, `-L`, `-t`, `-f` (with its own `%n %i %l %T %t %s %S %b %f %a %c %d`); `%n %N %s %b %B %o %f %a %A %F %U %G %u %g %i %h %m %d %t %T %W %X %Y %Z %w %x %y %z %%` | `--cached`, any other conversion | modelled; see *Stat fidelity* below |
 | `find` | see *find* below | every other predicate, refused by name | modelled |
-| `grep` / `select-string` | `-i -v -n -c -l -L -F -E -q -s -h -H -w -x -r -R -e -o -A N -B N -C N`, long forms | `--include` `-P` `-m` | modelled; `0` matched, `1` did not. Context lines are prefixed with `-` where a matching line uses `:`, and `--` separates non-adjacent groups |
-| `sed` | `-n -i -e`; addresses `N`, `$`, `/RE/` and any pair of them; commands `s/RE/REP/[g]`, `p`, `d`, `a TEXT`, `i TEXT`, `y/SET/SET/`, `q [CODE]` | `-r` `-E`, multiple `-e`, `b` `t` `n` `N` `w` `r`, the hold space, backreference addresses | modelled; a range opens on its first address and closes on the next line the second matches. `q CODE` becomes the exit status, and text after `a\\` keeps its leading blanks |
-| `tr` | `-d`, ranges `a-z` | `-s` `-c` | modelled, stdin only |
-| `cut` | `-d -f` | `-c` `-b` `--complement` | modelled, stdin only |
-| `head` / `tail` | `-n N`, `-N` (bare count), `--lines` | `-c` `-f` `-q` | modelled |
-| `wc` | `-l -w -c -m` | `-L` | modelled |
-| `sort` | `-r -n -u` | `-k` `-t` `-f` `-h` | modelled |
-| `uniq` | `-c -d -u` | `-i` `-f` | modelled |
+| `grep` / `select-string` | `-i -v -n -c -l -L -F -E -G -q -s -h -H -w -x -r -R -e -o -A N -B N -C N`, long forms | `--include` `-P` `-m` | modelled; `0` matched, `1` did not. **A pattern is a basic regular expression unless `-E` says otherwise**, so `a\+` repeats and `a+` is a literal plus; the last of `-E`/`-G` wins. Context lines are prefixed with `-` where a matching line uses `:`, and `--` separates non-adjacent groups |
+| `sed` | `-n -e -f -i[SUFFIX] -E -r -s --quiet --silent --expression --file --in-place --regexp-extended --separate`; addresses `N`, `$`, `/RE/`, `\cREc`, `N,M`, `first~step`, `addr,+N`, `addr,~N`, `0,/RE/`, the `I`/`M` regex modifiers and `!`; commands `{ }` `s` `y` `p` `P` `d` `D` `a` `i` `c` `r` `R` `w` `W` `n` `N` `h` `H` `g` `G` `x` `b` `t` `T` `:label` `q` `Q` `=` `l` `z` `F` `#`; `s` flags `g N p i/I m/M w FILE`, `&`, `\1`–`\9`, `\U \L \u \l \E` | `-z`, the `e` substitution flag, a backreference **inside a pattern** (`\(a\)\1` — the engine has no backtracking) | modelled; see *sed* below |
+| `awk` / `gawk` / `mawk` / `nawk` | the POSIX language: patterns `/re/`, expressions, ranges, `BEGIN`/`END`; `$0`–`$NF` with assignment rebuilding `$0`; `NR NF FS OFS ORS RS FILENAME FNR SUBSEP RSTART RLENGTH CONVFMT OFMT ENVIRON`; `-F -v -f` (repeatable), `--field-separator --assign --file --source`; `if/else while for for-in do-while break continue next nextfile exit return delete`; arrays incl. multidimensional; user functions with local parameters and array parameters by reference; `length substr index split sub gsub match sprintf toupper tolower sin cos atan2 exp log sqrt int rand srand system close fflush`; `print`/`printf` with `> >> \| "cmd"`; every `getline` form | `-W`, gawk extensions (`gensub`, `asort`, `PROCINFO`, `RT`, `BEGINFILE`), `\|&` co-processes | modelled; see *awk* below |
+| `xargs` | `-0 -d DELIM -n N -I REPL -r -t -P N --`, `--null --delimiter --max-args --replace --no-run-if-empty --verbose --max-procs`; quoting (`'…'`, `"…"`, `\`) | `-L` `-a` `-s` `-E` `-p` | modelled; **`-P` is accepted and commands still run one after another**, because a replay must be identical. Status `123` if any command failed, `124` for a command that exited 255, `126`/`127` passed through |
+| `tr` | `SET1 [SET2]`, ranges `a-z`, `[:alpha:]` and the other classes, `[c*n]`, `[c*]`, escapes; `-d -s -c -t`, `--delete --squeeze-repeats --complement --truncate-set1` | operands beyond two | modelled, stdin only |
+| `cut` | `-b -c -f -d -s --complement --output-delimiter`, ranges `N`, `N-`, `-M`, `N-M` and lists, on file operands as well as stdin | `-z`, `--characters` on multibyte boundaries other than `char` | modelled; a line with no delimiter passes through unless `-s` |
+| `head` / `tail` | `-n N`, `-n +N`, `-n -N`, `-N` (bare count), `-c N`, `-q -v`, `--lines --bytes --quiet --silent --verbose`; several file operands with `==> name <==` headers | `-z`; **`tail -f` refused by name** | modelled; `head -n -N` drops the last N lines, `tail -n +N` starts at line N |
+| `wc` | `-l -w -c -m -L`, `--lines --words --bytes --chars --max-line-length`, several operands with a `total` row | `-z` | modelled; the file name is printed beside the counts whenever an operand names one, as in coreutils |
+| `sort` | `-n -g -h -r -u -f -b -M -V -c -s -d -i -k KEYDEF -t SEP -o FILE`, long forms; `KEYDEF` is `F[.C][opts][,F[.C][opts]]` with per-key `n g h M V f b d i r` | `-z`, `-m`, `-S`, `--parallel`, locale collation (the order is C/byte order) | modelled; without `-t` a field carries the blanks before it, which is what makes `-k2` and `-k2b` differ. `-c` reports `sort: FILE:N: disorder: LINE` and exits `1` |
+| `uniq` | `-c -d -D -u -i -f N -s N -w N`, long forms | `-z`, `--group`, `--all-repeated=METHOD` | modelled over adjacent lines only, as coreutils does |
+| `paste` | `-s`, `-d LIST` | `-z` | modelled; the delimiter list cycles |
+| `join` | `-1 -2 -j -t -a N -v N -o LIST -e TEXT -i --check-order --nocheck-order` | `--header`, `-z` | modelled; `--nocheck-order` names the default, `--check-order` really checks and fails with status `1` |
+| `comm` | `-1 -2 -3`, `--output-delimiter` | `--total`, `-z` | modelled; both inputs are assumed sorted, exactly as coreutils assumes |
+| `diff` | `-u`/`-U N`, `-c`, `-q`, `-r`, `-s`, `-i`, `-w`, `-b`, `-B`, `-N`, long forms | `-y`, `--label`, `-D`, binary comparison | modelled with Myers' algorithm; `0` identical, `1` differ, `2` an error such as a missing operand |
+| `tee` | `-a` / `--append`; `-i` accepted and inert **because this world delivers no signals** | `-p`, `--output-error` | modelled; `/dev/null` is discarded |
+| `nl` | `-b a\|t\|n\|pRE`, `-n ln\|rn\|rz`, `-w N`, `-s STR`, `-v N`, long forms | `-p`, page sections (`\:\:\:`), `-d`, `-l`, `-f`, `-h` | modelled |
+| `rev` | — | all flags | modelled |
+| `fold` | `-w N`, `-N`, `-s`, `-b`, long forms | — | modelled |
+| `expand` / `unexpand` | `-t LIST` / `--tabs`, `expand -i`, `unexpand -a` | `-t` with a multibyte tab character | modelled; each command refuses the other's flag |
+| `shuf` | `-n N`, `-e`, `-i LO-HI`, `-r`, long forms | `-z`, `--random-source` | modelled; **seeded from the tick and the machine id**, so a replay prints the same permutation |
+| `seq` | `[FIRST [INCR]] LAST`, `-s SEP`, `-w`, `-f FORMAT`, long forms | more than 1 000 000 values, refused | modelled |
+| `yes` | `[STRING…]` | short flags are operands, as in coreutils; a long flag is refused | modelled with a published bound: **10 000 lines, then it stops**, because this world's pipelines are not lazy and a truly endless `yes` could never return. Use `seq`/`head` for an exact count |
+| `basename` | `NAME [SUFFIX]`, `-a`, `-s SUFFIX`, long forms | `-z` | modelled |
+| `dirname` | `NAME…` | `-z` | modelled |
+| `split` | `-l N`, `-b SIZE` (with `b K M G`), `-a N`, `-d`, long forms | `-n CHUNKS`, `-C`, `--filter`, `--additional-suffix` | modelled; the default prefix is `x` and the default is 1000 lines |
+| `strings` | `-n N`; `-a` accepted and inert **because every file here is scanned whole** | `-t`, `-e`, `-f` | modelled over the stored bytes |
+| `base64` | `-d`, `-i`, `-w N`, long forms | `--base64url` | modelled; wraps at 76 columns, `-w0` never wraps |
+| `md5sum` / `sha1sum` / `sha256sum` | `-c`; `-b` and `-t` accepted and inert **because the VFS has no text/binary distinction** | `--tag`, `--quiet`, `--status`, `--ignore-missing` | modelled; the digests are the real ones, computed from the stored bytes |
+| `cmp` | `-s` / `--silent` / `--quiet`, `-l` / `--verbose` | `-i`, `-n`, `--bytes` | modelled; the `differ:` line goes to **stdout**, as in coreutils, and the status is `1` |
+| `xxd` | default, `-p`, `-c N`, `-l N`, `-s N`, `-g N`, `-u`, `-r` (with and without `-p`), long forms | `-i`, `-b`, `-e`, `-s` with `+`/`-` | modelled |
+| `od` | `-c -b -x -d -o`, `-A d\|o\|x\|n`, `-t c\|a\|x1\|o1\|d1\|o2`, `-N N`, `-j N`, `-v` | every other `-t` format, refused by name | modelled; repeated lines collapse to `*` unless `-v` |
+| `hexdump` | default (two-byte octal), `-C -c -b -x -d -o`, `-n N`, `-s N`, `-v` | `-e` format strings | modelled |
+| `file` | `-b`, `-i` / `--mime`, `-L`; `-h` accepted and inert **because not dereferencing is the default** | `-z`, `-f`, `--magic-file` | modelled; see *file* below |
 | `du` | `-s -a -h -k -b -m -c -d N`, `--max-depth=`, `--summarize --all --human-readable --bytes --total` | `--exclude`, `-x`, `-L` | modelled over the VFS; block accounting assumes a 4 KiB allocation unit |
 | `tar` | `-c` `-x` `-t`, `-f FILE` (required), `-v`, `-z`, `-C DIR`, `--strip-components=N`, `--`; long forms `--create --extract --get --list --file= --verbose --gzip --directory= --strip-components=` | `-f -` (a pipe archive), `-j` `-J` `--exclude` `-u` `-r` `-A` | modelled; real **ustar** bytes, so an archive written here unpacks with host `tar` and a host archive unpacks here. Regular files, directories and symlinks round-trip with their modes and modification times |
-| `gzip` / `gunzip` / `zcat` | `-k` `-c` `-d` `-f` `-n` `-v`, `-1`…`-9` (accepted and inert), long forms | `-l` `-r` `-S`, `.Z`/`.bz2`, and **compressing to stdout** (`gzip -c`, or `gzip` with no file): a command's standard output is text here, so the bytes could not survive it and the attempt is refused by name | modelled; a real RFC 1952 member with the world clock's MTIME and a verified CRC32 and ISIZE. It **compresses with stored DEFLATE blocks** — honest, interoperable, and not a claim to compress; decompression is a full RFC 1951 inflate (stored, fixed and dynamic Huffman), so host-made `.gz` files really decompress |
+| `gzip` / `gunzip` / `zcat` | `FILE…`, `-d` (`--decompress`), `-c` with `-d` (text to stdout), `-k -f -v -l -t -q`, `-1`…`-9` (`--fast`, `--best`) | compressing to standard output or from standard input (the shell's pipes carry text, not bytes) | modelled with `cw-zlib`: files compressed in place to `NAME.gz` with GNU gzip's header (original name, modification time, OS 3), concatenated members decompressed; the deflate stream is zlib's at the chosen level (GNU gzip's own deflate is not reproduced byte for byte) |
 | `zip` / `unzip` | `zip [-r] [-q] ARCHIVE FILE…`; `unzip [-l] [-o] [-q] [-d DIR] ARCHIVE [FILE…]` | encryption, `-u` `-m` `-9`, split archives | modelled; real PKZIP local headers, central directory and end record, CRC32 and a DOS date-time from the world clock. Written with method 0 (stored); read with method 0 or 8 |
 | `rsync` | `-a` `-v` `-n` / `--dry-run`, `--delete`, long forms | every remote spec (`host:path`, `user@host:path`, `rsync://`), `-z` `-u` `--exclude` `-r` without `-a` | modelled for **local** trees only, including the trailing-slash rule; a remote spec is refused by name rather than faked |
 | `df` | `-h -k -T`, `--human-readable --print-type` | `-i` `-a` `-B` | **mixed**: capacity and device name are fixed, usage is summed from the VFS; one filesystem mounted at `/` |
@@ -224,8 +249,8 @@ every replay.
 | `sqlite3` | `[OPTIONS] [FILE [SQL…]]`; SQL and dot-commands on stdin (pipe, heredoc, `<`); `-header -noheader -csv -column -list -line -json -box -table -markdown -tabs -quote -html -ascii -separator SEP -newline SEP -nullvalue TEXT -cmd CMD -init FILE -bail -echo -version -help`; `-batch -readonly -safe` accepted and inert | every other option, refused by name with status `2`; an interactive prompt | modelled: the `cw-sql` engine over the VFS, reading and writing real SQLite 3 files; see *sqlite3* below |
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
-| `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions, threads, sockets, subprocesses | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
-| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads`, networking modules, `child_process` (fails with `ENOSYS`) | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
+| `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
+| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | `--inspect`, `--watch`, `--test`, native addons | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
 
@@ -271,16 +296,108 @@ in the simulation unpacks on a host, and a host archive unpacks in the simulatio
 is why these are commands rather than a convenience format — a world where `tar -czf`
 produced something only this world could read would be a trap.
 
-`gzip` writes stored (uncompressed) DEFLATE blocks inside a correct gzip member. That
-is a legal, fully interoperable DEFLATE stream, and it is said plainly rather than
-dressed up: the byte count does not go down. Reading is a complete inflate — stored,
-fixed-Huffman and dynamic-Huffman blocks, LZ77 back-references and the code-length
-alphabet — so real-world `.gz` and deflated `.zip` members decompress correctly.
+There is one compressor under all of it, `cw-zlib`, the same one Python's `zlib` and
+Node's `zlib` use here: a real DEFLATE encoder at the level asked for, and an inflate
+covering stored, fixed-Huffman and dynamic-Huffman blocks. So `tar -czf`, `gzip` and a
+method-8 `.zip` member all really compress, and real-world `.gz` and `.zip` files
+really decompress. GNU gzip's own encoder is not reproduced byte for byte — the bytes
+are zlib's — but every reader accepts them.
 
 Anything the format cannot carry faithfully is refused by name: a member whose path
 does not fit ustar's prefix/name split, a link target over 100 bytes, a hard-link or
 device typeflag, a zip compression method other than 0 or 8, and any member whose path
 would escape the extraction directory.
+
+## awk
+
+`awk` (`crates/computer/src/awk.rs`) is the POSIX language, not a field-printing
+shortcut: a lexer, a recursive-descent parser and an interpreter with the whole value
+model. `gawk`, `mawk` and `nawk` are the same command.
+
+**Values.** A scalar is uninitialised, a number, a string, or a *string from input*.
+The last is the rule that makes real scripts work: a field or a `getline` result that
+reads entirely as a number compares numerically, so `$1 == 10` is true for a line
+containing `10.0`, while `"10" == 10` compares the string constant as a string. An
+uninitialised value equals both `0` and `""`. Numbers print as integers when they are
+integral and through `CONVFMT` (`OFMT` for `print`) when they are not.
+
+**Records and fields.** `RS` is a single character, a multi-character regular
+expression, or `""` for paragraph mode (a blank line separates records and a newline
+always separates fields). `FS` is a single character taken literally, a regular
+expression when longer, `" "` for the default blank-run split, and `""` to split into
+characters; `-Ft` means a tab, as in every awk. Assigning `$n` past `NF` pads the
+record, assigning `NF` truncates it, and either rebuilds `$0` with `OFS`.
+
+**Determinism.** `for (k in a)` walks the subscripts in **sorted order**. POSIX leaves
+the order unspecified; this world fixes it so a replay is identical. `rand()` is a
+48-bit LCG seeded from the world; `srand()` with no argument seeds from the simulated
+tick, not a host clock, and returns the previous seed.
+
+**Streams.** `print > "file"` and `print >> "file"` buffer and write through the VFS.
+`print | "cmd"` buffers its text and runs `cmd` when the pipe is **closed** — by
+`close("cmd")`, `fflush()`, `system()`, or the end of the program — and the command's
+output is spliced into awk's own at that moment. There is no second process to
+schedule, so this is the honest ordering; it makes `print | "sort"` behave exactly as
+expected. `"cmd" | getline` runs the command once and reads its output as records.
+`getline < "file"` returns `1`, `0` at end of file, and `-1` when the file cannot be
+opened — it never aborts the program.
+
+**Function parameters.** Parameters beyond the arguments are locals. Whether a
+parameter is a scalar or an array is decided from how the function body uses it
+(subscripted, walked with `for … in`, `delete`d, filled by `split`, or passed on to
+another function's array parameter), computed once as a fixpoint over the whole
+program; an array parameter is shared with the caller by reference.
+
+**Bounds.** A program is stopped with status `2` after 2 000 000 evaluation steps or
+256 nested function calls, so a runaway `while(1)` ends rather than hanging the world.
+
+`awk --version` and `sed --version` print `… (computerworld) POSIX profile`, so a
+script that probes for a GNU-only feature by version string gets an honest answer
+rather than a number it can compare against.
+
+## sed
+
+`sed` (`crates/computer/src/sed.rs`) runs a real cycle: a pattern space, a hold space,
+an append queue, branch labels and a program counter. `-i` and `-s` process each file
+separately; otherwise every operand is one stream, so `$` is the last line of the last
+file and line numbers run on.
+
+Basic and extended regular expressions really differ. In a BRE, `\(…\)` groups,
+`\{n,m\}` repeats, `\|` alternates and `\+`/`\?` are GNU's extensions, while the bare
+characters are literals; `*` is a literal at the start of an expression and `^`/`$`
+anchor only at the edges. `-E` (or `-r`) swaps the two. `\<` and `\>` both become a
+word boundary, because the engine has no lookaround. A backreference **inside** a
+pattern is refused by name — the engine cannot backtrack — while `\1`–`\9` in a
+replacement work, as do `&`, `\&`, and GNU's `\U \L \u \l \E` case operators.
+
+`a`, `i` and `c` take both the POSIX `a\` + text form and GNU's one-line `a text`.
+`c` on a range prints its text once, at the end of the range. `w` and `s///w` write
+through the VFS (with `/dev/stdout` writing to standard output), `r` and `R` read from
+it. `q`'s code becomes the exit status and everything already printed still reaches the
+caller; `Q` quits without the final auto-print.
+
+## file
+
+`file` reads the stored bytes and reports only what this world can actually produce, so
+it never guesses:
+
+| Magic | Reported as |
+| --- | --- |
+| empty file | `empty` |
+| `\x89PNG\r\n\x1a\n` | `PNG image data, W x H, D-bit/color KIND, non-interlaced`, with `, APNG` appended when an `acTL` chunk is present |
+| `\xff\xd8\xff` | `JPEG image data, JFIF standard` |
+| `GIF87a` / `GIF89a` | `GIF image data` |
+| `RIFF….WAVE` | `RIFF (little-endian) data, WAVE audio` |
+| `SQLite format 3\0` | `SQLite 3.x database` |
+| `%PDF-` | `PDF document, version N.N` |
+| `PK\x03\x04` | `Zip archive data`, or `Microsoft Excel 2007+` / `Word` / `PowerPoint` / `OpenDocument …` when the member names say so |
+| `#!` | `NAME script, ASCII text executable` |
+| `\x7fELF` | `ELF binary (this world runs no native executables)` — nothing here writes one |
+| valid UTF-8, no control characters | `ASCII text`, `Unicode text, UTF-8 text`, `JSON text data` or `CSV text`, with `, with no line terminators` when the last line is unterminated |
+| anything else | `data` |
+
+A directory is `directory` and a symlink is `symbolic link to TARGET` unless `-L`
+follows it. `-i` maps the same table onto a MIME type.
 
 ## git
 
@@ -400,18 +517,269 @@ labelled statements, getters and setters, ES modules with top-level `await` and 
 callback and promise APIs), `fs/promises`, `path`, `os`, `events`, `util`, `assert`
 (`assert/strict`), `readline` (`readline/promises`), `url`, `querystring`,
 `string_decoder`, `stream` (a subset), `buffer`, `crypto` (hashes, HMAC, random),
-`timers`, `timers/promises`, `perf_hooks`, `process` and `child_process` (which refuses
-with `ENOSYS`). Globals include `Buffer`, `URL`, `URLSearchParams`, `TextEncoder`,
-`TextDecoder`, `AbortController`, `structuredClone`, `atob`/`btoa`, `queueMicrotask`
-and a `crypto` object.
+`timers`, `timers/promises`, `perf_hooks`, `process`, `child_process`, `http`,
+`https`, `net`, `dns` (`dns/promises`), `zlib`. Globals include `Buffer`, `URL`,
+`URLSearchParams`, `TextEncoder`, `TextDecoder`, `AbortController`, `structuredClone`,
+`atob`/`btoa`, `queueMicrotask`, a `crypto` object, and `fetch` with `Headers`,
+`Request`, `Response`, `FormData`, `Blob`, `File` and a minimal `ReadableStream`.
 
-Known gaps shared by both: no network access, no subprocesses, no threads and no
-native extensions. `node` does not implement `Intl` beyond `en-US` date and number
-formatting, `Atomics`/`SharedArrayBuffer`, `http`/`net`/`dns`/`zlib`/`worker_threads`,
-or the REPL. Strings that contain unpaired UTF-16 surrogates are carried as the
-replacement character. Event-loop orderings that depend on real wall-clock jitter in
-Node (for example `setTimeout(f, 0)` against `setImmediate(g)` from the main module)
-are resolved one fixed way: the main module is taken to run for one millisecond.
+### Network
+
+Both runtimes reach the simulated network exactly as the machine's other clients do
+(the browser, `curl`): every request goes through the world's DNS, routes, gateway
+policy and listeners, reaches the service's handler, and takes the simulated time the
+world charges for it. Nothing reaches the host.
+
+* **Python**: `urllib.request` (`urlopen`, `Request`, openers and handlers, redirects,
+  `HTTPError`/`URLError`, `file:` and `data:` URLs), `urllib.parse`, `http.client`
+  (`HTTPConnection`, `HTTPSConnection`), `http.HTTPStatus`, `ssl` (contexts that carry
+  settings), and `socket` (`getaddrinfo`, `gethostbyname` and friends against the
+  world's DNS; `create_connection`, `connect`, `sendall`, `recv`, `makefile`).
+* **Node**: `http`/`https` (`request`, `get`, `Agent`, `IncomingMessage`,
+  `createServer`), global `fetch` (redirects, `AbortSignal`), `net` (`Socket`,
+  `connect`, `createServer`) and `dns` (`lookup`, `resolve4`/`resolve6`/`resolve`,
+  `reverse`, promises). Replies arrive as I/O completions at their simulated time.
+
+A TCP connection to another machine is accepted or refused by the world (DNS, route,
+a listening service). Every simulated service speaks HTTP, so the bytes written on a
+socket are parsed as HTTP/1.x requests and each one is carried through the world's
+network; the answer comes back as HTTP/1.1 bytes (`Content-Length`, `Connection`
+honoured). Bytes that are not HTTP get `400 Bad Request` and the connection closes, as
+a web server would. UDP datagrams to other machines are sent and lost (no UDP
+services exist). Servers a program creates (`socket.bind`/`listen`/`accept`,
+`http.createServer`, `net.createServer`) accept connections from that same program:
+other machines cannot reach a process that lives for one command.
+
+TLS follows the browser's model: an `https://` request goes to port 443 of the host
+and the world decides whether anything answers there; in the reference world the
+services listen on port 80, so `https://` is refused (`ECONNREFUSED`,
+`[Errno 111] Connection refused`) exactly as the browser sees it. Errors carry the
+real vocabularies: `socket.gaierror: [Errno -2] Name or service not known`,
+`getaddrinfo ENOTFOUND host`, `connect ECONNREFUSED 10.0.1.10:443`,
+`TypeError: fetch failed` with the cause attached. A client timeout that the
+simulated latency exceeds raises `TimeoutError: timed out` / `ETIMEDOUT`.
+
+### Threads
+
+Python's `threading` runs on a deterministic green-thread scheduler inside the
+interpreter: `Thread` (with `name`, `daemon`, `join(timeout)`, `is_alive`,
+`ident`, `native_id`), `Lock`, `RLock`, `Condition`, `Event`, `Semaphore`,
+`BoundedSemaphore`, `Barrier`, `Timer`, `local`, `current_thread`,
+`main_thread`, `enumerate`, `active_count`, `excepthook`/`ExceptHookArgs`,
+`stack_size` and `get_ident`; `queue` (`Queue`, `LifoQueue`, `PriorityQueue`,
+`SimpleQueue`, `task_done`/`join`, `shutdown`) and `concurrent.futures`
+(`Future`, `Executor`, `ThreadPoolExecutor`, `map`, `as_completed`, `wait`,
+`FIRST_COMPLETED`/`FIRST_EXCEPTION`/`ALL_COMPLETED`) are built on it.
+
+Only one thread runs at a time, as under CPython's GIL, and the interpreter
+switches between threads after a fixed number of bytecode instructions. That
+quantum derives from the world seed (scaled by `sys.setswitchinterval`), so a
+race — a lost update, an interleaved log, the order two threads leave a
+semaphore — replays exactly the same way every time the world runs, and
+differently under a different seed. `time.sleep` in a thread advances only that
+thread on the simulated clock: three threads sleeping 50 ms each finish after
+50 ms of simulated time, and waits end in deadline order. A thread that raises
+is reported as `threading.excepthook` does (`Exception in thread NAME:` and the
+traceback on standard error) and the program goes on; the interpreter waits for
+non-daemon threads to finish and abandons daemon ones. A wait nothing can
+satisfy is not a hang: the blocked thread gets
+`RuntimeError: deadlock: every thread is waiting and none can make progress`,
+which unwinds its frames (releasing what it held) and is reported like any other
+thread failure.
+
+Node's `worker_threads` runs the same way: a worker is another JavaScript
+context — its own global object, module registry, microtask queue and timers —
+that the interpreter swaps in when it is that context's turn. `Worker`
+(`workerData`, `eval`, `transferList`, `postMessage`, `terminate`, `threadId`,
+and the `online`, `message`, `error` and `exit` events), `parentPort`,
+`isMainThread`, `threadId`, `MessageChannel`, `MessagePort` (`postMessage`,
+`on('message')`, `start`, `close`, `ref`/`unref`, `onmessage`),
+`receiveMessageOnPort` and `markAsUntransferable` are there, together with
+`SharedArrayBuffer` and the whole of `Atomics` (`add`, `and`,
+`compareExchange`, `exchange`, `load`, `or`, `store`, `sub`, `xor`,
+`isLockFree`, `pause`, `wait`, `waitAsync`, `notify`).
+
+A message is structured-cloned on its way across, so the two sides share
+nothing — except a `SharedArrayBuffer`, whose bytes both contexts go on
+reading and writing, which is what `Atomics` works on. Only one context runs
+at a time, and it runs until it could make no more progress on its own, so the
+result of a race between two workers is the same in every run of a world.
+Starting a worker costs 10 ms of simulated time (a real thread spends about
+that long building its isolate), which is why a timer of a millisecond or two
+fires before a freshly started worker's first message arrives. What a worker
+writes reaches the terminal through its parent, as Node's pipe does, so it
+appears when the parent next comes round its loop and not in the middle of a
+line the parent is writing. `Atomics.wait` on any thread hands the turn to the
+other contexts and comes back when the cell changes or the timeout passes; a
+wait that nothing could ever end stops the program with
+`Atomics.wait: every thread is waiting` rather than hanging. A worker left
+waiting for a message that can no longer come ends with code 0 once nothing
+anywhere can move, where Node would keep the process alive for ever.
+
+Not there: `worker.resourceLimits`, `BroadcastChannel`,
+`moveMessagePortToContext`, `setEnvironmentData`/`getEnvironmentData`, the
+`argv`/`env`/`resourceLimits` options (a worker shares its parent's `process`
+object), `worker.stdin`, and `BigInt64Array`/`BigUint64Array` for `Atomics`.
+An uncaught error in a worker still ends the program with status 1, but the
+frames printed with it are the main thread's, not the worker's.
+
+### Child processes
+
+`subprocess` (`run`, `Popen` with pipes, `communicate`, `call`, `check_call`,
+`check_output`, `getoutput`, `getstatusoutput`; `shell=`, `cwd=`, `env=`, `input=`,
+`text=`, `timeout=`), `os.system` and `os.popen` in Python, and `child_process`
+(`spawn`, `exec`, `execFile`, `fork`, `spawnSync`, `execSync`, `execFileSync`, with
+`stdio` pipes, `input`, `cwd`, `env`, `encoding`, exit codes) in Node run the machine's
+own shell commands — builtins, scripts, pipelines and nested `python3`/`node` — one
+nesting level below the program (the shell's 32-level cap applies). A child runs to
+completion when it starts: `Popen` with `stdin=PIPE` starts once its input is closed,
+and asynchronous Node children deliver their output and exit as I/O completions at
+the simulated time the child took. A child's virtual run time (its sleeps, timers and
+network waits) is charged to the parent's clock, which is what `timeout=` compares
+against; a timed-out child has still run to its end. Output a Python child writes to
+an inherited stream lands where CPython's would: after the parent's already-flushed
+output (standard output to a pipe is block-buffered, as in CPython), so
+`print('a'); os.system('echo b')` prints `b` first unless the parent flushed.
+
+### Compression
+
+`cw-zlib` is a port of zlib 1.3.1's deflate, so compressed bytes are the real
+library's, byte for byte, at every level, window size, memory level and strategy.
+Node ships Chromium's fork of zlib, whose string hashing differs, and CPython links
+the system zlib; the port reproduces both, so `zlib.deflateSync` in the simulated
+`node` and `zlib.compress` in the simulated `python3` agree with the real programs
+(and with each other's decompressors). `crates/zlib/tests/vectors.json` holds the
+hashes of 434 outputs recorded from CPython 3.12 and Node 24.21 for that check.
+
+* **Python**: `zlib` (`compress`, `decompress`, `compressobj`/`decompressobj` with
+  flush modes, dictionaries, `unused_data`/`unconsumed_tail`, `crc32`, `adler32`),
+  `gzip` (`compress`, `decompress`, `open`, `GzipFile`) and `struct`.
+* **Node**: `zlib` — `deflate`/`inflate`/`gzip`/`gunzip`/`unzip`/`deflateRaw`/
+  `inflateRaw` and brotli, in sync, callback and stream forms, with `crc32`,
+  `constants` and the option checks. Asynchronous results arrive as I/O
+  completions after simulated work proportional to the bytes handled, so several
+  jobs complete in the order their sizes imply.
+* **Brotli** is the `brotli` crate (a port of Google's encoder and decoder); its
+  compressed output is not promised to match the C library bit for bit, though it
+  does for the recorded cases, and anything it produces or accepts is valid brotli.
+* Python's `bz2` and `lzma` are not implemented.
+
+### Consoles and reading from the terminal
+
+`python3` and `node` with nothing to run start their console when standard input
+is the terminal (a pipe or a redirect still means "read a program"), and a
+program that reads a line — `input()`, `sys.stdin`, `process.stdin`,
+`readline`'s `question` — stops until the next line is typed. Both print what
+CPython 3.12 and Node 24.21 print: the same banner, the same prompts (`>>> ` and
+`... `, `> ` and `| `), values echoed with `repr()` and `util.inspect`,
+`Traceback (most recent call last):` and `Uncaught TypeError: …`, Node's dot
+commands (`.help`, `.break`, `.clear`, `.exit`). At a terminal both streams are
+one screen, so an interactive run returns one stream with prompts, output and
+errors interleaved in the order they appear. The shell's prompt while a console
+is open is the console's, and the terminal's next line goes to it rather than to
+the shell; `exit()`, `.exit` or a Ctrl-D line (`\u0004`) ends it.
+
+An interpreter cannot be kept alive between two actions of the world (its heap
+is not serializable, and a snapshot may be restored anywhere), so a waiting
+session is resumed by *replay*: the program is run again from the start with the
+new line appended to its input, and every host call the earlier lines made —
+files written, requests sent, the clock, the world's entropy — is answered from
+a journal recorded the first time instead of being made again. The interpreter
+is deterministic, so the replay reaches the same place; only what the new line
+produced is shown. Two consequences are worth knowing: a session is part of the
+machine's state and survives a snapshot, and a console line that runs for a long
+time is re-run (not re-executed against the world) on every later line.
+
+In the Node console a binding a line makes (`const x = 1`, `function f() {}`,
+`class C {}`) is copied into the global object when the line finishes, which is
+how the next line sees it; a closure that later changes such a binding does not
+change what the next line reads. Top-level `await` is not transformed, so it
+yields a promise rather than its value.
+
+### Languages, regions and time zones
+
+Both runtimes format dates, numbers, currencies and lists in fourteen
+languages: **en-US, en-GB, de, fr, es, it, pt-BR, ja, zh-CN, zh-TW, ko, ru, ar
+and hi**. A locale that is not one of them falls back to its language (`de-AT`
+formats as `de-DE`, `en-AU` as `en-GB`, `pt-PT` as `pt-BR`) and an unknown
+language falls back to `en-US`.
+
+* **Node** has ECMA-402: `Intl.DateTimeFormat` (component options and
+  `dateStyle`/`timeStyle`, `timeZone`, `hour12`/`hourCycle`, `formatToParts`),
+  `Intl.NumberFormat` (decimal, percent, currency and unit styles, grouping,
+  fraction and significant digits, `signDisplay`, standard, compact and
+  scientific notation, `formatToParts`), `Intl.PluralRules` (cardinal and
+  ordinal), `Intl.RelativeTimeFormat`, `Intl.ListFormat`, `Intl.DisplayNames`
+  (languages, regions, scripts and currencies of the covered set),
+  `Intl.Collator`, `Intl.Locale`, `Intl.getCanonicalLocales` and
+  `Intl.supportedValuesOf`; `toLocaleString`, `toLocaleDateString`,
+  `toLocaleTimeString` and `localeCompare` go through them.
+  `Intl.Segmenter` and `Intl.DurationFormat` are not implemented, the only
+  calendar is `gregory` and the only numbering systems are the ones those
+  locales use (`latn`, and `arab` where Arabic asks for it).
+* **Python** has `locale` (`setlocale`, `getlocale`, `localeconv`,
+  `nl_langinfo`, `format_string`, `currency`, `str`, `atof`, `atoi`,
+  `delocalize`, `normalize`), and `time.strftime`/`datetime.strftime` follow
+  `LC_TIME`: `%a`, `%A`, `%b`, `%B`, `%p`, `%c`, `%x`, `%X` and `%r` are the
+  locale's, with glibc's `-`, `_`, `0` and `^` flags. A locale outside the
+  fourteen raises `locale.Error`, as CPython does for one that is not installed.
+* **Time zones**: `zoneinfo.ZoneInfo` and `Intl`'s `timeZone` option know the
+  70-odd IANA zones in `crates/tz` (every offset in use, and the places a
+  world's machines and services are plausibly in), with their transitions
+  between 1970 and 2050, their abbreviations and their aliases (`US/Eastern`,
+  `Asia/Calcutta`). A local time that happens twice or never resolves the way
+  CPython's `fold` and V8 do. The machine's own clock stays UTC: a zone is
+  something a program formats *with*, not somewhere the machine is.
+
+The data is compiled in and generated by hand from the host's own libraries, so
+the simulated runtimes agree with the real ones: `crates/jsvm/data/cldr.json`
+(261 KiB, recorded from Node 24.21's ICU by `crates/jsvm/tools/generate_cldr.js`,
+parsed on the first `Intl` use and never otherwise),
+`crates/pyvm/src/locale_data.rs` (18 KiB, recorded from the host's glibc by
+`crates/pyvm/tools/generate_locales.py`; Arabic and Hindi are filled in from the
+CLDR file, since glibc had no data for them there) and `crates/tz/src/data.rs`
+(134 KiB of source for 6,219 transitions, from the host's IANA database by
+`crates/tz/tools/generate.py`). Together that is about 410 KiB of tables in the
+binary.
+
+### Debugging
+
+Both runtimes can run under a DAP-shaped debugger — breakpoints with conditions,
+hit counts and logpoints, stepping, exception filters, frames, scopes, variables,
+evaluation in a frame and changing a value — and both are wired to the machine's
+debug seam, so Visual Studio Code's Run and Debug view stops a `python3` or
+`node` program on this machine. A session cannot hold a live interpreter between
+two actions of a world, so it keeps what it takes to be back at the stop and
+replays the program, answering the host calls the earlier runs made from a
+journal. See [docs/debugging.md](debugging.md).
+
+### Event-loop timing
+
+Node's loop phases (timers, poll, check), `process.nextTick` and promise jobs
+run in Node's order, and *when* a callback is due follows from what the program
+costs in simulated time rather than from any fixed assumption:
+
+* executing code costs 100,000 interpreter instructions per millisecond;
+* preparing a function body the first time it runs costs a millisecond per
+  kibibyte of its own source — V8 compiles it then, and Node reaches into the
+  internals a body that size needs. Node's own builtins are in V8's startup
+  snapshot and cost nothing; resolving and reading each module of the program
+  costs 0.05 ms;
+* simulated I/O (a network reply, a compression job, a child process) costs the
+  time the world says it takes.
+
+So `setTimeout(f, 0)` against `setImmediate(g)` from the main module — the case
+that depends on wall-clock jitter in real Node — comes out of the program: a
+short program reaches the first turn before the 1 ms timer is due and the
+immediate wins, while one that loads or computes for longer than a millisecond
+sees the timer fire first. A timer started inside a callback counts from the
+moment it is started, as `Environment::GetNow` does, so work done in a callback
+pushes back what was queued behind it. The rates are model constants (not
+measurements of any real machine); they are calibrated so that the orderings
+recorded from Node 24.21 in `crates/jsvm/tests/programs` come out the same way.
+
+Known gaps shared by both: no native extensions. Strings that contain unpaired
+UTF-16 surrogates are carried as the replacement character.
 
 ## Process table
 
@@ -700,3 +1068,7 @@ Deliberately not implemented, and refused rather than faked:
   destination is left alone and `rm -i` removes nothing. That is what a real prompt
   does when its input is at end of file, and it is the safe answer.
 * Access times on read: the filesystem behaves as if mounted `noatime`.
+* Binary bytes cannot travel through a pipe or a redirect: the shell's streams are
+  UTF-8 strings, so `printf '\211PNG'` writes the UTF-8 encoding of U+0089, not the
+  byte `0x89`. Commands that *read* bytes (`file`, `xxd`, `od`, `hexdump`, `cmp`,
+  `strings`, `md5sum` and friends) read them straight from the VFS and are exact.

@@ -8,6 +8,7 @@ fn run(host: &mut MemoryHost, args: &[&str], stdin: &str) -> Outcome {
             args: args.iter().map(|s| s.to_string()).collect(),
             env: vec![],
             stdin: stdin.to_string(),
+            ..Default::default()
         },
     )
 }
@@ -189,6 +190,32 @@ fn virtual_time_passes_for_timers_and_busy_loops() {
         out.stderr
     );
     assert_eq!(out.exit_code, 0);
+}
+
+/// The loop's orderings follow from what the program costs: a short program
+/// reaches the first turn before a 1 ms timer is due, a slow one does not.
+#[test]
+fn timer_against_immediate_follows_the_programs_cost() {
+    let quick = script(
+        "setTimeout(() => console.log('timer'), 0);\nsetImmediate(() => console.log('immediate'));\n",
+    );
+    assert_eq!(quick.stdout, "immediate\ntimer\n", "{}", quick.stderr);
+    let slow = script(
+        "setTimeout(() => console.log('timer'), 0);\nsetImmediate(() => console.log('immediate'));\nconst until = Date.now() + 5;\nwhile (Date.now() < until) {}\n",
+    );
+    assert_eq!(slow.stdout, "timer\nimmediate\n", "{}", slow.stderr);
+}
+
+/// Preparing a body costs simulated time in proportion to its source, which is
+/// what makes a bigger program reach the event loop later.
+#[test]
+fn compiling_a_body_costs_simulated_time() {
+    let filler = "  s += 'and a line of source that is only here to be compiled';\n".repeat(80);
+    let src = format!(
+        "const t0 = Date.now();\nfunction big() {{\n  let s = '';\n{filler}  return s.length;\n}}\nconsole.log(Date.now() - t0 < 5);\nbig();\nconsole.log(Date.now() - t0 >= 5);\n"
+    );
+    let out = script(&src);
+    assert_eq!(out.stdout, "true\ntrue\n", "{}", out.stderr);
 }
 
 #[test]

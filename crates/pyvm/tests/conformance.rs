@@ -36,6 +36,7 @@ fn run_program(name: &str) {
             args: vec!["main.py".into()],
             env: vec![],
             stdin,
+            ..Default::default()
         },
     );
     let fix = |s: &str| {
@@ -65,6 +66,8 @@ macro_rules! programs {
 programs!(
     algorithms,
     classes,
+    compression,
+    urls,
     err_chain,
     err_exit,
     err_name,
@@ -76,8 +79,10 @@ programs!(
     formatting,
     generators,
     language,
+    locales,
     stdin_io,
     stdlib,
     text_processing,
+    threads,
     tools,
 );

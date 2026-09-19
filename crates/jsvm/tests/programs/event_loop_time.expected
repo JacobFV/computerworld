@@ -1,0 +1,9 @@
+--- exit: 0
+--- stdout
+timer
+immediate
+mid
+late
+slow >= 15: true
+after slow
+--- stderr

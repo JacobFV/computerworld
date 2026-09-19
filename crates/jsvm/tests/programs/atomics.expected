@@ -1,0 +1,36 @@
+--- exit: 0
+--- stdout
+buffer 16 [object SharedArrayBuffer] false 8
+lock free true true false
+store 7 load 7
+add 7 12
+sub 12 10
+and 10 2
+or 2 11
+xor 11 8
+exchange 8 100
+cas miss 100 100
+cas hit 100 42
+float index 2 2
+u8 wrap 300 44
+u8 add 44 244
+i8 wrap 200 -56
+i8 sub -56 100
+out of range RangeError Invalid atomic access index
+negative RangeError Invalid atomic access index
+float array TypeError [object Float64Array] is not an integer typed array.
+plain array TypeError [object Array] is not an integer typed array.
+unshared wait TypeError [object Int32Array] is not a shared typed array.
+byte wait TypeError [object Uint8Array] is not an int32 or BigInt64 typed array.
+not equal not-equal
+timed out not-equal
+async not equal {"async":false,"value":"not-equal"}
+async timed out {"async":false,"value":"not-equal"}
+async pending true
+before 0
+waited ok 1
+counter 5
+nobody waiting 0
+async settled ok 11
+worker exit 0
+--- stderr

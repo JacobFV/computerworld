@@ -25,8 +25,10 @@ def generate(name):
     stdin = open(stdin_path, "rb").read() if os.path.exists(stdin_path) else b""
     with tempfile.TemporaryDirectory() as tmp:
         shutil.copy(src, os.path.join(tmp, "main.py"))
+        # The simulated machine's clock is UTC, so the host's must be too.
+        env = dict(os.environ, TZ="UTC")
         r = subprocess.run([sys.executable, "main.py"], cwd=tmp, input=stdin,
-                           capture_output=True, timeout=60)
+                           capture_output=True, timeout=60, env=env)
         out = r.stdout.decode().replace(tmp, "/home/user")
         err = r.stderr.decode().replace(tmp, "/home/user")
     with open(os.path.join(PROGRAMS, name + ".expected"), "w") as f:

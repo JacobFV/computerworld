@@ -335,3 +335,98 @@ def fsdecode(filename):
 
 
 supports_follow_symlinks = set()
+
+
+# ---------------------------------------------------------------- processes
+# Children run through the machine's own shell (nested python3/node included);
+# they finish before the call returns, so a "running" child is never observed.
+
+def _wait_status(code):
+    return (code & 0xff) << 8
+
+
+def WIFEXITED(status):
+    return (status & 0x7f) == 0
+
+
+def WEXITSTATUS(status):
+    return (status >> 8) & 0xff
+
+
+def WIFSIGNALED(status):
+    return ((status & 0x7f) + 1) >> 1 > 0 and (status & 0x7f) != 0
+
+
+def WTERMSIG(status):
+    return status & 0x7f
+
+
+def waitstatus_to_exitcode(status):
+    if WIFEXITED(status):
+        return WEXITSTATUS(status)
+    return -WTERMSIG(status)
+
+
+def system(command):
+    """Run `command` in the machine's shell; its output goes straight to ours."""
+    import _cw
+    out, err, code, _ = _cw.spawn(command, True, '', None, list(environ.items()))
+    _cw.child_output(out, err)
+    return _wait_status(code)
+
+
+class _wrap_close:
+    def __init__(self, stream, code):
+        self._stream = stream
+        self._code = code
+
+    def close(self):
+        self._stream.close()
+        if self._code == 0:
+            return None
+        return _wait_status(self._code)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+    def __iter__(self):
+        return iter(self._stream)
+
+
+def popen(cmd, mode='r', buffering=-1):
+    import io
+    import _cw
+    if not isinstance(cmd, str):
+        raise TypeError('invalid cmd type (%s, expected string)' % type(cmd))
+    if mode not in ('r', 'w'):
+        raise ValueError('invalid mode %r' % mode)
+    if mode == 'r':
+        out, err, code, _ = _cw.spawn(cmd, True, '', None, list(environ.items()))
+        _cw.child_output('', err)
+        return _wrap_close(io.StringIO(out), code)
+
+    class _Writer(io.StringIO):
+        def close(self):
+            if not self.closed:
+                data = self.getvalue()
+                out, err, code, _ = _cw.spawn(cmd, True, data, None, list(environ.items()))
+                _cw.child_output(out, err)
+                self._code = code
+            io.StringIO.close(self)
+
+    w = _Writer()
+    w._code = 0
+
+    class _WClose(_wrap_close):
+        def close(self):
+            self._stream.close()
+            c = self._stream._code
+            return None if c == 0 else _wait_status(c)
+
+    return _WClose(w, 0)

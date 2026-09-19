@@ -1,0 +1,114 @@
+--- exit: 0
+--- stdout
+--- dates
+en-US 11/27/2026 | Friday, November 27, 2026 | November 27, 2026 at 3:34 PM | 11/27/26, 3:34:56 PM | Fri, Nov 27 | 11/27/26 | 3:34 PM | 15:34:56 | November 2026
+en-GB 27/11/2026 | Friday, 27 November 2026 | 27 November 2026 at 15:34 | 27/11/2026, 15:34:56 | Fri 27 Nov | 27/11/26 | 3:34 pm | 15:34:56 | November 2026
+de-DE 27.11.2026 | Freitag, 27. November 2026 | 27. November 2026 um 15:34 | 27.11.26, 15:34:56 | Fr., 27. Nov. | 27.11.26 | 3:34 PM | 15:34:56 | November 2026
+fr-FR 27/11/2026 | vendredi 27 novembre 2026 | 27 novembre 2026 à 15:34 | 27/11/2026 15:34:56 | ven. 27 nov. | 27/11/26 | 3:34 PM | 15:34:56 | novembre 2026
+es-ES 27/11/2026 | viernes, 27 de noviembre de 2026 | 27 de noviembre de 2026 a las 15:34 | 27/11/26, 15:34:56 | vie, 27 nov | 27/11/26 | 3:34 p. m. | 15:34:56 | noviembre de 2026
+it-IT 27/11/2026 | venerdì 27 novembre 2026 | 27 novembre 2026 alle ore 15:34 | 27/11/26, 15:34:56 | ven 27 nov | 27/11/26 | 3:34 PM | 15:34:56 | novembre 2026
+pt-BR 27/11/2026 | sexta-feira, 27 de novembro de 2026 | 27 de novembro de 2026 às 15:34 | 27/11/2026, 15:34:56 | sex., 27 de nov. | 27/11/26 | 3:34 PM | 15:34:56 | novembro de 2026
+ja-JP 2026/11/27 | 2026年11月27日金曜日 | 2026年11月27日 15:34 | 2026/11/27 15:34:56 | 11月27日(金) | 26/11/27 | 午後3:34 | 15:34:56 | 2026年11月
+zh-CN 2026/11/27 | 2026年11月27日星期五 | 2026年11月27日 15:34 | 2026/11/27 15:34:56 | 11月27日周五 | 26/11/27 | 下午3:34 | 15:34:56 | 2026年11月
+zh-TW 2026/11/27 | 2026年11月27日 星期五 | 2026年11月27日 下午3:34 | 2026/11/27 下午3:34:56 | 11月27日週五 | 26/11/27 | 下午3:34 | 15:34:56 | 2026年11月
+ko-KR 2026. 11. 27. | 2026년 11월 27일 금요일 | 2026년 11월 27일 오후 3:34 | 26. 11. 27. 오후 3:34:56 | 11월 27일 (금) | 26. 11. 27. | 오후 3:34 | 15:34:56 | 2026년 11월
+ru-RU 27.11.2026 | пятница, 27 ноября 2026 г. | 27 ноября 2026 г. в 15:34 | 27.11.2026, 15:34:56 | пт, 27 нояб. | 27.11.26 | 3:34 PM | 15:34:56 | ноябрь 2026 г.
+ar-EG ٢٧‏/١١‏/٢٠٢٦ | الجمعة، ٢٧ نوفمبر ٢٠٢٦ | ٢٧ نوفمبر ٢٠٢٦ في ٣:٣٤ م | ٢٧‏/١١‏/٢٠٢٦، ٣:٣٤:٥٦ م | الجمعة، ٢٧ نوفمبر | ٢٧‏/١١‏/٢٦ | ٣:٣٤ م | ١٥:٣٤:٥٦ | نوفمبر ٢٠٢٦
+hi-IN 27/11/2026 | शुक्रवार, 27 नवंबर 2026 | 27 नवंबर 2026 को 3:34 pm बजे | 27/11/26, 3:34:56 pm | शुक्र, 27 नव॰ | 27/11/26 | 3:34 pm | 15:34:56 | नवंबर 2026
+--- zones
+UTC Jan 15, 2026, 12:00:00 PM UTC | Jul 15, 2026, 12:00:00 PM UTC
+America/New_York Jan 15, 2026, 7:00:00 AM EST | Jul 15, 2026, 8:00:00 AM EDT
+Europe/Berlin Jan 15, 2026, 1:00:00 PM GMT+1 | Jul 15, 2026, 2:00:00 PM GMT+2
+Asia/Tokyo Jan 15, 2026, 9:00:00 PM GMT+9 | Jul 15, 2026, 9:00:00 PM GMT+9
+Australia/Sydney Jan 15, 2026, 11:00:00 PM GMT+11 | Jul 15, 2026, 10:00:00 PM GMT+10
+Asia/Kolkata Jan 15, 2026, 5:30:00 PM GMT+5:30 | Jul 15, 2026, 5:30:00 PM GMT+5:30
+America/Sao_Paulo Jan 15, 2026, 9:00:00 AM GMT-3 | Jul 15, 2026, 9:00:00 AM GMT-3
+Freitag, 27. November 2026 um 16:34:56 Mitteleuropäische Normalzeit
+[{"type":"month","value":"Nov"},{"type":"literal","value":" "},{"type":"day","value":"27"},{"type":"literal","value":", "},{"type":"year","value":"2026"},{"type":"literal","value":", "},{"type":"hour","value":"3"},{"type":"literal","value":":"},{"type":"minute","value":"34"},{"type":"literal","value":" "},{"type":"dayPeriod","value":"PM"}]
+RangeError Invalid time zone specified: Mars/Olympus
+--- numbers
+en-US 1,234,567.891 | -50% | €1,234.50 | ¥1,235 | 12M | 1.2 thousand | 42 km | 0.0000123
+en-GB 1,234,567.891 | -50% | €1,234.50 | JP¥1,235 | 12m | 1.2 thousand | 42 km | 0.0000123
+de-DE 1.234.567,891 | -50 % | 1.234,50 € | 1.235 ¥ | 12 Mio. | 1,2 Tausend | 42 km | 0,0000123
+fr-FR 1 234 567,891 | -50 % | 1 234,50 € | 1 235 JPY | 12 M | 1,2 millier | 42 km | 0,0000123
+es-ES 1.234.567,891 | -50 % | 1234,50 € | 1235 JPY | 12 M | 1,2 mil | 42 km | 0,0000123
+it-IT 1.234.567,891 | -50% | 1234,50 € | 1235 JPY | 12 Mln | 1,2 mila | 42 km | 0,0000123
+pt-BR 1.234.567,891 | -50% | € 1.234,50 | JP¥ 1.235 | 12 mi | 1,2 mil | 42 km | 0,0000123
+ja-JP 1,234,567.891 | -50% | €1,234.50 | ￥1,235 | 1235万 | 1234 | 42 km | 0.0000123
+zh-CN 1,234,567.891 | -50% | €1,234.50 | JP¥1,235 | 1235万 | 1234 | 42公里 | 0.0000123
+zh-TW 1,234,567.891 | -50% | €1,234.50 | ¥1,235 | 1235萬 | 1234 | 42 公里 | 0.0000123
+ko-KR 1,234,567.891 | -50% | €1,234.50 | JP¥1,235 | 1235만 | 1.2천 | 42km | 0.0000123
+ru-RU 1 234 567,891 | -50 % | 1 234,50 € | 1 235 ¥ | 12 млн | 1,2 тысячи | 42 км | 0,0000123
+ar-EG ١٬٢٣٤٬٥٦٧٫٨٩١ | ؜-٥٠٪؜ | ‏١٬٢٣٤٫٥٠ € | ‏١٬٢٣٥ JP¥ | ١٢ مليون | ١٫٢ ألف | ٤٢ كم | ٠٫٠٠٠٠١٢٣
+hi-IN 12,34,567.891 | -50% | €1,234.50 | JP¥1,235 | 1.2 क॰ | 1.2 हज़ार | 42 कि॰मी॰ | 0.0000123
+NaN | ∞ | -0 | 1.500 | 3 | 1234567 | 0 | 1.235E4 | 1.00 US dollars | -USD 2.00 | 007
+[{"type":"minusSign","value":"-"},{"type":"integer","value":"1"},{"type":"group","value":"."},{"type":"integer","value":"234"},{"type":"decimal","value":","},{"type":"fraction","value":"50"},{"type":"literal","value":" "},{"type":"currency","value":"€"}]
+{"locale":"en-US","numberingSystem":"latn","style":"decimal","minimumIntegerDigits":1,"minimumFractionDigits":0,"maximumFractionDigits":3,"useGrouping":"auto","notation":"standard","signDisplay":"auto","roundingIncrement":1,"roundingMode":"halfExpand","roundingPriority":"auto","trailingZeroDisplay":"auto"}
+--- plurals
+en-US other,one,other,other,other,other,other,other | one,two,few,other,other,one
+en-GB other,one,other,other,other,other,other,other | one,two,few,other,other,one
+de-DE other,one,other,other,other,other,other,other | other,other,other,other,other,other
+fr-FR one,one,other,other,other,other,other,other | one,other,other,other,other,other
+es-ES other,one,other,other,other,other,other,other | other,other,other,other,other,other
+it-IT other,one,other,other,other,other,other,other | other,other,other,other,many,other
+pt-BR one,one,other,other,other,other,other,other | other,other,other,other,other,other
+ja-JP other,other,other,other,other,other,other,other | other,other,other,other,other,other
+zh-CN other,other,other,other,other,other,other,other | other,other,other,other,other,other
+zh-TW other,other,other,other,other,other,other,other | other,other,other,other,other,other
+ko-KR other,other,other,other,other,other,other,other | other,other,other,other,other,other
+ru-RU many,one,few,few,many,many,one,one | other,other,other,other,other,other
+ar-EG zero,one,two,few,few,many,many,other | other,other,other,other,other,other
+hi-IN one,one,other,other,other,other,other,other | one,two,two,few,other,other
+--- relative
+en-US yesterday | today | tomorrow | 3 months ago | in 5 minutes | in 1 year
+en-GB yesterday | today | tomorrow | 3 months ago | in 5 minutes | in 1 year
+de-DE gestern | heute | morgen | vor 3 Monaten | in 5 Minuten | in 1 Jahr
+fr-FR hier | aujourd’hui | demain | il y a 3 mois | dans 5 minutes | dans 1 an
+es-ES ayer | hoy | mañana | hace 3 meses | dentro de 5 minutos | dentro de 1 año
+it-IT ieri | oggi | domani | 3 mesi fa | tra 5 minuti | tra 1 anno
+pt-BR ontem | hoje | amanhã | há 3 meses | em 5 minutos | em 1 ano
+ja-JP 昨日 | 今日 | 明日 | 3 か月前 | 5 分後 | 1 年後
+zh-CN 昨天 | 今天 | 明天 | 3个月前 | 5分钟后 | 1年后
+zh-TW 昨天 | 今天 | 明天 | 3 個月前 | 5 分鐘後 | 1 年後
+ko-KR 어제 | 오늘 | 내일 | 3개월 전 | 5분 후 | 1년 후
+ru-RU вчера | сегодня | завтра | 3 месяца назад | через 5 минут | через 1 год
+ar-EG أمس | اليوم | غدًا | قبل ٣ أشهر | خلال ٥ دقائق | خلال سنة واحدة
+hi-IN कल | आज | कल | 3 माह पहले | 5 मिनट में | 1 वर्ष में
+--- lists
+en-US x, y, and z | x or y | x, y, z
+en-GB x, y and z | x or y | x, y, z
+de-DE x, y und z | x oder y | x, y und z
+fr-FR x, y et z | x ou y | x, y et z
+es-ES x, y y z | x o y | x, y, z
+it-IT x, y e z | x o y | x, y e z
+pt-BR x, y e z | x ou y | x, y e z
+ja-JP x、y、z | xまたはy | x y z
+zh-CN x、y和z | x或y | xyz
+zh-TW x、y和z | x或y | x y z
+ko-KR x, y 및 z | x 또는 y | x y z
+ru-RU x, y и z | x или y | x y z
+ar-EG x وy وz | x أو y | x، وy، وz
+hi-IN x, y, और z | x या y | x, y, z
+--- names
+en-US Japan Arabic Euro Unknown Region
+de-DE Japan Arabisch Euro Unbekannte Region
+fr-FR Japon arabe euro région inconnue
+ja-JP 日本 アラビア語 ユーロ 不明な地域
+ru-RU Япония арабский евро неизвестный регион
+--- collation
+en-US apfel,Äpfel,äther,Banane,zebra,Zoo
+de-DE apfel,Äpfel,äther,Banane,zebra,Zoo
+fr-FR apfel,Äpfel,äther,Banane,zebra,Zoo
+es-ES apfel,Äpfel,äther,Banane,zebra,Zoo
+0 -1 1 -1
+--- locales
+de-DE,fr,zh-Hans-CN
+en-Latn-US en US Latn en-Latn-US-u-ca-gregory
+de-Latn-DE ja
+de-DE,ja
+true true
+true true
+string en-US
+--- prototypes
+1.234,568 27/11/2026 15:34:56 2026/11/27 15:34:56
+--- stderr

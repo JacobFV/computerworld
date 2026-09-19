@@ -496,15 +496,48 @@ pub fn install(vm: &mut Vm) {
             ("upper", bytes_upper),
             ("lower", bytes_lower),
             ("index", bytes_index),
+            ("lstrip", b_lstrip),
+            ("rstrip", b_rstrip),
+            ("rfind", b_rfind),
+            ("rindex", b_rindex),
+            ("partition", b_partition),
+            ("rpartition", b_rpartition),
+            ("rsplit", b_rsplit),
+            ("splitlines", b_splitlines),
+            ("center", b_center),
+            ("ljust", b_ljust),
+            ("rjust", b_rjust),
+            ("zfill", b_zfill),
+            ("removeprefix", b_removeprefix),
+            ("removesuffix", b_removesuffix),
+            ("expandtabs", b_expandtabs),
+            ("isdigit", b_isdigit),
+            ("isalpha", b_isalpha),
+            ("isalnum", b_isalnum),
+            ("isspace", b_isspace),
+            ("isupper", b_isupper),
+            ("islower", b_islower),
+            ("isascii", b_isascii),
+            ("istitle", b_istitle),
+            ("title", b_title),
+            ("capitalize", b_capitalize),
+            ("swapcase", b_swapcase),
+            ("translate", b_translate),
         ] {
             add_fn(c, n, fnc);
         }
         add_classmethod(c, "fromhex", bytes_fromhex);
+        add_static(c, "maketrans", b_maketrans);
     }
     for (n, fnc) in [
         ("append", bytearray_append as NativeFn),
         ("extend", bytearray_extend),
         ("pop", bytearray_pop),
+        ("insert", bytearray_insert),
+        ("remove", bytearray_remove),
+        ("reverse", bytearray_reverse),
+        ("clear", bytearray_clear),
+        ("copy", bytearray_copy),
         ("__setitem__", d_setitem),
         ("__delitem__", d_delitem),
     ] {
@@ -1874,6 +1907,294 @@ fn same_bytes_kind(v: &Value, data: Vec<u8>) -> Value {
         Value::ByteArray(_) => Value::ByteArray(new_ref(data)),
         _ => Value::Bytes(Rc::new(data)),
     }
+}
+
+// Structural bytes methods run the str implementation over a latin-1 view: one
+// byte is one char, so slicing, searching and padding give exactly the bytes
+// answer. Case and classification methods are ASCII-only for bytes and are
+// written out below instead.
+fn latin1(b: &[u8]) -> String {
+    b.iter().map(|&c| c as char).collect()
+}
+fn unlatin1(s: &str) -> Vec<u8> {
+    s.chars().map(|c| c as u32 as u8).collect()
+}
+fn to_latin1_arg(vm: &Vm, v: &Value, int_as_byte: bool) -> PyResult<Value> {
+    Ok(match vm.base_value(v) {
+        Value::Bytes(b) => Value::string(latin1(&b)),
+        Value::ByteArray(b) => Value::string(latin1(&b.borrow())),
+        Value::Int(i) if int_as_byte => {
+            if !(0..=255).contains(&i) {
+                return Err(value_err("byte must be in range(0, 256)"));
+            }
+            Value::string((i as u8 as char).to_string())
+        }
+        Value::Str(_) => {
+            return Err(type_err(format!(
+                "a bytes-like object is required, not '{}'",
+                vm.type_name(v)
+            )))
+        }
+        other => other,
+    })
+}
+fn from_latin1(r: Value, this: &Value) -> Value {
+    match r {
+        Value::Str(s) => same_bytes_kind(this, unlatin1(&s.s)),
+        Value::List(l) => {
+            let items: Vec<Value> = l
+                .borrow()
+                .iter()
+                .map(|v| from_latin1(v.clone(), this))
+                .collect();
+            Value::list(items)
+        }
+        Value::Tuple(t) => Value::tuple(t.iter().map(|v| from_latin1(v.clone(), this)).collect()),
+        other => other,
+    }
+}
+fn via_str(vm: &mut Vm, a: Args, f: NativeFn, int_as_byte: bool) -> PyResult<Value> {
+    let this = vm.base_value(&a.args[0]);
+    bytes_of(vm, &this)?;
+    let mut args = Vec::with_capacity(a.args.len());
+    for (i, v) in a.args.iter().enumerate() {
+        args.push(to_latin1_arg(vm, v, int_as_byte && i == 1)?);
+    }
+    let mut kwargs = vec![];
+    for (k, v) in &a.kwargs {
+        kwargs.push((k.clone(), to_latin1_arg(vm, v, false)?));
+    }
+    let r = f(vm, Args { args, kwargs })?;
+    Ok(from_latin1(r, &this))
+}
+macro_rules! bytes_via_str {
+    ($($name:ident => $f:ident, $int:expr;)*) => {
+        $(fn $name(vm: &mut Vm, a: Args) -> PyResult<Value> {
+            via_str(vm, a, $f, $int)
+        })*
+    };
+}
+bytes_via_str! {
+    b_lstrip => str_lstrip, false;
+    b_rstrip => str_rstrip, false;
+    b_rfind => str_rfind, true;
+    b_rindex => str_rindex, true;
+    b_partition => str_partition, false;
+    b_rpartition => str_rpartition, false;
+    b_rsplit => str_rsplit, false;
+    b_splitlines => str_splitlines, false;
+    b_center => str_center, false;
+    b_ljust => str_ljust, false;
+    b_rjust => str_rjust, false;
+    b_zfill => str_zfill, false;
+    b_removeprefix => str_removeprefix, false;
+    b_removesuffix => str_removesuffix, false;
+    b_expandtabs => str_expandtabs, false;
+}
+fn b_class(vm: &mut Vm, a: &Args, f: impl Fn(&[u8]) -> bool) -> PyResult<Value> {
+    let b = bytes_of(vm, &a.args[0])?;
+    Ok(Value::Bool(f(&b)))
+}
+fn b_isdigit(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| {
+        !b.is_empty() && b.iter().all(u8::is_ascii_digit)
+    })
+}
+fn b_isalpha(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| {
+        !b.is_empty() && b.iter().all(u8::is_ascii_alphabetic)
+    })
+}
+fn b_isalnum(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| {
+        !b.is_empty() && b.iter().all(u8::is_ascii_alphanumeric)
+    })
+}
+fn b_isspace(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| {
+        !b.is_empty() && b.iter().all(|c| b" \t\n\r\x0b\x0c".contains(c))
+    })
+}
+fn b_isupper(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| {
+        b.iter().any(u8::is_ascii_uppercase) && !b.iter().any(u8::is_ascii_lowercase)
+    })
+}
+fn b_islower(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| {
+        b.iter().any(u8::is_ascii_lowercase) && !b.iter().any(u8::is_ascii_uppercase)
+    })
+}
+fn b_isascii(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| b.iter().all(u8::is_ascii))
+}
+fn b_istitle(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    b_class(vm, &a, |b| {
+        let mut cased = false;
+        let mut prev_cased = false;
+        for c in b {
+            if c.is_ascii_uppercase() {
+                if prev_cased {
+                    return false;
+                }
+                prev_cased = true;
+                cased = true;
+            } else if c.is_ascii_lowercase() {
+                if !prev_cased {
+                    return false;
+                }
+                prev_cased = true;
+                cased = true;
+            } else {
+                prev_cased = false;
+            }
+        }
+        cased
+    })
+}
+fn b_title(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    let b = bytes_of(vm, &a.args[0])?;
+    let mut prev = false;
+    let out = b
+        .iter()
+        .map(|&c| {
+            let r = if prev {
+                c.to_ascii_lowercase()
+            } else {
+                c.to_ascii_uppercase()
+            };
+            prev = c.is_ascii_alphabetic();
+            r
+        })
+        .collect();
+    Ok(same_bytes_kind(&a.args[0], out))
+}
+fn b_capitalize(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    let b = bytes_of(vm, &a.args[0])?;
+    let out = b
+        .iter()
+        .enumerate()
+        .map(|(i, c)| {
+            if i == 0 {
+                c.to_ascii_uppercase()
+            } else {
+                c.to_ascii_lowercase()
+            }
+        })
+        .collect();
+    Ok(same_bytes_kind(&a.args[0], out))
+}
+fn b_swapcase(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    let b = bytes_of(vm, &a.args[0])?;
+    let out = b
+        .iter()
+        .map(|c| {
+            if c.is_ascii_uppercase() {
+                c.to_ascii_lowercase()
+            } else {
+                c.to_ascii_uppercase()
+            }
+        })
+        .collect();
+    Ok(same_bytes_kind(&a.args[0], out))
+}
+fn b_maketrans(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    if a.args.len() != 2 {
+        return Err(type_err(format!(
+            "maketrans expected 2 arguments, got {}",
+            a.args.len()
+        )));
+    }
+    let from = bytes_of(vm, &a.args[0])?;
+    let to = bytes_of(vm, &a.args[1])?;
+    if from.len() != to.len() {
+        return Err(value_err("maketrans arguments must have same length"));
+    }
+    let mut table: Vec<u8> = (0..=255u8).collect();
+    for (f, t) in from.iter().zip(to.iter()) {
+        table[*f as usize] = *t;
+    }
+    Ok(Value::Bytes(Rc::new(table)))
+}
+fn b_translate(vm: &mut Vm, mut a: Args) -> PyResult<Value> {
+    let b = bytes_of(vm, &a.args[0])?;
+    let delete = match a.kw("delete") {
+        Some(v) => bytes_of(vm, &v)?,
+        None => match a.args.get(2) {
+            Some(v) => bytes_of(vm, v)?,
+            None => vec![],
+        },
+    };
+    let table = match a.args.get(1) {
+        None | Some(Value::None) => None,
+        Some(v) => {
+            let t = bytes_of(vm, v)?;
+            if t.len() != 256 {
+                return Err(value_err("translation table must be 256 characters long"));
+            }
+            Some(t)
+        }
+    };
+    let out = b
+        .iter()
+        .filter(|c| !delete.contains(c))
+        .map(|c| table.as_ref().map_or(*c, |t| t[*c as usize]))
+        .collect();
+    Ok(same_bytes_kind(&a.args[0], out))
+}
+fn bytearray_of(v: &Value) -> PyResult<Ref<Vec<u8>>> {
+    match v {
+        Value::ByteArray(b) => Ok(b.clone()),
+        Value::Instance(i) => match &*i.native.borrow() {
+            NativeData::Base(Value::ByteArray(b)) => Ok(b.clone()),
+            _ => Err(type_err("descriptor requires a 'bytearray' object")),
+        },
+        _ => Err(type_err("descriptor requires a 'bytearray' object")),
+    }
+}
+fn byte_value(vm: &mut Vm, v: &Value) -> PyResult<u8> {
+    let i = crate::builtins::to_int_arg(vm, v)?;
+    if !(0..=255).contains(&i) {
+        return Err(value_err("byte must be in range(0, 256)"));
+    }
+    Ok(i as u8)
+}
+fn bytearray_insert(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    let b = bytearray_of(&a.args[0])?;
+    let idx = crate::builtins::to_int_arg(vm, &a.args[1])?;
+    let v = byte_value(vm, &a.args[2])?;
+    let len = b.borrow().len() as i64;
+    let i = if idx < 0 {
+        (idx + len).max(0)
+    } else {
+        idx.min(len)
+    };
+    b.borrow_mut().insert(i as usize, v);
+    Ok(Value::None)
+}
+fn bytearray_remove(vm: &mut Vm, a: Args) -> PyResult<Value> {
+    let b = bytearray_of(&a.args[0])?;
+    let v = byte_value(vm, &a.args[1])?;
+    let pos = b.borrow().iter().position(|c| *c == v);
+    match pos {
+        Some(p) => {
+            b.borrow_mut().remove(p);
+            Ok(Value::None)
+        }
+        None => Err(value_err("value not found in bytearray")),
+    }
+}
+fn bytearray_reverse(_vm: &mut Vm, a: Args) -> PyResult<Value> {
+    bytearray_of(&a.args[0])?.borrow_mut().reverse();
+    Ok(Value::None)
+}
+fn bytearray_clear(_vm: &mut Vm, a: Args) -> PyResult<Value> {
+    bytearray_of(&a.args[0])?.borrow_mut().clear();
+    Ok(Value::None)
+}
+fn bytearray_copy(_vm: &mut Vm, a: Args) -> PyResult<Value> {
+    let b = bytearray_of(&a.args[0])?.borrow().clone();
+    Ok(Value::ByteArray(new_ref(b)))
 }
 fn bytes_decode(vm: &mut Vm, mut a: Args) -> PyResult<Value> {
     let b = bytes_of(vm, &a.args[0])?;

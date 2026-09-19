@@ -183,7 +183,6 @@ fn b_print(vm: &mut Vm, mut a: Args) -> PyResult<Value> {
     let end = a.kw("end").unwrap_or(Value::None);
     let file = a.kw("file").unwrap_or(Value::None);
     let flush = a.kw("flush");
-    let _ = flush;
     if let Some((k, _)) = a.kwargs.first() {
         return Err(type_err(format!(
             "'{k}' is an invalid keyword argument for print()"
@@ -223,6 +222,17 @@ fn b_print(vm: &mut Vm, mut a: Args) -> PyResult<Value> {
         file
     };
     crate::io::write_to(vm, &file, &out)?;
+    if let Some(f) = flush {
+        if vm.truthy(&f)? {
+            match &file {
+                Value::File(fo) => crate::io::flush(vm, fo)?,
+                other => {
+                    let fl = vm.getattr_str(other, "flush")?;
+                    vm.call(&fl, vec![])?;
+                }
+            }
+        }
+    }
     Ok(Value::None)
 }
 
