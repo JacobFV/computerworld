@@ -100,7 +100,13 @@ try {
   await page.locator('#reset').click();
   assert.equal(await page.locator('[data-machine=qa-phone]').count(),0);
   assert.equal(await page.locator('[data-machine]').count(),7);
-  assert.equal(await page.locator('#links path').count(),12);
+  // Every link whose two endpoints are on the map is drawn, counted from the world
+  // rather than written down, so adding a node to the topology cannot make this stale.
+  const drawable=await page.evaluate(()=>{const d=window.computerworldDemo.world.definition();
+    const drawn=new Set([...document.querySelectorAll('[data-node]')].map(e=>e.dataset.node));
+    return d.network.links.filter(l=>drawn.has(l.from)&&drawn.has(l.to)).length;});
+  assert.ok(drawable>=12,`the map should have links to draw, had ${drawable}`);
+  assert.equal(await page.locator('#links path').count(),drawable);
   await page.locator('[data-machine=alice-phone]').click();
   await page.locator('[data-app=terminal]').click();
   await page.locator('#text-entry').fill('echo touch-keyboard');

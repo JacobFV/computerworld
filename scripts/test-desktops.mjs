@@ -36,6 +36,25 @@ async function clickTarget(target,{optional=false}={}){
   assert.doesNotMatch(await page.locator('#notice').innerText(),/^(Invalid|Unsupported|Permission|Action|Error)/i);
   return true;
 }
+/** The iPhone home gesture: press on the home indicator and drag up. Short goes home;
+ * further than a third of the screen is the App Switcher instead, so this stays short. */
+async function swipeUpFromHomeIndicator(){
+  const s=await scene();
+  const node=s.nodes.findLast(n=>n.interaction==='shell:gesture:home'||n.interaction?.endsWith(':content:shell:gesture:home'));
+  assert.ok(node,'the home indicator is not painted');
+  const screen=page.locator('#screen');await screen.scrollIntoViewIfNeeded();
+  const box=await screen.boundingBox(),size=await screen.evaluate(c=>({width:c.width,height:c.height}));
+  const t=node.transform??{a:1024,b:0,c:0,d:1024,tx:0,ty:0};
+  const cx=node.bounds.x+node.bounds.width/2,cy=node.bounds.y+node.bounds.height/2;
+  const px=(t.a*cx+t.c*cy)/1024+t.tx,py=(t.b*cx+t.d*cy)/1024+t.ty;
+  const x=box.x+px*box.width/size.width,y=box.y+py*box.height/size.height;
+  // A fifth of the screen: past the 70-pixel slop, well short of the App Switcher.
+  const travel=(size.height/5)*box.height/size.height;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  for(const part of [0.4,0.7,1]) await page.mouse.move(x,y-travel*part);
+  await page.mouse.up();
+}
 async function frameMetrics(){return page.evaluate(()=>{const d=window.computerworldDemo,c=document.querySelector('#screen');const start=performance.now(),a=d.env.render(c.width,c.height),elapsed=performance.now()-start,b=d.env.render(c.width,c.height),bytes=a.rgba,other=b.rgba;let equal=bytes.length===other.length,hash=2166136261;for(let i=0;i<bytes.length;i++){if(bytes[i]!==other[i])equal=false;hash=Math.imul(hash^bytes[i],16777619)>>>0;}const result={width:a.width,height:a.height,rgbaBytes:bytes.length,deterministic:equal,pixelChecksum:hash.toString(16),renderMilliseconds:elapsed,nodes:d.env.scene(c.width,c.height).nodes.length};a.free();b.free();return result;});}
 try{
   await mkdir(resolve(root,'artifacts'),{recursive:true});
@@ -78,7 +97,16 @@ try{
       assert.ok((await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'minimized browser did not restore');
       await clickTarget('shell:close');
       assert.ok(!(await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'closed browser is still visible');
-    }else {await clickTarget('shell:home');assert.ok(!(await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'phone home did not hide browser');}
+    }else if(theme==='android'){
+      // Android's navigation bar has a real Home button; pressing it goes home.
+      await clickTarget('shell:home');
+      assert.ok(!(await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'phone home did not hide browser');
+    }else {
+      // iPhone has no home button: the way home is a swipe up from the home indicator,
+      // which is what a person does on the glass. A tap on it does nothing, by design.
+      await swipeUpFromHomeIndicator();
+      assert.ok(!(await scene()).nodes.some(n=>n.interaction?.endsWith(':content:shell:address')),'phone home did not hide browser');
+    }
     await page.evaluate(expected=>{const d=window.computerworldDemo,s=window.desktopQaSnapshot;d.world.restore(s);if(d.world.stateHash()!==expected)throw Error('desktop snapshot restore mismatch');const fork=d.world.fork(s);if(fork.stateHash()!==expected)throw Error('desktop fork mismatch');fork.free();s.free();delete window.desktopQaSnapshot;d.refresh();},snapshot);
     await clickTarget('shell:launch:terminal');
     await clickTarget('terminal-input',{optional:true});

@@ -26,6 +26,12 @@ async function screenPoint(p){const c=page.locator('#screen');await c.scrollInto
 async function click(action){const p=await screenPoint(await target(action));await page.mouse.click(p.x,p.y);assert.doesNotMatch(await page.locator('#notice').innerText(),/^(Invalid|Unsupported|Permission|Action|Error)/i);}
 async function drag(action,delta,absolute=false){const start=await target(action),end=absolute?delta:{x:start.x+delta.x,y:start.y+delta.y},a=await screenPoint(start),b=await screenPoint(end);await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y,{steps:8});await page.mouse.up();assert.equal((await state()).desktop.pointer_capture,null,'released gesture retains pointer capture');}
 async function swipe(start,end){const a=await screenPoint(start),b=await screenPoint(end);await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y,{steps:8});await page.mouse.up();}
+/** Going home on a phone: Android presses its Home button, iPhone swipes up from the
+ * home indicator — short, because a long swipe is the App Switcher. */
+async function goHome(theme,size){
+  if(theme!=='ios'){await click('shell:home');return;}
+  await swipe({x:size.w/2,y:size.h-20},{x:size.w/2,y:size.h-20-Math.floor(size.h/5)});
+}
 async function shot(name){await page.locator('#screen').screenshot({path:resolve(root,`artifacts/overhaul-${name}.png`)});}
 async function launch(kind){await act('application.v1','launch',{kind});const s=await state();return s.desktop.focused;}
 async function assertSnapshot(){const before=await state();await page.evaluate(()=>{const d=window.computerworldDemo;window.overhaulSnapshot=d.world.snapshot();window.overhaulHash=d.world.stateHash();});await act('application.v1','home');await page.evaluate(()=>{const d=window.computerworldDemo,s=window.overhaulSnapshot;d.world.restore(s);if(d.world.stateHash()!==window.overhaulHash)throw Error('restore hash mismatch');const f=d.world.fork(s);if(f.stateHash()!==window.overhaulHash)throw Error('fork hash mismatch');f.free();s.free();d.refresh();});assert.deepEqual(await state(),before,'snapshot lost window/application state');}
@@ -50,11 +56,21 @@ try{
    const firstBrowser=await launch('browser');await act('browser.v1','navigate',{url:'http://intranet.internal/'});const secondBrowser=await launch('browser');await act('browser.v1','navigate',{url:'http://guide.example/'});assert.notEqual(firstBrowser,secondBrowser);await act('application.v1','focus',{window:firstBrowser});assert.match(JSON.stringify((await state()).browser),/intranet\.internal/);await act('application.v1','focus',{window:secondBrowser});assert.match(JSON.stringify((await state()).browser),/guide\.example/);checks.push('independent browser window histories');
    await shot(`${theme}-multiwindow`);await assertSnapshot();checks.push('snapshot and fork preserve full geometry and app state');
   }else{
-   await click('shell:launch:browser');await act('browser.v1','navigate',{url:'http://intranet.internal/'});await shot(`${theme}-browser`);const size=await page.locator('#screen').evaluate(c=>({w:c.width,h:c.height}));await swipe({x:size.w/2,y:size.h-25},{x:size.w/2,y:size.h-145});assert.equal((await state()).desktop.focused,null);checks.push('touch launcher and upward Home gesture');
-   await swipe({x:size.w/2,y:size.h-25},{x:size.w/2,y:size.h-155});assert.equal((await state()).desktop.launcher_open,true);await shot(`${theme}-drawer`);await click('shell:home');
-   await swipe({x:size.w/2,y:30},{x:size.w/2,y:200});assert.ok((await state()).desktop.panel,'downward gesture did not open notification/control panel');await shot(`${theme}-shade`);await click('shell:home');checks.push('upward app drawer and downward system panel gestures');
-   await launch('browser');await swipe({x:size.w/2,y:size.h-25},{x:size.w/2,y:Math.floor(size.h/2)-30});assert.equal((await state()).desktop.panel,'overview');await shot(`${theme}-recents`);await click('shell:home');checks.push('long upward recent applications gesture');
-   const nodes=(await scene()).nodes;const recents=nodes.find(n=>['shell:recents','shell:overview'].includes(n.interaction));if(recents){await click(recents.interaction);assert.equal((await state()).desktop.panel,'overview');await shot(`${theme}-recents`);await click('shell:home');checks.push('mobile recent applications');}
+   await click('shell:launch:browser');await act('browser.v1','navigate',{url:'http://intranet.internal/'});await shot(`${theme}-browser`);const size=await page.locator('#screen').evaluate(c=>({w:c.width,h:c.height}));await goHome(theme,size);assert.equal((await state()).desktop.focused,null);checks.push(theme==='ios'?'upward home gesture from the home indicator':'navigation bar Home button');
+   // The app drawer is reached differently on each phone: Android swipes up from the
+   // hotseat — above the navigation bar, which is buttons, not gesture area — and iOS
+   // swipes left past the last home page into the App Library.
+   if(theme==='android'){await swipe({x:size.w/2,y:size.h-70},{x:size.w/2,y:size.h-200});}
+   else{await swipe({x:size.w-30,y:Math.floor(size.h/2)},{x:30,y:Math.floor(size.h/2)});}
+   assert.equal((await state()).desktop.launcher_open,true);await shot(`${theme}-drawer`);await goHome(theme,size);
+   await swipe({x:size.w/2,y:30},{x:size.w/2,y:200});assert.ok((await state()).desktop.panel,'downward gesture did not open notification/control panel');await shot(`${theme}-shade`);await goHome(theme,size);checks.push('upward app drawer and downward system panel gestures');
+   // The App Switcher: a long swipe up from the iPhone's home indicator, and the
+   // Recents button on Android's navigation bar.
+   await launch('browser');
+   if(theme==='android'){await click('shell:overview');}
+   else{await swipe({x:size.w/2,y:size.h-25},{x:size.w/2,y:Math.floor(size.h/2)-30});}
+   assert.equal((await state()).desktop.panel,'overview');await shot(`${theme}-recents`);await goHome(theme,size);checks.push(theme==='ios'?'long upward recent applications gesture':'navigation bar Recents button');
+   const nodes=(await scene()).nodes;const recents=nodes.find(n=>['shell:recents','shell:overview'].includes(n.interaction));if(recents){await click(recents.interaction);assert.equal((await state()).desktop.panel,'overview');await shot(`${theme}-recents`);await goHome(theme,size);checks.push('mobile recent applications');}
   }
   // These are native applications now, not browser aliases: the window must be the app
  // itself, and the browser must not have been navigated on its behalf.
