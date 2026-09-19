@@ -131,6 +131,7 @@ function wire(tile, env, machine, size) {
   });
 
   const chips = tile.querySelector('.chips');
+  if (!chips) return draw;
   chips.hidden = false;
   chips.querySelectorAll('button').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -143,8 +144,10 @@ function wire(tile, env, machine, size) {
   return draw;
 }
 
+/** Boot every machine on the page, in document order, as soon as the module loads.
+ * `note(text, machine)` writes to one panel, or to all of them when no machine is named. */
 export async function boot(note) {
-  note(`Downloading the simulator…`);
+  note('Downloading the simulator, about 10 MB…');
   await init();
   note('Starting the world…');
   const world = new World(definition, SEED);
@@ -154,11 +157,14 @@ export async function boot(note) {
     const size = tile.dataset.size.split('x').map(Number);
     const computer = world.definition().computers.find(c => c.id === machine);
     const env = world.environment({ actor: computer.user, machines: [machine], actions, observations, action_budget: 1_000_000 });
-    note(`Starting ${tile.dataset.label}…`);
+    note(`Starting ${tile.dataset.label}…`, machine);
+    // Let the browser paint the machine that just came up before building the next one.
+    await new Promise(resolve => requestAnimationFrame(resolve));
     try { openings[machine]?.(env); } catch (error) { console.warn(machine, error); }
     const draw = wire(tile, env, machine, size);
     draw();
     tile.classList.add('live');
+    note('', machine);
   }
   note('');
   return world;

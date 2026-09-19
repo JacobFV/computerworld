@@ -1,15 +1,12 @@
 # computerworld.dev — the project site
 
-A single static page: no framework, no build step, no third-party requests. It is
-deployed to GitHub Pages by `.github/workflows/pages.yml`, which also builds the Wasm
-bundle and copies the browser console into `site/demo/` so the page can embed the real
-simulator.
+A single static page: no framework, no build step, no third-party requests. Every screen
+on it is a running machine — the simulator downloads when the page loads and each panel
+boots into it, with no button to press. `.github/workflows/pages.yml` deploys it, and
+builds the Wasm bundle and the world definition into `site/demo/` for the page to import.
 
 ```sh
-# Preview the page alone
-python3 -m http.server 8000 --directory site
-
-# Preview with the live demo embedded (needs the Wasm bundle built once)
+# Preview (the machines need the Wasm bundle built once)
 bash scripts/build-wasm.sh && node examples/browser/build.mjs
 mkdir -p site/demo/examples site/demo/pkg
 cp -r examples/browser site/demo/examples/browser && cp -r pkg/web site/demo/pkg/web

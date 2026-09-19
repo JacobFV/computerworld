@@ -7,35 +7,30 @@ const reveal = new IntersectionObserver(
 );
 document.querySelectorAll('.reveal').forEach(el => reveal.observe(el));
 
-// The live demo is a ~10 MB download, so it loads only when asked for.
-const slot = document.getElementById('demo-slot');
-document.getElementById('demo-start')?.addEventListener('click', () => {
-  const frame = document.createElement('iframe');
-  frame.src = './demo/examples/browser/index.html';
-  frame.title = 'Computerworld world console';
-  frame.allow = 'clipboard-write';
-  slot.replaceWith(frame);
-});
+// The machines boot themselves: the simulator downloads as soon as the page loads, and
+// each panel becomes a running computer as its machine comes up. No button to press.
+const notes = () => [...document.querySelectorAll('[data-boot-note]')];
+const say = text => notes().forEach(n => { n.textContent = text; n.hidden = !text; });
 
-// The live machines: one module, five running computers, booted on request.
-const boot = document.getElementById('boot');
-const bootNote = document.getElementById('boot-note');
-boot?.addEventListener('click', async () => {
-  boot.disabled = true;
-  bootNote.hidden = false;
-  const note = text => { bootNote.textContent = text; bootNote.hidden = !text; };
+(async () => {
+  // A browser asking for Save-Data gets the stills and a way in, not a 10 MB download
+  // it did not ask for. Everyone else gets running machines.
+  if (navigator.connection?.saveData) {
+    say('Data saver is on. Tap to download the simulator (about 10 MB) and start the machines.');
+    await new Promise(resolve => notes().forEach(n => n.addEventListener('click', resolve, { once: true })));
+  }
   try {
     const live = await import('./live.js');
-    await live.boot(note);
-    boot.textContent = '✓ Running in this tab';
-    note('Click, type and scroll in any of them. Click a name to open another app.');
+    await live.boot((text, machine) => {
+      if (!machine) return say(text);
+      const note = document.querySelector(`.tile[data-machine="${machine}"] [data-boot-note]`);
+      if (note) { note.textContent = text; note.hidden = !text; }
+    });
   } catch (error) {
-    boot.disabled = false;
-    boot.textContent = '⚡ Boot the machines';
-    note(`Could not start: ${error}`);
+    say('This browser could not start the simulator. The screenshots below are real renders of it.');
     console.error(error);
   }
-});
+})();
 
 // Language tabs, and copying the visible snippet.
 const panes = [...document.querySelectorAll('.codebox pre')];

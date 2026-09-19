@@ -18,9 +18,8 @@
 <header class="nav">
   <a class="brand" href="./"><span class="mark">◈</span> computerworld</a>
   <nav>
-    <a href="#demo">Demo</a>
+    <a href="#gallery">Machines</a>
     <a href="#what">What it is</a>
-    <a href="#gallery">Screens</a>
     <a href="#code">Code</a>
     <a href="https://github.com/JacobFV/computerworld" class="ghost">GitHub ↗</a>
   </nav>
@@ -35,14 +34,28 @@
   Python and Node — simulated end to end, with no host OS, no network and no flakiness.
   Same seed in, same bytes out, every single time.</p>
   <div class="cta reveal">
-    <a class="btn primary" href="#demo">Run it in your browser</a>
+    <a class="btn primary" href="#gallery">See the other four machines</a>
     <a class="btn" href="https://github.com/JacobFV/computerworld/releases/latest">Download a release ↗</a>
   </div>
   <pre class="snip reveal"><code>pip install computerworld   <span class="dim"># or grab the Wasm bundle for Node and browsers</span></code></pre>
-  <figure class="shot hero-shot reveal">
-    <img src="./media/ubuntu-vscode.jpg" width="1440" height="900" alt="VS Code open on Ubuntu inside the simulation, running a Python script in its integrated terminal" loading="eager">
-    <figcaption>Not a mock-up. That is the simulator's own renderer, its own VS Code, and its own <code>python3</code> printing to its own terminal.</figcaption>
-  </figure>
+
+  <article class="tile hero-tile" data-machine="carol-ubuntu" data-size="1280x800" data-label="Ubuntu 24.04">
+    <header><b>Ubuntu 24.04</b> <span>running right here — click the menus, type in the editor, run the file</span></header>
+    <div class="screen">
+      <img src="./media/ubuntu-vscode.jpg" width="1440" height="900" alt="VS Code open on Ubuntu inside the simulation, running a Python script in its integrated terminal" loading="eager">
+      <p class="booting" data-boot-note>Starting the machine…</p>
+    </div>
+    <footer class="chips" hidden>
+      <button data-app="code">VS Code</button>
+      <button data-app="kicad">KiCad</button>
+      <button data-app="freecad">FreeCAD</button>
+      <button data-app="gimp">GIMP</button>
+      <button data-app="files">Files</button>
+      <button data-app="terminal">Terminal</button>
+    </footer>
+  </article>
+  <p class="caption">Not a mock-up, and not a video. That is the simulator's own renderer, its own VS Code, and
+  its own <code>python3</code> printing to its own terminal — in this tab, with no server behind it.</p>
 </section>
 
 <section class="strip reveal">
@@ -51,19 +64,6 @@
   <div><b>48</b><span>services on a fake internet</span></div>
   <div><b>0</b><span>host syscalls</span></div>
   <div><b>1</b><span>Rust runtime, everywhere</span></div>
-</section>
-
-<section id="demo" class="demo">
-  <h2 class="reveal">Try the world console</h2>
-  <p class="sub reveal">Everything below runs in this tab: the machines, the network, the pixels.
-  Nothing is sent anywhere, and there is no backend to talk to.</p>
-  <div class="frame reveal">
-    <div id="demo-slot" class="demo-slot">
-      <img src="./media/macos-safari.jpg" alt="The world console showing a macOS desktop browsing a synthetic website" width="1440" height="900">
-      <button id="demo-start" class="btn primary big">▶ Launch the live demo</button>
-      <p class="weight">One-time download of the simulator (about 10&nbsp;MB) — then it is all local.</p>
-    </div>
-  </div>
 </section>
 
 <section id="what" class="what">
@@ -111,32 +111,14 @@
 </section>
 
 <section id="gallery" class="gallery">
-  <h2 class="reveal">Five machines. All of them live.</h2>
-  <p class="sub reveal">These are not screenshots and not videos. Press the button and every panel below becomes
-  a running computer in this tab — click the menus, type in the editor, scroll the lists, open other apps.</p>
-  <div class="boot reveal">
-    <button id="boot" class="btn primary big">⚡ Boot the machines</button>
-    <span class="weight">One simulator download, about 10&nbsp;MB, shared by all five.</span>
-    <span id="boot-note" class="weight" hidden></span>
-  </div>
+  <h2 class="reveal">Four more machines. All of them live.</h2>
+  <p class="sub reveal">Same world, same tab, same simulator the Ubuntu machine above is running on. Click the
+  menus, type in the editor, scroll the lists, swipe the phones, open something else.</p>
 
   <div class="tiles">
-    <article class="tile wide reveal" data-machine="carol-ubuntu" data-size="1100x700" data-label="Ubuntu 24.04">
-      <header><b>Ubuntu</b> <span>VS Code · KiCad · FreeCAD · GIMP</span></header>
-      <div class="screen"><img src="./media/ubuntu-vscode.jpg" width="1440" height="900" alt="VS Code running on Ubuntu inside the simulation" loading="lazy"></div>
-      <footer class="chips" hidden>
-        <button data-app="code">VS Code</button>
-        <button data-app="kicad">KiCad</button>
-        <button data-app="freecad">FreeCAD</button>
-        <button data-app="gimp">GIMP</button>
-        <button data-app="files">Files</button>
-        <button data-app="terminal">Terminal</button>
-      </footer>
-    </article>
-
     <article class="tile wide reveal" data-machine="alice-mac" data-size="1100x700" data-label="macOS">
       <header><b>macOS</b> <span>Music · Safari · Photos · Numbers</span></header>
-      <div class="screen"><img src="./media/macos-music.jpg" width="1440" height="900" alt="Apple Music running on macOS inside the simulation" loading="lazy"></div>
+      <div class="screen"><img src="./media/macos-music.jpg" width="1440" height="900" alt="Apple Music running on macOS inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
       <footer class="chips" hidden>
         <button data-app="music">Music</button>
         <button data-app="browser">Safari</button>
@@ -149,7 +131,7 @@
 
     <article class="tile wide reveal" data-machine="bob-windows" data-size="1100x700" data-label="Windows 11">
       <header><b>Windows 11</b> <span>Excel · Paint · Edge · Notepad</span></header>
-      <div class="screen"><img src="./media/windows-excel.jpg" width="1440" height="900" alt="Excel open on a CSV in Windows 11 inside the simulation" loading="lazy"></div>
+      <div class="screen"><img src="./media/windows-excel.jpg" width="1440" height="900" alt="Excel open on a CSV in Windows 11 inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
       <footer class="chips" hidden>
         <button data-app="spreadsheet">Excel</button>
         <button data-app="paint">Paint</button>
@@ -162,7 +144,7 @@
 
     <article class="tile phone reveal" data-machine="alice-phone" data-size="390x844" data-label="iOS 18">
       <header><b>iOS</b> <span>swipe it</span></header>
-      <div class="screen"><img src="./media/ios-music.jpg" width="402" height="874" alt="Apple Music on iOS inside the simulation" loading="lazy"></div>
+      <div class="screen"><img src="./media/ios-music.jpg" width="402" height="874" alt="Apple Music on iOS inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
       <footer class="chips" hidden>
         <button data-app="music">Music</button>
         <button data-app="browser">Safari</button>
@@ -173,7 +155,7 @@
 
     <article class="tile phone reveal" data-machine="bob-android" data-size="412x892" data-label="Android 15">
       <header><b>Android</b> <span>three-button nav</span></header>
-      <div class="screen"><img src="./media/android-music.jpg" width="412" height="892" alt="YouTube Music on Android inside the simulation" loading="lazy"></div>
+      <div class="screen"><img src="./media/android-music.jpg" width="412" height="892" alt="YouTube Music on Android inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
       <footer class="chips" hidden>
         <button data-app="music">YT Music</button>
         <button data-app="browser">Chrome</button>
