@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'docs/**'
+      - 'scripts/build-docs.mjs'
       - 'examples/browser/**'
       - 'crates/**'
       - 'services/**'
@@ -40,6 +42,12 @@ jobs:
       - run: bash scripts/build-wasm.sh
       - run: node examples/browser/build.mjs
       # The demo keeps the layout it is released with, so its relative imports resolve.
+      - name: Build the documentation
+        run: |
+          node scripts/build-docs.mjs
+          cargo doc --no-deps -p computerworld --lib
+          mkdir -p site/docs/api
+          cp -r target/doc site/docs/api/rust
       - name: Assemble the site
         run: |
           mkdir -p site/demo/examples site/demo/pkg

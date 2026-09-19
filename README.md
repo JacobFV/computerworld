@@ -1,217 +1,152 @@
-# computerworld
+# ComputerWorld
 
-A reusable synthetic computing world with **one deterministic Rust runtime** for
-native Rust, browser/Node WebAssembly, and Python. Define a world, grant an agent
-an interface, and run persistent episodes without a host OS or browser process.
+**A deterministic computer world for training and evaluating computer-use agents.**
+Several machines with real filesystems, shells, applications and a browser, joined by a
+synthetic internet of services, inside one Rust engine that runs natively, from Python,
+and as WebAssembly in Node and the browser. A run is a pure function of (engine, world,
+seed, action sequence, viewport): replay it on any platform and get the same bytes.
 
-The default simulator has no host filesystem, socket, subprocess, clock, entropy,
-or network access. The browser demo runs entirely client-side after loading its
-static assets. Python calls the Rust runtime directly; Node is not required.
+[Site](https://jacobfv.github.io/computerworld/) ·
+[Documentation](https://jacobfv.github.io/computerworld/docs/) ·
+[PyPI](https://pypi.org/project/computerworld/) ·
+[npm](https://www.npmjs.com/package/computerworld) ·
+[Releases](https://github.com/JacobFV/computerworld/releases)
 
-Requires Rust 1.88 or newer to build (verified with Rust 1.97.1).
+## Why
+
+- **Verification, not vibes.** Every frame and every state hash is reproducible across
+  Linux, macOS, Windows and the browser. An episode, a benchmark result or a bug report
+  is a world, a seed and an action list, and anyone can replay it exactly.
+- **Cheap branching.** Snapshots are copy-on-write. Fork a world at any step, try
+  several futures, keep the best: tree search, counterfactuals and RL rollouts without
+  virtual machines.
+- **Free labels.** `scene(w, h)` gives every text run, widget and window with its bounds
+  before rasterization, so a rendered frame comes with its own ground truth. One
+  consumer trained an OCR model this way and moved held-out-font accuracy from 0.668 to
+  0.794 ([determinism](docs/determinism.md#rendered-frames-as-labelled-data)).
+- **Nothing escapes.** The engine has no host filesystem, socket, clock, entropy or
+  network access unless the owner wires an adapter in. Run thousands of agents in one
+  process.
+- **One engine, three languages.** Python, JavaScript/TypeScript and Rust call the same
+  code and produce identical state hashes; the release pipeline refuses to publish if
+  they do not.
 
 ## Install
 
 ```sh
-pip install computerworld        # Python 3.9+: Linux x86-64, macOS arm64, Windows x64
+pip install computerworld        # Python 3.9+ (Linux x86-64, macOS arm64, Windows x64 at 0.1.0)
 npm install computerworld        # Node and browsers, one package
 ```
 
-[v0.1.0](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0) is the first
-release on the registries; its machines run real Python and JavaScript, debug them from
-Visual Studio Code, keep a filesystem with owners and modes, and carry professional
-applications on exact engines. No Rust build is needed to consume the wheels or the Wasm
-package, and the same files are on the GitHub release with their checksums. Rust
-depends on the tag, because the workspace is not on crates.io:
-
 ```toml
+# Rust: not on crates.io yet, so depend on the tag
 computerworld = { git = "https://github.com/JacobFV/computerworld.git", tag = "v0.1.0" }
 ```
 
-This is a 0.x release: APIs, world schemas and checkpoints may change between minor
-versions. Pin the version and retain your world/seed/action sequence. See
-[release notes](docs/releases/v0.1.0.md), [Python installation](docs/python.md),
-[JavaScript installation](docs/wasm.md) and [how releases are made](docs/releasing.md).
+Pin the version. This is 0.x: APIs, world schemas and snapshots may change between
+minor versions, and snapshots and state hashes name the engine that made them. The same
+wheels and package are on each [GitHub release](https://github.com/JacobFV/computerworld/releases)
+with checksums. Guides: [Python](docs/python.md), [JavaScript](docs/wasm.md),
+[Rust](docs/native.md).
 
-## Start here
-
-```sh
-git clone https://github.com/JacobFV/computerworld.git
-cd computerworld
-
-# Native examples and tests
-cargo run --release --example company
-cargo run --example custom-service
-cargo run --example custom-app
-cargo test --workspace
-```
-
-```rust
-use computerworld::{reference_world, ActionEnvelope, EnvironmentConfig, World};
-use serde_json::json;
-
-let mut world = World::new(reference_world(), 7)?;
-let session = world.environment(EnvironmentConfig::desktop("alice", "alice-mac"))?;
-let checkpoint = world.snapshot();
-let result = world.step(&session, vec![ActionEnvelope::new(
-    "terminal.v1", "execute", "alice-mac",
-    json!({"command": "cat launch.txt"}),
-)])?;
-let scene = world.scene(&session, 960, 560)?; // no rasterization
-let frame = world.render(&session, 960, 560)?; // canonical RGBA
-let branch = world.fork(&checkpoint)?;
-world.restore(&checkpoint)?;
-```
-
-Supply your own `WorldDefinition` or use `World::from_json`. The reference world
-is an explicitly selected example; the kernel contains no company or service
-fixtures. Give a native agent `world.actor(&session)?`, a restricted interface,
-rather than the privileged owner object.
-
-### Python
-
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-pip install .                 # build native extension; Rust toolchain required
-python examples/python/smoke.py
-python examples/python/computer_interaction.py
-```
-
-Alternatively install a compatible wheel from the GitHub release; wheel consumers
-need neither Rust nor Node. Install by exact version, never by glob — `target/` is a
-build directory and may hold wheels from an older revision:
-
-```sh
-maturin build --release --manifest-path crates/python/Cargo.toml
-pip install --force-reinstall target/wheels/computerworld-0.1.0-*.whl
-python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.1.0 0.1.0
-```
-
-The Python package version and the engine version are both `0.1.0`. Prereleases spell
-them differently (`0.1.0a3` under PEP 440, `0.1.0-alpha.3` under Cargo) for one release.
-See the [Python guide](docs/python.md) for pinned installation and version checks.
+## Sixty seconds
 
 ```python
 import json
 from computerworld import World
 
-with open("worlds/company-2026/world.json") as f:
-    world = World(json.load(f), seed=7)
-env = world.environment(dict(
-    actor="alice", machines=["alice-mac"], actions=["terminal.v1"],
-    observations=["terminal.v1"],
-))
-result = env.step([dict(family="terminal.v1", op="execute",
-    machine="alice-mac", payload={"command": "cat launch.txt"})])
-checkpoint = world.snapshot()
-branch = world.fork(checkpoint)
+world = World(json.load(open("worlds/company-2026/world.json")), seed=7)
+
+env = world.environment({
+    "actor": "alice", "machines": ["alice-mac"],
+    "actions": ["terminal.v1", "application.v1", "pointer.v1", "keyboard.v1"],
+    "observations": ["semantic.v1"],
+})
+
+result = env.step([{"family": "terminal.v1", "op": "execute",
+                    "machine": "alice-mac", "payload": {"command": "cat launch.txt"}}])
+print(result["outcomes"][0])          # success, value or error, per action
+
+scene = env.scene(1440, 900)          # every window, widget and text run, with bounds
+frame = env.render(1440, 900)         # {"width", "height", "rgba": bytes}
+
+checkpoint = world.snapshot()         # copy-on-write
+branch = world.fork(checkpoint)       # an independent world from here
+world.state_hash()                    # identical on every platform for this run
 ```
 
-### Browser / JavaScript
+The `Environment` is the agent's handle: its machines, action families and observation
+channels, nothing else. The `World` is the owner's: inspection, topology, snapshots.
+Give a model the environment. The same episode in
+[JavaScript and Rust](https://jacobfv.github.io/computerworld/docs/#a-first-episode),
+and runnable demos in [`examples/`](examples/).
 
-```sh
-rustup target add wasm32-unknown-unknown
-# Install the wasm-bindgen-cli version matching Cargo.lock (currently 0.2.128).
-cargo install wasm-bindgen-cli --version 0.2.128 --locked
-bash scripts/build-wasm.sh
-node examples/javascript/computer-interaction.mjs
-node examples/browser/build.mjs
-python3 -m http.server 8000
-```
+## What is in a world
 
-Try the [private hosted world console](https://computerworld-console.jacobfv123.chatgpt.site), or open `http://localhost:8000/examples/browser/` locally. The server only supplies static assets; it executes
-no simulation. The world console shows all seven device screens/consoles and actual network links, including distinct macOS, Windows 11, Ubuntu 24, iOS 18 and Android 12-style shells. Add/remove devices, interact with their applications and peripherals, and save/restore/fork the live topology. [Browser demo instructions](examples/browser/README.md) include
-offline verification. The build also emits a Node package under `pkg/node`.
+- **Machines.** Inode filesystems with owners and modes, processes, users, packages,
+  and a shell running documented subsets of POSIX and PowerShell. Real Python and
+  JavaScript run through embedded interpreters, and a program in the world can be
+  debugged from Visual Studio Code.
+- **Desktops.** Window managers in five styles (macOS, Windows 11, Ubuntu 24, iOS 18,
+  Android 12) with native applications: terminal, file manager, editor, browser,
+  spreadsheet, image and video editors, and professional tools on exact engines.
+- **A synthetic internet.** DNS, routes, links with latency and HTTP between machines
+  and services: mail, chat, documents, drive, calendar, Git remotes, issues, search,
+  wiki, forum, social, press, media, shop, bank, maps and an assistant, each with its
+  own state, plus a browsable web of independent sites. The browser renders received
+  pages natively; no DOM or Chromium.
+- **Time and chance under control.** Deterministic scheduling, controlled RNG and IDs,
+  persistent sessions, portable snapshots and recorded-action replay.
 
-```javascript
-import init, { createWorld } from './pkg/web/computerworld.js';
-await init();
-const world = createWorld(definition, '7');
-const env = world.environment({actor: 'alice', machines: ['alice-mac'],
-  actions: ['browser.v1'], observations: ['semantic.v1']});
-const result = env.step([{family: 'browser.v1', op: 'navigate',
-  machine: 'alice-mac', payload: {url: 'http://intranet.internal/'}}]);
-const frame = env.render(960, 560); // width, height, Uint8Array rgba
-```
+The reference world, `worlds/company-2026/world.json`, is five computers on three OS
+profiles with the services and sites above. Worlds are data: write your own with the
+[world schema](docs/world-schema.md), and add applications and services through small
+Rust SDKs ([custom app](docs/custom-application.md), [custom service](docs/custom-service.md)).
 
-## What it models
+## Documentation
 
-- Multiple machines and data-defined OS profiles; inode filesystems, permissions,
-  links, processes, shell commands, installed packages and applications.
-- Source-aware DNS, routes, links, loopback, listeners, timed transports and HTTP;
-  independent service state and inspectable causal/network events.
-- Mail, chat, documents, drive, calendars, Git objects/remotes, issues/reviews,
-  search, wiki, forum, social, press, media, shop, bank, maps and an assistant, each
-  an optional service crate with its own state. `ls services/` is the current list.
-- A synthetic browser with received-page state, tabs, history, cookies/storage,
-  forms and network-loaded images. No DOM or Chromium is needed.
-- A window manager and OS shell: move/resize/minimize/maximize/close, a tabbed file
-  manager, click-to-select and double-click-to-open, launchers, panels, device
-  toggles and touch gestures on phone themes. Nine native applications.
-- Compact scenes, semantic observations, hit testing, keyboard/pointer interaction,
-  cached deterministic text and incremental CPU rasterization.
-- Controlled time/RNG/IDs, deterministic scheduling, persistent sessions, cheap
-  COW checkpoints/forks, portable restore and recorded-action replay.
-- Separate actor grants, owner/evaluator inspection and optional task/reward logic.
+The [documentation site](https://jacobfv.github.io/computerworld/docs/) has the guides in
+reading order and the Python, JavaScript and Rust API references. The sources are in
+[`docs/`](docs/):
 
-Determinism is not only a reproducibility property. Because a frame is an exact
-function of (engine, world, seed, action sequence, viewport), and because
-`scene(w, h)` gives every text node's string and bounds *before* rasterization, an
-agent's own typed text is free labelled training data: crop the frame, read the
-label off the scene, no annotation pass and no labelling error. One consumer trained
-an OCR model this way and moved held-out-font accuracy from 0.668 to 0.794. See
-[determinism](docs/determinism.md#rendered-frames-as-labelled-data).
-
-The reference company (`worlds/company-2026/world.json`) has five computers and
-three OS profiles, and hosts its services alongside a browsable synthetic web of
-independent sites under `worlds/company-2026/sites/`. Service and site counts change
-per revision; read the world definition rather than a number quoted here. Its
-examples exercise local file work, cross-machine Git, mail/document work, shared
-chat, browser discovery and service debugging.
-
-## Contracts and extension guides
-
-| Topic | Guide |
+| To | Read |
 |---|---|
-| Architecture and crate boundaries | [Architecture](docs/architecture.md) |
-| World/topology schema and custom worlds | [Schema](docs/world-schema.md), [custom world](docs/custom-world.md) |
-| Native / Python / Wasm interfaces | [Rust](docs/native.md), [Python](docs/python.md), [Wasm](docs/wasm.md) |
-| Programmatic computer interaction | [Python/JavaScript guide and demos](docs/programmatic-computer-use.md) |
-| Agent actions, observations and evaluation | [Agent API](docs/agent-api.md) |
-| Every family, op, payload and the privileged/actor split | [Action families](docs/action-families.md) |
-| Desktop shell, windows and interaction targets | [Desktop GUI](docs/desktop-gui.md) |
-| Debugging a program in the world | [Debugging](docs/debugging.md) |
-| Application and service extensions | [App SDK](docs/application-sdk.md), [service SDK](docs/service-sdk.md) |
-| Authoring examples | [Custom app](docs/custom-application.md), [custom service](docs/custom-service.md) |
-| Semantics and isolation | [Computers](docs/computers.md), [networking](docs/networking.md), [security](docs/security.md) |
-| Reproducibility and rendering | [Determinism](docs/determinism.md), [rendering](docs/rendering.md) |
-| Measurements and migration | [Performance](docs/performance.md), [provenance](docs/provenance.md), [migration](docs/migration.md) |
+| Drive a machine: grants, `step`, observations, evaluation | [Agent API](docs/agent-api.md), [action families](docs/action-families.md), [programmatic computer use](docs/programmatic-computer-use.md) |
+| Understand what the desktop and shell can do | [Desktop GUI](docs/desktop-gui.md), [shell](docs/shell.md), [debugging](docs/debugging.md) |
+| Build a world, application or service | [Schema](docs/world-schema.md), [custom world](docs/custom-world.md), [app SDK](docs/application-sdk.md), [service SDK](docs/service-sdk.md) |
+| Know exactly what is promised | [Determinism](docs/determinism.md), [rendering](docs/rendering.md), [security](docs/security.md), [performance](docs/performance.md) |
+| See how it is put together | [Architecture](docs/architecture.md), [computers](docs/computers.md), [networking](docs/networking.md) |
+| Upgrade or release | [Migration](docs/migration.md), [releasing](docs/releasing.md), [changelog](CHANGELOG.md) |
 
-Build with `--no-default-features` to omit rasterization from the facade. Host
-networking is opt-in through `cw-host-adapters/native-http`, explicit policy and
-an owner-supplied adapter; recorded host results can be consumed offline. The
-optional `cw` binary is a persistent privileged JSON-lines transport.
+## Developing
 
-## Verification and scope
+Rust 1.88 or newer (verified with 1.97.1). The workspace is about fifty crates;
+[architecture](docs/architecture.md) maps them.
 
 ```sh
-bash scripts/test-all.sh          # native, boundaries, lint, optional host adapter, Wasm build
-bash scripts/smoke-bindings.sh    # actual Node Wasm + Python checkpoint/hash parity
-node scripts/test-browser.mjs     # actual Chromium, episode networking blocked
+git clone https://github.com/JacobFV/computerworld.git && cd computerworld
+cargo run --release --example company        # a native episode in the reference world
+cargo test --workspace
+
+bash scripts/test-all.sh                     # native tests, boundary checks, lint, Wasm build
+bash scripts/smoke-bindings.sh               # Node and Python agree on checkpoints and hashes
+node scripts/test-browser.mjs                # real Chromium, episode networking blocked
 ```
 
-Semantic fidelity is intentionally bounded: documented POSIX/PowerShell subsets,
-synthetic Git HTTP rather than packfile compatibility, native pages rather than
-arbitrary HTML/JS, bundled deterministic UI fonts rather than full browser typography. Unsupported
-operations fail explicitly. Native extensions are trusted code; restricted API
-handles prevent accidental state leakage, not hostile memory access in the same
-process. Detailed supported behavior and limitations are documented per subsystem.
+Python from source (`pip install .`, Rust required) and the Wasm build
+(`bash scripts/build-wasm.sh`) are in the [Python](docs/python.md) and
+[JavaScript](docs/wasm.md) guides. The site, including the docs, is in
+[`site/`](site/README.md). Issues and pull requests are welcome.
 
-The [investigation reports](research/sources.json) pin all eleven predecessor
-repositories. Their strongest semantics and regression lessons informed this
-independently implemented Rust workspace; no predecessor runtime is required.
-Bundled asset and font attribution is in [the render asset notices](crates/render/assets/README.md).
+## Scope
 
-The [native desktop GUI](docs/desktop-gui.md) documents OS profiles, functional window/app controls, deterministic rendering and current fidelity limits. [Source research](research/desktop-visuals.md) traces the recovered visual patterns.
+Fidelity is bounded on purpose and documented per subsystem: POSIX and PowerShell
+subsets, synthetic Git over HTTP rather than packfile compatibility, native pages rather
+than arbitrary HTML and JavaScript, bundled deterministic fonts rather than full browser
+typography. Unsupported operations fail explicitly rather than approximately. Native
+extensions are trusted code; restricted handles prevent accidental state leakage, not
+hostile memory access in the same process.
+
+The engine is an independent implementation informed by
+[eleven predecessor repositories](research/sources.json). Font and asset attribution is in
+[the render asset notices](crates/render/assets/README.md). MIT licensed.

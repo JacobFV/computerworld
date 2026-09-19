@@ -3,14 +3,19 @@
 A single static page: no framework, no build step, no third-party requests. Every screen
 on it is a running machine — the simulator downloads when the page loads and each scene
 boots into it as the slideshow reaches it, with no button to press.
-`.github/workflows/pages.yml` deploys it, and builds the Wasm bundle and the world
-definition into `site/demo/` for the page to import.
+`.github/workflows/pages.yml` deploys it, builds the Wasm bundle and the world
+definition into `site/demo/` for the page to import, and builds the documentation into
+`site/docs/`: `scripts/build-docs.mjs` turns `docs/*.md` into pages with the guides in
+reading order (the order is in the script), and `cargo doc` supplies the Rust reference
+under `site/docs/api/rust/`. Both directories are generated and git-ignored.
 
 ```sh
 # Preview (the machines need the Wasm bundle built once)
 bash scripts/build-wasm.sh && node examples/browser/build.mjs
 mkdir -p site/demo/examples site/demo/pkg
 cp -r examples/browser site/demo/examples/browser && cp -r pkg/web site/demo/pkg/web
+node scripts/build-docs.mjs
+cargo doc --no-deps -p computerworld --lib && cp -r target/doc site/docs/api/rust
 node scripts/serve-site.mjs 8000
 ```
 

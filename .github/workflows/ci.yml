@@ -16,6 +16,13 @@ jobs:
           python-version: '3.12'
       - uses: Swatinem/rust-cache@v2
       - run: bash scripts/test-all.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: The documentation converts, and the Rust reference builds
+        run: |
+          node scripts/build-docs.mjs --check
+          cargo doc --no-deps -p computerworld --lib
   bindings-and-browser:
     runs-on: ubuntu-latest
     steps:

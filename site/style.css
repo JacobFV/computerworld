@@ -36,9 +36,12 @@ button { font: inherit; color: inherit; }
   font-family: var(--mono); font-size: .75rem; letter-spacing: .04em;
 }
 
-/* GitHub, top right */
-.gh {
+/* Docs and GitHub, top right */
+.corner {
   position: absolute; top: clamp(1.1rem, 2.5vw, 1.8rem); right: clamp(1rem, 4vw, 2.5rem); z-index: 5;
+  display: flex; align-items: center; gap: 1.4rem;
+}
+.gh {
   display: inline-flex; align-items: center; gap: .5rem;
   color: var(--dim); text-decoration: none;
   transition: color .15s ease;

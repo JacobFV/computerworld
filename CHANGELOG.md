@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Wheels for Linux arm64 (manylinux2014) and macOS x86-64 join the release, so
+  `pip install computerworld` works on arm64 Linux servers and Intel Macs. The parity
+  gate now compares all five wheel platforms and Node/Wasm.
+- npm is published by a trusted publisher (OIDC), like PyPI; no token exists.
+- The site has a docs page: the guides in reading order and the Rust, Python and
+  JavaScript API references, built from `docs/` by `scripts/build-docs.mjs`.
+
 ## 0.1.0 — 2026-09-19
 
 The first release on the registries. The engine is 0.1.0-alpha.3's with one fix; what

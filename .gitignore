@@ -9,4 +9,5 @@
 *.whl
 /benchmarks/results/local-*/
 /site/demo/
+/site/docs/
 /.claude/worktrees/
