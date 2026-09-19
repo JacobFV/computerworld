@@ -153,29 +153,30 @@ pub fn ear_clip2(pts: &[V2], outer: &[usize], holes: &[Vec<usize>]) -> Vec<[usiz
                     ring.remove(k);
                 }
                 None => {
-                    // Only collinear corners remain: drop the middle one.
+                    // Only collinear corners are left (a sliver of a face). Clip one
+                    // anyway: the triangle has next to no area, but it keeps every
+                    // boundary edge in the mesh, which is what the face across it needs.
                     let k = (0..m)
-                        .find(|&k| {
-                            let (a, b, c) = (
-                                pt(ring[(k + m - 1) % m]),
-                                pt(ring[k]),
-                                pt(ring[(k + 1) % m]),
-                            );
-                            (b - a).cross(c - a).abs() <= 1e-12 * (b - a).len() * (c - a).len()
+                        .max_by(|&x, &y| {
+                            let area = |k: usize| {
+                                let (a, b, c) = (
+                                    pt(ring[(k + m - 1) % m]),
+                                    pt(ring[k]),
+                                    pt(ring[(k + 1) % m]),
+                                );
+                                (b - a).cross(c - a)
+                            };
+                            area(x).total_cmp(&area(y))
                         })
                         .unwrap_or(0);
-                    dropped.push(ring.remove(k));
+                    tris.push([ring[(k + m - 1) % m], ring[k], ring[(k + 1) % m]]);
+                    ring.remove(k);
                 }
             }
         }
     }
     if ring.len() == 3 {
-        let (a, b, c) = (pt(ring[0]), pt(ring[1]), pt(ring[2]));
-        if (b - a).cross(c - a) > 1e-10 * (b - a).len() * (c - b).len() {
-            tris.push([ring[0], ring[1], ring[2]]);
-        } else {
-            dropped.extend(ring.iter().copied());
-        }
+        tris.push([ring[0], ring[1], ring[2]]);
     } else {
         dropped.extend(ring.iter().copied());
     }
@@ -362,13 +363,13 @@ pub fn tessellate(s: &Solid) -> (Mesh, Topology) {
             for c in l {
                 let e = &s.edges[c.co.edge];
                 if e.degenerate {
-                    let (a, b) = (c.uv[0], c.uv[1]);
-                    let k = ((b.x - a.x).abs() / (TAU / 32.0)).ceil().max(1.0) as usize;
-                    for i in 0..k {
-                        pts.push(a + (b - a) * (i as f64 / k as f64));
-                        ids.push(vbase[e.v0]);
-                        ring.push(pts.len() - 1);
-                    }
+                    // A pole is one point: the parameter plane crosses it in a straight
+                    // run, and every point of that run is the same vertex, so only its
+                    // start belongs to the ring (more would make triangles that collapse
+                    // and leave the mesh non-manifold there).
+                    pts.push(c.uv[0]);
+                    ids.push(vbase[e.v0]);
+                    ring.push(pts.len() - 1);
                     continue;
                 }
                 let samples = &edge_samples[c.co.edge];
@@ -485,6 +486,7 @@ pub fn tessellate(s: &Solid) -> (Mesh, Topology) {
             centroid: props[fi].centroid,
         });
     }
+    split_shared_chords(s, &mut m, &mut tri_face, &mut faces);
     let edges: Vec<TEdge> = (0..s.edges.len())
         .map(|ei| {
             let e = &s.edges[ei];
@@ -518,6 +520,87 @@ pub fn tessellate(s: &Solid) -> (Mesh, Topology) {
         tri_face,
     };
     (m, topo)
+}
+
+/// Two faces can chord between the same pair of vertices: on a sliver face, ear
+/// clipping draws a diagonal between two samples of the edge it shares with its
+/// neighbour, and the neighbour draws the same diagonal. Each face is a sound
+/// triangulation on its own, but the mesh then uses that chord four times instead of
+/// twice. Split the triangles of all but one of those faces at the chord's mid point
+/// — a real point of the face's own surface — which leaves every edge with two uses.
+fn split_shared_chords(s: &Solid, m: &mut Mesh, tri_face: &mut Vec<usize>, faces: &mut [TFace]) {
+    for _ in 0..16 {
+        let mut users: std::collections::BTreeMap<(u32, u32), Vec<usize>> = Default::default();
+        for (i, t) in m.tris.iter().enumerate() {
+            for k in 0..3 {
+                let (a, b) = (t[k], t[(k + 1) % 3]);
+                users.entry((a.min(b), a.max(b))).or_default().push(i);
+            }
+        }
+        let shared: Vec<((u32, u32), Vec<usize>)> =
+            users.into_iter().filter(|(_, u)| u.len() > 2).collect();
+        if shared.is_empty() {
+            return;
+        }
+        let mut split_any = false;
+        // A split rewrites its triangles, so a triangle is only ever split once per
+        // pass; anything else waits for the next one, when the counts are fresh.
+        let mut touched: std::collections::BTreeSet<usize> = Default::default();
+        for (pair, us) in shared {
+            if us.iter().any(|i| touched.contains(i)) {
+                continue;
+            }
+            let mut per_face: std::collections::BTreeMap<usize, Vec<usize>> = Default::default();
+            for &i in &us {
+                per_face.entry(tri_face[i]).or_default().push(i);
+            }
+            let keep = match per_face.keys().next() {
+                // All the uses are inside one face: splitting would not separate them.
+                Some(_) if per_face.len() < 2 => continue,
+                Some(&f) => f,
+                None => continue,
+            };
+            let (pa, pb) = (m.verts[pair.0 as usize], m.verts[pair.1 as usize]);
+            let chord = (pb - pa).len();
+            for (&fi, tris) in per_face.iter() {
+                if fi == keep {
+                    continue;
+                }
+                let surface = &s.faces[fi].surface;
+                let mid = (pa + pb) * 0.5;
+                let (u, v) = surface.project(mid);
+                let q = surface.eval(u, v);
+                // Keep the split point on the chord if the projection wandered off.
+                let p = if (q - mid).len() <= chord * 0.5 {
+                    q
+                } else {
+                    mid
+                };
+                m.verts.push(p);
+                let nv = m.verts.len() as u32 - 1;
+                for &i in tris {
+                    let t = m.tris[i];
+                    let Some(k) = (0..3).find(|&k| {
+                        let (a, b) = (t[k], t[(k + 1) % 3]);
+                        (a.min(b), a.max(b)) == pair
+                    }) else {
+                        continue;
+                    };
+                    let (a, b, c) = (t[k], t[(k + 1) % 3], t[(k + 2) % 3]);
+                    touched.insert(i);
+                    m.tris[i] = [a, nv, c];
+                    faces[fi].tris.push(m.tris.len());
+                    m.tris.push([nv, b, c]);
+                    m.tri_surface.push(fi as u32);
+                    tri_face.push(fi);
+                    split_any = true;
+                }
+            }
+        }
+        if !split_any {
+            return;
+        }
+    }
 }
 
 /// Mid point of an edge, and its direction (unit tangent for lines, axis for circles).

@@ -644,8 +644,10 @@ pub fn march(sa: &Surface, sb: &Surface, seed: V3, b: &Box3) -> Option<(Vec<V3>,
                 }
             }
             let t1 = tangent(x);
+            // How far the curve turned over the step: both tangents taken in the
+            // direction of travel (`t0` already carries it, so `dir` undoes it on one).
             let turn = if t1.len() > 0.0 {
-                t1.norm().dot(t0 * dir * dir).clamp(-1.0, 1.0)
+                t1.norm().dot(t0 * dir).clamp(-1.0, 1.0)
             } else {
                 -1.0
             };

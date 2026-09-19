@@ -282,6 +282,86 @@ fn degenerate_pairs_come_out_right() {
     );
 }
 
+/// Many pairs in general position, from a fixed pseudo-random sequence: every result
+/// must be a closed solid whose mesh is watertight, and the volumes must satisfy
+/// `|A ∪ B| + |A ∩ B| = |A| + |B|` and `|A − B| = |A| − |A ∩ B|` — identities that hold
+/// whatever the shapes are, so they catch a boolean that keeps or drops the wrong piece.
+#[test]
+fn booleans_obey_the_volume_identities_over_many_pairs() {
+    let mut seed = 0x2545_f491_4f6c_dd1du64;
+    let mut next = || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let mut tried = 0;
+    for case in 0..200 {
+        let r = |lo: f64, hi: f64, x: f64| lo + (hi - lo) * x;
+        let (x, y, z) = (
+            r(-4.0, 4.0, next()),
+            r(-4.0, 4.0, next()),
+            r(-4.0, 4.0, next()),
+        );
+        let (u, v, w) = (
+            r(2.0, 6.0, next()),
+            r(2.0, 6.0, next()),
+            r(2.0, 6.0, next()),
+        );
+        let a = match case % 3 {
+            0 => cuboid(v3(-3.0, -3.0, -3.0), v3(3.0, 4.0, 2.0)),
+            1 => cylinder(v3(0.0, 0.0, -3.0), V3::Z, 3.0, 6.0),
+            _ => sphere(V3::ZERO, 3.5),
+        };
+        let b = match case % 4 {
+            0 => cuboid(v3(x, y, z), v3(x + u, y + v, z + w)),
+            1 => cylinder(v3(x, y, z), V3::Z, u / 2.0, w),
+            2 => cylinder(v3(x, y, z), V3::X, u / 2.0, w),
+            _ => sphere(v3(x, y, z), u / 2.0),
+        };
+        let (va, vb) = (mass_props(&a).volume, mass_props(&b).volume);
+        let (Ok(un), Ok(is), Ok(df)) = (
+            boolean(&a, &b, Op::Union),
+            boolean(&a, &b, Op::Intersection),
+            boolean(&a, &b, Op::Difference),
+        ) else {
+            panic!("case {case} failed");
+        };
+        for s in [&un, &is, &df] {
+            if s.is_empty() {
+                continue;
+            }
+            s.check().unwrap_or_else(|e| panic!("case {case}: {e}"));
+            let (mesh, _) = tessellate(s);
+            assert!(
+                mesh.is_watertight(),
+                "case {case}: {} open mesh edges",
+                mesh.open_edges()
+            );
+        }
+        let vol = |s: &super::Solid| {
+            if s.is_empty() {
+                0.0
+            } else {
+                mass_props(s).volume
+            }
+        };
+        let (vu, vi, vd) = (vol(&un), vol(&is), vol(&df));
+        let scale = (va + vb).max(1.0);
+        assert!(
+            (vu + vi - va - vb).abs() < 1e-9 * scale,
+            "case {case}: |A∪B| {vu} + |A∩B| {vi} vs {va} + {vb}"
+        );
+        assert!(
+            (vd - (va - vi)).abs() < 1e-9 * scale,
+            "case {case}: |A−B| {vd} vs {} ",
+            va - vi
+        );
+        tried += 1;
+    }
+    assert_eq!(tried, 200);
+}
+
 #[test]
 fn a_through_hole_and_a_boss() {
     let plate = cuboid(v3(0.0, 0.0, 0.0), v3(10.0, 10.0, 2.0));
