@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2"]
 build-backend = "maturin"
 [project]
 name = "computerworld"
-version = "0.1.0a3"
+version = "0.1.0"
 requires-python = ">=3.9"
 description = "Deterministic synthetic computer worlds powered by one Rust runtime"
 license = { text = "MIT" }

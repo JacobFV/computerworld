@@ -1,0 +1,155 @@
+name: publish
+# The release, as a logged run: build and verify the candidates, cut the GitHub release
+# with its checksums, then hand the registries the very files that release holds.
+#
+# PyPI is published with a trusted publisher (OIDC; no token exists). npm is published
+# with the NPM_TOKEN secret and a provenance attestation. crates.io is not published:
+# see docs/releasing.md.
+#
+# A registry can be published later, or again after a failure, without rebuilding:
+# run this with `create_release` off and it uses the release that already exists.
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: 'Full 40-character commit on main to release; its Cargo version names the tag'
+        required: true
+        type: string
+      create_release:
+        description: 'Build the candidates and create the tag and GitHub release (off: use the existing release)'
+        type: boolean
+        default: true
+      pypi:
+        description: 'Publish the wheels to PyPI'
+        type: boolean
+        default: true
+      npm:
+        description: 'Publish the Wasm package to npm'
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: publish
+  cancel-in-progress: false
+jobs:
+  candidates:
+    if: inputs.create_release
+    uses: ./.github/workflows/release.yml
+    with:
+      source_commit: ${{ inputs.source_commit }}
+
+  release:
+    needs: candidates
+    if: inputs.create_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+      - id: version
+        name: Read the version this commit declares
+        run: |
+          VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
+          test -f "docs/releases/v$VERSION.md" || { echo "docs/releases/v$VERSION.md is missing"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "v$VERSION is already tagged; a version is never released twice"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          path: target/candidates
+      - name: Collect the assets, and require every platform to agree
+        run: |
+          mkdir -p target/assets
+          cp target/candidates/python-*/*.whl target/assets/
+          cp target/candidates/wasm-and-browser-release-assets/* target/assets/
+          python3 - <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path('target/candidates')
+          names = {'python-evidence-x86_64-unknown-linux-gnu': 'linux', 'python-evidence-aarch64-apple-darwin': 'macos',
+                   'python-evidence-x86_64-pc-windows-msvc': 'windows', 'wasm-browser-release-evidence': 'node-wasm'}
+          parity = {}
+          for artifact, name in names.items():
+              summary = next((root / artifact).rglob('summary.json'), None)
+              if summary is None:
+                  sys.exit(f'{artifact} has no summary.json')
+              parity[name] = json.loads(summary.read_text())
+          for key in ('stateHash', 'pixelHash'):
+              if len({entry[key] for entry in parity.values()}) != 1:
+                  sys.exit(f'{key} differs between platforms: ' + json.dumps(parity, indent=2))
+          pathlib.Path('target/assets/cross-platform-parity.json').write_text(json.dumps(parity, indent=2) + '\n')
+          print(json.dumps(parity, indent=2))
+          PY
+          cd target/assets && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Tag the commit and create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          case "$VERSION" in *-*) KIND=--prerelease ;; *) KIND=--latest ;; esac
+          gh release create "v$VERSION" target/assets/* --target "${{ inputs.source_commit }}" \
+            --title "ComputerWorld v$VERSION" --notes-file "docs/releases/v$VERSION.md" $KIND
+
+  pypi:
+    needs: release
+    # `release` is skipped when the release already exists; anything but a failure will do.
+    if: ${{ always() && inputs.pypi && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/computerworld/
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+      - name: Download the wheels from the release and check them against it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
+          test "$(git rev-parse "refs/tags/v$VERSION^{commit}" 2>/dev/null || git ls-remote origin "refs/tags/v$VERSION" | cut -f1)" = "${{ inputs.source_commit }}"
+          mkdir -p target/pypi target/verify
+          gh release download "v$VERSION" --dir target/verify --pattern '*.whl' --pattern SHA256SUMS
+          (cd target/verify && sha256sum --check --ignore-missing SHA256SUMS)
+          mv target/verify/*.whl target/pypi/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: target/pypi
+
+  npm:
+    needs: release
+    if: ${{ always() && inputs.npm && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/computerworld
+    permissions:
+      contents: read
+      id-token: write   # the provenance attestation
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+      - name: Download the package from the release, check it against it, and publish it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "$NODE_AUTH_TOKEN" || { echo "The NPM_TOKEN secret is not set: see docs/releasing.md"; exit 1; }
+          VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
+          test "$(git ls-remote origin "refs/tags/v$VERSION" | cut -f1)" = "${{ inputs.source_commit }}"
+          mkdir -p target/verify
+          gh release download "v$VERSION" --dir target/verify --pattern "computerworld-$VERSION.tgz" --pattern SHA256SUMS
+          (cd target/verify && sha256sum --check --ignore-missing SHA256SUMS)
+          case "$VERSION" in *-*) TAG=next ;; *) TAG=latest ;; esac
+          npm publish "target/verify/computerworld-$VERSION.tgz" --access public --provenance --tag "$TAG"

@@ -1,19 +1,57 @@
 # Release process
 
-Releases are versioned GitHub prereleases until the API and snapshot formats have
-an explicit stability policy. A release consists of a source tag, release notes,
-compatible Python wheels, browser/Node Wasm assets and their checksums. Registry
-publication is a separate operation; never imply that a GitHub release publishes
-to PyPI, npm or crates.io.
+A release is one run of `.github/workflows/publish.yml`, so that what was built, what was
+checked and what was uploaded are in a public log rather than in someone's terminal. It
+consists of a source tag, release notes, Python wheels, browser/Node Wasm assets, the npm
+package, their checksums, and the same wheels and package on PyPI and npm. Versions with
+a prerelease suffix are marked prerelease on GitHub and go to npm under the `next` tag.
+
+## Making a release
+
+1. Land the version bump (below), `CHANGELOG.md` and `docs/releases/v<version>.md` on
+   `main`, and wait for the `verify` workflow to pass on that commit.
+2. Run **publish** from the Actions tab (or
+   `gh workflow run publish.yml -f source_commit=<40-character sha>`). It:
+   - builds and verifies the candidates with `release.yml` (wheels on three platforms
+     installed into clean environments; the Wasm bundles, the npm package installed into
+     an empty project, the offline browser demo and the desktop suites);
+   - requires all four builds to report the same state and pixel hashes;
+   - refuses a version that is already tagged, then tags the commit and creates the
+     GitHub release with `SHA256SUMS`;
+   - downloads the wheels and the npm tarball back from that release, checks them
+     against `SHA256SUMS`, and publishes them.
+3. To publish a registry later, or again after a failure, run it with **create_release**
+   off: it uses the release that exists and rebuilds nothing. A registry never accepts
+   the same version twice, so a partly successful run is finished this way, not redone.
+
+### Credentials
+
+- **PyPI** holds no secret. The project trusts this repository's `publish.yml` in the
+  `pypi` environment as a [trusted publisher](https://docs.pypi.org/trusted-publishers/).
+- **npm** needs the `NPM_TOKEN` repository secret: a granular access token with read and
+  write access to the `computerworld` package (for the very first publish, to all
+  packages, since the package does not exist yet) and "bypass two-factor authentication"
+  enabled so automation can publish. Once the package exists, it can be replaced by a
+  trusted publisher in the package's settings on npmjs.com, after which the secret and
+  the `NODE_AUTH_TOKEN` line can be deleted.
+- **crates.io is not published.** The workspace is fifty-one crates joined by path
+  dependencies without versions, new crates are rate-limited to one every ten minutes
+  after the first five, and `cw-render` embeds about 38 MB of fonts and wallpapers
+  against a 10 MB limit per crate. Publishing there means moving those assets out of the
+  crate (or having the limit raised), giving every internal dependency a version, and
+  publishing in dependency order. Until then Rust consumers pin the Git tag, and no
+  document may tell them to `cargo add computerworld`.
 
 ## Version identity
 
-The current prerelease uses:
+The current release uses:
 
 | Surface | Version |
 |---|---|
-| Git tag / Cargo / engine | `v0.1.0-alpha.3` / `0.1.0-alpha.3` |
-| Python distribution | `0.1.0a3` |
+| Git tag / Cargo / engine / npm | `v0.1.0` / `0.1.0` |
+| Python distribution | `0.1.0` |
+
+A prerelease spells the two differently (`0.1.0-alpha.3` and `0.1.0a3`).
 
 Update workspace/dependent Cargo versions, `Cargo.lock`, Python project metadata,
 release packaging metadata and release notes together. Python exposes
@@ -40,8 +78,8 @@ release workflow/logs; the following list describes requirements, not past resul
   unavailable targets are omitted or explicitly documented rather than advertised.
 - [ ] Release artifacts carry project/font/icon/wallpaper notices, checksums and
   source/version metadata. Verify SHA-256 after downloading staged artifacts.
-- [ ] The version tag resolves to the verified source commit; the release is marked
-  **prerelease**, and its downloadable assets match the verified checksums.
+- [ ] The version tag resolves to the verified source commit; a prerelease version is
+  marked **prerelease**, and the downloadable assets match the verified checksums.
 
 ## Verification commands
 

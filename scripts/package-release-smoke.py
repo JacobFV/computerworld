@@ -15,7 +15,7 @@ subprocess.run([str(python), '-m', 'pip', 'install', '--no-deps', str(wheels[0])
 subprocess.run([str(python), '-c',
     "import computerworld, importlib.metadata; "
     "assert computerworld.__version__ == importlib.metadata.version('computerworld'); "
-    "assert computerworld.engine_version == '0.1.0-alpha.3'; "
+    "assert computerworld.engine_version == '0.1.0'; "
     "print('Installed release:', computerworld.__version__, computerworld.engine_version)"], check=True)
 subprocess.run([str(python), str(root / 'examples/python/smoke.py')], check=True, cwd=root)
 subprocess.run([str(python), str(root / 'examples/python/computer_interaction.py'),

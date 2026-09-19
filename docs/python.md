@@ -4,27 +4,26 @@ Python uses a PyO3 extension containing the canonical Rust runtime. No Node,
 Chromium or simulation server is required. CPython 3.9+ is supported by the abi3
 binding. A compatible prebuilt wheel needs no Rust toolchain.
 
-## Install the prerelease wheel
-
-Download the wheel matching your operating system/architecture from
-[v0.1.0-alpha.3](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.3).
-The listed assets determine available platforms. Python's package version is
-`0.1.0a3`; this is the same engine release. Verify its checksum using the accompanying
-`SHA256SUMS` before installation. There is no PyPI publication yet.
+## Install
 
 ```sh
 python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install ./computerworld-0.1.0a3-<matching-wheel-tags>.whl
+python -m pip install computerworld==0.1.0
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.1.0a3 0.1.0-alpha.3
+# Expected: 0.1.0 0.1.0
 ```
 
-Replace the example wheel filename with the actual downloaded filename. Wheels
+PyPI carries wheels for Linux x86-64 (manylinux2014), macOS arm64 and Windows x64, and
+no source distribution: on any other platform, build from source as below. The same
+wheels are assets of
+[v0.1.0](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0) with a
+`SHA256SUMS`; the release workflow publishes to PyPI the files it downloaded from that
+release and checked against it, so the two are byte-identical. Wheels
 contain the runtime, not an implicit company world. Download the tagged source
 archive for example world definitions and runnable Python demos, or supply your
-own definition. API and checkpoint compatibility may change between alpha releases;
+own definition. API and checkpoint compatibility may change between 0.x releases;
 keep the exact version with your episode records.
 
 ## Build from source
@@ -33,7 +32,7 @@ A Rust toolchain is required for this path. Use the release tag for a reproducib
 checkout (omit `--branch` to work on current development instead):
 
 ```sh
-git clone --branch v0.1.0-alpha.3 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.1.0 https://github.com/JacobFV/computerworld.git
 cd computerworld
 python3 -m venv .venv
 . .venv/bin/activate
@@ -47,9 +46,9 @@ To build distributable wheels instead:
 ```sh
 python -m pip install 'maturin>=1.7,<2'
 maturin build --release --manifest-path crates/python/Cargo.toml
-python -m pip install --force-reinstall target/wheels/computerworld-0.1.0a3-*.whl
+python -m pip install --force-reinstall target/wheels/computerworld-0.1.0-*.whl
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.1.0a3 0.1.0-alpha.3
+# Expected: 0.1.0 0.1.0
 ```
 
 Install by exact version, not `computerworld*.whl`. `target/wheels/` is a build

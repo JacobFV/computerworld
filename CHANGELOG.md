@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.1.0 — 2026-09-19
+
+The first release on the registries. The engine is 0.1.0-alpha.3's with one fix; what
+changed is how it reaches people. Package and engine version are both `0.1.0`.
+Snapshots name the engine that wrote them, so alpha snapshots are rejected on restore,
+and state hashes, which cover the engine version, differ from alpha.3's for the same run.
+
+### Distribution
+
+- `pip install computerworld`: wheels for Linux x86-64 (manylinux2014), macOS arm64 and
+  Windows x64 on PyPI, CPython 3.9+ abi3. No source distribution.
+- `npm install computerworld`: one package for Node and the browser
+  (`scripts/package-npm.py`). `exports` sends Node to the CommonJS glue and everything
+  else to the ES module; the Wasm, the font pack, the notices and the reference world
+  are in it once. Every candidate build installs the packed tarball into an empty
+  project and runs a machine through `require` and `import`.
+- `.github/workflows/publish.yml` is the release: it calls the candidate workflow,
+  refuses to continue unless Linux, macOS, Windows and Node/Wasm agree on the state and
+  pixel hashes, creates the tag and the GitHub release with `SHA256SUMS`, then publishes
+  to PyPI (trusted publisher, no token) and npm (token, with provenance) the files it
+  downloads back from that release and checks against those sums. A registry can be
+  published later, or retried, against the existing release without a rebuild.
+- crates.io is not published: fifty-one crates with path dependencies, and a renderer
+  whose embedded fonts and wallpapers are four times the per-crate limit. Rust pins the
+  Git tag.
+- `release-manifest.json` says `prerelease` only when the version is one.
+
+### Fixed
+
+- The Slack and Discord skins named the sidebar's colour as the theme's surface, so
+  cards and forms without a background of their own took it and Slack's dark message
+  text was drawn on dark purple. Pixel hashes of those pages change.
+
+### Site
+
+- The project site is a ring of thirty-nine scenes (`site/scenes/`), each with machines
+  of its own and an `open()` that drives them from a fresh boot with ordinary actions:
+  a part padded in FreeCAD, a 555 board routed in KiCad and simulated, VS Code stopped
+  on a breakpoint, spreadsheets, a JOIN in DB Browser, Slack, Linear, a pull request,
+  video timelines, and seven pairs of phones, two of them in one conversation. Each
+  scene runs in a world of its own and only the nearest stay running. Its stills are
+  rendered by booting the page (`scripts/render-site-stills.mjs`).
+
 ## 0.1.0-alpha.3 — 2026-09-18
 
 The release that makes the machines *work*: programs run, files have owners and

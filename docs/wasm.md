@@ -2,17 +2,41 @@
 
 Node and browser clients run the same canonical Rust runtime compiled to Wasm.
 They receive generated JavaScript classes and ordinary objects, not raw-memory
-management APIs. There is no separate JavaScript simulator. npm publication is
-separate; this prerelease is distributed through GitHub assets.
+management APIs. There is no separate JavaScript simulator.
+
+## Install from npm
+
+```sh
+npm install computerworld@0.1.0
+```
+
+One package serves both: Node resolves it to the CommonJS binding, which loads the Wasm
+beside it, and bundlers and browsers to the ES module, whose default export
+initializes it.
+
+```js
+// Node (require, or import from an ES module)
+const { World, engineVersion } = require('computerworld');
+
+// Browser, through a bundler or an import map
+import init, { World } from 'computerworld';
+await init();
+```
+
+The package holds the Wasm once, the TypeScript declarations for each entry, the
+reference world (`computerworld/worlds/company-2026/world.json`), the font pack and the
+third-party notices. It is published by the release workflow from the
+`computerworld-0.1.0.tgz` asset of the GitHub release, after checking it against that
+release's `SHA256SUMS`.
 
 ## Install a pinned bundle
 
-Download from [v0.1.0-alpha.3](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.3)
+Download from [v0.1.0](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0)
 and verify the accompanying `SHA256SUMS`. Choose:
 
-- `computerworld-0.1.0-alpha.3-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
-- `computerworld-0.1.0-alpha.3-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
-- `computerworld-0.1.0-alpha.3-browser-demo.zip`: complete static interactive console.
+- `computerworld-0.1.0-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
+- `computerworld-0.1.0-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
+- `computerworld-0.1.0-browser-demo.zip`: complete static interactive console.
 
 Each archive has a top-level directory matching its filename without the archive
 extension. Runtime bundles include `worlds/`, example code, `release.json` with
@@ -23,10 +47,10 @@ npm installation is needed to use the downloaded bundle.
 For Node:
 
 ```sh
-tar -xzf computerworld-0.1.0-alpha.3-wasm-node.tar.gz
-cd computerworld-0.1.0-alpha.3-wasm-node
+tar -xzf computerworld-0.1.0-wasm-node.tar.gz
+cd computerworld-0.1.0-wasm-node
 node -e "console.log(require('./computerworld.js').engineVersion())"
-# Expected: 0.1.0-alpha.3
+# Expected: 0.1.0
 node examples/javascript/computer-interaction.mjs --output ./demo-output
 ```
 
@@ -35,7 +59,7 @@ For a browser, unpack the web bundle and import its root module:
 ```js
 import init, {World, engineVersion} from './computerworld.js';
 await init();
-console.log(engineVersion()); // 0.1.0-alpha.3
+console.log(engineVersion()); // 0.1.0
 // Supply your own world definition, or load a bundled worlds/ JSON file.
 const world = new World(definition, 7);
 ```
@@ -50,7 +74,7 @@ do not mix wrapper/Wasm files from different versions.
 ## Build and run from source
 
 ```sh
-git clone --branch v0.1.0-alpha.3 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.1.0 https://github.com/JacobFV/computerworld.git
 cd computerworld
 rustup target add wasm32-unknown-unknown
 # Match Cargo.lock; currently 0.2.128.

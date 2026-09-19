@@ -6,6 +6,13 @@ on:
         description: 'Full 40-character source commit on main to build and verify (before tagging)'
         required: true
         type: string
+  # publish.yml builds its candidates with this same workflow, so what is published is
+  # what a dry run of this one verifies.
+  workflow_call:
+    inputs:
+      source_commit:
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
@@ -103,6 +110,8 @@ jobs:
       - run: bash scripts/build-wasm.sh
       - run: node examples/browser/build.mjs
       - run: python scripts/package-release.py
+      - name: Pack the npm package, install it in an empty project and run a machine from it
+        run: python scripts/package-npm.py
       - name: Test the packaged Node binding outside the source tree
         run: |
           mkdir -p target/release-unpacked

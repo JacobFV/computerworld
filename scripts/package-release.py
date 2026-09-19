@@ -17,7 +17,7 @@ out = args.output.resolve()
 out.mkdir(parents=True, exist_ok=True)
 version = tomllib.loads((ROOT / 'Cargo.toml').read_text(encoding='utf-8'))['workspace']['package']['version']
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-manifest = dict(version=version, source_commit=commit, engine='canonical Rust runtime', prerelease=True)
+manifest = dict(version=version, source_commit=commit, engine='canonical Rust runtime', prerelease='-' in version)
 staging = ROOT / 'target/release-staging'
 if staging.exists():
     shutil.rmtree(staging)
