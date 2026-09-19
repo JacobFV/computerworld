@@ -304,7 +304,7 @@ pub(crate) fn rm(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
     let (opts, paths) = options(
         "rm",
         &crate::shell::powershell_switches(args),
-        "rRfdivI",
+        "rRfdiv",
         "",
         &[
             ("recursive", 'r'),
@@ -312,7 +312,6 @@ pub(crate) fn rm(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
             ("dir", 'd'),
             ("interactive", 'i'),
             ("verbose", 'v'),
-            ("one-file-system", 'I'),
         ],
     )?;
     let recursive = flag(&opts, 'r') || flag(&opts, 'R');
@@ -562,7 +561,7 @@ pub(crate) fn install(c: &mut Computer, args: &[String], t: u64) -> Result<Strin
     let (opts, operands) = options(
         "install",
         args,
-        "dDvpTC",
+        "dDvpT",
         "mt",
         &[
             ("directory", 'd'),
@@ -571,7 +570,6 @@ pub(crate) fn install(c: &mut Computer, args: &[String], t: u64) -> Result<Strin
             ("mode", 'm'),
             ("target-directory", 't'),
             ("no-target-directory", 'T'),
-            ("compare", 'C'),
         ],
     )?;
     let mode = match value(&opts, 'm') {
@@ -771,13 +769,12 @@ pub(crate) fn chown(c: &mut Computer, cmd: &str, args: &[String], t: u64) -> Res
     let (opts, rest) = options(
         cmd,
         args,
-        "Rvhc",
+        "Rvh",
         "",
         &[
             ("recursive", 'R'),
             ("verbose", 'v'),
             ("no-dereference", 'h'),
-            ("changes", 'c'),
         ],
     )?;
     let Some((spec, paths)) = rest.split_first() else {
@@ -832,13 +829,25 @@ pub(crate) fn chown(c: &mut Computer, cmd: &str, args: &[String], t: u64) -> Res
 
 /// `umask [-S] [MASK]`: one mask per filesystem, read by every creation.
 pub(crate) fn umask(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
-    let (opts, rest) = options("umask", args, "Sp", "", &[("symbolic", 'S')])?;
+    let (opts, rest) = options(
+        "umask",
+        args,
+        "Sp",
+        "",
+        &[("symbolic", 'S'), ("portable", 'p')],
+    )?;
     let Some(spec) = rest.first() else {
         let mask = c.vfs.umask();
-        return Ok(if flag(&opts, 'S') {
-            format!("{}\n", symbolic_mask(mask))
+        let value = if flag(&opts, 'S') {
+            symbolic_mask(mask)
         } else {
-            format!("{mask:04o}\n")
+            format!("{mask:04o}")
+        };
+        // `-p` prints a line that can be pasted back into a shell.
+        return Ok(if flag(&opts, 'p') {
+            format!("umask {value}\n")
+        } else {
+            format!("{value}\n")
         });
     };
     let mask = if spec.chars().all(|ch| ch.is_ascii_digit()) {

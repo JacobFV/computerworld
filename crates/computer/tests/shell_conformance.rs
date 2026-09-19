@@ -320,6 +320,10 @@ fn permissions_are_enforced_and_ownership_is_real() {
         "chmod --reference=/tmp/mine /tmp/private",
         "--reference",
     );
+    // A flag that would be a silent no-op is refused, not accepted and ignored.
+    refused(&mut c, "chown -c user /tmp/mine", "-c");
+    refused(&mut c, "rm -I /tmp/mine", "-I");
+    refused(&mut c, "install -C /tmp/mine /tmp/mine2", "-C");
 }
 
 #[test]
