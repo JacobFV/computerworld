@@ -7,12 +7,12 @@ separate; this prerelease is distributed through GitHub assets.
 
 ## Install a pinned bundle
 
-Download from [v0.1.0-alpha.2](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.2)
+Download from [v0.1.0-alpha.3](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.3)
 and verify the accompanying `SHA256SUMS`. Choose:
 
-- `computerworld-0.1.0-alpha.2-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
-- `computerworld-0.1.0-alpha.2-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
-- `computerworld-0.1.0-alpha.2-browser-demo.zip`: complete static interactive console.
+- `computerworld-0.1.0-alpha.3-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
+- `computerworld-0.1.0-alpha.3-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
+- `computerworld-0.1.0-alpha.3-browser-demo.zip`: complete static interactive console.
 
 Each archive has a top-level directory matching its filename without the archive
 extension. Runtime bundles include `worlds/`, example code, `release.json` with
@@ -23,10 +23,10 @@ npm installation is needed to use the downloaded bundle.
 For Node:
 
 ```sh
-tar -xzf computerworld-0.1.0-alpha.2-wasm-node.tar.gz
-cd computerworld-0.1.0-alpha.2-wasm-node
+tar -xzf computerworld-0.1.0-alpha.3-wasm-node.tar.gz
+cd computerworld-0.1.0-alpha.3-wasm-node
 node -e "console.log(require('./computerworld.js').engineVersion())"
-# Expected: 0.1.0-alpha.2
+# Expected: 0.1.0-alpha.3
 node examples/javascript/computer-interaction.mjs --output ./demo-output
 ```
 
@@ -35,7 +35,7 @@ For a browser, unpack the web bundle and import its root module:
 ```js
 import init, {World, engineVersion} from './computerworld.js';
 await init();
-console.log(engineVersion()); // 0.1.0-alpha.2
+console.log(engineVersion()); // 0.1.0-alpha.3
 // Supply your own world definition, or load a bundled worlds/ JSON file.
 const world = new World(definition, 7);
 ```
@@ -50,7 +50,7 @@ do not mix wrapper/Wasm files from different versions.
 ## Build and run from source
 
 ```sh
-git clone --branch v0.1.0-alpha.2 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.1.0-alpha.3 https://github.com/JacobFV/computerworld.git
 cd computerworld
 rustup target add wasm32-unknown-unknown
 # Match Cargo.lock; currently 0.2.128.

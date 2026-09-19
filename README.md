@@ -12,14 +12,16 @@ Requires Rust 1.88 or newer to build (verified with Rust 1.97.1).
 
 ## Versioned alpha release
 
-[v0.1.0-alpha.2](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.2)
-is the current prerelease for technical early adopters; it is the first to ship the
-desktop shell, native applications and the simulated web in its binaries. Download compatible Python
-wheels or browser/Node Wasm bundles from its release assets; no Rust build is needed
-to consume those binaries. Python names the same version `0.1.0a2`.
+[v0.1.0-alpha.3](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0-alpha.3)
+is the current prerelease for technical early adopters; its machines run real
+Python and JavaScript, debug them from Visual Studio Code, keep a filesystem with
+owners and modes, and carry professional applications on exact engines. Download
+compatible Python wheels or browser/Node Wasm bundles from its release assets; no
+Rust build is needed to consume those binaries. Python names the same version
+`0.1.0a3`.
 
 APIs, world schemas and checkpoints may change between alpha releases. Pin the
-version and retain your world/seed/action sequence. See [release notes](docs/releases/v0.1.0-alpha.2.md),
+version and retain your world/seed/action sequence. See [release notes](docs/releases/v0.1.0-alpha.3.md),
 [Python installation](docs/python.md), [JavaScript installation](docs/wasm.md) and
 [verification policy](docs/releasing.md). Packages are not published to PyPI, npm
 or crates.io by this release.
@@ -75,13 +77,13 @@ build directory and may hold wheels from an older revision:
 
 ```sh
 maturin build --release --manifest-path crates/python/Cargo.toml
-pip install --force-reinstall target/wheels/computerworld-0.1.0a2-*.whl
+pip install --force-reinstall target/wheels/computerworld-0.1.0a3-*.whl
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.1.0a2 0.1.0-alpha.2
+# Expected: 0.1.0a3 0.1.0-alpha.3
 ```
 
-The Python package version is `0.1.0a2` and the engine version is
-`0.1.0-alpha.2`; they are the same release under PEP 440 and Cargo spellings.
+The Python package version is `0.1.0a3` and the engine version is
+`0.1.0-alpha.3`; they are the same release under PEP 440 and Cargo spellings.
 See the [Python guide](docs/python.md) for pinned installation and version checks.
 
 ```python

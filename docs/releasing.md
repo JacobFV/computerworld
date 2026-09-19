@@ -12,8 +12,8 @@ The current prerelease uses:
 
 | Surface | Version |
 |---|---|
-| Git tag / Cargo / engine | `v0.1.0-alpha.2` / `0.1.0-alpha.2` |
-| Python distribution | `0.1.0a2` |
+| Git tag / Cargo / engine | `v0.1.0-alpha.3` / `0.1.0-alpha.3` |
+| Python distribution | `0.1.0a3` |
 
 Update workspace/dependent Cargo versions, `Cargo.lock`, Python project metadata,
 release packaging metadata and release notes together. Python exposes

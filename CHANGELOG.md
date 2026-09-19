@@ -1,5 +1,119 @@
 # Changelog
 
+## 0.1.0-alpha.3 — 2026-09-18
+
+The release that makes the machines *work*: programs run, files have owners and
+modes, documents open in the applications people actually use, and every phone
+gesture is the one the device has. Package version `0.1.0a3` and engine version
+`0.1.0-alpha.3` are the same release in PEP 440 and Cargo spellings. Snapshots from
+earlier alphas are not supported.
+
+The browser bundle grew from about 4.9 MB to about 10.2 MB gzipped. Two Python and
+JavaScript interpreters, a B-rep CAD kernel, an EDA suite, a video engine, a
+SQLite-compatible database, a spreadsheet engine and a zlib went into it. The
+marketing site does not load it until a visitor asks for it.
+
+### Language runtimes
+
+- `python3` and `node` are real interpreters in the machine shell, not shims:
+  `crates/pyvm` runs a CPython-3.12-conformant subset with a standard library, and
+  `crates/jsvm` an ES2020 interpreter checked against Node 24 byte for byte. Both
+  run scripts, `-c`/`-e`, modules, stdin programs and shebangs, with the VFS as
+  their filesystem and the world's entropy as their randomness.
+- They reach the simulated network (`socket`, `http.client`, `urllib`, `requests`;
+  `net`, `http`, `https`, `fetch`, `dns`), start child processes through the
+  machine's own shell (`subprocess`, `os.system`, `os.popen`, `child_process`), and
+  run concurrent code: Python's `threading`, `queue` and `concurrent.futures` on a
+  green-thread scheduler that preempts on a quantum derived from the world seed,
+  Node's `worker_threads` with `SharedArrayBuffer` and `Atomics`.
+- Node's event loop orders itself from what the program costs — 100k instructions a
+  millisecond, compile and module-load costs, I/O at the world's latency — so
+  `setTimeout(f, 0)` against `setImmediate` falls out of the program rather than a
+  rule.
+- ECMA-402 for Node and `locale`/`zoneinfo` for Python, from recorded CLDR and ICU
+  data, across fourteen locales and the world's time zones (`crates/tz`).
+- Both have a REPL — `python3` and `node` with no arguments, and `input()`/`readline`
+  mid-program — resumed across world actions by journal replay.
+- `crates/zlib` is a byte-exact deflate, inflate, gzip, brotli and crc32. It is the
+  one compressor in the world: Python's `zlib`/`gzip`, Node's `zlib`, `tar -z`,
+  `gzip` and method-8 zip members all go through it.
+
+### Professional applications
+
+- **Visual Studio Code** on macOS, Windows and Ubuntu: the explorer, split editors,
+  a minimap, multiple cursors, tab stops, context menus, search and replace across
+  the workspace, Source Control with `git reset`/`restore`, the integrated terminal
+  running the machine's shell, Problems fed by real tracebacks, and **Run and Debug**
+  over a DAP-shaped seam the runtimes fill — breakpoints with conditions, hit counts
+  and logpoints, stepping, call stacks, scopes, watches and the Debug Console.
+- **FreeCAD** on an exact B-rep kernel (`crates/cad`): analytic and traced surfaces,
+  robust booleans, general fillets and chamfers, Part Design features, exact mass
+  properties, STEP AP214/AP242 in and out, and native file dialogs on all three
+  desktops.
+- **KiCad** (`crates/eda`): an interactive walkaround router, any-angle footprints,
+  Gummel-Poon and body-effect device models, adaptive transient and digital
+  simulation, symbol and footprint editors, a 3D viewer, hierarchical sheets and
+  buses.
+- **Video editing** (`crates/video`): Clipchamp, iMovie, Kdenlive and a mobile
+  editor over one engine — timelines, trims, transitions, titles and export.
+- **Image editing** (`crates/raster`): Paint, Preview, Photos, Pixelmator Pro, GIMP,
+  Pinta and Sketchbook, with live hover readouts and brush outlines, live filter,
+  move and gradient previews, gradient, clone, heal, repair, path and curve tools,
+  and XCF, JPEG, PNG and BMP files.
+- **Spreadsheets and databases** (`crates/sheet`, `crates/sql`): merged cells,
+  borders, conditional formatting, pivot tables, draggable charts and coloured
+  formula references; XLSX, ODS and CSV; a SQLite-compatible engine with triggers,
+  `WITHOUT ROWID` tables and covering-index query plans, `sqlite3` in the shell, and
+  table and index designers in the database clients.
+- **Music** (`crates/artwork`): Apple Music, YouTube Music, Media Player and
+  Rhythmbox, with generated cover art, real volume, synced lyrics, casting, live
+  bars and sideways shelves, plus music.youtube.com and the Spotify web player.
+
+### The shell
+
+- A real POSIX `awk` and a full `sed`, `xargs`, and the text utilities — `paste`,
+  `join`, `comm`, `diff`, `tee`, `nl`, `fold`, `expand`, `shuf`, `seq`, `split`,
+  `strings`, `base64`, the checksum commands, `cmp`, `xxd`, `od`, `hexdump`, `file`
+  and the rest — each with its real flag set.
+- **One error contract**: a flag that is not implemented is refused by name with
+  status 2, in GNU's words (`invalid option -- 'Q'`), instead of being accepted and
+  ignored. Anything accepted and inert says why.
+- **Real file semantics**: the VFS keeps a mode, owner, group, link count, inode and
+  three timestamps per node. `umask` shapes creation, `chmod`/`chown`/`chgrp` bite, a
+  directory without its execute bit cannot be walked, and root is the only identity a
+  mode does not stop. `cp`, `mv`, `rm`, `rmdir`, `ln`, `install`, `touch`, `stat` and
+  `ls` parse their flag sets for real; `find` grew its expression language; `tar`,
+  `gzip`, `zip` and `rsync` move real container bytes; and `gio trash` backs the
+  desktop file managers, which gained Move to Trash and Restore.
+- Brace expansion, `[a-z]` bracket globs, and `case` patterns that match them.
+
+### Text, shells and phones
+
+- Complex scripts render: Hebrew, Arabic, Thai, Devanagari, CJK and emoji with
+  shaping and bidi, italic faces, COLRv1 colour emoji, CJK bold and regional forms,
+  terminal cell counting for wide glyphs. The CJK and emoji font pack is fetched on
+  demand in the browser, reproducibly, so the bundle carries only what it needs.
+- The phones behave like the devices they are: iOS home pages, the App Library, the
+  home indicator and its gestures (a short swipe up is home, a long one the App
+  Switcher, a tap nothing), Android's three-button navigation bar, its app drawer and
+  Recents, live scrolling with inertia, truthful screenshot sizes and form factors.
+- Finder, Files and Explorer have their standard places, backed by real state; the
+  docks, prompts and system panels match their platforms more closely.
+
+### The agent API
+
+- Processes and application enumeration are visible to an actor, and a refusal now
+  carries a documented `reason` from a closed vocabulary — including
+  `unknown_shell_target`, which names a target no control answers to.
+- `shell:open:<kind>` can be invoked directly, not only by double-clicking a desktop
+  icon.
+
+### The site
+
+`site/` is a static project page with five live machines — Ubuntu, macOS, Windows,
+iOS and Android — running the real simulator in the visitor's tab, deployed to
+GitHub Pages by `.github/workflows/pages.yml`.
+
 ## 0.1.0-alpha.2 — 2026-09-18
 
 The first release whose wheels and Wasm bundles carry the desktop shell: the

@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "computerworld"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-applications",
  "cw-cad",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "cw-applications"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-artwork",
  "cw-cad",
@@ -248,11 +248,11 @@ dependencies = [
 
 [[package]]
 name = "cw-artwork"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 
 [[package]]
 name = "cw-benchmarks"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "computerworld",
  "cw-render",
@@ -263,7 +263,7 @@ dependencies = [
 
 [[package]]
 name = "cw-browser"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-scene",
@@ -274,7 +274,7 @@ dependencies = [
 
 [[package]]
 name = "cw-cad"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "cw-computer"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-jsvm",
  "cw-protocol",
@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "cw-determinism"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -309,7 +309,7 @@ dependencies = [
 
 [[package]]
 name = "cw-eda"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "cw-environment"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-applications",
  "cw-browser",
@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "cw-evaluation"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "cw-host-adapters"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-network",
  "cw-protocol",
@@ -354,7 +354,7 @@ dependencies = [
 
 [[package]]
 name = "cw-jsvm"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-regex",
  "cw-script-host",
@@ -365,7 +365,7 @@ dependencies = [
 
 [[package]]
 name = "cw-kernel"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-computer",
  "cw-determinism",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "cw-network"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "proptest",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "cw-protocol"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "proptest",
  "serde",
@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "cw-python"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "computerworld",
  "pyo3",
@@ -411,7 +411,7 @@ dependencies = [
 
 [[package]]
 name = "cw-pyvm"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-regex",
  "cw-script-host",
@@ -422,7 +422,7 @@ dependencies = [
 
 [[package]]
 name = "cw-raster"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "jpeg-decoder",
  "serde",
@@ -431,11 +431,11 @@ dependencies = [
 
 [[package]]
 name = "cw-regex"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 
 [[package]]
 name = "cw-render"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-scene",
@@ -451,7 +451,7 @@ dependencies = [
 
 [[package]]
 name = "cw-scene"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "proptest",
  "rustybuzz",
@@ -465,11 +465,11 @@ dependencies = [
 
 [[package]]
 name = "cw-script-host"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 
 [[package]]
 name = "cw-sdk"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "serde",
@@ -478,7 +478,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-assistant"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -489,7 +489,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-bank"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -501,7 +501,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-calendar"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -512,7 +512,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-chat"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-common"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "serde",
@@ -533,7 +533,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-docs"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-browser",
  "cw-protocol",
@@ -545,7 +545,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-drive"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-browser",
  "cw-protocol",
@@ -557,7 +557,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-forum"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -568,7 +568,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-geo"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -580,7 +580,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-git"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -593,7 +593,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-issues"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -605,7 +605,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-mail"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -616,7 +616,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-media"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-artwork",
  "cw-protocol",
@@ -628,7 +628,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-press"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -639,7 +639,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-search"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -651,7 +651,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-shop"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -663,7 +663,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-social"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -674,7 +674,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-speaker"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-static-site"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -697,7 +697,7 @@ dependencies = [
 
 [[package]]
 name = "cw-service-wiki"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -708,7 +708,7 @@ dependencies = [
 
 [[package]]
 name = "cw-services"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-protocol",
  "cw-sdk",
@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "cw-sheet"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-determinism",
  "serde",
@@ -745,7 +745,7 @@ dependencies = [
 
 [[package]]
 name = "cw-sql"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "cw-determinism",
  "serde",
@@ -754,7 +754,7 @@ dependencies = [
 
 [[package]]
 name = "cw-trajectory"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -763,11 +763,11 @@ dependencies = [
 
 [[package]]
 name = "cw-tz"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 
 [[package]]
 name = "cw-video"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "crc32fast",
  "cw-raster",
@@ -779,7 +779,7 @@ dependencies = [
 
 [[package]]
 name = "cw-wasm"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "computerworld",
  "cw-protocol",
@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "cw-zlib"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 dependencies = [
  "alloc-no-stdlib",
  "alloc-stdlib",
