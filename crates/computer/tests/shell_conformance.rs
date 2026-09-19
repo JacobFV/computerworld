@@ -85,7 +85,7 @@ fn redirection_covers_both_descriptors() {
     // 2> and 2>> capture stderr to a file.
     run(&mut c, "cat /nope 2>/tmp/e");
     run(&mut c, "cat /nope 2>>/tmp/e");
-    assert_eq!(ok(&mut c, "wc -l /tmp/e"), "2\n");
+    assert_eq!(ok(&mut c, "wc -l /tmp/e"), "2 /tmp/e\n");
     // 2>&1 folds stderr into stdout; >&2 folds the other way.
     let r = run(&mut c, "cat /nope 2>&1");
     assert!(!r.stdout.is_empty() && r.stderr.is_empty(), "{r:?}");
@@ -101,7 +101,7 @@ fn redirection_covers_both_descriptors() {
     run(&mut c, "cat /nope &> /tmp/all");
     assert!(ok(&mut c, "cat /tmp/all").contains("nope"));
     run(&mut c, "cat /nope &>> /tmp/all");
-    assert_eq!(ok(&mut c, "wc -l /tmp/all"), "2\n");
+    assert_eq!(ok(&mut c, "wc -l /tmp/all"), "2 /tmp/all\n");
     assert_eq!(ok(&mut c, "echo one 1> /tmp/one; cat /tmp/one"), "one\n");
     assert_eq!(
         ok(&mut c, "echo two 1>> /tmp/one; cat /tmp/one"),
@@ -177,7 +177,7 @@ fn ls_honours_its_flag_combinations() {
     assert!(recursive.contains("/home/user/proj:"), "{recursive}");
     assert!(recursive.contains("/home/user/proj/sub:"), "{recursive}");
     assert_eq!(run(&mut c, "ls /nope").exit_code, 1);
-    refused(&mut c, "ls -Q /home/user", "-Q");
+    refused(&mut c, "ls -Q /home/user", "invalid option -- 'Q'");
     refused(&mut c, "ls --color", "--color");
 }
 
@@ -211,7 +211,7 @@ fn stat_reports_the_vfs_and_formats_it() {
         "1789635600\n"
     );
     assert_eq!(run(&mut c, "stat /nope").exit_code, 1);
-    refused(&mut c, "stat -f /home/user", "-f");
+    refused(&mut c, "stat -f /home/user", "invalid option -- 'f'");
     refused(&mut c, "stat -c %Q /home/user", "%Q");
     refused(&mut c, "stat", "missing operand");
 }
@@ -292,9 +292,19 @@ fn sed_selects_lines_as_well_as_substituting() {
         "cp /home/user/proj/a.txt /tmp/edit; sed -i 's/alpha/ALPHA/' /tmp/edit",
     );
     assert_eq!(ok(&mut c, "sed -n 1p /tmp/edit"), "ALPHA\n");
-    refused(&mut c, "sed 'Z' /home/user/proj/a.txt", "supported scripts");
-    refused(&mut c, "sed -r 's/a/b/' /home/user/proj/a.txt", "-r");
-    refused(&mut c, "sed -e 1p -e 2p /home/user/proj/a.txt", "-e");
+    refused(
+        &mut c,
+        "sed 'Z' /home/user/proj/a.txt",
+        "unknown command `Z`",
+    );
+    assert_eq!(
+        ok(&mut c, "sed -r 's/(al)pha/\\1/' /home/user/proj/a.txt"),
+        "al\nbeta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed -n -e 1p -e 2p /home/user/proj/a.txt"),
+        "alpha\nbeta\n"
+    );
 }
 
 #[test]
@@ -321,7 +331,7 @@ fn disk_and_hardware_probes_answer() {
         !ok(&mut c, "du /home/user/proj").contains("a.txt"),
         "files need -a"
     );
-    refused(&mut c, "du -x /home/user", "-x");
+    refused(&mut c, "du -x /home/user", "invalid option -- 'x'");
     // df: fixed capacity, modelled usage, one filesystem.
     let df = ok(&mut c, "df");
     assert!(df.starts_with("Filesystem"), "{df}");
@@ -331,7 +341,7 @@ fn disk_and_hardware_probes_answer() {
     assert!(ok(&mut c, "df -h").contains("64G"));
     assert!(ok(&mut c, "df -hT").contains("ext4"));
     assert_eq!(run(&mut c, "df /nope").exit_code, 1);
-    refused(&mut c, "df -i", "-i");
+    refused(&mut c, "df -i", "invalid option -- 'i'");
     // Fixed facts are constant across calls.
     assert_eq!(ok(&mut c, "nproc"), "4\n");
     let all = ok(&mut c, "nproc --all");
@@ -342,7 +352,7 @@ fn disk_and_hardware_probes_answer() {
     assert!(ok(&mut c, "uptime").contains("load average: 0.00, 0.00, 0.00"));
     let hour = shell::execute(&mut c, "uptime -p", 3_600_000_000, &mut OfflineHost);
     assert_eq!(hour.stdout, "up 1 hour, 0 minutes\n");
-    refused(&mut c, "uptime -h", "-h");
+    refused(&mut c, "uptime -h", "invalid option -- 'h'");
 }
 
 #[test]
@@ -369,7 +379,7 @@ fn network_and_path_probes_answer() {
     );
     ok(&mut c, "export PATH=/tmp/bin:/bin:/usr/bin");
     assert_eq!(ok(&mut c, "which tool"), "/tmp/bin/tool\n");
-    refused(&mut c, "which -s grep", "-s");
+    refused(&mut c, "which -s grep", "invalid option -- 's'");
 }
 
 #[test]
@@ -391,9 +401,18 @@ fn sudo_runs_as_another_identity() {
 #[test]
 fn text_utilities_refuse_what_they_cannot_do() {
     let mut c = machine();
-    assert_eq!(ok(&mut c, "wc -l /home/user/proj/a.txt"), "3\n");
-    assert_eq!(ok(&mut c, "wc -w /home/user/proj/a.txt"), "3\n");
-    assert_eq!(ok(&mut c, "wc /home/user/proj/a.txt"), "3 3 17\n");
+    assert_eq!(
+        ok(&mut c, "wc -l /home/user/proj/a.txt"),
+        "3 /home/user/proj/a.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "wc -w /home/user/proj/a.txt"),
+        "3 /home/user/proj/a.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "wc /home/user/proj/a.txt"),
+        "3 3 17 /home/user/proj/a.txt\n"
+    );
     assert_eq!(ok(&mut c, "head -n 1 /home/user/proj/a.txt"), "alpha\n");
     assert_eq!(ok(&mut c, "tail -n 1 /home/user/proj/a.txt"), "gamma\n");
     assert_eq!(ok(&mut c, "printf '2\\n10\\n1\\n' | sort"), "1\n10\n2\n");
@@ -403,17 +422,28 @@ fn text_utilities_refuse_what_they_cannot_do() {
         "      2 a\n      1 b\n"
     );
     assert_eq!(ok(&mut c, "printf 'a\\na\\nb\\n' | sort -u"), "a\nb\n");
-    refused(&mut c, "head -c 3 /home/user/proj/a.txt", "-c");
-    refused(&mut c, "sort -k2 /home/user/proj/a.txt", "-k");
-    refused(&mut c, "wc -L /home/user/proj/a.txt", "-L");
-    refused(&mut c, "uniq -i", "-i");
+    assert_eq!(ok(&mut c, "head -c 3 /home/user/proj/a.txt"), "alp");
+    assert_eq!(ok(&mut c, "printf 'b 1\\na 2\\n' | sort -k2"), "b 1\na 2\n");
+    assert_eq!(
+        ok(&mut c, "wc -L /home/user/proj/a.txt"),
+        "5 /home/user/proj/a.txt\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'A\\na\\n' | uniq -i"), "A\n");
     // File commands parse their flags rather than skipping anything dash-shaped.
     assert_eq!(run(&mut c, "mkdir /home/user/proj").exit_code, 1);
     assert_eq!(run(&mut c, "mkdir /tmp/a/b/c").exit_code, 1);
     assert_eq!(ok(&mut c, "mkdir -p /tmp/a/b/c; ls /tmp/a/b"), "c\n");
-    refused(&mut c, "mkdir -m 755 /tmp/x", "-m");
-    refused(&mut c, "rm -i /home/user/proj/a.txt", "-i");
-    refused(&mut c, "cp -a /home/user/proj /tmp/copy", "-a");
+    refused(&mut c, "mkdir -m 755 /tmp/x", "invalid option -- 'm'");
+    refused(
+        &mut c,
+        "rm -i /home/user/proj/a.txt",
+        "invalid option -- 'i'",
+    );
+    refused(
+        &mut c,
+        "cp -a /home/user/proj /tmp/copy",
+        "invalid option -- 'a'",
+    );
     refused(&mut c, "touch -t 1 /tmp/x", "-t");
     refused(&mut c, "touch --time=access /tmp/x", "--time");
     assert_eq!(run(&mut c, "cp /home/user/proj /tmp/copy").exit_code, 1);
@@ -450,6 +480,37 @@ fn every_documented_command_resolves() {
         "tail",
         "cut",
         "tr",
+        "awk",
+        "xargs",
+        "diff",
+        "paste",
+        "join",
+        "comm",
+        "tee",
+        "nl",
+        "rev",
+        "fold",
+        "expand",
+        "unexpand",
+        "shuf",
+        "seq",
+        "yes",
+        "basename",
+        "dirname",
+        "realpath",
+        "readlink",
+        "split",
+        "strings",
+        "base64",
+        "md5sum",
+        "sha1sum",
+        "sha256sum",
+        "cmp",
+        "xxd",
+        "od",
+        "hexdump",
+        "file",
+        "printf",
         "test",
         "ps",
         "break",
@@ -688,7 +749,7 @@ fn sed_addresses_and_edit_commands() {
     assert_eq!((r.exit_code, r.stdout.as_str()), (5, "alpha\nbeta\n"));
     refused(&mut c, &format!("sed 'y/ab/x/' {file}"), "equal length");
     refused(&mut c, &format!("sed '/unclosed' {file}"), "unterminated");
-    refused(&mut c, &format!("sed '0p' {file}"), "start at 1");
+    refused(&mut c, &format!("sed '0p' {file}"), "line address 0");
 }
 
 #[test]
@@ -819,7 +880,7 @@ fn ps_prints_columns_by_default() {
     assert!(json.starts_with('['), "{json}");
     assert!(json.contains("\"pid\""), "{json}");
     refused(&mut c, "ps aux", "aux");
-    refused(&mut c, "ps -o pid", "-o");
+    refused(&mut c, "ps -o pid", "invalid option -- 'o'");
     refused(&mut c, "ps -p x", "-p");
 }
 
@@ -859,8 +920,8 @@ fn read_walks_a_shared_input_stream() {
     // End of input is status 1, which is what stops the loop.
     assert_eq!(run(&mut c, "read x < /dev/null").exit_code, 1);
     assert_eq!(run(&mut c, "echo one | read x; echo $x").stdout, "one\n");
-    refused(&mut c, "read -p prompt x", "-p");
-    refused(&mut c, "read -t 5 x", "-t");
+    refused(&mut c, "read -p prompt x", "invalid option -- 'p'");
+    refused(&mut c, "read -t 5 x", "invalid option -- 't'");
     refused(&mut c, "read 1bad < /tmp/rows", "not a valid name");
 }
 
@@ -1517,4 +1578,1240 @@ fn git_diff_separates_the_index_from_the_worktree() {
         unstaged.contains("-staged") && unstaged.contains("+working"),
         "{unstaged:?}"
     );
+}
+
+// ---------------------------------------------------------------- awk
+
+/// A scratch machine with the files the awk and text-utility rows use.
+fn textbox() -> Computer {
+    let mut c = machine();
+    for setup in [
+        "printf 'alpha 1\\nbeta 2\\ngamma 3\\n' > /tmp/rows",
+        "printf 'a,b,c\\n1,2,3\\n' > /tmp/csv",
+        "printf 'a\\nb\\nc\\n' > /tmp/abc",
+        "printf 'a\\nx\\nc\\n' > /tmp/axc",
+    ] {
+        let r = run(&mut c, setup);
+        assert_eq!(r.exit_code, 0, "{setup}: {}", r.stderr);
+    }
+    c
+}
+
+#[test]
+fn awk_runs_patterns_expressions_and_ranges() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(&mut c, "awk '{print $1}' /tmp/rows"),
+        "alpha\nbeta\ngamma\n"
+    );
+    assert_eq!(ok(&mut c, "awk '/beta/' /tmp/rows"), "beta 2\n");
+    assert_eq!(
+        ok(&mut c, "awk '$2 > 1 {print $1}' /tmp/rows"),
+        "beta\ngamma\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk '/alpha/,/beta/{print NR}' /tmp/rows"),
+        "1\n2\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{print \"start\"} {n++} END{print n}' /tmp/rows"
+        ),
+        "start\n3\n"
+    );
+    // A rule with no action prints the record; BEGIN alone never reads input.
+    assert_eq!(ok(&mut c, "awk 'BEGIN{print 1}' /tmp/rows"), "1\n");
+    assert_eq!(ok(&mut c, "awk 'NR==2' /tmp/rows"), "beta 2\n");
+}
+
+#[test]
+fn awk_fields_rebuild_the_record() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(&mut c, "awk '{print NF, $NF}' /tmp/rows"),
+        "2 1\n2 2\n2 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk '{$1=\"X\"; print}' /tmp/rows"),
+        "X 1\nX 2\nX 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{OFS=\"-\"} {$1=$1; print}' /tmp/rows"),
+        "alpha-1\nbeta-2\ngamma-3\n"
+    );
+    // Assigning past NF pads with empty fields; assigning NF truncates.
+    assert_eq!(
+        ok(&mut c, "awk 'NR==1{$4=\"z\"; print NF; print}' /tmp/rows"),
+        "4\nalpha 1  z\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'NR==1{NF=1; print $0}' /tmp/rows"),
+        "alpha\n"
+    );
+    assert_eq!(ok(&mut c, "awk -F, '{print $2}' /tmp/csv"), "b\n2\n");
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{FS=\",\"} NR==2{print $3}' /tmp/csv"),
+        "3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk '{print FILENAME, FNR}' /tmp/csv"),
+        "/tmp/csv 1\n/tmp/csv 2\n"
+    );
+}
+
+#[test]
+fn awk_has_control_flow_arrays_and_functions() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{for(i=1;i<=3;i++){if(i==2) continue; print i}}'"
+        ),
+        "1\n3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{i=0; while(i<2){print i; i++}}'"),
+        "0\n1\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{i=0; do{print i; i++}while(i<2)}'"),
+        "0\n1\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{for(i=0;;i++){if(i>1) break}; print i}'"),
+        "2\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{a[\"x\"]=1; a[\"y\"]=2; for(k in a) print k, a[k]}'"
+        ),
+        "x 1\ny 2\n"
+    );
+    // Multidimensional subscripts join on SUBSEP, and `delete` really deletes.
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{a[1,2]=7; for(k in a){split(k,p,SUBSEP); print p[1],p[2],a[k]}}'"
+        ),
+        "1 2 7\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{a[1]=1;a[2]=2; delete a[1]; n=0; for(k in a)n++; print n; delete a; m=0; for(k in a)m++; print m}'"),
+        "1\n0\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{print (1 in a), (a[1]==\"\"), (1 in a)}'"
+        ),
+        "0 1 1\n"
+    );
+    // User functions, with the extra parameters acting as locals.
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'function add(a,b,   t){t=a+b; return t} BEGIN{print add(2,3); print t \"|\"}'"
+        ),
+        "5\n|\n"
+    );
+    // Arrays are passed by reference.
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'function fill(arr){arr[\"k\"]=9} BEGIN{fill(x); print x[\"k\"]}'"
+        ),
+        "9\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk '{next; print \"never\"} END{print NR}' /tmp/rows"
+        ),
+        "3\n"
+    );
+    let r = run(&mut c, "awk 'BEGIN{exit 4}'");
+    assert_eq!(r.exit_code, 4);
+}
+
+#[test]
+fn awk_string_and_math_library_is_complete() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{s=\"hello\"; print length(s), substr(s,2,3), index(s,\"ll\"), toupper(s), tolower(\"AB\")}'"),
+        "5 ell 3 HELLO ab\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{print substr(\"hello\",0,3), substr(\"hello\",4)}'"
+        ),
+        "he lo\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{n=split(\"a:b:c\",p,\":\"); print n, p[1], p[3]}'"
+        ),
+        "3 a c\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{s=\"aaa\"; print gsub(/a/,\"b\",s), s}'"),
+        "3 bbb\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{s=\"aaa\"; print sub(/a/,\"[&]\",s), s}'"
+        ),
+        "1 [a]aa\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{s=\"a\"; sub(/a/,\"\\\\&\",s); print s}'"
+        ),
+        "&\n"
+    );
+    // An empty match that touches the end of the previous one is not a match, so the
+    // run of `l`s produces one dash, not two.
+    assert_eq!(
+        ok(
+            &mut c,
+            "printf 'hello\\n' | awk '{gsub(/l*/,\"-\"); print}'"
+        ),
+        "-h-e-o-\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{if(match(\"foobar\",/o+/)) print RSTART, RLENGTH; match(\"x\",/z/); print RSTART, RLENGTH}'"),
+        "2 2\n0 -1\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print sprintf(\"%d-%s\", 7, \"x\")}'"),
+        "7-x\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{print int(3.9), int(-3.9), sqrt(16), exp(0), log(1), atan2(0,1)}'"
+        ),
+        "3 -3 4 1 0 0\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{printf \"%.3f %.3f\\n\", sin(0), cos(0)}'"
+        ),
+        "0.000 1.000\n"
+    );
+    // rand is seeded from the world, so a replay is identical and bounded.
+    let first = ok(&mut c, "awk 'BEGIN{srand(7); printf \"%.5f\\n\", rand()}'");
+    let again = ok(&mut c, "awk 'BEGIN{srand(7); printf \"%.5f\\n\", rand()}'");
+    assert_eq!(first, again, "a seeded rand must replay");
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{srand(1); x=srand(2); print x}'"),
+        "1\n"
+    );
+}
+
+#[test]
+fn awk_printf_covers_the_conversion_set() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{printf \"%5.2f|%-5s|%05d|%x|%X|%o|%c|%e\\n\", 3.14159, \"ab\", 7, 255, 255, 8, 65, 1500}'"),
+        " 3.14|ab   |00007|ff|FF|10|A|1.500000e+03\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{printf \"%s|%i|%%\\n\", \"x\", 42}'"),
+        "x|42|%\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{printf \"%*d|%.*f\\n\", 5, 42, 2, 3.14159}'"
+        ),
+        "   42|3.14\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{printf \"%g %g\\n\", 0.0001, 1000000}'"),
+        "0.0001 1e+06\n"
+    );
+    refused(&mut c, "awk 'BEGIN{printf \"%q\\n\", 1}'", "%q");
+}
+
+#[test]
+fn awk_comparisons_follow_the_posix_rules() {
+    let mut c = textbox();
+    // An uninitialised value is both 0 and "".
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print (x==0), (x==\"\"), (x<1)}'"),
+        "1 1 1\n"
+    );
+    // A field that looks numeric compares numerically; a quoted constant is a string.
+    assert_eq!(
+        ok(
+            &mut c,
+            "printf '10\\n9\\n' | awk '$1 > 9 {print \"num\", $1}'"
+        ),
+        "num 10\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print (\"10\" < \"9\"), (10 < 9)}'"),
+        "1 0\n"
+    );
+    assert_eq!(ok(&mut c, "awk 'BEGIN{x=\"3\"; print (x==3)}'"), "1\n");
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print 1 \" \" 2, 1+1 \"x\"}'"),
+        "1 2 2x\n"
+    );
+    assert_eq!(ok(&mut c, "awk 'BEGIN{print -2^2, 2^3^2}'"), "-4 512\n");
+}
+
+#[test]
+fn awk_reads_and_writes_streams() {
+    let mut c = textbox();
+    // print > file, then close, then getline the file back.
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk '{print $1 > \"/tmp/out1\"} END{close(\"/tmp/out1\"); while((getline l < \"/tmp/out1\")>0) print \"R:\" l}' /tmp/rows"
+        ),
+        "R:alpha\nR:beta\nR:gamma\n"
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/out1"), "alpha\nbeta\ngamma\n");
+    // A pipe runs when it closes; commands never run concurrently in this world.
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print \"z\" | \"sort\"; print \"a\" | \"sort\"; close(\"sort\"); print \"after\"}'"),
+        "a\nz\nafter\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{\"echo piped\" | getline x; print \"got\", x}'"
+        ),
+        "got piped\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "awk 'BEGIN{while((\"printf \\\"a\\\\nb\\\\n\\\"\" | getline l) > 0) print \"L:\" l}'"
+        ),
+        "L:a\nL:b\n"
+    );
+    // A getline that cannot open its file answers -1 rather than aborting.
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print (getline x < \"/nope\")}'"),
+        "-1\n"
+    );
+    // Plain getline advances the main input.
+    assert_eq!(
+        ok(&mut c, "awk 'NR==1{getline; print \"then\", $0}' /tmp/rows"),
+        "then beta 2\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print system(\"echo ran\")}'"),
+        "ran\n0\n"
+    );
+    assert_eq!(ok(&mut c, "awk 'BEGIN{print \"x\" >> \"/tmp/app\"; close(\"/tmp/app\")} END{}' /dev/null; cat /tmp/app"), "x\n");
+}
+
+#[test]
+fn awk_variables_and_separators_are_settable() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "awk -v n=5 'BEGIN{print n*2}'"), "10\n");
+    assert_eq!(
+        ok(&mut c, "awk -v s='a\\tb' 'BEGIN{print length(s)}'"),
+        "3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{ORS=\"|\"} {print $1}' /tmp/rows"),
+        "alpha|beta|gamma|"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "printf 'a\\n\\nb\\nc\\n' | awk 'BEGIN{RS=\"\"} {print NR \":\" NF}'"
+        ),
+        "1:1\n2:2\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "printf 'a;b;c' | awk 'BEGIN{RS=\";\"} {print NR, $0}'"
+        ),
+        "1 a\n2 b\n3 c\n"
+    );
+    assert_eq!(
+        ok(&mut c, "awk 'BEGIN{print ENVIRON[\"HOME\"]}'"),
+        "/home/user\n"
+    );
+    // Operand assignments happen when the operand is reached.
+    assert_eq!(
+        ok(&mut c, "awk '{print v, $1}' v=one /tmp/rows"),
+        "one alpha\none beta\none gamma\n"
+    );
+    // -f loads a program file, and several -f files concatenate.
+    ok(
+        &mut c,
+        "printf 'BEGIN{x=1}\\n' > /tmp/p1.awk; printf 'BEGIN{print x+1}\\n' > /tmp/p2.awk",
+    );
+    assert_eq!(ok(&mut c, "awk -f /tmp/p1.awk -f /tmp/p2.awk"), "2\n");
+}
+
+#[test]
+fn awk_refuses_what_it_cannot_do() {
+    let mut c = textbox();
+    refused(&mut c, "awk -W foo 'BEGIN{}'", "invalid option -- 'W'");
+    refused(
+        &mut c,
+        "awk --bogus 'BEGIN{}'",
+        "unrecognized option '--bogus'",
+    );
+    refused(&mut c, "awk", "no program text");
+    refused(&mut c, "awk 'BEGIN{'", "missing `}`");
+    refused(&mut c, "awk 'BEGIN{print 1/0}'", "division by zero");
+    refused(&mut c, "awk 'BEGIN{nosuch()}'", "undefined function");
+    refused(&mut c, "awk -v bad 'BEGIN{}'", "NAME=VALUE");
+    let r = run(&mut c, "awk '{print $1}' /nope");
+    assert_eq!(
+        (r.exit_code, r.stderr.trim()),
+        (1, "awk: /nope: No such file or directory")
+    );
+}
+
+// ---------------------------------------------------------------- sed
+
+#[test]
+fn sed_addresses_every_way_it_can() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "sed -n '2p' /tmp/rows"), "beta 2\n");
+    assert_eq!(ok(&mut c, "sed -n '$p' /tmp/rows"), "gamma 3\n");
+    assert_eq!(ok(&mut c, "sed -n '/beta/p' /tmp/rows"), "beta 2\n");
+    assert_eq!(ok(&mut c, "sed -n '1,2p' /tmp/rows"), "alpha 1\nbeta 2\n");
+    assert_eq!(ok(&mut c, "sed -n '1~2p' /tmp/rows"), "alpha 1\ngamma 3\n");
+    assert_eq!(ok(&mut c, "sed -n '1,+1p' /tmp/rows"), "alpha 1\nbeta 2\n");
+    assert_eq!(ok(&mut c, "sed -n '2!p' /tmp/rows"), "alpha 1\ngamma 3\n");
+    assert_eq!(
+        ok(&mut c, "sed -n '0,/beta/p' /tmp/rows"),
+        "alpha 1\nbeta 2\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed -n '/alpha/,/beta/p' /tmp/rows"),
+        "alpha 1\nbeta 2\n"
+    );
+    assert_eq!(ok(&mut c, "sed -n '\\%beta%p' /tmp/rows"), "beta 2\n");
+    assert_eq!(ok(&mut c, "sed -n '/BETA/Ip' /tmp/rows"), "beta 2\n");
+    refused(&mut c, "sed '0p' /tmp/rows", "line address 0");
+    refused(&mut c, "sed '1,' /tmp/rows", "second address");
+}
+
+#[test]
+fn sed_substitutes_with_every_flag() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(&mut c, "sed 's/a/A/' /tmp/rows"),
+        "Alpha 1\nbetA 2\ngAmma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 's/a/A/g' /tmp/rows"),
+        "AlphA 1\nbetA 2\ngAmmA 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 's/a/A/2' /tmp/rows"),
+        "alphA 1\nbeta 2\ngammA 3\n"
+    );
+    assert_eq!(ok(&mut c, "sed -n 's/alpha/X/p' /tmp/rows"), "X 1\n");
+    assert_eq!(
+        ok(&mut c, "sed 's/ALPHA/X/I' /tmp/rows"),
+        "X 1\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 's/\\(al\\)pha/[\\1]/' /tmp/rows"),
+        "[al] 1\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed -E 's/(al)pha/[\\1]/' /tmp/rows"),
+        "[al] 1\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 's/alpha/<&>/' /tmp/rows"),
+        "<alpha> 1\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 's/alpha/\\U&/' /tmp/rows"),
+        "ALPHA 1\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 's|a|A|' /tmp/rows"),
+        "Alpha 1\nbetA 2\ngAmma 3\n"
+    );
+    ok(&mut c, "sed -n 's/a/A/gw /tmp/sw' /tmp/rows");
+    assert_eq!(ok(&mut c, "cat /tmp/sw"), "AlphA 1\nbetA 2\ngAmmA 3\n");
+    // BRE and ERE really differ: `a\+` repeats, `a+` is a literal plus.
+    assert_eq!(ok(&mut c, "printf 'aab\\n' | sed 's/a\\+/X/'"), "Xb\n");
+    assert_eq!(ok(&mut c, "printf 'a+b\\n' | sed 's/a+/X/'"), "Xb\n");
+    assert_eq!(ok(&mut c, "printf 'aab\\n' | sed -E 's/a+/X/'"), "Xb\n");
+    // The same empty-match rule as awk's: `s/a*/X/g` over `aaa` is one `X`.
+    assert_eq!(ok(&mut c, "printf 'aaa\\n' | sed 's/a*/X/g'"), "X\n");
+    assert_eq!(ok(&mut c, "printf 'abc\\n' | sed 's/x*/-/g'"), "-a-b-c-\n");
+    refused(&mut c, "sed 's/a/b/z' /tmp/rows", "unexpected `z`");
+    refused(&mut c, "sed 's/a/b/0' /tmp/rows", "may not be zero");
+    refused(&mut c, "sed 's/\\(a\\)\\1/X/' /tmp/rows", "backreference");
+}
+
+#[test]
+fn sed_edits_lines_with_the_whole_command_set() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "sed '2d' /tmp/rows"), "alpha 1\ngamma 3\n");
+    assert_eq!(
+        ok(&mut c, "sed '1a added' /tmp/rows"),
+        "alpha 1\nadded\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed '1i added' /tmp/rows"),
+        "added\nalpha 1\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed '2c changed' /tmp/rows"),
+        "alpha 1\nchanged\ngamma 3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed 'y/abc/ABC/' /tmp/rows"),
+        "AlphA 1\nBetA 2\ngAmmA 3\n"
+    );
+    assert_eq!(ok(&mut c, "sed -n '$=' /tmp/rows"), "3\n");
+    assert_eq!(ok(&mut c, "sed -n '1l' /tmp/rows"), "alpha 1$\n");
+    assert_eq!(
+        ok(&mut c, "sed -n '1{h}; ${G;p}' /tmp/rows"),
+        "gamma 3\nalpha 1\n"
+    );
+    assert_eq!(
+        ok(&mut c, "sed -n '1h; 2H; ${x;p}' /tmp/rows"),
+        "alpha 1\nbeta 2\n"
+    );
+    assert_eq!(ok(&mut c, "sed -n 'N;P;D' /tmp/rows"), "alpha 1\nbeta 2\n");
+    assert_eq!(
+        ok(&mut c, "sed ':a;N;$!ba;s/\\n/,/g' /tmp/rows"),
+        "alpha 1,beta 2,gamma 3\n"
+    );
+    assert_eq!(ok(&mut c, "sed -n '1{s/a/A/;p}' /tmp/rows"), "Alpha 1\n");
+    assert_eq!(
+        ok(&mut c, "sed '1{s/zz/Z/;t end};s/^/> /;:end' /tmp/rows"),
+        "> alpha 1\n> beta 2\n> gamma 3\n"
+    );
+    assert_eq!(ok(&mut c, "sed -n '1r /tmp/abc' /tmp/rows"), "a\nb\nc\n");
+    assert_eq!(
+        ok(&mut c, "sed -n '1w /tmp/first' /tmp/rows; cat /tmp/first"),
+        "alpha 1\n"
+    );
+    assert_eq!(ok(&mut c, "sed '2Q' /tmp/rows"), "alpha 1\n");
+    assert_eq!(ok(&mut c, "sed '1z' /tmp/rows"), "\nbeta 2\ngamma 3\n");
+    let r = run(&mut c, "sed '2q5' /tmp/rows");
+    assert_eq!((r.exit_code, r.stdout.as_str()), (5, "alpha 1\nbeta 2\n"));
+    refused(&mut c, "sed 'Z' /tmp/rows", "unknown command `Z`");
+    refused(&mut c, "sed '{p' /tmp/rows", "unmatched `{`");
+    refused(&mut c, "sed 'b nowhere' /tmp/rows", "label");
+}
+
+#[test]
+fn sed_scripts_come_from_every_source() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(&mut c, "sed -n -e 1p -e 3p /tmp/rows"),
+        "alpha 1\ngamma 3\n"
+    );
+    ok(&mut c, "printf '1d\\n$d\\n' > /tmp/prog.sed");
+    assert_eq!(ok(&mut c, "sed -f /tmp/prog.sed /tmp/rows"), "beta 2\n");
+    ok(&mut c, "cp /tmp/rows /tmp/inplace");
+    ok(&mut c, "sed -i 's/alpha/A/' /tmp/inplace");
+    assert_eq!(ok(&mut c, "head -n 1 /tmp/inplace"), "A 1\n");
+    ok(&mut c, "cp /tmp/rows /tmp/inplace2");
+    ok(&mut c, "sed -i.bak 's/alpha/A/' /tmp/inplace2");
+    assert_eq!(ok(&mut c, "head -n 1 /tmp/inplace2.bak"), "alpha 1\n");
+    // Several files are one stream unless -s says otherwise.
+    assert_eq!(ok(&mut c, "sed -n '$p' /tmp/abc /tmp/axc"), "c\n");
+    assert_eq!(ok(&mut c, "sed -sn '$p' /tmp/abc /tmp/axc"), "c\nc\n");
+    refused(&mut c, "sed -i 's/a/b/'", "in place");
+    refused(&mut c, "sed", "no script specified");
+    let r = run(&mut c, "sed 'p' /nope");
+    assert_eq!(
+        (r.exit_code, r.stderr.trim()),
+        (1, "sed: /nope: No such file or directory")
+    );
+}
+
+// ---------------------------------------------------------------- xargs
+
+#[test]
+fn xargs_builds_command_lines_deterministically() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "printf 'a\\nb\\n' | xargs echo"), "a b\n");
+    assert_eq!(ok(&mut c, "printf 'a\\nb\\n' | xargs -n1 echo"), "a\nb\n");
+    assert_eq!(
+        ok(&mut c, "printf 'a\\nb\\n' | xargs -I{} echo [{}]"),
+        "[a]\n[b]\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'a\\0b\\0' | xargs -0 echo"), "a b\n");
+    assert_eq!(ok(&mut c, "printf 'a:b:' | xargs -d: echo"), "a b\n");
+    assert_eq!(ok(&mut c, "printf '' | xargs -r echo"), "");
+    assert_eq!(ok(&mut c, "printf '' | xargs echo"), "\n");
+    // Quoting groups words, so a filename with a space survives.
+    assert_eq!(ok(&mut c, "printf \"'a b'\\n\" | xargs -n1 echo"), "a b\n");
+    // -P is accepted and runs sequentially: the order is part of the contract.
+    assert_eq!(
+        ok(&mut c, "printf '1\\n2\\n3\\n' | xargs -P4 -n1 echo"),
+        "1\n2\n3\n"
+    );
+    // The status vocabulary: 123 when a command failed, 127 when it was missing.
+    let r = run(&mut c, "printf 'x\\n' | xargs false");
+    assert_eq!(r.exit_code, 123);
+    let r = run(&mut c, "printf 'x\\n' | xargs nosuchcommand");
+    assert_eq!(r.exit_code, 127);
+    let r = run(&mut c, "printf 'a\\n' | xargs -t echo");
+    assert_eq!((r.stdout.as_str(), r.stderr.trim()), ("a\n", "echo a"));
+    refused(&mut c, "xargs -Z echo", "invalid option -- 'Z'");
+}
+
+// ---------------------------------------------------------------- text utilities
+
+#[test]
+fn cut_slices_bytes_characters_and_fields() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "cut -d, -f2 /tmp/csv"), "b\n2\n");
+    assert_eq!(ok(&mut c, "cut -d, -f1,3 /tmp/csv"), "a,c\n1,3\n");
+    assert_eq!(ok(&mut c, "cut -d, -f2- /tmp/csv"), "b,c\n2,3\n");
+    assert_eq!(ok(&mut c, "cut -c1-3 /tmp/rows"), "alp\nbet\ngam\n");
+    assert_eq!(ok(&mut c, "cut -b1 /tmp/rows"), "a\nb\ng\n");
+    assert_eq!(
+        ok(&mut c, "cut -d, -f1 --complement /tmp/csv"),
+        "b,c\n2,3\n"
+    );
+    assert_eq!(
+        ok(&mut c, "cut -d, -f1,3 --output-delimiter=: /tmp/csv"),
+        "a:c\n1:3\n"
+    );
+    // A line with no delimiter passes through unless -s drops it.
+    assert_eq!(ok(&mut c, "printf 'nodelim\\n' | cut -d, -f1"), "nodelim\n");
+    assert_eq!(ok(&mut c, "printf 'nodelim\\n' | cut -s -d, -f1"), "");
+    refused(&mut c, "cut /tmp/rows", "exactly one of -b, -c or -f");
+    refused(&mut c, "cut -f0 /tmp/csv", "numbered from 1");
+    refused(&mut c, "cut -c3-1 /tmp/rows", "decreasing range");
+}
+
+#[test]
+fn sort_orders_by_key_and_by_type() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "printf '2\\n10\\n1\\n' | sort"), "1\n10\n2\n");
+    assert_eq!(ok(&mut c, "printf '2\\n10\\n1\\n' | sort -n"), "1\n2\n10\n");
+    assert_eq!(
+        ok(&mut c, "printf '2\\n10\\n1\\n' | sort -nr"),
+        "10\n2\n1\n"
+    );
+    assert_eq!(
+        ok(&mut c, "printf 'b 2\\na 10\\n' | sort -k2,2n"),
+        "b 2\na 10\n"
+    );
+    assert_eq!(
+        ok(&mut c, "printf 'b:2\\na:10\\n' | sort -t: -k2,2n"),
+        "b:2\na:10\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'B\\na\\n' | sort -f"), "a\nB\n");
+    assert_eq!(
+        ok(&mut c, "printf '1.10\\n1.9\\n' | sort -V"),
+        "1.9\n1.10\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'Feb\\nJan\\n' | sort -M"), "Jan\nFeb\n");
+    assert_eq!(ok(&mut c, "printf '2K\\n1M\\n' | sort -h"), "2K\n1M\n");
+    assert_eq!(ok(&mut c, "printf '1e3\\n5\\n' | sort -g"), "5\n1e3\n");
+    assert_eq!(ok(&mut c, "printf 'a\\na\\nb\\n' | sort -u"), "a\nb\n");
+    assert_eq!(ok(&mut c, "printf '  b\\na\\n' | sort -b"), "a\n  b\n");
+    ok(&mut c, "printf 'b\\na\\n' | sort -o /tmp/sorted");
+    assert_eq!(ok(&mut c, "cat /tmp/sorted"), "a\nb\n");
+    assert_eq!(ok(&mut c, "printf 'a\\nb\\n' | sort -c"), "");
+    let r = run(&mut c, "printf 'b\\na\\n' | sort -c");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stderr.contains("disorder"), "{r:?}");
+    refused(&mut c, "sort -k /tmp/rows", "invalid key specification");
+    refused(&mut c, "sort -kZ /tmp/rows", "invalid key specification");
+}
+
+#[test]
+fn uniq_collapses_runs_by_every_rule() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "printf 'a\\na\\nb\\n' | uniq"), "a\nb\n");
+    assert_eq!(
+        ok(&mut c, "printf 'a\\na\\nb\\n' | uniq -c"),
+        "      2 a\n      1 b\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'a\\na\\nb\\n' | uniq -d"), "a\n");
+    assert_eq!(ok(&mut c, "printf 'a\\na\\nb\\n' | uniq -D"), "a\na\n");
+    assert_eq!(ok(&mut c, "printf 'a\\na\\nb\\n' | uniq -u"), "b\n");
+    assert_eq!(ok(&mut c, "printf 'A\\na\\n' | uniq -i"), "A\n");
+    assert_eq!(ok(&mut c, "printf 'x a\\ny a\\n' | uniq -f1"), "x a\n");
+    assert_eq!(ok(&mut c, "printf 'xa\\nya\\n' | uniq -s1"), "xa\n");
+    assert_eq!(ok(&mut c, "printf 'abc\\nabd\\n' | uniq -w2"), "abc\n");
+}
+
+#[test]
+fn head_tail_and_wc_count_what_they_claim() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "head -n 1 /tmp/rows"), "alpha 1\n");
+    assert_eq!(ok(&mut c, "head -1 /tmp/rows"), "alpha 1\n");
+    assert_eq!(ok(&mut c, "head -c 5 /tmp/rows"), "alpha");
+    assert_eq!(ok(&mut c, "head -n -1 /tmp/rows"), "alpha 1\nbeta 2\n");
+    assert_eq!(ok(&mut c, "tail -n 1 /tmp/rows"), "gamma 3\n");
+    assert_eq!(ok(&mut c, "tail -n +2 /tmp/rows"), "beta 2\ngamma 3\n");
+    assert_eq!(ok(&mut c, "tail -c 8 /tmp/rows"), "gamma 3\n");
+    assert_eq!(
+        ok(&mut c, "head -n 1 -v /tmp/rows"),
+        "==> /tmp/rows <==\nalpha 1\n"
+    );
+    assert_eq!(ok(&mut c, "head -q -n 1 /tmp/abc /tmp/axc"), "a\na\n");
+    assert_eq!(ok(&mut c, "wc -l /tmp/rows"), "3 /tmp/rows\n");
+    assert_eq!(ok(&mut c, "wc -w /tmp/rows"), "6 /tmp/rows\n");
+    assert_eq!(ok(&mut c, "wc -c /tmp/rows"), "23 /tmp/rows\n");
+    assert_eq!(ok(&mut c, "wc -m /tmp/rows"), "23 /tmp/rows\n");
+    assert_eq!(ok(&mut c, "wc -L /tmp/rows"), "7 /tmp/rows\n");
+    assert_eq!(ok(&mut c, "cat /tmp/rows | wc -l"), "3\n");
+    assert_eq!(
+        ok(&mut c, "wc -l /tmp/abc /tmp/axc"),
+        "3 /tmp/abc\n3 /tmp/axc\n6 total\n"
+    );
+    refused(&mut c, "tail -f /tmp/rows", "follow");
+}
+
+#[test]
+fn tr_translates_deletes_and_squeezes() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "printf 'hello' | tr 'a-z' 'A-Z'"), "HELLO");
+    assert_eq!(
+        ok(&mut c, "printf 'hello' | tr '[:lower:]' '[:upper:]'"),
+        "HELLO"
+    );
+    assert_eq!(ok(&mut c, "printf 'hello' | tr -d 'l'"), "heo");
+    assert_eq!(ok(&mut c, "printf 'aabbcc' | tr -s 'ab'"), "abcc");
+    assert_eq!(ok(&mut c, "printf 'a1b2' | tr -d -c '0-9'"), "12");
+    assert_eq!(ok(&mut c, "printf 'abc' | tr 'abc' 'x'"), "xxx");
+    assert_eq!(ok(&mut c, "printf 'a b' | tr ' ' '\\n'"), "a\nb");
+    refused(&mut c, "tr", "missing operand");
+    refused(&mut c, "tr a b c", "extra operand");
+    refused(&mut c, "printf x | tr '[:bogus:]' y", "character class");
+}
+
+#[test]
+fn column_tools_paste_join_and_compare() {
+    let mut c = textbox();
+    ok(
+        &mut c,
+        "printf 'a\\nb\\n' > /tmp/c1; printf '1\\n2\\n' > /tmp/c2",
+    );
+    assert_eq!(ok(&mut c, "paste /tmp/c1 /tmp/c2"), "a\t1\nb\t2\n");
+    assert_eq!(ok(&mut c, "paste -d, /tmp/c1 /tmp/c2"), "a,1\nb,2\n");
+    assert_eq!(ok(&mut c, "paste -s -d, /tmp/c1"), "a,b\n");
+    ok(
+        &mut c,
+        "printf '1 a\\n2 b\\n' > /tmp/j1; printf '1 x\\n3 y\\n' > /tmp/j2",
+    );
+    assert_eq!(ok(&mut c, "join /tmp/j1 /tmp/j2"), "1 a x\n");
+    assert_eq!(ok(&mut c, "join -a1 /tmp/j1 /tmp/j2"), "1 a x\n2 b\n");
+    assert_eq!(ok(&mut c, "join -v2 /tmp/j1 /tmp/j2"), "3 y\n");
+    assert_eq!(ok(&mut c, "join -o 1.2,2.2 /tmp/j1 /tmp/j2"), "a x\n");
+    ok(&mut c, "printf 'a\\nc\\nd\\n' > /tmp/acd");
+    assert_eq!(ok(&mut c, "comm -12 /tmp/abc /tmp/acd"), "a\nc\n");
+    assert_eq!(ok(&mut c, "comm -23 /tmp/abc /tmp/acd"), "b\n");
+    assert_eq!(
+        ok(&mut c, "comm /tmp/abc /tmp/acd"),
+        "\t\ta\nb\n\t\tc\n\td\n"
+    );
+    refused(&mut c, "join /tmp/j1", "two file operands");
+    refused(&mut c, "comm /tmp/abc", "two file operands");
+}
+
+#[test]
+fn diff_reports_differences_and_classifies_them() {
+    let mut c = textbox();
+    assert_eq!(run(&mut c, "diff /tmp/abc /tmp/abc").exit_code, 0);
+    let r = run(&mut c, "diff /tmp/abc /tmp/axc");
+    assert_eq!(
+        (r.exit_code, r.stdout.as_str()),
+        (1, "2c2\n< b\n---\n> x\n")
+    );
+    let r = run(&mut c, "diff -u /tmp/abc /tmp/axc");
+    assert_eq!(
+        r.stdout,
+        "--- /tmp/abc\n+++ /tmp/axc\n@@ -1,3 +1,3 @@\n a\n-b\n+x\n c\n"
+    );
+    // A one-line span prints as `N` and an empty one as `N,0`, exactly as GNU does.
+    ok(
+        &mut c,
+        "printf 'a\\nb\\n' > /tmp/two; printf 'a\\n' > /tmp/one",
+    );
+    let r = run(&mut c, "diff -u /tmp/two /tmp/one");
+    assert_eq!(
+        r.stdout,
+        "--- /tmp/two\n+++ /tmp/one\n@@ -1,2 +1 @@\n a\n-b\n"
+    );
+    let r = run(&mut c, "diff -q /tmp/abc /tmp/axc");
+    assert_eq!(r.stdout, "Files /tmp/abc and /tmp/axc differ\n");
+    assert_eq!(
+        ok(&mut c, "diff -s /tmp/abc /tmp/abc"),
+        "Files /tmp/abc and /tmp/abc are identical\n"
+    );
+    assert_eq!(
+        run(
+            &mut c,
+            "printf 'A\\n' > /tmp/u1; printf 'a\\n' > /tmp/u2; diff -i /tmp/u1 /tmp/u2"
+        )
+        .exit_code,
+        0
+    );
+    assert_eq!(
+        run(
+            &mut c,
+            "printf 'a b\\n' > /tmp/w1; printf 'a  b\\n' > /tmp/w2; diff -b /tmp/w1 /tmp/w2"
+        )
+        .exit_code,
+        0
+    );
+    // A missing operand is an error, which diff spends 2 on.
+    let r = run(&mut c, "diff /tmp/abc /nope");
+    assert_eq!(r.exit_code, 2, "{r:?}");
+    // Directories compare entry by entry with -r.
+    ok(
+        &mut c,
+        "mkdir -p /tmp/d1 /tmp/d2; echo one > /tmp/d1/f; echo two > /tmp/d2/f",
+    );
+    let r = run(&mut c, "diff -r -q /tmp/d1 /tmp/d2");
+    assert_eq!(
+        (r.exit_code, r.stdout.as_str()),
+        (1, "Files /tmp/d1/f and /tmp/d2/f differ\n")
+    );
+}
+
+#[test]
+fn small_filters_number_wrap_and_reverse() {
+    let mut c = textbox();
+    assert_eq!(
+        ok(&mut c, "nl /tmp/abc"),
+        "     1\ta\n     2\tb\n     3\tc\n"
+    );
+    assert_eq!(ok(&mut c, "nl -w2 -s: /tmp/abc"), " 1:a\n 2:b\n 3:c\n");
+    assert_eq!(
+        ok(&mut c, "nl -ba -nrz -w3 /tmp/abc"),
+        "001\ta\n002\tb\n003\tc\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'ab\\n' | rev"), "ba\n");
+    assert_eq!(ok(&mut c, "printf 'abcdef\\n' | fold -w2"), "ab\ncd\nef\n");
+    assert_eq!(
+        ok(&mut c, "printf 'aa bb cc\\n' | fold -s -w6"),
+        "aa bb \ncc\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'a\\tb\\n' | expand -t4"), "a   b\n");
+    assert_eq!(ok(&mut c, "printf '    a\\n' | unexpand -t4"), "\ta\n");
+    assert_eq!(ok(&mut c, "echo hi | tee /tmp/tee1"), "hi\n");
+    assert_eq!(ok(&mut c, "cat /tmp/tee1"), "hi\n");
+    assert_eq!(
+        ok(&mut c, "echo more | tee -a /tmp/tee1; cat /tmp/tee1"),
+        "more\nhi\nmore\n"
+    );
+    assert_eq!(ok(&mut c, "seq 3"), "1\n2\n3\n");
+    assert_eq!(ok(&mut c, "seq 2 4"), "2\n3\n4\n");
+    assert_eq!(ok(&mut c, "seq -s, 1 2 7"), "1,3,5,7\n");
+    assert_eq!(ok(&mut c, "seq -w 8 11"), "08\n09\n10\n11\n");
+    assert_eq!(ok(&mut c, "seq -f '%03d' 2"), "001\n002\n");
+    assert_eq!(ok(&mut c, "yes | head -3"), "y\ny\ny\n");
+    assert_eq!(ok(&mut c, "yes no | head -2"), "no\nno\n");
+    // shuf is seeded from the world: the same tick gives the same permutation.
+    let a = ok(&mut c, "seq 5 | shuf");
+    let b = ok(&mut c, "seq 5 | shuf");
+    assert_eq!(a, b, "shuf must replay");
+    assert_eq!(ok(&mut c, "seq 5 | shuf -n 2").lines().count(), 2);
+    refused(&mut c, "fold -w0 /tmp/abc", "invalid number of columns");
+    refused(&mut c, "nl -bz /tmp/abc", "invalid body numbering style");
+}
+
+#[test]
+fn path_tools_answer_about_names_and_links() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "basename /a/b/c.txt"), "c.txt\n");
+    assert_eq!(ok(&mut c, "basename /a/b/c.txt .txt"), "c\n");
+    assert_eq!(ok(&mut c, "basename -a /a/b /c/d"), "b\nd\n");
+    assert_eq!(ok(&mut c, "basename -s .txt /a/c.txt /a/d.txt"), "c\nd\n");
+    assert_eq!(ok(&mut c, "dirname /a/b/c.txt"), "/a/b\n");
+    assert_eq!(ok(&mut c, "dirname c.txt"), ".\n");
+    assert_eq!(ok(&mut c, "realpath /home/user/../user"), "/home/user\n");
+    assert_eq!(
+        ok(&mut c, "readlink /home/user/link"),
+        "/home/user/proj/a.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "readlink -f /home/user/link"),
+        "/home/user/proj/a.txt\n"
+    );
+    refused(&mut c, "basename", "missing operand");
+    refused(&mut c, "dirname", "missing operand");
+    let r = run(&mut c, "readlink /tmp/abc");
+    assert_eq!(r.exit_code, 1);
+}
+
+#[test]
+fn printf_formats_like_coreutils() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "printf '%s\\n' a b c"), "a\nb\nc\n");
+    assert_eq!(
+        ok(&mut c, "printf '%5.2f|%-4s|%03d\\n' 3.14159 ab 7"),
+        " 3.14|ab  |007\n"
+    );
+    assert_eq!(
+        ok(&mut c, "printf '%x %X %o %c\\n' 255 255 8 hi"),
+        "ff FF 10 h\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'a%%b\\n'"), "a%b\n");
+    assert_eq!(ok(&mut c, "printf '%b\\n' 'a\\tb'"), "a\tb\n");
+    assert_eq!(ok(&mut c, "printf 'no args\\n'"), "no args\n");
+    assert_eq!(ok(&mut c, "printf '%d\\n' 12abc"), "12\n");
+    refused(&mut c, "printf '%z\\n' 1", "%z");
+    refused(&mut c, "printf", "missing operand");
+}
+
+#[test]
+fn encodings_digests_and_dumps_are_exact() {
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "printf 'abc' | base64"), "YWJj\n");
+    assert_eq!(ok(&mut c, "printf 'YWJj' | base64 -d"), "abc");
+    assert_eq!(ok(&mut c, "printf 'abcd' | base64 -w0"), "YWJjZA==\n");
+    assert_eq!(
+        ok(&mut c, "printf 'abc' | md5sum"),
+        "900150983cd24fb0d6963f7d28e17f72  -\n"
+    );
+    assert_eq!(
+        ok(&mut c, "printf 'abc' | sha1sum"),
+        "a9993e364706816aba3e25717850c26c9cd0d89d  -\n"
+    );
+    assert_eq!(
+        ok(&mut c, "printf 'abc' | sha256sum"),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -\n"
+    );
+    ok(
+        &mut c,
+        "printf 'abc' > /tmp/h.txt; md5sum /tmp/h.txt > /tmp/h.md5",
+    );
+    assert_eq!(ok(&mut c, "md5sum -c /tmp/h.md5"), "/tmp/h.txt: OK\n");
+    ok(&mut c, "printf 'xyz' > /tmp/h.txt");
+    let r = run(&mut c, "md5sum -c /tmp/h.md5");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stdout.contains("FAILED"), "{r:?}");
+    assert_eq!(
+        ok(&mut c, "printf 'hi\\n' | xxd"),
+        "00000000: 6869 0a                                  hi.\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'hi\\n' | xxd -p"), "68690a\n");
+    assert_eq!(ok(&mut c, "printf '68690a' | xxd -r -p"), "hi\n");
+    assert_eq!(
+        ok(&mut c, "printf 'hi\\n' | od -c"),
+        "0000000   h   i  \\n\n0000003\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'hi\\n' | od -An -c"), "   h   i  \\n\n");
+    assert_eq!(
+        ok(&mut c, "printf 'hi\\n' | hexdump -C"),
+        "00000000  68 69 0a                                         |hi.|\n00000003\n"
+    );
+    assert_eq!(run(&mut c, "cmp /tmp/abc /tmp/abc").exit_code, 0);
+    let r = run(&mut c, "cmp /tmp/abc /tmp/axc");
+    assert_eq!(
+        (r.exit_code, r.stdout.as_str()),
+        (1, "/tmp/abc /tmp/axc differ: byte 3, line 2\n")
+    );
+    assert_eq!(run(&mut c, "cmp -s /tmp/abc /tmp/axc").exit_code, 1);
+    refused(&mut c, "od -t z /tmp/abc", "-t");
+    refused(&mut c, "od -A q /tmp/abc", "address radix");
+}
+
+#[test]
+fn split_strings_and_file_read_real_bytes() {
+    let mut c = textbox();
+    ok(&mut c, "split -l1 /tmp/abc /tmp/part");
+    assert_eq!(
+        ok(&mut c, "cat /tmp/partaa /tmp/partab /tmp/partac"),
+        "a\nb\nc\n"
+    );
+    ok(&mut c, "split -l2 -d /tmp/abc /tmp/num");
+    assert_eq!(ok(&mut c, "cat /tmp/num00"), "a\nb\n");
+    assert_eq!(
+        ok(&mut c, "strings /tmp/rows"),
+        "alpha 1\nbeta 2\ngamma 3\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'ab\\0cdef\\0' | strings -n 3"), "cdef\n");
+    assert_eq!(ok(&mut c, "file /tmp/rows"), "/tmp/rows: ASCII text\n");
+    assert_eq!(ok(&mut c, "file /home/user"), "/home/user: directory\n");
+    assert_eq!(
+        ok(&mut c, "printf '' > /tmp/empty; file /tmp/empty"),
+        "/tmp/empty: empty\n"
+    );
+    assert_eq!(ok(&mut c, "file -b /tmp/rows"), "ASCII text\n");
+    assert_eq!(ok(&mut c, "file -i /tmp/rows"), "/tmp/rows: text/plain\n");
+    assert_eq!(
+        ok(&mut c, "file /home/user/link"),
+        "/home/user/link: symbolic link to /home/user/proj/a.txt\n"
+    );
+    // The magic table knows the formats this world writes. Binary bytes are placed
+    // straight into the VFS: the shell's own streams are text, so a `printf` could
+    // not carry them intact.
+    let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+    png.extend_from_slice(&[0, 0, 0, 13]);
+    png.extend_from_slice(b"IHDR");
+    png.extend_from_slice(&4u32.to_be_bytes());
+    png.extend_from_slice(&3u32.to_be_bytes());
+    png.extend_from_slice(&[8, 6, 0, 0, 0]);
+    for (path, bytes) in [
+        ("/tmp/x.png", png.as_slice()),
+        ("/tmp/x.db", b"SQLite format 3\x00rest".as_slice()),
+        ("/tmp/x.zip", b"PK\x03\x04rest".as_slice()),
+        ("/tmp/x.pdf", b"%PDF-1.4\nrest".as_slice()),
+        ("/tmp/x.wav", b"RIFF\x00\x00\x00\x00WAVEfmt ".as_slice()),
+        ("/tmp/x.bin", b"\x01\x02\x03\x04\xff".as_slice()),
+        ("/tmp/x.jpg", b"\xff\xd8\xff\xe0rest".as_slice()),
+    ] {
+        c.vfs.write_as(path, bytes, "user", 0).unwrap();
+    }
+    assert_eq!(
+        ok(&mut c, "file /tmp/x.png"),
+        "/tmp/x.png: PNG image data, 4 x 3, 8-bit/color RGBA, non-interlaced\n"
+    );
+    assert_eq!(
+        ok(&mut c, "file /tmp/x.db"),
+        "/tmp/x.db: SQLite 3.x database\n"
+    );
+    assert_eq!(
+        ok(&mut c, "file /tmp/x.zip"),
+        "/tmp/x.zip: Zip archive data\n"
+    );
+    assert!(ok(&mut c, "file /tmp/x.pdf").contains("PDF document"));
+    assert!(ok(&mut c, "file /tmp/x.wav").contains("WAVE audio"));
+    assert!(ok(&mut c, "file /tmp/x.jpg").contains("JPEG image data"));
+    assert_eq!(ok(&mut c, "file /tmp/x.bin"), "/tmp/x.bin: data\n");
+    assert_eq!(ok(&mut c, "file -i /tmp/x.png"), "/tmp/x.png: image/png\n");
+}
+
+// ---------------------------------------------------------------- the error contract
+
+#[test]
+fn every_message_names_the_command_and_the_reason() {
+    let mut c = textbox();
+    // `cmd: subject: reason`, in GNU's wording, for the errors people port against.
+    for (line, want) in [
+        (
+            "grep pattern /nope",
+            "grep: /nope: No such file or directory",
+        ),
+        ("cat /nope", "cat: /nope: No such file or directory"),
+        ("wc -l /nope", "wc: /nope: No such file or directory"),
+        ("sort /nope", "sort: /nope: No such file or directory"),
+        ("cut -f1 /nope", "cut: /nope: No such file or directory"),
+        ("head /nope", "head: /nope: No such file or directory"),
+        (
+            "awk '{print}' /nope",
+            "awk: /nope: No such file or directory",
+        ),
+        ("sed p /nope", "sed: /nope: No such file or directory"),
+        ("wc -l /home/user", "wc: /home/user: Is a directory"),
+        (
+            "rm /home/user/proj",
+            "rm: cannot remove '/home/user/proj': Is a directory",
+        ),
+        (
+            "cp /home/user/proj /tmp/copy2",
+            "cp: -r not specified; omitting directory '/home/user/proj'",
+        ),
+    ] {
+        let r = run(&mut c, line);
+        assert_eq!(r.stderr.trim(), want, "`{line}`");
+        assert_ne!(r.exit_code, 0, "`{line}` printed an error and returned 0");
+    }
+}
+
+#[test]
+fn every_command_rejects_an_invented_flag() {
+    let mut c = textbox();
+    // The consumer's worst bug is a flag that is accepted and then ignored. Every
+    // command that parses options must refuse one it has never heard of, by name.
+    for name in [
+        "awk",
+        "base64",
+        "basename",
+        "cat",
+        "chmod",
+        "cmp",
+        "comm",
+        "cp",
+        "cut",
+        "df",
+        "diff",
+        "dirname",
+        "du",
+        "expand",
+        "file",
+        "fold",
+        "grep",
+        "head",
+        "hexdump",
+        "join",
+        "ls",
+        "md5sum",
+        "mkdir",
+        "nl",
+        "od",
+        "paste",
+        "ps",
+        "readlink",
+        "realpath",
+        "rev",
+        "rm",
+        "sed",
+        "seq",
+        "sha1sum",
+        "sha256sum",
+        "shuf",
+        "sort",
+        "split",
+        "stat",
+        "strings",
+        "tail",
+        "tee",
+        "tr",
+        "unexpand",
+        "uniq",
+        "wc",
+        "which",
+        "xargs",
+        "xxd",
+        "yes",
+        // Not text processing, but the contract is the whole shell's.
+        "clear",
+        "curl",
+        "date",
+        "env",
+        "find",
+        "git",
+        "ip",
+        "kill",
+        "ln",
+        "mv",
+        "nproc",
+        "read",
+        "sqlite3",
+        "sudo",
+        "systemctl",
+        "touch",
+        "uptime",
+    ] {
+        let r = run(&mut c, &format!("{name} --invented-flag"));
+        assert_eq!(
+            r.exit_code, 2,
+            "`{name} --invented-flag` must be refused with 2, said {r:?}"
+        );
+        assert!(
+            r.stderr.contains("invented-flag"),
+            "`{name}` must name the flag it refused, said {:?}",
+            r.stderr
+        );
+        // `yes` is the one command whose getopt only looks at long options, so a
+        // short flag really is its operand, exactly as in coreutils.
+        if name == "yes" {
+            continue;
+        }
+        let r = run(&mut c, &format!("{name} -\u{51}"));
+        assert!(
+            r.exit_code != 0 && (r.stderr.contains("'Q'") || r.stderr.contains("-Q")),
+            "`{name} -Q` must be refused by name, said {r:?}"
+        );
+    }
+}
+
+#[test]
+fn cases_from_the_consumer_report() {
+    // A consumer's agent filed these against an older build. Every one is run here
+    // verbatim so the report can never be true again without this suite going red.
+    let mut c = textbox();
+    ok(
+        &mut c,
+        "mkdir -p /tmp/r/sub; echo hi > /tmp/r/a.txt; echo yo > /tmp/r/sub/b.txt",
+    );
+    // find really applies its predicates.
+    assert_eq!(
+        ok(&mut c, "find /tmp/r -name '*.txt'"),
+        "/tmp/r/a.txt\n/tmp/r/sub/b.txt\n"
+    );
+    assert_eq!(ok(&mut c, "find /tmp/r -type d"), "/tmp/r\n/tmp/r/sub\n");
+    assert_eq!(
+        ok(&mut c, "find /tmp/r -maxdepth 1 -type f"),
+        "/tmp/r/a.txt\n"
+    );
+    // grep counts and lists.
+    assert_eq!(ok(&mut c, "grep -c hi /tmp/r/a.txt"), "1\n");
+    assert_eq!(ok(&mut c, "grep -l hi /tmp/r/a.txt"), "/tmp/r/a.txt\n");
+    // ls -l, date, du, df, which and stat all answer.
+    assert!(ok(&mut c, "ls -l /tmp/r").starts_with("total "));
+    assert_eq!(ok(&mut c, "date +%Y-%m-%d"), "2026-09-17\n");
+    assert!(ok(&mut c, "du -sh /tmp/r").ends_with("/tmp/r\n"));
+    assert!(ok(&mut c, "df -h").contains("Mounted on"));
+    assert_eq!(ok(&mut c, "which grep"), "/usr/bin/grep\n");
+    assert_eq!(ok(&mut c, "stat -c %s /tmp/r/a.txt"), "3\n");
+    // Heredocs, loops, case, functions and subshells.
+    assert_eq!(ok(&mut c, "cat <<EOF\nheredoc line\nEOF"), "heredoc line\n");
+    assert_eq!(ok(&mut c, "for i in 1 2; do echo $i; done"), "1\n2\n");
+    assert_eq!(
+        ok(
+            &mut c,
+            "i=0; while [ $i -lt 2 ]; do echo $i; i=$((i+1)); done"
+        ),
+        "0\n1\n"
+    );
+    assert_eq!(
+        ok(&mut c, "case abc in a*) echo matched;; esac"),
+        "matched\n"
+    );
+    assert_eq!(ok(&mut c, "f() { echo \"in f $1\"; }; f x"), "in f x\n");
+    assert_eq!(ok(&mut c, "( cd /tmp; pwd ); pwd"), "/tmp\n/home/user\n");
+    // Truthful exit codes.
+    assert_eq!(ok(&mut c, "false; echo $?"), "1\n");
+    assert_eq!(ok(&mut c, "echo a | grep -q a; echo $?"), "0\n");
+    // The rows this task adds: awk, the text utilities and the error contract.
+    assert_eq!(ok(&mut c, "seq 1 3 | awk '{s+=$1} END {print s}'"), "6\n");
+    assert_eq!(ok(&mut c, "echo 'x y' | awk '{print $2}'"), "y\n");
+    assert_eq!(
+        ok(&mut c, "awk -F: '{print $1}' /tmp/colon 2>/dev/null; printf 'a:b\\n' > /tmp/colon; awk -F: '{print $2}' /tmp/colon"),
+        "b\n"
+    );
+    assert_eq!(ok(&mut c, "printf 'a\\nb\\n' | sed -n '$p'"), "b\n");
+    assert_eq!(ok(&mut c, "echo abc | rev"), "cba\n");
+    assert_eq!(ok(&mut c, "echo abc | tr a-z A-Z"), "ABC\n");
+    assert_eq!(ok(&mut c, "ls /tmp/r | wc -l"), "2\n");
+    assert_eq!(ok(&mut c, "true && echo yes || echo no"), "yes\n");
+    // A missing file names itself, in coreutils' wording, with a non-zero status.
+    let r = run(&mut c, "ls /nope");
+    assert_eq!(
+        (r.exit_code, r.stderr.trim()),
+        (1, "ls: cannot access '/nope': No such file or directory")
+    );
+}
+
+#[test]
+fn flags_that_are_accepted_and_inert_say_why_they_are() {
+    // The matrix names four of these; each must succeed and change nothing, because a
+    // silent no-op is only acceptable when it is published as one.
+    let mut c = textbox();
+    assert_eq!(ok(&mut c, "ls -1 /tmp/abc"), ok(&mut c, "ls /tmp/abc"));
+    assert_eq!(
+        ok(&mut c, "printf 'abc' | md5sum -b"),
+        ok(&mut c, "printf 'abc' | md5sum -t")
+    );
+    assert_eq!(ok(&mut c, "echo hi | tee -i /tmp/inert"), "hi\n");
+    assert_eq!(ok(&mut c, "strings -a -n1 /tmp/abc"), "a\nb\nc\n");
+    assert_eq!(ok(&mut c, "nproc --all"), ok(&mut c, "nproc"));
+    // And the ones that are not inert are refused instead.
+    refused(&mut c, "ip -4 addr", "invalid option -- '4'");
+    refused(&mut c, "tail -f /tmp/abc", "follow");
+    refused(&mut c, "sort -z", "not modelled");
 }
