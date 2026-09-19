@@ -134,6 +134,9 @@ impl<'h> Vm<'h> {
             stdin_eof: false,
             awaiting_input: false,
             debug: None,
+            workers: None,
+            inbox: VecDeque::new(),
+            worker_errors: vec![],
             steps: 0,
             budget: STEP_BUDGET,
             native_depth: 0,
@@ -202,6 +205,7 @@ impl<'h> Vm<'h> {
         crate::builtins::reflect::install(&mut vm);
         crate::builtins::date::install(&mut vm);
         crate::builtins::typed::install(&mut vm);
+        crate::builtins::shared::install(&mut vm);
         crate::regexp::install(&mut vm);
         crate::promise::install(&mut vm);
         crate::node::install(&mut vm);

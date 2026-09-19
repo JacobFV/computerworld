@@ -59,6 +59,7 @@ macro_rules! programs {
 programs!("js":
     algorithms,
     async_generators,
+    atomics,
     basics,
     builtins,
     classes_errors,
@@ -83,6 +84,7 @@ programs!("js":
     text_pipeline,
     util_events,
     web_fetch_classes,
+    workers,
     zlib_streams,
 );
 

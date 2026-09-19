@@ -1079,6 +1079,7 @@ pub fn make_binding(vm: &mut Vm) -> Obj {
     }
     let _ = dirname;
     crate::hostio::install(vm, &b);
+    crate::workers::install(vm, &b);
     b
 }
 

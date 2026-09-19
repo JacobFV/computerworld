@@ -32,6 +32,7 @@ pub mod regexp;
 pub mod repl;
 pub mod value;
 pub mod vm;
+pub mod workers;
 
 use cw_script_host::{Invocation, Outcome, ScriptHost};
 use value::{Ctl, Value};

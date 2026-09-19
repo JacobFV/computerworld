@@ -72,6 +72,7 @@ fn js_module_source(name: &str) -> Option<&'static str> {
         "internal/intl" => include_str!("../js/intl.js"),
         "internal/httpwire" => include_str!("../js/httpwire.js"),
         "zlib" => include_str!("../js/zlib.js"),
+        "worker_threads" => include_str!("../js/worker_threads.js"),
         _ => return None,
     })
 }
@@ -1672,18 +1673,58 @@ impl<'h> Vm<'h> {
                 self.fire_timer(i)?;
                 ran = true;
             }
+            // Workers: once this context can do no more, the others take their
+            // turn, and what they send back arrives here.
+            if self.workers.is_some() {
+                // What a worker has written reaches the terminal through its
+                // parent, which passes it on when it next comes round.
+                let mut moved = self.flush_worker_output();
+                moved |= self.worker_events()?;
+                moved |= self.deliver_inbox()?;
+                moved |= self.flush_ports()?;
+                moved |= self.poll_async_waits()?;
+                if !ran && !moved {
+                    moved |= self.run_workers()?;
+                    moved |= self.flush_worker_output();
+                    moved |= self.worker_events()?;
+                    moved |= self.deliver_inbox()?;
+                    moved |= self.flush_ports()?;
+                    moved |= self.poll_async_waits()?;
+                }
+                if moved {
+                    self.drain_after(None)?;
+                    ran = true;
+                }
+            }
             if ran {
                 continue;
             }
-            let next = self
+            let mut next = self
                 .timers
                 .iter()
                 .filter(|t| !matches!(t.obj.own_value("%unref"), Some(Value::Bool(true))))
                 .map(|t| t.when)
                 .min_by(|a, b| a.partial_cmp(b).unwrap());
+            if self.workers.is_some() {
+                // A worker's timer keeps the whole program awake.
+                for w in self.worker_timer_times() {
+                    next = Some(match next {
+                        Some(n) => n.min(w),
+                        None => w,
+                    });
+                }
+            }
             match next {
                 Some(w) => self.elapsed_ms = self.clock().max(w),
-                None => break,
+                None => {
+                    // Nothing anywhere can run: a worker left waiting for a
+                    // message that will never come ends here.
+                    let main = self.workers.is_some() && self.workers_current() == 0;
+                    if main && self.end_idle_workers() {
+                        continue;
+                    }
+                    break;
+                }
             }
         }
         Ok(())
@@ -1705,7 +1746,7 @@ impl<'h> Vm<'h> {
 
     /// Drains ticks and promise jobs after a callback, in the context Node
     /// would (between two callbacks of a batch, or after the batch).
-    fn drain_after(&mut self, between: Option<Batch>) -> JsResult<()> {
+    pub(crate) fn drain_after(&mut self, between: Option<Batch>) -> JsResult<()> {
         let saved = self.drain;
         self.drain = Drain {
             between,

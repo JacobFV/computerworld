@@ -12,6 +12,7 @@ pub mod math;
 pub mod number;
 pub mod object;
 pub mod reflect;
+pub mod shared;
 pub mod string;
 pub mod symbol;
 pub mod typed;

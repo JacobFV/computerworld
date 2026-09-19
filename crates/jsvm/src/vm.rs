@@ -288,6 +288,12 @@ pub struct Vm<'h> {
     pub awaiting_input: bool,
     /// The debugger attached to this run, if any.
     pub debug: Option<Box<crate::debug::Session<'h>>>,
+    /// The worker contexts of this run, made on the first `new Worker`.
+    pub workers: Option<crate::workers::Workers>,
+    /// Messages waiting for the context that is running now.
+    pub inbox: std::collections::VecDeque<crate::workers::Envelope>,
+    /// Errors workers threw, to report to their parents.
+    pub worker_errors: Vec<(u32, Value)>,
     pub steps: u64,
     pub budget: u64,
     pub native_depth: usize,

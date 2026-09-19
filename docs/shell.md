@@ -165,7 +165,7 @@ every replay.
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
 | `python3` / `python` | `FILE [ARG…]`, `-c CODE`, `-m MODULE`, `-` or no operand (program on stdin), `-V` / `--version`, `-h`; `-B -E -I -O -q -s -S -u -v -d -b -i -W ARG -X OPT` accepted and inert | `pip` inside the interpreter, C extensions | modelled by an in-process CPython 3.12 interpreter; see *Language runtimes* below |
-| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | `--inspect`, `--watch`, `--test`, native addons, `worker_threads` | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
+| `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | `--inspect`, `--watch`, `--test`, native addons | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
 
@@ -327,7 +327,41 @@ satisfy is not a hang: the blocked thread gets
 which unwinds its frames (releasing what it held) and is reported like any other
 thread failure.
 
-Node's `worker_threads` is not implemented.
+Node's `worker_threads` runs the same way: a worker is another JavaScript
+context — its own global object, module registry, microtask queue and timers —
+that the interpreter swaps in when it is that context's turn. `Worker`
+(`workerData`, `eval`, `transferList`, `postMessage`, `terminate`, `threadId`,
+and the `online`, `message`, `error` and `exit` events), `parentPort`,
+`isMainThread`, `threadId`, `MessageChannel`, `MessagePort` (`postMessage`,
+`on('message')`, `start`, `close`, `ref`/`unref`, `onmessage`),
+`receiveMessageOnPort` and `markAsUntransferable` are there, together with
+`SharedArrayBuffer` and the whole of `Atomics` (`add`, `and`,
+`compareExchange`, `exchange`, `load`, `or`, `store`, `sub`, `xor`,
+`isLockFree`, `pause`, `wait`, `waitAsync`, `notify`).
+
+A message is structured-cloned on its way across, so the two sides share
+nothing — except a `SharedArrayBuffer`, whose bytes both contexts go on
+reading and writing, which is what `Atomics` works on. Only one context runs
+at a time, and it runs until it could make no more progress on its own, so the
+result of a race between two workers is the same in every run of a world.
+Starting a worker costs 10 ms of simulated time (a real thread spends about
+that long building its isolate), which is why a timer of a millisecond or two
+fires before a freshly started worker's first message arrives. What a worker
+writes reaches the terminal through its parent, as Node's pipe does, so it
+appears when the parent next comes round its loop and not in the middle of a
+line the parent is writing. `Atomics.wait` on any thread hands the turn to the
+other contexts and comes back when the cell changes or the timeout passes; a
+wait that nothing could ever end stops the program with
+`Atomics.wait: every thread is waiting` rather than hanging. A worker left
+waiting for a message that can no longer come ends with code 0 once nothing
+anywhere can move, where Node would keep the process alive for ever.
+
+Not there: `worker.resourceLimits`, `BroadcastChannel`,
+`moveMessagePortToContext`, `setEnvironmentData`/`getEnvironmentData`, the
+`argv`/`env`/`resourceLimits` options (a worker shares its parent's `process`
+object), `worker.stdin`, and `BigInt64Array`/`BigUint64Array` for `Atomics`.
+An uncaught error in a worker still ends the program with status 1, but the
+frames printed with it are the main thread's, not the worker's.
 
 ### Child processes
 
@@ -480,10 +514,8 @@ pushes back what was queued behind it. The rates are model constants (not
 measurements of any real machine); they are calibrated so that the orderings
 recorded from Node 24.21 in `crates/jsvm/tests/programs` come out the same way.
 
-Known gaps shared by both: no native extensions. `node` does not implement
-`Atomics`/`SharedArrayBuffer` or `worker_threads`. Strings that
-contain unpaired UTF-16 surrogates are carried as the
-replacement character.
+Known gaps shared by both: no native extensions. Strings that contain unpaired
+UTF-16 surrogates are carried as the replacement character.
 
 ## Clock
 

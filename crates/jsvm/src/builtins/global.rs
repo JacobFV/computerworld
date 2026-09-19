@@ -191,6 +191,28 @@ fn data_clone_error(vm: &mut Vm, what: &str) -> Ctl {
     Ctl::Throw(e)
 }
 
+/// A structured clone, as `structuredClone` and `postMessage` make one: every
+/// value is copied, except a `SharedArrayBuffer`, which both sides go on
+/// sharing, and a function, which cannot cross at all.
+pub fn structured_clone_value(vm: &mut Vm, v: &Value) -> JsResult<Value> {
+    let mut memo = vec![];
+    clone_value(vm, v, &mut memo)
+}
+
+/// Another handle on a shared buffer: a new object over the same bytes, which
+/// is what a structured clone makes of a `SharedArrayBuffer`.
+fn share_buffer(vm: &mut Vm, o: &Obj) -> Obj {
+    let buf = match &o.borrow().kind {
+        Kind::ArrayBuffer(b) => Some(b.clone()),
+        _ => None,
+    };
+    let Some(b) = buf else { return o.clone() };
+    let proto = o.proto();
+    let copy = vm.obj_with(proto, Kind::ArrayBuffer(b));
+    copy.set_hidden("%shared", Value::Bool(true));
+    copy
+}
+
 fn clone_value(vm: &mut Vm, v: &Value, memo: &mut Vec<(usize, Obj)>) -> JsResult<Value> {
     if let Value::Sym(s) = v {
         let d = crate::builtins::symbol::symbol_descriptive(s);
@@ -211,6 +233,70 @@ fn clone_value(vm: &mut Vm, v: &Value, memo: &mut Vec<(usize, Obj)>) -> JsResult
         Err,
         Prim(Value),
         Bad,
+    }
+    // Buffers: a shared one keeps its bytes, the rest are copied.
+    if o.own_value("%shared").is_some() {
+        let copy = share_buffer(vm, o);
+        memo.push((o.addr(), copy.clone()));
+        return Ok(Value::Obj(copy));
+    }
+    let buffer = {
+        let d = o.borrow();
+        match &d.kind {
+            Kind::ArrayBuffer(b) => Some(b.borrow().clone()),
+            _ => None,
+        }
+    };
+    if let Some(bytes) = buffer {
+        let proto = vm.intr.arraybuffer_proto.clone();
+        let copy = vm.obj_with(
+            Some(proto),
+            Kind::ArrayBuffer(std::rc::Rc::new(std::cell::RefCell::new(bytes))),
+        );
+        memo.push((o.addr(), copy.clone()));
+        return Ok(Value::Obj(copy));
+    }
+    let typed = {
+        let d = o.borrow();
+        match &d.kind {
+            Kind::TypedArray {
+                kind,
+                buf,
+                offset,
+                len,
+                buf_obj,
+            } => Some((*kind, buf.clone(), *offset, *len, buf_obj.clone())),
+            _ => None,
+        }
+    };
+    if let Some((kind, buf, offset, len, buf_obj)) = typed {
+        let shared = buf_obj
+            .as_ref()
+            .map(|b| b.own_value("%shared").is_some())
+            .unwrap_or(false);
+        let proto = vm.intr.typed_protos[crate::builtins::typed::kind_index(kind)].clone();
+        let copy = if shared {
+            let buf_obj = buf_obj.as_ref().map(|b| share_buffer(vm, b));
+            vm.obj_with(
+                Some(proto),
+                Kind::TypedArray {
+                    kind,
+                    buf,
+                    offset,
+                    len,
+                    buf_obj,
+                },
+            )
+        } else {
+            let size = crate::builtins::typed::elem_size(kind);
+            let bytes = {
+                let b = buf.borrow();
+                b[offset..(offset + len * size).min(b.len())].to_vec()
+            };
+            vm.new_typed(kind, bytes, Some(proto))
+        };
+        memo.push((o.addr(), copy.clone()));
+        return Ok(Value::Obj(copy));
     }
     let k = {
         let d = o.borrow();
@@ -248,7 +334,25 @@ fn clone_value(vm: &mut Vm, v: &Value, memo: &mut Vec<(usize, Obj)>) -> JsResult
             let n = if matches!(k, K::Err) {
                 let msg = vm.get_str(v, "message")?;
                 let m = vm.to_str(&msg)?;
-                vm.make_error(ErrKind::Error, &m)
+                let e = vm.make_error(ErrKind::Error, &m);
+                // The copy keeps what kind of error it was and the trace it
+                // was made with, as V8's structured clone does.
+                let proto = o.proto();
+                if let Some(p) = proto {
+                    e.borrow_mut().proto = Some(p);
+                }
+                let frames = match &o.borrow().kind {
+                    Kind::Error(d) => Some((d.frames.clone(), d.site.clone(), d.arrow.clone())),
+                    _ => None,
+                };
+                if let Some((frames, site, arrow)) = frames {
+                    if let Kind::Error(d) = &mut e.borrow_mut().kind {
+                        d.frames = frames;
+                        d.site = site;
+                        d.arrow = arrow;
+                    }
+                }
+                e
             } else {
                 vm.new_object()
             };
