@@ -10,7 +10,7 @@
         "rgbaBytes": 2457600,
         "deterministic": true,
         "pixelChecksum": "f363e87",
-        "renderMilliseconds": 0.7999999970197678,
+        "renderMilliseconds": 54.399999998509884,
         "nodes": 87
       },
       "window": {
@@ -19,7 +19,7 @@
         "rgbaBytes": 2457600,
         "deterministic": true,
         "pixelChecksum": "b312f98e",
-        "renderMilliseconds": 2.100000001490116,
+        "renderMilliseconds": 1.6000000014901161,
         "nodes": 178
       },
       "nativeBrowserAddress": true,
@@ -46,7 +46,7 @@
         "rgbaBytes": 2457600,
         "deterministic": true,
         "pixelChecksum": "9508bcc2",
-        "renderMilliseconds": 1.2999999970197678,
+        "renderMilliseconds": 1.1999999955296516,
         "nodes": 143
       },
       "nativeBrowserAddress": true,
@@ -64,7 +64,7 @@
         "rgbaBytes": 2457600,
         "deterministic": true,
         "pixelChecksum": "e99ae3d5",
-        "renderMilliseconds": 0.5999999940395355,
+        "renderMilliseconds": 0.6000000014901161,
         "nodes": 49
       },
       "window": {
@@ -73,7 +73,7 @@
         "rgbaBytes": 2457600,
         "deterministic": true,
         "pixelChecksum": "ca6bf793",
-        "renderMilliseconds": 2.399999998509884,
+        "renderMilliseconds": 1.2999999970197678,
         "nodes": 148
       },
       "nativeBrowserAddress": true,
@@ -91,7 +91,7 @@
         "rgbaBytes": 1216800,
         "deterministic": true,
         "pixelChecksum": "7ea839b3",
-        "renderMilliseconds": 1.1999999955296516,
+        "renderMilliseconds": 0.6000000014901161,
         "nodes": 90
       },
       "window": {
@@ -100,7 +100,7 @@
         "rgbaBytes": 1216800,
         "deterministic": true,
         "pixelChecksum": "97cee6c9",
-        "renderMilliseconds": 2.399999998509884,
+        "renderMilliseconds": 1,
         "nodes": 82
       },
       "nativeBrowserAddress": true,
@@ -118,7 +118,7 @@
         "rgbaBytes": 1216800,
         "deterministic": true,
         "pixelChecksum": "eac8b481",
-        "renderMilliseconds": 0.8999999985098839,
+        "renderMilliseconds": 0.5,
         "nodes": 60
       },
       "window": {
@@ -127,7 +127,7 @@
         "rgbaBytes": 1216800,
         "deterministic": true,
         "pixelChecksum": "e6c6fcb7",
-        "renderMilliseconds": 2,
+        "renderMilliseconds": 0.8999999985098839,
         "nodes": 78
       },
       "nativeBrowserAddress": true,
