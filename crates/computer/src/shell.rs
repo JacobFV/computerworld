@@ -20,7 +20,7 @@ pub(crate) struct Fail {
     open: Vec<String>,
 }
 impl Fail {
-    fn new(text: impl Into<String>, code: i32) -> Self {
+    pub(crate) fn new(text: impl Into<String>, code: i32) -> Self {
         Self {
             text: text.into(),
             code,
@@ -39,14 +39,77 @@ impl Fail {
             open: r.open,
         }
     }
-    fn with_output(mut self, out: String) -> Self {
+    pub(crate) fn with_output(mut self, out: String) -> Self {
         self.out = out;
         self
     }
+    /// The text is already a complete diagnostic; do not prefix the command name.
+    pub(crate) fn raw(mut self) -> Self {
+        self.raw = true;
+        self
+    }
+    pub(crate) fn with_code(mut self, code: i32) -> Self {
+        self.code = code;
+        self
+    }
     /// Unsupported flag or malformed invocation: refused loudly, never ignored.
-    fn usage(text: impl Into<String>) -> Self {
+    pub(crate) fn usage(text: impl Into<String>) -> Self {
         Self::new(text, 2)
     }
+    /// The error contract's canonical shape: `cmd: subject: reason`. Every command
+    /// that names an operand in a diagnostic builds it here, so the wording is one
+    /// decision rather than a hundred.
+    pub(crate) fn op(cmd: &str, subject: impl std::fmt::Display, reason: &str) -> Self {
+        Self::new(format!("{cmd}: {subject}: {reason}"), 1)
+    }
+    /// A VFS error reported against the operand the caller actually typed, in GNU
+    /// coreutils' wording (`cat: nope: No such file or directory`). The VFS spells its
+    /// own paths canonically, which is rarely what the user wrote.
+    pub(crate) fn io(cmd: &str, subject: impl std::fmt::Display, e: &crate::VfsError) -> Self {
+        Self::op(cmd, subject, vfs_reason(e))
+    }
+}
+/// GNU's `strerror` wording for the errors this VFS can raise. Consumers port scripts
+/// by matching these strings, so they are the coreutils spellings, not the VFS's.
+pub(crate) fn vfs_reason(e: &crate::VfsError) -> &'static str {
+    use crate::VfsError as V;
+    match e {
+        V::NotFound(_) => "No such file or directory",
+        V::Exists(_) => "File exists",
+        V::NotDirectory(_) => "Not a directory",
+        V::IsDirectory(_) => "Is a directory",
+        V::NotEmpty(_) => "Directory not empty",
+        V::LinkLoop => "Too many levels of symbolic links",
+        V::Permission(_) => "Permission denied",
+        V::Invalid(_) => "Invalid argument",
+    }
+}
+/// Reads a file for a text utility, reporting failure as `cmd: operand: reason`.
+/// `-` means standard input, as every GNU text tool accepts.
+pub(crate) fn read_text(
+    c: &Computer,
+    cmd: &str,
+    operand: &str,
+    stdin: &str,
+) -> Result<String, Fail> {
+    Ok(String::from_utf8_lossy(&read_bytes(c, cmd, operand, stdin)?).into_owned())
+}
+pub(crate) fn read_bytes(
+    c: &Computer,
+    cmd: &str,
+    operand: &str,
+    stdin: &str,
+) -> Result<Vec<u8>, Fail> {
+    if operand == "-" {
+        return Ok(stdin.as_bytes().to_vec());
+    }
+    let path = c.resolve(operand);
+    if c.vfs.stat(&path).is_ok_and(|m| m.is_dir) {
+        return Err(Fail::op(cmd, operand, "Is a directory"));
+    }
+    c.vfs
+        .read_as(&path, &c.user)
+        .map_err(|e| Fail::io(cmd, operand, &e))
 }
 impl From<String> for Fail {
     fn from(text: String) -> Self {
@@ -77,6 +140,9 @@ pub(crate) const BUILTINS: &[&str] = &[
     "[[",
     "apt",
     "apt-get",
+    "awk",
+    "base64",
+    "basename",
     "bash",
     "break",
     "brew",
@@ -84,37 +150,50 @@ pub(crate) const BUILTINS: &[&str] = &[
     "cd",
     "chmod",
     "clear",
+    "cmp",
+    "comm",
     "continue",
     "cp",
     "curl",
     "cut",
     "date",
     "df",
+    "diff",
+    "dirname",
     "du",
     "echo",
     "env",
     "exit",
+    "expand",
     "export",
     "false",
+    "file",
     "find",
     "free",
+    "fold",
     "getopts",
     "git",
     "grep",
     "head",
+    "hexdump",
     "hostname",
     "ip",
+    "join",
     "kill",
     "ln",
     "local",
     "lsof",
     "ls",
+    "md5sum",
     "mkdir",
     "mv",
+    "nl",
     "node",
     "npm",
     "nproc",
     "pgrep",
+    "od",
+    "paste",
     "pip",
     "pkill",
     "printenv",
@@ -124,27 +203,38 @@ pub(crate) const BUILTINS: &[&str] = &[
     "python",
     "python3",
     "read",
+    "readlink",
+    "realpath",
     "return",
+    "rev",
     "rm",
     "rmdir",
     "sed",
+    "seq",
     "service",
     "sh",
+    "sha1sum",
+    "sha256sum",
     "shift",
+    "shuf",
     "sleep",
     "sort",
     "source",
+    "split",
     "sqlite3",
     "stat",
+    "strings",
     "sudo",
     "systemctl",
     "tail",
+    "tee",
     "test",
     "top",
     "touch",
     "tr",
     "true",
     "uname",
+    "unexpand",
     "uniq",
     "unset",
     "uptime",
@@ -153,6 +243,9 @@ pub(crate) const BUILTINS: &[&str] = &[
     "which",
     "whoami",
     "xdg-open",
+    "xargs",
+    "xxd",
+    "yes",
 ];
 #[derive(Clone, Debug)]
 enum Token {
@@ -804,6 +897,44 @@ pub fn execute(
 ) -> CommandResult {
     execute_inner(c, source, tick, host, 0)
 }
+/// Runs a command line with `stdin` already filled, and returns its three results
+/// without touching the caller's. `awk`'s `| "cmd"`, `"cmd" | getline` and `system()`,
+/// and `xargs`, all reach the rest of the shell through this one door, so a command
+/// invoked from inside a utility behaves exactly as it does when typed.
+pub(crate) fn run_piped(
+    c: &mut Computer,
+    source: &str,
+    stdin: &str,
+    tick: u64,
+    host: &mut dyn ShellHost,
+    depth: usize,
+) -> CommandResult {
+    if depth >= 32 {
+        return CommandResult::new("shell: execution nesting exceeds 32\n", 2);
+    }
+    let tokens = match lex(source, c.dialect == "powershell") {
+        Ok(v) => v,
+        Err(e) => return CommandResult::new(format!("shell: {e}\n"), 2),
+    };
+    if tokens.is_empty() {
+        return CommandResult::default();
+    }
+    let mut total = CommandResult::default();
+    let mut ctx = Ctx::default();
+    let code = run_list(
+        c,
+        &tokens,
+        &mut ctx,
+        tick,
+        host,
+        depth + 1,
+        &mut total,
+        0,
+        stdin,
+    );
+    total.exit_code = code;
+    total
+}
 fn execute_inner(
     c: &mut Computer,
     source: &str,
@@ -1132,9 +1263,12 @@ fn reads_stdin(c: &Computer, args: &[String]) -> bool {
         .iter()
         .any(|a| !a.starts_with('-') && c.vfs.exists(&c.resolve(a)));
     match args[0].to_ascii_lowercase().as_str() {
-        "tr" | "cut" => true,
+        "tr" | "tee" | "xargs" => true,
         "cat" | "type" | "get-content" => args.len() == 1,
-        "grep" | "select-string" | "sed" | "head" | "tail" | "wc" | "sort" | "uniq" => !named_file,
+        "grep" | "select-string" | "sed" | "awk" | "gawk" | "mawk" | "nawk" | "cut" | "head"
+        | "tail" | "wc" | "sort" | "uniq" | "nl" | "rev" | "fold" | "expand" | "unexpand"
+        | "paste" | "shuf" | "split" | "strings" | "base64" | "md5sum" | "sha1sum"
+        | "sha256sum" | "xxd" | "od" | "hexdump" => !named_file,
         "sqlite3" => crate::sqlite::reads_stdin(args),
         _ => false,
     }
@@ -2302,10 +2436,13 @@ fn cmd_xdg_open(c: &Computer, args: &[String]) -> CommandResult {
 fn builtin_read(c: &mut Computer, args: &[String], input: &str, ctx: &mut Ctx) -> CommandResult {
     let mut names = Vec::new();
     for arg in &args[1..] {
+        if let Some(long) = arg.strip_prefix("--").filter(|f| !f.is_empty()) {
+            return CommandResult::new(format!("{}\n", unrecognized_option("read", long).text), 2);
+        }
         if let Some(flags) = arg.strip_prefix('-').filter(|f| !f.is_empty()) {
             // -r is the behaviour either way: this shell never unescapes a read line.
             if let Some(bad) = flags.chars().find(|ch| *ch != 'r') {
-                return CommandResult::new(format!("read: unsupported option `-{bad}`\n"), 2);
+                return CommandResult::new(format!("{}\n", invalid_option("read", bad).text), 2);
             }
             continue;
         }
@@ -2665,6 +2802,14 @@ fn run(
         let r = crate::runtimes::run_runtime(runtime, c, host, args, input, t);
         return runtime_result(r);
     }
+    // The text and data utilities live in their own modules; they are consulted first
+    // so the roster in `docs/shell.md` and the implementations cannot drift apart.
+    if let Some(r) = crate::textutils::run(c, &cmd, args, input, t, host, depth) {
+        return r;
+    }
+    if let Some(r) = crate::datautils::run(c, &cmd, args, input) {
+        return r;
+    }
     let required = |i: usize| {
         args.get(i)
             .map(String::as_str)
@@ -2682,15 +2827,6 @@ fn run(
                 if no { "" } else { "\n" }
             ))
         }
-        "printf" => {
-            let mut format = required(0)?.replace("\\n", "\n").replace("\\t", "\t");
-            for arg in &args[1..] {
-                if let Some(p) = format.find("%s").or_else(|| format.find("%d")) {
-                    format.replace_range(p..p + 2, arg);
-                }
-            }
-            Ok(format.replace("%%", "%"))
-        }
         "pwd" | "get-location" => Ok(format!("{}\n", c.cwd)),
         "whoami" => Ok(format!("{}\n", c.user)),
         "hostname" => Ok(format!("{}\n", c.id)),
@@ -2706,13 +2842,26 @@ fn run(
             c.cwd = p;
             Ok(String::new())
         }
-        "env" | "printenv" => Ok(if let Some(k) = args.first() {
-            format!("{}\n", c.env.get(k).cloned().unwrap_or_default())
-        } else {
-            c.env.iter().map(|(k, v)| format!("{k}={v}\n")).collect()
-        }),
+        "env" | "printenv" => {
+            // `env -i`, `env NAME=VALUE cmd` and `env cmd` would each need a different
+            // model; none is implemented, so a flag is refused rather than dropped.
+            let (_, names) = options(&cmd, args, "", "", &[])?;
+            Ok(if let Some(k) = names.first() {
+                if names.len() > 1 {
+                    return Err(Fail::usage(format!(
+                        "{cmd}: extra operand '{}'; this world prints the environment or \
+                         one variable, it does not run a command in a modified one",
+                        names[1]
+                    )));
+                }
+                format!("{}\n", c.env.get(k).cloned().unwrap_or_default())
+            } else {
+                c.env.iter().map(|(k, v)| format!("{k}={v}\n")).collect()
+            })
+        }
         "export" => {
-            for s in args {
+            let (_, names) = options("export", args, "", "", &[])?;
+            for s in &names {
                 if let Some((k, v)) = s.split_once('=') {
                     c.env.insert(k.into(), v.into());
                 }
@@ -2720,30 +2869,95 @@ fn run(
             Ok(String::new())
         }
         "unset" => {
-            for s in args {
+            let (_, names) = options("unset", args, "", "", &[])?;
+            for s in &names {
                 c.env.remove(s);
             }
             Ok(String::new())
         }
         "ls" | "dir" | "get-childitem" => cmd_ls(c, args),
         "cat" | "type" | "get-content" => {
-            if args.is_empty() {
-                return Ok(input.into());
-            }
+            let (opts, paths) = options(
+                &cmd,
+                args,
+                "nbETAsvu",
+                "",
+                &[
+                    ("number", 'n'),
+                    ("number-nonblank", 'b'),
+                    ("show-ends", 'E'),
+                    ("show-tabs", 'T'),
+                    ("show-all", 'A'),
+                    ("squeeze-blank", 's'),
+                    ("show-nonprinting", 'v'),
+                ],
+            )?;
             let mut out = String::new();
-            for path in args {
-                out.push_str(&String::from_utf8_lossy(
-                    &c.vfs.read_as(&c.resolve(path), &c.user).map_err(err)?,
-                ));
+            if paths.is_empty() {
+                out.push_str(input);
             }
-            Ok(out)
+            for path in &paths {
+                out.push_str(&crate::shell::read_text(c, &cmd, path, input)?);
+            }
+            let plain = !"nbETAsv".chars().any(|f| flag(&opts, f));
+            if plain {
+                return Ok(out);
+            }
+            let (ends, tabs) = (
+                flag(&opts, 'E') || flag(&opts, 'A'),
+                flag(&opts, 'T') || flag(&opts, 'A'),
+            );
+            let mut rendered = String::new();
+            let mut n = 0;
+            let mut blank_run = 0;
+            let had_newline = out.ends_with('\n') || out.is_empty();
+            for line in out.strip_suffix('\n').unwrap_or(&out).split('\n') {
+                if out.is_empty() {
+                    break;
+                }
+                blank_run = if line.is_empty() { blank_run + 1 } else { 0 };
+                if flag(&opts, 's') && blank_run > 1 {
+                    continue;
+                }
+                let body = if tabs {
+                    line.replace('\t', "^I")
+                } else {
+                    line.to_string()
+                };
+                let numbered = flag(&opts, 'n') || (flag(&opts, 'b') && !line.is_empty());
+                if numbered {
+                    n += 1;
+                    rendered.push_str(&format!("{n:>6}\t"));
+                } else if flag(&opts, 'b') {
+                    rendered.push_str("      \t");
+                }
+                rendered.push_str(&body);
+                if ends {
+                    rendered.push('$');
+                }
+                rendered.push('\n');
+            }
+            if !had_newline {
+                rendered.pop();
+            }
+            Ok(rendered)
         }
         "touch" => cmd_touch(c, args, t),
         "mkdir" | "md" => {
-            let (opts, paths) = options("mkdir", args, "pv", "", &[("parents", 'p')])?;
+            let (opts, paths) = options(
+                "mkdir",
+                args,
+                "pv",
+                "",
+                &[("parents", 'p'), ("verbose", 'v')],
+            )?;
             if paths.is_empty() {
-                return Err(Fail::usage("mkdir: missing operand"));
+                return Err(Fail::usage(format!(
+                    "mkdir: missing operand\n{}",
+                    usage_line("mkdir")
+                )));
             }
+            let mut told = String::new();
             for p in &paths {
                 let path = c.resolve(p);
                 // Without -p an existing directory or a missing parent is an error.
@@ -2761,8 +2975,11 @@ fn run(
                     }
                 }
                 c.vfs.mkdir_all_as(&path, &c.user, t).map_err(err)?;
+                if flag(&opts, 'v') {
+                    told.push_str(&format!("mkdir: created directory '{p}'\n"));
+                }
             }
-            Ok(String::new())
+            Ok(told)
         }
         "set-content" | "add-content" => {
             let path = c.resolve(required(0)?);
@@ -2796,7 +3013,11 @@ fn run(
             if c.vfs.list_as(&to, &c.user).is_ok() {
                 to = format!("{to}/{}", from.rsplit('/').next().unwrap_or("file"));
             }
-            if c.vfs.lstat(&from).map_err(err)?.is_dir {
+            if c.vfs
+                .lstat(&from)
+                .map_err(|e| Fail::io("cp", source, &e))?
+                .is_dir
+            {
                 if !(flag(&opts, 'r') || flag(&opts, 'R')) {
                     return Err(format!("-r not specified; omitting directory '{source}'").into());
                 }
@@ -2811,15 +3032,49 @@ fn run(
                 }
                 return Ok(String::new());
             }
-            let bytes = c.vfs.read_as(&from, &c.user).map_err(err)?;
-            c.vfs.write_as(&to, &bytes, &c.user, t).map_err(err)?;
+            let bytes = c
+                .vfs
+                .read_as(&from, &c.user)
+                .map_err(|e| Fail::io("cp", source, &e))?;
+            c.vfs
+                .write_as(&to, &bytes, &c.user, t)
+                .map_err(|e| Fail::io("cp", destination, &e))?;
             Ok(String::new())
         }
         "mv" | "move-item" => {
+            // `-f` and `-v` are the only flags with a meaning here; -f is already the
+            // behaviour (no prompting is possible) and -v prints what moved.
+            let (opts, names) = options(
+                "mv",
+                &powershell_switches(args),
+                "fv",
+                "",
+                &[("force", 'f'), ("verbose", 'v')],
+            )?;
+            let [source, destination] = names.as_slice() else {
+                return Err(Fail::usage(format!(
+                    "mv: expects exactly one source and one destination\n{}",
+                    usage_line("mv")
+                )));
+            };
+            // Moving onto a directory moves the name into it, as mv does.
+            let mut to = c.resolve(destination);
+            if c.vfs.stat(&to).is_ok_and(|m| m.is_dir) {
+                let base = source
+                    .trim_end_matches('/')
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or("");
+                to = format!("{}/{base}", to.trim_end_matches('/'));
+            }
             c.vfs
-                .rename_as(&c.resolve(required(0)?), &c.resolve(required(1)?), &c.user)
-                .map_err(err)?;
-            Ok(String::new())
+                .rename_as(&c.resolve(source), &to, &c.user)
+                .map_err(|e| Fail::io("mv", source, &e))?;
+            Ok(if flag(&opts, 'v') {
+                format!("renamed '{source}' -> '{destination}'\n")
+            } else {
+                String::new()
+            })
         }
         "rm" | "remove-item" | "rmdir" => {
             let (opts, paths) = options(
@@ -2837,7 +3092,13 @@ fn run(
             for p in &paths {
                 if let Err(e) = c.vfs.remove_as(&c.resolve(p), recursive, &c.user) {
                     if !force {
-                        return Err(e.to_string().into());
+                        // GNU names the directory itself, not its contents, when -r
+                        // is missing: `rm: cannot remove 'x': Is a directory`.
+                        let reason = match &e {
+                            crate::VfsError::NotEmpty(_) if !recursive => "Is a directory",
+                            other => vfs_reason(other),
+                        };
+                        return Err(Fail::op("rm", format!("cannot remove '{p}'"), reason));
                     }
                 }
             }
@@ -2845,14 +3106,21 @@ fn run(
         }
         "chmod" => cmd_chmod(c, args),
         "ln" => {
-            if args.first().is_some_and(|s| s == "-s") {
+            let (opts, names) = options("ln", args, "s", "", &[("symbolic", 's')])?;
+            let [target, link] = names.as_slice() else {
+                return Err(Fail::usage(format!(
+                    "ln: expects exactly one target and one link name\n{}",
+                    usage_line("ln")
+                )));
+            };
+            if flag(&opts, 's') {
                 c.vfs
-                    .symlink_as(required(1)?, &c.resolve(required(2)?), &c.user, t)
-                    .map_err(err)?;
+                    .symlink_as(target, &c.resolve(link), &c.user, t)
+                    .map_err(|e| Fail::io("ln", link, &e))?;
             } else {
                 c.vfs
-                    .hard_link_as(&c.resolve(required(0)?), &c.resolve(required(1)?), &c.user)
-                    .map_err(err)?;
+                    .hard_link_as(&c.resolve(target), &c.resolve(link), &c.user)
+                    .map_err(|e| Fail::io("ln", target, &e))?;
             }
             Ok(String::new())
         }
@@ -2908,76 +3176,15 @@ fn run(
             Ok(String::new())
         }
         "stat" => cmd_stat(c, args),
-        "sed" => cmd_sed(c, args, input, t),
-        "tr" => {
-            let delete = args.first().is_some_and(|s| s == "-d");
-            let from = character_set(required(usize::from(delete))?);
-            let to = if delete {
-                vec![]
-            } else {
-                character_set(required(1)?)
-            };
-            if !delete && to.is_empty() {
-                return Err("empty translation set".into());
-            }
-            Ok(input
-                .chars()
-                .filter_map(|ch| {
-                    if let Some(i) = from.iter().position(|c| *c == ch) {
-                        if delete {
-                            None
-                        } else {
-                            Some(to[i.min(to.len() - 1)])
-                        }
-                    } else {
-                        Some(ch)
-                    }
-                })
-                .collect())
-        }
-        "cut" => {
-            let mut delimiter = '\t';
-            let mut fields = vec![];
-            let mut i = 0;
-            while i < args.len() {
-                if args[i] == "-d" {
-                    i += 1;
-                    delimiter = required(i)?.chars().next().ok_or("empty delimiter")?
-                } else if args[i] == "-f" {
-                    i += 1;
-                    fields = required(i)?
-                        .split(',')
-                        .map(|s| s.parse::<usize>().map_err(|_| "invalid field"))
-                        .collect::<Result<Vec<_>, _>>()?;
-                } else {
-                    return Err("cut supports -d DELIMITER -f FIELDS over stdin".into());
-                }
-                i += 1;
-            }
-            if fields.contains(&0) || fields.is_empty() {
-                return Err("fields are numbered from 1".into());
-            }
-            Ok(input
-                .lines()
-                .map(|line| {
-                    let parts = line.split(delimiter).collect::<Vec<_>>();
-                    format!(
-                        "{}\n",
-                        fields
-                            .iter()
-                            .filter_map(|n| parts.get(n - 1).copied())
-                            .collect::<Vec<_>>()
-                            .join(&delimiter.to_string())
-                    )
-                })
-                .collect())
-        }
-        "head" | "tail" | "wc" | "sort" | "uniq" => cmd_text(c, &cmd, args, input),
+        "sed" => crate::sed::execute(c, args, input, t),
+        "awk" | "gawk" | "mawk" | "nawk" => crate::awk::execute(c, args, input, t, host, depth),
         "find" => cmd_find(c, args),
         "clear" | "cls" => {
             // No bytes: run_tokens raises CommandResult::clear for the terminal to honour.
-            if !args.is_empty() {
-                return Err(Fail::usage("clear: takes no arguments"));
+            if let Some(first) = args.first() {
+                return Err(Fail::usage(format!(
+                    "clear: unrecognized operand '{first}'; clear takes no arguments"
+                )));
             }
             Ok(String::new())
         }
@@ -3032,10 +3239,19 @@ fn run(
             result
         }
         "systemctl" | "service" => {
+            // No flag of systemctl's is modelled (`--user`, `--now`, `--no-pager` all
+            // imply machinery this world does not have), so every one is refused.
+            let (_, words) = options(&cmd, args, "", "", &[])?;
+            let pick = |i: usize| {
+                words
+                    .get(i)
+                    .map(String::as_str)
+                    .ok_or_else(|| Fail::usage(format!("{cmd}: missing operand")))
+            };
             let (operation, name) = if cmd == "service" {
-                (required(1)?, required(0)?)
+                (pick(1)?, pick(0)?)
             } else {
-                (required(0)?, required(1)?)
+                (pick(0)?, pick(1)?)
             };
             let name = name.trim_end_matches(".service");
             let command = format!("service {name}");
@@ -3155,12 +3371,26 @@ fn run(
                 return Ok(format!("{}\n", SIGNALS.join(" ")));
             }
             let (signal, index) = if required(0)?.starts_with('-') {
-                (
-                    required(0)?
-                        .trim_start_matches('-')
-                        .trim_start_matches("SIG"),
-                    1,
-                )
+                let spelling = required(0)?;
+                // `kill -l`, `kill -s NAME` and a long option are not modelled; only
+                // `-SIGNAL` and `-N` are, so anything else is refused by name.
+                let name = spelling.trim_start_matches('-').trim_start_matches("SIG");
+                if spelling.starts_with("--") {
+                    return Err(unrecognized_option(&cmd, spelling.trim_start_matches('-')));
+                }
+                // The roster the process table actually delivers; anything else is a
+                // named refusal rather than a signal that quietly does nothing.
+                const SIGNALS: &[&str] = &[
+                    "TERM", "KILL", "INT", "STOP", "TSTP", "CONT", "HUP", "QUIT", "USR1", "USR2",
+                    "0", "1", "2", "3", "9", "10", "12", "15", "18", "19",
+                ];
+                if !SIGNALS.contains(&name) {
+                    return Err(Fail::usage(format!(
+                        "{cmd}: {spelling}: invalid signal specification; this world delivers {}",
+                        SIGNALS.join(" ")
+                    )));
+                }
+                (name, 1)
             } else {
                 ("TERM", 0)
             };
@@ -3236,8 +3466,17 @@ fn run(
                         i += 1;
                         output = Some(args.get(i).ok_or("missing output path")?.clone())
                     }
-                    s if !s.starts_with('-') => url = Some(s.to_string()),
-                    _ => {}
+                    // Accepted and inert: this adapter never writes a progress meter,
+                    // never follows a redirect on its own and has no TTY to be quiet on.
+                    "-f" | "--fail" | "-s" | "--silent" | "-S" | "--show-error" => {}
+                    s if !s.starts_with('-') || s == "-" => url = Some(s.to_string()),
+                    s if s.starts_with("--") => {
+                        return Err(unrecognized_option(&cmd, s.trim_start_matches('-')))
+                    }
+                    s => {
+                        let letter = s.chars().nth(1).unwrap_or('?');
+                        return Err(invalid_option(&cmd, letter));
+                    }
                 }
                 i += 1;
             }
@@ -3592,26 +3831,6 @@ mod executable_tests {
     }
 }
 
-fn character_set(value: &str) -> Vec<char> {
-    let text = value.replace("\\n", "\n").replace("\\t", "\t");
-    let chars: Vec<_> = text.chars().collect();
-    let mut out = vec![];
-    let mut i = 0;
-    while i < chars.len() {
-        if i + 2 < chars.len() && chars[i + 1] == '-' {
-            for n in chars[i] as u32..=chars[i + 2] as u32 {
-                if let Some(ch) = char::from_u32(n) {
-                    out.push(ch);
-                }
-            }
-            i += 3;
-        } else {
-            out.push(chars[i]);
-            i += 1;
-        }
-    }
-    out
-}
 #[cfg(test)]
 mod final_semantic_tests {
     use super::*;
@@ -3921,8 +4140,76 @@ fn walk_tree(c: &Computer, root: &str) -> Vec<(String, u64, bool)> {
 /// Option parser shared by the file utilities. Clusters (`-la`) split, long names map
 /// to their short letter, and anything unlisted is a usage failure: a flag this world
 /// cannot honour must never be silently dropped.
-type Parsed = (Vec<(char, String)>, Vec<String>);
-fn options(
+pub(crate) type Parsed = (Vec<(char, String)>, Vec<String>);
+/// The one-line synopsis printed under a refused flag, exactly as GNU coreutils does.
+/// A command with no entry gets the generic form; the point is that the caller always
+/// sees what the command *does* accept next to what it refused.
+pub(crate) fn usage_line(name: &str) -> String {
+    let body = match name {
+        "awk" => "awk [-F fs] [-v var=value] ['prog' | -f progfile] [file ...]",
+        "sed" => "sed [-n] [-E] [-i[SUFFIX]] [-e script] [-f script-file] [file ...]",
+        "xargs" => "xargs [-0rt] [-d delim] [-I replace-str] [-n max-args] [-P max-procs] [command [args...]]",
+        "cut" => "cut OPTION... [FILE]...",
+        "sort" => "sort [OPTION]... [FILE]...",
+        "uniq" => "uniq [OPTION]... [INPUT [OUTPUT]]",
+        "head" | "tail" => "head [OPTION]... [FILE]...",
+        "wc" => "wc [OPTION]... [FILE]...",
+        "tr" => "tr [OPTION]... SET1 [SET2]",
+        "paste" => "paste [OPTION]... [FILE]...",
+        "join" => "join [OPTION]... FILE1 FILE2",
+        "comm" => "comm [OPTION]... FILE1 FILE2",
+        "diff" => "diff [OPTION]... FILES",
+        "tee" => "tee [OPTION]... [FILE]...",
+        "nl" => "nl [OPTION]... [FILE]...",
+        "fold" => "fold [OPTION]... [FILE]...",
+        "expand" | "unexpand" => "expand [OPTION]... [FILE]...",
+        "shuf" => "shuf [OPTION]... [FILE]",
+        "seq" => "seq [OPTION]... LAST",
+        "basename" => "basename NAME [SUFFIX] or: basename OPTION... NAME...",
+        "dirname" => "dirname [OPTION] NAME...",
+        "realpath" => "realpath [OPTION]... FILE...",
+        "readlink" => "readlink [OPTION]... FILE...",
+        "base64" => "base64 [OPTION]... [FILE]",
+        "cmp" => "cmp [OPTION]... FILE1 [FILE2]",
+        "split" => "split [OPTION]... [FILE [PREFIX]]",
+        "strings" => "strings [OPTION]... [FILE]...",
+        "file" => "file [OPTION]... FILE...",
+        "od" => "od [OPTION]... [FILE]...",
+        "xxd" => "xxd [OPTION]... [FILE]",
+        "hexdump" => "hexdump [OPTION]... [FILE]...",
+        "md5sum" | "sha1sum" | "sha256sum" => "md5sum [OPTION]... [FILE]...",
+        "ls" => "ls [OPTION]... [FILE]...",
+        "grep" => "grep [OPTION]... PATTERNS [FILE]...",
+        "cp" => "cp [OPTION]... SOURCE... DIRECTORY",
+        "mv" => "mv [OPTION]... SOURCE... DIRECTORY",
+        "rm" => "rm [OPTION]... [FILE]...",
+        "mkdir" => "mkdir [OPTION]... DIRECTORY...",
+        "find" => "find [-H] [-L] [-P] [path...] [expression]",
+        _ => return format!("Usage: {name} [OPTION]... [FILE]..."),
+    };
+    format!("Usage: {body}")
+}
+/// `cmd: invalid option -- 'x'` plus the synopsis, GNU's exact shape, status 2.
+pub(crate) fn invalid_option(name: &str, ch: char) -> Fail {
+    Fail::usage(format!(
+        "{name}: invalid option -- '{ch}'\n{}",
+        usage_line(name)
+    ))
+}
+/// `cmd: unrecognized option '--x'` plus the synopsis, status 2.
+pub(crate) fn unrecognized_option(name: &str, long: &str) -> Fail {
+    Fail::usage(format!(
+        "{name}: unrecognized option '--{long}'\n{}",
+        usage_line(name)
+    ))
+}
+pub(crate) fn missing_argument(name: &str, spelling: &str) -> Fail {
+    Fail::usage(format!(
+        "{name}: option requires an argument -- '{spelling}'\n{}",
+        usage_line(name)
+    ))
+}
+pub(crate) fn options(
     name: &str,
     args: &[String],
     allowed: &str,
@@ -3947,21 +4234,22 @@ fn options(
                 .iter()
                 .find(|(n, _)| *n == key)
                 .map(|(_, c)| *c)
-                .ok_or_else(|| Fail::usage(format!("{name}: unsupported option `--{key}`")))?;
+                .ok_or_else(|| unrecognized_option(name, key))?;
             if valued.contains(ch) {
                 let value = match inline {
                     Some(v) => v,
                     None => {
                         i += 1;
-                        args.get(i).cloned().ok_or_else(|| {
-                            Fail::usage(format!("{name}: option `--{key}` requires an argument"))
-                        })?
+                        args.get(i)
+                            .cloned()
+                            .ok_or_else(|| missing_argument(name, key))?
                     }
                 };
                 flags.push((ch, value));
             } else if inline.is_some() {
                 return Err(Fail::usage(format!(
-                    "{name}: option `--{key}` takes no argument"
+                    "{name}: option '--{key}' doesn't allow an argument\n{}",
+                    usage_line(name)
                 )));
             } else {
                 flags.push((ch, String::new()));
@@ -3978,9 +4266,9 @@ fn options(
                     let tail: String = chars[j + 1..].iter().collect();
                     let value = if tail.is_empty() {
                         i += 1;
-                        args.get(i).cloned().ok_or_else(|| {
-                            Fail::usage(format!("{name}: option `-{ch}` requires an argument"))
-                        })?
+                        args.get(i)
+                            .cloned()
+                            .ok_or_else(|| missing_argument(name, &ch.to_string()))?
                     } else {
                         tail
                     };
@@ -3990,7 +4278,7 @@ fn options(
                     flags.push((ch, String::new()));
                     j += 1;
                 } else {
-                    return Err(Fail::usage(format!("{name}: unsupported option `-{ch}`")));
+                    return Err(invalid_option(name, ch));
                 }
             }
             i += 1;
@@ -4001,10 +4289,10 @@ fn options(
     }
     Ok((flags, operands))
 }
-fn flag(flags: &[(char, String)], f: char) -> bool {
+pub(crate) fn flag(flags: &[(char, String)], f: char) -> bool {
     flags.iter().any(|(k, _)| *k == f)
 }
-fn value(flags: &[(char, String)], f: char) -> Option<&str> {
+pub(crate) fn value(flags: &[(char, String)], f: char) -> Option<&str> {
     flags
         .iter()
         .rev()
@@ -4266,268 +4554,6 @@ fn stat_format(
     Ok(out)
 }
 
-/// A sed address. `Last` is `$`; `Pattern` is a regex address.
-enum Address {
-    Line(usize),
-    Last,
-    Pattern(regex::Regex),
-}
-/// Which lines the verb applies to. `All` is an unaddressed script.
-enum Selector {
-    All,
-    One(Address),
-    Range(Address, Address),
-}
-/// The sed verbs this world implements. Anything else is refused by name so a script
-/// never silently passes its input through unchanged.
-enum Verb {
-    Substitute {
-        regex: regex::Regex,
-        with: String,
-        global: bool,
-    },
-    Print,
-    Delete,
-    Append(String),
-    Insert(String),
-    Transliterate(Vec<char>, Vec<char>),
-    Quit(i32),
-}
-struct SedProgram {
-    selector: Selector,
-    verb: Verb,
-}
-const SED_SCRIPTS: &str = "sed: supported scripts are [ADDR]s/RE/REP/[g], and [ADDR] \
-     with p, d, a TEXT, i TEXT, y/SET/SET/ or q [CODE]; an address is N, $, /RE/ or a \
-     pair of those";
-/// Splits `delim`-separated fields, keeping `\x` escapes for everything but the
-/// delimiter itself. Shared by `s///` and `y///`.
-fn sed_fields(chars: &[char], delimiter: char) -> Vec<String> {
-    let mut fields = vec![String::new()];
-    let mut escaped = false;
-    for ch in chars {
-        if escaped {
-            if *ch != delimiter {
-                fields.last_mut().unwrap().push('\\');
-            }
-            fields.last_mut().unwrap().push(*ch);
-            escaped = false;
-        } else if *ch == '\\' {
-            escaped = true;
-        } else if *ch == delimiter {
-            fields.push(String::new());
-        } else {
-            fields.last_mut().unwrap().push(*ch)
-        }
-    }
-    fields
-}
-fn sed_address(chars: &[char], i: &mut usize) -> Result<Option<Address>, Fail> {
-    match chars.get(*i) {
-        Some('$') => {
-            *i += 1;
-            Ok(Some(Address::Last))
-        }
-        Some('/') => {
-            *i += 1;
-            let start = *i;
-            let mut escaped = false;
-            while *i < chars.len() && (escaped || chars[*i] != '/') {
-                escaped = !escaped && chars[*i] == '\\';
-                *i += 1;
-            }
-            if *i >= chars.len() {
-                return Err(Fail::usage("sed: unterminated address regex"));
-            }
-            let body: String = chars[start..*i].iter().collect();
-            *i += 1;
-            Ok(Some(Address::Pattern(
-                regex::Regex::new(&body).map_err(|e| Fail::usage(format!("sed: {e}")))?,
-            )))
-        }
-        Some(c) if c.is_ascii_digit() => {
-            let start = *i;
-            while chars.get(*i).is_some_and(char::is_ascii_digit) {
-                *i += 1;
-            }
-            let n: usize = chars[start..*i].iter().collect::<String>().parse().unwrap();
-            if n == 0 {
-                return Err(Fail::usage("sed: line numbers start at 1"));
-            }
-            Ok(Some(Address::Line(n)))
-        }
-        _ => Ok(None),
-    }
-}
-fn sed_program(expression: &str) -> Result<SedProgram, Fail> {
-    let chars: Vec<char> = expression.trim().chars().collect();
-    let mut i = 0;
-    let selector = match sed_address(&chars, &mut i)? {
-        None => Selector::All,
-        Some(first) if chars.get(i) == Some(&',') => {
-            i += 1;
-            let second = sed_address(&chars, &mut i)?
-                .ok_or_else(|| Fail::usage("sed: a range needs a second address"))?;
-            Selector::Range(first, second)
-        }
-        Some(first) => Selector::One(first),
-    };
-    // GNU allows whitespace between the address and its command.
-    while chars.get(i).is_some_and(|c| *c == ' ' || *c == '\t') {
-        i += 1;
-    }
-    let command = *chars.get(i).ok_or_else(|| Fail::usage(SED_SCRIPTS))?;
-    i += 1;
-    let tail: Vec<char> = chars[i..].to_vec();
-    let text_operand = || match tail.split_first() {
-        Some(('\\', rest)) => rest.iter().collect::<String>(),
-        _ => tail
-            .iter()
-            .collect::<String>()
-            .trim_start_matches([' ', '\t'])
-            .to_string(),
-    };
-    let verb = match command {
-        's' | 'y' => {
-            let delimiter = *tail
-                .first()
-                .ok_or_else(|| Fail::usage("sed: missing delimiter"))?;
-            let fields = sed_fields(&tail[1..], delimiter);
-            if fields.len() != 3 {
-                return Err(Fail::usage(format!("sed: malformed `{command}` command")));
-            }
-            if command == 'y' {
-                let (from, to) = (character_set(&fields[0]), character_set(&fields[1]));
-                if !fields[2].is_empty() || from.len() != to.len() || from.is_empty() {
-                    return Err(Fail::usage("sed: `y` needs two sets of equal length"));
-                }
-                Verb::Transliterate(from, to)
-            } else {
-                if fields[2].chars().any(|c| c != 'g') {
-                    return Err(Fail::usage(format!(
-                        "sed: unsupported substitution flag in `{}`",
-                        fields[2]
-                    )));
-                }
-                Verb::Substitute {
-                    regex: regex::Regex::new(&fields[0])
-                        .map_err(|e| Fail::usage(format!("sed: {e}")))?,
-                    with: fields[1].clone(),
-                    global: fields[2].contains('g'),
-                }
-            }
-        }
-        'p' | 'd' if tail.iter().all(char::is_ascii_whitespace) => {
-            if command == 'p' {
-                Verb::Print
-            } else {
-                Verb::Delete
-            }
-        }
-        'a' => Verb::Append(text_operand()),
-        'i' => Verb::Insert(text_operand()),
-        'q' => {
-            let operand = text_operand();
-            Verb::Quit(if operand.is_empty() {
-                0
-            } else {
-                operand
-                    .parse()
-                    .map_err(|_| Fail::usage("sed: `q` expects a numeric exit code"))?
-            })
-        }
-        _ => return Err(Fail::usage(SED_SCRIPTS)),
-    };
-    Ok(SedProgram { selector, verb })
-}
-impl Address {
-    fn hits(&self, index: usize, line: &str, last: usize) -> bool {
-        match self {
-            Address::Line(n) => *n == index,
-            Address::Last => index == last,
-            Address::Pattern(re) => re.is_match(line),
-        }
-    }
-}
-/// Applies the program to `text`, returning the output and any `q` exit code.
-/// A range opens on its first address and closes on the next line its second matches.
-fn sed_apply(program: &SedProgram, text: &str, quiet: bool) -> (String, Option<i32>) {
-    let lines: Vec<&str> = text.lines().collect();
-    let last = lines.len();
-    let mut open = false;
-    let mut out = String::new();
-    let mut quit = None;
-    for (offset, raw) in lines.iter().enumerate() {
-        let index = offset + 1;
-        let selected = match &program.selector {
-            Selector::All => true,
-            Selector::One(a) => a.hits(index, raw, last),
-            Selector::Range(a, b) => {
-                if open {
-                    if b.hits(index, raw, last) {
-                        open = false;
-                    }
-                    true
-                } else if a.hits(index, raw, last) {
-                    // A numeric end at or before the start makes a one-line range.
-                    open = !matches!(b, Address::Line(n) if *n <= index);
-                    true
-                } else {
-                    false
-                }
-            }
-        };
-        let mut line = (*raw).to_string();
-        let mut print = !quiet;
-        let mut extra = String::new();
-        if selected {
-            match &program.verb {
-                Verb::Substitute {
-                    regex,
-                    with,
-                    global,
-                } => {
-                    line = if *global {
-                        regex.replace_all(&line, with.as_str()).into_owned()
-                    } else {
-                        regex.replace(&line, with.as_str()).into_owned()
-                    }
-                }
-                // Without -n sed still auto-prints, so `p` duplicates the line.
-                Verb::Print => extra = format!("{line}\n"),
-                Verb::Delete => print = false,
-                Verb::Insert(t) => out.push_str(&format!("{t}\n")),
-                Verb::Append(t) => extra = format!("{t}\n"),
-                Verb::Transliterate(from, to) => {
-                    line = line
-                        .chars()
-                        .map(|ch| match from.iter().position(|c| *c == ch) {
-                            Some(k) => to[k],
-                            None => ch,
-                        })
-                        .collect()
-                }
-                Verb::Quit(code) => {
-                    if print {
-                        out.push_str(&format!("{line}\n"));
-                    }
-                    quit = Some(*code);
-                    break;
-                }
-            }
-        }
-        if print {
-            out.push_str(&format!("{line}\n"));
-        }
-        out.push_str(&extra);
-    }
-    // An input with no final newline keeps that shape.
-    if !text.ends_with('\n') && out.ends_with('\n') {
-        out.pop();
-    }
-    (out, quit)
-}
-
 /// PowerShell spells switches with one dash and a whole word; fold the ones the
 /// file commands accept onto their POSIX letters before parsing.
 fn powershell_switches(args: &[String]) -> Vec<String> {
@@ -4650,7 +4676,7 @@ fn cmd_grep(c: &Computer, args: &[String], input: &str) -> Result<String, Fail> 
     let (opts, mut rest) = options(
         "grep",
         args,
-        "ivnclLFEqshHwxrRo",
+        "ivnclLFEGqshHwxrRo",
         "eABC",
         &[
             ("ignore-case", 'i'),
@@ -4661,6 +4687,7 @@ fn cmd_grep(c: &Computer, args: &[String], input: &str) -> Result<String, Fail> 
             ("files-without-match", 'L'),
             ("fixed-strings", 'F'),
             ("extended-regexp", 'E'),
+            ("basic-regexp", 'G'),
             ("regexp", 'e'),
             ("quiet", 'q'),
             ("silent", 'q'),
@@ -4704,23 +4731,34 @@ fn cmd_grep(c: &Computer, args: &[String], input: &str) -> Result<String, Fail> 
         patterns.push(rest.remove(0));
     }
     let recursive = flag(&opts, 'r') || flag(&opts, 'R');
+    // The last of -E/-G wins, as GNU grep does.
+    let extended = opts
+        .iter()
+        .rev()
+        .find(|(k, _)| *k == 'E' || *k == 'G')
+        .is_some_and(|(k, _)| *k == 'E');
+    // Without -E a pattern is a *basic* regular expression: `a\+` repeats and `a+`
+    // is a literal plus. Getting this backwards is the classic porting trap, so the
+    // same translator sed uses does the work here.
     let expression = patterns
         .iter()
+        // A pattern may itself hold newlines: `grep -e $'a\nb'` is two alternatives.
+        .flat_map(|p| p.split('\n').map(str::to_string).collect::<Vec<_>>())
         .map(|p| {
             let body = if flag(&opts, 'F') {
-                regex::escape(p)
+                regex::escape(&p)
             } else {
-                p.clone()
+                crate::sed::translate(&p, extended)?
             };
-            if flag(&opts, 'x') {
+            Ok(if flag(&opts, 'x') {
                 format!("^(?:{body})$")
             } else if flag(&opts, 'w') {
                 format!("\\b(?:{body})\\b")
             } else {
                 format!("(?:{body})")
-            }
+            })
         })
-        .collect::<Vec<_>>()
+        .collect::<Result<Vec<_>, Fail>>()?
         .join("|");
     let regex = regex::RegexBuilder::new(&expression)
         .case_insensitive(flag(&opts, 'i'))
@@ -4733,7 +4771,7 @@ fn cmd_grep(c: &Computer, args: &[String], input: &str) -> Result<String, Fail> 
         let directory = c.vfs.lstat(&path).is_ok_and(|m| m.is_dir);
         if directory && !recursive {
             if !flag(&opts, 's') {
-                return Err(format!("{operand}: Is a directory").into());
+                return Err(Fail::op("grep", operand, "Is a directory"));
             }
             continue;
         }
@@ -4752,7 +4790,7 @@ fn cmd_grep(c: &Computer, args: &[String], input: &str) -> Result<String, Fail> 
                 Err(e) if flag(&opts, 's') => {
                     let _ = e;
                 }
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(Fail::io("grep", &label, &e)),
             }
         }
     }
@@ -4911,201 +4949,6 @@ fn cmd_stat(c: &Computer, args: &[String]) -> Result<String, Fail> {
             ));
     }
     Ok(out)
-}
-
-#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
-fn cmd_sed(c: &mut Computer, args: &[String], input: &str, t: u64) -> Result<String, Fail> {
-    let err = |e: crate::VfsError| Fail::from(e);
-    let (opts, mut rest) = options(
-        "sed",
-        args,
-        "ni",
-        "e",
-        &[
-            ("quiet", 'n'),
-            ("silent", 'n'),
-            ("in-place", 'i'),
-            ("expression", 'e'),
-        ],
-    )?;
-    let quiet = flag(&opts, 'n');
-    let inplace = flag(&opts, 'i');
-    let scripts: Vec<String> = opts
-        .iter()
-        .filter(|(k, _)| *k == 'e')
-        .map(|(_, v)| v.clone())
-        .collect();
-    if scripts.len() > 1 {
-        return Err(Fail::usage("sed: only one -e expression is supported"));
-    }
-    let expression = match scripts.first() {
-        Some(e) => e.clone(),
-        None if rest.is_empty() => return Err(Fail::usage("sed: missing expression")),
-        None => rest.remove(0),
-    };
-    let program = sed_program(&expression)?;
-    if rest.is_empty() {
-        if inplace {
-            return Err(Fail::usage("sed: -i requires a file"));
-        }
-        let (out, quit) = sed_apply(&program, input, quiet);
-        return sed_status(out, quit);
-    }
-    let mut out = String::new();
-    for file in &rest {
-        let path = c.resolve(file);
-        let text =
-            String::from_utf8_lossy(&c.vfs.read_as(&path, &c.user).map_err(err)?).into_owned();
-        let (changed, quit) = sed_apply(&program, &text, quiet);
-        if inplace {
-            c.vfs
-                .write_as(&path, changed.as_bytes(), &c.user, t)
-                .map_err(err)?;
-        } else {
-            out.push_str(&changed)
-        }
-        // `q` stops sed altogether, not just this file.
-        if quit.is_some() {
-            return sed_status(out, quit);
-        }
-    }
-    Ok(out)
-}
-/// `q CODE` is the one sed script that chooses its own status; everything already
-/// printed still reaches the caller.
-fn sed_status(out: String, quit: Option<i32>) -> Result<String, Fail> {
-    match quit {
-        Some(code) if code != 0 => Err(Fail::new(String::new(), code).with_output(out)),
-        _ => Ok(out),
-    }
-}
-
-#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
-fn cmd_text(c: &Computer, cmd: &str, args: &[String], input: &str) -> Result<String, Fail> {
-    let err = |e: crate::VfsError| Fail::from(e);
-    // `head -3` is the historical spelling of `head -n 3`, and is what people type.
-    let rewritten: Vec<String> = if matches!(cmd, "head" | "tail") {
-        let mut out = Vec::with_capacity(args.len() + 1);
-        for arg in args {
-            match arg
-                .strip_prefix('-')
-                .filter(|d| !d.is_empty() && d.chars().all(|c| c.is_ascii_digit()))
-            {
-                Some(count) => {
-                    out.push("-n".to_owned());
-                    out.push(count.to_owned());
-                }
-                None => out.push(arg.clone()),
-            }
-        }
-        out
-    } else {
-        args.to_vec()
-    };
-    let args = &rewritten[..];
-    let (allowed, valued) = match cmd {
-        "wc" => ("lwcm", ""),
-        "sort" => ("rnu", ""),
-        "uniq" => ("cdu", ""),
-        _ => ("", "n"),
-    };
-    let (opts, paths) = options(
-        cmd,
-        args,
-        allowed,
-        valued,
-        &[
-            ("lines", if cmd == "wc" { 'l' } else { 'n' }),
-            ("words", 'w'),
-            ("bytes", 'c'),
-            ("chars", 'm'),
-            ("reverse", 'r'),
-            ("numeric-sort", 'n'),
-            ("unique", 'u'),
-            ("count", 'c'),
-            ("repeated", 'd'),
-        ],
-    )?;
-    // Only head/tail read -n as a count; for sort it is a sort order.
-    let n: usize = match value(&opts, 'n').filter(|_| valued.contains('n')) {
-        Some(v) => v.parse().map_err(|_| Fail::usage("invalid count"))?,
-        None => 10,
-    };
-    let text = match paths.first() {
-        Some(p) => String::from_utf8_lossy(&c.vfs.read_as(&c.resolve(p), &c.user).map_err(err)?)
-            .into_owned(),
-        None => input.into(),
-    };
-    let mut lines: Vec<&str> = text.lines().collect();
-    match cmd {
-        "wc" => {
-            let (l, w, b) = (
-                text.bytes().filter(|b| *b == b'\n').count(),
-                text.split_whitespace().count(),
-                text.len(),
-            );
-            let chosen: Vec<String> = [('l', l), ('w', w), ('c', b), ('m', text.chars().count())]
-                .iter()
-                .filter(|(f, _)| flag(&opts, *f))
-                .map(|(_, v)| v.to_string())
-                .collect();
-            Ok(if chosen.is_empty() {
-                format!("{l} {w} {b}\n")
-            } else {
-                format!("{}\n", chosen.join(" "))
-            })
-        }
-        "head" => Ok(lines
-            .into_iter()
-            .take(n)
-            .map(|l| format!("{l}\n"))
-            .collect()),
-        "tail" => {
-            let skip = lines.len().saturating_sub(n);
-            Ok(lines
-                .into_iter()
-                .skip(skip)
-                .map(|l| format!("{l}\n"))
-                .collect())
-        }
-        "sort" => {
-            if flag(&opts, 'n') {
-                // Non-numeric lines sort as zero, as GNU sort does.
-                lines.sort_by_key(|l| l.trim().parse::<i64>().unwrap_or(0));
-            } else {
-                lines.sort();
-            }
-            if flag(&opts, 'u') {
-                lines.dedup();
-            }
-            if flag(&opts, 'r') {
-                lines.reverse();
-            }
-            Ok(lines.into_iter().map(|l| format!("{l}\n")).collect())
-        }
-        _ => {
-            let mut runs: Vec<(usize, &str)> = Vec::new();
-            for line in lines {
-                match runs.last_mut() {
-                    Some(last) if last.1 == line => last.0 += 1,
-                    _ => runs.push((1, line)),
-                }
-            }
-            Ok(runs
-                .into_iter()
-                .filter(|(count, _)| {
-                    (!flag(&opts, 'd') || *count > 1) && (!flag(&opts, 'u') || *count == 1)
-                })
-                .map(|(count, line)| {
-                    if flag(&opts, 'c') {
-                        format!("{count:7} {line}\n")
-                    } else {
-                        format!("{line}\n")
-                    }
-                })
-                .collect())
-        }
-    }
 }
 
 #[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
@@ -5348,6 +5191,7 @@ fn cmd_chmod(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
         return Err(Fail::usage("chmod: missing operand"));
     }
     let change = ModeSpec::parse(spec)?;
+    let mut told = String::new();
     for operand in paths {
         let root = c.resolve(operand);
         let meta = c
@@ -5364,12 +5208,16 @@ fn cmd_chmod(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
         };
         for (path, is_dir) in targets {
             let current = c.vfs.lstat(&path).map_err(Fail::from)?.mode;
-            c.vfs
-                .chmod_as(&path, change.apply(current, is_dir), &c.user)
-                .map_err(Fail::from)?;
+            let wanted = change.apply(current, is_dir);
+            c.vfs.chmod_as(&path, wanted, &c.user).map_err(Fail::from)?;
+            if flag(&opts, 'v') {
+                told.push_str(&format!(
+                    "mode of '{path}' changed from {current:04o} to {wanted:04o}\n"
+                ));
+            }
         }
     }
-    Ok(String::new())
+    Ok(told)
 }
 /// Inverse of `clock`: a civil UTC date to a simulated tick. Times before the world's
 /// epoch cannot be represented, so they are refused rather than clamped.
@@ -6503,7 +6351,9 @@ fn cmd_df(c: &Computer, args: &[String]) -> Result<String, Fail> {
 
 #[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
 fn cmd_ip(c: &Computer, args: &[String]) -> Result<String, Fail> {
-    let (_, rest) = options("ip", args, "46o", "", &[("brief", 'b')])?;
+    // -4/-6/-o/-brief would filter or reshape the printout; this world's NIC summary
+    // is a fixed block, so they are refused rather than accepted and dropped.
+    let (_, rest) = options("ip", args, "", "", &[])?;
     let object = rest.first().map(String::as_str).unwrap_or("");
     let action = rest.get(1).map(String::as_str).unwrap_or("show");
     if !matches!(action, "show" | "list" | "s" | "l") {

@@ -270,11 +270,26 @@ pub fn execute(
     }
     match run(c, args, t, host) {
         Ok(s) => CommandResult::success(s),
-        Err(e) => CommandResult::error(format!("git: {e}\n")),
+        Err(e) => {
+            // The shell's vocabulary: 2 means "outside the simulated surface", which
+            // is what an unknown subcommand or option is; everything else is 1.
+            let outside = e.starts_with("unknown option") || e.starts_with("unsupported command");
+            CommandResult {
+                exit_code: if outside { 2 } else { 1 },
+                ..CommandResult::error(format!("git: {e}\n"))
+            }
+        }
     }
 }
 fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Result<String, String> {
     let command = a.first().map(String::as_str).unwrap_or("status");
+    // A global option is refused before the repository is even looked for, so an
+    // unsupported flag never hides behind "not a git repository".
+    if command.starts_with('-') && command != "-C" {
+        return Err(format!(
+            "unknown option: {command}\nusage: git [-C <path>] <command> [<args>]"
+        ));
+    }
     if command == "init" {
         let r = a.get(1).map(|s| c.resolve(s)).unwrap_or(c.cwd.clone());
         c.vfs
