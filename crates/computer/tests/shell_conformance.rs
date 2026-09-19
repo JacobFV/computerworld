@@ -2126,6 +2126,9 @@ fn archives_round_trip_through_real_container_bytes() {
     refused(&mut c, "rsync -a /tmp/src/ host:/tmp/dst", "host:");
     refused(&mut c, "tar -cjf /tmp/x.tbz /tmp/src", "-j");
     refused(&mut c, "gzip --bogus /tmp/p.txt", "--bogus");
+    // Compressed bytes cannot survive a text stdout, so that is refused by name.
+    refused(&mut c, "gzip -c /tmp/p.txt", "stdout");
+    refused(&mut c, "echo hi | gzip", "stdout");
     refused(&mut c, "unzip --bogus /tmp/src.zip", "--bogus");
 }
 

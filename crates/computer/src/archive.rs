@@ -1001,8 +1001,8 @@ fn strip_gz_suffix(name: &str) -> Option<String> {
 }
 
 /// `gzip [-k] [-c] [-d] [-f] [-n] [-v] [-1..-9] FILE...`; `gunzip` is `gzip -d` and
-/// `zcat` is `gzip -dc`. Compressed bytes reach files exactly; on stdout they pass
-/// through the shell's text pipe, so use a file when the bytes must survive.
+/// `zcat` is `gzip -dc`. Compressing to stdout is refused by name, because a
+/// command's standard output is text here and the bytes could not survive it.
 pub(crate) fn gzip(
     c: &mut Computer,
     cmd: &str,
@@ -1029,19 +1029,23 @@ pub(crate) fn gzip(
         ],
     )?;
     let decompress = flag(&opts, 'd') || cmd == "gunzip" || cmd == "zcat";
-    let to_stdout = flag(&opts, 'c') || cmd == "zcat";
+    let to_stdout = flag(&opts, 'c') || cmd == "zcat" || operands.is_empty();
+    // A command's standard output is text in this shell, so compressed bytes cannot
+    // survive it. Refusing is the honest answer; a corrupt `.gz` that only shows up
+    // when someone tries to read it back is not.
+    if !decompress && to_stdout {
+        return Err(Fail::usage(format!(
+            "{cmd}: cannot write compressed bytes to stdout: this shell's stdout is \
+             text, so name an output file instead"
+        )));
+    }
     let (keep, force, verbose) = (flag(&opts, 'k'), flag(&opts, 'f'), flag(&opts, 'v'));
     let no_name = flag(&opts, 'n');
     let user = c.user.clone();
     if operands.is_empty() {
-        let bytes = input.as_bytes();
-        let out = if decompress {
-            gunzip_bytes(bytes)
-                .map_err(|e| Fail::new(format!("{cmd}: stdin: {e}"), 1))?
-                .0
-        } else {
-            gzip_member(bytes, if no_name { 0 } else { unix_seconds(t) as u32 })
-        };
+        // Only the decompressing direction reaches here; the other was refused above.
+        let (out, _) = gunzip_bytes(input.as_bytes())
+            .map_err(|e| Fail::new(format!("{cmd}: stdin: {e}"), 1))?;
         return Ok(String::from_utf8_lossy(&out).into_owned());
     }
     let mut out = String::new();
