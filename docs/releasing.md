@@ -28,12 +28,15 @@ a prerelease suffix are marked prerelease on GitHub and go to npm under the `nex
 
 - **PyPI** holds no secret. The project trusts this repository's `publish.yml` in the
   `pypi` environment as a [trusted publisher](https://docs.pypi.org/trusted-publishers/).
-- **npm** needs the `NPM_TOKEN` repository secret: a granular access token with read and
-  write access to the `computerworld` package (for the very first publish, to all
-  packages, since the package does not exist yet) and "bypass two-factor authentication"
-  enabled so automation can publish. Once the package exists, it can be replaced by a
-  trusted publisher in the package's settings on npmjs.com, after which the secret and
-  the `NODE_AUTH_TOKEN` line can be deleted.
+- **npm** holds no secret either. The `computerworld` package trusts this repository's
+  `publish.yml` in the `npm` environment as a
+  [trusted publisher](https://docs.npmjs.com/trusted-publishers/), with direct
+  `npm publish` allowed (not only staging), and the package's publishing access is set to
+  require two-factor authentication and disallow tokens. The 0.1.0 tarball was published
+  once by hand from the GitHub release, because npm cannot trust a workflow for a package
+  that does not exist yet; every later version is published by the workflow. To change
+  the trust, `npm trust github computerworld --repo JacobFV/computerworld --file publish.yml --environment npm --allow-publish`
+  from a logged-in npm 11.15+ with two-factor authentication.
 - **crates.io is not published.** The workspace is fifty-one crates joined by path
   dependencies without versions, new crates are rate-limited to one every ten minutes
   after the first five, and `cw-render` embeds about 38 MB of fonts and wallpapers

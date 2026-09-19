@@ -19,7 +19,7 @@ and state hashes, which cover the engine version, differ from alpha.3's for the 
 - `.github/workflows/publish.yml` is the release: it calls the candidate workflow,
   refuses to continue unless Linux, macOS, Windows and Node/Wasm agree on the state and
   pixel hashes, creates the tag and the GitHub release with `SHA256SUMS`, then publishes
-  to PyPI (trusted publisher, no token) and npm (token, with provenance) the files it
+  to PyPI and npm (trusted publishers, no tokens; npm with provenance) the files it
   downloads back from that release and checks against those sums. A registry can be
   published later, or retried, against the existing release without a rebuild.
 - crates.io is not published: fifty-one crates with path dependencies, and a renderer

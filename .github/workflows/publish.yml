@@ -2,9 +2,8 @@ name: publish
 # The release, as a logged run: build and verify the candidates, cut the GitHub release
 # with its checksums, then hand the registries the very files that release holds.
 #
-# PyPI is published with a trusted publisher (OIDC; no token exists). npm is published
-# with the NPM_TOKEN secret and a provenance attestation. crates.io is not published:
-# see docs/releasing.md.
+# PyPI and npm are each published with a trusted publisher (OIDC; no token exists), and
+# npm records a provenance attestation. crates.io is not published: see docs/releasing.md.
 #
 # A registry can be published later, or again after a failure, without rebuilding:
 # run this with `create_release` off and it uses the release that already exists.
@@ -131,21 +130,19 @@ jobs:
       url: https://www.npmjs.com/package/computerworld
     permissions:
       contents: read
-      id-token: write   # the provenance attestation
+      id-token: write   # trusted publishing and the provenance attestation
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.source_commit }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'   # trusted publishing needs npm 11.5.1+
           registry-url: https://registry.npmjs.org
       - name: Download the package from the release, check it against it, and publish it
         env:
           GH_TOKEN: ${{ github.token }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          test -n "$NODE_AUTH_TOKEN" || { echo "The NPM_TOKEN secret is not set: see docs/releasing.md"; exit 1; }
           VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
           test "$(git ls-remote origin "refs/tags/v$VERSION" | cut -f1)" = "${{ inputs.source_commit }}"
           mkdir -p target/verify
