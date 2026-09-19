@@ -15,8 +15,10 @@ python -c "import computerworld; print(computerworld.__version__, computerworld.
 # Expected: 0.1.0 0.1.0
 ```
 
-PyPI carries wheels for Linux x86-64 (manylinux2014), macOS arm64 and Windows x64, and
-no source distribution: on any other platform, build from source as below. The same
+PyPI carries wheels for Linux x86-64 and arm64 (manylinux2014), macOS arm64 and x86-64,
+and Windows x64, and no source distribution: on any other platform, build from source
+as below. (0.1.0 has no Linux arm64 or macOS x86-64 wheel; those start with the next
+release.) The same
 wheels are assets of
 [v0.1.0](https://github.com/JacobFV/computerworld/releases/tag/v0.1.0) with a
 `SHA256SUMS`; the release workflow publishes to PyPI the files it downloaded from that

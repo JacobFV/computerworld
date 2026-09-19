@@ -68,8 +68,12 @@ jobs:
           python3 - <<'PY'
           import json, pathlib, sys
           root = pathlib.Path('target/candidates')
-          names = {'python-evidence-x86_64-unknown-linux-gnu': 'linux', 'python-evidence-aarch64-apple-darwin': 'macos',
-                   'python-evidence-x86_64-pc-windows-msvc': 'windows', 'wasm-browser-release-evidence': 'node-wasm'}
+          names = {'python-evidence-x86_64-unknown-linux-gnu': 'linux-x86_64',
+                   'python-evidence-aarch64-unknown-linux-gnu': 'linux-arm64',
+                   'python-evidence-aarch64-apple-darwin': 'macos-arm64',
+                   'python-evidence-x86_64-apple-darwin': 'macos-x86_64',
+                   'python-evidence-x86_64-pc-windows-msvc': 'windows-x64',
+                   'wasm-browser-release-evidence': 'node-wasm'}
           parity = {}
           for artifact, name in names.items():
               summary = next((root / artifact).rglob('summary.json'), None)
