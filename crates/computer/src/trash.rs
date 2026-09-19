@@ -264,8 +264,11 @@ pub(crate) fn command(
             ));
         };
         if sub != "trash" {
+            // The opener handles every other subcommand; this arm only ever sees
+            // `gio trash`, so anything else here is a dispatch mistake, not a user one.
             return Err(Fail::usage(format!(
-                "gio: unsupported subcommand `{sub}`; this world implements `gio trash`"
+                "gio: unsupported subcommand `{sub}`; this world models `gio open` \
+                 and `gio trash`"
             )));
         }
         let rest = &args[1..];
@@ -550,7 +553,17 @@ mod tests {
         );
         ok(&mut c, "gio trash --restore /home/user/report.txt", 0);
         assert_eq!(ok(&mut c, "cat /home/user/report.txt", 0), "report\n");
-        assert_eq!(run(&mut c, "gio open x", 0).exit_code, 2);
+        // The opener still owns every other `gio` subcommand: `gio open` reaches it
+        // (and answers for itself about applications), `gio mount` is refused by it.
+        let opened = run(&mut c, "gio open /home/user/report.txt", 0);
+        assert!(
+            !opened.stderr.contains("unsupported subcommand"),
+            "the trash swallowed `gio open`: {}",
+            opened.stderr
+        );
+        let mounted = run(&mut c, "gio mount x", 0);
+        assert_eq!(mounted.exit_code, 2);
+        assert!(mounted.stderr.contains("gio open"), "{}", mounted.stderr);
     }
 
     #[test]

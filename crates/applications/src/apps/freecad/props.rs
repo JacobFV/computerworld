@@ -2,7 +2,7 @@
 //! editable one really editable, recomputing the document as it changes.
 use super::commands::parse_quantity;
 use super::*;
-use cw_cad::document::{AxisRef, Extent, HoleCut, PlaneRef, Support};
+use cw_cad::document::{AxisRef, ChamferType, Extent, HoleCut, PlaneRef, Support};
 use cw_cad::math::fmt_num;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -90,7 +90,10 @@ impl Cad {
                 Kind::Bool(o.visible),
             )];
             if o.feature.is_solid_feature()
-                || matches!(o.feature, Feature::Body { .. } | Feature::Mesh { .. })
+                || matches!(
+                    o.feature,
+                    Feature::Body { .. } | Feature::Mesh { .. } | Feature::Part { .. }
+                )
             {
                 v.push(row(
                     "Display Options",
@@ -255,7 +258,11 @@ impl Cad {
                     Kind::Bool(*reversed),
                 ));
             }
-            Feature::Fillet { edges, radius } => {
+            Feature::Fillet {
+                edges,
+                radius,
+                all_edges,
+            } => {
                 v.push(row(
                     "Base",
                     "Base",
@@ -266,9 +273,23 @@ impl Cad {
                         .join(", "),
                     Kind::ReadOnly,
                 ));
-                v.push(row("Base", "Radius", mm(*radius), Kind::Number));
+                v.push(row("Fillet", "Radius", mm(*radius), Kind::Number));
+                v.push(row(
+                    "Base",
+                    "UseAllEdges",
+                    yes_no(*all_edges),
+                    Kind::Bool(*all_edges),
+                ));
             }
-            Feature::Chamfer { edges, size } => {
+            Feature::Chamfer {
+                edges,
+                size,
+                kind,
+                size2,
+                angle,
+                flip,
+                all_edges,
+            } => {
                 v.push(row(
                     "Base",
                     "Base",
@@ -279,7 +300,38 @@ impl Cad {
                         .join(", "),
                     Kind::ReadOnly,
                 ));
-                v.push(row("Base", "Size", mm(*size), Kind::Number));
+                v.push(row(
+                    "Chamfer",
+                    "ChamferType",
+                    kind.label().into(),
+                    Kind::Enum(
+                        ChamferType::ALL
+                            .iter()
+                            .map(|c| c.label().to_owned())
+                            .collect(),
+                    ),
+                ));
+                v.push(row("Chamfer", "Size", mm(*size), Kind::Number));
+                if *kind == ChamferType::TwoDistances {
+                    v.push(row("Chamfer", "Size2", mm(*size2), Kind::Number));
+                }
+                if *kind == ChamferType::DistanceAngle {
+                    v.push(row("Chamfer", "Angle", deg(*angle), Kind::Number));
+                }
+                if *kind != ChamferType::Equal {
+                    v.push(row(
+                        "Chamfer",
+                        "FlipDirection",
+                        yes_no(*flip),
+                        Kind::Bool(*flip),
+                    ));
+                }
+                v.push(row(
+                    "Base",
+                    "UseAllEdges",
+                    yes_no(*all_edges),
+                    Kind::Bool(*all_edges),
+                ));
             }
             Feature::Hole {
                 profile,
@@ -436,6 +488,31 @@ impl Cad {
                     "Occurrences",
                     occurrences.to_string(),
                     Kind::Number,
+                ));
+            }
+            Feature::Part { solid } => {
+                v.push(row(
+                    "Shape",
+                    "Faces",
+                    solid.faces.len().to_string(),
+                    Kind::ReadOnly,
+                ));
+                v.push(row(
+                    "Shape",
+                    "Edges",
+                    solid
+                        .edges
+                        .iter()
+                        .filter(|e| !e.degenerate)
+                        .count()
+                        .to_string(),
+                    Kind::ReadOnly,
+                ));
+                v.push(row(
+                    "Shape",
+                    "Vertexes",
+                    solid.vertices.len().to_string(),
+                    Kind::ReadOnly,
                 ));
             }
             Feature::Mesh { mesh } => {
@@ -686,6 +763,24 @@ pub(crate) fn set_feature_property(f: &mut Feature, name: &str, text: &str) -> R
         }
         (Feature::Fillet { radius, .. }, "Radius") => *radius = positive(num(false)?)?,
         (Feature::Chamfer { size, .. }, "Size") => *size = positive(num(false)?)?,
+        (Feature::Chamfer { size2, .. }, "Size2") => *size2 = positive(num(false)?)?,
+        (Feature::Chamfer { angle, .. }, "Angle") => {
+            let v = num(true)?;
+            if !(v > 0.0 && v < 180.0) {
+                return Err("Angle must be greater than 0 and less than 180".into());
+            }
+            *angle = v;
+        }
+        (Feature::Chamfer { flip, .. }, "FlipDirection") => *flip = flag()?,
+        (Feature::Chamfer { kind, .. }, "ChamferType") => {
+            *kind = ChamferType::ALL
+                .into_iter()
+                .find(|c| c.label() == text)
+                .ok_or("unknown chamfer type")?
+        }
+        (Feature::Fillet { all_edges, .. } | Feature::Chamfer { all_edges, .. }, "UseAllEdges") => {
+            *all_edges = flag()?
+        }
         (Feature::Hole { diameter, .. }, "Diameter") => *diameter = positive(num(false)?)?,
         (Feature::Hole { depth, .. }, "Depth") => *depth = positive(num(false)?)?,
         (Feature::Hole { through_all, .. }, "DepthType") => *through_all = text == "ThroughAll",

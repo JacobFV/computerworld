@@ -14,6 +14,36 @@ pub(crate) struct DesktopApp {
     pub label: String,
     #[allow(dead_code)] // Theme renderers currently select icons by installed application ID.
     pub icon: String,
+    /// Other names a launcher search accepts for this application: the generic name of
+    /// its kind ("Web Browser" for Firefox, "Editor" for Text Editor), so a query that
+    /// names the job finds the product that does it, as a real launcher's keywords do.
+    pub aliases: &'static [&'static str],
+}
+/// One row of the application inventory an actor can read with `application.v1 list`.
+/// Unlike the catalogue, it also carries what is *not* launchable, and why.
+#[derive(Clone, Debug)]
+pub(crate) struct ApplicationEntry {
+    pub id: String,
+    pub label: String,
+    /// `builtin` — one of the four the compositor implements itself; `native` — an
+    /// application shipped with the simulator; `web` — a `desktop_apps` alias that
+    /// opens a site in the browser.
+    pub kind: &'static str,
+    pub installed: bool,
+    pub launchable: bool,
+    /// The documented reason `launch` would refuse this application right now, from
+    /// `cw_protocol::reason`. `None` when it is launchable.
+    pub blocked_by: Option<&'static str>,
+}
+/// Generic names for the four built-in kinds, so a search for the job finds the product.
+fn builtin_aliases(kind: &str) -> &'static [&'static str] {
+    match kind {
+        "files" => &["Files", "File Manager", "Explorer", "Finder"],
+        "browser" => &["Browser", "Web Browser"],
+        "terminal" => &["Terminal", "Console", "Shell"],
+        "editor" => &["Text Editor", "Editor", "Notepad", "Notes", "TextEdit"],
+        _ => &[],
+    }
 }
 
 impl Environment {
@@ -46,15 +76,17 @@ impl Environment {
         }
         let computer = self.runtime.computer(machine)?;
         if !computer.application_available(kind) || !computer.application_available("browser") {
-            return Err(SimError::not_found("application is not installed"));
+            return Err(SimError::not_found("application is not installed")
+                .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
         }
         let grants = &self.session(id)?.config.actions;
         if !grants.iter().any(|family| family == "application.v1")
             || !grants.iter().any(|family| family == "browser.v1")
         {
-            return Err(SimError::denied(
-                "browser application interaction is not permitted",
-            ));
+            return Err(
+                SimError::denied("browser application interaction is not permitted")
+                    .because(cw_protocol::reason::BROWSER_FAMILY_REQUIRED),
+            );
         }
         let url = entry
             .get("url")
@@ -161,66 +193,95 @@ impl Environment {
             }
         }
     }
+    /// The name this machine's shell shows for an application. One table, shared by
+    /// the launcher's pixels, this catalogue and a window's title, so the three can
+    /// never disagree about what an application is called.
+    pub(crate) fn application_label(
+        theme: Option<DesktopTheme>,
+        kind: &str,
+        generic: &str,
+    ) -> String {
+        theme
+            .and_then(|theme| theme.app_label(kind))
+            .map(str::to_owned)
+            .unwrap_or_else(|| {
+                if cw_applications::NativeApp::KINDS.contains(&kind) {
+                    Self::native_label(theme, kind).to_owned()
+                } else {
+                    generic.to_owned()
+                }
+            })
+    }
     pub(crate) fn desktop_catalog(&self, id: &str, machine: &str) -> Vec<DesktopApp> {
+        self.application_inventory(id, machine)
+            .into_iter()
+            .filter(|entry| entry.launchable)
+            .map(|entry| DesktopApp {
+                icon: entry.id.clone(),
+                aliases: builtin_aliases(&entry.id),
+                id: entry.id,
+                label: entry.label,
+            })
+            .collect()
+    }
+    /// Every application this world knows about on this machine, launchable or not.
+    /// Catalogue order: the four built-ins, then the applications shipped with the
+    /// simulator, then the world's own `desktop_apps` web aliases.
+    pub(crate) fn application_inventory(&self, id: &str, machine: &str) -> Vec<ApplicationEntry> {
         let Ok(computer) = self.runtime.computer(machine) else {
             return Vec::new();
         };
         let Ok(session) = self.session(id) else {
             return Vec::new();
         };
-        if !session
-            .config
-            .actions
-            .iter()
-            .any(|family| family == "application.v1")
-        {
-            return Vec::new();
-        }
-        let mut catalog = Vec::new();
-        for (kind, alternate, label) in [
+        let granted = |family: &str| session.config.actions.iter().any(|f| f == family);
+        let apps = granted("application.v1");
+        let theme = self.desktop_theme(id, machine);
+        let blocked = |installed: bool, web: bool| {
+            if !installed {
+                Some(cw_protocol::reason::APPLICATION_NOT_INSTALLED)
+            } else if !apps {
+                Some(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED)
+            } else if web && !granted("browser.v1") {
+                Some(cw_protocol::reason::BROWSER_FAMILY_REQUIRED)
+            } else {
+                None
+            }
+        };
+        let mut inventory: Vec<ApplicationEntry> = Vec::new();
+        for (kind, alternate, generic) in [
             ("files", "file_manager", "Files"),
             ("browser", "browser", "Browser"),
             ("terminal", "terminal", "Terminal"),
             ("editor", "text_editor", "Text Editor"),
         ] {
-            if computer.application_available(kind) || computer.application_available(alternate) {
-                if kind == "browser"
-                    && !session
-                        .config
-                        .actions
-                        .iter()
-                        .any(|family| family == "browser.v1")
-                {
-                    continue;
-                }
-                catalog.push(DesktopApp {
-                    id: kind.into(),
-                    label: match (self.desktop_theme(id, machine), kind) {
-                        (Some(DesktopTheme::Macos), "files") => "Finder",
-                        (Some(DesktopTheme::Macos | DesktopTheme::Ios), "browser") => "Safari",
-                        (Some(DesktopTheme::Macos), "editor") => "TextEdit",
-                        (Some(DesktopTheme::Windows), "files") => "File Explorer",
-                        (Some(DesktopTheme::Windows), "editor") => "Notepad",
-                        (Some(DesktopTheme::Ubuntu), "browser") => "Web Browser",
-                        (Some(DesktopTheme::Ios), "editor") => "Notes",
-                        (Some(DesktopTheme::Android), "editor") => "Editor",
-                        _ => label,
-                    }
-                    .into(),
-                    icon: kind.into(),
-                });
-            }
+            let installed =
+                computer.application_available(kind) || computer.application_available(alternate);
+            let blocked_by = blocked(installed, kind == "browser");
+            inventory.push(ApplicationEntry {
+                id: kind.into(),
+                label: Self::application_label(theme, kind, generic),
+                kind: "builtin",
+                installed,
+                launchable: blocked_by.is_none(),
+                blocked_by,
+            });
         }
-        // Applications that ship with the simulator, when the machine has them installed.
-        let theme = self.desktop_theme(id, machine);
+        // Applications that ship with the simulator.
         for kind in cw_applications::NativeApp::KINDS {
-            if catalog.iter().any(|app| &app.id == kind) || !computer.application_available(kind) {
+            if inventory.iter().any(|app| &app.id == kind) {
                 continue;
             }
-            catalog.push(DesktopApp {
+            let installed = computer.application_available(kind);
+            // A native application talks to its service itself; it needs no browser.
+            let blocked_by = blocked(installed, false);
+            inventory.push(ApplicationEntry {
                 id: (*kind).into(),
-                label: Self::native_label(theme, kind).into(),
-                icon: (*kind).into(),
+                label: Self::application_label(theme, kind, Self::native_label(theme, kind)),
+                kind: "native",
+                installed,
+                launchable: blocked_by.is_none(),
+                blocked_by,
             });
         }
         if let Some(entries) = self
@@ -234,29 +295,30 @@ impl Environment {
                 let Some(kind) = entry.get("id").and_then(Value::as_str) else {
                     continue;
                 };
-                if catalog.iter().any(|app| app.id == kind) {
+                if inventory.iter().any(|app| app.id == kind)
+                    || entry.get("kind").and_then(Value::as_str) != Some("browser")
+                {
                     continue;
                 }
-                if let Ok(Some(alias)) = self.desktop_alias(id, machine, kind) {
-                    catalog.push(DesktopApp {
-                        id: alias.id,
-                        label: if kind == "chat"
-                            && matches!(self.desktop_theme(id, machine), Some(DesktopTheme::Ios))
-                        {
-                            "Messages".into()
-                        } else {
-                            alias.label
-                        },
-                        icon: entry
-                            .get("icon")
-                            .and_then(Value::as_str)
-                            .unwrap_or("browser")
-                            .into(),
-                    });
-                }
+                let installed = computer.application_available(kind)
+                    && computer.application_available("browser");
+                let blocked_by = blocked(installed, true);
+                let generic = entry.get("label").and_then(Value::as_str).unwrap_or(kind);
+                inventory.push(ApplicationEntry {
+                    id: kind.into(),
+                    label: if kind == "chat" && theme == Some(DesktopTheme::Ios) {
+                        "Messages".into()
+                    } else {
+                        Self::application_label(theme, kind, generic)
+                    },
+                    kind: "web",
+                    installed,
+                    launchable: blocked_by.is_none(),
+                    blocked_by,
+                });
             }
         }
-        catalog
+        inventory
     }
 
     pub(crate) fn desktop_panel_text(
@@ -324,6 +386,12 @@ impl Environment {
                 let app = self.desktop_catalog(id, machine).into_iter().find(|app| {
                     app.label.to_lowercase().contains(&query)
                         || app.id.to_lowercase().contains(&query)
+                        // A launcher's keywords: "Web Browser" finds Firefox, the way
+                        // a real .desktop file's Keywords= line does.
+                        || app
+                            .aliases
+                            .iter()
+                            .any(|alias| alias.to_lowercase().contains(&query))
                 });
                 if let Some(app) = app {
                     self.shell_action(id, machine, actor, &format!("shell:launch:{}", app.id))?;

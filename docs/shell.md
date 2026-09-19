@@ -165,8 +165,17 @@ every replay.
 | `local` | `NAME[=VALUE]…` | `-r` `-i` `-a` | modelled; shadows the name until the enclosing function returns. Outside a function it is refused with status `2` |
 | `source` / `.` | `FILE [ARG…]` | — | modelled; runs the file in this shell, so its variables, working directory and functions persist. `return` ends it, `exit` ends the whole shell, and it counts against the nesting limit |
 | `getopts` | `OPTSTRING NAME [ARG…]`, clusters (`-ab`), glued and separate option arguments, a leading `:` for silent mode | `--long` options | modelled; `OPTIND` and `OPTARG` are ordinary shell variables, so resetting `OPTIND=1` restarts the scan |
-| `ps` / `Get-Process` | `-e` / `-A`, `-f`, `-u USER`, `-p PID`, `--json` | `aux` and every other BSD operand, `-o` `-l` `--forest` | modelled; **column output by default**. `TTY` is `?` and `TIME` is `00:00:00` for every process because no terminal and no CPU accounting are simulated; a zombie prints `<defunct>`. With no selector `ps` lists the current user's processes. `--json` dumps the whole table as JSON — the pre-column behaviour, kept for machine consumers |
-| `kill` | `-SIGNAL` / `-N` | `-l` | modelled against the process table and its signal dispositions |
+| `ps` / `Get-Process` | `aux`, `-e` / `-A`, `-f`, `-u USER`, `-p PID`, `-o COLUMNS`, `--sort=[+-]COLUMN`, `--json` | `-l` `--forest`, `-o rss=LABEL` header renaming, every other BSD operand | modelled; **column output by default**, from the process table. See *Process table* below for the column schema. With no selector `ps` lists the current user's processes. `--json` dumps the whole table as JSON |
+| `top` | `-b -n1`, `-o COLUMN` | interactive mode, `-n` other than 1, every other option | modelled as one batch snapshot of the same table `ps` reads. `PR`, `NI` and the `%Cpu(s)` line are **fixed** (20, 0 and idle): no scheduler is simulated |
+| `pgrep` / `pkill` | `-f -l -x -n`, `-u USER`, `pkill -SIGNAL`; long forms | regular expressions (the pattern is a plain substring, and a pattern that looks like a regex is refused) | modelled; matches the program name, or the whole command line with `-f`. Status `1` when nothing matches, as on Linux. `pgrep` never reports itself |
+| `kill` | `-SIGNAL` / `-N`, `-l`, several pids | — | modelled against the process table and its signal dispositions. Killing the process of an open application window closes that window |
+| `free` | `-b -k -m -g -h` | `-s` `-c` `-w` `--si` | modelled: `total` is `hardware.memory_bytes`, `used` is the sum of the running processes' modelled footprints. Swap, shared and buff/cache are **0** because none is simulated |
+| `lsof` | `-p PID`, `-u USER`, one path operand; `-n` accepted and inert | every other option; the `DEVICE` and `SIZE/OFF` columns | modelled over the process table's real descriptors and listeners. Status `1` when nothing matches |
+| `apps` | `--json` | — | modelled: the application ids this machine has installed. The desktop's own view, with labels, is `application.v1 list` |
+| `xdg-open` / `gio open` / `open` (macOS) / `start` (PowerShell) | one file, folder or URL | every option; `gio` takes only `open` and `trash`, and every other subcommand is refused by name | modelled: the shell checks that the target exists and that the machine has applications, and hands it to the desktop, which opens the same application a file manager would. Status `2` for a missing target, `3` when nothing can open it |
+| `nice` / `renice` | — | — | **refused by name**: no scheduler is simulated, so a priority would change nothing |
+| `jobs` / `bg` / `fg` / `disown` / `wait` | — | — | **refused by name**: job control is not modelled. Every command runs to completion before the next starts, and `sleep N &` is the only background process — find it with `ps -e`, end it with `kill` |
+| `vmstat` / `iostat` / `mpstat` / `sar` | — | — | **refused by name**: no paging, block-device or interrupt counters are simulated. `free` reports memory and `ps`/`top` report the process table |
 | `sleep` | fractional seconds, trailing `&` | — | modelled against simulated time; never blocks the host |
 | `systemctl` / `service` | `start stop restart status` | `enable` `disable` `daemon-reload` | modelled against the process table and the service adapter |
 | `apt` / `apt-get` / `brew` / `winget` / `pip` / `npm` | `install`, `remove`/`uninstall`, `list` | `update` `upgrade` `search` | modelled against the package manager, offline |
@@ -364,6 +373,128 @@ replacement character. Event-loop orderings that depend on real wall-clock jitte
 Node (for example `setTimeout(f, 0)` against `setImmediate(g)` from the main module)
 are resolved one fixed way: the main module is taken to run for one millisecond.
 
+## Process table
+
+Every process on a machine is a real entry in `crates/computer/src/process.rs`, and
+`ps`, `top`, `pgrep`, `pkill`, `kill`, `free` and `lsof` all read that one table. There
+are four kinds of entry, and nothing else is ever in it:
+
+| Entry | Started by | `TTY` |
+| --- | --- | --- |
+| `init`, pid 1 | the machine | `?` |
+| `service <id>` | a placed service, or `systemctl start` | `?` |
+| a command line | every command the shell runs, including `sleep N &` | `pts/0` |
+| an application | an open window on the desktop; the command is the application's id plus the document it has open | `?` |
+
+An open window really is a process: launching an application adds one, closing the
+window ends it, and **killing the process closes the window**. `pkill browser` shuts the
+browser. A machine models one pseudo-terminal, `pts/0`, which is the one the shell runs
+on.
+
+### Columns
+
+`ps -o` takes these names, comma-separated, and `--sort=[+-]NAME` orders by any of them
+(`-` for descending). `ps --json` serializes the whole `Process` struct instead.
+
+| `-o` name | Header | Aliases | Source |
+| --- | --- | --- | --- |
+| `pid` | `PID` | | the process id |
+| `ppid` | `PPID` | | its parent; an orphan is reparented to 1 |
+| `pgid` | `PGID` | `pgrp` | process group |
+| `user` | `USER` | `ruser` | the owner's name |
+| `uid` | `UID` | | `0` for root, otherwise `hardware.uid` |
+| `comm` | `COMMAND` | `ucomm` | the program name alone |
+| `args` | `COMMAND` | `cmd`, `command` | the whole command line; a zombie adds `<defunct>` |
+| `stat` | `STAT` | | `R` running, `S` sleeping, `T` stopped, `Z` zombie |
+| `state` | `S` | `s` | the same letter, one column wide |
+| `tty` | `TTY` | `tt`, `tname` | `pts/0` or `?` |
+| `time` | `TIME` | `cputime` | CPU time; see below |
+| `etime` | `ELAPSED` | | wall time since it started, `[D-]HH:MM:SS` |
+| `etimes` | `ELAPSED` | | the same, in seconds |
+| `rss` | `RSS` | `rsz`, `rssize` | modelled resident memory in KiB; see below |
+| `vsz` | `VSZ` | `vsize` | `rss` plus one fixed 64 MiB mapping, in KiB |
+| `pmem` | `%MEM` | `%mem` | `rss` over `hardware.memory_bytes` |
+| `pcpu` | `%CPU` | `%cpu` | CPU share; see below |
+| `c` | `C` | | System V's CPU utilisation; see below |
+| `start` | `START` | `stime`, `lstart`, `bsdstart` | `HH:MM` the process started, from the world clock |
+
+### The JSON form
+
+`ps --json` prints the whole `Process` record for each selected process, which is the
+serialized Rust struct and therefore always in step with the table above:
+
+```json
+[{"pid":2,"parent":1,"group":2,"owner":"ada","command":"browser https://wiki.internal/",
+  "state":"Running","started":0,"ended":null,
+  "fds":{"0":"Stdin","1":"Stdout","2":"Stderr"},"listeners":[],
+  "signal_dispositions":{},"pending_signals":[],"wake_exit":null,
+  "tty":"","rss_bytes":335544320,"cpu_us":0}]
+```
+
+Every field is always present. `state` is `"Running"`, `"Stopped"`,
+`{"Sleeping":{"until":<tick>}}`, `{"Zombie":{"code":N}}` or `{"Exited":{"code":N}}`;
+`started`/`ended` are world-clock ticks (microseconds), and `ended` is `null` while the
+process runs; `parent` is the `PPID` column and `group` the `PGID`; `fds` maps each open
+descriptor number to `"Stdin"`/`"Stdout"`/`"Stderr"`, `{"File":{…}}`, `{"Pipe":{…}}` or
+`{"Socket":{…}}`, which is what `lsof` prints; `listeners` are the `node:port` pairs a
+service process owns; `tty` is empty rather than `?` when the process is attached to
+none; and `rss_bytes` and `cpu_us` are the raw byte and microsecond values the `rss` and
+`time` columns format.
+
+The three ready-made formats are the real ones: `ps` is `pid,tty,time,args`, `ps -f` is
+`user,pid,ppid,c,start,tty,time,args` (headed `UID … STIME …`), and `ps aux` is
+`user,pid,pcpu,pmem,vsz,rss,tty,stat,start,time,args`.
+
+### Memory is modelled; CPU time is not
+
+**Memory** is a published model, not a measurement: this world has no allocator. A
+process's `RSS` is the footprint of the program it runs, plus what it is actually
+holding — for a window, the bytes of the document it has open. Every number is fixed
+when the process starts, so `ps` reports the same figure on every replay, and the
+ordering is the ordering the real programs would have. The program table
+(`crates/computer/src/process.rs`) is:
+
+| Program | RSS |
+| --- | --- |
+| `init` | 2 MiB |
+| a service | 24 MiB |
+| `node` | 48 MiB |
+| `python3` | 28 MiB |
+| `git` | 8 MiB |
+| `sqlite3` | 6 MiB |
+| `sh`, `bash`, `sudo` | 3 MiB |
+| any other command | 2 MiB |
+
+and the application table (`crates/environment/src/lib.rs`) is:
+
+| Application | RSS |
+| --- | --- |
+| `browser` | 320 MiB |
+| `freecad`, `kicad` | 240 MiB |
+| `kdenlive`, `imovie`, `clipchamp`, `videoeditor` | 210 MiB |
+| `code` | 180 MiB |
+| `gimp`, `pixelmator`, `sketchbook`, `pinta`, `paint` | 140 MiB |
+| `docs`, `spreadsheet`, `excel`, `database` | 120 MiB |
+| `photos`, `preview`, `music`, `maps` | 90 MiB |
+| `files` | 45 MiB |
+| `editor` | 30 MiB |
+| `calculator`, `clock`, `weather`, `notes`, `contacts` | 24 MiB |
+| `terminal` | 12 MiB |
+| any other application | 60 MiB |
+
+So "the ten processes using the most memory" is a question with a real answer:
+
+```sh
+ps -e -o pid,rss,comm --sort=-rss | head -n 11
+```
+
+**CPU time is not modelled and is not faked.** Commands here run in zero simulated
+time — only `sleep` occupies the clock, and sleeping is not CPU — so `TIME`, `%CPU` and
+`C` are `00:00:00`, `0.0` and `0`, and `top`'s `%Cpu(s)` line is idle. `cpu_us` is a real
+field on every process rather than a constant, so the day something charges it the
+column will say so; until then, use `etime`/`etimes`, which are real. `top`'s `PR` and
+`NI` are fixed at 20 and 0 for the same reason, and `nice` is refused by name.
+
 ## Clock
 
 `date` is derived from the simulated tick, never the host clock. Tick 0 is
@@ -473,7 +604,10 @@ Everything in the table above runs in-process; the VFS holds no real binaries. `
 first searches `PATH` in the VFS — so packages installed by `apt`/`pip` resolve to
 their real installed path — and otherwise reports a nominal `/usr/bin/NAME` for any
 command this shell implements. That keeps "is this available?" a truthful question.
-`which` exits `1` only when *no* operand resolves.
+`which` exits `1` only when *no* operand resolves. A command the table marks **refused
+by name** (`nice`, `jobs`, `vmstat` and the rest) is deliberately *not* in that roster:
+`which` reports it missing, because it is, and running it explains why rather than
+printing `command not found`.
 
 ## Fixed hardware facts
 
@@ -482,7 +616,7 @@ command this shell implements. That keeps "is this available?" a truthful questi
 | Field | Default | Read by |
 | --- | --- | --- |
 | `cpus` | `4` | `nproc` |
-| `memory_bytes` | 8 GiB | reserved |
+| `memory_bytes` | 8 GiB | `free`, `ps` `%MEM`, `top` |
 | `disk_bytes` | 64 GiB | `df` |
 | `device` | `/dev/vda1` | `df` |
 | `interface` / `ipv4` / `prefix` / `mac` / `gateway` | `eth0` / `10.0.2.15` / `24` / `52:54:00:12:34:56` / `10.0.2.1` | `ip` |
@@ -505,9 +639,10 @@ Deliberately not implemented, and refused rather than faked:
   it unquoted to forward parameters that contain no spaces.
 * Arithmetic beyond `+ - * / %` and parentheses: no `**`, no comparisons, no `++`.
 * `sed`'s hold space, `b`/`t` branching, `N`/`n`, `w`/`r`, and more than one `-e`.
-* `ps` columns that would have to be invented: `%CPU`, `%MEM`, `VSZ`, `RSS`, `STAT`.
-  `ps aux` is refused by name rather than filled with plausible numbers.
-* Real process scheduling: only `sleep` occupies simulated time.
+* Real process scheduling: only `sleep` occupies simulated time, so no CPU accounting
+  exists. `ps` reports `TIME`/`%CPU`/`C` as zero and `nice`, `vmstat` and job control
+  are refused by name rather than faked. Memory *is* modelled, from a published table;
+  see *Process table* above for exactly what is measured and what is not.
 * A group database and an allocator. Group membership is the convention described under
   *File metadata*; block accounting assumes a 4 KiB unit.
 * A terminal to prompt at, so `-i` on `cp`, `mv` and `rm` answers **no**: an existing

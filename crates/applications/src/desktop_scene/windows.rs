@@ -49,6 +49,9 @@ const APPS: [(&str, &str); 24] = [
     ("settings", "Settings"),
 ];
 
+pub(super) fn app_label(kind: &str) -> Option<&'static str> {
+    APPS.iter().find(|(k, _)| *k == kind).map(|(_, n)| *n)
+}
 fn app_name(kind: &str) -> &str {
     APPS.iter()
         .find(|(k, _)| *k == kind)
@@ -581,7 +584,14 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
                     &w.title,
                 );
                 p.region(row, &w.action("focus"), &format!("Switch to {}", w.title));
-                p.left(rx + 58, ry + 9, column as u32 - 70, &tab_title(w), 12, INK);
+                p.left(
+                    rx + 58,
+                    ry + 9,
+                    column as u32 - 70,
+                    &window_title(w),
+                    12,
+                    INK,
+                );
                 p.left(
                     rx + 58,
                     ry + 27,
@@ -617,7 +627,7 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
 }
 
 /// Tab caption of an inbox application window.
-fn tab_title(w: &WindowView) -> String {
+pub(super) fn window_title(w: &WindowView) -> String {
     match w.kind.as_str() {
         "files" if !w.caption.is_empty() => w.caption.clone(),
         "files" => basename(&w.document).to_owned(),
@@ -631,7 +641,8 @@ fn tab_title(w: &WindowView) -> String {
             .unwrap_or_else(|| "Windows PowerShell".into()),
         "browser" if w.caption.is_empty() => "New tab".into(),
         "browser" => w.caption.clone(),
-        _ => w.title.clone(),
+        // Anything else names itself with the name its Start entry carries.
+        kind => app_label(kind).map_or_else(|| w.title.clone(), str::to_owned),
     }
 }
 
@@ -738,7 +749,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         // Notepad and Windows Terminal title their window with a tab in the caption.
         // The simulator gives each document or shell its own window, so this one tab
         // is the window: its close closes the window and + opens another window.
-        let label = tab_title(w);
+        let label = window_title(w);
         let width = (p.measure(&label, 12, false) + 80).clamp(140, 240);
         let tab = Rect::new(r.x + 8, r.y + 6, width, 32);
         let plate = if w.kind == "terminal" {
@@ -797,7 +808,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             r.x + 38,
             r.y + 11,
             r.width.saturating_sub(192),
-            &tab_title(w),
+            &window_title(w),
             12,
             ink,
         );
@@ -1747,7 +1758,7 @@ fn task_view(p: &mut Painter, ctx: &ShellContext<'_>) {
             card.x + 34,
             card.y + 9,
             card.width - 50,
-            &format!("{} — {}", tab_title(w), app_name(&w.kind)),
+            &format!("{} — {}", window_title(w), app_name(&w.kind)),
             12,
             INK,
         );

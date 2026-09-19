@@ -187,7 +187,7 @@ impl Desk {
     fn body_volume(&self) -> f64 {
         let (doc, model) = self.model();
         let body = doc.bodies()[0].to_owned();
-        model.body_shape[&body].mesh.volume()
+        model.body_shape[&body].volume()
     }
     fn solver(&self) -> String {
         let r: cw_cad::sketch::SolveReport =
@@ -199,6 +199,34 @@ impl Desk {
         self.typed(text);
         self.key("Enter");
     }
+    /// A real double click on the control whose target starts with `prefix`: the host
+    /// sends the click, then the double click.
+    fn double_click(&mut self, prefix: &str) {
+        let r = self.at(prefix);
+        let (x, y) = (r.x + r.width as i32 / 2, r.y + r.height as i32 / 2);
+        for op in ["click", "double_click"] {
+            let payload = json!({"x": x, "y": y, "width": W, "height": H});
+            if let Err(e) = self.try_act("pointer.v1", op, payload) {
+                panic!(
+                    "{op} on {prefix} failed: {e}; status {:?}",
+                    self.state()["status"]
+                );
+            }
+        }
+    }
+    fn dialog(&self) -> Value {
+        self.state()["dialog"].clone()
+    }
+    fn folder(&self) -> String {
+        self.dialog()["folder"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned()
+    }
+    fn exists(&mut self, path: &str) -> bool {
+        self.try_act("filesystem.v1", "read", json!({"path": path}))
+            .is_ok()
+    }
     fn read_file(&mut self, path: &str) -> Vec<u8> {
         let v = self.act("filesystem.v1", "read", json!({"path": path}));
         v["bytes"]
@@ -208,6 +236,96 @@ impl Desk {
             .map(|b| b.as_u64().unwrap() as u8)
             .collect()
     }
+}
+
+/// Round an edge picked in the 3D view, then write the exact solid to a STEP file and
+/// read it back in: the volume the kernel reports is the one the geometry has, and the
+/// file on the machine holds the same solid.
+#[test]
+fn fillet_an_edge_and_round_trip_the_solid_through_step() {
+    use cw_cad::v3;
+    let mut d = Desk::new("carol-ubuntu", "carol");
+    d.launch();
+    // A 40 x 20 rectangle, padded 10 mm.
+    d.click("freecad:cmd:PartDesign_NewSketch");
+    d.click("freecad:task:ok");
+    d.click("freecad:cmd:Sketcher_CreateRectangle");
+    let o = d.project(v3(0.0, 0.0, 0.0));
+    d.click_at(o.0, o.1);
+    let far = d.project(v3(36.0, 23.0, 0.0));
+    d.click_at(far.0, far.1);
+    d.key("Escape");
+    d.click("freecad:sk:element:0");
+    d.click("freecad:cmd:Sketcher_ConstrainDistanceX");
+    d.enter("40");
+    d.click("freecad:sk:element:1");
+    d.click("freecad:cmd:Sketcher_ConstrainDistanceY");
+    d.enter("20");
+    d.click("freecad:sk:close");
+    d.click("freecad:cmd:PartDesign_Pad");
+    d.click("freecad:field:task:Length");
+    d.enter("10");
+    d.click("freecad:task:ok");
+    assert!((d.body_volume() - 8000.0).abs() < 1e-9);
+
+    // Pick the top edge along x at y = 0 and round it with a 3 mm radius.
+    d.click("freecad:cmd:Std_ViewIsometric");
+    d.click("freecad:cmd:Std_ViewFitAll");
+    let mid = d.project(v3(20.0, 0.0, 10.0));
+    d.click_at(mid.0, mid.1);
+    let sel = d.state()["selection"][0]["sub"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(sel.starts_with("Edge"), "picked {sel}");
+    d.click("freecad:cmd:PartDesign_Fillet");
+    d.click("freecad:field:task:Radius");
+    d.enter("3");
+    d.click("freecad:task:ok");
+    let want = 8000.0 - (9.0 - std::f64::consts::PI * 9.0 / 4.0) * 40.0;
+    assert!(
+        (d.body_volume() - want).abs() < 1e-9,
+        "{} vs {want}",
+        d.body_volume()
+    );
+
+    // Export it as STEP (the first type the dialog offers), and read the file back.
+    d.click("freecad:tree:Body");
+    d.click("freecad:menu:File");
+    d.click("freecad:cmd:Std_Export");
+    assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents");
+    d.click("freecad:file:ok");
+    let bytes = d.read_file("/home/carol/Documents/Body.step");
+    let text = String::from_utf8(bytes).unwrap();
+    assert!(text.starts_with("ISO-10303-21;"));
+    assert!(text.contains("MANIFOLD_SOLID_BREP('Body'"));
+    assert!(
+        text.contains("CYLINDRICAL_SURFACE"),
+        "the round is a cylinder"
+    );
+    let mut solids = cw_cad::step::read(&text).unwrap();
+    let (_, solid) = solids.remove(0);
+    let m = cw_cad::brep::mass::mass_props(&solid);
+    assert!((m.volume - want).abs() < 1e-9, "{} vs {want}", m.volume);
+    assert_eq!(solid.faces.len(), 7);
+
+    // Import the file back: an exact Part::Feature beside the body.
+    d.click("freecad:menu:File");
+    d.click("freecad:cmd:Std_Import");
+    d.click("freecad:file:entry:Body.step");
+    d.click("freecad:file:ok");
+    let page = d.semantic();
+    assert!(page.contains("[Part::Feature]"), "{page}");
+    let doc: cw_cad::document::Document = serde_json::from_value(d.state()["doc"].clone()).unwrap();
+    let mut doc = doc;
+    let model = cw_cad::document::recompute(&mut doc);
+    let part = doc
+        .objects
+        .iter()
+        .find(|o| matches!(o.feature, cw_cad::document::Feature::Part { .. }))
+        .expect("the imported solid");
+    let shape = &model.shapes[&part.name];
+    assert!((shape.volume() - want).abs() < 1e-9, "{}", shape.volume());
 }
 
 /// Sketch a rectangle, constrain it fully, pad it, pocket a hole through it from a
@@ -288,8 +406,7 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
         .unwrap();
     assert_eq!(pocket["Type"], "ThroughAll", "{pocket}");
     d.click("freecad:task:ok");
-    let n = cw_cad::sketch::profile::SEGMENTS as f64;
-    let hole = 0.5 * n * 25.0 * (std::f64::consts::TAU / n).sin() * 10.0;
+    let hole = std::f64::consts::PI * 25.0 * 10.0;
     assert!(
         (d.body_volume() - (8000.0 - hole)).abs() < 1e-6,
         "{}",
@@ -311,6 +428,9 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     d.click("freecad:menu:File");
     d.click("freecad:cmd:Std_Export");
     assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents");
+    // STEP leads the list of types; pick binary STL.
+    d.click("freecad:choice:open:filetype");
+    d.click("freecad:choice:filetype:2");
     d.click("freecad:file:ok");
     let bytes = d.read_file("/home/carol/Documents/Body.stl");
     assert_eq!(
@@ -319,8 +439,10 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     );
     let mesh = cw_cad::io::read_stl(&bytes).unwrap();
     assert!(mesh.is_watertight());
+    // The exported mesh is the display tessellation of the exact solid: a hole's wall
+    // is inscribed, so its volume is a shade over the exact one.
     assert!(
-        (mesh.volume() - (8000.0 - hole)).abs() < 0.05,
+        (mesh.volume() - (8000.0 - hole)).abs() < 0.002 * (8000.0 - hole),
         "{}",
         mesh.volume()
     );
@@ -328,7 +450,7 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     d.click("freecad:menu:File");
     d.click("freecad:cmd:Std_Export");
     d.click("freecad:choice:open:filetype");
-    d.click("freecad:choice:filetype:1");
+    d.click("freecad:choice:filetype:3");
     d.click("freecad:file:ok");
     let text = String::from_utf8(d.read_file("/home/carol/Documents/Body.ast")).unwrap();
     assert!(text.starts_with("solid Body"));
@@ -431,4 +553,205 @@ fn the_view_orbits_pans_zooms_and_answers_the_navigation_cube() {
         json!({"x": 2, "y": 2, "width": W, "height": H, "delta_y": 120}),
     );
     assert_eq!(outside["handled"], false);
+}
+
+/// Each desktop's own file dialog, driven by pointer and keyboard: Save As goes
+/// through the sidebar's standard places, the path bar (the Mac's folder pop-up),
+/// history, and New Folder into a folder that really appears on the machine; the file
+/// is written there; saving over it asks the platform's question; and the document
+/// comes back through the Open dialog by double clicks.
+#[test]
+fn native_file_dialogs_save_and_open_on_every_desktop() {
+    for (machine, user) in [
+        ("alice-mac", "alice"),
+        ("bob-windows", "bob"),
+        ("carol-ubuntu", "carol"),
+    ] {
+        let mut d = Desk::new(machine, user);
+        d.launch();
+        let home = d.state()["home"].as_str().unwrap().to_owned();
+        assert!(
+            !home.is_empty(),
+            "{machine}: the window knows the home folder"
+        );
+        let docs = format!("{home}/Documents");
+        let desktop = format!("{home}/Desktop");
+
+        d.key("Ctrl+Shift+S");
+        assert_eq!(d.dialog()["purpose"], "save_as");
+        assert_eq!(d.folder(), docs, "{machine}: Save As starts in Documents");
+        // A sidebar place.
+        d.click(&format!("freecad:file:place:{desktop}"));
+        assert_eq!(d.folder(), desktop, "{machine}: sidebar Desktop");
+        // The path bar (on the Mac, the folder pop-up) up to the home folder.
+        if machine == "alice-mac" {
+            d.click("freecad:choice:open:filepath");
+            d.click(&format!("freecad:choice:filepath:{home}"));
+        } else {
+            d.click(&format!("freecad:file:crumb:{home}"));
+        }
+        assert_eq!(d.folder(), home, "{machine}: path bar");
+        // History: Back to the Desktop, Forward home again (GTK's chooser has no
+        // history buttons; Alt+Left and Alt+Right are its keys).
+        if machine == "carol-ubuntu" {
+            d.key("Alt+ArrowLeft");
+        } else {
+            d.click("freecad:file:back");
+        }
+        assert_eq!(d.folder(), desktop, "{machine}: back");
+        if machine == "carol-ubuntu" {
+            d.key("Alt+ArrowRight");
+        } else {
+            d.click("freecad:file:forward");
+        }
+        assert_eq!(d.folder(), home, "{machine}: forward");
+        // Into Documents by a double click on its row.
+        d.double_click("freecad:file:entry:Documents/");
+        assert_eq!(d.folder(), docs, "{machine}: double click opens a folder");
+
+        // New Folder, the platform's way.
+        let parts = match machine {
+            "bob-windows" => {
+                d.click("freecad:file:new-folder");
+                assert_eq!(d.dialog()["selected"], "New folder/");
+                let listed = d.dialog()["entries"].clone();
+                assert!(
+                    listed
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|e| e == "New folder/"),
+                    "the new folder is listed from the machine: {listed}"
+                );
+                d.double_click("freecad:file:entry:New folder/");
+                format!("{docs}/New folder")
+            }
+            "alice-mac" => {
+                d.click("freecad:file:folder-prompt:");
+                d.typed("Parts");
+                d.key("Enter");
+                format!("{docs}/Parts")
+            }
+            _ => {
+                d.click("freecad:file:folder-prompt:");
+                d.typed("Parts");
+                d.click("freecad:file:folder-create");
+                format!("{docs}/Parts")
+            }
+        };
+        assert_eq!(d.folder(), parts, "{machine}: into the new folder");
+        assert_eq!(d.dialog()["entries"], json!([]), "a new folder is empty");
+        // Name it and save with Return.
+        d.click("freecad:field:file-name");
+        d.typed("Bracket");
+        d.key("Enter");
+        let saved = format!("{parts}/Bracket.FCStd.json");
+        assert!(d.state()["dialog"].is_null(), "{machine}: saved and closed");
+        assert!(d.exists(&saved), "{machine}: {saved} is on the machine");
+        assert_eq!(d.state()["path"], saved.as_str());
+
+        // Save As over it asks first.
+        d.key("Ctrl+Shift+S");
+        assert_eq!(d.folder(), parts);
+        d.key("Enter");
+        assert_eq!(
+            d.dialog()["confirm"],
+            "Bracket.FCStd.json",
+            "{machine}: replace question"
+        );
+        d.key("Enter");
+        if machine == "carol-ubuntu" {
+            // GTK's default response is Replace.
+            assert!(d.state()["dialog"].is_null());
+        } else {
+            // The Mac's alert and Confirm Save As default to Cancel / No.
+            assert!(
+                d.dialog()["confirm"].is_null(),
+                "{machine}: Return declined"
+            );
+            assert!(!d.state()["dialog"].is_null());
+            d.key("Enter");
+            d.click("freecad:file:replace");
+            assert!(d.state()["dialog"].is_null(), "{machine}: replaced");
+        }
+
+        // A new document, then the saved one back through Open.
+        d.click("freecad:cmd:Std_New");
+        assert_eq!(d.state()["path"], "");
+        d.key("Ctrl+o");
+        assert_eq!(d.dialog()["purpose"], "open");
+        assert_eq!(d.folder(), docs);
+        let folder = parts.rsplit('/').next().unwrap().to_owned();
+        d.double_click(&format!("freecad:file:entry:{folder}/"));
+        d.double_click("freecad:file:entry:Bracket.FCStd.json");
+        assert!(d.state()["dialog"].is_null(), "{machine}: opened");
+        assert_eq!(d.state()["path"], saved.as_str());
+        assert_eq!(d.state()["doc"]["Label"], "Bracket");
+    }
+}
+
+/// A folder longer than the dialog: the wheel over the list and a click on the
+/// scrollbar's track bring the last document into reach, the keyboard walks to it,
+/// and it opens.
+#[test]
+fn a_long_folder_scrolls_in_the_open_dialog() {
+    for (machine, user) in [
+        ("alice-mac", "alice"),
+        ("bob-windows", "bob"),
+        ("carol-ubuntu", "carol"),
+    ] {
+        let mut d = Desk::new(machine, user);
+        d.launch();
+        let home = d.state()["home"].as_str().unwrap().to_owned();
+        // The last document is a real one, saved by FreeCAD; fillers sort before it.
+        d.key("Ctrl+Shift+S");
+        d.typed("zz-last");
+        d.key("Enter");
+        for i in 0..40 {
+            d.act(
+                "filesystem.v1",
+                "write",
+                json!({"path": format!("{home}/Documents/filler-{i:02}.FCStd.json"), "content": "{}"}),
+            );
+        }
+        d.click("freecad:cmd:Std_New");
+        d.key("Ctrl+o");
+        assert!(
+            d.locate("freecad:file:entry:zz-last.FCStd.json").is_none(),
+            "{machine}: the last document starts out of view"
+        );
+        // The wheel over the list.
+        let r = d.at("freecad:file:entry:filler-00.FCStd.json");
+        let wheel = d.act(
+            "pointer.v1",
+            "wheel",
+            json!({"x": r.x + 40, "y": r.y + 5, "width": W, "height": H, "delta_y": 360}),
+        );
+        assert_eq!(wheel["handled"], true);
+        assert!(d
+            .locate("freecad:file:entry:filler-00.FCStd.json")
+            .is_none());
+        assert!(d
+            .locate("freecad:file:entry:filler-09.FCStd.json")
+            .is_some());
+        // A click at the foot of the scrollbar's track: the end of the folder.
+        let bar = d.at("freecad:file:scrollbar:");
+        d.click_at(bar.x + bar.width as i32 / 2, bar.y + bar.height as i32 - 2);
+        assert!(
+            d.locate("freecad:file:entry:zz-last.FCStd.json").is_some(),
+            "{machine}: the scrollbar reaches the end"
+        );
+        // Home, then End, by keyboard, and Return opens it.
+        d.key("Home");
+        assert!(d
+            .locate("freecad:file:entry:filler-00.FCStd.json")
+            .is_some());
+        d.key("End");
+        d.key("Enter");
+        assert!(d.state()["dialog"].is_null(), "{machine}: opened");
+        assert_eq!(
+            d.state()["path"],
+            format!("{home}/Documents/zz-last.FCStd.json").as_str()
+        );
+    }
 }

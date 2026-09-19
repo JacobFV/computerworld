@@ -675,6 +675,10 @@ impl Cad {
             return self.dialog_command(window, rest);
         }
         if let Some(rest) = cmd.strip_prefix("file:") {
+            // A scrollbar's track knows where on it the click landed.
+            if rest.starts_with("scrollbar:") || rest.starts_with("side-scrollbar:") {
+                return self.scrollbar_click(rest, at);
+            }
             return self.file_command(window, rest);
         }
         if let Some(rest) = cmd.strip_prefix("field:") {
@@ -685,6 +689,10 @@ impl Cad {
 
     /// Double clicks: edit what was double-clicked.
     pub fn double_click(&mut self, window: u64, cmd: &str) -> Result<Vec<AppEffect>, String> {
+        // In a file dialog a double click opens a folder or chooses a file.
+        if let Some(entry) = cmd.strip_prefix("file:entry:") {
+            return self.file_command(window, &format!("open:{entry}"));
+        }
         if let Some(name) = cmd.strip_prefix("tree:") {
             self.tree_click(name)?;
             return self.edit_object(name);
@@ -1008,6 +1016,11 @@ impl Cad {
         if self.field.is_some() {
             match key.as_str() {
                 "Enter" | "Tab" => return self.commit_field(window),
+                "Escape" if matches!(self.dialog, Some(Dialog::File(_))) => {
+                    // Escape answers the file dialog (or its New Folder prompt), not
+                    // just the box that has the keyboard.
+                    return self.file_dialog_key(window, "Escape");
+                }
                 "Escape" => {
                     self.field = None;
                     if matches!(self.dialog, Some(Dialog::Dimension { .. })) {
@@ -1031,6 +1044,9 @@ impl Cad {
         if self.menu.is_some() && key == "Escape" {
             self.menu = None;
             return Ok(vec![]);
+        }
+        if matches!(self.dialog, Some(Dialog::File(_))) {
+            return self.file_dialog_key(window, &key);
         }
         if let Some(d) = &self.dialog {
             return match (d, key.as_str()) {
@@ -1118,6 +1134,10 @@ impl Cad {
             crate::apps::push_bounded(&mut f.text, text, 256);
             return Ok(());
         }
+        // Behind a modal dialog the view's single-key shortcuts do nothing.
+        if self.dialog.is_some() {
+            return Err("no text field has the keyboard focus".into());
+        }
         let shortcut = match text {
             "0" => Some(StdView::Isometric),
             "1" => Some(StdView::Front),
@@ -1145,6 +1165,45 @@ impl Cad {
 
     /// Focus a field by target.
     fn focus_field(&mut self, rest: &str) -> Result<Vec<AppEffect>, String> {
+        if rest == "folder-name" {
+            // The New Folder prompt's box keeps what has been typed into it.
+            let open = matches!(&self.dialog, Some(Dialog::File(d)) if d.prompt.is_some());
+            if !open {
+                return Err("no folder is being named".into());
+            }
+            if !matches!(
+                self.field,
+                Some(Field {
+                    target: FieldTarget::FolderName,
+                    ..
+                })
+            ) {
+                self.field = Some(Field {
+                    target: FieldTarget::FolderName,
+                    text: String::new(),
+                    replace: false,
+                });
+            }
+            return Ok(vec![]);
+        }
+        if rest == "file-name" {
+            // Clicking the name box closes a New Folder prompt, as leaving a popover does.
+            if let Some(Dialog::File(d)) = &mut self.dialog {
+                if d.confirm.is_some() {
+                    return Err("Answer whether to replace the file first".into());
+                }
+                d.prompt = None;
+            }
+            if matches!(
+                self.field,
+                Some(Field {
+                    target: FieldTarget::FileName,
+                    ..
+                })
+            ) {
+                return Ok(vec![]);
+            }
+        }
         let target = if rest == "file-name" {
             FieldTarget::FileName
         } else if let Some(name) = rest.strip_prefix("task:") {
@@ -1174,6 +1233,7 @@ impl Cad {
                 Some(Dialog::File(f)) => f.name.clone(),
                 _ => return Err("no file dialog is open".into()),
             },
+            FieldTarget::FolderName => String::new(),
             FieldTarget::Task { name } => self.task_value(name)?,
             FieldTarget::Constraint { index } => {
                 let s = self.sketch().ok_or("no sketch is open")?;
@@ -1186,8 +1246,19 @@ impl Cad {
     }
 
     pub(crate) fn commit_field(&mut self, window: u64) -> Result<Vec<AppEffect>, String> {
+        if matches!(
+            self.field,
+            Some(Field {
+                target: FieldTarget::FolderName,
+                ..
+            })
+        ) {
+            // The prompt reads its own box, and keeps it when the name is refused.
+            return self.file_command(window, "folder-create");
+        }
         let f = self.field.take().ok_or("no field is focused")?;
         match &f.target {
+            FieldTarget::FolderName => {}
             FieldTarget::FileName => {
                 if let Some(Dialog::File(d)) = &mut self.dialog {
                     d.name = f.text.trim().to_owned();
@@ -1286,8 +1357,8 @@ impl Cad {
                     text: format!(
                         "{} volume {} mm³, area {} mm²",
                         self.label_of(&body),
-                        cw_cad::math::fmt_num(shape.mesh.volume(), 3),
-                        cw_cad::math::fmt_num(shape.mesh.area(), 3)
+                        cw_cad::math::fmt_num(shape.volume(), 3),
+                        cw_cad::math::fmt_num(shape.area(), 3)
                     ),
                 });
             }

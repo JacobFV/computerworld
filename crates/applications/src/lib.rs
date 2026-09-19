@@ -1046,6 +1046,11 @@ pub struct DesktopState {
     /// the page dots move it; shells clamp it to the pages the screen really has.
     #[serde(default)]
     pub home_page: u32,
+    /// The desktop this machine's session shows, set by the environment at login. An
+    /// application whose behaviour follows the platform (a native file dialog's
+    /// default button) learns it from here when its window opens.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<desktop_scene::DesktopTheme>,
     /// The view a new file manager window or tab starts in: the platform's own default
     /// (Files opens in the icon grid; Finder's and Explorer's windows here in the list).
     #[serde(default, skip_serializing_if = "FileView::is_list")]
@@ -1737,7 +1742,7 @@ impl DesktopState {
                 }
                 // FreeCAD's file dialogs start in the user's Documents folder.
                 if let NativeApp::Freecad(cad) = &mut app {
-                    cad.attach(&self.home_folder());
+                    cad.attach(&self.home_folder(), self.theme);
                 }
                 (AppState::Native(app), effects)
             }

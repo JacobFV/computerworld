@@ -290,25 +290,46 @@ and view size. The model is real, in the `cw-cad` kernel:
   green. Tools add FreeCAD's automatic constraints (coincident on a snapped point,
   horizontal/vertical when drawn so); a drag on geometry moves it through the solver.
 - Pad, Pocket (length, two lengths, through all, symmetric, reversed), Revolution,
-  Groove, Hole (counterbore, countersink, drill point), Fillet and Chamfer (straight
-  edges between planes, circular edges between a face and a coaxial cylinder),
-  Mirrored, Linear and Polar Pattern are recomputed in order from their parameters;
-  sketches attach to base planes or to planar faces, and a face or edge reference keeps
-  FreeCAD's element name plus where it was, so it is found again after an upstream edit
-  renumbers the shape. A feature that fails is marked in the tree and reported, as
-  "Result has multiple solids" and the like.
-- Solids are closed triangle meshes whose triangles remember the analytic surface they
-  approximate (curves tessellated at 64 segments per turn). Booleans are BSP-tree CSG,
-  healed to watertight meshes (weld, T-junction insertion, ear clipping, flat-vertex
-  collapse), so volumes, areas and centres of mass are those of the polygonal solid.
+  Groove, Hole (counterbore, countersink, drill point), Fillet and Chamfer (equal
+  distance, two distances, distance and angle, all edges), Mirrored, Linear and Polar
+  Pattern are recomputed in order from their parameters; sketches attach to base planes
+  or to planar faces, and a face or edge reference keeps FreeCAD's element name plus
+  where it was, so it is found again after an upstream edit renumbers the shape. A
+  feature that fails is marked in the tree and reported, as "Result has multiple
+  solids" and the like.
+- Solids are exact boundary representations: faces on planes, cylinders, cones,
+  spheres, tori, surfaces of revolution and extrusion, rolling-ball tubes and ruled
+  surfaces, bounded by edges on lines, circles, ellipses, B-splines and *traced* curves
+  (found by Newton's method on two surfaces' distance fields, so a cylinder-cylinder
+  intersection is exact rather than sampled), with seams on periodic faces and point
+  edges at poles, as OpenCascade has them. Booleans intersect faces pairwise, split
+  every face in its own parameter plane and classify the pieces against the other
+  solid, then merge faces that share a surface (FreeCAD's Refine); coplanar faces,
+  tangent surfaces, holes that reach through and solids that touch are all handled.
+  Volume, area and centre of mass come from the divergence theorem over the exact
+  surfaces (Green's theorem in the parameter plane, Gauss–Kronrod along the exact
+  boundary curves) and match closed-form values to rounding — a pad of a 3 mm circle is
+  π·9·h, not a 64-gon's. Tessellation is for the screen and for mesh formats only.
+- Fillets and chamfers roll a ball (or lay a flat) along any set of edges: straight
+  edges between surfaces swept along them, circular edges between coaxial surfaces of
+  revolution, and closed edges between curved faces (a branch pipe's saddle), with
+  spherical corner blends where three rounded edges meet at a corner of planes, and
+  FreeCAD's refusals ("Fillet not possible on selected shapes") when a radius will not
+  fit.
 - The 3D view is a z-buffer raster (2× supersampled, headlight shading, depth-tested
   edges and vertices) delivered as an `Image` primitive; sketches in edit are drawn as
   vector paths over it. Picking uses the same projection as drawing.
 - Files: the native document is FCStd's `Document.xml` structure as JSON
-  (`*.FCStd.json`); STL (binary and ASCII) and OBJ import as mesh objects and export
-  from any shape; DXF (R12) imports into and exports from sketches; SVG exports a
-  hidden-line projection of the view at 1:1 in millimetres. Binary files move through
-  `AppEffect::ReadBytes` and `WriteBytes`.
+  (`*.FCStd.json`); STEP (AP214 and AP242) writes the exact B-rep as a
+  `MANIFOLD_SOLID_BREP` of `ADVANCED_FACE`s on `PLANE`, `CYLINDRICAL_SURFACE`,
+  `CONICAL_SURFACE`, `SPHERICAL_SURFACE`, `TOROIDAL_SURFACE` and
+  `B_SPLINE_SURFACE_WITH_KNOTS`, with `EDGE_CURVE`s on `LINE`, `CIRCLE`, `ELLIPSE` and
+  `B_SPLINE_CURVE_WITH_KNOTS`, millimetre units and a header a reader expects, and
+  reads such files back (including other systems' inch units and rational splines) as
+  exact `Part::Feature` solids; STL (binary and ASCII) and OBJ import as mesh objects
+  and export the display tessellation of any shape; DXF (R12) imports into and exports
+  from sketches; SVG exports a hidden-line projection of the view at 1:1 in
+  millimetres. Binary files move through `AppEffect::ReadBytes` and `WriteBytes`.
 - Undo and Redo cover every document change (30 levels); snapshots hold the document
   and view, and the model is recomputed from it on restore.
 

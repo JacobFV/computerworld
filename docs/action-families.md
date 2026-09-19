@@ -28,7 +28,10 @@ disagree, the code is right.
 `step()` checks `machines.contains(action.machine) && actions.contains(action.family)`
 before dispatch; failure is a per-action `denied` outcome, not an exception. Errors
 are flattened to four codes (`denied`, `not_found`, `invalid`, `action_failed`) with
-fixed messages, so a failing action cannot leak world state through its error text.
+fixed messages, so a failing action cannot leak world state through its error text. A
+refusal also carries a `reason` from a closed vocabulary — which grant is missing, or
+what is not there — whose message is likewise a compile-time constant. See
+[Errors and refusals](agent-api.md#errors-and-refusals) for the whole table.
 
 Two presets exist in `crates/protocol/src/lib.rs`:
 
@@ -114,18 +117,35 @@ window keeps its own history and tabs.
 Any other op is `invalid`. Note the cross-family gate: `application.v1 launch` of
 kind `browser`, `keyboard.v1 key` of `Enter` in a focused address bar, and pointer
 clicks that resolve into page content all additionally require `browser.v1` in
-`actions` and are `denied` without it.
+`actions` and are `denied` without it. That denial carries the reason
+`browser_family_required`, and `application.v1 list` marks such an application
+`launchable: false` with the same reason, so an installed-but-ungranted browser is
+never a bare refusal.
 
 ### `application.v1`
 
 | Op | Payload | Returns |
 |---|---|---|
+| `list` | `{"installed"?: bool}` (default `true`) | array of `{"id","label","kind","installed","launchable","blocked_by"}` |
 | `launch` | `{"kind": string, "argument"?: string, "instance"?: string, "initial"?: any}` | `{"window": u64}` for built-ins, `{"instance": string}` for a registered SDK app |
 | `focus` | `{"window": u64}` | `null` |
 | `close` | `{"window": u64}` | `null` |
 | `home` / `launcher` / `minimize` / `maximize` / `switcher` | `{}` | `null` |
 | `shell` | `{"target": string}` | Whatever that control returns |
 | `event` | `{"instance"?: string, "event": AppEvent}` (or the event inline) | The registered app's new page |
+
+`list` is how an agent finds out what is on a machine without guessing ids. `id` is the
+`kind` `launch` takes; `label` is the name this machine's shell paints under the
+application's icon — the same string, from the same table, that titles its window;
+`kind` is `builtin` (one of the four the compositor implements), `native` (an
+application shipped with the simulator) or `web` (a `desktop_apps` alias that opens a
+site in the browser). `installed` reflects the computer's `installed_apps`;
+`launchable` says whether `launch` would succeed **right now for this session**, and
+`blocked_by` names the [documented reason](agent-api.md#errors-and-refusals) it would
+not — typically `application_not_installed` or `browser_family_required`. Passing
+`{"installed": false}` returns the uninstalled entries too, so "what could this world
+have?" is answerable as well as "what does it have?". From the shell, `apps` lists the
+same ids.
 
 `shell` invokes a shell control **by name**, reaching the same handler a pointer
 reaches by hit-testing, through the same grants. The target is any `shell:*` id, or a
@@ -234,12 +254,12 @@ Fillet with no edge selected) is painted disabled with the reason, everywhere it
 | `freecad:navcube` (a click lands on the face, edge or corner under it), `freecad:navcube-arrow:<left\|right\|up\|down\|cw\|ccw>`, `freecad:navcube-menu`, `freecad:navcube-view:<command>` | The navigation cube: 26 facets turning the view, 15° steps, and its menu (orthographic, perspective, isometric, fit all) |
 | `freecad:tree:<object>` (double click edits it), `freecad:tree-toggle:<object>`, `freecad:tree-eye:<object>`, `freecad:tree:origin:<XY_Plane…>` | The model tree: select, expand, show/hide, the body's Origin |
 | `freecad:tab:<model\|tasks>`, `freecad:prop-tab:<view\|data>`, `freecad:prop:<property>` | Combo View tabs and the property editor. A number or text property opens its edit field, a boolean flips, an enumeration drops down its choices (`freecad:choice:prop/<property>:<value>`); a change recomputes everything downstream |
-| `freecad:task:<ok\|cancel>`, `freecad:task:toggle:<option>`, `freecad:task:plane:<XY_Plane\|XZ_Plane\|YZ_Plane>`, `freecad:task:select:<add\|remove>`, `freecad:task:remove-ref:<i>`, `freecad:task:measure-clear`, `freecad:field:task:<parameter>`, `freecad:choice:open:task/<parameter>`, `freecad:choice:task/<parameter>:<value>` | Task panels: a feature's parameters (previewed live; Cancel restores the document), the plane chooser for a new sketch, a fillet's edge list, the Measure panel |
+| `freecad:task:<ok\|cancel>`, `freecad:task:toggle:<option>`, `freecad:task:plane:<XY_Plane\|XZ_Plane\|YZ_Plane>`, `freecad:task:select:<add\|remove>`, `freecad:task:remove-ref:<i>`, `freecad:task:measure-clear`, `freecad:field:task:<parameter>`, `freecad:choice:open:task/<parameter>`, `freecad:choice:task/<parameter>:<value>` | Task panels: a feature's parameters (previewed live; Cancel restores the document), the plane chooser for a new sketch, a fillet's or chamfer's edge list with its radius or sizes (`ChamferType` Equal distance / Two distances / Distance and Angle, `Size`, `Size2`, `ChamferAngle`, `FlipDirection`, `UseAllEdges`), the Measure panel |
 | `freecad:sk:constraint:<i>`, `freecad:sk:dim:<i>` (double click edits the value), `freecad:sk:element:<i>`, `freecad:sk:fold:<section>`, `freecad:sk:close`, `freecad:sk:select-free`, `freecad:sk:construction`, `freecad:sk:fillet-radius`, `freecad:field:constraint:<i>` | The Sketcher: constraint and element lists, dimension labels in the view, solver messages ("Under constrained: 2 DoFs" selects the free geometry), construction mode and the fillet tool's radius |
-| `freecad:file:<entry:<name>\|place:<folder>\|up\|type:<i>\|ok\|cancel>`, `freecad:field:file-name`, `freecad:choice:open:filetype`, `freecad:choice:filetype:<i>` | The file dialog: documents (`*.FCStd.json`), import (STL, OBJ, DXF) and export (binary STL, ASCII STL `.ast`, OBJ, DXF of a sketch, hidden-line SVG of the view) over the machine's real folders |
+| `freecad:file:<entry:<name>\|open:<name>\|place:<folder>\|crumb:<folder>\|home\|back\|forward\|up\|new-folder\|folder-prompt:<default name>\|folder-create\|folder-cancel\|collapse\|type:<i>\|ok\|cancel\|replace\|keep\|list:<rows>\|scroll-by:<n>\|side-scroll-by:<n>\|scrollbar:<rows>:<height>\|side-scrollbar:<rows>:<total>:<height>>`, `freecad:field:file-name`, `freecad:field:folder-name`, `freecad:choice:open:filetype`, `freecad:choice:filetype:<i>`, `freecad:choice:open:filepath`, `freecad:choice:filepath:<folder>` | The platform's own file dialog, over the machine's real folders: the Mac's NSSavePanel/NSOpenPanel sheet (Save As and Tags, the folder pop-up `filepath`, Back/Forward, Favorites and Locations, File Format, New Folder sheet, the `collapse` disclosure), Windows 11's common item dialog (Back/Forward/Up, breadcrumb `crumb:` segments, New folder made at once as "New folder (n)", Home (`home`: the pinned Quick access folders), Desktop…Videos, This PC, Name/Type details, File name and Save as type) and GNOME's GTK chooser (Cancel/title/Save header bar, Name, path bar, places with Trash and Other Locations, Create Folder popover, filter drop-down). The sidebars list the same places as Finder, Explorer and Files. A click on a row (`entry:`) selects it; a double click (or `open:`) enters a folder or chooses a file; Open with a folder selected enters it. The list and the sidebar scroll: `pointer.v1 wheel` over them (a notch is three rows), a click on the scrollbar's track jumps there (the target carries the rows shown and the track height; the click's offset picks the row), Windows' arrows step a row (`scroll-by:`), and `ArrowUp`/`ArrowDown`/`PageUp`/`PageDown`/`Home`/`End` move the selection and keep it in view; a click on the list's empty space (`list:`) selects nothing. Saving over a listed file asks first (`replace` answers Replace/Yes, `keep` Cancel/No; `Enter` presses Cancel on macOS, No on Windows, Replace on GNOME). Documents (`*.FCStd.json`), import (STEP AP214/AP242 as an exact `Part::Feature`, STL, OBJ, DXF) and export (STEP AP214 `.step` and AP242 `.stp` of the exact solid, binary STL, ASCII STL `.ast`, OBJ, DXF of a sketch, hidden-line SVG of the view) |
 | `freecad:dialog:<ok\|cancel\|save\|discard\|block>`, `freecad:field-cancel`, `freecad:nav-menu`, `freecad:nav:<Gesture\|OpenInventor>`, `freecad:report-close`, `freecad:report-clear` | Dialogs (a modal dialog answers clicks outside it with `block`), the navigation style menu and the report view |
 
-Keys: `Ctrl+N/O/S/Shift+S/I/E/Z/Y/R/A`, `Delete`, `Escape` (drops the tool in hand, then
+Keys: `Ctrl+N/O/S/Shift+S/I/E/Z/Y/R/A`, `Delete`, in a file dialog `Enter`/`Escape` (answer the frontmost prompt, else OK/Cancel), `Alt+ArrowLeft`/`Ctrl+[` back, `Alt+ArrowRight`/`Ctrl+]` forward, `Alt+ArrowUp`/`Ctrl+ArrowUp` up, `Escape` (drops the tool in hand, then
 the selection, then leaves the sketch or cancels the task), `Enter` (commits a field,
 finishes a polyline, OKs a task), arrows pan and `PageUp`/`PageDown` zoom. With no
 field focused, typing `0`–`6` turns to the standard views and a space toggles the

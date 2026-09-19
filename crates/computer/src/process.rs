@@ -54,6 +54,78 @@ pub struct Process {
     pub pending_signals: Vec<String>,
     #[serde(default)]
     pub wake_exit: Option<i32>,
+    /// Terminal this process is attached to, or empty for none (`?` in `ps`). A machine
+    /// models one pseudo-terminal, `pts/0`: every command typed at the shell runs on it,
+    /// and services and windows run on none.
+    #[serde(default)]
+    pub tty: String,
+    /// Modelled resident memory in bytes. Nothing is measured — the world has no
+    /// allocator — so this is the published footprint of the program this process runs
+    /// (see [`footprint`]), plus whatever the process is actually holding: the bytes of
+    /// the document a window has open. Fixed the moment the process starts, so `ps`
+    /// reports the same number on every replay.
+    #[serde(default)]
+    pub rss_bytes: u64,
+    /// Simulated microseconds this process has spent executing. This world runs every
+    /// command in zero simulated time, so nothing charges it yet; it is a real counter
+    /// rather than a constant so that `ps` never reports invented CPU usage.
+    #[serde(default)]
+    pub cpu_us: u64,
+}
+/// Resident memory a program of this class is modelled to hold, in bytes.
+///
+/// The world has no allocator and measures nothing, so this is a published table keyed
+/// by the program a process runs: a table an agent can read in `docs/shell.md` and
+/// predict, not a number sampled from the host. It is ordered the way the real programs
+/// are — an interpreter costs more than `ls` — so "the ten biggest processes" is a
+/// question with a meaningful answer.
+pub fn footprint(command: &str) -> u64 {
+    const MB: u64 = 1 << 20;
+    let program = command
+        .split_whitespace()
+        .find(|word| !word.contains('='))
+        .unwrap_or_default()
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or_default();
+    match program {
+        "init" => 2 * MB,
+        "service" => 24 * MB,
+        "node" | "nodejs" => 48 * MB,
+        "python3" | "python" | "python3.12" => 28 * MB,
+        "git" => 8 * MB,
+        "sqlite3" => 6 * MB,
+        "sh" | "bash" | "sudo" | "pwsh" | "powershell" => 3 * MB,
+        _ => 2 * MB,
+    }
+}
+/// Mapped address space reported as `VSZ`. The world models no address space, so this
+/// is the resident size plus one fixed 64 MiB mapping, identical for every process.
+pub fn mapped(rss_bytes: u64) -> u64 {
+    rss_bytes + (64 << 20)
+}
+impl Process {
+    /// The single letter `ps` prints in `STAT` and `top` in `S`.
+    pub fn stat_letter(&self) -> char {
+        match self.state {
+            ProcessState::Running => 'R',
+            ProcessState::Sleeping { .. } => 'S',
+            ProcessState::Stopped => 'T',
+            ProcessState::Zombie { .. } | ProcessState::Exited { .. } => 'Z',
+        }
+    }
+    /// The terminal column: `?` when the process is attached to none.
+    pub fn tty_name(&self) -> &str {
+        if self.tty.is_empty() {
+            "?"
+        } else {
+            &self.tty
+        }
+    }
+    /// Virtual size in bytes; see [`mapped`].
+    pub fn vsz_bytes(&self) -> u64 {
+        mapped(self.rss_bytes)
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProcessTable {
@@ -96,6 +168,9 @@ impl ProcessTable {
             signal_dispositions: BTreeMap::new(),
             pending_signals: Vec::new(),
             wake_exit: None,
+            tty: String::new(),
+            rss_bytes: footprint("init"),
+            cpu_us: 0,
         };
         Self {
             next_pid: 2,
@@ -103,6 +178,33 @@ impl ProcessTable {
         }
     }
     pub fn spawn(&mut self, parent: u64, owner: &str, command: &str, tick: u64) -> u64 {
+        self.spawn_on(parent, owner, command, tick, "")
+    }
+    /// Spawn a process attached to a terminal. A command typed at the machine's shell
+    /// runs on `pts/0`; a service or a window runs on none.
+    pub fn spawn_on(
+        &mut self,
+        parent: u64,
+        owner: &str,
+        command: &str,
+        tick: u64,
+        tty: &str,
+    ) -> u64 {
+        let pid = self.spawn_inner(parent, owner, command, tick);
+        let p = Arc::make_mut(&mut self.processes).get_mut(&pid).unwrap();
+        p.tty = tty.to_owned();
+        pid
+    }
+    /// Record what this process is actually holding on top of its program's published
+    /// footprint: the bytes of the document a window has open, for instance.
+    pub fn hold(&mut self, pid: u64, extra_bytes: u64) -> Result<(), String> {
+        let p = Arc::make_mut(&mut self.processes)
+            .get_mut(&pid)
+            .ok_or("no such process")?;
+        p.rss_bytes = footprint(&p.command).saturating_add(extra_bytes);
+        Ok(())
+    }
+    fn spawn_inner(&mut self, parent: u64, owner: &str, command: &str, tick: u64) -> u64 {
         self.reap_exited();
         let pid = self.next_pid;
         self.next_pid += 1;
@@ -137,6 +239,9 @@ impl ProcessTable {
                 signal_dispositions: BTreeMap::new(),
                 pending_signals: Vec::new(),
                 wake_exit: None,
+                tty: String::new(),
+                rss_bytes: footprint(command),
+                cpu_us: 0,
             },
         );
         pid
