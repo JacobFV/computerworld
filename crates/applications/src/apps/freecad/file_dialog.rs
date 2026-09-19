@@ -830,7 +830,7 @@ fn mac(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::AppE
                 rr.x + rr.width as i32 - kind_w as i32,
                 rr.y + 2,
                 kind_w - 6,
-                &kind_label(DesktopTheme::Macos, e),
+                &kind_label(DesktopTheme::Macos, &crate::FileRow::named(e)),
                 13,
                 if sel { Color::WHITE } else { MAC_DIM },
             );
@@ -1375,7 +1375,7 @@ fn windows(cad: &Cad, p: &mut Painter, l: &Layout, d: &FileDialog, env: &crate::
                 rr.x + name_w as i32,
                 rr.y + 5,
                 type_w - 8,
-                &kind_label(DesktopTheme::Windows, e),
+                &kind_label(DesktopTheme::Windows, &crate::FileRow::named(e)),
                 12,
                 WIN_DIM,
             );

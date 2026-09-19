@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 /// is outside the simulated surface, 1 a modelled negative or operational error.
 #[derive(Debug, Clone)]
 pub(crate) struct Fail {
-    text: String,
-    code: i32,
+    pub(crate) text: String,
+    pub(crate) code: i32,
     /// Output produced before failing: `grep -c` prints 0 and still exits 1.
     out: String,
     /// The text is already a complete message: do not prefix it with the command
@@ -148,7 +148,9 @@ pub(crate) const BUILTINS: &[&str] = &[
     "brew",
     "cat",
     "cd",
+    "chgrp",
     "chmod",
+    "chown",
     "clear",
     "cmp",
     "comm",
@@ -172,11 +174,15 @@ pub(crate) const BUILTINS: &[&str] = &[
     "free",
     "fold",
     "getopts",
+    "gio",
     "git",
     "grep",
+    "gunzip",
+    "gzip",
     "head",
     "hexdump",
     "hostname",
+    "install",
     "ip",
     "join",
     "kill",
@@ -209,6 +215,7 @@ pub(crate) const BUILTINS: &[&str] = &[
     "rev",
     "rm",
     "rmdir",
+    "rsync",
     "sed",
     "seq",
     "service",
@@ -228,15 +235,24 @@ pub(crate) const BUILTINS: &[&str] = &[
     "systemctl",
     "tail",
     "tee",
+    "tar",
     "test",
     "top",
     "touch",
     "tr",
+    "trash",
+    "trash-empty",
+    "trash-list",
+    "trash-put",
+    "trash-restore",
     "true",
+    "truncate",
+    "umask",
     "uname",
     "unexpand",
     "uniq",
     "unset",
+    "unzip",
     "uptime",
     "wc",
     "wget",
@@ -246,6 +262,8 @@ pub(crate) const BUILTINS: &[&str] = &[
     "xargs",
     "xxd",
     "yes",
+    "zcat",
+    "zip",
 ];
 #[derive(Clone, Debug)]
 enum Token {
@@ -639,19 +657,66 @@ fn arithmetic(text: &str, c: &Computer) -> Result<i64, String> {
     }
     Ok(result)
 }
-/// Wildcards match one path component. No host directories are consulted.
+/// A `[...]` bracket expression starting at `p[start]`. Returns the index just past the
+/// closing `]` and whether `ch` is in the set. `[!…]` and `[^…]` negate, a `]` first in
+/// the set is a literal, and `-` first or last is a literal. An unterminated `[` is not
+/// a bracket expression at all, which is why this returns `None` for it.
+fn bracket(p: &[char], start: usize, ch: char) -> Option<(usize, bool)> {
+    let mut i = start + 1;
+    let negated = matches!(p.get(i), Some('!' | '^'));
+    if negated {
+        i += 1;
+    }
+    let first = i;
+    let mut hit = false;
+    while i < p.len() {
+        if p[i] == ']' && i > first {
+            return Some((i + 1, hit != negated));
+        }
+        // `a-z`, but a `-` with nothing after it (or just before `]`) is a literal.
+        if p.get(i + 1) == Some(&'-') && p.get(i + 2).is_some_and(|c| *c != ']') {
+            let (lo, hi) = (p[i], p[i + 2]);
+            if lo <= ch && ch <= hi {
+                hit = true;
+            }
+            i += 3;
+            continue;
+        }
+        if p[i] == ch {
+            hit = true;
+        }
+        i += 1;
+    }
+    None
+}
+/// Wildcards match one path component: `*`, `?` and `[...]` classes. No host
+/// directories are consulted.
 pub(crate) fn wildcard(pattern: &str, value: &str) -> bool {
     let p: Vec<_> = pattern.chars().collect();
     let v: Vec<_> = value.chars().collect();
+    // One pattern atom against one character: the next pattern index, or None.
+    let atom = |i: usize, ch: char| -> Option<usize> {
+        match p[i] {
+            '?' => Some(i + 1),
+            '[' => match bracket(&p, i, ch) {
+                Some((next, true)) => Some(next),
+                Some((_, false)) => None,
+                None if ch == '[' => Some(i + 1),
+                None => None,
+            },
+            c if c == ch => Some(i + 1),
+            _ => None,
+        }
+    };
     let (mut i, mut j, mut star, mut mark) = (0, 0, None, 0);
     while j < v.len() {
-        if i < p.len() && (p[i] == '?' || p[i] == v[j]) {
-            i += 1;
-            j += 1;
-        } else if i < p.len() && p[i] == '*' {
+        if i < p.len() && p[i] == '*' {
             star = Some(i);
             i += 1;
             mark = j;
+        } else if let Some(next) = if i < p.len() { atom(i, v[j]) } else { None } {
+            i = next;
+            j += 1;
         } else if let Some(s) = star {
             i = s + 1;
             mark += 1;
@@ -665,6 +730,116 @@ pub(crate) fn wildcard(pattern: &str, value: &str) -> bool {
     }
     i == p.len()
 }
+/// True when the word holds a pattern character a glob would act on.
+fn has_glob(s: &str) -> bool {
+    s.contains('*') || s.contains('?') || s.contains('[')
+}
+/// Brace expansion: `{a,b,c}` and the numeric range `{1..5}` (with an optional step,
+/// `{1..9..2}`), nested and repeated, left to right. It runs before globbing, as bash
+/// runs it, and it is pure text: a brace that expands to nothing still produces a word.
+/// A brace with no comma and no range is left alone, so `${…}` leftovers and a literal
+/// `{}` (the one `find -exec` wants) survive untouched.
+fn brace_expand(word: &str) -> Vec<String> {
+    let chars: Vec<char> = word.chars().collect();
+    // The first unescaped `{` with a matching `}` at the same depth.
+    let mut depth = 0;
+    let mut open = None;
+    for (i, ch) in chars.iter().enumerate() {
+        match ch {
+            '{' => {
+                if depth == 0 {
+                    open = Some(i);
+                }
+                depth += 1;
+            }
+            '}' if depth > 0 => {
+                depth -= 1;
+                if depth == 0 {
+                    let (start, end) = (open.unwrap(), i);
+                    let body: String = chars[start + 1..end].iter().collect();
+                    let prefix: String = chars[..start].iter().collect();
+                    let suffix: String = chars[end + 1..].iter().collect();
+                    let Some(items) = brace_items(&body) else {
+                        // Not an expansion; keep scanning after this brace.
+                        open = None;
+                        continue;
+                    };
+                    let mut out = Vec::new();
+                    for item in items {
+                        for tail in brace_expand(&format!("{prefix}{item}{suffix}")) {
+                            out.push(tail);
+                        }
+                    }
+                    return out;
+                }
+            }
+            _ => {}
+        }
+    }
+    vec![word.to_string()]
+}
+/// The alternatives a brace body stands for, or `None` when it is not an expansion.
+fn brace_items(body: &str) -> Option<Vec<String>> {
+    if let Some((lo, rest)) = body.split_once("..") {
+        let (hi, step) = match rest.split_once("..") {
+            Some((h, s)) => (h, s.parse::<i64>().ok()?),
+            None => (rest, 1),
+        };
+        if step == 0 {
+            return None;
+        }
+        if let (Ok(a), Ok(b)) = (lo.parse::<i64>(), hi.parse::<i64>()) {
+            let step = step.abs() * if a <= b { 1 } else { -1 };
+            let mut out = Vec::new();
+            let mut v = a;
+            while (step > 0 && v <= b) || (step < 0 && v >= b) {
+                out.push(v.to_string());
+                v += step;
+                if out.len() > 10_000 {
+                    return None;
+                }
+            }
+            return Some(out);
+        }
+        // `{a..e}`: a character range.
+        let (a, b) = (lo.chars().next()?, hi.chars().next()?);
+        if lo.chars().count() == 1 && hi.chars().count() == 1 && step.abs() == 1 {
+            let (a, b) = (a as u32, b as u32);
+            let range: Vec<String> = if a <= b {
+                (a..=b)
+                    .filter_map(char::from_u32)
+                    .map(String::from)
+                    .collect()
+            } else {
+                (b..=a)
+                    .rev()
+                    .filter_map(char::from_u32)
+                    .map(String::from)
+                    .collect()
+            };
+            return Some(range);
+        }
+        return None;
+    }
+    // Split on commas at brace depth zero.
+    let mut items = vec![String::new()];
+    let mut depth = 0;
+    for ch in body.chars() {
+        match ch {
+            '{' => {
+                depth += 1;
+                items.last_mut().unwrap().push(ch);
+            }
+            '}' => {
+                depth -= 1;
+                items.last_mut().unwrap().push(ch);
+            }
+            ',' if depth == 0 => items.push(String::new()),
+            _ => items.last_mut().unwrap().push(ch),
+        }
+    }
+    (items.len() > 1).then_some(items)
+}
 fn glob_paths(c: &Computer, pattern: &str) -> Vec<String> {
     let abs = c.resolve(pattern);
     let components: Vec<_> = abs.split('/').filter(|s| !s.is_empty()).collect();
@@ -672,11 +847,12 @@ fn glob_paths(c: &Computer, pattern: &str) -> Vec<String> {
     for component in components {
         let mut next = vec![];
         for parent in paths {
-            if component.contains('*') || component.contains('?') {
-                if let Ok(entries) = c
+            if has_glob(component) {
+                if let Ok(mut entries) = c
                     .vfs
                     .list_as(if parent.is_empty() { "/" } else { &parent }, &c.user)
                 {
+                    entries.sort();
                     for name in entries {
                         if (!name.starts_with('.') || component.starts_with('.'))
                             && wildcard(component, &name)
@@ -693,7 +869,9 @@ fn glob_paths(c: &Computer, pattern: &str) -> Vec<String> {
     }
     paths
         .into_iter()
-        .filter(|p| c.vfs.stat(p).is_ok())
+        // `lstat`, not `stat`: a dangling symlink is still a name in the directory,
+        // and `ls`/`rm` must see it.
+        .filter(|p| c.vfs.lstat(p).is_ok())
         .map(|p| {
             if pattern.starts_with('/') {
                 p
@@ -1170,19 +1348,31 @@ fn run_tokens(
             }
             v => match word_fields(v, c, status, t, host, depth) {
                 Ok(fields) => {
-                    // Only a `*` written in the source globs; one that arrives from a
-                    // variable stays literal, so data never turns into a pattern.
-                    let glob = matches!(v,Token::Word(parts) if parts.iter().any(|(p,f)| f&2!=0 && (p.contains('*')||p.contains('?'))));
+                    // Only a pattern written in the source expands; one that arrives
+                    // from a variable stays literal, so data never turns into a
+                    // pattern. Braces first, then globbing, as bash orders them.
+                    let source = |pred: fn(&str) -> bool| matches!(v, Token::Word(parts) if parts.iter().any(|(p, f)| f & 2 != 0 && pred(p)));
+                    let braces = source(|p| p.contains('{'));
+                    let glob = source(has_glob);
                     for field in fields {
-                        let paths = if glob && (field.contains('*') || field.contains('?')) {
-                            glob_paths(c, &field)
+                        let words = if braces && field.contains('{') {
+                            brace_expand(&field)
                         } else {
-                            vec![]
+                            vec![field]
                         };
-                        if paths.is_empty() {
-                            args.push(field)
-                        } else {
-                            args.extend(paths)
+                        for word in words {
+                            // No match is the word itself, as bash does without
+                            // `nullglob`.
+                            let paths = if glob && has_glob(&word) {
+                                glob_paths(c, &word)
+                            } else {
+                                vec![]
+                            };
+                            if paths.is_empty() {
+                                args.push(word)
+                            } else {
+                                args.extend(paths)
+                            }
                         }
                     }
                 }
@@ -2079,17 +2269,25 @@ fn for_items(
     };
     let mut items = Vec::new();
     for token in words {
-        let glob = matches!(token, Token::Word(parts) if parts.iter().any(|(p, f)| f & 2 != 0 && (p.contains('*') || p.contains('?'))));
+        let source = |pred: fn(&str) -> bool| matches!(token, Token::Word(parts) if parts.iter().any(|(p, f)| f & 2 != 0 && pred(p)));
+        let (braces, glob) = (source(|p| p.contains('{')), source(has_glob));
         for piece in word_fields(token, c, status, t, host, depth)? {
-            let paths = if glob && (piece.contains('*') || piece.contains('?')) {
-                glob_paths(c, &piece)
+            let words = if braces && piece.contains('{') {
+                brace_expand(&piece)
             } else {
-                vec![]
+                vec![piece]
             };
-            if paths.is_empty() {
-                items.push(piece);
-            } else {
-                items.extend(paths);
+            for word in words {
+                let paths = if glob && has_glob(&word) {
+                    glob_paths(c, &word)
+                } else {
+                    vec![]
+                };
+                if paths.is_empty() {
+                    items.push(word);
+                } else {
+                    items.extend(paths);
+                }
             }
         }
     }
@@ -2366,6 +2564,9 @@ fn shell_builtin(
         "sqlite3" => Some(crate::sqlite::execute(c, args, input, t)),
         // `xdg-open` needs to hand a target to the desktop, which no other command does,
         // so it is built here where a whole CommandResult is available.
+        // `gio` is two commands under one name: `gio trash` is the trash, everything
+        // else is the opener.
+        "gio" if args.get(1).is_some_and(|a| a == "trash") => None,
         "xdg-open" | "gio" | "kde-open" => Some(cmd_xdg_open(c, args)),
         "open" if c.os_family == "macos" => Some(cmd_xdg_open(c, args)),
         "start" if c.dialect == "powershell" => Some(cmd_xdg_open(c, args)),
@@ -2385,7 +2586,8 @@ fn cmd_xdg_open(c: &Computer, args: &[String]) -> CommandResult {
             Some(other) => {
                 return CommandResult::new(
                     format!(
-                        "gio: unsupported subcommand `{other}`; this world models `gio open`\n"
+                        "gio: unsupported subcommand `{other}`; this world models \
+                         `gio open` and `gio trash`\n"
                     ),
                     2,
                 )
@@ -2875,7 +3077,7 @@ fn run(
             }
             Ok(String::new())
         }
-        "ls" | "dir" | "get-childitem" => cmd_ls(c, args),
+        "ls" | "dir" | "get-childitem" => crate::files::ls(c, args),
         "cat" | "type" | "get-content" => {
             let (opts, paths) = options(
                 &cmd,
@@ -2942,45 +3144,13 @@ fn run(
             }
             Ok(rendered)
         }
-        "touch" => cmd_touch(c, args, t),
-        "mkdir" | "md" => {
-            let (opts, paths) = options(
-                "mkdir",
-                args,
-                "pv",
-                "",
-                &[("parents", 'p'), ("verbose", 'v')],
-            )?;
-            if paths.is_empty() {
-                return Err(Fail::usage(format!(
-                    "mkdir: missing operand\n{}",
-                    usage_line("mkdir")
-                )));
-            }
-            let mut told = String::new();
-            for p in &paths {
-                let path = c.resolve(p);
-                // Without -p an existing directory or a missing parent is an error.
-                if !flag(&opts, 'p') {
-                    if c.vfs.exists(&path) {
-                        return Err(format!("cannot create directory '{p}': File exists").into());
-                    }
-                    let parent = path.rsplit_once('/').map_or("/", |(a, _)| a);
-                    let parent = if parent.is_empty() { "/" } else { parent };
-                    if !c.vfs.exists(parent) {
-                        return Err(format!(
-                            "cannot create directory '{p}': No such file or directory"
-                        )
-                        .into());
-                    }
-                }
-                c.vfs.mkdir_all_as(&path, &c.user, t).map_err(err)?;
-                if flag(&opts, 'v') {
-                    told.push_str(&format!("mkdir: created directory '{p}'\n"));
-                }
-            }
-            Ok(told)
-        }
+        "touch" => crate::files::touch(c, args, t),
+        "truncate" => crate::files::truncate(c, args, t),
+        "install" => crate::files::install(c, args, t),
+        "chown" | "chgrp" => crate::files::chown(c, &cmd, args, t),
+        "umask" => crate::files::umask(c, args),
+        "readlink" | "realpath" => crate::files::readlink(c, &cmd, args),
+        "mkdir" | "md" => crate::files::mkdir(c, args, t),
         "set-content" | "add-content" => {
             let path = c.resolve(required(0)?);
             let value = format!("{}\n", args[1..].join(" "));
@@ -2995,135 +3165,12 @@ fn run(
             }
             Ok(String::new())
         }
-        "cp" | "copy-item" => {
-            let (opts, paths) = options(
-                "cp",
-                &powershell_switches(args),
-                "rRfpv",
-                "",
-                &[("recursive", 'r'), ("force", 'f')],
-            )?;
-            let [source, destination] = paths.as_slice() else {
-                return Err(Fail::usage(
-                    "cp: expects exactly one source and one destination",
-                ));
-            };
-            let from = c.resolve(source);
-            let mut to = c.resolve(destination);
-            if c.vfs.list_as(&to, &c.user).is_ok() {
-                to = format!("{to}/{}", from.rsplit('/').next().unwrap_or("file"));
-            }
-            if c.vfs
-                .lstat(&from)
-                .map_err(|e| Fail::io("cp", source, &e))?
-                .is_dir
-            {
-                if !(flag(&opts, 'r') || flag(&opts, 'R')) {
-                    return Err(format!("-r not specified; omitting directory '{source}'").into());
-                }
-                for (path, _, directory) in walk_tree(c, &from) {
-                    let target = format!("{to}{}", &path[from.len()..]);
-                    if directory {
-                        c.vfs.mkdir_all_as(&target, &c.user, t).map_err(err)?;
-                    } else {
-                        let bytes = c.vfs.read_as(&path, &c.user).map_err(err)?;
-                        c.vfs.write_as(&target, &bytes, &c.user, t).map_err(err)?;
-                    }
-                }
-                return Ok(String::new());
-            }
-            let bytes = c
-                .vfs
-                .read_as(&from, &c.user)
-                .map_err(|e| Fail::io("cp", source, &e))?;
-            c.vfs
-                .write_as(&to, &bytes, &c.user, t)
-                .map_err(|e| Fail::io("cp", destination, &e))?;
-            Ok(String::new())
-        }
-        "mv" | "move-item" => {
-            // `-f` and `-v` are the only flags with a meaning here; -f is already the
-            // behaviour (no prompting is possible) and -v prints what moved.
-            let (opts, names) = options(
-                "mv",
-                &powershell_switches(args),
-                "fv",
-                "",
-                &[("force", 'f'), ("verbose", 'v')],
-            )?;
-            let [source, destination] = names.as_slice() else {
-                return Err(Fail::usage(format!(
-                    "mv: expects exactly one source and one destination\n{}",
-                    usage_line("mv")
-                )));
-            };
-            // Moving onto a directory moves the name into it, as mv does.
-            let mut to = c.resolve(destination);
-            if c.vfs.stat(&to).is_ok_and(|m| m.is_dir) {
-                let base = source
-                    .trim_end_matches('/')
-                    .rsplit('/')
-                    .next()
-                    .unwrap_or("");
-                to = format!("{}/{base}", to.trim_end_matches('/'));
-            }
-            c.vfs
-                .rename_as(&c.resolve(source), &to, &c.user)
-                .map_err(|e| Fail::io("mv", source, &e))?;
-            Ok(if flag(&opts, 'v') {
-                format!("renamed '{source}' -> '{destination}'\n")
-            } else {
-                String::new()
-            })
-        }
-        "rm" | "remove-item" | "rmdir" => {
-            let (opts, paths) = options(
-                "rm",
-                &powershell_switches(args),
-                "rRfv",
-                "",
-                &[("recursive", 'r'), ("force", 'f')],
-            )?;
-            let recursive = flag(&opts, 'r') || flag(&opts, 'R') || cmd == "rmdir";
-            let force = flag(&opts, 'f');
-            if paths.is_empty() && !force {
-                return Err(Fail::usage("rm: missing operand"));
-            }
-            for p in &paths {
-                if let Err(e) = c.vfs.remove_as(&c.resolve(p), recursive, &c.user) {
-                    if !force {
-                        // GNU names the directory itself, not its contents, when -r
-                        // is missing: `rm: cannot remove 'x': Is a directory`.
-                        let reason = match &e {
-                            crate::VfsError::NotEmpty(_) if !recursive => "Is a directory",
-                            other => vfs_reason(other),
-                        };
-                        return Err(Fail::op("rm", format!("cannot remove '{p}'"), reason));
-                    }
-                }
-            }
-            Ok(String::new())
-        }
+        "cp" | "copy-item" => crate::files::cp(c, &powershell_switches(args), t),
+        "mv" | "move-item" => crate::files::mv(c, &powershell_switches(args), t),
+        "rm" | "remove-item" => crate::files::rm(c, args),
         "chmod" => cmd_chmod(c, args),
-        "ln" => {
-            let (opts, names) = options("ln", args, "s", "", &[("symbolic", 's')])?;
-            let [target, link] = names.as_slice() else {
-                return Err(Fail::usage(format!(
-                    "ln: expects exactly one target and one link name\n{}",
-                    usage_line("ln")
-                )));
-            };
-            if flag(&opts, 's') {
-                c.vfs
-                    .symlink_as(target, &c.resolve(link), &c.user, t)
-                    .map_err(|e| Fail::io("ln", link, &e))?;
-            } else {
-                c.vfs
-                    .hard_link_as(&c.resolve(target), &c.resolve(link), &c.user)
-                    .map_err(|e| Fail::io("ln", target, &e))?;
-            }
-            Ok(String::new())
-        }
+        "rmdir" => crate::files::rmdir(c, args),
+        "ln" => crate::files::ln(c, args, t),
         "grep" | "select-string" => cmd_grep(c, args, input),
         "test" | "[" | "test-path" => {
             let vals = if cmd == "[" {
@@ -3175,10 +3222,17 @@ fn run(
             c.env.insert("#".into(), (count - by).to_string());
             Ok(String::new())
         }
-        "stat" => cmd_stat(c, args),
+        "stat" => crate::files::stat(c, args),
         "sed" => crate::sed::execute(c, args, input, t),
         "awk" | "gawk" | "mawk" | "nawk" => crate::awk::execute(c, args, input, t, host, depth),
-        "find" => cmd_find(c, args),
+        "find" => crate::find::run(c, args, t, host, depth),
+        "tar" => crate::archive::tar(c, args, t),
+        "gzip" | "gunzip" | "zcat" => crate::archive::gzip(c, &cmd, args, input, t),
+        "zip" | "unzip" => crate::archive::zip(c, &cmd, args, t),
+        "rsync" => crate::archive::rsync(c, args, t),
+        "trash" | "trash-put" | "trash-list" | "trash-restore" | "trash-empty" | "gio" => {
+            crate::trash::command(c, &cmd, args, t)
+        }
         "clear" | "cls" => {
             // No bytes: run_tokens raises CommandResult::clear for the terminal to honour.
             if let Some(first) = args.first() {
@@ -3889,72 +3943,6 @@ mod signal_tests {
     }
 }
 
-#[cfg(test)]
-mod find_tests {
-    use super::*;
-    use crate::OfflineHost;
-    fn machine() -> Computer {
-        let mut c = Computer::new("a", "user", "linux", true);
-        for dir in ["/home/user/notes", "/home/user/notes/deep"] {
-            let r = execute(&mut c, &format!("mkdir -p {dir}"), 0, &mut OfflineHost);
-            assert_eq!(r.exit_code, 0, "{}", r.stderr);
-        }
-        for path in [
-            "/home/user/recipes.txt",
-            "/home/user/notes/recipes.md",
-            "/home/user/notes/deep/other.txt",
-        ] {
-            let r = execute(&mut c, &format!("echo x > {path}"), 0, &mut OfflineHost);
-            assert_eq!(r.exit_code, 0, "{}", r.stderr);
-        }
-        c
-    }
-    fn run(c: &mut Computer, line: &str) -> (String, i32) {
-        let r = execute(c, line, 1, &mut OfflineHost);
-        (format!("{}{}", r.stdout, r.stderr), r.exit_code)
-    }
-    #[test]
-    fn a_name_predicate_is_applied_and_a_miss_returns_nothing() {
-        let mut c = machine();
-        let (out, code) = run(&mut c, "find /home/user -name 'nope'");
-        assert_eq!(out, "", "a search with no matches must return no matches");
-        assert_eq!(code, 0);
-        let (out, _) = run(&mut c, "find /home/user -name 'recipes.txt'");
-        assert_eq!(out, "/home/user/recipes.txt\n");
-        let (out, _) = run(&mut c, "find /home/user -name 'recipes.*'");
-        let mut lines: Vec<_> = out.lines().collect();
-        lines.sort();
-        assert_eq!(
-            lines,
-            vec!["/home/user/notes/recipes.md", "/home/user/recipes.txt"]
-        );
-    }
-    #[test]
-    fn type_and_maxdepth_narrow_the_walk() {
-        let mut c = machine();
-        let (out, _) = run(&mut c, "find /home/user -type d");
-        let mut dirs: Vec<_> = out.lines().collect();
-        dirs.sort();
-        assert!(dirs.contains(&"/home/user/notes"), "{dirs:?}");
-        assert!(dirs.contains(&"/home/user/notes/deep"), "{dirs:?}");
-        assert!(!dirs.contains(&"/home/user/recipes.txt"), "{dirs:?}");
-        let (out, _) = run(&mut c, "find /home/user -maxdepth 1 -type f");
-        assert_eq!(out, "/home/user/recipes.txt\n");
-    }
-    #[test]
-    fn an_unsupported_predicate_fails_loudly_rather_than_being_ignored() {
-        let mut c = machine();
-        let (out, code) = run(&mut c, "find /home/user -newer /etc/passwd");
-        assert_ne!(code, 0, "an ignored predicate must not report success");
-        assert!(out.contains("-newer"), "{out}");
-        let (out, code) = run(&mut c, "find /home/user -name");
-        assert_ne!(code, 0);
-        assert!(out.contains("missing argument"), "{out}");
-        let (_, code) = run(&mut c, "find /no/such/root -name x");
-        assert_ne!(code, 0);
-    }
-}
-
 /// Simulated wall clock. Tick 0 is 09:00:00 UTC on Thursday 17 September 2026 — the
 /// same origin the desktop clock uses, so `date` and the GUI never disagree.
 pub const EPOCH_UNIX_SECONDS: u64 = 1_789_635_600;
@@ -4025,14 +4013,14 @@ pub fn clock(tick: u64) -> Clock {
 }
 impl Clock {
     /// `2026-09-17 09:00:00`, the stamp `stat` and `uptime -s` print.
-    fn stamp(&self) -> String {
+    pub(crate) fn stamp(&self) -> String {
         format!(
             "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
             self.year, self.month, self.day, self.hour, self.minute, self.second
         )
     }
     /// `Sep 17 09:00`, the `ls -l` column.
-    fn short(&self) -> String {
+    pub(crate) fn short(&self) -> String {
         format!(
             "{} {:2} {:02}:{:02}",
             MONTH_ABBR[self.month as usize - 1],
@@ -4043,7 +4031,7 @@ impl Clock {
     }
 }
 /// GNU-style abbreviated size: exact under 1 KiB, one decimal under 10 units.
-fn human(bytes: u64) -> String {
+pub(crate) fn human(bytes: u64) -> String {
     const UNITS: [&str; 6] = ["", "K", "M", "G", "T", "P"];
     let mut value = bytes as f64;
     let mut unit = 0;
@@ -4060,7 +4048,7 @@ fn human(bytes: u64) -> String {
     }
 }
 /// `drwxr-xr-t` from the stored mode; setuid/setgid/sticky bits are honoured.
-fn mode_string(mode: u16, is_dir: bool, is_symlink: bool) -> String {
+pub(crate) fn mode_string(mode: u16, is_dir: bool, is_symlink: bool) -> String {
     let kind = if is_symlink {
         'l'
     } else if is_dir {
@@ -4093,13 +4081,13 @@ fn mode_string(mode: u16, is_dir: bool, is_symlink: bool) -> String {
 }
 /// Bytes a node occupies, assuming a 4 KiB allocation unit; the VFS has no allocator,
 /// so this is a stated convention rather than a measurement.
-const BLOCK: u64 = 4096;
-fn allocated(size: u64) -> u64 {
+pub(crate) const BLOCK: u64 = 4096;
+pub(crate) fn allocated(size: u64) -> u64 {
     size.div_ceil(BLOCK) * BLOCK
 }
 /// Bytes a node reports: the VFS stores a child count for directories, but every tool
 /// that prints a size means the allocation unit.
-fn apparent(m: &crate::Metadata) -> u64 {
+pub(crate) fn apparent(m: &crate::Metadata) -> u64 {
     if m.is_dir {
         BLOCK
     } else {
@@ -4108,7 +4096,7 @@ fn apparent(m: &crate::Metadata) -> u64 {
 }
 /// Every node beneath `root` (inclusive) with its apparent size; directories are
 /// reported as one allocation unit. Walks the VFS only.
-fn walk_tree(c: &Computer, root: &str) -> Vec<(String, u64, bool)> {
+pub(crate) fn walk_tree(c: &Computer, root: &str) -> Vec<(String, u64, bool)> {
     let mut out = Vec::new();
     let mut seen = std::collections::BTreeSet::new();
     let mut stack = vec![root.trim_end_matches('/').to_string()];
@@ -4301,7 +4289,7 @@ pub(crate) fn value(flags: &[(char, String)], f: char) -> Option<&str> {
 }
 /// `date +FORMAT`. Unknown conversions fail rather than being copied through, so a
 /// caller never mistakes an unimplemented field for a literal.
-fn strftime(format: &str, now: &Clock) -> Result<String, Fail> {
+pub(crate) fn strftime(format: &str, now: &Clock) -> Result<String, Fail> {
     let chars: Vec<char> = format.chars().collect();
     let mut out = String::new();
     let mut i = 0;
@@ -4358,18 +4346,8 @@ fn strftime(format: &str, now: &Clock) -> Result<String, Fail> {
     }
     Ok(out)
 }
-struct LsFlags {
-    all: bool,
-    almost: bool,
-    long: bool,
-    human: bool,
-    classify: bool,
-    reverse: bool,
-    by_time: bool,
-    by_size: bool,
-}
 /// Trailing type marker for `ls -F`; executability comes from the stored mode.
-fn classify(meta: &crate::Metadata) -> char {
+pub(crate) fn classify(meta: &crate::Metadata) -> char {
     if meta.is_symlink {
         '@'
     } else if meta.is_dir {
@@ -4380,183 +4358,10 @@ fn classify(meta: &crate::Metadata) -> char {
         ' '
     }
 }
-/// Entries are (label, absolute path) so an operand keeps the spelling the caller used.
-fn ls_render(c: &Computer, entries: &[(String, String)], f: &LsFlags) -> String {
-    let rows: Vec<(String, Option<crate::Metadata>)> = entries
-        .iter()
-        .map(|(n, path)| (n.clone(), c.vfs.lstat(path).ok()))
-        .collect();
-    if !f.long {
-        return rows
-            .iter()
-            .map(|(n, m)| {
-                let mark = match (f.classify, m) {
-                    (true, Some(meta)) => classify(meta),
-                    _ => ' ',
-                };
-                if mark == ' ' {
-                    format!("{n}\n")
-                } else {
-                    format!("{n}{mark}\n")
-                }
-            })
-            .collect();
-    }
-    let blocks: u64 = rows
-        .iter()
-        .filter_map(|(_, m)| m.as_ref())
-        .map(|m| allocated(apparent(m)) / 1024)
-        .sum();
-    let sized: Vec<String> = rows
-        .iter()
-        .map(|(_, m)| match m {
-            Some(meta) if f.human => human(apparent(meta)),
-            Some(meta) => apparent(meta).to_string(),
-            None => "?".into(),
-        })
-        .collect();
-    let width = sized.iter().map(String::len).max().unwrap_or(1);
-    let owners = rows
-        .iter()
-        .map(|(_, m)| m.as_ref().map_or(1, |x| x.owner.len()))
-        .max()
-        .unwrap_or(1);
-    let mut out = format!("total {blocks}\n");
-    for (((name, meta), size), (_, path)) in rows.iter().zip(sized).zip(entries) {
-        let Some(m) = meta else {
-            out.push_str(&format!("?????????? ? ? ? {size:>width$} ? {name}\n"));
-            continue;
-        };
-        let target = if m.is_symlink {
-            c.vfs
-                .read_link(path)
-                .map(|t| format!(" -> {t}"))
-                .unwrap_or_default()
-        } else {
-            String::new()
-        };
-        let mark = if f.classify { classify(m) } else { ' ' };
-        out.push_str(&format!(
-            "{} {:>3} {:<owners$} {:<owners$} {:>width$} {} {name}{}{}\n",
-            mode_string(m.mode, m.is_dir, m.is_symlink),
-            m.links,
-            m.owner,
-            m.owner,
-            size,
-            clock(m.modified).short(),
-            if mark == ' ' {
-                String::new()
-            } else {
-                mark.to_string()
-            },
-            target,
-        ));
-    }
-    out
-}
-fn ls_block(c: &Computer, dir: &str, f: &LsFlags) -> Result<String, Fail> {
-    let mut names = c.vfs.list_as(dir, &c.user)?;
-    if !f.all && !f.almost {
-        names.retain(|n| !n.starts_with('.'));
-    }
-    let meta = |n: &String| c.vfs.lstat(&crate::normalize_path(dir, n));
-    if f.by_time {
-        names.sort_by_key(|n| std::cmp::Reverse(meta(n).map(|m| m.modified).unwrap_or(0)));
-    } else if f.by_size {
-        names.sort_by_key(|n| std::cmp::Reverse(meta(n).map(|m| apparent(&m)).unwrap_or(0)));
-    }
-    if f.reverse {
-        names.reverse();
-    }
-    if f.all {
-        names.splice(0..0, [".".to_string(), "..".to_string()]);
-    }
-    let entries: Vec<(String, String)> = names
-        .iter()
-        .map(|n| (n.clone(), crate::normalize_path(dir, n)))
-        .collect();
-    Ok(ls_render(c, &entries, f))
-}
-/// `stat -c` conversions. The VFS keeps one timestamp and no numeric ids, so %X/%Y/%Z
-/// coincide and %u/%g report the computer's fixed identity.
-fn stat_format(
-    c: &Computer,
-    format: &str,
-    path: &str,
-    m: &crate::Metadata,
-) -> Result<String, Fail> {
-    let chars: Vec<char> = format.chars().collect();
-    let mut out = String::new();
-    let mut i = 0;
-    let kind = if m.is_symlink {
-        "symbolic link"
-    } else if m.is_dir {
-        "directory"
-    } else {
-        "regular file"
-    };
-    while i < chars.len() {
-        if chars[i] == '\\' && i + 1 < chars.len() {
-            out.push(match chars[i + 1] {
-                'n' => '\n',
-                't' => '\t',
-                other => other,
-            });
-            i += 2;
-            continue;
-        }
-        if chars[i] != '%' {
-            out.push(chars[i]);
-            i += 1;
-            continue;
-        }
-        let spec = *chars
-            .get(i + 1)
-            .ok_or_else(|| Fail::usage("stat: trailing `%` in format".to_string()))?;
-        let type_bits: u32 = if m.is_symlink {
-            0o120000
-        } else if m.is_dir {
-            0o040000
-        } else {
-            0o100000
-        };
-        match spec {
-            '%' => out.push('%'),
-            'n' => out.push_str(path),
-            'N' => out.push_str(&format!("'{path}'")),
-            's' => out.push_str(&apparent(m).to_string()),
-            'b' => out.push_str(&apparent(m).div_ceil(512).to_string()),
-            'B' => out.push_str("512"),
-            'o' => out.push_str(&BLOCK.to_string()),
-            'f' => out.push_str(&format!("{:x}", type_bits | u32::from(m.mode))),
-            'a' => out.push_str(&format!("{:o}", m.mode & 0o7777)),
-            'A' => out.push_str(&mode_string(m.mode, m.is_dir, m.is_symlink)),
-            'F' => out.push_str(kind),
-            'U' | 'G' => out.push_str(&m.owner),
-            'u' => out.push_str(&c.hardware.uid.to_string()),
-            'g' => out.push_str(&c.hardware.gid.to_string()),
-            'i' => out.push_str(&m.inode.to_string()),
-            'h' => out.push_str(&m.links.to_string()),
-            'm' => out.push('/'),
-            'd' => out.push('1'),
-            'X' | 'Y' | 'Z' => out.push_str(&clock(m.modified).unix.to_string()),
-            'x' | 'y' | 'z' => {
-                out.push_str(&format!("{}.000000000 +0000", clock(m.modified).stamp()))
-            }
-            other => {
-                return Err(Fail::usage(format!(
-                    "stat: unsupported conversion `%{other}`"
-                )))
-            }
-        }
-        i += 2;
-    }
-    Ok(out)
-}
 
 /// PowerShell spells switches with one dash and a whole word; fold the ones the
 /// file commands accept onto their POSIX letters before parsing.
-fn powershell_switches(args: &[String]) -> Vec<String> {
+pub(crate) fn powershell_switches(args: &[String]) -> Vec<String> {
     args.iter()
         .map(|a| match a.as_str() {
             "-Recurse" => "-r".to_string(),
@@ -4594,81 +4399,6 @@ fn cmd_date(args: &[String], t: u64) -> Result<String, Fail> {
             now.year
         )),
     }
-}
-
-#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
-fn cmd_ls(c: &Computer, args: &[String]) -> Result<String, Fail> {
-    let (opts, mut paths) = options(
-        "ls",
-        args,
-        "aAldh1FrtSR",
-        "",
-        &[
-            ("all", 'a'),
-            ("almost-all", 'A'),
-            ("human-readable", 'h'),
-            ("reverse", 'r'),
-            ("recursive", 'R'),
-            ("directory", 'd'),
-            ("classify", 'F'),
-        ],
-    )?;
-    let f = LsFlags {
-        all: flag(&opts, 'a'),
-        almost: flag(&opts, 'A'),
-        long: flag(&opts, 'l'),
-        human: flag(&opts, 'h'),
-        classify: flag(&opts, 'F'),
-        reverse: flag(&opts, 'r'),
-        by_time: flag(&opts, 't'),
-        by_size: flag(&opts, 'S'),
-    };
-    if paths.is_empty() {
-        paths.push(".".into());
-    }
-    let mut out = String::new();
-    let mut queue: Vec<(String, String)> = Vec::new();
-    for operand in &paths {
-        let resolved = c.resolve(operand);
-        let meta = c
-            .vfs
-            .lstat(&resolved)
-            .map_err(|_| format!("cannot access '{operand}': No such file or directory"))?;
-        if meta.is_dir && !flag(&opts, 'd') {
-            queue.push((operand.clone(), resolved));
-        } else {
-            out.push_str(&ls_render(c, &[(operand.clone(), resolved)], &f));
-        }
-    }
-    let titled = queue.len() > 1 || flag(&opts, 'R') || !out.is_empty();
-    while let Some((label, dir)) = queue.first().cloned() {
-        queue.remove(0);
-        if !out.is_empty() {
-            out.push('\n');
-        }
-        if titled {
-            out.push_str(&format!("{label}:\n"));
-        }
-        out.push_str(&ls_block(c, &dir, &f)?);
-        if flag(&opts, 'R') {
-            let mut children: Vec<(String, String)> = c
-                .vfs
-                .list_as(&dir, &c.user)?
-                .into_iter()
-                .filter(|n| f.all || f.almost || !n.starts_with('.'))
-                .map(|n| {
-                    (
-                        format!("{}/{n}", label.trim_end_matches('/')),
-                        crate::normalize_path(&dir, &n),
-                    )
-                })
-                .filter(|(_, p)| c.vfs.lstat(p).is_ok_and(|m| m.is_dir))
-                .collect();
-            children.append(&mut queue);
-            queue = children;
-        }
-    }
-    Ok(out)
 }
 
 #[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
@@ -4892,190 +4622,20 @@ fn cmd_grep(c: &Computer, args: &[String], input: &str) -> Result<String, Fail> 
     }
 }
 
-#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
-fn cmd_stat(c: &Computer, args: &[String]) -> Result<String, Fail> {
-    let err = |e: crate::VfsError| Fail::from(e);
-    let (opts, paths) = options(
-        "stat",
-        args,
-        "L",
-        "c",
-        &[("format", 'c'), ("printf", 'c'), ("dereference", 'L')],
-    )?;
-    if paths.is_empty() {
-        return Err(Fail::usage("stat: missing operand"));
-    }
-    let mut out = String::new();
-    for operand in &paths {
-        let path = c.resolve(operand);
-        c.vfs
-            .check_access(&path, &c.user, false, false, false)
-            .map_err(err)?;
-        // Without -L a symlink describes itself, exactly as coreutils does.
-        let m = if flag(&opts, 'L') {
-            c.vfs.stat(&path)
-        } else {
-            c.vfs.lstat(&path)
-        }
-        .map_err(err)?;
-        if let Some(format) = value(&opts, 'c') {
-            out.push_str(&stat_format(c, format, operand, &m)?);
-            out.push('\n');
-            continue;
-        }
-        let kind = if m.is_symlink {
-            "symbolic link"
-        } else if m.is_dir {
-            "directory"
-        } else {
-            "regular file"
-        };
-        let stamp = format!("{}.000000000 +0000", clock(m.modified).stamp());
-        out.push_str(&format!(
-                "  File: {operand}\n  Size: {size:<10}\tBlocks: {blocks:<10} IO Block: {block:<6} {kind}\n\
-                 Device: 1,0\tInode: {inode:<11} Links: {links}\n\
-                 Access: ({mode:04o}/{rwx})  Uid: ({uid:5}/{owner:>8})   Gid: ({gid:5}/{owner:>8})\n\
-                 Access: {stamp}\nModify: {stamp}\nChange: {stamp}\n Birth: -\n",
-                size = apparent(&m),
-                blocks = apparent(&m).div_ceil(512),
-                block = BLOCK,
-                inode = m.inode,
-                links = m.links,
-                mode = m.mode & 0o7777,
-                rwx = mode_string(m.mode, m.is_dir, m.is_symlink),
-                uid = c.hardware.uid,
-                gid = c.hardware.gid,
-                owner = m.owner,
-            ));
-    }
-    Ok(out)
-}
-
-#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
-fn cmd_find(c: &Computer, args: &[String]) -> Result<String, Fail> {
-    // Predicates are applied, never ignored: a search that silently returns the
-    // wrong set is worse than one that refuses.
-    let roots: Vec<&String> = args
-        .iter()
-        .take_while(|a| !a.starts_with('-'))
-        .collect::<Vec<_>>();
-    let predicates = &args[roots.len()..];
-    let roots: Vec<String> = if roots.is_empty() {
-        vec![c.resolve(".")]
-    } else {
-        roots.into_iter().map(|r| c.resolve(r)).collect()
-    };
-    let mut name: Option<&str> = None;
-    let mut iname: Option<String> = None;
-    let mut kind: Option<char> = None;
-    let mut max_depth: Option<usize> = None;
-    let mut index = 0;
-    while index < predicates.len() {
-        let value = |i: usize| {
-            predicates
-                .get(i)
-                .map(String::as_str)
-                .ok_or_else(|| format!("find: missing argument to `{}`", predicates[i - 1]))
-        };
-        match predicates[index].as_str() {
-            "-name" => {
-                name = Some(value(index + 1)?);
-                index += 2;
-            }
-            "-iname" => {
-                iname = Some(value(index + 1)?.to_lowercase());
-                index += 2;
-            }
-            "-type" => {
-                let t = value(index + 1)?;
-                kind = match t {
-                    "f" => Some('f'),
-                    "d" => Some('d'),
-                    _ => return Err(Fail::usage(format!("find: unsupported -type `{t}`"))),
-                };
-                index += 2;
-            }
-            "-maxdepth" => {
-                max_depth = Some(
-                    value(index + 1)?
-                        .parse()
-                        .map_err(|_| "find: -maxdepth expects a number".to_string())?,
-                );
-                index += 2;
-            }
-            other => {
-                return Err(Fail::usage(format!(
-                    "find: unsupported predicate `{other}`"
-                )))
-            }
-        }
-    }
-    let mut out = String::new();
-    for root in &roots {
-        let root = root.trim_end_matches('/');
-        let root = if root.is_empty() { "/" } else { root };
-        if c.vfs.stat(root).is_err() {
-            return Err(format!("find: `{root}`: No such file or directory").into());
-        }
-        let mut seen = std::collections::BTreeSet::new();
-        for path in c.vfs.all_files().keys() {
-            let inside = path == root
-                || path.starts_with(&format!("{}/", root.trim_end_matches('/')))
-                || root == "/";
-            if !inside {
-                continue;
-            }
-            // Every directory on the way to a file is itself a result.
-            let mut walk = Vec::new();
-            let relative = path.strip_prefix(root).unwrap_or(path);
-            let mut current = root.to_owned();
-            walk.push((current.clone(), 0usize, true));
-            let parts: Vec<&str> = relative.split('/').filter(|s| !s.is_empty()).collect();
-            for (depth, part) in parts.iter().enumerate() {
-                current = format!("{}/{part}", current.trim_end_matches('/'));
-                walk.push((current.clone(), depth + 1, depth + 1 < parts.len()));
-            }
-            for (candidate, depth, directory) in walk {
-                if max_depth.is_some_and(|max| depth > max) || !seen.insert(candidate.clone()) {
-                    continue;
-                }
-                if kind.is_some_and(|k| (k == 'd') != directory) {
-                    continue;
-                }
-                let base = candidate
-                    .rsplit('/')
-                    .next()
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or(&candidate);
-                if name.is_some_and(|pattern| !wildcard(pattern, base))
-                    || iname
-                        .as_deref()
-                        .is_some_and(|pattern| !wildcard(pattern, &base.to_lowercase()))
-                {
-                    continue;
-                }
-                out.push_str(&candidate);
-                out.push('\n');
-            }
-        }
-    }
-    Ok(out)
-}
-
 /// One `[ugoa][-+=][rwxXst]` clause. `conditional` is `X`: execute only where the node
 /// is a directory or already carries an execute bit.
-struct ModeClause {
+pub(crate) struct ModeClause {
     who: &'static str,
     op: char,
     perms: String,
 }
 /// A chmod mode: an octal literal, or symbolic clauses applied left to right.
-enum ModeSpec {
+pub(crate) enum ModeSpec {
     Absolute(u16),
     Symbolic(Vec<ModeClause>),
 }
 impl ModeSpec {
-    fn parse(spec: &str) -> Result<Self, Fail> {
+    pub(crate) fn parse(spec: &str) -> Result<Self, Fail> {
         if spec.chars().next().is_some_and(|c| c.is_ascii_digit()) {
             let mode = u16::from_str_radix(spec, 8)
                 .ok()
@@ -5134,7 +4694,7 @@ impl ModeSpec {
         }
         Ok(ModeSpec::Symbolic(clauses))
     }
-    fn apply(&self, mode: u16, is_dir: bool) -> u16 {
+    pub(crate) fn apply(&self, mode: u16, is_dir: bool) -> u16 {
         let clauses = match self {
             ModeSpec::Absolute(m) => return *m,
             ModeSpec::Symbolic(v) => v,
@@ -5221,7 +4781,14 @@ fn cmd_chmod(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
 }
 /// Inverse of `clock`: a civil UTC date to a simulated tick. Times before the world's
 /// epoch cannot be represented, so they are refused rather than clamped.
-fn tick_from_civil(y: i64, m: i64, d: i64, hh: u64, mi: u64, ss: u64) -> Result<u64, Fail> {
+pub(crate) fn tick_from_civil(
+    y: i64,
+    m: i64,
+    d: i64,
+    hh: u64,
+    mi: u64,
+    ss: u64,
+) -> Result<u64, Fail> {
     if !(1..=12).contains(&m) || !(1..=31).contains(&d) || hh > 23 || mi > 59 || ss > 60 {
         return Err(Fail::usage("touch: timestamp is not a valid date"));
     }
@@ -5243,7 +4810,7 @@ fn tick_from_civil(y: i64, m: i64, d: i64, hh: u64, mi: u64, ss: u64) -> Result<
     Ok(offset as u64 * 1_000_000)
 }
 /// `-t [[CC]YY]MMDDhhmm[.ss]`.
-fn touch_stamp(value: &str) -> Result<u64, Fail> {
+pub(crate) fn touch_stamp(value: &str) -> Result<u64, Fail> {
     let invalid = || Fail::usage(format!("touch: unsupported -t stamp `{value}`"));
     let (body, seconds) = match value.split_once('.') {
         Some((b, s)) => (b, s.parse::<u64>().map_err(|_| invalid())?),
@@ -5275,7 +4842,7 @@ fn touch_stamp(value: &str) -> Result<u64, Fail> {
 }
 /// `-d`: `@SECONDS` or `YYYY-MM-DD[ |T]HH:MM[:SS]`. Relative words such as `yesterday`
 /// are refused: there is no host clock to resolve them against.
-fn touch_date(value: &str) -> Result<u64, Fail> {
+pub(crate) fn touch_date(value: &str) -> Result<u64, Fail> {
     let invalid = || {
         Fail::usage(format!(
             "touch: unsupported -d date `{value}`; use @SECONDS or YYYY-MM-DD[ HH:MM[:SS]]"
@@ -5311,44 +4878,6 @@ fn touch_date(value: &str) -> Result<u64, Fail> {
         n(clock[1])? as u64,
         clock.get(2).map(|v| n(v)).transpose()?.unwrap_or(0) as u64,
     )
-}
-#[inline(never)] // Keeps run()'s frame small: shell recursion is bounded by depth, not stack.
-fn cmd_touch(c: &mut Computer, args: &[String], t: u64) -> Result<String, Fail> {
-    let (opts, paths) = options(
-        "touch",
-        args,
-        "acm",
-        "dtr",
-        &[("no-create", 'c'), ("date", 'd'), ("reference", 'r')],
-    )?;
-    if paths.is_empty() {
-        return Err(Fail::usage("touch: missing operand"));
-    }
-    // The VFS keeps one timestamp, so -a and -m select the same field.
-    let stamp = match (value(&opts, 'r'), value(&opts, 'd'), value(&opts, 't')) {
-        (Some(reference), _, _) => {
-            c.vfs
-                .lstat(&c.resolve(reference))
-                .map_err(|_| format!("cannot stat '{reference}': No such file or directory"))?
-                .modified
-        }
-        (_, Some(date), _) => touch_date(date)?,
-        (_, _, Some(stamp)) => touch_stamp(stamp)?,
-        _ => t,
-    };
-    for operand in &paths {
-        let path = c.resolve(operand);
-        if c.vfs.exists(&path) {
-            c.vfs
-                .set_modified_as(&path, stamp, &c.user)
-                .map_err(Fail::from)?;
-        } else if !flag(&opts, 'c') {
-            c.vfs
-                .write_as(&path, b"", &c.user, stamp)
-                .map_err(Fail::from)?;
-        }
-    }
-    Ok(String::new())
 }
 /// The process table's columns, as `ps -o` names them. Each is read from the table:
 /// nothing here is sampled from a host, and nothing is invented. `%CPU` and `TIME` are

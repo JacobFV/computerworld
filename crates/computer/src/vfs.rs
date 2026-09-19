@@ -28,32 +28,69 @@ pub enum NodeKind {
     Directory(BTreeMap<String, u64>),
     Symlink(String),
 }
+/// The group every node is born into when nothing says otherwise. The world models
+/// users but not a group database, so a node's group is a name, not a membership set.
+pub const DEFAULT_GROUP: &str = "users";
+fn default_group() -> String {
+    DEFAULT_GROUP.into()
+}
+/// The mask new nodes are created through: `0o666 & !umask` for a file, `0o777 & !umask`
+/// for a directory, exactly as `open`/`mkdir` apply it. One mask per filesystem rather
+/// than per process — this world runs one shell per computer.
+fn default_umask() -> u16 {
+    0o022
+}
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Inode {
     pub id: u64,
     pub kind: NodeKind,
     pub owner: String,
+    #[serde(default = "default_group")]
+    pub group: String,
     pub mode: u16,
     pub links: u32,
     pub created: u64,
+    /// Last read. The filesystem behaves as if mounted `noatime`: reading does not
+    /// move it, because a read takes `&self`. `touch -a`, a copy with `-p` and a
+    /// creation do.
+    #[serde(default)]
+    pub accessed: u64,
     pub modified: u64,
+    /// Last metadata change: a chmod, a chown, a link count change or a write.
+    #[serde(default)]
+    pub changed: u64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Metadata {
     pub inode: u64,
     pub owner: String,
+    #[serde(default = "default_group")]
+    pub group: String,
     pub mode: u16,
+    /// Hard links as a POSIX `stat` reports them: for a directory, `2` plus one per
+    /// subdirectory (`.`, the parent's entry, and each child's `..`).
     pub links: u32,
     pub size: usize,
     pub is_dir: bool,
     pub is_symlink: bool,
+    #[serde(default)]
+    pub created: u64,
+    #[serde(default)]
+    pub accessed: u64,
     pub modified: u64,
+    #[serde(default)]
+    pub changed: u64,
+    /// The stored text of a symbolic link, as `readlink` gives it.
+    #[serde(default)]
+    pub target: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Vfs {
     pub case_sensitive: bool,
     next_inode: u64,
     nodes: Arc<BTreeMap<u64, Inode>>,
+    #[serde(default = "default_umask")]
+    umask: u16,
 }
 /// Canonical virtual path; Windows drive roots are represented as /C:/...
 pub fn normalize_path(cwd: &str, path: &str) -> String {
@@ -136,16 +173,27 @@ impl Vfs {
             id: 1,
             kind: NodeKind::Directory(BTreeMap::new()),
             owner: "root".into(),
+            group: "root".into(),
             mode: 0o755,
             links: 1,
             created: 0,
+            accessed: 0,
             modified: 0,
+            changed: 0,
         };
         Self {
             case_sensitive,
             next_inode: 2,
             nodes: Arc::new(BTreeMap::from([(1, root)])),
+            umask: default_umask(),
         }
+    }
+    /// The creation mask. `umask` reads it; `umask 027` sets it.
+    pub fn umask(&self) -> u16 {
+        self.umask
+    }
+    pub fn set_umask(&mut self, mask: u16) {
+        self.umask = mask & 0o777;
     }
     fn key(&self, s: &str) -> String {
         if self.case_sensitive {
@@ -203,6 +251,18 @@ impl Vfs {
         owner: &str,
         tick: u64,
     ) -> Result<u64, VfsError> {
+        self.insert_with_mode(path, kind, owner, tick, None)
+    }
+    /// `mode` overrides the umask-derived default, as `mkdir -m` and `install -m` do.
+    /// A symbolic link always carries `0o777`: the mode of a link is never consulted.
+    fn insert_with_mode(
+        &mut self,
+        path: &str,
+        kind: NodeKind,
+        owner: &str,
+        tick: u64,
+        mode: Option<u16>,
+    ) -> Result<u64, VfsError> {
         let (parent, name) = self.parent(path)?;
         if self.child(parent, &name).is_ok() {
             return Err(VfsError::Exists(path.into()));
@@ -212,10 +272,19 @@ impl Vfs {
         }
         let id = self.next_inode;
         self.next_inode += 1;
-        let mode = if matches!(kind, NodeKind::Directory(_)) {
-            0o755
+        let mode = match (mode, &kind) {
+            (_, NodeKind::Symlink(_)) => 0o777,
+            (Some(m), _) => m & 0o7777,
+            (None, NodeKind::Directory(_)) => 0o777 & !self.umask,
+            (None, _) => 0o666 & !self.umask,
+        };
+        // A new node carries the creator's own login group — the Debian convention of
+        // one group per user — unless the parent is setgid, which is exactly what a
+        // setgid directory is for: a shared tree where everything lands in one group.
+        let group = if self.nodes[&parent].mode & 0o2000 != 0 {
+            self.nodes[&parent].group.clone()
         } else {
-            0o644
+            owner.to_string()
         };
         let nodes = Arc::make_mut(&mut self.nodes);
         nodes.insert(
@@ -224,10 +293,13 @@ impl Vfs {
                 id,
                 kind,
                 owner: owner.into(),
+                group,
                 mode,
                 links: 1,
                 created: tick,
+                accessed: tick,
                 modified: tick,
+                changed: tick,
             },
         );
         if let NodeKind::Directory(e) = &mut nodes.get_mut(&parent).unwrap().kind {
@@ -287,6 +359,7 @@ impl Vfs {
                     NodeKind::File(b) => {
                         *b = Arc::new(bytes.to_vec());
                         n.modified = tick;
+                        n.changed = tick;
                         Ok(())
                     }
                     _ => Err(VfsError::IsDirectory(path.into())),
@@ -350,11 +423,23 @@ impl Vfs {
     }
     fn metadata(&self, path: &str, follow: bool) -> Result<Metadata, VfsError> {
         let n = &self.nodes[&self.lookup(path, follow, 0)?];
+        // A directory's link count is what `stat` reports: `.`, the entry in its
+        // parent, and one `..` per subdirectory.
+        let links = match &n.kind {
+            NodeKind::Directory(e) => {
+                2 + e
+                    .values()
+                    .filter(|id| matches!(self.nodes[id].kind, NodeKind::Directory(_)))
+                    .count() as u32
+            }
+            _ => n.links,
+        };
         Ok(Metadata {
             inode: n.id,
             owner: n.owner.clone(),
+            group: n.group.clone(),
             mode: n.mode,
-            links: n.links,
+            links,
             size: match &n.kind {
                 NodeKind::File(b) => b.len(),
                 NodeKind::Directory(e) => e.len(),
@@ -362,13 +447,87 @@ impl Vfs {
             },
             is_dir: matches!(n.kind, NodeKind::Directory(_)),
             is_symlink: matches!(n.kind, NodeKind::Symlink(_)),
+            created: n.created,
+            accessed: n.accessed,
             modified: n.modified,
+            changed: n.changed,
+            target: match &n.kind {
+                NodeKind::Symlink(t) => Some(t.clone()),
+                _ => None,
+            },
         })
     }
     pub fn chmod(&mut self, path: &str, mode: u16) -> Result<(), VfsError> {
         let id = self.lookup(path, true, 0)?;
-        Arc::make_mut(&mut self.nodes).get_mut(&id).unwrap().mode = mode & 0o7777;
+        let n = Arc::make_mut(&mut self.nodes).get_mut(&id).unwrap();
+        n.mode = mode & 0o7777;
         Ok(())
+    }
+    /// `chown`/`chgrp`. Only root may hand a node to another user; the owner may change
+    /// its group, because this world models user names rather than membership sets.
+    pub fn chown_as(
+        &mut self,
+        path: &str,
+        owner: Option<&str>,
+        group: Option<&str>,
+        user: &str,
+        tick: u64,
+        follow: bool,
+    ) -> Result<(), VfsError> {
+        let current = self.metadata(path, follow)?;
+        if owner.is_some_and(|o| o != current.owner) && user != "root" {
+            return Err(VfsError::Permission(path.into()));
+        }
+        if group.is_some() && user != "root" && current.owner != user {
+            return Err(VfsError::Permission(path.into()));
+        }
+        let id = self.lookup(path, follow, 0)?;
+        let n = Arc::make_mut(&mut self.nodes).get_mut(&id).unwrap();
+        if let Some(o) = owner {
+            n.owner = o.into();
+        }
+        if let Some(g) = group {
+            n.group = g.into();
+        }
+        n.changed = tick;
+        Ok(())
+    }
+    /// `utimensat`: set either timestamp, or both. Write access is the gate, as it is
+    /// for `touch` on a file you do not own.
+    pub fn set_times_as(
+        &mut self,
+        path: &str,
+        accessed: Option<u64>,
+        modified: Option<u64>,
+        user: &str,
+        tick: u64,
+        follow: bool,
+    ) -> Result<(), VfsError> {
+        self.check_access(path, user, false, true, false)?;
+        let id = self.lookup(path, follow, 0)?;
+        let n = Arc::make_mut(&mut self.nodes).get_mut(&id).unwrap();
+        if let Some(a) = accessed {
+            n.accessed = a;
+        }
+        if let Some(m) = modified {
+            n.modified = m;
+        }
+        n.changed = tick;
+        Ok(())
+    }
+    /// Group membership, without a group database: every user is in the group that
+    /// carries their own name and in the shared `users` group.
+    pub fn in_group(user: &str, group: &str) -> bool {
+        group == user || group == DEFAULT_GROUP
+    }
+    fn permission_bits(node: &Inode, user: &str) -> u16 {
+        if node.owner == user {
+            (node.mode >> 6) & 7
+        } else if Self::in_group(user, &node.group) {
+            (node.mode >> 3) & 7
+        } else {
+            node.mode & 7
+        }
     }
     pub fn check_access(
         &self,
@@ -387,21 +546,12 @@ impl Vfs {
         for part in &parts[..parts.len().saturating_sub(1)] {
             current = normalize_path(&current, part);
             let n = &self.nodes[&self.lookup(&current, true, 0)?];
-            let bits = if n.owner == user {
-                (n.mode >> 6) & 7
-            } else {
-                n.mode & 7
-            };
-            if bits & 1 == 0 {
+            if Self::permission_bits(n, user) & 1 == 0 {
                 return Err(VfsError::Permission(current));
             }
         }
         let n = &self.nodes[&self.lookup(path, true, 0)?];
-        let bits = if n.owner == user {
-            (n.mode >> 6) & 7
-        } else {
-            n.mode & 7
-        };
+        let bits = Self::permission_bits(n, user);
         let need = (if read { 4 } else { 0 })
             | (if write { 2 } else { 0 })
             | (if execute { 1 } else { 0 });
@@ -515,6 +665,22 @@ impl Vfs {
         }
         Ok(())
     }
+    /// `cp -p`: carry mode and timestamps across to the copy. Ownership follows only
+    /// for root, exactly as coreutils gives up on `-p` ownership for an ordinary user.
+    pub fn copy_attributes_as(&mut self, from: &str, to: &str, user: &str) -> Result<(), VfsError> {
+        let source = self.lstat(from)?;
+        let id = self.lookup(to, false, 0)?;
+        let n = Arc::make_mut(&mut self.nodes).get_mut(&id).unwrap();
+        n.mode = source.mode;
+        n.accessed = source.accessed;
+        n.modified = source.modified;
+        n.changed = source.changed;
+        if user == "root" {
+            n.owner = source.owner;
+            n.group = source.group;
+        }
+        Ok(())
+    }
     /// `touch`: the one operation that moves a timestamp without touching the bytes.
     /// Write access is the gate, as it is for a real `utimensat(… UTIME_NOW)`.
     pub fn set_modified_as(&mut self, path: &str, tick: u64, user: &str) -> Result<(), VfsError> {
@@ -531,6 +697,39 @@ impl Vfs {
             return Err(VfsError::Permission(path.into()));
         }
         self.chmod(path, mode)
+    }
+    /// `mkdir -m`: create with an explicit mode instead of `0o777 & !umask`.
+    pub fn mkdir_mode_as(
+        &mut self,
+        path: &str,
+        mode: u16,
+        user: &str,
+        tick: u64,
+    ) -> Result<(), VfsError> {
+        self.check_parent_write(path, user)?;
+        self.insert_with_mode(
+            path,
+            NodeKind::Directory(BTreeMap::new()),
+            user,
+            tick,
+            Some(mode),
+        )
+        .map(|_| ())
+    }
+    /// `truncate -s`: grow with zero bytes or cut, without rewriting the whole file.
+    pub fn truncate_as(
+        &mut self,
+        path: &str,
+        size: usize,
+        user: &str,
+        tick: u64,
+    ) -> Result<(), VfsError> {
+        if !self.exists(path) {
+            return self.write_as(path, &vec![0u8; size], user, tick);
+        }
+        let mut bytes = self.read_as(path, user)?;
+        bytes.resize(size, 0);
+        self.write_as(path, &bytes, user, tick)
     }
     pub fn symlink_as(
         &mut self,
@@ -822,6 +1021,142 @@ mod authorization_tests {
         v.rename("/hello", "/HELLO").unwrap();
         assert_eq!(v.list("/").unwrap(), ["HELLO"]);
         assert_eq!(v.stat("/hello").unwrap().inode, id);
+    }
+}
+#[cfg(test)]
+mod metadata_tests {
+    use super::*;
+    #[test]
+    fn three_timestamps_move_independently() {
+        let mut v = Vfs::new(true);
+        v.write("/f", b"a", "u", 10).unwrap();
+        let m = v.stat("/f").unwrap();
+        assert_eq!(
+            (m.created, m.accessed, m.modified, m.changed),
+            (10, 10, 10, 10)
+        );
+        // A write moves modification and change, and leaves access where it was.
+        v.write("/f", b"ab", "u", 20).unwrap();
+        let m = v.stat("/f").unwrap();
+        assert_eq!(
+            (m.created, m.accessed, m.modified, m.changed),
+            (10, 10, 20, 20)
+        );
+        // A chown moves change only.
+        v.chown_as("/f", None, Some("staff"), "root", 30, true)
+            .unwrap();
+        let m = v.stat("/f").unwrap();
+        assert_eq!((m.accessed, m.modified, m.changed), (10, 20, 30));
+        assert_eq!(m.group, "staff");
+        // `touch -a` moves access only.
+        v.set_times_as("/f", Some(40), None, "u", 40, true).unwrap();
+        let m = v.stat("/f").unwrap();
+        assert_eq!((m.accessed, m.modified), (40, 20));
+    }
+    #[test]
+    fn identity_targets_and_link_counts_are_reported() {
+        let mut v = Vfs::new(true);
+        v.mkdir_all("/d/sub1", "u", 0).unwrap();
+        v.mkdir_all("/d/sub2", "u", 0).unwrap();
+        v.write("/d/f", b"x", "u", 0).unwrap();
+        // A directory reports `.`, its parent's entry and one `..` per subdirectory.
+        assert_eq!(v.stat("/d").unwrap().links, 4);
+        assert_eq!(v.stat("/d/sub1").unwrap().links, 2);
+        // A hard link shares the inode and raises the count.
+        v.hard_link("/d/f", "/d/g").unwrap();
+        let (a, b) = (v.stat("/d/f").unwrap(), v.stat("/d/g").unwrap());
+        assert_eq!(a.inode, b.inode);
+        assert_eq!(a.links, 2);
+        assert_ne!(a.inode, v.stat("/d").unwrap().inode);
+        // A symlink carries its target, and lstat describes the link itself.
+        v.symlink("/d/f", "/link", "u", 0).unwrap();
+        assert_eq!(v.lstat("/link").unwrap().target.as_deref(), Some("/d/f"));
+        assert!(v.lstat("/link").unwrap().is_symlink);
+        assert!(v.stat("/link").unwrap().target.is_none());
+        assert!(v.validate().is_ok());
+    }
+    #[test]
+    fn the_umask_decides_a_new_nodes_mode() {
+        let mut v = Vfs::new(true);
+        v.chmod("/", 0o777).unwrap();
+        assert_eq!(v.umask(), 0o022);
+        v.write("/a", b"", "u", 0).unwrap();
+        v.mkdir("/da", "u", 0).unwrap();
+        assert_eq!(v.stat("/a").unwrap().mode, 0o644);
+        assert_eq!(v.stat("/da").unwrap().mode, 0o755);
+        v.set_umask(0o077);
+        v.write("/b", b"", "u", 0).unwrap();
+        v.mkdir("/db", "u", 0).unwrap();
+        assert_eq!(v.stat("/b").unwrap().mode, 0o600);
+        assert_eq!(v.stat("/db").unwrap().mode, 0o700);
+        // `mkdir -m` overrides it outright.
+        v.mkdir_mode_as("/dc", 0o2750, "u", 0).unwrap();
+        assert_eq!(v.stat("/dc").unwrap().mode, 0o2750);
+        // A setgid directory hands its group to what is created inside it.
+        v.chown_as("/dc", None, Some("shared"), "root", 0, true)
+            .unwrap();
+        v.write("/dc/inner", b"", "u", 0).unwrap();
+        assert_eq!(v.stat("/dc/inner").unwrap().group, "shared");
+        // Elsewhere a node carries its creator's own login group.
+        assert_eq!(v.stat("/b").unwrap().group, "u");
+    }
+    #[test]
+    fn group_bits_sit_between_owner_and_other() {
+        let mut v = Vfs::new(true);
+        v.chmod("/", 0o777).unwrap();
+        v.write("/shared", b"x", "alice", 0).unwrap();
+        v.chown_as("/shared", None, Some(DEFAULT_GROUP), "root", 0, true)
+            .unwrap();
+        v.chmod("/shared", 0o640).unwrap();
+        // Everyone is in `users`, so the group bits decide for bob, not the other bits.
+        assert!(v.read_as("/shared", "bob").is_ok());
+        assert!(v
+            .check_access("/shared", "bob", false, true, false)
+            .is_err());
+        v.chown_as("/shared", None, Some("alice"), "root", 0, true)
+            .unwrap();
+        // Now bob is outside the group and the other bits, which are zero, decide.
+        assert!(v.read_as("/shared", "bob").is_err());
+        assert!(v.read_as("/shared", "alice").is_ok());
+        // Only root hands a file to someone else; the owner may still set its group.
+        assert!(v
+            .chown_as("/shared", Some("bob"), None, "alice", 0, true)
+            .is_err());
+        assert!(v
+            .chown_as("/shared", None, Some("dev"), "alice", 0, true)
+            .is_ok());
+        assert!(v
+            .chown_as("/shared", Some("bob"), None, "root", 0, true)
+            .is_ok());
+    }
+    #[test]
+    fn copying_attributes_carries_mode_and_times_but_not_ownership() {
+        let mut v = Vfs::new(true);
+        v.chmod("/", 0o777).unwrap();
+        v.write("/src", b"x", "alice", 5).unwrap();
+        v.chmod("/src", 0o641).unwrap();
+        v.set_times_as("/src", Some(7), Some(9), "alice", 9, true)
+            .unwrap();
+        v.write_as("/dst", b"x", "bob", 100).unwrap();
+        v.copy_attributes_as("/src", "/dst", "bob").unwrap();
+        let m = v.lstat("/dst").unwrap();
+        assert_eq!((m.mode, m.accessed, m.modified), (0o641, 7, 9));
+        assert_eq!(m.owner, "bob", "an ordinary user cannot give a file away");
+        v.write_as("/dst2", b"x", "bob", 100).unwrap();
+        v.copy_attributes_as("/src", "/dst2", "root").unwrap();
+        assert_eq!(v.lstat("/dst2").unwrap().owner, "alice");
+    }
+    #[test]
+    fn truncate_grows_with_zeroes_and_cuts() {
+        let mut v = Vfs::new(true);
+        v.chmod("/", 0o777).unwrap();
+        v.truncate_as("/t", 3, "u", 0).unwrap();
+        assert_eq!(v.read("/t").unwrap(), [0, 0, 0]);
+        v.write("/t", b"abcdef", "u", 1).unwrap();
+        v.truncate_as("/t", 2, "u", 2).unwrap();
+        assert_eq!(v.read("/t").unwrap(), b"ab");
+        v.truncate_as("/t", 4, "u", 3).unwrap();
+        assert_eq!(v.read("/t").unwrap(), [b'a', b'b', 0, 0]);
     }
 }
 #[cfg(test)]

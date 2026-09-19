@@ -1876,6 +1876,30 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
             ("Save".into(), "shell:save".into(), "⌘S"),
         ]
         .into_iter()
+        // Finder's File menu is where a Mac moves a file to the Trash and where it
+        // puts one back. Offered only on a Finder window that has something selected,
+        // and Put Back only when that window is showing the Trash, so the menu never
+        // carries an item whose only outcome would be a refusal.
+        .chain(
+            front
+                .filter(|w| w.kind == "files" && !w.selection.is_empty())
+                .into_iter()
+                .flat_map(|w| {
+                    let trashed = w.chrome("trash") == Some("1");
+                    [
+                        (String::new(), String::new(), ""),
+                        if trashed {
+                            ("Put Back".to_owned(), w.action("content:files-restore"), "")
+                        } else {
+                            (
+                                "Move to Trash".to_owned(),
+                                w.action("content:files-move-to-trash"),
+                                "⌘⌫",
+                            )
+                        },
+                    ]
+                }),
+        )
         .chain(front.map(|w| ("Close Window".into(), w.action("close"), "⌘W")))
         .collect(),
         "window" => front
@@ -2561,6 +2585,57 @@ mod tests {
             };
             assert_eq!(hit(&p, 20, 14), Some(above), "{panel}");
         }
+    }
+
+    /// Finder's File menu is where a Mac moves a file to the Trash and puts it back,
+    /// and which of the two it offers comes from the window, not from a guess.
+    #[test]
+    fn the_file_menu_trashes_a_finder_selection_and_puts_it_back_from_the_trash() {
+        let settings = crate::SystemSettings::DEFAULT;
+        for (trash, want, absent) in [
+            (
+                "0",
+                "window:4:content:files-move-to-trash",
+                "window:4:content:files-restore",
+            ),
+            (
+                "1",
+                "window:4:content:files-restore",
+                "window:4:content:files-move-to-trash",
+            ),
+        ] {
+            let windows = [WindowView {
+                id: 4,
+                kind: "files".into(),
+                rect: Rect::new(60, 60, 800, 500),
+                focused: true,
+                selection: "/Users/alice/notes.txt".into(),
+                chrome: vec![("trash".to_owned(), trash.to_owned())],
+                ..Default::default()
+            }];
+            let mut ctx = context(&windows, &settings);
+            ctx.panel = Some("file");
+            let mut p = Painter::themed(DesktopTheme::Macos, 1280, 800, 1);
+            chrome(&mut p, &ctx);
+            let live = actions(&p);
+            assert!(live.contains(&want), "{trash}: {live:?}");
+            assert!(!live.contains(&absent), "{trash}: {live:?}");
+        }
+        // With nothing selected the menu names neither: there is nothing to act on.
+        let windows = [WindowView {
+            id: 4,
+            kind: "files".into(),
+            rect: Rect::new(60, 60, 800, 500),
+            focused: true,
+            ..Default::default()
+        }];
+        let mut ctx = context(&windows, &settings);
+        ctx.panel = Some("file");
+        let mut p = Painter::themed(DesktopTheme::Macos, 1280, 800, 1);
+        chrome(&mut p, &ctx);
+        let live = actions(&p);
+        assert!(!live.contains(&"window:4:content:files-move-to-trash"));
+        assert!(!live.contains(&"window:4:content:files-restore"));
     }
 
     #[test]

@@ -156,6 +156,52 @@ fn select(world: &mut World, actor: &str, name: &str) {
 fn command(name: &str) -> String {
     format!("window:0:content:{name}")
 }
+fn in_window(window: u64, name: &str) -> String {
+    format!("window:{window}:content:{name}")
+}
+/// Whether the scene carries `target` as something that can be acted on at all. A
+/// greyed control carries no interaction, so this is how a test asks for one.
+fn painted(world: &World, actor: &str, target: &str) -> bool {
+    world
+        .scene(actor, W, H)
+        .unwrap()
+        .nodes
+        .iter()
+        .any(|n| n.interaction.as_deref() == Some(target))
+}
+/// A shell target, the way the dock's Trash and the desktop's Recycle Bin dispatch it.
+fn shell(world: &mut World, actor: &str, target: &str) {
+    act(
+        world,
+        actor,
+        "application.v1",
+        "shell",
+        json!({ "target": target }),
+    );
+}
+/// The `.trashinfo` record the FreeDesktop trash writes beside what it took.
+fn trash_record(world: &World, name: &str) -> String {
+    read(
+        world,
+        &format!("{HOME}/.local/share/Trash/info/{name}.trashinfo"),
+    )
+}
+/// The row a name is painted on inside a particular window.
+fn row_in(world: &World, actor: &str, window: u64, name: &str) -> String {
+    let prefix = format!("window:{window}:content:");
+    let scene = world.scene(actor, W, H).unwrap();
+    scene
+        .nodes
+        .iter()
+        .find(|n| {
+            n.semantic.as_ref().is_some_and(|s| s.label == name)
+                && n.interaction
+                    .as_deref()
+                    .is_some_and(|i| i.starts_with(&prefix) && i.contains("open:"))
+        })
+        .and_then(|n| n.interaction.clone())
+        .unwrap_or_else(|| panic!("no row for {name} in window {window}"))
+}
 fn retype(world: &mut World, actor: &str, old: &str, new: &str) {
     for _ in 0..old.chars().count() {
         key(world, actor, "Backspace");
@@ -222,6 +268,23 @@ fn delete_files_into_the_trash_and_never_destroys_anything() {
     let events = serde_json::to_string(&world.trajectory()).unwrap();
     assert!(events.contains("filesystem.trash"));
     assert!(events.contains(&format!("{TRASH}/launch.txt")));
+    // And a real FreeDesktop record beside it, so the delete can be undone. The path
+    // is where the file came from and the date is the world clock's, not the host's.
+    let record = trash_record(&world, "launch.txt");
+    assert!(record.starts_with("[Trash Info]\n"), "{record}");
+    assert_eq!(
+        record.lines().find_map(|l| l.strip_prefix("Path=")),
+        Some(format!("{HOME}/launch.txt").as_str()),
+        "{record}"
+    );
+    // `YYYY-MM-DDThh:mm:ss`, and the world clock's own date: the reference world
+    // starts at 2026-09-17T09:00:00 and a few clicks do not leave that minute.
+    let deleted = record
+        .lines()
+        .find_map(|l| l.strip_prefix("DeletionDate="))
+        .unwrap_or_default();
+    assert_eq!(deleted.len(), 19, "{record}");
+    assert_eq!(&deleted[..14], "2026-09-17T09:", "{record}");
     // A second file of the same name does not silently replace the first.
     for _ in 0..2 {
         click(&mut world, &actor, &command("files-new-file"));
@@ -230,6 +293,144 @@ fn delete_files_into_the_trash_and_never_destroys_anything() {
     }
     assert!(exists(&world, &format!("{TRASH}/Untitled.txt")));
     assert!(exists(&world, &format!("{TRASH}/Untitled.txt.2")));
+    // Each copy keeps its own record, and both records name the same original path:
+    // that is what makes the second one restorable at all.
+    for name in ["Untitled.txt", "Untitled.txt.2"] {
+        assert_eq!(
+            trash_record(&world, name)
+                .lines()
+                .find_map(|l| l.strip_prefix("Path="))
+                .map(str::to_owned),
+            Some(format!("{HOME}/Untitled.txt")),
+            "{name}"
+        );
+    }
+}
+
+/// "I deleted that by mistake." Every file manager has to be able to take it back, so
+/// this drives two of them end to end: delete through the shell's own control, open the
+/// Trash, read where the row says it came from, and put it back.
+fn restore_from_the_trash(theme: &str, delete: &str, open_trash: &str) {
+    let (mut world, actor) = world_with(theme);
+    let folder = format!("{HOME}/Documents");
+    act(
+        &mut world,
+        &actor,
+        "application.v1",
+        "launch",
+        json!({"kind":"terminal"}),
+    );
+    typed(&mut world, &actor, "echo budget > Documents/budget.txt");
+    key(&mut world, &actor, "Enter");
+    let original = read(&world, &format!("{folder}/budget.txt"));
+    assert_eq!(original, "budget\n");
+    open_files(&mut world, &actor, &folder);
+    let files = 1;
+    let target = row_in(&world, &actor, files, "budget.txt");
+    click(&mut world, &actor, &target);
+    click(&mut world, &actor, &in_window(files, delete));
+    assert!(!exists(&world, &format!("{folder}/budget.txt")));
+    assert_eq!(read(&world, &format!("{TRASH}/budget.txt")), original);
+
+    // Open the Trash the way this desktop opens it: the sidebar's Trash on Ubuntu,
+    // the Recycle Bin the Windows desktop and taskbar point at.
+    let trash_window = if open_trash.starts_with("shell:") {
+        shell(&mut world, &actor, open_trash);
+        files + 1
+    } else {
+        click(&mut world, &actor, &in_window(files, open_trash));
+        files
+    };
+    // The Trash says where each thing came from, the way Files and Finder do.
+    assert!(
+        on_screen(&world, &actor, "budget.txt"),
+        "the trash does not list what was deleted"
+    );
+    let shown = if theme == "virtual-windows-11" {
+        folder.clone()
+    } else {
+        "~/Documents".to_owned()
+    };
+    assert!(
+        on_screen(&world, &actor, &shown),
+        "the trash does not say the file came from {shown}"
+    );
+    // Restore is greyed until a row is picked: a control that cannot act carries no
+    // interaction at all, so there is nothing to click.
+    assert!(
+        !painted(&world, &actor, &in_window(trash_window, "files-restore")),
+        "Restore looks live with nothing selected"
+    );
+    let target = row_in(&world, &actor, trash_window, "budget.txt");
+    click(&mut world, &actor, &target);
+    click(
+        &mut world,
+        &actor,
+        &in_window(trash_window, "files-restore"),
+    );
+    assert_eq!(read(&world, &format!("{folder}/budget.txt")), original);
+    assert!(!exists(&world, &format!("{TRASH}/budget.txt")));
+    assert!(!exists(
+        &world,
+        &format!("{HOME}/.local/share/Trash/info/budget.txt.trashinfo")
+    ));
+    let events = serde_json::to_string(&world.trajectory()).unwrap();
+    assert!(events.contains("filesystem.restore"), "no restore event");
+}
+
+#[test]
+fn gnome_files_puts_back_a_file_deleted_by_mistake() {
+    restore_from_the_trash("virtual-ubuntu-24", "files-move-to-trash", "files-trash");
+}
+
+#[test]
+fn explorer_restores_a_file_from_the_recycle_bin() {
+    restore_from_the_trash("virtual-windows-11", "files-delete", "shell:trash");
+}
+
+/// The Kind, Size and Date columns show the machine's own `stat`, not a placeholder.
+#[test]
+fn the_metadata_columns_show_what_the_filesystem_really_says() {
+    let (mut world, actor) = world();
+    act(
+        &mut world,
+        &actor,
+        "application.v1",
+        "launch",
+        json!({"kind":"terminal"}),
+    );
+    // Twelve bytes, written by the machine at the world's own clock.
+    typed(&mut world, &actor, "printf 'twelve bytes' > sized.txt");
+    key(&mut world, &actor, "Enter");
+    typed(&mut world, &actor, "ln -s sized.txt alias.txt");
+    key(&mut world, &actor, "Enter");
+    open_files(&mut world, &actor, HOME);
+    assert_eq!(
+        world
+            .runtime()
+            .computer("alice-mac")
+            .unwrap()
+            .vfs
+            .stat(&format!("{HOME}/sized.txt"))
+            .unwrap()
+            .size,
+        12
+    );
+    assert!(
+        on_screen(&world, &actor, "12 bytes"),
+        "the size column shows no real byte count"
+    );
+    assert!(
+        on_screen(&world, &actor, "2026-09-17 09:"),
+        "the date column shows no world-clock date"
+    );
+    // A folder is a folder because the filesystem said so, and a symbolic link is a
+    // link rather than whatever its extension suggests.
+    assert!(on_screen(&world, &actor, "File folder"));
+    assert!(on_screen(&world, &actor, "Shortcut"));
+    // And the columns really sort: Size is a key now, not a column with no handler.
+    click(&mut world, &actor, &in_window(1, "files-sort:size"));
+    click(&mut world, &actor, &in_window(1, "files-sort:modified"));
 }
 
 #[test]

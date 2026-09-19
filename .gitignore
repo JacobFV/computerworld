@@ -8,3 +8,5 @@
 *.so
 *.whl
 /benchmarks/results/local-*/
+/site/demo/
+/.claude/worktrees/

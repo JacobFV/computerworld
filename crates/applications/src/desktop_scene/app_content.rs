@@ -2,7 +2,7 @@
 //! row, path and counter comes from application state, and only real actions are
 //! interactive. Window frames own titles and tabs; these scenes own the content.
 use super::{
-    shared::{Align, Painter},
+    shared::{Align, CalendarDate, Painter},
     DesktopTheme,
 };
 use crate::entry_name;
@@ -83,6 +83,44 @@ fn mono(p: &mut Painter, r: Rect, s: &str, size: u16, color: Color) {
         },
         None,
     );
+}
+/// Widths of the metadata columns a list view draws to the right of the name. Each one
+/// is dropped, narrowest window first, rather than squeezed into nothing.
+const KIND_COLUMN: i32 = 130;
+const SIZE_COLUMN: i32 = 80;
+const DATE_COLUMN: i32 = 124;
+/// A byte count as a file manager writes it. Integer arithmetic only: the same listing
+/// prints the same string on every target.
+fn size_label(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["bytes", "KB", "MB", "GB", "TB"];
+    if bytes < 1024 {
+        return format!("{bytes} {}", if bytes == 1 { "byte" } else { UNITS[0] });
+    }
+    let (mut value, mut tenths, mut unit) = (bytes, 0, 0);
+    while value >= 1024 && unit + 1 < UNITS.len() {
+        tenths = (value % 1024) * 10 / 1024;
+        value /= 1024;
+        unit += 1;
+    }
+    if value >= 100 || tenths == 0 {
+        format!("{value} {}", UNITS[unit])
+    } else {
+        format!("{value}.{tenths} {}", UNITS[unit])
+    }
+}
+/// A modification time as the world clock has it, `2026-09-17 09:00`. Derived from the
+/// simulated microsecond tick alone; no host clock is consulted anywhere on this path.
+fn date_label(clock_us: u64) -> String {
+    let date = CalendarDate::from_clock(clock_us);
+    let minutes = (clock_us / 60_000_000 + 9 * 60) % (24 * 60);
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}",
+        date.year,
+        date.month,
+        date.day,
+        minutes / 60,
+        minutes % 60
+    )
 }
 /// A control that is real only when `enabled`; otherwise it is drawn greyed and
 /// announced as disabled, never painted as an affordance that would be refused.
@@ -465,8 +503,13 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     // highlight all read from this list, so they cannot disagree.
     let rows_shown = tab.display();
     if t.mobile() {
-        return files_mobile(p, t, w, h, tab, &rows_shown);
+        return files_mobile(p, env, tab, &rows_shown);
     }
+    // The Trash is not just another folder: what it offers is Restore and Empty, and
+    // each of its rows knows where it came from.
+    let in_trash = tab.in_trash(&env.files.trash);
+    let has_selection = tab.selection().is_some();
+    let folder_scope = tab.scope == crate::FileScope::Folder;
     let l = look(t);
     let side = if w > 470 { l.sidebar_width } else { 0 };
     if side > 0 {
@@ -594,8 +637,6 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         p.hline(x, 44, content, LINE);
         // Command bar. Everything here dispatches a real effect, and what needs a
         // selection or a clipboard is greyed when it has none rather than refusing.
-        let has_selection = tab.selection().is_some();
-        let folder_scope = tab.scope == crate::FileScope::Folder;
         control(
             p,
             Rect::new(x + 10, 50, 74, 28),
@@ -638,12 +679,24 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                 "files-rename",
                 has_selection && folder_scope,
             ),
-            (
-                "trash",
-                "Delete",
-                "files-delete",
-                has_selection && folder_scope,
-            ),
+            // In the Recycle Bin, Delete has nothing left to do — the file is already
+            // there — and Restore has everything, so the slot carries Restore instead
+            // of a control whose only outcome would be a refusal.
+            if in_trash {
+                (
+                    "restore",
+                    "Restore the selected items",
+                    "files-restore",
+                    has_selection,
+                )
+            } else {
+                (
+                    "trash",
+                    "Delete",
+                    "files-delete",
+                    has_selection && folder_scope,
+                )
+            },
         ]
         .into_iter()
         .enumerate()
@@ -680,20 +733,20 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                 FAINT
             },
         );
-        control(
-            p,
-            Rect::new(x + 306, 50, 28, 28),
-            "files-new-file",
-            "New file",
-            folder_scope,
-        );
-        p.symbol(
-            "document",
-            x + 310,
-            57,
-            16,
-            if folder_scope { INK } else { FAINT },
-        );
+        // The Recycle Bin's own command, in the slot New file has everywhere else:
+        // the one thing a file manager does that really destroys data.
+        let (symbol, label, action, enabled) = if in_trash {
+            (
+                "trash",
+                "Empty Recycle Bin",
+                "files-empty-trash",
+                !tab.entries.is_empty(),
+            )
+        } else {
+            ("document", "New file", "files-new-file", folder_scope)
+        };
+        control(p, Rect::new(x + 306, 50, 28, 28), action, label, enabled);
+        p.symbol(symbol, x + 310, 57, 16, if enabled { INK } else { FAINT });
         if content > 520 {
             let arrow = if tab.descending {
                 "\u{2193}"
@@ -781,13 +834,70 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         );
         top += 30;
     }
+    // Finder and Files keep Move to Trash and Put Back in menus; Explorer keeps them
+    // in its command bar, which is drawn above. A menu an observer cannot see is not
+    // an affordance, so the shells without a command bar carry the pair themselves,
+    // greyed whenever there is nothing for them to act on.
+    if t != DesktopTheme::Windows {
+        p.box_(Rect::new(x, top, content, 32), Color::rgb(250, 250, 250), 0);
+        let mut bx = x + 10;
+        for (label, action, enabled) in [
+            (
+                "Move to Trash",
+                "files-move-to-trash",
+                has_selection && folder_scope && !in_trash,
+            ),
+            (
+                if t == DesktopTheme::Macos {
+                    "Put Back"
+                } else {
+                    "Restore"
+                },
+                "files-restore",
+                has_selection && in_trash,
+            ),
+            (
+                "Empty Trash",
+                "files-empty-trash",
+                in_trash && !tab.entries.is_empty(),
+            ),
+        ] {
+            let width = p.measure(label, 12, false) + 22;
+            control(p, Rect::new(bx, top + 3, width, 26), action, label, enabled);
+            p.left(
+                bx + 11,
+                top + 9,
+                width.saturating_sub(18),
+                label,
+                12,
+                if enabled { l.accent } else { FAINT },
+            );
+            bx += width as i32 + 8;
+        }
+        p.hline(x, top + 32, content, LINE);
+        top += 33;
+    }
     // Column headers are the sort controls: each one selects its key, and clicking the
     // key already in force reverses it. The arrow says which, so the order on screen is
-    // always accounted for by something visible.
-    // Files keeps a star column at the right edge of its list; the kind column moves
+    // always accounted for by something visible. Size and Date Modified are real keys
+    // now: the listing carries the machine's own `stat` for every row.
+    // Files keeps a star column at the right edge of its list; the other columns move
     // over for it.
     let star_column = t == DesktopTheme::Ubuntu && tab.view == crate::FileView::List;
-    let kind_x = x + content as i32 - if star_column { 190 } else { 150 };
+    let (show_kind, show_size, show_date) = (content > 330, content > 480, content > 620);
+    let mut edge = x + content as i32 - if star_column { 50 } else { 10 };
+    if show_date {
+        edge -= DATE_COLUMN;
+    }
+    let date_x = edge;
+    if show_size {
+        edge -= SIZE_COLUMN;
+    }
+    let size_x = edge;
+    if show_kind {
+        edge -= KIND_COLUMN;
+    }
+    let kind_x = edge;
     let mark = |key: crate::SortKey| {
         if tab.sort != key {
             ""
@@ -797,9 +907,9 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
             " \u{2191}"
         }
     };
-    let name_header = Rect::new(x + 40, top, content.saturating_sub(206), 26);
+    let name_width = (kind_x - (x + 44)).max(40) as u32;
     p.button(
-        name_header,
+        Rect::new(x + 40, top, name_width + 4, 26),
         Color::TRANSPARENT,
         0,
         "files-sort:name",
@@ -808,30 +918,64 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     p.left(
         x + 44,
         top + 6,
-        content.saturating_sub(210),
+        name_width,
         &format!("Name{}", mark(crate::SortKey::Name)),
         11,
         MUTED,
     );
-    if content > 330 {
-        let kind = if t == DesktopTheme::Windows {
-            "Type"
-        } else {
-            "Kind"
-        };
-        p.vline(kind_x - 10, top + 5, 16, LINE);
-        p.button(
-            Rect::new(kind_x - 4, top, 134, 26),
-            Color::TRANSPARENT,
-            0,
+    for (shown, cx, width, label, key, action, hint) in [
+        (
+            show_kind,
+            kind_x,
+            KIND_COLUMN,
+            if t == DesktopTheme::Windows {
+                "Type"
+            } else {
+                "Kind"
+            },
+            crate::SortKey::Kind,
             "files-sort:kind",
             "Sort by kind",
+        ),
+        (
+            show_size,
+            size_x,
+            SIZE_COLUMN,
+            "Size",
+            crate::SortKey::Size,
+            "files-sort:size",
+            "Sort by size",
+        ),
+        (
+            show_date,
+            date_x,
+            DATE_COLUMN,
+            if t == DesktopTheme::Macos {
+                "Date Modified"
+            } else {
+                "Date modified"
+            },
+            crate::SortKey::Modified,
+            "files-sort:modified",
+            "Sort by date modified",
+        ),
+    ] {
+        if !shown {
+            continue;
+        }
+        p.vline(cx - 10, top + 5, 16, LINE);
+        p.button(
+            Rect::new(cx - 4, top, width as u32, 26),
+            Color::TRANSPARENT,
+            0,
+            action,
+            hint,
         );
         p.left(
-            kind_x,
+            cx,
             top + 6,
-            130,
-            &format!("{kind}{}", mark(crate::SortKey::Kind)),
+            (width - 8) as u32,
+            &format!("{label}{}", mark(key)),
             11,
             MUTED,
         );
@@ -865,6 +1009,10 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     };
     for (i, index) in rows_shown.iter().copied().take(rows).enumerate() {
         let entry = &entries[index];
+        let meta = tab
+            .row(index)
+            .unwrap_or_else(|| crate::FileRow::named(entry));
+        let origin = meta.original.clone();
         let y = body + (i as u32 * l.row) as i32;
         let directory = entry.ends_with('/');
         let inset = if t == DesktopTheme::Macos { 8 } else { 4 };
@@ -961,11 +1109,22 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                     0,
                 );
             }
-            _ if absolute => {
-                // A list of paths from all over the machine: the name, then where it
-                // lives, the way Files' Recent and Starred lists read.
+            // A list of paths from all over the machine, or a Trash row, which knows
+            // where it came from: the name, then where it lives, the way Files' Recent
+            // list and Nautilus's and Finder's Trash read. The original path is the
+            // `.trashinfo` record's, so the Trash says what a restore would really do.
+            _ if absolute || origin.is_some() => {
                 let full = entry_name(entry);
-                let (folder, name) = full.rsplit_once('/').unwrap_or(("", full));
+                let (folder, name) = match &origin {
+                    Some(from) => {
+                        let (folder, _) = from.rsplit_once('/').unwrap_or(("", from.as_str()));
+                        (folder, full)
+                    }
+                    None => {
+                        let (folder, name) = full.rsplit_once('/').unwrap_or(("", full));
+                        (folder, name)
+                    }
+                };
                 let room = (kind_x - 16 - name_x).max(0) as u32;
                 let used = p.left(name_x, y + (l.row as i32 - 19) / 2, room, name, 13, INK);
                 let home = env.files.home.trim_end_matches('/');
@@ -997,9 +1156,42 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                 );
             }
         }
-        if content > 330 {
-            let kind = kind_label(t, entry);
-            p.left(kind_x, y + (l.row as i32 - 18) / 2, 130, &kind, 12, MUTED);
+        // The metadata columns, every value read off the row the machine described. A
+        // row the listing said nothing about draws an em dash rather than a zero.
+        if show_kind {
+            let kind = kind_label(t, &meta);
+            p.left(
+                kind_x,
+                y + (l.row as i32 - 18) / 2,
+                (KIND_COLUMN - 8) as u32,
+                &kind,
+                12,
+                MUTED,
+            );
+        }
+        if show_size {
+            let size = meta.size.map_or_else(|| "\u{2014}".to_owned(), size_label);
+            p.left(
+                size_x,
+                y + (l.row as i32 - 18) / 2,
+                (SIZE_COLUMN - 8) as u32,
+                &size,
+                12,
+                MUTED,
+            );
+        }
+        if show_date {
+            let when = meta
+                .modified
+                .map_or_else(|| "\u{2014}".to_owned(), date_label);
+            p.left(
+                date_x,
+                y + (l.row as i32 - 18) / 2,
+                (DATE_COLUMN - 8) as u32,
+                &when,
+                12,
+                MUTED,
+            );
         }
     }
     if rows_shown.is_empty() {
@@ -1081,16 +1273,29 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     }
 }
 
-/// What each platform's Kind (Type) column calls an entry, read off the name the way
-/// the platform reads it: by extension. Nothing here is a guess about the contents.
-pub fn kind_label(t: DesktopTheme, entry: &str) -> String {
-    if entry.ends_with('/') {
-        return if t == DesktopTheme::Windows {
-            "File folder".into()
-        } else {
-            "Folder".into()
-        };
+/// What each platform's Kind (Type) column calls an entry. A folder and a symbolic
+/// link are named from what the filesystem said they are, not from what the name looks
+/// like; only an ordinary file falls back to its extension, the way the platform's own
+/// column does. Nothing here is a guess about the contents.
+pub fn kind_label(t: DesktopTheme, row: &crate::FileRow) -> String {
+    match row.kind {
+        crate::EntryKind::Directory => {
+            return if t == DesktopTheme::Windows {
+                "File folder".into()
+            } else {
+                "Folder".into()
+            }
+        }
+        crate::EntryKind::Symlink => {
+            return match t {
+                DesktopTheme::Macos | DesktopTheme::Ios => "Alias".into(),
+                DesktopTheme::Windows => "Shortcut".into(),
+                _ => "Link".into(),
+            }
+        }
+        crate::EntryKind::File => {}
     }
+    let entry = row.name();
     let name = entry.rsplit('/').next().unwrap_or(entry);
     let ext = name
         .rsplit_once('.')
@@ -1167,6 +1372,30 @@ fn grid(
             false,
             Align::Center,
         );
+        // In the Trash the icon grid says where each thing came from, exactly as the
+        // list does: the `.trashinfo` record is what a Restore would act on, and it
+        // must be readable in whichever view the file manager happens to be in.
+        if let Some(from) = tab.original_of(index) {
+            let home = env.files.home.trim_end_matches('/');
+            let (folder, _) = from.rsplit_once('/').unwrap_or(("", from.as_str()));
+            let folder = if folder.is_empty() {
+                "/".to_owned()
+            } else if !home.is_empty() && folder.starts_with(home) {
+                format!("~{}", &folder[home.len()..])
+            } else {
+                folder.to_owned()
+            };
+            p.label(
+                cell.x + 2,
+                cell.y + 74,
+                CELL - 4,
+                &folder,
+                10,
+                MUTED,
+                false,
+                Align::Center,
+            );
+        }
         if stars {
             let path = if tab.scope.absolute() {
                 entry_name(entry).to_owned()
@@ -1203,13 +1432,15 @@ fn grid(
 
 fn files_mobile(
     p: &mut Painter,
-    t: DesktopTheme,
-    w: u32,
-    h: u32,
+    env: &crate::AppEnv<'_>,
     tab: &crate::FileTab,
     rows_shown: &[usize],
 ) {
+    let (t, w, h) = (env.theme, env.width, env.height);
     let (path, entries) = (tab.path.as_str(), tab.entries.as_slice());
+    let in_trash = tab.in_trash(&env.files.trash);
+    let has_selection = tab.selection().is_some();
+    let folder_scope = tab.scope == crate::FileScope::Folder;
     let l = look(t);
     let ios = t == DesktopTheme::Ios;
     p.scene.background = if ios {
@@ -1331,8 +1562,38 @@ fn files_mobile(
             pane
         }
     };
+    // The phones get the same pair the desktops have. iOS Files and Google's Files
+    // both put these on the screen rather than behind a menu, and each is greyed until
+    // there is something for it to act on.
+    let mut bx = 16;
+    for (label, action, enabled) in [
+        (
+            "Move to Trash",
+            "files-move-to-trash",
+            has_selection && folder_scope && !in_trash,
+        ),
+        (
+            if ios { "Put Back" } else { "Restore" },
+            "files-restore",
+            has_selection && in_trash,
+        ),
+    ] {
+        let width = p.measure(label, 13, false) + 24;
+        control(p, Rect::new(bx, top, width, 32), action, label, enabled);
+        p.left(
+            bx + 12,
+            top + 8,
+            width.saturating_sub(20),
+            label,
+            13,
+            if enabled { l.accent } else { FAINT },
+        );
+        bx += width as i32 + 8;
+    }
+    top += 40;
     for (i, index) in rows_shown.iter().copied().enumerate() {
         let entry = &entries[index];
+        let origin = tab.original_of(index);
         let y = top + (i as u32 * l.row) as i32;
         let directory = entry.ends_with('/');
         p.button(
@@ -1352,14 +1613,24 @@ fn files_mobile(
         // A recent is an absolute path, so the row shows the name and says where it
         // lives; inside a folder every row is already a child of the title.
         let trimmed = entry.trim_end_matches('/');
-        let (name, note) = match recents {
-            true => (
+        // A trashed row says where it came from, exactly as a recent says where it
+        // lives: the `.trashinfo` record is what a Put Back would act on.
+        let (name, note) = match (recents, &origin) {
+            (true, _) => (
                 trimmed.rsplit('/').next().unwrap_or(trimmed),
                 parent_label(trimmed, l.root),
             ),
-            false => (
+            (false, Some(from)) => (trimmed, parent_label(from, l.root)),
+            (false, None) => (
                 trimmed,
-                if directory { "Folder" } else { "Document" }.to_owned(),
+                match tab.row(index).map(|r| r.kind) {
+                    Some(crate::EntryKind::Symlink) => "Alias".to_owned(),
+                    _ if directory => "Folder".to_owned(),
+                    _ => tab
+                        .row(index)
+                        .and_then(|r| r.size)
+                        .map_or_else(|| "Document".to_owned(), size_label),
+                },
             ),
         };
         p.left(
@@ -2074,6 +2345,19 @@ mod tests {
             .filter_map(|n| n.interaction.as_deref())
             .collect()
     }
+    /// Every string the scene paints, in the order it paints them.
+    fn text_of(scene: &Scene) -> Vec<&str> {
+        scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                Primitive::Text { text, .. }
+                | Primitive::UiText { text, .. }
+                | Primitive::UiTextBold { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect()
+    }
     fn unavailable(scene: &Scene) -> Vec<&str> {
         scene
             .nodes
@@ -2242,6 +2526,178 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Every file manager can move a thing to the trash, and the Trash — and only the
+    /// Trash — can put it back. Each control is live exactly when it can act, and a
+    /// greyed one carries no interaction at all.
+    #[test]
+    fn every_file_manager_offers_the_trash_and_only_the_trash_offers_restore() {
+        const TRASH: &str = "/home/alice/.local/share/Trash/files";
+        let scene = |path: &str, selected: Option<usize>, theme, w, h| {
+            let mut tab = crate::FileTab::new(path);
+            tab.set_rows(vec![
+                crate::FileRow::named("notes.txt"),
+                crate::FileRow {
+                    entry: "budget.txt".into(),
+                    original: Some("/home/alice/Documents/budget.txt".into()),
+                    ..crate::FileRow::named("budget.txt")
+                },
+            ]);
+            tab.selected = selected;
+            let state = AppState::Files {
+                tabs: vec![tab],
+                active: 0,
+            };
+            app_content_with(
+                &state,
+                &crate::AppEnv {
+                    theme,
+                    width: w,
+                    height: h,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: crate::FilesEnv {
+                        home: "/home/alice",
+                        folders: vec![],
+                        trash: TRASH.to_owned(),
+                        starred: &[],
+                    },
+                },
+            )
+        };
+        // Explorer keeps Delete in its command bar; every other shell carries an
+        // honestly named Move to Trash of its own.
+        for (theme, w, h, label) in [
+            (DesktopTheme::Windows, 900, 520, "Delete"),
+            (DesktopTheme::Macos, 900, 520, "Move to Trash"),
+            (DesktopTheme::Ubuntu, 900, 520, "Move to Trash"),
+            (DesktopTheme::Ios, 390, 700, "Move to Trash"),
+            (DesktopTheme::Android, 390, 700, "Move to Trash"),
+        ] {
+            let idle = scene("/home/alice", None, theme, w, h);
+            assert!(
+                unavailable(&idle).contains(&label),
+                "{theme:?}: {label} looks live with nothing selected"
+            );
+            let picked = scene("/home/alice", Some(0), theme, w, h);
+            let action = if theme == DesktopTheme::Windows {
+                "files-delete"
+            } else {
+                "files-move-to-trash"
+            };
+            assert!(
+                actions(&picked).contains(&action),
+                "{theme:?} has no way to move a file to the trash"
+            );
+            // Nothing offers a Restore outside the Trash, greyed or otherwise.
+            assert!(
+                !actions(&picked).contains(&"files-restore"),
+                "{theme:?} offered Restore in a folder"
+            );
+            // In the Trash it is the other way round.
+            let put_back = if theme == DesktopTheme::Macos || theme == DesktopTheme::Ios {
+                "Put Back"
+            } else if theme == DesktopTheme::Windows {
+                "Restore the selected items"
+            } else {
+                "Restore"
+            };
+            let trash_idle = scene(TRASH, None, theme, w, h);
+            assert!(
+                unavailable(&trash_idle).contains(&put_back),
+                "{theme:?}: {put_back} looks live with nothing selected"
+            );
+            assert!(
+                !actions(&trash_idle).contains(&action),
+                "{theme:?} offered a move to the trash from inside it"
+            );
+            let trash_picked = scene(TRASH, Some(1), theme, w, h);
+            assert!(
+                actions(&trash_picked).contains(&"files-restore"),
+                "{theme:?} cannot put back what it is showing"
+            );
+            // The row says where it came from, so a Restore is not a leap of faith.
+            assert!(
+                text_of(&trash_picked)
+                    .iter()
+                    .any(|t| t.contains("Documents")),
+                "{theme:?} does not say where the trashed file came from"
+            );
+            // And a disabled control is never clickable in any of these scenes.
+            for scene in [&idle, &picked, &trash_idle, &trash_picked] {
+                for n in &scene.nodes {
+                    if n.semantic.as_ref().is_some_and(|s| s.disabled) {
+                        assert!(n.interaction.is_none(), "{theme:?}");
+                    }
+                }
+            }
+        }
+        // Emptying the trash is offered only where there is a trash to empty, and the
+        // desktops that offer it name it.
+        let full = scene(TRASH, None, DesktopTheme::Ubuntu, 900, 520);
+        assert!(actions(&full).contains(&"files-empty-trash"));
+        let folder = scene("/home/alice", None, DesktopTheme::Ubuntu, 900, 520);
+        assert!(unavailable(&folder).contains(&"Empty Trash"));
+    }
+
+    /// The Size and Date columns show the listing's own numbers, not a placeholder.
+    #[test]
+    fn the_metadata_columns_draw_what_the_listing_carried() {
+        let mut tab = crate::FileTab::new("/work");
+        tab.set_rows(vec![
+            crate::FileRow {
+                entry: "report.txt".into(),
+                kind: crate::EntryKind::File,
+                size: Some(2048),
+                mode: Some(0o644),
+                modified: Some(0),
+                original: None,
+            },
+            crate::FileRow {
+                entry: "shortcut".into(),
+                kind: crate::EntryKind::Symlink,
+                size: Some(7),
+                mode: Some(0o777),
+                modified: Some(90 * 60 * 1_000_000),
+                original: None,
+            },
+            // A row the machine said nothing about: unknown stays unknown.
+            crate::FileRow::named("mystery.txt"),
+        ]);
+        let state = AppState::Files {
+            tabs: vec![tab],
+            active: 0,
+        };
+        let scene = app_content(&state, DesktopTheme::Windows, 900, 520);
+        let text = text_of(&scene);
+        let has = |want: &str| text.contains(&want);
+        assert!(has("2 KB"), "{text:?}");
+        assert!(has("7 bytes"), "{text:?}");
+        // The world clock's own epoch, and an hour and a half past it.
+        assert!(has("2026-09-17 09:00"), "{text:?}");
+        assert!(has("2026-09-17 10:30"), "{text:?}");
+        // Kind comes from what the filesystem said, not from the name.
+        assert!(has("Shortcut"), "{text:?}");
+        assert!(has("Text Document"), "{text:?}");
+        // Unknown is drawn as unknown, twice: no size and no date.
+        assert_eq!(
+            text.iter().filter(|t| **t == "\u{2014}").count(),
+            2,
+            "{text:?}"
+        );
+        // And the columns are sort controls.
+        for action in ["files-sort:size", "files-sort:modified"] {
+            assert!(actions(&scene).contains(&action), "missing {action}");
+        }
+        assert_eq!(size_label(1), "1 byte");
+        assert_eq!(size_label(1023), "1023 bytes");
+        assert_eq!(size_label(1536), "1.5 KB");
+        assert_eq!(size_label(1024 * 1024 * 3), "3 MB");
     }
 
     /// Wide characters take two cells in the transcript's rows and under the caret,

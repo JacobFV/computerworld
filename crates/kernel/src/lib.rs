@@ -122,6 +122,27 @@ fn determinism_error(message: String) -> SimError {
 fn computer_error(message: String) -> SimError {
     SimError::new("computer", message)
 }
+/// The home folder the machine states, or the one a user of that name would have. The
+/// trash lives under it, so every trash entry point starts here.
+fn home_folder(computer: &Computer) -> String {
+    computer
+        .env
+        .get("HOME")
+        .cloned()
+        .unwrap_or_else(|| format!("/home/{}", computer.user))
+        .trim_end_matches('/')
+        .to_owned()
+}
+/// The home whose trash `root` is. A desktop hands its own
+/// `<home>/.local/share/Trash/files`, and taking the home back out of it keeps the
+/// record beside the data even when the caller's idea of home differs from the
+/// machine's; anything else falls back to the machine's own `HOME`.
+fn trash_home(computer: &Computer, root: &str) -> String {
+    root.trim_end_matches('/')
+        .strip_suffix("/.local/share/Trash/files")
+        .map(str::to_owned)
+        .unwrap_or_else(|| home_folder(computer))
+}
 pub fn canonical_hash<T: Serialize>(value: &T) -> Result<String> {
     let canonical = serde_json::to_value(value)?;
     Ok(format!(
@@ -732,9 +753,11 @@ impl Runtime {
         );
         Ok(())
     }
-    /// File `path` under `trash`. This is what a desktop's Delete does: the data stays
-    /// in the snapshot under a name that is free, and the caller is told where it went,
-    /// so nothing a user throws away is destroyed behind their back.
+    /// File `path` under `trash`. This is what a desktop's Delete does, and it is the
+    /// same FreeDesktop trash the shell's `trash` command writes: the data moves into
+    /// `~/.local/share/Trash/files` under a name that is free, and a
+    /// `~/.local/share/Trash/info/NAME.trashinfo` record says where it came from and
+    /// when. Nothing a user throws away is destroyed, and everything can be put back.
     pub fn trash_path(
         &mut self,
         machine: &str,
@@ -749,26 +772,11 @@ impl Runtime {
         if root == source || root.starts_with(&format!("{}/", source.trim_end_matches('/'))) {
             return Err(SimError::invalid("cannot move the trash into itself"));
         }
+        let home = trash_home(computer, &root);
         let user = computer.user.clone();
-        computer
-            .vfs
-            .mkdir_all_as(&root, &user, tick)
-            .map_err(|e| computer_error(e.to_string()))?;
-        let name = source.rsplit('/').next().unwrap_or("item");
-        let mut target = format!("{}/{name}", root.trim_end_matches('/'));
-        for n in 2.. {
-            if !computer.vfs.exists(&target) {
-                break;
-            }
-            if n > 999 {
-                return Err(computer_error(format!("the trash already holds {name}")));
-            }
-            target = format!("{}/{name}.{n}", root.trim_end_matches('/'));
-        }
-        computer
-            .vfs
-            .rename_as(&source, &target, &user)
-            .map_err(|e| computer_error(e.to_string()))?;
+        let name = cw_computer::trash::put(&mut computer.vfs, &user, &home, &source, tick)
+            .map_err(computer_error)?;
+        let target = format!("{}/{name}", cw_computer::trash::files_dir(&home));
         self.event(
             "filesystem.trash",
             Some(machine),
@@ -776,6 +784,66 @@ impl Runtime {
             json!({"path":path,"trash":target}),
         );
         Ok(target)
+    }
+    /// Put one trashed thing back where it came from, named by its original path, its
+    /// name in the trash, or the path it now has under `files/`. The `.trashinfo`
+    /// record is what makes this possible, so only what the trash really recorded can
+    /// be restored — an ambiguous or missing query names the candidates rather than
+    /// guessing which of them the user meant.
+    pub fn restore_path(&mut self, machine: &str, actor: &str, query: &str) -> Result<String> {
+        let tick = self.tick();
+        let computer = self.computer_mut(machine)?;
+        let home = home_folder(computer);
+        // A file manager selects a row, so what it has in hand is the path under
+        // `files/`; the trash records names, so reduce one to the other.
+        let files = format!("{}/", cw_computer::trash::files_dir(&home));
+        let wanted = match query.strip_prefix(&files) {
+            Some(name) => name.trim_end_matches('/'),
+            None => query.trim_end_matches('/'),
+        };
+        let mut found = cw_computer::trash::matching(&computer.vfs, &home, wanted);
+        if found.is_empty() {
+            return Err(SimError::not_found(format!(
+                "nothing in the trash matches '{query}'"
+            )));
+        }
+        if found.len() > 1 {
+            let candidates: Vec<&str> = found.iter().map(|e| e.original.as_str()).collect();
+            return Err(SimError::invalid(format!(
+                "more than one trashed item matches '{query}': {}",
+                candidates.join(", ")
+            )));
+        }
+        let entry = found.remove(0);
+        let from = entry.path.clone();
+        let user = computer.user.clone();
+        let original =
+            cw_computer::trash::restore(&mut computer.vfs, &user, &home, &entry, false, tick)
+                .map_err(computer_error)?;
+        self.event(
+            "filesystem.restore",
+            Some(machine),
+            Some(actor),
+            json!({"path":original,"from":from}),
+        );
+        Ok(original)
+    }
+    /// Throw the whole trash away for good, and say how many things went. This is the
+    /// one operation in the file manager that really destroys data, so it is its own
+    /// entry point rather than a flag on a delete.
+    pub fn empty_trash(&mut self, machine: &str, actor: &str) -> Result<usize> {
+        let computer = self.computer_mut(machine)?;
+        let home = home_folder(computer);
+        let user = computer.user.clone();
+        let emptied =
+            cw_computer::trash::empty(&mut computer.vfs, &user, &home).map_err(computer_error)?;
+        self.event(
+            "filesystem.trash_empty",
+            Some(machine),
+            Some(actor),
+            json!({"emptied":emptied}),
+        );
+        Ok(emptied)
     }
     /// The machine, ready to mutate. Same unwrapping every filesystem entry point does.
     fn computer_mut(&mut self, machine: &str) -> Result<&mut Computer> {
