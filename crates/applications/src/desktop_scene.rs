@@ -3,14 +3,18 @@ use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
 pub mod scroll;
 pub mod shared;
-pub use app_content::{app_content, app_content_scrolled, app_content_with, EDITOR_PANE};
+pub use app_content::{
+    app_content, app_content_scrolled, app_content_with, kind_label, standard_places, PlaceKind,
+    SideItem, StandardPlace, EDITOR_PANE,
+};
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 mod android;
 mod ios;
 pub(crate) mod macos;
 mod ubuntu;
 mod windows;
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DesktopTheme {
     Macos,
     Windows,

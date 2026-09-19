@@ -1,0 +1,155 @@
+ISO-10303-21;
+HEADER;
+/* A hand-written reference file: a 2 x 3 x 4 inch box, AP214, inch units, with the
+   entity order and the bound orientations a different CAD system might use. */
+FILE_DESCRIPTION(('Reference box'),'2;1');
+FILE_NAME('box_inches_ap214.step','2020-02-29T12:00:00',('Reference'),(''),'hand written','hand written','');
+FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));
+ENDSEC;
+DATA;
+#1 = APPLICATION_CONTEXT('core data for automotive mechanical design processes');
+#2 = APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2000,#1);
+#3 = PRODUCT_CONTEXT('',#1,'mechanical');
+#4 = PRODUCT('Box','Box','',(#3));
+#5 = PRODUCT_DEFINITION_FORMATION('','',#4);
+#6 = PRODUCT_DEFINITION_CONTEXT('part definition',#1,'design');
+#7 = PRODUCT_DEFINITION('design','',#5,#6);
+#8 = PRODUCT_DEFINITION_SHAPE('','',#7);
+#9 = PRODUCT_RELATED_PRODUCT_CATEGORY('part','',(#4));
+
+/* Units: inches, radians. */
+#100 = ( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.) );
+#101 = LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(25.4),#100);
+#102 = ( CONVERSION_BASED_UNIT('INCH',#101) LENGTH_UNIT() NAMED_UNIT(#103) );
+#103 = DIMENSIONAL_EXPONENTS(1.,0.,0.,0.,0.,0.,0.);
+#104 = ( NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.) );
+#105 = ( NAMED_UNIT(*) SI_UNIT($,.STERADIAN.) SOLID_ANGLE_UNIT() );
+#106 = UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-06),#102,'distance_accuracy_value','confusion accuracy');
+#107 = ( GEOMETRIC_REPRESENTATION_CONTEXT(3) GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#106)) GLOBAL_UNIT_ASSIGNED_CONTEXT((#102,#104,#105)) REPRESENTATION_CONTEXT('Context #1','3D Context with UNIT and UNCERTAINTY') );
+
+/* The eight corners, in inches. */
+#11 = CARTESIAN_POINT('',(0.,0.,0.));
+#12 = CARTESIAN_POINT('',(2.,0.,0.));
+#13 = CARTESIAN_POINT('',(2.,3.,0.));
+#14 = CARTESIAN_POINT('',(0.,3.,0.));
+#15 = CARTESIAN_POINT('',(0.,0.,4.));
+#16 = CARTESIAN_POINT('',(2.,0.,4.));
+#17 = CARTESIAN_POINT('',(2.,3.,4.));
+#18 = CARTESIAN_POINT('',(0.,3.,4.));
+#21 = VERTEX_POINT('',#11);
+#22 = VERTEX_POINT('',#12);
+#23 = VERTEX_POINT('',#13);
+#24 = VERTEX_POINT('',#14);
+#25 = VERTEX_POINT('',#15);
+#26 = VERTEX_POINT('',#16);
+#27 = VERTEX_POINT('',#17);
+#28 = VERTEX_POINT('',#18);
+
+#31 = DIRECTION('',(1.,0.,0.));
+#32 = DIRECTION('',(0.,1.,0.));
+#33 = DIRECTION('',(0.,0.,1.));
+#34 = VECTOR('',#31,1.);
+#35 = VECTOR('',#32,1.);
+#36 = VECTOR('',#33,1.);
+
+/* Twelve lines: four round the bottom, four round the top, four up the sides. */
+#41 = LINE('',#11,#34);
+#42 = LINE('',#12,#35);
+#43 = LINE('',#14,#34);
+#44 = LINE('',#11,#35);
+#45 = LINE('',#15,#34);
+#46 = LINE('',#16,#35);
+#47 = LINE('',#18,#34);
+#48 = LINE('',#15,#35);
+#49 = LINE('',#11,#36);
+#50 = LINE('',#12,#36);
+#51 = LINE('',#13,#36);
+#52 = LINE('',#14,#36);
+
+#61 = EDGE_CURVE('',#21,#22,#41,.T.);
+#62 = EDGE_CURVE('',#22,#23,#42,.T.);
+#63 = EDGE_CURVE('',#24,#23,#43,.T.);
+#64 = EDGE_CURVE('',#21,#24,#44,.T.);
+#65 = EDGE_CURVE('',#25,#26,#45,.T.);
+#66 = EDGE_CURVE('',#26,#27,#46,.T.);
+#67 = EDGE_CURVE('',#28,#27,#47,.T.);
+#68 = EDGE_CURVE('',#25,#28,#48,.T.);
+#69 = EDGE_CURVE('',#21,#25,#49,.T.);
+#70 = EDGE_CURVE('',#22,#26,#50,.T.);
+#71 = EDGE_CURVE('',#23,#27,#51,.T.);
+#72 = EDGE_CURVE('',#24,#28,#52,.T.);
+
+#81 = AXIS2_PLACEMENT_3D('',#11,#33,#31);
+#82 = AXIS2_PLACEMENT_3D('',#15,#33,#31);
+#83 = AXIS2_PLACEMENT_3D('',#11,#32,#31);
+#84 = AXIS2_PLACEMENT_3D('',#14,#32,#31);
+#85 = AXIS2_PLACEMENT_3D('',#11,#31,#33);
+#86 = AXIS2_PLACEMENT_3D('',#12,#31,#33);
+#91 = PLANE('',#81);
+#92 = PLANE('',#82);
+#93 = PLANE('',#83);
+#94 = PLANE('',#84);
+#95 = PLANE('',#85);
+#96 = PLANE('',#86);
+
+/* The bottom, z = 0: the surface's normal is +z, so the face reverses it. Its loop is
+   written the other way round and the bound flips it back. */
+#110 = ORIENTED_EDGE('',*,*,#61,.T.);
+#111 = ORIENTED_EDGE('',*,*,#62,.T.);
+#112 = ORIENTED_EDGE('',*,*,#63,.F.);
+#113 = ORIENTED_EDGE('',*,*,#64,.F.);
+#114 = EDGE_LOOP('',(#110,#111,#112,#113));
+#115 = FACE_OUTER_BOUND('',#114,.F.);
+#116 = ADVANCED_FACE('',(#115),#91,.F.);
+
+/* The top, z = 4. */
+#120 = ORIENTED_EDGE('',*,*,#65,.T.);
+#121 = ORIENTED_EDGE('',*,*,#66,.T.);
+#122 = ORIENTED_EDGE('',*,*,#67,.F.);
+#123 = ORIENTED_EDGE('',*,*,#68,.F.);
+#124 = EDGE_LOOP('',(#120,#121,#122,#123));
+#125 = FACE_OUTER_BOUND('',#124,.T.);
+#126 = ADVANCED_FACE('',(#125),#92,.T.);
+
+/* y = 0. */
+#130 = ORIENTED_EDGE('',*,*,#61,.T.);
+#131 = ORIENTED_EDGE('',*,*,#70,.T.);
+#132 = ORIENTED_EDGE('',*,*,#65,.F.);
+#133 = ORIENTED_EDGE('',*,*,#69,.F.);
+#134 = EDGE_LOOP('',(#130,#131,#132,#133));
+#135 = FACE_OUTER_BOUND('',#134,.T.);
+#136 = ADVANCED_FACE('',(#135),#93,.F.);
+
+/* y = 3. */
+#140 = ORIENTED_EDGE('',*,*,#72,.T.);
+#141 = ORIENTED_EDGE('',*,*,#67,.T.);
+#142 = ORIENTED_EDGE('',*,*,#71,.F.);
+#143 = ORIENTED_EDGE('',*,*,#63,.F.);
+#144 = EDGE_LOOP('',(#140,#141,#142,#143));
+#145 = FACE_OUTER_BOUND('',#144,.T.);
+#146 = ADVANCED_FACE('',(#145),#94,.T.);
+
+/* x = 0. */
+#150 = ORIENTED_EDGE('',*,*,#69,.T.);
+#151 = ORIENTED_EDGE('',*,*,#68,.T.);
+#152 = ORIENTED_EDGE('',*,*,#72,.F.);
+#153 = ORIENTED_EDGE('',*,*,#64,.F.);
+#154 = EDGE_LOOP('',(#150,#151,#152,#153));
+#155 = FACE_OUTER_BOUND('',#154,.T.);
+#156 = ADVANCED_FACE('',(#155),#95,.F.);
+
+/* x = 2. */
+#160 = ORIENTED_EDGE('',*,*,#62,.T.);
+#161 = ORIENTED_EDGE('',*,*,#71,.T.);
+#162 = ORIENTED_EDGE('',*,*,#66,.F.);
+#163 = ORIENTED_EDGE('',*,*,#70,.F.);
+#164 = EDGE_LOOP('',(#160,#161,#162,#163));
+#165 = FACE_OUTER_BOUND('',#164,.T.);
+#166 = ADVANCED_FACE('',(#165),#96,.T.);
+
+#170 = CLOSED_SHELL('',(#116,#126,#136,#146,#156,#166));
+#171 = MANIFOLD_SOLID_BREP('Box',#170);
+#172 = ADVANCED_BREP_SHAPE_REPRESENTATION('Box',(#171),#107);
+#173 = SHAPE_DEFINITION_REPRESENTATION(#8,#172);
+ENDSEC;
+END-ISO-10303-21;

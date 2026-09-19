@@ -50,7 +50,7 @@ impl Cad {
             }
             let shape = match &o.feature {
                 Feature::Body { .. } => model.body_shape.get(&o.name),
-                Feature::Mesh { .. } => model.shapes.get(&o.name),
+                Feature::Mesh { .. } | Feature::Part { .. } => model.shapes.get(&o.name),
                 _ => None,
             };
             if let Some(s) = shape {

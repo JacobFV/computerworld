@@ -222,41 +222,66 @@ fn explorer_tint(name: &str) -> Color {
         _ => Color::rgb(245, 187, 64),
     }
 }
+/// Where a row of a platform's standard sidebar leads. Lists the desktop keeps
+/// (Recents, Starred) and Explorer's views (Home, Gallery) are not folders; the rest
+/// are absolute folders on the machine.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PlaceKind {
+    Recents,
+    Starred,
+    /// Explorer's Home: the pinned Quick access folders (and, in Explorer, the lists).
+    QuickAccess,
+    /// Explorer's Gallery: the images in Pictures.
+    Gallery,
+    Home(String),
+    Folder(String),
+    Trash(String),
+    /// The computer: Macintosh HD, This PC, Other Locations.
+    Root,
+}
+/// One row of a standard sidebar, before any application decides what clicking it does.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StandardPlace {
+    pub label: String,
+    pub symbol: &'static str,
+    pub tint: Option<Color>,
+    /// Explorer's pinned Quick access folders carry a pin.
+    pub pinned: bool,
+    pub kind: PlaceKind,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub enum SideItem {
+    Heading(&'static str),
+    Place(StandardPlace),
+    Gap,
+}
 /// The platform's standard sidebar, holding only places that can really be opened:
 /// the lists the desktop keeps, the home folder, the standard folders that exist in it
 /// right now, the Trash and the computer. AirDrop, iCloud, Tags, OneDrive and Network
 /// have nothing behind them in the simulator and are left out rather than faked.
-fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec<Side> {
-    use crate::FileScope;
-    let files = &env.files;
-    let folder_at = |path: &str| {
-        tab.scope == FileScope::Folder
-            && !path.is_empty()
-            && tab.path.trim_end_matches('/') == path.trim_end_matches('/')
-    };
-    let row = |label: &str, symbol: &'static str, action: String, current: bool| {
-        Side::Row(Place {
+/// Files, Finder and Explorer draw it; an application's native file dialog lists the
+/// same places, so the two can never disagree about what the machine holds.
+pub fn standard_places(t: DesktopTheme, files: &crate::FilesEnv<'_>) -> Vec<SideItem> {
+    let row = |label: &str, symbol: &'static str, kind: PlaceKind| {
+        SideItem::Place(StandardPlace {
             label: label.to_owned(),
             symbol,
             tint: None,
-            action,
-            current,
             pinned: false,
+            kind,
         })
     };
-    let standard = |names: &[&str], explorer: bool| -> Vec<Side> {
+    let standard = |names: &[&str], explorer: bool| -> Vec<SideItem> {
         names
             .iter()
             .filter(|name| files.has(name))
             .map(|name| {
-                let path = files.folder(name);
-                Side::Row(Place {
+                SideItem::Place(StandardPlace {
                     label: (*name).to_owned(),
                     symbol: folder_symbol(name),
                     tint: explorer.then(|| explorer_tint(name)),
-                    current: folder_at(&path),
-                    action: format!("files-location:{path}"),
                     pinned: explorer,
+                    kind: PlaceKind::Folder(files.folder(name)),
                 })
             })
             .collect()
@@ -265,25 +290,10 @@ fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec
     let mut out = Vec::new();
     match t {
         DesktopTheme::Ubuntu => {
-            out.push(row(
-                "Recent",
-                "clock",
-                "files-recents".into(),
-                tab.scope == FileScope::Recents,
-            ));
-            out.push(row(
-                "Starred",
-                "star",
-                "files-starred".into(),
-                tab.scope == FileScope::Starred,
-            ));
+            out.push(row("Recent", "clock", PlaceKind::Recents));
+            out.push(row("Starred", "star", PlaceKind::Starred));
             if has_home {
-                out.push(row(
-                    "Home",
-                    "home",
-                    "files-home".into(),
-                    folder_at(files.home),
-                ));
+                out.push(row("Home", "home", PlaceKind::Home(files.home.to_owned())));
             }
             out.extend(standard(
                 &[
@@ -297,68 +307,73 @@ fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec
                 false,
             ));
             if !files.trash.is_empty() {
-                out.push(row(
-                    "Trash",
-                    "trash",
-                    "files-trash".into(),
-                    folder_at(&files.trash),
-                ));
+                out.push(row("Trash", "trash", PlaceKind::Trash(files.trash.clone())));
             }
-            out.push(Side::Gap);
-            out.push(row(
-                "Other Locations",
-                "plus",
-                "files-root".into(),
-                folder_at("/"),
-            ));
+            out.push(SideItem::Gap);
+            out.push(row("Other Locations", "plus", PlaceKind::Root));
         }
         DesktopTheme::Macos => {
-            out.push(Side::Heading("Favorites"));
-            out.push(row(
-                "Recents",
-                "clock",
-                "files-recents".into(),
-                tab.scope == FileScope::Recents,
-            ));
+            out.push(SideItem::Heading("Favorites"));
+            out.push(row("Recents", "clock", PlaceKind::Recents));
             out.extend(standard(&["Desktop", "Documents", "Downloads"], false));
-            out.push(Side::Heading("Locations"));
-            out.push(row(
-                "Macintosh HD",
-                "drive",
-                "files-root".into(),
-                folder_at("/"),
-            ));
+            out.push(SideItem::Heading("Locations"));
+            out.push(row("Macintosh HD", "drive", PlaceKind::Root));
         }
         DesktopTheme::Windows => {
             if has_home {
-                out.push(row(
-                    "Home",
-                    "home",
-                    "files-quick-access".into(),
-                    tab.scope == FileScope::QuickAccess,
-                ));
+                out.push(row("Home", "home", PlaceKind::QuickAccess));
                 if files.has("Pictures") {
-                    out.push(row(
-                        "Gallery",
-                        "image",
-                        "files-gallery".into(),
-                        tab.scope == FileScope::Gallery,
-                    ));
+                    out.push(row("Gallery", "image", PlaceKind::Gallery));
                 }
             }
-            out.push(Side::Gap);
+            out.push(SideItem::Gap);
             out.extend(standard(&crate::QUICK_ACCESS, true));
-            out.push(Side::Gap);
-            out.push(row(
-                "This PC",
-                "desktop",
-                "files-root".into(),
-                folder_at("/"),
-            ));
+            out.push(SideItem::Gap);
+            out.push(row("This PC", "desktop", PlaceKind::Root));
         }
         _ => {}
     }
     out
+}
+/// The file manager's sidebar: each standard place as the command that opens it in
+/// this tab, lit when it is the place the tab is showing.
+fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec<Side> {
+    use crate::FileScope;
+    let folder_at = |path: &str| {
+        tab.scope == FileScope::Folder
+            && !path.is_empty()
+            && tab.path.trim_end_matches('/') == path.trim_end_matches('/')
+    };
+    standard_places(t, &env.files)
+        .into_iter()
+        .map(|item| match item {
+            SideItem::Heading(h) => Side::Heading(h),
+            SideItem::Gap => Side::Gap,
+            SideItem::Place(place) => {
+                let (action, current) = match &place.kind {
+                    PlaceKind::Recents => ("files-recents".into(), tab.scope == FileScope::Recents),
+                    PlaceKind::Starred => ("files-starred".into(), tab.scope == FileScope::Starred),
+                    PlaceKind::QuickAccess => (
+                        "files-quick-access".into(),
+                        tab.scope == FileScope::QuickAccess,
+                    ),
+                    PlaceKind::Gallery => ("files-gallery".into(), tab.scope == FileScope::Gallery),
+                    PlaceKind::Home(path) => ("files-home".into(), folder_at(path)),
+                    PlaceKind::Folder(path) => (format!("files-location:{path}"), folder_at(path)),
+                    PlaceKind::Trash(path) => ("files-trash".into(), folder_at(path)),
+                    PlaceKind::Root => ("files-root".into(), folder_at("/")),
+                };
+                Side::Row(Place {
+                    label: place.label,
+                    symbol: place.symbol,
+                    tint: place.tint,
+                    action,
+                    current,
+                    pinned: place.pinned,
+                })
+            }
+        })
+        .collect()
 }
 /// Draw the sidebar `places` describes. Every row is a real command; the lit row is
 /// the place the tab is showing, so the sidebar and the listing cannot disagree.
@@ -1068,7 +1083,7 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
 
 /// What each platform's Kind (Type) column calls an entry, read off the name the way
 /// the platform reads it: by extension. Nothing here is a guess about the contents.
-fn kind_label(t: DesktopTheme, entry: &str) -> String {
+pub fn kind_label(t: DesktopTheme, entry: &str) -> String {
     if entry.ends_with('/') {
         return if t == DesktopTheme::Windows {
             "File folder".into()
