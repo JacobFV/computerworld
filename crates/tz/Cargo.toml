@@ -1,0 +1,6 @@
+[package]
+name = "cw-tz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A compiled-in subset of the IANA time zone database: UTC offsets, abbreviations and DST transitions for the zones the simulated runtimes know."

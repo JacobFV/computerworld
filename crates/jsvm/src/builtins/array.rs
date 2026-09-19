@@ -613,7 +613,8 @@ fn to_locale_string(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             parts.push(String::new());
         } else {
             let f = vm.get_str(&v, "toLocaleString")?;
-            let r = vm.call(&f, v, vec![])?;
+            // The locales and options reach every element.
+            let r = vm.call(&f, v, vec![a.arg(0), a.arg(1)])?;
             parts.push(vm.to_str(&r)?);
         }
     }

@@ -545,6 +545,22 @@ class tzinfo:
     def dst(self, dt):
         raise NotImplementedError("tzinfo subclass must override dst()")
 
+    def fromutc(self, dt):
+        if dt.tzinfo is not self:
+            raise ValueError("fromutc: dt.tzinfo is not self")
+        dtoff = dt.utcoffset()
+        if dtoff is None:
+            raise ValueError("fromutc: non-None utcoffset() result required")
+        dtdst = dt.dst()
+        delta = dtoff - (dtdst or timedelta(0))
+        if delta:
+            dt += delta
+            dtdst = dt.dst()
+        return dt + (dtdst or timedelta(0))
+
+    def __reduce__(self):
+        return (self.__class__, ())
+
 
 class timezone(tzinfo):
     def __new__(cls, offset, name=None):
@@ -694,7 +710,8 @@ class time:
                           self._minute if minute is None else minute,
                           self._second if second is None else second,
                           self._microsecond if microsecond is None else microsecond,
-                          self._tzinfo if tzinfo is True else tzinfo)
+                          self._tzinfo if tzinfo is True else tzinfo,
+                          fold=self._fold if fold is None else fold)
 
     def utcoffset(self):
         return None if self._tzinfo is None else self._tzinfo.utcoffset(None)
@@ -855,14 +872,22 @@ class datetime(date):
                           self._minute if minute is None else minute,
                           self._second if second is None else second,
                           self._microsecond if microsecond is None else microsecond,
-                          self._tzinfo if tzinfo is True else tzinfo)
+                          self._tzinfo if tzinfo is True else tzinfo,
+                          fold=self._fold if fold is None else fold)
 
     def astimezone(self, tz=None):
         if tz is None:
             tz = timezone.utc
         off = self.utcoffset()
-        base = self if off is None else self - off
-        return (base + tz.utcoffset(None)).replace(tzinfo=tz)
+        if off is None:
+            # A naive datetime is read as local time, which here is UTC.
+            off = timedelta(0)
+        if self._tzinfo is tz:
+            return self
+        # The instant, handed to the zone to place on its own clock: a zone
+        # whose offset changes has to decide that itself (`fromutc`).
+        utc = (self - off).replace(tzinfo=tz)
+        return tz.fromutc(utc)
 
     def ctime(self):
         weekday = self.toordinal() % 7 or 7

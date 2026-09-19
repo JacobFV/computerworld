@@ -69,6 +69,7 @@ fn js_module_source(name: &str) -> Option<&'static str> {
         "http" => include_str!("../js/http.js"),
         "https" => include_str!("../js/https.js"),
         "internal/fetch" => include_str!("../js/fetch.js"),
+        "internal/intl" => include_str!("../js/intl.js"),
         "internal/httpwire" => include_str!("../js/httpwire.js"),
         "zlib" => include_str!("../js/zlib.js"),
         _ => return None,

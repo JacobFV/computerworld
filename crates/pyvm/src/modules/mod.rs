@@ -3,6 +3,7 @@
 pub mod collections;
 pub mod host;
 pub mod json;
+pub mod localemod;
 pub mod math;
 pub mod random;
 pub mod re;
@@ -50,6 +51,7 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("io", include_str!("../../lib/io.py")),
     ("itertools", include_str!("../../lib/itertools.py")),
     ("keyword", include_str!("../../lib/keyword.py")),
+    ("locale", include_str!("../../lib/locale.py")),
     ("logging", include_str!("../../lib/logging.py")),
     ("numbers", include_str!("../../lib/numbers.py")),
     ("operator", include_str!("../../lib/operator.py")),
@@ -87,6 +89,7 @@ pub const PY_MODULES: &[(&str, &str)] = &[
     ("warnings", include_str!("../../lib/warnings.py")),
     ("weakref", include_str!("../../lib/weakref.py")),
     ("zlib", include_str!("../../lib/zlib.py")),
+    ("zoneinfo", include_str!("../../lib/zoneinfo.py")),
 ];
 
 /// Native modules and their constructors.
@@ -102,6 +105,8 @@ fn native_module(vm: &mut Vm, name: &str) -> Option<Value> {
         "_collections" => collections::make(vm),
         "_cw" => host::make(vm),
         "_zlib" => zlib::make(vm),
+        "_locale" => localemod::make(vm),
+        "_zoneinfo" => localemod::make_zoneinfo(vm),
         "_struct" => structmod::make(vm),
         "_thread" => thread::make(vm),
         "gc" => {

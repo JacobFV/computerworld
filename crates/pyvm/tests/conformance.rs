@@ -79,6 +79,7 @@ programs!(
     formatting,
     generators,
     language,
+    locales,
     stdin_io,
     stdlib,
     text_processing,

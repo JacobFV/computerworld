@@ -158,6 +158,9 @@ pub struct Vm<'h> {
     pub awaiting_input: bool,
     /// The debugger attached to this run, if any.
     pub debug: Option<Box<crate::debug::Session<'h>>>,
+    /// The locale `time.strftime` formats in (`locale.setlocale(LC_TIME, ...)`);
+    /// `None` is the C locale the interpreter starts in.
+    pub time_locale: Option<String>,
 }
 
 impl<'h> Vm<'h> {

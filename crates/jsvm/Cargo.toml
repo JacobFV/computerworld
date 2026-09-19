@@ -8,5 +8,6 @@ description = "A deterministic JavaScript (ES2020 core, Node-flavoured) interpre
 [dependencies]
 cw-script-host = { path = "../script-host" }
 cw-regex = { path = "../regex" }
+cw-tz = { path = "../tz" }
 cw-zlib = { path = "../zlib" }
 sha2.workspace = true

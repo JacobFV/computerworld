@@ -353,6 +353,7 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "cw-regex",
  "cw-script-host",
+ "cw-tz",
  "cw-zlib",
  "sha2",
 ]
@@ -409,6 +410,7 @@ version = "0.1.0-alpha.2"
 dependencies = [
  "cw-regex",
  "cw-script-host",
+ "cw-tz",
  "cw-zlib",
  "sha2",
 ]
@@ -736,6 +738,10 @@ dependencies = [
  "serde_json",
  "sha2",
 ]
+
+[[package]]
+name = "cw-tz"
+version = "0.1.0-alpha.2"
 
 [[package]]
 name = "cw-video"

@@ -19,6 +19,7 @@ pub mod debug;
 pub mod format;
 pub mod io;
 pub mod lexer;
+pub mod locale_data;
 pub mod methods;
 pub mod modules;
 pub mod ops;
@@ -136,6 +137,7 @@ impl<'h> Vm<'h> {
             stdin_eof: false,
             awaiting_input: false,
             debug: None,
+            time_locale: None,
         };
         bfuncs::install(&mut vm);
         methods::install(&mut vm);

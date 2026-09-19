@@ -73,6 +73,7 @@ programs!("js":
     event_loop_time,
     exit_code,
     inspect,
+    intl,
     json,
     language,
     modules_fs,

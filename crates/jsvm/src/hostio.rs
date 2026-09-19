@@ -498,6 +498,35 @@ impl<'h> Vm<'h> {
     }
 }
 
+/// The locale data, generated from ICU by `tools/generate_cldr.js`. It is
+/// parsed on the first `Intl` use and never otherwise.
+static CLDR: &str = include_str!("../data/cldr.json");
+
+fn b_cldr(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    crate::builtins::json::parse_json(vm, CLDR)
+}
+
+/// `tzOffset(zone, epochMilliseconds)` -> `[seconds east of UTC, abbreviation,
+/// is daylight]`, or `null` for a zone the compiled-in database does not have.
+fn b_tz_offset(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let zone = vm.to_str(&a.arg(0))?;
+    let ms = vm.to_number(&a.arg(1))?;
+    let seconds = (ms / 1000.0).floor() as i64;
+    match cw_tz::offset_at(&zone, seconds) {
+        Some(o) => Ok(vm.arr(vec![
+            Value::Num(o.seconds as f64),
+            Value::str(o.abbreviation),
+            Value::Bool(o.is_dst),
+        ])),
+        None => Ok(Value::Null),
+    }
+}
+
+fn b_tz_zones(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    let zones: Vec<Value> = cw_tz::zones().map(Value::str).collect();
+    Ok(vm.arr(zones))
+}
+
 pub fn install(vm: &mut Vm, b: &Obj) {
     let fns: &[(&str, u32, NativeFn)] = &[
         ("httpRequest", 5, b_http_request),
@@ -517,6 +546,9 @@ pub fn install(vm: &mut Vm, b: &Obj) {
         ("brotliCompress", 5, b_brotli_compress),
         ("brotliDecompress", 1, b_brotli_decompress),
         ("crc32", 2, b_crc32),
+        ("cldr", 0, b_cldr),
+        ("tzOffset", 2, b_tz_offset),
+        ("tzZones", 0, b_tz_zones),
     ];
     for (n, l, f) in fns {
         vm.method(b, n, *l, *f);
