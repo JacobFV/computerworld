@@ -53,13 +53,14 @@ renders only `stdout + stderr`; GUI-driven agents read the code from the machine
 | `'single'` `"double"` `\escape`, backticks | modelled |
 | `$VAR` `${VAR}` `${VAR:-default}` `$?` `$0..$n` `$#` `${#}` `${#VAR}` `$@` `$*` | modelled |
 | `$(command)` `` `command` `` `$((arithmetic))` | modelled, nesting bounded at 32 |
-| `*` `?` globbing | modelled, one path component at a time; no `**`, no `[a-z]` classes |
+| `*` `?` `[...]` globbing | modelled, one path component at a time; `[abc]`, `[a-z]`, `[!abc]`/`[^abc]`; no `**`. A no-match word stays literal, as bash does without `nullglob`, and expansion happens before the argument list is built, so every command that takes a path sees it |
+| `{a,b}` `{1..9}` `{1..9..2}` `{a..e}` brace expansion | modelled, nested and repeated, before globbing. A brace with no comma and no range is left alone, so `{}` survives for `find -exec` |
 | `NAME=value cmd` prefix assignments | modelled |
 | trailing `&` | only `sleep N &` truly backgrounds; elsewhere `&` acts as a separator |
 | `if … then … elif … else … fi` | modelled; the condition list's last status decides |
 | `for NAME in WORDS; do … done`, `for NAME; do … done` | modelled; the second form walks `$1…$#` |
 | `while` / `until … do … done` | modelled |
-| `case WORD in PAT\|PAT) … ;; esac` | modelled; a leading `(` is accepted and patterns use the glob matcher, so `*` and `?` work and `[a-z]` does not |
+| `case WORD in PAT\|PAT) … ;; esac` | modelled; a leading `(` is accepted and patterns use the glob matcher, so `*`, `?` and `[a-z]` all work |
 | `NAME() { … }`, `function NAME { … }` | modelled; the body's output is the call's output, so a function pipes |
 | `( … )` subshell | modelled; environment, working directory and function table are restored afterwards |
 | `{ … ; }` group | modelled; runs in the caller's scope |
@@ -118,17 +119,24 @@ every replay.
 | `cd` | — | all flags | modelled |
 | `env` / `printenv` | `NAME` | all flags | modelled |
 | `export` / `unset` | — | all flags | modelled |
-| `ls` / `dir` | `-a -A -l -h -d -F -r -t -S -R`, clusters (`-la`), `--all --almost-all --human-readable --reverse --recursive --directory --classify`; `-1` is accepted and is already the default | `-i` `-n` `-Q` `--color` and the rest | modelled; output is always one entry per line, and directories report one 4 KiB allocation unit as their size |
+| `ls` / `dir` | `-a -A -l -h -d -F -p -1 -i -n -r -t -S -R`, `--color=never\|no\|none\|auto`, `--json`, clusters (`-la`), `--all --almost-all --human-readable --reverse --recursive --directory --classify --inode --numeric-uid-gid` | `-Q` `-c` `-u` `--color=always`, column output | modelled; output is always one entry per line (`-1` is the default), `-l` prints mode, link count, owner, group, size, world-clock date and `-> target`, and directories report one 4 KiB allocation unit as their size. `--json` is documented under *ls --json* below |
 | `cat` | — | `-n` `-A` and the rest | modelled; no operand reads stdin |
-| `touch` | `-c` / `--no-create`, `-d DATE` / `--date`, `-t STAMP`, `-r FILE` / `--reference`; `-a -m` accepted (the VFS keeps one timestamp) | `--time=`, relative dates (`yesterday`), timestamps before the epoch | modelled; creates missing files and sets the modification tick. `-d` takes `@SECONDS` or `YYYY-MM-DD[ HH:MM[:SS]]`, `-t` takes `[[CC]YY]MMDDhhmm[.ss]` |
-| `mkdir` | `-p` / `--parents`; `-v` accepted and inert | `-m` | modelled; without `-p` an existing target or a missing parent is an error |
-| `cp` | `-r` / `-R` / `--recursive`; `-f -p -v` accepted and inert | `-a` `-u` `-l` | modelled, including recursive directory copies |
-| `mv` | — | all flags | modelled |
-| `rm` / `rmdir` | `-r` / `-R` / `--recursive`, `-f` / `--force`, PowerShell `-Recurse` `-Force`; `-v` accepted and inert | `-i` | modelled; `rmdir` always removes recursively |
-| `chmod` | octal mode, symbolic modes (`u+x`, `go-w`, `a=r`, `+X`, `u+s`, `+t`, comma lists), `-R` / `--recursive`; `-v` accepted and inert | `--reference`, copying permissions (`u=g`) | modelled; no umask is simulated, so a bare `+x` means `a+x`, and `X` reads the mode as the clauses before it left it |
-| `ln` | `-s` | `-f` `-r` | modelled |
-| `stat` | `-c FMT` / `--format=` / `--printf=`, `-L`; `%n %N %s %b %B %o %f %a %A %F %U %G %u %g %i %h %m %d %X %Y %Z %x %y %z %%` | `-f` `-t` `--cached`, any other conversion | modelled; see *Stat fidelity* below |
-| `find` | `-name -iname -type f\|d -maxdepth` | every other predicate, refused by name | modelled |
+| `touch` | `-a -m` (separate fields now), `-c` / `--no-create`, `-d DATE` / `--date`, `-t STAMP`, `-r FILE` / `--reference`, `-h` / `--no-dereference` | `--time=`, relative dates (`yesterday`), timestamps before the epoch | modelled; creates missing files and sets the access and modification ticks. `-d` takes `@SECONDS` or `YYYY-MM-DD[ HH:MM[:SS]]`, `-t` takes `[[CC]YY]MMDDhhmm[.ss]` |
+| `mkdir` | `-p` / `--parents`, `-m MODE` / `--mode` (octal or symbolic), `-v` / `--verbose` | `-Z` | modelled; without `-p` an existing target or a missing parent is an error, and `-m` overrides the umask |
+| `cp` | `-r` `-R` `-a` `-p` `-d` `-L` `-P` `-i` `-n` `-f` `-v` `-t DIR` `-T`, long forms | `-u` `-l` `-s` `--preserve=LIST` `--parents` | modelled; copying into an existing directory keeps the name, a directory without `-r` is refused with `-r not specified; omitting directory 'X'`, `-p` carries mode and timestamps (ownership only for root), `-a` is `-dR -p`, and a copy without `-p` still keeps the source's execute bits |
+| `mv` | `-i` `-n` `-f` `-v` `-t DIR` `-T`, long forms | `-u` `-b` `-S` | modelled; into a directory the name is kept, a file cannot overwrite a directory (or the reverse), and a non-empty directory cannot be overwritten |
+| `rm` | `-r` / `-R` / `--recursive`, `-f` / `--force`, `-d` / `--dir`, `-i` / `--interactive`, `-v` / `--verbose`, PowerShell `-Recurse` `-Force` | `--one-file-system` beyond accepting it, `-I` beyond accepting it | modelled; a directory without `-r` or `-d` is refused with `cannot remove 'X': Is a directory`, a non-empty directory with `-d` with `Directory not empty`, and a missing operand is an error unless `-f` |
+| `rmdir` | `-p` / `--parents`, `-v` / `--verbose`, `--ignore-fail-on-non-empty` | — | modelled; empty directories only. `-p` walks up the components the operand names and stops, loudly, at the first non-empty parent |
+| `chmod` | octal mode, symbolic modes (`u+x`, `go-w`, `a=r`, `+X`, `u+s`, `+t`, comma lists), `-R` / `--recursive`, `-v` / `--verbose` | `--reference`, copying permissions (`u=g`) | modelled and enforced: a mode a read cannot satisfy makes the read fail. `X` reads the mode as the clauses before it left it |
+| `ln` | `-s` `-f` `-n` `-v` `-r` `-T` `-P` `-t DIR`, long forms | `-b` `-S` `-i` | modelled; hard links share an inode and a link count, `-s` stores the text given, `-r` stores it relative to the link's own directory, and into a directory the target's name is kept |
+| `chown` / `chgrp` | `OWNER`, `OWNER:GROUP`, `OWNER:`, `:GROUP`, `-R` / `--recursive`, `-v`, `-h` / `--no-dereference`, `-c` | `--reference`, `--from`, numeric ids | modelled; only root hands a node to another user, and the owner may set its group |
+| `umask` | `[-S] [MASK]`, octal or symbolic | `-p` beyond accepting it | modelled; one mask per filesystem, read by every file and directory a command creates |
+| `truncate` | `-s SIZE` (`N`, `+N`, `-N`, `<N`, `>N`, `/N`, `%N`, with `K`/`M`/`G`), `-r FILE`, `-c` / `--no-create` | `-o` (block units) | modelled; growing pads with zero bytes |
+| `install` | `-m MODE`, `-d` / `--directory`, `-D`, `-p`, `-v`, `-t DIR`, `-T`, `-C` | `-o` `-g` `-s` `--backup` | modelled; the ownership flags are refused rather than half-honoured |
+| `readlink` / `realpath` | `-f` `-e` `-m` `-s`/`-q`, long forms | `--relative-to`, `-z` | modelled; `readlink` prints the stored link text, the canonicalising forms resolve every link on the path |
+| `trash` / `trash-put` / `trash-list` / `trash-restore` / `trash-empty` / `gio trash` | see *The trash* below | `trash-rm`, an age operand on `trash-empty` | modelled against `~/.local/share/Trash` |
+| `stat` | `-c FMT` / `--format=` / `--printf=`, `-L`, `-t`, `-f` (with its own `%n %i %l %T %t %s %S %b %f %a %c %d`); `%n %N %s %b %B %o %f %a %A %F %U %G %u %g %i %h %m %d %t %T %W %X %Y %Z %w %x %y %z %%` | `--cached`, any other conversion | modelled; see *Stat fidelity* below |
+| `find` | see *find* below | every other predicate, refused by name | modelled |
 | `grep` / `select-string` | `-i -v -n -c -l -L -F -E -q -s -h -H -w -x -r -R -e -o -A N -B N -C N`, long forms | `--include` `-P` `-m` | modelled; `0` matched, `1` did not. Context lines are prefixed with `-` where a matching line uses `:`, and `--` separates non-adjacent groups |
 | `sed` | `-n -i -e`; addresses `N`, `$`, `/RE/` and any pair of them; commands `s/RE/REP/[g]`, `p`, `d`, `a TEXT`, `i TEXT`, `y/SET/SET/`, `q [CODE]` | `-r` `-E`, multiple `-e`, `b` `t` `n` `N` `w` `r`, the hold space, backreference addresses | modelled; a range opens on its first address and closes on the next line the second matches. `q CODE` becomes the exit status, and text after `a\\` keeps its leading blanks |
 | `tr` | `-d`, ranges `a-z` | `-s` `-c` | modelled, stdin only |
@@ -138,6 +146,10 @@ every replay.
 | `sort` | `-r -n -u` | `-k` `-t` `-f` `-h` | modelled |
 | `uniq` | `-c -d -u` | `-i` `-f` | modelled |
 | `du` | `-s -a -h -k -b -m -c -d N`, `--max-depth=`, `--summarize --all --human-readable --bytes --total` | `--exclude`, `-x`, `-L` | modelled over the VFS; block accounting assumes a 4 KiB allocation unit |
+| `tar` | `-c` `-x` `-t`, `-f FILE` (required), `-v`, `-z`, `-C DIR`, `--strip-components=N`, `--`; long forms `--create --extract --get --list --file= --verbose --gzip --directory= --strip-components=` | `-f -` (a pipe archive), `-j` `-J` `--exclude` `-u` `-r` `-A` | modelled; real **ustar** bytes, so an archive written here unpacks with host `tar` and a host archive unpacks here. Regular files, directories and symlinks round-trip with their modes and modification times |
+| `gzip` / `gunzip` / `zcat` | `-k` `-c` `-d` `-f` `-n` `-v`, `-1`…`-9` (accepted and inert), long forms | `-l` `-r` `-S`, `.Z`/`.bz2` | modelled; a real RFC 1952 member with the world clock's MTIME and a verified CRC32 and ISIZE. It **compresses with stored DEFLATE blocks** — honest, interoperable, and not a claim to compress; decompression is a full RFC 1951 inflate (stored, fixed and dynamic Huffman), so host-made `.gz` files really decompress |
+| `zip` / `unzip` | `zip [-r] [-q] ARCHIVE FILE…`; `unzip [-l] [-o] [-q] [-d DIR] ARCHIVE [FILE…]` | encryption, `-u` `-m` `-9`, split archives | modelled; real PKZIP local headers, central directory and end record, CRC32 and a DOS date-time from the world clock. Written with method 0 (stored); read with method 0 or 8 |
+| `rsync` | `-a` `-v` `-n` / `--dry-run`, `--delete`, long forms | every remote spec (`host:path`, `user@host:path`, `rsync://`), `-z` `-u` `--exclude` `-r` without `-a` | modelled for **local** trees only, including the trailing-slash rule; a remote spec is refused by name rather than faked |
 | `df` | `-h -k -T`, `--human-readable --print-type` | `-i` `-a` `-B` | **mixed**: capacity and device name are fixed, usage is summed from the VFS; one filesystem mounted at `/` |
 | `which` | `-a`, `--all` | `-s` | modelled over `PATH`; see *which and builtins* below |
 | `nproc` | `--all` | `--ignore` | **fixed** (`hardware.cpus`, default 4) |
@@ -167,6 +179,59 @@ every replay.
 | `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads`, networking modules, `child_process` (fails with `ENOSYS`) | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
+
+## find
+
+Every predicate below really filters; an unknown one is refused **by name** with status
+`2` rather than ignored, because a search that silently returns the wrong set is worse
+than one that says it cannot.
+
+| Group | Supported |
+| --- | --- |
+| Global options | `-maxdepth N`, `-mindepth N`, `-depth` / `-d`, `-P` |
+| Name and path | `-name GLOB`, `-iname GLOB`, `-path GLOB`, `-ipath GLOB`, `-wholename GLOB`, `-regex RE`, `-iregex RE` |
+| Kind | `-type f\|d\|l` |
+| Size | `-size N[c\|w\|b\|k\|M\|G]` with `+`/`-`; a bare `N` is 512-byte blocks rounded up, as GNU counts them |
+| Mode | `-perm MODE` (exactly), `-perm -MODE` (all of these bits), `-perm /MODE` (any of these bits); octal or symbolic (`u+w,go=r`) |
+| Time | `-mtime -atime -ctime` and `-mmin -amin -cmin`, each with `+`/`-`; `-newer FILE`, `-newermt DATE` (`@SECONDS` or `YYYY-MM-DD[ hh:mm[:ss]]`) |
+| Ownership | `-user NAME`, `-group NAME`, `-nouser`, `-nogroup` |
+| Emptiness | `-empty` |
+| Operators | `!` / `-not`, `-a` / `-and` (implicit between adjacent predicates), `-o` / `-or`, `(` `)`, with GNU's precedence and real short-circuiting |
+| Actions | `-print` (the default), `-print0`, `-printf FORMAT`, `-ls`, `-delete` (implies `-depth`), `-quit`, `-prune`, `-exec CMD ;`, `-exec CMD {} +`, `-execdir CMD ;`, `-execdir CMD {} +` |
+| `-printf` | `%p %f %h %n %s %m %M %u %g %y %i %d %P %l %%`, `%T@ %A@ %C@`, and `%TY %Tm %Td %TH %TM %TS` (plus the `%A…`/`%C…` spellings for the other two stamps); escapes `\n \t \0 \\` |
+
+`-print` is appended only when nothing in the expression already has an effect, so
+`find . -prune` still prints and `find . -quit` does not.
+
+Refused by name rather than half-done: `-L` / `-H` / `-follow` and `-xtype` (only `-P`,
+not following links, is honest here), `-ok` / `-okdir` (there is no terminal to prompt
+at), `-type b|c|p|s` (this world has no device, FIFO or socket nodes), `-perm +MODE`
+(withdrawn by GNU itself), symbolic `X` in `-perm`, relative words in `-newermt`, and
+any `-printf` conversion or escape not listed above.
+
+Two deliberate differences from GNU: a directory's entries are visited in **sorted**
+order rather than readdir order, because a deterministic simulator must give the same
+answer twice; and `-exec` hands its argument vector to a nested shell run, which starts
+a fresh nesting budget, so `find` refuses an `-exec` that is already 32 levels deep.
+
+## Archives
+
+`tar`, `gzip` and `zip` write and read **real container bytes**, verified in both
+directions against GNU `tar`, `gzip`, `unzip` and Python's `tarfile`: an archive made
+in the simulation unpacks on a host, and a host archive unpacks in the simulation. That
+is why these are commands rather than a convenience format — a world where `tar -czf`
+produced something only this world could read would be a trap.
+
+`gzip` writes stored (uncompressed) DEFLATE blocks inside a correct gzip member. That
+is a legal, fully interoperable DEFLATE stream, and it is said plainly rather than
+dressed up: the byte count does not go down. Reading is a complete inflate — stored,
+fixed-Huffman and dynamic-Huffman blocks, LZ77 back-references and the code-length
+alphabet — so real-world `.gz` and deflated `.zip` members decompress correctly.
+
+Anything the format cannot carry faithfully is refused by name: a member whose path
+does not fit ustar's prefix/name split, a link target over 100 bytes, a hard-link or
+device typeflag, a zip compression method other than 0 or 8, and any member whose path
+would escape the extraction directory.
 
 ## git
 
@@ -307,14 +372,100 @@ the GUI status bar use, so they never disagree. A tick is one microsecond. There
 timezone (UTC) and no way to set the clock from the shell; advance simulated time
 instead.
 
+## ls --json
+
+`ls --json` answers "what is every entry in this directory?" in **one** call, instead
+of a listing followed by an `test -d` per name. It prints a single JSON array, one
+object per entry, in the same order and under the same `-a`/`-A`/`-d`/`-R`/`-t`/`-S`
+rules as the text form:
+
+| Field | Meaning |
+| --- | --- |
+| `name` | the entry as `ls` would print it |
+| `path` | its absolute path |
+| `kind` | `file`, `directory`, `symlink`, or `unknown` when it could not be read |
+| `size` | bytes; a directory reports one 4 KiB allocation unit |
+| `mode` | four octal digits, e.g. `"0755"` |
+| `owner` / `group` | names, as `%U`/`%G` give them |
+| `links` | hard links, as `stat` counts them |
+| `inode` | the node's identity in this filesystem |
+| `atime` / `mtime` / `ctime` | world-clock stamps, `YYYY-MM-DD hh:mm:ss` |
+| `target` | present only on a symlink: the stored link text |
+
+`ls -R --json` prints one array per directory, separated by a blank line, and no
+`dir:` headings — each object's `path` already says where it is.
+
+## File metadata
+
+Every node carries an identity and a full set of attributes, all of them deterministic:
+
+| Attribute | Moved by |
+| --- | --- |
+| inode | creation; a hard link shares it |
+| owner / group | creation (the creator, and their login group, or the parent's group under a setgid directory), `chown`, `chgrp` |
+| mode, including setuid/setgid/sticky | creation through the `umask`, `chmod`, `mkdir -m`, `install -m` |
+| link count | `ln`, `rm`; a directory reports `2` plus one per subdirectory |
+| created (`%W`, `Birth:`) | creation |
+| accessed (`%X`) | creation, `touch -a`, `cp -p` |
+| modified (`%Y`) | a write, `touch -m`, `cp -p` |
+| changed (`%Z`) | a write, `chmod`, `chown`, `touch` |
+| symlink target | `ln -s` |
+
+The filesystem behaves as if mounted **`noatime`**: a read does not move the access
+time, because reading takes a shared borrow of the VFS. `touch -a`, `cp -p` and a
+creation do. There is no group database, so membership is a convention: every user is
+in the group that carries their own name and in the shared group `users`. That is what
+makes the group permission bits sit genuinely between the owner's and everyone else's.
+
+## Permissions
+
+The mode is enforced, not decoration. `read_as`, `write_as`, `list_as` and every
+command built on them check the owner bits, then the group bits, then the other bits,
+and every directory on the path needs its execute bit. A file a user cannot read fails
+to read for that user with `permission denied: PATH` and status `1`; `sudo` (default
+`root`) bypasses the check, as root does. The sticky bit on a directory (`/tmp` is
+`1777`) stops one user removing or renaming another's files there. The desktop file
+managers go through the same calls, so a GUI cannot reach what the shell cannot.
+
+`umask` is one mask for the filesystem rather than one per process — this world runs
+one shell per computer. It starts at `0022`, so a new file is `0644` and a new
+directory `0755`.
+
+## The trash
+
+Deleting from a desktop, and `trash` from the shell, both write a real FreeDesktop
+trash under `~/.local/share/Trash`:
+
+```text
+~/.local/share/Trash/files/todo.md          the file itself, moved
+~/.local/share/Trash/info/todo.md.trashinfo [Trash Info]
+                                            Path=/home/user/notes/todo.md
+                                            DeletionDate=2026-09-17T09:00:00
+```
+
+`Path=` is percent-encoded and `DeletionDate=` comes from the world clock, so the
+record is byte-identical on every replay. A name already in the trash gets `.2`, `.3`
+and so on, so nothing is overwritten.
+
+| Command | Behaviour |
+| --- | --- |
+| `trash` / `trash-put [-v] [-f] PATH…` | move each path in and write its record; `-f` ignores what is not there |
+| `trash-list [--json]` | `DELETED-AT ORIGINAL-PATH` per entry, or the same as JSON |
+| `trash-restore [-f] [--all] QUERY` | put it back where it came from. `QUERY` is an original path, the name under `files/`, a basename, or a glob; more than one match is refused with the candidates listed rather than guessed at, and an occupied destination needs `-f` |
+| `trash-empty` | throw the whole trash away for good |
+| `gio trash [--list\|--empty\|--restore] …` | the same trash, under the GNOME spelling |
+
+The desktops' Move to Trash and Restore go through the same records, and the Trash
+folder in each file manager shows each entry's original path.
+
 ## Stat fidelity
 
-The VFS stores one timestamp per node, so `%X` (access), `%Y` (modify) and `%Z`
-(change) all report the modification tick, and `Birth:` prints `-`. There is no numeric
-user database, so `%u`/`%g` report `hardware.uid`/`hardware.gid` (1000/1000 by default)
-and `%G` repeats the owner name because groups are not modelled. Directory sizes are
-reported as one 4 KiB allocation unit rather than the stored child count. `Device:` is
-a constant.
+`%u`/`%g` report `hardware.uid`/`hardware.gid` (1000/1000 by default), because there is
+no numeric user database; `%U`/`%G` report the stored owner and group names, which are
+real. Directory sizes are reported as one 4 KiB allocation unit rather than the stored
+child count. `Device:` is a constant, and so is `stat -f`'s filesystem type
+(`ext2/ext3`) and name length (255); its block counts are `hardware.disk_bytes` against
+usage summed from the VFS, exactly as `df` computes them.
 
 ## which and builtins
 
@@ -349,7 +500,7 @@ Deliberately not implemented, and refused rather than faked:
 * `select`, `export -f`, arrays, `declare`/`typeset`, `${VAR/…/…}` and `${VAR#…}`.
   Functions are not exported, so a command substitution, `sh -c` or a script starts with
   an empty function table, as it would without `export -f`.
-* `[a-z]` character classes in globs, `case` patterns and `[[ == ]]` patterns; `**`.
+* `**` in globs: a pattern matches one path component at a time.
 * `"$@"` expands to one word joined by spaces rather than one word per parameter; use
   it unquoted to forward parameters that contain no spaces.
 * Arithmetic beyond `+ - * / %` and parentheses: no `**`, no comparisons, no `++`.
@@ -357,5 +508,9 @@ Deliberately not implemented, and refused rather than faked:
 * `ps` columns that would have to be invented: `%CPU`, `%MEM`, `VSZ`, `RSS`, `STAT`.
   `ps aux` is refused by name rather than filled with plausible numbers.
 * Real process scheduling: only `sleep` occupies simulated time.
-* A group database, an allocator, and per-file access/change times: `touch -a` and
-  `touch -m` both move the single stored timestamp.
+* A group database and an allocator. Group membership is the convention described under
+  *File metadata*; block accounting assumes a 4 KiB unit.
+* A terminal to prompt at, so `-i` on `cp`, `mv` and `rm` answers **no**: an existing
+  destination is left alone and `rm -i` removes nothing. That is what a real prompt
+  does when its input is at end of file, and it is the safe answer.
+* Access times on read: the filesystem behaves as if mounted `noatime`.

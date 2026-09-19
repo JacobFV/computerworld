@@ -177,8 +177,145 @@ fn ls_honours_its_flag_combinations() {
     assert!(recursive.contains("/home/user/proj:"), "{recursive}");
     assert!(recursive.contains("/home/user/proj/sub:"), "{recursive}");
     assert_eq!(run(&mut c, "ls /nope").exit_code, 1);
+    // -1 is the default shape; -p marks only directories; -i prefixes the inode.
+    assert_eq!(ok(&mut c, "ls -1 /home/user"), "link\nproj\n");
+    assert_eq!(ok(&mut c, "ls -p /home/user"), "link\nproj/\n");
+    let inode = ok(&mut c, "ls -i /home/user/proj");
+    assert!(
+        inode
+            .lines()
+            .all(|l| l.split(' ').next().unwrap().parse::<u64>().is_ok()),
+        "{inode}"
+    );
+    assert_eq!(ok(&mut c, "ls --color=never /home/user"), "link\nproj\n");
+    // The long form carries owner and group as separate columns.
+    let long = ok(&mut c, "ls -l /home/user/proj");
+    assert!(long.contains(" user user "), "{long}");
+    assert!(ok(&mut c, "ls -ln /home/user/proj").contains(" 1000 1000 "));
+    // --json answers "what is every entry?" in one call, instead of an N+1 test -d storm.
+    let json = ok(&mut c, "ls --json /home/user");
+    assert!(
+        json.starts_with('[') && json.trim_end().ends_with(']'),
+        "{json}"
+    );
+    assert!(json.contains("\"name\":\"proj\""), "{json}");
+    assert!(json.contains("\"kind\":\"directory\""), "{json}");
+    assert!(json.contains("\"kind\":\"symlink\""), "{json}");
+    assert!(
+        json.contains("\"target\":\"/home/user/proj/a.txt\""),
+        "{json}"
+    );
+    assert!(json.contains("\"mode\":\"0755\""), "{json}");
+    assert!(json.contains("\"mtime\":\"2026-09-17 09:00:00\""), "{json}");
     refused(&mut c, "ls -Q /home/user", "-Q");
-    refused(&mut c, "ls --color", "--color");
+    refused(&mut c, "ls --color=always /home/user", "--color");
+}
+
+/// The consumer asked for globbing that actually reaches the commands that take files.
+#[test]
+fn globbing_reaches_every_command_that_takes_a_path() {
+    let mut c = machine();
+    ok(&mut c, "mkdir -p /tmp/g/keep");
+    for name in ["a.txt", "b.txt", "c.log", "d1.log", "d2.log"] {
+        ok(&mut c, &format!("echo {name} > /tmp/g/{name}"));
+    }
+    assert_eq!(
+        ok(&mut c, "ls /tmp/g/*.txt"),
+        "/tmp/g/a.txt\n/tmp/g/b.txt\n"
+    );
+    // `~` and a glob in the same word.
+    ok(
+        &mut c,
+        "mkdir -p ~/t; echo x > ~/t/one.txt; echo y > ~/t/two.txt",
+    );
+    assert_eq!(
+        ok(&mut c, "ls ~/t/*.txt"),
+        "/home/user/t/one.txt\n/home/user/t/two.txt\n"
+    );
+    // A class and a single-character wildcard.
+    assert_eq!(
+        ok(&mut c, "ls /tmp/g/d[12].log"),
+        "/tmp/g/d1.log\n/tmp/g/d2.log\n"
+    );
+    assert_eq!(ok(&mut c, "ls /tmp/g/d[!1].log"), "/tmp/g/d2.log\n");
+    assert_eq!(
+        ok(&mut c, "ls /tmp/g/?.txt"),
+        "/tmp/g/a.txt\n/tmp/g/b.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "ls /tmp/g/[a-b].txt"),
+        "/tmp/g/a.txt\n/tmp/g/b.txt\n"
+    );
+    // Brace expansion, including a numeric range, and nesting.
+    assert_eq!(ok(&mut c, "echo pre{a,b}post"), "preapost prebpost\n");
+    assert_eq!(ok(&mut c, "echo {1..4}"), "1 2 3 4\n");
+    assert_eq!(ok(&mut c, "echo {a,b}{1,2}"), "a1 a2 b1 b2\n");
+    ok(&mut c, "mkdir -p /tmp/g/{x,y}/deep");
+    assert_eq!(run(&mut c, "test -d /tmp/g/y/deep").exit_code, 0);
+    // The glob reaches cp and rm, not just ls.
+    ok(&mut c, "mkdir -p /tmp/logs");
+    ok(&mut c, "cp /tmp/g/*.log /tmp/logs/");
+    assert_eq!(ok(&mut c, "ls /tmp/logs"), "c.log\nd1.log\nd2.log\n");
+    ok(&mut c, "mkdir -p /tmp/g/dirA /tmp/g/dirB");
+    ok(&mut c, "rm -r /tmp/g/dir*/");
+    assert_eq!(run(&mut c, "test -d /tmp/g/dirA").exit_code, 1);
+    // No match is the literal word, as bash behaves without nullglob.
+    assert_eq!(ok(&mut c, "echo /tmp/g/*.nope"), "/tmp/g/*.nope\n");
+    assert_eq!(run(&mut c, "ls /tmp/g/*.nope").exit_code, 1);
+    // A pattern that arrives from a variable stays data.
+    assert_eq!(ok(&mut c, "P='*.txt'; echo $P"), "*.txt\n");
+    // A dot file is not matched unless the pattern says so.
+    ok(&mut c, "echo h > /tmp/g/.hide");
+    let starred = ok(&mut c, "ls /tmp/g/*");
+    assert!(
+        starred.starts_with("/tmp/g/a.txt\n/tmp/g/b.txt\n"),
+        "{starred}"
+    );
+    assert!(!starred.contains(".hide"), "{starred}");
+    assert!(starred.contains("/tmp/g/keep:\n"), "{starred}");
+    assert_eq!(ok(&mut c, "ls -d /tmp/g/.*"), "/tmp/g/.hide\n");
+}
+
+/// Permissions have to bite: a mode the world stores is a mode a read obeys.
+#[test]
+fn permissions_are_enforced_and_ownership_is_real() {
+    let mut c = machine();
+    assert_eq!(ok(&mut c, "umask"), "0022\n");
+    ok(&mut c, "umask 077");
+    ok(&mut c, "echo secret > /tmp/private");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/private"), "600\n");
+    ok(&mut c, "mkdir /tmp/privdir");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/privdir"), "700\n");
+    assert_eq!(ok(&mut c, "umask -S"), "u=rwx,g=,o=\n");
+    ok(&mut c, "umask 022");
+    // A file another user cannot read fails to read, with the real message.
+    ok(&mut c, "echo mine > /tmp/mine; chmod 600 /tmp/mine");
+    let r = run(&mut c, "sudo -u other cat /tmp/mine");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stderr.contains("permission denied"), "{}", r.stderr);
+    // root is not stopped by a mode.
+    assert_eq!(ok(&mut c, "sudo cat /tmp/mine"), "mine\n");
+    // chmod is observable through stat and ls alike.
+    ok(&mut c, "chmod u+x,go=r /tmp/mine");
+    assert_eq!(ok(&mut c, "stat -c %A /tmp/mine"), "-rwxr--r--\n");
+    // chown needs root; chgrp is the owner's to give.
+    assert_eq!(run(&mut c, "chown other /tmp/mine").exit_code, 1);
+    ok(&mut c, "sudo chown other:staff /tmp/mine");
+    assert_eq!(ok(&mut c, "stat -c '%U %G' /tmp/mine"), "other staff\n");
+    ok(&mut c, "sudo chown -R user:user /tmp/privdir");
+    assert_eq!(ok(&mut c, "stat -c '%U %G' /tmp/privdir"), "user user\n");
+    ok(&mut c, "echo g > /tmp/privdir/inner");
+    ok(&mut c, "chgrp users /tmp/privdir/inner");
+    assert_eq!(ok(&mut c, "stat -c %G /tmp/privdir/inner"), "users\n");
+    // A directory without the execute bit cannot be walked into.
+    ok(&mut c, "sudo mkdir /tmp/closed; sudo chmod 700 /tmp/closed");
+    ok(&mut c, "sudo sh -c 'echo inside > /tmp/closed/f'");
+    assert_eq!(run(&mut c, "cat /tmp/closed/f").exit_code, 1);
+    refused(
+        &mut c,
+        "chmod --reference=/tmp/mine /tmp/private",
+        "--reference",
+    );
 }
 
 #[test]
@@ -211,8 +348,28 @@ fn stat_reports_the_vfs_and_formats_it() {
         "1789635600\n"
     );
     assert_eq!(run(&mut c, "stat /nope").exit_code, 1);
-    refused(&mut c, "stat -f /home/user", "-f");
+    // Access, modification and change are three separate fields now.
+    ok(
+        &mut c,
+        "touch -a -d 2026-09-18T10:00:00 /home/user/proj/a.txt",
+    );
+    assert_eq!(
+        ok(&mut c, "stat -c '%X %Y' /home/user/proj/a.txt"),
+        "1789725600 1789635600\n"
+    );
+    // The group is its own column, and %N spells a symlink out.
+    assert_eq!(ok(&mut c, "stat -c %G /home/user/proj/a.txt"), "user\n");
+    assert_eq!(
+        ok(&mut c, "stat -c %N /home/user/link"),
+        "'/home/user/link' -> '/home/user/proj/a.txt'\n"
+    );
+    // -f describes the filesystem, not the file.
+    let fs = ok(&mut c, "stat -f /home/user");
+    assert!(fs.contains("Block size: 4096"), "{fs}");
+    assert!(fs.contains("Namelen: 255"), "{fs}");
+    assert_eq!(ok(&mut c, "stat -f -c %T /home/user"), "ext2/ext3\n");
     refused(&mut c, "stat -c %Q /home/user", "%Q");
+    refused(&mut c, "stat -f -c %Q /home/user", "%Q");
     refused(&mut c, "stat", "missing operand");
 }
 
@@ -411,16 +568,180 @@ fn text_utilities_refuse_what_they_cannot_do() {
     assert_eq!(run(&mut c, "mkdir /home/user/proj").exit_code, 1);
     assert_eq!(run(&mut c, "mkdir /tmp/a/b/c").exit_code, 1);
     assert_eq!(ok(&mut c, "mkdir -p /tmp/a/b/c; ls /tmp/a/b"), "c\n");
-    refused(&mut c, "mkdir -m 755 /tmp/x", "-m");
-    refused(&mut c, "rm -i /home/user/proj/a.txt", "-i");
-    refused(&mut c, "cp -a /home/user/proj /tmp/copy", "-a");
+    ok(&mut c, "mkdir -m 700 /tmp/locked");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/locked"), "700\n");
     refused(&mut c, "touch -t 1 /tmp/x", "-t");
     refused(&mut c, "touch --time=access /tmp/x", "--time");
     assert_eq!(run(&mut c, "cp /home/user/proj /tmp/copy").exit_code, 1);
     ok(&mut c, "cp -r /home/user/proj /tmp/copy");
     assert_eq!(ok(&mut c, "cat /tmp/copy/sub/b.txt"), "hi\n");
-    // find already refuses unknown predicates; the matrix says so.
-    refused(&mut c, "find /home/user -newer /tmp", "-newer");
+    refused(&mut c, "cp --bogus a b", "--bogus");
+    refused(&mut c, "rm --bogus a", "--bogus");
+}
+
+/// The consumer's own report asked for these by name: the copy/move/remove flag set,
+/// the classifier, and a listing that says what every entry *is* in one call.
+#[test]
+fn copy_move_remove_follow_coreutils() {
+    let mut c = machine();
+    ok(&mut c, "mkdir -p /tmp/d");
+    ok(&mut c, "echo one > /tmp/one.txt");
+    // Copying into an existing directory keeps the name.
+    ok(&mut c, "cp /tmp/one.txt /tmp/d");
+    assert_eq!(ok(&mut c, "cat /tmp/d/one.txt"), "one\n");
+    // -n and -i both decline an existing destination; -f replaces it.
+    ok(&mut c, "echo two > /tmp/two.txt");
+    ok(&mut c, "cp -n /tmp/two.txt /tmp/d/one.txt");
+    assert_eq!(ok(&mut c, "cat /tmp/d/one.txt"), "one\n");
+    ok(&mut c, "cp -i /tmp/two.txt /tmp/d/one.txt");
+    assert_eq!(ok(&mut c, "cat /tmp/d/one.txt"), "one\n");
+    ok(&mut c, "cp -f /tmp/two.txt /tmp/d/one.txt");
+    assert_eq!(ok(&mut c, "cat /tmp/d/one.txt"), "two\n");
+    // -v names both sides; -t puts the directory first; -T forbids the directory rule.
+    assert_eq!(
+        ok(&mut c, "cp -v /tmp/one.txt /tmp/copy1.txt"),
+        "'/tmp/one.txt' -> '/tmp/copy1.txt'\n"
+    );
+    ok(&mut c, "cp -t /tmp/d /tmp/one.txt /tmp/two.txt");
+    assert_eq!(ok(&mut c, "cat /tmp/d/two.txt"), "two\n");
+    ok(&mut c, "mkdir -p /tmp/e");
+    ok(&mut c, "cp -rT /tmp/d /tmp/e");
+    assert_eq!(ok(&mut c, "cat /tmp/e/two.txt"), "two\n");
+    // -p carries the mode and the timestamps.
+    ok(&mut c, "chmod 641 /tmp/one.txt");
+    ok(&mut c, "touch -d 2026-09-19T08:00:00 /tmp/one.txt");
+    ok(&mut c, "cp -p /tmp/one.txt /tmp/kept.txt");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/kept.txt"), "641\n");
+    assert_eq!(
+        ok(&mut c, "stat -c %y /tmp/kept.txt"),
+        "2026-09-19 08:00:00.000000000 +0000\n"
+    );
+    // A directory without -r is refused with the real message.
+    let r = run(&mut c, "cp /tmp/d /tmp/f");
+    assert_eq!(r.exit_code, 1);
+    assert!(
+        r.stderr.contains("-r not specified; omitting directory"),
+        "{}",
+        r.stderr
+    );
+    // -a keeps a symlink a symlink.
+    ok(&mut c, "ln -s /tmp/one.txt /tmp/d/alias");
+    ok(&mut c, "cp -a /tmp/d /tmp/archive");
+    assert_eq!(
+        ok(&mut c, "stat -c %F /tmp/archive/alias"),
+        "symbolic link\n"
+    );
+
+    // mv into a directory, across directories, and the overwrite rules.
+    ok(&mut c, "mv /tmp/copy1.txt /tmp/e");
+    assert_eq!(ok(&mut c, "cat /tmp/e/copy1.txt"), "one\n");
+    assert_eq!(
+        ok(&mut c, "mv -v /tmp/e/copy1.txt /tmp/e/renamed.txt"),
+        "renamed '/tmp/e/copy1.txt' -> '/tmp/e/renamed.txt'\n"
+    );
+    ok(&mut c, "mkdir -p /tmp/target");
+    let r = run(&mut c, "mv /tmp/e/renamed.txt /tmp/target");
+    assert_eq!(r.exit_code, 0, "{}", r.stderr);
+    ok(&mut c, "echo x > /tmp/plain");
+    let r = run(&mut c, "mv /tmp/plain /tmp/target");
+    assert_eq!(r.exit_code, 0, "{}", r.stderr);
+    ok(&mut c, "echo y > /tmp/other");
+    let r = run(&mut c, "mv -T /tmp/other /tmp/target");
+    assert_eq!(r.exit_code, 1);
+    assert!(
+        r.stderr.contains("cannot overwrite directory"),
+        "{}",
+        r.stderr
+    );
+    ok(&mut c, "mv -n /tmp/other /tmp/target/plain");
+    assert_eq!(ok(&mut c, "cat /tmp/target/plain"), "x\n");
+
+    // rm: a directory needs -r or -d, and -v says what went.
+    let r = run(&mut c, "rm /tmp/target");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stderr.contains("Is a directory"), "{}", r.stderr);
+    ok(&mut c, "mkdir -p /tmp/empty");
+    assert_eq!(ok(&mut c, "rm -dv /tmp/empty"), "removed '/tmp/empty'\n");
+    let r = run(&mut c, "rm -d /tmp/target");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stderr.contains("Directory not empty"), "{}", r.stderr);
+    ok(&mut c, "rm -r /tmp/target");
+    assert_eq!(run(&mut c, "test -e /tmp/target").exit_code, 1);
+    // -i removes nothing, because a prompt at end of input answers no.
+    ok(&mut c, "echo keep > /tmp/keep");
+    ok(&mut c, "rm -i /tmp/keep");
+    assert_eq!(ok(&mut c, "cat /tmp/keep"), "keep\n");
+    // A missing operand is an error unless -f said to ignore it.
+    assert_eq!(run(&mut c, "rm /tmp/nothing").exit_code, 1);
+    assert_eq!(run(&mut c, "rm -f /tmp/nothing").exit_code, 0);
+
+    // rmdir -p walks up the components the operand names, and no further.
+    ok(&mut c, "mkdir -p /tmp/a1/b1/c1");
+    ok(&mut c, "cd /tmp; rmdir -p a1/b1/c1");
+    assert_eq!(run(&mut c, "test -d /tmp/a1").exit_code, 1);
+    // A non-empty parent stops it, loudly, exactly as GNU rmdir does.
+    ok(&mut c, "mkdir -p /tmp/a2/b2");
+    ok(&mut c, "echo x > /tmp/a2/keep");
+    let r = run(&mut c, "cd /tmp; rmdir -p a2/b2");
+    assert_eq!(r.exit_code, 1);
+    assert!(r.stderr.contains("Directory not empty"), "{}", r.stderr);
+    assert_eq!(run(&mut c, "test -d /tmp/a2/b2").exit_code, 1);
+    assert_eq!(run(&mut c, "rmdir /tmp/e").exit_code, 1);
+}
+
+#[test]
+fn links_are_real_links() {
+    let mut c = machine();
+    ok(&mut c, "mkdir -p /tmp/l/sub");
+    ok(&mut c, "echo body > /tmp/l/file");
+    // A hard link shares the inode and the bytes.
+    ok(&mut c, "ln /tmp/l/file /tmp/l/hard");
+    assert_eq!(
+        ok(&mut c, "stat -c %i /tmp/l/file"),
+        ok(&mut c, "stat -c %i /tmp/l/hard")
+    );
+    assert_eq!(ok(&mut c, "stat -c %h /tmp/l/file"), "2\n");
+    // -s, -f and the directory rule.
+    ok(&mut c, "ln -s /tmp/l/file /tmp/l/soft");
+    assert_eq!(ok(&mut c, "readlink /tmp/l/soft"), "/tmp/l/file\n");
+    assert_eq!(run(&mut c, "ln -s /tmp/l/file /tmp/l/soft").exit_code, 1);
+    ok(&mut c, "ln -sf /tmp/l/hard /tmp/l/soft");
+    assert_eq!(ok(&mut c, "readlink /tmp/l/soft"), "/tmp/l/hard\n");
+    ok(&mut c, "ln -s /tmp/l/file /tmp/l/sub");
+    assert_eq!(ok(&mut c, "readlink /tmp/l/sub/file"), "/tmp/l/file\n");
+    // -r writes the target relative to the link's own directory.
+    ok(&mut c, "ln -sr /tmp/l/file /tmp/l/sub/rel");
+    assert_eq!(ok(&mut c, "readlink /tmp/l/sub/rel"), "../file\n");
+    assert_eq!(ok(&mut c, "cat /tmp/l/sub/rel"), "body\n");
+    // -n/-T replace a link to a directory rather than writing inside it.
+    ok(&mut c, "ln -s /tmp/l/sub /tmp/l/subalias");
+    ok(&mut c, "ln -sfn /tmp/l/hard /tmp/l/subalias");
+    assert_eq!(ok(&mut c, "readlink /tmp/l/subalias"), "/tmp/l/hard\n");
+    ok(&mut c, "ln -s /tmp/l/sub /tmp/l/alias2");
+    ok(&mut c, "ln -sfT /tmp/l/file /tmp/l/alias2");
+    assert_eq!(ok(&mut c, "readlink /tmp/l/alias2"), "/tmp/l/file\n");
+    assert_eq!(run(&mut c, "ln /tmp/l /tmp/dirlink").exit_code, 1);
+    assert_eq!(ok(&mut c, "realpath /tmp/l/soft"), "/tmp/l/hard\n");
+}
+
+#[test]
+fn truncate_and_install_set_size_and_mode() {
+    let mut c = machine();
+    ok(&mut c, "truncate -s 5 /tmp/t");
+    assert_eq!(ok(&mut c, "stat -c %s /tmp/t"), "5\n");
+    ok(&mut c, "truncate -s +3 /tmp/t");
+    assert_eq!(ok(&mut c, "stat -c %s /tmp/t"), "8\n");
+    ok(&mut c, "truncate -s 2K /tmp/t");
+    assert_eq!(ok(&mut c, "stat -c %s /tmp/t"), "2048\n");
+    ok(&mut c, "truncate -s 0 /tmp/t");
+    assert_eq!(ok(&mut c, "stat -c %s /tmp/t"), "0\n");
+    refused(&mut c, "truncate /tmp/t", "-s");
+    ok(&mut c, "echo prog > /tmp/prog");
+    ok(&mut c, "install -m 755 -D /tmp/prog /tmp/bin/prog");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/bin/prog"), "755\n");
+    assert_eq!(ok(&mut c, "cat /tmp/bin/prog"), "prog\n");
+    ok(&mut c, "install -d -m 700 /tmp/private");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/private"), "700\n");
 }
 
 #[test]
@@ -466,6 +787,26 @@ fn every_documented_command_resolves() {
         "python3",
         "python",
         "node",
+        "chown",
+        "chgrp",
+        "umask",
+        "truncate",
+        "install",
+        "readlink",
+        "realpath",
+        "rmdir",
+        "trash",
+        "trash-list",
+        "trash-restore",
+        "trash-empty",
+        "gio",
+        "tar",
+        "gzip",
+        "gunzip",
+        "zcat",
+        "zip",
+        "unzip",
+        "rsync",
     ] {
         assert_eq!(
             ok(&mut c, &format!("which {name}")),
@@ -1517,4 +1858,286 @@ fn git_diff_separates_the_index_from_the_worktree() {
         unstaged.contains("-staged") && unstaged.contains("+working"),
         "{unstaged:?}"
     );
+}
+
+/// The published `find` matrix: every predicate row, exercised through the shell.
+#[test]
+fn find_applies_every_documented_predicate() {
+    let mut c = machine();
+    ok(&mut c, "mkdir -p /home/user/tree/a/b");
+    ok(&mut c, "printf '0123456789' > /home/user/tree/ten.txt");
+    ok(&mut c, "echo '' > /home/user/tree/a/one.md");
+    ok(&mut c, "touch /home/user/tree/a/b/empty.txt");
+    ok(&mut c, "chmod 750 /home/user/tree/a");
+    ok(&mut c, "ln -s ../ten.txt /home/user/tree/a/alias");
+    let lines = |out: String| {
+        let mut v: Vec<String> = out.lines().map(String::from).collect();
+        v.sort();
+        v
+    };
+    assert_eq!(
+        lines(ok(&mut c, "find /home/user/tree -name '*.txt'")),
+        ["/home/user/tree/a/b/empty.txt", "/home/user/tree/ten.txt"]
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -iname 'TEN.TXT'"),
+        "/home/user/tree/ten.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -path '*/a/b/*'"),
+        "/home/user/tree/a/b/empty.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -regex '.*/ten[.]txt'"),
+        "/home/user/tree/ten.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -type l"),
+        "/home/user/tree/a/alias\n"
+    );
+    assert_eq!(
+        lines(ok(&mut c, "find /home/user/tree -type d")),
+        [
+            "/home/user/tree",
+            "/home/user/tree/a",
+            "/home/user/tree/a/b"
+        ]
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -type f -size +5c"),
+        "/home/user/tree/ten.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -type f -size -1c"),
+        "/home/user/tree/a/b/empty.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -perm 750"),
+        "/home/user/tree/a\n"
+    );
+    assert_eq!(
+        lines(ok(&mut c, "find /home/user/tree -type d -perm -0050")),
+        [
+            "/home/user/tree",
+            "/home/user/tree/a",
+            "/home/user/tree/a/b"
+        ],
+        "-MODE means every one of these bits"
+    );
+    assert_eq!(
+        lines(ok(&mut c, "find /home/user/tree -type d -perm /0005")),
+        ["/home/user/tree", "/home/user/tree/a/b"],
+        "/MODE means any of these bits, and 0750 has none of them"
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -type f -empty"),
+        "/home/user/tree/a/b/empty.txt\n"
+    );
+    assert_eq!(
+        lines(ok(
+            &mut c,
+            "find /home/user/tree -user user -maxdepth 1 -mindepth 1"
+        )),
+        ["/home/user/tree/a", "/home/user/tree/ten.txt"]
+    );
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -group user -name ten.txt"),
+        "/home/user/tree/ten.txt\n"
+    );
+    // Time predicates measure back from the world clock.
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -name ten.txt -mmin -1"),
+        "/home/user/tree/ten.txt\n"
+    );
+    // Tick 0 *is* the epoch, so an older stamp cannot exist; move forward instead.
+    ok(
+        &mut c,
+        "touch -d 2026-09-20T09:00:00 /home/user/tree/ten.txt",
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "find /home/user/tree -name ten.txt -newermt 2026-09-19"
+        ),
+        "/home/user/tree/ten.txt\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "find /home/user/tree -name ten.txt -newermt 2026-09-21"
+        ),
+        ""
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "find /home/user/tree -name ten.txt -newer /home/user/tree/a/one.md"
+        ),
+        "/home/user/tree/ten.txt\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "find /home/user/tree -name one.md -newer /home/user/tree/ten.txt"
+        ),
+        ""
+    );
+    // Operators, grouping and -prune.
+    assert_eq!(
+        lines(ok(
+            &mut c,
+            "find /home/user/tree \\( -name '*.md' -o -name '*.txt' \\) -a -type f"
+        )),
+        [
+            "/home/user/tree/a/b/empty.txt",
+            "/home/user/tree/a/one.md",
+            "/home/user/tree/ten.txt"
+        ]
+    );
+    assert_eq!(
+        lines(ok(&mut c, "find /home/user/tree -type f ! -name '*.txt'")),
+        ["/home/user/tree/a/one.md"]
+    );
+    let pruned = ok(
+        &mut c,
+        "find /home/user/tree -name b -prune -o -type f -print",
+    );
+    assert!(!pruned.contains("empty.txt"), "{pruned}");
+    // Actions.
+    assert_eq!(
+        ok(
+            &mut c,
+            "find /home/user/tree -name ten.txt -printf '%f %s %y\\n'"
+        ),
+        "ten.txt 10 f\n"
+    );
+    assert!(ok(&mut c, "find /home/user/tree -name ten.txt -ls").contains("ten.txt"));
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -name ten.txt -print0"),
+        "/home/user/tree/ten.txt\0"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "find /home/user/tree -type f -name '*.md' -exec cat {} \\;"
+        ),
+        "\n"
+    );
+    assert_eq!(
+        ok(
+            &mut c,
+            "find /home/user/tree -type f -name '*.txt' -exec echo {} +"
+        )
+        .lines()
+        .count(),
+        1
+    );
+    ok(&mut c, "find /home/user/tree/a/b -delete");
+    assert_eq!(run(&mut c, "test -d /home/user/tree/a/b").exit_code, 1);
+    // `-quit` is an action, so the implicit `-print` is not added: ask for it.
+    assert_eq!(ok(&mut c, "find /home/user/tree -type f -quit"), "");
+    assert_eq!(
+        ok(&mut c, "find /home/user/tree -type f -print -quit")
+            .lines()
+            .count(),
+        1
+    );
+    // Refusals stay loud.
+    refused(&mut c, "find /home/user -bogus", "-bogus");
+    refused(&mut c, "find /home/user -name", "missing argument");
+    refused(&mut c, "find /home/user -type s", "-type");
+    refused(&mut c, "find /home/user -printf '%Q'", "%Q");
+    assert_eq!(run(&mut c, "find /no/such/root").exit_code, 1);
+}
+
+/// Archives carry real format bytes, and a round trip returns the same tree.
+#[test]
+fn archives_round_trip_through_real_container_bytes() {
+    let mut c = machine();
+    ok(&mut c, "mkdir -p /tmp/src/sub");
+    ok(&mut c, "echo alpha > /tmp/src/a.txt");
+    ok(&mut c, "echo beta > /tmp/src/sub/b.txt");
+    ok(&mut c, "chmod 750 /tmp/src/a.txt");
+    ok(&mut c, "ln -s a.txt /tmp/src/alias");
+    // tar: an extract restores bytes, mode and links.
+    ok(&mut c, "tar -cf /tmp/src.tar -C /tmp src");
+    assert!(ok(&mut c, "tar -tf /tmp/src.tar").contains("src/sub/b.txt"));
+    ok(
+        &mut c,
+        "mkdir -p /tmp/out; tar -xf /tmp/src.tar -C /tmp/out",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/out/src/sub/b.txt"), "beta\n");
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/out/src/a.txt"), "750\n");
+    assert_eq!(ok(&mut c, "readlink /tmp/out/src/alias"), "a.txt\n");
+    // --strip-components drops leading path elements.
+    ok(
+        &mut c,
+        "mkdir -p /tmp/flat; tar -xf /tmp/src.tar -C /tmp/flat --strip-components=1",
+    );
+    assert_eq!(ok(&mut c, "cat /tmp/flat/a.txt"), "alpha\n");
+    // -z goes through a real gzip member.
+    ok(&mut c, "tar -czf /tmp/src.tgz -C /tmp src");
+    ok(&mut c, "mkdir -p /tmp/gz; tar -xzf /tmp/src.tgz -C /tmp/gz");
+    assert_eq!(ok(&mut c, "cat /tmp/gz/src/a.txt"), "alpha\n");
+    // gzip / gunzip / zcat.
+    ok(&mut c, "echo payload > /tmp/p.txt");
+    ok(&mut c, "gzip -k /tmp/p.txt");
+    assert_eq!(ok(&mut c, "zcat /tmp/p.txt.gz"), "payload\n");
+    ok(&mut c, "rm /tmp/p.txt; gunzip /tmp/p.txt.gz");
+    assert_eq!(ok(&mut c, "cat /tmp/p.txt"), "payload\n");
+    // zip / unzip.
+    ok(&mut c, "zip -r /tmp/src.zip /tmp/src");
+    let listing = ok(&mut c, "unzip -l /tmp/src.zip");
+    assert!(listing.contains("a.txt"), "{listing}");
+    ok(
+        &mut c,
+        "mkdir -p /tmp/unz; unzip -o -d /tmp/unz /tmp/src.zip",
+    );
+    assert_eq!(run(&mut c, "test -e /tmp/unz/tmp/src/a.txt").exit_code, 0);
+    // rsync, local only.
+    ok(&mut c, "mkdir -p /tmp/dst");
+    ok(&mut c, "rsync -a /tmp/src/ /tmp/dst");
+    assert_eq!(ok(&mut c, "cat /tmp/dst/sub/b.txt"), "beta\n");
+    ok(&mut c, "echo stale > /tmp/dst/stale.txt");
+    ok(&mut c, "rsync -a --delete /tmp/src/ /tmp/dst");
+    assert_eq!(run(&mut c, "test -e /tmp/dst/stale.txt").exit_code, 1);
+    ok(&mut c, "echo again > /tmp/dst/again.txt");
+    ok(&mut c, "rsync -an --delete /tmp/src/ /tmp/dst");
+    assert_eq!(run(&mut c, "test -e /tmp/dst/again.txt").exit_code, 0);
+    refused(&mut c, "rsync -a /tmp/src/ host:/tmp/dst", "host:");
+    refused(&mut c, "tar -cjf /tmp/x.tbz /tmp/src", "-j");
+    refused(&mut c, "gzip --bogus /tmp/p.txt", "--bogus");
+    refused(&mut c, "unzip --bogus /tmp/src.zip", "--bogus");
+}
+
+/// The trash, from the shell: delete by mistake, then get it back.
+#[test]
+fn the_trash_keeps_a_restorable_record() {
+    let mut c = machine();
+    ok(&mut c, "trash /home/user/proj/a.txt");
+    assert_eq!(run(&mut c, "test -e /home/user/proj/a.txt").exit_code, 1);
+    assert_eq!(
+        ok(
+            &mut c,
+            "cat /home/user/.local/share/Trash/info/a.txt.trashinfo"
+        ),
+        "[Trash Info]\nPath=/home/user/proj/a.txt\nDeletionDate=2026-09-17T09:00:00\n"
+    );
+    assert_eq!(
+        ok(&mut c, "trash-list"),
+        "2026-09-17 09:00:00 /home/user/proj/a.txt\n"
+    );
+    assert_eq!(
+        ok(&mut c, "trash-restore /home/user/proj/a.txt"),
+        "restored '/home/user/proj/a.txt'\n"
+    );
+    assert_eq!(
+        ok(&mut c, "cat /home/user/proj/a.txt"),
+        "alpha\nbeta\ngamma\n"
+    );
+    ok(&mut c, "trash /home/user/proj/a.txt");
+    ok(&mut c, "trash-empty");
+    assert_eq!(ok(&mut c, "trash-list"), "");
+    refused(&mut c, "trash-empty 30", "age operand");
+    refused(&mut c, "gio open /tmp", "gio");
 }

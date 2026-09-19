@@ -1,11 +1,15 @@
 //! Pure, serializable computer substrate. No host filesystem, clock, or process access.
+pub mod archive;
 pub mod debug;
+pub mod files;
+pub mod find;
 pub mod git;
 pub mod packages;
 pub mod process;
 pub mod runtimes;
 pub mod shell;
 mod sqlite;
+pub mod trash;
 pub mod vfs;
 use cw_protocol::{HttpRequest, HttpResponse};
 pub use packages::*;
