@@ -312,8 +312,9 @@ pub(crate) fn mv(c: &mut Computer, args: &[String], _t: u64) -> Result<String, F
 
 /// `rm`. A directory needs `-r` (any depth) or `-d` (empty only); without either the
 /// refusal is the real one, so a consumer learns the rule instead of losing a tree.
-pub(crate) fn rm(c: &mut Computer, cmd: &str, args: &[String]) -> Result<String, Fail> {
-    let powershell = cmd == "remove-item";
+pub(crate) fn rm(c: &mut Computer, args: &[String]) -> Result<String, Fail> {
+    // PowerShell's `Remove-Item -Recurse -Force` is the same command under another
+    // spelling; the switches are translated before the options are parsed.
     let (opts, paths) = options(
         "rm",
         &crate::shell::powershell_switches(args),
@@ -328,7 +329,7 @@ pub(crate) fn rm(c: &mut Computer, cmd: &str, args: &[String]) -> Result<String,
             ("one-file-system", 'I'),
         ],
     )?;
-    let recursive = flag(&opts, 'r') || flag(&opts, 'R') || powershell && flag(&opts, 'r');
+    let recursive = flag(&opts, 'r') || flag(&opts, 'R');
     let force = flag(&opts, 'f');
     if paths.is_empty() {
         if force {
@@ -920,7 +921,7 @@ pub(crate) fn readlink(c: &Computer, cmd: &str, args: &[String]) -> Result<Strin
             continue;
         }
         let resolved = canonicalize(c, &path)?;
-        if !flag(&opts, 'm') && !c.vfs.lstat(&resolved).is_ok() && !c.vfs.exists(&resolved) {
+        if !flag(&opts, 'm') && c.vfs.lstat(&resolved).is_err() {
             return Err(format!("{p}: No such file or directory").into());
         }
         out.push_str(&format!("{resolved}\n"));

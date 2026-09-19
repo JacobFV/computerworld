@@ -2875,7 +2875,7 @@ fn run(
         }
         "cp" | "copy-item" => crate::files::cp(c, &powershell_switches(args), t),
         "mv" | "move-item" => crate::files::mv(c, &powershell_switches(args), t),
-        "rm" | "remove-item" => crate::files::rm(c, &cmd, args),
+        "rm" | "remove-item" => crate::files::rm(c, args),
         "chmod" => cmd_chmod(c, args),
         "rmdir" => crate::files::rmdir(c, args),
         "ln" => crate::files::ln(c, args, t),
