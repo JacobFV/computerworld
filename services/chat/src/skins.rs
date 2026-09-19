@@ -49,7 +49,9 @@ fn theme(state: &ChatState, look: &Look) -> PageTheme {
     state.theme.clone().unwrap_or(PageTheme {
         accent: Some(look.accent.into()),
         background: Some(look.surface.into()),
-        surface: Some(look.sidebar.into()),
+        // Cards and forms sit on the page, in the page's ink. The sidebar and the rail set
+        // their own colour; naming it here put Slack's dark text on the sidebar's purple.
+        surface: Some(look.surface.into()),
         ink: Some(look.ink.into()),
         muted: Some(look.muted.into()),
         content_width: Some(1100),
