@@ -4,7 +4,8 @@
 //! UTF-8 text, schema format 4, no freelist and no auto-vacuum, so the file is compact
 //! and the same state always produces the same bytes. Reading walks the table B-trees
 //! of any rollback-journal database (following overflow chains) and rebuilds indexes
-//! from table contents. WITHOUT ROWID tables, triggers and UTF-16 databases are refused
+//! from table contents. WITHOUT ROWID tables are index B-trees of whole rows, primary key
+//! first; triggers are schema rows with their text. UTF-16 databases are refused
 //! by name rather than half-read.
 use crate::ast::Stmt;
 use crate::schema::{build_table, IndexOrigin, State, View};
@@ -455,13 +456,34 @@ fn layout(state: &State) -> (Pages, BTreeMap<String, u32>) {
         }
     }
     for (k, i) in &state.indexes {
-        if state.tables.get(&i.table).is_some_and(|t| !t.temp) {
+        // A WITHOUT ROWID table's primary key is the table's own B-tree.
+        if state
+            .tables
+            .get(&i.table)
+            .is_some_and(|t| !t.temp && !(t.without_rowid && i.origin == IndexOrigin::PrimaryKey))
+        {
             objects.push((i.ordinal, k.clone(), false));
         }
     }
     objects.sort();
     for (_, key, is_table) in &objects {
-        if *is_table {
+        if *is_table && state.tables[key].without_rowid {
+            // An index B-tree of whole rows, primary key columns first, in key order.
+            let t = &state.tables[key];
+            let order = t.record_columns();
+            let mut records: Vec<Vec<Value>> = t
+                .rows
+                .iter()
+                .map(|(id, s)| {
+                    let full = t.full_row(*id, s);
+                    order.iter().map(|c| full[*c].clone()).collect()
+                })
+                .collect();
+            let cols = t.pk_order.clone();
+            records.sort_by(|a, b| index_order(a, b, &cols));
+            let encoded = records.iter().map(|r| encode_record(r)).collect();
+            roots.insert(key.clone(), index_tree(&mut pages, encoded));
+        } else if *is_table {
             let t = &state.tables[key];
             let rows = t
                 .rows
@@ -479,6 +501,18 @@ fn layout(state: &State) -> (Pages, BTreeMap<String, u32>) {
         } else {
             let index = &state.indexes[key];
             let t = &state.tables[&index.table];
+            // Each entry ends with the row's key: its rowid, or for a WITHOUT ROWID
+            // table the primary key columns the index does not already hold.
+            let tail: Vec<(usize, Collation, bool)> = if t.without_rowid {
+                t.primary_key
+                    .iter()
+                    .zip(&t.pk_order)
+                    .filter(|(c, _)| !index.columns.iter().any(|ic| ic.column == **c))
+                    .map(|(c, (coll, desc))| (*c, *coll, *desc))
+                    .collect()
+            } else {
+                vec![]
+            };
             let mut entries: Vec<Vec<Value>> = t
                 .rows
                 .iter()
@@ -489,7 +523,11 @@ fn layout(state: &State) -> (Pages, BTreeMap<String, u32>) {
                         .iter()
                         .map(|c| full[c.column].clone())
                         .collect();
-                    e.push(Value::Integer(*id));
+                    if t.without_rowid {
+                        e.extend(tail.iter().map(|(c, _, _)| full[*c].clone()));
+                    } else {
+                        e.push(Value::Integer(*id));
+                    }
                     e
                 })
                 .collect();
@@ -498,7 +536,11 @@ fn layout(state: &State) -> (Pages, BTreeMap<String, u32>) {
                 .iter()
                 .map(|c| (c.collation, c.desc))
                 .collect();
-            cols.push((Collation::Binary, false));
+            if t.without_rowid {
+                cols.extend(tail.iter().map(|(_, coll, desc)| (*coll, *desc)));
+            } else {
+                cols.push((Collation::Binary, false));
+            }
             entries.sort_by(|a, b| index_order(a, b, &cols));
             let records = entries.iter().map(|e| encode_record(e)).collect();
             roots.insert(key.clone(), index_tree(&mut pages, records));
@@ -514,10 +556,14 @@ fn layout(state: &State) -> (Pages, BTreeMap<String, u32>) {
         .into_iter()
         .enumerate()
         .map(|(i, e)| {
-            let root = roots
-                .get(&e.name.to_ascii_lowercase())
-                .copied()
-                .unwrap_or(0);
+            let root = if e.kind == "table" || e.kind == "index" {
+                roots
+                    .get(&e.name.to_ascii_lowercase())
+                    .copied()
+                    .unwrap_or(0)
+            } else {
+                0
+            };
             let rec = encode_record(&[
                 Value::Text(e.kind),
                 Value::Text(e.name),
@@ -664,10 +710,57 @@ impl Reader<'_> {
                     u32::from_be_bytes(p[h + 8..h + 12].try_into().map_err(|_| malformed())?);
                 self.table_rows(right, depth + 1, out)?;
             }
-            0x0A | 0x02 => {
-                return Err(SqlError::new(
-                    "WITHOUT ROWID tables are not supported by this engine",
-                ))
+            _ => return Err(malformed()),
+        }
+        Ok(())
+    }
+    /// Every record of an index B-tree, in key order (interior cells hold records too).
+    fn index_records(
+        &self,
+        root: u32,
+        depth: usize,
+        out: &mut Vec<Vec<u8>>,
+    ) -> Result<(), SqlError> {
+        if depth > 64 {
+            return Err(malformed());
+        }
+        let p = self.page(root)?;
+        let h = if root == 1 { 100 } else { 0 };
+        let kind = p[h];
+        let n = u16::from_be_bytes([p[h + 3], p[h + 4]]) as usize;
+        let hdr = if kind == 0x02 { 12 } else { 8 };
+        let ptr = |i: usize| -> Result<usize, SqlError> {
+            let at = h + hdr + i * 2;
+            Ok(u16::from_be_bytes([
+                *p.get(at).ok_or_else(malformed)?,
+                *p.get(at + 1).ok_or_else(malformed)?,
+            ]) as usize)
+        };
+        match kind {
+            0x0A => {
+                for i in 0..n {
+                    let cell = p.get(ptr(i)?..).ok_or_else(malformed)?;
+                    let (len, a) = get_varint(cell).ok_or_else(malformed)?;
+                    out.push(self.payload(&cell[a..], len as usize, true)?);
+                }
+            }
+            0x02 => {
+                for i in 0..n {
+                    let at = ptr(i)?;
+                    let cell = p.get(at..).ok_or_else(malformed)?;
+                    let child = u32::from_be_bytes(
+                        cell.get(..4)
+                            .ok_or_else(malformed)?
+                            .try_into()
+                            .map_err(|_| malformed())?,
+                    );
+                    self.index_records(child, depth + 1, out)?;
+                    let (len, a) = get_varint(&cell[4..]).ok_or_else(malformed)?;
+                    out.push(self.payload(&cell[4 + a..], len as usize, true)?);
+                }
+                let right =
+                    u32::from_be_bytes(p[h + 8..h + 12].try_into().map_err(|_| malformed())?);
+                self.index_records(right, depth + 1, out)?;
             }
             _ => return Err(malformed()),
         }
@@ -729,7 +822,23 @@ pub fn read(bytes: &[u8]) -> Result<State, SqlError> {
                 };
                 let (mut table, indexes) = build_table(&mut state, &ct, sql.clone())?;
                 let mut rows = Vec::new();
-                reader.table_rows(*root as u32, 0, &mut rows)?;
+                if table.without_rowid {
+                    // Whole rows in primary key order, key columns first: put them
+                    // back in table order and number them for the engine.
+                    let mut records = Vec::new();
+                    reader.index_records(*root as u32, 0, &mut records)?;
+                    let order = table.record_columns();
+                    for (n, rec) in records.iter().enumerate() {
+                        let vals = decode_record(rec)?;
+                        let mut row = vec![Value::Null; table.columns.len()];
+                        for (slot, c) in order.iter().enumerate() {
+                            row[*c] = vals.get(slot).cloned().unwrap_or(Value::Null);
+                        }
+                        rows.push((n as i64 + 1, encode_record(&row)));
+                    }
+                } else {
+                    reader.table_rows(*root as u32, 0, &mut rows)?;
+                }
                 let defaults: Vec<Value> = table
                     .columns
                     .iter()
@@ -806,15 +915,23 @@ pub fn read(bytes: &[u8]) -> Result<State, SqlError> {
                     },
                 );
             }
-            "trigger" => {
-                return Err(SqlError::new(format!(
-                    "triggers are not supported by this engine (trigger {name})"
-                )))
-            }
             _ => {}
         }
     }
     for (kind, name, _, _, sql) in &entries {
+        if kind == "trigger" {
+            let Value::Text(sql) = sql else {
+                return Err(malformed());
+            };
+            let Some(Stmt::CreateTrigger(mut ct)) = crate::parser::parse(sql)?.into_iter().next()
+            else {
+                return Err(malformed());
+            };
+            ct.sql = sql.clone();
+            ct.name = name.clone();
+            crate::trigger::create(&mut state, &ct)?;
+            continue;
+        }
         if kind != "index" {
             continue;
         }
@@ -840,6 +957,43 @@ pub fn read(bytes: &[u8]) -> Result<State, SqlError> {
         .indexes
         .values()
         .all(|i| i.origin != IndexOrigin::Created || i.sql.is_some()));
+    // Objects keep the order the file's schema lists them in.
+    for (n, (kind, name, _, _, _)) in entries.iter().enumerate() {
+        let ordinal = n as u64 + 1;
+        let key = name.to_ascii_lowercase();
+        match kind.as_str() {
+            "table" => {
+                let mut without_rowid = false;
+                if let Some(t) = state.tables.get_mut(&key) {
+                    without_rowid = t.without_rowid;
+                    Arc::make_mut(t).ordinal = ordinal;
+                }
+                // Its primary key index, which has no row of its own, goes with it.
+                for i in state.indexes.values_mut() {
+                    if without_rowid && i.table == key && i.origin == IndexOrigin::PrimaryKey {
+                        Arc::make_mut(i).ordinal = ordinal;
+                    }
+                }
+            }
+            "index" => {
+                if let Some(i) = state.indexes.get_mut(&key) {
+                    Arc::make_mut(i).ordinal = ordinal;
+                }
+            }
+            "view" => {
+                if let Some(v) = state.views.get_mut(&key) {
+                    v.ordinal = ordinal;
+                }
+            }
+            "trigger" => {
+                if let Some(t) = state.triggers.get_mut(&key) {
+                    t.ordinal = ordinal;
+                }
+            }
+            _ => {}
+        }
+    }
+    state.next_ordinal = entries.len() as u64 + 1;
     Ok(state)
 }
 

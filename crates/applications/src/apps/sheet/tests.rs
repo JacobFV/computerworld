@@ -60,8 +60,20 @@ fn book(excel: bool, flavor: Flavor) -> Book {
 fn targets(b: &Book, theme: DesktopTheme, w: u32, h: u32) -> Vec<String> {
     let mut p = Painter::new(w, h);
     chrome::render(b, &mut p, &env(theme, w, h));
-    p.scene
-        .nodes
+    // A dialog covers everything painted before it: only its own controls are hit.
+    let from = if b.dialog.is_some() {
+        p.scene
+            .nodes
+            .iter()
+            .rposition(|n| {
+                n.interaction.as_deref() == Some("sheet:noop")
+                    && n.semantic.as_ref().is_some_and(|s| s.label == "Dialog")
+            })
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    p.scene.nodes[from..]
         .iter()
         .filter_map(|n| n.interaction.clone())
         .filter(|t| t.starts_with("sheet:") && !Book::drags(t))
@@ -101,6 +113,19 @@ fn states(excel: bool, flavor: Flavor) -> Vec<Book> {
         "plus",
         "filter:B",
         "sheetsformat",
+        "merge",
+        "borders",
+        "bordercolor",
+        "borderline",
+        "cf",
+        "cfhighlight",
+        "cftop",
+        "cfbars",
+        "cfscales",
+        "cficons",
+        "cfclear",
+        "pivotmenu",
+        "numbersformat",
     ];
     for m in menus {
         let mut s = base.clone();
@@ -130,9 +155,66 @@ fn states(excel: bool, flavor: Flavor) -> Vec<Book> {
     editing.command(1, "select:E1", 0, flavor).unwrap();
     editing.text("=SUM(").unwrap();
     out.push(editing);
-    let mut message = base;
+    let mut message = base.clone();
     message.message = Some("Something to say".into());
     out.push(message);
+    // Every dialog, with the grid's features in use behind them.
+    let mut featured = base.clone();
+    featured.command(1, "merge:cells", 0, flavor).unwrap();
+    featured.command(1, "dialog:ok", 0, flavor).unwrap();
+    featured.command(1, "select:B2:C4", 0, flavor).unwrap();
+    featured.command(1, "border:all", 0, flavor).unwrap();
+    featured.command(1, "cf:bar:638ec6", 0, flavor).unwrap();
+    featured.command(1, "cf:icons:3Arrows", 0, flavor).unwrap();
+    for kind in [
+        "greater",
+        "between",
+        "text",
+        "date",
+        "duplicate",
+        "top",
+        "above",
+        "formula",
+    ] {
+        let mut s = featured.clone();
+        s.command(1, &format!("cf:{kind}"), 0, flavor).unwrap();
+        out.push(s);
+    }
+    let mut manager = featured.clone();
+    manager.command(1, "cfmanage", 0, flavor).unwrap();
+    manager.command(1, "cfrule:0", 0, flavor).unwrap();
+    out.push(manager);
+    let mut ttc = featured.clone();
+    ttc.command(1, "select:A2:A4", 0, flavor).unwrap();
+    ttc.command(1, "ttc", 0, flavor).unwrap();
+    out.push(ttc);
+    let mut pivot = featured.clone();
+    pivot.command(1, "select:A1:C4", 0, flavor).unwrap();
+    pivot.command(1, "pivot:new", 0, flavor).unwrap();
+    out.push(pivot.clone());
+    pivot.command(1, "dialog:ok", 0, flavor).unwrap();
+    pivot.command(1, "pivotfield:0", 0, flavor).unwrap();
+    pivot.command(1, "pivotfield:1", 0, flavor).unwrap();
+    pivot.command(1, "pivotarea:2:filters", 0, flavor).unwrap();
+    out.push(pivot.clone());
+    let mut items = pivot.clone();
+    items.command(1, "pivotfilter:2", 0, flavor).unwrap();
+    out.push(items);
+    let mut agg = pivot.clone();
+    agg.menu = Some("pivotvalue:0".into());
+    out.push(agg);
+    let mut closed = pivot;
+    closed.command(1, "pivot:pane", 0, flavor).unwrap();
+    out.push(closed);
+    let mut drawing = featured.clone();
+    drawing.command(1, "drawborder:grid", 0, flavor).unwrap();
+    out.push(drawing);
+    let mut confirm = base;
+    confirm.command(1, "select:A1:B2", 0, flavor).unwrap();
+    confirm.command(1, "merge:center", 0, flavor).unwrap();
+    assert!(confirm.dialog.is_some(), "merging over values asks first");
+    out.push(confirm);
+    out.push(featured);
     out
 }
 
@@ -249,4 +331,29 @@ fn the_status_bar_sums_the_selection_in_the_active_cells_format() {
         chrome::stats_text(&b, Flavor::Excel),
         "Average: $4.50    Count: 4    Sum: $18.00"
     );
+}
+
+#[test]
+fn italic_cells_are_set_in_the_italic_face() {
+    let mut b = book(false, Flavor::Excel);
+    b.command(1, "select:A2", 0, Flavor::Excel).unwrap();
+    b.command(1, "italic", 0, Flavor::Excel).unwrap();
+    b.command(1, "select:A3", 0, Flavor::Excel).unwrap();
+    b.command(1, "bold", 0, Flavor::Excel).unwrap();
+    b.command(1, "italic", 0, Flavor::Excel).unwrap();
+    b.command(1, "select:D9", 0, Flavor::Excel).unwrap();
+    let mut p = Painter::new(1100, 700);
+    chrome::render(&b, &mut p, &env(DesktopTheme::Windows, 1100, 700));
+    let style = |text: &str| {
+        p.scene
+            .nodes
+            .iter()
+            .find(|n| n.painted_text() == Some(text))
+            .and_then(|n| n.primitive.text_style())
+            .unwrap_or_else(|| panic!("no cell {text}"))
+    };
+    use cw_scene::{Lang, Style};
+    assert_eq!(style("Pens"), Style::new(false, true, Lang::Auto));
+    assert_eq!(style("Ink"), Style::new(true, true, Lang::Auto));
+    assert_eq!(style("Pads"), Style::default());
 }

@@ -484,3 +484,111 @@ pub fn cursor(p: &mut Painter, x: i32, y: i32) {
         2,
     );
 }
+pub fn bus(p: &mut Painter, x: i32, y: i32) {
+    l(p, x, y, &[(2, 16), (10, 16), (10, 4), (18, 4)], BLUE, 4);
+}
+pub fn bus_entry(p: &mut Painter, x: i32, y: i32) {
+    l(p, x, y, &[(3, 2), (3, 18)], BLUE, 4);
+    l(p, x, y, &[(3, 8), (10, 15), (18, 15)], GREEN, 2);
+}
+pub fn hier_label(p: &mut Painter, x: i32, y: i32) {
+    l(
+        p,
+        x,
+        y,
+        &[(2, 10), (7, 5), (18, 5), (18, 15), (7, 15), (2, 10)],
+        AMBER,
+        2,
+    );
+}
+pub fn sheet(p: &mut Painter, x: i32, y: i32) {
+    b(p, x, y, (3, 3, 14, 14), CREAM);
+    l(
+        p,
+        x,
+        y,
+        &[(3, 3), (17, 3), (17, 17), (3, 17), (3, 3)],
+        Color::rgb(132, 0, 132),
+        2,
+    );
+    l(p, x, y, &[(6, 8), (14, 8)], DARK, 1);
+}
+pub fn sheet_pin(p: &mut Painter, x: i32, y: i32) {
+    l(
+        p,
+        x,
+        y,
+        &[(8, 2), (18, 2), (18, 18), (8, 18)],
+        Color::rgb(132, 0, 132),
+        2,
+    );
+    f(p, x, y, &[(2, 7), (8, 10), (2, 13)], AMBER);
+}
+pub fn leave_sheet(p: &mut Painter, x: i32, y: i32) {
+    l(p, x, y, &[(10, 17), (10, 4)], DARK, 2);
+    l(p, x, y, &[(5, 9), (10, 4), (15, 9)], DARK, 2);
+}
+pub fn symbol_editor(p: &mut Painter, x: i32, y: i32) {
+    add_symbol(p, x, y);
+    l(p, x, y, &[(12, 18), (19, 11)], BLUE, 2);
+}
+pub fn footprint_editor(p: &mut Painter, x: i32, y: i32) {
+    b(p, x, y, (3, 5, 5, 10), Color::rgb(200, 52, 52));
+    b(p, x, y, (12, 5, 5, 10), Color::rgb(200, 52, 52));
+    l(p, x, y, &[(12, 18), (19, 11)], BLUE, 2);
+}
+pub fn viewer3d(p: &mut Painter, x: i32, y: i32) {
+    f(p, x, y, &[(2, 8), (10, 4), (18, 8), (10, 12)], GREEN);
+    f(
+        p,
+        x,
+        y,
+        &[(2, 8), (10, 12), (10, 16), (2, 12)],
+        Color::rgb(0, 100, 0),
+    );
+    f(
+        p,
+        x,
+        y,
+        &[(10, 12), (18, 8), (18, 12), (10, 16)],
+        Color::rgb(0, 120, 0),
+    );
+}
+pub fn pad(p: &mut Painter, x: i32, y: i32) {
+    b(p, x, y, (4, 4, 12, 12), Color::rgb(200, 52, 52));
+    p.circle(x + 10, y + 10, 3, Color::rgb(40, 40, 40));
+}
+pub fn pin(p: &mut Painter, x: i32, y: i32) {
+    l(p, x, y, &[(1, 10), (13, 10)], BODY, 2);
+    p.ring(x + 15, y + 10, 3, 1, BODY);
+}
+pub fn circle(p: &mut Painter, x: i32, y: i32) {
+    p.ring(x + 10, y + 10, 7, 2, BODY);
+}
+pub fn text(p: &mut Painter, x: i32, y: i32) {
+    l(p, x, y, &[(4, 4), (16, 4)], DARK, 2);
+    l(p, x, y, &[(10, 4), (10, 17)], DARK, 2);
+}
+pub fn orbit(p: &mut Painter, x: i32, y: i32) {
+    p.ring(x + 10, y + 10, 7, 1, DARK);
+    f(p, x, y, &[(14, 1), (19, 4), (14, 7)], BLUE);
+}
+pub fn pan(p: &mut Painter, x: i32, y: i32) {
+    l(p, x, y, &[(10, 2), (10, 18)], DARK, 2);
+    l(p, x, y, &[(2, 10), (18, 10)], DARK, 2);
+    f(p, x, y, &[(10, 0), (13, 4), (7, 4)], DARK);
+    f(p, x, y, &[(10, 20), (13, 16), (7, 16)], DARK);
+}
+pub fn keepout(p: &mut Painter, x: i32, y: i32) {
+    l(
+        p,
+        x,
+        y,
+        &[(3, 3), (17, 3), (17, 17), (3, 17), (3, 3)],
+        RED,
+        2,
+    );
+    l(p, x, y, &[(3, 17), (17, 3)], RED, 1);
+    l(p, x, y, &[(3, 10), (10, 3)], RED, 1);
+    l(p, x, y, &[(10, 17), (17, 10)], RED, 1);
+}

@@ -1,6 +1,6 @@
 //! Settings. Every switch and level here is the same state the quick settings, control
 //! centre and shade read, so the two surfaces can never disagree.
-use super::look::{header, look, INK, LINE, MUTED};
+use super::look::{look, screen, INK, LINE, MUTED};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
 use cw_scene::{Color, Rect};
@@ -121,7 +121,8 @@ impl Settings {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let top = header(p, theme, &l, width, &self.title(theme));
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let top = screen.top;
         let section = self.section.min(SECTIONS.len() - 1);
         let list_w = if theme.mobile() || width < 520 {
             0
@@ -164,20 +165,21 @@ impl Settings {
         }
         let x = list_w as i32;
         let pane = width.saturating_sub(list_w);
-        let mut y = top + if list_w > 0 { 12 } else { 42 };
+        let start = top + if list_w > 0 { 0 } else { 38 };
+        // Each section keeps its own place.
+        let column = screen.column(
+            p,
+            &format!("section-{section}"),
+            Rect::new(x, start, pane, (height as i32 - start).max(1) as u32),
+        );
+        let mut y = column.top + 12;
         for switch in SECTIONS[section].1 {
             let r = Rect::new(x + 16, y, pane.saturating_sub(32), 38);
-            if r.y as u32 + 38 > height {
-                break;
-            }
             switch_row(p, &l, r, switch, env.switch(switch));
             y += 42;
         }
         if section == 1 {
             for (name, label) in LEVELS {
-                if y as u32 + 52 > height {
-                    break;
-                }
                 let level = env.level(name);
                 p.left(
                     x + 16,
@@ -197,6 +199,8 @@ impl Settings {
                 y += 54;
             }
         }
+        column.end(p);
+        screen.end(p);
     }
 }
 /// One switch row, drawn in its true position and clicking to flip the shared store.

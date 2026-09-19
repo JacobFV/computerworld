@@ -1,6 +1,6 @@
 //! Calendar backed by the `calendar` service. Events are real service records; the grid
 //! is derived from simulation time only. Nothing here invents an appointment.
-use super::look::{action, header, look, notice, FAINT, INK, LINE, MUTED};
+use super::look::{action, look, notice, screen, FAINT, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::shared::{Align, CalendarDate, MONTHS, WEEKDAYS};
 use crate::desktop_scene::{DesktopTheme, Painter};
@@ -429,14 +429,25 @@ impl Calendar {
         p.scene.background = l.surface;
         let date = self.cursor_date();
         let title = format!("{} {}", date.month_name(), date.year);
-        let mut top = header(p, theme, &l, width, &title);
+        let screen = screen(p, theme, &l, width, height as i32, &title);
+        let mut top = screen.top;
         // Toolbar: every control here moves real state.
         let bar = 38;
         p.box_(Rect::new(0, top, width, bar), l.chrome, 0);
         p.hline(0, top + bar as i32, width, LINE);
         // The New event button owns the right end; chips stop before it rather than
         // overlapping it on a narrow screen.
-        let limit = width as i32 - 116;
+        // A phone has no room for the word "Reload": it wears the refresh symbol at the
+        // right of the toolbar instead, as the phone calendars do, and the chips that
+        // flow from the left stop before it.
+        // A phone adds an event with a "+", as its calendar does; a desktop names it.
+        let mut limit = width as i32 - if theme.mobile() { 50 } else { 116 };
+        if theme.mobile() {
+            let r = Rect::new(limit - 34, top + 6, 30, 26);
+            p.button(r, Color::TRANSPARENT, l.radius, "cal:reload", "Reload");
+            p.symbol("reload", r.x + 7, r.y + 5, 16, INK);
+            limit -= 38;
+        }
         let mut x = 8;
         for (target, label) in [
             ("cal:prev", "‹"),
@@ -446,6 +457,9 @@ impl Calendar {
             ("cal:day", "Day"),
             ("cal:reload", "Reload"),
         ] {
+            if theme.mobile() && target == "cal:reload" {
+                continue;
+            }
             let w = p.measure(label, 12, false) + 22;
             if x + w as i32 > limit {
                 break;
@@ -472,17 +486,37 @@ impl Calendar {
             );
             x += w as i32 + 4;
         }
-        let new = Rect::new(width as i32 - 106, top + 6, 96, 26);
-        action(p, &l, new, "New event", "cal:new", true);
+        if theme.mobile() {
+            let new = Rect::new(width as i32 - 42, top + 4, 32, 30);
+            p.button(new, Color::TRANSPARENT, l.radius, "cal:new", "New event");
+            p.symbol("plus", new.x + 7, new.y + 7, 18, l.accent);
+        } else {
+            let new = Rect::new(width as i32 - 106, top + 6, 96, 26);
+            action(p, &l, new, "New event", "cal:new", true);
+        }
         top += bar as i32 + 1;
         if let Some(text) = self.status.notice() {
             notice(p, width, top + 10, text);
             top += 30;
         }
         match self.view {
-            View::Month => self.month(p, theme, &l, width, height, top, date),
-            View::Day => self.day(p, &l, width, height, top),
+            View::Month => {
+                // Sized to the window as it would be unscrolled, so the grid keeps its
+                // size while a phone scrolls it.
+                let rest = height.saturating_sub((top + screen.offset()).max(0) as u32);
+                self.month(p, theme, &l, width, rest, top, date)
+            }
+            View::Day => {
+                let list = screen.column(
+                    p,
+                    "day",
+                    Rect::new(0, top, width, (height as i32 - top).max(1) as u32),
+                );
+                self.day(p, &l, width, list.top);
+                list.end(p);
+            }
         }
+        screen.end(p);
         if let Some(draft) = &self.draft {
             self.composer(p, &l, width, height, draft);
         }
@@ -494,7 +528,7 @@ impl Calendar {
         theme: DesktopTheme,
         l: &super::look::Look,
         width: u32,
-        height: u32,
+        room: u32,
         top: i32,
         date: CalendarDate,
     ) {
@@ -525,7 +559,7 @@ impl Calendar {
         let first_day = self.cursor_day as i64 - (date.day as i64 - 1);
         let lead = date.first_weekday;
         let rows = (lead + date.days_in_month).div_ceil(7).max(1);
-        let body = height.saturating_sub((top + head) as u32 + 2);
+        let body = room.saturating_sub(head as u32 + 2);
         let cell_h = (body / rows as u32).max(28);
         let today = self.cursor_day;
         for slot in 0..(rows * 7) {
@@ -610,7 +644,7 @@ impl Calendar {
             }
         }
     }
-    fn day(&self, p: &mut Painter, l: &super::look::Look, width: u32, height: u32, top: i32) {
+    fn day(&self, p: &mut Painter, l: &super::look::Look, width: u32, top: i32) {
         let date = self.cursor_date();
         p.strong(
             14,
@@ -627,9 +661,6 @@ impl Calendar {
             return;
         }
         for event in events {
-            if y as u32 + l.row > height {
-                break;
-            }
             let r = Rect::new(8, y, width.saturating_sub(16), l.row);
             let selected = self.selected.as_deref() == Some(event.id.as_str());
             p.button(

@@ -159,7 +159,7 @@ every replay.
 | `systemctl` / `service` | `start stop restart status` | `enable` `disable` `daemon-reload` | modelled against the process table and the service adapter |
 | `apt` / `apt-get` / `brew` / `winget` / `pip` / `npm` | `install`, `remove`/`uninstall`, `list` | `update` `upgrade` `search` | modelled against the package manager, offline |
 | `curl` / `wget` | `-X -d --data --data-raw -H -o -f` | `-L` `-s` `-I` `-u` | modelled against the network adapter |
-| `git` | see `crates/computer/src/git.rs` | — | modelled, content-addressed |
+| `git` | `init`, `clone`, `add [-A] PATH…`, `status`, `commit -m MSG` (`-a`/`-am`), `log`, `diff [--staged\|--cached]`, `reset [--soft\|--mixed\|--hard] [REV] [--] [PATH…]`, `restore [--staged] [--worktree] [--source=REV] PATH…`, `checkout`/`switch [-b\|-c] BRANCH`, `checkout -- PATH…`, `branch [NAME]`, `remote [add NAME URL]`, `fetch`, `pull`, `push`, `config KEY [VALUE]`, `-C DIR` | every other subcommand and flag, refused by name | modelled, content-addressed (`crates/computer/src/git.rs`): objects, refs and the index are the repository's own state under `.git/state.json`, and the worktree is the machine's files. See *git* below |
 | `sqlite3` | `[OPTIONS] [FILE [SQL…]]`; SQL and dot-commands on stdin (pipe, heredoc, `<`); `-header -noheader -csv -column -list -line -json -box -table -markdown -tabs -quote -html -ascii -separator SEP -newline SEP -nullvalue TEXT -cmd CMD -init FILE -bail -echo -version -help`; `-batch -readonly -safe` accepted and inert | every other option, refused by name with status `2`; an interactive prompt | modelled: the `cw-sql` engine over the VFS, reading and writing real SQLite 3 files; see *sqlite3* below |
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
@@ -167,6 +167,27 @@ every replay.
 | `node` / `nodejs` | `FILE [ARG…]` (`.js`, `.cjs`, `.mjs`), `-e` / `--eval`, `-p` / `--print`, `-c` / `--check`, `-r` / `--require`, `--input-type=module`, `--stack-trace-limit=N`, `-` or no operand (program on stdin), `-v` / `--version`, `-h`; V8 and diagnostic flags (`--no-warnings`, `--max-old-space-size=…`, `--experimental-*`, …) accepted and inert | the REPL (`-i` runs the program without one), `--inspect`, `--watch`, `--test`, native addons, `worker_threads`, networking modules, `child_process` (fails with `ENOSYS`) | modelled by an in-process ES2023 interpreter with Node 24.21 semantics; see *Language runtimes* below |
 | PowerShell aliases | `Write-Output Get-Location Set-Location Get-ChildItem Get-Content Set-Content Add-Content Copy-Item Move-Item Remove-Item Select-String Get-Process Stop-Process Invoke-WebRequest Test-Path` | the rest of PowerShell | modelled; only available when the computer's dialect is `powershell` |
 | anything else | — | — | status `127`, `command not found` |
+
+## git
+
+`git` is a synthetic, content-addressed Git: commits hold whole file trees, the index is
+a real staging area and the worktree is the machine's own files, so `status`, `diff` and
+a commit all say what the disk says. A revision is `HEAD`, `HEAD~<n>` (or `HEAD^…`), a
+branch name, or a commit hash (a unique prefix of at least four characters is enough).
+
+| Command | Effect |
+|---|---|
+| `git diff` / `git diff --staged` (`--cached`) | The worktree against the index, or the index against `HEAD` |
+| `git reset [REV]` | `--mixed` (the default) moves the branch to `REV` and resets the index to it, leaving the worktree alone and listing what is now unstaged; `--soft` moves the branch only; `--hard` also throws away the working copies |
+| `git reset [REV] [--] PATH…` | Copies those paths from `REV` (default `HEAD`) into the index, leaving the worktree alone: this is what unstages a file. A `--soft` or `--hard` reset with paths is refused, as git refuses it |
+| `git restore PATH…` | The worktree comes back from the index (Discard Changes) |
+| `git restore --staged PATH…` | The index comes back from `HEAD` (Unstage); `--staged --worktree` does both, and `--source=REV` takes the content from another commit |
+| `git checkout -- PATH…` | The older spelling of `git restore PATH…` |
+
+A folder (or `.`) as a path stands for every file under it. Visual Studio Code's Source
+Control view runs exactly these commands: its `+` is `git add`, its `−` is `git restore
+--staged`, Unstage All Changes is `git reset`, and Discard Changes is `git restore` (an
+untracked file is moved to the trash instead).
 
 ## sqlite3
 
@@ -201,15 +222,24 @@ stream, so every replay agrees.
 
 The engine implements tables with `PRIMARY KEY`, `NOT NULL`, `UNIQUE`, `CHECK`,
 `DEFAULT`, `COLLATE` and `REFERENCES` (enforced with `PRAGMA foreign_keys = ON`,
-including `CASCADE`, `SET NULL` and `SET DEFAULT`), `AUTOINCREMENT`, B-tree indexes the
-planner uses for equality, `IN` and range lookups (`EXPLAIN QUERY PLAN` shows the
-choice), views, `ALTER TABLE` (rename, add, rename and drop column), joins (inner, left,
-right, full, cross, `USING`, `NATURAL`), grouping, aggregates, compound selects, scalar,
-`IN` and `EXISTS` subqueries, recursive CTEs, upsert, `RETURNING`, transactions and
-savepoints. Refused by name rather than half-done: triggers, window functions,
-`WITHOUT ROWID` tables, partial and expression indexes, generated columns, `ATTACH`,
-virtual tables, JSON operators and bytecode `EXPLAIN`. Foreign keys are checked
-immediately rather than deferred to the end of the statement.
+including `CASCADE`, `SET NULL` and `SET DEFAULT`), `AUTOINCREMENT`, `WITHOUT ROWID`
+tables (stored, as SQLite stores them, as an index B-tree in primary key order),
+B-tree indexes the planner uses for equality, `IN` and range lookups and to avoid
+sorts (`EXPLAIN QUERY PLAN` shows the choice, including `USING COVERING INDEX` when
+the index holds every column the query reads and `USING PRIMARY KEY` for a WITHOUT
+ROWID table), views, triggers (`BEFORE`, `AFTER` and `INSTEAD OF` on `INSERT`,
+`UPDATE [OF columns]` and `DELETE`, `FOR EACH ROW` with `WHEN`, `NEW` and `OLD`, and
+`RAISE(IGNORE | ABORT | FAIL | ROLLBACK, message)`; the newest fires first,
+`recursive_triggers` is off, foreign key actions fire the child's triggers, and a
+view with `INSTEAD OF` triggers takes writes), `ALTER TABLE` (rename, add, rename and
+drop column; renames rewrite triggers, indexes and the views that read the table,
+quoting the new name as the statement did), joins (inner, left, right, full, cross,
+`USING`, `NATURAL`), grouping, aggregates, compound selects, scalar, `IN` and `EXISTS`
+subqueries, recursive CTEs, upsert, `RETURNING`, transactions and savepoints. Refused
+by name rather than half-done: window functions, partial and expression indexes,
+generated columns, `ATTACH`, virtual tables, JSON operators and bytecode `EXPLAIN`.
+Foreign keys are checked immediately rather than deferred to the end of the
+statement.
 
 ## Language runtimes
 

@@ -47,6 +47,20 @@ pub struct Env {
     pub last_insert_rowid: Cell<i64>,
     pub changes: Cell<i64>,
     pub total_changes: Cell<i64>,
+    /// Triggers running now, outermost first: a trigger never fires itself again
+    /// while it runs (`PRAGMA recursive_triggers` is off), and RAISE needs one.
+    pub triggers: RefCell<Vec<String>>,
+    /// Rows the statement itself (not its triggers) has changed so far, which a
+    /// statement that fails under FAIL still reports.
+    pub direct: Cell<u64>,
+}
+impl Env {
+    /// One row changed: by the statement itself when no trigger program is running.
+    pub fn count_direct(&self) {
+        if self.triggers.borrow().is_empty() {
+            self.direct.set(self.direct.get() + 1);
+        }
+    }
 }
 /// Common table expressions in scope, innermost last.
 pub type Ctes = Rc<Vec<(String, Rc<Relation>)>>;
@@ -59,6 +73,25 @@ pub struct Ctx<'a> {
     /// Collects `EXPLAIN QUERY PLAN` lines when set.
     pub plan: Option<&'a RefCell<Vec<(usize, String)>>>,
     pub depth: usize,
+    /// What the SELECT core being planned reads, for covering indexes and sort
+    /// avoidance; `None` outside a SELECT (an UPDATE or DELETE reads whole rows).
+    pub shape: Option<Rc<Shape>>,
+}
+/// What one SELECT core reads from each of its tables, and the orders it asks for.
+#[derive(Debug, Default)]
+pub struct Shape {
+    /// Per source alias (lower case): the column names read, or `None` for every one.
+    pub needed: std::collections::BTreeMap<String, Option<std::collections::BTreeSet<String>>>,
+    /// ORDER BY as (qualifier, column, descending), when every term is a plain column.
+    pub order: Option<Vec<(Option<String>, String, bool)>>,
+    /// GROUP BY as (qualifier, column), when every term is a plain column.
+    pub group: Option<Vec<(Option<String>, String)>>,
+    /// The FROM clause is one base table, the only case where its order is kept.
+    pub single: bool,
+    /// Set by the planner: the chosen path already delivers the ORDER BY order.
+    pub ordered: Cell<bool>,
+    /// Set by the planner: the chosen path already delivers rows grouped.
+    pub grouped: Cell<bool>,
 }
 impl Ctx<'_> {
     pub fn note(&self, detail: impl Into<String>) {
@@ -149,6 +182,7 @@ pub fn affinity_of(scope: Option<&Scope>, e: &Expr) -> Option<Affinity> {
             .ok()
             .flatten()
             .and_then(|(s, i)| s.cols[i].affinity),
+        Expr::Bound { affinity, .. } => *affinity,
         Expr::Cast { type_name, .. } => Some(Affinity::from_type(type_name)),
         Expr::Collate { expr, .. } => affinity_of(scope, expr),
         _ => None,
@@ -164,6 +198,7 @@ pub fn collation_of(scope: Option<&Scope>, e: &Expr) -> Option<(Collation, bool)
             .ok()
             .flatten()
             .map(|(s, i)| (s.cols[i].collation, false)),
+        Expr::Bound { collation, .. } => Some((*collation, false)),
         _ => None,
     }
 }
@@ -211,6 +246,15 @@ fn truth(v: &Value) -> Option<bool> {
 pub fn eval(ctx: &Ctx, scope: Option<&Scope>, e: &Expr) -> Result<Value, SqlError> {
     match e {
         Expr::Literal(v) => Ok(v.clone()),
+        Expr::Bound { value, .. } => Ok(value.clone()),
+        Expr::Raise(kind, message) => {
+            if ctx.env.triggers.borrow().is_empty() {
+                return Err(SqlError::new(
+                    "RAISE() may only be used within a trigger-program",
+                ));
+            }
+            Err(SqlError::raise(*kind, message.clone().unwrap_or_default()))
+        }
         Expr::Param(p) => {
             let n: usize = p[1..].parse().unwrap_or(0);
             Ok(ctx

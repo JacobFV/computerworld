@@ -8,10 +8,10 @@ interpreting them. `WorldDefinition::from_json` parses and validates the definit
 |---|---|
 | `id` | Nonempty world identity |
 | `profiles` | OS definitions: `id`, `name`, `family`, `home`, `case_sensitive`, `shell` |
-| `computers` | Machine `id`, `profile`, `address`, `user`, optional `node`, initial files, installed applications and packages |
+| `computers` | Machine `id`, `profile`, `address`, `user`, optional `node`, initial files, installed applications and packages, and an optional `presentation` (`desktop`, `laptop`, `phone`, `server`) |
 | `network` | Nodes, links, DNS records, routes, explicit `implicit_lan` and gateway policy |
 | `services` | Instance `id`, registered `kind`, placement `node`, domains, port, initial state |
-| `metadata` | Owner-side JSON; not an actor observation channel. Two keys are load-bearing: `desktop_themes` maps a computer to an OS shell, and `desktop_apps` declares its application catalog. Both change what an actor sees and can launch — see [desktop GUI](desktop-gui.md). |
+| `metadata` | Owner-side JSON; not an actor observation channel. Two keys are load-bearing: `desktop_themes` maps a computer to an OS shell, and `desktop_apps` declares its application catalog. Both change what an actor sees and can launch — see [desktop GUI](desktop-gui.md). `device_presentations` maps a computer to `desktop`, `laptop`, `phone` or `server` (a computer's own `presentation` wins): laptops and phones show a battery, desktop computers and servers none. A phone shell is always a phone; a computer nothing is said about is a desktop computer. |
 
 A computer's node defaults to its machine ID. Explicit nodes have an address and
 zone (`local`, `internet`, `host`). Links are required by default; `network.implicit_lan: true` explicitly enables
@@ -36,5 +36,6 @@ See [creating a world](custom-world.md) and the
 
 `worlds/company-2026/world.json` is **generated**, not hand-written: `scripts/build-world.mjs`
 splices in `worlds/company-2026/sites/*.json` and `scripts/build-search-index.mjs`
-builds its search index, with `scripts/build-content.sh` running the pipeline. Edit
+builds its search index, with `scripts/build-content.sh` running the pipeline. The
+reference computers' `device_presentations` are declared in `build-world.mjs`. Edit
 the inputs, not the output. Your own worlds are of course plain JSON.

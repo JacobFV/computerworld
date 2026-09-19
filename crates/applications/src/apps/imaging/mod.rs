@@ -2058,6 +2058,60 @@ impl Studio {
         Ok(())
     }
 
+    /// The wheel over the canvas scrolls an image larger than its view (Shift, or a
+    /// sideways turn, scrolls across), and Ctrl+wheel zooms one step a notch keeping
+    /// the image point under the pointer where it is, as every one of these editors
+    /// does. Returns whether the view moved.
+    pub fn wheel(
+        &mut self,
+        target: &str,
+        x: i32,
+        y: i32,
+        wheel: crate::Wheel,
+    ) -> Result<bool, String> {
+        let Some(command) = target
+            .strip_prefix(self.prefix())
+            .and_then(|t| t.strip_prefix(':'))
+        else {
+            return Ok(false);
+        };
+        let mut parts = command.split(':');
+        if parts.next() != Some("canvas") || self.doc.is_none() {
+            return Ok(false);
+        }
+        let (Some(vw), Some(vh)) = (
+            parts.next().and_then(|v| v.parse::<u32>().ok()),
+            parts.next().and_then(|v| v.parse::<u32>().ok()),
+        ) else {
+            return Ok(false);
+        };
+        let before = (self.scroll, self.zoom);
+        if wheel.ctrl {
+            let at = self.to_image(vw, vh, x, y);
+            let (px, py) = ((at.0 / 16) as i32, (at.1 / 16) as i32);
+            let notches = crate::wheel_steps(-wheel.dy, 120);
+            for _ in 0..notches.unsigned_abs().min(8) {
+                self.step_zoom(notches > 0, vw, vh);
+            }
+            let z = i64::from(self.effective_zoom(vw, vh).max(1));
+            self.scroll = (
+                px - (i64::from(x) * 100 / z) as i32,
+                py - (i64::from(y) * 100 / z) as i32,
+            );
+        } else {
+            let z = i64::from(self.effective_zoom(vw, vh).max(1));
+            let across = wheel.horizontal();
+            let down = if wheel.shift && wheel.dx == 0 {
+                0
+            } else {
+                wheel.dy
+            };
+            self.scroll.0 += (i64::from(across) * 100 / z) as i32;
+            self.scroll.1 += (i64::from(down) * 100 / z) as i32;
+        }
+        self.clamp_scroll(vw, vh);
+        Ok(before != (self.scroll, self.zoom))
+    }
     /// Whether `target` (a full target) is one of this editor's drag surfaces.
     pub fn drags(&self, target: &str) -> bool {
         let Some(command) = target

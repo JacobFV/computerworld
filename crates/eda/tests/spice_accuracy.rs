@@ -259,12 +259,16 @@ fn inverting_op_amp_gain_is_minus_rf_over_rin() {
 #[test]
 fn sine_source_drives_the_expected_waveform() {
     let r = run("sine\nV1 a 0 SIN(1 2 1k)\nR1 a 0 1k\n.tran 10u 2m\n.end");
-    // Times on the 10 µs output grid, where no interpolation is involved.
-    for t in [0.0, 0.13e-3, 0.25e-3, 0.6e-3, 1.9e-3] {
+    // Every reported point is an accepted time point, where no interpolation is involved.
+    let s = r.signal("V(a)").unwrap();
+    assert!(r.x.len() > 200, "{} points", r.x.len());
+    for (t, got) in r.x.iter().zip(&s.re) {
         let expected = 1.0 + 2.0 * (2.0 * std::f64::consts::PI * 1000.0 * t).sin();
-        let got = r.value_at("V(a)", t).unwrap();
         assert!((got - expected).abs() < 1e-9, "{t}: {got} vs {expected}");
     }
+    // No step is longer than TSTEP (SPICE's default TMAX) and the run ends on TSTOP.
+    assert!(r.x.windows(2).all(|w| w[1] - w[0] <= 10e-6 * (1.0 + 1e-9)));
+    assert_eq!(*r.x.last().unwrap(), 2e-3);
 }
 
 #[test]

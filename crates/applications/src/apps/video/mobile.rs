@@ -44,18 +44,25 @@ pub fn render(ed: &Editor, p: &mut Painter, env: &AppEnv<'_>) {
     p.label(
         80,
         16,
-        w.saturating_sub(220),
+        w.saturating_sub(258),
         &ed.project.name,
         14,
         s.text,
         true,
         Align::Center,
     );
-    let undo = Rect::new(w as i32 - 116, 10, 32, 30);
+    let undo = Rect::new(w as i32 - 154, 10, 32, 30);
     if ed.undo.is_empty() {
         tool_off(p, &s, undo, "undo", "Nothing to undo");
     } else {
         tool(p, &s, undo, "undo", "Undo", "undo", false, false);
+    }
+    // Redo sits beside it, as it does in the desktop editors.
+    let redo = Rect::new(w as i32 - 116, 10, 32, 30);
+    if ed.redo.is_empty() {
+        tool_off(p, &s, redo, "redo", "Nothing to redo");
+    } else {
+        tool(p, &s, redo, "redo", "Redo", "redo", false, false);
     }
     let export = Rect::new(w as i32 - 78, 10, 68, 30);
     if ed.project.duration() == 0 || ed.export.is_some() {

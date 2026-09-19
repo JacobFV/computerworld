@@ -392,7 +392,13 @@ fn taskbar(p: &mut Painter, ctx: &ShellContext<'_>) {
         } else {
             "volume"
         };
-        for (i, symbol) in [radio, sound, "battery"].iter().enumerate() {
+        // A desktop computer has no battery, so its tray shows none.
+        let tray: &[&str] = if ctx.battery {
+            &[radio, sound, "battery"]
+        } else {
+            &[radio, sound]
+        };
+        for (i, symbol) in tray.iter().enumerate() {
             p.symbol(
                 symbol,
                 quick.x + 8 + i as i32 * 24,
@@ -405,7 +411,15 @@ fn taskbar(p: &mut Painter, ctx: &ShellContext<'_>) {
                 },
             );
         }
-        p.region(quick, "shell:panel:quick", "Network, volume and battery");
+        p.region(
+            quick,
+            "shell:panel:quick",
+            if ctx.battery {
+                "Network, volume and battery"
+            } else {
+                "Network and volume"
+            },
+        );
         // Still greyed, deliberately: a tray overflow needs a model of which status
         // icons are promoted and which are hidden, and nothing else in the machine
         // wants one. The tray shows every icon it has, so none are hidden.
@@ -1547,26 +1561,29 @@ fn quick_settings(p: &mut Painter, ctx: &ShellContext<'_>) {
         0,
     );
     p.hline(r.x + 1, foot, r.width - 2, STROKE);
-    // The machine has no battery model, so the pill reports mains power and the energy
-    // saver switch instead of inventing a percentage.
-    let battery = Rect::new(r.x + 12, foot + 6, 150, 36);
-    if ctx.hovered(battery) {
-        p.box_(battery, Color(0, 0, 0, 14), 4);
+    // A laptop's pill reports mains power and the energy saver switch (the machine
+    // has no charge model, so no percentage is invented); a desktop has no battery
+    // and Windows shows no pill there at all.
+    if ctx.battery {
+        let battery = Rect::new(r.x + 12, foot + 6, 150, 36);
+        if ctx.hovered(battery) {
+            p.box_(battery, Color(0, 0, 0, 14), 4);
+        }
+        p.symbol("battery", r.x + 22, foot + 14, 20, INK);
+        p.left(
+            r.x + 50,
+            foot + 15,
+            104,
+            if ctx.switch("battery_saver") {
+                "Energy saver"
+            } else {
+                "Plugged in"
+            },
+            12,
+            INK,
+        );
+        p.region(battery, "shell:settings", "Power and battery settings");
     }
-    p.symbol("battery", r.x + 22, foot + 14, 20, INK);
-    p.left(
-        r.x + 50,
-        foot + 15,
-        104,
-        if ctx.switch("battery_saver") {
-            "Energy saver"
-        } else {
-            "Plugged in"
-        },
-        12,
-        INK,
-    );
-    p.region(battery, "shell:settings", "Power and battery settings");
     let gear = Rect::new(r.x + r.width as i32 - 52, foot + 6, 36, 36);
     if ctx.hovered(gear) {
         p.box_(gear, Color(0, 0, 0, 14), 4);
@@ -1654,7 +1671,8 @@ fn settings(p: &mut Painter, ctx: &ShellContext<'_>) {
 
 fn context_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
     let (mx, my) = ctx
-        .hover
+        .anchor
+        .or(ctx.hover)
         .unwrap_or((ctx.width as i32 / 3, ctx.height as i32 / 3));
     let entries = [
         ("grid-view", "View", "shell:panel:overview"),
@@ -1871,6 +1889,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         }
     }
     #[test]

@@ -43,10 +43,12 @@ fn projection_tolerates_unaligned_restored_cursor_and_clips_small_views() {
         dirty: false,
     };
     let scene = app_content(&state, DesktopTheme::Android, 80, 60);
-    assert!(scene
-        .nodes
-        .iter()
-        .all(|n| n.clip == Some(Rect::new(0, 0, 80, 60))));
+    // Nothing escapes the window: a node is clipped to it, or to a pane inside it.
+    let window = Rect::new(0, 0, 80, 60);
+    assert!(scene.nodes.iter().all(|n| {
+        n.clip
+            .is_some_and(|c| c.width == 0 || c.height == 0 || window.intersection(c) == Some(c))
+    }));
     assert_eq!(scene, app_content(&state, DesktopTheme::Android, 80, 60));
 }
 

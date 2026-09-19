@@ -7,6 +7,7 @@ use super::frame;
 use super::icons;
 use super::problems::Severity;
 use super::syntax::{self, Language, Span};
+use super::ContextKind;
 use super::{basename, Focus, PanelTab, Platform, QuickMode, Tab, TabKind, View, Workbench};
 use crate::desktop_scene::{shared::Align, Painter};
 use cw_scene::{text_cell, Color, Primitive, Rect};
@@ -81,6 +82,13 @@ pub struct Pal {
     pub term_green: Color,
     pub term_red: Color,
     pub option_on: Color,
+    /// The dots and arrows of `editor.renderWhitespace`, and the minimap's ink.
+    pub whitespace: Color,
+    /// A breakpoint's dot, and a disabled or unverified one's.
+    pub bp: Color,
+    pub bp_off: Color,
+    /// The line the debugger has the program stopped on.
+    pub stopped: Color,
 }
 pub fn pal(dark: bool) -> Pal {
     if dark {
@@ -129,6 +137,10 @@ pub fn pal(dark: bool) -> Pal {
             term_green: hex(0x23D18B),
             term_red: hex(0xF14C4C),
             option_on: Color(36, 137, 219, 130),
+            whitespace: hex(0x404040),
+            bp: hex(0xE51400),
+            bp_off: hex(0x848484),
+            stopped: Color(255, 213, 0, 45),
         }
     } else {
         Pal {
@@ -176,10 +188,71 @@ pub fn pal(dark: bool) -> Pal {
             term_green: hex(0x00BC00),
             term_red: hex(0xCD3131),
             option_on: hex(0xBED6ED),
+            whitespace: hex(0xC8C8C8),
+            bp: hex(0xE51400),
+            bp_off: hex(0x848484),
+            stopped: Color(255, 213, 0, 60),
         }
     }
 }
 
+/// Display columns `text` occupies, with tabs running on to the next tab stop, which is
+/// how an editor lays a line out: `\tx` is one tab stop then an `x`, not two characters.
+pub fn columns(text: &str, tab: usize) -> usize {
+    let tab = tab.max(1);
+    let mut col = 0;
+    for (i, part) in text.split('\t').enumerate() {
+        if i > 0 {
+            col = col + tab - col % tab;
+        }
+        col += cells(part);
+    }
+    col
+}
+/// The columns one character takes: two for a wide one, none for a combining mark.
+fn char_cells(c: char) -> usize {
+    cells(c.encode_utf8(&mut [0u8; 4]))
+}
+/// The byte offset in `text` at display column `col`, rounded to the nearer character
+/// boundary: the inverse of `columns`, for turning a click into a caret.
+pub fn byte_at_column(text: &str, col: usize, tab: usize) -> usize {
+    let tab = tab.max(1);
+    let mut at = 0;
+    for (i, c) in text.char_indices() {
+        let next = if c == '\t' {
+            at + tab - at % tab
+        } else {
+            at + char_cells(c)
+        };
+        if col < next {
+            // Past the middle of a wide tab or character, the caret belongs after it.
+            return if col * 2 >= at + next {
+                i + c.len_utf8()
+            } else {
+                i
+            };
+        }
+        at = next;
+    }
+    text.len()
+}
+/// `text` with its tabs expanded to spaces, for painting one row.
+fn expand_tabs(text: &str, start_col: usize, tab: usize) -> String {
+    let tab = tab.max(1);
+    let mut out = String::new();
+    let mut col = start_col;
+    for c in text.chars() {
+        if c == '\t' {
+            let stop = col + tab - col % tab;
+            out.extend(std::iter::repeat_n(' ', stop - col));
+            col = stop;
+        } else {
+            out.push(c);
+            col += char_cells(c);
+        }
+    }
+    out
+}
 fn label(p: &mut Painter, x: i32, y: i32, w: u32, text: &str, size: u16, c: Color) -> u32 {
     if w == 0 {
         return 0;
@@ -192,13 +265,17 @@ fn bold(p: &mut Painter, x: i32, y: i32, w: u32, text: &str, size: u16, c: Color
     }
     p.label(x, y, w, text, size, c, true, Align::Left)
 }
+fn cells(text: &str) -> usize {
+    cw_scene::text::terminal::columns(text)
+}
 fn mono(p: &mut Painter, x: i32, y: i32, text: &str, size: u16, c: Color) {
     if text.is_empty() {
         return;
     }
     let (cw, ch) = text_cell(size);
+    // Cells, not characters: wide characters take two (see `cw_scene::text::terminal`).
     p.node(
-        Rect::new(x, y, cw * text.chars().count() as u32 + 2, ch + 2),
+        Rect::new(x, y, cw * cells(text) as u32 + 2, ch + 2),
         Primitive::Text {
             text: text.into(),
             size,
@@ -348,10 +425,15 @@ pub fn render(app: &Workbench, p: &mut Painter, env: &crate::AppEnv<'_>) {
     } else {
         0
     };
-    let group = Rect::new(mx, 0, mw, body_h.saturating_sub(panel_h));
-    editor_group(app, p, &pal, group);
+    let area = Rect::new(mx, 0, mw, body_h.saturating_sub(panel_h));
+    // One group, or several side by side and stacked: the layout says where each goes.
+    for (g, (gx, gy, gw, gh)) in app.group_rects((area.x, area.y, area.width, area.height)) {
+        editor_group(app, p, &pal, Rect::new(gx, gy, gw, gh), g);
+    }
+    // A session floats its toolbar over the editors, as VS Code does.
+    debug_toolbar(app, p, &pal, area);
     if panel_h > 0 {
-        let r = Rect::new(mx, group.height as i32, mw, panel_h);
+        let r = Rect::new(mx, area.height as i32, mw, panel_h);
         panel(app, p, &pal, r);
     }
     status_bar(app, p, &pal, Rect::new(0, status_y, w, STATUS_H));
@@ -614,15 +696,23 @@ fn explorer(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             .find(|(_, p)| p == rel)
             .map(|(s, _)| *s)
     };
-    let mut y = top;
-    let limit = r.y + r.height as i32 - ROW as i32;
+    // The tree scrolls under its header; rows out of view are counted, not painted.
+    let pane = p.pane(
+        "explorer",
+        Rect::new(
+            r.x,
+            top,
+            r.width,
+            r.height.saturating_sub((top - r.y) as u32).max(1),
+        ),
+    );
+    let mut y = pane.top();
     let mut index = 0;
+    // Where the context menu hangs from, once the row it belongs to has been painted.
+    let mut anchor = (r.x + 40, top + ROW as i32);
     rows.truncate(2000);
     let mut i = 0;
     while i <= rows.len() {
-        if y > limit {
-            break;
-        }
         if let (Some(at), Some(inline)) = (inline_at, &app.inline) {
             if at == index && (inline.from.is_none() || i < rows.len()) {
                 let depth = if inline.parent.is_empty() {
@@ -658,6 +748,12 @@ fn explorer(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         let Some((rel, depth, dir)) = rows.get(i).cloned() else {
             break;
         };
+        if !pane.shows(y, ROW) {
+            y += ROW as i32;
+            index += 1;
+            i += 1;
+            continue;
+        }
         let row = Rect::new(r.x, y, r.width, ROW);
         let selected = app.selected.as_deref() == Some(rel.as_str());
         let open = app.active_tab().and_then(|t| app.rel(&t.path)).as_deref() == Some(rel.as_str());
@@ -724,6 +820,9 @@ fn explorer(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             );
         }
         p.region(row, &format!("code:tree:{rel}"), name);
+        if selected {
+            anchor = (row.x + 40, row.y + ROW as i32);
+        }
         y += ROW as i32;
         index += 1;
         i += 1;
@@ -738,6 +837,13 @@ fn explorer(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             12,
             pal.desc,
         );
+        y += ROW as i32;
+    }
+    let extent = (y - pane.top()) as u32 + ROW;
+    p.end_pane(pane, Some(extent));
+    // Outside the pane, so the menu is not clipped to the tree it came from.
+    if app.context == Some(ContextKind::Explorer) {
+        context_menu(app, p, pal, ContextKind::Explorer, anchor.0, anchor.1);
     }
 }
 
@@ -856,11 +962,14 @@ fn search_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         let hh = p.paragraph(r.x + 22, y + 2, r.width.saturating_sub(30), &text, 12, c);
         y += hh as i32 + 8;
     }
-    let limit = r.y + r.height as i32 - ROW as i32;
-    'files: for (fi, file) in s.results.iter().enumerate() {
-        if y > limit {
-            break;
-        }
+    // The results tree scrolls; rows out of view are counted, not painted.
+    let pane = p.pane(
+        "search",
+        Rect::new(r.x, y, r.width, (r.y + r.height as i32 - y).max(1) as u32),
+    );
+    let first = y;
+    y = pane.top();
+    for (fi, file) in s.results.iter().enumerate() {
         let collapsed = s.collapsed.contains(&file.path);
         let row = Rect::new(r.x, y, r.width, ROW);
         p.symbol(
@@ -911,8 +1020,9 @@ fn search_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             continue;
         }
         for (hi, hit) in file.hits.iter().enumerate() {
-            if y > limit {
-                break 'files;
+            if !pane.shows(y, ROW) {
+                y += ROW as i32;
+                continue;
             }
             let row = Rect::new(r.x, y, r.width, ROW);
             // Show the match with some context before it, as the results tree does.
@@ -937,6 +1047,9 @@ fn search_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             y += ROW as i32;
         }
     }
+    let extent = (y - pane.top()) as u32 + ROW / 2;
+    let _ = first;
+    p.end_pane(pane, Some(extent));
 }
 
 fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
@@ -1077,7 +1190,27 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                     13,
                     pal.fg,
                 );
-                if !staged {
+                // The group's own buttons: discard or stage everything, or unstage it.
+                if staged {
+                    let b = Rect::new(r.x + r.width as i32 - 58, y, 22, 22);
+                    p.symbol("minus", b.x + 4, b.y + 4, 14, pal.fg);
+                    icon_button(
+                        p,
+                        b,
+                        "code:cmd:git.unstageAll",
+                        "Unstage All Changes",
+                        app.enabled("git.unstageAll"),
+                    );
+                } else {
+                    let b = Rect::new(r.x + r.width as i32 - 82, y, 22, 22);
+                    p.symbol("undo", b.x + 4, b.y + 4, 14, pal.fg);
+                    icon_button(
+                        p,
+                        b,
+                        "code:cmd:git.cleanAll",
+                        "Discard All Changes",
+                        app.enabled("git.cleanAll"),
+                    );
                     let b = Rect::new(r.x + r.width as i32 - 58, y, 22, 22);
                     p.symbol("plus", b.x + 4, b.y + 4, 14, pal.fg);
                     icon_button(
@@ -1115,7 +1248,7 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                     let row = Rect::new(
                         r.x,
                         y,
-                        r.width.saturating_sub(if staged { 0 } else { 50 }),
+                        r.width.saturating_sub(if staged { 50 } else { 74 }),
                         ROW,
                     );
                     let nw = label(
@@ -1150,7 +1283,15 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                     } else {
                         p.region(row, &format!("code:scm-open:{path}"), name);
                     }
-                    if !staged {
+                    // Row buttons: unstage a staged change, or discard and stage one.
+                    if staged {
+                        let b = Rect::new(r.x + r.width as i32 - 44, y, 22, 22);
+                        p.symbol("minus", b.x + 4, b.y + 4, 14, pal.fg);
+                        p.region(b, &format!("code:scm-unstage:{path}"), "Unstage Changes");
+                    } else {
+                        let b = Rect::new(r.x + r.width as i32 - 68, y, 22, 22);
+                        p.symbol("undo", b.x + 4, b.y + 4, 14, pal.fg);
+                        p.region(b, &format!("code:scm-discard:{path}"), "Discard Changes");
                         let b = Rect::new(r.x + r.width as i32 - 44, y, 22, 22);
                         p.symbol("plus", b.x + 4, b.y + 4, 14, pal.fg);
                         p.region(b, &format!("code:scm-stage:{path}"), "Stage Changes");
@@ -1162,88 +1303,596 @@ fn scm_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     }
 }
 
+/// The Run and Debug view: what will run, what it is stopped on, and the breakpoints
+/// and watch expressions that hold whether or not anything is running.
 fn run_view(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     section_title(p, pal, r, "RUN AND DEBUG");
-    let mut y = r.y + 44;
-    let runnable = app.enabled("workbench.action.debug.run");
-    let b = Rect::new(r.x + 20, y, r.width.saturating_sub(40), 28);
-    match runnable {
-        Ok(()) => button(
-            p,
-            pal,
-            b,
-            "Run Active File",
-            "code:cmd:workbench.action.debug.run",
-        ),
-        Err(why) => {
-            p.box_(b, Color(pal.accent.0, pal.accent.1, pal.accent.2, 110), 2);
-            p.disabled(&format!("Run Active File: {why}"));
-            p.label(
-                b.x,
-                b.y + 6,
-                b.width,
-                "Run Active File",
-                13,
-                Color(255, 255, 255, 150),
-                false,
-                Align::Center,
+    let w = r.width.saturating_sub(24);
+    let mut y = r.y + 36;
+    let session = app.debug.session.as_ref();
+    if session.is_none() {
+        // Nothing is running: the button that starts one, and how to configure it.
+        let b = Rect::new(r.x + 12, y, w, 28);
+        match app.enabled("workbench.action.debug.start") {
+            Ok(()) => button(
+                p,
+                pal,
+                b,
+                "Run and Debug",
+                "code:cmd:workbench.action.debug.start",
+            ),
+            Err(why) => {
+                p.box_(b, Color(pal.accent.0, pal.accent.1, pal.accent.2, 110), 2);
+                p.disabled(&format!("Run and Debug: {why}"));
+                p.label(
+                    b.x,
+                    b.y + 6,
+                    b.width,
+                    "Run and Debug",
+                    13,
+                    Color(255, 255, 255, 150),
+                    false,
+                    Align::Center,
+                );
+            }
+        }
+        y += 36;
+        if app.debug.configs.is_empty() {
+            let hh = p.paragraph(r.x + 12, y, w, "To customize Run and Debug", 12, pal.desc);
+            let link = Rect::new(r.x + 12, y + hh as i32, w, 20);
+            label(
+                p,
+                link.x,
+                link.y,
+                w,
+                "create a launch.json file",
+                12,
+                pal.link,
             );
+            icon_button(
+                p,
+                link,
+                "code:cmd:debug.addConfiguration",
+                "create a launch.json file",
+                app.enabled("debug.addConfiguration"),
+            );
+            y += hh as i32 + 26;
+        } else {
+            for (i, config) in app.debug.configs.iter().enumerate().take(6) {
+                let row = Rect::new(r.x + 12, y, w, 22);
+                if i == app.debug.config {
+                    p.box_(row, pal.list_active, 2);
+                }
+                label(
+                    p,
+                    row.x + 6,
+                    row.y + 3,
+                    w.saturating_sub(12),
+                    &format!("{} ({})", config.name, config.kind),
+                    12,
+                    pal.fg,
+                );
+                p.region(
+                    row,
+                    &format!("code:debug-config:{i}"),
+                    &format!("Configuration: {}", config.name),
+                );
+                y += 24;
+            }
+            y += 6;
         }
     }
-    y += 40;
-    let hh = p.paragraph(
-        r.x + 20,
-        y,
+    // What the machine last said about a request that failed.
+    if let Some(error) = &app.debug.error {
+        let hh = p.paragraph(r.x + 12, y, w, error, 12, pal.error);
+        y += hh as i32 + 10;
+    }
+    if let Some(session) = session {
+        y = variables_section(app, p, pal, r, y, session);
+    }
+    y = watch_section(app, p, pal, r, y);
+    if let Some(session) = session {
+        y = stack_section(app, p, pal, r, y, session);
+    }
+    breakpoints_section(app, p, pal, r, y);
+}
+
+/// A section header in the Run and Debug view, with its chevron.
+fn debug_header(p: &mut Painter, pal: &Pal, r: Rect, y: i32, title: &str) -> i32 {
+    p.symbol("chevron-down", r.x + 6, y + 3, 12, pal.fg);
+    bold(
+        p,
+        r.x + 22,
+        y + 2,
         r.width.saturating_sub(40),
-        "Runs the file in the integrated terminal with the machine's own python3, node or bash. There is no debug adapter on this machine, so breakpoints are not available.",
+        title,
+        11,
+        pal.fg,
+    );
+    y + 22
+}
+
+/// Every variable of the frame on show, with what an expanded one holds.
+fn variables_section(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    y: i32,
+    session: &super::debug::Session,
+) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "VARIABLES");
+    let bottom = r.y + r.height as i32;
+    for scope in &session.scopes {
+        if y > bottom - 20 {
+            return y;
+        }
+        y = variable_row(app, p, pal, r, y, 0, &scope.name, "", scope.reference, true);
+        if app.debug.expanded.contains(&scope.reference) {
+            y = children(app, p, pal, r, y, 1, scope.reference, bottom);
+        }
+    }
+    y + 8
+}
+/// The children of a reference, and of whatever of them is expanded.
+#[allow(clippy::too_many_arguments)]
+fn children(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    mut y: i32,
+    depth: i32,
+    reference: u64,
+    bottom: i32,
+) -> i32 {
+    let Some(values) = app.debug.values.get(&reference) else {
+        label(
+            p,
+            r.x + 22 + depth * 12,
+            y + 3,
+            r.width.saturating_sub(40),
+            "Loading...",
+            12,
+            pal.desc,
+        );
+        return y + 20;
+    };
+    for v in values {
+        if y > bottom - 20 {
+            return y;
+        }
+        y = variable_row(
+            app,
+            p,
+            pal,
+            r,
+            y,
+            depth,
+            &v.name,
+            &v.value,
+            v.reference,
+            false,
+        );
+        if v.reference != 0 && app.debug.expanded.contains(&v.reference) {
+            y = children(app, p, pal, r, y, depth + 1, v.reference, bottom);
+        }
+    }
+    y
+}
+#[allow(clippy::too_many_arguments)]
+fn variable_row(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    y: i32,
+    depth: i32,
+    name: &str,
+    value: &str,
+    reference: u64,
+    scope: bool,
+) -> i32 {
+    let row = Rect::new(r.x, y, r.width, 20);
+    let x = r.x + 10 + depth * 12;
+    if reference != 0 {
+        let open = app.debug.expanded.contains(&reference);
+        p.symbol(
+            if open {
+                "chevron-down"
+            } else {
+                "chevron-right"
+            },
+            x,
+            y + 4,
+            12,
+            pal.fg,
+        );
+    }
+    let text = if value.is_empty() {
+        name.to_owned()
+    } else {
+        format!("{name}: {value}")
+    };
+    label(
+        p,
+        x + 14,
+        y + 3,
+        r.width.saturating_sub((x - r.x) as u32 + 24),
+        &text,
         12,
+        if scope { pal.fg } else { pal.desc },
+    );
+    if reference != 0 {
+        p.region(
+            row,
+            &format!("code:var:{reference}"),
+            &format!("Expand {name}"),
+        );
+    }
+    y + 20
+}
+
+/// The watch list: expressions evaluated in the frame on show.
+fn watch_section(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, y: i32) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "WATCH");
+    let add = Rect::new(r.x + r.width as i32 - 28, y - 22, 20, 20);
+    p.symbol("plus", add.x + 4, add.y + 4, 12, pal.fg);
+    icon_button(
+        p,
+        add,
+        "code:cmd:workbench.debug.viewlet.action.addWatchExpression",
+        "Add Expression",
+        app.enabled("workbench.debug.viewlet.action.addWatchExpression"),
+    );
+    if let Some(prompt) = app
+        .debug
+        .prompt
+        .as_ref()
+        .filter(|p| matches!(p.kind, super::debug::PromptKind::Watch))
+    {
+        let box_ = Rect::new(r.x + 12, y, r.width.saturating_sub(24), 24);
+        input_box(
+            p,
+            pal,
+            box_,
+            &prompt.value,
+            prompt.label(),
+            app.focus == Focus::Debug,
+            "code:debug-prompt",
+            prompt.label(),
+        );
+        y += 28;
+    }
+    for (i, watch) in app.debug.watches.iter().enumerate() {
+        let row = Rect::new(r.x, y, r.width, 20);
+        let text = match &watch.value {
+            Some(v) => format!("{}: {v}", watch.expression),
+            None => format!("{}: not available", watch.expression),
+        };
+        label(
+            p,
+            r.x + 22,
+            y + 3,
+            r.width.saturating_sub(56),
+            &text,
+            12,
+            if watch.failed { pal.error } else { pal.fg },
+        );
+        let remove = Rect::new(r.x + r.width as i32 - 28, y, 20, 20);
+        p.symbol("close", remove.x + 4, remove.y + 4, 12, pal.desc);
+        p.region(
+            remove,
+            &format!("code:watch-remove:{i}"),
+            &format!("Remove watch {}", watch.expression),
+        );
+        if watch.reference != 0 {
+            p.region(
+                Rect::new(row.x, row.y, row.width.saturating_sub(32), row.height),
+                &format!("code:var:{}", watch.reference),
+                &format!("Expand {}", watch.expression),
+            );
+        }
+        y += 20;
+    }
+    y + 8
+}
+
+/// The call stack, innermost frame first.
+fn stack_section(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    r: Rect,
+    y: i32,
+    session: &super::debug::Session,
+) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "CALL STACK");
+    let reason = match (&session.stopped, app.debug.busy) {
+        (_, true) => "Running".to_owned(),
+        (Some(stopped), _) => stopped.label(),
+        (None, _) => "Starting".to_owned(),
+    };
+    label(
+        p,
+        r.x + 22,
+        y + 2,
+        r.width.saturating_sub(40),
+        &reason,
+        11,
         pal.desc,
     );
-    y += hh as i32 + 14;
-    if let Some((command, code)) = &app.last_run {
-        bold(
-            p,
-            r.x + 20,
-            y,
-            r.width.saturating_sub(40),
-            "LAST RUN",
-            11,
-            pal.fg,
-        );
+    y += 18;
+    for (i, frame) in session.frames.iter().enumerate().take(12) {
+        let row = Rect::new(r.x, y, r.width, 20);
+        if i == session.frame {
+            p.box_(row, pal.list_active, 0);
+        }
         label(
             p,
-            r.x + 20,
-            y + 20,
+            r.x + 22,
+            y + 3,
             r.width.saturating_sub(40),
-            command,
+            &format!(
+                "{}  {}:{}",
+                frame.name,
+                super::basename(&frame.path),
+                frame.line
+            ),
             12,
             pal.fg,
         );
+        p.region(
+            row,
+            &format!("code:frame:{i}"),
+            &format!("Frame {}", frame.name),
+        );
+        y += 20;
+    }
+    y + 8
+}
+
+/// The breakpoints, and the exception filters above them.
+fn breakpoints_section(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, y: i32) -> i32 {
+    let mut y = debug_header(p, pal, r, y, "BREAKPOINTS");
+    let clear = Rect::new(r.x + r.width as i32 - 28, y - 22, 20, 20);
+    p.symbol("close", clear.x + 4, clear.y + 4, 12, pal.fg);
+    icon_button(
+        p,
+        clear,
+        "code:cmd:workbench.debug.viewlet.action.removeAllBreakpoints",
+        "Remove All Breakpoints",
+        app.enabled("workbench.debug.viewlet.action.removeAllBreakpoints"),
+    );
+    let bottom = r.y + r.height as i32;
+    for (name, on, target, what) in [
+        (
+            "Raised Exceptions",
+            app.debug.exceptions.raised,
+            "code:exception:raised",
+            "Stop wherever an exception is raised",
+        ),
+        (
+            "Uncaught Exceptions",
+            app.debug.exceptions.uncaught,
+            "code:exception:uncaught",
+            "Stop on an exception nothing handles",
+        ),
+    ] {
+        let row = Rect::new(r.x, y, r.width, 20);
+        check(p, pal, Rect::new(r.x + 8, y + 4, 12, 12), on);
         label(
             p,
-            r.x + 20,
-            y + 38,
+            r.x + 26,
+            y + 3,
             r.width.saturating_sub(40),
-            &format!("Exit code {code}"),
+            name,
             12,
-            if *code == 0 { pal.untracked } else { pal.error },
+            pal.fg,
         );
+        p.region(row, target, what);
+        y += 20;
+    }
+    for (i, point) in app.debug.breakpoints.iter().enumerate() {
+        if y > bottom - 20 {
+            break;
+        }
+        check(p, pal, Rect::new(r.x + 8, y + 4, 12, 12), point.enabled);
+        p.region(
+            Rect::new(r.x, y, 26, 20),
+            &format!("code:bp:{i}"),
+            &format!(
+                "{} the breakpoint at {}:{}",
+                if point.enabled { "Disable" } else { "Enable" },
+                super::basename(&point.path),
+                point.line
+            ),
+        );
+        let text = match &point.condition {
+            Some(c) => format!("{}:{}  when {c}", super::basename(&point.path), point.line),
+            None => format!("{}:{}", super::basename(&point.path), point.line),
+        };
+        label(
+            p,
+            r.x + 26,
+            y + 3,
+            r.width.saturating_sub(60),
+            &text,
+            12,
+            if point.verified == Some(false) {
+                pal.desc
+            } else {
+                pal.fg
+            },
+        );
+        p.region(
+            Rect::new(r.x + 26, y, r.width.saturating_sub(58), 20),
+            &format!("code:bp-open:{i}"),
+            "Open the breakpoint's line",
+        );
+        let remove = Rect::new(r.x + r.width as i32 - 28, y, 20, 20);
+        p.symbol("close", remove.x + 4, remove.y + 4, 12, pal.desc);
+        p.region(remove, &format!("code:bp-remove:{i}"), "Remove breakpoint");
+        y += 20;
+    }
+    if app.debug.breakpoints.is_empty() {
+        label(
+            p,
+            r.x + 22,
+            y + 3,
+            r.width.saturating_sub(40),
+            "No breakpoints. Click a line's gutter to set one.",
+            12,
+            pal.desc,
+        );
+        y += 20;
+    }
+    y
+}
+
+/// A tick box, on or off.
+fn check(p: &mut Painter, pal: &Pal, r: Rect, on: bool) {
+    p.border(
+        r,
+        if on { pal.accent } else { pal.input },
+        2,
+        pal.input_border,
+    );
+    if on {
+        p.symbol("check", r.x, r.y, 12, pal.button_fg);
     }
 }
 
-fn editor_group(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
+/// The Debug Console: what the program wrote, and what was evaluated in its frame.
+fn debug_console(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
+    let (cw, rh) = terminal_cell();
+    let input_h = 26;
+    let body = Rect::new(r.x, r.y, r.width, r.height.saturating_sub(input_h));
+    let cap = (body.height / rh).max(1) as usize;
+    let skip = app.debug.console.len().saturating_sub(cap);
+    let cols = (body.width.saturating_sub(24) / cw) as usize;
+    for (i, line) in app.debug.console.iter().skip(skip).enumerate() {
+        let colour = match line.kind {
+            super::debug::ConsoleKind::Error => pal.error,
+            super::debug::ConsoleKind::Input => pal.link,
+            super::debug::ConsoleKind::Result => pal.fg,
+            super::debug::ConsoleKind::Output => pal.fg,
+        };
+        let prefix = match line.kind {
+            super::debug::ConsoleKind::Input => "> ",
+            super::debug::ConsoleKind::Result => "< ",
+            _ => "",
+        };
+        let text = format!("{prefix}{}", line.text);
+        let shown: String = text.chars().take(cols).collect();
+        mono(
+            p,
+            body.x + 12,
+            body.y + (i as u32 * rh) as i32,
+            &shown,
+            TERM_SIZE,
+            colour,
+        );
+    }
+    let input = Rect::new(
+        r.x + 8,
+        r.y + body.height as i32,
+        r.width.saturating_sub(16),
+        24,
+    );
+    input_box(
+        p,
+        pal,
+        input,
+        &app.debug.input,
+        "Evaluate an expression in the selected frame",
+        app.focus == Focus::Debug && app.debug.prompt.is_none(),
+        "code:repl-input",
+        "Debug Console input",
+    );
+}
+
+/// The floating toolbar a session puts over the editor.
+fn debug_toolbar(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
+    let Some(session) = app.debug.session.as_ref() else {
+        return;
+    };
+    let buttons: [(&str, &str, &str); 6] = [
+        (
+            if app.debug.busy {
+                "workbench.action.debug.pause"
+            } else {
+                "workbench.action.debug.continue"
+            },
+            if app.debug.busy { "Pause" } else { "Continue" },
+            "play",
+        ),
+        ("workbench.action.debug.stepOver", "Step Over", "over"),
+        ("workbench.action.debug.stepInto", "Step Into", "into"),
+        ("workbench.action.debug.stepOut", "Step Out", "out"),
+        ("workbench.action.debug.restart", "Restart", "reload"),
+        ("workbench.action.debug.stop", "Stop", "stop"),
+    ];
+    let (bw, bh) = (30u32, 28u32);
+    let width = bw * buttons.len() as u32 + 16;
+    let bar = Rect::new(
+        r.x + (r.width.saturating_sub(width) / 2) as i32,
+        r.y + 4,
+        width,
+        bh + 8,
+    );
+    p.box_(bar, pal.widget, 4);
+    p.border(bar, Color::TRANSPARENT, 4, pal.widget_border);
+    for (i, (command, name, icon)) in buttons.into_iter().enumerate() {
+        let b = Rect::new(bar.x + 8 + (i as u32 * bw) as i32, bar.y + 4, bw, bh);
+        let enabled = app.enabled(command);
+        let colour = if enabled.is_ok() { pal.fg } else { pal.desc };
+        let (x, y) = (b.x + 8, b.y + 6);
+        match icon {
+            "play" if app.debug.busy => p.symbol("pause", x, y, 16, colour),
+            "play" => icons::play(p, x, y, 16, colour),
+            "over" => icons::step_over(p, x, y, 16, colour),
+            "into" => icons::step_into(p, x, y, 16, colour),
+            "out" => icons::step_out(p, x, y, 16, colour),
+            "reload" => p.symbol("reload", x, y, 16, colour),
+            _ => icons::stop(p, x, y, 16, colour),
+        }
+        icon_button(p, b, &format!("code:cmd:{command}"), name, enabled);
+    }
+    // What it is stopped on, beside the toolbar, so the state is never only a colour.
+    let text = match (&session.stopped, app.debug.busy) {
+        (_, true) => "Running".to_owned(),
+        (Some(stopped), _) => stopped.label(),
+        (None, _) => "Starting".to_owned(),
+    };
+    label(
+        p,
+        bar.x + bar.width as i32 + 8,
+        bar.y + 10,
+        220,
+        &text,
+        11,
+        pal.desc,
+    );
+}
+fn editor_group(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, group: usize) {
     p.box_(Rect::new(r.x, r.y, r.width, TABS_H), pal.tab_inactive, 0);
-    let Some(active) = app.active_tab() else {
+    // The groups are divided by a hairline, as VS Code divides them.
+    if group > 0 {
+        p.vline(r.x, r.y, r.height, pal.border);
+        p.hline(r.x, r.y, r.width, pal.border);
+    }
+    let Some(active) = app.group_active(group).and_then(|i| app.tabs.get(i)) else {
         p.box_(r, pal.editor, 0);
-        p.region(r, "code:welcome", "Editor area");
-        if app.workspace().is_none() {
+        p.region(r, &format!("code:group:{group}"), "Editor group");
+        if app.workspace().is_none() && app.group_count() == 1 {
             welcome(app, p, pal, r);
         } else {
             watermark(app, p, pal, r);
         }
         return;
     };
-    tabs(app, p, pal, Rect::new(r.x, r.y, r.width, TABS_H));
+    tabs(app, p, pal, Rect::new(r.x, r.y, r.width, TABS_H), group);
     let mut top = r.y + TABS_H as i32;
     if active.kind == TabKind::File {
         breadcrumbs(app, p, pal, active, Rect::new(r.x, top, r.width, CRUMBS_H));
@@ -1277,7 +1926,7 @@ fn editor_group(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         _ if !active.loaded => {
             p.box_(body, pal.editor, 0);
         }
-        _ => text_editor(app, p, pal, active, body),
+        _ => text_editor(app, p, pal, active, body, group),
     }
 }
 
@@ -1372,16 +2021,18 @@ fn tab_width(p: &Painter, tab: &Tab) -> u32 {
     (p.measure(&tab.name(), 13, false) + 26 + 10 + 28).clamp(80, 260)
 }
 
-fn tabs(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
+fn tabs(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, group: usize) {
     p.hline(r.x, r.y + TABS_H as i32 - 1, r.width, pal.border);
     let actions = 36;
     let mut x = r.x;
-    for (i, tab) in app.tabs.iter().enumerate() {
+    let shown = app.group_active(group);
+    for i in app.group_tabs(group) {
+        let tab = &app.tabs[i];
         let tw = tab_width(p, tab);
         if x + tw as i32 > r.x + r.width as i32 - actions {
             break;
         }
-        let active = app.active == Some(i);
+        let active = shown == Some(i);
         let t = Rect::new(x, r.y, tw, TABS_H);
         p.box_(
             t,
@@ -1408,17 +2059,21 @@ fn tabs(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
                 p.label(x + 8, r.y + 11, 20, glyph, 10, c, true, Align::Left);
             }
         }
-        // A preview tab's title is set apart the way VS Code italicises it.
+        // A preview tab's title is set in italic, as VS Code sets it apart.
         let title = if tab.preview { pal.tab_dim } else { fg };
-        label(
-            p,
-            x + 30,
-            r.y + 9,
-            tw.saturating_sub(64),
-            &tab.name(),
-            13,
-            title,
-        );
+        let room = tw.saturating_sub(64);
+        if room > 0 {
+            p.label(
+                x + 30,
+                r.y + 9,
+                room,
+                &tab.name(),
+                13,
+                title,
+                cw_scene::Style::new(false, tab.preview, cw_scene::Lang::Auto),
+                Align::Left,
+            );
+        }
         let close = Rect::new(x + tw as i32 - 28, r.y + 7, 20, 20);
         if tab.dirty() {
             p.circle(close.x + 10, close.y + 10, 4, fg);
@@ -1612,6 +2267,23 @@ fn settings_editor(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             ("on".into(), "code:settings:wrap".into(), s.word_wrap),
         ],
     );
+    row(
+        p,
+        "Editor: Render Whitespace",
+        "Controls how the editor should render whitespace characters.",
+        vec![
+            (
+                "none".into(),
+                "code:settings:whitespace".into(),
+                !s.render_whitespace,
+            ),
+            (
+                "all".into(),
+                "code:settings:whitespace".into(),
+                s.render_whitespace,
+            ),
+        ],
+    );
     label(
         p,
         x,
@@ -1623,7 +2295,105 @@ fn settings_editor(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     );
 }
 
-fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) {
+/// Width of the minimap, when the editor is wide enough to have one.
+pub const MINIMAP_W: u32 = 76;
+/// A minimap row is two pixels tall and a character is one pixel wide, so a page of
+/// code is a page of the map.
+pub const MINIMAP_ROW: u32 = 2;
+
+/// The minimap: every row of the file as a line of coloured slices, the part on screen
+/// lit, and the whole thing a drag surface that scrolls the editor to where it is
+/// pressed (`code:minimap:<first row of the map>:<rows it holds>`).
+#[allow(clippy::too_many_arguments)]
+fn minimap(
+    app: &Workbench,
+    p: &mut Painter,
+    pal: &Pal,
+    tab: &Tab,
+    r: Rect,
+    rows: &[(usize, usize)],
+    first: usize,
+    cap: usize,
+    group: usize,
+) {
+    let text = &tab.doc.text;
+    let holds = (r.height / MINIMAP_ROW).max(1) as usize;
+    // The map scrolls only once the file is longer than it: a short file sits still.
+    let map_first = if rows.len() <= holds {
+        0
+    } else {
+        let over = rows.len() - holds;
+        let travel = rows.len().saturating_sub(cap).max(1);
+        (first * over / travel).min(over)
+    };
+    p.box_(r, pal.editor, 0);
+    p.vline(r.x, r.y, r.height, pal.border);
+    let spans = syntax::lines(tab.lang, text);
+    let mut line_starts = vec![0usize];
+    for (i, b) in text.bytes().enumerate() {
+        if b == b'\n' {
+            line_starts.push(i + 1);
+        }
+    }
+    let line_of = |pos: usize| line_starts.partition_point(|s| *s <= pos).saturating_sub(1);
+    for (i, &(s, e)) in rows.iter().enumerate().skip(map_first).take(holds) {
+        let y = r.y + ((i - map_first) as u32 * MINIMAP_ROW) as i32;
+        let line = line_of(s);
+        let ls = line_starts[line];
+        let lead = text[s..e].len() - text[s..e].trim_start().len();
+        if s + lead >= e {
+            continue;
+        }
+        let row_spans = spans.get(line).cloned().unwrap_or_default();
+        let column = |pos: usize| {
+            (columns(&text[s..pos.clamp(s, e)], app.settings.tab_size) as u32).min(r.width - 4)
+        };
+        // The line as a bar, with each coloured token drawn over it.
+        let x0 = r.x + 2 + column(s + lead) as i32;
+        let x1 = r.x + 2 + column(e) as i32;
+        if x1 > x0 {
+            p.box_(
+                Rect::new(x0, y, (x1 - x0) as u32, MINIMAP_ROW.saturating_sub(1)),
+                pal.whitespace,
+                0,
+            );
+        }
+        for sp in row_spans
+            .iter()
+            .filter(|sp| ls + sp.end > s && ls + sp.start < e)
+        {
+            let a = (ls + sp.start).max(s);
+            let b = (ls + sp.end).min(e);
+            let (sx, ex) = (r.x + 2 + column(a) as i32, r.x + 2 + column(b) as i32);
+            if ex > sx {
+                let c = syntax::color(sp.tok, app.settings.dark);
+                p.box_(
+                    Rect::new(sx, y, (ex - sx) as u32, MINIMAP_ROW.saturating_sub(1)),
+                    Color(c.0, c.1, c.2, 190),
+                    0,
+                );
+            }
+        }
+    }
+    // What is on screen, lit, and the surface that drags the view to a row.
+    let view_y = r.y + ((first.saturating_sub(map_first) as u32) * MINIMAP_ROW) as i32;
+    let view_h = (cap as u32 * MINIMAP_ROW).min(r.height);
+    p.box_(
+        Rect::new(r.x, view_y, r.width, view_h),
+        Color(255, 255, 255, if app.settings.dark { 18 } else { 30 }),
+        0,
+    );
+    p.node(
+        r,
+        cw_scene::Primitive::Region,
+        Some((
+            &format!("code:minimap:{group}:{map_first}:{holds}"),
+            "Minimap: drag to scroll the editor",
+        )),
+    );
+}
+
+fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, group: usize) {
     p.box_(r, pal.editor, 0);
     let size = app.settings.font_size;
     let (cw, rh) = cell(size, app.platform);
@@ -1633,7 +2403,11 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
     let digits = lines.to_string().len().max(2) as u32;
     let gutter = 18 + digits * cw + 26;
     let tx = r.x + gutter as i32;
-    let tw = r.width.saturating_sub(gutter + 14);
+    // The minimap takes the right edge of a wide enough editor, as VS Code's does.
+    let map = r.width >= gutter + MINIMAP_W + 26 * cw;
+    let tw = r
+        .width
+        .saturating_sub(gutter + 14 + if map { MINIMAP_W } else { 0 });
     let vc = (tw / cw).max(1) as usize;
     let cap = (r.height / rh).max(1) as usize;
     let wrap = if app.settings.word_wrap { vc } else { 0 };
@@ -1642,7 +2416,14 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
     while !text.is_char_boundary(cursor) {
         cursor -= 1;
     }
-    let (vrow, vcol) = crate::editor_caret_cell(text, cursor, wrap);
+    let (vrow, char_col) = crate::editor_caret_cell(text, cursor, wrap);
+    // The caret's column on screen counts tab stops, not characters.
+    let vcol = rows.get(vrow).map_or(char_col, |(s, _)| {
+        columns(
+            &text[(*s).min(cursor)..cursor],
+            app.settings.tab_size.max(1),
+        )
+    });
     let mut first = tab.scroll.min(rows.len().saturating_sub(1));
     if tab.follow {
         if vrow < first {
@@ -1659,12 +2440,29 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
     let focused = app.focus == Focus::Editor;
     let spans = syntax::lines(tab.lang, text);
     let (sel_a, sel_b) = tab.doc.selection();
+    // Every cursor's selection is painted, not only the primary one's.
+    let selections: Vec<(usize, usize)> = tab
+        .doc
+        .all_carets()
+        .into_iter()
+        .map(|(c, a)| (c.min(a), c.max(a)))
+        .filter(|(a, b)| a != b)
+        .collect();
     let matches = if app.find.is_some() {
         app_find_matches(app, tab)
     } else {
         vec![]
     };
     let bracket = tab.doc.matching_bracket();
+    // Where the debugger has the program stopped, when it is in this file.
+    let stopped_line = app
+        .debug
+        .session
+        .as_ref()
+        .filter(|s| !s.ended)
+        .and_then(super::debug::Session::at)
+        .filter(|(path, _)| *path == tab.path)
+        .map(|(_, line)| line);
     let problems: Vec<_> = app
         .problems_all()
         .into_iter()
@@ -1679,7 +2477,10 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
     }
     let line_of = |pos: usize| line_starts.partition_point(|s| *s <= pos).saturating_sub(1);
     let caret_line = line_of(cursor);
-    let col_in = |from: usize, to: usize| text[from..to].chars().count();
+    let tab_size = app.settings.tab_size.max(1);
+    // Columns on screen: a tab runs on to the next tab stop, and a wide character or an
+    // emoji takes two cells.
+    let col_in = |from: usize, to: usize| columns(&text[from..to], tab_size);
     for (i, &(s, e)) in rows.iter().enumerate().skip(first).take(cap) {
         let y = r.y + ((i - first) as u32 * rh) as i32;
         let ty = y + (rh as i32 - ch as i32) / 2;
@@ -1688,7 +2489,7 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
         let ls = line_starts[line];
         let col0 = col_in(ls, s);
         let x_of = |pos: usize| -> i32 {
-            let c = col_in(s, pos) as i64 - hs as i64;
+            let c = col_in(s, pos.clamp(s, e)) as i64 - hs as i64;
             tx + (c.clamp(0, vc as i64) as i32) * cw as i32
         };
         if i == vrow && sel_a == sel_b {
@@ -1717,13 +2518,20 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
                 );
             }
         }
-        // Selection, including the newline at the end of a fully selected row.
-        if sel_a != sel_b && sel_a <= e && sel_b >= s {
-            let a = sel_a.max(s);
-            let b = sel_b.min(e);
+        // The line the program is stopped on, as the debugger reported it.
+        if stopped_line == Some(line as u32 + 1) && starts_line {
+            p.box_(Rect::new(r.x, y, r.width, rh), pal.stopped, 0);
+        }
+        // Selections, including the newline at the end of a fully selected row.
+        for (from, to) in selections.iter().copied() {
+            if from > e || to < s {
+                continue;
+            }
+            let a = from.max(s);
+            let b = to.min(e);
             let x0 = x_of(a);
             let mut x1 = x_of(b);
-            if sel_b > e && e < text.len() {
+            if to > e && e < text.len() {
                 x1 += cw as i32 / 2 + 2;
             }
             if x1 > x0 {
@@ -1760,6 +2568,34 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
             }
         }
         if starts_line {
+            // The gutter: a breakpoint dot where there is one, and a place to click for
+            // one where there is not.
+            let point = app.debug.at(&tab.path, line as u32 + 1);
+            let dot = Rect::new(r.x + 2, y + (rh as i32 - 12) / 2, 14, 12);
+            if let Some(point) = point {
+                let colour = match (point.enabled, point.verified) {
+                    (false, _) => pal.bp_off,
+                    (true, Some(false)) => pal.bp_off,
+                    _ => pal.bp,
+                };
+                p.circle(dot.x + 6, dot.y + 6, 5, colour);
+                if point.condition.is_some() {
+                    // A conditional breakpoint carries the mark VS Code puts on it.
+                    mono(p, dot.x + 3, ty, "=", 9, pal.editor);
+                }
+            }
+            let what = match point {
+                None => "Set a breakpoint on this line".to_owned(),
+                Some(b) => match &b.condition {
+                    Some(c) => format!("Remove the breakpoint (stops when {c})"),
+                    None => "Remove the breakpoint on this line".to_owned(),
+                },
+            };
+            p.region(
+                Rect::new(r.x, y, 16, rh),
+                &format!("code:gutter:{group}:{}", line + 1),
+                &what,
+            );
             let n = (line + 1).to_string();
             let nx = r.x + 18 + (digits as usize - n.len()) as i32 * cw as i32;
             mono(
@@ -1801,20 +2637,51 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
             if a >= b || !line_text.is_char_boundary(a) || !line_text.is_char_boundary(b) {
                 continue;
             }
-            let start_col = col_in(ls, ls + a) - col0;
-            let run: Vec<char> = line_text[a..b]
-                .chars()
-                .map(|c| if c == '\t' { ' ' } else { c })
-                .collect();
-            let end_col = start_col + run.len();
+            let start_col = col_in(ls, ls + a).saturating_sub(col0);
+            // Tabs are laid out to their stops, so the run is painted with its tabs
+            // expanded to the spaces that reach the next one.
+            let run: String = expand_tabs(&line_text[a..b], start_col + col0, tab_size);
+            let end_col = start_col + cells(&run);
             if end_col <= hs || start_col >= hs + vc {
                 continue;
             }
-            let from = hs.saturating_sub(start_col);
-            let to = run.len().min(hs + vc - start_col);
-            let visible: String = run[from..to].iter().collect();
-            let x = tx + ((start_col + from - hs) as u32 * cw) as i32;
-            mono(p, x, ty, &visible, size, color);
+            // The cells of the run inside the horizontal scroll window, by cluster.
+            let (from, to) = (hs.saturating_sub(start_col), hs + vc - start_col);
+            let clusters = cw_scene::text::terminal::cluster_columns(&run);
+            let Some(&(first, first_col)) = clusters.iter().find(|c| c.1 >= from) else {
+                continue;
+            };
+            let last = clusters
+                .iter()
+                .find(|c| c.1 >= to)
+                .map_or(run.len(), |c| c.0);
+            let visible = &run[first..last.max(first)];
+            let x = tx + ((start_col + first_col - hs) as u32 * cw) as i32;
+            mono(p, x, ty, visible, size, color);
+        }
+        // `editor.renderWhitespace`: a dot for every space and an arrow for every tab.
+        if app.settings.render_whitespace {
+            let mut col = col0;
+            for (i, c) in line_text[rs..re].char_indices() {
+                let width = if c == '\t' {
+                    tab_size - col % tab_size
+                } else {
+                    char_cells(c)
+                };
+                if matches!(c, ' ' | '\t') && col >= hs && col < hs + vc {
+                    let x = tx + ((col - hs) as u32 * cw) as i32;
+                    mono(
+                        p,
+                        x,
+                        ty,
+                        if c == '\t' { "→" } else { "·" },
+                        size,
+                        pal.whitespace,
+                    );
+                }
+                col += width;
+                let _ = i;
+            }
         }
         // Squiggles under what a tool reported on this line.
         for pr in problems.iter().filter(|pr| pr.line == line + 1) {
@@ -1842,17 +2709,47 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
             zigzag(p, x0, x1.max(x0 + 6), y + rh as i32 - 2, c);
         }
     }
-    // The text area carries the view's geometry so a click resolves to what is under it.
-    let target = format!("code:editor:{first}:{hs}:{wrap}:{cap}");
+    if map {
+        minimap(
+            app,
+            p,
+            pal,
+            tab,
+            Rect::new(
+                r.x + r.width as i32 - MINIMAP_W as i32 - 14,
+                r.y,
+                MINIMAP_W,
+                r.height,
+            ),
+            &rows,
+            first,
+            cap,
+            group,
+        );
+    }
+    // The text area carries its group and the view's geometry, so a click resolves to
+    // what is under it in the group it was aimed at.
+    let target = format!("code:editor:{group}:{first}:{hs}:{wrap}:{cap}");
     p.region(
         Rect::new(tx, r.y, tw.max(1), r.height),
         &target,
         &format!("{} editor text", tab.name()),
     );
-    if focused && vrow >= first && vrow < first + cap && vcol >= hs && vcol <= hs + vc {
-        let x = tx + ((vcol - hs) as u32 * cw) as i32;
-        let y = r.y + ((vrow - first) as u32 * rh) as i32;
-        p.box_(Rect::new(x, y, 2, rh), pal.caret, 0);
+    if focused {
+        // One caret per cursor, all of them live.
+        for (cursor, _) in tab.doc.all_carets() {
+            let cursor = cursor.min(text.len());
+            let (row, _) = crate::editor_caret_cell(text, cursor, wrap);
+            let col = rows.get(row).map_or(0, |(s, _)| {
+                columns(&text[(*s).min(cursor)..cursor], tab_size)
+            });
+            if row < first || row >= first + cap || col < hs || col > hs + vc {
+                continue;
+            }
+            let x = tx + ((col - hs) as u32 * cw) as i32;
+            let y = r.y + ((row - first) as u32 * rh) as i32;
+            p.box_(Rect::new(x, y, 2, rh), pal.caret, 0);
+        }
     }
     // Scrollbar: the slider is where the view is; the track pages it.
     if rows.len() > cap {
@@ -1867,7 +2764,7 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
         if slider_y > track.y {
             p.region(
                 Rect::new(track.x, track.y, 14, (slider_y - track.y) as u32),
-                &format!("code:scroll:{}", first.saturating_sub(cap)),
+                &format!("code:scroll:{group}:{}", first.saturating_sub(cap)),
                 "Page up",
             );
         }
@@ -1881,7 +2778,7 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
                     (track.y + r.height as i32 - below) as u32,
                 ),
                 &format!(
-                    "code:scroll:{}",
+                    "code:scroll:{group}:{}",
                     (first + cap).min(rows.len().saturating_sub(1))
                 ),
                 "Page down",
@@ -1890,6 +2787,12 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect) 
     }
     if let Some(find) = &app.find {
         find_widget(app, p, pal, find, &matches, (sel_a, sel_b), r);
+    }
+    // The editor's context menu hangs from the caret the right click placed.
+    if app.context == Some(ContextKind::Editor) {
+        let x = tx + ((vcol.saturating_sub(hs)) as u32 * cw) as i32;
+        let y = r.y + ((vrow.saturating_sub(first)) as u32 * rh) as i32 + rh as i32;
+        context_menu(app, p, pal, ContextKind::Editor, x, y);
     }
 }
 fn app_find_matches(app: &Workbench, tab: &Tab) -> Vec<(usize, usize)> {
@@ -2057,6 +2960,7 @@ fn panel(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         (PanelTab::Problems, "PROBLEMS"),
         (PanelTab::Output, "OUTPUT"),
         (PanelTab::Terminal, "TERMINAL"),
+        (PanelTab::Debug, "DEBUG CONSOLE"),
     ] {
         let on = app.panel == tab;
         let tw = p.measure(title, 11, false);
@@ -2088,6 +2992,7 @@ fn panel(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             PanelTab::Problems => "problems",
             PanelTab::Output => "output",
             PanelTab::Terminal => "terminal",
+            PanelTab::Debug => "debug",
         };
         p.region(
             Rect::new(x, r.y + 4, width, 28),
@@ -2122,18 +3027,23 @@ fn panel(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     match app.panel {
         PanelTab::Terminal => terminal(app, p, pal, body),
         PanelTab::Problems => problems_panel(app, p, pal, body),
+        PanelTab::Debug => debug_console(app, p, pal, body),
         PanelTab::Output => {
             let (cw, rh) = terminal_cell();
             let cap = (body.height / rh).max(1) as usize;
             let skip = app.output.len().saturating_sub(cap);
             let cols = (body.width.saturating_sub(24) / cw) as usize;
             for (i, line) in app.output.iter().skip(skip).enumerate() {
-                let shown: String = line.chars().take(cols).collect();
+                // The first row's worth of cells: a wide character is never split.
+                let shown = match cw_scene::text::terminal::wrap(line, cols).first() {
+                    Some(row) if cols > 0 => &line[row.clone()],
+                    _ => "",
+                };
                 mono(
                     p,
                     body.x + 12,
                     body.y + (i as u32 * rh) as i32,
-                    &shown,
+                    shown,
                     TERM_SIZE,
                     pal.fg,
                 );
@@ -2257,12 +3167,12 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
     let mut lines: Vec<TermLine> = Vec::new();
     let wrap = |lines: &mut Vec<TermLine>, text: &str, c: Color| {
         for raw in text.trim_end_matches('\n').split('\n') {
-            let chars: Vec<char> = raw.chars().collect();
-            if chars.is_empty() {
+            if raw.is_empty() {
                 lines.push((vec![], None));
+                continue;
             }
-            for chunk in chars.chunks(cols) {
-                lines.push((vec![(chunk.iter().collect(), c)], None));
+            for row in cw_scene::wrap_text(raw, cols) {
+                lines.push((vec![(row, c)], None));
             }
         }
     };
@@ -2273,7 +3183,7 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             (format!("{prompt} "), prompt_color),
             (entry.command.clone(), pal.fg),
         ];
-        let total: usize = echo.iter().map(|(t, _)| t.chars().count()).sum();
+        let total: usize = echo.iter().map(|(t, _)| cells(t)).sum();
         if total > cols {
             let joined: String = echo.iter().map(|(t, _)| t.clone()).collect();
             let start = lines.len();
@@ -2312,12 +3222,12 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         let mut x = x0;
         for (text, c) in spans {
             mono(p, x, y, text, TERM_SIZE, *c);
-            x += (text.chars().count() as u32 * cw) as i32;
+            x += (cells(text) as u32 * cw) as i32;
         }
         y += rh as i32;
     }
     if scroll == 0 {
-        let prompt_w = (prompt.chars().count() as u32 * cw) as i32;
+        let prompt_w = (cells(&prompt) as u32 * cw) as i32;
         mono(p, x0, y, &prompt, TERM_SIZE, prompt_color);
         mono(p, x0 + prompt_w, y, &term.input, TERM_SIZE, pal.fg);
         p.region(
@@ -2330,12 +3240,11 @@ fn terminal(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
             "code:terminal-line",
             "Terminal input",
         );
-        let before = term
-            .input
-            .get(..term.cursor.min(term.input.len()))
-            .unwrap_or("")
-            .chars()
-            .count() as i32;
+        let before = cells(
+            term.input
+                .get(..term.cursor.min(term.input.len()))
+                .unwrap_or(""),
+        ) as i32;
         let caret = Rect::new(x0 + prompt_w + before * cw as i32, y, cw, rh);
         if app.focus == Focus::Terminal {
             p.box_(caret, Color(pal.fg.0, pal.fg.1, pal.fg.2, 200), 0);
@@ -2435,6 +3344,102 @@ fn status_bar(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect) {
         }
         rx -= 14;
     }
+}
+
+/// A context menu at `(x, y)`: the same rows a menu-bar menu paints, from the list the
+/// context offers, each one either a real command or shown disabled with its reason.
+fn context_menu(app: &Workbench, p: &mut Painter, pal: &Pal, kind: ContextKind, x: i32, y: i32) {
+    let mac = app.platform == Platform::Mac;
+    let items = kind.items();
+    let width = items
+        .iter()
+        .filter_map(|id| commands::command(id))
+        .map(|c| {
+            p.measure(c.label, 13, false) + p.measure(&display_keys(c.keys, mac), 12, false) + 90
+        })
+        .max()
+        .unwrap_or(220)
+        .max(230);
+    let height: u32 = items
+        .iter()
+        .map(|i| if *i == "-" { 9 } else { 26 })
+        .sum::<u32>()
+        + 8;
+    // Kept on screen, as a real menu is.
+    let x = x.min(p.scene.width as i32 - width as i32 - 6).max(2);
+    let y = y.min(p.scene.height as i32 - height as i32 - 6).max(2);
+    let r = Rect::new(x, y, width, height);
+    let z = p.z;
+    p.z += 6;
+    // A click anywhere else closes it, as on every platform.
+    p.region(
+        Rect::new(0, 0, p.scene.width, p.scene.height),
+        "code:menu-close",
+        "Close menu",
+    );
+    p.z += 1;
+    p.drop_shadow(r, 5, 10, 110, 3);
+    p.border(
+        r,
+        pal.menu,
+        5,
+        if app.settings.dark {
+            hex(0x454545)
+        } else {
+            hex(0xCECECE)
+        },
+    );
+    let mut iy = y + 4;
+    for id in items {
+        if *id == "-" {
+            p.hline(x + 10, iy + 4, width.saturating_sub(20), pal.border);
+            iy += 9;
+            continue;
+        }
+        let Some(c) = commands::command(id) else {
+            continue;
+        };
+        let row = Rect::new(x + 4, iy, width - 8, 26);
+        let enabled = app.enabled(id);
+        let color = if enabled.is_ok() { pal.fg } else { pal.desc };
+        let keys = display_keys(c.keys, mac);
+        let keys_w = p.measure(&keys, 12, false);
+        // "Reveal in File Manager" is the platform's own words for it.
+        let text = if *id == "revealFileInOS" {
+            match app.platform {
+                Platform::Mac => "Reveal in Finder",
+                Platform::Windows => "Reveal in File Explorer",
+                Platform::Linux => "Reveal in Files",
+            }
+        } else {
+            c.label
+        };
+        label(
+            p,
+            row.x + 14,
+            iy + 4,
+            width.saturating_sub(keys_w + 46),
+            text,
+            13,
+            color,
+        );
+        p.label(
+            row.x,
+            iy + 5,
+            row.width - 14,
+            &keys,
+            12,
+            pal.desc,
+            false,
+            Align::Right,
+        );
+        match enabled {
+            Ok(()) => p.region(row, &format!("code:cmd:{id}"), text),
+            Err(why) => inert(p, row, &format!("{text}: {why}")),
+        }
+        iy += 26;
+    }
+    p.z = z;
 }
 
 fn menu_overlay(app: &Workbench, p: &mut Painter, pal: &Pal, menu: &str, w: u32, h: u32) {

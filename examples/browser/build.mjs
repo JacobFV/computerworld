@@ -45,7 +45,9 @@ const nativeApps=[
 // desktops only.
 const desktopOnly=new Set(['code','freecad','kicad']);
 const desktopProfiles=new Set(profiles.slice(0,3).map(p=>p.id));
-definition.metadata={...definition.metadata,desktop_apps:nativeApps,device_presentations:{'alice-mac':'desktop','bob-windows':'desktop','carol-ubuntu':'laptop','app-server':'server','git-server':'server','alice-phone':'phone','bob-android':'phone'}};
+// The reference world states what each of its computers is (worlds/company-2026/world.json
+// metadata.device_presentations); the demo adds its two phones to that, never restates it.
+definition.metadata={...definition.metadata,desktop_apps:nativeApps,device_presentations:{...definition.metadata.device_presentations,'alice-phone':'phone','bob-android':'phone'}};
 for(const computer of definition.computers){
  if(!computer.profile.startsWith('virtual-'))continue;
  for(const app of nativeApps){

@@ -1,6 +1,6 @@
 //! Small drawing API shared by independent platform shells.
 use super::DesktopTheme;
-use cw_scene::{metrics, Color, Node, Primitive, Rect, RoundedClip, Scene, Typeface};
+use cw_scene::{metrics, Color, Node, Primitive, Rect, RoundedClip, Scene, Style, Typeface};
 #[derive(Clone, Debug, Default)]
 pub struct WindowView {
     pub id: u64,
@@ -160,6 +160,14 @@ pub struct ShellOptions {
     pub home: String,
     /// Documents the user really opened, newest first (`DesktopState::recents`).
     pub recents: Vec<String>,
+    /// The machine runs on a battery (a laptop or a phone), so the shell shows one. A
+    /// desktop computer has none and its shell shows no battery at all.
+    pub battery: bool,
+    /// Where the pointer was when the open panel was opened: a context menu stays where
+    /// it was summoned while the pointer moves over its entries.
+    pub anchor: Option<(i32, i32)>,
+    /// A phone's Recents carousel position and Select mode.
+    pub overview: crate::Overview,
 }
 /// Words a phone keyboard offers to complete, most common first. A fixed list, so two
 /// machines typing the same letters are offered the same words.
@@ -454,6 +462,12 @@ pub struct ShellContext<'a> {
     pub user: &'a str,
     pub home: &'a str,
     pub recents: &'a [String],
+    /// The machine has a battery to report (a laptop or a phone).
+    pub battery: bool,
+    /// Where the open panel was summoned; a context menu is drawn there.
+    pub anchor: Option<(i32, i32)>,
+    /// A phone's Recents carousel position and Select mode.
+    pub overview: crate::Overview,
 }
 impl ShellContext<'_> {
     pub fn selected(&self, id: &str) -> bool {
@@ -702,6 +716,10 @@ pub struct Painter {
     pub scene: Scene,
     pub next: u64,
     pub z: i32,
+    /// Platform whose idiom scroll bars are drawn in.
+    pub theme: DesktopTheme,
+    /// Where the window being painted has each of its panes scrolled to.
+    pub scroll: super::scroll::Scroll,
 }
 /// Horizontal placement of a single-line label inside its box.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -745,20 +763,23 @@ impl Painter {
             scene: Scene::new(width, height),
             next: 1 << 60,
             z: 0,
+            theme: DesktopTheme::Macos,
+            scroll: Default::default(),
         }
     }
     pub fn themed(theme: DesktopTheme, width: u32, height: u32, first_id: u64) -> Self {
         let mut p = Self::new(width, height);
         p.next = first_id;
         p.scene.typeface = theme.typeface();
+        p.theme = theme;
         p
     }
     pub fn typeface(&self) -> Typeface {
         self.scene.typeface
     }
     /// Exact single-line pixel width in this painter's bundled UI font.
-    pub fn measure(&self, text: &str, size: u16, bold: bool) -> u32 {
-        metrics::text_width(self.scene.typeface, bold, text, size)
+    pub fn measure(&self, text: &str, size: u16, style: impl Into<Style>) -> u32 {
+        metrics::text_width(self.scene.typeface, style, text, size)
     }
     /// One ellipsized line, aligned within `width`. Returns the painted text width.
     #[allow(clippy::too_many_arguments)]
@@ -770,11 +791,12 @@ impl Painter {
         text: &str,
         size: u16,
         color: Color,
-        bold: bool,
+        style: impl Into<Style>,
         align: Align,
     ) -> u32 {
-        let text = metrics::ellipsize(self.scene.typeface, bold, text, size, width);
-        let measured = self.measure(&text, size, bold).min(width);
+        let style = style.into();
+        let text = metrics::ellipsize(self.scene.typeface, style, text, size, width);
+        let measured = self.measure(&text, size, style).min(width);
         let x = x + match align {
             Align::Left => 0,
             Align::Center => (width - measured) as i32 / 2,
@@ -787,12 +809,7 @@ impl Painter {
             measured + 2,
             u32::from(size) + u32::from(size) / 2 + 2,
         );
-        let primitive = if bold {
-            Primitive::UiTextBold { text, color, size }
-        } else {
-            Primitive::UiText { text, color, size }
-        };
-        self.node(bounds, primitive, None);
+        self.node(bounds, Primitive::ui_text(text, color, size, style), None);
         measured
     }
     pub fn left(&mut self, x: i32, y: i32, width: u32, text: &str, size: u16, color: Color) -> u32 {
@@ -841,11 +858,7 @@ impl Painter {
         let height = lines * line_height + u32::from(size) / 2;
         self.node(
             Rect::new(x, y, width, height),
-            Primitive::UiText {
-                text: text.into(),
-                color,
-                size,
-            },
+            Primitive::ui_text(text, color, size, Style::default()),
             None,
         );
         lines * line_height
@@ -1056,11 +1069,7 @@ impl Painter {
     pub fn text(&mut self, x: i32, y: i32, w: u32, text: &str, size: u16, c: Color) {
         self.node(
             Rect::new(x, y, w, u32::from(size) + 9),
-            Primitive::UiText {
-                text: text.into(),
-                color: c,
-                size,
-            },
+            Primitive::ui_text(text, c, size, Style::default()),
             None,
         );
     }
@@ -1137,11 +1146,7 @@ impl Painter {
     pub fn bold(&mut self, x: i32, y: i32, w: u32, text: &str, size: u16, c: Color) {
         self.node(
             Rect::new(x, y, w, u32::from(size) + 9),
-            Primitive::UiTextBold {
-                text: text.into(),
-                color: c,
-                size,
-            },
+            Primitive::ui_text(text, c, size, true.into()),
             None,
         );
     }

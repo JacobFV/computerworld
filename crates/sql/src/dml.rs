@@ -4,6 +4,7 @@ use crate::eval::{eval, ColMeta, Ctx, Env, Relation, Scope};
 use crate::exec::{from_relation, table_candidates, table_cols, table_row};
 use crate::parser::parse_expr;
 use crate::schema::{build_table, Index, IndexColumn, IndexOrigin, State, Table, View};
+use crate::trigger::{Event, Image};
 use crate::value::{compare, Affinity, Collation, Value};
 use crate::{Output, SqlError};
 use std::cmp::Ordering;
@@ -28,6 +29,7 @@ impl Run<'_> {
             ctes: self.ctes.clone(),
             plan: None,
             depth: 0,
+            shape: None,
         }
     }
 }
@@ -418,12 +420,12 @@ fn parent_actions(
                     return Err(constraint("FOREIGN KEY constraint failed"))
                 }
                 FkAction::Cascade => match new {
-                    None => delete_row(state, env, &ckey, id, depth + 1)?,
+                    None => delete_fired(state, env, &ckey, id, depth + 1)?,
                     Some((nid, nrow)) => {
                         let vals = key_values(nid, nrow, &cols);
                         let before = state.tables[&ckey].clone();
                         let old_child = before.full_row(id, &before.rows[&id]);
-                        set_columns(state, &ckey, id, &fk.columns, &vals)?;
+                        set_columns_fired(state, env, &ckey, id, &fk.columns, &vals)?;
                         let after = state.tables[&ckey].clone();
                         let nid2 = match after.ipk {
                             Some(i) => as_rowid(
@@ -448,7 +450,7 @@ fn parent_actions(
                 },
                 FkAction::SetNull => {
                     let nulls = vec![Value::Null; fk.columns.len()];
-                    set_columns(state, &ckey, id, &fk.columns, &nulls)?;
+                    set_columns_fired(state, env, &ckey, id, &fk.columns, &nulls)?;
                 }
                 FkAction::SetDefault => {
                     let ctx = Ctx {
@@ -458,6 +460,7 @@ fn parent_actions(
                         ctes: Rc::new(vec![]),
                         plan: None,
                         depth: 0,
+                        shape: None,
                     };
                     let defaults = parsed_defaults(&child)?;
                     let vals: Vec<Value> = fk
@@ -465,7 +468,7 @@ fn parent_actions(
                         .iter()
                         .map(|c| eval_default(&ctx, &defaults[*c]))
                         .collect::<Result<_, _>>()?;
-                    set_columns(state, &ckey, id, &fk.columns, &vals)?;
+                    set_columns_fired(state, env, &ckey, id, &fk.columns, &vals)?;
                     let after = state.tables[&ckey].clone();
                     if let Some(s) = after.rows.get(&id) {
                         check_child(state, &after, &after.full_row(id, s), None)?;
@@ -473,6 +476,116 @@ fn parent_actions(
                 }
             }
         }
+    }
+    Ok(())
+}
+/// A foreign key action's delete: the child row's own DELETE triggers fire around it.
+fn delete_fired(
+    state: &mut State,
+    env: &Env,
+    key: &str,
+    rowid: i64,
+    depth: usize,
+) -> Result<(), SqlError> {
+    if !crate::trigger::any(state, key) {
+        return delete_row(state, env, key, rowid, depth);
+    }
+    let run = Run {
+        params: &[],
+        env,
+        ctes: Rc::new(vec![]),
+    };
+    let table = state.tables[key].clone();
+    let Some(s) = table.rows.get(&rowid) else {
+        return Ok(());
+    };
+    let old = Image::of_table(&table, &table.full_row(rowid, s), Some(rowid));
+    let ev = crate::trigger::Event::Delete;
+    if !crate::trigger::fire(
+        state,
+        &run,
+        key,
+        TriggerTiming::Before,
+        &ev,
+        Some(&old),
+        None,
+    )? {
+        return Ok(());
+    }
+    delete_row(state, env, key, rowid, depth)?;
+    crate::trigger::fire(
+        state,
+        &run,
+        key,
+        TriggerTiming::After,
+        &ev,
+        Some(&old),
+        None,
+    )?;
+    Ok(())
+}
+/// A foreign key action's update: the child row's UPDATE triggers (watching the key
+/// columns) fire around it.
+fn set_columns_fired(
+    state: &mut State,
+    env: &Env,
+    key: &str,
+    rowid: i64,
+    cols: &[usize],
+    vals: &[Value],
+) -> Result<(), SqlError> {
+    if !crate::trigger::any(state, key) {
+        return set_columns(state, key, rowid, cols, vals);
+    }
+    let run = Run {
+        params: &[],
+        env,
+        ctes: Rc::new(vec![]),
+    };
+    let table = state.tables[key].clone();
+    let Some(s) = table.rows.get(&rowid) else {
+        return Ok(());
+    };
+    let before = table.full_row(rowid, s);
+    let mut proposed = before.clone();
+    for (c, v) in cols.iter().zip(vals) {
+        proposed[*c] = table.columns[*c].affinity.apply(v.clone());
+    }
+    let names: Vec<String> = cols
+        .iter()
+        .map(|c| table.columns[*c].name.clone())
+        .collect();
+    let ev = crate::trigger::Event::Update(&names);
+    let old = Image::of_table(&table, &before, Some(rowid));
+    let new = Image::of_table(&table, &proposed, Some(rowid));
+    if !crate::trigger::fire(
+        state,
+        &run,
+        key,
+        TriggerTiming::Before,
+        &ev,
+        Some(&old),
+        Some(&new),
+    )? {
+        return Ok(());
+    }
+    set_columns(state, key, rowid, cols, vals)?;
+    let after = state.tables[key].clone();
+    let id = match after.ipk {
+        Some(i) => as_rowid(&proposed[i]).unwrap_or(rowid),
+        None => rowid,
+    };
+    if let Some(s) = after.rows.get(&id) {
+        let new = Image::of_table(&after, &after.full_row(id, s), Some(id));
+        crate::trigger::fire(
+            state,
+            &run,
+            key,
+            TriggerTiming::After,
+            &ev,
+            Some(&old),
+            Some(&new),
+        )?;
     }
     Ok(())
 }
@@ -494,7 +607,8 @@ pub fn delete_row(
 }
 
 enum Written {
-    Yes,
+    /// Stored, under this rowid.
+    Yes(i64),
     Skipped,
 }
 /// Store a row, enforcing NOT NULL, CHECK, UNIQUE and foreign keys under a conflict
@@ -622,12 +736,11 @@ fn write_row(
     if table.autoincrement {
         bump_sequence(state, &table.name, rowid);
     }
-    run.env.last_insert_rowid.set(if old.is_none() {
-        rowid
-    } else {
-        run.env.last_insert_rowid.get()
-    });
-    Ok(Written::Yes)
+    // A WITHOUT ROWID table has no rowid to report.
+    if old.is_none() && !table.without_rowid {
+        run.env.last_insert_rowid.set(rowid);
+    }
+    Ok(Written::Yes(rowid))
 }
 fn returning(
     ctx: &Ctx,
@@ -677,6 +790,9 @@ fn returning(
 }
 
 pub fn insert(state: &mut State, run: &Run, ins: &Insert) -> Result<Output, SqlError> {
+    if state.views.contains_key(&ins.table.to_ascii_lowercase()) {
+        return crate::trigger::insert_view(state, run, ins);
+    }
     let key = guard_writable(state, &ins.table)?;
     let table = state.tables[&key].clone();
     let slots: Vec<Slot> = if ins.columns.is_empty() {
@@ -756,9 +872,33 @@ pub fn insert(state: &mut State, run: &Run, ins: &Insert) -> Result<Output, SqlE
             Some(i) if !row[i].is_null() => Some(row[i].clone()),
             _ => explicit_rowid.filter(|v| !v.is_null()),
         };
+        let explicit = match &rowid_value {
+            Some(v) => Some(as_rowid(v)?),
+            None => None,
+        };
+        if crate::trigger::any(state, &key) {
+            // BEFORE INSERT sees an automatic rowid as -1: it is not chosen yet.
+            let t = state.tables[&key].clone();
+            let mut shown = row.clone();
+            if let Some(i) = t.ipk {
+                shown[i] = Value::Integer(explicit.unwrap_or(-1));
+            }
+            let new = Image::of_table(&t, &shown, Some(explicit.unwrap_or(-1)));
+            if !crate::trigger::fire(
+                state,
+                run,
+                &key,
+                TriggerTiming::Before,
+                &Event::Insert,
+                None,
+                Some(&new),
+            )? {
+                continue;
+            }
+        }
         let current = state.tables[&key].clone();
-        let rowid = match rowid_value {
-            Some(v) => as_rowid(&v)?,
+        let rowid = match explicit {
+            Some(id) => id,
             None => next_rowid(state, &current)?,
         };
         // Upsert: a conflict on the target becomes an update of the existing row.
@@ -830,19 +970,27 @@ pub fn insert(state: &mut State, run: &Run, ins: &Insert) -> Result<Output, SqlE
             &defaults,
         )? {
             Written::Skipped => {}
-            Written::Yes => {
+            Written::Yes(id) => {
                 out.changes += 1;
-                let last = run.env.last_insert_rowid.get();
+                run.env.count_direct();
                 let t = state.tables[&key].clone();
-                let ctx = run.ctx(state);
-                returning(
-                    &ctx,
-                    &t,
-                    &ins.returning,
-                    last,
-                    &t.full_row(last, &t.rows[&last]),
-                    &mut out,
-                )?;
+                let stored = t.full_row(id, &t.rows[&id]);
+                {
+                    let ctx = run.ctx(state);
+                    returning(&ctx, &t, &ins.returning, id, &stored, &mut out)?;
+                }
+                if crate::trigger::any(state, &key) {
+                    let new = Image::of_table(&t, &stored, Some(id));
+                    crate::trigger::fire(
+                        state,
+                        run,
+                        &key,
+                        TriggerTiming::After,
+                        &Event::Insert,
+                        None,
+                        Some(&new),
+                    )?;
+                }
             }
         }
     }
@@ -889,7 +1037,26 @@ fn upsert_update(
         }
         assign(&ctx, &table, &scope, sets, &old, rowid)?
     };
-    if let Written::Yes = write_row(
+    let names: Vec<String> = sets.iter().flat_map(|(t, _)| t.clone()).collect();
+    let fires = crate::trigger::any(state, key);
+    let before = Image::of_table(&table, &old, Some(rowid));
+    if fires {
+        let new = Image::of_table(&table, &new_row, Some(new_id));
+        let ev = Event::Update(&names);
+        if !crate::trigger::fire(
+            state,
+            run,
+            key,
+            TriggerTiming::Before,
+            &ev,
+            Some(&before),
+            Some(&new),
+        )? || !state.tables[key].rows.contains_key(&rowid)
+        {
+            return Ok(());
+        }
+    }
+    if let Written::Yes(id) = write_row(
         state,
         run,
         key,
@@ -901,16 +1068,26 @@ fn upsert_update(
         defaults,
     )? {
         out.changes += 1;
+        run.env.count_direct();
         let t = state.tables[key].clone();
-        let ctx = run.ctx(state);
-        returning(
-            &ctx,
-            &t,
-            ret,
-            new_id,
-            &t.full_row(new_id, &t.rows[&new_id]),
-            out,
-        )?;
+        let stored = t.full_row(id, &t.rows[&id]);
+        {
+            let ctx = run.ctx(state);
+            returning(&ctx, &t, ret, id, &stored, out)?;
+        }
+        if fires {
+            let new = Image::of_table(&t, &stored, Some(id));
+            let ev = Event::Update(&names);
+            crate::trigger::fire(
+                state,
+                run,
+                key,
+                TriggerTiming::After,
+                &ev,
+                Some(&before),
+                Some(&new),
+            )?;
+        }
     }
     Ok(())
 }
@@ -976,8 +1153,12 @@ fn assign(
 }
 
 pub fn update(state: &mut State, run: &Run, up: &Update) -> Result<Output, SqlError> {
+    if state.views.contains_key(&up.table.to_ascii_lowercase()) {
+        return crate::trigger::update_view(state, run, up);
+    }
     let key = guard_writable(state, &up.table)?;
     let table = state.tables[&key].clone();
+    let set_names: Vec<String> = up.sets.iter().flat_map(|(t, _)| t.clone()).collect();
     let alias = up.alias.clone().unwrap_or_else(|| table.name.clone());
     for (targets, _) in &up.sets {
         for t in targets {
@@ -1082,6 +1263,25 @@ pub fn update(state: &mut State, run: &Run, up: &Update) -> Result<Output, SqlEr
             };
             assign(&ctx, &current, &scope, &up.sets, &old, id)?
         };
+        let fires = crate::trigger::any(state, &key);
+        let before = Image::of_table(&current, &old, Some(id));
+        if fires {
+            let new = Image::of_table(&current, &row, Some(new_id));
+            let ev = Event::Update(&set_names);
+            let go = crate::trigger::fire(
+                state,
+                run,
+                &key,
+                TriggerTiming::Before,
+                &ev,
+                Some(&before),
+                Some(&new),
+            )?;
+            // A BEFORE trigger may have deleted the row, or RAISE(IGNORE)d it.
+            if !go || !state.tables[&key].rows.contains_key(&id) {
+                continue;
+            }
+        }
         match write_row(
             state,
             run,
@@ -1094,19 +1294,29 @@ pub fn update(state: &mut State, run: &Run, up: &Update) -> Result<Output, SqlEr
             &defaults,
         )? {
             Written::Skipped => {}
-            Written::Yes => {
+            Written::Yes(stored_id) => {
                 out.changes += 1;
+                run.env.count_direct();
                 let t = state.tables[&key].clone();
-                if let Some(s) = t.rows.get(&new_id) {
-                    let ctx = run.ctx(state);
-                    returning(
-                        &ctx,
-                        &t,
-                        &up.returning,
-                        new_id,
-                        &t.full_row(new_id, s),
-                        &mut out,
-                    )?;
+                if let Some(s) = t.rows.get(&stored_id) {
+                    let stored = t.full_row(stored_id, s);
+                    {
+                        let ctx = run.ctx(state);
+                        returning(&ctx, &t, &up.returning, stored_id, &stored, &mut out)?;
+                    }
+                    if fires {
+                        let new = Image::of_table(&t, &stored, Some(stored_id));
+                        let ev = Event::Update(&set_names);
+                        crate::trigger::fire(
+                            state,
+                            run,
+                            &key,
+                            TriggerTiming::After,
+                            &ev,
+                            Some(&before),
+                            Some(&new),
+                        )?;
+                    }
                 }
             }
         }
@@ -1115,6 +1325,9 @@ pub fn update(state: &mut State, run: &Run, up: &Update) -> Result<Output, SqlEr
 }
 
 pub fn delete(state: &mut State, run: &Run, del: &Delete) -> Result<Output, SqlError> {
+    if state.views.contains_key(&del.table.to_ascii_lowercase()) {
+        return crate::trigger::delete_view(state, run, del);
+    }
     let key = guard_writable(state, &del.table)?;
     let table = state.tables[&key].clone();
     let alias = del.alias.clone().unwrap_or_else(|| table.name.clone());
@@ -1160,6 +1373,22 @@ pub fn delete(state: &mut State, run: &Run, del: &Delete) -> Result<Output, SqlE
         if !state.tables[&key].rows.contains_key(&id) {
             continue;
         }
+        let fires = crate::trigger::any(state, &key);
+        let old = Image::of_table(&table, &row, Some(id));
+        if fires {
+            let go = crate::trigger::fire(
+                state,
+                run,
+                &key,
+                TriggerTiming::Before,
+                &Event::Delete,
+                Some(&old),
+                None,
+            )?;
+            if !go || !state.tables[&key].rows.contains_key(&id) {
+                continue;
+            }
+        }
         if !del.returning.is_empty() {
             let ctx = run.ctx(state);
             returning(
@@ -1173,6 +1402,18 @@ pub fn delete(state: &mut State, run: &Run, del: &Delete) -> Result<Output, SqlE
         }
         delete_row(state, run.env, &key, id, 0)?;
         out.changes += 1;
+        run.env.count_direct();
+        if fires {
+            crate::trigger::fire(
+                state,
+                run,
+                &key,
+                TriggerTiming::After,
+                &Event::Delete,
+                Some(&old),
+                None,
+            )?;
+        }
     }
     Ok(out)
 }
@@ -1443,6 +1684,7 @@ pub fn drop(
             }
             state.tables.remove(&key);
             state.indexes.retain(|_, i| i.table != key);
+            state.triggers.retain(|_, t| t.table != key);
             if let Some(seq) = state.tables.get_mut("sqlite_sequence") {
                 Arc::make_mut(seq).rows.retain(|_, r| {
                     !r.first()
@@ -1470,17 +1712,35 @@ pub fn drop(
             if state.views.remove(&key).is_none() {
                 return missing("view");
             }
+            state.triggers.retain(|_, t| t.table != key);
         }
-        ObjectKind::Trigger => return missing("trigger"),
+        ObjectKind::Trigger => {
+            if state.triggers.remove(&key).is_none() {
+                return missing("trigger");
+            }
+        }
     }
     state.touch_schema();
     Ok(Output::default())
 }
 
 /// Replace identifier tokens equal to `from` in schema text with `to`.
-fn rename_identifier(sql: &str, from: &str, to: &str, only_after: Option<&str>) -> String {
+/// `sql` with the identifier `from` renamed to `to`; SQLite quotes the new name when
+/// the ALTER statement quoted it (`quoted`), or when it has to be.
+fn rename_identifier(
+    sql: &str,
+    from: &str,
+    to: &str,
+    only_after: Option<&str>,
+    quoted: bool,
+) -> String {
     let Ok(toks) = crate::lexer::tokenize(sql) else {
         return sql.to_owned();
+    };
+    let shown = if quoted {
+        format!("\"{}\"", to.replace('"', "\"\""))
+    } else {
+        quote_ident(to)
     };
     let mut out = String::new();
     let mut last = 0;
@@ -1490,7 +1750,7 @@ fn rename_identifier(sql: &str, from: &str, to: &str, only_after: Option<&str>) 
             let allowed = only_after.is_none_or(|kw| prev_kw.as_deref() == Some(kw));
             if name.eq_ignore_ascii_case(from) && allowed {
                 out.push_str(&sql[last..t.start]);
-                out.push_str(&quote_ident(to));
+                out.push_str(&shown);
                 last = t.end;
             }
         }
@@ -1503,6 +1763,7 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
     match at {
         AlterTable::Rename { table, to } => {
             let key = guard_writable(state, table)?;
+            crate::trigger::check_programs(state)?;
             if let Some(kind) = state.name_taken(to) {
                 return Err(SqlError::new(format!(
                     "there is already another {kind} with this name: {to}"
@@ -1525,7 +1786,7 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
                     let suffix = i.name.rsplit('_').next().unwrap_or("1").to_owned();
                     i.name = format!("sqlite_autoindex_{to}_{suffix}");
                 } else if let Some(sql) = &i.sql {
-                    i.sql = Some(rename_identifier(sql, &old_name, to, Some("ON")));
+                    i.sql = Some(rename_identifier(sql, &old_name, to, Some("ON"), false));
                 }
                 state
                     .indexes
@@ -1543,12 +1804,20 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
                             f.parent = to.clone();
                         }
                     }
-                    o.sql = rename_identifier(&o.sql, &old_name, to, Some("REFERENCES"));
+                    o.sql = rename_identifier(&o.sql, &old_name, to, Some("REFERENCES"), false);
                 }
             }
             for v in state.views.values_mut() {
-                v.sql = rename_identifier(&v.sql, &old_name, to, None);
-                v.select = rename_identifier(&v.select, &old_name, to, None);
+                v.sql = rename_identifier(&v.sql, &old_name, to, None, false);
+                v.select = rename_identifier(&v.select, &old_name, to, None, false);
+            }
+            // Triggers follow the table, and every trigger program naming it is
+            // rewritten, as SQLite 3.25 and later do.
+            for t in state.triggers.values_mut() {
+                if t.table == key {
+                    t.table = new_key.clone();
+                }
+                t.sql = rename_trigger_text(&t.sql, &old_name, to, true);
             }
             if let Some(seq) = state.tables.get_mut("sqlite_sequence") {
                 for r in Arc::make_mut(seq).rows.values_mut() {
@@ -1560,7 +1829,12 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
                 }
             }
         }
-        AlterTable::RenameColumn { table, from, to } => {
+        AlterTable::RenameColumn {
+            table,
+            from,
+            to,
+            quoted,
+        } => {
             let key = guard_writable(state, table)?;
             let t = state.tables[&key].clone();
             let i = t
@@ -1571,19 +1845,39 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
             }
             let t = Arc::make_mut(state.tables.get_mut(&key).expect("checked"));
             t.columns[i].name = to.clone();
-            t.sql = rename_identifier(&t.sql, from, to, None);
+            t.sql = rename_identifier(&t.sql, from, to, None, *quoted);
             t.checks = t
                 .checks
                 .iter()
-                .map(|c| rename_identifier(c, from, to, None))
+                .map(|c| rename_identifier(c, from, to, None, *quoted))
                 .collect();
             let tname = t.name.clone();
+            for trig in state.triggers.values_mut() {
+                if trig.table == key {
+                    trig.sql = rename_trigger_text(&trig.sql, from, to, *quoted);
+                }
+            }
             for idx in state.indexes.values_mut() {
                 if idx.table == key {
                     if let Some(sql) = &idx.sql {
-                        let s = rename_identifier(sql, from, to, None);
+                        let s = rename_identifier(sql, from, to, None, *quoted);
                         Arc::make_mut(idx).sql = Some(s);
                     }
+                }
+            }
+            // Views that read the table follow the column, as SQLite rewrites them.
+            let reads_table = |sql: &str| {
+                crate::lexer::tokenize(sql).is_ok_and(|toks| {
+                    toks.iter().any(|t| {
+                        matches!(&t.tok, crate::lexer::Tok::Ident { name, .. }
+                            if name.eq_ignore_ascii_case(&tname))
+                    })
+                })
+            };
+            for view in state.views.values_mut() {
+                if reads_table(&view.select) {
+                    view.sql = rename_identifier(&view.sql, from, to, None, *quoted);
+                    view.select = rename_identifier(&view.select, from, to, None, *quoted);
                 }
             }
             for other in state.tables.values_mut() {
@@ -1763,6 +2057,46 @@ pub fn alter(state: &mut State, run: &Run, at: &AlterTable) -> Result<Output, Sq
     }
     state.touch_schema();
     Ok(Output::default())
+}
+/// A trigger's text with a table or column name replaced everywhere after the
+/// trigger's own name (which is never renamed). A renamed table is written quoted, as
+/// SQLite writes it; a renamed column only when it has to be.
+fn rename_trigger_text(sql: &str, from: &str, to: &str, quoted: bool) -> String {
+    let Ok(toks) = crate::lexer::tokenize(sql) else {
+        return sql.to_owned();
+    };
+    // CREATE [TEMP] TRIGGER [IF NOT EXISTS] name ...
+    let skip = toks
+        .iter()
+        .position(|t| t.keyword().as_deref() == Some("TRIGGER"))
+        .map_or(0, |i| {
+            let mut j = i + 1;
+            if toks.get(j).and_then(|t| t.keyword()).as_deref() == Some("IF") {
+                j += 3;
+            }
+            j + 1
+        });
+    if skip >= toks.len() {
+        return sql.to_owned();
+    }
+    let shown = if quoted {
+        format!("\"{}\"", to.replace('"', "\"\""))
+    } else {
+        quote_ident(to)
+    };
+    let mut out = String::new();
+    let mut last = 0;
+    for t in &toks[skip..] {
+        if let crate::lexer::Tok::Ident { name, .. } = &t.tok {
+            if name.eq_ignore_ascii_case(from) {
+                out.push_str(&sql[last..t.start]);
+                out.push_str(&shown);
+                last = t.end;
+            }
+        }
+    }
+    out.push_str(&sql[last..]);
+    out
 }
 /// CREATE TABLE text with the object name replaced.
 fn rename_first_name(sql: &str, to: &str) -> String {

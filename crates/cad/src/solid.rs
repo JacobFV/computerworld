@@ -1,9 +1,130 @@
 //! Faces, edges and vertices recovered from a triangle mesh's surface tags, for shapes
-//! that have no B-rep behind them (an imported STL or OBJ). Everything Part Design
-//! builds carries its exact boundary instead: see [`crate::brep`].
-use crate::math::{Frame, V3};
+//! that have no B-rep behind them (an imported STL or OBJ), and a straight prism mesh
+//! for the viewers that only ever draw one. Everything Part Design builds carries its
+//! exact boundary instead: see [`crate::brep`].
+use crate::brep::tess::ear_clip2;
+use crate::math::{Frame, V2, V3};
 use crate::mesh::{FixedMap, Mesh, Surface};
+use crate::sketch::profile::{Region, Wire};
+use crate::sketch::{Geom, Sketch};
 use serde::{Deserialize, Serialize};
+
+/// Surface of the side wall a sketch edge sweeps when extruded along `n`.
+fn wall_surface(s: &Sketch, geo: i32, frame: &Frame, a: V3, b: V3, n: V3) -> Surface {
+    match s.geo(geo).map(|g| &g.geom) {
+        Some(Geom::Circle { c, r }) | Some(Geom::Arc { c, r, .. }) => Surface::Cylinder {
+            origin: frame.to_world(*c),
+            axis: n,
+            radius: *r,
+        },
+        _ => Surface::Plane {
+            origin: a,
+            normal: (b - a).cross(n).norm(),
+        },
+    }
+}
+
+/// Triangulate a planar ring with holes, given as mesh vertex indices and seen along
+/// `n`: the points go to the plane of `n` (which keeps their winding), and the ears
+/// come back as mesh triangles.
+fn cap(verts: &[V3], outer: &[u32], holes: &[Vec<u32>], n: V3) -> Vec<[u32; 3]> {
+    let f = Frame::from_normal(V3::ZERO, n, V3::ZERO);
+    let mut pts: Vec<V2> = Vec::new();
+    let mut ids: Vec<u32> = Vec::new();
+    let mut ring = |l: &[u32]| -> Vec<usize> {
+        l.iter()
+            .map(|&i| {
+                pts.push(f.to_local2(verts[i as usize]));
+                ids.push(i);
+                pts.len() - 1
+            })
+            .collect()
+    };
+    let o = ring(outer);
+    let hs: Vec<Vec<usize>> = holes.iter().map(|h| ring(h)).collect();
+    ear_clip2(&pts, &o, &hs)
+        .into_iter()
+        .map(|t| [ids[t[0]], ids[t[1]], ids[t[2]]])
+        .collect()
+}
+
+/// Extrude sketch regions along the frame normal from `z0` to `z1` (`z0 < z1`) as a
+/// display mesh: walls tagged with the surface each sketch edge sweeps, and capped at
+/// both ends. Part Design extrudes exactly instead ([`crate::brep::build::extrude`]);
+/// this is for the viewers that draw prisms and never boolean them.
+pub fn extrude(s: &Sketch, regions: &[Region], frame: &Frame, z0: f64, z1: f64) -> Mesh {
+    let n = frame.z;
+    let mut m = Mesh::default();
+    if z1 - z0 <= 1e-9 {
+        return m;
+    }
+    let mut surface_of: FixedMap<i32, u32> = FixedMap::default();
+    let bottom_s = m.surfaces.len() as u32;
+    m.surfaces.push(Surface::Plane {
+        origin: frame.origin + n * z0,
+        normal: -n,
+    });
+    let top_s = m.surfaces.len() as u32;
+    m.surfaces.push(Surface::Plane {
+        origin: frame.origin + n * z1,
+        normal: n,
+    });
+    for region in regions {
+        let wires: Vec<&Wire> = std::iter::once(&region.outer)
+            .chain(region.holes.iter())
+            .collect();
+        let mut bottoms: Vec<Vec<u32>> = Vec::new();
+        let mut tops: Vec<Vec<u32>> = Vec::new();
+        for w in &wires {
+            let mut bi = Vec::new();
+            let mut ti = Vec::new();
+            for p in &w.pts {
+                let base = frame.to_world(*p);
+                bi.push(m.verts.len() as u32);
+                m.verts.push(base + n * z0);
+                ti.push(m.verts.len() as u32);
+                m.verts.push(base + n * z1);
+            }
+            let k = w.pts.len();
+            for i in 0..k {
+                let j = (i + 1) % k;
+                let geo = w.edge_geo[i];
+                let (a, b) = (m.verts[bi[i] as usize], m.verts[bi[j] as usize]);
+                // One cylinder for a whole arc, but a plane per straight segment.
+                let surf = match s.geo(geo).map(|g| g.geom.is_curve()) {
+                    Some(true) => *surface_of.entry(geo).or_insert_with(|| {
+                        m.surfaces.push(wall_surface(s, geo, frame, a, b, n));
+                        m.surfaces.len() as u32 - 1
+                    }),
+                    _ => {
+                        m.surfaces.push(wall_surface(s, geo, frame, a, b, n));
+                        m.surfaces.len() as u32 - 1
+                    }
+                };
+                m.tris.push([bi[i], bi[j], ti[j]]);
+                m.tris.push([bi[i], ti[j], ti[i]]);
+                m.tri_surface.push(surf);
+                m.tri_surface.push(surf);
+            }
+            bottoms.push(bi);
+            tops.push(ti);
+        }
+        // Caps: the top as drawn, the bottom reversed.
+        for t in cap(&m.verts, &tops[0], &tops[1..], n) {
+            m.tris.push(t);
+            m.tri_surface.push(top_s);
+        }
+        let rev = |l: &Vec<u32>| l.iter().rev().copied().collect::<Vec<u32>>();
+        let b_outer = rev(&bottoms[0]);
+        let b_holes: Vec<Vec<u32>> = bottoms[1..].iter().map(rev).collect();
+        for t in cap(&m.verts, &b_outer, &b_holes, -n) {
+            m.tris.push(t);
+            m.tri_surface.push(bottom_s);
+        }
+    }
+    m.compact();
+    m
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EdgeKind {

@@ -15,9 +15,15 @@ pub const CELL: i64 = 100_000;
 const MAX_CELLS: i64 = 4_000_000;
 
 pub fn fill(board: &Board, zone: &Zone) -> Vec<Rect> {
-    if zone.outline.len() < 3 {
+    if zone.outline.len() < 3 || zone.keepout {
         return vec![];
     }
+    let keepouts: Vec<&Vec<Pt>> = board
+        .zones
+        .iter()
+        .filter(|z| z.keepout && z.layer == zone.layer && z.outline.len() >= 3)
+        .map(|z| &z.outline)
+        .collect();
     let mut bbox = Rect::new(zone.outline[0], zone.outline[0]);
     for p in &zone.outline {
         bbox = bbox.union(&Rect::new(*p, *p));
@@ -50,6 +56,13 @@ pub fn fill(board: &Board, zone: &Zone) -> Vec<Rect> {
                 if !in_polygon(p, poly) || polygon_edge_distance(p, poly) < edge + half_diag {
                     continue;
                 }
+            }
+            // Rule areas keep copper out: the whole cell must be clear of them.
+            if keepouts
+                .iter()
+                .any(|k| in_polygon(p, k) || polygon_edge_distance(p, k) < half_diag)
+            {
+                continue;
             }
             on[r * cols + c] = true;
         }

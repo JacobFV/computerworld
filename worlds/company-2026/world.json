@@ -426,6 +426,21 @@
         "id": "youtube-music",
         "address": "203.0.113.27",
         "zone": "internet"
+      },
+      {
+        "id": "kitchen-speaker",
+        "address": "10.0.2.21",
+        "zone": "local"
+      },
+      {
+        "id": "livingroom-speaker",
+        "address": "10.0.2.20",
+        "zone": "local"
+      },
+      {
+        "id": "office-tv-speaker",
+        "address": "10.0.2.22",
+        "zone": "local"
       }
     ],
     "links": [
@@ -819,6 +834,27 @@
         "to": "youtube-music",
         "bidirectional": true,
         "latency_us": 1500,
+        "loss_per_million": 0
+      },
+      {
+        "from": "app-server",
+        "to": "kitchen-speaker",
+        "bidirectional": true,
+        "latency_us": 10,
+        "loss_per_million": 0
+      },
+      {
+        "from": "app-server",
+        "to": "livingroom-speaker",
+        "bidirectional": true,
+        "latency_us": 10,
+        "loss_per_million": 0
+      },
+      {
+        "from": "app-server",
+        "to": "office-tv-speaker",
+        "bidirectional": true,
+        "latency_us": 10,
         "loss_per_million": 0
       }
     ],
@@ -17888,6 +17924,100 @@
               "focus",
               "energize",
               "commute"
+            ],
+            "lyrics": [
+              [
+                20000,
+                "One signal leaving the station"
+              ],
+              [
+                24500,
+                "Splitting in a thousand ways"
+              ],
+              [
+                29000,
+                "Every wire a new destination"
+              ],
+              [
+                33500,
+                "Every light a different phase"
+              ],
+              [
+                40000,
+                "Fan out, fan out"
+              ],
+              [
+                44000,
+                "Carry it everywhere"
+              ],
+              [
+                48000,
+                "Fan out, fan out"
+              ],
+              [
+                52000,
+                "Somebody's listening there"
+              ],
+              [
+                80000,
+                "Rooftops catching the broadcast"
+              ],
+              [
+                84500,
+                "Kitchen radios turning on"
+              ],
+              [
+                89000,
+                "Your voice arriving in pieces"
+              ],
+              [
+                93500,
+                "Whole again before it's gone"
+              ],
+              [
+                100000,
+                "Fan out, fan out"
+              ],
+              [
+                104000,
+                "Carry it everywhere"
+              ],
+              [
+                108000,
+                "Fan out, fan out"
+              ],
+              [
+                112000,
+                "Somebody's listening there"
+              ],
+              [
+                140000,
+                "All of the copies are true"
+              ],
+              [
+                145000,
+                "All of them sound like you"
+              ],
+              [
+                160000,
+                "Fan out, fan out"
+              ],
+              [
+                164000,
+                "Carry it everywhere"
+              ],
+              [
+                168000,
+                "Fan out, fan out"
+              ],
+              [
+                172000,
+                "Somebody's listening there"
+              ],
+              [
+                185000,
+                "Somebody's listening"
+              ]
             ]
           },
           "mutex": {
@@ -17903,6 +18033,100 @@
             "tags": [
               "electronic",
               "commute"
+            ],
+            "lyrics": [
+              [
+                16000,
+                "Only one of us inside this room"
+              ],
+              [
+                20000,
+                "The other waits in the hall"
+              ],
+              [
+                24000,
+                "Knocking softly on the door"
+              ],
+              [
+                28000,
+                "Or never knocking at all"
+              ],
+              [
+                34000,
+                "Lock it, hold it, let it go"
+              ],
+              [
+                38000,
+                "Take your turn and then you know"
+              ],
+              [
+                42000,
+                "Two of us can't share the key"
+              ],
+              [
+                46000,
+                "So it's you and then it's me"
+              ],
+              [
+                66000,
+                "I hear your footsteps on the stairs"
+              ],
+              [
+                70000,
+                "I leave the light on when I'm through"
+              ],
+              [
+                74000,
+                "We've never met inside this place"
+              ],
+              [
+                78000,
+                "But I know everything you do"
+              ],
+              [
+                84000,
+                "Lock it, hold it, let it go"
+              ],
+              [
+                88000,
+                "Take your turn and then you know"
+              ],
+              [
+                92000,
+                "Two of us can't share the key"
+              ],
+              [
+                96000,
+                "So it's you and then it's me"
+              ],
+              [
+                118000,
+                "Don't hold it forever"
+              ],
+              [
+                123000,
+                "Don't hold it forever"
+              ],
+              [
+                132000,
+                "Lock it, hold it, let it go"
+              ],
+              [
+                136000,
+                "Take your turn and then you know"
+              ],
+              [
+                140000,
+                "Two of us can't share the key"
+              ],
+              [
+                144000,
+                "So it's you and then it's me"
+              ],
+              [
+                160000,
+                "It's you and then it's me"
+              ]
             ]
           },
           "backpressure": {
@@ -17921,6 +18145,76 @@
               "workout",
               "energize",
               "party"
+            ],
+            "lyrics": [
+              [
+                32000,
+                "Slow it down, slow it down"
+              ],
+              [
+                36000,
+                "I can only take so much"
+              ],
+              [
+                40000,
+                "Slow it down, slow it down"
+              ],
+              [
+                44000,
+                "Hold it at the edge of touch"
+              ],
+              [
+                96000,
+                "Slow it down, slow it down"
+              ],
+              [
+                100000,
+                "I can only take so much"
+              ],
+              [
+                104000,
+                "Slow it down, slow it down"
+              ],
+              [
+                108000,
+                "Hold it at the edge of touch"
+              ],
+              [
+                160000,
+                "Too much coming in"
+              ],
+              [
+                164000,
+                "Too much coming in"
+              ],
+              [
+                168000,
+                "Let the river wait"
+              ],
+              [
+                172000,
+                "Let the river wait"
+              ],
+              [
+                192000,
+                "Slow it down, slow it down"
+              ],
+              [
+                196000,
+                "I can only take so much"
+              ],
+              [
+                200000,
+                "Slow it down, slow it down"
+              ],
+              [
+                204000,
+                "Hold it at the edge of touch"
+              ],
+              [
+                230000,
+                "Slow it down"
+              ]
             ]
           },
           "tail-latency": {
@@ -17969,6 +18263,128 @@
               "guitar",
               "commute",
               "feel good"
+            ],
+            "lyrics": [
+              [
+                14000,
+                "Grey water folding under the bow"
+              ],
+              [
+                18500,
+                "Gulls hanging still like they've forgotten how"
+              ],
+              [
+                23000,
+                "You said the island looks closer in the rain"
+              ],
+              [
+                27500,
+                "I said that's just the distance playing games"
+              ],
+              [
+                32000,
+                "And the horn goes low, and the deck goes cold"
+              ],
+              [
+                36500,
+                "And every coat on board is two sizes too old"
+              ],
+              [
+                42000,
+                "Oh, Puget, carry me slow"
+              ],
+              [
+                46200,
+                "Past every light I used to know"
+              ],
+              [
+                50400,
+                "Ninety minutes, bridge to shore"
+              ],
+              [
+                54600,
+                "I don't need to get there anymore"
+              ],
+              [
+                80000,
+                "Coffee in a paper cup gone thin"
+              ],
+              [
+                84500,
+                "Windows fogging up from the breath within"
+              ],
+              [
+                89000,
+                "A kid draws harbours on the glass with one thumb"
+              ],
+              [
+                93500,
+                "Wipes them out before the next ones come"
+              ],
+              [
+                98000,
+                "And the horn goes low, and the deck goes cold"
+              ],
+              [
+                102500,
+                "And every coat on board is two sizes too old"
+              ],
+              [
+                108000,
+                "Oh, Puget, carry me slow"
+              ],
+              [
+                112200,
+                "Past every light I used to know"
+              ],
+              [
+                116400,
+                "Ninety minutes, bridge to shore"
+              ],
+              [
+                120600,
+                "I don't need to get there anymore"
+              ],
+              [
+                150000,
+                "Nobody's late on the water"
+              ],
+              [
+                155000,
+                "Nobody's early at all"
+              ],
+              [
+                160000,
+                "The tide keeps its own kind of time"
+              ],
+              [
+                165000,
+                "And it never returns a call"
+              ],
+              [
+                190000,
+                "Oh, Puget, carry me slow"
+              ],
+              [
+                194200,
+                "Past every light I used to know"
+              ],
+              [
+                198400,
+                "Ninety minutes, bridge to shore"
+              ],
+              [
+                202600,
+                "I don't need to get there anymore"
+              ],
+              [
+                230000,
+                "Carry me slow"
+              ],
+              [
+                236000,
+                "Carry me slow"
+              ]
             ]
           },
           "ferry-terminal": {
@@ -17986,6 +18402,104 @@
               "guitar",
               "relax",
               "feel good"
+            ],
+            "lyrics": [
+              [
+                12000,
+                "Ticket in my pocket, seven-forty boat"
+              ],
+              [
+                16500,
+                "Rain on the ramp and a hole in my coat"
+              ],
+              [
+                21000,
+                "Loudspeaker reading out names like a prayer"
+              ],
+              [
+                25500,
+                "Mine never comes but I'm always there"
+              ],
+              [
+                32000,
+                "Terminal, terminal, hold me a while"
+              ],
+              [
+                36500,
+                "Benches in rows like a church down the aisle"
+              ],
+              [
+                41000,
+                "Everyone's leaving and no one's gone yet"
+              ],
+              [
+                45500,
+                "Terminal, terminal, don't let me forget"
+              ],
+              [
+                70000,
+                "Vending machine hums the same four notes"
+              ],
+              [
+                74500,
+                "Somebody's dog sleeping under their coats"
+              ],
+              [
+                79000,
+                "I watch the lights of the boat coming in"
+              ],
+              [
+                83500,
+                "Count every window, start over again"
+              ],
+              [
+                90000,
+                "Terminal, terminal, hold me a while"
+              ],
+              [
+                94500,
+                "Benches in rows like a church down the aisle"
+              ],
+              [
+                99000,
+                "Everyone's leaving and no one's gone yet"
+              ],
+              [
+                103500,
+                "Terminal, terminal, don't let me forget"
+              ],
+              [
+                140000,
+                "Maybe I'm waiting for someone to call"
+              ],
+              [
+                145000,
+                "Maybe the waiting's the point after all"
+              ],
+              [
+                160000,
+                "Terminal, terminal, hold me a while"
+              ],
+              [
+                164500,
+                "Benches in rows like a church down the aisle"
+              ],
+              [
+                169000,
+                "Everyone's leaving and no one's gone yet"
+              ],
+              [
+                173500,
+                "Terminal, terminal, don't let me forget"
+              ],
+              [
+                200000,
+                "Don't let me forget"
+              ],
+              [
+                206000,
+                "Don't let me forget"
+              ]
             ]
           },
           "tiling": {
@@ -18037,6 +18551,104 @@
               "pop",
               "feel good",
               "party"
+            ],
+            "lyrics": [
+              [
+                10000,
+                "I kept every note you left on the fridge"
+              ],
+              [
+                13600,
+                "Every receipt from the bar by the bridge"
+              ],
+              [
+                17200,
+                "Stacked in the hallway, a tower of then"
+              ],
+              [
+                20800,
+                "Swearing I'd need them again"
+              ],
+              [
+                26000,
+                "So I'm marking and sweeping tonight"
+              ],
+              [
+                29800,
+                "Keeping what's reachable, turning off the light"
+              ],
+              [
+                33600,
+                "If nothing points to you anymore"
+              ],
+              [
+                37400,
+                "You can walk out the door"
+              ],
+              [
+                60000,
+                "Your jacket's still hanging where you left it to dry"
+              ],
+              [
+                63600,
+                "Your song's still the first on the list, don't ask why"
+              ],
+              [
+                67200,
+                "I trace every thread back to where it began"
+              ],
+              [
+                70800,
+                "And cut what I can"
+              ],
+              [
+                76000,
+                "So I'm marking and sweeping tonight"
+              ],
+              [
+                79800,
+                "Keeping what's reachable, turning off the light"
+              ],
+              [
+                83600,
+                "If nothing points to you anymore"
+              ],
+              [
+                87400,
+                "You can walk out the door"
+              ],
+              [
+                120000,
+                "Is it cruel or just clean"
+              ],
+              [
+                125000,
+                "To forget what you mean"
+              ],
+              [
+                140000,
+                "So I'm marking and sweeping tonight"
+              ],
+              [
+                143800,
+                "Keeping what's reachable, turning off the light"
+              ],
+              [
+                147600,
+                "If nothing points to you anymore"
+              ],
+              [
+                151400,
+                "You can walk out the door"
+              ],
+              [
+                175000,
+                "Turning off the light"
+              ],
+              [
+                180000,
+                "Turning off the light"
+              ]
             ]
           },
           "stop-the-world": {
@@ -18053,6 +18665,104 @@
               "indie",
               "pop",
               "commute"
+            ],
+            "lyrics": [
+              [
+                14000,
+                "Everybody's moving at a hundred miles an hour"
+              ],
+              [
+                18200,
+                "Phones lit up like fireflies inside a shower"
+              ],
+              [
+                22400,
+                "I just need a second where the clocks all freeze"
+              ],
+              [
+                26600,
+                "A little bit of stillness, if you please"
+              ],
+              [
+                32000,
+                "Stop the world, just for a while"
+              ],
+              [
+                36200,
+                "Let me catch my breath, let me find my smile"
+              ],
+              [
+                40400,
+                "Everything can wait a beat"
+              ],
+              [
+                44600,
+                "Stop the world beneath my feet"
+              ],
+              [
+                72000,
+                "Taxis frozen mid-turn on the avenue"
+              ],
+              [
+                76200,
+                "Pigeons hanging in the air like they're waiting too"
+              ],
+              [
+                80400,
+                "You and me the only two still walking round"
+              ],
+              [
+                84600,
+                "Picking every dropped thing off the ground"
+              ],
+              [
+                90000,
+                "Stop the world, just for a while"
+              ],
+              [
+                94200,
+                "Let me catch my breath, let me find my smile"
+              ],
+              [
+                98400,
+                "Everything can wait a beat"
+              ],
+              [
+                102600,
+                "Stop the world beneath my feet"
+              ],
+              [
+                140000,
+                "And when it starts again"
+              ],
+              [
+                145000,
+                "Will you still be here then"
+              ],
+              [
+                160000,
+                "Stop the world, just for a while"
+              ],
+              [
+                164200,
+                "Let me catch my breath, let me find my smile"
+              ],
+              [
+                168400,
+                "Everything can wait a beat"
+              ],
+              [
+                172600,
+                "Stop the world beneath my feet"
+              ],
+              [
+                200000,
+                "Stop the world"
+              ],
+              [
+                206000,
+                "Just for a while"
+              ]
             ]
           },
           "generational": {
@@ -18069,6 +18779,100 @@
               "indie",
               "pop",
               "feel good"
+            ],
+            "lyrics": [
+              [
+                9000,
+                "My mother kept her letters in a biscuit tin"
+              ],
+              [
+                13000,
+                "Her mother kept a garden that the weeds got in"
+              ],
+              [
+                17000,
+                "And I keep everything inside a glowing screen"
+              ],
+              [
+                21000,
+                "And none of us throw anything away, it seems"
+              ],
+              [
+                26000,
+                "The young ones go first, the old ones stay"
+              ],
+              [
+                30000,
+                "That's how the whole thing works, they say"
+              ],
+              [
+                34000,
+                "But I've been holding on so long"
+              ],
+              [
+                38000,
+                "I think I'm old enough to write this song"
+              ],
+              [
+                60000,
+                "Grandad's watch still ticking in a drawer"
+              ],
+              [
+                64000,
+                "Stopped for everybody but it never stopped before"
+              ],
+              [
+                68000,
+                "I wind it up on Sundays when the house is still"
+              ],
+              [
+                72000,
+                "Some things you keep because you always will"
+              ],
+              [
+                78000,
+                "The young ones go first, the old ones stay"
+              ],
+              [
+                82000,
+                "That's how the whole thing works, they say"
+              ],
+              [
+                86000,
+                "But I've been holding on so long"
+              ],
+              [
+                90000,
+                "I think I'm old enough to write this song"
+              ],
+              [
+                120000,
+                "Survive another round and you get promoted"
+              ],
+              [
+                124500,
+                "Stay a little longer and you get noted"
+              ],
+              [
+                136000,
+                "The young ones go first, the old ones stay"
+              ],
+              [
+                140000,
+                "That's how the whole thing works, they say"
+              ],
+              [
+                144000,
+                "But I've been holding on so long"
+              ],
+              [
+                148000,
+                "I think I'm old enough to write this song"
+              ],
+              [
+                165000,
+                "Old enough to write this song"
+              ]
             ]
           },
           "little-endian": {
@@ -18085,6 +18889,140 @@
               "hip hop",
               "workout",
               "energize"
+            ],
+            "lyrics": [
+              [
+                8000,
+                "Start from the little end, that's how I read it"
+              ],
+              [
+                10600,
+                "Least significant first, yeah, I said it"
+              ],
+              [
+                13200,
+                "You want the big picture? Wait for the end"
+              ],
+              [
+                15800,
+                "Every small thing adds up, my friend"
+              ],
+              [
+                18400,
+                "Low bytes, low key, keep it on the floor"
+              ],
+              [
+                21000,
+                "Build it from the bottom, then I build some more"
+              ],
+              [
+                23600,
+                "Stack it up backwards, still come out right"
+              ],
+              [
+                26200,
+                "Order's just a choice that you make at night"
+              ],
+              [
+                30000,
+                "Little end, little end, that's where it begins"
+              ],
+              [
+                33000,
+                "Count it from the bottom, that's the way I win"
+              ],
+              [
+                36000,
+                "Little end, little end, flip it if you need"
+              ],
+              [
+                39000,
+                "Same number either way, that's the creed"
+              ],
+              [
+                60000,
+                "They told me biggest first, I said who made the rule"
+              ],
+              [
+                62600,
+                "Some old machine in a room that wasn't cool"
+              ],
+              [
+                65200,
+                "I'm reading right to left like a mirror in the rain"
+              ],
+              [
+                67800,
+                "Different direction, but the value's the same"
+              ],
+              [
+                70400,
+                "Pass it on the wire and you gotta agree"
+              ],
+              [
+                73000,
+                "Otherwise the number's gonna come out wrong for me"
+              ],
+              [
+                75600,
+                "Handshake first, then we trade what we got"
+              ],
+              [
+                78200,
+                "Talk the same order or you're talking a lot"
+              ],
+              [
+                82000,
+                "Little end, little end, that's where it begins"
+              ],
+              [
+                85000,
+                "Count it from the bottom, that's the way I win"
+              ],
+              [
+                88000,
+                "Little end, little end, flip it if you need"
+              ],
+              [
+                91000,
+                "Same number either way, that's the creed"
+              ],
+              [
+                115000,
+                "Four little pieces in a row on the line"
+              ],
+              [
+                117800,
+                "Swap them in the middle and the answer's fine"
+              ],
+              [
+                120600,
+                "Nothing ever lost, it's just the way you look"
+              ],
+              [
+                123400,
+                "Same old story in a different book"
+              ],
+              [
+                135000,
+                "Little end, little end, that's where it begins"
+              ],
+              [
+                138000,
+                "Count it from the bottom, that's the way I win"
+              ],
+              [
+                141000,
+                "Little end, little end, flip it if you need"
+              ],
+              [
+                144000,
+                "Same number either way, that's the creed"
+              ],
+              [
+                160000,
+                "That's the creed"
+              ]
             ]
           },
           "big-endian": {
@@ -18101,6 +19039,132 @@
               "hip hop",
               "party",
               "energize"
+            ],
+            "lyrics": [
+              [
+                10000,
+                "Biggest first, that's the headline, read it loud"
+              ],
+              [
+                12600,
+                "Top of the stack, standing up above the crowd"
+              ],
+              [
+                15200,
+                "Network order, yeah, the way the wire speaks"
+              ],
+              [
+                17800,
+                "Most significant, every day of the week"
+              ],
+              [
+                20400,
+                "You flip it round, I'ma flip it right back"
+              ],
+              [
+                23000,
+                "Head of the number leading every track"
+              ],
+              [
+                25600,
+                "Read it like a book, left to right, no stress"
+              ],
+              [
+                28200,
+                "Big end forward, nothing more, nothing less"
+              ],
+              [
+                34000,
+                "Big end up, big end first"
+              ],
+              [
+                37000,
+                "Say it out loud like a rehearsed verse"
+              ],
+              [
+                40000,
+                "Big end up, don't read me backwards"
+              ],
+              [
+                43000,
+                "I came in whole, I don't do fractions"
+              ],
+              [
+                70000,
+                "Postcards stamped from a far address"
+              ],
+              [
+                72600,
+                "Zip code first, then the rest, I guess"
+              ],
+              [
+                75200,
+                "Year, month, day, so the sorting's clean"
+              ],
+              [
+                77800,
+                "Every file in line like a marching team"
+              ],
+              [
+                80400,
+                "You can call it stubborn, I call it clear"
+              ],
+              [
+                83000,
+                "Loudest part up front so the back can hear"
+              ],
+              [
+                85600,
+                "Two machines talking, got to settle the score"
+              ],
+              [
+                88200,
+                "Whoever speaks first gets the floor"
+              ],
+              [
+                96000,
+                "Big end up, big end first"
+              ],
+              [
+                99000,
+                "Say it out loud like a rehearsed verse"
+              ],
+              [
+                102000,
+                "Big end up, don't read me backwards"
+              ],
+              [
+                105000,
+                "I came in whole, I don't do fractions"
+              ],
+              [
+                140000,
+                "Swap, swap, swap it in the middle"
+              ],
+              [
+                144000,
+                "Nobody wins if we both stay little"
+              ],
+              [
+                160000,
+                "Big end up, big end first"
+              ],
+              [
+                163000,
+                "Say it out loud like a rehearsed verse"
+              ],
+              [
+                166000,
+                "Big end up, don't read me backwards"
+              ],
+              [
+                169000,
+                "I came in whole, I don't do fractions"
+              ],
+              [
+                185000,
+                "Big end first"
+              ]
             ]
           },
           "cold-reads": {
@@ -18297,6 +19361,45 @@
             "mutex",
             "big-endian"
           ]
+        },
+        "devices": {
+          "livingroom": {
+            "name": "Living Room",
+            "kind": "speaker",
+            "url": "http://livingroom.speaker.internal/",
+            "protocols": [
+              "airplay",
+              "cast"
+            ]
+          },
+          "kitchen": {
+            "name": "Kitchen",
+            "kind": "speaker",
+            "url": "http://kitchen.speaker.internal/",
+            "protocols": [
+              "cast",
+              "dlna"
+            ]
+          },
+          "office-tv": {
+            "name": "Office TV",
+            "kind": "tv",
+            "url": "http://office-tv.speaker.internal/",
+            "protocols": [
+              "airplay",
+              "cast",
+              "dlna"
+            ]
+          },
+          "bedroom": {
+            "name": "Bedroom",
+            "kind": "speaker",
+            "url": "http://bedroom.speaker.internal/",
+            "protocols": [
+              "airplay",
+              "cast"
+            ]
+          }
         }
       }
     },
@@ -28710,6 +29813,100 @@
               "focus",
               "energize",
               "commute"
+            ],
+            "lyrics": [
+              [
+                20000,
+                "One signal leaving the station"
+              ],
+              [
+                24500,
+                "Splitting in a thousand ways"
+              ],
+              [
+                29000,
+                "Every wire a new destination"
+              ],
+              [
+                33500,
+                "Every light a different phase"
+              ],
+              [
+                40000,
+                "Fan out, fan out"
+              ],
+              [
+                44000,
+                "Carry it everywhere"
+              ],
+              [
+                48000,
+                "Fan out, fan out"
+              ],
+              [
+                52000,
+                "Somebody's listening there"
+              ],
+              [
+                80000,
+                "Rooftops catching the broadcast"
+              ],
+              [
+                84500,
+                "Kitchen radios turning on"
+              ],
+              [
+                89000,
+                "Your voice arriving in pieces"
+              ],
+              [
+                93500,
+                "Whole again before it's gone"
+              ],
+              [
+                100000,
+                "Fan out, fan out"
+              ],
+              [
+                104000,
+                "Carry it everywhere"
+              ],
+              [
+                108000,
+                "Fan out, fan out"
+              ],
+              [
+                112000,
+                "Somebody's listening there"
+              ],
+              [
+                140000,
+                "All of the copies are true"
+              ],
+              [
+                145000,
+                "All of them sound like you"
+              ],
+              [
+                160000,
+                "Fan out, fan out"
+              ],
+              [
+                164000,
+                "Carry it everywhere"
+              ],
+              [
+                168000,
+                "Fan out, fan out"
+              ],
+              [
+                172000,
+                "Somebody's listening there"
+              ],
+              [
+                185000,
+                "Somebody's listening"
+              ]
             ]
           },
           "mutex": {
@@ -28725,6 +29922,100 @@
             "tags": [
               "electronic",
               "commute"
+            ],
+            "lyrics": [
+              [
+                16000,
+                "Only one of us inside this room"
+              ],
+              [
+                20000,
+                "The other waits in the hall"
+              ],
+              [
+                24000,
+                "Knocking softly on the door"
+              ],
+              [
+                28000,
+                "Or never knocking at all"
+              ],
+              [
+                34000,
+                "Lock it, hold it, let it go"
+              ],
+              [
+                38000,
+                "Take your turn and then you know"
+              ],
+              [
+                42000,
+                "Two of us can't share the key"
+              ],
+              [
+                46000,
+                "So it's you and then it's me"
+              ],
+              [
+                66000,
+                "I hear your footsteps on the stairs"
+              ],
+              [
+                70000,
+                "I leave the light on when I'm through"
+              ],
+              [
+                74000,
+                "We've never met inside this place"
+              ],
+              [
+                78000,
+                "But I know everything you do"
+              ],
+              [
+                84000,
+                "Lock it, hold it, let it go"
+              ],
+              [
+                88000,
+                "Take your turn and then you know"
+              ],
+              [
+                92000,
+                "Two of us can't share the key"
+              ],
+              [
+                96000,
+                "So it's you and then it's me"
+              ],
+              [
+                118000,
+                "Don't hold it forever"
+              ],
+              [
+                123000,
+                "Don't hold it forever"
+              ],
+              [
+                132000,
+                "Lock it, hold it, let it go"
+              ],
+              [
+                136000,
+                "Take your turn and then you know"
+              ],
+              [
+                140000,
+                "Two of us can't share the key"
+              ],
+              [
+                144000,
+                "So it's you and then it's me"
+              ],
+              [
+                160000,
+                "It's you and then it's me"
+              ]
             ]
           },
           "backpressure": {
@@ -28743,6 +30034,76 @@
               "workout",
               "energize",
               "party"
+            ],
+            "lyrics": [
+              [
+                32000,
+                "Slow it down, slow it down"
+              ],
+              [
+                36000,
+                "I can only take so much"
+              ],
+              [
+                40000,
+                "Slow it down, slow it down"
+              ],
+              [
+                44000,
+                "Hold it at the edge of touch"
+              ],
+              [
+                96000,
+                "Slow it down, slow it down"
+              ],
+              [
+                100000,
+                "I can only take so much"
+              ],
+              [
+                104000,
+                "Slow it down, slow it down"
+              ],
+              [
+                108000,
+                "Hold it at the edge of touch"
+              ],
+              [
+                160000,
+                "Too much coming in"
+              ],
+              [
+                164000,
+                "Too much coming in"
+              ],
+              [
+                168000,
+                "Let the river wait"
+              ],
+              [
+                172000,
+                "Let the river wait"
+              ],
+              [
+                192000,
+                "Slow it down, slow it down"
+              ],
+              [
+                196000,
+                "I can only take so much"
+              ],
+              [
+                200000,
+                "Slow it down, slow it down"
+              ],
+              [
+                204000,
+                "Hold it at the edge of touch"
+              ],
+              [
+                230000,
+                "Slow it down"
+              ]
             ]
           },
           "tail-latency": {
@@ -28791,6 +30152,128 @@
               "guitar",
               "commute",
               "feel good"
+            ],
+            "lyrics": [
+              [
+                14000,
+                "Grey water folding under the bow"
+              ],
+              [
+                18500,
+                "Gulls hanging still like they've forgotten how"
+              ],
+              [
+                23000,
+                "You said the island looks closer in the rain"
+              ],
+              [
+                27500,
+                "I said that's just the distance playing games"
+              ],
+              [
+                32000,
+                "And the horn goes low, and the deck goes cold"
+              ],
+              [
+                36500,
+                "And every coat on board is two sizes too old"
+              ],
+              [
+                42000,
+                "Oh, Puget, carry me slow"
+              ],
+              [
+                46200,
+                "Past every light I used to know"
+              ],
+              [
+                50400,
+                "Ninety minutes, bridge to shore"
+              ],
+              [
+                54600,
+                "I don't need to get there anymore"
+              ],
+              [
+                80000,
+                "Coffee in a paper cup gone thin"
+              ],
+              [
+                84500,
+                "Windows fogging up from the breath within"
+              ],
+              [
+                89000,
+                "A kid draws harbours on the glass with one thumb"
+              ],
+              [
+                93500,
+                "Wipes them out before the next ones come"
+              ],
+              [
+                98000,
+                "And the horn goes low, and the deck goes cold"
+              ],
+              [
+                102500,
+                "And every coat on board is two sizes too old"
+              ],
+              [
+                108000,
+                "Oh, Puget, carry me slow"
+              ],
+              [
+                112200,
+                "Past every light I used to know"
+              ],
+              [
+                116400,
+                "Ninety minutes, bridge to shore"
+              ],
+              [
+                120600,
+                "I don't need to get there anymore"
+              ],
+              [
+                150000,
+                "Nobody's late on the water"
+              ],
+              [
+                155000,
+                "Nobody's early at all"
+              ],
+              [
+                160000,
+                "The tide keeps its own kind of time"
+              ],
+              [
+                165000,
+                "And it never returns a call"
+              ],
+              [
+                190000,
+                "Oh, Puget, carry me slow"
+              ],
+              [
+                194200,
+                "Past every light I used to know"
+              ],
+              [
+                198400,
+                "Ninety minutes, bridge to shore"
+              ],
+              [
+                202600,
+                "I don't need to get there anymore"
+              ],
+              [
+                230000,
+                "Carry me slow"
+              ],
+              [
+                236000,
+                "Carry me slow"
+              ]
             ]
           },
           "ferry-terminal": {
@@ -28808,6 +30291,104 @@
               "guitar",
               "relax",
               "feel good"
+            ],
+            "lyrics": [
+              [
+                12000,
+                "Ticket in my pocket, seven-forty boat"
+              ],
+              [
+                16500,
+                "Rain on the ramp and a hole in my coat"
+              ],
+              [
+                21000,
+                "Loudspeaker reading out names like a prayer"
+              ],
+              [
+                25500,
+                "Mine never comes but I'm always there"
+              ],
+              [
+                32000,
+                "Terminal, terminal, hold me a while"
+              ],
+              [
+                36500,
+                "Benches in rows like a church down the aisle"
+              ],
+              [
+                41000,
+                "Everyone's leaving and no one's gone yet"
+              ],
+              [
+                45500,
+                "Terminal, terminal, don't let me forget"
+              ],
+              [
+                70000,
+                "Vending machine hums the same four notes"
+              ],
+              [
+                74500,
+                "Somebody's dog sleeping under their coats"
+              ],
+              [
+                79000,
+                "I watch the lights of the boat coming in"
+              ],
+              [
+                83500,
+                "Count every window, start over again"
+              ],
+              [
+                90000,
+                "Terminal, terminal, hold me a while"
+              ],
+              [
+                94500,
+                "Benches in rows like a church down the aisle"
+              ],
+              [
+                99000,
+                "Everyone's leaving and no one's gone yet"
+              ],
+              [
+                103500,
+                "Terminal, terminal, don't let me forget"
+              ],
+              [
+                140000,
+                "Maybe I'm waiting for someone to call"
+              ],
+              [
+                145000,
+                "Maybe the waiting's the point after all"
+              ],
+              [
+                160000,
+                "Terminal, terminal, hold me a while"
+              ],
+              [
+                164500,
+                "Benches in rows like a church down the aisle"
+              ],
+              [
+                169000,
+                "Everyone's leaving and no one's gone yet"
+              ],
+              [
+                173500,
+                "Terminal, terminal, don't let me forget"
+              ],
+              [
+                200000,
+                "Don't let me forget"
+              ],
+              [
+                206000,
+                "Don't let me forget"
+              ]
             ]
           },
           "tiling": {
@@ -28859,6 +30440,104 @@
               "pop",
               "feel good",
               "party"
+            ],
+            "lyrics": [
+              [
+                10000,
+                "I kept every note you left on the fridge"
+              ],
+              [
+                13600,
+                "Every receipt from the bar by the bridge"
+              ],
+              [
+                17200,
+                "Stacked in the hallway, a tower of then"
+              ],
+              [
+                20800,
+                "Swearing I'd need them again"
+              ],
+              [
+                26000,
+                "So I'm marking and sweeping tonight"
+              ],
+              [
+                29800,
+                "Keeping what's reachable, turning off the light"
+              ],
+              [
+                33600,
+                "If nothing points to you anymore"
+              ],
+              [
+                37400,
+                "You can walk out the door"
+              ],
+              [
+                60000,
+                "Your jacket's still hanging where you left it to dry"
+              ],
+              [
+                63600,
+                "Your song's still the first on the list, don't ask why"
+              ],
+              [
+                67200,
+                "I trace every thread back to where it began"
+              ],
+              [
+                70800,
+                "And cut what I can"
+              ],
+              [
+                76000,
+                "So I'm marking and sweeping tonight"
+              ],
+              [
+                79800,
+                "Keeping what's reachable, turning off the light"
+              ],
+              [
+                83600,
+                "If nothing points to you anymore"
+              ],
+              [
+                87400,
+                "You can walk out the door"
+              ],
+              [
+                120000,
+                "Is it cruel or just clean"
+              ],
+              [
+                125000,
+                "To forget what you mean"
+              ],
+              [
+                140000,
+                "So I'm marking and sweeping tonight"
+              ],
+              [
+                143800,
+                "Keeping what's reachable, turning off the light"
+              ],
+              [
+                147600,
+                "If nothing points to you anymore"
+              ],
+              [
+                151400,
+                "You can walk out the door"
+              ],
+              [
+                175000,
+                "Turning off the light"
+              ],
+              [
+                180000,
+                "Turning off the light"
+              ]
             ]
           },
           "stop-the-world": {
@@ -28875,6 +30554,104 @@
               "indie",
               "pop",
               "commute"
+            ],
+            "lyrics": [
+              [
+                14000,
+                "Everybody's moving at a hundred miles an hour"
+              ],
+              [
+                18200,
+                "Phones lit up like fireflies inside a shower"
+              ],
+              [
+                22400,
+                "I just need a second where the clocks all freeze"
+              ],
+              [
+                26600,
+                "A little bit of stillness, if you please"
+              ],
+              [
+                32000,
+                "Stop the world, just for a while"
+              ],
+              [
+                36200,
+                "Let me catch my breath, let me find my smile"
+              ],
+              [
+                40400,
+                "Everything can wait a beat"
+              ],
+              [
+                44600,
+                "Stop the world beneath my feet"
+              ],
+              [
+                72000,
+                "Taxis frozen mid-turn on the avenue"
+              ],
+              [
+                76200,
+                "Pigeons hanging in the air like they're waiting too"
+              ],
+              [
+                80400,
+                "You and me the only two still walking round"
+              ],
+              [
+                84600,
+                "Picking every dropped thing off the ground"
+              ],
+              [
+                90000,
+                "Stop the world, just for a while"
+              ],
+              [
+                94200,
+                "Let me catch my breath, let me find my smile"
+              ],
+              [
+                98400,
+                "Everything can wait a beat"
+              ],
+              [
+                102600,
+                "Stop the world beneath my feet"
+              ],
+              [
+                140000,
+                "And when it starts again"
+              ],
+              [
+                145000,
+                "Will you still be here then"
+              ],
+              [
+                160000,
+                "Stop the world, just for a while"
+              ],
+              [
+                164200,
+                "Let me catch my breath, let me find my smile"
+              ],
+              [
+                168400,
+                "Everything can wait a beat"
+              ],
+              [
+                172600,
+                "Stop the world beneath my feet"
+              ],
+              [
+                200000,
+                "Stop the world"
+              ],
+              [
+                206000,
+                "Just for a while"
+              ]
             ]
           },
           "generational": {
@@ -28891,6 +30668,100 @@
               "indie",
               "pop",
               "feel good"
+            ],
+            "lyrics": [
+              [
+                9000,
+                "My mother kept her letters in a biscuit tin"
+              ],
+              [
+                13000,
+                "Her mother kept a garden that the weeds got in"
+              ],
+              [
+                17000,
+                "And I keep everything inside a glowing screen"
+              ],
+              [
+                21000,
+                "And none of us throw anything away, it seems"
+              ],
+              [
+                26000,
+                "The young ones go first, the old ones stay"
+              ],
+              [
+                30000,
+                "That's how the whole thing works, they say"
+              ],
+              [
+                34000,
+                "But I've been holding on so long"
+              ],
+              [
+                38000,
+                "I think I'm old enough to write this song"
+              ],
+              [
+                60000,
+                "Grandad's watch still ticking in a drawer"
+              ],
+              [
+                64000,
+                "Stopped for everybody but it never stopped before"
+              ],
+              [
+                68000,
+                "I wind it up on Sundays when the house is still"
+              ],
+              [
+                72000,
+                "Some things you keep because you always will"
+              ],
+              [
+                78000,
+                "The young ones go first, the old ones stay"
+              ],
+              [
+                82000,
+                "That's how the whole thing works, they say"
+              ],
+              [
+                86000,
+                "But I've been holding on so long"
+              ],
+              [
+                90000,
+                "I think I'm old enough to write this song"
+              ],
+              [
+                120000,
+                "Survive another round and you get promoted"
+              ],
+              [
+                124500,
+                "Stay a little longer and you get noted"
+              ],
+              [
+                136000,
+                "The young ones go first, the old ones stay"
+              ],
+              [
+                140000,
+                "That's how the whole thing works, they say"
+              ],
+              [
+                144000,
+                "But I've been holding on so long"
+              ],
+              [
+                148000,
+                "I think I'm old enough to write this song"
+              ],
+              [
+                165000,
+                "Old enough to write this song"
+              ]
             ]
           },
           "little-endian": {
@@ -28907,6 +30778,140 @@
               "hip hop",
               "workout",
               "energize"
+            ],
+            "lyrics": [
+              [
+                8000,
+                "Start from the little end, that's how I read it"
+              ],
+              [
+                10600,
+                "Least significant first, yeah, I said it"
+              ],
+              [
+                13200,
+                "You want the big picture? Wait for the end"
+              ],
+              [
+                15800,
+                "Every small thing adds up, my friend"
+              ],
+              [
+                18400,
+                "Low bytes, low key, keep it on the floor"
+              ],
+              [
+                21000,
+                "Build it from the bottom, then I build some more"
+              ],
+              [
+                23600,
+                "Stack it up backwards, still come out right"
+              ],
+              [
+                26200,
+                "Order's just a choice that you make at night"
+              ],
+              [
+                30000,
+                "Little end, little end, that's where it begins"
+              ],
+              [
+                33000,
+                "Count it from the bottom, that's the way I win"
+              ],
+              [
+                36000,
+                "Little end, little end, flip it if you need"
+              ],
+              [
+                39000,
+                "Same number either way, that's the creed"
+              ],
+              [
+                60000,
+                "They told me biggest first, I said who made the rule"
+              ],
+              [
+                62600,
+                "Some old machine in a room that wasn't cool"
+              ],
+              [
+                65200,
+                "I'm reading right to left like a mirror in the rain"
+              ],
+              [
+                67800,
+                "Different direction, but the value's the same"
+              ],
+              [
+                70400,
+                "Pass it on the wire and you gotta agree"
+              ],
+              [
+                73000,
+                "Otherwise the number's gonna come out wrong for me"
+              ],
+              [
+                75600,
+                "Handshake first, then we trade what we got"
+              ],
+              [
+                78200,
+                "Talk the same order or you're talking a lot"
+              ],
+              [
+                82000,
+                "Little end, little end, that's where it begins"
+              ],
+              [
+                85000,
+                "Count it from the bottom, that's the way I win"
+              ],
+              [
+                88000,
+                "Little end, little end, flip it if you need"
+              ],
+              [
+                91000,
+                "Same number either way, that's the creed"
+              ],
+              [
+                115000,
+                "Four little pieces in a row on the line"
+              ],
+              [
+                117800,
+                "Swap them in the middle and the answer's fine"
+              ],
+              [
+                120600,
+                "Nothing ever lost, it's just the way you look"
+              ],
+              [
+                123400,
+                "Same old story in a different book"
+              ],
+              [
+                135000,
+                "Little end, little end, that's where it begins"
+              ],
+              [
+                138000,
+                "Count it from the bottom, that's the way I win"
+              ],
+              [
+                141000,
+                "Little end, little end, flip it if you need"
+              ],
+              [
+                144000,
+                "Same number either way, that's the creed"
+              ],
+              [
+                160000,
+                "That's the creed"
+              ]
             ]
           },
           "big-endian": {
@@ -28923,6 +30928,132 @@
               "hip hop",
               "party",
               "energize"
+            ],
+            "lyrics": [
+              [
+                10000,
+                "Biggest first, that's the headline, read it loud"
+              ],
+              [
+                12600,
+                "Top of the stack, standing up above the crowd"
+              ],
+              [
+                15200,
+                "Network order, yeah, the way the wire speaks"
+              ],
+              [
+                17800,
+                "Most significant, every day of the week"
+              ],
+              [
+                20400,
+                "You flip it round, I'ma flip it right back"
+              ],
+              [
+                23000,
+                "Head of the number leading every track"
+              ],
+              [
+                25600,
+                "Read it like a book, left to right, no stress"
+              ],
+              [
+                28200,
+                "Big end forward, nothing more, nothing less"
+              ],
+              [
+                34000,
+                "Big end up, big end first"
+              ],
+              [
+                37000,
+                "Say it out loud like a rehearsed verse"
+              ],
+              [
+                40000,
+                "Big end up, don't read me backwards"
+              ],
+              [
+                43000,
+                "I came in whole, I don't do fractions"
+              ],
+              [
+                70000,
+                "Postcards stamped from a far address"
+              ],
+              [
+                72600,
+                "Zip code first, then the rest, I guess"
+              ],
+              [
+                75200,
+                "Year, month, day, so the sorting's clean"
+              ],
+              [
+                77800,
+                "Every file in line like a marching team"
+              ],
+              [
+                80400,
+                "You can call it stubborn, I call it clear"
+              ],
+              [
+                83000,
+                "Loudest part up front so the back can hear"
+              ],
+              [
+                85600,
+                "Two machines talking, got to settle the score"
+              ],
+              [
+                88200,
+                "Whoever speaks first gets the floor"
+              ],
+              [
+                96000,
+                "Big end up, big end first"
+              ],
+              [
+                99000,
+                "Say it out loud like a rehearsed verse"
+              ],
+              [
+                102000,
+                "Big end up, don't read me backwards"
+              ],
+              [
+                105000,
+                "I came in whole, I don't do fractions"
+              ],
+              [
+                140000,
+                "Swap, swap, swap it in the middle"
+              ],
+              [
+                144000,
+                "Nobody wins if we both stay little"
+              ],
+              [
+                160000,
+                "Big end up, big end first"
+              ],
+              [
+                163000,
+                "Say it out loud like a rehearsed verse"
+              ],
+              [
+                166000,
+                "Big end up, don't read me backwards"
+              ],
+              [
+                169000,
+                "I came in whole, I don't do fractions"
+              ],
+              [
+                185000,
+                "Big end first"
+              ]
             ]
           },
           "cold-reads": {
@@ -29141,7 +31272,101 @@
             "mutex",
             "big-endian"
           ]
+        },
+        "devices": {
+          "livingroom": {
+            "name": "Living Room",
+            "kind": "speaker",
+            "url": "http://livingroom.speaker.internal/",
+            "protocols": [
+              "airplay",
+              "cast"
+            ]
+          },
+          "kitchen": {
+            "name": "Kitchen",
+            "kind": "speaker",
+            "url": "http://kitchen.speaker.internal/",
+            "protocols": [
+              "cast",
+              "dlna"
+            ]
+          },
+          "office-tv": {
+            "name": "Office TV",
+            "kind": "tv",
+            "url": "http://office-tv.speaker.internal/",
+            "protocols": [
+              "airplay",
+              "cast",
+              "dlna"
+            ]
+          },
+          "bedroom": {
+            "name": "Bedroom",
+            "kind": "speaker",
+            "url": "http://bedroom.speaker.internal/",
+            "protocols": [
+              "airplay",
+              "cast"
+            ]
+          }
         }
+      }
+    },
+    {
+      "id": "kitchen-speaker",
+      "kind": "speaker",
+      "node": "kitchen-speaker",
+      "domains": [
+        "kitchen.speaker.internal"
+      ],
+      "port": 80,
+      "initial_state": {
+        "name": "Kitchen",
+        "model": "Smart speaker",
+        "protocols": [
+          "cast",
+          "dlna"
+        ],
+        "volume": 50
+      }
+    },
+    {
+      "id": "livingroom-speaker",
+      "kind": "speaker",
+      "node": "livingroom-speaker",
+      "domains": [
+        "livingroom.speaker.internal"
+      ],
+      "port": 80,
+      "initial_state": {
+        "name": "Living Room",
+        "model": "Stereo speaker",
+        "protocols": [
+          "airplay",
+          "cast"
+        ],
+        "volume": 35
+      }
+    },
+    {
+      "id": "office-tv-speaker",
+      "kind": "speaker",
+      "node": "office-tv-speaker",
+      "domains": [
+        "office-tv.speaker.internal"
+      ],
+      "port": 80,
+      "initial_state": {
+        "name": "Office TV",
+        "model": "Television",
+        "protocols": [
+          "airplay",
+          "cast",
+          "dlna"
+        ],
+        "volume": 20
       }
     }
   ],
@@ -29153,6 +31378,13 @@
       "carol",
       "admin"
     ],
-    "reference_version": 1
+    "reference_version": 1,
+    "device_presentations": {
+      "alice-mac": "desktop",
+      "bob-windows": "desktop",
+      "carol-ubuntu": "laptop",
+      "app-server": "server",
+      "git-server": "server"
+    }
   }
 }

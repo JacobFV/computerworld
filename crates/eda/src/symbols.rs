@@ -72,7 +72,8 @@ impl PinType {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Fill {
     None,
     /// Filled with the outline colour.
@@ -81,7 +82,8 @@ pub enum Fill {
     Background,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "shape", rename_all = "snake_case")]
 pub enum Graphic {
     Rect {
         a: (i64, i64),
@@ -107,14 +109,14 @@ pub enum Graphic {
     /// Text drawn as part of the body (a "+" or an "E").
     Text {
         at: (i64, i64),
-        text: &'static str,
+        text: String,
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LibPin {
-    pub number: &'static str,
-    pub name: &'static str,
+    pub number: String,
+    pub name: String,
     /// Connection point, library coordinates.
     pub at: (i64, i64),
     /// Direction from the connection point towards the body, degrees CCW (Y up).
@@ -122,6 +124,9 @@ pub struct LibPin {
     pub length: i64,
     pub kind: PinType,
     pub hidden: bool,
+    /// The unit the pin belongs to, 1-based; 0 is common to every unit.
+    #[serde(default)]
+    pub unit: u32,
 }
 impl LibPin {
     /// The end of the pin that touches the body.
@@ -136,8 +141,34 @@ impl LibPin {
     }
 }
 
+/// The logic function of a single-gate symbol.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LogicGate {
+    And,
+    Nand,
+    Or,
+    Nor,
+    Xor,
+    Not,
+}
+impl LogicGate {
+    /// The XSPICE code model that computes it.
+    pub fn code_model(self) -> &'static str {
+        match self {
+            Self::And => "d_and",
+            Self::Nand => "d_nand",
+            Self::Or => "d_or",
+            Self::Nor => "d_nor",
+            Self::Xor => "d_xor",
+            Self::Not => "d_inverter",
+        }
+    }
+}
+
 /// How a symbol becomes SPICE.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Spice {
     /// No model: simulation needs the symbol excluded.
     None,
@@ -154,25 +185,42 @@ pub enum Spice {
     OpAmp,
     VoltageSource,
     CurrentSource,
+    /// A single logic gate: inputs A (and B), output Y, powered from VCC/GND, as XSPICE
+    /// digital models behind ADC bridges and a push-pull output stage.
+    Gate(LogicGate),
+    /// A positive-edge D flip-flop (pins D, CLK, Q, VCC, GND).
+    DFlipFlop,
+    /// The 555 timer as a comparator/latch/discharge macro-model.
+    Timer555,
+    /// A microcontroller driven by a pin script in `Sim.Params` (a behavioral model of
+    /// its pins, not of its firmware).
+    Mcu,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LibSymbol {
-    pub lib_id: &'static str,
-    pub description: &'static str,
-    pub keywords: &'static str,
-    pub reference: &'static str,
-    pub value: &'static str,
-    pub footprint: &'static str,
-    pub datasheet: &'static str,
+    pub lib_id: String,
+    pub description: String,
+    pub keywords: String,
+    pub reference: String,
+    pub value: String,
+    pub footprint: String,
+    pub datasheet: String,
     pub pins: Vec<LibPin>,
+    /// Body graphics common to every unit.
     pub graphics: Vec<Graphic>,
+    /// Graphics that belong to one unit (1-based).
+    #[serde(default)]
+    pub unit_graphics: Vec<(u32, Graphic)>,
+    /// Number of units (gates of a quad NAND are four); at least 1.
+    #[serde(default = "one")]
+    pub units: u32,
     pub power: bool,
     pub in_bom: bool,
     pub on_board: bool,
     pub spice: Spice,
     /// Default model parameters (`Sim.Params`), e.g. a diode's saturation current.
-    pub sim_params: &'static str,
+    pub sim_params: String,
     pub pin_names_hidden: bool,
     pub pin_numbers_hidden: bool,
     /// Placed instances start excluded from simulation (connectors, switches): parts
@@ -182,17 +230,80 @@ pub struct LibSymbol {
     pub ref_at: (i64, i64),
     pub value_at: (i64, i64),
     /// Footprints that fit this symbol, first is the default.
-    pub footprints: &'static [&'static str],
+    pub footprints: Vec<String>,
+    /// User fields beyond the four KiCad always has.
+    #[serde(default)]
+    pub fields: Vec<(String, String)>,
+}
+fn one() -> u32 {
+    1
 }
 impl LibSymbol {
-    pub fn library(&self) -> &'static str {
+    /// An empty symbol for the Symbol Editor's New Symbol.
+    pub fn blank(lib_id: &str, reference: &str) -> LibSymbol {
+        let name = lib_id.split(':').nth(1).unwrap_or(lib_id).to_owned();
+        LibSymbol {
+            lib_id: lib_id.into(),
+            description: String::new(),
+            keywords: String::new(),
+            reference: reference.into(),
+            value: name,
+            footprint: String::new(),
+            datasheet: "~".into(),
+            pins: vec![],
+            graphics: vec![],
+            unit_graphics: vec![],
+            units: 1,
+            power: false,
+            in_bom: true,
+            on_board: true,
+            spice: Spice::None,
+            sim_params: String::new(),
+            pin_names_hidden: false,
+            pin_numbers_hidden: false,
+            exclude_from_sim: false,
+            ref_at: (0, 150),
+            value_at: (0, -150),
+            footprints: vec![],
+            fields: vec![],
+        }
+    }
+    pub fn library(&self) -> &str {
         self.lib_id.split(':').next().unwrap_or("")
     }
-    pub fn name(&self) -> &'static str {
-        self.lib_id.split(':').nth(1).unwrap_or(self.lib_id)
+    pub fn name(&self) -> &str {
+        self.lib_id.split(':').nth(1).unwrap_or(&self.lib_id)
     }
     pub fn pin(&self, number: &str) -> Option<&LibPin> {
         self.pins.iter().find(|p| p.number == number)
+    }
+    /// Pins drawn and connected by unit `unit` (1-based): its own and the common ones.
+    pub fn unit_pins(&self, unit: u32) -> impl Iterator<Item = &LibPin> {
+        let unit = unit.max(1);
+        self.pins
+            .iter()
+            .filter(move |p| p.unit == 0 || p.unit == unit || self.units <= 1)
+    }
+    /// Graphics drawn by unit `unit`.
+    pub fn unit_graphics(&self, unit: u32) -> impl Iterator<Item = &Graphic> {
+        let unit = unit.max(1);
+        self.graphics.iter().chain(
+            self.unit_graphics
+                .iter()
+                .filter(move |(u, _)| *u == unit || *u == 0)
+                .map(|(_, g)| g),
+        )
+    }
+    /// The letter KiCad appends to a reference for unit `unit` of a multi-unit part.
+    pub fn unit_letter(unit: u32) -> String {
+        let mut n = unit.max(1);
+        let mut s = String::new();
+        while n > 0 {
+            let r = ((n - 1) % 26) as u8;
+            s.insert(0, (b'A' + r) as char);
+            n = (n - 1) / 26;
+        }
+        s
     }
     /// Library-space bounding box of the body and pins.
     pub fn bounds(&self) -> ((i64, i64), (i64, i64)) {
@@ -202,7 +313,11 @@ impl LibSymbol {
             lo = (lo.0.min(x), lo.1.min(y));
             hi = (hi.0.max(x), hi.1.max(y));
         };
-        for g in &self.graphics {
+        for g in self
+            .graphics
+            .iter()
+            .chain(self.unit_graphics.iter().map(|(_, g)| g))
+        {
             match g {
                 Graphic::Rect { a, b, .. } => {
                     add(*a);
@@ -236,22 +351,23 @@ impl LibSymbol {
     }
 }
 
-fn pin(
-    number: &'static str,
-    name: &'static str,
+pub fn pin(
+    number: &str,
+    name: &str,
     at: (i64, i64),
     angle: u16,
     length: i64,
     kind: PinType,
 ) -> LibPin {
     LibPin {
-        number,
-        name,
+        number: number.into(),
+        name: name.into(),
         at,
         angle,
         length,
         kind,
         hidden: false,
+        unit: 0,
     }
 }
 fn hidden(mut p: LibPin) -> LibPin {
@@ -302,26 +418,29 @@ fn sym(
     spice: Spice,
 ) -> LibSymbol {
     LibSymbol {
-        lib_id,
-        description,
-        keywords,
-        reference,
-        value,
-        footprint: footprints.first().copied().unwrap_or(""),
-        datasheet: "~",
+        lib_id: lib_id.into(),
+        description: description.into(),
+        keywords: keywords.into(),
+        reference: reference.into(),
+        value: value.into(),
+        footprint: footprints.first().copied().unwrap_or("").into(),
+        datasheet: "~".into(),
         pins,
         graphics,
+        unit_graphics: vec![],
+        units: 1,
         power: false,
         in_bom: true,
         on_board: true,
         spice,
-        sim_params: "",
+        sim_params: String::new(),
         pin_names_hidden: true,
         pin_numbers_hidden: true,
         exclude_from_sim: false,
         ref_at: (100, 50),
         value_at: (100, -50),
-        footprints,
+        footprints: footprints.iter().map(|f| (*f).to_owned()).collect(),
+        fields: vec![],
     }
 }
 
@@ -364,13 +483,13 @@ fn power_symbol(name: &'static str, description: &'static str, ground: bool) -> 
         ]
     };
     LibSymbol {
-        lib_id,
-        description,
-        keywords: "global power",
-        reference: "#PWR",
-        value: name,
-        footprint: "",
-        datasheet: "",
+        lib_id: lib_id.into(),
+        description: description.into(),
+        keywords: "global power".into(),
+        reference: "#PWR".into(),
+        value: name.into(),
+        footprint: String::new(),
+        datasheet: String::new(),
         pins: vec![hidden(pin(
             "1",
             name,
@@ -380,17 +499,20 @@ fn power_symbol(name: &'static str, description: &'static str, ground: bool) -> 
             PinType::PowerIn,
         ))],
         graphics,
+        unit_graphics: vec![],
+        units: 1,
         power: true,
         in_bom: false,
         on_board: false,
         spice: Spice::Power,
-        sim_params: "",
+        sim_params: String::new(),
         pin_names_hidden: true,
         pin_numbers_hidden: true,
         exclude_from_sim: false,
         ref_at: (0, if ground { -250 } else { -150 }),
         value_at: (0, if ground { -150 } else { 150 }),
-        footprints: &[],
+        footprints: vec![],
+        fields: vec![],
     }
 }
 
@@ -442,6 +564,12 @@ fn gate(lib_id: &'static str, description: &'static str, kind: &str) -> LibSymbo
             arc((-150, 150), (70, 110), (150, 0)),
             arc((-150, -150), (70, -110), (150, 0)),
         ],
+        "xor" => vec![
+            arc((-190, 150), (-140, 0), (-190, -150)),
+            arc((-150, 150), (-100, 0), (-150, -150)),
+            arc((-150, 150), (70, 110), (150, 0)),
+            arc((-150, -150), (70, -110), (150, 0)),
+        ],
         _ => vec![
             poly(&[(0, 150), (-150, 150), (-150, -150), (0, -150)]),
             arc((0, 150), (150, 0), (0, -150)),
@@ -463,7 +591,11 @@ fn gate(lib_id: &'static str, description: &'static str, kind: &str) -> LibSymbo
                 "A",
                 (-300, 100),
                 0,
-                if kind == "or" { 190 } else { 150 },
+                if kind == "or" || kind == "xor" {
+                    190
+                } else {
+                    150
+                },
                 PinType::Input,
             ),
             pin(
@@ -471,7 +603,11 @@ fn gate(lib_id: &'static str, description: &'static str, kind: &str) -> LibSymbo
                 "B",
                 (-300, -100),
                 0,
-                if kind == "or" { 190 } else { 150 },
+                if kind == "or" || kind == "xor" {
+                    190
+                } else {
+                    150
+                },
                 PinType::Input,
             ),
             pin("4", "Y", (out_x + 150, 0), 180, 150, PinType::Output),
@@ -502,12 +638,48 @@ fn gate(lib_id: &'static str, description: &'static str, kind: &str) -> LibSymbo
         &["Package_TO_SOT_SMD:SOT-23-5"],
         pins,
         graphics,
-        Spice::None,
+        Spice::Gate(match kind {
+            "nand" => LogicGate::Nand,
+            "and" => LogicGate::And,
+            "or" => LogicGate::Or,
+            "xor" => LogicGate::Xor,
+            _ => LogicGate::Not,
+        }),
     );
     s.pin_names_hidden = true;
     s.pin_numbers_hidden = false;
     s.ref_at = (200, 250);
     s.value_at = (200, -250);
+    s
+}
+
+/// A single positive-edge D flip-flop, 74LVC1G79 (SOT-23-5): D, CLK, GND, Q, VCC.
+fn dff(lib_id: &'static str, description: &'static str) -> LibSymbol {
+    let mut s = sym(
+        lib_id,
+        description,
+        "Single D Flip-Flop positive edge trigger",
+        "U",
+        lib_id.split(':').nth(1).unwrap_or(""),
+        &["Package_TO_SOT_SMD:SOT-23-5"],
+        vec![
+            pin("1", "D", (-400, 100), 0, 150, PinType::Input),
+            pin("2", "CLK", (-400, -100), 0, 150, PinType::Input),
+            pin("3", "GND", (0, -400), 90, 150, PinType::PowerIn),
+            pin("4", "Q", (400, 100), 180, 150, PinType::Output),
+            pin("5", "VCC", (0, 400), 270, 150, PinType::PowerIn),
+        ],
+        vec![
+            rect((-250, 250), (250, -250), Fill::Background),
+            // The clock input's edge marker.
+            poly(&[(-250, -60), (-200, -100), (-250, -140)]),
+        ],
+        Spice::DFlipFlop,
+    );
+    s.pin_names_hidden = false;
+    s.pin_numbers_hidden = false;
+    s.ref_at = (-250, 300);
+    s.value_at = (100, 300);
     s
 }
 
@@ -602,7 +774,7 @@ fn build() -> Vec<LibSymbol> {
         diode_body(),
         Spice::Diode,
     );
-    d.sim_params = "is=4.352n n=1.906 rs=0.6458 bv=110 ibv=0.0001 cjo=0.7p tt=3.48n";
+    d.sim_params = "is=4.352n n=1.906 rs=0.6458 bv=110 ibv=0.0001 cjo=0.7p tt=3.48n".into();
     d.ref_at = (0, 150);
     d.value_at = (0, -150);
     lib.push(d);
@@ -622,7 +794,7 @@ fn build() -> Vec<LibSymbol> {
         led_graphics,
         Spice::Diode,
     );
-    led.sim_params = "is=1e-20 n=1.5 rs=2";
+    led.sim_params = "is=1e-20 n=1.5 rs=2".into();
     led.ref_at = (0, 150);
     led.value_at = (0, -200);
     lib.push(led);
@@ -641,7 +813,7 @@ fn build() -> Vec<LibSymbol> {
         ],
         Spice::Diode,
     );
-    zener.sim_params = "is=1e-14 n=1 bv=5.1 ibv=5m";
+    zener.sim_params = "is=1e-14 n=1 bv=5.1 ibv=5m".into();
     zener.ref_at = (0, 150);
     zener.value_at = (0, -150);
     lib.push(zener);
@@ -678,7 +850,7 @@ fn build() -> Vec<LibSymbol> {
         bjt(true),
         Spice::Npn,
     );
-    q.sim_params = "is=1e-14 bf=200 br=2 vaf=100";
+    q.sim_params = "is=1e-14 bf=200 br=2 vaf=100".into();
     q.ref_at = (250, 50);
     q.value_at = (250, -50);
     lib.push(q.clone());
@@ -693,7 +865,7 @@ fn build() -> Vec<LibSymbol> {
         bjt(false),
         Spice::Pnp,
     );
-    qp.sim_params = "is=1e-14 bf=150 br=2 vaf=80";
+    qp.sim_params = "is=1e-14 bf=150 br=2 vaf=80".into();
     qp.ref_at = q.ref_at;
     qp.value_at = q.value_at;
     lib.push(qp);
@@ -734,7 +906,7 @@ fn build() -> Vec<LibSymbol> {
         mos(true),
         Spice::Nmos,
     );
-    m.sim_params = "vto=2 kp=0.5 lambda=0.01";
+    m.sim_params = "vto=2 kp=0.5 lambda=0.01".into();
     m.ref_at = (250, 50);
     m.value_at = (250, -50);
     lib.push(m.clone());
@@ -749,7 +921,7 @@ fn build() -> Vec<LibSymbol> {
         mos(false),
         Spice::Pmos,
     );
-    pm.sim_params = "vto=-2 kp=0.5 lambda=0.01";
+    pm.sim_params = "vto=-2 kp=0.5 lambda=0.01".into();
     pm.ref_at = m.ref_at;
     pm.value_at = m.value_at;
     lib.push(pm);
@@ -776,17 +948,17 @@ fn build() -> Vec<LibSymbol> {
             },
             Graphic::Text {
                 at: (-160, 100),
-                text: "+",
+                text: "+".into(),
             },
             Graphic::Text {
                 at: (-160, -100),
-                text: "-",
+                text: "-".into(),
             },
         ],
         Spice::OpAmp,
     );
-    opamp.value = "OPAMP";
-    opamp.sim_params = "gain=100k";
+    opamp.value = "OPAMP".into();
+    opamp.sim_params = "gain=100k".into();
     opamp.ref_at = (100, 250);
     opamp.value_at = (100, -250);
     lib.push(opamp);
@@ -867,13 +1039,13 @@ fn build() -> Vec<LibSymbol> {
         false,
     ));
     let mut flag = LibSymbol {
-        lib_id: "power:PWR_FLAG",
-        description: "Special symbol for telling ERC where power comes from",
-        keywords: "flag power",
-        reference: "#FLG",
-        value: "PWR_FLAG",
-        footprint: "",
-        datasheet: "~",
+        lib_id: "power:PWR_FLAG".into(),
+        description: "Special symbol for telling ERC where power comes from".into(),
+        keywords: "flag power".into(),
+        reference: "#FLG".into(),
+        value: "PWR_FLAG".into(),
+        footprint: String::new(),
+        datasheet: "~".into(),
         pins: vec![hidden(pin("1", "~", (0, 0), 90, 0, PinType::PowerOut))],
         graphics: vec![poly(&[
             (0, 0),
@@ -883,17 +1055,20 @@ fn build() -> Vec<LibSymbol> {
             (40, 75),
             (0, 50),
         ])],
+        unit_graphics: vec![],
+        units: 1,
         power: true,
         in_bom: false,
         on_board: false,
         spice: Spice::None,
-        sim_params: "",
+        sim_params: String::new(),
         pin_names_hidden: true,
         pin_numbers_hidden: true,
         exclude_from_sim: false,
         ref_at: (0, 190),
         value_at: (0, 150),
-        footprints: &[],
+        footprints: vec![],
+        fields: vec![],
     };
     flag.value_at = (0, 170);
     lib.push(flag);
@@ -990,6 +1165,15 @@ fn build() -> Vec<LibSymbol> {
         "Single NOT Gate, Low-Voltage CMOS",
         "not",
     ));
+    lib.push(gate(
+        "74xGxx:74LVC1G86",
+        "Single XOR Gate, Low-Voltage CMOS",
+        "xor",
+    ));
+    lib.push(dff(
+        "74xGxx:74LVC1G79",
+        "Single D Flip-Flop, Positive Edge Trigger, Low-Voltage CMOS",
+    ));
     // ---- ICs --------------------------------------------------------------------------
     let mut timer = sym(
         "Timer:NE555P",
@@ -1009,13 +1193,13 @@ fn build() -> Vec<LibSymbol> {
             pin("8", "VCC", (0, 400), 270, 100, PinType::PowerIn),
         ],
         vec![rect((-300, 300), (300, -300), Fill::Background)],
-        Spice::None,
+        Spice::Timer555,
     );
     timer.pin_names_hidden = false;
     timer.pin_numbers_hidden = false;
     timer.ref_at = (-300, 350);
     timer.value_at = (100, 350);
-    timer.datasheet = "http://www.ti.com/lit/ds/symlink/ne555.pdf";
+    timer.datasheet = "http://www.ti.com/lit/ds/symlink/ne555.pdf".into();
     lib.push(timer);
     let mut mcu = sym(
         "MCU_Microchip_ATtiny:ATtiny85-20P",
@@ -1035,13 +1219,15 @@ fn build() -> Vec<LibSymbol> {
             pin("8", "VCC", (0, 600), 270, 100, PinType::PowerIn),
         ],
         vec![rect((-500, 500), (500, -500), Fill::Background)],
-        Spice::None,
+        Spice::Mcu,
     );
     mcu.pin_names_hidden = false;
     mcu.pin_numbers_hidden = false;
     mcu.ref_at = (-500, 550);
     mcu.value_at = (100, 550);
-    mcu.datasheet = "http://ww1.microchip.com/downloads/en/DeviceDoc/atmel-2586-avr-8-bit-microcontroller-attiny25-attiny45-attiny85_datasheet.pdf";
+    mcu.datasheet = "http://ww1.microchip.com/downloads/en/DeviceDoc/atmel-2586-avr-8-bit-microcontroller-attiny25-attiny45-attiny85_datasheet.pdf".into();
+    // No firmware runs in simulation: the pins follow a script (see netlist::mcu_model).
+    mcu.sim_params = "PB0=square(1k)".into();
     lib.push(mcu);
     lib
 }
@@ -1073,12 +1259,12 @@ mod tests {
     fn every_symbol_is_well_formed() {
         let mut ids = std::collections::BTreeSet::new();
         for s in library() {
-            assert!(ids.insert(s.lib_id), "{} twice", s.lib_id);
+            assert!(ids.insert(&s.lib_id), "{} twice", s.lib_id);
             assert!(!s.pins.is_empty(), "{} has no pins", s.lib_id);
             let mut numbers = std::collections::BTreeSet::new();
             for p in &s.pins {
                 assert!(
-                    numbers.insert(p.number),
+                    numbers.insert(&p.number),
                     "{} pin {} twice",
                     s.lib_id,
                     p.number

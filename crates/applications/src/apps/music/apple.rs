@@ -71,15 +71,56 @@ pub fn mac(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
     let bar = 56;
     toolbar(app, p, env, side as i32, w - side, bar);
+    // The lyrics panel takes the right edge of the window, as it does in Music.
+    let lyrics = if app.lyrics && app.now().is_some() {
+        280.min((w - side) / 2)
+    } else {
+        0
+    };
     let area = Rect::new(
         side as i32,
         bar as i32 + 1,
-        w - side,
+        w - side - lyrics,
         h.saturating_sub(bar + 1),
     );
-    let mark = p.scene.nodes.len();
-    body(app, p, env, area, &MAC);
-    clip(p, mark, area);
+    // The view scrolls under the toolbar; each view keeps its own place.
+    let pane = p.pane(&app.view_pane(), area);
+    body(
+        app,
+        p,
+        env,
+        Rect::new(area.x, pane.top(), area.width, area.height),
+        &MAC,
+    );
+    p.end_pane(pane, None);
+    if lyrics > 0 {
+        let panel = Rect::new(
+            (w - lyrics) as i32,
+            bar as i32 + 1,
+            lyrics,
+            h.saturating_sub(bar + 1),
+        );
+        p.box_(panel, SIDEBAR, 0);
+        p.vline(panel.x, panel.y, panel.height, HAIR);
+        art::lyrics_view(
+            p,
+            app,
+            env.clock_us,
+            Rect::new(
+                panel.x + 20,
+                panel.y + 20,
+                panel.width - 40,
+                panel.height.saturating_sub(40),
+            ),
+            17,
+            &art::LyricInk {
+                now: INK,
+                sung: Color(0, 0, 0, 90),
+                ahead: Color(0, 0, 0, 60),
+            },
+            Align::Left,
+        );
+    }
     overlays(app, p, env, Rect::new(0, 0, w, h), &MAC);
 }
 
@@ -98,9 +139,15 @@ pub fn ios(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
         0
     };
     let area = Rect::new(0, 0, w, h.saturating_sub(tabs + mini));
-    let mark = p.scene.nodes.len();
-    body(app, p, env, area, &PHONE);
-    clip(p, mark, area);
+    let pane = p.pane(&app.view_pane(), area);
+    body(
+        app,
+        p,
+        env,
+        Rect::new(area.x, pane.top(), area.width, area.height),
+        &PHONE,
+    );
+    p.end_pane(pane, None);
     let bottom = h.saturating_sub(tabs) as i32;
     if mini > 0 {
         mini_player(
@@ -114,15 +161,22 @@ pub fn ios(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
     overlays(app, p, env, Rect::new(0, 0, w, h), &PHONE);
 }
 
-/// Keep what a view drew inside its area, so a long list never paints over the bars.
-fn clip(p: &mut Painter, mark: usize, area: Rect) {
-    for n in &mut p.scene.nodes[mark..] {
-        n.clip = Some(n.clip.and_then(|c| c.intersection(area)).unwrap_or(area));
-    }
-}
-
-fn overlays(app: &Music, p: &mut Painter, _env: &crate::AppEnv<'_>, all: Rect, m: &M) {
+fn overlays(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, all: Rect, m: &M) {
     let s = surface(m);
+    if app.popup == Some(super::Popup::Output) {
+        let (theme, r) = if m.mobile {
+            (
+                DesktopTheme::Ios,
+                Rect::new(all.x + 12, all.y + all.height as i32 / 3, all.width - 24, 0),
+            )
+        } else {
+            (
+                DesktopTheme::Macos,
+                Rect::new(all.x + all.width as i32 - 320, all.y + 50, 290, 0),
+            )
+        };
+        art::output_picker(p, app, theme, env.level("volume"), r, all, &s);
+    }
     if app.menu.is_some() {
         let (x, y) = if m.mobile {
             (all.x + 24, all.y + all.height as i32 / 3)
@@ -330,11 +384,16 @@ fn toolbar(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, x: i32, w: u32
         }
         cx += 34;
     }
-    // The LCD.
+    // The LCD, then the volume slider, AirPlay, Lyrics and Playing Next.
     let queue_w = 40;
-    let lcd_w = (w as i32 - (cx - x) - queue_w - 36).clamp(160, 520) as u32;
+    // Everything right of the LCD: the speaker, the slider, AirPlay, Lyrics, the queue.
+    let right_start = x + w as i32 - queue_w - 8 - 34 * 2 - 112 - 26;
+    let room = (right_start - 10 - (cx + 12)).max(120) as u32;
+    let lcd_w = room.min(520);
     let lcd = Rect::new(
-        (cx + 12).max(x + (w as i32 - lcd_w as i32) / 2),
+        (cx + 12)
+            .max(x + (w as i32 - lcd_w as i32) / 2)
+            .min(right_start - 10 - lcd_w as i32),
         6,
         lcd_w,
         bar - 12,
@@ -409,6 +468,98 @@ fn toolbar(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, x: i32, w: u32
         }
     }
     let q = Rect::new(x + w as i32 - queue_w - 8, cy - 15, 30, 30);
+    // Music's own volume, which the Mac's output volume then scales.
+    let dim = Color::rgb(60, 60, 64);
+    let volume = Rect::new(q.x - 34 * 2 - 112, cy - 10, 104, 20);
+    match player {
+        Some(pl) => {
+            art::icon(
+                p,
+                Rect::new(volume.x - 22, cy - 10, 20, 20),
+                if pl.audible() == 0 {
+                    "volume-mute"
+                } else {
+                    "volume"
+                },
+                13,
+                dim,
+                "music:mute",
+                if pl.muted { "Unmute" } else { "Mute" },
+            );
+            art::volume_slider(
+                p,
+                Rect::new(volume.x + 2, volume.y, volume.width - 4, volume.height),
+                pl.audible(),
+                "music:volume:",
+                4,
+                Color::rgb(120, 120, 124),
+                Color(0, 0, 0, 30),
+                Some((12, Color::WHITE)),
+            );
+        }
+        None => {
+            art::icon_off(
+                p,
+                Rect::new(volume.x - 22, cy - 10, 20, 20),
+                "volume",
+                13,
+                dim,
+                "Nothing is playing",
+            );
+            p.box_(
+                Rect::new(volume.x + 2, cy - 2, volume.width - 4, 4),
+                Color(0, 0, 0, 20),
+                2,
+            );
+            p.disabled("Nothing is playing");
+        }
+    }
+    let airplay = Rect::new(q.x - 34 * 2, cy - 15, 30, 30);
+    let casting = player.is_some_and(|pl| !pl.device.is_empty());
+    let picking = app.popup == Some(super::Popup::Output);
+    if picking {
+        p.box_(airplay, SELECT, 6);
+    }
+    art::icon(
+        p,
+        airplay,
+        "cast",
+        16,
+        if casting || picking { RED } else { dim },
+        "music:output",
+        "AirPlay",
+    );
+    let lyrics = Rect::new(q.x - 34, cy - 15, 30, 30);
+    match app.now() {
+        // Open, it can always be closed, whatever the next song holds.
+        Some(t) if !t.lyrics.is_empty() || app.lyrics => {
+            if app.lyrics {
+                p.box_(lyrics, SELECT, 6);
+            }
+            art::icon(
+                p,
+                lyrics,
+                "chat",
+                16,
+                if app.lyrics { RED } else { dim },
+                "music:lyrics",
+                "Lyrics",
+            );
+        }
+        Some(t) => art::icon_off(
+            p,
+            lyrics,
+            "chat",
+            16,
+            dim,
+            if t.instrumental() {
+                "This song is instrumental"
+            } else {
+                "Lyrics aren't available for this song"
+            },
+        ),
+        None => art::icon_off(p, lyrics, "chat", 16, dim, "Nothing is playing"),
+    }
     let on = app.view == View::Queue;
     if player.is_some() {
         if on {
@@ -650,6 +801,7 @@ fn shelf(
     area: Rect,
     m: &M,
     y: i32,
+    name: &str,
     cards: &[(String, String, String, String, bool)],
 ) -> i32 {
     if cards.is_empty() {
@@ -663,14 +815,21 @@ fn shelf(
     } else {
         (inner - gap * (per - 1)) / per
     };
-    let mut x = area.x + m.pad;
-    let mut height = 0;
-    for (key, title, sub, target, round) in cards.iter().take(per as usize + usize::from(m.mobile))
-    {
-        height = card(p, x, y, size, key, title, sub, target, *round, m);
+    // The shelf scrolls sideways: every card is on it, as many as fit are in view, and
+    // on the phone the next one peeks in at the edge.
+    let height = size + 46;
+    let bar = if m.mobile { 0 } else { 14 };
+    let pane = p.hpane(name, Rect::new(area.x, y, area.width, height + bar));
+    let mut x = pane.left() + m.pad;
+    for (key, title, sub, target, round) in cards {
+        if pane.shows_x(x, size) {
+            card(p, x, y, size, key, title, sub, target, *round, m);
+        }
         x += (size + gap) as i32;
     }
-    y + height as i32 + 14
+    let extent = (x - gap as i32 - pane.left() + m.pad) as u32;
+    p.end_pane(pane, Some(extent));
+    y + (height + bar) as i32 + 4
 }
 /// Rows of cards wrapped into a grid, until the area runs out.
 #[allow(clippy::type_complexity)]
@@ -686,9 +845,6 @@ fn grid(
     let per = ((inner + gap) / (m.card + gap)).max(2);
     let size = (inner - gap * (per - 1)) / per;
     for chunk in cards.chunks(per as usize) {
-        if y > area.y + area.height as i32 {
-            break;
-        }
         let mut x = area.x + m.pad;
         for (key, title, sub, target, round) in chunk {
             card(p, x, y, size, key, title, sub, target, *round, m);
@@ -727,11 +883,7 @@ fn songs(
     let live = app.live(env.clock_us);
     let x = area.x + m.pad;
     let width = area.width.saturating_sub(m.pad as u32 * 2);
-    let bottom = area.y + area.height as i32;
     for (i, t) in tracks.iter().enumerate() {
-        if y + m.row as i32 > bottom {
-            break;
-        }
         let r = Rect::new(x, y, width, m.row);
         let current = live.as_ref().is_some_and(|l| l.id == t.id);
         let zebra = !m.mobile && i % 2 == 1;
@@ -913,7 +1065,7 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: &M
                 )
             }));
             y = heading(p, area, m, y, "Top Picks for You");
-            y = shelf(p, area, m, y, &picks);
+            y = shelf(p, area, m, y, &format!("{}-picks", app.view_pane()), &picks);
             let mut seen = vec![];
             let recent: Vec<_> = c
                 .history
@@ -929,7 +1081,14 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: &M
                 .collect();
             if !recent.is_empty() {
                 y = heading(p, area, m, y, "Recently Played");
-                y = shelf(p, area, m, y, &recent);
+                y = shelf(
+                    p,
+                    area,
+                    m,
+                    y,
+                    &format!("{}-recent", app.view_pane()),
+                    &recent,
+                );
             }
             let stations: Vec<_> = c
                 .artists
@@ -945,13 +1104,27 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: &M
                 })
                 .collect();
             y = heading(p, area, m, y, "Stations for You");
-            shelf(p, area, m, y, &stations);
+            shelf(
+                p,
+                area,
+                m,
+                y,
+                &format!("{}-stations", app.view_pane()),
+                &stations,
+            );
         }
         View::New => {
             let mut y = title(app, p, area, m, "New");
             y = heading(p, area, m, y, "New Releases");
             let albums: Vec<_> = c.albums.iter().map(|a| album_card(app, a)).collect();
-            y = shelf(p, area, m, y, &albums);
+            y = shelf(
+                p,
+                area,
+                m,
+                y,
+                &format!("{}-albums", app.view_pane()),
+                &albums,
+            );
             y = heading(p, area, m, y, "Latest Songs");
             let latest: Vec<&Track> = c.tracks.iter().take(12).collect();
             songs(app, p, env, area, m, y, &latest, "track", false, true);
@@ -1139,7 +1312,14 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: &M
                 })
                 .collect();
             y = heading(p, area, m, y, "Albums");
-            shelf(p, area, m, y, &albums);
+            shelf(
+                p,
+                area,
+                m,
+                y,
+                &format!("{}-albums", app.view_pane()),
+                &albums,
+            );
         }
         View::Search => search(app, p, env, area, m),
         View::Queue | View::NowPlaying => queue(app, p, env, area, m),
@@ -1331,9 +1511,6 @@ fn library(
             );
             let mut y = y;
             for a in artists {
-                if y + 52 > area.y + area.height as i32 {
-                    break;
-                }
                 let r = Rect::new(
                     area.x + m.pad,
                     y,
@@ -1524,7 +1701,7 @@ fn search(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: 
             }));
             if !cards.is_empty() {
                 y = heading(p, area, m, y, "Top Results");
-                shelf(p, area, m, y, &cards);
+                shelf(p, area, m, y, &format!("{}-top", app.view_pane()), &cards);
             }
         }
         _ => {
@@ -1543,9 +1720,6 @@ fn search(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: 
                     w,
                     70,
                 );
-                if r.y + 70 > area.y + area.height as i32 {
-                    break;
-                }
                 let tint = art::tint(tag);
                 p.button(
                     r,
@@ -1616,13 +1790,9 @@ fn queue(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect, m: &
         );
         y += 22;
     }
-    let bottom = area.y + area.height as i32;
     for (i, id) in player.queue.iter().enumerate() {
         if i < index {
             continue;
-        }
-        if y + m.row as i32 > bottom {
-            break;
         }
         let Some(t) = c.track(id) else { continue };
         let r = Rect::new(
@@ -1703,55 +1873,91 @@ fn now_playing(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, all: Rect)
         3,
     );
     let size = all.width.saturating_sub(64).min(all.height / 2);
-    let art_r = Rect::new(
-        all.x + (all.width as i32 - size as i32) / 2,
-        all.y + 44,
-        size,
-        size,
-    );
-    p.drop_shadow(art_r, 10, 24, 90, 12);
-    art::cover(p, art_r, &track.album, 10);
     let x = all.x + 32;
     let w = all.width.saturating_sub(64);
-    let mut y = art_r.y + size as i32 + 28;
-    p.strong(x, y, w - 60, &track.title, 20, Color::WHITE);
-    p.left(
-        x,
-        y + 28,
-        w - 60,
-        &app.catalog.artist_name(&track.artist),
-        18,
-        Color(255, 255, 255, 170),
-    );
+    let white = |a: u8| Color(255, 255, 255, a);
     let liked = app.catalog.liked.contains(&track.id);
-    art::icon(
-        p,
-        Rect::new(x + w as i32 - 36, y + 6, 36, 36),
-        if liked { "star" } else { "star-outline" },
-        22,
-        Color::WHITE,
-        &format!("music:like:{}", track.id),
-        if liked { "Undo Favorite" } else { "Favorite" },
-    );
-    y += 70;
+    let star = |p: &mut Painter, r: Rect| {
+        art::icon(
+            p,
+            r,
+            if liked { "star" } else { "star-outline" },
+            22,
+            Color::WHITE,
+            &format!("music:like:{}", track.id),
+            if liked { "Undo Favorite" } else { "Favorite" },
+        );
+    };
+    let lyrics = app.lyrics;
+    let mut y = if lyrics {
+        // The artwork shrinks to a header and the lyrics take its place.
+        let head = Rect::new(x, all.y + 44, 56, 56);
+        art::cover(p, head, &track.album, 6);
+        p.strong(
+            head.x + 68,
+            head.y + 8,
+            w - 120,
+            &track.title,
+            16,
+            Color::WHITE,
+        );
+        p.left(
+            head.x + 68,
+            head.y + 30,
+            w - 120,
+            &app.catalog.artist_name(&track.artist),
+            15,
+            white(170),
+        );
+        star(p, Rect::new(x + w as i32 - 36, head.y + 10, 36, 36));
+        let bottom = all.y + 44 + size as i32 + 98;
+        art::lyrics_view(
+            p,
+            app,
+            env.clock_us,
+            Rect::new(x, head.y + 76, w, (bottom - head.y - 90).max(40) as u32),
+            24,
+            &art::LyricInk {
+                now: Color::WHITE,
+                sung: white(110),
+                ahead: white(70),
+            },
+            Align::Left,
+        );
+        bottom
+    } else {
+        let art_r = Rect::new(
+            all.x + (all.width as i32 - size as i32) / 2,
+            all.y + 44,
+            size,
+            size,
+        );
+        p.drop_shadow(art_r, 10, 24, 90, 12);
+        art::cover(p, art_r, &track.album, 10);
+        let y = art_r.y + size as i32 + 28;
+        p.strong(x, y, w - 60, &track.title, 20, Color::WHITE);
+        p.left(
+            x,
+            y + 28,
+            w - 60,
+            &app.catalog.artist_name(&track.artist),
+            18,
+            white(170),
+        );
+        star(p, Rect::new(x + w as i32 - 36, y + 6, 36, 36));
+        y + 70
+    };
     art::scrubber(
         p,
         Rect::new(x, y, w, 16),
         &live,
         6,
-        Color(255, 255, 255, 220),
-        Color(255, 255, 255, 70),
+        white(220),
+        white(70),
         None,
     );
     y += 22;
-    p.left(
-        x,
-        y,
-        60,
-        &clock(live.position_ms),
-        12,
-        Color(255, 255, 255, 150),
-    );
+    p.left(x, y, 60, &clock(live.position_ms), 12, white(150));
     p.right(
         x + w as i32 - 60,
         y,
@@ -1761,7 +1967,7 @@ fn now_playing(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, all: Rect)
             clock(live.duration_ms.saturating_sub(live.position_ms))
         ),
         12,
-        Color(255, 255, 255, 150),
+        white(150),
     );
     y += 40;
     let cx = all.x + all.width as i32 / 2;
@@ -1796,28 +2002,46 @@ fn now_playing(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, all: Rect)
             "Nothing is queued after this song",
         );
     }
-    y += 84;
+    y += 76;
+    // The volume: the iPhone's own, as on a real one, until the music goes to a speaker,
+    // when it is that speaker's.
+    let (level, target) = art::volume_binding(app, DesktopTheme::Ios, env.level("volume"));
+    p.symbol("volume-mute", x, y + 4, 16, white(150));
+    art::volume_slider(
+        p,
+        Rect::new(x + 26, y, w - 52, 24),
+        level,
+        target,
+        6,
+        white(220),
+        white(70),
+        None,
+    );
+    p.symbol("volume", x + w as i32 - 16, y + 4, 16, white(150));
+    y += 36;
+    let device = player
+        .filter(|p| !p.device.is_empty())
+        .map(|p| p.device_name.clone());
+    let has_lyrics = !track.lyrics.is_empty();
     let row = [
         (
-            "shuffle",
-            "music:shuffle",
-            "Shuffle",
-            player.is_some_and(|p| p.shuffle),
+            "chat",
+            "music:lyrics",
+            "Lyrics",
+            lyrics,
+            has_lyrics || lyrics,
         ),
-        ("queue", "music:queue", "Playing Next", false),
         (
-            if player.is_some_and(|p| p.repeat == Repeat::One) {
-                "repeat-one"
-            } else {
-                "repeat"
-            },
-            "music:repeat",
-            "Repeat",
-            player.is_some_and(|p| p.repeat != Repeat::Off),
+            "cast",
+            "music:output",
+            "AirPlay",
+            device.is_some() || app.popup == Some(super::Popup::Output),
+            true,
         ),
+        ("queue", "music:queue", "Playing Next", false, true),
     ];
     let cell = w / 3;
-    for (i, (symbol, target, label, on)) in row.into_iter().enumerate() {
+    for (i, (symbol, target, label, on, enabled)) in row.into_iter().enumerate() {
         let r = Rect::new(
             x + (i as u32 * cell) as i32 + (cell as i32 - 44) / 2,
             y,
@@ -1825,16 +2049,43 @@ fn now_playing(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, all: Rect)
             44,
         );
         if on {
-            p.box_(r, Color(255, 255, 255, 60), 10);
+            p.box_(r, white(60), 10);
         }
-        art::icon(
-            p,
-            r,
-            symbol,
-            22,
-            Color(255, 255, 255, if on { 255 } else { 190 }),
-            target,
-            label,
+        if enabled {
+            art::icon(
+                p,
+                r,
+                symbol,
+                22,
+                white(if on { 255 } else { 190 }),
+                target,
+                label,
+            );
+        } else {
+            art::icon_off(
+                p,
+                r,
+                symbol,
+                22,
+                white(190),
+                if track.instrumental() {
+                    "This song is instrumental"
+                } else {
+                    "Lyrics aren't available for this song"
+                },
+            );
+        }
+    }
+    if let Some(name) = device {
+        p.label(
+            x,
+            y + 48,
+            w,
+            &format!("Playing on {name}"),
+            12,
+            white(170),
+            false,
+            Align::Center,
         );
     }
     let _ = Live::clone;

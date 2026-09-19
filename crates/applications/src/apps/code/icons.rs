@@ -65,6 +65,35 @@ pub fn debug(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
 pub fn play(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
     fill(p, x, y, size, &[(4, 2), (13, 8), (4, 14)], c);
 }
+/// Step Over: an arc that hops over the line's own call, with the dot it lands on.
+pub fn step_over(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
+    stroke(
+        p,
+        x,
+        y,
+        size,
+        &[(2, 9), (3, 5), (6, 3), (10, 3), (13, 5), (14, 9)],
+        c,
+    );
+    fill(p, x, y, size, &[(11, 8), (14, 12), (17, 8)], c);
+    fill(p, x, y, size, &[(6, 10), (10, 10), (10, 14), (6, 14)], c);
+}
+/// Step Into: an arrow going down into the dot.
+pub fn step_into(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
+    stroke(p, x, y, size, &[(8, 1), (8, 8)], c);
+    fill(p, x, y, size, &[(5, 7), (8, 11), (11, 7)], c);
+    fill(p, x, y, size, &[(6, 12), (10, 12), (10, 16), (6, 16)], c);
+}
+/// Step Out: an arrow leaving the dot.
+pub fn step_out(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
+    stroke(p, x, y, size, &[(8, 11), (8, 4)], c);
+    fill(p, x, y, size, &[(5, 5), (8, 1), (11, 5)], c);
+    fill(p, x, y, size, &[(6, 12), (10, 12), (10, 16), (6, 16)], c);
+}
+/// Stop: a filled square, as every debugger draws it.
+pub fn stop(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
+    fill(p, x, y, size, &[(3, 3), (13, 3), (13, 13), (3, 13)], c);
+}
 pub fn new_file(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
     stroke(
         p,

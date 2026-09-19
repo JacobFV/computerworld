@@ -1214,6 +1214,7 @@ fn is_runtime(message: &str) -> bool {
         || message.starts_with("datatype mismatch")
         || message.contains("sub-select returns")
         || message.starts_with("too many levels")
+        || message.starts_with("error in trigger")
 }
 fn leading_newlines(s: &str) -> usize {
     let trimmed = s.trim_start();

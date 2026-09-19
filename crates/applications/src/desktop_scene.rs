@@ -1,9 +1,11 @@
 //! Native OS shell composition. Application scenes retain independent state and coordinates.
 use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
+pub mod scroll;
 pub mod shared;
 pub use app_content::{
-    app_content, app_content_with, kind_label, standard_places, PlaceKind, SideItem, StandardPlace,
+    app_content, app_content_scrolled, app_content_with, kind_label, standard_places, PlaceKind,
+    SideItem, StandardPlace, EDITOR_PANE,
 };
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 mod android;
@@ -58,6 +60,16 @@ impl DesktopTheme {
     }
     pub fn mobile(self) -> bool {
         matches!(self, Self::Ios | Self::Android)
+    }
+    /// The screen a machine of this shell has before anything has said otherwise, in
+    /// the logical pixels scenes are laid out in, portrait for a phone: an iPhone's
+    /// 390 x 844 points, a Pixel's 412 x 915 dp, and a 1280 x 800 desktop.
+    pub fn native_screen(self) -> (u32, u32) {
+        match self {
+            Self::Ios => (390, 844),
+            Self::Android => (412, 915),
+            _ => (1280, 800),
+        }
     }
 }
 pub fn work_area(theme: DesktopTheme, width: u32, height: u32) -> Rect {
@@ -148,11 +160,13 @@ fn default_frame(theme: DesktopTheme, width: u32, height: u32, maximized: bool) 
     )
 }
 /// Pages of a paged home screen at this screen size, for these installed applications
-/// (empty meaning all). Only iOS pages its home screen; every other shell has one.
+/// (empty meaning all). iOS and Pixel Launcher page their home screens; the desktop
+/// shells have one.
 /// The router asks this so a swipe walks exactly the pages the shell paints.
 pub fn home_page_count(theme: DesktopTheme, installed: &[String], width: u32, height: u32) -> u32 {
     match theme {
         DesktopTheme::Ios => ios::home_pages(installed, width, height),
+        DesktopTheme::Android => android::home_pages(installed, width, height),
         _ => 1,
     }
 }
@@ -266,6 +280,9 @@ pub fn render_desktop_with_options(
         user: &options.user,
         home: &options.home,
         recents: &options.recents,
+        battery: options.battery,
+        anchor: options.anchor,
+        overview: options.overview,
     };
     let mut p = Painter::themed(theme, width, height, 1 << 60);
     background(&mut p, &ctx);
@@ -320,6 +337,22 @@ pub fn render_desktop_with_options(
                     }
                 }
                 p.scene.nodes.push(n);
+            }
+            // Panes move with the content and take the window's namespace.
+            for area in &content.scrolls {
+                let bounds = Rect::new(
+                    area.bounds.x + r.x,
+                    area.bounds.y + r.y,
+                    area.bounds.width,
+                    area.bounds.height,
+                );
+                if let Some(bounds) = bounds.intersection(r) {
+                    let mut area = area.clone();
+                    area.bounds = bounds;
+                    area.target = w.action(&format!("content:{}", area.target));
+                    area.window = Some(w.id);
+                    p.scene.scrolls.push(area);
+                }
             }
         }
         // Client pixels follow the frame's rounded silhouette, inside its hairline.

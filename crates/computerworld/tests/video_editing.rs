@@ -127,6 +127,26 @@ impl Session {
         }
         self.pointer("up", *points.last().unwrap());
     }
+    /// A wheel turn over a point, with modifiers; `true` when something moved.
+    fn wheel(&mut self, (x, y): (i32, i32), dy: i32, modifiers: &[&str]) -> bool {
+        self.act(
+            "pointer.v1",
+            "wheel",
+            json!({"x": x, "y": y, "width": self.w, "height": self.h,
+                   "delta_y": dy, "modifiers": modifiers}),
+        )["handled"]
+            .as_bool()
+            .unwrap()
+    }
+    /// The published scroll pane `name` of the focused window.
+    fn pane(&self, name: &str) -> Option<cw_scene::ScrollArea> {
+        self.world
+            .scene(&self.actor, self.w, self.h)
+            .unwrap()
+            .scrolls
+            .into_iter()
+            .find(|a| a.target.ends_with(&format!(":content:pane:{name}")))
+    }
     fn key(&mut self, key: &str) {
         self.act("keyboard.v1", "key", json!({ "key": key }));
     }
@@ -469,6 +489,11 @@ fn phone_workflow(theme: &str, app: &str, size: (u32, u32)) {
     s.click("video:split");
     let ed = s.editor(w);
     assert_eq!(ed.project.on_track(v1).len(), 3);
+    // Undo and redo are both within reach on a phone, as they are on a desktop.
+    s.click("video:undo");
+    assert_eq!(s.editor(w).project.on_track(v1).len(), 2);
+    s.click("video:redo");
+    assert_eq!(s.editor(w).project.on_track(v1).len(), 3);
     // A transition on the cut after the first piece.
     s.click("video:deselect");
     s.click("video:tab:transitions");
@@ -512,4 +537,81 @@ fn imovie_on_the_phone_adds_splits_plays_and_shares() {
 #[test]
 fn the_android_editor_adds_splits_plays_and_exports() {
     phone_workflow("virtual-android-12", "videoeditor", (412, 892));
+}
+
+/// The wheel over a timeline scrolls it through time and zooms it about the pointer,
+/// and the media bin scrolls when it holds more than it shows.
+#[test]
+fn the_timeline_wheel_scrolls_and_zooms_and_the_bin_scrolls() {
+    let mut s = session("virtual-windows-11", "clipchamp", "Videos", (1100, 620));
+    let w = s.launch("clipchamp");
+    s.click("video:import");
+    for name in SAMPLES {
+        s.click(&format!("video:pick:{name}"));
+    }
+    s.click("video:close-sheet");
+    let ed = s.editor(w);
+    assert_eq!(ed.project.media.len(), 5, "{:?}", ed.status);
+    // Put the three videos on the timeline so it is longer than the view.
+    let videos: Vec<u32> = ed
+        .project
+        .media
+        .iter()
+        .filter(|m| ed.library.get(&m.id).map(|l| l.kind) != Some(MediaKind::Audio))
+        .map(|m| m.id)
+        .collect();
+    for id in &videos {
+        s.click(&format!("video:append:{id}"));
+    }
+    let ed = s.editor(w);
+    let duration = ed.project.duration();
+    assert!(duration > 0);
+    // The timeline's lanes: the target carries the frame at their left edge.
+    let (lanes, target) = s.find("video:lanes:").expect("the timeline lanes");
+    let shown: i64 = target.rsplit(':').next().unwrap().parse().unwrap();
+    assert_eq!(shown, 0);
+    let at = (lanes.x + 200, lanes.y + 10);
+    // A plain turn walks through time: the timeline runs sideways, so a vertical wheel
+    // scrolls it sideways, by exactly the pixels turned.
+    assert!(s.wheel(at, 120, &[]));
+    let ed = s.editor(w);
+    assert_eq!(ed.scroll, ed.frames(120).min(duration));
+    // And the view stays where it was put: it no longer snaps back to the playhead.
+    let (_, target) = s.find("video:lanes:").unwrap();
+    assert!(target.ends_with(&format!(":{}", ed.scroll)), "{target}");
+    assert_eq!(s.editor(w).playhead, 0, "the playhead did not move");
+    // Ctrl and the wheel zoom about the frame under the pointer, which stays put.
+    let ed = s.editor(w);
+    let (zoom, under) = (ed.zoom, ed.scroll + ed.frames(200));
+    assert!(s.wheel(at, -120, &["Ctrl"]));
+    let ed = s.editor(w);
+    assert!(
+        ed.zoom > zoom,
+        "the timeline zoomed in: {} -> {}",
+        zoom,
+        ed.zoom
+    );
+    assert!(
+        (ed.scroll + ed.frames(200) - under).abs() <= 1,
+        "the frame under the pointer stayed: {under} -> {}",
+        ed.scroll + ed.frames(200)
+    );
+    // Sideways is the same axis: Shift turns it too.
+    let before = s.editor(w).scroll;
+    assert!(s.wheel(at, -120, &["Shift"]));
+    assert!(s.editor(w).scroll < before);
+    // Scrubbing the ruler moves the playhead, and the view follows it again.
+    s.key("End");
+    let ed = s.editor(w);
+    assert_eq!(ed.playhead, duration);
+    let (_, target) = s.find("video:lanes:").unwrap();
+    let shown: i64 = target.rsplit(':').next().unwrap().parse().unwrap();
+    assert!(shown > 0, "the timeline followed the playhead to the end");
+    // The bin holds five items in a panel that shows fewer: it scrolls.
+    let bin = s.pane("bin").expect("the media bin is a scrolling pane");
+    assert!(bin.extent > bin.bounds.height, "{bin:?}");
+    let at = (bin.bounds.x + 20, bin.bounds.y + 20);
+    assert!(s.wheel(at, 120, &[]));
+    let moved = s.pane("bin").unwrap();
+    assert_eq!(moved.offset, 120.min(moved.max_offset()));
 }

@@ -1,0 +1,328 @@
+//! Italic faces, colour emoji, locale Han forms and the terminal grid's shaping.
+use super::*;
+use cw_scene::metrics::{text_width, wrap};
+use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
+
+fn styled(text: &str, width: u32, height: u32, size: u16, style: Style, t: Typeface) -> Frame {
+    let mut scene = Scene::new(width, height);
+    scene.typeface = t;
+    scene.nodes.push(Node::ui_text_styled(
+        1,
+        Rect::new(0, 0, width, height),
+        text,
+        size,
+        Color::BLACK,
+        style,
+    ));
+    Renderer::new().render(&scene)
+}
+fn terminal(text: &str, width: u32, size: u16) -> Frame {
+    let mut scene = Scene::new(width, 24);
+    scene.nodes.push(Node::text(
+        1,
+        Rect::new(0, 0, width, 24),
+        text,
+        size,
+        Color::BLACK,
+    ));
+    Renderer::new().render(&scene)
+}
+fn ink_right(frame: &Frame) -> Option<u32> {
+    (0..frame.width)
+        .rev()
+        .find(|&x| (0..frame.height).any(|y| frame.pixel(x, y).unwrap()[0] < 250))
+}
+fn hash(frame: &Frame) -> String {
+    format!("{:x}", Sha256::digest(&frame.rgba))
+}
+/// Pixels that are clearly coloured (not a grey of any level).
+fn colourful(frame: &Frame) -> usize {
+    (0..frame.height)
+        .flat_map(|y| (0..frame.width).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let p = frame.pixel(x, y).unwrap();
+            let (lo, hi) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
+            hi - lo > 60
+        })
+        .count()
+}
+/// A region of a frame, for comparing cells.
+fn region(frame: &Frame, x0: u32, x1: u32) -> Vec<[u8; 4]> {
+    (0..frame.height)
+        .flat_map(|y| (x0..x1).map(move |x| (x, y)))
+        .map(|(x, y)| frame.pixel(x, y).unwrap())
+        .collect()
+}
+
+const ITALIC: Style = Style::new(false, true, Lang::Auto);
+const BOLD_ITALIC: Style = Style::new(true, true, Lang::Auto);
+const TYPEFACES: [Typeface; 5] = [
+    Typeface::DejaVu,
+    Typeface::Inter,
+    Typeface::OpenSans,
+    Typeface::Ubuntu,
+    Typeface::Roboto,
+];
+
+#[test]
+fn italic_faces_draw_slanted_and_stay_inside_the_measured_box() {
+    let text = "Italic affine λ Ω";
+    let mut seen = BTreeSet::new();
+    for t in TYPEFACES {
+        for style in [Style::default(), ITALIC, Style::from(true), BOLD_ITALIC] {
+            let frame = styled(text, 260, 30, 18, style, t);
+            assert_eq!(frame, styled(text, 260, 30, 18, style, t));
+            // Every weight and slant of every family is its own drawing.
+            assert!(seen.insert(hash(&frame)), "{t:?} {style:?} repeats a face");
+            // The ink ends where layout measured, give or take the last glyph's
+            // right side bearing (DejaVu Bold's Ω overhangs by 3 px at 18 px) and the
+            // slant's overhang (a fifth of an em at most).
+            let measured = text_width(t, style, text, 18);
+            let right = ink_right(&frame).unwrap();
+            let overhang = if style.italic { 18 / 5 } else { 0 };
+            assert!(
+                right <= measured + overhang + 3,
+                "{t:?} {style:?}: ink at {right}, measured {measured}"
+            );
+            assert!(
+                right + 6 >= measured,
+                "{t:?} {style:?}: {right} vs {measured}"
+            );
+        }
+    }
+    // Wrapping follows the italic advances: rows of ink where the lines are.
+    let text = "an italic paragraph wraps where its italic metrics say";
+    let lines = wrap(Typeface::Inter, ITALIC, text, 14, 110);
+    let frame = styled(text, 110, 120, 14, ITALIC, Typeface::Inter);
+    let line_height = 14 + 14u32.div_ceil(4);
+    for row in 0..6u32 {
+        let inked = (row * line_height..(row + 1) * line_height)
+            .any(|y| (0..110).any(|x| frame.pixel(x, y).unwrap()[0] < 128));
+        assert_eq!(
+            inked,
+            (row as usize) < lines.len(),
+            "row {row} of {lines:?}"
+        );
+    }
+    // Characters no italic face has (arrows, box drawing) keep the upright glyph.
+    let arrow_upright = styled("⇒", 30, 30, 18, Style::default(), Typeface::Inter);
+    let arrow_italic = styled("⇒", 30, 30, 18, ITALIC, Typeface::Inter);
+    assert_eq!(arrow_upright, arrow_italic);
+}
+
+#[test]
+fn italic_scene_json_is_optional_and_pinned() {
+    // Existing scene JSON has no `italic` or `lang`: it still parses, and a default
+    // primitive serializes exactly as before.
+    let json = r#"{"kind":"ui_text","text":"a","color":[0,0,0,255],"size":12}"#;
+    let plain: Primitive = serde_json::from_str(json).unwrap();
+    assert_eq!(plain.text_style(), Some(Style::default()));
+    assert_eq!(serde_json::to_string(&plain).unwrap(), json);
+    let tagged: Primitive = serde_json::from_str(
+        r#"{"kind":"ui_text_bold","text":"a","size":12,"color":[0,0,0,255],"italic":true,"lang":"zh-Hant"}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        tagged.text_style(),
+        Some(Style::new(true, true, Lang::ZhHant))
+    );
+    let mut scene = Scene::new(240, 70);
+    scene.typeface = Typeface::Inter;
+    scene.nodes.push(Node::ui_text_styled(
+        1,
+        Rect::new(4, 4, 232, 24),
+        "Preview: main.rs — λ",
+        15,
+        Color::rgb(30, 30, 30),
+        ITALIC,
+    ));
+    scene.nodes.push(Node::ui_text_styled(
+        2,
+        Rect::new(4, 34, 232, 24),
+        "Bold italic €42",
+        15,
+        Color::rgb(30, 30, 30),
+        BOLD_ITALIC,
+    ));
+    let frame = Renderer::new().render(&scene);
+    assert_eq!(
+        hash(&frame),
+        "cdec16514e9247bb6988c7f698095c586a6c467b71f98cc9dda7f83c7929483f"
+    );
+}
+
+#[test]
+fn color_emoji_draw_in_colour_and_fall_back_to_monochrome() {
+    for emoji in ["😀", "🇯🇵", "🏳️‍🌈", "👍🏽", "❤️", "🎉"] {
+        let frame = styled(emoji, 40, 30, 22, Style::default(), Typeface::DejaVu);
+        assert!(colourful(&frame) > 20, "{emoji} has no colour");
+        assert_eq!(
+            frame,
+            styled(emoji, 40, 30, 22, Style::default(), Typeface::DejaVu)
+        );
+        // The colour glyph stays in the monochrome glyph's box: layout is unchanged.
+        let right = ink_right(&frame).unwrap();
+        assert!(
+            right <= text_width(Typeface::DejaVu, false, emoji, 22) + 1,
+            "{emoji}"
+        );
+    }
+    // Recognisable colours: the grinning face is yellow, the flag of Japan red.
+    let face = styled("😀", 40, 30, 22, Style::default(), Typeface::DejaVu);
+    let yellow = (0..30)
+        .flat_map(|y| (0..40).map(move |x| (x, y)))
+        .any(|(x, y)| {
+            let p = face.pixel(x, y).unwrap();
+            p[0] > 200 && p[1] > 150 && p[2] < 90
+        });
+    assert!(yellow, "😀 is not yellow");
+    let flag = styled("🇯🇵", 40, 30, 22, Style::default(), Typeface::DejaVu);
+    let red = (0..30)
+        .flat_map(|y| (0..40).map(move |x| (x, y)))
+        .any(|(x, y)| {
+            let p = flag.pixel(x, y).unwrap();
+            p[0] > 180 && p[1] < 80 && p[2] < 90
+        });
+    assert!(red, "🇯🇵 has no red disc");
+    // The rainbow flag uses gradients and soft-light compositing: many colours.
+    let rainbow = styled("🏳️‍🌈", 40, 30, 22, Style::default(), Typeface::DejaVu);
+    let hues: BTreeSet<[u8; 3]> = (0..30)
+        .flat_map(|y| (0..40).map(move |x| (x, y)))
+        .map(|(x, y)| {
+            let p = rainbow.pixel(x, y).unwrap();
+            [p[0] / 64, p[1] / 64, p[2] / 64]
+        })
+        .collect();
+    assert!(hues.len() >= 6, "{hues:?}");
+    // Without the colour face the monochrome glyphs draw, in the text colour.
+    font_pack::HIDE_COLOR.with(|h| h.set(true));
+    let mono = styled("😀", 40, 30, 22, Style::default(), Typeface::DejaVu);
+    let status = font_pack_status();
+    font_pack::HIDE_COLOR.with(|h| h.set(false));
+    assert_eq!(colourful(&mono), 0);
+    assert!(ink_right(&mono).is_some());
+    assert_ne!(mono, face);
+    assert!(
+        status.missing.contains(&"noto-color-emoji.ttf"),
+        "{status:?}"
+    );
+    // Opacity and clipping apply to colour glyphs like any text.
+    let mut scene = Scene::new(40, 30);
+    let mut node = Node::ui_text(1, Rect::new(0, 0, 40, 30), "😀", 22, Color::BLACK);
+    node.opacity = 128;
+    scene.nodes.push(node);
+    let faded = Renderer::new().render(&scene);
+    assert_ne!(faded, face);
+    assert!(colourful(&faded) > 0);
+    // Pinned: native and Wasm must agree (scripts/smoke-node.cjs checks the
+    // multi-script scene, which carries these emoji too).
+    assert_eq!(
+        hash(&face),
+        "f7c89baa4dced159f4892c5f46b4d0034c1cd917069ccbfdf631ffd994c6f4d4"
+    );
+}
+
+#[test]
+fn han_is_drawn_in_the_forms_of_its_language() {
+    let lang = |l: Lang, bold: bool| {
+        styled(
+            "骨",
+            30,
+            30,
+            24,
+            Style::new(bold, false, l),
+            Typeface::DejaVu,
+        )
+    };
+    let frames: Vec<Frame> = [Lang::ZhHans, Lang::ZhHant, Lang::Ja, Lang::Ko]
+        .into_iter()
+        .map(|l| lang(l, false))
+        .collect();
+    // The same codepoint in regional drawings: every locale's differs from the
+    // Simplified one (Traditional Chinese and Korean share theirs).
+    for other in &frames[1..] {
+        assert_ne!(&frames[0], other);
+    }
+    assert_ne!(frames[1], frames[2]);
+    assert_eq!(frames.iter().map(hash).collect::<BTreeSet<_>>().len(), 3);
+    // Untagged text follows the script heuristic: kana makes 骨 Japanese.
+    let untagged = styled("骨です", 80, 30, 24, Style::default(), Typeface::DejaVu);
+    assert_eq!(
+        region(&untagged, 0, 26),
+        region(
+            &styled(
+                "骨です",
+                80,
+                30,
+                24,
+                Style::new(false, false, Lang::Ja),
+                Typeface::DejaVu
+            ),
+            0,
+            26
+        )
+    );
+    // Bold CJK is a real bold: heavier than the regular, in every locale.
+    for l in [Lang::ZhHans, Lang::ZhHant, Lang::Ja, Lang::Ko] {
+        let ink = |f: &Frame| f.rgba.chunks(4).map(|p| 255 - u32::from(p[0])).sum::<u32>();
+        assert!(
+            ink(&lang(l, true)) > ink(&lang(l, false)) * 11 / 10,
+            "{l:?}"
+        );
+    }
+    let hangul = |bold| styled("한국어", 80, 30, 20, Style::from(bold), Typeface::DejaVu);
+    assert_ne!(hangul(true), hangul(false));
+}
+
+#[test]
+fn terminal_cells_hold_wide_characters_marks_and_right_to_left_runs() {
+    let (cell, _) = text_cell(14);
+    // A wide character takes two cells: the 'a' after 中 is in the third cell.
+    let wide = terminal("中a", 200, 14);
+    let plain = terminal("xya", 200, 14);
+    assert_eq!(
+        region(&wide, 2 * cell, 3 * cell),
+        region(&plain, 2 * cell, 3 * cell)
+    );
+    // 中 is drawn at full size across its two cells, not shrunk into one.
+    let right = ink_right(&terminal("中", 200, 14)).unwrap();
+    assert!(right >= cell + cell / 2, "中 ends at {right}, cell {cell}");
+    // A combining mark joins its base's cell and draws over it.
+    let accented = terminal("e\u{0301}x", 200, 14);
+    let bare = terminal("ex", 200, 14);
+    assert_eq!(
+        region(&accented, cell, 2 * cell),
+        region(&bare, cell, 2 * cell)
+    );
+    assert_ne!(region(&accented, 0, cell), region(&bare, 0, cell));
+    // Hebrew runs right to left in the grid: "אב" shows bet in the first cell.
+    let word = terminal("אב", 200, 14);
+    let bet = terminal("ב", 200, 14);
+    assert_eq!(region(&word, 0, cell), region(&bet, 0, cell));
+    // Arabic letters join: in "ببب" none of the cells is the isolated letter.
+    let alone = terminal("ب", 200, 14);
+    let joined = terminal("ببب", 200, 14);
+    for k in 0..3 {
+        assert_ne!(
+            region(&joined, k * cell, (k + 1) * cell),
+            region(&alone, 0, cell),
+            "cell {k}"
+        );
+    }
+    // Brackets mirror inside a right-to-left run.
+    let mirrored = terminal("א(ב)", 200, 14);
+    assert_ne!(mirrored, terminal("א)ב(", 200, 14));
+    // Colour emoji in a terminal: two cells, in colour.
+    let emoji = terminal("😀b", 200, 14);
+    assert!(colourful(&emoji) > 10);
+    assert_eq!(
+        region(&emoji, 2 * cell, 3 * cell),
+        region(&terminal("xyb", 200, 14), 2 * cell, 3 * cell)
+    );
+    // Plain ASCII rows are the original grid, pixel for pixel.
+    assert_eq!(
+        hash(&terminal("$ ls -la ~/src | grep rs", 200, 14)),
+        hash(&terminal("$ ls -la ~/src | grep rs", 200, 14))
+    );
+}

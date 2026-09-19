@@ -49,7 +49,7 @@ const SHEETS_CHARTS: [Color; 6] = [
     Color::rgb(70, 189, 198),
 ];
 /// Swatches the fill and font colour pickers offer (Excel's standard colours).
-const SWATCHES: [(&str, [u8; 3]); 8] = [
+pub(super) const SWATCHES: [(&str, [u8; 3]); 8] = [
     ("Yellow", [255, 255, 0]),
     ("Light Green", [146, 208, 80]),
     ("Light Blue", [189, 215, 238]),
@@ -224,6 +224,9 @@ fn menu_items(
     name: &str,
     flavor: Flavor,
 ) -> Vec<(String, Result<String, &'static str>)> {
+    if let Some(items) = super::panels::menu_items(book, name, flavor) {
+        return items;
+    }
     let f = flavor.name();
     let s = |label: &str, t: &str| (label.to_owned(), live(t));
     let editing = book.editing.is_some();
@@ -390,6 +393,7 @@ fn menu_items(
             s("Sheet at End", "insert:sheet"),
             ("".into(), Err("")),
             s("Chart…", "chart:column"),
+            s("Pivot Table…", "pivot:new"),
             s("Function…", "menu:functions"),
         ],
         "calcformat" => vec![
@@ -401,6 +405,10 @@ fn menu_items(
             s("Percent", "fmt:percent"),
             s("Date", "fmt:date"),
             s("General", "fmt:general"),
+            ("".into(), Err("")),
+            s("Merge and Unmerge Cells ›", "menu:merge"),
+            s("Borders ›", "menu:borders"),
+            s("Conditional ›", "menu:cf"),
             ("".into(), Err("")),
             s("Clear Direct Formatting", "clearformats"),
         ],
@@ -426,6 +434,10 @@ fn menu_items(
             s("Sort Descending", "sort:desc"),
             s("AutoFilter", "filter"),
             ("".into(), Err("")),
+            s("Pivot Table ›", "menu:pivotmenu"),
+            s("Text to Columns…", "ttc"),
+            s("Recalculate", "calcnow"),
+            ("".into(), Err("")),
             s("Fill Down", "filldown"),
             s("Fill Right", "fillright"),
         ],
@@ -444,6 +456,10 @@ fn menu_items(
             s("Freeze 1 column", "freeze:col"),
             s("Unfreeze", "freeze:none"),
             ("".into(), Err("")),
+            s("Merge cells ›", "menu:merge"),
+            s("Borders ›", "menu:borders"),
+            s("Conditional formatting ›", "menu:cf"),
+            ("".into(), Err("")),
             s("Save", &format!("save:{f}")),
             s("Export as CSV", "savecsv"),
         ],
@@ -452,7 +468,16 @@ fn menu_items(
             s("Column left", "insert:cols"),
             s("Sheet", "insert:sheet"),
             s("Chart", "chart:column"),
+            s("Pivot table", "pivot:new"),
             s("Function", "menu:functions"),
+        ],
+        "numbersformat" => vec![
+            s("Merge Cells ›", "menu:merge"),
+            s("Cell Borders ›", "menu:borders"),
+            s("Conditional Highlighting ›", "menu:cf"),
+            ("".into(), Err("")),
+            s("Rename Sheet", "rename"),
+            s("Clear Formats", "clearformats"),
         ],
         other => {
             if let Some(col) = other.strip_prefix("filter:") {
@@ -502,10 +527,12 @@ fn paint_menu(p: &mut Painter, book: &Book, flavor: Flavor, x: i32, y: i32, widt
 /// Where the open menu drops from, by name (so each menu hangs under its button).
 fn menu_anchor(book: &Book, anchors: &[(&str, i32, i32)]) -> Option<(i32, i32)> {
     let name = book.menu.as_deref()?;
-    let key = if name.starts_with("filter:") {
-        "filter"
-    } else {
-        name
+    // A submenu drops from where its parent menu did.
+    let key = match name {
+        n if n.starts_with("filter:") => "filter",
+        "cfhighlight" | "cftop" | "cfbars" | "cfscales" | "cficons" | "cfclear" => "cf",
+        "bordercolor" | "borderline" => "borders",
+        n => n,
     };
     anchors
         .iter()
@@ -583,8 +610,53 @@ pub fn render(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             true,
             Align::Center,
         );
+    } else {
+        super::panels::paint_dialog(book, p, w, h, accent_of(flavor));
     }
 }
+fn accent_of(flavor: Flavor) -> Color {
+    match flavor {
+        Flavor::Excel => EXCEL_GREEN,
+        Flavor::Calc => Color::rgb(233, 84, 32),
+        Flavor::Sheets => Color::rgb(26, 115, 232),
+        Flavor::Numbers => Color::rgb(0, 122, 255),
+    }
+}
+const EXCEL_REFS: [Color; 7] = [
+    Color::rgb(47, 117, 181),
+    Color::rgb(192, 0, 0),
+    Color::rgb(112, 48, 160),
+    Color::rgb(0, 176, 80),
+    Color::rgb(191, 143, 0),
+    Color::rgb(197, 90, 17),
+    Color::rgb(0, 112, 192),
+];
+const CALC_REFS: [Color; 8] = [
+    Color::rgb(30, 144, 255),
+    Color::rgb(199, 21, 133),
+    Color::rgb(50, 205, 50),
+    Color::rgb(218, 165, 32),
+    Color::rgb(100, 149, 237),
+    Color::rgb(255, 69, 0),
+    Color::rgb(0, 128, 128),
+    Color::rgb(218, 112, 214),
+];
+const NUMBERS_REFS: [Color; 6] = [
+    Color::rgb(0, 122, 255),
+    Color::rgb(52, 199, 89),
+    Color::rgb(255, 149, 0),
+    Color::rgb(175, 82, 222),
+    Color::rgb(255, 45, 85),
+    Color::rgb(90, 200, 250),
+];
+const SHEETS_REFS: [Color; 6] = [
+    Color::rgb(255, 153, 0),
+    Color::rgb(66, 133, 244),
+    Color::rgb(155, 81, 224),
+    Color::rgb(15, 157, 88),
+    Color::rgb(219, 68, 55),
+    Color::rgb(0, 172, 193),
+];
 
 /// The document list: Excel's Open page, Numbers' document browser, Calc's Start
 /// Center, Sheets' home. It lists the spreadsheets in the folder, which are real
@@ -674,6 +746,24 @@ fn start_screen(book: &Book, p: &mut Painter, env: &AppEnv<'_>, flavor: Flavor) 
     let x = left as i32 + 24;
     let content_w = w.saturating_sub(left + 48);
     let mut y = 20;
+    // Without a sidebar (a phone, a narrow window) the way back to the open workbook is
+    // a back control over the list, so the list is never a dead end.
+    if left == 0 && !book.name.is_empty() {
+        let r = Rect::new(x - 8, y - 6, content_w.min(220), 30);
+        p.button(r, Color::TRANSPARENT, 6, "sheet:closelist", &book.name);
+        p.symbol("chevron-left", r.x + 2, r.y + 6, 18, accent);
+        p.label(
+            r.x + 24,
+            r.y + 7,
+            r.width.saturating_sub(30),
+            &book.name,
+            13,
+            accent,
+            false,
+            Align::Left,
+        );
+        y += 34;
+    }
     let title = match flavor {
         Flavor::Excel => "Open",
         Flavor::Numbers => "Choose a Template",
@@ -740,10 +830,17 @@ fn start_screen(book: &Book, p: &mut Painter, env: &AppEnv<'_>, flavor: Flavor) 
             MUTED,
         );
     }
+    // The folder's files scroll: a folder with more spreadsheets than the screen shows
+    // is not a folder with fewer.
+    let pane = p.pane(
+        "files",
+        Rect::new(x, y, content_w, h.saturating_sub(y as u32)),
+    );
+    let top = pane.top();
     for (i, name) in files.iter().enumerate() {
-        let r = Rect::new(x, y + i as i32 * 36, content_w, 34);
-        if r.y as u32 + 34 > h {
-            break;
+        let r = Rect::new(x, top + i as i32 * 36, content_w, 34);
+        if !pane.shows(r.y, r.height) {
+            continue;
         }
         let (target, label) = match name.strip_suffix('/') {
             Some(dir) => (format!("sheet:folder:{dir}"), dir.to_string()),
@@ -764,6 +861,7 @@ fn start_screen(book: &Book, p: &mut Painter, env: &AppEnv<'_>, flavor: Flavor) 
         p.left(r.x + 34, r.y + 8, r.width - 40, &label, 13, INK);
         p.hline(r.x, r.y + 34, r.width, LINE);
     }
+    p.end_pane(pane, Some(files.len() as u32 * 36));
 }
 
 /// The selection's statistics, as status bars show them.
@@ -932,13 +1030,23 @@ fn formula_bar(p: &mut Painter, book: &Book, r: Rect, name_w: u32, accent: Color
     );
     p.region(input, "sheet:edit:bar", "Formula bar");
     let text = bar_text(book);
-    p.left(
+    // While a formula is typed its references show in their colours.
+    let refs: &[Color] = if book.editing.is_none() {
+        &[]
+    } else if calc {
+        &CALC_REFS
+    } else {
+        &EXCEL_REFS
+    };
+    grid::formula_text(
+        p,
         input.x + 6,
         input.y + (input.height as i32 - 17) / 2,
         input.width - 10,
         &text,
         12,
         INK,
+        refs,
     );
     if let Some(e) = &book.editing {
         if e.in_bar {
@@ -1083,6 +1191,7 @@ fn palette(flavor: Flavor, geom_head: (u32, u32)) -> Palette {
             head_h: geom_head.1,
             headers: true,
             chart_colors: &EXCEL_CHARTS,
+            ref_colors: &EXCEL_REFS,
         },
         Flavor::Calc => Palette {
             header_bg: Color::rgb(240, 240, 240),
@@ -1100,6 +1209,7 @@ fn palette(flavor: Flavor, geom_head: (u32, u32)) -> Palette {
             head_h: geom_head.1,
             headers: true,
             chart_colors: &CALC_CHARTS,
+            ref_colors: &CALC_REFS,
         },
         Flavor::Numbers => Palette {
             header_bg: Color::rgb(241, 241, 241),
@@ -1117,6 +1227,7 @@ fn palette(flavor: Flavor, geom_head: (u32, u32)) -> Palette {
             head_h: geom_head.1,
             headers: true,
             chart_colors: &NUMBERS_CHARTS,
+            ref_colors: &NUMBERS_REFS,
         },
         Flavor::Sheets => Palette {
             header_bg: Color::rgb(248, 249, 250),
@@ -1134,10 +1245,43 @@ fn palette(flavor: Flavor, geom_head: (u32, u32)) -> Palette {
             head_h: geom_head.1,
             headers: true,
             chart_colors: &SHEETS_CHARTS,
+            ref_colors: &SHEETS_REFS,
         },
     }
 }
+/// Whether the pivot table field list shows: the active cell is in a pivot table and
+/// the list has not been closed.
+fn show_pane(book: &Book) -> bool {
+    !book.pivot_pane_closed && book.current_pivot().is_some()
+}
+/// The contextual command strip Excel shows over the ribbon for a selected chart or
+/// pivot table.
+fn contextual(p: &mut Painter, r: Rect, label: &str, target: &str, accent: Color) {
+    p.button(
+        r,
+        Color(accent.0, accent.1, accent.2, 30),
+        3,
+        &format!("sheet:{target}"),
+        label,
+    );
+    p.label(
+        r.x,
+        r.y + 2,
+        r.width,
+        label,
+        11,
+        accent,
+        true,
+        Align::Center,
+    );
+}
 fn mode_text(book: &Book) -> &'static str {
+    match book.draw {
+        Some(super::DrawMode::Border) => return "Draw Border",
+        Some(super::DrawMode::Grid) => return "Draw Border Grid",
+        Some(super::DrawMode::Erase) => return "Erase Border",
+        None => {}
+    }
     match (&book.editing, &book.drag) {
         (Some(_), Some(super::Drag::Point { .. })) => "Point",
         (Some(e), _) if e.fresh => "Enter",
@@ -1313,10 +1457,7 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
                 &mut gx,
                 "Tables",
                 vec![
-                    (
-                        off("PivotTable", Some("grid"), "PivotTables are not modeled"),
-                        true,
-                    ),
+                    (tool("PivotTable", Some("grid"), "pivot:new"), true),
                     (
                         off("Table", Some("list-view"), "Excel tables are not modeled"),
                         true,
@@ -1368,17 +1509,28 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
                 p,
                 &mut gx,
                 "Calculation",
-                vec![(
-                    off(
-                        "Calculate Now",
-                        Some("reload"),
-                        "every formula is always up to date",
-                    ),
-                    true,
-                )],
+                vec![(tool("Calculate Now", Some("reload"), "calcnow"), true)],
             );
         }
         "data" => {
+            let pivots = book.workbook.sheets.iter().any(|s| !s.pivots.is_empty());
+            group(
+                p,
+                &mut gx,
+                "Queries & Connections",
+                vec![(
+                    if pivots {
+                        tool("Refresh All", Some("reload"), "pivot:refreshall")
+                    } else {
+                        off(
+                            "Refresh All",
+                            Some("reload"),
+                            "there is nothing to refresh: the workbook has no PivotTables",
+                        )
+                    },
+                    true,
+                )],
+            );
             group(
                 p,
                 &mut gx,
@@ -1400,14 +1552,7 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
                 &mut gx,
                 "Data Tools",
                 vec![
-                    (
-                        off(
-                            "Text to Columns",
-                            Some("split"),
-                            "text to columns is not modeled",
-                        ),
-                        true,
-                    ),
+                    (tool("Text to Columns", Some("split"), "ttc"), true),
                     (
                         off(
                             "Data Validation",
@@ -1493,6 +1638,10 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
                     on: style.underline,
                     ..tool("U", None, "underline")
                 },
+                Tool {
+                    on: book.draw.is_some(),
+                    ..tool("Borders", Some("grid"), "menu:borders")
+                },
                 tool("Fill Color", Some("bucket"), "menu:fillcolor"),
                 tool("Font Color", Some("text-tool"), "menu:fontcolor"),
             ];
@@ -1504,9 +1653,10 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
                     accent,
                 );
             }
-            anchors.push(("fillcolor", gx + 84, rb.y + 56));
-            anchors.push(("fontcolor", gx + 112, rb.y + 56));
-            gx += 156;
+            anchors.push(("borders", gx + 84, rb.y + 56));
+            anchors.push(("fillcolor", gx + 112, rb.y + 56));
+            anchors.push(("fontcolor", gx + 140, rb.y + 56));
+            gx += 184;
             p.label(
                 font_x,
                 rb.y + 68,
@@ -1546,8 +1696,20 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
                         },
                         false,
                     ),
+                    (
+                        Tool {
+                            on: book.sheet_ref().merges.contains(&book.selection()),
+                            ..tool("Merge & Center", Some("split"), "merge:center")
+                        },
+                        false,
+                    ),
+                    (
+                        tool("Merge options", Some("chevron-down"), "menu:merge"),
+                        false,
+                    ),
                 ],
             );
+            anchors.push(("merge", gx - 70, rb.y + 50));
             // Number group: format box, then $ % , and decimals.
             let num_x = gx;
             let fmt_box = Rect::new(gx, rb.y + 6, 110, 20);
@@ -1591,6 +1753,17 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             );
             p.vline(gx - 2, rb.y + 6, 74, LINE);
             gx += 6;
+            let styles_x = gx;
+            group(
+                p,
+                &mut gx,
+                "Styles",
+                vec![(
+                    tool("Conditional Formatting", Some("palette"), "menu:cf"),
+                    true,
+                )],
+            );
+            anchors.push(("cf", styles_x, rb.y + rb.height as i32));
             let cells_x = gx;
             group(
                 p,
@@ -1636,19 +1809,32 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         scale: book.zoom,
     };
     let pal = palette(Flavor::Excel, (40, 20));
+    let pane_w = if show_pane(book) { 290.min(w / 3) } else { 0 };
     let cells = grid::paint(
         p,
         book,
         Rect::new(
             0,
             grid_rect.y,
-            grid_rect.width.saturating_sub(16),
+            grid_rect.width.saturating_sub(16 + pane_w),
             grid_rect.height,
         ),
         geom,
         &pal,
     );
-    scrollbars(p, book, Rect::new(0, cells.y, w, cells.height));
+    scrollbars(p, book, Rect::new(0, cells.y, w - pane_w, cells.height));
+    let pane_anchors = if pane_w > 0 {
+        super::panels::pivot_pane(
+            book,
+            p,
+            Rect::new((w - pane_w) as i32, grid_rect.y, pane_w, grid_rect.height),
+            f,
+            accent,
+        )
+    } else {
+        vec![]
+    };
+    anchors.extend(pane_anchors.iter().map(|(n, x, y)| (n.as_str(), *x, *y)));
     let tabs_y = grid_rect.y + grid_rect.height as i32;
     sheet_tabs(p, book, Rect::new(0, tabs_y, w, tabs_h), accent, f, false);
     // Horizontal scroll arrows at the right of the tab strip.
@@ -1697,6 +1883,14 @@ fn excel(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             true,
             Align::Center,
         );
+    }
+    if book.chart.is_none() && book.menu.is_none() && book.current_pivot().is_some() {
+        let r = Rect::new(w as i32 - 250, 124, 240, 20);
+        if book.pivot_pane_closed {
+            contextual(p, r, "PivotTable Analyze: Field List", "pivot:pane", accent);
+        } else {
+            contextual(p, r, "PivotTable Analyze: Refresh", "pivot:refresh", accent);
+        }
     }
     anchors.push(("charttype", w as i32 - 250, 146));
     anchors.push(("filter", 60, 170));
@@ -1880,7 +2074,7 @@ fn numbers(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             Some("list-view"),
             "categories are not modeled",
         ),
-        off("Pivot Table", Some("grid"), "pivot tables are not modeled"),
+        tool("Pivot Table", Some("grid"), "pivot:new"),
         tool("Insert", Some("plus"), "menu:functions"),
         tool("Table", Some("grid-view"), "insert:sheet"),
         tool("Chart", Some("layers"), "menu:chart"),
@@ -1889,6 +2083,7 @@ fn numbers(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         off("Media", Some("image"), "media is not modeled"),
         off("Comment", Some("chat"), "comments are not modeled"),
     ];
+    let pane_anchors: Vec<(String, i32, i32)>;
     let mut anchors: Vec<(&str, i32, i32)> = Vec::new();
     let mut x = 10;
     for t in &tools {
@@ -1931,7 +2126,13 @@ fn numbers(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
     }
     // Sheet tabs under the toolbar, with + first.
     sheet_tabs(p, book, Rect::new(0, 54, w, 30), accent, f, true);
-    let side = if book.inspector { 250.min(w / 3) } else { 0 };
+    let side = if show_pane(book) {
+        290.min(w / 3)
+    } else if book.inspector {
+        250.min(w / 3)
+    } else {
+        0
+    };
     let canvas = Rect::new(0, 84, w.saturating_sub(side), h.saturating_sub(84 + 24));
     p.box_(canvas, Color::WHITE, 0);
     // The table sits on the canvas with its title above it.
@@ -1950,8 +2151,8 @@ fn numbers(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
     );
     grid::paint(p, book, area, geom, &pal);
     anchors.push(("filter", area.x + 40, area.y + 40));
-    // Format inspector.
-    if side > 0 {
+    // Format inspector (the pivot table options take its place in a pivot table).
+    if side > 0 && !show_pane(book) {
         let s = Rect::new(w as i32 - side as i32, 84, side, h.saturating_sub(84 + 24));
         p.box_(s, Color::rgb(246, 246, 246), 0);
         p.vline(s.x, s.y, s.height, LINE);
@@ -2076,7 +2277,41 @@ fn numbers(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             let none = Rect::new(s.x + 14, y + 28, 80, 22);
             p.button(none, Color::TRANSPARENT, 4, "sheet:fill:none", "No Fill");
             p.left(none.x + 4, none.y + 3, 76, "No Fill", 12, accent);
+            y += 62;
+            // Cell: merging, borders and conditional highlighting.
+            p.strong(s.x + 14, y, side - 28, "Cell", 13, INK);
+            y += 24;
+            for (i, (label, t, menu)) in [
+                ("Merge", "menu:merge", "merge"),
+                ("Borders", "menu:borders", "borders"),
+                ("Conditional Highlighting…", "menu:cf", "cf"),
+            ]
+            .iter()
+            .enumerate()
+            {
+                let r = Rect::new(s.x + 14, y + i as i32 * 30, side - 28, 26);
+                crate::apps::look::action(
+                    p,
+                    &crate::apps::look::look(DesktopTheme::Macos),
+                    r,
+                    label,
+                    &format!("sheet:{t}"),
+                    false,
+                );
+                anchors.push((menu, r.x, r.y + 26));
+            }
         }
+    }
+    if show_pane(book) {
+        let pw = 290.min(w / 3);
+        pane_anchors = super::panels::pivot_pane(
+            book,
+            p,
+            Rect::new((w - pw) as i32, 84, pw, h.saturating_sub(84 + 24)),
+            f,
+            accent,
+        );
+        anchors.extend(pane_anchors.iter().map(|(n, x, y)| (n.as_str(), *x, *y)));
     }
     // The selection summary bar at the bottom.
     let by = h as i32 - 24;
@@ -2118,7 +2353,7 @@ fn numbers_ios(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         } else {
             off("Undo", Some("undo"), "there is nothing to undo")
         },
-        tool("Format", Some("brush"), "menu:format"),
+        tool("Format", Some("brush"), "menu:numbersformat"),
         tool("Insert", Some("plus"), "menu:plus"),
         tool("More", Some("more"), "menu:more"),
     ];
@@ -2143,6 +2378,10 @@ fn numbers_ios(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         }
     }
     anchors.push(("format", w as i32 - 210, top));
+    anchors.push(("numbersformat", w as i32 - 210, top));
+    anchors.push(("merge", w as i32 - 210, top));
+    anchors.push(("borders", w as i32 - 210, top));
+    anchors.push(("cf", w as i32 - 210, top));
     anchors.push(("plus", w as i32 - 210, top));
     anchors.push(("more", w as i32 - 210, top));
     sheet_tabs(p, book, Rect::new(0, top, w, 36), accent, f, true);
@@ -2158,8 +2397,27 @@ fn numbers_ios(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         scale: book.zoom * 5 / 4,
     };
     let pal = palette(f, (30, 24));
+    let pane_w = if show_pane(book) { 290.min(w / 2) } else { 0 };
+    let area = Rect::new(
+        area.x,
+        area.y,
+        area.width.saturating_sub(pane_w),
+        area.height,
+    );
     grid::paint(p, book, area, geom, &pal);
     anchors.push(("filter", 20, area.y + 30));
+    let pane_anchors = if pane_w > 0 {
+        super::panels::pivot_pane(
+            book,
+            p,
+            Rect::new((w - pane_w) as i32, area.y, pane_w, area.height),
+            f,
+            accent,
+        )
+    } else {
+        vec![]
+    };
+    anchors.extend(pane_anchors.iter().map(|(n, x, y)| (n.as_str(), *x, *y)));
     mobile_formula_bar(
         p,
         book,
@@ -2207,7 +2465,21 @@ fn mobile_formula_bar(p: &mut Painter, book: &Book, r: Rect, accent: Color) {
             FAINT,
         );
     } else {
-        p.left(input.x + 10, input.y + 8, input.width - 16, &text, 13, INK);
+        let refs: &[Color] = match (&book.editing, accent == Color::rgb(0, 122, 255)) {
+            (None, _) => &[],
+            (Some(_), true) => &NUMBERS_REFS,
+            (Some(_), false) => &SHEETS_REFS,
+        };
+        grid::formula_text(
+            p,
+            input.x + 10,
+            input.y + 8,
+            input.width - 16,
+            &text,
+            13,
+            INK,
+            refs,
+        );
     }
     let done = Rect::new(r.x + r.width as i32 - 52, r.y + 6, 46, r.height - 12);
     if book.editing.is_some() {
@@ -2343,6 +2615,7 @@ fn calc(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         },
         tool("Font Color", Some("text-tool"), "menu:fontcolor"),
         tool("Background Color", Some("bucket"), "menu:fillcolor"),
+        tool("Borders", Some("grid"), "menu:borders"),
         Tool {
             on: style.align == cw_sheet::Align::Left,
             ..tool("Align Left", Some("list-view"), "align:left")
@@ -2355,6 +2628,10 @@ fn calc(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             on: style.align == cw_sheet::Align::Right,
             ..tool("Align Right", Some("list-view"), "align:right")
         },
+        Tool {
+            on: book.sheet_ref().merges.contains(&book.selection()),
+            ..tool("Merge and Center Cells", Some("split"), "merge:center")
+        },
         tool("$", None, "fmt:currency"),
         tool("%", None, "fmt:percent"),
         tool("0.0", None, "fmt:number"),
@@ -2364,16 +2641,16 @@ fn calc(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
     ];
     let mut x = 196;
     for (i, t) in fmt_tools.iter().enumerate() {
-        if [3, 5, 8, 12].contains(&i) {
+        if [3, 6, 10, 14].contains(&i) {
             p.vline(x + 1, ft.y + 6, 20, LINE);
             x += 6;
         }
         button(p, Rect::new(x, ft.y + 3, 28, 26), t, accent);
-        if t.label == "Font Color" {
-            anchors.push(("fontcolor", x, ft.y + 30));
-        }
-        if t.label == "Background Color" {
-            anchors.push(("fillcolor", x, ft.y + 30));
+        match t.label {
+            "Font Color" => anchors.push(("fontcolor", x, ft.y + 30)),
+            "Background Color" => anchors.push(("fillcolor", x, ft.y + 30)),
+            "Borders" => anchors.push(("borders", x, ft.y + 30)),
+            _ => {}
         }
         x += 30;
     }
@@ -2389,20 +2666,33 @@ fn calc(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         scale: book.zoom * 5 / 4,
     };
     let pal = palette(f, (38, 18));
+    let pane_w = if show_pane(book) { 290.min(w / 3) } else { 0 };
     let cells = grid::paint(
         p,
         book,
         Rect::new(
             0,
             grid_rect.y,
-            grid_rect.width.saturating_sub(16),
+            grid_rect.width.saturating_sub(16 + pane_w),
             grid_rect.height,
         ),
         geom,
         &pal,
     );
-    scrollbars(p, book, Rect::new(0, cells.y, w, cells.height));
+    scrollbars(p, book, Rect::new(0, cells.y, w - pane_w, cells.height));
     anchors.push(("filter", 60, cells.y + 20));
+    let pane_anchors = if pane_w > 0 {
+        super::panels::pivot_pane(
+            book,
+            p,
+            Rect::new((w - pane_w) as i32, grid_rect.y, pane_w, grid_rect.height),
+            f,
+            accent,
+        )
+    } else {
+        vec![]
+    };
+    anchors.extend(pane_anchors.iter().map(|(n, x, y)| (n.as_str(), *x, *y)));
     let ty = grid_rect.y + grid_rect.height as i32;
     // Calc puts sheet navigation arrows and + before the tabs.
     p.box_(Rect::new(0, ty, w, tabs_h), Color::rgb(243, 243, 243), 0);
@@ -2508,13 +2798,16 @@ fn sheets(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             green,
         );
     }
-    let anchors = [
+    let mut anchors = vec![
         ("plus", w as i32 - 210, top),
         ("more", w as i32 - 210, top),
         ("filter", 20, top + 40),
+        ("merge", 16, top + 40),
+        ("borders", 16, top + 40),
+        ("cf", 16, top + 40),
     ];
     let format_panel = book.menu.as_deref() == Some("sheetsformat");
-    let panel_h: u32 = if format_panel { 210 } else { 0 };
+    let panel_h: u32 = if format_panel { 250 } else { 0 };
     let bar_h = 50;
     let tabs_h = 48;
     let area = Rect::new(
@@ -2528,7 +2821,31 @@ fn sheets(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
         scale: book.zoom * 3 / 2,
     };
     let pal = palette(f, (36, 26));
-    grid::paint(p, book, area, geom, &pal);
+    let pane_w = if show_pane(book) { 290.min(w / 2) } else { 0 };
+    grid::paint(
+        p,
+        book,
+        Rect::new(
+            area.x,
+            area.y,
+            area.width.saturating_sub(pane_w),
+            area.height,
+        ),
+        geom,
+        &pal,
+    );
+    let pane_anchors = if pane_w > 0 {
+        super::panels::pivot_pane(
+            book,
+            p,
+            Rect::new((w - pane_w) as i32, area.y, pane_w, area.height),
+            f,
+            accent,
+        )
+    } else {
+        vec![]
+    };
+    anchors.extend(pane_anchors.iter().map(|(n, x, y)| (n.as_str(), *x, *y)));
     let bar_y = area.y + area.height as i32;
     mobile_formula_bar(p, book, Rect::new(0, bar_y, w, bar_h), accent);
     if format_panel {
@@ -2578,6 +2895,19 @@ fn sheets(book: &Book, p: &mut Painter, env: &AppEnv<'_>) {
             let b = Rect::new(16 + i as i32 * 36, r.y + 156, 30, 30);
             p.box_(b, Color::rgb(c[0], c[1], c[2]), 15);
             p.region(b, &format!("sheet:fill:{}", hex(*c)), label);
+        }
+        for (i, (label, t)) in [
+            ("Merge cells", "menu:merge"),
+            ("Borders", "menu:borders"),
+            ("Conditional formatting", "menu:cf"),
+        ]
+        .iter()
+        .enumerate()
+        {
+            let bw = (w.saturating_sub(48)) / 3;
+            let b = Rect::new(16 + i as i32 * (bw as i32 + 8), r.y + 200, bw, 36);
+            p.border(b, Color::WHITE, 18, LINE);
+            button(p, b, &tool(label, None, t), accent);
         }
     }
     let ty = h as i32 - tabs_h as i32;

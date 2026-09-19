@@ -47,8 +47,18 @@ fn client() -> Client {
 fn targets(c: &Client, theme: DesktopTheme) -> Vec<String> {
     let mut p = Painter::new(1100, 700);
     view::render(c, &mut p, &env(theme));
-    p.scene
+    // Under a modal dialog's scrim nothing can be reached: only what is above it.
+    let above = p
+        .scene
         .nodes
+        .iter()
+        .rposition(|n| {
+            n.interaction.as_deref() == Some("db:noop")
+                && n.bounds.width == 1100
+                && n.bounds.height == 700
+        })
+        .map_or(0, |i| i + 1);
+    p.scene.nodes[above..]
         .iter()
         .filter_map(|n| n.interaction.clone())
         .filter(|t| t.starts_with("db:"))
@@ -99,9 +109,38 @@ fn states() -> Vec<Client> {
     out.push(drop.clone());
     drop.command(1, "droptable", 0).unwrap();
     out.push(drop);
-    let mut message = base;
+    let mut message = base.clone();
     message.message = Some("Something\nto say".into());
     out.push(message);
+    // The designers.
+    let mut create = base.clone();
+    create.command(1, "createtable", 0).unwrap();
+    out.push(create.clone());
+    create.command(1, "design:add", 0).unwrap();
+    create.command(1, "design:add", 0).unwrap();
+    out.push(create.clone());
+    create.command(1, "menu:designtype:1", 0).unwrap();
+    out.push(create);
+    let mut modify = base.clone();
+    modify.command(1, "tree:table:people", 0).unwrap();
+    modify.command(1, "modifytable", 0).unwrap();
+    modify.command(1, "design:cell:1:0", 0).unwrap();
+    out.push(modify.clone());
+    modify.command(1, "design:ok", 0).unwrap();
+    out.push(modify);
+    let mut index = base.clone();
+    index.command(1, "createindex", 0).unwrap();
+    index.command(1, "index:col:name", 0).unwrap();
+    out.push(index.clone());
+    index.command(1, "menu:indextables", 0).unwrap();
+    out.push(index);
+    let mut staged = base;
+    staged.command(1, "table:people", 0).unwrap();
+    staged.command(1, "tab:structure", 0).unwrap();
+    out.push(staged.clone());
+    staged.command(1, "struct:cell:2:0", 0).unwrap();
+    staged.text("years").unwrap();
+    out.push(staged);
     out
 }
 
@@ -224,4 +263,247 @@ fn importing_csv_makes_a_typed_table_and_exporting_writes_it_back() {
         text,
         "city,population,area\nOslo,709037,454.0\n\"Bergen, NO\",291940,465.0\n"
     );
+}
+
+#[test]
+fn db_browser_creates_a_table_from_the_designer() {
+    let mut c = client();
+    c.command(1, "tab:structure", 0).unwrap();
+    c.command(1, "createtable", 0).unwrap();
+    c.text("pets").unwrap();
+    // An empty design says what is missing and stays open.
+    c.key(1, "Enter", 0).unwrap();
+    assert!(c.message.take().unwrap().contains("at least one field"));
+    c.command(1, "design:add", 0).unwrap();
+    // The new field's name is selected: typing replaces it.
+    c.text("id").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    c.command(1, "design:cell:0:4", 0).unwrap(); // AI: an INTEGER primary key
+    c.command(1, "design:add", 0).unwrap();
+    c.text("name").unwrap();
+    c.key(1, "Tab", 0).unwrap();
+    c.text("TEXT").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    c.command(1, "design:cell:1:2", 0).unwrap(); // NN
+    c.command(1, "design:add", 0).unwrap();
+    c.text("owner").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    c.command(1, "menu:designtype:2", 0).unwrap();
+    c.command(1, "design:type:2:INTEGER", 0).unwrap();
+    c.command(1, "design:cell:2:9", 0).unwrap();
+    c.text("\"people\"(\"id\")").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    // Move owner up above name.
+    c.command(1, "design:up", 0).unwrap();
+    let sql = c.design.as_ref().unwrap().create_sql("pets");
+    assert_eq!(
+        sql,
+        "CREATE TABLE \"pets\" (\n\t\"id\"\tINTEGER,\n\t\"owner\"\tINTEGER,\n\t\"name\"\tTEXT NOT NULL,\n\tPRIMARY KEY(\"id\" AUTOINCREMENT),\n\tFOREIGN KEY(\"owner\") REFERENCES \"people\"(\"id\")\n)"
+    );
+    c.command(1, "design:ok", 0).unwrap();
+    assert!(c.design.is_none(), "{:?}", c.message);
+    assert!(c.modified());
+    let db = c.db.as_mut().unwrap();
+    db.execute("INSERT INTO pets (owner, name) VALUES (1, 'Rex')")
+        .unwrap();
+    assert_eq!(
+        db.query("SELECT id, owner, name FROM pets").unwrap().rows,
+        vec![vec![
+            Value::Integer(1),
+            Value::Integer(1),
+            Value::Text("Rex".into())
+        ]]
+    );
+    // The foreign key holds.
+    assert!(db
+        .execute("INSERT INTO pets (owner, name) VALUES (9, 'Stray')")
+        .unwrap_err()
+        .message
+        .contains("FOREIGN KEY constraint failed"));
+    // The tree lists it, selected.
+    assert_eq!(c.tree_selected.as_deref(), Some("table:pets"));
+}
+
+#[test]
+fn modify_table_rebuilds_when_alter_table_cannot_and_refuses_what_the_rows_break() {
+    let mut c = client();
+    c.command(1, "tree:table:people", 0).unwrap();
+    c.command(1, "modifytable", 0).unwrap();
+    // Linus has no age: NOT NULL on age cannot hold, and nothing changes.
+    c.command(1, "design:cell:2:2", 0).unwrap();
+    c.command(1, "design:ok", 0).unwrap();
+    let m = c.message.take().unwrap();
+    assert!(m.contains("Error altering table"), "{m}");
+    assert!(m.contains("NOT NULL constraint failed"), "{m}");
+    assert!(c.design.is_some(), "the dialog stays open");
+    assert!(!c.modified());
+    // Instead: age becomes REAL, and name moves last.
+    c.command(1, "design:cell:2:2", 0).unwrap();
+    c.activate(1, "db:design:cell:2:1", 0).unwrap();
+    for _ in 0.."INTEGER".len() {
+        c.key(1, "Backspace", 0).unwrap();
+    }
+    c.text("REAL").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    c.command(1, "design:cell:1:0", 0).unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    c.command(1, "design:bottom", 0).unwrap();
+    c.command(1, "design:ok", 0).unwrap();
+    assert!(c.design.is_none(), "{:?}", c.message);
+    let db = c.db.as_mut().unwrap();
+    let info: Vec<(String, String)> = db
+        .table_info("people")
+        .unwrap()
+        .into_iter()
+        .map(|i| (i.name, i.decl_type))
+        .collect();
+    assert_eq!(
+        info,
+        vec![
+            ("id".to_string(), "INTEGER".to_string()),
+            ("age".into(), "REAL".into()),
+            ("name".into(), "TEXT".into())
+        ]
+    );
+    assert_eq!(
+        db.query("SELECT id, name, age, typeof(age) FROM people ORDER BY id")
+            .unwrap()
+            .rows[1],
+        vec![
+            Value::Integer(2),
+            Value::Text("Grace".into()),
+            Value::Real(45.0),
+            Value::Text("real".into())
+        ]
+    );
+    // The index and the view came through.
+    let names: Vec<String> = db.schema().into_iter().map(|e| e.name).collect();
+    assert!(names.contains(&"people_name".to_string()), "{names:?}");
+    assert_eq!(
+        db.query("SELECT name FROM adults ORDER BY name")
+            .unwrap()
+            .rows
+            .len(),
+        2
+    );
+    assert_eq!(
+        db.query("PRAGMA integrity_check").unwrap().rows[0][0],
+        Value::Text("ok".into())
+    );
+}
+
+#[test]
+fn create_index_writes_the_index_the_dialog_describes() {
+    let mut c = client();
+    c.command(1, "tree:table:people", 0).unwrap();
+    c.command(1, "createindex", 0).unwrap();
+    c.text("people_age").unwrap();
+    c.command(1, "index:col:age", 0).unwrap();
+    c.command(1, "index:col:name", 0).unwrap();
+    c.command(1, "index:order:0", 0).unwrap();
+    c.command(1, "index:unique", 0).unwrap();
+    // The engine has no partial indexes; the clause says so.
+    assert!(c.command(1, "index:where", 0).is_err());
+    assert_eq!(
+        c.index_design.as_ref().unwrap().sql(),
+        "CREATE UNIQUE INDEX \"people_age\" ON \"people\" (\n\t\"age\"\tDESC,\n\t\"name\"\tASC\n);"
+    );
+    c.key(1, "Enter", 0).unwrap();
+    assert!(c.index_design.is_none(), "{:?}", c.message);
+    let db = c.db.as_mut().unwrap();
+    let plan = db
+        .query("EXPLAIN QUERY PLAN SELECT name FROM people WHERE age = 36")
+        .unwrap();
+    assert!(
+        format!("{:?}", plan.rows).contains("COVERING INDEX people_age"),
+        "{:?}",
+        plan.rows
+    );
+}
+
+#[test]
+fn tableplus_stages_structure_changes_until_commit() {
+    let mut c = client();
+    c.command(1, "table:people", 0).unwrap();
+    c.command(1, "tab:structure", 0).unwrap();
+    c.activate(1, "db:struct:cell:2:0", 0).unwrap();
+    c.text("_years").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    c.command(1, "struct:addcol", 0).unwrap();
+    c.text("email").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    assert!(c.modified());
+    // Staged only: the database still has age.
+    assert_eq!(
+        c.db.as_ref().unwrap().table_info("people").unwrap()[2].name,
+        "age"
+    );
+    let effects = c.key(1, "Meta+s", 0).unwrap();
+    let bytes = effects
+        .iter()
+        .find_map(|e| match e {
+            AppEffect::WriteBytes { bytes, .. } => Some(bytes.clone()),
+            _ => None,
+        })
+        .unwrap();
+    let back = cw_sql::Database::open(&bytes).unwrap();
+    let cols: Vec<String> = back
+        .table_info("people")
+        .unwrap()
+        .into_iter()
+        .map(|i| i.name)
+        .collect();
+    assert_eq!(cols, ["id", "name", "age_years", "email"]);
+    c.saved("/home/u/Documents/people.db", Ok(()));
+    assert!(!c.modified());
+    // Discard drops what is staged.
+    c.command(1, "struct:cell:3:0", 0).unwrap();
+    c.command(1, "struct:delcol", 0).unwrap();
+    assert!(c.modified());
+    c.command(1, "revert", 0).unwrap();
+    assert!(!c.modified());
+    assert_eq!(
+        c.db.as_ref().unwrap().table_info("people").unwrap().len(),
+        4
+    );
+}
+
+#[test]
+fn without_rowid_tables_are_browsed_and_edited_by_primary_key() {
+    let mut c = client();
+    c.db.as_mut()
+        .unwrap()
+        .execute(
+            "CREATE TABLE codes (code TEXT, n INTEGER, label TEXT, PRIMARY KEY (code, n)) WITHOUT ROWID;
+             INSERT INTO codes VALUES ('b', 1, 'bee'), ('a', 2, 'ay'), ('a', 1, 'aa');",
+        )
+        .unwrap();
+    c.command(1, "table:codes", 0).unwrap();
+    let rows = c.rows(0, 10).unwrap();
+    let labels: Vec<Value> = rows.rows.iter().map(|(_, r)| r[2].clone()).collect();
+    assert_eq!(
+        labels,
+        vec![
+            Value::Text("aa".into()),
+            Value::Text("ay".into()),
+            Value::Text("bee".into())
+        ]
+    );
+    c.activate(1, "db:cell:1:2", 0).unwrap();
+    c.text("!").unwrap();
+    c.key(1, "Enter", 0).unwrap();
+    assert!(c.message.is_none(), "{:?}", c.message);
+    let db = c.db.as_mut().unwrap();
+    assert_eq!(
+        db.query("SELECT label FROM codes WHERE code = 'a' AND n = 2")
+            .unwrap()
+            .rows,
+        vec![vec![Value::Text("ay!".into())]]
+    );
+    c.command(1, "cell:0:0", 0).unwrap();
+    c.command(1, "deleterow", 0).unwrap();
+    assert_eq!(c.rows(0, 10).unwrap().total, 2);
+    c.command(1, "newrow", 0).unwrap();
+    assert!(c.message.is_none(), "{:?}", c.message);
+    assert_eq!(c.rows(0, 10).unwrap().total, 3);
 }

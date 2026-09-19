@@ -196,6 +196,7 @@ dependencies = [
 name = "cw-applications"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-artwork",
  "cw-cad",
  "cw-determinism",
  "cw-eda",
@@ -210,6 +211,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "cw-artwork"
+version = "0.1.0-alpha.2"
 
 [[package]]
 name = "cw-benchmarks"
@@ -393,11 +398,13 @@ version = "0.1.0-alpha.2"
 name = "cw-render"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-protocol",
  "cw-scene",
  "fontdue",
  "jpeg-decoder",
  "png",
  "proptest",
+ "rustybuzz",
  "serde",
  "serde_json",
  "sha2",
@@ -572,6 +579,7 @@ dependencies = [
 name = "cw-service-media"
 version = "0.1.0-alpha.2"
 dependencies = [
+ "cw-artwork",
  "cw-protocol",
  "cw-sdk",
  "cw-service-common",
@@ -626,6 +634,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-service-speaker"
+version = "0.1.0-alpha.2"
+dependencies = [
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-service-media",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-service-static-site"
 version = "0.1.0-alpha.2"
 dependencies = [
@@ -669,6 +689,7 @@ dependencies = [
  "cw-service-search",
  "cw-service-shop",
  "cw-service-social",
+ "cw-service-speaker",
  "cw-service-static-site",
  "cw-service-wiki",
  "serde_json",

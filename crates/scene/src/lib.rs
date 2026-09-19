@@ -6,7 +6,9 @@ pub mod metrics;
 pub mod text;
 #[rustfmt::skip]
 mod metrics_data;
-pub use metrics::Typeface;
+#[rustfmt::skip]
+mod metrics_italic;
+pub use metrics::{Lang, Style, Typeface};
 
 pub const SCENE_VERSION: u32 = 2;
 /// Maximum raster target: 64 MiB of RGBA. Structured scenes share this viewport bound.
@@ -205,6 +207,9 @@ impl Transform {
         )
     }
 }
+fn is_false(b: &bool) -> bool {
+    !*b
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Primitive {
@@ -221,15 +226,25 @@ pub enum Primitive {
         radius: u32,
     },
     /// Proportional bundled sans-serif text, pixel-wrapped within the bounds.
+    /// `italic` and `lang` are optional in scene JSON and omitted when default.
     UiText {
         text: String,
         color: Color,
         size: u16,
+        #[serde(default, skip_serializing_if = "is_false")]
+        italic: bool,
+        /// Language of the text, which picks regional Han forms (see [`Lang`]).
+        #[serde(default, skip_serializing_if = "Lang::is_auto")]
+        lang: Lang,
     },
     UiTextBold {
         text: String,
         color: Color,
         size: u16,
+        #[serde(default, skip_serializing_if = "is_false")]
+        italic: bool,
+        #[serde(default, skip_serializing_if = "Lang::is_auto")]
+        lang: Lang,
     },
     Text {
         text: String,
@@ -263,6 +278,38 @@ pub enum Primitive {
     Backdrop { radius: u32, blur: u32 },
     /// Invisible layout/interaction region.
     Region,
+}
+impl Primitive {
+    /// UI text set in `style`: `UiTextBold` when bold, otherwise `UiText`.
+    pub fn ui_text(text: impl Into<String>, color: Color, size: u16, style: Style) -> Self {
+        let text = text.into();
+        let Style { bold, italic, lang } = style;
+        if bold {
+            Self::UiTextBold {
+                text,
+                color,
+                size,
+                italic,
+                lang,
+            }
+        } else {
+            Self::UiText {
+                text,
+                color,
+                size,
+                italic,
+                lang,
+            }
+        }
+    }
+    /// Weight, slant and language of a UI text primitive; `None` for anything else.
+    pub fn text_style(&self) -> Option<Style> {
+        match self {
+            Self::UiText { italic, lang, .. } => Some(Style::new(false, *italic, *lang)),
+            Self::UiTextBold { italic, lang, .. } => Some(Style::new(true, *italic, *lang)),
+            _ => None,
+        }
+    }
 }
 /// Rounded clip in scene coordinates, applied in addition to `Node::clip`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -438,11 +485,7 @@ impl Node {
         Self::new(
             id,
             bounds,
-            Primitive::UiText {
-                text: text.into(),
-                color,
-                size,
-            },
+            Primitive::ui_text(text, color, size, Style::default()),
         )
     }
     pub fn ui_text_bold(
@@ -455,12 +498,19 @@ impl Node {
         Self::new(
             id,
             bounds,
-            Primitive::UiTextBold {
-                text: text.into(),
-                color,
-                size,
-            },
+            Primitive::ui_text(text, color, size, true.into()),
         )
+    }
+    /// UI text in any [`Style`]: weight, italic and language.
+    pub fn ui_text_styled(
+        id: u64,
+        bounds: Rect,
+        text: impl Into<String>,
+        size: u16,
+        color: Color,
+        style: Style,
+    ) -> Self {
+        Self::new(id, bounds, Primitive::ui_text(text, color, size, style))
     }
     pub fn rounded_rectangle(id: u64, bounds: Rect, fill: Color, radius: u32) -> Self {
         Self::new(
@@ -632,6 +682,54 @@ pub struct TextBuffer {
     #[serde(default)]
     pub truncated: bool,
 }
+/// A pane whose content is taller (or, `horizontal`, wider) than the part it shows, and
+/// how far it is scrolled. Published so an actor can see that more is there, how much,
+/// and where the view is, without inferring it from a painted scroll bar. `pointer.v1
+/// wheel` over `bounds` moves `offset` — `delta_y` for a vertical pane, `delta_x` (or
+/// `delta_y` with Shift held) for a horizontal one — and so does, on a phone, a swipe
+/// along the pane's axis that starts there.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScrollArea {
+    /// `pane:<name>` inside an application; the compositor namespaces it the way it
+    /// namespaces interactions (`window:<id>:content:pane:<name>`).
+    pub target: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window: Option<u64>,
+    /// The viewport, in scene coordinates.
+    pub bounds: Rect,
+    /// Pixels of content scrolled above the viewport's top edge, `0..=max_offset()`.
+    pub offset: i32,
+    /// Height of everything the pane holds, shown or not.
+    pub extent: u32,
+    /// A large title at the top of the content that collapses into the navigation bar
+    /// once it is scrolled away (iOS). `None` for panes without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Height of that large title's band: the offset at which it has collapsed.
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub title_height: u32,
+    /// The pane scrolls sideways: `offset` and `extent` run along x, a shelf of cards.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub horizontal: bool,
+}
+fn is_zero_u32(v: &u32) -> bool {
+    *v == 0
+}
+impl ScrollArea {
+    /// The furthest the content can be scrolled.
+    pub fn max_offset(&self) -> i32 {
+        let view = if self.horizontal {
+            self.bounds.width
+        } else {
+            self.bounds.height
+        };
+        self.extent.saturating_sub(view) as i32
+    }
+    /// The large title has scrolled out of the content into the navigation bar.
+    pub fn title_collapsed(&self) -> bool {
+        self.title.is_some() && self.offset >= self.title_height as i32
+    }
+}
 /// Published scrollback bound: lines, then characters. A scene is a perception payload,
 /// not a file transfer.
 pub const MAX_BUFFER_LINES: usize = 4096;
@@ -672,6 +770,9 @@ pub struct Scene {
     pub focus: Option<Focus>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub buffers: Vec<TextBuffer>,
+    /// Scrollable panes and where each is scrolled to, topmost last.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scrolls: Vec<ScrollArea>,
     /// Content digest of the whole scene, filled by `Scene::stamp`. Equal digests mean
     /// nothing changed; 0 means unstamped.
     #[serde(default, skip_serializing_if = "is_unstamped")]
@@ -697,6 +798,7 @@ impl Scene {
             windows: Vec::new(),
             focus: None,
             buffers: Vec::new(),
+            scrolls: Vec::new(),
             digest: 0,
         }
     }
@@ -717,6 +819,19 @@ impl Scene {
             .filter(|(_, n)| n.accepts_input() && n.covers(x, y))
             .max_by_key(|(i, n)| (n.z, *i))
             .map(|(_, n)| n)
+    }
+    /// Scroll areas of window `window` (any window for `None`) under `(x, y)`,
+    /// innermost first: the order a wheel turn tries them in.
+    pub fn scrolls_at(&self, window: Option<u64>, x: i32, y: i32) -> Vec<&ScrollArea> {
+        let mut areas: Vec<(usize, &ScrollArea)> = self
+            .scrolls
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| window.is_none() || a.window == window)
+            .filter(|(_, a)| a.bounds.contains(x, y))
+            .collect();
+        areas.sort_by_key(|(i, a)| (a.bounds.area(), std::cmp::Reverse(*i)));
+        areas.into_iter().map(|(_, a)| a).collect()
     }
     /// Every node covering `(x, y)`, topmost first: the `elementFromPoint` stack.
     /// Includes non-interactive nodes so occlusion is legible, not just answerable.
@@ -859,6 +974,11 @@ impl Scene {
                 .map(|n| (n.id, n.revision))
                 .collect::<Vec<_>>(),
         ));
+        // Folded in only when present, so a scene without panes keeps the digest it
+        // always had.
+        if !self.scrolls.is_empty() {
+            self.digest = digest(&(self.digest, &self.scrolls));
+        }
     }
     /// What changed since `previous`. Both scenes must be stamped; an unstamped scene
     /// reports everything as changed rather than silently reporting nothing.
@@ -1332,56 +1452,39 @@ pub fn flow_layout(
 }
 /// `wrap_text` with provenance, so a consumer that joins the result cannot corrupt it.
 pub fn wrap_text_lines(text: &str, max_columns: usize) -> Vec<(String, TextLine)> {
-    let max_columns = max_columns.max(1);
     let mut out = Vec::new();
     for (logical, line) in text.split('\n').enumerate() {
-        let chars: Vec<char> = line.chars().collect();
-        if chars.is_empty() {
+        let mut offset = 0;
+        for (index, range) in text::terminal::wrap(line, max_columns)
+            .into_iter()
+            .enumerate()
+        {
+            let chunk = &line[range];
             out.push((
-                String::new(),
-                TextLine {
-                    logical: logical as u32,
-                    ..TextLine::default()
-                },
-            ));
-            continue;
-        }
-        for (index, chunk) in chars.chunks(max_columns).enumerate() {
-            out.push((
-                chunk.iter().collect(),
+                chunk.to_owned(),
                 TextLine {
                     logical: logical as u32,
                     continuation: index > 0,
-                    offset: (index * max_columns) as u32,
+                    offset,
                     ..TextLine::default()
                 },
             ));
+            offset += chunk.chars().count() as u32;
         }
     }
     out
 }
 /// Fixed-cell text wrapping shared by layout and rasterization, preserving newlines.
+/// Rows hold `max_columns` cells: wide characters (CJK, emoji) take two, combining
+/// marks none (see [`text::terminal`]).
 pub fn wrap_text(text: &str, max_columns: usize) -> Vec<String> {
-    let max_columns = max_columns.max(1);
-    let mut lines = Vec::new();
-    for line in text.split('\n') {
-        if line.is_empty() {
-            lines.push(String::new());
-            continue;
-        }
-        let mut out = String::new();
-        let mut count = 0;
-        for c in line.chars() {
-            if count == max_columns {
-                lines.push(std::mem::take(&mut out));
-                count = 0
-            }
-            out.push(c);
-            count += 1;
-        }
-        lines.push(out);
-    }
-    lines
+    text.split('\n')
+        .flat_map(|line| {
+            text::terminal::wrap(line, max_columns)
+                .into_iter()
+                .map(move |range| line[range].to_owned())
+        })
+        .collect()
 }
 pub fn text_cell(size: u16) -> (u32, u32) {
     let size = u32::from(size.max(1));
