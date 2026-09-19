@@ -209,6 +209,10 @@ fn ls_honours_its_flag_combinations() {
     assert!(json.contains("\"mtime\":\"2026-09-17 09:00:00\""), "{json}");
     refused(&mut c, "ls -Q /home/user", "-Q");
     refused(&mut c, "ls --color=always /home/user", "--color");
+    // `--color` and `--json` have no short spelling, and `-c`/`-u` stay refused
+    // rather than quietly meaning something else.
+    refused(&mut c, "ls -c /home/user", "-c");
+    refused(&mut c, "ls -u /home/user", "-u");
 }
 
 /// The consumer asked for globbing that actually reaches the commands that take files.

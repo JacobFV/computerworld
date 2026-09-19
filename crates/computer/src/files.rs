@@ -945,6 +945,12 @@ fn canonicalize(c: &Computer, path: &str) -> Result<String, Fail> {
     Ok(current)
 }
 
+/// `--color` and `--json` have no short spelling in coreutils, and inventing one
+/// would collide with `-c` (sort by change time) and shadow a real flag. They are
+/// carried on control characters instead, which no argument can contain.
+const COLOUR_FLAG: char = '\u{1}';
+const JSON_FLAG: char = '\u{2}';
+const COLOUR: &str = "\u{1}";
 /// The `ls` flag set, resolved once so the renderer never re-reads the option list.
 pub(crate) struct LsFlags {
     pub all: bool,
@@ -1155,8 +1161,8 @@ pub(crate) fn ls(c: &Computer, args: &[String]) -> Result<String, Fail> {
     let (opts, mut paths) = options(
         "ls",
         args,
-        "aAldh1FpirtSRnJU",
-        "c",
+        "aAldh1FpirtSRn",
+        COLOUR,
         &[
             ("all", 'a'),
             ("almost-all", 'A'),
@@ -1167,13 +1173,13 @@ pub(crate) fn ls(c: &Computer, args: &[String]) -> Result<String, Fail> {
             ("classify", 'F'),
             ("inode", 'i'),
             ("numeric-uid-gid", 'n'),
-            ("color", 'c'),
-            ("json", 'J'),
+            ("color", COLOUR_FLAG),
+            ("json", JSON_FLAG),
         ],
     )?;
     // The only colour this world has is none; anything else would be a lie about a
     // terminal it cannot see.
-    if let Some(when) = value(&opts, 'c') {
+    if let Some(when) = value(&opts, COLOUR_FLAG) {
         if !matches!(when, "never" | "no" | "none" | "auto" | "") {
             return Err(Fail::usage(format!(
                 "ls: unsupported --color mode `{when}`"
@@ -1192,7 +1198,7 @@ pub(crate) fn ls(c: &Computer, args: &[String]) -> Result<String, Fail> {
         by_size: flag(&opts, 'S'),
         inode: flag(&opts, 'i'),
         numeric: flag(&opts, 'n'),
-        json: flag(&opts, 'J'),
+        json: flag(&opts, JSON_FLAG),
     };
     if paths.is_empty() {
         paths.push(".".into());
