@@ -112,7 +112,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
-          test "$(git rev-parse "refs/tags/v$VERSION^{commit}" 2>/dev/null || git ls-remote origin "refs/tags/v$VERSION" | cut -f1)" = "${{ inputs.source_commit }}"
+          test "$(git ls-remote origin "refs/tags/v$VERSION" "refs/tags/v$VERSION^{}" | tail -1 | cut -f1)" = "${{ inputs.source_commit }}"
           mkdir -p target/pypi target/verify
           gh release download "v$VERSION" --dir target/verify --pattern '*.whl' --pattern SHA256SUMS
           (cd target/verify && sha256sum --check --ignore-missing SHA256SUMS)
@@ -144,7 +144,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
-          test "$(git ls-remote origin "refs/tags/v$VERSION" | cut -f1)" = "${{ inputs.source_commit }}"
+          test "$(git ls-remote origin "refs/tags/v$VERSION" "refs/tags/v$VERSION^{}" | tail -1 | cut -f1)" = "${{ inputs.source_commit }}"
           mkdir -p target/verify
           gh release download "v$VERSION" --dir target/verify --pattern "computerworld-$VERSION.tgz" --pattern SHA256SUMS
           (cd target/verify && sha256sum --check --ignore-missing SHA256SUMS)
