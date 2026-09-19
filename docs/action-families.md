@@ -28,7 +28,10 @@ disagree, the code is right.
 `step()` checks `machines.contains(action.machine) && actions.contains(action.family)`
 before dispatch; failure is a per-action `denied` outcome, not an exception. Errors
 are flattened to four codes (`denied`, `not_found`, `invalid`, `action_failed`) with
-fixed messages, so a failing action cannot leak world state through its error text.
+fixed messages, so a failing action cannot leak world state through its error text. A
+refusal also carries a `reason` from a closed vocabulary — which grant is missing, or
+what is not there — whose message is likewise a compile-time constant. See
+[Errors and refusals](agent-api.md#errors-and-refusals) for the whole table.
 
 Two presets exist in `crates/protocol/src/lib.rs`:
 
@@ -114,18 +117,35 @@ window keeps its own history and tabs.
 Any other op is `invalid`. Note the cross-family gate: `application.v1 launch` of
 kind `browser`, `keyboard.v1 key` of `Enter` in a focused address bar, and pointer
 clicks that resolve into page content all additionally require `browser.v1` in
-`actions` and are `denied` without it.
+`actions` and are `denied` without it. That denial carries the reason
+`browser_family_required`, and `application.v1 list` marks such an application
+`launchable: false` with the same reason, so an installed-but-ungranted browser is
+never a bare refusal.
 
 ### `application.v1`
 
 | Op | Payload | Returns |
 |---|---|---|
+| `list` | `{"installed"?: bool}` (default `true`) | array of `{"id","label","kind","installed","launchable","blocked_by"}` |
 | `launch` | `{"kind": string, "argument"?: string, "instance"?: string, "initial"?: any}` | `{"window": u64}` for built-ins, `{"instance": string}` for a registered SDK app |
 | `focus` | `{"window": u64}` | `null` |
 | `close` | `{"window": u64}` | `null` |
 | `home` / `launcher` / `minimize` / `maximize` / `switcher` | `{}` | `null` |
 | `shell` | `{"target": string}` | Whatever that control returns |
 | `event` | `{"instance"?: string, "event": AppEvent}` (or the event inline) | The registered app's new page |
+
+`list` is how an agent finds out what is on a machine without guessing ids. `id` is the
+`kind` `launch` takes; `label` is the name this machine's shell paints under the
+application's icon — the same string, from the same table, that titles its window;
+`kind` is `builtin` (one of the four the compositor implements), `native` (an
+application shipped with the simulator) or `web` (a `desktop_apps` alias that opens a
+site in the browser). `installed` reflects the computer's `installed_apps`;
+`launchable` says whether `launch` would succeed **right now for this session**, and
+`blocked_by` names the [documented reason](agent-api.md#errors-and-refusals) it would
+not — typically `application_not_installed` or `browser_family_required`. Passing
+`{"installed": false}` returns the uninstalled entries too, so "what could this world
+have?" is answerable as well as "what does it have?". From the shell, `apps` lists the
+same ids.
 
 `shell` invokes a shell control **by name**, reaching the same handler a pointer
 reaches by hit-testing, through the same grants. The target is any `shell:*` id, or a

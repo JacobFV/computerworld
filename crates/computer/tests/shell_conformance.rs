@@ -26,6 +26,16 @@ fn ok(c: &mut Computer, line: &str) -> String {
     assert_eq!(r.exit_code, 0, "`{line}` should succeed: {}", r.stderr);
     r.stdout
 }
+/// A command that must fail with a particular status and name the reason.
+fn refused_with(c: &mut Computer, line: &str, code: i32, mention: &str) {
+    let r = run(c, line);
+    assert_eq!(r.exit_code, code, "`{line}`: {:?}", r.stderr);
+    assert!(
+        r.stderr.contains(mention),
+        "`{line}` should name `{mention}`, said {:?}",
+        r.stderr
+    );
+}
 /// An unsupported flag must be refused with status 2 and name itself.
 fn refused(c: &mut Computer, line: &str, mention: &str) {
     let r = run(c, line);
@@ -818,9 +828,133 @@ fn ps_prints_columns_by_default() {
     let json = ok(&mut c, "ps --json");
     assert!(json.starts_with('['), "{json}");
     assert!(json.contains("\"pid\""), "{json}");
-    refused(&mut c, "ps aux", "aux");
-    refused(&mut c, "ps -o pid", "-o");
+    // BSD syntax, the column selector and the sort key.
+    let aux = ok(&mut c, "ps aux");
+    assert_eq!(
+        aux.lines().next(),
+        Some("USER         PID %CPU %MEM     VSZ    RSS TTY      STAT START     TIME COMMAND")
+    );
+    assert!(aux.lines().any(|l| l.starts_with("root")), "{aux}");
+    let chosen = ok(&mut c, "ps -e -o pid,rss,comm");
+    assert_eq!(chosen.lines().next(), Some("    PID    RSS COMMAND"));
+    assert!(chosen.lines().any(|l| l.ends_with(" init")), "{chosen}");
+    // The report's question: the biggest processes, largest first.
+    let biggest = ok(&mut c, "ps -e -o rss,comm --sort=-rss");
+    let sizes: Vec<u64> = biggest
+        .lines()
+        .skip(1)
+        .filter_map(|l| l.split_whitespace().next()?.parse().ok())
+        .collect();
+    assert!(
+        sizes.windows(2).all(|w| w[0] >= w[1]),
+        "--sort=-rss must order by size: {biggest}"
+    );
+    refused(&mut c, "ps -o nonsense", "nonsense");
+    refused(&mut c, "ps -e --sort=nonsense", "nonsense");
     refused(&mut c, "ps -p x", "-p");
+}
+
+#[test]
+fn the_process_table_answers_what_is_running_and_what_it_costs() {
+    let mut c = machine();
+    // Every column `-o` names is read from the table, and RSS is the published model.
+    let row = ok(
+        &mut c,
+        "ps -p 1 -o pid,ppid,user,stat,tty,rss,vsz,pmem,etimes,comm",
+    );
+    let cells: Vec<&str> = row.lines().nth(1).unwrap().split_whitespace().collect();
+    assert_eq!(cells[0], "1", "{row}");
+    assert_eq!(cells[2], "root", "{row}");
+    assert_eq!(cells[3], "R", "{row}");
+    assert_eq!(cells[4], "?", "init is on no terminal: {row}");
+    assert_eq!(cells[5], "2048", "init holds the published 2 MiB: {row}");
+    assert_eq!(
+        cells[6], "67584",
+        "VSZ is RSS plus the fixed mapping: {row}"
+    );
+    assert_eq!(cells.last(), Some(&"init"), "{row}");
+    // A command typed at the shell runs on the machine's one pseudo-terminal.
+    assert!(ok(&mut c, "ps").contains("pts/0"));
+    // free totals the same footprints ps reports.
+    let free = ok(&mut c, "free -b");
+    let mem: Vec<&str> = free
+        .lines()
+        .find(|l| l.starts_with("Mem:"))
+        .unwrap()
+        .split_whitespace()
+        .collect();
+    assert_eq!(mem[1], (8u64 << 30).to_string(), "{free}");
+    assert!(mem[2].parse::<u64>().unwrap() > 0, "{free}");
+    // top is a batch snapshot of the same table, and refuses to pretend otherwise.
+    let top = ok(&mut c, "top -b -n1");
+    assert!(top.starts_with("top - "), "{top}");
+    assert!(top.contains("MiB Mem :"), "{top}");
+    assert!(top.lines().any(|l| l.ends_with(" init")), "{top}");
+    refused(&mut c, "top", "interactive");
+    refused(&mut c, "top -b -n5", "-n 5");
+    // What cannot be modelled is refused by name, never faked.
+    refused(&mut c, "nice -n 5 ls", "scheduler");
+    refused(&mut c, "jobs", "job control");
+    refused(&mut c, "vmstat", "counters");
+    // And "how much disk is left" is answerable from the same session.
+    assert!(ok(&mut c, "df -h").contains("/"));
+}
+
+#[test]
+fn the_machine_lists_its_applications_and_hands_a_document_to_the_desktop() {
+    let mut c = machine();
+    // A machine with nothing installed cannot open anything, and says so.
+    refused_with(
+        &mut c,
+        "xdg-open /home/user/proj/a.txt",
+        3,
+        "no application",
+    );
+    c.installed_apps = ["terminal", "editor", "files"]
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect();
+    assert_eq!(ok(&mut c, "apps"), "editor\nfiles\nterminal\n");
+    assert!(ok(&mut c, "apps --json").starts_with("[\"editor\""));
+    // The shell records the request; opening a window is the desktop's job.
+    let opened = run(&mut c, "xdg-open /home/user/proj/a.txt");
+    assert_eq!(opened.exit_code, 0, "{}", opened.stderr);
+    assert_eq!(opened.open, ["/home/user/proj/a.txt"], "{opened:?}");
+    assert_eq!(
+        run(&mut c, "xdg-open https://example.com/").open,
+        ["https://example.com/"]
+    );
+    // A nested shell's request is carried out with everything else it produced.
+    assert_eq!(
+        run(&mut c, "sh -c 'xdg-open /home/user/proj/a.txt'").open,
+        ["/home/user/proj/a.txt"]
+    );
+    // What a shell can check, it checks.
+    refused_with(&mut c, "xdg-open /home/user/nowhere", 2, "no such file");
+    refused(&mut c, "xdg-open -n /home/user/proj/a.txt", "-n");
+    refused(&mut c, "xdg-open a b", "exactly one");
+}
+
+#[test]
+fn signals_reach_what_is_running() {
+    let mut c = machine();
+    assert!(ok(&mut c, "kill -l").contains("TERM"));
+    // A background sleep is a real process; pgrep finds it and pkill ends it.
+    ok(&mut c, "sleep 60 &");
+    let found = ok(&mut c, "pgrep -f sleep");
+    let pid: u64 = found.trim().parse().expect(&found);
+    assert!(ok(&mut c, "ps -e").contains(&format!("{pid} ")), "{found}");
+    ok(&mut c, "pkill -KILL -f sleep");
+    assert!(
+        !ok(&mut c, "ps -e").contains("sleep 60"),
+        "a killed process must leave the table"
+    );
+    // pgrep says nothing and exits 1 when nothing matches, as it does on Linux.
+    let empty = run(&mut c, "pgrep -f sleep");
+    assert_eq!(empty.exit_code, 1, "{empty:?}");
+    assert!(empty.stdout.is_empty(), "{empty:?}");
+    // A pattern this world cannot honour is refused rather than half-matched.
+    refused(&mut c, "pgrep 'sle.*p'", "regular expressions");
 }
 
 #[test]

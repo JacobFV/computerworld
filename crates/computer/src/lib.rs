@@ -23,6 +23,12 @@ pub struct CommandResult {
     /// application must erase its scrollback itself when this is set.
     #[serde(default)]
     pub clear: bool,
+    /// Documents or URLs `xdg-open` (`open`, `start`) asked the desktop to open, in the
+    /// order they were asked for. A shell cannot open a window; the interface layer
+    /// launches the right application when it sees these, and appends its own refusal
+    /// to `stderr` when it cannot.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub open: Vec<String>,
 }
 impl CommandResult {
     pub fn success(stdout: impl Into<String>) -> Self {

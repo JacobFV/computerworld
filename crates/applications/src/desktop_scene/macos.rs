@@ -51,8 +51,26 @@ const DOCK: [&str; 13] = [
     "editor", "terminal", "code",
 ];
 
-fn app_name(kind: &str) -> Option<&'static str> {
+pub(super) fn app_name(kind: &str) -> Option<&'static str> {
     APPS.iter().find(|(k, _)| *k == kind).map(|(_, n)| *n)
+}
+/// The title this shell shows for a window: the document it presents, or the
+/// name its Launchpad icon carries when it presents none.
+pub(super) fn window_title(w: &WindowView) -> String {
+    match w.kind.as_str() {
+        // Terminal titles a window with the user and the shell it runs.
+        "terminal" => w
+            .shell_identity()
+            .map(|(user, _, _)| format!("{user} — -zsh"))
+            .unwrap_or_else(|| "Terminal".into()),
+        "editor" if w.document.is_empty() => "Untitled".to_owned(),
+        "editor" => basename(&w.document).to_owned(),
+        "files" if !w.caption.is_empty() => w.caption.clone(),
+        "files" => basename(&w.document).to_owned(),
+        "browser" if w.caption.is_empty() => "New Tab".into(),
+        "browser" => w.caption.clone(),
+        kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
+    }
 }
 fn basename(path: &str) -> &str {
     path.trim_end_matches('/')
@@ -297,16 +315,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             }
         }
         kind => {
-            let name = match kind {
-                // Terminal titles a window with the user and the shell it runs.
-                "terminal" => w
-                    .shell_identity()
-                    .map(|(user, _, _)| format!("{user} — -zsh"))
-                    .unwrap_or_else(|| "Terminal".into()),
-                "editor" if w.document.is_empty() => "Untitled".to_owned(),
-                "editor" => basename(&w.document).to_owned(),
-                _ => w.title.clone(),
-            };
+            let name = window_title(w);
             let edited = if w.modified { " — Edited" } else { "" };
             let width = r.width.saturating_sub(180);
             let measured = p.measure(&name, 13, true) + p.measure(edited, 13, false);

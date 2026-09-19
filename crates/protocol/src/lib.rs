@@ -18,12 +18,20 @@ pub type Result<T> = std::result::Result<T, SimError>;
 pub struct SimError {
     pub code: String,
     pub message: String,
+    /// Machine-readable refusal reason from the closed vocabulary in [`reason`].
+    /// `code` says what class of failure this is; `reason` says what to do about it.
+    /// Only a reason this crate declares survives the actor boundary, and the message
+    /// it carries there is a compile-time constant, so a refusal can be acted on
+    /// without any refusal ever disclosing world state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 impl SimError {
     pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             code: code.into(),
             message: message.into(),
+            reason: None,
         }
     }
     pub fn invalid(message: impl Into<String>) -> Self {
@@ -34,6 +42,101 @@ impl SimError {
     }
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new("not_found", message)
+    }
+    /// Attach a documented reason. `reason` must be one of [`reason::ALL`]; anything
+    /// else is dropped at the actor boundary rather than passed through unchecked.
+    #[must_use]
+    pub fn because(mut self, reason: &'static str) -> Self {
+        self.reason = Some(reason.to_owned());
+        self
+    }
+}
+/// The closed vocabulary of refusal reasons an actor may be told, and the fixed
+/// message each one carries. Documented in `docs/agent-api.md`; the table there and
+/// [`reason::ALL`] are kept in step by `crates/computerworld/tests/error_codes.rs`.
+pub mod reason {
+    /// The session's `actions` list does not contain the family this action named.
+    pub const FAMILY_NOT_GRANTED: &str = "action_family_not_granted";
+    /// The session's `machines` list does not contain the machine this action named.
+    pub const MACHINE_NOT_GRANTED: &str = "machine_not_granted";
+    /// The action is browser-backed and the session also needs `browser.v1`.
+    pub const BROWSER_FAMILY_REQUIRED: &str = "browser_family_required";
+    /// The action drives the desktop shell and the session also needs `application.v1`.
+    pub const APPLICATION_FAMILY_REQUIRED: &str = "application_family_required";
+    /// Pixel capture needs `pixels.v1` in the session's `observations`.
+    pub const PIXELS_NOT_GRANTED: &str = "pixels_not_granted";
+    /// `scene()`/`render()` need `semantic.v1` or `pixels.v1` in `observations`.
+    pub const VISUAL_NOT_GRANTED: &str = "visual_observation_not_granted";
+    /// The session id is not one this world minted.
+    pub const UNKNOWN_SESSION: &str = "unknown_session";
+    /// The batch is larger than the session's `action_budget`.
+    pub const BUDGET_EXCEEDED: &str = "action_budget_exceeded";
+    /// The machine's `installed_apps` does not list this application.
+    pub const APPLICATION_NOT_INSTALLED: &str = "application_not_installed";
+    /// The family exists and was granted, but does not implement this `op`.
+    pub const UNSUPPORTED_OPERATION: &str = "unsupported_operation";
+    /// The machine this session named has no desktop shell to drive.
+    pub const NO_DESKTOP_SHELL: &str = "no_desktop_shell";
+    /// Every reason, with the code it travels under and the fixed message it carries.
+    pub const ALL: &[(&str, &str, &str)] = &[
+        (
+            FAMILY_NOT_GRANTED,
+            "denied",
+            "the session was not granted this action family",
+        ),
+        (
+            MACHINE_NOT_GRANTED,
+            "denied",
+            "the session was not granted this machine",
+        ),
+        (
+            BROWSER_FAMILY_REQUIRED,
+            "denied",
+            "this action also requires the browser.v1 action family",
+        ),
+        (
+            APPLICATION_FAMILY_REQUIRED,
+            "denied",
+            "this action also requires the application.v1 action family",
+        ),
+        (
+            PIXELS_NOT_GRANTED,
+            "denied",
+            "this action requires the pixels.v1 observation channel",
+        ),
+        (
+            VISUAL_NOT_GRANTED,
+            "denied",
+            "this requires the semantic.v1 or pixels.v1 observation channel",
+        ),
+        (UNKNOWN_SESSION, "denied", "unknown actor session"),
+        (
+            BUDGET_EXCEEDED,
+            "denied",
+            "the batch is larger than this session's action budget",
+        ),
+        (
+            APPLICATION_NOT_INSTALLED,
+            "not_found",
+            "this machine does not have that application installed",
+        ),
+        (
+            UNSUPPORTED_OPERATION,
+            "invalid",
+            "this action family does not support that operation",
+        ),
+        (
+            NO_DESKTOP_SHELL,
+            "invalid",
+            "this machine has no desktop shell to drive",
+        ),
+    ];
+    /// The code and fixed message a reason travels with, or `None` when the reason is
+    /// not one this crate declares.
+    pub fn resolve(reason: &str) -> Option<(&'static str, &'static str)> {
+        ALL.iter()
+            .find(|(name, _, _)| *name == reason)
+            .map(|(_, code, message)| (*code, *message))
     }
 }
 impl From<serde_json::Error> for SimError {

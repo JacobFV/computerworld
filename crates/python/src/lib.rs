@@ -1,13 +1,31 @@
 //! Object conversion and ownership only; simulation lives in the Rust facade.
+//!
+//! The handles are safe to hand to another thread. A [`World`] and every [`Environment`]
+//! minted from it share one `Mutex` around the Rust world, so calls from several threads
+//! are serialized rather than racing, and a call that arrives while another is running
+//! waits for it. What is *not* safe is two threads driving one world expecting two
+//! independent simulations: the world is one state machine, and the order its actions
+//! land in is the order the threads acquired the lock. See `docs/python.md`.
 use pyo3::{
-    exceptions::PyValueError,
+    exceptions::{PyRuntimeError, PyValueError},
     prelude::*,
     types::{PyBytes, PyDict},
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, Mutex, MutexGuard};
 fn err(e: impl std::fmt::Display) -> PyErr {
     PyValueError::new_err(e.to_string())
+}
+/// The shared world, or a Python exception explaining why it is unusable. A panic
+/// inside the simulation poisons the lock; every later call then raises instead of
+/// aborting the interpreter, which is what an `unsendable` class used to do.
+fn hold(world: &Arc<Mutex<cw::World>>) -> PyResult<MutexGuard<'_, cw::World>> {
+    world.lock().map_err(|_| {
+        PyRuntimeError::new_err(
+            "the simulation panicked during an earlier call and this world can no longer \
+             be used; build a new World, or restore one from an exported snapshot",
+        )
+    })
 }
 fn decode<T: DeserializeOwned>(value: &Bound<'_, PyAny>) -> PyResult<T> {
     let json: String = value
@@ -23,9 +41,9 @@ fn encode(py: Python<'_>, value: &impl Serialize) -> PyResult<PyObject> {
         .call_method1("loads", (serde_json::to_string(value).map_err(err)?,))?
         .unbind())
 }
-#[pyclass(unsendable)]
+#[pyclass]
 struct World {
-    inner: Rc<RefCell<cw::World>>,
+    inner: Arc<Mutex<cw::World>>,
 }
 #[pymethods]
 impl World {
@@ -33,62 +51,60 @@ impl World {
     #[pyo3(signature = (definition, seed=0))]
     fn new(definition: &Bound<'_, PyAny>, seed: u64) -> PyResult<Self> {
         Ok(Self {
-            inner: Rc::new(RefCell::new(
+            inner: Arc::new(Mutex::new(
                 cw::World::new(decode(definition)?, seed).map_err(err)?,
             )),
         })
     }
     fn environment(&self, config: &Bound<'_, PyAny>) -> PyResult<Environment> {
         let config = decode(config)?;
-        let session = self.inner.borrow_mut().environment(config).map_err(err)?;
+        let session = hold(&self.inner)?.environment(config).map_err(err)?;
         Ok(Environment {
             inner: self.inner.clone(),
             session,
         })
     }
     fn session(&self, id: &str) -> PyResult<Environment> {
-        self.inner.borrow().validate_session(id).map_err(err)?;
+        hold(&self.inner)?.validate_session(id).map_err(err)?;
         Ok(Environment {
             inner: self.inner.clone(),
             session: id.to_owned(),
         })
     }
-    fn snapshot(&self) -> Snapshot {
-        Snapshot {
-            inner: self.inner.borrow().snapshot(),
-        }
+    fn snapshot(&self) -> PyResult<Snapshot> {
+        Ok(Snapshot {
+            inner: hold(&self.inner)?.snapshot(),
+        })
     }
     fn restore(&self, snapshot: &Snapshot) -> PyResult<()> {
-        self.inner
-            .borrow_mut()
-            .restore(&snapshot.inner)
-            .map_err(err)
+        hold(&self.inner)?.restore(&snapshot.inner).map_err(err)
     }
     fn fork(&self, snapshot: &Snapshot) -> PyResult<Self> {
+        let forked = hold(&self.inner)?.fork(&snapshot.inner).map_err(err)?;
         Ok(Self {
-            inner: Rc::new(RefCell::new(
-                self.inner.borrow().fork(&snapshot.inner).map_err(err)?,
-            )),
+            inner: Arc::new(Mutex::new(forked)),
         })
     }
     #[pyo3(signature = (seed=0))]
     fn reset(&self, seed: u64) -> PyResult<()> {
-        self.inner.borrow_mut().reset(seed).map_err(err)
+        hold(&self.inner)?.reset(seed).map_err(err)
     }
     fn export_snapshot(&self) -> PyResult<String> {
-        self.inner.borrow().export_snapshot().map_err(err)
+        hold(&self.inner)?.export_snapshot().map_err(err)
     }
     fn import_snapshot(&self, json: &str) -> PyResult<()> {
-        self.inner.borrow_mut().import_snapshot(json).map_err(err)
+        hold(&self.inner)?.import_snapshot(json).map_err(err)
     }
     fn state_hash(&self) -> PyResult<String> {
-        self.inner.borrow().state_hash().map_err(err)
+        hold(&self.inner)?.state_hash().map_err(err)
     }
     fn trajectory(&self, py: Python<'_>) -> PyResult<PyObject> {
-        encode(py, &self.inner.borrow().trajectory())
+        let trajectory = hold(&self.inner)?.trajectory().clone();
+        encode(py, &trajectory)
     }
     fn definition(&self, py: Python<'_>) -> PyResult<PyObject> {
-        encode(py, self.inner.borrow().definition())
+        let definition = hold(&self.inner)?.definition().clone();
+        encode(py, &definition)
     }
     fn add_computer(
         &self,
@@ -96,25 +112,26 @@ impl World {
         node: &Bound<'_, PyAny>,
         links: &Bound<'_, PyAny>,
     ) -> PyResult<()> {
-        self.inner
-            .borrow_mut()
-            .add_computer(decode(computer)?, decode(node)?, decode(links)?)
+        let (computer, node, links) = (decode(computer)?, decode(node)?, decode(links)?);
+        hold(&self.inner)?
+            .add_computer(computer, node, links)
             .map_err(err)
     }
     fn remove_computer(&self, id: &str) -> PyResult<()> {
-        self.inner.borrow_mut().remove_computer(id).map_err(err)
+        hold(&self.inner)?.remove_computer(id).map_err(err)
     }
     fn inspect(&self, py: Python<'_>) -> PyResult<PyObject> {
-        encode(py, &self.inner.borrow().inspect())
+        let inspected = hold(&self.inner)?.inspect();
+        encode(py, &inspected)
     }
 }
-#[pyclass(unsendable)]
+#[pyclass]
 struct Snapshot {
     inner: cw::Snapshot,
 }
-#[pyclass(unsendable)]
+#[pyclass]
 struct Environment {
-    inner: Rc<RefCell<cw::World>>,
+    inner: Arc<Mutex<cw::World>>,
     session: String,
 }
 #[pymethods]
@@ -126,35 +143,25 @@ impl Environment {
 
     fn step(&self, py: Python<'_>, actions: &Bound<'_, PyAny>) -> PyResult<PyObject> {
         let actions = decode(actions)?;
-        let result = self
-            .inner
-            .borrow_mut()
+        let result = hold(&self.inner)?
             .step(&self.session, actions)
             .map_err(err)?;
         encode(py, &result)
     }
     fn observe(&self, py: Python<'_>) -> PyResult<PyObject> {
-        encode(
-            py,
-            &self.inner.borrow().observe(&self.session).map_err(err)?,
-        )
+        let observation = hold(&self.inner)?.observe(&self.session).map_err(err)?;
+        encode(py, &observation)
     }
     #[pyo3(signature = (width=1024, height=768))]
     fn scene(&self, py: Python<'_>, width: u32, height: u32) -> PyResult<PyObject> {
-        encode(
-            py,
-            &self
-                .inner
-                .borrow()
-                .scene(&self.session, width, height)
-                .map_err(err)?,
-        )
+        let scene = hold(&self.inner)?
+            .scene(&self.session, width, height)
+            .map_err(err)?;
+        encode(py, &scene)
     }
     #[pyo3(signature = (width=1024, height=768))]
     fn render(&self, py: Python<'_>, width: u32, height: u32) -> PyResult<PyObject> {
-        let frame = self
-            .inner
-            .borrow_mut()
+        let frame = hold(&self.inner)?
             .render(&self.session, width, height)
             .map_err(err)?;
         let result = PyDict::new(py);
@@ -166,6 +173,12 @@ impl Environment {
 }
 #[pymodule]
 fn computerworld(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // The classes are only sound to share across threads because the world they hold
+    // is; if that ever stops being true this line stops compiling rather than turning
+    // into an abort at runtime.
+    const fn shareable<T: Send>() {}
+    shareable::<cw::World>();
+    shareable::<cw::Snapshot>();
     m.add(
         "__version__",
         env!("CARGO_PKG_VERSION").replace("-alpha.", "a"),
