@@ -27,7 +27,9 @@ extension traits and registration. `cw-determinism` provides logical clocks,
 seeded streams and deterministic scheduling. `cw-computer` and `cw-network` own
 machine and communication mechanics. `cw-kernel` coordinates them. `cw-browser`
 and `cw-applications` implement application behavior. `cw-scene` and `cw-render`
-separate visual description from optional pixels. `cw-environment` projects
+separate visual description from optional pixels; `cw-artwork` and `cw-map` are the
+zero-dependency generators behind cover art and street maps, shared by sites and
+native apps. `cw-environment` projects
 actor capabilities and observations; `cw-trajectory` and `cw-evaluation` are
 separate recording and evaluation surfaces. `cw-services` holds the shared service
 runtime that the `services/*` crates build on. `cw-host-adapters` is the only crate

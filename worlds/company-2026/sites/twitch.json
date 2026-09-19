@@ -1,0 +1,1234 @@
+{
+  "id": "twitch",
+  "kind": "media",
+  "node": "twitch",
+  "domains": [
+    "twitch.tv",
+    "www.twitch.tv",
+    "m.twitch.tv"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "video",
+    "brand": "Twitch",
+    "tagline": "Live, then on demand.",
+    "theme": {
+      "accent": "#9146ff",
+      "background": "#0e0e10",
+      "surface": "#18181b",
+      "ink": "#efeff1",
+      "muted": "#adadb8",
+      "content_width": 1120
+    },
+    "channels": {
+      "pixelforge": {
+        "id": "pixelforge",
+        "name": "PixelForge",
+        "handle": "@pixelforge",
+        "owner": null,
+        "subscribers": 842000,
+        "about": "Variety gaming, mostly roguelikes and whatever chat votes for on Fridays. Live weekdays 7pm PT."
+      },
+      "speedrun-sam": {
+        "id": "speedrun-sam",
+        "name": "Speedrun Sam",
+        "handle": "@speedrunsam",
+        "owner": null,
+        "subscribers": 611000,
+        "about": "Any% and 100% runs of Hollow Cartographer and Glass Citadel. Current WR holder in two categories."
+      },
+      "lofi-lena": {
+        "id": "lofi-lena",
+        "name": "Lofi Lena",
+        "handle": "@lofilena",
+        "owner": null,
+        "subscribers": 233000,
+        "about": "Live beats, live loops, live mistakes. Ambient sets every evening."
+      },
+      "inkwell-art": {
+        "id": "inkwell-art",
+        "name": "Inkwell",
+        "handle": "@inkwellart",
+        "owner": null,
+        "subscribers": 184000,
+        "about": "Digital painting streams. Commissions open, chat picks the palette."
+      },
+      "deploy-dan": {
+        "id": "deploy-dan",
+        "name": "Deploy Dan",
+        "handle": "@deploydan",
+        "owner": null,
+        "subscribers": 97000,
+        "about": "Building a game engine in Rust live on stream. Compiler errors included."
+      },
+      "chat-with-priya": {
+        "id": "chat-with-priya",
+        "name": "Chat With Priya",
+        "handle": "@chatwithpriya",
+        "owner": null,
+        "subscribers": 402000,
+        "about": "Just Chatting, with tea. Stories, listener calls and the occasional cooking segment."
+      },
+      "northstar-live": {
+        "id": "northstar-live",
+        "name": "Northstar Live",
+        "handle": "@northstarlive",
+        "owner": "admin",
+        "subscribers": 21400,
+        "about": "Northstar engineering streams: open standups, incident reviews and demo days."
+      },
+      "alice-builds": {
+        "id": "alice-builds",
+        "name": "Alice Builds",
+        "handle": "@alicebuilds",
+        "owner": "alice",
+        "subscribers": 18700,
+        "about": "Deterministic simulation, live. Ask about replay in chat."
+      },
+      "tabletop-tuesday": {
+        "id": "tabletop-tuesday",
+        "name": "Tabletop Tuesday",
+        "handle": "@tabletoptuesday",
+        "owner": null,
+        "subscribers": 156000,
+        "about": "A weekly tabletop campaign with five players and one increasingly nervous game master."
+      }
+    },
+    "items": {
+      "pixelforge-live-roguelike": {
+        "id": "pixelforge-live-roguelike",
+        "channel": "pixelforge",
+        "title": "LIVE: Friday roguelike marathon, chat picks the seed",
+        "description": "Six hours, one run per seed, no restarts. Redeem channel points to pick the next one.",
+        "duration_s": 21600,
+        "published": "Apr 17, 2026",
+        "published_tick": 12,
+        "views": 48200,
+        "likes": 3900,
+        "tags": [
+          "gaming",
+          "roguelike",
+          "live",
+          "variety"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "seed 7 please, trust me",
+            "tick": 13,
+            "likes": 210
+          },
+          {
+            "id": "c2",
+            "author": "speedrun-sam",
+            "text": "that dodge at 2:14:00 was frame perfect, get on the leaderboard",
+            "tick": 13,
+            "likes": 180
+          }
+        ],
+        "related": [
+          "pixelforge-vod-glass",
+          "speedrun-sam-wr"
+        ]
+      },
+      "pixelforge-vod-glass": {
+        "id": "pixelforge-vod-glass",
+        "channel": "pixelforge",
+        "title": "VOD: Glass Citadel blind playthrough, part 3",
+        "description": "Third session of the blind run. We find the second bell tower and lose the whole party to it.",
+        "duration_s": 12840,
+        "published": "Mar 20, 2026",
+        "published_tick": 6,
+        "views": 122000,
+        "likes": 7100,
+        "tags": [
+          "gaming",
+          "glass citadel",
+          "vod",
+          "blind"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tabletop-tuesday",
+            "text": "the bell tower fight is the best set piece this year",
+            "tick": 7,
+            "likes": 320
+          }
+        ],
+        "related": [
+          "pixelforge-live-roguelike",
+          "pixelforge-vod-chat-votes"
+        ]
+      },
+      "pixelforge-vod-chat-votes": {
+        "id": "pixelforge-vod-chat-votes",
+        "channel": "pixelforge",
+        "title": "VOD: Chat voted for a farming game and I am at peace",
+        "description": "A calm four hours. Nothing dies except the crops I forgot to water.",
+        "duration_s": 14400,
+        "published": "Feb 27, 2026",
+        "published_tick": 3,
+        "views": 88000,
+        "likes": 5600,
+        "tags": [
+          "gaming",
+          "farming",
+          "vod",
+          "cozy"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "lofi-lena",
+            "text": "I played this set over your stream and it fit perfectly",
+            "tick": 4,
+            "likes": 400
+          }
+        ],
+        "related": [
+          "pixelforge-vod-glass",
+          "lofi-lena-vod-sunday"
+        ]
+      },
+      "speedrun-sam-wr": {
+        "id": "speedrun-sam-wr",
+        "channel": "speedrun-sam",
+        "title": "VOD: Hollow Cartographer Any% world record, 41:07",
+        "description": "The run. Every skip lands, the map glitch at 18:30 saves eleven seconds, and the final split is by under a second.",
+        "duration_s": 2720,
+        "published": "Mar 2, 2026",
+        "published_tick": 4,
+        "views": 1930000,
+        "likes": 84000,
+        "tags": [
+          "speedrun",
+          "hollow cartographer",
+          "world record",
+          "any%"
+        ],
+        "badges": [
+          "VOD",
+          "WR"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "pixelforge",
+            "text": "I was watching live and screamed at the last split",
+            "tick": 5,
+            "likes": 2900
+          },
+          {
+            "id": "c2",
+            "author": "deploy-dan",
+            "text": "the map glitch is a float precision bug, I would know",
+            "tick": 5,
+            "likes": 1500
+          },
+          {
+            "id": "c3",
+            "author": "carol",
+            "text": "watched with the release channel, everyone clapped",
+            "tick": 5,
+            "likes": 600
+          }
+        ],
+        "related": [
+          "speedrun-sam-live-100",
+          "speedrun-sam-tutorial"
+        ]
+      },
+      "speedrun-sam-live-100": {
+        "id": "speedrun-sam-live-100",
+        "channel": "speedrun-sam",
+        "title": "LIVE: 100% attempts, Glass Citadel, sub 2:10 or bust",
+        "description": "Grinding 100% attempts. Resetting anything over 32 minutes at the first bell tower.",
+        "duration_s": 25200,
+        "published": "Apr 18, 2026",
+        "published_tick": 13,
+        "views": 31000,
+        "likes": 2400,
+        "tags": [
+          "speedrun",
+          "glass citadel",
+          "100%",
+          "live"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "reset count is 41 and it is 3pm",
+            "tick": 14,
+            "likes": 95
+          }
+        ],
+        "related": [
+          "speedrun-sam-wr",
+          "speedrun-sam-tutorial"
+        ]
+      },
+      "speedrun-sam-tutorial": {
+        "id": "speedrun-sam-tutorial",
+        "channel": "speedrun-sam",
+        "title": "Tutorial: the Hollow Cartographer map glitch, frame by frame",
+        "description": "How the map clip works, why it only works at 60 fps, and the inputs to practise.",
+        "duration_s": 1560,
+        "published": "Mar 9, 2026",
+        "published_tick": 5,
+        "views": 410000,
+        "likes": 22000,
+        "tags": [
+          "speedrun",
+          "tutorial",
+          "hollow cartographer",
+          "glitch"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "A deterministic glitch is a good glitch.",
+            "tick": 6,
+            "likes": 700
+          }
+        ],
+        "related": [
+          "speedrun-sam-wr",
+          "deploy-dan-vod-physics"
+        ]
+      },
+      "lofi-lena-live-evening": {
+        "id": "lofi-lena-live-evening",
+        "channel": "lofi-lena",
+        "title": "LIVE: evening loops, requests open",
+        "description": "Ambient set until midnight. Drop a chord in chat and I will build a loop from it.",
+        "duration_s": 10800,
+        "published": "Apr 18, 2026",
+        "published_tick": 13,
+        "views": 6200,
+        "likes": 900,
+        "tags": [
+          "music",
+          "lofi",
+          "ambient",
+          "live"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "inkwell-art",
+            "text": "painting to this right now",
+            "tick": 14,
+            "likes": 140
+          }
+        ],
+        "related": [
+          "lofi-lena-vod-sunday",
+          "lofi-lena-vod-rain"
+        ]
+      },
+      "lofi-lena-vod-sunday": {
+        "id": "lofi-lena-vod-sunday",
+        "channel": "lofi-lena",
+        "title": "VOD: Sunday morning set (3 hours, no talking)",
+        "description": "A slow set for slow mornings. Track list in the pinned comment.",
+        "duration_s": 10920,
+        "published": "Mar 15, 2026",
+        "published_tick": 5,
+        "views": 265000,
+        "likes": 14000,
+        "tags": [
+          "music",
+          "lofi",
+          "vod",
+          "ambient"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "chat-with-priya",
+            "text": "the tea segment on my stream was scored with this",
+            "tick": 6,
+            "likes": 520
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "my entire release week soundtrack",
+            "tick": 6,
+            "likes": 300
+          }
+        ],
+        "related": [
+          "lofi-lena-live-evening",
+          "lofi-lena-vod-rain"
+        ]
+      },
+      "lofi-lena-vod-rain": {
+        "id": "lofi-lena-vod-rain",
+        "channel": "lofi-lena",
+        "title": "VOD: rain sounds and a broken sampler",
+        "description": "The sampler died forty minutes in. We kept going with the rain and a synth.",
+        "duration_s": 7200,
+        "published": "Feb 8, 2026",
+        "published_tick": 2,
+        "views": 142000,
+        "likes": 9800,
+        "tags": [
+          "music",
+          "lofi",
+          "rain",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "deploy-dan",
+            "text": "the broken sampler section is the best part, please leave it",
+            "tick": 3,
+            "likes": 260
+          }
+        ],
+        "related": [
+          "lofi-lena-vod-sunday",
+          "inkwell-vod-portrait"
+        ]
+      },
+      "inkwell-live-commission": {
+        "id": "inkwell-live-commission",
+        "channel": "inkwell-art",
+        "title": "LIVE: commission stream, chat picks the palette",
+        "description": "Painting a portrait commission from a sketch. Three palette polls, one every hour.",
+        "duration_s": 14400,
+        "published": "Apr 16, 2026",
+        "published_tick": 12,
+        "views": 9100,
+        "likes": 1200,
+        "tags": [
+          "art",
+          "painting",
+          "commission",
+          "live"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "lofi-lena",
+            "text": "vote teal, trust me",
+            "tick": 13,
+            "likes": 88
+          }
+        ],
+        "related": [
+          "inkwell-vod-portrait",
+          "inkwell-vod-lighthouse"
+        ]
+      },
+      "inkwell-vod-portrait": {
+        "id": "inkwell-vod-portrait",
+        "channel": "inkwell-art",
+        "title": "VOD: portrait study in three light sources",
+        "description": "Same face, three lamps. Talking through why the shadows land where they do.",
+        "duration_s": 9000,
+        "published": "Mar 5, 2026",
+        "published_tick": 4,
+        "views": 96000,
+        "likes": 6100,
+        "tags": [
+          "art",
+          "painting",
+          "portrait",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tinyhistory-fan",
+            "text": "the third lamp section changed how I see faces",
+            "tick": 5,
+            "likes": 330
+          }
+        ],
+        "related": [
+          "inkwell-live-commission",
+          "inkwell-vod-lighthouse"
+        ]
+      },
+      "inkwell-vod-lighthouse": {
+        "id": "inkwell-vod-lighthouse",
+        "channel": "inkwell-art",
+        "title": "VOD: painting a lighthouse in a storm, start to finish",
+        "description": "Six hours cut to four. The storm took the longest, the lighthouse took twenty minutes.",
+        "duration_s": 14400,
+        "published": "Jan 30, 2026",
+        "published_tick": 1,
+        "views": 174000,
+        "likes": 11000,
+        "tags": [
+          "art",
+          "painting",
+          "landscape",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "pixelforge",
+            "text": "using this as a loading screen, with permission",
+            "tick": 2,
+            "likes": 410
+          }
+        ],
+        "related": [
+          "inkwell-vod-portrait",
+          "inkwell-live-commission"
+        ]
+      },
+      "deploy-dan-live-engine": {
+        "id": "deploy-dan-live-engine",
+        "channel": "deploy-dan",
+        "title": "LIVE: Rust game engine, day 41, the renderer finally draws a triangle",
+        "description": "It is one triangle. It is the right colour. We are going to add a second one.",
+        "duration_s": 18000,
+        "published": "Apr 18, 2026",
+        "published_tick": 13,
+        "views": 4300,
+        "likes": 700,
+        "tags": [
+          "coding",
+          "rust",
+          "game engine",
+          "live",
+          "software development"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "A triangle is the hello world of joy.",
+            "tick": 14,
+            "likes": 150
+          },
+          {
+            "id": "c2",
+            "author": "speedrun-sam",
+            "text": "make it deterministic and I will speedrun it",
+            "tick": 14,
+            "likes": 120
+          }
+        ],
+        "related": [
+          "deploy-dan-vod-physics",
+          "alice-builds-vod-replay"
+        ]
+      },
+      "deploy-dan-vod-physics": {
+        "id": "deploy-dan-vod-physics",
+        "channel": "deploy-dan",
+        "title": "VOD: fixed-timestep physics, or why the jump felt wrong",
+        "description": "The jump height depended on frame rate. Two hours to find it, ten minutes to fix it.",
+        "duration_s": 7800,
+        "published": "Mar 12, 2026",
+        "published_tick": 5,
+        "views": 61000,
+        "likes": 4400,
+        "tags": [
+          "coding",
+          "rust",
+          "physics",
+          "vod",
+          "software development"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "speedrun-sam",
+            "text": "THIS is why every speedrun category has a frame rate rule",
+            "tick": 6,
+            "likes": 900
+          }
+        ],
+        "related": [
+          "deploy-dan-live-engine",
+          "speedrun-sam-tutorial"
+        ]
+      },
+      "priya-live-tea": {
+        "id": "priya-live-tea",
+        "channel": "chat-with-priya",
+        "title": "LIVE: Saturday tea and listener calls",
+        "description": "Tea is brewing, calls open at the top of the hour. Tell me about the strangest job you ever had.",
+        "duration_s": 10800,
+        "published": "Apr 18, 2026",
+        "published_tick": 13,
+        "views": 17400,
+        "likes": 2100,
+        "tags": [
+          "just chatting",
+          "talk",
+          "tea",
+          "live"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "calling in about the time I released on a Friday",
+            "tick": 14,
+            "likes": 260
+          }
+        ],
+        "related": [
+          "priya-vod-stories",
+          "priya-vod-cooking"
+        ]
+      },
+      "priya-vod-stories": {
+        "id": "priya-vod-stories",
+        "channel": "chat-with-priya",
+        "title": "VOD: three stories from the night shift",
+        "description": "Warehouse, hospital, radio station. Three jobs, three stories, one pot of tea.",
+        "duration_s": 6300,
+        "published": "Mar 28, 2026",
+        "published_tick": 7,
+        "views": 203000,
+        "likes": 12000,
+        "tags": [
+          "just chatting",
+          "stories",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "inkwell-art",
+            "text": "the radio station story made me put the brush down",
+            "tick": 8,
+            "likes": 540
+          }
+        ],
+        "related": [
+          "priya-live-tea",
+          "priya-vod-cooking"
+        ]
+      },
+      "priya-vod-cooking": {
+        "id": "priya-vod-cooking",
+        "channel": "chat-with-priya",
+        "title": "VOD: cooking segment goes wrong, tea saves the day",
+        "description": "The rice was fine. The smoke alarm was not. Chat handled it with grace.",
+        "duration_s": 5400,
+        "published": "Feb 14, 2026",
+        "published_tick": 2,
+        "views": 158000,
+        "likes": 9900,
+        "tags": [
+          "just chatting",
+          "cooking",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "lofi-lena",
+            "text": "the alarm is in key with the set I was playing, somehow",
+            "tick": 3,
+            "likes": 380
+          }
+        ],
+        "related": [
+          "priya-vod-stories",
+          "pixelforge-vod-chat-votes"
+        ]
+      },
+      "northstar-live-demo-day": {
+        "id": "northstar-live-demo-day",
+        "channel": "northstar-live",
+        "title": "LIVE: Northstar demo day, Atlas replay on stage",
+        "description": "Engineers demo what shipped this quarter. Alice shows replay from a checkpoint at the top of the hour.",
+        "duration_s": 7200,
+        "published": "Apr 17, 2026",
+        "published_tick": 12,
+        "views": 2800,
+        "likes": 410,
+        "tags": [
+          "software development",
+          "northstar",
+          "atlas",
+          "live",
+          "demo"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "the checkpoint demo is at 1:04:00 for anyone joining late",
+            "tick": 13,
+            "likes": 60
+          }
+        ],
+        "related": [
+          "northstar-vod-incident",
+          "alice-builds-vod-replay"
+        ]
+      },
+      "northstar-vod-incident": {
+        "id": "northstar-vod-incident",
+        "channel": "northstar-live",
+        "title": "VOD: INC-4 incident review, streamed",
+        "description": "Twelve minutes of elevated latency, reviewed in public. What the alerts said and what the runbook did not.",
+        "duration_s": 3900,
+        "published": "Feb 25, 2026",
+        "published_tick": 3,
+        "views": 12100,
+        "likes": 780,
+        "tags": [
+          "software development",
+          "northstar",
+          "incident",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "the rollback section starts at 22:10, it was boring on purpose",
+            "tick": 4,
+            "likes": 90
+          },
+          {
+            "id": "c2",
+            "author": "deploy-dan",
+            "text": "runbooks are just save states for humans",
+            "tick": 4,
+            "likes": 150
+          }
+        ],
+        "related": [
+          "northstar-live-demo-day",
+          "alice-builds-vod-replay"
+        ]
+      },
+      "alice-builds-vod-replay": {
+        "id": "alice-builds-vod-replay",
+        "channel": "alice-builds",
+        "title": "VOD: replaying a production crash 200 times, live",
+        "description": "Same seed, same crash, every time, until we find it. Found it at 1:41:00. It was HashMap order.",
+        "duration_s": 6900,
+        "published": "Mar 18, 2026",
+        "published_tick": 6,
+        "views": 27600,
+        "likes": 2300,
+        "tags": [
+          "software development",
+          "rust",
+          "determinism",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "deploy-dan",
+            "text": "watched this and immediately checked my own iteration order",
+            "tick": 7,
+            "likes": 330
+          },
+          {
+            "id": "c2",
+            "author": "pixelforge",
+            "text": "I do not understand any of it and I watched the whole thing",
+            "tick": 7,
+            "likes": 210
+          }
+        ],
+        "related": [
+          "deploy-dan-vod-physics",
+          "northstar-vod-incident"
+        ]
+      },
+      "tabletop-live-session": {
+        "id": "tabletop-live-session",
+        "channel": "tabletop-tuesday",
+        "title": "LIVE: Session 31, the party returns to the flooded archive",
+        "description": "Five players, one archive, a lot of water. The GM has prepared a map and is hoping nobody burns it.",
+        "duration_s": 12600,
+        "published": "Apr 14, 2026",
+        "published_tick": 11,
+        "views": 8900,
+        "likes": 1300,
+        "tags": [
+          "tabletop",
+          "rpg",
+          "live",
+          "just chatting"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "inkwell-art",
+            "text": "I painted the archive map for this, please do not burn it",
+            "tick": 12,
+            "likes": 420
+          }
+        ],
+        "related": [
+          "tabletop-vod-session-30",
+          "pixelforge-vod-glass"
+        ]
+      },
+      "tabletop-vod-session-30": {
+        "id": "tabletop-vod-session-30",
+        "channel": "tabletop-tuesday",
+        "title": "VOD: Session 30, the party burns the map",
+        "description": "They burned the map. The GM took a break. The break was streamed.",
+        "duration_s": 13200,
+        "published": "Apr 7, 2026",
+        "published_tick": 9,
+        "views": 74000,
+        "likes": 5200,
+        "tags": [
+          "tabletop",
+          "rpg",
+          "vod"
+        ],
+        "badges": [
+          "VOD"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "chat-with-priya",
+            "text": "the GM break is the best just chatting content of the month",
+            "tick": 10,
+            "likes": 610
+          }
+        ],
+        "related": [
+          "tabletop-live-session",
+          "priya-vod-stories"
+        ]
+      }
+    },
+    "playlists": {
+      "watch-later": {
+        "id": "watch-later",
+        "title": "Watch later",
+        "owner": null,
+        "items": []
+      },
+      "just-chatting": {
+        "id": "just-chatting",
+        "title": "Just Chatting",
+        "owner": null,
+        "items": [
+          "priya-live-tea",
+          "priya-vod-stories",
+          "priya-vod-cooking",
+          "tabletop-vod-session-30"
+        ]
+      },
+      "software-development": {
+        "id": "software-development",
+        "title": "Software Development",
+        "owner": null,
+        "items": [
+          "deploy-dan-live-engine",
+          "deploy-dan-vod-physics",
+          "northstar-live-demo-day",
+          "northstar-vod-incident",
+          "alice-builds-vod-replay"
+        ]
+      },
+      "speedruns": {
+        "id": "speedruns",
+        "title": "Speedruns",
+        "owner": null,
+        "items": [
+          "speedrun-sam-wr",
+          "speedrun-sam-live-100",
+          "speedrun-sam-tutorial"
+        ]
+      },
+      "music-live": {
+        "id": "music-live",
+        "title": "Music",
+        "owner": null,
+        "items": [
+          "lofi-lena-live-evening",
+          "lofi-lena-vod-sunday",
+          "lofi-lena-vod-rain"
+        ]
+      },
+      "art": {
+        "id": "art",
+        "title": "Art",
+        "owner": null,
+        "items": [
+          "inkwell-live-commission",
+          "inkwell-vod-portrait",
+          "inkwell-vod-lighthouse"
+        ]
+      },
+      "games": {
+        "id": "games",
+        "title": "Games",
+        "owner": null,
+        "items": [
+          "pixelforge-live-roguelike",
+          "pixelforge-vod-glass",
+          "pixelforge-vod-chat-votes",
+          "tabletop-live-session"
+        ]
+      },
+      "live-now": {
+        "id": "live-now",
+        "title": "Live now",
+        "owner": null,
+        "items": [
+          "pixelforge-live-roguelike",
+          "speedrun-sam-live-100",
+          "lofi-lena-live-evening",
+          "inkwell-live-commission",
+          "deploy-dan-live-engine",
+          "priya-live-tea",
+          "northstar-live-demo-day",
+          "tabletop-live-session"
+        ]
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "deploy-dan",
+        "speedrun-sam",
+        "northstar-live"
+      ],
+      "bob": [
+        "pixelforge",
+        "speedrun-sam",
+        "tabletop-tuesday"
+      ],
+      "carol": [
+        "lofi-lena",
+        "chat-with-priya",
+        "alice-builds",
+        "northstar-live"
+      ]
+    },
+    "likes": {
+      "alice": [
+        "deploy-dan-vod-physics"
+      ],
+      "bob": [
+        "speedrun-sam-wr",
+        "pixelforge-vod-glass"
+      ],
+      "carol": [
+        "lofi-lena-vod-sunday",
+        "northstar-vod-incident"
+      ]
+    },
+    "now_playing": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://twitch.tv/",
+      "title": "Twitch",
+      "snippet": "Live streams and VODs: games, speedruns, coding, music, art and Just Chatting.",
+      "vertical": "videos",
+      "authority": 8,
+      "keywords": [
+        "twitch",
+        "live stream",
+        "streaming",
+        "vod"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=speedrun-sam-wr",
+      "title": "Hollow Cartographer Any% world record, 41:07 - Twitch",
+      "snippet": "Speedrun Sam lands every skip; the map glitch at 18:30 saves eleven seconds.",
+      "vertical": "videos",
+      "authority": 7,
+      "keywords": [
+        "hollow cartographer",
+        "speedrun",
+        "world record",
+        "any%",
+        "speedrun sam"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=speedrun-sam-tutorial",
+      "title": "Tutorial: the Hollow Cartographer map glitch - Twitch",
+      "snippet": "How the map clip works, why it needs 60 fps, and the inputs to practise.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "map glitch",
+        "speedrun tutorial",
+        "hollow cartographer"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=deploy-dan-vod-physics",
+      "title": "Fixed-timestep physics, or why the jump felt wrong - Twitch",
+      "snippet": "Deploy Dan finds a frame-rate dependent jump height in his Rust engine.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "fixed timestep",
+        "physics",
+        "rust game engine",
+        "deploy dan"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=deploy-dan-live-engine",
+      "title": "LIVE: Rust game engine, day 41 - Twitch",
+      "snippet": "The renderer finally draws a triangle. Live coding, compiler errors included.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "rust game engine",
+        "live coding",
+        "software development stream"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=alice-builds-vod-replay",
+      "title": "Replaying a production crash 200 times, live - Twitch",
+      "snippet": "Alice Builds replays the same seed until the bug shows itself. It was HashMap order.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "deterministic replay",
+        "alice builds",
+        "production crash",
+        "hashmap order"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=northstar-vod-incident",
+      "title": "INC-4 incident review, streamed - Twitch",
+      "snippet": "Northstar reviews twelve minutes of elevated latency in public.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "northstar",
+        "incident review",
+        "inc-4",
+        "postmortem"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=northstar-live-demo-day",
+      "title": "LIVE: Northstar demo day - Twitch",
+      "snippet": "Engineers demo what shipped this quarter, including Atlas replay from a checkpoint.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "northstar demo day",
+        "atlas",
+        "live demo"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=lofi-lena-vod-sunday",
+      "title": "Sunday morning set (3 hours, no talking) - Twitch",
+      "snippet": "Lofi Lena plays a slow ambient set for slow mornings.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "lofi",
+        "ambient set",
+        "study music",
+        "lofi lena"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=priya-vod-stories",
+      "title": "Three stories from the night shift - Twitch",
+      "snippet": "Chat With Priya: warehouse, hospital, radio station, one pot of tea.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "just chatting",
+        "night shift stories",
+        "priya"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/watch?v=pixelforge-vod-glass",
+      "title": "Glass Citadel blind playthrough, part 3 - Twitch",
+      "snippet": "PixelForge finds the second bell tower and loses the whole party to it.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "glass citadel",
+        "blind playthrough",
+        "pixelforge"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/channel/speedrun-sam",
+      "title": "Speedrun Sam - Twitch",
+      "snippet": "Any% and 100% runs of Hollow Cartographer and Glass Citadel; world record holder in two categories.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "speedrun sam",
+        "speedrunner",
+        "twitch channel"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/channel/pixelforge",
+      "title": "PixelForge - Twitch",
+      "snippet": "Variety gaming, mostly roguelikes and whatever chat votes for on Fridays.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "pixelforge",
+        "variety streamer",
+        "roguelike"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/channel/deploy-dan",
+      "title": "Deploy Dan - Twitch",
+      "snippet": "Building a game engine in Rust live on stream.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "deploy dan",
+        "rust streamer",
+        "game engine"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/channel/northstar-live",
+      "title": "Northstar Live - Twitch",
+      "snippet": "Northstar engineering streams: open standups, incident reviews and demo days.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "northstar live",
+        "northstar twitch",
+        "engineering streams"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/channel/lofi-lena",
+      "title": "Lofi Lena - Twitch",
+      "snippet": "Live beats, live loops, live mistakes. Ambient sets every evening.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "lofi lena",
+        "music streamer"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/playlist?list=software-development",
+      "title": "Software Development - Twitch category",
+      "snippet": "Live coding streams and VODs: engines, physics, replay debugging and incident reviews.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "software development category",
+        "coding streams",
+        "twitch coding"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/playlist?list=speedruns",
+      "title": "Speedruns - Twitch category",
+      "snippet": "World record runs, 100% attempts and glitch tutorials.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "speedruns category",
+        "twitch speedruns"
+      ]
+    },
+    {
+      "url": "http://twitch.tv/playlist?list=just-chatting",
+      "title": "Just Chatting - Twitch category",
+      "snippet": "Tea, stories, listener calls and one game master on a break.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "just chatting",
+        "twitch just chatting"
+      ]
+    }
+  ],
+  "network_node": {
+    "address": "203.0.113.101",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1500
+    }
+  }
+}

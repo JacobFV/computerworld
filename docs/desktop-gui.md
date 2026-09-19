@@ -49,7 +49,7 @@ Nineteen window kinds are launchable. Four are built into `DesktopState::launch`
 `terminal` (output and input), `files`/`file_manager` (tabbed filesystem navigation
 with click-to-select and double-click-to-open), `editor`/`text_editor` (saved from its menus),
 and `browser`. The other fifteen are `NativeApp` kinds listed by the `native_apps!`
-macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `chat`, `docs`,
+macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `messages`, `docs`,
 `notes`, `contacts`, `settings`, `calculator`, `clock`, `photos`, `music`, `maps`,
 `weather`, `code`, `freecad` and `kicad` (plus the image editors, spreadsheets and
 database client). Each is backed by a world service or the machine's own files
@@ -66,6 +66,31 @@ Android, whose player is YouTube Music and reads `http://music.youtube.com/`. `k
 URL, and therefore requires both `application.v1` and `browser.v1` grants plus an
 installed `browser`. Any other `kind` is rejected. Either way these remain ordinary
 world services, not special kernel concepts.
+
+The `messages` application is a phone's Messages: it talks to a `messages` service
+(texting between handles over iMessage or SMS, `http://messages.internal/` in the
+reference world), never to Slack. A phone starts on its conversation list and opens a
+thread with a tap (`messages:open:<id>`), which sends the read receipt the other side
+sees under its bubble; a desktop shows the list in a sidebar with the thread beside it.
+`messages:compose` focuses the composer, `messages:send` posts the draft,
+`messages:tapback:<message>:<kind>` gives or takes back a tapback, `messages:back`
+returns a phone to the list. Share hands a page or file to it as the draft.
+
+### Pointer
+
+A desktop draws its own mouse pointer into every frame, at the last `pointer.v1`
+position, so a rendered frame shows where the machine's pointer is without any host
+cursor over it. Its shape is the one the target under it asks for: an arrow over
+nothing in particular, an I-beam over editable text and the address bar, a hand over
+links, buttons and other controls, resize arrows on window edges and corners, a
+crosshair over an image editor's canvas, and an open or closed hand over a title bar
+while it is or is not being dragged. macOS draws a black arrow with a white edge;
+Windows and Ubuntu a white arrow with a black edge. iOS and Android draw none. The
+same classification (`cw_applications::CursorKind`) produces the `cursor` hint a
+pointer action replies with, so a host page's cursor and the painted one agree. The
+pointer node carries no interaction or semantic: hit tests, semantic observations and
+the scene's interaction targets ignore it, and it stays the last node of the frame so
+that a pointer arriving or moving repaints only its own pixels.
 
 ### Home folders and file manager places
 
@@ -292,11 +317,29 @@ and view size. The model is real, in the `cw-cad` kernel:
 - Pad, Pocket (length, two lengths, through all, symmetric, reversed), Revolution,
   Groove, Hole (counterbore, countersink, drill point), Fillet and Chamfer (equal
   distance, two distances, distance and angle, all edges), Mirrored, Linear and Polar
-  Pattern are recomputed in order from their parameters; sketches attach to base planes
-  or to planar faces, and a face or edge reference keeps FreeCAD's element name plus
-  where it was, so it is found again after an upstream edit renumbers the shape. A
-  feature that fails is marked in the tree and reported, as "Result has multiple
-  solids" and the like.
+  Pattern are recomputed in order from their parameters; sketches attach to base planes,
+  to planar faces or to datum planes, and a face or edge reference keeps FreeCAD's
+  element name plus where it was, so it is found again after an upstream edit renumbers
+  the shape. A feature that fails is marked in the tree and reported, as "Result has
+  multiple solids" and the like.
+- Additive and subtractive primitives (Box, Cylinder with an angle, Sphere, Cone,
+  Torus; `PartDesign::AdditiveBox` and the rest) are attached like sketches — to a base
+  plane, a picked face or a datum plane, with an attachment offset — and their task
+  panel holds the dimension fields. Datum planes, lines and points
+  (`PartDesign::Plane`, `Line`, `Point`) are attached the same way with an offset and
+  an angle, drawn in the 3D view, offered in the plane chooser and usable as sketch
+  supports, as mirror planes and as pattern or revolution axes. A Boolean
+  (`PartDesign::Boolean`: Fuse, Cut, Common) combines the active body with other
+  bodies, which hide once consumed; bodies are recomputed in dependency order.
+- Expressions: any numeric Data property (a pad's `Length`, a primitive's `Radius`, a
+  pattern's `Occurrences`, a sketch's named constraint) can be bound through the
+  property editor's f(x) button to an expression over numbers, `+ - * /`, parentheses
+  and references `Object.Property` or `Sketch.Constraints.name` (objects by name or
+  label, units `mm`, `cm`, `m`, `in` allowed). Bindings are evaluated on recompute
+  before the features they drive, a bound value is shown in blue italics and edited
+  through its expression, errors (an unknown reference, a self reference, a value the
+  property refuses) are refused at entry and reported on recompute, and the file keeps
+  them as FreeCAD's `ExpressionEngine`.
 - Solids are exact boundary representations: faces on planes, cylinders, cones,
   spheres, tori, surfaces of revolution and extrusion, rolling-ball tubes and ruled
   surfaces, bounded by edges on lines, circles, ellipses, B-splines and *traced* curves
@@ -332,6 +375,11 @@ and view size. The model is real, in the `cw-cad` kernel:
   millimetres. Binary files move through `AppEffect::ReadBytes` and `WriteBytes`.
 - Undo and Redo cover every document change (30 levels); snapshots hold the document
   and view, and the model is recomputed from it on restore.
+- Launched with no file, FreeCAD starts its file dialogs on `~/Documents/Parts` when
+  that folder exists (the reference desktops seed it with parts modelled by the kernel:
+  `crates/cad/tests/samples.rs`), else on `~/Documents`. A file manager opens
+  `*.FCStd.json`, STEP, STL, OBJ and DXF files with FreeCAD and `*.kicad_pro`,
+  `*.kicad_sch` and `*.kicad_pcb` with KiCad (`cw_applications::opener`).
 
 ## Rendering and fidelity
 

@@ -1,0 +1,378 @@
+{
+  "id": "notion",
+  "kind": "docs",
+  "node": "notion",
+  "domains": [
+    "notion.so",
+    "www.notion.so",
+    "notion.site"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "198.51.100.123",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
+  "initial_state": {
+    "skin": "plain",
+    "next_id": 0,
+    "documents": {
+      "team-wiki-home": {
+        "id": "team-wiki-home",
+        "title": "Team wiki home",
+        "owner": "carol",
+        "readers": [
+          "alice",
+          "bob"
+        ],
+        "writers": [
+          "alice",
+          "bob"
+        ],
+        "body": "Northstar engineering wiki\n\nStart here. Everything the team needs on the first day and most of what it needs after.\n\nHow we work\n- Meeting notes live under Meeting notes, one page per meeting, newest first.\n- The roadmap is one page per quarter. Q4 2026 is the current one.\n- Every incident gets a retro page within three working days.\n- Decisions are written down where they were made, then linked from here.\n\nPages in this workspace\n- Onboarding checklist (start here if you are new)\n- Q4 2026 roadmap\n- OKRs 2026 H2\n- Meeting notes 2026-09-14\n- Weekly retro 2026-09-11\n- Interview loop\n- Reading list\n- Recipe collection (not work, still popular)\n- Travel plan: Lisbon offsite\n\nCode lives at http://github.com/northstar/atlas and the public site is http://northstar.example/\n",
+        "revision": 7,
+        "history": [],
+        "comments": [
+          {
+            "author": "alice",
+            "text": "Added the Lisbon page to the list.",
+            "time": 12
+          }
+        ],
+        "starred": [
+          "alice",
+          "bob",
+          "carol"
+        ]
+      },
+      "meeting-notes-2026-09-14": {
+        "id": "meeting-notes-2026-09-14",
+        "title": "Meeting notes 2026-09-14",
+        "owner": "carol",
+        "readers": [
+          "alice",
+          "bob"
+        ],
+        "writers": [
+          "alice",
+          "bob"
+        ],
+        "body": "Weekly engineering sync - Monday 14 September 2026\nPresent: Alice, Bob, Carol. Notes: Carol.\n\n1. Release 0.4.2\n   - Shipped Friday. No rollbacks. One support ticket about the changelog wording.\n   - Bob: the Windows runner passed twenty consecutive runs after the BTreeMap change.\n\n2. Renderer\n   - Alice: text layout rewrite is at the point where it renders the whole handbook; kerning is next.\n   - Decision: kerning ships behind a flag until the golden images are regenerated.\n\n3. Hiring\n   - Two onsite loops this week. Interview loop page updated with the new debugging exercise.\n   - Carol to write the take-home rubric by Thursday.\n\n4. Offsite\n   - Lisbon, 12-16 October. Travel page has the flights. Bob still needs to book.\n\nActions\n- [ ] Carol: take-home rubric (Thu)\n- [ ] Bob: book Lisbon flights (Wed)\n- [ ] Alice: kerning flag and golden image job (next sync)\n",
+        "revision": 3,
+        "history": [],
+        "comments": []
+      },
+      "q4-2026-roadmap": {
+        "id": "q4-2026-roadmap",
+        "title": "Q4 2026 roadmap",
+        "owner": "carol",
+        "readers": [
+          "alice",
+          "bob"
+        ],
+        "writers": [
+          "alice"
+        ],
+        "body": "Q4 2026 roadmap\nOwner: Carol. Last reviewed 2026-09-12.\n\nTheme: replay everywhere.\n\nCommitted\n1. Renderer text layout v2 (Alice) - kerning, hyphenation, vertical rhythm. Ships in 0.5.0.\n2. Browser session replay from snapshot (Alice, Bob) - page state, history and forms survive a round trip.\n3. Windows on the default CI matrix (Bob) - every test, every platform, no exceptions list.\n4. Onboarding in one day (Carol) - a new engineer runs the world and ships a change by end of day one.\n\nStretch\n5. Map service with deterministic routing.\n6. Public docs site refresh.\n\nNot doing this quarter\n- Multi-machine snapshots. Design first, build in Q1.\n- A GUI for the debugger. The CLI is fine and the people who want a GUI want it for demos.\n\nRisks\n- Text layout v2 touches every golden image. Regeneration is a day of CI.\n- Hiring pace: two open roles; if neither closes by November, item 4 slips.\n",
+        "revision": 5,
+        "history": [],
+        "comments": [
+          {
+            "author": "bob",
+            "text": "Item 3 is done early. Moving it to a footnote next review.",
+            "time": 14
+          },
+          {
+            "author": "carol",
+            "text": "Keep it listed until the matrix has run for a month.",
+            "time": 14
+          }
+        ],
+        "starred": [
+          "carol"
+        ]
+      },
+      "onboarding-checklist": {
+        "id": "onboarding-checklist",
+        "title": "Onboarding checklist",
+        "owner": "carol",
+        "readers": [],
+        "writers": [
+          "alice",
+          "bob"
+        ],
+        "body": "Onboarding checklist\nFor your first week. Tick things off on your own copy; ask in the team channel if anything is stale.\n\nDay 1\n- [ ] Laptop, accounts, keys. IT ticket is filed by your manager before you start.\n- [ ] Clone http://github.com/northstar/atlas and run the world: cargo run -p computerworld --example company\n- [ ] Read the wiki home and this page. Skim the Q4 roadmap.\n- [ ] Ship something: fix a typo in the docs and open a pull request.\n\nDay 2-3\n- [ ] Pair with Alice on the renderer for an hour; pair with Bob on CI for an hour.\n- [ ] Run the behaviour suite and read one failing-test postmortem end to end.\n- [ ] Set up your dotfiles; several people keep theirs in public repositories.\n\nDay 4-5\n- [ ] Pick a starter issue from the Onboarding project in Linear.\n- [ ] Add yourself to the interview loop as a shadow.\n- [ ] Write down what confused you this week. That list becomes an edit to this page.\n\nRules that will save you time\n- No wall clock, no ambient randomness. Time is the tick you were handed.\n- Anything unordered is a bug waiting for the Windows runner.\n",
+        "revision": 9,
+        "history": [],
+        "comments": [],
+        "starred": [
+          "alice",
+          "bob"
+        ]
+      },
+      "reading-list": {
+        "id": "reading-list",
+        "title": "Reading list",
+        "owner": "alice",
+        "readers": [
+          "bob",
+          "carol"
+        ],
+        "writers": [
+          "bob",
+          "carol"
+        ],
+        "body": "Reading list\nAdd a line, initial it. Rough order of usefulness for our work.\n\nDeterministic systems\n- \"Time, Clocks, and the Ordering of Events in a Distributed System\" - the paper under everything we do. (AC)\n- FoundationDB's simulation testing talk - the model for our harness. (AC)\n- The Antithesis blog on deterministic hypervisors. (BM)\n\nRendering and text\n- \"Digital Typography\" chapters on line breaking. Our v2 layout follows the dynamic-programming approach. (AC)\n- The Unicode line breaking annex, UAX #14, read once and then keep open. (AC)\n\nTesting\n- \"Lessons from Building Static Analysis Tools at Google\" - on the cost of a false positive. (BM)\n- Hypothesis documentation, especially the section on shrinking. (BM)\n\nManagement and process\n- \"An Elegant Puzzle\" - the chapter on team sizes. (CN)\n- \"Debugging Teams\" - short, mostly right. (CN)\n\nWikipedia rabbit holes that turned out to matter\n- http://en.wikipedia.org/ - Rayleigh scattering (why the render tests use a blue sky), Knocker-upper (unrelated, delightful).\n",
+        "revision": 11,
+        "history": [],
+        "comments": []
+      },
+      "travel-plan-lisbon": {
+        "id": "travel-plan-lisbon",
+        "title": "Travel plan: Lisbon offsite",
+        "owner": "bob",
+        "readers": [
+          "alice",
+          "carol"
+        ],
+        "writers": [
+          "alice",
+          "carol"
+        ],
+        "body": "Lisbon offsite, 12-16 October 2026\nOrganiser: Bob. Budget approved by Carol.\n\nFlights\n- Alice: out Sun 11 Oct 10:40, back Fri 16 Oct 18:15. Booked.\n- Carol: out Sun 11 Oct 10:40, back Sat 17 Oct 07:30 (staying a day). Booked.\n- Bob: same outbound as Alice. NOT YET BOOKED. Deadline Wednesday.\n\nWhere we are staying\n- Apartment in Alfama, three bedrooms, a table that seats six. Address in the calendar invite.\n- Walking distance to the office space (coworking on Rua da Prata, booked Mon-Thu 09:00-18:00).\n\nPlan\n- Mon: retrospective on Q3, then the roadmap for Q1 2027. Long lunch.\n- Tue: hack day on replay tooling. Demo at 17:00.\n- Wed: hiring: interview loop rewrite, take-home rubric. Afternoon free.\n- Thu: writing day: docs, blog post, the wiki pages nobody has updated.\n- Fri: fly home. Carol stays.\n\nPractical\n- Tram 28 is a tourist trap at rush hour. Walk.\n- Pasteis de nata: the one in Belem is worth the detour, the one round the corner is 90 percent as good.\n- Bring an adapter. Type F.\n",
+        "revision": 6,
+        "history": [],
+        "comments": [
+          {
+            "author": "carol",
+            "text": "Booked my return for Saturday. Wednesday afternoon free is a good call.",
+            "time": 10
+          },
+          {
+            "author": "alice",
+            "text": "Bob, flights.",
+            "time": 13
+          }
+        ]
+      },
+      "recipe-collection": {
+        "id": "recipe-collection",
+        "title": "Recipe collection",
+        "owner": "alice",
+        "readers": [],
+        "writers": [
+          "bob",
+          "carol"
+        ],
+        "body": "Recipe collection\nThings people have brought to the office and been asked for the recipe. Add yours.\n\nAlice's weeknight dal\n- 1 cup red lentils, rinsed. 3 cups water. Simmer 15 minutes with turmeric and salt.\n- Separately fry cumin seeds, a sliced onion, garlic and ginger in ghee until golden. Add a chopped tomato.\n- Pour the fry into the lentils, simmer 5 more minutes, finish with lemon and coriander.\n- Serves 3, or 1 engineer for two days.\n\nBob's overnight oats\n- Equal parts rolled oats and milk (any), a spoon of yogurt, a pinch of salt.\n- Stir, refrigerate overnight. Top with whatever fruit is going soft.\n- The pinch of salt is not optional.\n\nCarol's cardamom knots (from the bakery on Hawthorne, reverse engineered)\n- Enriched dough: 500 g flour, 250 ml warm milk, 75 g butter, 60 g sugar, 7 g yeast, 1 egg, salt.\n- Knead 10 minutes, rise 1 hour. Roll into a rectangle, spread with butter, sugar and ground cardamom, fold, cut into strips, twist into knots.\n- Second rise 45 minutes. Bake at 200 C for 12 minutes. Brush with syrup while hot.\n- Why bread rises, for the curious: yeast makes the gas, gluten makes the balloon.\n\nOffice rules\n- Label it. Date it. If it is not yours, ask.\n",
+        "revision": 4,
+        "history": [],
+        "comments": []
+      },
+      "okrs-2026-h2": {
+        "id": "okrs-2026-h2",
+        "title": "OKRs 2026 H2",
+        "owner": "carol",
+        "readers": [
+          "alice",
+          "bob"
+        ],
+        "writers": [],
+        "body": "OKRs, second half of 2026\nReviewed monthly. Scores are 0.0 to 1.0; 0.7 is a good result.\n\nObjective 1: A run replays anywhere.\n- KR1: Every behaviour test passes on Linux, macOS and Windows with no platform exceptions. (current 0.9)\n- KR2: A failure from CI replays locally from its seed in under a minute, ten out of ten tries. (current 0.6)\n- KR3: Zero flaky tests in the suite for thirty consecutive days. (current 0.3, streak at 11 days)\n\nObjective 2: The renderer is something we would show a designer.\n- KR1: Text layout v2 shipped behind a flag by 1 November. (current 0.5)\n- KR2: Golden images regenerated on every platform with a diff of zero. (current 0.4)\n\nObjective 3: New engineers are productive in a day.\n- KR1: Onboarding checklist completed by the two September hires in one day each. (current 0.5, one hire, one day)\n- KR2: Interview loop rewritten around a debugging exercise; all interviewers trained. (current 0.7)\n\nNotes\n- KR 1.3 reset twice in August. Both times it was a test that read the clock.\n",
+        "revision": 3,
+        "history": [],
+        "comments": [],
+        "starred": [
+          "carol"
+        ]
+      },
+      "interview-loop": {
+        "id": "interview-loop",
+        "title": "Interview loop",
+        "owner": "carol",
+        "readers": [],
+        "writers": [
+          "alice",
+          "bob"
+        ],
+        "body": "Interview loop - engineering\nUpdated 2026-09-14. Owner: Carol. Every interviewer reads this before every loop.\n\nStages\n1. Recruiter screen (30 min). Motivation, logistics, compensation range.\n2. Technical screen (45 min, remote). One interviewer. The candidate debugs a small failing test in a repository we send an hour ahead. We are watching how they narrow it down, not whether they finish.\n3. Take-home (optional, 3 hours cap). Extend a tiny simulator with one feature. Rubric page in progress.\n4. Onsite loop (half day):\n   - Debugging session (90 min, two interviewers). A recorded failure, a repository, a seed. Same format as the screen, larger problem.\n   - Design conversation (60 min). Something we actually built; the candidate is asked what they would do differently.\n   - Team conversation (45 min). No puzzles. How they work, how they disagree.\n   - Manager conversation (30 min).\n\nRules\n- No whiteboard algorithms. We stopped in 2025 and hiring got better.\n- Write feedback before reading anyone else's. Submit within four hours.\n- Every candidate gets a decision within three working days of the onsite.\n\nWhat we are looking for\n- Narrows a problem before touching it.\n- Says \"I do not know\" and then finds out.\n- Can explain a thing they built to someone who did not build it.\n",
+        "revision": 8,
+        "history": [],
+        "comments": [
+          {
+            "author": "bob",
+            "text": "The debugging screen finds more signal in 45 minutes than the old algorithms round did in two hours.",
+            "time": 11
+          }
+        ]
+      },
+      "weekly-retro-2026-09-11": {
+        "id": "weekly-retro-2026-09-11",
+        "title": "Weekly retro 2026-09-11",
+        "owner": "bob",
+        "readers": [
+          "alice",
+          "carol"
+        ],
+        "writers": [
+          "alice",
+          "carol"
+        ],
+        "body": "Weekly retro - Friday 11 September 2026\nFacilitator: Bob. Fifteen minutes, three columns.\n\nWent well\n- 0.4.2 shipped on the day we said. Release notes went out with it.\n- The Windows runner is green and has been for eleven days. Nobody had to think about it.\n- The new onboarding page got a new engineer to a merged pull request before lunch.\n\nDid not go well\n- Text layout golden images regenerated three times because of a font cache on one CI runner.\n- A meeting about the roadmap ran forty minutes over. The agenda had six items; two would have done.\n- We found out about a customer's replay issue from a forum post rather than from them.\n\nTry next week\n- Pin the font cache in the CI image (Bob).\n- Two-item agendas for anything under an hour (Carol).\n- A support address on the status page that actually reaches an engineer (Alice).\n\nShout-outs\n- Alice, for the layout rewrite reaching the whole handbook.\n- Whoever labelled the office fridge. It worked.\n",
+        "revision": 2,
+        "history": [],
+        "comments": []
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://notion.so/",
+      "title": "Notion - Northstar workspace",
+      "snippet": "The team wiki: meeting notes, roadmap, onboarding, OKRs, the interview loop and the recipe page.",
+      "authority": 5,
+      "keywords": [
+        "notion",
+        "wiki",
+        "workspace",
+        "team wiki",
+        "docs",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/team-wiki-home",
+      "title": "Team wiki home - Notion",
+      "snippet": "Start here: how the team works and where every page lives.",
+      "authority": 6,
+      "keywords": [
+        "team wiki",
+        "wiki home",
+        "northstar engineering",
+        "start here",
+        "notion"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/meeting-notes-2026-09-14",
+      "title": "Meeting notes 2026-09-14 - Notion",
+      "snippet": "Weekly sync: release 0.4.2, renderer kerning behind a flag, hiring loops, Lisbon flights.",
+      "authority": 4,
+      "keywords": [
+        "meeting notes",
+        "2026-09-14",
+        "weekly sync",
+        "engineering sync",
+        "actions"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/q4-2026-roadmap",
+      "title": "Q4 2026 roadmap - Notion",
+      "snippet": "Theme: replay everywhere. Text layout v2, browser session replay, Windows in the CI matrix, one-day onboarding.",
+      "authority": 6,
+      "keywords": [
+        "q4 roadmap",
+        "roadmap",
+        "2026",
+        "q4 2026",
+        "replay",
+        "text layout"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/onboarding-checklist",
+      "title": "Onboarding checklist - Notion",
+      "snippet": "Day one to day five for a new engineer: clone, run the world, ship a typo fix, pair, pick a starter issue.",
+      "authority": 6,
+      "keywords": [
+        "onboarding",
+        "checklist",
+        "new engineer",
+        "first week",
+        "first day"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/reading-list",
+      "title": "Reading list - Notion",
+      "snippet": "Deterministic systems, text rendering, testing and management. Initialled by whoever added the line.",
+      "authority": 4,
+      "keywords": [
+        "reading list",
+        "papers",
+        "books",
+        "determinism",
+        "typography"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/travel-plan-lisbon",
+      "title": "Travel plan: Lisbon offsite - Notion",
+      "snippet": "12-16 October 2026. Flights, the Alfama apartment, the coworking space and the day plan.",
+      "authority": 4,
+      "keywords": [
+        "lisbon",
+        "offsite",
+        "travel plan",
+        "october 2026",
+        "flights",
+        "alfama"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/recipe-collection",
+      "title": "Recipe collection - Notion",
+      "snippet": "Alice's dal, Bob's overnight oats, Carol's reverse-engineered cardamom knots.",
+      "authority": 2,
+      "keywords": [
+        "recipes",
+        "dal",
+        "overnight oats",
+        "cardamom knots",
+        "office"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/okrs-2026-h2",
+      "title": "OKRs 2026 H2 - Notion",
+      "snippet": "A run replays anywhere; a renderer we would show a designer; new engineers productive in a day.",
+      "authority": 5,
+      "keywords": [
+        "okrs",
+        "objectives",
+        "key results",
+        "2026 h2",
+        "goals"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/interview-loop",
+      "title": "Interview loop - Notion",
+      "snippet": "Debugging session instead of whiteboard algorithms; feedback within four hours; decision within three days.",
+      "authority": 5,
+      "keywords": [
+        "interview loop",
+        "hiring",
+        "interview process",
+        "debugging exercise",
+        "onsite"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/weekly-retro-2026-09-11",
+      "title": "Weekly retro 2026-09-11 - Notion",
+      "snippet": "Went well, did not go well, try next week. Font cache, two-item agendas, a support address that reaches an engineer.",
+      "authority": 3,
+      "keywords": [
+        "retro",
+        "retrospective",
+        "weekly retro",
+        "2026-09-11"
+      ]
+    }
+  ]
+}

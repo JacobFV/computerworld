@@ -110,6 +110,9 @@ pub struct Thread {
     pub base: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub merged_by: String,
+    /// A pull request opened as a draft: shown grey and not mergeable until marked ready.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub draft: bool,
     #[serde(default)]
     pub tick: u64,
 }
@@ -128,6 +131,7 @@ impl Thread {
             head: String::new(),
             base: String::new(),
             merged_by: String::new(),
+            draft: false,
             tick,
         }
     }
@@ -431,6 +435,568 @@ use cw_protocol::{HttpRequest, HttpResponse, Page, PageElement, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 pub mod github;
+
+// ---- History, diffs and tree helpers: everything a page derives from commits. ----
+
+/// A branch tip: the ref's short name and the commit it names.
+pub fn branch_tip<'a>(repository: &'a Repository, branch: &str) -> Option<(String, &'a Commit)> {
+    let id = repository.refs.get(&format!("refs/heads/{branch}"))?;
+    repository.objects.get(id).map(|c| (id.clone(), c))
+}
+/// The default branch: `main` when it exists, otherwise the first head in name order.
+pub fn default_branch(repository: &Repository) -> String {
+    if repository.refs.contains_key("refs/heads/main") {
+        return "main".into();
+    }
+    repository
+        .refs
+        .keys()
+        .filter_map(|r| r.strip_prefix("refs/heads/"))
+        .next()
+        .unwrap_or("main")
+        .to_owned()
+}
+/// Short names of every branch, `main` first, the rest alphabetical.
+pub fn branches(repository: &Repository) -> Vec<String> {
+    let mut names: Vec<String> = repository
+        .refs
+        .keys()
+        .filter_map(|r| r.strip_prefix("refs/heads/"))
+        .map(str::to_owned)
+        .collect();
+    names.sort_by_key(|n| (n != "main", n.clone()));
+    names
+}
+/// Every commit reachable from `start`, newest first (by tick, then id, so it is total).
+pub fn log<'a>(repository: &'a Repository, start: &str) -> Vec<(String, &'a Commit)> {
+    let mut seen = BTreeSet::new();
+    let mut pending = vec![start.to_owned()];
+    let mut out = vec![];
+    while let Some(id) = pending.pop() {
+        if !seen.insert(id.clone()) {
+            continue;
+        }
+        if let Some(commit) = repository.objects.get(&id) {
+            pending.extend(commit.parents.iter().cloned());
+            out.push((id, commit));
+        }
+    }
+    out.sort_by(|a, b| b.1.tick.cmp(&a.1.tick).then_with(|| a.0.cmp(&b.0)));
+    out
+}
+/// Commits reachable from `head` but not from `base`: what a pull request brings.
+pub fn commits_between<'a>(
+    repository: &'a Repository,
+    base: &str,
+    head: &str,
+) -> Vec<(String, &'a Commit)> {
+    let excluded: BTreeSet<String> = log(repository, base)
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    log(repository, head)
+        .into_iter()
+        .filter(|(id, _)| !excluded.contains(id))
+        .collect()
+}
+/// The newest commit both tips descend from: the point a pull request's diff starts at.
+pub fn merge_base(repository: &Repository, a: &str, b: &str) -> Option<String> {
+    let from_b: BTreeSet<String> = log(repository, b).into_iter().map(|(id, _)| id).collect();
+    log(repository, a)
+        .into_iter()
+        .map(|(id, _)| id)
+        .find(|id| from_b.contains(id))
+}
+/// The paths a commit changed against its first parent (every path, for a root commit).
+pub fn changed_paths(repository: &Repository, commit: &Commit) -> Vec<String> {
+    let parent = commit
+        .parents
+        .first()
+        .and_then(|p| repository.objects.get(p))
+        .map(|p| &p.files);
+    let mut paths: Vec<String> = commit
+        .files
+        .iter()
+        .filter(|(path, content)| parent.and_then(|p| p.get(*path)) != Some(content))
+        .map(|(path, _)| path.clone())
+        .collect();
+    if let Some(parent) = parent {
+        paths.extend(
+            parent
+                .keys()
+                .filter(|p| !commit.files.contains_key(*p))
+                .cloned(),
+        );
+    }
+    paths.sort();
+    paths
+}
+/// For every path in `start`'s tree, the newest commit that touched it.
+pub fn last_commit_per_path<'a>(
+    repository: &'a Repository,
+    start: &str,
+) -> BTreeMap<String, (String, &'a Commit)> {
+    let mut out = BTreeMap::new();
+    for (id, commit) in log(repository, start) {
+        for path in changed_paths(repository, commit) {
+            out.entry(path).or_insert_with(|| (id.clone(), commit));
+        }
+    }
+    let Some(tip) = repository.objects.get(start) else {
+        return out;
+    };
+    out.retain(|path, _| tip.files.contains_key(path));
+    out
+}
+/// One entry of a directory listing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TreeEntry {
+    pub name: String,
+    pub path: String,
+    pub dir: bool,
+}
+/// The immediate children of `prefix` (`""` is the root), directories first, then files.
+pub fn list_tree(files: &BTreeMap<String, String>, prefix: &str) -> Vec<TreeEntry> {
+    let prefix = prefix.trim_matches('/');
+    let mut dirs = BTreeSet::new();
+    let mut plain = vec![];
+    for path in files.keys() {
+        let rest = if prefix.is_empty() {
+            path.as_str()
+        } else {
+            match path.strip_prefix(prefix).and_then(|r| r.strip_prefix('/')) {
+                Some(r) => r,
+                None => continue,
+            }
+        };
+        match rest.split_once('/') {
+            Some((dir, _)) => {
+                dirs.insert(dir.to_owned());
+            }
+            None => plain.push(rest.to_owned()),
+        }
+    }
+    let join = |name: &str| {
+        if prefix.is_empty() {
+            name.to_owned()
+        } else {
+            format!("{prefix}/{name}")
+        }
+    };
+    dirs.iter()
+        .map(|d| TreeEntry {
+            name: d.clone(),
+            path: join(d),
+            dir: true,
+        })
+        .chain(plain.iter().map(|f| TreeEntry {
+            name: f.clone(),
+            path: join(f),
+            dir: false,
+        }))
+        .collect()
+}
+/// One line of a unified diff.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DiffLine {
+    Context(String),
+    Add(String),
+    Remove(String),
+}
+/// A run of changed lines with `CONTEXT` lines of margin, as `@@ -a,b +c,d @@`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Hunk {
+    pub old_start: usize,
+    pub old_lines: usize,
+    pub new_start: usize,
+    pub new_lines: usize,
+    pub lines: Vec<DiffLine>,
+}
+impl Hunk {
+    pub fn header(&self) -> String {
+        format!(
+            "@@ -{},{} +{},{} @@",
+            self.old_start, self.old_lines, self.new_start, self.new_lines
+        )
+    }
+}
+pub const CONTEXT: usize = 3;
+/// Line diff by longest common subsequence: deterministic, and small enough for the
+/// file sizes a world carries. Equal inputs give no hunks.
+pub fn diff_lines(old: &str, new: &str) -> Vec<Hunk> {
+    let a: Vec<&str> = old.lines().collect();
+    let b: Vec<&str> = new.lines().collect();
+    let (n, m) = (a.len(), b.len());
+    let mut table = vec![vec![0usize; m + 1]; n + 1];
+    for i in (0..n).rev() {
+        for j in (0..m).rev() {
+            table[i][j] = if a[i] == b[j] {
+                table[i + 1][j + 1] + 1
+            } else {
+                table[i + 1][j].max(table[i][j + 1])
+            };
+        }
+    }
+    // Every line, tagged, with its old and new numbers (1-based; 0 when absent).
+    let mut ops: Vec<(DiffLine, usize, usize)> = vec![];
+    let (mut i, mut j) = (0, 0);
+    while i < n || j < m {
+        if i < n && j < m && a[i] == b[j] {
+            ops.push((DiffLine::Context(a[i].to_owned()), i + 1, j + 1));
+            i += 1;
+            j += 1;
+        } else if j < m && (i == n || table[i][j + 1] >= table[i + 1][j]) {
+            ops.push((DiffLine::Add(b[j].to_owned()), 0, j + 1));
+            j += 1;
+        } else {
+            ops.push((DiffLine::Remove(a[i].to_owned()), i + 1, 0));
+            i += 1;
+        }
+    }
+    let changed: Vec<usize> = ops
+        .iter()
+        .enumerate()
+        .filter(|(_, (op, _, _))| !matches!(op, DiffLine::Context(_)))
+        .map(|(k, _)| k)
+        .collect();
+    let mut hunks: Vec<Hunk> = vec![];
+    let mut k = 0;
+    while k < changed.len() {
+        let start = changed[k].saturating_sub(CONTEXT);
+        let mut end = changed[k] + CONTEXT;
+        while k + 1 < changed.len() && changed[k + 1].saturating_sub(CONTEXT) <= end + 1 {
+            k += 1;
+            end = changed[k] + CONTEXT;
+        }
+        let end = end.min(ops.len() - 1);
+        let slice = &ops[start..=end];
+        let old_start = slice.iter().find(|o| o.1 > 0).map_or(1, |o| o.1);
+        let new_start = slice.iter().find(|o| o.2 > 0).map_or(1, |o| o.2);
+        hunks.push(Hunk {
+            old_start,
+            old_lines: slice.iter().filter(|o| o.1 > 0).count(),
+            new_start,
+            new_lines: slice.iter().filter(|o| o.2 > 0).count(),
+            lines: slice.iter().map(|o| o.0.clone()).collect(),
+        });
+        k += 1;
+    }
+    hunks
+}
+/// One file of a diff between two trees.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileDiff {
+    pub path: String,
+    /// `added` | `removed` | `modified`.
+    pub status: String,
+    pub hunks: Vec<Hunk>,
+    pub additions: usize,
+    pub deletions: usize,
+}
+/// Every file that differs between two trees, in path order.
+pub fn diff_trees(old: &BTreeMap<String, String>, new: &BTreeMap<String, String>) -> Vec<FileDiff> {
+    let paths: BTreeSet<&String> = old.keys().chain(new.keys()).collect();
+    paths
+        .into_iter()
+        .filter_map(|path| {
+            let (before, after) = (old.get(path), new.get(path));
+            if before == after {
+                return None;
+            }
+            let status = match (before, after) {
+                (None, _) => "added",
+                (_, None) => "removed",
+                _ => "modified",
+            };
+            let hunks = diff_lines(before.map_or("", |s| s), after.map_or("", |s| s));
+            let count = |f: fn(&DiffLine) -> bool| {
+                hunks.iter().flat_map(|h| &h.lines).filter(|l| f(l)).count()
+            };
+            Some(FileDiff {
+                path: path.clone(),
+                status: status.into(),
+                additions: count(|l| matches!(l, DiffLine::Add(_))),
+                deletions: count(|l| matches!(l, DiffLine::Remove(_))),
+                hunks,
+            })
+        })
+        .collect()
+}
+/// GitHub's linguist, reduced: the language a path counts towards, or none for prose,
+/// data and licences, which the languages bar leaves out.
+pub fn language_of(path: &str) -> Option<&'static str> {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    let lower = name.to_ascii_lowercase();
+    let by_name = match lower.as_str() {
+        "dockerfile" => Some("Dockerfile"),
+        "makefile" => Some("Makefile"),
+        _ => None,
+    };
+    if by_name.is_some() {
+        return by_name;
+    }
+    match lower.rsplit_once('.').map(|(_, ext)| ext)? {
+        "rs" => Some("Rust"),
+        "py" => Some("Python"),
+        "js" | "mjs" | "cjs" => Some("JavaScript"),
+        "ts" | "tsx" => Some("TypeScript"),
+        "go" => Some("Go"),
+        "c" | "h" => Some("C"),
+        "cpp" | "cc" | "hpp" => Some("C++"),
+        "java" => Some("Java"),
+        "rb" => Some("Ruby"),
+        "sh" | "bash" | "zsh" => Some("Shell"),
+        "html" => Some("HTML"),
+        "css" => Some("CSS"),
+        "toml" => Some("TOML"),
+        "yml" | "yaml" => Some("YAML"),
+        "lua" => Some("Lua"),
+        "swift" => Some("Swift"),
+        "kt" => Some("Kotlin"),
+        _ => None,
+    }
+}
+/// The colour GitHub paints a language's dot and bar segment.
+pub fn language_color(language: &str) -> &'static str {
+    match language {
+        "Rust" => "#dea584",
+        "Python" => "#3572a5",
+        "JavaScript" => "#f1e05a",
+        "TypeScript" => "#3178c6",
+        "Go" => "#00add8",
+        "C" => "#555555",
+        "C++" => "#f34b7d",
+        "Java" => "#b07219",
+        "Ruby" => "#701516",
+        "Shell" => "#89e051",
+        "HTML" => "#e34c26",
+        "CSS" => "#663399",
+        "TOML" => "#9c4221",
+        "YAML" => "#cb171e",
+        "Dockerfile" => "#384d54",
+        "Makefile" => "#427819",
+        "Lua" => "#000080",
+        "Swift" => "#f05138",
+        "Kotlin" => "#a97bff",
+        _ => "#ededed",
+    }
+}
+/// Bytes per language across a tree, largest first, with the share in tenths of a percent.
+pub fn language_stats(files: &BTreeMap<String, String>) -> Vec<(String, u64, u32)> {
+    let mut bytes: BTreeMap<&str, u64> = BTreeMap::new();
+    for (path, content) in files {
+        if let Some(language) = language_of(path) {
+            *bytes.entry(language).or_default() += content.len() as u64;
+        }
+    }
+    let total: u64 = bytes.values().sum::<u64>().max(1);
+    let mut out: Vec<(String, u64, u32)> = bytes
+        .into_iter()
+        .map(|(l, b)| (l.to_owned(), b, (b * 1000 / total) as u32))
+        .collect();
+    out.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    out
+}
+/// The first seven characters, as every commit link shows.
+pub fn short(id: &str) -> &str {
+    id.get(..7).unwrap_or(id)
+}
+
+#[cfg(test)]
+mod history_tests {
+    use super::*;
+    fn commit(parents: &[&str], files: &[(&str, &str)], message: &str, tick: u64) -> Commit {
+        Commit {
+            parents: parents.iter().map(|p| p.to_string()).collect(),
+            files: files
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+            message: message.into(),
+            author: "ada".into(),
+            tick,
+        }
+    }
+    /// main: root -> second; feature branches off root with one commit; main then merges it.
+    fn repo() -> (Repository, Vec<String>) {
+        let root = commit(
+            &[],
+            &[("README.md", "# a\n"), ("src/lib.rs", "fn a() {}\n")],
+            "root",
+            1,
+        );
+        let root_id = object_id(&root);
+        let second = commit(
+            &[&root_id],
+            &[("README.md", "# a\nmore\n"), ("src/lib.rs", "fn a() {}\n")],
+            "readme",
+            5,
+        );
+        let second_id = object_id(&second);
+        let feature = commit(
+            &[&root_id],
+            &[
+                ("README.md", "# a\n"),
+                ("src/lib.rs", "fn a() {}\nfn b() {}\n"),
+                ("Cargo.toml", "[package]\n"),
+            ],
+            "feature",
+            3,
+        );
+        let feature_id = object_id(&feature);
+        let merge = commit(
+            &[&second_id, &feature_id],
+            &[
+                ("README.md", "# a\nmore\n"),
+                ("src/lib.rs", "fn a() {}\nfn b() {}\n"),
+                ("Cargo.toml", "[package]\n"),
+            ],
+            "merge",
+            8,
+        );
+        let merge_id = object_id(&merge);
+        let mut repository = Repository::default();
+        for (id, c) in [
+            (&root_id, root),
+            (&second_id, second),
+            (&feature_id, feature),
+            (&merge_id, merge),
+        ] {
+            repository.objects.insert(id.clone(), c);
+        }
+        repository
+            .refs
+            .insert("refs/heads/main".into(), merge_id.clone());
+        repository
+            .refs
+            .insert("refs/heads/feature".into(), feature_id.clone());
+        (repository, vec![root_id, second_id, feature_id, merge_id])
+    }
+    #[test]
+    fn log_walks_every_parent_newest_first() {
+        let (repository, ids) = repo();
+        let history: Vec<String> = log(&repository, &ids[3])
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        assert_eq!(
+            history,
+            vec![
+                ids[3].clone(),
+                ids[1].clone(),
+                ids[2].clone(),
+                ids[0].clone()
+            ]
+        );
+        let only_feature: Vec<String> = commits_between(&repository, &ids[1], &ids[2])
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        assert_eq!(only_feature, vec![ids[2].clone()]);
+        assert_eq!(
+            merge_base(&repository, &ids[1], &ids[2]).as_deref(),
+            Some(ids[0].as_str())
+        );
+        assert_eq!(branches(&repository), vec!["main", "feature"]);
+        assert_eq!(default_branch(&repository), "main");
+    }
+    #[test]
+    fn last_commit_per_path_follows_first_parents_and_merges() {
+        let (repository, ids) = repo();
+        let last = last_commit_per_path(&repository, &ids[3]);
+        assert_eq!(last["README.md"].0, ids[1]);
+        // The merge commit's first parent lacked b(), so the merge is what "touched" lib.rs on main.
+        assert_eq!(last["src/lib.rs"].0, ids[3]);
+        assert_eq!(last["Cargo.toml"].0, ids[3]);
+        assert_eq!(
+            changed_paths(&repository, &repository.objects[&ids[0]]),
+            vec!["README.md", "src/lib.rs"]
+        );
+        let tree = list_tree(&repository.objects[&ids[3]].files, "");
+        assert_eq!(
+            tree.iter()
+                .map(|e| (e.name.as_str(), e.dir))
+                .collect::<Vec<_>>(),
+            vec![("src", true), ("Cargo.toml", false), ("README.md", false)]
+        );
+        assert_eq!(
+            list_tree(&repository.objects[&ids[3]].files, "src")[0].path,
+            "src/lib.rs"
+        );
+    }
+    #[test]
+    fn line_diff_is_minimal_and_hunked() {
+        assert!(diff_lines("a\nb\n", "a\nb\n").is_empty());
+        let hunks = diff_lines(
+            "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n",
+            "a\nb\nc\nD\ne\nf\ng\nh\ni\nj\nk\n",
+        );
+        assert_eq!(hunks.len(), 1);
+        assert_eq!(hunks[0].header(), "@@ -1,10 +1,11 @@");
+        assert_eq!(
+            hunks[0]
+                .lines
+                .iter()
+                .filter(|l| matches!(l, DiffLine::Add(_)))
+                .count(),
+            2
+        );
+        assert_eq!(
+            hunks[0]
+                .lines
+                .iter()
+                .filter(|l| matches!(l, DiffLine::Remove(_)))
+                .count(),
+            1
+        );
+        let far = diff_lines(
+            "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n",
+            "X\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\nY\n",
+        );
+        assert_eq!(far.len(), 2);
+        assert_eq!(far[1].header(), "@@ -9,4 +9,4 @@");
+        let (repository, ids) = repo();
+        let files = diff_trees(
+            &repository.objects[&ids[0]].files,
+            &repository.objects[&ids[2]].files,
+        );
+        assert_eq!(
+            files
+                .iter()
+                .map(|f| (f.path.as_str(), f.status.as_str(), f.additions, f.deletions))
+                .collect::<Vec<_>>(),
+            vec![
+                ("Cargo.toml", "added", 1, 0),
+                ("src/lib.rs", "modified", 1, 0)
+            ]
+        );
+        // Deterministic: the same inputs give the same hunks every time.
+        assert_eq!(
+            diff_lines("x\ny\n", "y\nz\n"),
+            diff_lines("x\ny\n", "y\nz\n")
+        );
+    }
+    #[test]
+    fn language_stats_skip_prose_and_sum_to_the_whole() {
+        let files: BTreeMap<String, String> = [
+            ("README.md", "# hello world\n"),
+            ("src/a.rs", "fn a() {}\n"),
+            ("build.sh", "ls\n"),
+            ("LICENSE", "MIT"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        let stats = language_stats(&files);
+        assert_eq!(stats[0].0, "Rust");
+        assert_eq!(stats[1].0, "Shell");
+        assert_eq!(stats.len(), 2);
+        assert_eq!((stats[0].2, stats[1].2), (10 * 1000 / 13, 3 * 1000 / 13));
+        assert_eq!(language_of("Dockerfile"), Some("Dockerfile"));
+        assert_eq!(language_of("notes.txt"), None);
+        assert_eq!(short("abcdef0123"), "abcdef0");
+    }
+}
 /// Owner names the router reserves; a repository owner may not shadow a fixed route.
 const RESERVED: &[&str] = &["api", "repos", "gist", "gists"];
 pub struct GitService;
@@ -543,6 +1109,7 @@ impl Service for GitService {
                     id: format!("repo-{name}"),
                     text: name.clone(),
                     url: format!("/repos/{name}"),
+                    style: None,
                 });
             }
             return HttpResponse::page(&page);

@@ -3,7 +3,9 @@
   "kind": "media",
   "node": "youtube-music",
   "domains": [
-    "music.youtube.com"
+    "music.youtube.com",
+    "youtubemusic.com",
+    "www.youtubemusic.com"
   ],
   "port": 80,
   "network_node": {

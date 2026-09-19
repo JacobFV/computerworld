@@ -1,0 +1,47 @@
+NSR3301  —  300 mA low-dropout linear regulator, 3.3 V fixed
+Northstar-approved part, SOT-223-3 package         Rev 2.1, 2026-04
+
+DESCRIPTION
+  Fixed 3.3 V output, 300 mA, with fold-back current limit and thermal shutdown.
+  Stable with a 1 uF or larger ceramic output capacitor.
+
+ABSOLUTE MAXIMUM RATINGS
+  Input voltage VIN ............................ -0.3 V to 16 V
+  Output current ............................... internally limited
+  Junction temperature ......................... 150 C
+  Storage temperature .......................... -65 C to 150 C
+  ESD (HBM) .................................... 2 kV
+
+ELECTRICAL CHARACTERISTICS   (VIN = 5 V, CIN = 1 uF, COUT = 10 uF, TA = 25 C unless noted)
+  Parameter                    Conditions                    Min     Typ     Max     Unit
+  ------------------------------------------------------------------------------------------
+  Output voltage               IOUT = 10 mA                  3.234   3.300   3.366   V
+  Line regulation              VIN = 4 V to 12 V                     4       12      mV
+  Load regulation              IOUT = 1 mA to 300 mA                 10      30      mV
+  Dropout voltage              IOUT = 150 mA                         0.28    0.35    V
+                               IOUT = 300 mA                         0.45    0.60    V
+  Quiescent current            IOUT = 0                              2.1     3.5     mA
+  Current limit                VOUT = 0 V                    350     480             mA
+  Output noise                 10 Hz to 100 kHz                      40              uVrms
+  PSRR                         f = 1 kHz                             62              dB
+  Thermal shutdown                                                   160             C
+  Thermal resistance R_thJA    SOT-223, 1 in^2 copper                52              K/W
+                               SOT-223, minimal pad                  100             K/W
+
+TYPICAL APPLICATION
+  VIN --+-- CIN 1 uF --GND
+        |
+      [IN  NSR3301  OUT]--+-- COUT 10 uF -- GND
+            |GND          |
+            GND         3.3 V rail (add 100 nF at each load pin)
+
+PIN ASSIGNMENT (SOT-223-3)
+  1  IN
+  2  GND  (tab)
+  3  OUT
+
+NOTES
+  - Keep COUT within 5 mm of pin 3; ESR < 0.5 ohm.
+  - Power dissipation P = (VIN - 3.3 V) * IOUT. At 5 V in and 250 mA out this is 0.43 W:
+    allow ground copper under the tab (see R_thJA).
+  - Bench data on the Atlas rev A board: ~/Notes/lab-notebook.md, 2026-09-08.

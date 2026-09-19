@@ -1,4 +1,5 @@
 //! Native OS shell composition. Application scenes retain independent state and coordinates.
+use crate::CursorKind;
 use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
 pub mod scroll;
@@ -400,8 +401,57 @@ pub fn render_desktop_with_options(
     }
     p.z = 1_000_000;
     chrome(&mut p, &ctx);
+    p.z = 2_000_000;
+    pointer(&mut p, &ctx, options.capture.as_deref());
     p.scene.revision = clock_us;
     p.scene
+}
+/// The mouse pointer, the last two nodes of every desktop frame: its outline, then its
+/// body over it, in the shape the target under it asks for (`CursorKind::for_target`)
+/// and the platform's colors. Neither carries an interaction or a semantic, so hit tests
+/// and observations see straight through them. A phone, a switched-off screen or a scene
+/// without a pointer still gets both nodes, empty, so the node sequence is stable and a
+/// pointer arriving repaints only its own pixels.
+fn pointer(p: &mut Painter, c: &ShellContext, capture: Option<&str>) {
+    let colors = CursorKind::colors(c.theme).filter(|_| c.screen != crate::ScreenState::Off);
+    let hover = c
+        .hover
+        .filter(|&(x, y)| Rect::new(0, 0, c.width, c.height).contains(x, y));
+    let (Some((fill, outline)), Some((x, y))) = (colors, hover) else {
+        p.node(Rect::new(0, 0, 0, 0), Primitive::Region, None);
+        p.node(Rect::new(0, 0, 0, 0), Primitive::Region, None);
+        return;
+    };
+    let kind = match capture {
+        Some(operation) => CursorKind::for_target(operation, true),
+        None => p
+            .scene
+            .hit_test(x, y)
+            .and_then(|n| n.interaction.as_deref())
+            .map_or(CursorKind::Default, |target| {
+                CursorKind::for_target(target, false)
+            }),
+    };
+    let points: Vec<(i32, i32)> = kind
+        .glyph()
+        .into_iter()
+        .map(|(dx, dy)| (x.saturating_add(dx), y.saturating_add(dy)))
+        .collect();
+    // The body covers the inner half of the stroke, leaving a thin edge all around it.
+    p.bounded_path(points.clone(), 4, |points| Primitive::Path {
+        points,
+        fill: None,
+        stroke: Some(outline),
+        stroke_width: 3,
+        closed: true,
+    });
+    p.bounded_path(points, 4, |points| Primitive::Path {
+        points,
+        fill: Some(fill),
+        stroke: None,
+        stroke_width: 0,
+        closed: true,
+    });
 }
 fn browser_chrome(p: &mut Painter, c: &ShellContext, w: &WindowView) {
     match c.theme {

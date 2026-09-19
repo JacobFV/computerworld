@@ -1,0 +1,203 @@
+{
+  "id": "messages",
+  "kind": "messages",
+  "node": "messages-node",
+  "domains": [
+    "messages.internal"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "10.0.1.14",
+    "zone": "local",
+    "link": {
+      "from": "app-server",
+      "latency_us": 10
+    }
+  },
+  "initial_state": {
+    "next_id": 20,
+    "contacts": {
+      "alice": {
+        "name": "Alice Chen",
+        "handles": [
+          "+14155550100",
+          "alice.chen@icloud.com"
+        ],
+        "imessage": true
+      },
+      "bob": {
+        "name": "Bob Martinez",
+        "handles": [
+          "+14155550101"
+        ],
+        "imessage": true
+      },
+      "carol": {
+        "name": "Carol Okafor",
+        "handles": [
+          "+14155550102",
+          "carol.okafor@icloud.com"
+        ],
+        "imessage": true
+      },
+      "admin": {
+        "name": "Northstar IT",
+        "handles": [
+          "+14155550103"
+        ],
+        "imessage": true
+      },
+      "dentist": {
+        "name": "Bayview Dental",
+        "handles": [
+          "+14155550199"
+        ],
+        "imessage": false
+      }
+    },
+    "conversations": {
+      "+14155550100|+14155550101": {
+        "participants": [
+          "+14155550100",
+          "+14155550101"
+        ],
+        "messages": [
+          {
+            "id": "sms-1",
+            "from": "+14155550101",
+            "text": "lunch?",
+            "time": 30,
+            "service": "imessage",
+            "delivered": ["+14155550100"],
+            "read": {"+14155550100": 30}
+          },
+          {
+            "id": "sms-2",
+            "from": "+14155550100",
+            "text": "yes. the ramen place?",
+            "time": 30,
+            "service": "imessage",
+            "delivered": ["+14155550101"],
+            "read": {"+14155550101": 31}
+          },
+          {
+            "id": "sms-3",
+            "from": "+14155550101",
+            "text": "12:30? I have the launch review at 2",
+            "time": 31,
+            "service": "imessage",
+            "delivered": ["+14155550100"],
+            "read": {"+14155550100": 31},
+            "tapbacks": {"liked": ["+14155550100"]}
+          },
+          {
+            "id": "sms-4",
+            "from": "+14155550100",
+            "text": "works. meet you in the lobby",
+            "time": 31,
+            "service": "imessage",
+            "delivered": ["+14155550101"],
+            "read": {"+14155550101": 32}
+          },
+          {
+            "id": "sms-5",
+            "from": "+14155550101",
+            "text": "did carol see the flaky test before the review?",
+            "time": 32,
+            "service": "imessage",
+            "delivered": ["+14155550100"],
+            "read": {"+14155550100": 32}
+          },
+          {
+            "id": "sms-6",
+            "from": "+14155550100",
+            "text": "she did. it's OPS-2 on the board and it's not blocking",
+            "time": 32,
+            "service": "imessage",
+            "delivered": ["+14155550101"],
+            "read": {"+14155550101": 33},
+            "tapbacks": {"loved": ["+14155550101"]}
+          },
+          {
+            "id": "sms-7",
+            "from": "+14155550101",
+            "text": "running 5 late, order me the spicy one",
+            "time": 44,
+            "service": "imessage",
+            "delivered": ["+14155550100"]
+          }
+        ]
+      },
+      "+14155550100|+14155550101|+14155550102": {
+        "participants": [
+          "+14155550100",
+          "+14155550101",
+          "+14155550102"
+        ],
+        "name": "Launch crew",
+        "messages": [
+          {
+            "id": "sms-8",
+            "from": "+14155550102",
+            "text": "Launch checklist is in the doc, alice owns the confirmation",
+            "time": 35,
+            "service": "imessage",
+            "delivered": ["+14155550100", "+14155550101"],
+            "read": {"+14155550100": 35, "+14155550101": 36}
+          },
+          {
+            "id": "sms-9",
+            "from": "+14155550100",
+            "text": "on it. status page will be updated by 9",
+            "time": 35,
+            "service": "imessage",
+            "delivered": ["+14155550101", "+14155550102"],
+            "read": {"+14155550101": 36, "+14155550102": 35},
+            "tapbacks": {"emphasized": ["+14155550102"]}
+          },
+          {
+            "id": "sms-10",
+            "from": "+14155550101",
+            "text": "pizza after? my treat if CI is green",
+            "time": 36,
+            "service": "imessage",
+            "delivered": ["+14155550100", "+14155550102"],
+            "read": {"+14155550100": 36},
+            "tapbacks": {"laughed": ["+14155550100"]}
+          },
+          {
+            "id": "sms-11",
+            "from": "+14155550102",
+            "text": "deal. 6pm, same place as last time",
+            "time": 45,
+            "service": "imessage",
+            "delivered": ["+14155550100", "+14155550101"]
+          }
+        ]
+      },
+      "+14155550100|+14155550199": {
+        "participants": [
+          "+14155550100",
+          "+14155550199"
+        ],
+        "messages": [
+          {
+            "id": "sms-12",
+            "from": "+14155550199",
+            "text": "Bayview Dental: reminder of your cleaning on Thursday at 8:30. Reply C to confirm.",
+            "time": 20,
+            "service": "sms"
+          },
+          {
+            "id": "sms-13",
+            "from": "+14155550100",
+            "text": "C",
+            "time": 21,
+            "service": "sms"
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": []
+}

@@ -1,4 +1,5 @@
-//! Feeds: x.com and mastodon.social (`mode: microblog`), linkedin.com (`mode: professional`).
+//! Feeds: x.com and mastodon.social (`mode: microblog`), linkedin.com (`mode: professional`),
+//! instagram.com and pinterest.com (`mode: photos`: every post is a picture with a caption).
 //! Handles are world-wide identities, so every account maps to an OS actor or to nobody.
 //!
 //! One router renders every GET, and a successful form POST re-renders through the same router,
@@ -30,7 +31,7 @@ const OBJECTS: &[&str] = &[
 ];
 const ARRAYS: &[&str] = &[];
 /// `mode` is the documented discriminant; an unlisted value is a seed typo, not a fallback.
-pub const MODES: &[&str] = &["microblog", "professional"];
+pub const MODES: &[&str] = &["microblog", "professional", "photos"];
 pub const MAX_POST: usize = 500;
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -88,6 +89,10 @@ pub struct Post {
     pub reposts: u64,
     pub reply_to: Option<String>,
     pub quoted: Option<String>,
+    /// `photos` mode only: what the picture shows, drawn as a labelled tile above the caption.
+    /// Left out of the serialized state when empty so the other modes' state is unchanged.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub image: String,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -109,6 +114,9 @@ pub struct Dm {
 impl SocialState {
     pub fn professional(&self) -> bool {
         self.mode == "professional"
+    }
+    pub fn photos(&self) -> bool {
+        self.mode == "photos"
     }
     pub fn account_of(&self, actor: &str) -> Option<&Account> {
         self.accounts
@@ -263,6 +271,7 @@ impl SocialState {
             reposts: 0,
             reply_to: reply_to.map(str::to_owned),
             quoted: quoted.map(str::to_owned),
+            image: String::new(),
         };
         self.posts.insert(post.id.clone(), post.clone());
         Ok(post)
@@ -552,14 +561,29 @@ fn post_card(
             web::style().size(10).width(64).background(p.accent.clone()),
         ));
     }
-    let mut body = vec![
-        web::row(&format!("{id}-head"), 8, "center", head),
-        web::styled(
-            &format!("{id}-text"),
-            &post.text,
-            web::style().size(15).color(p.ink.clone()),
-        ),
-    ];
+    let mut body = vec![web::row(&format!("{id}-head"), 8, "center", head)];
+    if s.photos() {
+        // The picture itself: a tile in the author's tint, named after what it shows.
+        body.push(web::thumbnail(
+            &format!("{id}-photo"),
+            if post.image.is_empty() {
+                "Photo"
+            } else {
+                post.image.as_str()
+            },
+            web::style()
+                .height(180)
+                .radius(10)
+                .background(tint(&post.author))
+                .color("#ffffff")
+                .align("center"),
+        ));
+    }
+    body.push(web::styled(
+        &format!("{id}-text"),
+        &post.text,
+        web::style().size(15).color(p.ink.clone()),
+    ));
     if let Some(q) = post.quoted.as_ref().filter(|q| s.posts.contains_key(*q)) {
         let quoted = &s.posts[q];
         body.push(web::card(
@@ -658,7 +682,13 @@ fn feed(
             web::style().size(14).color(p.muted.clone()),
         ));
     }
-    e.extend(ids.iter().map(|id| post_card(s, ctx, p, id, here)));
+    let cards = ids.iter().map(|id| post_card(s, ctx, p, id, here));
+    if s.photos() {
+        // A photo feed is a wall of tiles, two across, rather than a single column.
+        e.push(web::grid("feed-grid", 2, 12, cards.collect()));
+    } else {
+        e.extend(cards);
+    }
     e
 }
 fn timeline(s: &SocialState, ctx: &ServiceContext, home: bool) -> SimResult<HttpResponse> {
@@ -688,6 +718,8 @@ fn timeline(s: &SocialState, ctx: &ServiceContext, home: bool) -> SimResult<Http
                     "compose-title",
                     if s.professional() {
                         "Share an update"
+                    } else if s.photos() {
+                        "Share a photo"
                     } else {
                         "What is happening?"
                     },

@@ -1,0 +1,321 @@
+{
+  "id": "npmjs",
+  "kind": "static-site",
+  "node": "npmjs",
+  "domains": ["npmjs.com","www.npmjs.com","registry.npmjs.org"],
+  "port": 80,
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"npm","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Packages","url":"/search"},{"kind":"link","id":"nav-1","text":"About","url":"/about"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"}]},
+          {"kind":"heading","id":"hero","text":"Build amazing things","level":1},
+          {"kind":"text","id":"hero-sub","text":"npm is the registry for JavaScript packages. Every package here has a page with its README, versions, dependencies and weekly download count."},
+          {"kind":"link","id":"browse","text":"Browse all packages, sorted by downloads","url":"/search"},
+          {"kind":"heading","id":"pop-title","text":"Most downloaded this week","level":2},
+          {"kind":"link","id":"pop-0","text":"left-trim","url":"/package/left-trim"},
+          {"kind":"text","id":"pop-0-d","text":"Strip whitespace, or any set of characters, from the start of a string. Zero dependencies, 200 bytes, typed. 4,180,000 weekly downloads, v2.1.0."},
+          {"kind":"link","id":"pop-1","text":"colorish","url":"/package/colorish"},
+          {"kind":"text","id":"pop-1-d","text":"Terminal colours without the fuss. Chainable styles, automatic level detection, no escape codes when piped. 2,950,000 weekly downloads, v4.0.0."},
+          {"kind":"link","id":"pop-2","text":"semver-tiny","url":"/package/semver-tiny"},
+          {"kind":"text","id":"pop-2-d","text":"Parse, compare and satisfy semantic versions. Caret, tilde, ranges and prereleases. 900 bytes. 1,320,000 weekly downloads, v1.0.6."},
+          {"kind":"link","id":"pop-3","text":"tinyrouter","url":"/package/tinyrouter"},
+          {"kind":"text","id":"pop-3-d","text":"A 1 KB router for the browser and for servers: pattern matching, params, wildcards, and nothing else. 912,000 weekly downloads, v3.4.2."},
+          {"kind":"link","id":"pop-4","text":"fs-walk-sync","url":"/package/fs-walk-sync"},
+          {"kind":"text","id":"pop-4-d","text":"Walk a directory tree synchronously and get back a sorted list of paths. Sorted, so the same tree gives the same list. 870,000 weekly downloads, v2.0.1."},
+          {"kind":"link","id":"pop-5","text":"cli-spinner-lite","url":"/package/cli-spinner-lite"},
+          {"kind":"text","id":"pop-5-d","text":"A terminal spinner that stays out of the way: one line, updates in place, silent when not a TTY. 690,000 weekly downloads, v3.1.0."},
+          {"kind":"divider","id":"foot-rule"},
+          {"kind":"link","id":"foot-gh","text":"npm CLI on GitHub","url":"http://github.com/"},
+          {"kind":"link","id":"foot-pol","text":"Policies","url":"/policies"}
+        ]
+      },
+      "/search": {
+        "version": 1,
+        "title": "Packages — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"npm","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Packages","url":"/search"},{"kind":"link","id":"nav-1","text":"About","url":"/about"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"}]},
+          {"kind":"heading","id":"title","text":"12 packages","level":1},
+          {"kind":"text","id":"sub","text":"Sorted by weekly downloads. Every package links to its own page with README, install command and dependencies."},
+          {"kind":"link","id":"pkg-0","text":"left-trim","url":"/package/left-trim"},
+          {"kind":"text","id":"pkg-0-d","text":"v2.1.0 · MIT · 4,180,000 weekly downloads · sindre-k. Strip whitespace, or any set of characters, from the start of a string. Zero dependencies, 200 bytes, typed."},
+          {"kind":"link","id":"pkg-1","text":"colorish","url":"/package/colorish"},
+          {"kind":"text","id":"pkg-1-d","text":"v4.0.0 · MIT · 2,950,000 weekly downloads · sindre-k. Terminal colours without the fuss. Chainable styles, automatic level detection, no escape codes when piped."},
+          {"kind":"link","id":"pkg-2","text":"semver-tiny","url":"/package/semver-tiny"},
+          {"kind":"text","id":"pkg-2-d","text":"v1.0.6 · MIT · 1,320,000 weekly downloads · sindre-k. Parse, compare and satisfy semantic versions. Caret, tilde, ranges and prereleases. 900 bytes."},
+          {"kind":"link","id":"pkg-3","text":"tinyrouter","url":"/package/tinyrouter"},
+          {"kind":"text","id":"pkg-3-d","text":"v3.4.2 · MIT · 912,000 weekly downloads · mira-oduya. A 1 KB router for the browser and for servers: pattern matching, params, wildcards, and nothing else."},
+          {"kind":"link","id":"pkg-4","text":"fs-walk-sync","url":"/package/fs-walk-sync"},
+          {"kind":"text","id":"pkg-4-d","text":"v2.0.1 · ISC · 870,000 weekly downloads · h-brandt. Walk a directory tree synchronously and get back a sorted list of paths. Sorted, so the same tree gives the same list."},
+          {"kind":"link","id":"pkg-5","text":"cli-spinner-lite","url":"/package/cli-spinner-lite"},
+          {"kind":"text","id":"pkg-5-d","text":"v3.1.0 · MIT · 690,000 weekly downloads · mira-oduya. A terminal spinner that stays out of the way: one line, updates in place, silent when not a TTY."},
+          {"kind":"link","id":"pkg-6","text":"json-diff-lite","url":"/package/json-diff-lite"},
+          {"kind":"text","id":"pkg-6-d","text":"v1.3.1 · MIT · 620,000 weekly downloads · p-raman. Structural diff and patch for JSON values in 1.5 KB. Produces RFC 6902 patches; applies them too."},
+          {"kind":"link","id":"pkg-7","text":"zod-lite","url":"/package/zod-lite"},
+          {"kind":"text","id":"pkg-7-d","text":"v0.7.4 · MIT · 510,000 weekly downloads · p-raman. Runtime schema validation with inferred static types, in 3 KB. The common subset of the well-known API."},
+          {"kind":"link","id":"pkg-8","text":"eventbus-ts","url":"/package/eventbus-ts"},
+          {"kind":"text","id":"pkg-8-d","text":"v2.2.0 · MIT · 380,000 weekly downloads · mira-oduya. A typed event emitter. Declare the event map once and every on(), emit() and off() is checked."},
+          {"kind":"link","id":"pkg-9","text":"deterministic-clock","url":"/package/deterministic-clock"},
+          {"kind":"text","id":"pkg-9-d","text":"v0.9.3 · MIT · 240,000 weekly downloads · northstar. A clock that only moves when you tell it to. Drop-in for Date.now and setTimeout in tests and simulations."},
+          {"kind":"link","id":"pkg-10","text":"atlas-sdk","url":"/package/atlas-sdk"},
+          {"kind":"text","id":"pkg-10-d","text":"v1.8.0 · Apache-2.0 · 156,000 weekly downloads · northstar. Official JavaScript client for the Atlas deterministic simulation runtime: start a world, step it, read a machine, replay a run."},
+          {"kind":"link","id":"pkg-11","text":"tokenbucket","url":"/package/tokenbucket"},
+          {"kind":"text","id":"pkg-11-d","text":"v1.1.2 · MIT · 145,000 weekly downloads · h-brandt. Token-bucket rate limiter with a pluggable clock. Sync take(), async wait(), no timers unless you ask."}
+        ]
+      },
+      "/about": {
+        "version": 1,
+        "title": "About — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"npm","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Packages","url":"/search"},{"kind":"link","id":"nav-1","text":"About","url":"/about"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"}]},
+          {"kind":"heading","id":"title","text":"About npm","level":1},
+          {"kind":"text","id":"p1","text":"npm is the package registry for the JavaScript ecosystem and the command-line client that installs from it. The registry holds a versioned, immutable copy of every published package; once a version is published it cannot be changed, only deprecated, so a lockfile written today resolves to the same bytes in ten years."},
+          {"kind":"text","id":"p2","text":"The registry serves package metadata and tarballs to the npm, pnpm, yarn and bun clients and to anyone who speaks the registry protocol. Download counts are aggregated daily from registry logs with automated traffic filtered out; they are an estimate, not an audit."},
+          {"kind":"text","id":"p3","text":"Every package page lists the README, versions, dependencies, maintainers and licence. Publishing requires an account with two-factor authentication. The registry does not review code, only that a publish is authorised."},
+          {"kind":"link","id":"gh","text":"npm CLI source on GitHub","url":"http://github.com/"},
+          {"kind":"link","id":"so","text":"Questions tagged npm on Stack Overflow","url":"http://stackoverflow.com/"}
+        ]
+      },
+      "/policies": {
+        "version": 1,
+        "title": "Policies — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"npm","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Packages","url":"/search"},{"kind":"link","id":"nav-1","text":"About","url":"/about"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"}]},
+          {"kind":"heading","id":"title","text":"Registry policies","level":1},
+          {"kind":"heading","id":"h-unpub","text":"Unpublishing","level":2},
+          {"kind":"text","id":"p-unpub","text":"A version can be unpublished within 72 hours of publishing if no other package depends on it. After that it can be deprecated, which shows a warning at install time, but not removed. This protects every project that already installed it."},
+          {"kind":"heading","id":"h-names","text":"Package names","level":2},
+          {"kind":"text","id":"p-names","text":"Names are lowercase, URL-safe and unique. A name confusingly similar to an existing popular package may be refused. Unused names on abandoned accounts can be transferred by request after a waiting period during which the current owner is contacted."},
+          {"kind":"heading","id":"h-sec","text":"Security","level":2},
+          {"kind":"text","id":"p-sec","text":"Publishing requires two-factor authentication. Reports of malicious packages are handled within one business day; a confirmed malicious version is replaced with a security placeholder and its dependents are notified. Report by email to the security team, not in a public issue."},
+          {"kind":"heading","id":"h-conduct","text":"Conduct","level":2},
+          {"kind":"text","id":"p-conduct","text":"The registry is a shared resource. Do not scrape at a rate that degrades it, do not publish packages whose only purpose is to hold a name, and do not use the registry for anything but distributing packages."}
+        ]
+      },
+      "/package/left-trim": {
+        "version": 1,
+        "title": "left-trim — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"left-trim 2.1.0","level":1},
+          {"kind":"text","id":"desc","text":"Strip whitespace, or any set of characters, from the start of a string. Zero dependencies, 200 bytes, typed."},
+          {"kind":"styled","id":"install","text":"npm i left-trim","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 2.1.0 · License MIT · 4,180,000 weekly downloads · Maintainer sindre-k · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"left-trim exists because String.prototype.trimStart cannot take a character set. Pass a string and, optionally, the characters to strip; it returns a new string and never touches the original. Works in every runtime that has strings."},
+          {"kind":"styled","id":"example","text":"import leftTrim from 'left-trim';\nleftTrim('  hello');        // 'hello'\nleftTrim('//path', '/');  // 'path'","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
+          {"kind":"text","id":"deps-none","text":"None."},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/tinyrouter": {
+        "version": 1,
+        "title": "tinyrouter — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"tinyrouter 3.4.2","level":1},
+          {"kind":"text","id":"desc","text":"A 1 KB router for the browser and for servers: pattern matching, params, wildcards, and nothing else."},
+          {"kind":"styled","id":"install","text":"npm i tinyrouter","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 3.4.2 · License MIT · 912,000 weekly downloads · Maintainer mira-oduya · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"tinyrouter matches a path against a list of patterns and returns the first match with its parameters. It does not know about the DOM, fetch, or history; you wire those. Patterns use :param and * segments. The matcher is a compiled trie so a thousand routes match in constant time per segment."},
+          {"kind":"styled","id":"example","text":"import {router} from 'tinyrouter';\nconst r = router([['/users/:id', showUser], ['/files/*', serveFile]]);\nr.match('/users/42'); // {handler: showUser, params: {id: '42'}}","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
+          {"kind":"link","id":"dep-0","text":"left-trim","url":"/package/left-trim"},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/atlas-sdk": {
+        "version": 1,
+        "title": "atlas-sdk — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"atlas-sdk 1.8.0","level":1},
+          {"kind":"text","id":"desc","text":"Official JavaScript client for the Atlas deterministic simulation runtime: start a world, step it, read a machine, replay a run."},
+          {"kind":"styled","id":"install","text":"npm i atlas-sdk","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 1.8.0 · License Apache-2.0 · 156,000 weekly downloads · Maintainer northstar · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"atlas-sdk wraps the Atlas HTTP and WebSocket protocol in typed calls. Create a world from a seed, advance it by ticks, inspect any machine and diff two runs. Every call is deterministic given the world seed and the order of calls, which the SDK enforces by serialising them. Requires an Atlas server; the package includes an in-process stub for tests."},
+          {"kind":"styled","id":"example","text":"import {Atlas} from 'atlas-sdk';\nconst world = await Atlas.connect('http://localhost:7000').world({seed: 42});\nawait world.step(100);\nconsole.log(await world.machine('alice-mac').screen());","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (3)","level":2},
+          {"kind":"link","id":"dep-0","text":"deterministic-clock","url":"/package/deterministic-clock"},
+          {"kind":"link","id":"dep-1","text":"eventbus-ts","url":"/package/eventbus-ts"},
+          {"kind":"link","id":"dep-2","text":"json-diff-lite","url":"/package/json-diff-lite"},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/deterministic-clock": {
+        "version": 1,
+        "title": "deterministic-clock — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"deterministic-clock 0.9.3","level":1},
+          {"kind":"text","id":"desc","text":"A clock that only moves when you tell it to. Drop-in for Date.now and setTimeout in tests and simulations."},
+          {"kind":"styled","id":"install","text":"npm i deterministic-clock","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 0.9.3 · License MIT · 240,000 weekly downloads · Maintainer northstar · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"deterministic-clock replaces the wall clock with a logical one. now() returns the current tick, advance(ms) moves it and fires any timers due, and install() patches the globals for the duration of a test. Timers fire in order of due time, then registration order, so a run is the same every time."},
+          {"kind":"styled","id":"example","text":"import {clock} from 'deterministic-clock';\nclock.install();\nsetTimeout(() => console.log('fired'), 1000);\nclock.advance(1000); // prints 'fired'","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
+          {"kind":"text","id":"deps-none","text":"None."},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/json-diff-lite": {
+        "version": 1,
+        "title": "json-diff-lite — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"json-diff-lite 1.3.1","level":1},
+          {"kind":"text","id":"desc","text":"Structural diff and patch for JSON values in 1.5 KB. Produces RFC 6902 patches; applies them too."},
+          {"kind":"styled","id":"install","text":"npm i json-diff-lite","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 1.3.1 · License MIT · 620,000 weekly downloads · Maintainer p-raman · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"json-diff-lite compares two JSON values and returns the smallest list of add, remove and replace operations that turns one into the other. Arrays are diffed by index; objects by key, in sorted order, so the patch is stable across runs. apply() takes a patch and returns a new value."},
+          {"kind":"styled","id":"example","text":"import {diff, apply} from 'json-diff-lite';\nconst patch = diff({a: 1}, {a: 2, b: 3});\n// [{op: 'replace', path: '/a', value: 2}, {op: 'add', path: '/b', value: 3}]\napply({a: 1}, patch); // {a: 2, b: 3}","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
+          {"kind":"text","id":"deps-none","text":"None."},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/colorish": {
+        "version": 1,
+        "title": "colorish — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"colorish 4.0.0","level":1},
+          {"kind":"text","id":"desc","text":"Terminal colours without the fuss. Chainable styles, automatic level detection, no escape codes when piped."},
+          {"kind":"styled","id":"install","text":"npm i colorish","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 4.0.0 · License MIT · 2,950,000 weekly downloads · Maintainer sindre-k · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"colorish exposes one function per colour and style, chainable in any order. It detects whether stdout is a TTY and how many colours it supports, and emits nothing when output is piped or NO_COLOR is set. Version 4 drops the CommonJS build."},
+          {"kind":"styled","id":"example","text":"import c from 'colorish';\nconsole.log(c.bold.green('ok'), c.dim('in 12 ms'));","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
+          {"kind":"text","id":"deps-none","text":"None."},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/eventbus-ts": {
+        "version": 1,
+        "title": "eventbus-ts — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"eventbus-ts 2.2.0","level":1},
+          {"kind":"text","id":"desc","text":"A typed event emitter. Declare the event map once and every on(), emit() and off() is checked."},
+          {"kind":"styled","id":"install","text":"npm i eventbus-ts","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 2.2.0 · License MIT · 380,000 weekly downloads · Maintainer mira-oduya · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"eventbus-ts is an emitter whose event names and payloads are a TypeScript type. Listeners are called in registration order; emit returns the number of listeners called. once() and a disposable subscription are included. Nothing async, nothing global."},
+          {"kind":"styled","id":"example","text":"import {EventBus} from 'eventbus-ts';\nconst bus = new EventBus<{tick: number; halt: void}>();\nbus.on('tick', (n) => console.log(n));\nbus.emit('tick', 1);","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
+          {"kind":"text","id":"deps-none","text":"None."},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/zod-lite": {
+        "version": 1,
+        "title": "zod-lite — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"zod-lite 0.7.4","level":1},
+          {"kind":"text","id":"desc","text":"Runtime schema validation with inferred static types, in 3 KB. The common subset of the well-known API."},
+          {"kind":"styled","id":"install","text":"npm i zod-lite","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 0.7.4 · License MIT · 510,000 weekly downloads · Maintainer p-raman · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"zod-lite covers objects, arrays, strings, numbers, booleans, literals, unions, optional and nullable, with parse() and safeParse(). Errors are a flat list of path and message. It does not do transforms, refinements or async; use the full library if you need them. json-diff-lite is used to report what safeParse would have to change."},
+          {"kind":"styled","id":"example","text":"import {z} from 'zod-lite';\nconst User = z.object({id: z.number(), name: z.string()});\ntype User = z.infer<typeof User>;\nUser.parse({id: 1, name: 'alice'});","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
+          {"kind":"link","id":"dep-0","text":"json-diff-lite","url":"/package/json-diff-lite"},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/tokenbucket": {
+        "version": 1,
+        "title": "tokenbucket — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"tokenbucket 1.1.2","level":1},
+          {"kind":"text","id":"desc","text":"Token-bucket rate limiter with a pluggable clock. Sync take(), async wait(), no timers unless you ask."},
+          {"kind":"styled","id":"install","text":"npm i tokenbucket","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 1.1.2 · License MIT · 145,000 weekly downloads · Maintainer h-brandt · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"tokenbucket implements the classic algorithm: a bucket of capacity N refills at R tokens per second; take(k) succeeds if k tokens are available. wait(k) resolves when they will be. The clock is injectable, and deterministic-clock is the default in test mode, so limiter behaviour is reproducible."},
+          {"kind":"styled","id":"example","text":"import {TokenBucket} from 'tokenbucket';\nconst limiter = new TokenBucket({capacity: 10, refillPerSecond: 2});\nif (limiter.take(1)) send();","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
+          {"kind":"link","id":"dep-0","text":"deterministic-clock","url":"/package/deterministic-clock"},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/fs-walk-sync": {
+        "version": 1,
+        "title": "fs-walk-sync — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"fs-walk-sync 2.0.1","level":1},
+          {"kind":"text","id":"desc","text":"Walk a directory tree synchronously and get back a sorted list of paths. Sorted, so the same tree gives the same list."},
+          {"kind":"styled","id":"install","text":"npm i fs-walk-sync","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 2.0.1 · License ISC · 870,000 weekly downloads · Maintainer h-brandt · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"fs-walk-sync returns every file under a directory as a relative path, sorted bytewise, with optional filters for extension and depth. The sort is the point: readdir order varies by file system, and a build that depends on it is not reproducible. Symlinks are not followed by default."},
+          {"kind":"styled","id":"example","text":"import walk from 'fs-walk-sync';\nfor (const file of walk('src', {ext: ['.ts']})) console.log(file);","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
+          {"kind":"link","id":"dep-0","text":"left-trim","url":"/package/left-trim"},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/semver-tiny": {
+        "version": 1,
+        "title": "semver-tiny — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"semver-tiny 1.0.6","level":1},
+          {"kind":"text","id":"desc","text":"Parse, compare and satisfy semantic versions. Caret, tilde, ranges and prereleases. 900 bytes."},
+          {"kind":"styled","id":"install","text":"npm i semver-tiny","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 1.0.6 · License MIT · 1,320,000 weekly downloads · Maintainer sindre-k · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"semver-tiny parses a version into its five parts, compares two versions, and tests a version against a range in the caret, tilde, hyphen and x-range forms. It does not implement every corner of the full grammar, but it agrees with the reference implementation on everything it does implement, and the test suite checks that."},
+          {"kind":"styled","id":"example","text":"import {satisfies, compare} from 'semver-tiny';\nsatisfies('1.4.2', '^1.2.0'); // true\ncompare('2.0.0-beta.1', '2.0.0'); // -1","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
+          {"kind":"text","id":"deps-none","text":"None."},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      },
+      "/package/cli-spinner-lite": {
+        "version": 1,
+        "title": "cli-spinner-lite — npm",
+        "elements": [
+          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"npm","url":"/"},{"kind":"link","id":"nav-list","text":"All packages","url":"/search"}]},
+          {"kind":"heading","id":"name","text":"cli-spinner-lite 3.1.0","level":1},
+          {"kind":"text","id":"desc","text":"A terminal spinner that stays out of the way: one line, updates in place, silent when not a TTY."},
+          {"kind":"styled","id":"install","text":"npm i cli-spinner-lite","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"text","id":"meta","text":"Version 3.1.0 · License MIT · 690,000 weekly downloads · Maintainer mira-oduya · Published 2026"},
+          {"kind":"heading","id":"readme-h","text":"README","level":2},
+          {"kind":"text","id":"readme","text":"cli-spinner-lite draws a spinner and a message on one line and redraws it as the message changes. It stops with succeed(), fail() or stop(), leaving a final line. When output is not a TTY it prints the start and end messages and nothing in between. Colours come from colorish."},
+          {"kind":"styled","id":"example","text":"import spinner from 'cli-spinner-lite';\nconst s = spinner('Installing').start();\nawait install();\ns.succeed('Installed 12 packages');","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
+          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
+          {"kind":"link","id":"dep-0","text":"colorish","url":"/package/colorish"},
+          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+        ]
+      }
+    },
+    "records": {}
+  },
+  "search_entries": [
+    {"url":"http://npmjs.com/","title":"npm — the JavaScript package registry","snippet":"Find, install and publish JavaScript packages. READMEs, versions, dependencies and weekly download counts.","vertical": "all","authority":8,"keywords":["npm","javascript","packages","registry","node"]},
+    {"url":"http://npmjs.com/search","title":"Packages — npm","snippet":"All 12 packages on the registry, sorted by weekly downloads.","vertical": "all","authority":7,"keywords":["npm packages","search","browse","javascript library"]},
+    {"url":"http://npmjs.com/about","title":"About npm","snippet":"What the registry holds, how download counts are measured and who maintains what.","vertical": "all","authority":6,"keywords":["about npm","registry"]},
+    {"url":"http://npmjs.com/policies","title":"Registry policies — npm","snippet":"Unpublishing, package names, security reports and conduct.","vertical": "all","authority":6,"keywords":["npm policies","unpublish","package name dispute"]},
+    {"url":"http://npmjs.com/package/left-trim","title":"left-trim — npm","snippet":"Strip whitespace, or any set of characters, from the start of a string. Zero dependencies, 200 bytes, typed. v2.1.0, MIT.","vertical": "all","authority":7,"keywords":["left-trim","npm","javascript","whitespace","characters","string"]},
+    {"url":"http://npmjs.com/package/tinyrouter","title":"tinyrouter — npm","snippet":"A 1 KB router for the browser and for servers: pattern matching, params, wildcards, and nothing else. v3.4.2, MIT.","vertical": "all","authority":7,"keywords":["tinyrouter","npm","javascript","router","browser","servers"]},
+    {"url":"http://npmjs.com/package/atlas-sdk","title":"atlas-sdk — npm","snippet":"Official JavaScript client for the Atlas deterministic simulation runtime: start a world, step it, read a machine, replay a run. v1.8.0, Apache-2.0.","vertical": "all","authority":7,"keywords":["atlas-sdk","npm","javascript","official","javascript","client"]},
+    {"url":"http://npmjs.com/package/deterministic-clock","title":"deterministic-clock — npm","snippet":"A clock that only moves when you tell it to. Drop-in for Date.now and setTimeout in tests and simulations. v0.9.3, MIT.","vertical": "all","authority":7,"keywords":["deterministic-clock","npm","javascript","settimeout","simulations"]},
+    {"url":"http://npmjs.com/package/json-diff-lite","title":"json-diff-lite — npm","snippet":"Structural diff and patch for JSON values in 1.5 KB. Produces RFC 6902 patches; applies them too. v1.3.1, MIT.","vertical": "all","authority":7,"keywords":["json-diff-lite","npm","javascript","structural","values","produces"]},
+    {"url":"http://npmjs.com/package/colorish","title":"colorish — npm","snippet":"Terminal colours without the fuss. Chainable styles, automatic level detection, no escape codes when piped. v4.0.0, MIT.","vertical": "all","authority":7,"keywords":["colorish","npm","javascript","terminal","colours","without"]},
+    {"url":"http://npmjs.com/package/eventbus-ts","title":"eventbus-ts — npm","snippet":"A typed event emitter. Declare the event map once and every on(), emit() and off() is checked. v2.2.0, MIT.","vertical": "all","authority":7,"keywords":["eventbus-ts","npm","javascript","emitter","declare","checked"]},
+    {"url":"http://npmjs.com/package/zod-lite","title":"zod-lite — npm","snippet":"Runtime schema validation with inferred static types, in 3 KB. The common subset of the well-known API. v0.7.4, MIT.","vertical": "all","authority":7,"keywords":["zod-lite","npm","javascript","runtime","schema","validation"]}
+  ],
+  "network_node": {"address":"203.0.113.132","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+}

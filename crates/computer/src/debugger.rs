@@ -265,8 +265,8 @@ impl<'a> Live<'a> {
         Ok(self.capture(&events))
     }
 
-    /// What a reply carries: why the program stopped, the stack, the innermost
-    /// frame's scopes, what it wrote, and the variables to answer with.
+    /// What a reply carries: why the program stopped, the stack with every frame's
+    /// scopes, what it wrote, and the variables to answer with.
     fn capture(&mut self, events: &[dap::Event]) -> (proto::State, Vec<Vec<proto::Variable>>) {
         let mut output = String::new();
         let mut stopped = None;
@@ -292,7 +292,7 @@ impl<'a> Live<'a> {
                 vars,
             );
         };
-        let frames = self.frames(event.thread_id);
+        let mut frames = self.frames(event.thread_id);
         let reason = match event.reason {
             StopReason::Entry => proto::Stopped::Entry,
             StopReason::Step => proto::Stopped::Step,
@@ -309,10 +309,47 @@ impl<'a> Live<'a> {
                 },
             },
         };
-        let scopes = match frames.first() {
-            Some(frame) => self.scopes(frame.id, &mut vars),
-            None => vec![],
-        };
+        // Every frame's scopes are captured, so the view can show any frame of the
+        // call stack without replaying the program. The budget is one for the whole
+        // stop, so the locals of every frame come before any globals (Node's global
+        // object alone is wider than `VAR_NODES`), and an outer frame's globals are
+        // read one level deep. Once the budget is spent, a scope comes back with
+        // nothing to open.
+        let listed: Vec<Vec<cw_script_host::debug::Scope>> =
+            frames.iter().map(|f| self.scopes(f.id)).collect();
+        let mut captured: Vec<Vec<proto::Scope>> = listed
+            .iter()
+            .map(|scopes| {
+                scopes
+                    .iter()
+                    .map(|s| proto::Scope {
+                        name: s.name.clone(),
+                        reference: 0,
+                        expensive: s.expensive,
+                    })
+                    .collect()
+            })
+            .collect();
+        for expensive in [false, true] {
+            for (fi, scopes) in listed.iter().enumerate() {
+                for (si, scope) in scopes.iter().enumerate() {
+                    if scope.expensive != expensive {
+                        continue;
+                    }
+                    let depth = if expensive && fi > 0 {
+                        VAR_DEPTH - 1
+                    } else {
+                        0
+                    };
+                    captured[fi][si].reference =
+                        self.capture_children(scope.variables_reference, depth, &mut vars);
+                }
+            }
+        }
+        for (frame, scopes) in frames.iter_mut().zip(captured) {
+            frame.scopes = scopes;
+        }
+        let scopes = frames.first().map(|f| f.scopes.clone()).unwrap_or_default();
         (
             proto::State {
                 stopped: reason,
@@ -339,28 +376,20 @@ impl<'a> Live<'a> {
                 name: f.name,
                 path: f.path,
                 line: f.line,
+                scopes: vec![],
             })
             .collect()
     }
 
-    /// The scopes of one frame, with their variables captured into `vars`.
-    fn scopes(&mut self, frame: u64, vars: &mut Vec<Vec<proto::Variable>>) -> Vec<proto::Scope> {
+    /// The scopes of one frame, as the session names them.
+    fn scopes(&mut self, frame: u64) -> Vec<cw_script_host::debug::Scope> {
         let (response, _) = self
             .session
             .handle(dap::Request::Scopes { frame_id: frame }, &mut self.runner);
-        let dap::Response::Ok(dap::Body::Scopes(scopes)) = response else {
-            return vec![];
-        };
-        let mut out = vec![];
-        for scope in scopes {
-            let reference = self.capture_children(scope.variables_reference, 0, vars);
-            out.push(proto::Scope {
-                name: scope.name,
-                reference,
-                expensive: scope.expensive,
-            });
+        match response {
+            dap::Response::Ok(dap::Body::Scopes(scopes)) => scopes,
+            _ => vec![],
         }
-        out
     }
 
     /// Reads a reference and everything under it, and gives back the reference

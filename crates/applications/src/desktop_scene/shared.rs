@@ -168,6 +168,9 @@ pub struct ShellOptions {
     pub anchor: Option<(i32, i32)>,
     /// A phone's Recents carousel position and Select mode.
     pub overview: crate::Overview,
+    /// The window operation a pressed button is dragging (`drag`, `resize:se`), so the
+    /// pointer keeps that shape wherever it goes until the button is released.
+    pub capture: Option<String>,
 }
 /// Words a phone keyboard offers to complete, most common first. A fixed list, so two
 /// machines typing the same letters are offered the same words.
@@ -1089,7 +1092,7 @@ impl Painter {
     /// antialiasing), in coordinates local to those bounds. A path bounded by the whole
     /// scene would make the renderer visit every pixel for every path; translating by
     /// whole pixels leaves the painted result identical.
-    fn bounded_path(
+    pub fn bounded_path(
         &mut self,
         points: Vec<(i32, i32)>,
         margin: i32,

@@ -1007,3 +1007,55 @@ fn the_wheel_zooms_about_the_pointer_and_pans_with_shift_and_ctrl() {
     assert_ne!(cx, sx, "ctrl did not pan horizontally");
     assert_eq!(cy, sy);
 }
+
+/// The desktops come with a KiCad project drawn by the engine under
+/// `~/Documents/KiCad/sensor-node`: the project manager finds it, it opens clean, and
+/// `xdg-open` on its schematic (the file manager's association) starts KiCad's
+/// Schematic Editor on that project.
+#[test]
+fn the_seeded_sensor_node_project_opens_and_its_schematic_is_associated() {
+    let mut d = desk("bob-windows", "virtual-windows-11", "C:/Users/bob");
+    d.act("application.v1", "launch", json!({"kind": "kicad"}));
+    d.maximize(Frame::ProjectManager);
+    d.click("kicad:pm:open");
+    let found = d.kicad(Frame::ProjectManager).session.found;
+    // (Windows paths are rooted as `/C:/Users/bob/…` on the machine.)
+    let i = found
+        .iter()
+        .position(|p| p.ends_with("/Documents/KiCad/sensor-node/sensor-node.kicad_pro"))
+        .unwrap_or_else(|| panic!("{found:?}"));
+    assert!(
+        found
+            .iter()
+            .any(|p| p.ends_with("rc-filter/rc-filter.kicad_pro")),
+        "bob's second project is there too: {found:?}"
+    );
+    d.click(&format!("kicad:dlg:project:{i}"));
+    d.click("kicad:dlg:ok");
+    let k = d.kicad(Frame::ProjectManager);
+    assert!(k.session.problem.is_none(), "{:?}", k.session.problem);
+    assert!(
+        k.session.schematic.symbols.len() >= 13,
+        "{}",
+        k.session.schematic.symbols.len()
+    );
+    assert!(cw_eda::erc::check(&k.session.schematic).is_empty());
+    assert!(
+        !k.session.board.zones.is_empty(),
+        "the board has its ground zone"
+    );
+    // The association: xdg-open on the schematic opens the Schematic Editor on it
+    // (on Carol's Ubuntu, which has the same project).
+    let mut d = desk("carol-ubuntu", "virtual-ubuntu-24", "/home/carol");
+    d.act(
+        "terminal.v1",
+        "execute",
+        json!({"command": "xdg-open /home/carol/Documents/KiCad/sensor-node/sensor-node.kicad_sch"}),
+    );
+    let k = d.kicad(Frame::Schematic);
+    assert!(k.session.problem.is_none(), "{:?}", k.session.problem);
+    assert_eq!(
+        k.session.project.as_ref().map(|p| p.name.clone()),
+        Some("sensor-node".to_owned())
+    );
+}

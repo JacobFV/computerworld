@@ -36,7 +36,7 @@ const APPS: [(&str, &str, &str); 19] = [
     ("editor", "docs", "TextEdit"),
     ("mail", "mail", "Mail"),
     ("browser", "browser", "Safari"),
-    ("chat", "chat", "Messages"),
+    ("messages", "messages", "Messages"),
 ];
 
 /// App Library categories. Every application in `APPS` sits in exactly one, so the
@@ -48,7 +48,7 @@ const LIBRARY_GROUPS: [(&str, &[&str]); 6] = [
         &["calendar", "notes", "docs", "spreadsheet", "contacts"],
     ),
     ("Utilities", &["files", "clock", "calculator", "settings"]),
-    ("Social", &["mail", "chat", "browser"]),
+    ("Social", &["mail", "messages", "browser"]),
     ("Photo & Video", &["photos", "music", "imovie"]),
     ("Travel", &["maps", "weather"]),
     ("Developer", &["terminal", "editor"]),
@@ -144,7 +144,7 @@ fn home_label(p: &mut Painter, x: i32, y: i32, width: u32, text: &str) {
 /// The dock's four slots: iOS 18's own defaults, with Mail standing in for Phone, which
 /// this simulation has no telephony to back. Only installed ones are drawn; iOS never
 /// moves another application into the dock on its own.
-const DOCK: [&str; 4] = ["mail", "browser", "chat", "music"];
+const DOCK: [&str; 4] = ["mail", "browser", "messages", "music"];
 
 /// SpringBoard's geometry at one screen size: a four-column grid of up to six rows, the
 /// page dots, and the floating dock. `background` paints from it and `home_pages`
@@ -1088,7 +1088,7 @@ fn today_view(p: &mut Painter, ctx: &ShellContext<'_>) {
 /// application, not an icon, and inventing artwork for one would be worse than a bell.
 fn notice_symbol(app: &str) -> &'static str {
     match app {
-        "chat" => "chat",
+        "chat" | "messages" => "chat",
         "mail" => "mail",
         "browser" => "globe",
         "calendar" => "calendar",
@@ -2009,7 +2009,8 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         // blank tab has nothing to hand over and no application may be able to receive
         // it, so Share greys out rather than dispatching what would be refused; Back and
         // Forward follow the tab's real history for the same reason.
-        let shareable = !w.document.is_empty() && (ctx.installed("chat") || ctx.installed("mail"));
+        let shareable =
+            !w.document.is_empty() && (ctx.installed("messages") || ctx.installed("mail"));
         let action = match i {
             0 => w.can_go_back.then(|| w.action("content:shell:back")),
             1 => w.can_go_forward.then(|| w.action("content:shell:forward")),
@@ -2206,8 +2207,8 @@ fn share_sheet(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     // rather than filling itself with hand-offs nothing could take.
     let mut rows: Vec<(&str, &str, &str)> = Vec::new();
     if !w.document.is_empty() {
-        if ctx.installed("chat") {
-            rows.push(("chat", "shell:share:chat", "Messages"));
+        if ctx.installed("messages") {
+            rows.push(("messages", "shell:share:messages", "Messages"));
         }
         if ctx.installed("mail") {
             rows.push(("mail", "shell:share:mail", "Mail"));
@@ -3101,7 +3102,7 @@ mod tests {
                 "expanded Utilities omits {kind}"
             );
         }
-        assert!(!painted.iter().any(|id| id == "shell:launch:chat"));
+        assert!(!painted.iter().any(|id| id == "shell:launch:messages"));
         assert!(!painted.iter().any(|id| id.starts_with("shell:group:U")));
         // A category holding nothing installed is never drawn at all.
         let installed = ["files".to_owned()];
@@ -3140,7 +3141,7 @@ mod tests {
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         chrome(&mut p, &ctx);
         let painted = ids(&p);
-        for expected in ["shell:share:chat", "shell:share:mail", "shell:bookmark"] {
+        for expected in ["shell:share:messages", "shell:share:mail", "shell:bookmark"] {
             assert!(
                 painted.iter().any(|id| id == expected),
                 "share sheet lacks {expected}"
@@ -3214,7 +3215,12 @@ mod tests {
     fn the_today_view_lists_real_notices_and_dictation_stays_off() {
         let settings = crate::SystemSettings::DEFAULT;
         let notices = [
-            notice("chat", "Ready to share", Some("shell:launch:chat"), false),
+            notice(
+                "messages",
+                "Ready to share",
+                Some("shell:launch:messages"),
+                false,
+            ),
             notice("screenshot", "Screenshot saved", None, true),
         ];
         // Today View holds widgets and search, never the notices.

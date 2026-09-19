@@ -176,6 +176,10 @@ pub enum Support {
         feature: String,
         face: SubRef,
     },
+    /// A datum plane of the body.
+    Datum {
+        datum: String,
+    },
 }
 
 /// How far a Pad or Pocket goes: FreeCAD's `Type` property.
@@ -206,10 +210,13 @@ pub enum AxisRef {
     SketchLine(i32),
     /// A straight edge of the shape the feature starts from.
     Edge(SubRef),
+    /// A datum line of the body.
+    Datum(String),
 }
 impl AxisRef {
     pub fn label(&self) -> String {
         match self {
+            AxisRef::Datum(d) => d.clone(),
             AxisRef::SketchV => "Vertical sketch axis".into(),
             AxisRef::SketchH => "Horizontal sketch axis".into(),
             AxisRef::SketchNormal => "Normal sketch axis".into(),
@@ -231,10 +238,13 @@ pub enum PlaneRef {
     SketchH,
     Base(BasePlane),
     Face(SubRef),
+    /// A datum plane of the body.
+    Datum(String),
 }
 impl PlaneRef {
     pub fn label(&self) -> String {
         match self {
+            PlaneRef::Datum(d) => d.clone(),
             PlaneRef::SketchV => "Vertical sketch axis".into(),
             PlaneRef::SketchH => "Horizontal sketch axis".into(),
             PlaneRef::Base(p) => p.name().into(),
@@ -273,6 +283,267 @@ fn one() -> f64 {
 }
 fn forty_five() -> f64 {
     45.0
+}
+
+/// The shape of a Part Design primitive (FreeCAD's `PartDesign::FeaturePrimitive`
+/// subclasses), in the frame it is attached to: a box from the origin along +x, +y and
+/// +z; a cylinder and a cone with their axis along the normal from the origin; a
+/// sphere centred on the origin; a torus in the plane, centred on the origin.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "Primitive")]
+pub enum Primitive {
+    Box {
+        #[serde(rename = "Length")]
+        length: f64,
+        #[serde(rename = "Width")]
+        width: f64,
+        #[serde(rename = "Height")]
+        height: f64,
+    },
+    Cylinder {
+        #[serde(rename = "Radius")]
+        radius: f64,
+        #[serde(rename = "Height")]
+        height: f64,
+        /// Degrees; less than 360 leaves a wedge.
+        #[serde(rename = "Angle", default = "full_turn")]
+        angle: f64,
+    },
+    Sphere {
+        #[serde(rename = "Radius")]
+        radius: f64,
+    },
+    Cone {
+        #[serde(rename = "Radius1")]
+        radius1: f64,
+        #[serde(rename = "Radius2")]
+        radius2: f64,
+        #[serde(rename = "Height")]
+        height: f64,
+    },
+    Torus {
+        /// Distance from the centre to the tube's centre.
+        #[serde(rename = "Radius1")]
+        radius1: f64,
+        /// The tube's radius.
+        #[serde(rename = "Radius2")]
+        radius2: f64,
+    },
+}
+fn full_turn() -> f64 {
+    360.0
+}
+impl Primitive {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Primitive::Box { .. } => "Box",
+            Primitive::Cylinder { .. } => "Cylinder",
+            Primitive::Sphere { .. } => "Sphere",
+            Primitive::Cone { .. } => "Cone",
+            Primitive::Torus { .. } => "Torus",
+        }
+    }
+    /// FreeCAD's defaults for a new primitive of this kind.
+    pub fn default_of(name: &str) -> Option<Primitive> {
+        Some(match name {
+            "Box" => Primitive::Box {
+                length: 10.0,
+                width: 10.0,
+                height: 10.0,
+            },
+            "Cylinder" => Primitive::Cylinder {
+                radius: 5.0,
+                height: 10.0,
+                angle: 360.0,
+            },
+            "Sphere" => Primitive::Sphere { radius: 5.0 },
+            "Cone" => Primitive::Cone {
+                radius1: 2.0,
+                radius2: 4.0,
+                height: 10.0,
+            },
+            "Torus" => Primitive::Torus {
+                radius1: 10.0,
+                radius2: 2.0,
+            },
+            _ => return None,
+        })
+    }
+    /// The named dimensions, in FreeCAD's property order.
+    pub fn dimensions(&self) -> Vec<(&'static str, f64)> {
+        match *self {
+            Primitive::Box {
+                length,
+                width,
+                height,
+            } => vec![("Length", length), ("Width", width), ("Height", height)],
+            Primitive::Cylinder {
+                radius,
+                height,
+                angle,
+            } => vec![("Radius", radius), ("Height", height), ("Angle", angle)],
+            Primitive::Sphere { radius } => vec![("Radius", radius)],
+            Primitive::Cone {
+                radius1,
+                radius2,
+                height,
+            } => vec![
+                ("Radius1", radius1),
+                ("Radius2", radius2),
+                ("Height", height),
+            ],
+            Primitive::Torus { radius1, radius2 } => {
+                vec![("Radius1", radius1), ("Radius2", radius2)]
+            }
+        }
+    }
+    pub fn dimension(&self, name: &str) -> Option<f64> {
+        self.dimensions()
+            .into_iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, v)| v)
+    }
+    pub fn set_dimension(&mut self, name: &str, v: f64) -> Result<(), String> {
+        let angle = name == "Angle";
+        if !v.is_finite() || (!angle && v <= 0.0 && !(name == "Radius2" && v == 0.0)) {
+            return Err(format!("{name} must be positive"));
+        }
+        if angle && !(v > 0.0 && v <= 360.0) {
+            return Err("The angle must be between 0 and 360°".into());
+        }
+        let slot = match (self, name) {
+            (Primitive::Box { length, .. }, "Length") => length,
+            (Primitive::Box { width, .. }, "Width") => width,
+            (
+                Primitive::Box { height, .. }
+                | Primitive::Cylinder { height, .. }
+                | Primitive::Cone { height, .. },
+                "Height",
+            ) => height,
+            (Primitive::Cylinder { radius, .. } | Primitive::Sphere { radius }, "Radius") => radius,
+            (Primitive::Cylinder { angle, .. }, "Angle") => angle,
+            (Primitive::Cone { radius1, .. } | Primitive::Torus { radius1, .. }, "Radius1") => {
+                radius1
+            }
+            (Primitive::Cone { radius2, .. } | Primitive::Torus { radius2, .. }, "Radius2") => {
+                radius2
+            }
+            (p, other) => return Err(format!("A {} has no {other}", p.name())),
+        };
+        *slot = v;
+        Ok(())
+    }
+    /// The solid, in `frame`.
+    pub fn solid(&self, frame: &Frame) -> Result<Solid, String> {
+        match *self {
+            Primitive::Box {
+                length,
+                width,
+                height,
+            } => {
+                let r = build::polygon_region(&[
+                    V2::ZERO,
+                    V2 { x: length, y: 0.0 },
+                    V2 {
+                        x: length,
+                        y: width,
+                    },
+                    V2 { x: 0.0, y: width },
+                ]);
+                Ok(build::extrude(&[r], frame, 0.0, height))
+            }
+            Primitive::Cylinder {
+                radius,
+                height,
+                angle,
+            } => {
+                let a = math::radians(angle.clamp(0.0, 360.0));
+                if a >= TAU - 1e-9 {
+                    return Ok(build::extrude(
+                        &[build::circle_region(V2::ZERO, radius)],
+                        frame,
+                        0.0,
+                        height,
+                    ));
+                }
+                // A wedge: a rectangle (0..r) × (0..h) in the (radius, height) half-plane
+                // revolved through the angle.
+                let rz = build::polygon_region(&[
+                    V2::ZERO,
+                    V2 { x: radius, y: 0.0 },
+                    V2 {
+                        x: radius,
+                        y: height,
+                    },
+                    V2 { x: 0.0, y: height },
+                ]);
+                let rz_frame = Frame {
+                    origin: frame.origin,
+                    x: frame.x,
+                    y: frame.z,
+                    z: frame.x.cross(frame.z).norm(),
+                };
+                build::revolve(&[rz], &rz_frame, frame.origin, frame.z, 0.0, a)
+            }
+            Primitive::Sphere { radius } => Ok(build::sphere(frame.origin, radius)),
+            Primitive::Cone {
+                radius1,
+                radius2,
+                height,
+            } => {
+                if radius1 <= 0.0 && radius2 <= 0.0 {
+                    return Err("A cone needs a radius".into());
+                }
+                if (radius1 - radius2).abs() < 1e-9 {
+                    return Err("The radii of a cone must differ; use a cylinder".into());
+                }
+                let mut pts = vec![V2::ZERO];
+                if radius1 > 0.0 {
+                    pts.push(V2 { x: radius1, y: 0.0 });
+                }
+                if radius2 > 0.0 {
+                    pts.push(V2 {
+                        x: radius2,
+                        y: height,
+                    });
+                }
+                pts.push(V2 { x: 0.0, y: height });
+                build::revolve_rz(frame.origin, frame.z, &build::polygon_region(&pts))
+            }
+            Primitive::Torus { radius1, radius2 } => {
+                if radius2 >= radius1 {
+                    return Err("The tube radius must be smaller than the torus radius".into());
+                }
+                build::revolve_rz(
+                    frame.origin,
+                    frame.z,
+                    &build::circle_region(V2 { x: radius1, y: 0.0 }, radius2),
+                )
+            }
+        }
+    }
+}
+
+/// FreeCAD's `PartDesign::Boolean` `Type`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BoolType {
+    #[default]
+    Fuse,
+    Cut,
+    Common,
+}
+impl BoolType {
+    pub fn label(self) -> &'static str {
+        match self {
+            BoolType::Fuse => "Fuse",
+            BoolType::Cut => "Cut",
+            BoolType::Common => "Common",
+        }
+    }
+    pub fn by_name(name: &str) -> Option<BoolType> {
+        BoolType::ALL.into_iter().find(|b| b.label() == name)
+    }
+    pub const ALL: [BoolType; 3] = [BoolType::Fuse, BoolType::Cut, BoolType::Common];
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -439,6 +710,62 @@ pub enum Feature {
         #[serde(rename = "Reversed", default)]
         reversed: bool,
     },
+    /// An additive or subtractive primitive, attached like a sketch.
+    #[serde(rename = "PartDesign::FeaturePrimitive")]
+    Primitive {
+        #[serde(flatten)]
+        shape: Primitive,
+        #[serde(rename = "Subtractive", default)]
+        subtractive: bool,
+        #[serde(rename = "Support")]
+        support: Support,
+        #[serde(rename = "AttachmentOffset", default)]
+        offset: f64,
+    },
+    /// A boolean of this body with other bodies (FreeCAD's `PartDesign::Boolean`).
+    #[serde(rename = "PartDesign::Boolean")]
+    Boolean {
+        #[serde(rename = "Type")]
+        kind: BoolType,
+        /// The tool bodies, in order.
+        #[serde(rename = "Group")]
+        bodies: Vec<String>,
+    },
+    /// A datum plane: the support's plane moved along its normal and turned about its
+    /// horizontal axis (FreeCAD's `PartDesign::Plane`).
+    #[serde(rename = "PartDesign::Plane")]
+    DatumPlane {
+        #[serde(rename = "Support")]
+        support: Support,
+        #[serde(rename = "AttachmentOffset", default)]
+        offset: f64,
+        /// Degrees.
+        #[serde(rename = "Angle", default)]
+        angle: f64,
+    },
+    /// A datum line in the support's plane through its origin, at `angle` from its
+    /// horizontal axis (FreeCAD's `PartDesign::Line`).
+    #[serde(rename = "PartDesign::Line")]
+    DatumLine {
+        #[serde(rename = "Support")]
+        support: Support,
+        #[serde(rename = "AttachmentOffset", default)]
+        offset: f64,
+        #[serde(rename = "Angle", default)]
+        angle: f64,
+    },
+    /// A datum point at (`x`, `y`) in the support's plane (FreeCAD's `PartDesign::Point`).
+    #[serde(rename = "PartDesign::Point")]
+    DatumPoint {
+        #[serde(rename = "Support")]
+        support: Support,
+        #[serde(rename = "AttachmentOffset", default)]
+        offset: f64,
+        #[serde(rename = "X", default)]
+        x: f64,
+        #[serde(rename = "Y", default)]
+        y: f64,
+    },
     /// An imported triangle mesh, outside any body (FreeCAD's `Mesh::Feature`).
     #[serde(rename = "Mesh::Feature")]
     Mesh {
@@ -467,6 +794,24 @@ impl Feature {
             Feature::Mirrored { .. } => "PartDesign::Mirrored",
             Feature::LinearPattern { .. } => "PartDesign::LinearPattern",
             Feature::PolarPattern { .. } => "PartDesign::PolarPattern",
+            Feature::Primitive {
+                shape, subtractive, ..
+            } => match (shape, subtractive) {
+                (Primitive::Box { .. }, false) => "PartDesign::AdditiveBox",
+                (Primitive::Box { .. }, true) => "PartDesign::SubtractiveBox",
+                (Primitive::Cylinder { .. }, false) => "PartDesign::AdditiveCylinder",
+                (Primitive::Cylinder { .. }, true) => "PartDesign::SubtractiveCylinder",
+                (Primitive::Sphere { .. }, false) => "PartDesign::AdditiveSphere",
+                (Primitive::Sphere { .. }, true) => "PartDesign::SubtractiveSphere",
+                (Primitive::Cone { .. }, false) => "PartDesign::AdditiveCone",
+                (Primitive::Cone { .. }, true) => "PartDesign::SubtractiveCone",
+                (Primitive::Torus { .. }, false) => "PartDesign::AdditiveTorus",
+                (Primitive::Torus { .. }, true) => "PartDesign::SubtractiveTorus",
+            },
+            Feature::Boolean { .. } => "PartDesign::Boolean",
+            Feature::DatumPlane { .. } => "PartDesign::Plane",
+            Feature::DatumLine { .. } => "PartDesign::Line",
+            Feature::DatumPoint { .. } => "PartDesign::Point",
             Feature::Mesh { .. } => "Mesh::Feature",
             Feature::Part { .. } => "Part::Feature",
         }
@@ -486,6 +831,11 @@ impl Feature {
             Feature::Mirrored { .. } => "Mirrored",
             Feature::LinearPattern { .. } => "LinearPattern",
             Feature::PolarPattern { .. } => "PolarPattern",
+            Feature::Primitive { shape, .. } => shape.name(),
+            Feature::Boolean { .. } => "Boolean",
+            Feature::DatumPlane { .. } => "DatumPlane",
+            Feature::DatumLine { .. } => "DatumLine",
+            Feature::DatumPoint { .. } => "DatumPoint",
             Feature::Mesh { .. } => "Mesh",
             Feature::Part { .. } => "Part",
         }
@@ -509,7 +859,8 @@ impl Feature {
             _ => &[],
         }
     }
-    /// Solid features that change a body's shape (everything but bodies, sketches, meshes).
+    /// Solid features that change a body's shape (everything but bodies, sketches,
+    /// datums and meshes).
     pub fn is_solid_feature(&self) -> bool {
         !matches!(
             self,
@@ -517,7 +868,190 @@ impl Feature {
                 | Feature::Sketch { .. }
                 | Feature::Mesh { .. }
                 | Feature::Part { .. }
+                | Feature::DatumPlane { .. }
+                | Feature::DatumLine { .. }
+                | Feature::DatumPoint { .. }
         )
+    }
+    pub fn is_datum(&self) -> bool {
+        matches!(
+            self,
+            Feature::DatumPlane { .. } | Feature::DatumLine { .. } | Feature::DatumPoint { .. }
+        )
+    }
+    /// What a sketch, datum or primitive is attached to.
+    pub fn support(&self) -> Option<&Support> {
+        match self {
+            Feature::Sketch { support, .. }
+            | Feature::Primitive { support, .. }
+            | Feature::DatumPlane { support, .. }
+            | Feature::DatumLine { support, .. }
+            | Feature::DatumPoint { support, .. } => Some(support),
+            _ => None,
+        }
+    }
+    pub fn support_mut(&mut self) -> Option<&mut Support> {
+        match self {
+            Feature::Sketch { support, .. }
+            | Feature::Primitive { support, .. }
+            | Feature::DatumPlane { support, .. }
+            | Feature::DatumLine { support, .. }
+            | Feature::DatumPoint { support, .. } => Some(support),
+            _ => None,
+        }
+    }
+    pub fn attachment_offset(&self) -> Option<f64> {
+        match self {
+            Feature::Sketch { offset, .. }
+            | Feature::Primitive { offset, .. }
+            | Feature::DatumPlane { offset, .. }
+            | Feature::DatumLine { offset, .. }
+            | Feature::DatumPoint { offset, .. } => Some(*offset),
+            _ => None,
+        }
+    }
+    pub fn attachment_offset_mut(&mut self) -> Option<&mut f64> {
+        match self {
+            Feature::Sketch { offset, .. }
+            | Feature::Primitive { offset, .. }
+            | Feature::DatumPlane { offset, .. }
+            | Feature::DatumLine { offset, .. }
+            | Feature::DatumPoint { offset, .. } => Some(offset),
+            _ => None,
+        }
+    }
+    /// A numeric Data property by FreeCAD's name (`Length`, `Radius`, `Angle`,
+    /// `Occurrences`…, and `Constraints.<name>` of a sketch, angles in degrees).
+    pub fn number(&self, name: &str) -> Option<f64> {
+        if let Some(c) = name.strip_prefix("Constraints.") {
+            let Feature::Sketch { sketch, .. } = self else {
+                return None;
+            };
+            return sketch.constraint_named(c).map(|k| {
+                if k.kind == crate::sketch::ConstraintType::Angle {
+                    math::degrees(k.value)
+                } else {
+                    k.value
+                }
+            });
+        }
+        if name == "AttachmentOffset" {
+            return self.attachment_offset();
+        }
+        Some(match (self, name) {
+            (Feature::Pad { length, .. } | Feature::Pocket { length, .. }, "Length") => *length,
+            (Feature::Pad { length2, .. } | Feature::Pocket { length2, .. }, "Length2") => *length2,
+            (
+                Feature::Revolution { angle, .. }
+                | Feature::Groove { angle, .. }
+                | Feature::PolarPattern { angle, .. }
+                | Feature::Chamfer { angle, .. }
+                | Feature::DatumPlane { angle, .. }
+                | Feature::DatumLine { angle, .. },
+                "Angle",
+            ) => *angle,
+            (Feature::Fillet { radius, .. }, "Radius") => *radius,
+            (Feature::Chamfer { size, .. }, "Size") => *size,
+            (Feature::Chamfer { size2, .. }, "Size2") => *size2,
+            (Feature::Hole { diameter, .. }, "Diameter") => *diameter,
+            (Feature::Hole { depth, .. }, "Depth") => *depth,
+            (Feature::LinearPattern { length, .. }, "Length") => *length,
+            (
+                Feature::LinearPattern { occurrences, .. }
+                | Feature::PolarPattern { occurrences, .. },
+                "Occurrences",
+            ) => f64::from(*occurrences),
+            (Feature::Primitive { shape, .. }, dim) => shape.dimension(dim)?,
+            (Feature::DatumPoint { x, .. }, "X") => *x,
+            (Feature::DatumPoint { y, .. }, "Y") => *y,
+            _ => return None,
+        })
+    }
+    /// Set a numeric Data property (see [`Feature::number`]); the value is checked as
+    /// the property editor checks it.
+    pub fn set_number(&mut self, name: &str, v: f64) -> Result<(), String> {
+        if !v.is_finite() {
+            return Err(format!("{name} is not a number"));
+        }
+        let positive = |v: f64| -> Result<f64, String> {
+            if v > 0.0 {
+                Ok(v)
+            } else {
+                Err(format!("{name} must be positive"))
+            }
+        };
+        let turn = |v: f64| -> Result<f64, String> {
+            if v == 0.0 || v.abs() > 360.0 {
+                Err("The angle must be between 0 and 360°".into())
+            } else {
+                Ok(v)
+            }
+        };
+        if let Some(c) = name.strip_prefix("Constraints.") {
+            let Feature::Sketch { sketch, .. } = self else {
+                return Err(format!("{name}: not a sketch"));
+            };
+            let k = sketch
+                .constraint_named_mut(c)
+                .ok_or_else(|| format!("no constraint {c}"))?;
+            k.value = if k.kind == crate::sketch::ConstraintType::Angle {
+                math::radians(v)
+            } else {
+                v
+            };
+            return Ok(());
+        }
+        if name == "AttachmentOffset" {
+            *self
+                .attachment_offset_mut()
+                .ok_or_else(|| format!("{name} cannot be set here"))? = v;
+            return Ok(());
+        }
+        match (self, name) {
+            (Feature::Pad { length, .. } | Feature::Pocket { length, .. }, "Length") => {
+                *length = positive(v)?
+            }
+            (Feature::Pad { length2, .. } | Feature::Pocket { length2, .. }, "Length2") => {
+                *length2 = v
+            }
+            (
+                Feature::Revolution { angle, .. }
+                | Feature::Groove { angle, .. }
+                | Feature::PolarPattern { angle, .. },
+                "Angle",
+            ) => *angle = turn(v)?,
+            (Feature::Chamfer { angle, .. }, "Angle") => {
+                if !(v > 0.0 && v < 180.0) {
+                    return Err("Angle must be greater than 0 and less than 180".into());
+                }
+                *angle = v;
+            }
+            (Feature::DatumPlane { angle, .. } | Feature::DatumLine { angle, .. }, "Angle") => {
+                *angle = v
+            }
+            (Feature::Fillet { radius, .. }, "Radius") => *radius = positive(v)?,
+            (Feature::Chamfer { size, .. }, "Size") => *size = positive(v)?,
+            (Feature::Chamfer { size2, .. }, "Size2") => *size2 = positive(v)?,
+            (Feature::Hole { diameter, .. }, "Diameter") => *diameter = positive(v)?,
+            (Feature::Hole { depth, .. }, "Depth") => *depth = positive(v)?,
+            (Feature::LinearPattern { length, .. }, "Length") => *length = positive(v)?,
+            (
+                Feature::LinearPattern { occurrences, .. }
+                | Feature::PolarPattern { occurrences, .. },
+                "Occurrences",
+            ) => {
+                let n = v.round();
+                if !(2.0..=100.0).contains(&n) {
+                    return Err("Occurrences must be between 2 and 100".into());
+                }
+                *occurrences = n as u32;
+            }
+            (Feature::Primitive { shape, .. }, dim) => shape.set_dimension(dim, v)?,
+            (Feature::DatumPoint { x, .. }, "X") => *x = v,
+            (Feature::DatumPoint { y, .. }, "Y") => *y = v,
+            (_, other) => return Err(format!("{other} cannot be bound to an expression")),
+        }
+        Ok(())
     }
 }
 
@@ -529,6 +1063,13 @@ pub struct Object {
     pub label: String,
     #[serde(rename = "Visibility", default = "yes")]
     pub visible: bool,
+    /// Properties bound to expressions (FreeCAD's `ExpressionEngine`), by property name.
+    #[serde(
+        rename = "ExpressionEngine",
+        default,
+        skip_serializing_if = "BTreeMap::is_empty"
+    )]
+    pub expressions: BTreeMap<String, String>,
     #[serde(flatten)]
     pub feature: Feature,
 }
@@ -573,6 +1114,7 @@ impl Document {
             label: name.clone(),
             name: name.clone(),
             visible: true,
+            expressions: BTreeMap::new(),
             feature,
         });
         name
@@ -724,6 +1266,17 @@ pub struct Model {
     pub reports: BTreeMap<String, SolveReport>,
     /// The shape each body shows: its tip's.
     pub body_shape: BTreeMap<String, Arc<Shape>>,
+    /// Where each datum plane, line and point ended up.
+    pub datums: BTreeMap<String, DatumGeom>,
+    /// Bound expressions that could not be evaluated: (object, property) → why.
+    pub expression_errors: BTreeMap<(String, String), String>,
+}
+/// A datum feature's geometry after recompute.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DatumGeom {
+    Plane(Frame),
+    Line { origin: V3, dir: V3 },
+    Point(V3),
 }
 impl Model {
     pub fn error(&self, name: &str) -> Option<&str> {
@@ -744,6 +1297,94 @@ fn through_all(base: &Solid, frame: &Frame) -> f64 {
         b.diagonal() + c.dist(frame.origin) + b.min.len().max(b.max.len())
     };
     reach * 2.0 + 10.0
+}
+
+/// The bodies a body's Boolean features consume.
+fn body_tools(doc: &Document, body: &str) -> Vec<String> {
+    let Some(Feature::Body { group, .. }) = doc.get(body).map(|o| &o.feature) else {
+        return vec![];
+    };
+    group
+        .iter()
+        .filter_map(|g| match doc.get(g).map(|o| &o.feature) {
+            Some(Feature::Boolean { bodies, .. }) => Some(bodies.clone()),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
+/// Evaluate every bound expression into its property. Values flow in document order,
+/// repeated until nothing changes (three passes cover any chain a document holds), so
+/// a binding may read a property that is itself bound.
+pub fn evaluate_expressions(doc: &mut Document) -> BTreeMap<(String, String), String> {
+    let mut errors = BTreeMap::new();
+    let bound: Vec<(String, String, String)> = doc
+        .objects
+        .iter()
+        .flat_map(|o| {
+            o.expressions
+                .iter()
+                .map(|(k, v)| (o.name.clone(), k.clone(), v.clone()))
+        })
+        .collect();
+    if bound.is_empty() {
+        return errors;
+    }
+    for _pass in 0..3 {
+        let mut changed = false;
+        for (object, property, text) in &bound {
+            let key = (object.clone(), property.clone());
+            let expr = match crate::expr::parse(text) {
+                Ok(e) => e,
+                Err(e) => {
+                    errors.insert(key, e);
+                    continue;
+                }
+            };
+            if expr
+                .references()
+                .iter()
+                .any(|(o, p)| o == object && p == property)
+            {
+                errors.insert(key, "An expression cannot refer to itself".into());
+                continue;
+            }
+            let value = {
+                let lookup = |o: &str, p: &str| -> Option<f64> {
+                    let obj = doc.objects.iter().find(|x| x.name == o || x.label == o)?;
+                    obj.feature.number(p)
+                };
+                expr.eval(&lookup)
+            };
+            let value = match value {
+                Ok(v) => v,
+                Err(e) => {
+                    errors.insert(key, e);
+                    continue;
+                }
+            };
+            let Some(o) = doc.get_mut(object) else {
+                continue;
+            };
+            let before = o.feature.number(property);
+            match o.feature.set_number(property, value) {
+                Ok(()) => {
+                    errors.remove(&key);
+                    if before != Some(value) {
+                        changed = true;
+                    }
+                }
+                Err(e) => {
+                    errors.insert(key, e);
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    errors
 }
 
 /// Number of separate solids (vertex-connected triangle sets) in a mesh.
@@ -771,8 +1412,17 @@ pub fn solids(m: &Mesh) -> usize {
     roots.len()
 }
 
-fn sketch_axis(frame: &Frame, sketch: &Sketch, axis: &AxisRef) -> Result<(V3, V3), String> {
+fn sketch_axis(
+    model: &Model,
+    frame: &Frame,
+    sketch: &Sketch,
+    axis: &AxisRef,
+) -> Result<(V3, V3), String> {
     Ok(match axis {
+        AxisRef::Datum(d) => match model.datums.get(d) {
+            Some(DatumGeom::Line { origin, dir }) => (*origin, *dir),
+            _ => return Err(format!("{d} is not a datum line")),
+        },
         AxisRef::SketchV => (frame.origin, frame.y),
         AxisRef::SketchH => (frame.origin, frame.x),
         AxisRef::SketchNormal => (frame.origin, frame.z),
@@ -810,8 +1460,24 @@ fn edge_axis(r: &SubRef, base: Option<&Arc<Shape>>) -> Result<(V3, V3), String> 
 /// changed shapes and their hints updated, so the document the caller keeps tracks
 /// the model as it evolves.
 pub fn recompute(doc: &mut Document) -> Model {
-    let mut model = Model::default();
-    let bodies: Vec<String> = doc.bodies().into_iter().map(str::to_owned).collect();
+    let mut model = Model {
+        expression_errors: evaluate_expressions(doc),
+        ..Model::default()
+    };
+    // Bodies a Boolean consumes are computed before it: dependency order, with the
+    // document's order as the tie-break and a cycle left to fail on its own.
+    let declared: Vec<String> = doc.bodies().into_iter().map(str::to_owned).collect();
+    let mut bodies: Vec<String> = Vec::new();
+    let mut waiting = declared.clone();
+    while !waiting.is_empty() {
+        let ready = waiting.iter().position(|b| {
+            body_tools(doc, b)
+                .iter()
+                .all(|t| bodies.contains(t) || !declared.contains(t))
+        });
+        let next = waiting.remove(ready.unwrap_or(0));
+        bodies.push(next);
+    }
     // Sketches outside bodies, and meshes.
     for o in &doc.objects {
         match &o.feature {
@@ -946,40 +1612,144 @@ fn feature_step(
             offset,
             sketch,
         } => {
-            let frame = match support {
-                Support::Plane { plane } => plane.frame(),
-                Support::Face { feature, face } => {
-                    let shape = model
-                        .shapes
-                        .get(feature)
-                        .cloned()
-                        .ok_or_else(|| format!("Sketch support {feature} has no shape"))?;
-                    let i = resolve(face, &shape.mesh, &shape.topo).ok_or_else(|| {
-                        format!("Sketch support {}.{} was not found", feature, face.name)
-                    })?;
-                    let f = solid::face_frame(&shape.mesh, &shape.topo, i)
-                        .ok_or_else(|| format!("{}.{} is not planar", feature, face.name))?;
-                    // Remember where the face is now.
-                    let fresh = SubRef::face(&shape.topo, &shape.mesh, i);
-                    if let Some(Object {
-                        feature:
-                            Feature::Sketch {
-                                support: Support::Face { face, .. },
-                                ..
-                            },
-                        ..
-                    }) = doc.get_mut(name)
-                    {
-                        *face = fresh;
-                    }
-                    f
-                }
-            };
+            let frame = support_frame(doc, model, name, support)?;
             model.frames.insert(name.into(), frame.offset(*offset));
             let mut s = sketch.clone();
             let report = crate::sketch::solver::solve(&mut s, None);
+            // A solved sketch is kept: a dimension an expression changed moves its
+            // geometry here, as FreeCAD's recompute solves the sketch in place.
+            if report.solved() && s != *sketch {
+                if let Some(Object {
+                    feature: Feature::Sketch { sketch, .. },
+                    ..
+                }) = doc.get_mut(name)
+                {
+                    *sketch = s;
+                }
+            }
             model.reports.insert(name.into(), report);
             Ok(None)
+        }
+        Feature::DatumPlane {
+            support,
+            offset,
+            angle,
+        } => {
+            let f = support_frame(doc, model, name, support)?.offset(*offset);
+            let a = math::radians(*angle);
+            let f = if a.abs() > 1e-12 {
+                let x = Xform::rotate(f.origin, f.x, a);
+                Frame {
+                    origin: f.origin,
+                    x: f.x,
+                    y: x.dir(f.y),
+                    z: x.dir(f.z),
+                }
+            } else {
+                f
+            };
+            model.datums.insert(name.into(), DatumGeom::Plane(f));
+            model.frames.insert(name.into(), f);
+            Ok(None)
+        }
+        Feature::DatumLine {
+            support,
+            offset,
+            angle,
+        } => {
+            let f = support_frame(doc, model, name, support)?.offset(*offset);
+            let (sn, cs) = math::sin_cos(math::radians(*angle));
+            let dir = (f.x * cs + f.y * sn).norm();
+            model.datums.insert(
+                name.into(),
+                DatumGeom::Line {
+                    origin: f.origin,
+                    dir,
+                },
+            );
+            Ok(None)
+        }
+        Feature::DatumPoint {
+            support,
+            offset,
+            x,
+            y,
+        } => {
+            let f = support_frame(doc, model, name, support)?.offset(*offset);
+            model.datums.insert(
+                name.into(),
+                DatumGeom::Point(f.to_world(V2 { x: *x, y: *y })),
+            );
+            Ok(None)
+        }
+        Feature::Primitive {
+            shape,
+            subtractive,
+            support,
+            offset,
+        } => {
+            let what = format!(
+                "{}{}",
+                if *subtractive {
+                    "Subtractive"
+                } else {
+                    "Additive"
+                },
+                shape.name()
+            );
+            let frame = support_frame(doc, model, name, support)?.offset(*offset);
+            let base_s = base_solid();
+            if *subtractive && base_s.is_empty() {
+                return Err(format!(
+                    "{what}: Cannot do a subtractive primitive without a base shape"
+                ));
+            }
+            let tool = shape.solid(&frame).map_err(|e| format!("{what}: {e}"))?;
+            model
+                .tools
+                .insert(name.into(), (Arc::new(tool.clone()), !*subtractive));
+            let out = boolean(
+                &base_s,
+                &tool,
+                if *subtractive {
+                    Op::Difference
+                } else {
+                    Op::Union
+                },
+            );
+            finish(out, &what)
+        }
+        Feature::Boolean { kind, bodies } => {
+            let what = "Boolean";
+            if bodies.is_empty() {
+                return Err(format!("{what}: No tool bodies selected"));
+            }
+            let own = doc.body_of(name).map(str::to_owned);
+            let mut out = base_solid();
+            for (i, b) in bodies.iter().enumerate() {
+                if own.as_deref() == Some(b.as_str()) {
+                    return Err(format!("{what}: A body cannot be a tool of itself"));
+                }
+                let tool = model
+                    .body_shape
+                    .get(b)
+                    .and_then(|s| s.solid.clone())
+                    .ok_or_else(|| format!("{what}: {b} has no solid"))?;
+                if out.is_empty() {
+                    if i == 0 && *kind == BoolType::Fuse {
+                        out = (*tool).clone();
+                        continue;
+                    }
+                    return Err(format!("{what}: The body has no base shape"));
+                }
+                let op = match kind {
+                    BoolType::Fuse => Op::Union,
+                    BoolType::Cut => Op::Difference,
+                    BoolType::Common => Op::Intersection,
+                };
+                out = boolean(&out, &tool, op).map_err(|e| format!("{what}: {e}"))?;
+            }
+            finish(Ok(out), what)
         }
         Feature::Pad {
             profile,
@@ -1054,7 +1824,7 @@ fn feature_step(
             let regions = profile::exact_regions(&sketch)?;
             let (o, d) = match axis {
                 AxisRef::Edge(r) => edge_axis(r, base.as_ref())?,
-                other => sketch_axis(&frame, &sketch, other)?,
+                other => sketch_axis(model, &frame, &sketch, other)?,
             };
             let a = math::radians(angle.clamp(-360.0, 360.0));
             if a.abs() < 1e-9 {
@@ -1314,6 +2084,10 @@ fn feature_step(
                         };
                         (frame.origin, axis.cross(frame.z).norm())
                     }
+                    PlaneRef::Datum(d) => match model.datums.get(d) {
+                        Some(DatumGeom::Plane(f)) => (f.origin, f.z),
+                        _ => return Err(format!("{d} is not a datum plane")),
+                    },
                     PlaneRef::Face(r) => {
                         let shape = base.as_ref().ok_or("no base shape")?;
                         let i = resolve(r, &shape.mesh, &shape.topo)
@@ -1349,7 +2123,7 @@ fn feature_step(
                     other => {
                         let frame = sketch_frame_of(doc, model, first)?;
                         let sketch = sketch_of(doc, first)?;
-                        sketch_axis(&frame, &sketch, other)?
+                        sketch_axis(model, &frame, &sketch, other)?
                     }
                 };
                 let d = if reversed { -d } else { d };
@@ -1382,7 +2156,7 @@ fn feature_step(
                     other => {
                         let frame = sketch_frame_of(doc, model, first)?;
                         let sketch = sketch_of(doc, first)?;
-                        sketch_axis(&frame, &sketch, other)?
+                        sketch_axis(model, &frame, &sketch, other)?
                     }
                 };
                 let d = if reversed { -d } else { d };
@@ -1404,6 +2178,42 @@ fn feature_step(
             transform_feature(model, base, originals, what, xs)
         }
     }
+}
+
+/// Where an attached object sits: a base plane, a planar face of an earlier feature
+/// (whose reference is refreshed in the document), or a datum plane.
+fn support_frame(
+    doc: &mut Document,
+    model: &Model,
+    name: &str,
+    support: &Support,
+) -> Result<Frame, String> {
+    Ok(match support {
+        Support::Plane { plane } => plane.frame(),
+        Support::Datum { datum } => match model.datums.get(datum) {
+            Some(DatumGeom::Plane(f)) => *f,
+            _ => return Err(format!("{datum} is not a datum plane placed before {name}")),
+        },
+        Support::Face { feature, face } => {
+            let shape = model
+                .shapes
+                .get(feature)
+                .cloned()
+                .ok_or_else(|| format!("Sketch support {feature} has no shape"))?;
+            let i = resolve(face, &shape.mesh, &shape.topo)
+                .ok_or_else(|| format!("Sketch support {}.{} was not found", feature, face.name))?;
+            let f = solid::face_frame(&shape.mesh, &shape.topo, i)
+                .ok_or_else(|| format!("{}.{} is not planar", feature, face.name))?;
+            // Remember where the face is now.
+            let fresh = SubRef::face(&shape.topo, &shape.mesh, i);
+            if let Some(Support::Face { face, .. }) =
+                doc.get_mut(name).and_then(|o| o.feature.support_mut())
+            {
+                *face = fresh;
+            }
+            f
+        }
+    })
 }
 
 /// Whether an edge is a seam (used twice by one face): not something to round.

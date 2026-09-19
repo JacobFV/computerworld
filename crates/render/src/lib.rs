@@ -9,7 +9,7 @@ mod script_tests;
 mod symbols;
 #[cfg(test)]
 mod text_style_tests;
-pub use assets::{ASSET_IDS, SYMBOLS};
+pub use assets::{decode, ASSET_IDS, SYMBOLS};
 use cw_scene::{
     metrics,
     text::{self as shaping, terminal, FaceId, GlyphRef},
@@ -60,7 +60,7 @@ static OBLIQUE_BYTES: [&[u8]; 2] = [
 ];
 fn face_index(typeface: Typeface, bold: bool, italic: bool) -> Option<usize> {
     let family = match typeface {
-        Typeface::DejaVu => return None,
+        Typeface::DejaVu | Typeface::Mono => return None,
         Typeface::Inter => 0,
         Typeface::OpenSans => 1,
         Typeface::Ubuntu => 2,
@@ -247,6 +247,7 @@ impl Renderer {
             metrics::table_face(typeface, Style::new(bold, italic, Lang::Auto), c),
         ) {
             (0, _) => None,
+            (_, Some((Typeface::Mono, _))) => Some(MONO),
             (_, Some((Typeface::DejaVu, true))) => Some(OBLIQUE + u8::from(bold)),
             (_, Some((family, slanted))) => {
                 face_index(family, bold, slanted).map(|f| PLATFORM + f as u8)

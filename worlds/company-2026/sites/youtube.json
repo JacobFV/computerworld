@@ -2,12 +2,7 @@
   "id": "youtube",
   "kind": "media",
   "node": "youtube",
-  "domains": [
-    "youtube.com",
-    "www.youtube.com",
-    "m.youtube.com",
-    "youtu.be"
-  ],
+  "domains": ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"],
   "port": 80,
   "initial_state": {
     "mode": "video",
@@ -53,6 +48,86 @@
         "owner": null,
         "subscribers": 41800,
         "about": "Talks from DevCon Seattle. Tickets at http://ticketmaster.com/event/devcon-2026"
+      },
+      "panfried": {
+        "id": "panfried",
+        "name": "Pan Fried with Mina",
+        "handle": "@panfried",
+        "owner": null,
+        "subscribers": 842000,
+        "about": "Weeknight cooking that respects your Tuesday. Mina Okafor cooks one pan, one board, thirty minutes, no shopping trips to three stores. Recipes in the descriptions."
+      },
+      "offgrid-routes": {
+        "id": "offgrid-routes",
+        "name": "Off-Grid Routes",
+        "handle": "@offgridroutes",
+        "owner": null,
+        "subscribers": 1210000,
+        "about": "Tomas Reyes walks, trains and ferries across places the guidebooks skip. No sponsors on the trail, a lot of tea. Route notes in every description."
+      },
+      "lena-covers": {
+        "id": "lena-covers",
+        "name": "Lena Vasquez Covers",
+        "handle": "@lenacovers",
+        "owner": null,
+        "subscribers": 2860000,
+        "about": "Piano and voice covers, one take, recorded in a rented room above a bakery. New cover every other Sunday. Full versions on http://spotify.com/ and http://music.youtube.com/"
+      },
+      "thirdorder": {
+        "id": "thirdorder",
+        "name": "Third Order",
+        "handle": "@thirdorder",
+        "owner": null,
+        "subscribers": 3940000,
+        "about": "Science explainers that stop at the second why and then keep going. Written by Dr. Priya Sundaram, animated by two people and a cat."
+      },
+      "pixelfoundry": {
+        "id": "pixelfoundry",
+        "name": "Pixel Foundry",
+        "handle": "@pixelfoundry",
+        "owner": null,
+        "subscribers": 1680000,
+        "about": "Indie game deep dives, speedrun breakdowns and the occasional twelve-hour build stream. Hosted by Jules Park and Dmitri Kessler."
+      },
+      "ironclad": {
+        "id": "ironclad",
+        "name": "Ironclad Fitness",
+        "handle": "@ironclad",
+        "owner": null,
+        "subscribers": 975000,
+        "about": "Coach Nadia Brooks. Strength training for people with a job, a knee, and twenty minutes. No supplements, no before-and-after shots."
+      },
+      "wirecut": {
+        "id": "wirecut",
+        "name": "Wirecut News",
+        "handle": "@wirecut",
+        "owner": null,
+        "subscribers": 5120000,
+        "about": "Two-minute clips of the stories that matter, cut from the day's wires. Sources linked. Corrections pinned. Longer reads at http://reuters.com/ and http://arstechnica.com/"
+      },
+      "sawdust": {
+        "id": "sawdust",
+        "name": "Sawdust Society",
+        "handle": "@sawdustsociety",
+        "owner": null,
+        "subscribers": 612000,
+        "about": "Woodworking from a two-car garage in Duluth. Hand tools first, power tools when honest. Plans sold at http://etsy.com/ — Ray Lindqvist."
+      },
+      "latenight-loop": {
+        "id": "latenight-loop",
+        "name": "Late Night Loop",
+        "handle": "@latenightloop",
+        "owner": null,
+        "subscribers": 7300000,
+        "about": "Clips from Late Night Loop with Hugo Bramble, taped nightly in Studio 4B. Monologues, desk bits and guests who did not expect the follow-up question."
+      },
+      "tonguetied": {
+        "id": "tonguetied",
+        "name": "Tongue Tied",
+        "handle": "@tonguetied",
+        "owner": null,
+        "subscribers": 1430000,
+        "about": "Learn Spanish and Japanese from Sofia Ruiz and Kenji Tanaka, who are learning each other's language on camera and making every mistake so you do not have to."
       }
     },
     "items": {
@@ -66,14 +141,8 @@
         "published_tick": 1,
         "views": 42118,
         "likes": 2310,
-        "tags": [
-          "determinism",
-          "simulation",
-          "rust"
-        ],
-        "badges": [
-          "4K"
-        ],
+        "tags": ["determinism", "simulation", "rust"],
+        "badges": ["4K"],
         "comments": [
           {
             "id": "c1",
@@ -90,10 +159,7 @@
             "likes": 12
           }
         ],
-        "related": [
-          "atlas-walkthrough",
-          "flaky-test-windows"
-        ]
+        "related": ["atlas-walkthrough", "flaky-test-windows", "determinism-in-nature"]
       },
       "flaky-test-windows": {
         "id": "flaky-test-windows",
@@ -105,11 +171,7 @@
         "published_tick": 3,
         "views": 9127,
         "likes": 412,
-        "tags": [
-          "testing",
-          "rust",
-          "ci"
-        ],
+        "tags": ["testing", "rust", "ci"],
         "comments": [
           {
             "id": "c1",
@@ -119,10 +181,7 @@
             "likes": 22
           }
         ],
-        "related": [
-          "determinism-intro",
-          "atlas-walkthrough"
-        ]
+        "related": ["determinism-intro", "atlas-walkthrough"]
       },
       "carol-postmortem": {
         "id": "carol-postmortem",
@@ -134,11 +193,7 @@
         "published_tick": 5,
         "views": 6031,
         "likes": 288,
-        "tags": [
-          "release",
-          "postmortem",
-          "northstar"
-        ],
+        "tags": ["release", "postmortem", "northstar"],
         "comments": [
           {
             "id": "c1",
@@ -148,10 +203,7 @@
             "likes": 9
           }
         ],
-        "related": [
-          "atlas-walkthrough",
-          "northstar-standup-live"
-        ]
+        "related": ["atlas-walkthrough", "northstar-standup-live"]
       },
       "atlas-walkthrough": {
         "id": "atlas-walkthrough",
@@ -163,14 +215,8 @@
         "published_tick": 7,
         "views": 18342,
         "likes": 903,
-        "tags": [
-          "atlas",
-          "determinism",
-          "northstar"
-        ],
-        "badges": [
-          "4K"
-        ],
+        "tags": ["atlas", "determinism", "northstar"],
+        "badges": ["4K"],
         "comments": [
           {
             "id": "c1",
@@ -194,11 +240,7 @@
             "likes": 15
           }
         ],
-        "related": [
-          "determinism-intro",
-          "carol-postmortem",
-          "flaky-test-windows"
-        ]
+        "related": ["determinism-intro", "carol-postmortem", "flaky-test-windows"]
       },
       "devcon-keynote": {
         "id": "devcon-keynote",
@@ -210,14 +252,8 @@
         "published_tick": 8,
         "views": 21044,
         "likes": 1102,
-        "tags": [
-          "devcon",
-          "seattle",
-          "conference"
-        ],
-        "badges": [
-          "4K"
-        ],
+        "tags": ["devcon", "seattle", "conference"],
+        "badges": ["4K"],
         "comments": [
           {
             "id": "c1",
@@ -227,10 +263,7 @@
             "likes": 7
           }
         ],
-        "related": [
-          "atlas-walkthrough",
-          "determinism-intro"
-        ]
+        "related": ["atlas-walkthrough", "determinism-intro"]
       },
       "northstar-standup-live": {
         "id": "northstar-standup-live",
@@ -242,18 +275,1011 @@
         "published_tick": 9,
         "views": 1204,
         "likes": 57,
-        "tags": [
-          "northstar",
-          "atlas"
-        ],
-        "badges": [
-          "LIVE"
-        ],
+        "tags": ["northstar", "atlas"],
+        "badges": ["LIVE"],
         "comments": [],
-        "related": [
-          "atlas-walkthrough",
-          "carol-postmortem"
-        ]
+        "related": ["atlas-walkthrough", "carol-postmortem", "northstar-atlas-1-1"]
+      },
+      "one-pan-chicken-thighs": {
+        "id": "one-pan-chicken-thighs",
+        "channel": "panfried",
+        "title": "One pan, six chicken thighs, nobody does the dishes",
+        "description": "Crispy skin-side down, then the onions go in the same fat and finish under the lid. Fifteen minutes hands-on, thirty total. Serves four, or two people who had a day. Written recipe at the end of the video.",
+        "duration_s": 614,
+        "published": "Jan 9, 2026",
+        "published_tick": 1,
+        "views": 1842000,
+        "likes": 88100,
+        "tags": ["cooking", "chicken", "weeknight"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Made this Tuesday. The lid trick at 4:30 is the whole video.",
+            "tick": 2,
+            "likes": 412
+          },
+          {
+            "id": "c2",
+            "author": "mina_ok",
+            "text": "Thighs, never breasts. I will die on this hill.",
+            "tick": 2,
+            "likes": 930
+          },
+          {
+            "id": "c3",
+            "author": "carol",
+            "text": "Worked with tofu too, oddly.",
+            "tick": 3,
+            "likes": 88
+          }
+        ],
+        "related": ["knife-skills-ten-minutes", "weeknight-ramen", "why-bread-rises"]
+      },
+      "knife-skills-ten-minutes": {
+        "id": "knife-skills-ten-minutes",
+        "channel": "panfried",
+        "title": "Every knife cut you actually use, in ten minutes",
+        "description": "Rock chop, claw grip, the bias cut, and why your onion cries less when the knife is sharp. Sharpening at 7:10. No mandolines were harmed.",
+        "duration_s": 601,
+        "published": "Feb 6, 2026",
+        "published_tick": 4,
+        "views": 3210000,
+        "likes": 142000,
+        "tags": ["cooking", "knife-skills", "basics"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Sent this to my brother who cuts toward his thumb.",
+            "tick": 4,
+            "likes": 201
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "The claw grip demo finally fixed my dicing.",
+            "tick": 5,
+            "likes": 64
+          }
+        ],
+        "related": ["one-pan-chicken-thighs", "weeknight-ramen", "why-bread-rises"]
+      },
+      "weeknight-ramen": {
+        "id": "weeknight-ramen",
+        "channel": "panfried",
+        "title": "Weeknight ramen from a store-bought broth that tastes like it wasn't",
+        "description": "Doctor the carton: ginger, a spoon of miso, the soy-butter thing. Jammy egg at 6:40. Related: http://youtube.com/watch?v=knife-skills-ten-minutes for the scallion cut.",
+        "duration_s": 702,
+        "published": "Apr 17, 2026",
+        "published_tick": 14,
+        "views": 2470000,
+        "likes": 101000,
+        "tags": ["cooking", "ramen", "weeknight"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "ktanaka",
+            "text": "As a Japanese person: this is fine, and the miso is correct.",
+            "tick": 14,
+            "likes": 2210
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Egg at 6:40 changed my life a little.",
+            "tick": 15,
+            "likes": 140
+          }
+        ],
+        "related": ["one-pan-chicken-thighs", "knife-skills-ten-minutes", "why-bread-rises"]
+      },
+      "sheet-pan-salmon": {
+        "id": "sheet-pan-salmon",
+        "channel": "panfried",
+        "title": "Sheet pan salmon and the vegetables you were going to throw away",
+        "description": "Broccoli stems, the sad half of a lemon, the last of the potatoes. Everything at 220C for eighteen minutes, salmon goes in for the last nine. Sunday meal prep without the meal-prep face.",
+        "duration_s": 548,
+        "published": "Jul 3, 2026",
+        "published_tick": 25,
+        "views": 1120000,
+        "likes": 52300,
+        "tags": ["cooking", "salmon", "meal-prep"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Stems! Nobody uses the stems.",
+            "tick": 26,
+            "likes": 77
+          }
+        ],
+        "related": ["one-pan-chicken-thighs", "knife-skills-ten-minutes", "why-bread-rises"]
+      },
+      "faroe-by-bus": {
+        "id": "faroe-by-bus",
+        "channel": "offgrid-routes",
+        "title": "Crossing the Faroe Islands by public bus in four days",
+        "description": "Eighteen islands, one bus pass, a sub-sea tunnel that plays music, and a ferry that runs when the captain feels like it. Route notes and the bus timetable I used are in the pinned comment. Background: http://en.wikipedia.org/",
+        "duration_s": 1526,
+        "published": "Jan 22, 2026",
+        "published_tick": 2,
+        "views": 4380000,
+        "likes": 196000,
+        "tags": ["travel", "faroe", "bus"],
+        "badges": ["4K"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tomasr",
+            "text": "Timetable: Route 300 to Klaksvik, then 500 and the 58 ferry. Check the weather board first.",
+            "tick": 2,
+            "likes": 3100
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "The tunnel roundabout at 14:20 is not something I expected to exist.",
+            "tick": 3,
+            "likes": 410
+          }
+        ],
+        "related": ["night-train-lisbon", "kyrgyz-yurt-week"]
+      },
+      "night-train-lisbon": {
+        "id": "night-train-lisbon",
+        "channel": "offgrid-routes",
+        "title": "The overnight train from Hendaye to Lisbon, second class",
+        "description": "A twelve hour sleeper with a shared corridor, a dining car that closes at nine, and the best sunrise I have filmed. Booking tips at 21:00. No sponsor on this one.",
+        "duration_s": 1683,
+        "published": "Mar 13, 2026",
+        "published_tick": 10,
+        "views": 2910000,
+        "likes": 131000,
+        "tags": ["travel", "train", "portugal"],
+        "badges": ["4K"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Booked this for October because of you. Thanks, I think.",
+            "tick": 10,
+            "likes": 520
+          },
+          {
+            "id": "c2",
+            "author": "sofia_r",
+            "text": "Lisbon at dawn from a train window. You got it.",
+            "tick": 11,
+            "likes": 860
+          }
+        ],
+        "related": ["faroe-by-bus", "kyrgyz-yurt-week"]
+      },
+      "kyrgyz-yurt-week": {
+        "id": "kyrgyz-yurt-week",
+        "channel": "offgrid-routes",
+        "title": "A week in a Kyrgyz yurt with no signal and a horse named Bek",
+        "description": "Song-Kol lake at 3000 metres, fermented mare's milk, and a family who let me help with the sheep. Filmed on a single battery. Route from Kochkor at 24:10.",
+        "duration_s": 1890,
+        "published": "Jun 5, 2026",
+        "published_tick": 21,
+        "views": 5620000,
+        "likes": 240000,
+        "tags": ["travel", "kyrgyzstan", "hiking"],
+        "badges": ["4K"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "The horse has more screen presence than most presenters.",
+            "tick": 21,
+            "likes": 1400
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "How did you handle drinking water up there?",
+            "tick": 22,
+            "likes": 90
+          },
+          {
+            "id": "c3",
+            "author": "tomasr",
+            "text": "Boiled, always. Iodine tablets as backup. Covered at 17:00.",
+            "tick": 22,
+            "likes": 450
+          }
+        ],
+        "related": ["faroe-by-bus", "night-train-lisbon"]
+      },
+      "cover-rainy-window": {
+        "id": "cover-rainy-window",
+        "channel": "lena-covers",
+        "title": "Rainy Window (piano and voice, one take)",
+        "description": "One take, one microphone, the bakery downstairs pulling the morning trays out at 2:14 if you listen closely. Full version on http://spotify.com/",
+        "duration_s": 254,
+        "published": "Jan 18, 2026",
+        "published_tick": 1,
+        "views": 9840000,
+        "likes": 612000,
+        "tags": ["music", "cover", "piano"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "I can hear the bakery. It makes it better.",
+            "tick": 2,
+            "likes": 3200
+          },
+          {
+            "id": "c2",
+            "author": "dmitri_k",
+            "text": "The bridge at 1:50 is the best part of the original and you made it better.",
+            "tick": 2,
+            "likes": 940
+          }
+        ],
+        "related": ["cover-northbound", "cover-summer-static"]
+      },
+      "cover-northbound": {
+        "id": "cover-northbound",
+        "channel": "lena-covers",
+        "title": "Northbound (acoustic cover) — requested 400 times",
+        "description": "You asked, repeatedly. Capo on the third fret, dropped D, the harmony is me twice. Chords in the pinned comment. Streaming at http://music.youtube.com/",
+        "duration_s": 231,
+        "published": "Mar 29, 2026",
+        "published_tick": 12,
+        "views": 6120000,
+        "likes": 388000,
+        "tags": ["music", "cover", "acoustic"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Request number 401: do it again.",
+            "tick": 12,
+            "likes": 1800
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "The double-tracked harmony is so clean.",
+            "tick": 13,
+            "likes": 220
+          }
+        ],
+        "related": ["cover-rainy-window", "cover-summer-static"]
+      },
+      "cover-summer-static": {
+        "id": "cover-summer-static",
+        "channel": "lena-covers",
+        "title": "Summer Static (live at the rooftop show)",
+        "description": "Recorded on the roof of the bakery for thirty people and a heat wave. The piano was out of tune by the second chorus and I kept it. Setlist at the end.",
+        "duration_s": 312,
+        "published": "Aug 2, 2026",
+        "published_tick": 30,
+        "views": 3050000,
+        "likes": 201000,
+        "tags": ["music", "cover", "live"],
+        "badges": ["NEW"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Out of tune and perfect.",
+            "tick": 30,
+            "likes": 700
+          }
+        ],
+        "related": ["cover-rainy-window", "cover-northbound"]
+      },
+      "why-ice-is-slippery": {
+        "id": "why-ice-is-slippery",
+        "channel": "thirdorder",
+        "title": "Why ice is slippery (the textbook answer is wrong)",
+        "description": "Pressure melting cannot explain a skate. Friction melting cannot explain a puck sitting still. The real answer involves a liquid-like layer that exists at minus thirty. Sources on screen and at http://en.wikipedia.org/",
+        "duration_s": 842,
+        "published": "Feb 1, 2026",
+        "published_tick": 3,
+        "views": 7900000,
+        "likes": 421000,
+        "tags": ["science", "physics", "explainer"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The 'second why' framing is why I subscribe.",
+            "tick": 3,
+            "likes": 2100
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Teachers: this is a full lesson plan.",
+            "tick": 4,
+            "likes": 610
+          },
+          {
+            "id": "c3",
+            "author": "carol",
+            "text": "I had the pressure explanation memorised for twenty years. Well.",
+            "tick": 4,
+            "likes": 330
+          }
+        ],
+        "related": ["how-gps-corrects-time", "determinism-in-nature", "determinism-intro"]
+      },
+      "how-gps-corrects-time": {
+        "id": "how-gps-corrects-time",
+        "channel": "thirdorder",
+        "title": "GPS satellites run their clocks slow on purpose",
+        "description": "Special relativity slows them, general relativity speeds them, and the net is 38 microseconds a day, which would put you ten kilometres off by tomorrow. The engineers pre-corrected the clocks before launch. The clean explanation starts at 3:05.",
+        "duration_s": 758,
+        "published": "Apr 24, 2026",
+        "published_tick": 15,
+        "views": 11800000,
+        "likes": 640000,
+        "tags": ["science", "relativity", "gps"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Watched this twice. Once to understand, once to enjoy.",
+            "tick": 15,
+            "likes": 4400
+          },
+          {
+            "id": "c2",
+            "author": "dmitri_k",
+            "text": "Ten kilometres a day is a really good number for a headline.",
+            "tick": 16,
+            "likes": 900
+          }
+        ],
+        "related": ["why-ice-is-slippery", "determinism-in-nature", "determinism-intro"]
+      },
+      "determinism-in-nature": {
+        "id": "determinism-in-nature",
+        "channel": "thirdorder",
+        "title": "Is anything in nature actually deterministic?",
+        "description": "Three-body chaos, a double pendulum, and one line of quantum mechanics. A companion piece to a very different kind of video: http://youtube.com/watch?v=determinism-intro",
+        "duration_s": 911,
+        "published": "May 22, 2026",
+        "published_tick": 19,
+        "views": 5400000,
+        "likes": 289000,
+        "tags": ["science", "chaos", "determinism"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Honoured by the cross-link. The double pendulum is my favourite unit test.",
+            "tick": 19,
+            "likes": 1500
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Two channels I subscribe to talking to each other.",
+            "tick": 20,
+            "likes": 340
+          }
+        ],
+        "related": ["why-ice-is-slippery", "how-gps-corrects-time", "determinism-intro"]
+      },
+      "why-bread-rises": {
+        "id": "why-bread-rises",
+        "channel": "thirdorder",
+        "title": "Why bread rises, from the yeast's point of view",
+        "description": "Gas, gluten, and a foam that sets. Includes a microscope, a proofing box and Mina from Pan Fried, who brought the dough: http://youtube.com/channel/panfried",
+        "duration_s": 690,
+        "published": "Aug 21, 2026",
+        "published_tick": 33,
+        "views": 2210000,
+        "likes": 118000,
+        "tags": ["science", "baking", "biology"],
+        "badges": ["NEW"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mina_ok",
+            "text": "I brought the dough and stayed for the microscope.",
+            "tick": 33,
+            "likes": 2600
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Collab of the year.",
+            "tick": 34,
+            "likes": 410
+          }
+        ],
+        "related": ["why-ice-is-slippery", "how-gps-corrects-time", "determinism-intro"]
+      },
+      "hollow-depths-any-percent": {
+        "id": "hollow-depths-any-percent",
+        "channel": "pixelfoundry",
+        "title": "Hollow Depths any% in 41:12 — the run, explained",
+        "description": "A new world record and the four skips that made it. The wall clip at 12:40 was found by a viewer in chat. Full VOD with commentary; timestamps in the description.",
+        "duration_s": 2472,
+        "published": "Feb 14, 2026",
+        "published_tick": 4,
+        "views": 3980000,
+        "likes": 214000,
+        "tags": ["gaming", "speedrun", "hollow-depths"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "dmitri_k",
+            "text": "The 12:40 clip is still not fully understood and I love that.",
+            "tick": 5,
+            "likes": 3300
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "I have played this game for 200 hours and did not know the wall could do that.",
+            "tick": 5,
+            "likes": 1100
+          }
+        ],
+        "related": ["indie-dev-twelve-hour-build", "pixel-art-101", "alice-hashmap-order"]
+      },
+      "indie-dev-twelve-hour-build": {
+        "id": "indie-dev-twelve-hour-build",
+        "channel": "pixelfoundry",
+        "title": "We built a game in twelve hours, live (stream VOD)",
+        "description": "Jules draws, Dmitri codes, chat names everything. The result is a fishing game where the fish judge you. Build starts at 4:00, the panic at 9:12:00. Source at http://github.com/",
+        "duration_s": 43600,
+        "published": "Apr 4, 2026",
+        "published_tick": 13,
+        "views": 890000,
+        "likes": 41000,
+        "tags": ["gaming", "gamedev", "stream"],
+        "badges": ["LIVE"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Deterministic fish RNG would have saved you at hour nine. Just saying.",
+            "tick": 13,
+            "likes": 780
+          },
+          {
+            "id": "c2",
+            "author": "jules_p",
+            "text": "We know. We know.",
+            "tick": 14,
+            "likes": 1200
+          }
+        ],
+        "related": ["hollow-depths-any-percent", "pixel-art-101", "alice-hashmap-order"]
+      },
+      "pixel-art-101": {
+        "id": "pixel-art-101",
+        "channel": "pixelfoundry",
+        "title": "Pixel art 101: the four rules that make sprites read at 16x16",
+        "description": "Silhouette, palette limits, cluster shapes, and where to cheat on outlines. Twenty minutes with a live sprite, from blob to knight.",
+        "duration_s": 1244,
+        "published": "Jul 18, 2026",
+        "published_tick": 27,
+        "views": 1540000,
+        "likes": 92000,
+        "tags": ["gaming", "pixel-art", "tutorial"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "I have no artistic talent and the knight still looked like a knight.",
+            "tick": 27,
+            "likes": 640
+          }
+        ],
+        "related": ["hollow-depths-any-percent", "indie-dev-twelve-hour-build", "alice-hashmap-order"]
+      },
+      "twenty-minute-strength": {
+        "id": "twenty-minute-strength",
+        "channel": "ironclad",
+        "title": "Twenty-minute full body strength with one kettlebell",
+        "description": "Six moves, three rounds, one bell, no jumping. Knee-friendly swaps at 3:15. This is the workout I do when I have a meeting in twenty-five minutes.",
+        "duration_s": 1231,
+        "published": "Jan 27, 2026",
+        "published_tick": 2,
+        "views": 2740000,
+        "likes": 131000,
+        "tags": ["fitness", "kettlebell", "strength"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Twelve weeks in on this three times a week. Different person.",
+            "tick": 3,
+            "likes": 1900
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Knee swap at 3:15 is why this channel is for actual humans.",
+            "tick": 3,
+            "likes": 720
+          }
+        ],
+        "related": ["desk-posture-fix", "running-first-5k"]
+      },
+      "desk-posture-fix": {
+        "id": "desk-posture-fix",
+        "channel": "ironclad",
+        "title": "Fix your desk posture in four stretches (no equipment)",
+        "description": "Hip flexors, thoracic spine, neck, wrists. Five minutes, done at your desk, filmed at my desk. Do it at 2pm when the slump happens.",
+        "duration_s": 318,
+        "published": "Mar 20, 2026",
+        "published_tick": 11,
+        "views": 4310000,
+        "likes": 187000,
+        "tags": ["fitness", "posture", "stretching"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Doing the thoracic one between builds. Recommend.",
+            "tick": 11,
+            "likes": 860
+          },
+          {
+            "id": "c2",
+            "author": "nadiab",
+            "text": "2pm. Set the alarm.",
+            "tick": 12,
+            "likes": 1400
+          }
+        ],
+        "related": ["twenty-minute-strength", "running-first-5k"]
+      },
+      "running-first-5k": {
+        "id": "running-first-5k",
+        "channel": "ironclad",
+        "title": "Your first 5K: an eight-week plan for people who hate running",
+        "description": "Walk-run intervals, the shoe talk you did not ask for, and why week five is where everyone quits. Plan printable in the pinned comment.",
+        "duration_s": 1102,
+        "published": "Jun 19, 2026",
+        "published_tick": 23,
+        "views": 1980000,
+        "likes": 97000,
+        "tags": ["fitness", "running", "5k"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Week five. You were right. Still here.",
+            "tick": 24,
+            "likes": 510
+          }
+        ],
+        "related": ["twenty-minute-strength", "desk-posture-fix"]
+      },
+      "wirecut-chip-export-rules": {
+        "id": "wirecut-chip-export-rules",
+        "channel": "wirecut",
+        "title": "New chip export rules take effect: what changes in two minutes",
+        "description": "The updated export control list, who is affected, and the three dates that matter. Full text and the agency statement at http://reuters.com/ and http://arstechnica.com/",
+        "duration_s": 134,
+        "published": "Mar 2, 2026",
+        "published_tick": 7,
+        "views": 1230000,
+        "likes": 31000,
+        "tags": ["news", "chips", "policy"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Finally a clip that just says the dates.",
+            "tick": 7,
+            "likes": 410
+          }
+        ],
+        "related": ["wirecut-atlas-release", "wirecut-heat-grid", "atlas-walkthrough"]
+      },
+      "wirecut-atlas-release": {
+        "id": "wirecut-atlas-release",
+        "channel": "wirecut",
+        "title": "A simulator that promises the same bytes every time — Atlas 1.0 in ninety seconds",
+        "description": "Northstar shipped Atlas, a deterministic computer simulator. Why 'same bytes' matters, who is using it, and the caveat at 1:10. Coverage: http://theverge.com/2026/atlas-determinism  Repo: http://github.com/northstar/atlas",
+        "duration_s": 92,
+        "published": "Mar 5, 2026",
+        "published_tick": 8,
+        "views": 684000,
+        "likes": 22000,
+        "tags": ["news", "atlas", "northstar"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "The caveat at 1:10 is fair and we said so in the postmortem.",
+            "tick": 8,
+            "likes": 150
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "Ninety seconds is more than most got. Thanks.",
+            "tick": 9,
+            "likes": 210
+          }
+        ],
+        "related": ["wirecut-chip-export-rules", "wirecut-heat-grid", "atlas-walkthrough"]
+      },
+      "wirecut-heat-grid": {
+        "id": "wirecut-heat-grid",
+        "channel": "wirecut",
+        "title": "Heat wave and the grid: why your power flickered this week",
+        "description": "Demand peaks, the reserve margin, and the one substation that was the actual problem. Sources at http://reuters.com/",
+        "duration_s": 148,
+        "published": "Jul 24, 2026",
+        "published_tick": 28,
+        "views": 2050000,
+        "likes": 44000,
+        "tags": ["news", "energy", "weather"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Substation at 0:50 was three blocks from me. Explains a lot.",
+            "tick": 28,
+            "likes": 300
+          }
+        ],
+        "related": ["wirecut-chip-export-rules", "wirecut-atlas-release", "atlas-walkthrough"]
+      },
+      "hand-cut-dovetails": {
+        "id": "hand-cut-dovetails",
+        "channel": "sawdust",
+        "title": "Hand-cut dovetails for the first time, honestly",
+        "description": "Every gap, every mistake, one chisel that was too dull until minute nine. By the end they fit. Plans and the marking gauge I use at http://etsy.com/",
+        "duration_s": 1520,
+        "published": "Feb 27, 2026",
+        "published_tick": 6,
+        "views": 1760000,
+        "likes": 94000,
+        "tags": ["woodworking", "dovetails", "hand-tools"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The honesty about the dull chisel is why I trust this channel.",
+            "tick": 6,
+            "likes": 1300
+          },
+          {
+            "id": "c2",
+            "author": "ray_l",
+            "text": "Sharpen first. I say it every video and I still didn't.",
+            "tick": 7,
+            "likes": 2100
+          }
+        ],
+        "related": ["workbench-weekend", "wood-finish-comparison"]
+      },
+      "workbench-weekend": {
+        "id": "workbench-weekend",
+        "channel": "sawdust",
+        "title": "A proper workbench in one weekend from construction lumber",
+        "description": "Laminate, flatten, one vise, done Sunday night. Cut list on screen at 2:00. Total cost under two hundred, because the lumber yard was kind.",
+        "duration_s": 2140,
+        "published": "May 8, 2026",
+        "published_tick": 17,
+        "views": 2380000,
+        "likes": 121000,
+        "tags": ["woodworking", "workbench", "diy"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Built this. The flattening took me two weekends, not one.",
+            "tick": 18,
+            "likes": 540
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "The cut list on screen is such a small thing and so rare.",
+            "tick": 18,
+            "likes": 330
+          }
+        ],
+        "related": ["hand-cut-dovetails", "wood-finish-comparison"]
+      },
+      "wood-finish-comparison": {
+        "id": "wood-finish-comparison",
+        "channel": "sawdust",
+        "title": "Six wood finishes, one board, six months later",
+        "description": "Oil, wax, shellac, water-based poly, oil-based poly and nothing. Water rings, sun fade, a dropped mug. The winner surprised me.",
+        "duration_s": 984,
+        "published": "Aug 14, 2026",
+        "published_tick": 32,
+        "views": 1010000,
+        "likes": 58000,
+        "tags": ["woodworking", "finishing", "test"],
+        "badges": ["NEW"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The 'nothing' control sample is the right kind of experiment design.",
+            "tick": 32,
+            "likes": 470
+          }
+        ],
+        "related": ["hand-cut-dovetails", "workbench-weekend"]
+      },
+      "loop-monologue-robot-vacuum": {
+        "id": "loop-monologue-robot-vacuum",
+        "channel": "latenight-loop",
+        "title": "Hugo's robot vacuum has been sending him emails (monologue)",
+        "description": "The vacuum has feelings, the fridge is jealous, and the week's headlines get the same treatment. Taped Tuesday in Studio 4B.",
+        "duration_s": 412,
+        "published": "Jan 21, 2026",
+        "published_tick": 2,
+        "views": 6870000,
+        "likes": 312000,
+        "tags": ["comedy", "latenight", "monologue"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "'The fridge is jealous' is the line of the year.",
+            "tick": 2,
+            "likes": 4100
+          },
+          {
+            "id": "c2",
+            "author": "hugo_b",
+            "text": "The vacuum has since been given a raise.",
+            "tick": 3,
+            "likes": 8800
+          }
+        ],
+        "related": ["loop-desk-bit-deterministic", "loop-guest-mina-okafor", "one-pan-chicken-thighs"]
+      },
+      "loop-desk-bit-deterministic": {
+        "id": "loop-desk-bit-deterministic",
+        "channel": "latenight-loop",
+        "title": "Hugo tries to explain deterministic simulation to his mother (desk bit)",
+        "description": "Hugo watched one Alice Builds video and now has opinions. His mother has better ones. Alice's actual video: http://youtube.com/watch?v=determinism-intro",
+        "duration_s": 367,
+        "published": "Mar 18, 2026",
+        "published_tick": 11,
+        "views": 4920000,
+        "likes": 258000,
+        "tags": ["comedy", "latenight", "desk-bit"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "His mother got the HashMap point faster than most engineers.",
+            "tick": 11,
+            "likes": 6200
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Crying.",
+            "tick": 12,
+            "likes": 900
+          },
+          {
+            "id": "c3",
+            "author": "praman",
+            "text": "This is how determinism goes mainstream apparently.",
+            "tick": 12,
+            "likes": 410
+          }
+        ],
+        "related": ["loop-monologue-robot-vacuum", "loop-guest-mina-okafor", "one-pan-chicken-thighs"]
+      },
+      "loop-guest-mina-okafor": {
+        "id": "loop-guest-mina-okafor",
+        "channel": "latenight-loop",
+        "title": "Mina Okafor teaches Hugo to dice an onion, badly",
+        "description": "Pan Fried's Mina brings a cutting board to the desk. Hugo brings a bandage. Mina's channel: http://youtube.com/channel/panfried",
+        "duration_s": 528,
+        "published": "May 29, 2026",
+        "published_tick": 20,
+        "views": 3410000,
+        "likes": 176000,
+        "tags": ["comedy", "latenight", "guest"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mina_ok",
+            "text": "No fingers were lost. Barely.",
+            "tick": 20,
+            "likes": 3900
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "The claw grip lecture from the knife video, live on TV.",
+            "tick": 21,
+            "likes": 650
+          }
+        ],
+        "related": ["loop-monologue-robot-vacuum", "loop-desk-bit-deterministic", "one-pan-chicken-thighs"]
+      },
+      "spanish-in-30-days-week1": {
+        "id": "spanish-in-30-days-week1",
+        "channel": "tonguetied",
+        "title": "Spanish in 30 days, week one: the 200 words that carry a conversation",
+        "description": "Sofia teaches, Kenji learns, both of them get corrected by Sofia's grandmother. Word list in the pinned comment. Free, no app.",
+        "duration_s": 1315,
+        "published": "Jan 12, 2026",
+        "published_tick": 1,
+        "views": 3680000,
+        "likes": 205000,
+        "tags": ["language", "spanish", "learning"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Grandma is the real teacher here.",
+            "tick": 2,
+            "likes": 2200
+          },
+          {
+            "id": "c2",
+            "author": "ktanaka",
+            "text": "I am still being corrected. Week one was six months ago.",
+            "tick": 2,
+            "likes": 3100
+          }
+        ],
+        "related": ["japanese-counters-explained", "swap-day-immersion", "faroe-by-bus"]
+      },
+      "japanese-counters-explained": {
+        "id": "japanese-counters-explained",
+        "channel": "tonguetied",
+        "title": "Japanese counters, finally explained by someone who suffered",
+        "description": "Hon, mai, hiki, tsu. Kenji explains, Sofia counts pencils wrong for four minutes, everyone learns. Sheet in the pinned comment.",
+        "duration_s": 1044,
+        "published": "Apr 10, 2026",
+        "published_tick": 14,
+        "views": 2130000,
+        "likes": 124000,
+        "tags": ["language", "japanese", "learning"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The pencil bit is a better mnemonic than any textbook.",
+            "tick": 14,
+            "likes": 700
+          },
+          {
+            "id": "c2",
+            "author": "sofia_r",
+            "text": "I still count pencils wrong.",
+            "tick": 15,
+            "likes": 1900
+          }
+        ],
+        "related": ["spanish-in-30-days-week1", "swap-day-immersion", "faroe-by-bus"]
+      },
+      "swap-day-immersion": {
+        "id": "swap-day-immersion",
+        "channel": "tonguetied",
+        "title": "Swap day: Sofia speaks only Japanese, Kenji only Spanish, for 24 hours",
+        "description": "A grocery store, a train station, a phone call with grandma. Subtitled in both languages. The panic at the pharmacy is at 9:30.",
+        "duration_s": 1466,
+        "published": "Jul 10, 2026",
+        "published_tick": 26,
+        "views": 2890000,
+        "likes": 164000,
+        "tags": ["language", "immersion", "challenge"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The pharmacy scene is genuinely tense television.",
+            "tick": 26,
+            "likes": 860
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Please do this every month.",
+            "tick": 27,
+            "likes": 540
+          }
+        ],
+        "related": ["spanish-in-30-days-week1", "japanese-counters-explained", "faroe-by-bus"]
+      },
+      "carol-release-checklist": {
+        "id": "carol-release-checklist",
+        "channel": "carol-ships",
+        "title": "The release checklist, line by line",
+        "description": "All forty-one lines, why each one exists and which incident wrote it. Postmortem that added lines 38 to 40: http://youtube.com/watch?v=carol-postmortem",
+        "duration_s": 1548,
+        "published": "Apr 30, 2026",
+        "published_tick": 16,
+        "views": 4210,
+        "likes": 210,
+        "tags": ["release", "checklist", "northstar"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Line 17 saved us last week. Thank you for the paranoia.",
+            "tick": 16,
+            "likes": 30
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "Pinning this in the release channel.",
+            "tick": 17,
+            "likes": 18
+          }
+        ],
+        "related": ["carol-postmortem", "northstar-atlas-1-1"]
+      },
+      "northstar-atlas-1-1": {
+        "id": "northstar-atlas-1-1",
+        "channel": "northstar",
+        "title": "Atlas 1.1: checkpoints, replay from anywhere, and a smaller binary",
+        "description": "What shipped in 1.1 and a demo of replaying from a checkpoint three hundred ticks in. Notes at http://eng.northstar.example/  Repo: http://github.com/northstar/atlas",
+        "duration_s": 1136,
+        "published": "Jun 12, 2026",
+        "published_tick": 22,
+        "views": 3620,
+        "likes": 198,
+        "tags": ["northstar", "atlas", "release"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Replay from checkpoint is the feature I asked for in the open standup. Thanks.",
+            "tick": 22,
+            "likes": 24
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Release went out on time. Forty-one lines, all green.",
+            "tick": 23,
+            "likes": 15
+          }
+        ],
+        "related": ["northstar-standup-live", "carol-release-checklist"]
+      },
+      "alice-hashmap-order": {
+        "id": "alice-hashmap-order",
+        "channel": "alice-builds",
+        "title": "HashMap iteration order is not your friend (a short one)",
+        "description": "The four minute version of the point people keep asking about from the determinism intro. BTreeMap, sorted keys, or a seeded hasher — pick one and write it down. Post: http://alicechen.dev/",
+        "duration_s": 247,
+        "published": "May 15, 2026",
+        "published_tick": 18,
+        "views": 15300,
+        "likes": 1140,
+        "tags": ["rust", "determinism", "hashmap"],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Four minutes. Finally something I can send without a 'sorry it's long'.",
+            "tick": 18,
+            "likes": 52
+          },
+          {
+            "id": "c2",
+            "author": "dmitri_k",
+            "text": "Watched this after the fishing game fiasco. Ouch.",
+            "tick": 19,
+            "likes": 41
+          }
+        ],
+        "related": ["determinism-intro", "flaky-test-windows", "determinism-in-nature"]
       }
     },
     "playlists": {
@@ -267,33 +1293,68 @@
         "id": "atlas-launch-kit",
         "title": "Atlas launch kit",
         "owner": "alice",
-        "items": [
-          "determinism-intro",
-          "atlas-walkthrough",
-          "carol-postmortem"
-        ]
+        "items": ["determinism-intro", "atlas-walkthrough", "carol-postmortem"]
+      },
+      "weeknight-dinners": {
+        "id": "weeknight-dinners",
+        "title": "Weeknight dinners",
+        "owner": null,
+        "items": ["one-pan-chicken-thighs", "weeknight-ramen", "sheet-pan-salmon", "knife-skills-ten-minutes"]
+      },
+      "reproducibility-track": {
+        "id": "reproducibility-track",
+        "title": "Reproducibility track, in order",
+        "owner": "carol",
+        "items": ["devcon-keynote", "determinism-intro", "atlas-walkthrough", "northstar-atlas-1-1", "alice-hashmap-order"]
+      },
+      "sunday-workshop": {
+        "id": "sunday-workshop",
+        "title": "Sunday workshop",
+        "owner": "bob",
+        "items": ["workbench-weekend", "hand-cut-dovetails", "wood-finish-comparison"]
+      },
+      "study-break-covers": {
+        "id": "study-break-covers",
+        "title": "Study break covers",
+        "owner": "alice",
+        "items": ["cover-rainy-window", "cover-northbound", "cover-summer-static"]
+      },
+      "zero-to-conversation": {
+        "id": "zero-to-conversation",
+        "title": "Zero to conversation",
+        "owner": null,
+        "items": ["spanish-in-30-days-week1", "japanese-counters-explained", "swap-day-immersion"]
+      },
+      "slow-travel": {
+        "id": "slow-travel",
+        "title": "Slow travel, no flights",
+        "owner": null,
+        "items": ["night-train-lisbon", "faroe-by-bus", "kyrgyz-yurt-week"]
       }
     },
+    "sections": [
+      {
+        "title": "Trending",
+        "items": ["how-gps-corrects-time", "cover-rainy-window", "loop-monologue-robot-vacuum", "kyrgyz-yurt-week", "why-ice-is-slippery", "desk-posture-fix"]
+      },
+      {
+        "title": "New this month",
+        "items": ["why-bread-rises", "wood-finish-comparison", "cover-summer-static", "wirecut-heat-grid", "pixel-art-101", "swap-day-immersion"]
+      },
+      {
+        "title": "From Northstar and friends",
+        "items": ["atlas-walkthrough", "northstar-atlas-1-1", "carol-release-checklist", "alice-hashmap-order", "wirecut-atlas-release", "loop-desk-bit-deterministic"]
+      }
+    ],
     "subscriptions": {
-      "alice": [
-        "carol-ships",
-        "northstar"
-      ],
-      "bob": [
-        "alice-builds"
-      ],
-      "carol": [
-        "alice-builds",
-        "northstar"
-      ]
+      "alice": ["carol-ships", "northstar", "thirdorder", "lena-covers", "ironclad", "tonguetied"],
+      "bob": ["alice-builds", "panfried", "sawdust", "pixelfoundry", "offgrid-routes", "latenight-loop"],
+      "carol": ["alice-builds", "northstar", "panfried", "ironclad", "wirecut", "thirdorder"]
     },
     "likes": {
-      "bob": [
-        "atlas-walkthrough"
-      ],
-      "carol": [
-        "determinism-intro"
-      ]
+      "alice": ["cover-rainy-window", "why-ice-is-slippery", "desk-posture-fix", "determinism-in-nature"],
+      "bob": ["atlas-walkthrough", "one-pan-chicken-thighs", "hollow-depths-any-percent", "hand-cut-dovetails", "night-train-lisbon"],
+      "carol": ["determinism-intro", "twenty-minute-strength", "loop-desk-bit-deterministic", "knife-skills-ten-minutes"]
     },
     "now_playing": {}
   },
@@ -304,12 +1365,7 @@
       "snippet": "Watch, subscribe, comment and build playlists. Deterministic video, one grid of cards at a time.",
       "vertical": "videos",
       "authority": 8,
-      "keywords": [
-        "youtube",
-        "video",
-        "watch",
-        "streaming"
-      ]
+      "keywords": ["youtube", "video", "watch", "streaming"]
     },
     {
       "url": "http://youtube.com/watch?v=atlas-walkthrough",
@@ -317,14 +1373,7 @@
       "snippet": "Alice Builds runs Atlas from seed to replay: processes, filesystem, network and browser, reproducible byte for byte.",
       "vertical": "videos",
       "authority": 7,
-      "keywords": [
-        "atlas",
-        "walkthrough",
-        "determinism",
-        "northstar",
-        "shipping atlas",
-        "alice chen"
-      ]
+      "keywords": ["atlas", "walkthrough", "determinism", "northstar", "shipping atlas", "alice chen"]
     },
     {
       "url": "http://youtube.com/watch?v=determinism-intro",
@@ -332,12 +1381,7 @@
       "snippet": "Same seed, same inputs, same bytes out — and the three things you give up to get there.",
       "vertical": "videos",
       "authority": 6,
-      "keywords": [
-        "deterministic simulation",
-        "determinism",
-        "replay",
-        "rust"
-      ]
+      "keywords": ["deterministic simulation", "determinism", "replay", "rust"]
     },
     {
       "url": "http://youtube.com/watch?v=flaky-test-windows",
@@ -345,13 +1389,7 @@
       "snippet": "A BFS path test that passes everywhere except one CI runner, and the hash-order bug behind it.",
       "vertical": "videos",
       "authority": 4,
-      "keywords": [
-        "flaky test",
-        "windows",
-        "hash order",
-        "bfs",
-        "ci"
-      ]
+      "keywords": ["flaky test", "windows", "hash order", "bfs", "ci"]
     },
     {
       "url": "http://youtube.com/watch?v=carol-postmortem",
@@ -359,13 +1397,7 @@
       "snippet": "Carol Nakamura on INC-4 from the release chair, and the three checklist lines it added.",
       "vertical": "videos",
       "authority": 4,
-      "keywords": [
-        "postmortem",
-        "incident",
-        "release",
-        "northstar",
-        "latency"
-      ]
+      "keywords": ["postmortem", "incident", "release", "northstar", "latency"]
     },
     {
       "url": "http://youtube.com/watch?v=devcon-keynote",
@@ -373,13 +1405,7 @@
       "snippet": "The opening keynote and the full reproducibility track schedule for DevCon Seattle.",
       "vertical": "videos",
       "authority": 5,
-      "keywords": [
-        "devcon",
-        "seattle",
-        "keynote",
-        "conference",
-        "devcon seattle tickets"
-      ]
+      "keywords": ["devcon", "seattle", "keynote", "conference", "devcon seattle tickets"]
     },
     {
       "url": "http://youtube.com/watch?v=northstar-standup-live",
@@ -387,12 +1413,7 @@
       "snippet": "The first post-launch standup, streamed: what broke, what did not, and what shipped anyway.",
       "vertical": "videos",
       "authority": 3,
-      "keywords": [
-        "northstar",
-        "standup",
-        "live",
-        "atlas"
-      ]
+      "keywords": ["northstar", "standup", "live", "atlas"]
     },
     {
       "url": "http://youtube.com/channel/alice-builds",
@@ -400,12 +1421,7 @@
       "snippet": "Deterministic systems, slowly. Renderers, replay and the long tail of nondeterminism.",
       "vertical": "videos",
       "authority": 5,
-      "keywords": [
-        "alice builds",
-        "alice chen",
-        "channel",
-        "determinism"
-      ]
+      "keywords": ["alice builds", "alice chen", "channel", "determinism"]
     },
     {
       "url": "http://youtube.com/channel/carol-ships",
@@ -413,11 +1429,7 @@
       "snippet": "Release management for people who would rather be writing code.",
       "vertical": "videos",
       "authority": 3,
-      "keywords": [
-        "carol ships it",
-        "carol nakamura",
-        "release management"
-      ]
+      "keywords": ["carol ships it", "carol nakamura", "release management"]
     },
     {
       "url": "http://youtube.com/channel/northstar",
@@ -425,11 +1437,7 @@
       "snippet": "The official Northstar channel: launches, standups and engineering notes.",
       "vertical": "videos",
       "authority": 4,
-      "keywords": [
-        "northstar",
-        "official",
-        "channel"
-      ]
+      "keywords": ["northstar", "official", "channel"]
     },
     {
       "url": "http://youtube.com/playlist?list=atlas-launch-kit",
@@ -437,11 +1445,319 @@
       "snippet": "Three videos in the order Alice recommends watching them before reading the launch post.",
       "vertical": "videos",
       "authority": 3,
-      "keywords": [
-        "atlas",
-        "playlist",
-        "launch kit"
-      ]
+      "keywords": ["atlas", "playlist", "launch kit"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=one-pan-chicken-thighs",
+      "title": "One pan, six chicken thighs, nobody does the dishes - YouTube",
+      "snippet": "Pan Fried with Mina: Crispy skin-side down, then the onions go in the same fat and finish under the lid.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["chicken thighs", "one pan", "weeknight dinner", "mina okafor"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=knife-skills-ten-minutes",
+      "title": "Every knife cut you actually use, in ten minutes - YouTube",
+      "snippet": "Pan Fried with Mina: Rock chop, claw grip, the bias cut, and why your onion cries less when the knife is sharp.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["knife skills", "claw grip", "how to dice an onion"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=weeknight-ramen",
+      "title": "Weeknight ramen from a store-bought broth that tastes like it wasn't - YouTube",
+      "snippet": "Pan Fried with Mina: Doctor the carton: ginger, a spoon of miso, the soy-butter thing.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["ramen", "store bought broth", "jammy egg"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=faroe-by-bus",
+      "title": "Crossing the Faroe Islands by public bus in four days - YouTube",
+      "snippet": "Off-Grid Routes: Eighteen islands, one bus pass, a sub-sea tunnel that plays music, and a ferry that runs when the captain feels like it.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["faroe islands", "bus", "travel", "tomas reyes"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=night-train-lisbon",
+      "title": "The overnight train from Hendaye to Lisbon, second class - YouTube",
+      "snippet": "Off-Grid Routes: A twelve hour sleeper with a shared corridor, a dining car that closes at nine, and the best sunrise I have filmed.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["night train", "lisbon", "sleeper train", "hendaye"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=kyrgyz-yurt-week",
+      "title": "A week in a Kyrgyz yurt with no signal and a horse named Bek - YouTube",
+      "snippet": "Off-Grid Routes: Song-Kol lake at 3000 metres, fermented mare's milk, and a family who let me help with the sheep.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["kyrgyzstan", "yurt", "song kol", "horse trek"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=cover-rainy-window",
+      "title": "Rainy Window (piano and voice, one take) - YouTube",
+      "snippet": "Lena Vasquez Covers: One take, one microphone, the bakery downstairs pulling the morning trays out at 2:14 if you listen closely.",
+      "vertical": "videos",
+      "authority": 7,
+      "keywords": ["rainy window", "cover", "piano", "lena vasquez"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=cover-northbound",
+      "title": "Northbound (acoustic cover) — requested 400 times - YouTube",
+      "snippet": "Lena Vasquez Covers: You asked, repeatedly.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["northbound", "acoustic cover", "chords"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=why-ice-is-slippery",
+      "title": "Why ice is slippery (the textbook answer is wrong) - YouTube",
+      "snippet": "Third Order: Pressure melting cannot explain a skate.",
+      "vertical": "videos",
+      "authority": 7,
+      "keywords": ["why is ice slippery", "physics", "explainer"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=how-gps-corrects-time",
+      "title": "GPS satellites run their clocks slow on purpose - YouTube",
+      "snippet": "Third Order: Special relativity slows them, general relativity speeds them, and the net is 38 microseconds a day, which would put you ten kilometres off by tomorrow.",
+      "vertical": "videos",
+      "authority": 7,
+      "keywords": ["gps relativity", "satellite clocks", "38 microseconds"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=determinism-in-nature",
+      "title": "Is anything in nature actually deterministic? - YouTube",
+      "snippet": "Third Order: Three-body chaos, a double pendulum, and one line of quantum mechanics.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["determinism", "chaos", "double pendulum", "three body"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=hollow-depths-any-percent",
+      "title": "Hollow Depths any% in 41:12 — the run, explained - YouTube",
+      "snippet": "Pixel Foundry: A new world record and the four skips that made it.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["hollow depths", "speedrun", "world record", "any%"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=twenty-minute-strength",
+      "title": "Twenty-minute full body strength with one kettlebell - YouTube",
+      "snippet": "Ironclad Fitness: Six moves, three rounds, one bell, no jumping.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["kettlebell workout", "20 minute strength", "nadia brooks"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=desk-posture-fix",
+      "title": "Fix your desk posture in four stretches (no equipment) - YouTube",
+      "snippet": "Ironclad Fitness: Hip flexors, thoracic spine, neck, wrists.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["desk posture", "stretches", "thoracic spine"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=wirecut-atlas-release",
+      "title": "A simulator that promises the same bytes every time — Atlas 1.0 in ninety seconds - YouTube",
+      "snippet": "Wirecut News: Northstar shipped Atlas, a deterministic computer simulator.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["atlas 1.0", "northstar", "deterministic simulator", "news clip"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=hand-cut-dovetails",
+      "title": "Hand-cut dovetails for the first time, honestly - YouTube",
+      "snippet": "Sawdust Society: Every gap, every mistake, one chisel that was too dull until minute nine.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["dovetails", "hand cut", "woodworking", "chisel"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=workbench-weekend",
+      "title": "A proper workbench in one weekend from construction lumber - YouTube",
+      "snippet": "Sawdust Society: Laminate, flatten, one vise, done Sunday night.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["workbench", "construction lumber", "weekend build"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=loop-monologue-robot-vacuum",
+      "title": "Hugo's robot vacuum has been sending him emails (monologue) - YouTube",
+      "snippet": "Late Night Loop: The vacuum has feelings, the fridge is jealous, and the week's headlines get the same treatment.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["hugo bramble", "monologue", "robot vacuum", "late night"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=loop-desk-bit-deterministic",
+      "title": "Hugo tries to explain deterministic simulation to his mother (desk bit) - YouTube",
+      "snippet": "Late Night Loop: Hugo watched one Alice Builds video and now has opinions.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["hugo bramble", "deterministic simulation", "desk bit", "comedy"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=spanish-in-30-days-week1",
+      "title": "Spanish in 30 days, week one: the 200 words that carry a conversation - YouTube",
+      "snippet": "Tongue Tied: Sofia teaches, Kenji learns, both of them get corrected by Sofia's grandmother.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["learn spanish", "200 words", "30 days"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=japanese-counters-explained",
+      "title": "Japanese counters, finally explained by someone who suffered - YouTube",
+      "snippet": "Tongue Tied: Hon, mai, hiki, tsu.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["japanese counters", "hon mai hiki", "learn japanese"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=carol-release-checklist",
+      "title": "The release checklist, line by line - YouTube",
+      "snippet": "Carol Ships It: All forty-one lines, why each one exists and which incident wrote it.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": ["release checklist", "forty-one lines", "carol nakamura"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=northstar-atlas-1-1",
+      "title": "Atlas 1.1: checkpoints, replay from anywhere, and a smaller binary - YouTube",
+      "snippet": "Northstar: What shipped in 1.1 and a demo of replaying from a checkpoint three hundred ticks in.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": ["atlas 1.1", "checkpoints", "replay", "northstar release"]
+    },
+    {
+      "url": "http://youtube.com/watch?v=alice-hashmap-order",
+      "title": "HashMap iteration order is not your friend (a short one) - YouTube",
+      "snippet": "Alice Builds: The four minute version of the point people keep asking about from the determinism intro.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": ["hashmap iteration order", "btreemap", "seeded hasher", "alice chen"]
+    },
+    {
+      "url": "http://youtube.com/channel/panfried",
+      "title": "Pan Fried with Mina - YouTube",
+      "snippet": "Weeknight cooking that respects your Tuesday.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["pan fried", "mina okafor", "cooking channel", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/offgrid-routes",
+      "title": "Off-Grid Routes - YouTube",
+      "snippet": "Tomas Reyes walks, trains and ferries across places the guidebooks skip.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["off-grid routes", "tomas reyes", "travel channel", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/lena-covers",
+      "title": "Lena Vasquez Covers - YouTube",
+      "snippet": "Piano and voice covers, one take, recorded in a rented room above a bakery.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["lena vasquez", "covers", "piano", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/thirdorder",
+      "title": "Third Order - YouTube",
+      "snippet": "Science explainers that stop at the second why and then keep going.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["third order", "science explainers", "priya sundaram", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/pixelfoundry",
+      "title": "Pixel Foundry - YouTube",
+      "snippet": "Indie game deep dives, speedrun breakdowns and the occasional twelve-hour build stream.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["pixel foundry", "indie games", "speedruns", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/ironclad",
+      "title": "Ironclad Fitness - YouTube",
+      "snippet": "Coach Nadia Brooks.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["ironclad fitness", "nadia brooks", "strength training", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/wirecut",
+      "title": "Wirecut News - YouTube",
+      "snippet": "Two-minute clips of the stories that matter, cut from the day's wires.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["wirecut news", "news clips", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/sawdust",
+      "title": "Sawdust Society - YouTube",
+      "snippet": "Woodworking from a two-car garage in Duluth.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": ["sawdust society", "woodworking", "ray lindqvist", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/latenight-loop",
+      "title": "Late Night Loop - YouTube",
+      "snippet": "Clips from Late Night Loop with Hugo Bramble, taped nightly in Studio 4B.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": ["late night loop", "hugo bramble", "talk show", "channel"]
+    },
+    {
+      "url": "http://youtube.com/channel/tonguetied",
+      "title": "Tongue Tied - YouTube",
+      "snippet": "Learn Spanish and Japanese from Sofia Ruiz and Kenji Tanaka, who are learning each other's language on camera and making every mistake so you do not have to.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": ["tongue tied", "learn spanish", "learn japanese", "channel"]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=weeknight-dinners",
+      "title": "Weeknight dinners - YouTube playlist",
+      "snippet": "4 videos, in the order the playlist owner recommends.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": ["weeknight dinners", "playlist", "recipes"]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=reproducibility-track",
+      "title": "Reproducibility track, in order - YouTube playlist",
+      "snippet": "5 videos, in the order the playlist owner recommends.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": ["reproducibility", "atlas", "playlist", "devcon"]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=sunday-workshop",
+      "title": "Sunday workshop - YouTube playlist",
+      "snippet": "3 videos, in the order the playlist owner recommends.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": ["woodworking playlist", "workbench", "dovetails"]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=zero-to-conversation",
+      "title": "Zero to conversation - YouTube playlist",
+      "snippet": "3 videos, in the order the playlist owner recommends.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": ["language learning playlist", "spanish", "japanese"]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=slow-travel",
+      "title": "Slow travel, no flights - YouTube playlist",
+      "snippet": "3 videos, in the order the playlist owner recommends.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": ["slow travel", "train", "no flights", "playlist"]
     }
   ]
 }

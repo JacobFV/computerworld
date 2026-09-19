@@ -275,6 +275,7 @@ fn board_card(key: &str, issue: &Issue) -> PageElement {
                 .into_iter()
                 .collect(),
             },
+            style: None,
         });
     }
     children.push(wire::styled_row(
@@ -538,6 +539,7 @@ pub fn issue(
                     .into_iter()
                     .collect(),
             },
+            style: None,
         })
         .collect();
     main.push(wire::styled_row(

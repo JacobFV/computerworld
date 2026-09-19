@@ -117,6 +117,26 @@ impl Session {
             .get(self.frame)
             .map(|f| (f.path.clone(), f.line))
     }
+    /// The scopes of the frame on show: the frame's own, or, for the innermost frame
+    /// of a reply that carried none per frame, the state's.
+    pub fn shown_scopes(&self) -> &[Scope] {
+        match self.frames.get(self.frame) {
+            Some(frame) if self.frame != 0 || !frame.scopes.is_empty() => &frame.scopes,
+            _ => &self.scopes,
+        }
+    }
+}
+
+/// An identifier the pointer rests on in the editor while the program is stopped, and
+/// its value once known: from the variables already captured, or from the machine.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Hover {
+    /// The identifier, or dotted path, under the pointer.
+    pub word: String,
+    /// Its value, once the frame's variables or the machine have said; `None` while the
+    /// machine is being asked.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
 }
 
 /// Everything the Run and Debug view holds.
@@ -155,6 +175,9 @@ pub struct Debug {
     /// The configuration the view will start.
     #[serde(default)]
     pub config: usize,
+    /// What the pointer rests on in the editor, while the program is stopped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hover: Option<Hover>,
 }
 
 /// What the view is asking for in a one-line box.
@@ -261,6 +284,7 @@ impl Debug {
         self.values.clear();
         self.expanded.clear();
         self.busy = false;
+        self.hover = None;
         for watch in &mut self.watches {
             watch.value = None;
             watch.failed = false;
@@ -477,6 +501,10 @@ impl Workbench {
             request,
             Request::Launch(_) | Request::Resume { .. } | Request::Pause { .. }
         );
+        if self.debug.busy {
+            // Whatever the pointer rested on belongs to a stop that is over.
+            self.debug.hover = None;
+        }
         self.debug.error = None;
         vec![AppEffect::Debug {
             window,
@@ -681,6 +709,67 @@ impl Workbench {
         }
         effects
     }
+    /// The pointer rests on `target` at (`x`, `y`) with no button down. In the editor,
+    /// while the program is stopped, the identifier under it is looked up in the frame
+    /// on show: among the variables already captured, or, failing that, by asking the
+    /// machine (`Evaluate` with context `hover`). Anywhere else, nothing is shown.
+    pub fn hover(&mut self, window: u64, target: &str, x: i32, y: i32) -> Vec<AppEffect> {
+        let stopped = self
+            .debug
+            .session
+            .as_ref()
+            .is_some_and(|s| !s.ended && s.stopped.is_some())
+            && !self.debug.busy;
+        let word = if stopped {
+            self.identifier_at(target, x, y)
+        } else {
+            None
+        };
+        let Some(word) = word else {
+            self.debug.hover = None;
+            return vec![];
+        };
+        if self.debug.hover.as_ref().is_some_and(|h| h.word == word) {
+            // Still on the same name: shown, or asked for and not yet answered.
+            return vec![];
+        }
+        if let Some(value) = self.captured_value(&word) {
+            self.debug.hover = Some(Hover {
+                word,
+                value: Some(value),
+            });
+            return vec![];
+        }
+        self.debug.hover = Some(Hover {
+            word: word.clone(),
+            value: None,
+        });
+        self.debug_evaluate(window, &word, "hover", "hover")
+            .unwrap_or_default()
+    }
+    /// The value of `path` (`x`, or `a.b.c`) among the variables of the frame on show
+    /// that the view already holds, so a hover on a local needs no request.
+    fn captured_value(&self, path: &str) -> Option<String> {
+        let session = self.debug.session.as_ref()?;
+        let mut parts = path.split('.');
+        let head = parts.next()?;
+        let mut var = session.shown_scopes().iter().find_map(|scope| {
+            self.debug
+                .values
+                .get(&scope.reference)?
+                .iter()
+                .find(|v| v.name == head)
+        })?;
+        for part in parts {
+            var = self
+                .debug
+                .values
+                .get(&var.reference)?
+                .iter()
+                .find(|v| v.name == part)?;
+        }
+        Some(var.value.clone())
+    }
     /// What the machine answered. Everything the view shows of a session comes through
     /// here, so it can never show a stop the machine did not report.
     pub fn debug_reply(
@@ -692,6 +781,18 @@ impl Workbench {
         // Only the reply to a request that moved the program says it is not running.
         if matches!(tag, "launch" | "resume" | "restart" | "terminate") {
             self.debug.busy = false;
+        }
+        if tag == "hover" {
+            // A value the pointer asked for is shown if it is still what the pointer
+            // rests on; an expression the machine cannot evaluate shows nothing.
+            match (reply, &mut self.debug.hover) {
+                (Ok(Reply::Evaluated { result }), Some(hover)) if hover.word == result.name => {
+                    hover.value = Some(result.value);
+                }
+                (Ok(_), Some(_)) => {}
+                _ => self.debug.hover = None,
+            }
+            return vec![];
         }
         let reply = match reply {
             Ok(reply) => reply,
@@ -779,6 +880,7 @@ impl Workbench {
         }
         let ended = state.stopped.is_exit();
         if let Some(session) = &mut self.debug.session {
+            // Every frame keeps its own scopes, so selecting one later is a lookup.
             session.frames = state.frames.clone();
             session.scopes = state.scopes.clone();
             session.frame = 0;
@@ -787,6 +889,7 @@ impl Workbench {
         }
         self.debug.values.clear();
         self.debug.expanded.clear();
+        self.debug.hover = None;
         if ended {
             self.debug.say(ConsoleKind::Notice, state.stopped.label());
             self.problems_from_console();
@@ -802,7 +905,7 @@ impl Workbench {
         }
         // Locals open by default, as they are in VS Code.
         let locals = self.debug.session.as_ref().and_then(|s| {
-            s.scopes
+            s.shown_scopes()
                 .iter()
                 .find(|sc| !sc.expensive)
                 .map(|sc| sc.reference)
@@ -881,11 +984,12 @@ impl Workbench {
         if let Some((path, line)) = self.debug.session.as_ref().and_then(Session::at) {
             effects.extend(self.open_file(window, &path, false, Some((line as usize, 1, 0))));
         }
-        // The variables and the watches belong to the frame that is shown.
-        self.debug.values.clear();
+        // The variables and the watches belong to the frame that is shown; what was
+        // expanded is forgotten, and a value already fetched is kept.
         self.debug.expanded.clear();
+        self.debug.hover = None;
         let locals = self.debug.session.as_ref().and_then(|s| {
-            s.scopes
+            s.shown_scopes()
                 .iter()
                 .find(|sc| !sc.expensive)
                 .map(|sc| sc.reference)

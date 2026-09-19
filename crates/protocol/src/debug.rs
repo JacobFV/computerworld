@@ -94,7 +94,8 @@ pub enum Request {
     /// The variables of one scope of one frame, or of a value already reported
     /// (`Variable::reference`), for expanding a structure.
     Variables { session: u64, reference: u64 },
-    /// Evaluate an expression in a frame: the Debug Console and the watch list.
+    /// Evaluate an expression in a frame: the Debug Console, the watch list, and an
+    /// identifier the pointer rests on in the editor.
     Evaluate {
         session: u64,
         frame: u64,
@@ -117,6 +118,10 @@ pub struct Frame {
     pub path: String,
     /// 1-based line the frame is stopped at.
     pub line: u32,
+    /// This frame's scopes, in the order to show them, captured with the stop so that
+    /// selecting any frame of the call stack shows its variables without a replay.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scopes: Vec<Scope>,
 }
 
 /// A named value in a scope, or inside another value.
@@ -187,7 +192,8 @@ pub struct State {
     /// The call stack, innermost frame first; empty once the program has ended.
     #[serde(default)]
     pub frames: Vec<Frame>,
-    /// The scopes of the innermost frame, in the order to show them.
+    /// The scopes of the innermost frame, in the order to show them: the same as
+    /// `frames[0].scopes`, kept here for what reads only the top of the stack.
     #[serde(default)]
     pub scopes: Vec<Scope>,
     /// Everything the program wrote since the last reply, stdout and stderr in order.

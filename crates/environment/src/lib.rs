@@ -5,7 +5,7 @@ use cw_applications::desktop_scene::{
     home_page_count, render_desktop_with_options, window_content_rect_for_kind, work_area,
     DesktopTheme, ShellOptions, WindowView,
 };
-use cw_applications::{AppState, DesktopState};
+use cw_applications::{AppState, CursorKind, DesktopState};
 use cw_browser::BrowserState;
 use cw_kernel::Runtime;
 use cw_protocol::*;
@@ -1415,8 +1415,9 @@ impl Environment {
                                 .desktop
                                 .pointer_capture
                                 .as_ref()
-                                .map(|capture| cursor_for_target(&capture.operation, true))
-                                .unwrap_or("default");
+                                .map(|capture| CursorKind::for_target(&capture.operation, true))
+                                .unwrap_or(CursorKind::Default)
+                                .css_name();
                             return Ok(json!({"cursor":cursor}));
                         }
                     }
@@ -1447,18 +1448,26 @@ impl Environment {
                             .desktop
                             .app_hovers(window, &target)
                         {
-                            self.machine_mut(id, machine)?.desktop.app_hover(
+                            let effects = self.machine_mut(id, machine)?.desktop.app_hover(
                                 window,
                                 &target,
                                 x - bounds.x,
                                 y - bounds.y,
                             );
-                            return Ok(json!({"cursor":"crosshair"}));
+                            self.effects(id, machine, actor, effects)?;
+                            let cursor = self.session(id)?.machines[machine]
+                                .desktop
+                                .app_hover_cursor(window, &target);
+                            return Ok(json!({"cursor":cursor}));
                         }
                     }
-                    return Ok(
-                        json!({"cursor":scene.hit_test(x,y).and_then(|n|n.interaction.as_deref()).map(|target|cursor_for_target(target,false)).unwrap_or("default")}),
-                    );
+                    let cursor = scene
+                        .hit_test(x, y)
+                        .and_then(|n| n.interaction.as_deref())
+                        .map_or(CursorKind::Default, |target| {
+                            CursorKind::for_target(target, false)
+                        });
+                    return Ok(json!({"cursor":cursor.css_name()}));
                 }
                 let (mut target, hit) = if action.op == "up" {
                     let Some((target, bounds)) = released_press else {
@@ -3540,7 +3549,7 @@ impl Environment {
                 .computer(&s.focused_machine)
                 .ok()
                 .and_then(|c| {
-                    ["chat", "mail"]
+                    ["messages", "mail"]
                         .into_iter()
                         .find(|k| c.application_available(k))
                 });
@@ -3883,6 +3892,11 @@ impl Environment {
                     battery: self.has_battery(&s.focused_machine, theme),
                     anchor: m.desktop.panel_at.filter(|_| m.desktop.panel.is_some()),
                     overview: m.desktop.overview,
+                    capture: m
+                        .desktop
+                        .pointer_capture
+                        .as_ref()
+                        .map(|capture| capture.operation.clone()),
                 },
             );
             self.decorate(&mut scene, m, published, theme.mobile());
@@ -3928,32 +3942,6 @@ impl Environment {
         scene.stamp();
         Ok(scene)
     }
-}
-fn cursor_for_target(target: &str, captured: bool) -> &'static str {
-    if let Some(edge) = target.rsplit_once("resize:").map(|(_, edge)| edge) {
-        return match edge {
-            "n" | "s" => "ns-resize",
-            "e" | "w" => "ew-resize",
-            "ne" | "sw" => "nesw-resize",
-            "nw" | "se" => "nwse-resize",
-            _ => "default",
-        };
-    }
-    if target == "drag" || target.ends_with(":drag") {
-        return if captured { "grabbing" } else { "grab" };
-    }
-    // An image editor's canvas takes aim, not a click.
-    if target.contains(":canvas:") {
-        return "crosshair";
-    }
-    if target.ends_with("editor-text")
-        || target.contains(":content:editor-text:")
-        || target.ends_with("terminal-input")
-        || target.ends_with("shell:address")
-    {
-        return "text";
-    }
-    "pointer"
 }
 fn page_has_input(page: Option<&Page>, id: &str) -> bool {
     fn scan(elements: &[PageElement], id: &str) -> bool {
@@ -4471,6 +4459,7 @@ mod application_tests {
                     url: "read".into(),
                     fields: BTreeMap::new(),
                 },
+                style: None,
             });
             Ok(page)
         }

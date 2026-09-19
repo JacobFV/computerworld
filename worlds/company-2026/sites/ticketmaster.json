@@ -10,7 +10,7 @@
   "initial_state": {
     "mode": "tickets",
     "brand": "Ticketmaster",
-    "tagline": "A simulated box office. Every seat, code and event here is invented.",
+    "tagline": "A simulated box office. Every seat, code, artist and event here is invented.",
     "currency": "USD",
     "theme": {
       "accent": "#1f6fe0",
@@ -21,18 +21,12 @@
       "content_width": 1080
     },
     "categories": [
-      {
-        "id": "conference",
-        "title": "Conferences"
-      },
-      {
-        "id": "music",
-        "title": "Music"
-      },
-      {
-        "id": "sport",
-        "title": "Sport"
-      }
+      {"id": "music", "title": "Concerts"},
+      {"id": "sport", "title": "Sports"},
+      {"id": "theatre", "title": "Theatre"},
+      {"id": "comedy", "title": "Comedy"},
+      {"id": "family", "title": "Family"},
+      {"id": "conference", "title": "Conferences"}
     ],
     "products": {
       "devcon-2026": {
@@ -41,49 +35,16 @@
         "title": "DevCon Seattle 2026",
         "seller": "Cascade Events",
         "price_cents": 18900,
-        "rating_sum": 0,
-        "rating_count": 0,
-        "stock": 0,
-        "fast_shipping": false,
-        "bullets": [
-          "Two days, four tracks",
-          "Keynote: deterministic systems at scale",
-          "Hall pass includes the Tuesday workshops"
-        ],
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Two days, four tracks", "Keynote: deterministic systems at scale", "Hall pass includes the Tuesday workshops"],
         "description": "Two days of systems talks at the Cascade Convention Center. The Monday keynote is on replayable simulation; the Tuesday workshops are hands-on and cap at forty people.",
         "reviews": [],
-        "venue": "devcon-center",
-        "venue_name": "Cascade Convention Center",
-        "event_tick": 96,
-        "event_date": "2026-04-14",
+        "venue": "devcon-center", "venue_name": "Cascade Convention Center",
+        "event_tick": 96, "event_date": "2026-04-14",
         "tiers": [
-          {
-            "id": "floor",
-            "title": "Main hall",
-            "price_cents": 18900,
-            "section": "A",
-            "row_size": 12,
-            "capacity": 600,
-            "remaining": 437
-          },
-          {
-            "id": "mezz",
-            "title": "Mezzanine",
-            "price_cents": 12900,
-            "section": "B",
-            "row_size": 14,
-            "capacity": 420,
-            "remaining": 388
-          },
-          {
-            "id": "workshop",
-            "title": "Workshop track",
-            "price_cents": 24900,
-            "section": "W",
-            "row_size": 8,
-            "capacity": 40,
-            "remaining": 6
-          }
+          {"id": "floor", "title": "Main hall", "price_cents": 18900, "section": "A", "row_size": 12, "capacity": 600, "remaining": 437},
+          {"id": "mezz", "title": "Mezzanine", "price_cents": 12900, "section": "B", "row_size": 14, "capacity": 420, "remaining": 388},
+          {"id": "workshop", "title": "Workshop track", "price_cents": 24900, "section": "W", "row_size": 8, "capacity": 40, "remaining": 6}
         ]
       },
       "meridian-tour": {
@@ -92,40 +53,15 @@
         "title": "Sonic Meridian - Ship It Tour",
         "seller": "Cascade Events",
         "price_cents": 7400,
-        "rating_sum": 0,
-        "rating_count": 0,
-        "stock": 0,
-        "fast_shipping": false,
-        "bullets": [
-          "Doors 19:00, support from Lowlight",
-          "General admission floor",
-          "Under 16s with an adult"
-        ],
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Doors 19:00, support from Lowlight", "General admission floor", "Under 16s with an adult"],
         "description": "The Ship It Tour lands at Cascade Arena for one night. The floor is standing; the bowl is reserved seating.",
         "reviews": [],
-        "venue": "cascade-arena",
-        "venue_name": "Cascade Arena",
-        "event_tick": 140,
-        "event_date": "2026-05-02",
+        "venue": "cascade-arena", "venue_name": "Cascade Arena",
+        "event_tick": 140, "event_date": "2026-05-02",
         "tiers": [
-          {
-            "id": "floor",
-            "title": "Floor, standing",
-            "price_cents": 7400,
-            "section": "F",
-            "row_size": 20,
-            "capacity": 2000,
-            "remaining": 1244
-          },
-          {
-            "id": "bowl",
-            "title": "Lower bowl",
-            "price_cents": 11200,
-            "section": "L",
-            "row_size": 18,
-            "capacity": 3600,
-            "remaining": 2907
-          }
+          {"id": "floor", "title": "Floor, standing", "price_cents": 7400, "section": "F", "row_size": 20, "capacity": 2000, "remaining": 1244},
+          {"id": "bowl", "title": "Lower bowl", "price_cents": 11200, "section": "L", "row_size": 18, "capacity": 3600, "remaining": 2907}
         ]
       },
       "psfc-rivergate": {
@@ -134,40 +70,15 @@
         "title": "Puget Sound FC vs Rivergate United",
         "seller": "Puget Sound FC",
         "price_cents": 4200,
-        "rating_sum": 0,
-        "rating_count": 0,
-        "stock": 0,
-        "fast_shipping": false,
-        "bullets": [
-          "Kick-off 15:00",
-          "Supporters' end is section S",
-          "Bag policy: clear bags only"
-        ],
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Kick-off 15:00", "Supporters' end is section S", "Bag policy: clear bags only"],
         "description": "League fixture at Cascade Arena. Rivergate have not won here in six visits, which the away end will remind you about all afternoon.",
         "reviews": [],
-        "venue": "cascade-arena",
-        "venue_name": "Cascade Arena",
-        "event_tick": 168,
-        "event_date": "2026-05-16",
+        "venue": "cascade-arena", "venue_name": "Cascade Arena",
+        "event_tick": 168, "event_date": "2026-05-16",
         "tiers": [
-          {
-            "id": "sideline",
-            "title": "Sideline",
-            "price_cents": 4200,
-            "section": "S",
-            "row_size": 22,
-            "capacity": 4400,
-            "remaining": 1980
-          },
-          {
-            "id": "end",
-            "title": "Supporters' end",
-            "price_cents": 2800,
-            "section": "E",
-            "row_size": 22,
-            "capacity": 2200,
-            "remaining": 340
-          }
+          {"id": "sideline", "title": "Sideline", "price_cents": 4200, "section": "S", "row_size": 22, "capacity": 4400, "remaining": 1980},
+          {"id": "end", "title": "Supporters' end", "price_cents": 2800, "section": "E", "row_size": 22, "capacity": 2200, "remaining": 340}
         ]
       },
       "rust-meetup": {
@@ -176,165 +87,293 @@
         "title": "Northwest Rust Meetup - Replay Night",
         "seller": "Northstar",
         "price_cents": 0,
-        "rating_sum": 0,
-        "rating_count": 0,
-        "stock": 0,
-        "fast_shipping": false,
-        "bullets": [
-          "Free, but ticketed",
-          "Two talks and a long Q&A",
-          "Pizza from 18:30"
-        ],
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Free, but ticketed", "Two talks and a long Q&A", "Pizza from 18:30"],
         "description": "Monthly meetup in the Northstar HQ ground-floor commons. This month: snapshot formats, and what breaks when you replay across architectures.",
         "reviews": [],
-        "venue": "northstar-hq",
-        "venue_name": "Northstar HQ",
-        "event_tick": 72,
-        "event_date": "2026-04-02",
+        "venue": "northstar-hq", "venue_name": "Northstar HQ",
+        "event_tick": 72, "event_date": "2026-04-02",
         "tiers": [
-          {
-            "id": "rsvp",
-            "title": "RSVP",
-            "price_cents": 0,
-            "section": "R",
-            "row_size": 10,
-            "capacity": 90,
-            "remaining": 17
-          }
+          {"id": "rsvp", "title": "RSVP", "price_cents": 0, "section": "R", "row_size": 10, "capacity": 90, "remaining": 17}
+        ]
+      },
+      "lowlight-afterglow": {
+        "id": "lowlight-afterglow",
+        "category": "music",
+        "title": "Lowlight - Afterglow Tour",
+        "seller": "Cascade Events",
+        "price_cents": 6800,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Doors 18:30, show 20:00", "Support: The Tidewater Sisters", "All ages, standing floor is 16+"],
+        "description": "Lowlight headline Cascade Arena for the first time, a year after opening for Sonic Meridian in the same room. The Afterglow set runs the whole second record in order, then an hour of the older songs.",
+        "reviews": [],
+        "venue": "cascade-arena", "venue_name": "Cascade Arena",
+        "event_tick": 226, "event_date": "2026-06-12",
+        "tiers": [
+          {"id": "floor", "title": "Floor, standing", "price_cents": 6800, "section": "F", "row_size": 20, "capacity": 2000, "remaining": 612},
+          {"id": "bowl", "title": "Lower bowl", "price_cents": 9600, "section": "L", "row_size": 18, "capacity": 3600, "remaining": 2210},
+          {"id": "upper", "title": "Upper tier", "price_cents": 5400, "section": "U", "row_size": 24, "capacity": 4800, "remaining": 4105}
+        ]
+      },
+      "harbor-lights-scores": {
+        "id": "harbor-lights-scores",
+        "category": "music",
+        "title": "Harbor Lights Orchestra: Film Scores Night",
+        "seller": "Harbor Lights Orchestra",
+        "price_cents": 5500,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Concert 19:30, one interval", "Full orchestra with a 40-voice choir", "Pre-concert talk at 18:45 included"],
+        "description": "A summer programme of film music at the Bayfront Concert Hall, conducted by Ilse Marrow. The second half is scored to projected footage, which is why the balcony sells first.",
+        "reviews": [],
+        "venue": "", "venue_name": "Bayfront Concert Hall",
+        "event_tick": 302, "event_date": "2026-07-18",
+        "tiers": [
+          {"id": "stalls", "title": "Stalls", "price_cents": 7800, "section": "ST", "row_size": 30, "capacity": 900, "remaining": 344},
+          {"id": "balcony", "title": "Balcony", "price_cents": 5500, "section": "BA", "row_size": 26, "capacity": 520, "remaining": 41},
+          {"id": "choir", "title": "Choir seats (behind the stage)", "price_cents": 3200, "section": "CH", "row_size": 16, "capacity": 96, "remaining": 88}
+        ]
+      },
+      "tidewater-fest-2026": {
+        "id": "tidewater-fest-2026",
+        "category": "music",
+        "title": "Tidewater Festival 2026 - Weekend Pass",
+        "seller": "Tidewater Festival",
+        "price_cents": 14900,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Saturday 8 and Sunday 9 August, gates 12:00", "Three stages in Marrow Point Park", "Headliners: Sonic Meridian, Copper Canyon, Vera Lune"],
+        "description": "Two days on the headland with the main stage facing the water. The weekend pass covers both days; the Sunday-only ticket gets you Vera Lune and the closing set but not Saturday's Copper Canyon show.",
+        "reviews": [],
+        "venue": "marrow-point-park", "venue_name": "Marrow Point Park",
+        "event_tick": 346, "event_date": "2026-08-08",
+        "tiers": [
+          {"id": "weekend", "title": "Weekend pass", "price_cents": 14900, "section": "GA", "row_size": 50, "capacity": 12000, "remaining": 3820},
+          {"id": "sunday", "title": "Sunday only", "price_cents": 8900, "section": "GS", "row_size": 50, "capacity": 4000, "remaining": 2650},
+          {"id": "vip", "title": "VIP weekend (viewing deck, lounge)", "price_cents": 32900, "section": "V", "row_size": 25, "capacity": 600, "remaining": 72}
+        ]
+      },
+      "kestrels-ironworks": {
+        "id": "kestrels-ironworks",
+        "category": "sport",
+        "title": "Seattle Kestrels vs Portland Ironworks",
+        "seller": "Seattle Kestrels",
+        "price_cents": 5600,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Tip-off 19:00", "Rivalry night, second meeting of the season", "Courtside includes a parking pass"],
+        "description": "Basketball at Cascade Arena. The Kestrels lost by two in Portland in January; the Ironworks bring their whole travelling section, so the upper deck is loud on both sides.",
+        "reviews": [],
+        "venue": "cascade-arena", "venue_name": "Cascade Arena",
+        "event_tick": 122, "event_date": "2026-04-25",
+        "tiers": [
+          {"id": "courtside", "title": "Courtside", "price_cents": 42000, "section": "C", "row_size": 30, "capacity": 120, "remaining": 9},
+          {"id": "lower", "title": "Lower bowl", "price_cents": 9800, "section": "L", "row_size": 18, "capacity": 3600, "remaining": 1470},
+          {"id": "upper", "title": "Upper deck", "price_cents": 5600, "section": "U", "row_size": 24, "capacity": 4800, "remaining": 2990}
+        ]
+      },
+      "psfc-cascadia": {
+        "id": "psfc-cascadia",
+        "category": "sport",
+        "title": "Puget Sound FC vs Cascadia Athletic",
+        "seller": "Puget Sound FC",
+        "price_cents": 4600,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Kick-off 19:30, Saturday night", "Derby fixture, segregated away end", "Clear bags only"],
+        "description": "The north-south derby under lights. Cascadia are top of the table by a point going into the weekend; the supporters' end has been sold out for a month, so what is left is sideline and family.",
+        "reviews": [],
+        "venue": "cascade-arena", "venue_name": "Cascade Arena",
+        "event_tick": 243, "event_date": "2026-06-20",
+        "tiers": [
+          {"id": "sideline", "title": "Sideline", "price_cents": 4600, "section": "S", "row_size": 22, "capacity": 4400, "remaining": 712},
+          {"id": "family", "title": "Family stand (no alcohol)", "price_cents": 3200, "section": "FS", "row_size": 22, "capacity": 1100, "remaining": 385},
+          {"id": "end", "title": "Supporters' end", "price_cents": 3000, "section": "E", "row_size": 22, "capacity": 2200, "remaining": 0}
+        ]
+      },
+      "nw-open-finals": {
+        "id": "nw-open-finals",
+        "category": "sport",
+        "title": "Northwest Open Tennis - Finals Day",
+        "seller": "Northwest Open",
+        "price_cents": 8500,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Play from 13:00, women's final then men's final", "Centre court is uncovered, bring a hat", "Grounds pass covers the outside courts and big screen"],
+        "description": "The final Sunday of the Northwest Open at the Puget Sound Field courts. Centre court seats are reserved; the grounds pass gets you onto the hill in front of the big screen, which is where most of the noise comes from.",
+        "reviews": [],
+        "venue": "puget-field", "venue_name": "Puget Sound Field",
+        "event_tick": 408, "event_date": "2026-09-06",
+        "tiers": [
+          {"id": "centre", "title": "Centre court, reserved", "price_cents": 14500, "section": "CC", "row_size": 28, "capacity": 5600, "remaining": 860},
+          {"id": "grounds", "title": "Grounds pass", "price_cents": 8500, "section": "GP", "row_size": 40, "capacity": 6000, "remaining": 4410}
+        ]
+      },
+      "long-meridian-play": {
+        "id": "long-meridian-play",
+        "category": "theatre",
+        "title": "The Long Meridian",
+        "seller": "Bayfront Playhouse",
+        "price_cents": 4800,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Evening performance 19:30, runs 2h 10m with interval", "New play by Tessa Quill", "Recommended 14+"],
+        "description": "A new three-hander about a lighthouse keeper, her replacement and the winter neither of them expected to spend together. Tessa Quill's first full-length play, in the Playhouse's studio space, so every seat is close.",
+        "reviews": [],
+        "venue": "", "venue_name": "Bayfront Playhouse",
+        "event_tick": 154, "event_date": "2026-05-09",
+        "tiers": [
+          {"id": "stalls", "title": "Stalls", "price_cents": 6200, "section": "ST", "row_size": 20, "capacity": 240, "remaining": 58},
+          {"id": "circle", "title": "Circle", "price_cents": 4800, "section": "CI", "row_size": 18, "capacity": 108, "remaining": 33}
+        ]
+      },
+      "twelfth-night-park": {
+        "id": "twelfth-night-park",
+        "category": "theatre",
+        "title": "Twelfth Night - Open Air at Marrow Point",
+        "seller": "Puget Shakespeare Company",
+        "price_cents": 3500,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Curtain 19:00, plays in all weather except lightning", "Bring a blanket; low chairs allowed on the lawn", "Picnics welcome, no glass"],
+        "description": "The company's summer Shakespeare on the lawn above the water at Marrow Point Park. Deck-chair seating is at the front and numbered; the lawn behind is first come, first served.",
+        "reviews": [],
+        "venue": "marrow-point-park", "venue_name": "Marrow Point Park",
+        "event_tick": 317, "event_date": "2026-07-25",
+        "tiers": [
+          {"id": "deckchair", "title": "Deck chair, numbered", "price_cents": 5200, "section": "D", "row_size": 30, "capacity": 300, "remaining": 96},
+          {"id": "lawn", "title": "Lawn, unreserved", "price_cents": 3500, "section": "LW", "row_size": 50, "capacity": 900, "remaining": 640}
+        ]
+      },
+      "clockwork-musical": {
+        "id": "clockwork-musical",
+        "category": "theatre",
+        "title": "Clockwork: The Musical",
+        "seller": "Orpheum Row Theatre",
+        "price_cents": 6900,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Saturday matinee 14:00", "Touring production, first Seattle run", "Strobe lighting in act two"],
+        "description": "The touring production of Clockwork arrives at the Orpheum Row Theatre for a three-week run. Saturday matinee, the whole company, the full mechanical set that took two days to load in.",
+        "reviews": [],
+        "venue": "", "venue_name": "Orpheum Row Theatre",
+        "event_tick": 495, "event_date": "2026-10-17",
+        "tiers": [
+          {"id": "premium", "title": "Premium stalls", "price_cents": 14900, "section": "PS", "row_size": 30, "capacity": 300, "remaining": 121},
+          {"id": "stalls", "title": "Stalls", "price_cents": 9900, "section": "ST", "row_size": 30, "capacity": 900, "remaining": 502},
+          {"id": "dress", "title": "Dress circle", "price_cents": 6900, "section": "DC", "row_size": 28, "capacity": 560, "remaining": 380},
+          {"id": "gallery", "title": "Upper gallery", "price_cents": 3900, "section": "UG", "row_size": 26, "capacity": 390, "remaining": 366}
+        ]
+      },
+      "okafor-unsorted": {
+        "id": "okafor-unsorted",
+        "category": "comedy",
+        "title": "Nadia Okafor: Unsorted",
+        "seller": "Bayfront Playhouse",
+        "price_cents": 3900,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Doors 19:30, show 20:30, no support", "Runs about 80 minutes", "Phones go in a pouch at the door"],
+        "description": "The Unsorted tour comes to the Playhouse main stage for one night. An hour and twenty on moving house, tech support for her parents, and the one time she was mistaken for the other Nadia Okafor.",
+        "reviews": [],
+        "venue": "", "venue_name": "Bayfront Playhouse",
+        "event_tick": 199, "event_date": "2026-05-30",
+        "tiers": [
+          {"id": "stalls", "title": "Stalls", "price_cents": 4900, "section": "ST", "row_size": 24, "capacity": 480, "remaining": 47},
+          {"id": "circle", "title": "Circle", "price_cents": 3900, "section": "CI", "row_size": 22, "capacity": 264, "remaining": 12}
+        ]
+      },
+      "improv-jam-april": {
+        "id": "improv-jam-april",
+        "category": "comedy",
+        "title": "Late Night Improv Jam",
+        "seller": "Pike Street Comedy Cellar",
+        "price_cents": 1500,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Saturday, 22:30", "Four house teams and a walk-on set", "21+, two-drink minimum"],
+        "description": "The Cellar's late show. Four house teams work off one audience suggestion each, then the walk-on jam takes anyone who signed the sheet at the door. Unreserved seating; get there by 22:00 for the front tables.",
+        "reviews": [],
+        "venue": "", "venue_name": "Pike Street Comedy Cellar",
+        "event_tick": 107, "event_date": "2026-04-18",
+        "tiers": [
+          {"id": "ga", "title": "General admission", "price_cents": 1500, "section": "GA", "row_size": 20, "capacity": 140, "remaining": 63}
+        ]
+      },
+      "tidepool-live": {
+        "id": "tidepool-live",
+        "category": "family",
+        "title": "Tidepool Live! - The Stage Show",
+        "seller": "Cascade Events",
+        "price_cents": 2900,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Two shows: 11:00 and 14:30", "Runs 65 minutes, no interval", "Under 2s free on a lap"],
+        "description": "The animated series on stage: Pip the hermit crab, the Anemone Twins and a song about the moon that every parent in the hall already knows. Meet-and-greet tier includes a photo with the cast after the show.",
+        "reviews": [],
+        "venue": "devcon-center", "venue_name": "Cascade Convention Center",
+        "event_tick": 213, "event_date": "2026-06-06",
+        "tiers": [
+          {"id": "front", "title": "Front section", "price_cents": 4400, "section": "A", "row_size": 24, "capacity": 480, "remaining": 138},
+          {"id": "rear", "title": "Rear section", "price_cents": 2900, "section": "B", "row_size": 24, "capacity": 720, "remaining": 452},
+          {"id": "meet", "title": "Meet-and-greet package", "price_cents": 7900, "section": "M", "row_size": 12, "capacity": 60, "remaining": 14}
+        ]
+      },
+      "circus-on-ice": {
+        "id": "circus-on-ice",
+        "category": "family",
+        "title": "Cascade Circus on Ice - Winter Lights",
+        "seller": "Cascade Events",
+        "price_cents": 3800,
+        "rating_sum": 0, "rating_count": 0, "stock": 0, "fast_shipping": false,
+        "bullets": ["Saturday 14:00 matinee", "Runs 1h 50m with a 20-minute interval", "Skaters, aerialists and a live band"],
+        "description": "The winter show at Cascade Arena, on the ice for the first time. Rinkside is the first three rows and gets sprayed by the finale; families with small children usually prefer the lower bowl.",
+        "reviews": [],
+        "venue": "cascade-arena", "venue_name": "Cascade Arena",
+        "event_tick": 585, "event_date": "2026-11-28",
+        "tiers": [
+          {"id": "rinkside", "title": "Rinkside", "price_cents": 8900, "section": "R", "row_size": 40, "capacity": 480, "remaining": 210},
+          {"id": "lower", "title": "Lower bowl", "price_cents": 5600, "section": "L", "row_size": 18, "capacity": 3600, "remaining": 3010},
+          {"id": "upper", "title": "Upper tier", "price_cents": 3800, "section": "U", "row_size": 24, "capacity": 4800, "remaining": 4690}
         ]
       }
     },
     "carts": {},
     "orders": {
       "TM-2209": {
-        "id": "TM-2209",
-        "buyer": "alice",
-        "tick": 5,
-        "date": "2026-03-08",
-        "items": [
-          {
-            "product": "devcon-2026",
-            "title": "DevCon Seattle 2026 \u2014 Main hall",
-            "qty": 1,
-            "price_cents": 18900
-          }
-        ],
-        "total_cents": 18900,
-        "status": "Issued",
-        "confirmation": "TKT-FSDRWP",
-        "seats": [
-          "A-14-6"
-        ],
-        "venue": "devcon-center"
+        "id": "TM-2209", "buyer": "alice", "tick": 5, "date": "2026-03-08",
+        "items": [{"product": "devcon-2026", "title": "DevCon Seattle 2026 — Main hall", "qty": 1, "price_cents": 18900}],
+        "total_cents": 18900, "status": "Issued", "confirmation": "TKT-FSDRWP",
+        "seats": ["A-14-6"], "venue": "devcon-center"
       },
       "TM-2210": {
-        "id": "TM-2210",
-        "buyer": "carol",
-        "tick": 5,
-        "date": "2026-03-08",
-        "items": [
-          {
-            "product": "devcon-2026",
-            "title": "DevCon Seattle 2026 \u2014 Main hall",
-            "qty": 1,
-            "price_cents": 18900
-          }
-        ],
-        "total_cents": 18900,
-        "status": "Issued",
-        "confirmation": "TKT-QZWVU9",
-        "seats": [
-          "A-14-7"
-        ],
-        "venue": "devcon-center"
+        "id": "TM-2210", "buyer": "carol", "tick": 5, "date": "2026-03-08",
+        "items": [{"product": "devcon-2026", "title": "DevCon Seattle 2026 — Main hall", "qty": 1, "price_cents": 18900}],
+        "total_cents": 18900, "status": "Issued", "confirmation": "TKT-QZWVU9",
+        "seats": ["A-14-7"], "venue": "devcon-center"
+      },
+      "TM-2207": {
+        "id": "TM-2207", "buyer": "bob", "tick": 9, "date": "2026-03-13",
+        "items": [{"product": "lowlight-afterglow", "title": "Lowlight - Afterglow Tour — Lower bowl", "qty": 2, "price_cents": 9600}],
+        "total_cents": 19200, "status": "Issued", "confirmation": "TKT-H7NPX3",
+        "seats": ["L-22-9", "L-22-10"], "venue": "cascade-arena"
+      },
+      "TM-2208": {
+        "id": "TM-2208", "buyer": "alice", "tick": 11, "date": "2026-03-15",
+        "items": [{"product": "okafor-unsorted", "title": "Nadia Okafor: Unsorted — Stalls", "qty": 2, "price_cents": 4900}],
+        "total_cents": 9800, "status": "Issued", "confirmation": "TKT-2MRD8K",
+        "seats": ["ST-6-11", "ST-6-12"], "venue": ""
       }
     },
     "favorites": {
-      "bob": [
-        "meridian-tour"
-      ]
+      "bob": ["meridian-tour", "kestrels-ironworks"],
+      "alice": ["tidewater-fest-2026", "harbor-lights-scores"],
+      "carol": ["twelfth-night-park", "clockwork-musical"]
     },
     "messages": [],
     "next_order": 2211
   },
   "search_entries": [
-    {
-      "url": "http://ticketmaster.com/",
-      "title": "Ticketmaster - simulated box office",
-      "snippet": "Conferences, music and sport. Pick a tier, buy, and the seat is allocated from what is left.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "tickets",
-        "events",
-        "box office",
-        "buy tickets"
-      ]
-    },
-    {
-      "url": "http://ticketmaster.com/event/devcon-2026",
-      "title": "DevCon Seattle 2026 - tickets",
-      "snippet": "14-15 April at the Cascade Convention Center. Main hall $189.00, mezzanine $129.00, workshop track $249.00 with six places left.",
-      "vertical": "all",
-      "authority": 6,
-      "keywords": [
-        "devcon",
-        "devcon seattle",
-        "devcon 2026",
-        "conference tickets",
-        "seattle conference"
-      ]
-    },
-    {
-      "url": "http://ticketmaster.com/event/meridian-tour",
-      "title": "Sonic Meridian - Ship It Tour - tickets",
-      "snippet": "2 May at Cascade Arena. Standing floor $74.00, lower bowl $112.00.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "sonic meridian",
-        "ship it tour",
-        "concert tickets",
-        "cascade arena"
-      ]
-    },
-    {
-      "url": "http://ticketmaster.com/event/psfc-rivergate",
-      "title": "Puget Sound FC vs Rivergate United - tickets",
-      "snippet": "16 May at Cascade Arena, kick-off 15:00. Supporters' end $28.00.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "puget sound fc",
-        "football tickets",
-        "soccer tickets",
-        "rivergate united"
-      ]
-    },
-    {
-      "url": "http://ticketmaster.com/event/rust-meetup",
-      "title": "Northwest Rust Meetup - Replay Night - free, ticketed",
-      "snippet": "2 April at Northstar HQ. Snapshot formats and cross-architecture replay. Seventeen places left.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "rust meetup",
-        "northwest rust",
-        "meetup seattle",
-        "replay night"
-      ]
-    },
-    {
-      "url": "http://ticketmaster.com/my-tickets",
-      "title": "My tickets - Ticketmaster",
-      "snippet": "Tickets issued to the signed-in account, with seat and confirmation code.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "my tickets",
-        "ticket history",
-        "confirmation code"
-      ]
-    }
+    {"url": "http://ticketmaster.com/", "title": "Ticketmaster - simulated box office", "snippet": "Concerts, sports, theatre, comedy, family shows and conferences. Pick a tier, buy, and the seat is allocated from what is left.", "vertical": "all", "authority": 5, "keywords": ["tickets", "events", "box office", "buy tickets", "ticketmaster"]},
+    {"url": "http://ticketmaster.com/event/devcon-2026", "title": "DevCon Seattle 2026 - tickets", "snippet": "14-15 April at the Cascade Convention Center. Main hall $189.00, mezzanine $129.00, workshop track $249.00 with six places left.", "vertical": "all", "authority": 6, "keywords": ["devcon", "devcon seattle", "devcon 2026", "conference tickets", "seattle conference"]},
+    {"url": "http://ticketmaster.com/event/meridian-tour", "title": "Sonic Meridian - Ship It Tour - tickets", "snippet": "2 May at Cascade Arena. Standing floor $74.00, lower bowl $112.00.", "vertical": "all", "authority": 4, "keywords": ["sonic meridian", "ship it tour", "concert tickets", "cascade arena"]},
+    {"url": "http://ticketmaster.com/event/lowlight-afterglow", "title": "Lowlight - Afterglow Tour - tickets", "snippet": "12 June at Cascade Arena. Floor $68.00, lower bowl $96.00, upper tier $54.00. Support from The Tidewater Sisters.", "vertical": "all", "authority": 5, "keywords": ["lowlight", "afterglow tour", "lowlight tickets", "concert seattle june"]},
+    {"url": "http://ticketmaster.com/event/tidewater-fest-2026", "title": "Tidewater Festival 2026 - weekend pass", "snippet": "8-9 August in Marrow Point Park. Weekend pass $149.00, Sunday only $89.00, VIP $329.00. Sonic Meridian, Copper Canyon and Vera Lune headline.", "vertical": "all", "authority": 5, "keywords": ["tidewater festival", "festival tickets", "music festival seattle", "weekend pass", "vera lune", "copper canyon"]},
+    {"url": "http://ticketmaster.com/event/psfc-rivergate", "title": "Puget Sound FC vs Rivergate United - tickets", "snippet": "16 May at Cascade Arena, kick-off 15:00. Supporters' end $28.00.", "vertical": "all", "authority": 4, "keywords": ["puget sound fc", "football tickets", "soccer tickets", "rivergate united"]},
+    {"url": "http://ticketmaster.com/event/kestrels-ironworks", "title": "Seattle Kestrels vs Portland Ironworks - tickets", "snippet": "25 April at Cascade Arena, tip-off 19:00. Upper deck $56.00, lower bowl $98.00, courtside $420.00 with nine left.", "vertical": "all", "authority": 4, "keywords": ["seattle kestrels", "kestrels tickets", "basketball tickets", "portland ironworks"]},
+    {"url": "http://ticketmaster.com/event/clockwork-musical", "title": "Clockwork: The Musical - Orpheum Row Theatre", "snippet": "Saturday 17 October matinee. Upper gallery $39.00 through premium stalls $149.00. First Seattle run of the touring production.", "vertical": "all", "authority": 4, "keywords": ["clockwork musical", "musical tickets", "orpheum row", "theatre tickets seattle"]},
+    {"url": "http://ticketmaster.com/event/okafor-unsorted", "title": "Nadia Okafor: Unsorted - tickets", "snippet": "30 May at the Bayfront Playhouse. Stalls $49.00, circle $39.00. Twelve circle seats left.", "vertical": "all", "authority": 4, "keywords": ["nadia okafor", "comedy tickets", "stand up seattle", "unsorted tour"]},
+    {"url": "http://ticketmaster.com/event/tidepool-live", "title": "Tidepool Live! - family stage show", "snippet": "6 June at the Cascade Convention Center, two shows. Rear section $29.00, front $44.00, meet-and-greet $79.00.", "vertical": "all", "authority": 3, "keywords": ["tidepool live", "kids show", "family show seattle", "pip the hermit crab"]},
+    {"url": "http://ticketmaster.com/s?c=sport", "title": "Sports tickets - Ticketmaster", "snippet": "Football, basketball and the Northwest Open finals. Every sports event on sale, cheapest tier first.", "vertical": "all", "authority": 3, "keywords": ["sports tickets", "game tickets", "match tickets"]},
+    {"url": "http://ticketmaster.com/my-tickets", "title": "My tickets - Ticketmaster", "snippet": "Tickets issued to the signed-in account, with seat and confirmation code.", "vertical": "all", "authority": 3, "keywords": ["my tickets", "ticket history", "confirmation code"]}
   ]
 }

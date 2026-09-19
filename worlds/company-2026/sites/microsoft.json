@@ -1,0 +1,1042 @@
+{
+  "id": "microsoft",
+  "kind": "static-site",
+  "node": "microsoft",
+  "domains": ["microsoft.com","www.microsoft.com","learn.microsoft.com"],
+  "port": 80,
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "Microsoft - Cloud, Computers, Apps and Gaming",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-4","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-5","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-6","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-7","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {
+            "kind": "card",
+            "id": "hero",
+            "children": [
+              {"kind":"heading","id":"h","text":"Surface Laptop 8","level":1},
+              {"kind":"text","id":"t","text":"Copilot+ PC with the Snapdragon X2 chip, 22 hours of battery and a 120Hz touch display. From $999."},
+              {
+                "kind": "row",
+                "id": "hero-links",
+                "children": [
+                  {"kind":"link","id":"hero-shop","text":"Shop Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"hero-store","text":"See all devices","url":"http://microsoft.com/store"}
+                ],
+                "gap": 14,
+                "align": "center"
+              }
+            ],
+            "style": {"background":"#f2f2f2","radius":8,"padding":32}
+          },
+          {"kind":"spacer","id":"gap-3","height":14},
+          {
+            "kind": "grid",
+            "id": "tiles",
+            "columns": 4,
+            "children": [
+              {
+                "kind": "card",
+                "id": "tile",
+                "children": [
+                  {"kind":"heading","id":"tile-name","text":"Windows 12","level":3},
+                  {"kind":"text","id":"tile-desc","text":"The AI PC operating system, free for Windows 11 devices."},
+                  {"kind":"link","id":"tile-link","text":"Learn more","url":"http://microsoft.com/windows"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "tile-2",
+                "children": [
+                  {"kind":"heading","id":"tile-name-2","text":"Microsoft 365","level":3},
+                  {"kind":"text","id":"tile-desc-2","text":"Word, Excel, PowerPoint, Outlook and Copilot from $9.99 a month."},
+                  {"kind":"link","id":"tile-link-2","text":"Learn more","url":"http://microsoft.com/microsoft-365"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "tile-3",
+                "children": [
+                  {"kind":"heading","id":"tile-name-3","text":"Azure","level":3},
+                  {"kind":"text","id":"tile-desc-3","text":"Build, run and scale on 60+ regions. $200 credit to start."},
+                  {"kind":"link","id":"tile-link-3","text":"Learn more","url":"http://microsoft.com/azure"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "tile-4",
+                "children": [
+                  {"kind":"heading","id":"tile-name-4","text":"Microsoft Learn","level":3},
+                  {"kind":"text","id":"tile-desc-4","text":"Free training, documentation and certifications."},
+                  {"kind":"link","id":"tile-link-4","text":"Learn more","url":"http://microsoft.com/learn"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 12
+          },
+          {"kind":"spacer","id":"gap-4","height":10},
+          {"kind":"heading","id":"h-2","text":"Sign in","level":2},
+          {"kind":"text","id":"t-2","text":"Use your Microsoft account for Outlook, OneDrive, Xbox and Microsoft 365."},
+          {"kind":"link","id":"outlook","text":"Go to Outlook","url":"http://outlook.com/"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/windows": {
+        "version": 1,
+        "title": "Windows",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"styled","id":"nav-here","text":"Windows","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-2","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-3","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-4","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-5","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-6","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Windows 12","level":1},
+          {"kind":"text","id":"t","text":"Windows 12 arrived in 2026 as a free update for Windows 11 PCs that meet the requirements: a 64-bit processor, 8GB of memory, 64GB of storage, TPM 2.0 and Secure Boot. Copilot+ features need an NPU of 40 TOPS or more."},
+          {"kind":"heading","id":"h-2","text":"What is new","level":2},
+          {"kind":"text","id":"t-2","text":"A floating taskbar and a redesigned Start menu that shows recent files across devices. Windows Recall with encryption on by default and per-app exclusion. Native support for running Linux GUI apps through WSL 3. Windows Terminal is the default console."},
+          {"kind":"text","id":"t-3","text":"Copilot on Windows can act across apps with your permission: fill a form from a PDF, tidy your downloads, or summarise a meeting recording."},
+          {"kind":"heading","id":"h-3","text":"Editions","level":2},
+          {
+            "kind": "card",
+            "id": "editions",
+            "children": [
+              {"kind":"styled","id":"editions-head","text":"Edition | For | Price","style":{"size":12,"weight":"bold","color":"#5b6478"}},
+              {"kind":"text","id":"editions-row","text":"Windows 12 Home | Personal PCs | Free update, $139 new"},
+              {"kind":"text","id":"editions-row-2","text":"Windows 12 Pro | BitLocker, Remote Desktop, Hyper-V | Free update, $199 new"},
+              {"kind":"text","id":"editions-row-3","text":"Windows 12 Enterprise | Managed devices via Intune | Volume licence"}
+            ],
+            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+          },
+          {"kind":"link","id":"health","text":"Check compatibility with the PC Health Check","url":"http://microsoft.com/support"},
+          {"kind":"link","id":"learn","text":"Learn: Windows Terminal basics","url":"http://microsoft.com/learn/windows-terminal-basics"},
+          {"kind":"link","id":"buy","text":"Buy a Windows PC","url":"http://microsoft.com/store"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/microsoft-365": {
+        "version": 1,
+        "title": "Microsoft 365",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"styled","id":"nav-here","text":"Microsoft 365","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-2","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-3","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-4","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-5","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-6","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Microsoft 365","level":1},
+          {"kind":"text","id":"t","text":"Word, Excel, PowerPoint, Outlook, OneNote, Teams and 1TB of OneDrive storage, with Copilot built in on the Premium and business plans."},
+          {
+            "kind": "card",
+            "id": "plans",
+            "children": [
+              {"kind":"styled","id":"plans-head","text":"Plan | Includes | Price","style":{"size":12,"weight":"bold","color":"#5b6478"}},
+              {"kind":"text","id":"plans-row","text":"Microsoft 365 Basic | 100GB OneDrive, Outlook without ads | $1.99 a month"},
+              {"kind":"text","id":"plans-row-2","text":"Microsoft 365 Personal | Apps for one person, 1TB | $9.99 a month"},
+              {"kind":"text","id":"plans-row-3","text":"Microsoft 365 Family | Up to six people, 1TB each | $12.99 a month"},
+              {"kind":"text","id":"plans-row-4","text":"Microsoft 365 Premium | Personal plus Copilot Pro | $19.99 a month"},
+              {"kind":"text","id":"plans-row-5","text":"Business Standard | Apps, Teams, Exchange mailbox, per user | $12.50 a month"},
+              {"kind":"text","id":"plans-row-6","text":"Business Premium | Standard plus Intune and Defender | $22.00 a month"}
+            ],
+            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+          },
+          {"kind":"heading","id":"h-2","text":"Copilot in Microsoft 365","level":2},
+          {"kind":"text","id":"t-2","text":"Draft in Word, analyse in Excel with natural language, turn a document into slides in PowerPoint, and catch up on a Teams meeting you missed. Copilot uses your organisation's permissions; it sees only what you can see."},
+          {"kind":"link","id":"outlook","text":"Sign in to Outlook","url":"http://outlook.com/"},
+          {"kind":"link","id":"buy","text":"Buy Microsoft 365","url":"http://microsoft.com/store"},
+          {"kind":"link","id":"support","text":"Support for Microsoft 365","url":"http://microsoft.com/support"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/surface": {
+        "version": 1,
+        "title": "Surface",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"styled","id":"nav-here","text":"Surface","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-3","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-4","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-5","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-6","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Surface","level":1},
+          {"kind":"text","id":"t","text":"Copilot+ PCs designed by Microsoft. Every 2026 Surface ships with Windows 12 and a 45 TOPS NPU."},
+          {
+            "kind": "grid",
+            "id": "tiles",
+            "columns": 4,
+            "children": [
+              {
+                "kind": "card",
+                "id": "tile",
+                "children": [
+                  {"kind":"heading","id":"tile-name","text":"Surface Laptop 8","level":3},
+                  {"kind":"text","id":"tile-desc","text":"13.8 or 15 inch, Snapdragon X2 Elite, 22 hours of battery, haptic touchpad."},
+                  {"kind":"text","id":"tile-price","text":"From $999"},
+                  {"kind":"link","id":"tile-link","text":"Learn more","url":"http://microsoft.com/store"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "tile-2",
+                "children": [
+                  {"kind":"heading","id":"tile-name-2","text":"Surface Pro 12","level":3},
+                  {"kind":"text","id":"tile-desc-2","text":"13 inch OLED 2-in-1, the Flex Keyboard works detached, 5G option."},
+                  {"kind":"text","id":"tile-price-2","text":"From $1,099"},
+                  {"kind":"link","id":"tile-link-2","text":"Learn more","url":"http://microsoft.com/store"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "tile-3",
+                "children": [
+                  {"kind":"heading","id":"tile-name-3","text":"Surface Laptop Studio 3","level":3},
+                  {"kind":"text","id":"tile-desc-3","text":"14.4 inch, Intel Core Ultra and RTX graphics, the screen folds forward for pen work."},
+                  {"kind":"text","id":"tile-price-3","text":"From $1,999"},
+                  {"kind":"link","id":"tile-link-3","text":"Learn more","url":"http://microsoft.com/store"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "tile-4",
+                "children": [
+                  {"kind":"heading","id":"tile-name-4","text":"Surface Laptop Go 4","level":3},
+                  {"kind":"text","id":"tile-desc-4","text":"12.4 inch, 1.1kg, the student Surface."},
+                  {"kind":"text","id":"tile-price-4","text":"From $649"},
+                  {"kind":"link","id":"tile-link-4","text":"Learn more","url":"http://microsoft.com/store"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 14
+          },
+          {"kind":"heading","id":"h-2","text":"Accessories","level":2},
+          {"kind":"text","id":"t-2","text":"Surface Pro Flex Keyboard $349, Surface Slim Pen 3 $129, Surface Arc Mouse $79, Surface Thunderbolt 4 Dock $299."},
+          {"kind":"link","id":"compare","text":"Compare Surface devices","url":"http://microsoft.com/store"},
+          {"kind":"link","id":"support","text":"Surface support","url":"http://microsoft.com/support"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/azure": {
+        "version": 1,
+        "title": "Microsoft Azure",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"styled","id":"nav-here","text":"Azure","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-4","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-5","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-6","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Azure","level":1},
+          {"kind":"text","id":"t","text":"Build on the cloud that runs Microsoft 365, GitHub and Xbox. Start with $200 of credit for 30 days and 55 services free for 12 months."},
+          {
+            "kind": "grid",
+            "id": "services",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "svc",
+                "children": [
+                  {"kind":"heading","id":"svc-name","text":"Compute","level":3},
+                  {"kind":"text","id":"svc-desc","text":"Virtual Machines, Azure Kubernetes Service, Functions, App Service, Container Apps."}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "svc-2",
+                "children": [
+                  {"kind":"heading","id":"svc-name-2","text":"Data","level":3},
+                  {"kind":"text","id":"svc-desc-2","text":"Azure SQL, Cosmos DB, PostgreSQL, Blob Storage, Data Lake, Fabric."}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "svc-3",
+                "children": [
+                  {"kind":"heading","id":"svc-name-3","text":"AI","level":3},
+                  {"kind":"text","id":"svc-desc-3","text":"Azure OpenAI, AI Foundry, Speech, Vision, and the model catalogue with 1,800 models."}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "svc-4",
+                "children": [
+                  {"kind":"heading","id":"svc-name-4","text":"Networking","level":3},
+                  {"kind":"text","id":"svc-desc-4","text":"Virtual Network, Front Door, Load Balancer, ExpressRoute, DNS."}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "svc-5",
+                "children": [
+                  {"kind":"heading","id":"svc-name-5","text":"Security","level":3},
+                  {"kind":"text","id":"svc-desc-5","text":"Entra ID, Key Vault, Defender for Cloud, Sentinel."}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "svc-6",
+                "children": [
+                  {"kind":"heading","id":"svc-name-6","text":"Developer","level":3},
+                  {"kind":"text","id":"svc-desc-6","text":"Azure DevOps, GitHub Actions integration, the Azure CLI and Bicep."}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 12
+          },
+          {"kind":"heading","id":"h-2","text":"Pricing examples","level":2},
+          {
+            "kind": "card",
+            "id": "pricing",
+            "children": [
+              {"kind":"styled","id":"pricing-head","text":"Service | Size | Price","style":{"size":12,"weight":"bold","color":"#5b6478"}},
+              {"kind":"text","id":"pricing-row","text":"Virtual Machine | B2s, 2 vCPU, 4GB, Linux | $0.0416 an hour"},
+              {"kind":"text","id":"pricing-row-2","text":"Blob Storage | Hot tier, first 50TB | $0.018 per GB a month"},
+              {"kind":"text","id":"pricing-row-3","text":"Azure Functions | Consumption plan | First 1M executions free"},
+              {"kind":"text","id":"pricing-row-4","text":"Azure OpenAI | GPT-class model, input | $2.50 per 1M tokens"}
+            ],
+            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+          },
+          {"kind":"link","id":"learn","text":"Quickstart: your first Azure Function","url":"http://microsoft.com/learn/azure-functions-quickstart"},
+          {"kind":"link","id":"gh","text":"Azure on GitHub","url":"http://github.com/"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/support": {
+        "version": 1,
+        "title": "Microsoft Support",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-4","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-5","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"styled","id":"nav-here","text":"Support","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-6","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Microsoft Support","level":1},
+          {"kind":"text","id":"t","text":"Choose a product for help articles, or contact us. Sign in with your Microsoft account for support tailored to your devices and subscriptions."},
+          {
+            "kind": "grid",
+            "id": "products",
+            "columns": 4,
+            "children": [
+              {
+                "kind": "card",
+                "id": "sup",
+                "children": [
+                  {"kind":"heading","id":"sup-name","text":"Windows","level":3},
+                  {"kind":"link","id":"sup-link","text":"Help for Windows","url":"http://microsoft.com/windows"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "sup-2",
+                "children": [
+                  {"kind":"heading","id":"sup-name-2","text":"Microsoft 365","level":3},
+                  {"kind":"link","id":"sup-link-2","text":"Help for Microsoft 365","url":"http://microsoft.com/microsoft-365"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "sup-3",
+                "children": [
+                  {"kind":"heading","id":"sup-name-3","text":"Surface","level":3},
+                  {"kind":"link","id":"sup-link-3","text":"Help for Surface","url":"http://microsoft.com/surface"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "sup-4",
+                "children": [
+                  {"kind":"heading","id":"sup-name-4","text":"Azure","level":3},
+                  {"kind":"link","id":"sup-link-4","text":"Help for Azure","url":"http://microsoft.com/azure"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 12
+          },
+          {"kind":"heading","id":"h-2","text":"Top articles","level":2},
+          {"kind":"text","id":"t-2","text":"Reset your Microsoft account password: go to the sign-in page, choose Forgot password, and verify with the phone or email on the account."},
+          {"kind":"text","id":"t-3","text":"Windows Update is stuck: run the Windows Update troubleshooter from Settings, System, Troubleshoot, then restart. If it fails again, run \"sfc /scannow\" in an administrator Terminal."},
+          {"kind":"text","id":"t-4","text":"Surface will not turn on: hold the power button for 20 seconds, release, then press it once. Charge for at least 30 minutes with the Surface Connect charger."},
+          {"kind":"text","id":"t-5","text":"Activate Windows: Settings, System, Activation. A digital licence linked to your Microsoft account re-activates after a hardware change."},
+          {"kind":"heading","id":"h-3","text":"Contact","level":2},
+          {"kind":"text","id":"t-6","text":"Chat and callback from the Get Help app on Windows, or from the Surface app. Business and Azure customers open a support request from the admin centre or the Azure portal. Phone support hours: 6:00 to 22:00 Pacific, Monday to Friday."},
+          {"kind":"link","id":"so","text":"Ask the community on Stack Overflow","url":"http://stackoverflow.com/"},
+          {"kind":"link","id":"learn","text":"Learn: PowerShell scripting","url":"http://microsoft.com/learn/powershell-scripting"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/learn": {
+        "version": 1,
+        "title": "Microsoft Learn",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-4","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"styled","id":"nav-here","text":"Learn","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-5","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-6","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Microsoft Learn","level":1},
+          {"kind":"text","id":"t","text":"Documentation, training and certifications for Windows, Microsoft 365, Azure and the developer tools. Everything here is free."},
+          {"kind":"heading","id":"h-2","text":"Featured articles","level":2},
+          {
+            "kind": "grid",
+            "id": "articles",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "art",
+                "children": [
+                  {"kind":"heading","id":"art-title","text":"Windows Terminal basics","level":3},
+                  {"kind":"text","id":"art-desc","text":"Open Terminal, create profiles, split panes and set a default shell."},
+                  {"kind":"link","id":"art-link","text":"Read","url":"http://microsoft.com/learn/windows-terminal-basics"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "art-2",
+                "children": [
+                  {"kind":"heading","id":"art-title-2","text":"Quickstart: your first Azure Function","level":3},
+                  {"kind":"text","id":"art-desc-2","text":"Create an HTTP-triggered function in Python and deploy it with the Azure CLI."},
+                  {"kind":"link","id":"art-link-2","text":"Read","url":"http://microsoft.com/learn/azure-functions-quickstart"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "art-3",
+                "children": [
+                  {"kind":"heading","id":"art-title-3","text":"PowerShell scripting for beginners","level":3},
+                  {"kind":"text","id":"art-desc-3","text":"Cmdlets, the pipeline, variables and a first script that renames files."},
+                  {"kind":"link","id":"art-link-3","text":"Read","url":"http://microsoft.com/learn/powershell-scripting"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 12
+          },
+          {"kind":"heading","id":"h-3","text":"Certifications","level":2},
+          {"kind":"text","id":"t-2","text":"AZ-900 Azure Fundamentals, AZ-104 Azure Administrator, AI-102 Azure AI Engineer, MS-900 Microsoft 365 Fundamentals, PL-300 Power BI Data Analyst. Exams are $99 to $165; practice assessments are free."},
+          {"kind":"heading","id":"h-4","text":"Learning paths","level":2},
+          {"kind":"text","id":"t-3","text":"Azure Fundamentals (6 hours), Get started with Windows Terminal (1 hour), Automate with PowerShell (4 hours), Build serverless apps with Azure Functions (3 hours), Introduction to Copilot in Microsoft 365 (1 hour)."},
+          {"kind":"link","id":"gh","text":"Sample code on GitHub","url":"http://github.com/"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/learn/windows-terminal-basics": {
+        "version": 1,
+        "title": "Windows Terminal basics - Microsoft Learn",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-4","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-5","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-6","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-7","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"link","id":"crumb","text":"Microsoft Learn","url":"http://microsoft.com/learn"},
+          {"kind":"heading","id":"h","text":"Windows Terminal basics","level":1},
+          {"kind":"text","id":"t","text":"Article. 8 minutes to read. Applies to Windows 11 and Windows 12."},
+          {"kind":"text","id":"t-2","text":"Windows Terminal is the default console host in Windows 12. It runs PowerShell, Command Prompt, WSL distributions and the Azure Cloud Shell in tabs and panes."},
+          {"kind":"heading","id":"h-2","text":"Open Terminal","level":2},
+          {"kind":"text","id":"t-3","text":"Press the Windows key, type \"terminal\", and press Enter. Or right-click the Start button and choose Terminal. Terminal (Admin) opens an elevated session."},
+          {"kind":"heading","id":"h-3","text":"Profiles","level":2},
+          {"kind":"text","id":"t-4","text":"Each tab runs a profile. Open Settings with Ctrl+, to add one: give it a name, a command line such as \"wsl -d Ubuntu\" or \"pwsh.exe\", a starting directory and an icon. Set \"Default profile\" to the shell you want on launch."},
+          {"kind":"heading","id":"h-4","text":"Panes and tabs","level":2},
+          {"kind":"text","id":"t-5","text":"Ctrl+Shift+T opens a new tab. Alt+Shift+D splits the current pane, Alt+Shift+Minus splits horizontally and Alt+Shift+Plus vertically. Alt+Arrow moves focus between panes. Ctrl+Shift+W closes the focused pane."},
+          {"kind":"heading","id":"h-5","text":"Useful settings","level":2},
+          {"kind":"text","id":"t-6","text":"Set \"Launch on startup\" to restore your tabs, choose a colour scheme under Appearance, and enable \"Acrylic\" for a translucent background. Settings live in settings.json, which you can edit directly from the Settings page."},
+          {"kind":"link","id":"next","text":"Next: PowerShell scripting for beginners","url":"http://microsoft.com/learn/powershell-scripting"},
+          {"kind":"link","id":"windows","text":"Windows","url":"http://microsoft.com/windows"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/learn/azure-functions-quickstart": {
+        "version": 1,
+        "title": "Quickstart: your first Azure Function - Microsoft Learn",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-4","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-5","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-6","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-7","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"link","id":"crumb","text":"Microsoft Learn","url":"http://microsoft.com/learn"},
+          {"kind":"heading","id":"h","text":"Quickstart: create your first Azure Function in Python","level":1},
+          {"kind":"text","id":"t","text":"Article. 12 minutes to read. Requires an Azure account, Python 3.12 and the Azure Functions Core Tools."},
+          {"kind":"heading","id":"h-2","text":"1. Create the project","level":2},
+          {"kind":"text","id":"t-2","text":"Run \"func init MyFunctionApp --python\" then \"cd MyFunctionApp\" and \"func new --name HttpExample --template \"HTTP trigger\" --authlevel anonymous\". This writes a function_app.py with a route decorated @app.route(route=\"HttpExample\")."},
+          {"kind":"heading","id":"h-3","text":"2. Run it locally","level":2},
+          {"kind":"text","id":"t-3","text":"Run \"func start\". The tool prints http://localhost:7071/api/HttpExample. Open it with ?name=Azure and you get \"Hello, Azure.\""},
+          {"kind":"heading","id":"h-4","text":"3. Create the Azure resources","level":2},
+          {"kind":"text","id":"t-4","text":"Sign in with \"az login\". Create a resource group, a storage account and the function app: \"az functionapp create --consumption-plan-location westus2 --runtime python --runtime-version 3.12 --functions-version 4 --name <APP_NAME> --storage-account <STORAGE_NAME> --resource-group <GROUP>\"."},
+          {"kind":"heading","id":"h-5","text":"4. Deploy","level":2},
+          {"kind":"text","id":"t-5","text":"Run \"func azure functionapp publish <APP_NAME>\". The output ends with the invoke URL. Test it in a browser or with curl."},
+          {"kind":"heading","id":"h-6","text":"Clean up","level":2},
+          {"kind":"text","id":"t-6","text":"Delete the resource group with \"az group delete --name <GROUP>\" so the storage account stops billing."},
+          {"kind":"link","id":"azure","text":"Azure","url":"http://microsoft.com/azure"},
+          {"kind":"link","id":"next","text":"Next: Windows Terminal basics","url":"http://microsoft.com/learn/windows-terminal-basics"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/learn/powershell-scripting": {
+        "version": 1,
+        "title": "PowerShell scripting for beginners - Microsoft Learn",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-4","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-5","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-6","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"link","id":"nav-7","text":"Store","url":"http://microsoft.com/store"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"link","id":"crumb","text":"Microsoft Learn","url":"http://microsoft.com/learn"},
+          {"kind":"heading","id":"h","text":"PowerShell scripting for beginners","level":1},
+          {"kind":"text","id":"t","text":"Article. 15 minutes to read. Applies to PowerShell 7.5 on Windows, macOS and Linux."},
+          {"kind":"heading","id":"h-2","text":"Cmdlets","level":2},
+          {"kind":"text","id":"t-2","text":"Commands are Verb-Noun pairs: Get-ChildItem lists files, Get-Process lists processes, Set-Location changes directory. Get-Command finds a cmdlet by name; Get-Help shows how to use it."},
+          {"kind":"heading","id":"h-3","text":"The pipeline","level":2},
+          {"kind":"text","id":"t-3","text":"Cmdlets pass objects, not text. \"Get-Process | Where-Object CPU -gt 100 | Sort-Object CPU -Descending | Select-Object -First 5\" gives the five busiest processes as objects you can keep working with."},
+          {"kind":"heading","id":"h-4","text":"Variables and types","level":2},
+          {"kind":"text","id":"t-4","text":"$name = \"report\" stores a string; $files = Get-ChildItem *.log stores an array of FileInfo objects. $files.Count and $files[0].Name work as you would expect."},
+          {"kind":"heading","id":"h-5","text":"A first script","level":2},
+          {"kind":"text","id":"t-5","text":"Save this as Rename-Logs.ps1: \"Get-ChildItem *.log | ForEach-Object { Rename-Item $_ ($_.BaseName + \"-\" + (Get-Date -Format yyyyMMdd) + \".log\") }\". Run it with \".\\Rename-Logs.ps1\". If scripts are blocked, run \"Set-ExecutionPolicy RemoteSigned -Scope CurrentUser\" once."},
+          {"kind":"link","id":"terminal","text":"Windows Terminal basics","url":"http://microsoft.com/learn/windows-terminal-basics"},
+          {"kind":"link","id":"support","text":"Microsoft Support","url":"http://microsoft.com/support"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      },
+      "/store": {
+        "version": 1,
+        "title": "Microsoft Store",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"Microsoft","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Windows","url":"http://microsoft.com/windows"},
+                  {"kind":"link","id":"nav-2","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+                  {"kind":"link","id":"nav-3","text":"Surface","url":"http://microsoft.com/surface"},
+                  {"kind":"link","id":"nav-4","text":"Azure","url":"http://microsoft.com/azure"},
+                  {"kind":"link","id":"nav-5","text":"Learn","url":"http://microsoft.com/learn"},
+                  {"kind":"link","id":"nav-6","text":"Support","url":"http://microsoft.com/support"},
+                  {"kind":"styled","id":"nav-here","text":"Store","style":{"size":13,"weight":"bold","color":"#ffffff"}}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#171717","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Microsoft Store","level":1},
+          {"kind":"text","id":"t","text":"Devices, software and subscriptions. Free shipping and 60-day returns on Surface."},
+          {
+            "kind": "card",
+            "id": "prices",
+            "children": [
+              {"kind":"styled","id":"prices-head","text":"Product | Configuration | Price","style":{"size":12,"weight":"bold","color":"#5b6478"}},
+              {"kind":"text","id":"prices-row","text":"Surface Laptop 8, 13.8 inch | Snapdragon X2, 16GB, 512GB | $999"},
+              {"kind":"text","id":"prices-row-2","text":"Surface Laptop 8, 15 inch | Snapdragon X2 Elite, 32GB, 1TB | $1,699"},
+              {"kind":"text","id":"prices-row-3","text":"Surface Pro 12 | 16GB, 256GB, Wi-Fi | $1,099"},
+              {"kind":"text","id":"prices-row-4","text":"Surface Laptop Studio 3 | Core Ultra 9, RTX, 32GB, 1TB | $2,899"},
+              {"kind":"text","id":"prices-row-5","text":"Surface Laptop Go 4 | 8GB, 256GB | $649"},
+              {"kind":"text","id":"prices-row-6","text":"Xbox Series X | 2TB, all-digital | $549"},
+              {"kind":"text","id":"prices-row-7","text":"Xbox Wireless Controller | Carbon Black | $59.99"},
+              {"kind":"text","id":"prices-row-8","text":"Microsoft 365 Personal | 12 months | $99.99"},
+              {"kind":"text","id":"prices-row-9","text":"Microsoft 365 Family | 12 months | $129.99"},
+              {"kind":"text","id":"prices-row-10","text":"Windows 12 Pro | Digital licence | $199"},
+              {"kind":"text","id":"prices-row-11","text":"Surface Slim Pen 3 |  | $129"},
+              {"kind":"text","id":"prices-row-12","text":"Surface Thunderbolt 4 Dock |  | $299"}
+            ],
+            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+          },
+          {"kind":"link","id":"surface","text":"Surface","url":"http://microsoft.com/surface"},
+          {"kind":"link","id":"m365","text":"Microsoft 365","url":"http://microsoft.com/microsoft-365"},
+          {"kind":"link","id":"windows","text":"Windows","url":"http://microsoft.com/windows"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Support","url":"http://microsoft.com/support"},
+              {"kind":"link","id":"foot-2","text":"Outlook","url":"http://outlook.com/"},
+              {"kind":"link","id":"foot-3","text":"Microsoft on LinkedIn","url":"http://linkedin.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 Microsoft. Prices in US dollars. Simulated site."}
+        ],
+        "theme": {"accent":"#0067b8","background":"#ffffff","surface":"#f2f2f2","ink":"#171717","muted":"#6e6e73","content_width":1000}
+      }
+    },
+    "records": {}
+  },
+  "network_node": {
+    "address": "203.0.113.111",
+    "zone": "internet",
+    "link": {"from":"pop-west","latency_us":1500}
+  },
+  "search_entries": [
+    {
+      "url": "http://microsoft.com/",
+      "title": "Microsoft - Cloud, Computers, Apps and Gaming",
+      "snippet": "Surface Laptop 8, Windows 12, Microsoft 365, Azure and Microsoft Learn.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": ["microsoft","windows","office","surface","azure"]
+    },
+    {
+      "url": "http://microsoft.com/windows",
+      "title": "Windows 12 - Microsoft",
+      "snippet": "The free Windows 12 update: requirements, what is new and editions.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": ["windows","windows 12","windows update","copilot pc"]
+    },
+    {
+      "url": "http://microsoft.com/microsoft-365",
+      "title": "Microsoft 365 - Word, Excel, PowerPoint, Outlook and Copilot",
+      "snippet": "Plans from $1.99 to $22 a month with 1TB of OneDrive and Copilot.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": ["microsoft 365","office 365","word","excel","outlook","copilot"]
+    },
+    {
+      "url": "http://microsoft.com/surface",
+      "title": "Surface - Microsoft",
+      "snippet": "Surface Laptop 8, Surface Pro 12, Laptop Studio 3 and Laptop Go 4.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": ["surface","surface laptop","surface pro","copilot+ pc"]
+    },
+    {
+      "url": "http://microsoft.com/azure",
+      "title": "Microsoft Azure - Cloud computing services",
+      "snippet": "Compute, data, AI, networking and security with $200 of starting credit.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": ["azure","cloud","azure openai","virtual machine","aks"]
+    },
+    {
+      "url": "http://microsoft.com/support",
+      "title": "Microsoft Support",
+      "snippet": "Help for Windows, Microsoft 365, Surface and Azure; password reset and Windows Update fixes.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": ["microsoft support","windows update stuck","reset password","surface wont turn on"]
+    },
+    {
+      "url": "http://microsoft.com/learn",
+      "title": "Microsoft Learn - Training, documentation and certifications",
+      "snippet": "Free docs and learning paths for Windows, Azure, PowerShell and Microsoft 365.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": ["microsoft learn","docs","certification","az-900","training"]
+    },
+    {
+      "url": "http://microsoft.com/learn/windows-terminal-basics",
+      "title": "Windows Terminal basics - Microsoft Learn",
+      "snippet": "Open Terminal, add profiles, split panes and pick a default shell.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["windows terminal","terminal profiles","split pane","wsl"]
+    },
+    {
+      "url": "http://microsoft.com/learn/azure-functions-quickstart",
+      "title": "Quickstart: your first Azure Function in Python",
+      "snippet": "func init, func start, az functionapp create and func azure functionapp publish.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["azure functions","serverless","python","quickstart","func"]
+    },
+    {
+      "url": "http://microsoft.com/learn/powershell-scripting",
+      "title": "PowerShell scripting for beginners - Microsoft Learn",
+      "snippet": "Cmdlets, the object pipeline, variables and a first rename script.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["powershell","scripting","cmdlet","pipeline","execution policy"]
+    },
+    {
+      "url": "http://microsoft.com/store",
+      "title": "Microsoft Store - Surface, Xbox and Microsoft 365",
+      "snippet": "Surface and Xbox prices, Microsoft 365 subscriptions and Windows 12 Pro licences.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["microsoft store","buy surface","xbox price","microsoft 365 price"]
+    }
+  ]
+}

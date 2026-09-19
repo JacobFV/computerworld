@@ -43,6 +43,25 @@ fn github_seed_initialises_and_every_page_renders() {
         "/northstar/atlas/pull/15",
         "/northstar/atlas/stargazers",
         "/northstar/atlas/blob/src/bfs.rs",
+        "/northstar/atlas/blob/main/src/bfs.rs",
+        "/northstar/atlas/blob/main/LICENSE",
+        "/northstar/atlas/tree/main/src",
+        "/northstar/atlas/tree/sort-refs/tests",
+        "/northstar/atlas/commits/main",
+        "/northstar/atlas/commits/sort-refs",
+        "/northstar/atlas/branches",
+        "/northstar/atlas/issues?state=closed",
+        "/northstar/atlas/issues/new",
+        "/northstar/atlas/issues/9",
+        "/northstar/atlas/compare",
+        "/northstar/atlas/pull/11",
+        "/northstar/atlas/pull/15/commits",
+        "/northstar/atlas/pull/15/files",
+        "/northstar/atlas/pull/19",
+        "/northstar/atlas/actions",
+        "/northstar/atlas/settings",
+        "/search?q=atlas",
+        "/alicechen",
         "/northstar/atlas-actions",
         "/alicechen/dotfiles",
         "/gists",
@@ -54,6 +73,20 @@ fn github_seed_initialises_and_every_page_renders() {
             .unwrap()
             .validate()
             .unwrap_or_else(|e| panic!("{path}: {e}"));
+    }
+    // Every commit on every branch has a page of its own.
+    let repos = state["repositories"].as_object().unwrap().clone();
+    for (name, repo) in &repos {
+        let owner = repo["owner"].as_str().unwrap();
+        for sha in repo["objects"].as_object().unwrap().keys() {
+            let url = format!("http://github.com/{owner}/{name}/commit/{sha}");
+            let (status, body) = open(&mut state, &url);
+            assert_eq!(status, 200, "{url}");
+            serde_json::from_slice::<Page>(&body)
+                .unwrap()
+                .validate()
+                .unwrap_or_else(|e| panic!("{url}: {e}"));
+        }
     }
     for entry in site["search_entries"].as_array().unwrap() {
         let url = entry["url"].as_str().unwrap();

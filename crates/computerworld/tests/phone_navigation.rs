@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 const NATIVE: [&str; 13] = [
     "calendar",
     "mail",
-    "chat",
+    "messages",
     "docs",
     "notes",
     "contacts",

@@ -43,5 +43,9 @@ opt-level = 2
 [profile.dev.package.cw-artwork]
 opt-level = 2
 
+# The maps sites rasterise a street map per request; unoptimised, a wide tile is slow.
+[profile.dev.package.cw-map]
+opt-level = 2
+
 [profile.dev.package.cw-jsvm]
 opt-level = 2

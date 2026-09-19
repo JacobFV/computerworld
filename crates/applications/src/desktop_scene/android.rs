@@ -20,7 +20,7 @@ const APPS: [(&str, &str); 19] = [
     ("browser", "Chrome"),
     ("calculator", "Calculator"),
     ("calendar", "Calendar"),
-    ("chat", "Messages"),
+    ("messages", "Messages"),
     ("clock", "Clock"),
     ("contacts", "Contacts"),
     ("docs", "Docs"),
@@ -248,7 +248,7 @@ impl Launcher {
             .filter(|(kind, _)| installed(kind))
             .collect();
         // Hotseat favourites first; the remaining applications fill the pages.
-        let preferred = ["chat", "browser", "mail", "files"];
+        let preferred = ["messages", "browser", "mail", "files"];
         let mut dock: Vec<_> = preferred
             .iter()
             .filter_map(|k| all.iter().copied().find(|(kind, _)| kind == k))
@@ -732,7 +732,7 @@ fn shade(p: &mut Painter, ctx: &ShellContext<'_>, expanded: bool) {
 /// application, not an icon, and inventing artwork for one would be worse than a bell.
 fn notice_symbol(app: &str) -> &'static str {
     match app {
-        "chat" => "chat",
+        "chat" | "messages" => "chat",
         "mail" => "mail",
         "browser" => "globe",
         "calendar" => "calendar",

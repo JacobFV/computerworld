@@ -1,5 +1,6 @@
-//! Slack and Discord behaviour, the frozen plain rendering, and the API the desktop
-//! Messages application in `cw-applications` talks to.
+//! The frozen plain rendering of chat.internal, and the API contract the browser and
+//! world tests drive. Slack and Discord live in their own crates now, so a seed that still
+//! names one of those skins is refused rather than silently drawn as plain chat.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_chat::{ChatService, ChatState};
@@ -11,7 +12,7 @@ fn ctx(actor: &str) -> ServiceContext {
         source: format!("{actor}-pc"),
         tick: 12,
         seed: 2,
-        instance: "slack".into(),
+        instance: "chat".into(),
     }
 }
 fn get(state: &mut Value, actor: &str, path: &str) -> (u16, String) {
@@ -19,7 +20,7 @@ fn get(state: &mut Value, actor: &str, path: &str) -> (u16, String) {
         .handle(
             state,
             &ctx(actor),
-            &HttpRequest::get(format!("http://slack.com{path}")),
+            &HttpRequest::get(format!("http://chat.internal{path}")),
         )
         .unwrap();
     (r.status, String::from_utf8(r.body).unwrap())
@@ -29,15 +30,15 @@ fn post(state: &mut Value, actor: &str, path: &str, body: Value) -> (u16, String
         .handle(
             state,
             &ctx(actor),
-            &HttpRequest::json("POST", format!("http://slack.com{path}"), &body).unwrap(),
+            &HttpRequest::json("POST", format!("http://chat.internal{path}"), &body).unwrap(),
         )
         .unwrap();
     (r.status, String::from_utf8(r.body).unwrap())
 }
-fn workspace(skin: &str) -> Value {
+fn seeded() -> Value {
     ChatService
         .initialize(
-            json!({"skin":skin,"workspace":"Northstar","next_id":2,"channels":{
+            json!({"next_id":2,"channels":{
                 "eng":{"title":"eng","members":["alice","bob","carol","admin"],"messages":[
                     {"id":"chat-1","author":"bob","text":"BFS path test fails on Windows only.",
                      "time":30,"reactions":{}},
@@ -49,7 +50,7 @@ fn workspace(skin: &str) -> Value {
         .unwrap()
 }
 
-/// `skin: "plain"` is chat.internal, and it must serialise and render exactly as it always has.
+/// chat.internal must serialise and render exactly as it always has.
 #[test]
 fn plain_state_and_pages_are_byte_identical() {
     const STATE: &str = r#"{"channels":{"general":{"members":["admin","alice","bob","carol"],"messages":[],"title":"General"}},"next_id":0}"#;
@@ -68,10 +69,27 @@ fn plain_state_and_pages_are_byte_identical() {
     assert!(!channel.contains("sidebar") && !channel.contains("rail"));
 }
 
-/// The contract `crates/applications/src/apps/chat.rs` drives; its own tests assert on it too.
+/// The branded skins moved out; naming one here is a seed error, not a fallback.
 #[test]
-fn desktop_messages_api_contract_holds() {
-    let mut state = workspace("slack");
+fn only_the_plain_skin_is_accepted() {
+    for skin in ["slack", "discord", "irc"] {
+        assert!(
+            ChatService
+                .initialize(json!({"skin":skin}), &ctx("alice"))
+                .is_err(),
+            "{skin} must be refused"
+        );
+    }
+    let state = ChatService
+        .initialize(json!({"skin":"plain"}), &ctx("alice"))
+        .unwrap();
+    assert!(state.get("skin").is_none());
+}
+
+/// The contract the browser and the world's tests drive over `/api`.
+#[test]
+fn api_contract_holds() {
+    let mut state = seeded();
     let (status, list) = get(&mut state, "alice", "/api/channels");
     assert_eq!(status, 200);
     assert_eq!(
@@ -81,7 +99,6 @@ fn desktop_messages_api_contract_holds() {
     let channel: Value =
         serde_json::from_str(&get(&mut state, "alice", "/api/channels/eng").1).unwrap();
     assert_eq!(channel["messages"][0]["author"], "bob");
-    assert_eq!(channel["title"], "eng");
     let sent: Value = serde_json::from_str(
         &post(
             &mut state,
@@ -110,25 +127,8 @@ fn desktop_messages_api_contract_holds() {
     assert_eq!(after["messages"][2]["reactions"]["+1"], json!(["carol"]));
     // A non-member gets nothing, over the API or in the page.
     assert_eq!(get(&mut state, "eve", "/api/channels/eng").0, 403);
-}
-
-#[test]
-fn slack_workspace_renders_threads_and_reactions() {
-    let mut state = workspace("slack");
-    let page = get(&mut state, "alice", "/channels/eng").1;
-    assert!(page.contains("Northstar") && page.contains("# eng"));
-    assert!(page.contains("chat-2-has-tada") && page.contains("chat-1-react-+1"));
-    // Slack permalinks in seeded prose are /archives/<channel>.
-    assert_eq!(get(&mut state, "alice", "/archives/eng").1, page);
-    let (status, threaded) = post(
-        &mut state,
-        "carol",
-        "/channels/eng/messages",
-        json!({"text":"Accepted answer is the hash order.","parent":"chat-1"}),
-    );
-    assert_eq!(status, 200);
-    assert!(threaded.contains("in-thread") && threaded.contains("Accepted answer"));
-    // A reply to a message that is not there is refused and changes nothing.
+    assert_eq!(get(&mut state, "eve", "/channels/eng").0, 403);
+    // A threaded reply to a message that is not there is refused and changes nothing.
     let before = state.clone();
     assert_eq!(
         post(
@@ -144,23 +144,11 @@ fn slack_workspace_renders_threads_and_reactions() {
 }
 
 #[test]
-fn discord_wears_its_own_palette() {
-    let mut state = workspace("discord");
-    let page = get(&mut state, "alice", "/channels/eng").1;
-    assert!(page.contains("Text channels") && page.contains("#5865f2"));
-    assert!(!page.contains("Channels\""));
-    assert!(ChatService
-        .initialize(json!({"skin":"irc"}), &ctx("alice"))
-        .is_err());
-}
-
-#[test]
 fn direct_messages_open_once_and_survive_a_round_trip() {
-    let mut state = workspace("slack");
+    let mut state = seeded();
     let (status, page) = post(&mut state, "alice", "/dms", json!({"to":"bob"}));
     assert_eq!(status, 200);
     assert!(page.contains("alice|bob"));
-    // Opening again is idempotent: the pair has exactly one conversation.
     post(&mut state, "bob", "/dms", json!({"to":"alice"}));
     assert_eq!(state["dms"].as_object().unwrap().len(), 1);
     assert_eq!(

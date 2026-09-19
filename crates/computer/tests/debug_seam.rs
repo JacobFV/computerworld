@@ -44,6 +44,11 @@ impl LineWalker {
                 name: "<module>".into(),
                 path: session.program.clone(),
                 line,
+                scopes: vec![Scope {
+                    name: "Locals".into(),
+                    reference: 10,
+                    expensive: false,
+                }],
             }],
             scopes: vec![Scope {
                 name: "Locals".into(),

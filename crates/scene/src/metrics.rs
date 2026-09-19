@@ -6,7 +6,10 @@ use crate::metrics_italic as italic;
 use crate::text;
 use serde::{Deserialize, Serialize};
 
-/// Bundled proportional UI font family. Glyphs missing from a family fall back to DejaVu.
+/// Bundled UI font family. Glyphs missing from a family fall back to DejaVu. `Mono` is
+/// the terminal's DejaVu Sans Mono, which has one weight and no slant: it measures on
+/// the fixed grid `Primitive::Text` paints on ([`crate::text_cell`]), so a code span
+/// laid out with it is exactly as wide as it is drawn.
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
@@ -18,6 +21,7 @@ pub enum Typeface {
     OpenSans,
     Ubuntu,
     Roboto,
+    Mono,
 }
 
 /// The language a run of text is written in, as far as glyph selection cares: it
@@ -107,6 +111,8 @@ impl Typeface {
     }
     fn table(self, bold: bool, slanted: bool) -> (&'static [(u32, u16)], u32) {
         match (self, bold, slanted) {
+            // One face serves every weight and slant of the monospace family.
+            (Self::Mono, _, _) => (data::DEJAVU_MONO, data::DEJAVU_MONO_UPEM),
             (Self::DejaVu, false, false) => (data::DEJAVU_REGULAR, data::DEJAVU_REGULAR_UPEM),
             (Self::DejaVu, true, false) => (data::DEJAVU_BOLD, data::DEJAVU_BOLD_UPEM),
             (Self::Inter, false, false) => (data::INTER_REGULAR, data::INTER_REGULAR_UPEM),
@@ -187,6 +193,11 @@ pub fn tabulated_advance(
     let style = style.into();
     let c = if c == '\t' { ' ' } else { c };
     let (family, slanted) = table_face(typeface, style, c)?;
+    // The monospace face is painted on the terminal grid, one cell per character,
+    // whichever face supplies the glyph: measure that cell, not the font's advance.
+    if typeface == Typeface::Mono {
+        return Some(i64::from(crate::text_cell(size).0) * 64);
+    }
     let (table, upem) = family.table(style.bold, slanted);
     lookup(table, c).map(|units| {
         (i64::from(units) * i64::from(size) * 64 + i64::from(upem) / 2) / i64::from(upem)
@@ -194,7 +205,12 @@ pub fn tabulated_advance(
 }
 /// Advance in 1/64 pixel. Tabs advance four spaces; unknown glyphs use 0.6 em.
 pub fn advance(typeface: Typeface, style: impl Into<Style>, c: char, size: u16) -> i64 {
-    let one = tabulated_advance(typeface, style, c, size).unwrap_or(i64::from(size) * 64 * 3 / 5);
+    let one =
+        tabulated_advance(typeface, style, c, size).unwrap_or(if typeface == Typeface::Mono {
+            i64::from(crate::text_cell(size).0) * 64
+        } else {
+            i64::from(size) * 64 * 3 / 5
+        });
     if c == '\t' {
         one * 4
     } else {
@@ -352,5 +368,38 @@ mod tests {
             text_width(Typeface::Roboto, false, "Settings", 13)
         );
         assert!(tabulated_advance(Typeface::Inter, false, 'λ', 13).is_some());
+    }
+    #[test]
+    fn the_monospace_face_measures_on_the_terminal_grid() {
+        let cell = crate::text_cell(13).0;
+        for c in ['i', 'W', 'λ', '─'] {
+            assert_eq!(
+                advance(Typeface::Mono, false, c, 13),
+                i64::from(cell) * 64,
+                "{c}"
+            );
+            assert_eq!(
+                advance(Typeface::Mono, true, c, 13),
+                i64::from(cell) * 64,
+                "{c}"
+            );
+        }
+        assert!(Typeface::Mono.covers(false, 'é') && !Typeface::Mono.covers(false, '語'));
+        assert_eq!(text_width(Typeface::Mono, false, "a1b2c3d4", 13), cell * 8);
+        assert_eq!(
+            table_face(Typeface::Mono, Style::new(true, true, Lang::Auto), 'x'),
+            Some((Typeface::Mono, true))
+        );
+        let lines = wrap(
+            Typeface::Mono,
+            false,
+            "fn main() { println!() }",
+            13,
+            cell * 10,
+        );
+        assert!(
+            lines.iter().all(|l| l.trim_end().chars().count() <= 10),
+            "{lines:?}"
+        );
     }
 }

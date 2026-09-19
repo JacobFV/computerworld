@@ -31,6 +31,8 @@ const SK_CREATE: Color = Color::rgb(33, 37, 41);
 const CUBE_BASE: Color = Color::rgb(208, 235, 255);
 const CUBE_HILITE: Color = Color::rgb(170, 226, 255);
 const INK: Color = Color::rgb(33, 37, 41);
+/// FreeCAD's datum colour.
+const DATUM: Rgb = Rgb(255, 170, 0);
 
 /// Parse the painted size out of a view target (`view:<w>:<h>`).
 pub fn view_size_of(target: &str) -> Option<(u32, u32)> {
@@ -523,6 +525,71 @@ pub fn draw(cad: &Cad, p: &mut Painter, l: &Layout, pointer: Option<(i32, i32)>)
                 on_top: false,
                 dashed: false,
             });
+        }
+    }
+    // Datum planes, lines and points: a square, a long line and a cross, sized to the
+    // model, in FreeCAD's datum colour (selected ones in the selection colour).
+    let extent = shapes
+        .iter()
+        .filter_map(|(_, s)| s.mesh.bounds().map(|b| b.diagonal()))
+        .fold(0.0_f64, f64::max)
+        .max(20.0);
+    for o in &cad.doc.objects {
+        if !o.visible || !o.feature.is_datum() {
+            continue;
+        }
+        let Some(geom) = model.datums.get(&o.name) else {
+            continue;
+        };
+        let selected = cad.selection.iter().any(|s| s.object == o.name);
+        let color = if selected { SELECT } else { DATUM };
+        let half = extent * 0.6;
+        match geom {
+            cw_cad::document::DatumGeom::Plane(f) => {
+                let corner = |sx: f64, sy: f64| f.origin + f.x * (half * sx) + f.y * (half * sy);
+                lines.push(Polyline {
+                    pts: vec![
+                        corner(-1.0, -1.0),
+                        corner(1.0, -1.0),
+                        corner(1.0, 1.0),
+                        corner(-1.0, 1.0),
+                        corner(-1.0, -1.0),
+                    ],
+                    color,
+                    width: 1.5,
+                    on_top: false,
+                    dashed: false,
+                });
+                // A short normal from the centre says which way the plane faces.
+                lines.push(Polyline {
+                    pts: vec![f.origin, f.origin + f.z * (half * 0.25)],
+                    color,
+                    width: 1.5,
+                    on_top: false,
+                    dashed: true,
+                });
+            }
+            cw_cad::document::DatumGeom::Line { origin, dir } => {
+                lines.push(Polyline {
+                    pts: vec![*origin - *dir * half, *origin + *dir * half],
+                    color,
+                    width: 2.0,
+                    on_top: false,
+                    dashed: false,
+                });
+            }
+            cw_cad::document::DatumGeom::Point(p) => {
+                let s = extent * 0.04;
+                for d in [V3::X, V3::Y, V3::Z] {
+                    lines.push(Polyline {
+                        pts: vec![*p - d * s, *p + d * s],
+                        color,
+                        width: 2.0,
+                        on_top: true,
+                        dashed: false,
+                    });
+                }
+            }
         }
     }
     // Bounding box of the selection.

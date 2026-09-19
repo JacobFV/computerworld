@@ -38,16 +38,33 @@ Pages that need real site structure add `Row`, `Grid`, `Card`, `Styled`,
 `Thumbnail`, `Icon`, `Badge`, `Divider` and `Spacer`, plus an optional page `theme`
 (`accent`, `background`, `surface`, `ink`, `muted`, `content_width`). `Style`
 carries `size`, `weight`, `color`, `background`, `border`, `radius`, `padding`,
-`align`, `width`, `height`, `flex`, `one_line`, `scroll_x` and `pin`; colours are `#rrggbb` or
-`#rrggbbaa` and radius/padding are capped at 64 by `Page::validate`. `pin: "bottom"` on
-a top-level element keeps it on the viewport's bottom edge while the page scrolls under
-it (a music site's player bar); the page beneath is clipped so a click on the bar never
-reaches what it covers. A `Thumbnail` shorter than 12 px (a progress bar's segment) has
+`align`, `width`, `height`, `flex`, `one_line`, `scroll_x`, `pin`, `justify` and `mono`;
+colours are `#rrggbb` or `#rrggbbaa` and radius/padding are capped at 64 by
+`Page::validate`. `pin: "bottom"` on a top-level element keeps it on the viewport's
+bottom edge while the page scrolls under it (a music site's player bar), and
+`pin: "top"` holds a sticky header on the top edge with the page flowing below it; the
+page beneath either is clipped so a click on the bar never reaches what it covers.
+`mono: true` sets the text in the bundled monospace face (a commit hash, a code span),
+measured with `Typeface::Mono` on the same grid the terminal paints on.
+
+`Link` and `Button` take an optional `style` of their own. A bare link is
+accent-coloured text at its own width (no slab); with a style it takes the size,
+weight, colour, `background`, `border`, `radius`, `padding` and `width` given, so it can
+be a nav item, a tab or a bordered button (`cw_service_common::styled_link`,
+`inline_link`). A bare button keeps the accent pill at its label's width; a styled one
+recolours and resizes it (`styled_button`). An `Image` takes an optional `style`
+(`radius` rounds it into an avatar, `border` frames it, `width`/`height` override its
+declared size) and an optional `action`, which makes the picture one click target named
+by its `alt`. `chip`, `avatar` and `pills`/`rest` in `cw_service_common` build the
+tags, initials-avatars and chip rows every skin needs. A `Thumbnail` shorter than 12 px (a progress bar's segment) has
 no minimum width and paints no caption, so a row of them can be a seek bar whose
 segments each keep an accessible name. Inside a `Row`,
 children with `Style::width` keep it and the rest divide the remainder by `flex`,
 never below their min-content width (the longest word, a button's label, a link's
-longest word). A row whose children cannot all fit that way wraps onto more lines,
+longest word). Once any child names a `flex` (or the row sets `justify`), the
+children that name none sit at their natural width instead, so a chip beside a `rest`
+spacer stays a chip; `justify` (`start`, `center`, `end`, `space-between`) places what
+is left over. A row whose children cannot all fit that way wraps onto more lines,
 like `flex-wrap: wrap`; on a viewport under 600 px a child holding a column of
 reading matter asks for three fifths of the screen, so sidebars stack under the
 content as a mobile breakpoint would make them. A `Grid` of cards or tiles drops
@@ -58,8 +75,12 @@ not a `Row`.
 
 An `Icon` is a real glyph rather than a character that happens to look like one: it
 names one of `cw_protocol::PAGE_ICONS` (`play`, `pause`, `skip-next`, `shuffle`,
-`heart-fill`, `thumb-up`, `cast`, `volume`, …, each a symbol every renderer bundles,
-checked by `Page::validate` and by `crates/render/tests/page_icons.rs`), and carries a
+`heart-fill`, `thumb-up`, `cast`, `volume`, and the developer set `branch`, `fork`,
+`commit`, `merge`, `pull-request`, `code`, `file`, `folder`, `issue-open`,
+`issue-closed`, `check`, `x-circle`, `comment`, `hash`, `lock`, `bell`, `at`, `emoji`,
+`paperclip`, `bold`, `italic`, `send`, `thread`, `more`, `chevron-down`,
+`chevron-right`, `star-filled`, …: the list is exactly the symbol set every renderer
+bundles, checked by `Page::validate` and by `crates/render/tests/icon_assets.rs`), and carries a
 `label`, which is required and is its accessible name. `Style::size` is the glyph's
 size in pixels (20 by default), `color` tints it, and `padding`, `background`, `border`
 and `radius` make the box around it; with a `PageAction` that box is one click target
@@ -93,7 +114,12 @@ the browser fetches it and expects `application/vnd.computerworld.rgba+json`
 image, cached per URL. The music sites serve their covers that way from
 `GET /art/<key>?size=&radius=`, drawn by `cw_artwork` from the key alone, so the same
 album has the same cover on the site and in the native players. An `Image` keeps its
-declared proportions when a narrow column shrinks it.
+declared proportions when a narrow column shrinks it. The maps sites do the same with
+`cw_map`: `GET /map.rgba?w=&h=&center=&zoom=&route=&sel=` draws a street map from the
+places alone (a grid in micro-degrees, arterials named by the places' addresses, water
+west of the places' world), in integers, so the native Maps app draws the identical
+streets from the same geometry. `cw_service_common::image` builds the element and
+`rgba_response` the reply.
 
 A page whose content moves with the world clock — a music site's player bar, whose
 position and lit lyric line advance as the clock does — answers with a `refresh:

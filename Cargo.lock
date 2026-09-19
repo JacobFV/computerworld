@@ -234,6 +234,7 @@ dependencies = [
  "cw-cad",
  "cw-determinism",
  "cw-eda",
+ "cw-map",
  "cw-protocol",
  "cw-raster",
  "cw-scene",
@@ -376,6 +377,10 @@ dependencies = [
  "serde_json",
  "sha2",
 ]
+
+[[package]]
+name = "cw-map"
+version = "0.1.1"
 
 [[package]]
 name = "cw-network"
@@ -532,6 +537,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-service-discord"
+version = "0.1.1"
+dependencies = [
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-common",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-service-docs"
 version = "0.1.1"
 dependencies = [
@@ -570,6 +586,7 @@ dependencies = [
 name = "cw-service-geo"
 version = "0.1.1"
 dependencies = [
+ "cw-map",
  "cw-protocol",
  "cw-sdk",
  "cw-service-common",
@@ -627,6 +644,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-service-messages"
+version = "0.1.1"
+dependencies = [
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-common",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-service-press"
 version = "0.1.1"
 dependencies = [
@@ -659,6 +687,17 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
+]
+
+[[package]]
+name = "cw-service-slack"
+version = "0.1.1"
+dependencies = [
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-common",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -716,6 +755,7 @@ dependencies = [
  "cw-service-bank",
  "cw-service-calendar",
  "cw-service-chat",
+ "cw-service-discord",
  "cw-service-docs",
  "cw-service-drive",
  "cw-service-forum",
@@ -724,9 +764,11 @@ dependencies = [
  "cw-service-issues",
  "cw-service-mail",
  "cw-service-media",
+ "cw-service-messages",
  "cw-service-press",
  "cw-service-search",
  "cw-service-shop",
+ "cw-service-slack",
  "cw-service-social",
  "cw-service-speaker",
  "cw-service-static-site",

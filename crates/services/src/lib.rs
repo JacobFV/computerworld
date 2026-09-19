@@ -3,6 +3,7 @@ pub use cw_service_assistant as assistant;
 pub use cw_service_bank as bank;
 pub use cw_service_calendar as calendar;
 pub use cw_service_chat as chat;
+pub use cw_service_discord as discord;
 pub use cw_service_docs as docs;
 pub use cw_service_drive as drive;
 pub use cw_service_forum as forum;
@@ -11,17 +12,21 @@ pub use cw_service_git as git;
 pub use cw_service_issues as issues;
 pub use cw_service_mail as mail;
 pub use cw_service_media as media;
+pub use cw_service_messages as messages;
 pub use cw_service_press as press;
 pub use cw_service_search as search;
 pub use cw_service_shop as shop;
+pub use cw_service_slack as slack;
 pub use cw_service_social as social;
 pub use cw_service_speaker as speaker;
 pub use cw_service_static_site as static_site;
 pub use cw_service_wiki as wiki;
-/// The simulated public web's kinds; the eight content packages bind sites to these.
-pub const WEB_KINDS: [&str; 11] = [
+/// The simulated public web's kinds; the content packages bind sites to these. Slack and
+/// Discord are public sites in their own right, each with its own semantics.
+pub const WEB_KINDS: [&str; 13] = [
     "assistant",
     "bank",
+    "discord",
     "drive",
     "forum",
     "geo",
@@ -29,9 +34,12 @@ pub const WEB_KINDS: [&str; 11] = [
     "press",
     "search",
     "shop",
+    "slack",
     "social",
     "wiki",
 ];
+/// The company's internal messaging kinds: plain chat, and texting between handles.
+pub const MESSAGING_KINDS: [&str; 2] = ["chat", "messages"];
 /// Existing kinds that gained an additive `skin`; each crate owns its own skin vocabulary.
 pub const SKINNED_KINDS: [&str; 6] = ["calendar", "chat", "docs", "git", "issues", "mail"];
 /// Web kinds whose default `skin` is `plain`, i.e. the unthemed original rendering. A
@@ -43,6 +51,9 @@ pub fn register(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
     static_site::register(registry)?;
     mail::register(registry)?;
     chat::register(registry)?;
+    messages::register(registry)?;
+    slack::register(registry)?;
+    discord::register(registry)?;
     docs::register(registry)?;
     calendar::register(registry)?;
     assistant::register(registry)?;
@@ -78,8 +89,11 @@ mod tests {
     #[test]
     fn registry_has_independent_optional_services() {
         let r = super::registry().unwrap();
-        assert_eq!(r.service_kinds().count(), 19);
+        assert_eq!(r.service_kinds().count(), 22);
         assert!(r.service("speaker").is_ok());
+        for kind in super::MESSAGING_KINDS {
+            assert!(r.service(kind).is_ok(), "{kind} must be registered");
+        }
         assert!(r.service("git").is_ok());
         assert!(r.service("static-site").is_ok());
         for kind in super::WEB_KINDS {

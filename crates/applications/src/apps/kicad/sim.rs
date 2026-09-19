@@ -1332,6 +1332,7 @@ impl Kicad {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         page.elements.push(E::Text {
@@ -1364,6 +1365,7 @@ impl Kicad {
                     id: id.clone(),
                     text: name,
                     action: act(&id),
+                    style: None,
                 });
             }
         }

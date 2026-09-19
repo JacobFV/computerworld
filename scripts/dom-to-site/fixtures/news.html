@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Meridian Ledger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Georgia, serif; color: #1c1f26; background: #fafaf7; }
+  a { color: #1a5fb4; text-decoration: none; }
+  header.masthead { background: #14213d; color: #ffffff; padding: 14px 24px; display: flex; align-items: center; gap: 24px; }
+  header.masthead .brand { font-size: 26px; font-weight: 700; letter-spacing: 1px; }
+  header.masthead nav { display: flex; gap: 18px; margin-left: auto; }
+  header.masthead nav a { color: #e5e9f0; font-size: 14px; }
+  header.masthead nav a.current { color: #ffffff; font-weight: 700; border-bottom: 2px solid #fca311; }
+  .ticker { background: #fca311; color: #14213d; font-size: 12px; font-weight: 700; padding: 6px 24px; }
+  .ad-banner { background: #eee; color: #999; text-align: center; padding: 8px; font-size: 11px; }
+  main { max-width: 1040px; margin: 24px auto; padding: 0 16px; }
+  .hero { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
+  .hero .lead { background: #ffffff; border: 1px solid #e3e3dc; border-radius: 8px; padding: 20px; }
+  .hero .lead img { width: 100%; height: 260px; object-fit: cover; border-radius: 6px; background: #c9d6e2; display: block; }
+  .hero .lead h1 { font-size: 30px; margin: 14px 0 8px; line-height: 1.2; }
+  .hero .lead p.dek { font-size: 16px; color: #4c5366; margin: 0 0 10px; }
+  .byline { font-size: 12px; color: #7a8090; }
+  .tag { display: inline-block; background: #fca311; color: #14213d; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .tag.live { background: #d7263d; color: #fff; }
+  .hero aside.briefs { background: #ffffff; border: 1px solid #e3e3dc; border-radius: 8px; padding: 16px; }
+  .hero aside.briefs h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #7a8090; margin: 0 0 12px; }
+  .hero aside.briefs ul { list-style: none; margin: 0; padding: 0; }
+  .hero aside.briefs li { padding: 8px 0; border-bottom: 1px solid #ecece6; font-size: 14px; }
+  .hero aside.briefs li:last-child { border-bottom: 0; }
+  section.cards h2 { font-size: 20px; margin: 0 0 12px; }
+  .cards .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .card { background: #ffffff; border: 1px solid #e3e3dc; border-radius: 8px; overflow: hidden; }
+  .card img { display: block; width: 100%; height: 140px; object-fit: cover; background: #d9c9b8; }
+  .card .body { padding: 14px; }
+  .card h3 { font-size: 16px; margin: 6px 0; }
+  .card p { font-size: 13px; color: #4c5366; margin: 0 0 8px; }
+  .columns { display: flex; gap: 24px; }
+  .columns .stream { flex: 2; }
+  .columns .sidebar { flex: 1; }
+  .stream article { padding: 16px 0; border-bottom: 1px solid #e3e3dc; }
+  .stream article h3 { font-size: 18px; margin: 0 0 6px; }
+  .stream article p { font-size: 14px; color: #4c5366; margin: 0 0 6px; }
+  .sidebar .box { background: #ffffff; border: 1px solid #e3e3dc; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .sidebar h4 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #7a8090; }
+  .sidebar form input { width: 100%; padding: 8px; border: 1px solid #cfd4dc; border-radius: 4px; font-size: 13px; margin-bottom: 8px; }
+  .sidebar form button { background: #1a5fb4; color: #fff; border: 0; padding: 9px 14px; border-radius: 4px; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .sidebar ol { padding-left: 18px; margin: 0; font-size: 14px; }
+  .sidebar ol li { margin-bottom: 8px; }
+  .weather { display: flex; align-items: center; gap: 12px; }
+  .weather .temp { font-size: 28px; font-weight: 700; }
+  .weather .desc { font-size: 13px; color: #4c5366; }
+  footer { background: #14213d; color: #aab4c8; padding: 24px; font-size: 12px; margin-top: 32px; }
+  footer .links { display: flex; gap: 16px; margin-bottom: 10px; }
+  footer .links a { color: #e5e9f0; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="brand">The Meridian Ledger</div>
+  <nav aria-label="Sections">
+    <a class="current" href="/">Front page</a>
+    <a href="/world">World</a>
+    <a href="/business">Business</a>
+    <a href="/technology">Technology</a>
+    <a href="/culture">Culture</a>
+    <a href="/opinion">Opinion</a>
+  </nav>
+</header>
+<div class="ticker">BREAKING &middot; Council approves the harbour redevelopment plan after a nine-hour session</div>
+<div class="ad-banner" id="ad-leaderboard">Advertisement</div>
+<div class="hidden">Tracking pixel placeholder</div>
+
+<main>
+  <section class="hero">
+    <div class="lead">
+      <img src="lead.png" alt="The harbour at dusk, cranes idle over the redevelopment site" width="640" height="260">
+      <span class="tag live">LIVE</span>
+      <h1>Harbour plan passes as council splits down the middle</h1>
+      <p class="dek">Nine hours of testimony, one deciding vote and a promise that the fishing fleet keeps its berths. What the plan changes, and what it does not.</p>
+      <div class="byline">By Ines Okafor and Tomas Reyes &middot; 14 minutes ago</div>
+    </div>
+    <aside class="briefs">
+      <h2>Briefs</h2>
+      <ul>
+        <li><a href="/world/ferry-strike">Ferry crews vote to strike from Monday</a></li>
+        <li><a href="/business/grain-prices">Grain prices settle after a jittery week</a></li>
+        <li><a href="/technology/atlas-1">Atlas 1.0 ships with a replayable machine</a></li>
+        <li><a href="/culture/lantern-festival">Lantern festival draws a record crowd</a></li>
+        <li><a href="/opinion/quiet-streets">Opinion: the case for quieter streets</a></li>
+      </ul>
+    </aside>
+  </section>
+
+  <section class="cards">
+    <h2>Top stories</h2>
+    <div class="grid">
+      <article class="card">
+        <img src="card1.png" alt="A row of wind turbines on a ridge" width="320" height="140">
+        <div class="body">
+          <span class="tag">Business</span>
+          <h3><a href="/business/wind-auction">Wind auction draws four bidders</a></h3>
+          <p>The ridge lease attracted more interest than any since 2019, the ministry said.</p>
+          <div class="byline">Priya Natarajan</div>
+        </div>
+      </article>
+      <article class="card">
+        <img src="card2.png" alt="Students outside the new library" width="320" height="140">
+        <div class="body">
+          <span class="tag">Culture</span>
+          <h3><a href="/culture/library-opens">The new library opens its doors</a></h3>
+          <p>Twelve years after the fire, the reading rooms are back, with a roof garden on top.</p>
+          <div class="byline">Sam Whitfield</div>
+        </div>
+      </article>
+      <article class="card">
+        <img src="card3.png" alt="A laptop showing a terminal" width="320" height="140">
+        <div class="body">
+          <span class="tag">Technology</span>
+          <h3><a href="/technology/atlas-1">Atlas 1.0 ships with a replayable machine</a></h3>
+          <p>The simulator refuses to read a clock, and that turns out to be the whole product.</p>
+          <div class="byline">Jonathan Hale</div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="columns">
+    <div class="stream">
+      <h2>Latest</h2>
+      <article>
+        <h3><a href="/world/ferry-strike">Ferry crews vote to strike from Monday</a></h3>
+        <p>The union says the new roster leaves crews with nine-day stretches at sea; the operator says the roster is legal and the ferries will run.</p>
+        <div class="byline">World &middot; 1 hour ago</div>
+      </article>
+      <article>
+        <h3><a href="/business/grain-prices">Grain prices settle after a jittery week</a></h3>
+        <p>Futures closed within a cent of Monday's open after a week that saw two of the biggest daily swings of the year.</p>
+        <div class="byline">Business &middot; 2 hours ago</div>
+      </article>
+      <article>
+        <h3><a href="/culture/lantern-festival">Lantern festival draws a record crowd</a></h3>
+        <p>Organisers counted forty thousand lanterns on the river, and a few in the trees.</p>
+        <div class="byline">Culture &middot; 3 hours ago</div>
+      </article>
+      <article>
+        <h3><a href="/opinion/quiet-streets">Opinion: the case for quieter streets</a></h3>
+        <p>Closing three streets to through traffic did not create gridlock. It created a place people wanted to stand around in.</p>
+        <div class="byline">Opinion &middot; 5 hours ago</div>
+      </article>
+    </div>
+    <aside class="sidebar">
+      <div class="box">
+        <h4>Newsletter</h4>
+        <form action="/subscribe" method="post">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com">
+          <button type="submit">Subscribe</button>
+        </form>
+      </div>
+      <div class="box">
+        <h4>Most read</h4>
+        <ol>
+          <li><a href="/world/ferry-strike">Ferry crews vote to strike</a></li>
+          <li><a href="/business/wind-auction">Wind auction draws four bidders</a></li>
+          <li><a href="/technology/atlas-1">Atlas 1.0 ships</a></li>
+        </ol>
+      </div>
+      <div class="box weather">
+        <div class="temp">17&deg;</div>
+        <div>
+          <div class="desc">Light rain, clearing by evening</div>
+          <a href="/weather">Full forecast</a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<footer>
+  <div class="links">
+    <a href="/about">About</a>
+    <a href="/contact">Contact</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+  </div>
+  <div>&copy; 2026 The Meridian Ledger. A fictional newspaper used as a conversion fixture.</div>
+</footer>
+<script>document.querySelector('.ticker').dataset.loaded = '1';</script>
+</body>
+</html>

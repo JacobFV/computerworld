@@ -199,12 +199,13 @@ fn a_desktop_login_makes_the_platforms_home_folders_and_the_trash() {
         };
         assert!(!is_dir(&world, &format!("{HOME}/{foreign}")), "{theme}");
     }
-    // A session without a desktop logs nobody in and makes nothing.
+    // A session without a desktop logs nobody in and makes nothing (Documents exists
+    // anyway: the reference world seeds files into it; Desktop is the login's alone).
     let mut world = World::new(reference_world(), 42).unwrap();
     world
         .environment(EnvironmentConfig::terminal("alice", "alice-mac"))
         .unwrap();
-    assert!(!is_dir(&world, &format!("{HOME}/Documents")));
+    assert!(!is_dir(&world, &format!("{HOME}/Desktop")));
 }
 
 #[test]

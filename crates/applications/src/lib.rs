@@ -1,8 +1,10 @@
 //! Serializable desktop applications. Effects are requests to the environment,
 //! never ambient filesystem access or subprocess execution.
 pub mod apps;
+pub mod cursor;
 pub mod desktop_scene;
 pub use apps::{AppEnv, FilesEnv, NativeApp};
+pub use cursor::CursorKind;
 pub use desktop_scene::scroll::{Scroll, ScrollBar};
 
 use serde::{Deserialize, Serialize};
@@ -1605,13 +1607,19 @@ fn clamp_frame(frame: cw_scene::Rect, area: cw_scene::Rect) -> cw_scene::Rect {
 }
 
 /// The application a file manager opens a document with: spreadsheets for workbooks
-/// and CSV, the database client for SQLite files, the text editor for the rest.
+/// and CSV, the database client for SQLite files, FreeCAD for its documents and the
+/// CAD exchange formats, KiCad for its projects, schematics and boards, the text
+/// editor for the rest.
 pub fn opener(name: &str) -> &'static str {
     let name = name.trim_end_matches('/');
     if apps::sheet::opens(name) {
         "spreadsheet"
     } else if apps::database::opens(name) {
         "database"
+    } else if apps::freecad::opens(name) {
+        apps::freecad::Freecad::KIND
+    } else if apps::kicad::opens(name) {
+        apps::kicad::Kicad::KIND
     } else {
         "editor"
     }
@@ -1686,6 +1694,14 @@ impl DesktopState {
                 let argument = if kind == apps::kicad::Kicad::KIND && argument.is_empty() {
                     documents = format!(
                         "{}/Documents/KiCad",
+                        self.home_folder().trim_end_matches('/')
+                    );
+                    documents.as_str()
+                } else if kind == apps::freecad::Freecad::KIND && argument.is_empty() {
+                    // FreeCAD starts on the user's parts folder when there is one (it
+                    // falls back to Documents itself when the folder is not there).
+                    documents = format!(
+                        "{}/Documents/Parts",
                         self.home_folder().trim_end_matches('/')
                     );
                     documents.as_str()
@@ -2474,11 +2490,18 @@ impl DesktopState {
         )
     }
     /// The pointer passed over a hover surface, `x`/`y` relative to its top-left.
-    /// Returns whether the application's view changed.
-    pub fn app_hover(&mut self, id: u64, target: &str, x: i32, y: i32) -> bool {
+    /// Returns what the application asks of the machine because of it.
+    pub fn app_hover(&mut self, id: u64, target: &str, x: i32, y: i32) -> Vec<AppEffect> {
         match self.windows.get_mut(&id).map(|w| &mut w.state) {
-            Some(AppState::Native(app)) => app.hover(target, x, y),
-            _ => false,
+            Some(AppState::Native(app)) => app.hover(id, target, x, y),
+            _ => vec![],
+        }
+    }
+    /// The pointer's shape over a hover surface of window `id`.
+    pub fn app_hover_cursor(&self, id: u64, target: &str) -> &'static str {
+        match self.windows.get(&id).map(|w| &w.state) {
+            Some(AppState::Native(app)) => app.hover_cursor(target),
+            _ => "default",
         }
     }
     /// The newest revision of each shared document, and whether any window lags it.
@@ -2763,6 +2786,22 @@ impl DesktopState {
 mod tests {
     use super::*;
     #[test]
+    fn documents_open_in_the_application_that_owns_their_kind() {
+        assert_eq!(opener("Budget.xlsx"), "spreadsheet");
+        assert_eq!(opener("Inventory.db"), "database");
+        assert_eq!(opener("Documents/Parts/bracket.FCStd.json"), "freecad");
+        assert_eq!(opener("bracket.STEP"), "freecad");
+        assert_eq!(opener("mesh.stl"), "freecad");
+        assert_eq!(
+            opener("Documents/KiCad/sensor-node/sensor-node.kicad_pro"),
+            "kicad"
+        );
+        assert_eq!(opener("sensor-node.kicad_sch"), "kicad");
+        assert_eq!(opener("sensor-node.kicad_pcb"), "kicad");
+        assert_eq!(opener("notes.txt"), "editor");
+        assert_eq!(opener("Parts/"), "editor");
+    }
+    #[test]
     fn soft_wrapped_rows_break_after_a_space_and_clicks_land_on_the_row_painted() {
         let text = "the quick brown fox jumps\nshort";
         let rows = editor_rows(text, 10);
@@ -2982,6 +3021,7 @@ impl DesktopState {
                     url: format!("focus:{}", window.id),
                     fields: BTreeMap::new(),
                 },
+                style: None,
             });
         }
         if let Some(window) = self.focused.and_then(|id| self.windows.get(&id)) {
@@ -3059,12 +3099,14 @@ impl DesktopState {
                                 tab.name()
                             ),
                             action: action(&format!("files-tab:{index}")),
+                            style: None,
                         });
                     }
                     page.elements.push(E::Button {
                         id: "files-newtab".into(),
                         text: "New tab".into(),
                         action: action("files-newtab"),
+                        style: None,
                     });
                     let Some(tab) = tabs.get(*active) else {
                         return page;
@@ -3088,6 +3130,7 @@ impl DesktopState {
                                 id: id.into(),
                                 text: text.into(),
                                 action: action(id),
+                                style: None,
                             });
                         }
                     }
@@ -3112,6 +3155,7 @@ impl DesktopState {
                                 }
                             ),
                             action: action(entry),
+                            style: None,
                         });
                     }
                 }

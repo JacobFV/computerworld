@@ -25,6 +25,7 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/arrow-up",
         include_bytes!("../assets/symbols/arrow-up.png"),
     ),
+    ("symbol/at", include_bytes!("../assets/symbols/at.png")),
     (
         "symbol/backspace",
         include_bytes!("../assets/symbols/backspace.png"),
@@ -46,7 +47,12 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/bluetooth",
         include_bytes!("../assets/symbols/bluetooth.png"),
     ),
+    ("symbol/bold", include_bytes!("../assets/symbols/bold.png")),
     ("symbol/book", include_bytes!("../assets/symbols/book.png")),
+    (
+        "symbol/branch",
+        include_bytes!("../assets/symbols/branch.png"),
+    ),
     (
         "symbol/brush",
         include_bytes!("../assets/symbols/brush.png"),
@@ -101,6 +107,15 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/cloud",
         include_bytes!("../assets/symbols/cloud.png"),
     ),
+    ("symbol/code", include_bytes!("../assets/symbols/code.png")),
+    (
+        "symbol/comment",
+        include_bytes!("../assets/symbols/comment.png"),
+    ),
+    (
+        "symbol/commit",
+        include_bytes!("../assets/symbols/commit.png"),
+    ),
     (
         "symbol/compass",
         include_bytes!("../assets/symbols/compass.png"),
@@ -148,6 +163,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/eject.png"),
     ),
     (
+        "symbol/emoji",
+        include_bytes!("../assets/symbols/emoji.png"),
+    ),
+    (
         "symbol/eraser",
         include_bytes!("../assets/symbols/eraser.png"),
     ),
@@ -160,6 +179,7 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/eyedropper",
         include_bytes!("../assets/symbols/eyedropper.png"),
     ),
+    ("symbol/file", include_bytes!("../assets/symbols/file.png")),
     ("symbol/film", include_bytes!("../assets/symbols/film.png")),
     (
         "symbol/filters",
@@ -182,6 +202,7 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/folder",
         include_bytes!("../assets/symbols/folder.png"),
     ),
+    ("symbol/fork", include_bytes!("../assets/symbols/fork.png")),
     (
         "symbol/forward",
         include_bytes!("../assets/symbols/forward.png"),
@@ -201,6 +222,7 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/grid-view.png"),
     ),
     ("symbol/hand", include_bytes!("../assets/symbols/hand.png")),
+    ("symbol/hash", include_bytes!("../assets/symbols/hash.png")),
     (
         "symbol/headphones",
         include_bytes!("../assets/symbols/headphones.png"),
@@ -231,6 +253,18 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/inbox.png"),
     ),
     ("symbol/info", include_bytes!("../assets/symbols/info.png")),
+    (
+        "symbol/issue-closed",
+        include_bytes!("../assets/symbols/issue-closed.png"),
+    ),
+    (
+        "symbol/issue-open",
+        include_bytes!("../assets/symbols/issue-open.png"),
+    ),
+    (
+        "symbol/italic",
+        include_bytes!("../assets/symbols/italic.png"),
+    ),
     (
         "symbol/keyboard",
         include_bytes!("../assets/symbols/keyboard.png"),
@@ -271,6 +305,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         include_bytes!("../assets/symbols/marker.png"),
     ),
     ("symbol/menu", include_bytes!("../assets/symbols/menu.png")),
+    (
+        "symbol/merge",
+        include_bytes!("../assets/symbols/merge.png"),
+    ),
     ("symbol/mic", include_bytes!("../assets/symbols/mic.png")),
     (
         "symbol/minus",
@@ -326,7 +364,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/power",
         include_bytes!("../assets/symbols/power.png"),
     ),
-    ("symbol/redo", include_bytes!("../assets/symbols/redo.png")),
+    (
+        "symbol/pull-request",
+        include_bytes!("../assets/symbols/pull-request.png"),
+    ),
     (
         "symbol/queue",
         include_bytes!("../assets/symbols/queue.png"),
@@ -335,6 +376,7 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
         "symbol/radio",
         include_bytes!("../assets/symbols/radio.png"),
     ),
+    ("symbol/redo", include_bytes!("../assets/symbols/redo.png")),
     (
         "symbol/reload",
         include_bytes!("../assets/symbols/reload.png"),
@@ -443,6 +485,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
     ),
     ("symbol/star", include_bytes!("../assets/symbols/star.png")),
     (
+        "symbol/star-filled",
+        include_bytes!("../assets/symbols/star-filled.png"),
+    ),
+    (
         "symbol/star-outline",
         include_bytes!("../assets/symbols/star-outline.png"),
     ),
@@ -460,6 +506,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
     (
         "symbol/thermometer",
         include_bytes!("../assets/symbols/thermometer.png"),
+    ),
+    (
+        "symbol/thread",
+        include_bytes!("../assets/symbols/thread.png"),
     ),
     (
         "symbol/thumb-up",
@@ -499,6 +549,10 @@ pub const SYMBOLS: &[(&str, &[u8])] = &[
     (
         "symbol/windows",
         include_bytes!("../assets/symbols/windows.png"),
+    ),
+    (
+        "symbol/x-circle",
+        include_bytes!("../assets/symbols/x-circle.png"),
     ),
     (
         "symbol/zoom-in",

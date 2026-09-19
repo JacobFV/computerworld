@@ -1,0 +1,528 @@
+{
+  "SchemaVersion": 1,
+  "ProgramName": "FreeCAD",
+  "ProgramVersion": "1.0.2",
+  "Document": {
+    "Label": "bearing-housing",
+    "Objects": [
+      {
+        "Name": "Body",
+        "Label": "Body",
+        "Visibility": true,
+        "TypeId": "PartDesign::Body",
+        "Group": [
+          "Sketch",
+          "Revolution",
+          "Sketch001",
+          "Groove",
+          "Chamfer",
+          "DatumPlane",
+          "Sketch002",
+          "Hole",
+          "PolarPattern"
+        ],
+        "Tip": "PolarPattern"
+      },
+      {
+        "Name": "Sketch",
+        "Label": "Section",
+        "Visibility": true,
+        "TypeId": "Sketcher::SketchObject",
+        "Sketch": {
+          "Geometry": [
+            {
+              "type": "line",
+              "a": {
+                "x": 12.0,
+                "y": 0.0
+              },
+              "b": {
+                "x": 30.0,
+                "y": 0.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 30.0,
+                "y": 0.0
+              },
+              "b": {
+                "x": 30.0,
+                "y": 6.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 30.0,
+                "y": 6.0
+              },
+              "b": {
+                "x": 20.0,
+                "y": 6.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 20.0,
+                "y": 6.0
+              },
+              "b": {
+                "x": 20.0,
+                "y": 30.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 20.0,
+                "y": 30.0
+              },
+              "b": {
+                "x": 12.0,
+                "y": 30.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 12.0,
+                "y": 30.0
+              },
+              "b": {
+                "x": 12.0,
+                "y": 0.0
+              },
+              "construction": false
+            }
+          ],
+          "Constraints": [
+            {
+              "Type": "Horizontal",
+              "First": 0,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Vertical",
+              "First": 1,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Horizontal",
+              "First": 2,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Vertical",
+              "First": 3,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Horizontal",
+              "First": 4,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Vertical",
+              "First": 5,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 0,
+              "FirstPos": "end",
+              "Second": 1,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 1,
+              "FirstPos": "end",
+              "Second": 2,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 2,
+              "FirstPos": "end",
+              "Second": 3,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 3,
+              "FirstPos": "end",
+              "Second": 4,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 4,
+              "FirstPos": "end",
+              "Second": 5,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 5,
+              "FirstPos": "end",
+              "Second": 0,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            }
+          ]
+        },
+        "Support": {
+          "Type": "Plane",
+          "plane": "XZ_Plane"
+        },
+        "AttachmentOffset": 0.0
+      },
+      {
+        "Name": "Revolution",
+        "Label": "Sleeve",
+        "Visibility": true,
+        "TypeId": "PartDesign::Revolution",
+        "Profile": "Sketch",
+        "ReferenceAxis": "V_Axis",
+        "Angle": 360.0,
+        "Midplane": false,
+        "Reversed": false
+      },
+      {
+        "Name": "Sketch001",
+        "Label": "GrooveSketch",
+        "Visibility": true,
+        "TypeId": "Sketcher::SketchObject",
+        "Sketch": {
+          "Geometry": [
+            {
+              "type": "line",
+              "a": {
+                "x": 11.0,
+                "y": 24.0
+              },
+              "b": {
+                "x": 13.5,
+                "y": 24.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 13.5,
+                "y": 24.0
+              },
+              "b": {
+                "x": 13.5,
+                "y": 26.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 13.5,
+                "y": 26.0
+              },
+              "b": {
+                "x": 11.0,
+                "y": 26.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 11.0,
+                "y": 26.0
+              },
+              "b": {
+                "x": 11.0,
+                "y": 24.0
+              },
+              "construction": false
+            }
+          ],
+          "Constraints": [
+            {
+              "Type": "Coincident",
+              "First": 0,
+              "FirstPos": "end",
+              "Second": 1,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 1,
+              "FirstPos": "end",
+              "Second": 2,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 2,
+              "FirstPos": "end",
+              "Second": 3,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 3,
+              "FirstPos": "end",
+              "Second": 0,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Horizontal",
+              "First": 0,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Horizontal",
+              "First": 2,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Vertical",
+              "First": 1,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Vertical",
+              "First": 3,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            }
+          ]
+        },
+        "Support": {
+          "Type": "Plane",
+          "plane": "XZ_Plane"
+        },
+        "AttachmentOffset": 0.0
+      },
+      {
+        "Name": "Groove",
+        "Label": "SnapRingGroove",
+        "Visibility": true,
+        "TypeId": "PartDesign::Groove",
+        "Profile": "Sketch001",
+        "ReferenceAxis": "V_Axis",
+        "Angle": 360.0,
+        "Midplane": false,
+        "Reversed": false
+      },
+      {
+        "Name": "Chamfer",
+        "Label": "BoreChamfer",
+        "Visibility": true,
+        "TypeId": "PartDesign::Chamfer",
+        "Base": [
+          {
+            "name": "Edge2",
+            "center": {
+              "x": -11.999257215527361,
+              "y": -0.015119725285139055,
+              "z": 0.0
+            },
+            "dir": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 1.0
+            }
+          },
+          {
+            "name": "Edge8",
+            "center": {
+              "x": -11.999257215527361,
+              "y": -0.015119725285139055,
+              "z": 30.0
+            },
+            "dir": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 1.0
+            }
+          }
+        ],
+        "Size": 1.0,
+        "ChamferType": "Equal distance",
+        "Size2": 1.0,
+        "Angle": 45.0,
+        "FlipDirection": false,
+        "UseAllEdges": false
+      },
+      {
+        "Name": "DatumPlane",
+        "Label": "FlangeTop",
+        "Visibility": true,
+        "TypeId": "PartDesign::Plane",
+        "Support": {
+          "Type": "Plane",
+          "plane": "XY_Plane"
+        },
+        "AttachmentOffset": 6.0,
+        "Angle": 0.0
+      },
+      {
+        "Name": "Sketch002",
+        "Label": "BoltSketch",
+        "Visibility": true,
+        "TypeId": "Sketcher::SketchObject",
+        "Sketch": {
+          "Geometry": [
+            {
+              "type": "circle",
+              "c": {
+                "x": 25.0,
+                "y": 0.0
+              },
+              "r": 2.2,
+              "construction": false
+            }
+          ],
+          "Constraints": []
+        },
+        "Support": {
+          "Type": "Datum",
+          "datum": "DatumPlane"
+        },
+        "AttachmentOffset": 0.0
+      },
+      {
+        "Name": "Hole",
+        "Label": "BoltHole",
+        "Visibility": true,
+        "TypeId": "PartDesign::Hole",
+        "Profile": "Sketch002",
+        "Diameter": 4.5,
+        "Depth": 6.0,
+        "ThroughAll": true,
+        "HoleCutType": {
+          "Type": "None"
+        },
+        "DrillPointAngle": null
+      },
+      {
+        "Name": "PolarPattern",
+        "Label": "BoltPattern",
+        "Visibility": true,
+        "TypeId": "PartDesign::PolarPattern",
+        "Originals": [
+          "Hole"
+        ],
+        "Axis": "N_Axis",
+        "Angle": 360.0,
+        "Occurrences": 6,
+        "Reversed": false
+      }
+    ]
+  }
+}

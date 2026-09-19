@@ -364,6 +364,11 @@ impl Constraint {
         self.third_pos = pos;
         self
     }
+    /// FreeCAD's constraint name, what expressions refer to (`Sketch.Constraints.width`).
+    pub fn named(mut self, name: &str) -> Self {
+        self.name = name.to_owned();
+        self
+    }
     pub fn with_value(mut self, value: f64) -> Self {
         self.value = value;
         self
@@ -480,6 +485,27 @@ impl Sketch {
     }
     pub fn solve(&mut self) -> SolveReport {
         solver::solve(self, None)
+    }
+    /// A constraint by its name, or by FreeCAD's `Constraint<n>` (1-based) for unnamed ones.
+    pub fn constraint_named(&self, name: &str) -> Option<&Constraint> {
+        self.constraint_index(name).map(|i| &self.constraints[i])
+    }
+    pub fn constraint_named_mut(&mut self, name: &str) -> Option<&mut Constraint> {
+        self.constraint_index(name)
+            .map(|i| &mut self.constraints[i])
+    }
+    pub fn constraint_index(&self, name: &str) -> Option<usize> {
+        if let Some(i) = self
+            .constraints
+            .iter()
+            .position(|c| !c.name.is_empty() && c.name == name)
+        {
+            return Some(i);
+        }
+        name.strip_prefix("Constraint")
+            .and_then(|n| n.parse::<usize>().ok())
+            .filter(|n| *n >= 1 && *n <= self.constraints.len())
+            .map(|n| n - 1)
     }
     /// Move one point (or a whole edge when `pos` is `None`) towards `target`, letting
     /// the constraints decide how the rest follows. Nothing moves when the drag would

@@ -1,0 +1,386 @@
+{
+  "SchemaVersion": 1,
+  "ProgramName": "FreeCAD",
+  "ProgramVersion": "1.0.2",
+  "Document": {
+    "Label": "enclosure-lid",
+    "Objects": [
+      {
+        "Name": "Body",
+        "Label": "Body",
+        "Visibility": true,
+        "TypeId": "PartDesign::Body",
+        "Group": [
+          "Box",
+          "DatumPlane",
+          "Sketch",
+          "Pocket",
+          "DatumPlane001",
+          "Sketch001",
+          "Hole",
+          "LinearPattern",
+          "Fillet"
+        ],
+        "Tip": "Fillet"
+      },
+      {
+        "Name": "Box",
+        "Label": "Blank",
+        "Visibility": true,
+        "TypeId": "PartDesign::FeaturePrimitive",
+        "Primitive": "Box",
+        "Length": 120.0,
+        "Width": 80.0,
+        "Height": 8.0,
+        "Subtractive": false,
+        "Support": {
+          "Type": "Plane",
+          "plane": "XY_Plane"
+        },
+        "AttachmentOffset": 0.0
+      },
+      {
+        "Name": "DatumPlane",
+        "Label": "Rim",
+        "Visibility": true,
+        "TypeId": "PartDesign::Plane",
+        "Support": {
+          "Type": "Plane",
+          "plane": "XY_Plane"
+        },
+        "AttachmentOffset": 8.0,
+        "Angle": 0.0
+      },
+      {
+        "Name": "Sketch",
+        "Label": "CavitySketch",
+        "Visibility": true,
+        "TypeId": "Sketcher::SketchObject",
+        "Sketch": {
+          "Geometry": [
+            {
+              "type": "line",
+              "a": {
+                "x": 2.0,
+                "y": 2.0
+              },
+              "b": {
+                "x": 118.0,
+                "y": 2.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 118.0,
+                "y": 2.0
+              },
+              "b": {
+                "x": 118.0,
+                "y": 78.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 118.0,
+                "y": 78.0
+              },
+              "b": {
+                "x": 2.0,
+                "y": 78.0
+              },
+              "construction": false
+            },
+            {
+              "type": "line",
+              "a": {
+                "x": 2.0,
+                "y": 78.0
+              },
+              "b": {
+                "x": 2.0,
+                "y": 2.0
+              },
+              "construction": false
+            }
+          ],
+          "Constraints": [
+            {
+              "Type": "Coincident",
+              "First": 0,
+              "FirstPos": "end",
+              "Second": 1,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 1,
+              "FirstPos": "end",
+              "Second": 2,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 2,
+              "FirstPos": "end",
+              "Second": 3,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Coincident",
+              "First": 3,
+              "FirstPos": "end",
+              "Second": 0,
+              "SecondPos": "start",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Horizontal",
+              "First": 0,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Horizontal",
+              "First": 2,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Vertical",
+              "First": 1,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            },
+            {
+              "Type": "Vertical",
+              "First": 3,
+              "FirstPos": "none",
+              "Second": -2000,
+              "SecondPos": "none",
+              "Third": -2000,
+              "ThirdPos": "none",
+              "Value": 0.0,
+              "Driving": true
+            }
+          ]
+        },
+        "Support": {
+          "Type": "Datum",
+          "datum": "DatumPlane"
+        },
+        "AttachmentOffset": 0.0
+      },
+      {
+        "Name": "Pocket",
+        "Label": "Cavity",
+        "Visibility": true,
+        "ExpressionEngine": {
+          "Length": "Blank.Height - 2"
+        },
+        "TypeId": "PartDesign::Pocket",
+        "Profile": "Sketch",
+        "Type": "Length",
+        "Length": 6.0,
+        "Length2": 0.0,
+        "Midplane": false,
+        "Reversed": false
+      },
+      {
+        "Name": "DatumPlane001",
+        "Label": "Floor",
+        "Visibility": true,
+        "TypeId": "PartDesign::Plane",
+        "Support": {
+          "Type": "Plane",
+          "plane": "XY_Plane"
+        },
+        "AttachmentOffset": 2.0,
+        "Angle": 0.0
+      },
+      {
+        "Name": "Sketch001",
+        "Label": "VentSketch",
+        "Visibility": true,
+        "TypeId": "Sketcher::SketchObject",
+        "Sketch": {
+          "Geometry": [
+            {
+              "type": "circle",
+              "c": {
+                "x": 40.0,
+                "y": 25.0
+              },
+              "r": 1.5,
+              "construction": false
+            },
+            {
+              "type": "circle",
+              "c": {
+                "x": 50.0,
+                "y": 25.0
+              },
+              "r": 1.5,
+              "construction": false
+            },
+            {
+              "type": "circle",
+              "c": {
+                "x": 60.0,
+                "y": 25.0
+              },
+              "r": 1.5,
+              "construction": false
+            },
+            {
+              "type": "circle",
+              "c": {
+                "x": 70.0,
+                "y": 25.0
+              },
+              "r": 1.5,
+              "construction": false
+            },
+            {
+              "type": "circle",
+              "c": {
+                "x": 80.0,
+                "y": 25.0
+              },
+              "r": 1.5,
+              "construction": false
+            }
+          ],
+          "Constraints": []
+        },
+        "Support": {
+          "Type": "Datum",
+          "datum": "DatumPlane001"
+        },
+        "AttachmentOffset": 0.0
+      },
+      {
+        "Name": "Hole",
+        "Label": "VentRow",
+        "Visibility": true,
+        "TypeId": "PartDesign::Hole",
+        "Profile": "Sketch001",
+        "Diameter": 3.0,
+        "Depth": 2.0,
+        "ThroughAll": true,
+        "HoleCutType": {
+          "Type": "None"
+        },
+        "DrillPointAngle": null
+      },
+      {
+        "Name": "LinearPattern",
+        "Label": "VentGrid",
+        "Visibility": true,
+        "TypeId": "PartDesign::LinearPattern",
+        "Originals": [
+          "Hole"
+        ],
+        "Direction": "V_Axis",
+        "Length": 30.0,
+        "Occurrences": 3,
+        "Reversed": false
+      },
+      {
+        "Name": "Fillet",
+        "Label": "CornerFillet",
+        "Visibility": true,
+        "TypeId": "PartDesign::Fillet",
+        "Base": [
+          {
+            "name": "Edge2",
+            "center": {
+              "x": 120.0,
+              "y": 0.0,
+              "z": 4.0
+            },
+            "dir": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 1.0
+            }
+          },
+          {
+            "name": "Edge4",
+            "center": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 4.0
+            },
+            "dir": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 1.0
+            }
+          },
+          {
+            "name": "Edge6",
+            "center": {
+              "x": 120.0,
+              "y": 80.0,
+              "z": 4.0
+            },
+            "dir": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 1.0
+            }
+          },
+          {
+            "name": "Edge9",
+            "center": {
+              "x": 0.0,
+              "y": 80.0,
+              "z": 4.0
+            },
+            "dir": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 1.0
+            }
+          }
+        ],
+        "Radius": 6.0,
+        "UseAllEdges": false
+      }
+    ]
+  }
+}

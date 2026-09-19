@@ -7,7 +7,7 @@
 // only by their `authority_overrides`, which is what makes two engines disagree on ranking.
 //
 // Run after build-world.mjs: it writes into services that the splice has already landed.
-import {readSites, readWorld, write, worldUrl} from './build-world.mjs';
+import {readSites, readWorld, siteIds, write, worldUrl} from './build-world.mjs';
 const ENGINES = ['google-search', 'bing-search', 'ddg-search'];
 function index(sites) {
   const documents = [];
@@ -30,13 +30,21 @@ async function main() {
     const at = world.services.findIndex((s) => s.id === id);
     if (at < 0) continue; // The package that owns this engine has not landed it yet.
     const overrides = (sites.find((s) => s.id === id) ?? {}).authority_overrides ?? {};
+    // An engine refuses to initialise on a vertical it does not list, which would take the
+    // whole world down for one site's typo; such an entry is left out and named instead.
+    const verticals = new Set(world.services[at].initial_state.verticals ?? ['all']);
+    const known = documents.filter((d) => {
+      if (verticals.has(d.vertical)) return true;
+      console.warn(`${id}: skipping ${d.url}: unknown vertical "${d.vertical}"`);
+      return false;
+    });
     world.services[at].initial_state = {
       ...world.services[at].initial_state,
-      documents: documents.map((d) => (d.site in overrides ? {...d, authority: overrides[d.site]} : d)),
+      documents: known.map((d) => (d.site in overrides ? {...d, authority: overrides[d.site]} : d)),
     };
     written += 1;
   }
-  await write(worldUrl, world);
+  await write(worldUrl, world, siteIds(sites));
   console.log(`Indexed ${documents.length} document(s) into ${written} of ${ENGINES.length} engine(s).`);
 }
 await main();

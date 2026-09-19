@@ -1305,6 +1305,7 @@ impl Kicad {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for lib in &self.session.fp_libs {
@@ -1318,6 +1319,7 @@ impl Kicad {
                     if lib.dirty { ", unsaved" } else { "" }
                 ),
                 action: act(&id),
+                style: None,
             });
             for f in &lib.footprints {
                 let id = format!("kicad:fped:open:{}", f.id);
@@ -1325,6 +1327,7 @@ impl Kicad {
                     id: id.clone(),
                     text: format!("Footprint {}", f.id),
                     action: act(&id),
+                    style: None,
                 });
             }
         }

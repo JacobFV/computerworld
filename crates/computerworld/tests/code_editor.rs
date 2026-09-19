@@ -486,8 +486,17 @@ fn source_control_initialises_stages_and_commits_with_the_machines_git() {
     let code = d.code();
     assert_eq!(code["scm"]["repo"], true);
     assert_eq!(code["scm"]["branch"], "main");
-    let changes = code["scm"]["changes"].as_array().unwrap().len();
-    assert_eq!(changes, 4, "{}", code["scm"]);
+    // The four files this test seeds are untracked, alongside whatever the reference
+    // world's ~/project already holds (worlds/company-2026/home).
+    let changes = code["scm"]["changes"].as_array().unwrap();
+    let untracked = changes.len();
+    for name in ["main.py", "run.sh", "README.md", "src/app.js"] {
+        assert!(
+            changes.iter().any(|c| c[0] == "U" && c[1] == name),
+            "{name} not untracked: {}",
+            code["scm"]
+        );
+    }
     d.click("code:scm-stage:README.md");
     assert_eq!(d.code()["scm"]["staged"].as_array().unwrap().len(), 1);
     d.click("code:scm-message");
@@ -500,7 +509,13 @@ fn source_control_initialises_stages_and_commits_with_the_machines_git() {
     );
     let code = d.code();
     assert_eq!(code["scm"]["staged"].as_array().unwrap().len(), 0);
-    assert_eq!(code["scm"]["changes"].as_array().unwrap().len(), 3);
+    let changes = code["scm"]["changes"].as_array().unwrap();
+    assert!(
+        changes.iter().all(|c| c[1] != "README.md"),
+        "{}",
+        code["scm"]
+    );
+    assert_eq!(changes.len(), untracked - 1);
     assert_eq!(code["scm"]["message"], "");
     // Editing a committed file shows up as a change once it is saved.
     d.click("code:activity:explorer");

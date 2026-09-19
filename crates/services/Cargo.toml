@@ -11,6 +11,9 @@ cw-service-issues = { path = "../../services/issues" }
 cw-service-static-site = { path = "../../services/static-site" }
 cw-service-mail = { path = "../../services/mail" }
 cw-service-chat = { path = "../../services/chat" }
+cw-service-messages = { path = "../../services/messages" }
+cw-service-slack = { path = "../../services/slack" }
+cw-service-discord = { path = "../../services/discord" }
 cw-service-docs = { path = "../../services/docs" }
 cw-service-calendar = { path = "../../services/calendar" }
 cw-service-assistant = { path = "../../services/assistant" }

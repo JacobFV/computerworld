@@ -293,9 +293,9 @@ fn fillet_an_edge_and_round_trip_the_solid_through_step() {
     d.click("freecad:tree:Body");
     d.click("freecad:menu:File");
     d.click("freecad:cmd:Std_Export");
-    assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents");
+    assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents/Parts");
     d.click("freecad:file:ok");
-    let bytes = d.read_file("/home/carol/Documents/Body.step");
+    let bytes = d.read_file("/home/carol/Documents/Parts/Body.step");
     let text = String::from_utf8(bytes).unwrap();
     assert!(text.starts_with("ISO-10303-21;"));
     assert!(text.contains("MANIFOLD_SOLID_BREP('Body'"));
@@ -427,12 +427,12 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     d.click("freecad:tree:Body");
     d.click("freecad:menu:File");
     d.click("freecad:cmd:Std_Export");
-    assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents");
+    assert_eq!(d.state()["dialog"]["folder"], "/home/carol/Documents/Parts");
     // STEP leads the list of types; pick binary STL.
     d.click("freecad:choice:open:filetype");
     d.click("freecad:choice:filetype:2");
     d.click("freecad:file:ok");
-    let bytes = d.read_file("/home/carol/Documents/Body.stl");
+    let bytes = d.read_file("/home/carol/Documents/Parts/Body.stl");
     assert_eq!(
         bytes.len(),
         84 + 50 * u32::from_le_bytes([bytes[80], bytes[81], bytes[82], bytes[83]]) as usize
@@ -452,7 +452,7 @@ fn sketch_constrain_pad_pocket_measure_and_export() {
     d.click("freecad:choice:open:filetype");
     d.click("freecad:choice:filetype:3");
     d.click("freecad:file:ok");
-    let text = String::from_utf8(d.read_file("/home/carol/Documents/Body.ast")).unwrap();
+    let text = String::from_utf8(d.read_file("/home/carol/Documents/Parts/Body.ast")).unwrap();
     assert!(text.starts_with("solid Body"));
     let ascii = cw_cad::io::read_stl(text.as_bytes()).unwrap();
     assert_eq!(ascii.volume(), model.body_shape[&body].mesh.volume());
@@ -487,7 +487,7 @@ fn save_open_undo_and_redo() {
     d.click("freecad:file:ok");
     assert_eq!(d.state()["modified"], false);
     let saved =
-        String::from_utf8(d.read_file("/Users/alice/Documents/Unnamed.FCStd.json")).unwrap();
+        String::from_utf8(d.read_file("/Users/alice/Documents/Parts/Unnamed.FCStd.json")).unwrap();
     assert!(saved.contains("\"TypeId\": \"PartDesign::Pad\""));
     d.click("freecad:cmd:Std_New");
     assert!(d.model().0.get("Pad").is_none());
@@ -575,11 +575,17 @@ fn native_file_dialogs_save_and_open_on_every_desktop() {
             "{machine}: the window knows the home folder"
         );
         let docs = format!("{home}/Documents");
+        // The desktops seed ~/Documents/Parts, so FreeCAD starts there.
+        let parts_folder = format!("{docs}/Parts");
         let desktop = format!("{home}/Desktop");
 
         d.key("Ctrl+Shift+S");
         assert_eq!(d.dialog()["purpose"], "save_as");
-        assert_eq!(d.folder(), docs, "{machine}: Save As starts in Documents");
+        assert_eq!(
+            d.folder(),
+            parts_folder,
+            "{machine}: Save As starts in the parts folder"
+        );
         // A sidebar place.
         d.click(&format!("freecad:file:place:{desktop}"));
         assert_eq!(d.folder(), desktop, "{machine}: sidebar Desktop");
@@ -628,15 +634,15 @@ fn native_file_dialogs_save_and_open_on_every_desktop() {
             }
             "alice-mac" => {
                 d.click("freecad:file:folder-prompt:");
-                d.typed("Parts");
+                d.typed("Jigs");
                 d.key("Enter");
-                format!("{docs}/Parts")
+                format!("{docs}/Jigs")
             }
             _ => {
                 d.click("freecad:file:folder-prompt:");
-                d.typed("Parts");
+                d.typed("Jigs");
                 d.click("freecad:file:folder-create");
-                format!("{docs}/Parts")
+                format!("{docs}/Jigs")
             }
         };
         assert_eq!(d.folder(), parts, "{machine}: into the new folder");
@@ -680,7 +686,13 @@ fn native_file_dialogs_save_and_open_on_every_desktop() {
         assert_eq!(d.state()["path"], "");
         d.key("Ctrl+o");
         assert_eq!(d.dialog()["purpose"], "open");
-        assert_eq!(d.folder(), docs);
+        assert_eq!(
+            d.folder(),
+            parts_folder,
+            "{machine}: a fresh document starts in Parts"
+        );
+        d.key("Alt+ArrowUp");
+        assert_eq!(d.folder(), docs, "{machine}: up to Documents");
         let folder = parts.rsplit('/').next().unwrap().to_owned();
         d.double_click(&format!("freecad:file:entry:{folder}/"));
         d.double_click("freecad:file:entry:Bracket.FCStd.json");
@@ -711,7 +723,7 @@ fn a_long_folder_scrolls_in_the_open_dialog() {
             d.act(
                 "filesystem.v1",
                 "write",
-                json!({"path": format!("{home}/Documents/filler-{i:02}.FCStd.json"), "content": "{}"}),
+                json!({"path": format!("{home}/Documents/Parts/filler-{i:02}.FCStd.json"), "content": "{}"}),
             );
         }
         d.click("freecad:cmd:Std_New");
@@ -751,7 +763,73 @@ fn a_long_folder_scrolls_in_the_open_dialog() {
         assert!(d.state()["dialog"].is_null(), "{machine}: opened");
         assert_eq!(
             d.state()["path"],
-            format!("{home}/Documents/zz-last.FCStd.json").as_str()
+            format!("{home}/Documents/Parts/zz-last.FCStd.json").as_str()
         );
     }
+}
+
+/// The desktops come with parts modelled by the kernel under `~/Documents/Parts`:
+/// FreeCAD launched bare starts its Open dialog there, the seeded bracket opens and
+/// recomputes to its modelled volume with its expression-driven wall, and `xdg-open`
+/// on a `.FCStd.json` (the file manager's association) starts FreeCAD on it.
+#[test]
+fn the_seeded_parts_open_from_the_parts_folder_and_by_association() {
+    let mut d = Desk::new("alice-mac", "alice");
+    d.launch();
+    d.click("freecad:cmd:Std_Open");
+    assert_eq!(d.folder(), "/Users/alice/Documents/Parts");
+    let entries: Vec<String> = d.dialog()["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e.as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        entries
+            .iter()
+            .any(|e| e == "motor-mount-bracket.FCStd.json"),
+        "{entries:?}"
+    );
+    d.click("freecad:file:entry:motor-mount-bracket.FCStd.json");
+    d.click("freecad:file:ok");
+    let (doc, model) = d.model();
+    assert_eq!(doc.label, "motor-mount-bracket");
+    assert!(
+        model.expression_errors.is_empty(),
+        "{:?}",
+        model.expression_errors
+    );
+    assert_eq!(
+        doc.get("Pad001").unwrap().feature.number("Length"),
+        Some(40.0),
+        "the wall's height is bound to the plate's width"
+    );
+    let v = d.body_volume();
+    // Plate and wall less bore, screws, counterbored feet and the rounded corners.
+    assert!((v - 39_228.832).abs() < 0.01, "{v}");
+    // The STEP next to it imports as an exact solid of the same volume (the Mac's File
+    // menu is in the menu bar, so the keyboard shortcut).
+    d.key("Ctrl+i");
+    d.click("freecad:file:entry:motor-mount-bracket.step");
+    d.click("freecad:file:ok");
+    let (doc, model) = d.model();
+    let part = doc
+        .objects
+        .iter()
+        .find(|o| matches!(o.feature, cw_cad::document::Feature::Part { .. }))
+        .expect("the imported solid");
+    let sv = model.shapes[&part.name].volume();
+    assert!((sv - v).abs() < 1e-3 * v, "{sv} vs {v}");
+    // A document opened by its association lands in FreeCAD, on Ubuntu too.
+    let mut c = Desk::new("carol-ubuntu", "carol");
+    c.act(
+        "terminal.v1",
+        "execute",
+        json!({"command": "xdg-open /home/carol/Documents/Parts/motor-mount-bracket.FCStd.json"}),
+    );
+    assert_eq!(
+        c.state()["path"],
+        "/home/carol/Documents/Parts/motor-mount-bracket.FCStd.json"
+    );
+    assert_eq!(c.model().0.label, "motor-mount-bracket");
 }

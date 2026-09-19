@@ -18,6 +18,7 @@
 //! [`math`]).
 pub mod brep;
 pub mod document;
+pub mod expr;
 pub mod io;
 pub mod linalg;
 pub mod math;

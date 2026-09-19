@@ -170,6 +170,7 @@ impl Chrome {
                             id: "search-go".into(),
                             text: go.into(),
                             action: submit,
+                            style: None,
                         },
                         PageElement::Button {
                             id: "search-lucky".into(),
@@ -179,6 +180,7 @@ impl Chrome {
                                 url: "/lucky".into(),
                                 fields: BTreeMap::from([("q".to_string(), "$q".to_string())]),
                             },
+                            style: None,
                         },
                     ],
                 ),
@@ -358,6 +360,7 @@ pub(crate) fn home(state: &Value, actor: &str) -> Result<HttpResponse> {
                 url: "/history/clear".into(),
                 fields: BTreeMap::new(),
             },
+            style: None,
         });
     }
     let trending = web::strings(state, "trending");
@@ -734,6 +737,7 @@ pub(crate) fn lucky(state: &Value, query: &str, top: Option<&Hit>) -> Result<Htt
                 id: "lucky-go".into(),
                 text: format!("Go to {}", crumb(&hit.document)),
                 action: web::visit(hit.document.url.clone()),
+                style: None,
             });
         }
         None => elements.push(web::styled(

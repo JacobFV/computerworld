@@ -21,7 +21,7 @@ const APPS: [(&str, &str); 26] = [
     ("mail", "Mail"),
     ("calendar", "Calendar"),
     ("notes", "Notes"),
-    ("chat", "Messages"),
+    ("messages", "Messages"),
     ("contacts", "Contacts"),
     ("docs", "Pages"),
     ("spreadsheet", "Numbers"),
@@ -47,8 +47,8 @@ const APPS: [(&str, &str); 26] = [
 /// (Safari, Messages, Mail, Maps, Photos, Calendar, Contacts, Notes, Music, Pages),
 /// then TextEdit and Terminal; Launchpad carries the rest.
 const DOCK: [&str; 13] = [
-    "browser", "chat", "mail", "maps", "photos", "calendar", "contacts", "notes", "music", "docs",
-    "editor", "terminal", "code",
+    "browser", "messages", "mail", "maps", "photos", "calendar", "contacts", "notes", "music",
+    "docs", "editor", "terminal", "code",
 ];
 
 pub(super) fn app_name(kind: &str) -> Option<&'static str> {
@@ -249,7 +249,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.region(view, &w.action("content:files-view"), "Icon or list view");
                 // Share hands the selected item to Messages, or Mail without it; with
                 // nothing selected or nothing to receive it, it is greyed.
-                let via = ["chat", "mail"]
+                let via = ["messages", "mail"]
                     .into_iter()
                     .find(|kind| ctx.installed(kind));
                 match via.filter(|_| !w.selection.is_empty()) {
@@ -258,7 +258,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                         p.region(
                             share,
                             &format!("shell:share:{kind}"),
-                            if kind == "chat" {
+                            if kind == "messages" {
                                 "Share with Messages"
                             } else {
                                 "Share with Mail"
@@ -525,7 +525,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         // Sharing really hands the page to a messaging application and posts a notice.
         // Messages first, Mail behind it; with neither installed nothing can receive it.
         let share = Rect::new(right - 106, r.y + 8, 28, 26);
-        let via = ["chat", "mail"]
+        let via = ["messages", "mail"]
             .into_iter()
             .find(|kind| ctx.installed(kind))
             .filter(|_| !w.document.is_empty());
@@ -535,7 +535,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.region(
                     share,
                     &format!("shell:share:{kind}"),
-                    if kind == "chat" {
+                    if kind == "messages" {
                         "Share with Messages"
                     } else {
                         "Share with Mail"
@@ -2354,7 +2354,7 @@ mod tests {
         // This preview owns no page, so sharing and bookmarking are greyed: no
         // interaction, not focusable, and a click on either answers with neither id.
         for (label, action) in [
-            ("Share", "shell:share:chat"),
+            ("Share", "shell:share:messages"),
             ("Add bookmark", "shell:bookmark"),
         ] {
             let node = labelled(&p, label).unwrap_or_else(|| panic!("missing {label}"));
@@ -2372,7 +2372,7 @@ mod tests {
         browser_chrome(&mut p, &ctx, &loaded[0]);
         assert_eq!(
             hit_labelled(&p, "Share with Messages"),
-            Some("shell:share:chat")
+            Some("shell:share:messages")
         );
         assert_eq!(hit_labelled(&p, "Add bookmark"), Some("shell:bookmark"));
         ctx.bookmarked = true;

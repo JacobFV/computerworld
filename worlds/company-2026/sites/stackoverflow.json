@@ -2,7 +2,11 @@
   "id": "stackoverflow",
   "kind": "forum",
   "node": "stackoverflow",
-  "domains": ["stackoverflow.com", "www.stackoverflow.com", "stackexchange.com"],
+  "domains": [
+    "stackoverflow.com",
+    "www.stackoverflow.com",
+    "stackexchange.com"
+  ],
   "port": 80,
   "initial_state": {
     "mode": "qa",
@@ -61,6 +65,73 @@
         "name": "Sara Kovac",
         "reputation": 6204,
         "bio": "Backend, mostly Go, occasionally in the wrong tag."
+      },
+      "jlindqvist": {
+        "handle": "jlindqvist",
+        "name": "Johan Lindqvist",
+        "reputation": 27310,
+        "flair": "gold: python, silver: asyncio",
+        "bio": "Python core-adjacent. I read the asyncio source so you do not have to."
+      },
+      "mei-tanaka": {
+        "handle": "mei-tanaka",
+        "name": "Mei Tanaka",
+        "reputation": 19880,
+        "flair": "gold: javascript, gold: typescript",
+        "bio": "Front end, type systems, and the gap between the two."
+      },
+      "obrien_sql": {
+        "handle": "obrien_sql",
+        "name": "Fiona O'Brien",
+        "reputation": 33150,
+        "flair": "gold: postgresql, gold: sql",
+        "bio": "DBA. Your query is fine; your index is not."
+      },
+      "kwame.a": {
+        "handle": "kwame.a",
+        "name": "Kwame Asante",
+        "reputation": 8740,
+        "flair": "silver: docker, silver: kubernetes",
+        "bio": "Platform engineer. Containers, and the networking between them."
+      },
+      "lena_css": {
+        "handle": "lena_css",
+        "name": "Lena Fischer",
+        "reputation": 11020,
+        "flair": "gold: css",
+        "bio": "I do layout. Grid is not scary, it is just new."
+      },
+      "rgoyal": {
+        "handle": "rgoyal",
+        "name": "Rohan Goyal",
+        "reputation": 4410,
+        "flair": "silver: pandas",
+        "bio": "Data engineering. Mostly pandas, occasionally regret."
+      },
+      "tvu": {
+        "handle": "tvu",
+        "name": "Thanh Vu",
+        "reputation": 2130,
+        "bio": "Junior developer. Asking the questions the docs assume you already know."
+      },
+      "hgroth": {
+        "handle": "hgroth",
+        "name": "Hanna Groth",
+        "reputation": 15660,
+        "flair": "gold: go, silver: json",
+        "bio": "Go services and the encoding/json package in particular."
+      },
+      "dev_nadia": {
+        "handle": "dev_nadia",
+        "name": "Nadia Petrova",
+        "reputation": 960,
+        "bio": "Bootcamp graduate, first job, many tabs open."
+      },
+      "pipeline_guest": {
+        "handle": "pipeline_guest",
+        "name": "pipeline_guest",
+        "reputation": 310,
+        "bio": "Drive-by commenter; on call somewhere."
       }
     },
     "boards": {
@@ -78,7 +149,12 @@
         "author": "alicechen",
         "title": "How do you seed a PRNG so a simulation replays exactly on another machine?",
         "body": "I need a random stream that produces the same values on Linux, macOS and Windows given the same u64 seed. The obvious approach - the standard library's thread-local generator - is neither seedable nor stable across releases. What do people actually use for reproducible simulation work, and what are the failure modes I should expect when the run is replayed on a different platform?",
-        "tags": ["rust", "determinism", "random", "simulation"],
+        "tags": [
+          "rust",
+          "determinism",
+          "random",
+          "simulation"
+        ],
         "tick": 1,
         "score": 64,
         "views": 8820,
@@ -121,7 +197,11 @@
         "author": "carol-n",
         "title": "Is HashMap iteration order guaranteed to be stable between two runs of the same binary?",
         "body": "Asking on behalf of a team argument. One side says the order is arbitrary but stable for a given binary and input; the other says it can differ run to run. We are on stable Rust, default hasher, no threads involved. Which is it, and is there a document I can point at rather than continuing to be the person who says 'I am fairly sure'?",
-        "tags": ["rust", "hashmap", "determinism"],
+        "tags": [
+          "rust",
+          "hashmap",
+          "determinism"
+        ],
         "tick": 2,
         "score": 128,
         "views": 41200,
@@ -158,7 +238,12 @@
         "author": "bmartinez",
         "title": "Why does my BFS shortest-path test fail only on Windows?",
         "body": "The test builds a small graph, runs a breadth-first search and asserts the returned path. It passes on my Linux laptop, on macOS, and on three of our four CI runners. On the Windows runner it fails roughly one run in four, and when it fails the returned path is a different path of the same length. Before anyone tells me it is just a flaky test: when it fails it fails the same way, and the returned path is always a valid one. The graph is built from a HashMap of node id to neighbours. Repro and full logs are in http://github.com/northstar/atlas/issues/14 - what am I not seeing?",
-        "tags": ["rust", "determinism", "testing", "hashmap"],
+        "tags": [
+          "rust",
+          "determinism",
+          "testing",
+          "hashmap"
+        ],
         "tick": 3,
         "score": 37,
         "views": 2104,
@@ -222,7 +307,11 @@
         "author": "bmartinez",
         "title": "Testing code that reads the clock, without freezing the clock globally",
         "body": "Half our test suite calls a function that takes a timestamp from the system clock somewhere five layers down. Globally freezing time in the test harness works but makes the tests lie about concurrency, and threading a clock parameter through five layers is a large refactor I would like to justify before starting. Is there a middle option that people have actually lived with for more than a quarter?",
-        "tags": ["testing", "determinism", "time"],
+        "tags": [
+          "testing",
+          "determinism",
+          "time"
+        ],
         "tick": 4,
         "score": 22,
         "views": 1840,
@@ -251,11 +340,651 @@
             ]
           }
         ]
+      },
+      "t-4420": {
+        "id": "t-4420",
+        "board": "",
+        "author": "tvu",
+        "title": "Rust: cannot borrow `*self` as mutable because it is also borrowed as immutable, inside a for loop",
+        "body": "I am iterating over a Vec field and trying to push into another field of the same struct in the loop body:\n\nstruct Graph { nodes: Vec<Node>, log: Vec<String> }\nimpl Graph {\n    fn walk(&mut self) {\n        for n in &self.nodes {\n            self.log.push(format!(\"visited {}\", n.id));\n        }\n    }\n}\n\nerror[E0502]: cannot borrow `self.log` as mutable because `self.nodes` is also borrowed as immutable\n\nI understand the words but not why this is unsafe. The two fields do not overlap. How do I write this?",
+        "tags": [
+          "rust",
+          "borrow-checker",
+          "ownership"
+        ],
+        "tick": 6,
+        "score": 74,
+        "views": 21400,
+        "accepted": "r-9040",
+        "replies": [
+          {
+            "id": "r-9040",
+            "author": "praman",
+            "parent": null,
+            "body": "The borrow checker reasons about whole paths through method calls, but within one function body it is field-sensitive. Your error comes from the fact that `&self.nodes` borrows through `self`, and `self.log.push` needs `&mut self.log` through the same `self`. Disjoint field borrows are allowed when both are spelled out as fields in the same scope, so this compiles:\n\nlet Graph { nodes, log } = self;\nfor n in nodes.iter() {\n    log.push(format!(\"visited {}\", n.id));\n}\n\nDestructuring splits the `&mut Graph` into a `&Vec<Node>` and a `&mut Vec<String>` and the checker can see they do not overlap. The version that fails is the one where the loop calls a method on self (`self.visit(n)`), because a method takes all of self and the checker cannot look inside.",
+            "tick": 6,
+            "score": 131,
+            "comments": [
+              {
+                "id": "c-8050",
+                "author": "tvu",
+                "body": "Destructuring self is the trick I did not know existed. Thank you.",
+                "tick": 6
+              },
+              {
+                "id": "c-8051",
+                "author": "alicechen",
+                "body": "Worth adding: if you really need a method call in the loop, collect the ids first and loop over the collected Vec.",
+                "tick": 7
+              }
+            ]
+          },
+          {
+            "id": "r-9041",
+            "author": "s-kovac",
+            "parent": null,
+            "body": "The quick and slightly wasteful fix is `for n in self.nodes.clone()`. It works and it is what most people do the first time; the destructuring answer is the one to graduate to.",
+            "tick": 7,
+            "score": 12,
+            "comments": []
+          }
+        ]
+      },
+      "t-4423": {
+        "id": "t-4423",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "Python asyncio: my coroutines run one after another instead of concurrently",
+        "body": "I expected this to take about one second and it takes three:\n\nasync def fetch(n):\n    await asyncio.sleep(1)\n    return n\n\nasync def main():\n    results = []\n    for i in range(3):\n        results.append(await fetch(i))\n    print(results)\n\nasyncio.run(main())\n\nIs asyncio not actually concurrent, or am I holding it wrong?",
+        "tags": [
+          "python",
+          "asyncio",
+          "concurrency"
+        ],
+        "tick": 7,
+        "score": 58,
+        "views": 17800,
+        "accepted": "r-9045",
+        "replies": [
+          {
+            "id": "r-9045",
+            "author": "jlindqvist",
+            "parent": null,
+            "body": "You are awaiting each coroutine before starting the next one, so they run in sequence by construction. `await fetch(i)` means \"start this and do not continue until it is done\". To run them concurrently, create all three first and await them together:\n\nresults = await asyncio.gather(*(fetch(i) for i in range(3)))\n\nor, on 3.11+, use a TaskGroup so a failure cancels the siblings:\n\nasync with asyncio.TaskGroup() as tg:\n    tasks = [tg.create_task(fetch(i)) for i in range(3)]\nresults = [t.result() for t in tasks]\n\nBoth take about one second. asyncio is concurrent; a bare `await` in a loop is the one shape that is not.",
+            "tick": 7,
+            "score": 97,
+            "comments": [
+              {
+                "id": "c-8055",
+                "author": "dev_nadia",
+                "body": "One second exactly. I had read 'await' as 'run in the background' rather than 'wait here'.",
+                "tick": 7
+              }
+            ]
+          },
+          {
+            "id": "r-9046",
+            "author": "bmartinez",
+            "parent": null,
+            "body": "Related trap for later: if `fetch` does a blocking call inside (requests, time.sleep, a sync DB driver), gather will not help either, because the event loop is stuck. Use `asyncio.to_thread` for those.",
+            "tick": 8,
+            "score": 34,
+            "comments": []
+          }
+        ]
+      },
+      "t-4427": {
+        "id": "t-4427",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "Why does my JavaScript function return a pending Promise instead of the value?",
+        "body": "function getUser() {\n  return fetch('/api/me').then(r => r.json());\n}\nconst user = getUser();\nconsole.log(user.name); // undefined\nconsole.log(user);      // Promise { <pending> }\n\nThe request works in the network tab. Why is `user` not the object?",
+        "tags": [
+          "javascript",
+          "promise",
+          "async-await"
+        ],
+        "tick": 8,
+        "score": 91,
+        "views": 40200,
+        "accepted": "r-9050",
+        "replies": [
+          {
+            "id": "r-9050",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "Because `fetch` is asynchronous, `getUser` returns before the response arrives, and what it returns is a Promise that will resolve to the object later. You cannot get the value out synchronously; you can only say what to do when it arrives:\n\ngetUser().then(user => console.log(user.name));\n\nor in an async function:\n\nconst user = await getUser();\nconsole.log(user.name);\n\nOnce something is asynchronous, everything that depends on it is too. There is no `.unwrap()` that turns a Promise back into a plain value, which is the thing everyone looks for in the first week.",
+            "tick": 8,
+            "score": 142,
+            "comments": [
+              {
+                "id": "c-8060",
+                "author": "dev_nadia",
+                "body": "The 'everything that depends on it is asynchronous too' line is the mental model I was missing.",
+                "tick": 8
+              },
+              {
+                "id": "c-8061",
+                "author": "tvu",
+                "body": "Also console.log(user) shows pending because logging is synchronous. If you expand it later in the devtools it will have resolved.",
+                "tick": 9
+              }
+            ]
+          }
+        ]
+      },
+      "t-4431": {
+        "id": "t-4431",
+        "board": "",
+        "author": "carol-n",
+        "title": "SQL: difference between INNER JOIN, LEFT JOIN and a WHERE clause on the joined table",
+        "body": "We have orders and customers. Two queries return different row counts and I want to understand why before I put either in a report:\n\nSELECT c.name, o.total\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.status = 'paid';\n\nSELECT c.name, o.total\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id AND o.status = 'paid';\n\nWhich one keeps customers with no paid orders?",
+        "tags": [
+          "sql",
+          "join",
+          "postgresql"
+        ],
+        "tick": 9,
+        "score": 112,
+        "views": 63100,
+        "accepted": "r-9055",
+        "replies": [
+          {
+            "id": "r-9055",
+            "author": "obrien_sql",
+            "parent": null,
+            "body": "The second one. A LEFT JOIN keeps every customer and fills the order columns with NULL where there is no match. In the first query the filter runs after the join, and `NULL = 'paid'` is not true, so every customer without a paid order is thrown away - the WHERE has silently turned your LEFT JOIN into an INNER JOIN. In the second query the condition is part of the join itself, so it decides which orders match, not which customers survive.\n\nRule of thumb: conditions on the preserved (left) table go in WHERE; conditions on the optional (right) table go in ON. If you want \"customers with no paid orders\" explicitly, it is the second query plus `WHERE o.id IS NULL`.",
+            "tick": 9,
+            "score": 188,
+            "comments": [
+              {
+                "id": "c-8065",
+                "author": "carol-n",
+                "body": "That is exactly the report discrepancy. The first query is the one in production.",
+                "tick": 9
+              },
+              {
+                "id": "c-8066",
+                "author": "s-kovac",
+                "body": "The 'WHERE turns your LEFT JOIN into an INNER JOIN' sentence should be on the first page of every SQL book.",
+                "tick": 10
+              }
+            ]
+          }
+        ]
+      },
+      "t-4434": {
+        "id": "t-4434",
+        "board": "",
+        "author": "tvu",
+        "title": "git rebase vs merge: what does rebase actually do to my commits?",
+        "body": "My branch has three commits on top of main. A colleague says to rebase before opening the pull request; another says never rebase. After `git rebase main` my commit hashes changed and I panicked and reset. What happened, and when is rebase the wrong choice?",
+        "tags": [
+          "git",
+          "rebase",
+          "merge",
+          "version-control"
+        ],
+        "tick": 10,
+        "score": 66,
+        "views": 29500,
+        "accepted": "r-9060",
+        "replies": [
+          {
+            "id": "r-9060",
+            "author": "dmorel",
+            "parent": null,
+            "body": "Rebase replays your commits one at a time on top of a new base. Each replayed commit has a new parent, so it gets a new hash - the content is the same, the identity is not. That is why the hashes changed, and it is normal.\n\nThe rule that resolves both of your colleagues: rebase commits that only exist on your machine; never rebase commits that someone else has already pulled. Rewriting shared history forces everyone else to reconcile two versions of the same work. A feature branch you alone push to is fair game, and rebasing it keeps the history linear so the PR reads as a story rather than a merge diamond.\n\nIf you already pushed the branch and you are the only one on it, `git push --force-with-lease` is the safe version of the force push: it refuses if someone else has pushed in the meantime.",
+            "tick": 10,
+            "score": 104,
+            "comments": [
+              {
+                "id": "c-8070",
+                "author": "tvu",
+                "body": "The 'new parent, so new hash' explanation is the piece I was missing. Content same, identity different.",
+                "tick": 10
+              }
+            ]
+          },
+          {
+            "id": "r-9061",
+            "author": "bmartinez",
+            "parent": null,
+            "body": "Practical addition: `git reflog` is your undo. If a rebase goes wrong, `git reset --hard HEAD@{1}` (or whichever entry was before the rebase) gets your old branch tip back. Nothing is lost until garbage collection weeks later.",
+            "tick": 11,
+            "score": 47,
+            "comments": []
+          }
+        ]
+      },
+      "t-4438": {
+        "id": "t-4438",
+        "board": "",
+        "author": "kwame.a",
+        "title": "Docker: container cannot reach another container by name on the default bridge network",
+        "body": "Two containers started with plain `docker run`. From `app` I do `curl db:5432` and get \"Could not resolve host: db\". Both show up in `docker ps`. Linking is deprecated so I have not used it. What am I missing?",
+        "tags": [
+          "docker",
+          "networking",
+          "dns"
+        ],
+        "tick": 11,
+        "score": 49,
+        "views": 15200,
+        "accepted": "r-9065",
+        "replies": [
+          {
+            "id": "r-9065",
+            "author": "kwame.a",
+            "parent": null,
+            "body": "Answering my own question after finding it. The default `bridge` network does not provide DNS between containers; only user-defined networks do. Create one and attach both containers:\n\ndocker network create backend\ndocker run -d --name db --network backend postgres:16\ndocker run -d --name app --network backend myapp\n\nNow `db` resolves from `app`. Docker Compose does this for you, which is why the same setup works there and not with bare `docker run`.",
+            "tick": 11,
+            "score": 71,
+            "comments": [
+              {
+                "id": "c-8075",
+                "author": "pipeline_guest",
+                "body": "This bites everyone exactly once.",
+                "tick": 12
+              }
+            ]
+          }
+        ]
+      },
+      "t-4441": {
+        "id": "t-4441",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "CSS grid: how do I make the middle column fill the remaining width?",
+        "body": "I want a 200px sidebar, a flexible content area, and a 240px right rail.\n\n.layout {\n  display: grid;\n  grid-template-columns: 200px auto 240px;\n}\n\nThe middle column is only as wide as its content and the whole thing sits on the left. What is the right unit?",
+        "tags": [
+          "css",
+          "css-grid",
+          "layout"
+        ],
+        "tick": 12,
+        "score": 44,
+        "views": 12600,
+        "accepted": "r-9070",
+        "replies": [
+          {
+            "id": "r-9070",
+            "author": "lena_css",
+            "parent": null,
+            "body": "Use `1fr` instead of `auto`:\n\ngrid-template-columns: 200px 1fr 240px;\n\n`auto` sizes the track to its content; `fr` hands out the free space left over after the fixed tracks. With `1fr` there is one flexible track and it gets all of the remainder. If you also want the layout to collapse on narrow screens, add a media query that sets `grid-template-columns: 1fr` and let the three areas stack.",
+            "tick": 12,
+            "score": 63,
+            "comments": [
+              {
+                "id": "c-8080",
+                "author": "dev_nadia",
+                "body": "1fr fixed it in one line. I had auto and fr confused.",
+                "tick": 12
+              }
+            ]
+          },
+          {
+            "id": "r-9071",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "If the content column has long unbreakable strings (URLs, code), also set `min-width: 0` on it, or `1fr` will grow past the viewport. `minmax(0, 1fr)` is the same thing spelled in the grid declaration.",
+            "tick": 13,
+            "score": 39,
+            "comments": []
+          }
+        ]
+      },
+      "t-4445": {
+        "id": "t-4445",
+        "board": "",
+        "author": "tvu",
+        "title": "TypeScript: generic function loses the specific type of what I pass in",
+        "body": "function first<T>(items: T[]): T { return items[0]; }\nconst x = first(['a', 'b']);   // string, fine\nconst y = first([1, 'a']);     // string | number, fine\nconst z = first([] as const);  // never?\n\nAnd separately, this signature does not constrain anything:\n\nfunction pluck<T, K>(obj: T, key: K) { return obj[key]; }\n// error: Type 'K' cannot be used to index type 'T'\n\nHow do I say \"K is a key of T\"?",
+        "tags": [
+          "typescript",
+          "generics"
+        ],
+        "tick": 13,
+        "score": 37,
+        "views": 9800,
+        "accepted": "r-9075",
+        "replies": [
+          {
+            "id": "r-9075",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "Add a constraint with `extends`:\n\nfunction pluck<T, K extends keyof T>(obj: T, key: K): T[K] {\n  return obj[key];\n}\n\nNow `K` must be one of the keys of `T`, and the return type `T[K]` is the exact property type rather than a union of all of them. Your `first([] as const)` returning `never` is correct: an empty readonly tuple has no element type, so the element type is the empty type.",
+            "tick": 13,
+            "score": 58,
+            "comments": [
+              {
+                "id": "c-8085",
+                "author": "tvu",
+                "body": "T[K] as the return type is the part that makes it actually useful. Thanks.",
+                "tick": 13
+              }
+            ]
+          }
+        ]
+      },
+      "t-4449": {
+        "id": "t-4449",
+        "board": "",
+        "author": "bmartinez",
+        "title": "Regex: match a version string like 2.14.0 but not 2.14.0-beta",
+        "body": "I want `^\\d+\\.\\d+\\.\\d+$` to match release tags only. It does, but on some inputs it also matches `v2.14.0`? And I want the three numbers as groups. Using Python's re.",
+        "tags": [
+          "regex",
+          "python"
+        ],
+        "tick": 14,
+        "score": 21,
+        "views": 6400,
+        "accepted": "r-9080",
+        "replies": [
+          {
+            "id": "r-9080",
+            "author": "jlindqvist",
+            "parent": null,
+            "body": "Your pattern cannot match `v2.14.0` - the `^` anchors at the start and `v` is not a digit - so check whether you are calling `re.search` on a string with a newline in it, or using `re.MULTILINE`. For the groups:\n\nimport re\nTAG = re.compile(r\"^(\\d+)\\.(\\d+)\\.(\\d+)$\")\nm = TAG.match(\"2.14.0\")\nmajor, minor, patch = map(int, m.groups())\n\n`re.match` anchors at the start for you, `re.fullmatch` anchors both ends, and neither will accept `-beta` because `$` requires the end of the string after the last digit.",
+            "tick": 14,
+            "score": 33,
+            "comments": [
+              {
+                "id": "c-8090",
+                "author": "bmartinez",
+                "body": "It was a trailing newline from `git tag` output and re.MULTILINE. Removed both.",
+                "tick": 14
+              }
+            ]
+          }
+        ]
+      },
+      "t-4452": {
+        "id": "t-4452",
+        "board": "",
+        "author": "tvu",
+        "title": "Bash: my script breaks on file names with spaces",
+        "body": "for f in $(ls *.log); do\n  gzip $f\ndone\n\nFails on `server 2026-09.log`. I know I should quote things but I do not know which things.",
+        "tags": [
+          "bash",
+          "shell",
+          "quoting"
+        ],
+        "tick": 15,
+        "score": 53,
+        "views": 22100,
+        "accepted": "r-9085",
+        "replies": [
+          {
+            "id": "r-9085",
+            "author": "dmorel",
+            "parent": null,
+            "body": "Quote every expansion, and do not parse `ls`. The shell glob already gives you a list with each name as one word:\n\nfor f in *.log; do\n  gzip -- \"$f\"\ndone\n\n`$(ls *.log)` turns the output back into text and splits it on whitespace, which is where the space in the name becomes two arguments. The double quotes around `\"$f\"` keep it one argument on the way into gzip. `--` protects you from a file named `-r`. Run scripts through shellcheck; it flags exactly this.",
+            "tick": 15,
+            "score": 84,
+            "comments": [
+              {
+                "id": "c-8095",
+                "author": "tvu",
+                "body": "shellcheck flagged four other lines while I was at it.",
+                "tick": 15
+              }
+            ]
+          },
+          {
+            "id": "r-9086",
+            "author": "s-kovac",
+            "parent": null,
+            "body": "For recursive cases use `find . -name '*.log' -print0 | xargs -0 gzip`, where the NUL separator makes any file name safe, including ones with newlines.",
+            "tick": 16,
+            "score": 27,
+            "comments": []
+          }
+        ]
+      },
+      "t-4456": {
+        "id": "t-4456",
+        "board": "",
+        "author": "rgoyal",
+        "title": "pandas: groupby then keep the row with the maximum value per group",
+        "body": "df has columns user, ts, score. I want, for each user, the whole row where score is highest. `df.groupby('user').max()` gives me the max of every column independently, which mixes rows.",
+        "tags": [
+          "python",
+          "pandas",
+          "groupby"
+        ],
+        "tick": 16,
+        "score": 40,
+        "views": 18900,
+        "accepted": "r-9090",
+        "replies": [
+          {
+            "id": "r-9090",
+            "author": "rgoyal",
+            "parent": null,
+            "body": "Two idiomatic ways. With `idxmax`, which returns the index label of the max per group and then selects those rows:\n\nbest = df.loc[df.groupby('user')['score'].idxmax()]\n\nOr sort and drop duplicates, which is faster on wide frames:\n\nbest = df.sort_values('score', ascending=False).drop_duplicates('user')\n\nBoth keep whole rows. `groupby().max()` is column-wise by design, which is why it mixed them.",
+            "tick": 16,
+            "score": 52,
+            "comments": []
+          },
+          {
+            "id": "r-9091",
+            "author": "jlindqvist",
+            "parent": null,
+            "body": "If there can be ties and you want all tied rows, use `df[df.score == df.groupby('user').score.transform('max')]`.",
+            "tick": 17,
+            "score": 24,
+            "comments": []
+          }
+        ]
+      },
+      "t-4460": {
+        "id": "t-4460",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "React: state update inside a loop only applies the last value",
+        "body": "const [count, setCount] = useState(0);\nfunction addThree() {\n  for (let i = 0; i < 3; i++) {\n    setCount(count + 1);\n  }\n}\n\nClicking the button adds one, not three.",
+        "tags": [
+          "reactjs",
+          "javascript",
+          "hooks"
+        ],
+        "tick": 17,
+        "score": 69,
+        "views": 31800,
+        "accepted": "r-9095",
+        "replies": [
+          {
+            "id": "r-9095",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "`count` is a snapshot of the state at render time, so all three calls say \"set it to 0 + 1\". Use the functional updater when the new state depends on the old one:\n\nsetCount(c => c + 1);\n\nEach updater receives the latest value, so three calls in a row produce three increments. This is the same reason a stale `count` shows up inside setTimeout callbacks and effects: closures capture the render they were created in.",
+            "tick": 17,
+            "score": 118,
+            "comments": [
+              {
+                "id": "c-8100",
+                "author": "dev_nadia",
+                "body": "Functional updater fixed it and also my timer bug from last week.",
+                "tick": 17
+              }
+            ]
+          }
+        ]
+      },
+      "t-4463": {
+        "id": "t-4463",
+        "board": "",
+        "author": "carol-n",
+        "title": "Postgres: query is slow despite an index on the column",
+        "body": "SELECT * FROM events WHERE lower(email) = 'x@example.com';\n\nThere is a btree index on `email`. EXPLAIN shows a sequential scan over 40 million rows. Why does the planner ignore my index?",
+        "tags": [
+          "postgresql",
+          "indexing",
+          "performance"
+        ],
+        "tick": 18,
+        "score": 83,
+        "views": 27400,
+        "accepted": "r-9100",
+        "replies": [
+          {
+            "id": "r-9100",
+            "author": "obrien_sql",
+            "parent": null,
+            "body": "Because you indexed `email` and you are filtering on `lower(email)`, which is a different expression. A btree on the raw column cannot answer a question about a function of the column. Either index the expression:\n\nCREATE INDEX events_email_lower_idx ON events (lower(email));\n\nor store emails lowercased and filter on the column directly, or use the `citext` type. After creating the expression index, run `ANALYZE events` and check EXPLAIN again; it should switch to an Index Scan.",
+            "tick": 18,
+            "score": 129,
+            "comments": [
+              {
+                "id": "c-8105",
+                "author": "carol-n",
+                "body": "Expression index took the query from 9 s to 4 ms.",
+                "tick": 18
+              },
+              {
+                "id": "c-8106",
+                "author": "praman",
+                "body": "The same principle applies to `WHERE email LIKE '%@example.com'` - a leading wildcard cannot use a btree either.",
+                "tick": 19
+              }
+            ]
+          }
+        ]
+      },
+      "t-4467": {
+        "id": "t-4467",
+        "board": "",
+        "author": "kwame.a",
+        "title": "Kubernetes: pod stuck in CrashLoopBackOff, logs are empty",
+        "body": "kubectl get pods shows CrashLoopBackOff with 14 restarts. `kubectl logs pod` prints nothing. The image runs fine locally with `docker run`. Where do I look next?",
+        "tags": [
+          "kubernetes",
+          "docker",
+          "debugging"
+        ],
+        "tick": 19,
+        "score": 47,
+        "views": 14300,
+        "accepted": "r-9105",
+        "replies": [
+          {
+            "id": "r-9105",
+            "author": "kwame.a",
+            "parent": null,
+            "body": "The checklist that has found it every time for me:\n\n1. `kubectl logs pod --previous` - the logs of the crashed container, not the one currently starting.\n2. `kubectl describe pod pod` - look at Last State, Exit Code and Events. Exit code 137 is OOM-killed; 1 is your app; 127 is a missing binary in the image.\n3. Compare the pod's `command`/`args` with your Dockerfile ENTRYPOINT. A common mistake is overriding `command` and dropping the entrypoint script that sets up the environment.\n4. If it exits 0 immediately, the container has nothing in the foreground - a service started as a daemon, or a shell script that finishes.\n\nIn my case it was 137: the memory limit was 64Mi and the JVM needed more.",
+            "tick": 19,
+            "score": 66,
+            "comments": [
+              {
+                "id": "c-8110",
+                "author": "bmartinez",
+                "body": "--previous is the flag nobody tells you about.",
+                "tick": 19
+              }
+            ]
+          }
+        ]
+      },
+      "t-4470": {
+        "id": "t-4470",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "CORS error calling my API from localhost:3000, but curl works",
+        "body": "Access to fetch at api.local:8080/users from origin localhost:3000 has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present.\n\ncurl returns the JSON fine. Is the browser broken?",
+        "tags": [
+          "cors",
+          "http",
+          "javascript"
+        ],
+        "tick": 20,
+        "score": 76,
+        "views": 35600,
+        "accepted": "r-9110",
+        "replies": [
+          {
+            "id": "r-9110",
+            "author": "hgroth",
+            "parent": null,
+            "body": "The browser is doing its job. CORS is enforced by the browser, not the server, which is why curl - which has no origin - is unaffected. Your API needs to tell the browser that the page's origin is allowed, by answering with:\n\nAccess-Control-Allow-Origin: <the page's origin, e.g. localhost:3000>\n\nand, for requests with custom headers or JSON bodies, answering the OPTIONS preflight with `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`. Most frameworks have a middleware for it; set the allowed origin explicitly rather than `*` if you also send cookies, because `*` is refused with credentials. For local development, a dev-server proxy that makes the API same-origin avoids the whole thing.",
+            "tick": 20,
+            "score": 108,
+            "comments": [
+              {
+                "id": "c-8115",
+                "author": "dev_nadia",
+                "body": "Added the middleware and the preflight started returning 204. Working now.",
+                "tick": 20
+              }
+            ]
+          }
+        ]
+      },
+      "t-4474": {
+        "id": "t-4474",
+        "board": "",
+        "author": "s-kovac",
+        "title": "Go: json.Unmarshal into a struct leaves every field zero",
+        "body": "type User struct {\n    id    int\n    name  string\n}\nvar u User\nerr := json.Unmarshal([]byte(`{\"id\": 7, \"name\": \"sara\"}`), &u)\nfmt.Println(err, u) // <nil> {0 }\n\nNo error, no data. What is wrong?",
+        "tags": [
+          "go",
+          "json"
+        ],
+        "tick": 21,
+        "score": 61,
+        "views": 19700,
+        "accepted": "r-9115",
+        "replies": [
+          {
+            "id": "r-9115",
+            "author": "hgroth",
+            "parent": null,
+            "body": "Your fields are unexported (lowercase), and encoding/json only touches exported fields because it uses reflection and cannot set the others. Capitalise them and add tags for the JSON names:\n\ntype User struct {\n    ID   int    `json:\"id\"`\n    Name string `json:\"name\"`\n}\n\nWithout the tags it would still work here because the match is case-insensitive, but tags make it explicit and survive renames. To catch unknown fields at decode time, use a `json.Decoder` with `DisallowUnknownFields()`.",
+            "tick": 21,
+            "score": 92,
+            "comments": [
+              {
+                "id": "c-8120",
+                "author": "s-kovac",
+                "body": "Case-insensitive match plus a silent skip of unexported fields is a rough combination for a first-time user.",
+                "tick": 21
+              }
+            ]
+          }
+        ]
+      },
+      "t-4481": {
+        "id": "t-4481",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "Python: mutable default argument keeps growing between calls",
+        "body": "def add(item, items=[]):\n    items.append(item)\n    return items\n\nadd(1) -> [1]\nadd(2) -> [1, 2]  ??\n\nI expected a fresh list each call.",
+        "tags": [
+          "python",
+          "function",
+          "default-arguments"
+        ],
+        "tick": 23,
+        "score": 88,
+        "views": 44900,
+        "accepted": "r-9125",
+        "replies": [
+          {
+            "id": "r-9125",
+            "author": "jlindqvist",
+            "parent": null,
+            "body": "Default values are evaluated once, when the `def` runs, not each call. The same list object is shared by every call that does not pass its own. The idiom is a sentinel:\n\ndef add(item, items=None):\n    if items is None:\n        items = []\n    items.append(item)\n    return items\n\nLinters flag this as B006. The same applies to dicts, sets and any other mutable default.",
+            "tick": 23,
+            "score": 134,
+            "comments": []
+          }
+        ]
       }
     },
     "votes": {},
     "subscriptions": {},
-    "next_id": 9100
+    "next_id": 9200
   },
   "search_entries": [
     {
@@ -264,7 +993,13 @@
       "snippet": "Questions ranked by score, with answer and view counts. Vote, answer, comment and accept.",
       "vertical": "all",
       "authority": 6,
-      "keywords": ["stack overflow", "questions", "programming", "answers", "qa"]
+      "keywords": [
+        "stack overflow",
+        "questions",
+        "programming",
+        "answers",
+        "qa"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/t-4411",
@@ -272,7 +1007,17 @@
       "snippet": "Accepted answer: the test iterates a HashMap, whose order is randomly seeded per process. Sort the frontier and assert on path length.",
       "vertical": "all",
       "authority": 7,
-      "keywords": ["bfs", "shortest path", "windows", "flaky test", "hashmap", "iteration order", "determinism", "rust", "accepted answer"]
+      "keywords": [
+        "bfs",
+        "shortest path",
+        "windows",
+        "flaky test",
+        "hashmap",
+        "iteration order",
+        "determinism",
+        "rust",
+        "accepted answer"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/t-4407",
@@ -280,7 +1025,15 @@
       "snippet": "No. The default hasher is randomly seeded per process. Sort the keys, use a BTreeMap, or supply a fixed hasher.",
       "vertical": "all",
       "authority": 6,
-      "keywords": ["hashmap", "iteration order", "stable", "rust", "determinism", "btreemap", "hasher"]
+      "keywords": [
+        "hashmap",
+        "iteration order",
+        "stable",
+        "rust",
+        "determinism",
+        "btreemap",
+        "hasher"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/t-4402",
@@ -288,7 +1041,16 @@
       "snippet": "Carry the generator state in your own data, draw in a deterministic order, and pin the generator's version.",
       "vertical": "all",
       "authority": 6,
-      "keywords": ["prng", "seed", "random", "reproducible", "simulation", "determinism", "replay", "rust"]
+      "keywords": [
+        "prng",
+        "seed",
+        "random",
+        "reproducible",
+        "simulation",
+        "determinism",
+        "replay",
+        "rust"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/t-4418",
@@ -296,7 +1058,14 @@
       "snippet": "An open question with two answers and no accepted one: a clock trait per subsystem, or removing clock access entirely.",
       "vertical": "all",
       "authority": 5,
-      "keywords": ["testing", "clock", "time", "determinism", "unit test", "mock clock"]
+      "keywords": [
+        "testing",
+        "clock",
+        "time",
+        "determinism",
+        "unit test",
+        "mock clock"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/tagged/determinism",
@@ -304,7 +1073,13 @@
       "snippet": "Reproducible runs, seeded generators, hash ordering and the tests that catch them.",
       "vertical": "all",
       "authority": 5,
-      "keywords": ["determinism", "tag", "reproducible", "stack overflow", "questions"]
+      "keywords": [
+        "determinism",
+        "tag",
+        "reproducible",
+        "stack overflow",
+        "questions"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/tagged/rust",
@@ -312,7 +1087,13 @@
       "snippet": "Rust questions on Stack Overflow, ranked by score.",
       "vertical": "all",
       "authority": 5,
-      "keywords": ["rust", "tag", "stack overflow", "questions", "programming language"]
+      "keywords": [
+        "rust",
+        "tag",
+        "stack overflow",
+        "questions",
+        "programming language"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/tagged/hashmap",
@@ -320,7 +1101,13 @@
       "snippet": "Hash map behaviour, iteration order and the bugs that come from depending on it.",
       "vertical": "all",
       "authority": 4,
-      "keywords": ["hashmap", "tag", "hash map", "iteration", "stack overflow"]
+      "keywords": [
+        "hashmap",
+        "tag",
+        "hash map",
+        "iteration",
+        "stack overflow"
+      ]
     },
     {
       "url": "http://stackoverflow.com/questions/tagged/testing",
@@ -328,7 +1115,13 @@
       "snippet": "Test design, flaky failures, CI runners and clocks.",
       "vertical": "all",
       "authority": 4,
-      "keywords": ["testing", "tag", "flaky", "ci", "stack overflow"]
+      "keywords": [
+        "testing",
+        "tag",
+        "flaky",
+        "ci",
+        "stack overflow"
+      ]
     },
     {
       "url": "http://stackoverflow.com/u/praman",
@@ -336,7 +1129,14 @@
       "snippet": "Rust internals. Gold badges in rust and hashmap; author of the accepted answer on the Windows BFS failure.",
       "vertical": "all",
       "authority": 5,
-      "keywords": ["priya raman", "praman", "stack overflow", "reputation", "profile", "rust"]
+      "keywords": [
+        "priya raman",
+        "praman",
+        "stack overflow",
+        "reputation",
+        "profile",
+        "rust"
+      ]
     },
     {
       "url": "http://stackoverflow.com/u/alicechen",
@@ -344,7 +1144,13 @@
       "snippet": "Staff engineer at Northstar; answers on determinism, clocks and simulation.",
       "vertical": "all",
       "authority": 4,
-      "keywords": ["alice chen", "stack overflow", "reputation", "profile", "determinism"]
+      "keywords": [
+        "alice chen",
+        "stack overflow",
+        "reputation",
+        "profile",
+        "determinism"
+      ]
     },
     {
       "url": "http://stackoverflow.com/u/bmartinez",
@@ -352,7 +1158,14 @@
       "snippet": "Testing and CI; asker of the Windows-only BFS question.",
       "vertical": "all",
       "authority": 4,
-      "keywords": ["bob martinez", "bmartinez", "stack overflow", "reputation", "profile", "testing"]
+      "keywords": [
+        "bob martinez",
+        "bmartinez",
+        "stack overflow",
+        "reputation",
+        "profile",
+        "testing"
+      ]
     },
     {
       "url": "http://stackoverflow.com/submit",
@@ -360,7 +1173,138 @@
       "snippet": "Post a question with a title, tags and what you have already tried.",
       "vertical": "all",
       "authority": 2,
-      "keywords": ["stack overflow", "ask", "question", "post", "new question"]
+      "keywords": [
+        "stack overflow",
+        "ask",
+        "question",
+        "post",
+        "new question"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4420",
+      "title": "Rust: cannot borrow *self as mutable because it is also borrowed as immutable - Stack Overflow",
+      "snippet": "Destructure self into its fields so the borrow checker can see the borrows are disjoint.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "rust",
+        "borrow checker",
+        "e0502",
+        "mutable borrow",
+        "ownership"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4423",
+      "title": "Python asyncio: coroutines run one after another - Stack Overflow",
+      "snippet": "A bare await in a loop is sequential by construction; use gather or a TaskGroup.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "python",
+        "asyncio",
+        "gather",
+        "taskgroup",
+        "concurrency"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4427",
+      "title": "Why does my function return a pending Promise? - Stack Overflow",
+      "snippet": "Once something is asynchronous, everything that depends on it is too. Use then or await.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "javascript",
+        "promise",
+        "pending",
+        "async await",
+        "fetch"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4431",
+      "title": "INNER JOIN vs LEFT JOIN vs WHERE on the joined table - Stack Overflow",
+      "snippet": "A WHERE on the right table silently turns a LEFT JOIN into an INNER JOIN; put that condition in ON.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "sql",
+        "left join",
+        "inner join",
+        "where",
+        "postgresql"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4434",
+      "title": "git rebase vs merge: what does rebase do to my commits? - Stack Overflow",
+      "snippet": "Rebase replays commits on a new parent, so hashes change. Never rebase shared history.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "git",
+        "rebase",
+        "merge",
+        "force-with-lease",
+        "reflog"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4460",
+      "title": "React state update inside a loop only applies the last value - Stack Overflow",
+      "snippet": "State is a snapshot per render; use the functional updater setCount(c => c + 1).",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "react",
+        "usestate",
+        "hooks",
+        "stale closure",
+        "javascript"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4463",
+      "title": "Postgres query slow despite an index on the column - Stack Overflow",
+      "snippet": "An index on email cannot serve lower(email); create an expression index.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "postgresql",
+        "index",
+        "expression index",
+        "sequential scan",
+        "performance"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4470",
+      "title": "CORS error from localhost but curl works - Stack Overflow",
+      "snippet": "CORS is enforced by the browser; the API must answer with Access-Control-Allow-Origin and handle the preflight.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "cors",
+        "preflight",
+        "access-control-allow-origin",
+        "localhost",
+        "fetch"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/python",
+      "title": "Questions tagged [python] - Stack Overflow",
+      "snippet": "asyncio, pandas, regex and the mutable default argument.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "python",
+        "tag",
+        "stack overflow",
+        "questions"
+      ]
     }
   ]
 }

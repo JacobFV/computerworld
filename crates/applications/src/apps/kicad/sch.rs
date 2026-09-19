@@ -3089,6 +3089,7 @@ impl Kicad {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         page.elements.push(E::Text {
@@ -3101,6 +3102,7 @@ impl Kicad {
                 id: id.clone(),
                 text: format!("Go to sheet {path}"),
                 action: act(&id),
+                style: None,
             });
         }
         let s = self.sheet();
@@ -3132,6 +3134,7 @@ impl Kicad {
                         .join(", ")
                 ),
                 action: act(&id),
+                style: None,
             });
         }
         page.elements.push(E::Text {
@@ -3164,6 +3167,7 @@ impl Kicad {
                     id: id.clone(),
                     text: lib.lib_id.clone(),
                     action: act(&id),
+                    style: None,
                 });
             }
         }

@@ -35,6 +35,8 @@ try {
       await page.waitForFunction(
         id => { const tiles = [...document.querySelectorAll(`#scene-${id} .tile`)]; return tiles.length && tiles.every(t => t.classList.contains('live')); },
         scene.id, {timeout: 60_000});
+      // A still is a frame the machine really draws, fonts included: wait for the pack.
+      await page.evaluate(() => window.computerworldFonts);
       for (const machine of scene.machines) {
         // Desktops are saved at three quarters of their size: the still is a placeholder
         // behind a dimming filter, and there are dozens of them.

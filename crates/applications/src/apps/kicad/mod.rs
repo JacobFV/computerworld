@@ -569,6 +569,14 @@ pub struct Ui {
     pub v3d: view3d::View3dUi,
 }
 
+/// Files a file manager opens with KiCad: projects, schematics and boards.
+pub fn opens(name: &str) -> bool {
+    let lower = name.rsplit('/').next().unwrap_or(name).to_ascii_lowercase();
+    [".kicad_pro", ".kicad_sch", ".kicad_pcb"]
+        .iter()
+        .any(|e| lower.ends_with(e))
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Kicad {
     pub frame: Frame,
@@ -593,6 +601,20 @@ impl Kicad {
         let (frame, target) = match argument.split_once('|') {
             Some((f, rest)) => (Frame::parse(f).unwrap_or_default(), rest),
             None => (Frame::ProjectManager, argument),
+        };
+        // A schematic or board double-clicked in a file manager opens its project in
+        // the editor for that file.
+        let owned: String;
+        let (frame, target) = match target.rsplit_once('.') {
+            Some((stem, "kicad_sch")) if frame == Frame::ProjectManager => {
+                owned = format!("{stem}.kicad_pro");
+                (Frame::Schematic, owned.as_str())
+            }
+            Some((stem, "kicad_pcb")) if frame == Frame::ProjectManager => {
+                owned = format!("{stem}.kicad_pro");
+                (Frame::Pcb, owned.as_str())
+            }
+            _ => (frame, target),
         };
         let mut app = Self {
             frame,
@@ -1763,6 +1785,7 @@ impl Kicad {
                     id: id.into(),
                     text: label.into(),
                     action: act(id),
+                    style: None,
                 });
             }
         }

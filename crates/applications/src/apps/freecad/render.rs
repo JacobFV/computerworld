@@ -8,7 +8,7 @@ use crate::desktop_scene::shared::Align;
 use cw_cad::document::Status;
 use cw_cad::math::fmt_num;
 use cw_cad::sketch::{ConstraintType as T, SolveStatus};
-use cw_scene::{Color, Rect};
+use cw_scene::{Color, Lang, Rect, Style};
 
 pub const BG: Color = Color::rgb(240, 240, 240);
 pub const EDGE: Color = Color::rgb(171, 171, 171);
@@ -534,16 +534,52 @@ fn property_view(cad: &Cad, p: &mut Painter, r: Rect, pointer: Option<(i32, i32)
             p.hline(list.x, y + ROW_H as i32 - 1, list.width, Color(0, 0, 0, 18));
             p.vline(list.x + col as i32, y, ROW_H, Color(0, 0, 0, 18));
             p.left(list.x + 16, y + 3, col - 20, &row.name, 12, INK);
-            let vr = Rect::new(list.x + col as i32 + 1, y, list.width - col - 1, ROW_H - 1);
+            let mut vr = Rect::new(list.x + col as i32 + 1, y, list.width - col - 1, ROW_H - 1);
             let editing = matches!(&cad.field, Some(Field { target: FieldTarget::Property { name, .. }, .. }) if *name == row.name);
-            match (&row.kind, editing) {
+            let expr_editing = matches!(&cad.field, Some(Field { target: FieldTarget::Expression { name, .. }, .. }) if *name == row.name);
+            if row.kind == Kind::Number && !editing {
+                // FreeCAD's f(x) button: bind the property to an expression.
+                let fx = Rect::new(vr.x + vr.width as i32 - 22, vr.y + 1, 20, ROW_H - 3);
+                vr.width = vr.width.saturating_sub(24);
+                let bound = row.expression.is_some();
+                p.box_(
+                    fx,
+                    if bound {
+                        Color(33, 151, 255, 60)
+                    } else {
+                        Color::rgb(236, 236, 236)
+                    },
+                    3,
+                );
+                p.label(
+                    fx.x,
+                    fx.y + 2,
+                    fx.width,
+                    "ƒx",
+                    11,
+                    if bound { ACCENT } else { DIM },
+                    Style::new(false, true, Lang::default()),
+                    Align::Center,
+                );
+                p.region_above(
+                    fx,
+                    &format!("freecad:prop-expr:{}", row.name),
+                    &format!("Expression for {}", row.name),
+                );
+            }
+            match (&row.kind, editing || expr_editing) {
                 (_, true) => {
                     let text = cad
                         .field
                         .as_ref()
                         .map(|f| f.text.clone())
                         .unwrap_or_default();
-                    text_field(p, vr, &text, true, "freecad:field-cancel");
+                    let field_r = if expr_editing {
+                        Rect::new(vr.x, vr.y, vr.width + 24, vr.height)
+                    } else {
+                        vr
+                    };
+                    text_field(p, field_r, &text, true, "freecad:field-cancel");
                 }
                 (Kind::Bool(on), _) => {
                     checkbox(p, vr.x + 4, vr.y + 4, *on);
@@ -579,12 +615,34 @@ fn property_view(cad: &Cad, p: &mut Painter, r: Rect, pointer: Option<(i32, i32)
                     if over(pointer, vr) {
                         p.box_(vr, HOVER, 0);
                     }
-                    p.left(vr.x + 4, vr.y + 3, vr.width - 6, &row.value, 12, INK);
-                    p.region(
-                        vr,
-                        &format!("freecad:prop:{}", row.name),
-                        &format!("{} = {}", row.name, row.value),
-                    );
+                    // A value an expression sets is shown in blue italics, as FreeCAD does.
+                    match &row.expression {
+                        Some(e) => {
+                            p.label(
+                                vr.x + 4,
+                                vr.y + 3,
+                                vr.width - 6,
+                                &row.value,
+                                12,
+                                ACCENT,
+                                Style::new(false, true, Lang::default()),
+                                Align::Left,
+                            );
+                            p.region(
+                                vr,
+                                &format!("freecad:prop:{}", row.name),
+                                &format!("{} = {} (bound to {e})", row.name, row.value),
+                            );
+                        }
+                        None => {
+                            p.left(vr.x + 4, vr.y + 3, vr.width - 6, &row.value, 12, INK);
+                            p.region(
+                                vr,
+                                &format!("freecad:prop:{}", row.name),
+                                &format!("{} = {}", row.name, row.value),
+                            );
+                        }
+                    }
                 }
             }
             y += ROW_H as i32;
@@ -762,14 +820,24 @@ fn task_panel(cad: &Cad, p: &mut Painter, r: Rect, pointer: Option<(i32, i32)>) 
                 INK,
             );
             y += 22;
-            for (bp, label) in super::tasks::base_planes() {
+            let mut choices: Vec<(String, String)> = super::tasks::base_planes()
+                .iter()
+                .map(|(bp, label)| (bp.name().to_owned(), (*label).to_owned()))
+                .collect();
+            if let Some(Task::PickPlane { body, .. }) = &cad.task {
+                for d in cad.datum_planes(body) {
+                    let label = format!("{} (Datum plane)", cad.label_of(&d));
+                    choices.push((d, label));
+                }
+            }
+            for (name, label) in choices {
                 let row = Rect::new(r.x + 8, y, r.width - 16, ROW_H);
-                if bp.name() == plane {
+                if name == *plane {
                     p.box_(row, SELECTED, 0);
                 }
                 super::icons::draw(p, "App::Plane", row.x + 4, row.y + 3, 16, true);
-                p.left(row.x + 26, row.y + 3, row.width - 30, label, 12, INK);
-                p.region(row, &format!("freecad:task:plane:{}", bp.name()), label);
+                p.left(row.x + 26, row.y + 3, row.width - 30, &label, 12, INK);
+                p.region(row, &format!("freecad:task:plane:{name}"), &label);
                 y += ROW_H as i32;
             }
         }
@@ -897,13 +965,20 @@ fn feature_task(cad: &Cad, p: &mut Painter, r: Rect, f: &FeatureEdit, pointer: O
         Some(
             Feature::Mirrored { originals, .. }
             | Feature::LinearPattern { originals, .. }
-            | Feature::PolarPattern { originals, .. },
+            | Feature::PolarPattern { originals, .. }
+            | Feature::Boolean {
+                bodies: originals, ..
+            },
         ) => {
             p.paragraph(
                 r.x + 12,
                 y,
                 r.width - 24,
-                "Click features in the tree to add or remove them.",
+                if matches!(kind, Some(Feature::Boolean { .. })) {
+                    "Click bodies in the tree to add or remove them."
+                } else {
+                    "Click features in the tree to add or remove them."
+                },
                 11,
                 DIM,
             );

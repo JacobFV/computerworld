@@ -283,6 +283,14 @@ pub struct NetworkState<'a> {
     current_time: u64,
     pending_streams: &'a VecDeque<PendingStream>,
 }
+/// The TCP ports a service answers on: its own, and 443 when it serves `https://`.
+pub fn service_ports(service: &cw_protocol::ServiceDefinition) -> Vec<u16> {
+    let mut ports = vec![service.port];
+    if service.tls && service.port != cw_protocol::TLS_PORT {
+        ports.push(cw_protocol::TLS_PORT);
+    }
+    ports
+}
 impl From<NetworkError> for cw_protocol::SimError {
     fn from(error: NetworkError) -> Self {
         let code = match &error {
@@ -416,14 +424,25 @@ impl Network {
                 .first()
                 .ok_or_else(|| NetworkError::Invalid("service node without address".into()))?
                 .clone();
-            listeners.push(Listener {
-                node: service.node.clone(),
-                address: address.clone(),
-                port: service.port,
-                protocol: Transport::Tcp,
-                process: None,
-                service: Some(service.id.clone()),
-            });
+            for port in service_ports(service) {
+                // The first service placed on a node owns its 443; a second one keeps
+                // its own port only.
+                if port != service.port
+                    && listeners
+                        .iter()
+                        .any(|l: &Listener| l.node == service.node && l.port == port)
+                {
+                    continue;
+                }
+                listeners.push(Listener {
+                    node: service.node.clone(),
+                    address: address.clone(),
+                    port,
+                    protocol: Transport::Tcp,
+                    process: None,
+                    service: Some(service.id.clone()),
+                });
+            }
             for domain in &service.domains {
                 if !dns.iter().any(|d| d.name.eq_ignore_ascii_case(domain)) {
                     dns.push(DnsRecord {
@@ -869,17 +888,18 @@ impl Network {
     /// Associate a placed HTTP service with its computer process. A process exit
     /// then revokes the listener through the same lifecycle as stream listeners.
     pub fn own_service_listener(&mut self, service_id: &str, node: &str, pid: u64) -> Result<()> {
-        let listener = self
-            .config
-            .listeners
-            .iter_mut()
-            .find(|listener| {
-                listener.node == node && listener.service.as_deref() == Some(service_id)
-            })
-            .ok_or_else(|| {
-                NetworkError::Refused(format!("service listener {service_id} on {node}"))
-            })?;
-        listener.process = Some(pid);
+        let mut owned = 0;
+        for listener in self.config.listeners.iter_mut().filter(|listener| {
+            listener.node == node && listener.service.as_deref() == Some(service_id)
+        }) {
+            listener.process = Some(pid);
+            owned += 1;
+        }
+        if owned == 0 {
+            return Err(NetworkError::Refused(format!(
+                "service listener {service_id} on {node}"
+            )));
+        }
         Ok(())
     }
     pub fn start_service_listener(
@@ -887,11 +907,15 @@ impl Network {
         service: &cw_protocol::ServiceDefinition,
         pid: Option<u64>,
     ) -> Result<()> {
-        if let Some(listener) = self.config.listeners.iter_mut().find(|listener| {
+        let mut owned = false;
+        for listener in self.config.listeners.iter_mut().filter(|listener| {
             listener.node == service.node
                 && listener.service.as_deref() == Some(service.id.as_str())
         }) {
             listener.process = pid;
+            owned = true;
+        }
+        if owned {
             return Ok(());
         }
         let address = self
@@ -900,14 +924,26 @@ impl Network {
             .first()
             .cloned()
             .ok_or_else(|| NetworkError::Invalid("service node has no address".into()))?;
-        self.listen(Listener {
-            node: service.node.clone(),
-            address,
-            port: service.port,
-            protocol: Transport::Tcp,
-            process: pid,
-            service: Some(service.id.clone()),
-        })
+        for port in service_ports(service) {
+            let taken = port != service.port
+                && self
+                    .config
+                    .listeners
+                    .iter()
+                    .any(|l| l.node == service.node && l.port == port);
+            if taken {
+                continue;
+            }
+            self.listen(Listener {
+                node: service.node.clone(),
+                address: address.clone(),
+                port,
+                protocol: Transport::Tcp,
+                process: pid,
+                service: Some(service.id.clone()),
+            })?;
+        }
+        Ok(())
     }
     pub fn close_process(&mut self, node: &str, pid: u64, now: u64) {
         self.config
@@ -1525,6 +1561,42 @@ mod tests {
         assert!(matches!(
             net.prepare_http("a", &HttpRequest::get("http://site.test"), 0),
             Err(NetworkError::Denied(_))
+        ));
+    }
+    #[test]
+    fn a_service_answers_https_on_443_unless_it_opts_out() {
+        let service = |id: &str, tls: bool| cw_protocol::ServiceDefinition {
+            id: id.into(),
+            kind: "site".into(),
+            node: "b".into(),
+            domains: vec![],
+            port: 8080,
+            tls,
+            initial_state: serde_json::Value::Null,
+        };
+        let mut c = config();
+        c.listeners.clear();
+        let mut net = Network::from_config(c, 0).unwrap();
+        net.start_service_listener(&service("site", true), Some(3))
+            .unwrap();
+        assert_eq!(service_ports(&service("site", true)), vec![8080, 443]);
+        assert_eq!(service_ports(&service("site", false)), vec![8080]);
+        let secure = net
+            .prepare_http("a", &HttpRequest::get("https://site.test/"), 0)
+            .unwrap();
+        assert_eq!((secure.port, secure.service_id.as_str()), (443, "site"));
+        let plain = net
+            .prepare_http("a", &HttpRequest::get("http://site.test:8080/"), 0)
+            .unwrap();
+        assert_eq!(plain.port, 8080);
+        // Both listeners belong to the process, so its exit closes both.
+        net.close_process("b", 3, 0);
+        assert!(net.config.listeners.is_empty());
+        net.start_service_listener(&service("plain", false), Some(4))
+            .unwrap();
+        assert!(matches!(
+            net.prepare_http("a", &HttpRequest::get("https://site.test/"), 0),
+            Err(NetworkError::Refused(_))
         ));
     }
     fn gateway() -> Network {

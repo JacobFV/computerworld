@@ -11,6 +11,7 @@ cw-sdk = { path = "../sdk" }
 cw-cad = { path = "../cad" }
 cw-raster = { path = "../raster" }
 cw-artwork = { path = "../artwork" }
+cw-map = { path = "../map" }
 cw-video = { path = "../video" }
 cw-sheet = { path = "../sheet" }
 cw-determinism = { path = "../determinism" }

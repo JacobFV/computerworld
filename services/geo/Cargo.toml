@@ -9,5 +9,6 @@ cw-sdk = { path = "../../crates/sdk" }
 serde.workspace = true
 serde_json.workspace = true
 cw-service-common = { path = "../common" }
+cw-map = { path = "../../crates/map" }
 [dev-dependencies]
 url.workspace = true

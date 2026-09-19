@@ -400,6 +400,7 @@ impl Mail {
                 id: format!("mail:folder:{folder}"),
                 text: folder.into(),
                 action: act(&format!("mail:folder:{folder}")),
+                style: None,
             });
         }
         for (id, label) in [("mail:compose", "Compose"), ("mail:reload", "Reload")] {
@@ -407,6 +408,7 @@ impl Mail {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for message in &self.messages {
@@ -419,6 +421,7 @@ impl Mail {
                     message.subject
                 ),
                 action: act(&format!("mail:open:{}", message.id)),
+                style: None,
             });
         }
         if let Some(message) = self
@@ -435,6 +438,7 @@ impl Mail {
                     id: id.into(),
                     text: label.into(),
                     action: act(id),
+                    style: None,
                 });
             }
         }
@@ -456,6 +460,7 @@ impl Mail {
                     id: id.into(),
                     text: label.into(),
                     action: act(id),
+                    style: None,
                 });
             }
         }

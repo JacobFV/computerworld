@@ -1,0 +1,2157 @@
+{
+  "id": "meridian",
+  "kind": "static-site",
+  "node": "meridian",
+  "domains": [
+    "meridian.example",
+    "www.meridian.example"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "203.0.113.250",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead-row",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "the-meridian-ledger",
+                "text": "The Meridian Ledger",
+                "style": {
+                  "size": 26,
+                  "weight": "bold",
+                  "color": "#ffffff",
+                  "width": 337
+                }
+              },
+              {
+                "kind": "spacer",
+                "id": "push",
+                "height": 0
+              },
+              {
+                "kind": "row",
+                "id": "nav-row",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "current-cell",
+                    "children": [
+                      {
+                        "kind": "card",
+                        "id": "front-page-link",
+                        "children": [
+                          {
+                            "kind": "styled",
+                            "id": "front-page-text",
+                            "text": "Front page",
+                            "style": {
+                              "size": 14,
+                              "weight": "bold",
+                              "color": "#ffffff"
+                            }
+                          }
+                        ],
+                        "style": {
+                          "background": "#00000000",
+                          "padding": 0,
+                          "radius": 0,
+                          "width": 90
+                        },
+                        "action": {
+                          "method": "GET",
+                          "url": "/",
+                          "fields": {}
+                        }
+                      },
+                      {
+                        "kind": "divider",
+                        "id": "rule",
+                        "style": {
+                          "color": "#fca311"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "flex": 3
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "world-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "world-text",
+                        "text": "World",
+                        "style": {
+                          "size": 14,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 50
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/world",
+                      "fields": {}
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "business-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "business-text",
+                        "text": "Business",
+                        "style": {
+                          "size": 14,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 70
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/business",
+                      "fields": {}
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "technology-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "technology-text",
+                        "text": "Technology",
+                        "style": {
+                          "size": 14,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 90
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/technology",
+                      "fields": {}
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "culture-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "culture-text",
+                        "text": "Culture",
+                        "style": {
+                          "size": 14,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 60
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/culture",
+                      "fields": {}
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "opinion-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "opinion-text",
+                        "text": "Opinion",
+                        "style": {
+                          "size": 14,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 65
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/opinion",
+                      "fields": {}
+                    }
+                  }
+                ],
+                "gap": 18,
+                "align": "stretch",
+                "style": {
+                  "flex": 7
+                }
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#14213d",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "breaking-council-approve",
+            "text": "BREAKING · Council approves the harbour redevelopment plan after a nine-hour session",
+            "style": {
+              "size": 12,
+              "weight": "bold",
+              "color": "#14213d",
+              "background": "#fca311",
+              "padding": 6
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "air",
+            "height": 40
+          },
+          {
+            "kind": "card",
+            "id": "main-card",
+            "children": [
+              {
+                "kind": "row",
+                "id": "hero-row",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "lead-card",
+                    "children": [
+                      {
+                        "kind": "thumbnail",
+                        "id": "img-the-harbour-at-dusk-",
+                        "label": "The harbour at dusk, cranes idle over the redevelopment site",
+                        "style": {
+                          "height": 260,
+                          "radius": 6,
+                          "background": "#c8d5e1",
+                          "color": "#4c5366"
+                        }
+                      },
+                      {
+                        "kind": "badge",
+                        "id": "badge-live",
+                        "text": "LIVE",
+                        "style": {
+                          "size": 10,
+                          "weight": "bold",
+                          "color": "#ffffff",
+                          "background": "#d7263d",
+                          "padding": 8,
+                          "radius": 10
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "harbour-plan-passes-as-c",
+                        "text": "Harbour plan passes as council splits down the middle",
+                        "style": {
+                          "size": 30,
+                          "weight": "bold",
+                          "color": "#1c1f26"
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "nine-hours-of-testimony",
+                        "text": "Nine hours of testimony, one deciding vote and a promise that the fishing fleet keeps its berths. What the plan changes, and what it does not.",
+                        "style": {
+                          "size": 16
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "by-ines-okafor-and-tomas",
+                        "text": "By Ines Okafor and Tomas Reyes · 14 minutes ago",
+                        "style": {
+                          "size": 12,
+                          "color": "#7a8090"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#ffffff",
+                      "padding": 20,
+                      "radius": 8,
+                      "border": "#e3e3dc",
+                      "flex": 8
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "briefs-card",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "briefs",
+                        "text": "Briefs",
+                        "style": {
+                          "size": 14,
+                          "weight": "bold",
+                          "color": "#7a8090"
+                        }
+                      },
+                      {
+                        "kind": "group",
+                        "id": "ul-group",
+                        "children": [
+                          {
+                            "kind": "card",
+                            "id": "ferry-crews-vote-to-stri-2",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "ferry-crews-vote-to-stri",
+                                "text": "Ferry crews vote to strike from Monday",
+                                "style": {
+                                  "size": 14,
+                                  "color": "#1a5fb4"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 0,
+                              "radius": 0
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "/world/ferry-strike",
+                              "fields": {}
+                            }
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-2",
+                            "style": {
+                              "color": "#ecece6"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "grain-prices-settle-afte-2",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "grain-prices-settle-afte",
+                                "text": "Grain prices settle after a jittery week",
+                                "style": {
+                                  "size": 14,
+                                  "color": "#1a5fb4"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 0,
+                              "radius": 0
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "/business/grain-prices",
+                              "fields": {}
+                            }
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-3",
+                            "style": {
+                              "color": "#ecece6"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "atlas-1-0-ships-with-a-r-2",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "atlas-1-0-ships-with-a-r",
+                                "text": "Atlas 1.0 ships with a replayable machine",
+                                "style": {
+                                  "size": 14,
+                                  "color": "#1a5fb4"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 0,
+                              "radius": 0
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "/technology/atlas-1",
+                              "fields": {}
+                            }
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-4",
+                            "style": {
+                              "color": "#ecece6"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "lantern-festival-draws-a-2",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "lantern-festival-draws-a",
+                                "text": "Lantern festival draws a record crowd",
+                                "style": {
+                                  "size": 14,
+                                  "color": "#1a5fb4"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 0,
+                              "radius": 0
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "/culture/lantern-festival",
+                              "fields": {}
+                            }
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-5",
+                            "style": {
+                              "color": "#ecece6"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "opinion-the-case-for-qui-2",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "opinion-the-case-for-qui",
+                                "text": "Opinion: the case for quieter streets",
+                                "style": {
+                                  "size": 14,
+                                  "color": "#1a5fb4"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 0,
+                              "radius": 0
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "/opinion/quiet-streets",
+                              "fields": {}
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "style": {
+                      "background": "#ffffff",
+                      "padding": 16,
+                      "radius": 8,
+                      "border": "#e3e3dc",
+                      "flex": 4
+                    }
+                  }
+                ],
+                "gap": 20,
+                "align": "stretch",
+                "style": {}
+              },
+              {
+                "kind": "spacer",
+                "id": "air-2",
+                "height": 16
+              },
+              {
+                "kind": "group",
+                "id": "cards-group",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "top-stories",
+                    "text": "Top stories",
+                    "style": {
+                      "size": 20,
+                      "weight": "bold",
+                      "color": "#1c1f26"
+                    }
+                  },
+                  {
+                    "kind": "grid",
+                    "id": "grid-grid",
+                    "columns": 3,
+                    "children": [
+                      {
+                        "kind": "card",
+                        "id": "card-card",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "img-a-row-of-wind-turbin",
+                            "label": "A row of wind turbines on a ridge",
+                            "style": {
+                              "height": 140,
+                              "radius": 0,
+                              "background": "#d6c7b6",
+                              "color": "#4c5366"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "body-card",
+                            "children": [
+                              {
+                                "kind": "badge",
+                                "id": "badge-business",
+                                "text": "Business",
+                                "style": {
+                                  "size": 10,
+                                  "weight": "bold",
+                                  "color": "#14213d",
+                                  "background": "#fca311",
+                                  "padding": 8,
+                                  "radius": 10
+                                }
+                              },
+                              {
+                                "kind": "card",
+                                "id": "wind-auction-draws-four--2",
+                                "children": [
+                                  {
+                                    "kind": "styled",
+                                    "id": "wind-auction-draws-four-",
+                                    "text": "Wind auction draws four bidders",
+                                    "style": {
+                                      "size": 16,
+                                      "weight": "bold",
+                                      "color": "#1a5fb4"
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0
+                                },
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/business/wind-auction",
+                                  "fields": {}
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "the-ridge-lease-attracte",
+                                "text": "The ridge lease attracted more interest than any since 2019, the ministry said.",
+                                "style": {}
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "priya-natarajan",
+                                "text": "Priya Natarajan",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#7a8090"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 14,
+                              "radius": 0
+                            }
+                          }
+                        ],
+                        "style": {
+                          "background": "#ffffff",
+                          "padding": 0,
+                          "radius": 8,
+                          "border": "#e3e3dc"
+                        }
+                      },
+                      {
+                        "kind": "card",
+                        "id": "card-card-2",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "img-students-outside-the",
+                            "label": "Students outside the new library",
+                            "style": {
+                              "height": 140,
+                              "radius": 0,
+                              "background": "#d6c7b6",
+                              "color": "#4c5366"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "body-card-2",
+                            "children": [
+                              {
+                                "kind": "badge",
+                                "id": "badge-culture",
+                                "text": "Culture",
+                                "style": {
+                                  "size": 10,
+                                  "weight": "bold",
+                                  "color": "#14213d",
+                                  "background": "#fca311",
+                                  "padding": 8,
+                                  "radius": 10
+                                }
+                              },
+                              {
+                                "kind": "card",
+                                "id": "the-new-library-opens-it-2",
+                                "children": [
+                                  {
+                                    "kind": "styled",
+                                    "id": "the-new-library-opens-it",
+                                    "text": "The new library opens its doors",
+                                    "style": {
+                                      "size": 16,
+                                      "weight": "bold",
+                                      "color": "#1a5fb4"
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0
+                                },
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/culture/library-opens",
+                                  "fields": {}
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "twelve-years-after-the-f",
+                                "text": "Twelve years after the fire, the reading rooms are back, with a roof garden on top.",
+                                "style": {}
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "sam-whitfield",
+                                "text": "Sam Whitfield",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#7a8090"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 14,
+                              "radius": 0
+                            }
+                          }
+                        ],
+                        "style": {
+                          "background": "#ffffff",
+                          "padding": 0,
+                          "radius": 8,
+                          "border": "#e3e3dc"
+                        }
+                      },
+                      {
+                        "kind": "card",
+                        "id": "card-card-3",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "img-a-laptop-showing-a-t",
+                            "label": "A laptop showing a terminal",
+                            "style": {
+                              "height": 140,
+                              "radius": 0,
+                              "background": "#d7c7b6",
+                              "color": "#4c5366"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "body-card-3",
+                            "children": [
+                              {
+                                "kind": "badge",
+                                "id": "badge-technology",
+                                "text": "Technology",
+                                "style": {
+                                  "size": 10,
+                                  "weight": "bold",
+                                  "color": "#14213d",
+                                  "background": "#fca311",
+                                  "padding": 8,
+                                  "radius": 10
+                                }
+                              },
+                              {
+                                "kind": "card",
+                                "id": "atlas-1-0-ships-with-a-r-4",
+                                "children": [
+                                  {
+                                    "kind": "styled",
+                                    "id": "atlas-1-0-ships-with-a-r-3",
+                                    "text": "Atlas 1.0 ships with a replayable machine",
+                                    "style": {
+                                      "size": 16,
+                                      "weight": "bold",
+                                      "color": "#1a5fb4"
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0
+                                },
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/technology/atlas-1",
+                                  "fields": {}
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "the-simulator-refuses-to",
+                                "text": "The simulator refuses to read a clock, and that turns out to be the whole product.",
+                                "style": {}
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "jonathan-hale",
+                                "text": "Jonathan Hale",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#7a8090"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#00000000",
+                              "padding": 14,
+                              "radius": 0
+                            }
+                          }
+                        ],
+                        "style": {
+                          "background": "#ffffff",
+                          "padding": 0,
+                          "radius": 8,
+                          "border": "#e3e3dc"
+                        }
+                      }
+                    ],
+                    "gap": 16,
+                    "style": {}
+                  }
+                ]
+              },
+              {
+                "kind": "spacer",
+                "id": "air-3",
+                "height": 16
+              },
+              {
+                "kind": "row",
+                "id": "columns-row",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "stream-cell",
+                    "children": [
+                      {
+                        "kind": "group",
+                        "id": "stream-group",
+                        "children": [
+                          {
+                            "kind": "styled",
+                            "id": "latest",
+                            "text": "Latest",
+                            "style": {
+                              "size": 24,
+                              "weight": "bold",
+                              "color": "#1c1f26"
+                            }
+                          },
+                          {
+                            "kind": "spacer",
+                            "id": "air-4",
+                            "height": 8
+                          },
+                          {
+                            "kind": "group",
+                            "id": "article-group",
+                            "children": [
+                              {
+                                "kind": "card",
+                                "id": "ferry-crews-vote-to-stri-4",
+                                "children": [
+                                  {
+                                    "kind": "styled",
+                                    "id": "ferry-crews-vote-to-stri-3",
+                                    "text": "Ferry crews vote to strike from Monday",
+                                    "style": {
+                                      "size": 18,
+                                      "weight": "bold",
+                                      "color": "#1a5fb4"
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0
+                                },
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/world/ferry-strike",
+                                  "fields": {}
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "the-union-says-the-new-r",
+                                "text": "The union says the new roster leaves crews with nine-day stretches at sea; the operator says the roster is legal and the ferries will run.",
+                                "style": {
+                                  "size": 14
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "world-1-hour-ago",
+                                "text": "World · 1 hour ago",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#7a8090"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-6",
+                            "style": {
+                              "color": "#e3e3dc"
+                            }
+                          },
+                          {
+                            "kind": "group",
+                            "id": "article-group-2",
+                            "children": [
+                              {
+                                "kind": "card",
+                                "id": "grain-prices-settle-afte-4",
+                                "children": [
+                                  {
+                                    "kind": "styled",
+                                    "id": "grain-prices-settle-afte-3",
+                                    "text": "Grain prices settle after a jittery week",
+                                    "style": {
+                                      "size": 18,
+                                      "weight": "bold",
+                                      "color": "#1a5fb4"
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0
+                                },
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/business/grain-prices",
+                                  "fields": {}
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "futures-closed-within-a",
+                                "text": "Futures closed within a cent of Monday's open after a week that saw two of the biggest daily swings of the year.",
+                                "style": {
+                                  "size": 14
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "business-2-hours-ago",
+                                "text": "Business · 2 hours ago",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#7a8090"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-7",
+                            "style": {
+                              "color": "#e3e3dc"
+                            }
+                          },
+                          {
+                            "kind": "group",
+                            "id": "article-group-3",
+                            "children": [
+                              {
+                                "kind": "card",
+                                "id": "lantern-festival-draws-a-4",
+                                "children": [
+                                  {
+                                    "kind": "styled",
+                                    "id": "lantern-festival-draws-a-3",
+                                    "text": "Lantern festival draws a record crowd",
+                                    "style": {
+                                      "size": 18,
+                                      "weight": "bold",
+                                      "color": "#1a5fb4"
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0
+                                },
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/culture/lantern-festival",
+                                  "fields": {}
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "organisers-counted-forty",
+                                "text": "Organisers counted forty thousand lanterns on the river, and a few in the trees.",
+                                "style": {
+                                  "size": 14
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "culture-3-hours-ago",
+                                "text": "Culture · 3 hours ago",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#7a8090"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-8",
+                            "style": {
+                              "color": "#e3e3dc"
+                            }
+                          },
+                          {
+                            "kind": "group",
+                            "id": "article-group-4",
+                            "children": [
+                              {
+                                "kind": "card",
+                                "id": "opinion-the-case-for-qui-4",
+                                "children": [
+                                  {
+                                    "kind": "styled",
+                                    "id": "opinion-the-case-for-qui-3",
+                                    "text": "Opinion: the case for quieter streets",
+                                    "style": {
+                                      "size": 18,
+                                      "weight": "bold",
+                                      "color": "#1a5fb4"
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0
+                                },
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/opinion/quiet-streets",
+                                  "fields": {}
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "closing-three-streets-to",
+                                "text": "Closing three streets to through traffic did not create gridlock. It created a place people wanted to stand around in.",
+                                "style": {
+                                  "size": 14
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "opinion-5-hours-ago",
+                                "text": "Opinion · 5 hours ago",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#7a8090"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "divider",
+                            "id": "rule-9",
+                            "style": {
+                              "color": "#e3e3dc"
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "flex": 8
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "sidebar-cell",
+                    "children": [
+                      {
+                        "kind": "group",
+                        "id": "sidebar-group",
+                        "children": [
+                          {
+                            "kind": "card",
+                            "id": "box-card",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "newsletter",
+                                "text": "Newsletter",
+                                "style": {
+                                  "size": 14,
+                                  "weight": "bold",
+                                  "color": "#7a8090"
+                                }
+                              },
+                              {
+                                "kind": "form",
+                                "id": "form-form",
+                                "action": {
+                                  "method": "GET",
+                                  "url": "/subscribe",
+                                  "fields": {}
+                                },
+                                "children": [
+                                  {
+                                    "kind": "input",
+                                    "id": "email",
+                                    "label": "Email address",
+                                    "value": "",
+                                    "placeholder": "you@example.com"
+                                  },
+                                  {
+                                    "kind": "button",
+                                    "id": "subscribe-submit",
+                                    "text": "Subscribe",
+                                    "action": {
+                                      "method": "GET",
+                                      "url": "/subscribe",
+                                      "fields": {}
+                                    }
+                                  }
+                                ]
+                              }
+                            ],
+                            "style": {
+                              "background": "#ffffff",
+                              "padding": 16,
+                              "radius": 8,
+                              "border": "#e3e3dc"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "box-card-2",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "most-read",
+                                "text": "Most read",
+                                "style": {
+                                  "size": 14,
+                                  "weight": "bold",
+                                  "color": "#7a8090"
+                                }
+                              },
+                              {
+                                "kind": "card",
+                                "id": "ol-card",
+                                "children": [
+                                  {
+                                    "kind": "card",
+                                    "id": "1-ferry-crews-vote-to-st-2",
+                                    "children": [
+                                      {
+                                        "kind": "styled",
+                                        "id": "1-ferry-crews-vote-to-st",
+                                        "text": "1. Ferry crews vote to strike",
+                                        "style": {
+                                          "size": 14,
+                                          "color": "#1a5fb4"
+                                        }
+                                      }
+                                    ],
+                                    "style": {
+                                      "background": "#00000000",
+                                      "padding": 0,
+                                      "radius": 0
+                                    },
+                                    "action": {
+                                      "method": "GET",
+                                      "url": "/world/ferry-strike",
+                                      "fields": {}
+                                    }
+                                  },
+                                  {
+                                    "kind": "card",
+                                    "id": "2-wind-auction-draws-fou-2",
+                                    "children": [
+                                      {
+                                        "kind": "styled",
+                                        "id": "2-wind-auction-draws-fou",
+                                        "text": "2. Wind auction draws four bidders",
+                                        "style": {
+                                          "size": 14,
+                                          "color": "#1a5fb4"
+                                        }
+                                      }
+                                    ],
+                                    "style": {
+                                      "background": "#00000000",
+                                      "padding": 0,
+                                      "radius": 0
+                                    },
+                                    "action": {
+                                      "method": "GET",
+                                      "url": "/business/wind-auction",
+                                      "fields": {}
+                                    }
+                                  },
+                                  {
+                                    "kind": "card",
+                                    "id": "3-atlas-1-0-ships-link",
+                                    "children": [
+                                      {
+                                        "kind": "styled",
+                                        "id": "3-atlas-1-0-ships-text",
+                                        "text": "3. Atlas 1.0 ships",
+                                        "style": {
+                                          "size": 14,
+                                          "color": "#1a5fb4"
+                                        }
+                                      }
+                                    ],
+                                    "style": {
+                                      "background": "#00000000",
+                                      "padding": 0,
+                                      "radius": 0
+                                    },
+                                    "action": {
+                                      "method": "GET",
+                                      "url": "/technology/atlas-1",
+                                      "fields": {}
+                                    }
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 18,
+                                  "radius": 0
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#ffffff",
+                              "padding": 16,
+                              "radius": 8,
+                              "border": "#e3e3dc"
+                            }
+                          },
+                          {
+                            "kind": "row",
+                            "id": "box-weather-row",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "17",
+                                "text": "17°",
+                                "style": {
+                                  "size": 28,
+                                  "weight": "bold",
+                                  "color": "#1c1f26",
+                                  "width": 56
+                                }
+                              },
+                              {
+                                "kind": "card",
+                                "id": "div-cell",
+                                "children": [
+                                  {
+                                    "kind": "group",
+                                    "id": "div-group",
+                                    "children": [
+                                      {
+                                        "kind": "styled",
+                                        "id": "light-rain-clearing-by-e",
+                                        "text": "Light rain, clearing by evening",
+                                        "style": {}
+                                      },
+                                      {
+                                        "kind": "card",
+                                        "id": "full-forecast-link",
+                                        "children": [
+                                          {
+                                            "kind": "styled",
+                                            "id": "full-forecast-text",
+                                            "text": "Full forecast",
+                                            "style": {
+                                              "size": 16,
+                                              "color": "#1a5fb4"
+                                            }
+                                          }
+                                        ],
+                                        "style": {
+                                          "background": "#00000000",
+                                          "padding": 0,
+                                          "radius": 0,
+                                          "width": 109
+                                        },
+                                        "action": {
+                                          "method": "GET",
+                                          "url": "/weather",
+                                          "fields": {}
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "style": {
+                                  "background": "#00000000",
+                                  "padding": 0,
+                                  "radius": 0,
+                                  "flex": 10
+                                }
+                              }
+                            ],
+                            "gap": 12,
+                            "align": "center",
+                            "style": {
+                              "background": "#ffffff",
+                              "border": "#e3e3dc",
+                              "radius": 8,
+                              "padding": 16
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "flex": 4
+                    }
+                  }
+                ],
+                "gap": 24,
+                "align": "stretch",
+                "style": {}
+              }
+            ],
+            "style": {
+              "background": "#00000000",
+              "padding": 16,
+              "radius": 0
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "air-5",
+            "height": 20
+          },
+          {
+            "kind": "card",
+            "id": "footer-card",
+            "children": [
+              {
+                "kind": "row",
+                "id": "links-row",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "about-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "about-text",
+                        "text": "About",
+                        "style": {
+                          "size": 12,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 44
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/about",
+                      "fields": {}
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "contact-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "contact-text",
+                        "text": "Contact",
+                        "style": {
+                          "size": 12,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 54
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/contact",
+                      "fields": {}
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "privacy-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "privacy-text",
+                        "text": "Privacy",
+                        "style": {
+                          "size": 12,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 53
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/privacy",
+                      "fields": {}
+                    }
+                  },
+                  {
+                    "kind": "card",
+                    "id": "terms-link",
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "terms-text",
+                        "text": "Terms",
+                        "style": {
+                          "size": 12,
+                          "color": "#e5e9f0"
+                        }
+                      }
+                    ],
+                    "style": {
+                      "background": "#00000000",
+                      "padding": 0,
+                      "radius": 0,
+                      "width": 44
+                    },
+                    "action": {
+                      "method": "GET",
+                      "url": "/terms",
+                      "fields": {}
+                    }
+                  }
+                ],
+                "gap": 16,
+                "align": "stretch",
+                "style": {}
+              },
+              {
+                "kind": "styled",
+                "id": "2026-the-meridian-ledger",
+                "text": "© 2026 The Meridian Ledger. A fictional newspaper used as a conversion fixture.",
+                "style": {
+                  "size": 12,
+                  "color": "#aab4c8"
+                }
+              }
+            ],
+            "style": {
+              "background": "#14213d",
+              "padding": 24,
+              "radius": 0
+            }
+          }
+        ],
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "lang": "en"
+      },
+      "/about": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "About",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/business": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Business",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/business/grain-prices": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Grain prices",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/business/wind-auction": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Wind auction",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/contact": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Contact",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/culture": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Culture",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/culture/lantern-festival": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Lantern festival",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/culture/library-opens": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Library opens",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/opinion": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Opinion",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/opinion/quiet-streets": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Quiet streets",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/privacy": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Privacy",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/subscribe": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Subscribe",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/technology": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Technology",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/technology/atlas-1": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Atlas 1",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/terms": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Terms",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/weather": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Weather",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/world": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "World",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      },
+      "/world/ferry-strike": {
+        "version": 1,
+        "title": "The Meridian Ledger",
+        "theme": {
+          "accent": "#1a5fb4",
+          "background": "#fafaf7",
+          "surface": "#ffffff",
+          "ink": "#4c5366",
+          "muted": "#1c1f26",
+          "content_width": 1040
+        },
+        "elements": [
+          {
+            "kind": "styled",
+            "id": "stub-title",
+            "text": "Ferry strike",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "stub-note",
+            "text": "This page was not captured; it stands in so every link on the front page resolves.",
+            "style": {
+              "color": "#1c1f26"
+            }
+          },
+          {
+            "kind": "link",
+            "id": "stub-home",
+            "text": "Back to the front page",
+            "url": "/"
+          }
+        ]
+      }
+    },
+    "records": {},
+    "assets": {}
+  }
+}

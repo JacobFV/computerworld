@@ -1,0 +1,12407 @@
+(kicad_pcb
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(general (thickness 1.6) (legacy_teardrops no))
+	(paper "A4")
+	(layers
+		(0 "F.Cu" signal)
+		(31 "B.Cu" signal)
+		(34 "F.Paste" user)
+		(35 "B.Paste" user)
+		(36 "B.SilkS" user "B.Silkscreen")
+		(37 "F.SilkS" user "F.Silkscreen")
+		(38 "B.Mask" user)
+		(39 "F.Mask" user)
+		(44 "Edge.Cuts" user)
+		(46 "B.CrtYd" user "B.Courtyard")
+		(47 "F.CrtYd" user "F.Courtyard")
+		(48 "B.Fab" user)
+		(49 "F.Fab" user)
+	)
+	(setup
+		(pad_to_mask_clearance 0)
+		(allow_soldermask_bridges_in_footprints no)
+		(pcbplotparams
+			(layerselection 0x00010fc_ffffffff)
+			(plot_on_all_layers_selection 0x0000000_00000000)
+			(outputformat 1)
+			(outputdirectory "gerbers/")
+		)
+	)
+	(net 0 "")
+	(net 1 "+5V")
+	(net 2 "GND")
+	(net 3 "LED")
+	(net 4 "Net-(D1-Pad2)")
+	(net 5 "Net-(D2-Pad2)")
+	(net 6 "SENSE")
+	(net 7 "SENSOR")
+	(net 8 "TX")
+	(net 9 "unconnected-(U1-Pad2)")
+	(net 10 "unconnected-(U1-Pad3)")
+	(net 11 "~RESET")
+	(footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000001")
+		(at 22 12 0)
+		(property "Reference" "C1"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "10u"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000000a")
+		(attr through_hole)
+		(fp_line
+			(start -0.12 -1.37)
+			(end 5.12 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.12 -1.37)
+			(end 5.12 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.12 1.37)
+			(end -0.12 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -0.12 1.37)
+			(end -0.12 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 0 -1.25)
+			(end 5 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5 -1.25)
+			(end 5 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5 1.25)
+			(end 0 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 0 1.25)
+			(end 0 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.05 -1.5)
+			(end 6.05 -1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 6.05 -1.5)
+			(end 6.05 1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 6.05 1.5)
+			(end -1.05 1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.05 1.5)
+			(end -1.05 -1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole circle
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole circle
+			(at 5 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+	)
+	(footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000002")
+		(at 26 20 90)
+		(property "Reference" "C2"
+			(at 0 -2.5 90)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "100n"
+			(at 0 2.5 90)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "5"
+			(at 0 0 90)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000001e")
+		(attr through_hole)
+		(fp_line
+			(start -0.12 -1.37)
+			(end 5.12 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.12 -1.37)
+			(end 5.12 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.12 1.37)
+			(end -0.12 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -0.12 1.37)
+			(end -0.12 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 0 -1.25)
+			(end 5 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5 -1.25)
+			(end 5 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5 1.25)
+			(end 0 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 0 1.25)
+			(end 0 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.05 -1.5)
+			(end 6.05 -1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 6.05 -1.5)
+			(end 6.05 1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 6.05 1.5)
+			(end -1.05 1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.05 1.5)
+			(end -1.05 -1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole circle
+			(at 0 0 90)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole circle
+			(at 5 0 90)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+	)
+	(footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000003")
+		(at 36 40 0)
+		(property "Reference" "C3"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "100n"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000004a")
+		(attr through_hole)
+		(fp_line
+			(start -0.12 -1.37)
+			(end 5.12 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.12 -1.37)
+			(end 5.12 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.12 1.37)
+			(end -0.12 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -0.12 1.37)
+			(end -0.12 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 0 -1.25)
+			(end 5 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5 -1.25)
+			(end 5 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5 1.25)
+			(end 0 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 0 1.25)
+			(end 0 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.05 -1.5)
+			(end 6.05 -1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 6.05 -1.5)
+			(end 6.05 1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 6.05 1.5)
+			(end -1.05 1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.05 1.5)
+			(end -1.05 -1.5)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole circle
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole circle
+			(at 5 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+	)
+	(footprint "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000004")
+		(at 12 6 0)
+		(property "Reference" "D1"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "1N5819"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "2"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-000000000002")
+		(attr through_hole)
+		(fp_line
+			(start 1.69 -1.12)
+			(end 5.93 -1.12)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.93 -1.12)
+			(end 5.93 1.12)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 5.93 1.12)
+			(end 1.69 1.12)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.69 1.12)
+			(end 1.69 -1.12)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.04 0)
+			(end 1.69 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 6.58 0)
+			(end 5.93 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.81 -1)
+			(end 5.81 -1)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5.81 -1)
+			(end 5.81 1)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 5.81 1)
+			(end 1.81 1)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.81 1)
+			(end 1.81 -1)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.05 -1.37)
+			(end 8.67 -1.37)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 8.67 -1.37)
+			(end 8.67 1.37)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 8.67 1.37)
+			(end -1.05 1.37)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.05 1.37)
+			(end -1.05 -1.37)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 7.62 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 4 "Net-(D1-Pad2)")
+			(pintype "passive")
+		)
+	)
+	(footprint "LED_THT:LED_D5.0mm"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000005")
+		(at 62 30 90)
+		(property "Reference" "D2"
+			(at 0 -2.5 90)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "GREEN"
+			(at 0 2.5 90)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "8.6"
+			(at 0 0 90)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000002b")
+		(attr through_hole)
+		(fp_line
+			(start -1.29 -2.62)
+			(end 3.83 -2.62)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 3.83 -2.62)
+			(end 3.83 2.62)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 3.83 2.62)
+			(end -1.29 2.62)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.29 2.62)
+			(end -1.29 -2.62)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.23 -2.5)
+			(end 3.77 -2.5)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 3.77 -2.5)
+			(end 3.77 2.5)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 3.77 2.5)
+			(end -1.23 2.5)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.23 2.5)
+			(end -1.23 -2.5)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.95 -3.25)
+			(end 4.5 -3.25)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 4.5 -3.25)
+			(end 4.5 3.25)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 4.5 3.25)
+			(end -1.95 3.25)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.95 3.25)
+			(end -1.95 -3.25)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0 90)
+			(size 1.8 1.8)
+			(drill 0.9)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole circle
+			(at 2.54 0 90)
+			(size 1.8 1.8)
+			(drill 0.9)
+			(layers "*.Cu" "*.Mask")
+			(net 5 "Net-(D2-Pad2)")
+			(pintype "passive")
+		)
+	)
+	(footprint "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000006")
+		(at 5 8 0)
+		(property "Reference" "J1"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "Power 5V"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "2.5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-000000000001")
+		(attr through_hole)
+		(fp_line
+			(start -1.33 1.27)
+			(end 1.33 1.27)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.33 1.27)
+			(end 1.33 3.87)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.33 3.87)
+			(end -1.33 3.87)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.33 3.87)
+			(end -1.33 1.27)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.27 -1.27)
+			(end 1.27 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.27 -1.27)
+			(end 1.27 3.81)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.27 3.81)
+			(end -1.27 3.81)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.27 3.81)
+			(end -1.27 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.8 -1.8)
+			(end 1.8 -1.8)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 1.8 -1.8)
+			(end 1.8 4.34)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 1.8 4.34)
+			(end -1.8 4.34)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.8 4.34)
+			(end -1.8 -1.8)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 4 "Net-(D1-Pad2)")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 0 2.54 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+	)
+	(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000007")
+		(at 5 26 0)
+		(property "Reference" "J2"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "Sensor"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "2.5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000002f")
+		(attr through_hole)
+		(fp_line
+			(start -1.33 1.27)
+			(end 1.33 1.27)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.33 1.27)
+			(end 1.33 6.41)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.33 6.41)
+			(end -1.33 6.41)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.33 6.41)
+			(end -1.33 1.27)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.27 -1.27)
+			(end 1.27 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.27 -1.27)
+			(end 1.27 6.35)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.27 6.35)
+			(end -1.27 6.35)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.27 6.35)
+			(end -1.27 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.8 -1.8)
+			(end 1.8 -1.8)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 1.8 -1.8)
+			(end 1.8 6.88)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 1.8 6.88)
+			(end -1.8 6.88)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.8 6.88)
+			(end -1.8 -1.8)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 0 2.54 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 7 "SENSOR")
+			(pintype "passive")
+		)
+		(pad "3" thru_hole oval
+			(at 0 5.08 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+	)
+	(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000008")
+		(at 64 8 0)
+		(property "Reference" "J3"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "Debug"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "2.5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000004f")
+		(attr through_hole)
+		(fp_line
+			(start -1.33 1.27)
+			(end 1.33 1.27)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.33 1.27)
+			(end 1.33 6.41)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.33 6.41)
+			(end -1.33 6.41)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.33 6.41)
+			(end -1.33 1.27)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start -1.27 -1.27)
+			(end 1.27 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.27 -1.27)
+			(end 1.27 6.35)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.27 6.35)
+			(end -1.27 6.35)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.27 6.35)
+			(end -1.27 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.8 -1.8)
+			(end 1.8 -1.8)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 1.8 -1.8)
+			(end 1.8 6.88)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 1.8 6.88)
+			(end -1.8 6.88)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.8 6.88)
+			(end -1.8 -1.8)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 8 "TX")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 0 2.54 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 11 "~RESET")
+			(pintype "passive")
+		)
+		(pad "3" thru_hole oval
+			(at 0 5.08 0)
+			(size 1.7 1.7)
+			(drill 1)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+	)
+	(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-000000000009")
+		(at 46 30 0)
+		(property "Reference" "R1"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "10k"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "2.5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-000000000038")
+		(attr through_hole)
+		(fp_line
+			(start 1.81 -1.37)
+			(end 8.35 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 8.35 -1.37)
+			(end 8.35 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 8.35 1.37)
+			(end 1.81 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.81 1.37)
+			(end 1.81 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.04 0)
+			(end 1.81 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 9.12 0)
+			(end 8.35 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.93 -1.25)
+			(end 8.23 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 8.23 -1.25)
+			(end 8.23 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 8.23 1.25)
+			(end 1.93 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.93 1.25)
+			(end 1.93 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.05 -1.62)
+			(end 11.21 -1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 11.21 -1.62)
+			(end 11.21 1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 11.21 1.62)
+			(end -1.05 1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.05 1.62)
+			(end -1.05 -1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole circle
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 10.16 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 7 "SENSOR")
+			(pintype "passive")
+		)
+	)
+	(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-00000000000a")
+		(at 44 6 0)
+		(property "Reference" "R2"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "10k"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "2.5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-000000000023")
+		(attr through_hole)
+		(fp_line
+			(start 1.81 -1.37)
+			(end 8.35 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 8.35 -1.37)
+			(end 8.35 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 8.35 1.37)
+			(end 1.81 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.81 1.37)
+			(end 1.81 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.04 0)
+			(end 1.81 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 9.12 0)
+			(end 8.35 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.93 -1.25)
+			(end 8.23 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 8.23 -1.25)
+			(end 8.23 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 8.23 1.25)
+			(end 1.93 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.93 1.25)
+			(end 1.93 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.05 -1.62)
+			(end 11.21 -1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 11.21 -1.62)
+			(end 11.21 1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 11.21 1.62)
+			(end -1.05 1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.05 1.62)
+			(end -1.05 -1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole circle
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 10.16 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 11 "~RESET")
+			(pintype "passive")
+		)
+	)
+	(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-00000000000b")
+		(at 10 38 0)
+		(property "Reference" "R3"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "330"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "2.5"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-000000000028")
+		(attr through_hole)
+		(fp_line
+			(start 1.81 -1.37)
+			(end 8.35 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 8.35 -1.37)
+			(end 8.35 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 8.35 1.37)
+			(end 1.81 1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.81 1.37)
+			(end 1.81 -1.37)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.04 0)
+			(end 1.81 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 9.12 0)
+			(end 8.35 0)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.93 -1.25)
+			(end 8.23 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 8.23 -1.25)
+			(end 8.23 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 8.23 1.25)
+			(end 1.93 1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 1.93 1.25)
+			(end 1.93 -1.25)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.05 -1.62)
+			(end 11.21 -1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 11.21 -1.62)
+			(end 11.21 1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 11.21 1.62)
+			(end -1.05 1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.05 1.62)
+			(end -1.05 -1.62)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole circle
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 3 "LED")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 10.16 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 5 "Net-(D2-Pad2)")
+			(pintype "passive")
+		)
+	)
+	(footprint "Package_DIP:DIP-8_W7.62mm"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-00000000000c")
+		(at 34 16 0)
+		(property "Reference" "U1"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "ATtiny85-20P"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "3.9"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000000f")
+		(attr through_hole)
+		(fp_line
+			(start 2.81 -1.33)
+			(end 1.16 -1.33)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.16 -1.33)
+			(end 1.16 8.95)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.16 8.95)
+			(end 6.46 8.95)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 6.46 8.95)
+			(end 6.46 -1.33)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 6.46 -1.33)
+			(end 4.81 -1.33)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 0.635 -1.27)
+			(end 6.985 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 6.985 -1.27)
+			(end 6.985 8.89)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 6.985 8.89)
+			(end 0.635 8.89)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 0.635 8.89)
+			(end 0.635 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.1 -1.55)
+			(end 8.7 -1.55)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 8.7 -1.55)
+			(end 8.7 9.15)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 8.7 9.15)
+			(end -1.1 9.15)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.1 9.15)
+			(end -1.1 -1.55)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 11 "~RESET")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 0 2.54 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(pintype "passive")
+		)
+		(pad "3" thru_hole oval
+			(at 0 5.08 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(pintype "passive")
+		)
+		(pad "4" thru_hole oval
+			(at 0 7.62 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+		(pad "5" thru_hole oval
+			(at 7.62 7.62 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 3 "LED")
+			(pintype "passive")
+		)
+		(pad "6" thru_hole oval
+			(at 7.62 5.08 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 8 "TX")
+			(pintype "passive")
+		)
+		(pad "7" thru_hole oval
+			(at 7.62 2.54 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 6 "SENSE")
+			(pintype "passive")
+		)
+		(pad "8" thru_hole oval
+			(at 7.62 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+	)
+	(footprint "Package_DIP:DIP-8_W7.62mm"
+		(layer "F.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-00000000000d")
+		(at 24 32 0)
+		(property "Reference" "U2"
+			(at 0 -2.5 0)
+			(layer "F.SilkS")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Value" "MCP6001"
+			(at 0 2.5 0)
+			(layer "F.Fab")
+			(effects
+				(font (size 1 1) (thickness 0.15))
+			)
+		)
+		(property "Height" "3.9"
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+		)
+		(path "/e81b0096-bc73-4511-8000-00000000003d")
+		(attr through_hole)
+		(fp_line
+			(start 2.81 -1.33)
+			(end 1.16 -1.33)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.16 -1.33)
+			(end 1.16 8.95)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 1.16 8.95)
+			(end 6.46 8.95)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 6.46 8.95)
+			(end 6.46 -1.33)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 6.46 -1.33)
+			(end 4.81 -1.33)
+			(stroke (width 0.12) (type solid))
+			(layer "F.SilkS")
+		)
+		(fp_line
+			(start 0.635 -1.27)
+			(end 6.985 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 6.985 -1.27)
+			(end 6.985 8.89)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 6.985 8.89)
+			(end 0.635 8.89)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start 0.635 8.89)
+			(end 0.635 -1.27)
+			(stroke (width 0.1) (type solid))
+			(layer "F.Fab")
+		)
+		(fp_line
+			(start -1.1 -1.55)
+			(end 8.7 -1.55)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 8.7 -1.55)
+			(end 8.7 9.15)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start 8.7 9.15)
+			(end -1.1 9.15)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(fp_line
+			(start -1.1 9.15)
+			(end -1.1 -1.55)
+			(stroke (width 0.05) (type solid))
+			(layer "F.CrtYd")
+		)
+		(pad "1" thru_hole rect
+			(at 0 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 7 "SENSOR")
+			(pintype "passive")
+		)
+		(pad "2" thru_hole oval
+			(at 0 2.54 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 6 "SENSE")
+			(pintype "passive")
+		)
+		(pad "3" thru_hole oval
+			(at 0 5.08 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 1 "+5V")
+			(pintype "passive")
+		)
+		(pad "4" thru_hole oval
+			(at 0 7.62 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 2 "GND")
+			(pintype "passive")
+		)
+		(pad "5" thru_hole oval
+			(at 7.62 7.62 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(net 6 "SENSE")
+			(pintype "passive")
+		)
+		(pad "6" thru_hole oval
+			(at 7.62 5.08 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(pintype "passive")
+		)
+		(pad "7" thru_hole oval
+			(at 7.62 2.54 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(pintype "passive")
+		)
+		(pad "8" thru_hole oval
+			(at 7.62 0 0)
+			(size 1.6 1.6)
+			(drill 0.8)
+			(layers "*.Cu" "*.Mask")
+			(pintype "passive")
+		)
+	)
+	(gr_rect
+		(start 0 0)
+		(end 70 45)
+		(stroke (width 0.05) (type default))
+		(fill none)
+		(layer "Edge.Cuts")
+		(uuid "fd70a5f1-1638-439e-8000-00000000000e")
+	)
+	(segment
+		(start 22 12)
+		(end 22 16)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-00000000000f")
+	)
+	(segment
+		(start 22 16)
+		(end 26 20)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000010")
+	)
+	(segment
+		(start 22 12)
+		(end 16 6)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000011")
+	)
+	(segment
+		(start 16 6)
+		(end 12 6)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000012")
+	)
+	(segment
+		(start 26 20)
+		(end 26.334999 19.665001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000013")
+	)
+	(segment
+		(start 26.334999 19.665001)
+		(end 37.954999 19.665001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000014")
+	)
+	(segment
+		(start 37.954999 19.665001)
+		(end 41.62 16)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000015")
+	)
+	(segment
+		(start 41.62 16)
+		(end 44 13.62)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000016")
+	)
+	(segment
+		(start 44 13.62)
+		(end 44 6)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000017")
+	)
+	(segment
+		(start 37.954999 19.665001)
+		(end 37.954999 21.954999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000018")
+	)
+	(segment
+		(start 37.954999 21.954999)
+		(end 46 30)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000019")
+	)
+	(segment
+		(start 46 30)
+		(end 36 40)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-00000000001a")
+	)
+	(segment
+		(start 36 40)
+		(end 35.154009 39.154009)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-00000000001b")
+	)
+	(segment
+		(start 35.154009 39.154009)
+		(end 32.745001 39.154009)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-00000000001c")
+	)
+	(segment
+		(start 32.745001 39.154009)
+		(end 32.085991 38.494999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-00000000001d")
+	)
+	(segment
+		(start 32.085991 38.494999)
+		(end 25.414999 38.494999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-00000000001e")
+	)
+	(segment
+		(start 25.414999 38.494999)
+		(end 24 37.08)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-00000000001f")
+	)
+	(segment
+		(start 22 16)
+		(end 12 26)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000020")
+	)
+	(segment
+		(start 12 26)
+		(end 5 26)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 1)
+		(uuid "fd70a5f1-1638-439e-8000-000000000021")
+	)
+	(segment
+		(start 10 38)
+		(end 10.465991 38.465991)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 3)
+		(uuid "fd70a5f1-1638-439e-8000-000000000022")
+	)
+	(segment
+		(start 10.465991 38.465991)
+		(end 19.034999 38.465991)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 3)
+		(uuid "fd70a5f1-1638-439e-8000-000000000023")
+	)
+	(segment
+		(start 19.034999 38.465991)
+		(end 21.694009 41.125001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 3)
+		(uuid "fd70a5f1-1638-439e-8000-000000000024")
+	)
+	(segment
+		(start 21.694009 41.125001)
+		(end 36.465991 41.125001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 3)
+		(uuid "fd70a5f1-1638-439e-8000-000000000025")
+	)
+	(segment
+		(start 36.465991 41.125001)
+		(end 47.125001 30.465991)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 3)
+		(uuid "fd70a5f1-1638-439e-8000-000000000026")
+	)
+	(segment
+		(start 47.125001 30.465991)
+		(end 47.125001 29.125001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 3)
+		(uuid "fd70a5f1-1638-439e-8000-000000000027")
+	)
+	(segment
+		(start 47.125001 29.125001)
+		(end 41.62 23.62)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 3)
+		(uuid "fd70a5f1-1638-439e-8000-000000000028")
+	)
+	(segment
+		(start 19.62 6)
+		(end 18.494999 4.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 4)
+		(uuid "fd70a5f1-1638-439e-8000-000000000029")
+	)
+	(segment
+		(start 18.494999 4.874999)
+		(end 8.125001 4.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 4)
+		(uuid "fd70a5f1-1638-439e-8000-00000000002a")
+	)
+	(segment
+		(start 8.125001 4.874999)
+		(end 5 8)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 4)
+		(uuid "fd70a5f1-1638-439e-8000-00000000002b")
+	)
+	(segment
+		(start 62 27.46)
+		(end 60.585001 28.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-00000000002c")
+	)
+	(segment
+		(start 60.585001 28.874999)
+		(end 53.715993 28.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-00000000002d")
+	)
+	(segment
+		(start 53.715993 28.874999)
+		(end 41.01599 41.575002)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-00000000002e")
+	)
+	(segment
+		(start 41.01599 41.575002)
+		(end 11.98401 41.575002)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-00000000002f")
+	)
+	(segment
+		(start 11.98401 41.575002)
+		(end 8.874999 38.465991)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-000000000030")
+	)
+	(segment
+		(start 8.874999 38.465991)
+		(end 8.874999 37.534009)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-000000000031")
+	)
+	(segment
+		(start 8.874999 37.534009)
+		(end 9.534009 36.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-000000000032")
+	)
+	(segment
+		(start 9.534009 36.874999)
+		(end 19.034999 36.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-000000000033")
+	)
+	(segment
+		(start 19.034999 36.874999)
+		(end 20.16 38)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 5)
+		(uuid "fd70a5f1-1638-439e-8000-000000000034")
+	)
+	(segment
+		(start 41.62 18.54)
+		(end 45.125001 15.034999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000035")
+	)
+	(segment
+		(start 45.125001 15.034999)
+		(end 45.125001 5.534009)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000036")
+	)
+	(segment
+		(start 45.125001 5.534009)
+		(end 44.465991 4.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000037")
+	)
+	(segment
+		(start 44.465991 4.874999)
+		(end 20.085991 4.874999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000038")
+	)
+	(segment
+		(start 20.085991 4.874999)
+		(end 19.899594 4.688602)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000039")
+	)
+	(segment
+		(start 19.899594 4.688602)
+		(end 18.945 4.688602)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-00000000003a")
+	)
+	(segment
+		(start 18.945 4.688602)
+		(end 18.681396 4.424998)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-00000000003b")
+	)
+	(segment
+		(start 18.681396 4.424998)
+		(end 7.938604 4.424998)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-00000000003c")
+	)
+	(segment
+		(start 7.938604 4.424998)
+		(end 5.538603 6.824999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-00000000003d")
+	)
+	(segment
+		(start 5.538603 6.824999)
+		(end 4.01538 6.824999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-00000000003e")
+	)
+	(segment
+		(start 4.01538 6.824999)
+		(end 3.824999 7.01538)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-00000000003f")
+	)
+	(segment
+		(start 3.824999 7.01538)
+		(end 3.824999 26.98462)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000040")
+	)
+	(segment
+		(start 3.824999 26.98462)
+		(end 4.205378 27.364999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000041")
+	)
+	(segment
+		(start 4.205378 27.364999)
+		(end 11.115991 27.364999)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000042")
+	)
+	(segment
+		(start 11.115991 27.364999)
+		(end 21.955993 38.205001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000043")
+	)
+	(segment
+		(start 21.955993 38.205001)
+		(end 24.465991 38.205001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000044")
+	)
+	(segment
+		(start 24.465991 38.205001)
+		(end 25.88099 39.62)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000045")
+	)
+	(segment
+		(start 25.88099 39.62)
+		(end 31.62 39.62)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000046")
+	)
+	(segment
+		(start 24.465991 38.205001)
+		(end 23.534009 38.205001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000047")
+	)
+	(segment
+		(start 23.534009 38.205001)
+		(end 22.874999 37.545991)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000048")
+	)
+	(segment
+		(start 22.874999 37.545991)
+		(end 22.874999 35.665001)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-000000000049")
+	)
+	(segment
+		(start 22.874999 35.665001)
+		(end 24 34.54)
+		(width 0.25)
+		(layer "F.Cu")
+		(net 6)
+		(uuid "fd70a5f1-1638-439e-8000-00000000004a")
+	)
+	(segment
+		(start 5 28.54)
+		(end 8.46 32)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 7)
+		(uuid "fd70a5f1-1638-439e-8000-00000000004b")
+	)
+	(segment
+		(start 8.46 32)
+		(end 24 32)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 7)
+		(uuid "fd70a5f1-1638-439e-8000-00000000004c")
+	)
+	(segment
+		(start 24 32)
+		(end 25.125001 30.874999)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 7)
+		(uuid "fd70a5f1-1638-439e-8000-00000000004d")
+	)
+	(segment
+		(start 25.125001 30.874999)
+		(end 45.284007 30.874999)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 7)
+		(uuid "fd70a5f1-1638-439e-8000-00000000004e")
+	)
+	(segment
+		(start 45.284007 30.874999)
+		(end 45.534009 31.125001)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 7)
+		(uuid "fd70a5f1-1638-439e-8000-00000000004f")
+	)
+	(segment
+		(start 45.534009 31.125001)
+		(end 55.034999 31.125001)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 7)
+		(uuid "fd70a5f1-1638-439e-8000-000000000050")
+	)
+	(segment
+		(start 55.034999 31.125001)
+		(end 56.16 30)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 7)
+		(uuid "fd70a5f1-1638-439e-8000-000000000051")
+	)
+	(segment
+		(start 64 8)
+		(end 50.92 21.08)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 8)
+		(uuid "fd70a5f1-1638-439e-8000-000000000052")
+	)
+	(segment
+		(start 50.92 21.08)
+		(end 41.62 21.08)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 8)
+		(uuid "fd70a5f1-1638-439e-8000-000000000053")
+	)
+	(segment
+		(start 64 10.54)
+		(end 65.175001 9.364999)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-000000000054")
+	)
+	(segment
+		(start 65.175001 9.364999)
+		(end 65.175001 7.01538)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-000000000055")
+	)
+	(segment
+		(start 65.175001 7.01538)
+		(end 64.159621 6)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-000000000056")
+	)
+	(segment
+		(start 64.159621 6)
+		(end 54.16 6)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-000000000057")
+	)
+	(segment
+		(start 54.16 6)
+		(end 53.694009 6.465991)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-000000000058")
+	)
+	(segment
+		(start 53.694009 6.465991)
+		(end 45.125001 6.465991)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-000000000059")
+	)
+	(segment
+		(start 45.125001 6.465991)
+		(end 35.590992 16)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-00000000005a")
+	)
+	(segment
+		(start 35.590992 16)
+		(end 34 16)
+		(width 0.25)
+		(layer "B.Cu")
+		(net 11)
+		(uuid "fd70a5f1-1638-439e-8000-00000000005b")
+	)
+	(zone
+		(net 2)
+		(net_name "GND")
+		(layer "B.Cu")
+		(uuid "fd70a5f1-1638-439e-8000-00000000005c")
+		(hatch edge 0.5)
+		(connect_pads (clearance 0.3))
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(fill yes (thermal_gap 0.5) (thermal_bridge_width 0.5))
+		(polygon
+			(pts
+				(xy 0 0)
+				(xy 70 0)
+				(xy 70 45)
+				(xy 0 45)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 0.6)
+				(xy 69.4 0.6)
+				(xy 69.4 4.8)
+				(xy 0.6 4.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 4.8)
+				(xy 11.1 4.8)
+				(xy 11.1 4.9)
+				(xy 0.6 4.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 12.9 4.8)
+				(xy 19.4 4.8)
+				(xy 19.4 4.9)
+				(xy 12.9 4.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 19.8 4.8)
+				(xy 43.8 4.8)
+				(xy 43.8 4.9)
+				(xy 19.8 4.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.2 4.8)
+				(xy 53.9 4.8)
+				(xy 53.9 4.9)
+				(xy 44.2 4.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.4 4.8)
+				(xy 69.4 4.8)
+				(xy 69.4 4.9)
+				(xy 54.4 4.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 4.9)
+				(xy 10.9 4.9)
+				(xy 10.9 5.1)
+				(xy 0.6 5.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.1 4.9)
+				(xy 19.1 4.9)
+				(xy 19.1 5)
+				(xy 13.1 5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.1 4.9)
+				(xy 43.5 4.9)
+				(xy 43.5 5)
+				(xy 20.1 5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.5 4.9)
+				(xy 53.6 4.9)
+				(xy 53.6 5)
+				(xy 44.5 5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.7 4.9)
+				(xy 69.4 4.9)
+				(xy 69.4 5)
+				(xy 54.7 5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.1 5)
+				(xy 18.9 5)
+				(xy 18.9 5.1)
+				(xy 13.1 5.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.3 5)
+				(xy 43.3 5)
+				(xy 43.3 5.1)
+				(xy 20.3 5.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.7 5)
+				(xy 53.5 5)
+				(xy 53.5 5.1)
+				(xy 44.7 5.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.8 5)
+				(xy 69.4 5)
+				(xy 69.4 5.1)
+				(xy 54.8 5.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 5.1)
+				(xy 10.8 5.1)
+				(xy 10.8 6.8)
+				(xy 0.6 6.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.2 5.1)
+				(xy 18.8 5.1)
+				(xy 18.8 5.2)
+				(xy 13.2 5.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.4 5.1)
+				(xy 43.2 5.1)
+				(xy 43.2 5.2)
+				(xy 20.4 5.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.8 5.1)
+				(xy 53.4 5.1)
+				(xy 53.4 5.2)
+				(xy 44.8 5.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55 5.1)
+				(xy 69.4 5.1)
+				(xy 69.4 5.2)
+				(xy 55 5.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.2 5.2)
+				(xy 18.7 5.2)
+				(xy 18.7 5.3)
+				(xy 13.2 5.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.5 5.2)
+				(xy 43.1 5.2)
+				(xy 43.1 5.3)
+				(xy 20.5 5.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.9 5.2)
+				(xy 53.3 5.2)
+				(xy 53.3 5.3)
+				(xy 44.9 5.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.1 5.2)
+				(xy 69.4 5.2)
+				(xy 69.4 5.4)
+				(xy 55.1 5.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.2 5.3)
+				(xy 18.6 5.3)
+				(xy 18.6 5.5)
+				(xy 13.2 5.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.6 5.3)
+				(xy 43 5.3)
+				(xy 43 5.4)
+				(xy 20.6 5.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45 5.3)
+				(xy 53.2 5.3)
+				(xy 53.2 5.4)
+				(xy 45 5.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.7 5.4)
+				(xy 43 5.4)
+				(xy 43 5.5)
+				(xy 20.7 5.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45 5.4)
+				(xy 53.1 5.4)
+				(xy 53.1 5.5)
+				(xy 45 5.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.2 5.4)
+				(xy 69.4 5.4)
+				(xy 69.4 5.5)
+				(xy 55.2 5.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.2 5.5)
+				(xy 18.5 5.5)
+				(xy 18.5 6.5)
+				(xy 13.2 6.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.7 5.5)
+				(xy 42.9 5.5)
+				(xy 42.9 5.7)
+				(xy 20.7 5.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45.1 5.5)
+				(xy 53.1 5.5)
+				(xy 53.1 5.6)
+				(xy 45.1 5.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.4 5.5)
+				(xy 69.4 5.5)
+				(xy 69.4 5.6)
+				(xy 64.4 5.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45.1 5.6)
+				(xy 53 5.6)
+				(xy 53 5.8)
+				(xy 45.1 5.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.5 5.6)
+				(xy 69.4 5.6)
+				(xy 69.4 5.7)
+				(xy 64.5 5.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.8 5.7)
+				(xy 42.9 5.7)
+				(xy 42.9 5.8)
+				(xy 20.8 5.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.6 5.7)
+				(xy 69.4 5.7)
+				(xy 69.4 5.8)
+				(xy 64.6 5.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.8 5.8)
+				(xy 42.8 5.8)
+				(xy 42.8 6.2)
+				(xy 20.8 6.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45.2 5.8)
+				(xy 53 5.8)
+				(xy 53 6)
+				(xy 45.2 6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.7 5.8)
+				(xy 69.4 5.8)
+				(xy 69.4 5.9)
+				(xy 64.7 5.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.8 5.9)
+				(xy 69.4 5.9)
+				(xy 69.4 6)
+				(xy 64.8 6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.9 6)
+				(xy 69.4 6)
+				(xy 69.4 6.1)
+				(xy 64.9 6.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65 6.1)
+				(xy 69.4 6.1)
+				(xy 69.4 6.2)
+				(xy 65 6.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.8 6.2)
+				(xy 42.9 6.2)
+				(xy 42.9 6.3)
+				(xy 20.8 6.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.1 6.2)
+				(xy 69.4 6.2)
+				(xy 69.4 6.3)
+				(xy 65.1 6.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.7 6.3)
+				(xy 42.9 6.3)
+				(xy 42.9 6.5)
+				(xy 20.7 6.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.2 6.3)
+				(xy 69.4 6.3)
+				(xy 69.4 6.4)
+				(xy 65.2 6.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.3 6.4)
+				(xy 69.4 6.4)
+				(xy 69.4 6.5)
+				(xy 65.3 6.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.2 6.5)
+				(xy 18.6 6.5)
+				(xy 18.6 6.7)
+				(xy 13.2 6.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.7 6.5)
+				(xy 43 6.5)
+				(xy 43 6.6)
+				(xy 20.7 6.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.2 6.5)
+				(xy 64 6.5)
+				(xy 64 6.6)
+				(xy 55.2 6.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.4 6.5)
+				(xy 69.4 6.5)
+				(xy 69.4 6.6)
+				(xy 65.4 6.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.6 6.6)
+				(xy 43 6.6)
+				(xy 43 6.7)
+				(xy 20.6 6.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.1 6.6)
+				(xy 64.1 6.6)
+				(xy 64.1 6.7)
+				(xy 55.1 6.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.5 6.6)
+				(xy 69.4 6.6)
+				(xy 69.4 6.7)
+				(xy 65.5 6.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.2 6.7)
+				(xy 18.7 6.7)
+				(xy 18.7 6.8)
+				(xy 13.2 6.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.5 6.7)
+				(xy 43.1 6.7)
+				(xy 43.1 6.8)
+				(xy 20.5 6.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.1 6.7)
+				(xy 64.2 6.7)
+				(xy 64.2 6.8)
+				(xy 55.1 6.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.6 6.7)
+				(xy 69.4 6.7)
+				(xy 69.4 6.9)
+				(xy 65.6 6.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 6.8)
+				(xy 3.9 6.8)
+				(xy 3.9 6.9)
+				(xy 0.6 6.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 6.8)
+				(xy 10.8 6.8)
+				(xy 10.8 6.9)
+				(xy 6.1 6.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.2 6.8)
+				(xy 18.8 6.8)
+				(xy 18.8 6.9)
+				(xy 13.2 6.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.4 6.8)
+				(xy 43.2 6.8)
+				(xy 43.2 6.9)
+				(xy 20.4 6.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55 6.8)
+				(xy 62.9 6.8)
+				(xy 62.9 6.9)
+				(xy 55 6.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 6.9)
+				(xy 3.8 6.9)
+				(xy 3.8 9.1)
+				(xy 0.6 9.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 6.9)
+				(xy 10.9 6.9)
+				(xy 10.9 7.1)
+				(xy 6.2 7.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.1 6.9)
+				(xy 18.9 6.9)
+				(xy 18.9 7)
+				(xy 13.1 7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.3 6.9)
+				(xy 43.3 6.9)
+				(xy 43.3 7)
+				(xy 20.3 7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.8 6.9)
+				(xy 62.8 6.9)
+				(xy 62.8 7)
+				(xy 54.8 7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.7 6.9)
+				(xy 69.4 6.9)
+				(xy 69.4 9.5)
+				(xy 65.7 9.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 13.1 7)
+				(xy 19.1 7)
+				(xy 19.1 7.1)
+				(xy 13.1 7.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.1 7)
+				(xy 43.5 7)
+				(xy 43.5 7.1)
+				(xy 20.1 7.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45.2 7)
+				(xy 53.6 7)
+				(xy 53.6 7.1)
+				(xy 45.2 7.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.7 7)
+				(xy 62.8 7)
+				(xy 62.8 7.1)
+				(xy 54.7 7.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.1)
+				(xy 11.1 7.1)
+				(xy 11.1 7.2)
+				(xy 6.2 7.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 12.9 7.1)
+				(xy 19.4 7.1)
+				(xy 19.4 7.2)
+				(xy 12.9 7.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 19.8 7.1)
+				(xy 43.7 7.1)
+				(xy 43.7 7.2)
+				(xy 19.8 7.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45.1 7.1)
+				(xy 53.9 7.1)
+				(xy 53.9 7.2)
+				(xy 45.1 7.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.4 7.1)
+				(xy 62.8 7.1)
+				(xy 62.8 7.2)
+				(xy 54.4 7.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.2)
+				(xy 43.6 7.2)
+				(xy 43.6 7.3)
+				(xy 6.2 7.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 45 7.2)
+				(xy 62.8 7.2)
+				(xy 62.8 7.3)
+				(xy 45 7.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.3)
+				(xy 43.5 7.3)
+				(xy 43.5 7.4)
+				(xy 6.2 7.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.9 7.3)
+				(xy 62.8 7.3)
+				(xy 62.8 7.4)
+				(xy 44.9 7.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.4)
+				(xy 43.4 7.4)
+				(xy 43.4 7.5)
+				(xy 6.2 7.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.8 7.4)
+				(xy 62.8 7.4)
+				(xy 62.8 7.5)
+				(xy 44.8 7.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.5)
+				(xy 43.3 7.5)
+				(xy 43.3 7.6)
+				(xy 6.2 7.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.7 7.5)
+				(xy 62.8 7.5)
+				(xy 62.8 7.6)
+				(xy 44.7 7.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.6)
+				(xy 43.2 7.6)
+				(xy 43.2 7.7)
+				(xy 6.2 7.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.6 7.6)
+				(xy 62.8 7.6)
+				(xy 62.8 7.7)
+				(xy 44.6 7.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.7)
+				(xy 43.1 7.7)
+				(xy 43.1 7.8)
+				(xy 6.2 7.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.5 7.7)
+				(xy 62.8 7.7)
+				(xy 62.8 7.8)
+				(xy 44.5 7.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.8)
+				(xy 43 7.8)
+				(xy 43 7.9)
+				(xy 6.2 7.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.4 7.8)
+				(xy 62.8 7.8)
+				(xy 62.8 7.9)
+				(xy 44.4 7.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 7.9)
+				(xy 42.9 7.9)
+				(xy 42.9 8)
+				(xy 6.2 8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.3 7.9)
+				(xy 62.8 7.9)
+				(xy 62.8 8)
+				(xy 44.3 8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8)
+				(xy 42.8 8)
+				(xy 42.8 8.1)
+				(xy 6.2 8.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.2 8)
+				(xy 62.8 8)
+				(xy 62.8 8.1)
+				(xy 44.2 8.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.1)
+				(xy 42.7 8.1)
+				(xy 42.7 8.2)
+				(xy 6.2 8.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44.1 8.1)
+				(xy 62.8 8.1)
+				(xy 62.8 8.2)
+				(xy 44.1 8.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.2)
+				(xy 42.6 8.2)
+				(xy 42.6 8.3)
+				(xy 6.2 8.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 44 8.2)
+				(xy 62.8 8.2)
+				(xy 62.8 8.3)
+				(xy 44 8.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.3)
+				(xy 42.5 8.3)
+				(xy 42.5 8.4)
+				(xy 6.2 8.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.9 8.3)
+				(xy 62.8 8.3)
+				(xy 62.8 8.4)
+				(xy 43.9 8.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.4)
+				(xy 42.4 8.4)
+				(xy 42.4 8.5)
+				(xy 6.2 8.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.8 8.4)
+				(xy 62.8 8.4)
+				(xy 62.8 8.5)
+				(xy 43.8 8.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.5)
+				(xy 42.3 8.5)
+				(xy 42.3 8.6)
+				(xy 6.2 8.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.7 8.5)
+				(xy 62.7 8.5)
+				(xy 62.7 8.6)
+				(xy 43.7 8.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.6)
+				(xy 42.2 8.6)
+				(xy 42.2 8.7)
+				(xy 6.2 8.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.6 8.6)
+				(xy 62.6 8.6)
+				(xy 62.6 8.7)
+				(xy 43.6 8.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.7)
+				(xy 42.1 8.7)
+				(xy 42.1 8.8)
+				(xy 6.2 8.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.5 8.7)
+				(xy 62.5 8.7)
+				(xy 62.5 8.8)
+				(xy 43.5 8.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.8)
+				(xy 42 8.8)
+				(xy 42 8.9)
+				(xy 6.2 8.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.4 8.8)
+				(xy 62.4 8.8)
+				(xy 62.4 8.9)
+				(xy 43.4 8.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 8.9)
+				(xy 41.9 8.9)
+				(xy 41.9 9)
+				(xy 6.2 9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.3 8.9)
+				(xy 62.3 8.9)
+				(xy 62.3 9)
+				(xy 43.3 9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 9)
+				(xy 41.8 9)
+				(xy 41.8 9.1)
+				(xy 6.2 9.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.2 9)
+				(xy 62.2 9)
+				(xy 62.2 9.1)
+				(xy 43.2 9.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.1)
+				(xy 3.9 9.1)
+				(xy 3.9 9.2)
+				(xy 0.6 9.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 9.1)
+				(xy 41.7 9.1)
+				(xy 41.7 9.2)
+				(xy 6.1 9.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43.1 9.1)
+				(xy 62.1 9.1)
+				(xy 62.1 9.2)
+				(xy 43.1 9.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.2)
+				(xy 4.4 9.2)
+				(xy 4.4 9.3)
+				(xy 0.6 9.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 4.8 9.2)
+				(xy 5.2 9.2)
+				(xy 5.2 10.3)
+				(xy 4.8 10.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.6 9.2)
+				(xy 41.6 9.2)
+				(xy 41.6 9.3)
+				(xy 5.6 9.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 43 9.2)
+				(xy 62 9.2)
+				(xy 62 9.3)
+				(xy 43 9.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.3)
+				(xy 4.2 9.3)
+				(xy 4.2 9.4)
+				(xy 0.6 9.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.8 9.3)
+				(xy 41.5 9.3)
+				(xy 41.5 9.4)
+				(xy 5.8 9.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.9 9.3)
+				(xy 61.9 9.3)
+				(xy 61.9 9.4)
+				(xy 42.9 9.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.4)
+				(xy 4.1 9.4)
+				(xy 4.1 9.5)
+				(xy 0.6 9.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.9 9.4)
+				(xy 41.4 9.4)
+				(xy 41.4 9.5)
+				(xy 5.9 9.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 9.4)
+				(xy 61.8 9.4)
+				(xy 61.8 9.5)
+				(xy 42.8 9.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.5)
+				(xy 4 9.5)
+				(xy 4 9.6)
+				(xy 0.6 9.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6 9.5)
+				(xy 41.3 9.5)
+				(xy 41.3 9.6)
+				(xy 6 9.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 9.5)
+				(xy 61.7 9.5)
+				(xy 61.7 9.6)
+				(xy 42.7 9.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.6 9.5)
+				(xy 69.4 9.5)
+				(xy 69.4 9.7)
+				(xy 65.6 9.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.6)
+				(xy 3.9 9.6)
+				(xy 3.9 9.7)
+				(xy 0.6 9.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 9.6)
+				(xy 41.2 9.6)
+				(xy 41.2 9.7)
+				(xy 6.1 9.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 9.6)
+				(xy 61.6 9.6)
+				(xy 61.6 9.7)
+				(xy 42.6 9.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.7)
+				(xy 3.8 9.7)
+				(xy 3.8 9.9)
+				(xy 0.6 9.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 9.7)
+				(xy 41.1 9.7)
+				(xy 41.1 9.8)
+				(xy 6.2 9.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 9.7)
+				(xy 61.5 9.7)
+				(xy 61.5 9.8)
+				(xy 42.5 9.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.5 9.7)
+				(xy 69.4 9.7)
+				(xy 69.4 9.8)
+				(xy 65.5 9.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 9.8)
+				(xy 41 9.8)
+				(xy 41 9.9)
+				(xy 6.2 9.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 9.8)
+				(xy 61.4 9.8)
+				(xy 61.4 9.9)
+				(xy 42.4 9.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.4 9.8)
+				(xy 69.4 9.8)
+				(xy 69.4 9.9)
+				(xy 65.4 9.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 9.9)
+				(xy 3.7 9.9)
+				(xy 3.7 10.1)
+				(xy 0.6 10.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 9.9)
+				(xy 40.9 9.9)
+				(xy 40.9 10)
+				(xy 6.3 10)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 9.9)
+				(xy 61.3 9.9)
+				(xy 61.3 10)
+				(xy 42.3 10)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.8 9.9)
+				(xy 62.9 9.9)
+				(xy 62.9 10)
+				(xy 62.8 10)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.3 9.9)
+				(xy 69.4 9.9)
+				(xy 69.4 10)
+				(xy 65.3 10)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 10)
+				(xy 40.8 10)
+				(xy 40.8 10.1)
+				(xy 6.3 10.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.2 10)
+				(xy 61.2 10)
+				(xy 61.2 10.1)
+				(xy 42.2 10.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.7 10)
+				(xy 62.9 10)
+				(xy 62.9 10.1)
+				(xy 62.7 10.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.2 10)
+				(xy 69.4 10)
+				(xy 69.4 10.9)
+				(xy 65.2 10.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 10.1)
+				(xy 3.6 10.1)
+				(xy 3.6 10.3)
+				(xy 0.6 10.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 10.1)
+				(xy 40.7 10.1)
+				(xy 40.7 10.2)
+				(xy 6.4 10.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.1 10.1)
+				(xy 61.1 10.1)
+				(xy 61.1 10.2)
+				(xy 42.1 10.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.6 10.1)
+				(xy 62.8 10.1)
+				(xy 62.8 10.2)
+				(xy 62.6 10.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 10.2)
+				(xy 40.6 10.2)
+				(xy 40.6 10.3)
+				(xy 6.4 10.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42 10.2)
+				(xy 61 10.2)
+				(xy 61 10.3)
+				(xy 42 10.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.5 10.2)
+				(xy 62.8 10.2)
+				(xy 62.8 10.3)
+				(xy 62.5 10.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 10.3)
+				(xy 40.5 10.3)
+				(xy 40.5 10.4)
+				(xy 0.6 10.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.9 10.3)
+				(xy 60.9 10.3)
+				(xy 60.9 10.4)
+				(xy 41.9 10.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.4 10.3)
+				(xy 62.8 10.3)
+				(xy 62.8 10.4)
+				(xy 62.4 10.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 10.4)
+				(xy 40.4 10.4)
+				(xy 40.4 10.5)
+				(xy 0.6 10.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.8 10.4)
+				(xy 60.8 10.4)
+				(xy 60.8 10.5)
+				(xy 41.8 10.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.3 10.4)
+				(xy 62.8 10.4)
+				(xy 62.8 10.5)
+				(xy 62.3 10.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 10.5)
+				(xy 40.3 10.5)
+				(xy 40.3 10.6)
+				(xy 0.6 10.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.7 10.5)
+				(xy 60.7 10.5)
+				(xy 60.7 10.6)
+				(xy 41.7 10.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.2 10.5)
+				(xy 62.8 10.5)
+				(xy 62.8 10.6)
+				(xy 62.2 10.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 10.6)
+				(xy 40.2 10.6)
+				(xy 40.2 10.7)
+				(xy 0.6 10.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.6 10.6)
+				(xy 60.6 10.6)
+				(xy 60.6 10.7)
+				(xy 41.6 10.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.1 10.6)
+				(xy 62.8 10.6)
+				(xy 62.8 10.7)
+				(xy 62.1 10.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 10.7)
+				(xy 3.6 10.7)
+				(xy 3.6 11)
+				(xy 0.6 11)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 4.8 10.7)
+				(xy 5.2 10.7)
+				(xy 5.2 11.9)
+				(xy 4.8 11.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 10.7)
+				(xy 26.4 10.7)
+				(xy 26.4 10.8)
+				(xy 6.4 10.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.8 10.7)
+				(xy 27.2 10.7)
+				(xy 27.2 11.8)
+				(xy 26.8 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.6 10.7)
+				(xy 40.1 10.7)
+				(xy 40.1 10.8)
+				(xy 27.6 10.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.5 10.7)
+				(xy 60.5 10.7)
+				(xy 60.5 10.8)
+				(xy 41.5 10.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62 10.7)
+				(xy 62.8 10.7)
+				(xy 62.8 10.8)
+				(xy 62 10.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 10.8)
+				(xy 21.8 10.8)
+				(xy 21.8 10.9)
+				(xy 6.4 10.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.2 10.8)
+				(xy 26.3 10.8)
+				(xy 26.3 10.9)
+				(xy 22.2 10.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.7 10.8)
+				(xy 40 10.8)
+				(xy 40 10.9)
+				(xy 27.7 10.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.4 10.8)
+				(xy 60.4 10.8)
+				(xy 60.4 10.9)
+				(xy 41.4 10.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.9 10.8)
+				(xy 62.8 10.8)
+				(xy 62.8 10.9)
+				(xy 61.9 10.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 10.9)
+				(xy 21.5 10.9)
+				(xy 21.5 11)
+				(xy 6.4 11)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.5 10.9)
+				(xy 26.1 10.9)
+				(xy 26.1 11)
+				(xy 22.5 11)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.9 10.9)
+				(xy 39.9 10.9)
+				(xy 39.9 11)
+				(xy 27.9 11)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.3 10.9)
+				(xy 60.3 10.9)
+				(xy 60.3 11)
+				(xy 41.3 11)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.8 10.9)
+				(xy 62.9 10.9)
+				(xy 62.9 11)
+				(xy 61.8 11)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.1 10.9)
+				(xy 69.4 10.9)
+				(xy 69.4 11.2)
+				(xy 65.1 11.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11)
+				(xy 3.7 11)
+				(xy 3.7 11.2)
+				(xy 0.6 11.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 11)
+				(xy 21.3 11)
+				(xy 21.3 11.1)
+				(xy 6.3 11.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.7 11)
+				(xy 26 11)
+				(xy 26 11.1)
+				(xy 22.7 11.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28 11)
+				(xy 39.8 11)
+				(xy 39.8 11.1)
+				(xy 28 11.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.2 11)
+				(xy 60.2 11)
+				(xy 60.2 11.1)
+				(xy 41.2 11.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.7 11)
+				(xy 62.9 11)
+				(xy 62.9 11.1)
+				(xy 61.7 11.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 11.1)
+				(xy 21.2 11.1)
+				(xy 21.2 11.2)
+				(xy 6.3 11.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.8 11.1)
+				(xy 25.9 11.1)
+				(xy 25.9 11.2)
+				(xy 22.8 11.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.1 11.1)
+				(xy 39.7 11.1)
+				(xy 39.7 11.2)
+				(xy 28.1 11.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.1 11.1)
+				(xy 60.1 11.1)
+				(xy 60.1 11.2)
+				(xy 41.1 11.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.6 11.1)
+				(xy 62.9 11.1)
+				(xy 62.9 11.2)
+				(xy 61.6 11.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11.2)
+				(xy 3.8 11.2)
+				(xy 3.8 11.4)
+				(xy 0.6 11.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 11.2)
+				(xy 21.1 11.2)
+				(xy 21.1 11.3)
+				(xy 6.2 11.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.9 11.2)
+				(xy 25.9 11.2)
+				(xy 25.9 11.3)
+				(xy 22.9 11.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.1 11.2)
+				(xy 39.6 11.2)
+				(xy 39.6 11.3)
+				(xy 28.1 11.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41 11.2)
+				(xy 60 11.2)
+				(xy 60 11.3)
+				(xy 41 11.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.5 11.2)
+				(xy 63 11.2)
+				(xy 63 11.3)
+				(xy 61.5 11.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65 11.2)
+				(xy 69.4 11.2)
+				(xy 69.4 11.3)
+				(xy 65 11.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 11.3)
+				(xy 21 11.3)
+				(xy 21 11.4)
+				(xy 6.2 11.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23 11.3)
+				(xy 25.8 11.3)
+				(xy 25.8 11.4)
+				(xy 23 11.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.2 11.3)
+				(xy 39.5 11.3)
+				(xy 39.5 11.4)
+				(xy 28.2 11.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.9 11.3)
+				(xy 59.9 11.3)
+				(xy 59.9 11.4)
+				(xy 40.9 11.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.4 11.3)
+				(xy 63.1 11.3)
+				(xy 63.1 11.4)
+				(xy 61.4 11.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.9 11.3)
+				(xy 69.4 11.3)
+				(xy 69.4 11.4)
+				(xy 64.9 11.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11.4)
+				(xy 3.9 11.4)
+				(xy 3.9 11.5)
+				(xy 0.6 11.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 11.4)
+				(xy 21 11.4)
+				(xy 21 11.5)
+				(xy 6.1 11.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23 11.4)
+				(xy 25.7 11.4)
+				(xy 25.7 11.5)
+				(xy 23 11.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 11.4)
+				(xy 39.4 11.4)
+				(xy 39.4 11.5)
+				(xy 28.3 11.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.8 11.4)
+				(xy 59.8 11.4)
+				(xy 59.8 11.5)
+				(xy 40.8 11.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.3 11.4)
+				(xy 63.2 11.4)
+				(xy 63.2 11.5)
+				(xy 61.3 11.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.8 11.4)
+				(xy 69.4 11.4)
+				(xy 69.4 11.5)
+				(xy 64.8 11.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11.5)
+				(xy 4 11.5)
+				(xy 4 11.6)
+				(xy 0.6 11.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6 11.5)
+				(xy 20.9 11.5)
+				(xy 20.9 11.6)
+				(xy 6 11.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.1 11.5)
+				(xy 25.7 11.5)
+				(xy 25.7 11.8)
+				(xy 23.1 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 11.5)
+				(xy 39.3 11.5)
+				(xy 39.3 11.6)
+				(xy 28.3 11.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.7 11.5)
+				(xy 59.7 11.5)
+				(xy 59.7 11.6)
+				(xy 40.7 11.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.2 11.5)
+				(xy 63.3 11.5)
+				(xy 63.3 11.6)
+				(xy 61.2 11.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.7 11.5)
+				(xy 69.4 11.5)
+				(xy 69.4 11.6)
+				(xy 64.7 11.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11.6)
+				(xy 4.1 11.6)
+				(xy 4.1 11.7)
+				(xy 0.6 11.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.9 11.6)
+				(xy 20.9 11.6)
+				(xy 20.9 11.7)
+				(xy 5.9 11.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 11.6)
+				(xy 39.2 11.6)
+				(xy 39.2 11.7)
+				(xy 28.3 11.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.6 11.6)
+				(xy 59.6 11.6)
+				(xy 59.6 11.7)
+				(xy 40.6 11.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.1 11.6)
+				(xy 63.5 11.6)
+				(xy 63.5 11.7)
+				(xy 61.1 11.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.5 11.6)
+				(xy 69.4 11.6)
+				(xy 69.4 11.8)
+				(xy 64.5 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11.7)
+				(xy 4.3 11.7)
+				(xy 4.3 11.8)
+				(xy 0.6 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.7 11.7)
+				(xy 20.9 11.7)
+				(xy 20.9 11.8)
+				(xy 5.7 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 11.7)
+				(xy 39.1 11.7)
+				(xy 39.1 11.8)
+				(xy 28.3 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.5 11.7)
+				(xy 59.5 11.7)
+				(xy 59.5 11.8)
+				(xy 40.5 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61 11.7)
+				(xy 63.5 11.7)
+				(xy 63.5 11.8)
+				(xy 61 11.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11.8)
+				(xy 4.5 11.8)
+				(xy 4.5 11.9)
+				(xy 0.6 11.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.5 11.8)
+				(xy 20.8 11.8)
+				(xy 20.8 11.9)
+				(xy 5.5 11.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.2 11.8)
+				(xy 39 11.8)
+				(xy 39 11.9)
+				(xy 23.2 11.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.4 11.8)
+				(xy 59.4 11.8)
+				(xy 59.4 11.9)
+				(xy 40.4 11.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.9 11.8)
+				(xy 63.3 11.8)
+				(xy 63.3 11.9)
+				(xy 60.9 11.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.8 11.8)
+				(xy 64.2 11.8)
+				(xy 64.2 12.9)
+				(xy 63.8 12.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.7 11.8)
+				(xy 69.4 11.8)
+				(xy 69.4 11.9)
+				(xy 64.7 11.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 11.9)
+				(xy 20.8 11.9)
+				(xy 20.8 12.2)
+				(xy 0.6 12.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.2 11.9)
+				(xy 38.9 11.9)
+				(xy 38.9 12)
+				(xy 23.2 12)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.3 11.9)
+				(xy 59.3 11.9)
+				(xy 59.3 12)
+				(xy 40.3 12)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.8 11.9)
+				(xy 63.1 11.9)
+				(xy 63.1 12)
+				(xy 60.8 12)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.9 11.9)
+				(xy 69.4 11.9)
+				(xy 69.4 12)
+				(xy 64.9 12)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.2 12)
+				(xy 38.8 12)
+				(xy 38.8 12.1)
+				(xy 23.2 12.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.2 12)
+				(xy 59.2 12)
+				(xy 59.2 12.1)
+				(xy 40.2 12.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.7 12)
+				(xy 63 12)
+				(xy 63 12.1)
+				(xy 60.7 12.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65 12)
+				(xy 69.4 12)
+				(xy 69.4 12.1)
+				(xy 65 12.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.2 12.1)
+				(xy 38.7 12.1)
+				(xy 38.7 12.2)
+				(xy 23.2 12.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.1 12.1)
+				(xy 59.1 12.1)
+				(xy 59.1 12.2)
+				(xy 40.1 12.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.6 12.1)
+				(xy 62.9 12.1)
+				(xy 62.9 12.2)
+				(xy 60.6 12.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.1 12.1)
+				(xy 69.4 12.1)
+				(xy 69.4 12.2)
+				(xy 65.1 12.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 12.2)
+				(xy 20.9 12.2)
+				(xy 20.9 12.5)
+				(xy 0.6 12.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.1 12.2)
+				(xy 25.7 12.2)
+				(xy 25.7 12.5)
+				(xy 23.1 12.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.8 12.2)
+				(xy 27.2 12.2)
+				(xy 27.2 13.3)
+				(xy 26.8 13.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 12.2)
+				(xy 38.6 12.2)
+				(xy 38.6 12.3)
+				(xy 28.3 12.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40 12.2)
+				(xy 59 12.2)
+				(xy 59 12.3)
+				(xy 40 12.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.5 12.2)
+				(xy 62.8 12.2)
+				(xy 62.8 12.3)
+				(xy 60.5 12.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.2 12.2)
+				(xy 69.4 12.2)
+				(xy 69.4 12.4)
+				(xy 65.2 12.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 12.3)
+				(xy 38.5 12.3)
+				(xy 38.5 12.4)
+				(xy 28.3 12.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.9 12.3)
+				(xy 58.9 12.3)
+				(xy 58.9 12.4)
+				(xy 39.9 12.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.4 12.3)
+				(xy 62.8 12.3)
+				(xy 62.8 12.4)
+				(xy 60.4 12.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 12.4)
+				(xy 38.4 12.4)
+				(xy 38.4 12.5)
+				(xy 28.3 12.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.8 12.4)
+				(xy 58.8 12.4)
+				(xy 58.8 12.5)
+				(xy 39.8 12.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.3 12.4)
+				(xy 62.7 12.4)
+				(xy 62.7 12.5)
+				(xy 60.3 12.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.3 12.4)
+				(xy 69.4 12.4)
+				(xy 69.4 12.6)
+				(xy 65.3 12.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 12.5)
+				(xy 21 12.5)
+				(xy 21 12.7)
+				(xy 0.6 12.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23 12.5)
+				(xy 25.7 12.5)
+				(xy 25.7 12.6)
+				(xy 23 12.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.3 12.5)
+				(xy 38.3 12.5)
+				(xy 38.3 12.6)
+				(xy 28.3 12.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.7 12.5)
+				(xy 58.7 12.5)
+				(xy 58.7 12.6)
+				(xy 39.7 12.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.2 12.5)
+				(xy 62.7 12.5)
+				(xy 62.7 12.6)
+				(xy 60.2 12.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23 12.6)
+				(xy 25.8 12.6)
+				(xy 25.8 12.7)
+				(xy 23 12.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.2 12.6)
+				(xy 38.2 12.6)
+				(xy 38.2 12.7)
+				(xy 28.2 12.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.6 12.6)
+				(xy 58.6 12.6)
+				(xy 58.6 12.7)
+				(xy 39.6 12.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60.1 12.6)
+				(xy 62.6 12.6)
+				(xy 62.6 12.7)
+				(xy 60.1 12.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.4 12.6)
+				(xy 69.4 12.6)
+				(xy 69.4 12.9)
+				(xy 65.4 12.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 12.7)
+				(xy 21.1 12.7)
+				(xy 21.1 12.8)
+				(xy 0.6 12.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.9 12.7)
+				(xy 25.9 12.7)
+				(xy 25.9 12.8)
+				(xy 22.9 12.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.1 12.7)
+				(xy 38.1 12.7)
+				(xy 38.1 12.8)
+				(xy 28.1 12.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.5 12.7)
+				(xy 58.5 12.7)
+				(xy 58.5 12.8)
+				(xy 39.5 12.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 60 12.7)
+				(xy 62.6 12.7)
+				(xy 62.6 12.8)
+				(xy 60 12.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 12.8)
+				(xy 21.2 12.8)
+				(xy 21.2 12.9)
+				(xy 0.6 12.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.8 12.8)
+				(xy 25.9 12.8)
+				(xy 25.9 12.9)
+				(xy 22.8 12.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28.1 12.8)
+				(xy 38 12.8)
+				(xy 38 12.9)
+				(xy 28.1 12.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.4 12.8)
+				(xy 58.4 12.8)
+				(xy 58.4 12.9)
+				(xy 39.4 12.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.9 12.8)
+				(xy 62.6 12.8)
+				(xy 62.6 12.9)
+				(xy 59.9 12.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 12.9)
+				(xy 21.3 12.9)
+				(xy 21.3 13)
+				(xy 0.6 13)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.7 12.9)
+				(xy 26 12.9)
+				(xy 26 13)
+				(xy 22.7 13)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 28 12.9)
+				(xy 37.9 12.9)
+				(xy 37.9 13)
+				(xy 28 13)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.3 12.9)
+				(xy 58.3 12.9)
+				(xy 58.3 13)
+				(xy 39.3 13)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.8 12.9)
+				(xy 69.4 12.9)
+				(xy 69.4 13)
+				(xy 59.8 13)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13)
+				(xy 21.5 13)
+				(xy 21.5 13.1)
+				(xy 0.6 13.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.5 13)
+				(xy 26.1 13)
+				(xy 26.1 13.1)
+				(xy 22.5 13.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.9 13)
+				(xy 37.8 13)
+				(xy 37.8 13.1)
+				(xy 27.9 13.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.2 13)
+				(xy 58.2 13)
+				(xy 58.2 13.1)
+				(xy 39.2 13.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.7 13)
+				(xy 69.4 13)
+				(xy 69.4 13.1)
+				(xy 59.7 13.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.1)
+				(xy 21.8 13.1)
+				(xy 21.8 13.2)
+				(xy 0.6 13.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 22.2 13.1)
+				(xy 26.3 13.1)
+				(xy 26.3 13.2)
+				(xy 22.2 13.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.7 13.1)
+				(xy 37.7 13.1)
+				(xy 37.7 13.2)
+				(xy 27.7 13.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39.1 13.1)
+				(xy 58.1 13.1)
+				(xy 58.1 13.2)
+				(xy 39.1 13.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.6 13.1)
+				(xy 69.4 13.1)
+				(xy 69.4 13.2)
+				(xy 59.6 13.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.2)
+				(xy 26.4 13.2)
+				(xy 26.4 13.3)
+				(xy 0.6 13.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.6 13.2)
+				(xy 37.6 13.2)
+				(xy 37.6 13.3)
+				(xy 27.6 13.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 39 13.2)
+				(xy 58 13.2)
+				(xy 58 13.3)
+				(xy 39 13.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.5 13.2)
+				(xy 69.4 13.2)
+				(xy 69.4 13.3)
+				(xy 59.5 13.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.3)
+				(xy 37.5 13.3)
+				(xy 37.5 13.4)
+				(xy 0.6 13.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.9 13.3)
+				(xy 57.9 13.3)
+				(xy 57.9 13.4)
+				(xy 38.9 13.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.4 13.3)
+				(xy 62.6 13.3)
+				(xy 62.6 13.4)
+				(xy 59.4 13.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.8 13.3)
+				(xy 64.2 13.3)
+				(xy 64.2 14.5)
+				(xy 63.8 14.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.4 13.3)
+				(xy 69.4 13.3)
+				(xy 69.4 13.5)
+				(xy 65.4 13.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.4)
+				(xy 37.4 13.4)
+				(xy 37.4 13.5)
+				(xy 0.6 13.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.8 13.4)
+				(xy 57.8 13.4)
+				(xy 57.8 13.5)
+				(xy 38.8 13.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.3 13.4)
+				(xy 62.6 13.4)
+				(xy 62.6 13.5)
+				(xy 59.3 13.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.5)
+				(xy 37.3 13.5)
+				(xy 37.3 13.6)
+				(xy 0.6 13.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.7 13.5)
+				(xy 57.7 13.5)
+				(xy 57.7 13.6)
+				(xy 38.7 13.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.2 13.5)
+				(xy 62.7 13.5)
+				(xy 62.7 13.6)
+				(xy 59.2 13.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.3 13.5)
+				(xy 69.4 13.5)
+				(xy 69.4 13.8)
+				(xy 65.3 13.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.6)
+				(xy 37.2 13.6)
+				(xy 37.2 13.7)
+				(xy 0.6 13.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.6 13.6)
+				(xy 57.6 13.6)
+				(xy 57.6 13.7)
+				(xy 38.6 13.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59.1 13.6)
+				(xy 62.7 13.6)
+				(xy 62.7 13.7)
+				(xy 59.1 13.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.7)
+				(xy 25.4 13.7)
+				(xy 25.4 13.8)
+				(xy 0.6 13.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.8 13.7)
+				(xy 26.2 13.7)
+				(xy 26.2 14.8)
+				(xy 25.8 14.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.6 13.7)
+				(xy 37.1 13.7)
+				(xy 37.1 13.8)
+				(xy 26.6 13.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.5 13.7)
+				(xy 57.5 13.7)
+				(xy 57.5 13.8)
+				(xy 38.5 13.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 59 13.7)
+				(xy 62.7 13.7)
+				(xy 62.7 13.8)
+				(xy 59 13.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.8)
+				(xy 25.3 13.8)
+				(xy 25.3 13.9)
+				(xy 0.6 13.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.7 13.8)
+				(xy 37 13.8)
+				(xy 37 13.9)
+				(xy 26.7 13.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.4 13.8)
+				(xy 57.4 13.8)
+				(xy 57.4 13.9)
+				(xy 38.4 13.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.9 13.8)
+				(xy 62.8 13.8)
+				(xy 62.8 13.9)
+				(xy 58.9 13.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.2 13.8)
+				(xy 69.4 13.8)
+				(xy 69.4 13.9)
+				(xy 65.2 13.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 13.9)
+				(xy 25.1 13.9)
+				(xy 25.1 14)
+				(xy 0.6 14)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.9 13.9)
+				(xy 36.9 13.9)
+				(xy 36.9 14)
+				(xy 26.9 14)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.3 13.9)
+				(xy 57.3 13.9)
+				(xy 57.3 14)
+				(xy 38.3 14)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.8 13.9)
+				(xy 62.9 13.9)
+				(xy 62.9 14)
+				(xy 58.8 14)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65.1 13.9)
+				(xy 69.4 13.9)
+				(xy 69.4 14)
+				(xy 65.1 14)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 14)
+				(xy 25 14)
+				(xy 25 14.1)
+				(xy 0.6 14.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27 14)
+				(xy 36.8 14)
+				(xy 36.8 14.1)
+				(xy 27 14.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.2 14)
+				(xy 57.2 14)
+				(xy 57.2 14.1)
+				(xy 38.2 14.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.7 14)
+				(xy 63 14)
+				(xy 63 14.1)
+				(xy 58.7 14.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 65 14)
+				(xy 69.4 14)
+				(xy 69.4 14.1)
+				(xy 65 14.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 14.1)
+				(xy 24.9 14.1)
+				(xy 24.9 14.3)
+				(xy 0.6 14.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 14.1)
+				(xy 36.7 14.1)
+				(xy 36.7 14.2)
+				(xy 27.1 14.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38.1 14.1)
+				(xy 57.1 14.1)
+				(xy 57.1 14.2)
+				(xy 38.1 14.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.6 14.1)
+				(xy 63.1 14.1)
+				(xy 63.1 14.2)
+				(xy 58.6 14.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.9 14.1)
+				(xy 69.4 14.1)
+				(xy 69.4 14.2)
+				(xy 64.9 14.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 14.2)
+				(xy 36.6 14.2)
+				(xy 36.6 14.3)
+				(xy 27.1 14.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 38 14.2)
+				(xy 57 14.2)
+				(xy 57 14.3)
+				(xy 38 14.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.5 14.2)
+				(xy 63.2 14.2)
+				(xy 63.2 14.3)
+				(xy 58.5 14.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.8 14.2)
+				(xy 69.4 14.2)
+				(xy 69.4 14.3)
+				(xy 64.8 14.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 14.3)
+				(xy 24.8 14.3)
+				(xy 24.8 14.4)
+				(xy 0.6 14.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.2 14.3)
+				(xy 36.5 14.3)
+				(xy 36.5 14.4)
+				(xy 27.2 14.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.9 14.3)
+				(xy 56.9 14.3)
+				(xy 56.9 14.4)
+				(xy 37.9 14.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.4 14.3)
+				(xy 63.4 14.3)
+				(xy 63.4 14.4)
+				(xy 58.4 14.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.6 14.3)
+				(xy 69.4 14.3)
+				(xy 69.4 14.4)
+				(xy 64.6 14.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 14.4)
+				(xy 24.7 14.4)
+				(xy 24.7 14.8)
+				(xy 0.6 14.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.3 14.4)
+				(xy 36.4 14.4)
+				(xy 36.4 14.5)
+				(xy 27.3 14.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.8 14.4)
+				(xy 56.8 14.4)
+				(xy 56.8 14.5)
+				(xy 37.8 14.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.3 14.4)
+				(xy 63.6 14.4)
+				(xy 63.6 14.5)
+				(xy 58.3 14.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 64.4 14.4)
+				(xy 69.4 14.4)
+				(xy 69.4 14.5)
+				(xy 64.4 14.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.3 14.5)
+				(xy 36.3 14.5)
+				(xy 36.3 14.6)
+				(xy 27.3 14.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.7 14.5)
+				(xy 56.7 14.5)
+				(xy 56.7 14.6)
+				(xy 37.7 14.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.2 14.5)
+				(xy 69.4 14.5)
+				(xy 69.4 14.6)
+				(xy 58.2 14.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.3 14.6)
+				(xy 36.2 14.6)
+				(xy 36.2 14.7)
+				(xy 27.3 14.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.6 14.6)
+				(xy 56.6 14.6)
+				(xy 56.6 14.7)
+				(xy 37.6 14.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58.1 14.6)
+				(xy 69.4 14.6)
+				(xy 69.4 14.7)
+				(xy 58.1 14.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.3 14.7)
+				(xy 36.1 14.7)
+				(xy 36.1 14.8)
+				(xy 27.3 14.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.5 14.7)
+				(xy 56.5 14.7)
+				(xy 56.5 14.8)
+				(xy 37.5 14.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 58 14.7)
+				(xy 69.4 14.7)
+				(xy 69.4 14.8)
+				(xy 58 14.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 14.8)
+				(xy 33.1 14.8)
+				(xy 33.1 14.9)
+				(xy 0.6 14.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 14.8)
+				(xy 36 14.8)
+				(xy 36 14.9)
+				(xy 34.9 14.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.4 14.8)
+				(xy 41.4 14.8)
+				(xy 41.4 14.9)
+				(xy 37.4 14.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.8 14.8)
+				(xy 56.4 14.8)
+				(xy 56.4 14.9)
+				(xy 41.8 14.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.9 14.8)
+				(xy 69.4 14.8)
+				(xy 69.4 14.9)
+				(xy 57.9 14.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 14.9)
+				(xy 32.9 14.9)
+				(xy 32.9 15.1)
+				(xy 0.6 15.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 14.9)
+				(xy 35.9 14.9)
+				(xy 35.9 15)
+				(xy 35.1 15)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.3 14.9)
+				(xy 41.1 14.9)
+				(xy 41.1 15)
+				(xy 37.3 15)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.1 14.9)
+				(xy 56.3 14.9)
+				(xy 56.3 15)
+				(xy 42.1 15)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.8 14.9)
+				(xy 69.4 14.9)
+				(xy 69.4 15)
+				(xy 57.8 15)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 15)
+				(xy 35.8 15)
+				(xy 35.8 15.1)
+				(xy 35.1 15.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.2 15)
+				(xy 40.9 15)
+				(xy 40.9 15.1)
+				(xy 37.2 15.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 15)
+				(xy 56.2 15)
+				(xy 56.2 15.1)
+				(xy 42.3 15.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.7 15)
+				(xy 69.4 15)
+				(xy 69.4 15.1)
+				(xy 57.7 15.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 15.1)
+				(xy 32.8 15.1)
+				(xy 32.8 15.2)
+				(xy 0.6 15.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 15.1)
+				(xy 35.7 15.1)
+				(xy 35.7 15.2)
+				(xy 35.2 15.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.1 15.1)
+				(xy 40.8 15.1)
+				(xy 40.8 15.2)
+				(xy 37.1 15.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 15.1)
+				(xy 56.1 15.1)
+				(xy 56.1 15.2)
+				(xy 42.4 15.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.6 15.1)
+				(xy 69.4 15.1)
+				(xy 69.4 15.2)
+				(xy 57.6 15.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 15.2)
+				(xy 24.7 15.2)
+				(xy 24.7 15.6)
+				(xy 0.6 15.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.8 15.2)
+				(xy 26.2 15.2)
+				(xy 26.2 16.3)
+				(xy 25.8 16.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.3 15.2)
+				(xy 32.8 15.2)
+				(xy 32.8 15.6)
+				(xy 27.3 15.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 15.2)
+				(xy 35.6 15.2)
+				(xy 35.6 15.3)
+				(xy 35.2 15.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37 15.2)
+				(xy 40.7 15.2)
+				(xy 40.7 15.3)
+				(xy 37 15.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 15.2)
+				(xy 56 15.2)
+				(xy 56 15.3)
+				(xy 42.5 15.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.5 15.2)
+				(xy 69.4 15.2)
+				(xy 69.4 15.3)
+				(xy 57.5 15.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 15.3)
+				(xy 35.5 15.3)
+				(xy 35.5 15.4)
+				(xy 35.2 15.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.9 15.3)
+				(xy 40.6 15.3)
+				(xy 40.6 15.4)
+				(xy 36.9 15.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 15.3)
+				(xy 55.9 15.3)
+				(xy 55.9 15.4)
+				(xy 42.6 15.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.4 15.3)
+				(xy 69.4 15.3)
+				(xy 69.4 15.4)
+				(xy 57.4 15.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 15.4)
+				(xy 35.4 15.4)
+				(xy 35.4 15.5)
+				(xy 35.2 15.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.8 15.4)
+				(xy 40.6 15.4)
+				(xy 40.6 15.5)
+				(xy 36.8 15.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 15.4)
+				(xy 55.8 15.4)
+				(xy 55.8 15.5)
+				(xy 42.7 15.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.3 15.4)
+				(xy 69.4 15.4)
+				(xy 69.4 15.5)
+				(xy 57.3 15.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.7 15.5)
+				(xy 40.5 15.5)
+				(xy 40.5 15.6)
+				(xy 36.7 15.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 15.5)
+				(xy 55.7 15.5)
+				(xy 55.7 15.6)
+				(xy 42.7 15.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.2 15.5)
+				(xy 69.4 15.5)
+				(xy 69.4 15.6)
+				(xy 57.2 15.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 15.6)
+				(xy 24.8 15.6)
+				(xy 24.8 15.7)
+				(xy 0.6 15.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.2 15.6)
+				(xy 32.8 15.6)
+				(xy 32.8 15.7)
+				(xy 27.2 15.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.6 15.6)
+				(xy 40.5 15.6)
+				(xy 40.5 15.7)
+				(xy 36.6 15.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 15.6)
+				(xy 55.6 15.6)
+				(xy 55.6 15.7)
+				(xy 42.7 15.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.1 15.6)
+				(xy 69.4 15.6)
+				(xy 69.4 15.7)
+				(xy 57.1 15.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 15.7)
+				(xy 24.9 15.7)
+				(xy 24.9 15.9)
+				(xy 0.6 15.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 15.7)
+				(xy 32.8 15.7)
+				(xy 32.8 15.9)
+				(xy 27.1 15.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.5 15.7)
+				(xy 40.5 15.7)
+				(xy 40.5 15.8)
+				(xy 36.5 15.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 15.7)
+				(xy 55.5 15.7)
+				(xy 55.5 15.8)
+				(xy 42.8 15.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57 15.7)
+				(xy 69.4 15.7)
+				(xy 69.4 15.8)
+				(xy 57 15.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.4 15.8)
+				(xy 40.5 15.8)
+				(xy 40.5 15.9)
+				(xy 36.4 15.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 15.8)
+				(xy 55.4 15.8)
+				(xy 55.4 15.9)
+				(xy 42.8 15.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.9 15.8)
+				(xy 69.4 15.8)
+				(xy 69.4 15.9)
+				(xy 56.9 15.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 15.9)
+				(xy 25 15.9)
+				(xy 25 16)
+				(xy 0.6 16)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27 15.9)
+				(xy 32.8 15.9)
+				(xy 32.8 16)
+				(xy 27 16)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.3 15.9)
+				(xy 40.5 15.9)
+				(xy 40.5 16)
+				(xy 36.3 16)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 15.9)
+				(xy 55.3 15.9)
+				(xy 55.3 16)
+				(xy 42.8 16)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.8 15.9)
+				(xy 69.4 15.9)
+				(xy 69.4 16)
+				(xy 56.8 16)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 16)
+				(xy 25.1 16)
+				(xy 25.1 16.1)
+				(xy 0.6 16.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.9 16)
+				(xy 32.8 16)
+				(xy 32.8 16.1)
+				(xy 26.9 16.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.2 16)
+				(xy 40.5 16)
+				(xy 40.5 16.1)
+				(xy 36.2 16.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 16)
+				(xy 55.2 16)
+				(xy 55.2 16.1)
+				(xy 42.8 16.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.7 16)
+				(xy 69.4 16)
+				(xy 69.4 16.1)
+				(xy 56.7 16.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 16.1)
+				(xy 25.3 16.1)
+				(xy 25.3 16.2)
+				(xy 0.6 16.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.7 16.1)
+				(xy 32.8 16.1)
+				(xy 32.8 16.2)
+				(xy 26.7 16.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.1 16.1)
+				(xy 40.5 16.1)
+				(xy 40.5 16.2)
+				(xy 36.1 16.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 16.1)
+				(xy 55.1 16.1)
+				(xy 55.1 16.2)
+				(xy 42.8 16.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.6 16.1)
+				(xy 69.4 16.1)
+				(xy 69.4 16.2)
+				(xy 56.6 16.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 16.2)
+				(xy 25.4 16.2)
+				(xy 25.4 16.3)
+				(xy 0.6 16.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.6 16.2)
+				(xy 32.8 16.2)
+				(xy 32.8 16.3)
+				(xy 26.6 16.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36 16.2)
+				(xy 40.5 16.2)
+				(xy 40.5 16.3)
+				(xy 36 16.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 16.2)
+				(xy 55 16.2)
+				(xy 55 16.3)
+				(xy 42.8 16.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.5 16.2)
+				(xy 69.4 16.2)
+				(xy 69.4 16.3)
+				(xy 56.5 16.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 16.3)
+				(xy 32.8 16.3)
+				(xy 32.8 16.9)
+				(xy 0.6 16.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.9 16.3)
+				(xy 40.5 16.3)
+				(xy 40.5 16.4)
+				(xy 35.9 16.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 16.3)
+				(xy 54.9 16.3)
+				(xy 54.9 16.4)
+				(xy 42.7 16.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.4 16.3)
+				(xy 69.4 16.3)
+				(xy 69.4 16.4)
+				(xy 56.4 16.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.8 16.4)
+				(xy 40.5 16.4)
+				(xy 40.5 16.5)
+				(xy 35.8 16.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 16.4)
+				(xy 54.8 16.4)
+				(xy 54.8 16.5)
+				(xy 42.7 16.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.3 16.4)
+				(xy 69.4 16.4)
+				(xy 69.4 16.5)
+				(xy 56.3 16.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 16.5)
+				(xy 40.6 16.5)
+				(xy 40.6 16.7)
+				(xy 35.2 16.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 16.5)
+				(xy 54.7 16.5)
+				(xy 54.7 16.6)
+				(xy 42.7 16.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.2 16.5)
+				(xy 69.4 16.5)
+				(xy 69.4 16.6)
+				(xy 56.2 16.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 16.6)
+				(xy 54.6 16.6)
+				(xy 54.6 16.7)
+				(xy 42.6 16.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.1 16.6)
+				(xy 69.4 16.6)
+				(xy 69.4 16.7)
+				(xy 56.1 16.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 16.7)
+				(xy 40.7 16.7)
+				(xy 40.7 16.8)
+				(xy 35.2 16.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 16.7)
+				(xy 54.5 16.7)
+				(xy 54.5 16.8)
+				(xy 42.5 16.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56 16.7)
+				(xy 69.4 16.7)
+				(xy 69.4 16.8)
+				(xy 56 16.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 16.8)
+				(xy 40.8 16.8)
+				(xy 40.8 16.9)
+				(xy 35.2 16.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 16.8)
+				(xy 54.4 16.8)
+				(xy 54.4 16.9)
+				(xy 42.4 16.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.9 16.8)
+				(xy 69.4 16.8)
+				(xy 69.4 16.9)
+				(xy 55.9 16.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 16.9)
+				(xy 32.9 16.9)
+				(xy 32.9 17.1)
+				(xy 0.6 17.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 16.9)
+				(xy 40.9 16.9)
+				(xy 40.9 17)
+				(xy 35.1 17)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 16.9)
+				(xy 54.3 16.9)
+				(xy 54.3 17)
+				(xy 42.3 17)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.8 16.9)
+				(xy 69.4 16.9)
+				(xy 69.4 17)
+				(xy 55.8 17)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 17)
+				(xy 41.1 17)
+				(xy 41.1 17.1)
+				(xy 35.1 17.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.1 17)
+				(xy 54.2 17)
+				(xy 54.2 17.1)
+				(xy 42.1 17.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.7 17)
+				(xy 69.4 17)
+				(xy 69.4 17.1)
+				(xy 55.7 17.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.1)
+				(xy 33.1 17.1)
+				(xy 33.1 17.2)
+				(xy 0.6 17.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 17.1)
+				(xy 41.4 17.1)
+				(xy 41.4 17.2)
+				(xy 34.9 17.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.8 17.1)
+				(xy 54.1 17.1)
+				(xy 54.1 17.2)
+				(xy 41.8 17.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.6 17.1)
+				(xy 69.4 17.1)
+				(xy 69.4 17.2)
+				(xy 55.6 17.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.2)
+				(xy 54 17.2)
+				(xy 54 17.3)
+				(xy 0.6 17.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.5 17.2)
+				(xy 69.4 17.2)
+				(xy 69.4 17.3)
+				(xy 55.5 17.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.3)
+				(xy 53.9 17.3)
+				(xy 53.9 17.4)
+				(xy 0.6 17.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.4 17.3)
+				(xy 69.4 17.3)
+				(xy 69.4 17.4)
+				(xy 55.4 17.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.4)
+				(xy 33.6 17.4)
+				(xy 33.6 17.5)
+				(xy 0.6 17.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.4 17.4)
+				(xy 41.2 17.4)
+				(xy 41.2 17.5)
+				(xy 34.4 17.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42 17.4)
+				(xy 53.8 17.4)
+				(xy 53.8 17.5)
+				(xy 42 17.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.3 17.4)
+				(xy 69.4 17.4)
+				(xy 69.4 17.5)
+				(xy 55.3 17.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.5)
+				(xy 33.4 17.5)
+				(xy 33.4 17.6)
+				(xy 0.6 17.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.6 17.5)
+				(xy 41 17.5)
+				(xy 41 17.6)
+				(xy 34.6 17.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.2 17.5)
+				(xy 53.7 17.5)
+				(xy 53.7 17.6)
+				(xy 42.2 17.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.2 17.5)
+				(xy 69.4 17.5)
+				(xy 69.4 17.6)
+				(xy 55.2 17.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.6)
+				(xy 33.2 17.6)
+				(xy 33.2 17.7)
+				(xy 0.6 17.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.8 17.6)
+				(xy 40.9 17.6)
+				(xy 40.9 17.7)
+				(xy 34.8 17.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 17.6)
+				(xy 53.6 17.6)
+				(xy 53.6 17.7)
+				(xy 42.4 17.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.1 17.6)
+				(xy 69.4 17.6)
+				(xy 69.4 17.7)
+				(xy 55.1 17.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.7)
+				(xy 33.1 17.7)
+				(xy 33.1 17.9)
+				(xy 0.6 17.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 17.7)
+				(xy 40.8 17.7)
+				(xy 40.8 17.8)
+				(xy 34.9 17.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 17.7)
+				(xy 53.5 17.7)
+				(xy 53.5 17.8)
+				(xy 42.5 17.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55 17.7)
+				(xy 69.4 17.7)
+				(xy 69.4 17.8)
+				(xy 55 17.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 17.8)
+				(xy 40.7 17.8)
+				(xy 40.7 17.9)
+				(xy 34.9 17.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 17.8)
+				(xy 53.4 17.8)
+				(xy 53.4 17.9)
+				(xy 42.6 17.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.9 17.8)
+				(xy 69.4 17.8)
+				(xy 69.4 17.9)
+				(xy 54.9 17.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 17.9)
+				(xy 33 17.9)
+				(xy 33 18)
+				(xy 0.6 18)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35 17.9)
+				(xy 40.6 17.9)
+				(xy 40.6 18)
+				(xy 35 18)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 17.9)
+				(xy 53.3 17.9)
+				(xy 53.3 18)
+				(xy 42.6 18)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.8 17.9)
+				(xy 69.4 17.9)
+				(xy 69.4 18)
+				(xy 54.8 18)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 18)
+				(xy 32.9 18)
+				(xy 32.9 18.3)
+				(xy 0.6 18.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 18)
+				(xy 40.6 18)
+				(xy 40.6 18.1)
+				(xy 35.1 18.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 18)
+				(xy 53.2 18)
+				(xy 53.2 18.1)
+				(xy 42.7 18.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.7 18)
+				(xy 69.4 18)
+				(xy 69.4 18.1)
+				(xy 54.7 18.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 18.1)
+				(xy 40.5 18.1)
+				(xy 40.5 18.3)
+				(xy 35.1 18.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 18.1)
+				(xy 53.1 18.1)
+				(xy 53.1 18.2)
+				(xy 42.7 18.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.6 18.1)
+				(xy 69.4 18.1)
+				(xy 69.4 18.2)
+				(xy 54.6 18.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 18.2)
+				(xy 53 18.2)
+				(xy 53 18.3)
+				(xy 42.8 18.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.5 18.2)
+				(xy 69.4 18.2)
+				(xy 69.4 18.3)
+				(xy 54.5 18.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 18.3)
+				(xy 32.8 18.3)
+				(xy 32.8 18.8)
+				(xy 0.6 18.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 18.3)
+				(xy 40.5 18.3)
+				(xy 40.5 18.5)
+				(xy 35.2 18.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 18.3)
+				(xy 52.9 18.3)
+				(xy 52.9 18.4)
+				(xy 42.8 18.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.4 18.3)
+				(xy 69.4 18.3)
+				(xy 69.4 18.4)
+				(xy 54.4 18.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 18.4)
+				(xy 52.8 18.4)
+				(xy 52.8 18.5)
+				(xy 42.8 18.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.3 18.4)
+				(xy 69.4 18.4)
+				(xy 69.4 18.5)
+				(xy 54.3 18.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 18.5)
+				(xy 40.4 18.5)
+				(xy 40.4 18.6)
+				(xy 35.2 18.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 18.5)
+				(xy 52.7 18.5)
+				(xy 52.7 18.6)
+				(xy 42.8 18.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.2 18.5)
+				(xy 69.4 18.5)
+				(xy 69.4 18.6)
+				(xy 54.2 18.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 18.6)
+				(xy 40.5 18.6)
+				(xy 40.5 18.8)
+				(xy 35.2 18.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 18.6)
+				(xy 52.6 18.6)
+				(xy 52.6 18.7)
+				(xy 42.8 18.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54.1 18.6)
+				(xy 69.4 18.6)
+				(xy 69.4 18.7)
+				(xy 54.1 18.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 18.7)
+				(xy 52.5 18.7)
+				(xy 52.5 18.8)
+				(xy 42.8 18.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 54 18.7)
+				(xy 69.4 18.7)
+				(xy 69.4 18.8)
+				(xy 54 18.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 18.8)
+				(xy 25.8 18.8)
+				(xy 25.8 18.9)
+				(xy 0.6 18.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.2 18.8)
+				(xy 32.9 18.8)
+				(xy 32.9 18.9)
+				(xy 26.2 18.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 18.8)
+				(xy 40.5 18.8)
+				(xy 40.5 19)
+				(xy 35.1 19)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 18.8)
+				(xy 52.4 18.8)
+				(xy 52.4 18.9)
+				(xy 42.7 18.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.9 18.8)
+				(xy 69.4 18.8)
+				(xy 69.4 18.9)
+				(xy 53.9 18.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 18.9)
+				(xy 25.5 18.9)
+				(xy 25.5 19)
+				(xy 0.6 19)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.5 18.9)
+				(xy 32.9 18.9)
+				(xy 32.9 19)
+				(xy 26.5 19)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 18.9)
+				(xy 52.3 18.9)
+				(xy 52.3 19)
+				(xy 42.7 19)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.8 18.9)
+				(xy 69.4 18.9)
+				(xy 69.4 19)
+				(xy 53.8 19)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 19)
+				(xy 25.3 19)
+				(xy 25.3 19.1)
+				(xy 0.6 19.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.7 19)
+				(xy 32.9 19)
+				(xy 32.9 19.1)
+				(xy 26.7 19.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 19)
+				(xy 40.6 19)
+				(xy 40.6 19.1)
+				(xy 35.1 19.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 19)
+				(xy 52.2 19)
+				(xy 52.2 19.1)
+				(xy 42.7 19.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.7 19)
+				(xy 69.4 19)
+				(xy 69.4 19.1)
+				(xy 53.7 19.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 19.1)
+				(xy 25.2 19.1)
+				(xy 25.2 19.2)
+				(xy 0.6 19.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.8 19.1)
+				(xy 33 19.1)
+				(xy 33 19.2)
+				(xy 26.8 19.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35 19.1)
+				(xy 40.6 19.1)
+				(xy 40.6 19.2)
+				(xy 35 19.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 19.1)
+				(xy 52.1 19.1)
+				(xy 52.1 19.2)
+				(xy 42.6 19.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.6 19.1)
+				(xy 69.4 19.1)
+				(xy 69.4 19.2)
+				(xy 53.6 19.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 19.2)
+				(xy 25.1 19.2)
+				(xy 25.1 19.3)
+				(xy 0.6 19.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.9 19.2)
+				(xy 33.1 19.2)
+				(xy 33.1 19.3)
+				(xy 26.9 19.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 19.2)
+				(xy 40.7 19.2)
+				(xy 40.7 19.3)
+				(xy 34.9 19.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 19.2)
+				(xy 52 19.2)
+				(xy 52 19.3)
+				(xy 42.6 19.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.5 19.2)
+				(xy 69.4 19.2)
+				(xy 69.4 19.3)
+				(xy 53.5 19.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 19.3)
+				(xy 25 19.3)
+				(xy 25 19.5)
+				(xy 0.6 19.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27 19.3)
+				(xy 33.2 19.3)
+				(xy 33.2 19.4)
+				(xy 27 19.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.8 19.3)
+				(xy 40.8 19.3)
+				(xy 40.8 19.4)
+				(xy 34.8 19.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 19.3)
+				(xy 51.9 19.3)
+				(xy 51.9 19.4)
+				(xy 42.5 19.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.4 19.3)
+				(xy 69.4 19.3)
+				(xy 69.4 19.4)
+				(xy 53.4 19.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27 19.4)
+				(xy 33.3 19.4)
+				(xy 33.3 19.5)
+				(xy 27 19.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.7 19.4)
+				(xy 40.9 19.4)
+				(xy 40.9 19.5)
+				(xy 34.7 19.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 19.4)
+				(xy 51.8 19.4)
+				(xy 51.8 19.5)
+				(xy 42.4 19.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.3 19.4)
+				(xy 69.4 19.4)
+				(xy 69.4 19.5)
+				(xy 53.3 19.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 19.5)
+				(xy 24.9 19.5)
+				(xy 24.9 19.8)
+				(xy 0.6 19.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 19.5)
+				(xy 33.4 19.5)
+				(xy 33.4 19.6)
+				(xy 27.1 19.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.6 19.5)
+				(xy 41 19.5)
+				(xy 41 19.6)
+				(xy 34.6 19.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.2 19.5)
+				(xy 51.7 19.5)
+				(xy 51.7 19.6)
+				(xy 42.2 19.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.2 19.5)
+				(xy 69.4 19.5)
+				(xy 69.4 19.6)
+				(xy 53.2 19.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 19.6)
+				(xy 33.6 19.6)
+				(xy 33.6 19.7)
+				(xy 27.1 19.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.4 19.6)
+				(xy 41.2 19.6)
+				(xy 41.2 19.7)
+				(xy 34.4 19.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42 19.6)
+				(xy 51.6 19.6)
+				(xy 51.6 19.7)
+				(xy 42 19.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53.1 19.6)
+				(xy 69.4 19.6)
+				(xy 69.4 19.7)
+				(xy 53.1 19.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 19.7)
+				(xy 51.5 19.7)
+				(xy 51.5 19.8)
+				(xy 27.1 19.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 53 19.7)
+				(xy 69.4 19.7)
+				(xy 69.4 19.8)
+				(xy 53 19.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 19.8)
+				(xy 24.8 19.8)
+				(xy 24.8 20.2)
+				(xy 0.6 20.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.2 19.8)
+				(xy 51.4 19.8)
+				(xy 51.4 19.9)
+				(xy 27.2 19.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.9 19.8)
+				(xy 69.4 19.8)
+				(xy 69.4 19.9)
+				(xy 52.9 19.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.2 19.9)
+				(xy 33.7 19.9)
+				(xy 33.7 20)
+				(xy 27.2 20)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.3 19.9)
+				(xy 41.3 19.9)
+				(xy 41.3 20)
+				(xy 34.3 20)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.9 19.9)
+				(xy 51.3 19.9)
+				(xy 51.3 20)
+				(xy 41.9 20)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.8 19.9)
+				(xy 69.4 19.9)
+				(xy 69.4 20)
+				(xy 52.8 20)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.2 20)
+				(xy 33.4 20)
+				(xy 33.4 20.1)
+				(xy 27.2 20.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.6 20)
+				(xy 41.1 20)
+				(xy 41.1 20.1)
+				(xy 34.6 20.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.2 20)
+				(xy 51.2 20)
+				(xy 51.2 20.1)
+				(xy 42.2 20.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.7 20)
+				(xy 69.4 20)
+				(xy 69.4 20.1)
+				(xy 52.7 20.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.2 20.1)
+				(xy 33.3 20.1)
+				(xy 33.3 20.2)
+				(xy 27.2 20.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.7 20.1)
+				(xy 40.9 20.1)
+				(xy 40.9 20.2)
+				(xy 34.7 20.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 20.1)
+				(xy 51.1 20.1)
+				(xy 51.1 20.2)
+				(xy 42.3 20.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.6 20.1)
+				(xy 69.4 20.1)
+				(xy 69.4 20.2)
+				(xy 52.6 20.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 20.2)
+				(xy 24.9 20.2)
+				(xy 24.9 20.5)
+				(xy 0.6 20.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 20.2)
+				(xy 33.2 20.2)
+				(xy 33.2 20.3)
+				(xy 27.1 20.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.8 20.2)
+				(xy 40.8 20.2)
+				(xy 40.8 20.3)
+				(xy 34.8 20.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 20.2)
+				(xy 51 20.2)
+				(xy 51 20.3)
+				(xy 42.4 20.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.5 20.2)
+				(xy 69.4 20.2)
+				(xy 69.4 20.3)
+				(xy 52.5 20.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 20.3)
+				(xy 33.1 20.3)
+				(xy 33.1 20.4)
+				(xy 27.1 20.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 20.3)
+				(xy 40.7 20.3)
+				(xy 40.7 20.4)
+				(xy 34.9 20.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 20.3)
+				(xy 50.9 20.3)
+				(xy 50.9 20.4)
+				(xy 42.5 20.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.4 20.3)
+				(xy 69.4 20.3)
+				(xy 69.4 20.4)
+				(xy 52.4 20.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27.1 20.4)
+				(xy 33 20.4)
+				(xy 33 20.5)
+				(xy 27.1 20.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35 20.4)
+				(xy 40.6 20.4)
+				(xy 40.6 20.6)
+				(xy 35 20.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 20.4)
+				(xy 50.8 20.4)
+				(xy 50.8 20.5)
+				(xy 42.6 20.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.3 20.4)
+				(xy 69.4 20.4)
+				(xy 69.4 20.5)
+				(xy 52.3 20.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 20.5)
+				(xy 25 20.5)
+				(xy 25 20.7)
+				(xy 0.6 20.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27 20.5)
+				(xy 33 20.5)
+				(xy 33 20.6)
+				(xy 27 20.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 20.5)
+				(xy 50.7 20.5)
+				(xy 50.7 20.6)
+				(xy 42.7 20.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.2 20.5)
+				(xy 69.4 20.5)
+				(xy 69.4 20.6)
+				(xy 52.2 20.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 27 20.6)
+				(xy 32.9 20.6)
+				(xy 32.9 20.7)
+				(xy 27 20.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 20.6)
+				(xy 40.5 20.6)
+				(xy 40.5 20.9)
+				(xy 35.1 20.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52.1 20.6)
+				(xy 69.4 20.6)
+				(xy 69.4 20.7)
+				(xy 52.1 20.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 20.7)
+				(xy 25.1 20.7)
+				(xy 25.1 20.8)
+				(xy 0.6 20.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.9 20.7)
+				(xy 32.9 20.7)
+				(xy 32.9 20.8)
+				(xy 26.9 20.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 52 20.7)
+				(xy 69.4 20.7)
+				(xy 69.4 20.8)
+				(xy 52 20.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 20.8)
+				(xy 25.2 20.8)
+				(xy 25.2 20.9)
+				(xy 0.6 20.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.8 20.8)
+				(xy 32.9 20.8)
+				(xy 32.9 20.9)
+				(xy 26.8 20.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.9 20.8)
+				(xy 69.4 20.8)
+				(xy 69.4 20.9)
+				(xy 51.9 20.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 20.9)
+				(xy 25.3 20.9)
+				(xy 25.3 21)
+				(xy 0.6 21)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.7 20.9)
+				(xy 32.8 20.9)
+				(xy 32.8 21)
+				(xy 26.7 21)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 20.9)
+				(xy 40.5 20.9)
+				(xy 40.5 21)
+				(xy 35.2 21)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.8 20.9)
+				(xy 69.4 20.9)
+				(xy 69.4 21)
+				(xy 51.8 21)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 21)
+				(xy 25.5 21)
+				(xy 25.5 21.1)
+				(xy 0.6 21.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.5 21)
+				(xy 32.8 21)
+				(xy 32.8 21.1)
+				(xy 26.5 21.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 21)
+				(xy 40.4 21)
+				(xy 40.4 21.1)
+				(xy 35.2 21.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.7 21)
+				(xy 69.4 21)
+				(xy 69.4 21.1)
+				(xy 51.7 21.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 21.1)
+				(xy 25.8 21.1)
+				(xy 25.8 21.2)
+				(xy 0.6 21.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 26.2 21.1)
+				(xy 32.8 21.1)
+				(xy 32.8 21.2)
+				(xy 26.2 21.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 21.1)
+				(xy 40.5 21.1)
+				(xy 40.5 21.3)
+				(xy 35.2 21.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.6 21.1)
+				(xy 69.4 21.1)
+				(xy 69.4 21.2)
+				(xy 51.6 21.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 21.2)
+				(xy 32.8 21.2)
+				(xy 32.8 21.3)
+				(xy 0.6 21.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.5 21.2)
+				(xy 69.4 21.2)
+				(xy 69.4 21.3)
+				(xy 51.5 21.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 21.3)
+				(xy 32.9 21.3)
+				(xy 32.9 21.6)
+				(xy 0.6 21.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 21.3)
+				(xy 40.5 21.3)
+				(xy 40.5 21.6)
+				(xy 35.1 21.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.4 21.3)
+				(xy 69.4 21.3)
+				(xy 69.4 21.4)
+				(xy 51.4 21.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.2 21.4)
+				(xy 69.4 21.4)
+				(xy 69.4 21.5)
+				(xy 51.2 21.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 51.1 21.5)
+				(xy 69.4 21.5)
+				(xy 69.4 21.6)
+				(xy 51.1 21.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 21.6)
+				(xy 33 21.6)
+				(xy 33 21.8)
+				(xy 0.6 21.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35 21.6)
+				(xy 40.6 21.6)
+				(xy 40.6 21.7)
+				(xy 35 21.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 21.6)
+				(xy 69.4 21.6)
+				(xy 69.4 21.8)
+				(xy 42.6 21.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35 21.7)
+				(xy 40.7 21.7)
+				(xy 40.7 21.8)
+				(xy 35 21.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 21.8)
+				(xy 33.1 21.8)
+				(xy 33.1 21.9)
+				(xy 0.6 21.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 21.8)
+				(xy 40.7 21.8)
+				(xy 40.7 21.9)
+				(xy 34.9 21.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 21.8)
+				(xy 69.4 21.8)
+				(xy 69.4 21.9)
+				(xy 42.5 21.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 21.9)
+				(xy 33.2 21.9)
+				(xy 33.2 22)
+				(xy 0.6 22)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.8 21.9)
+				(xy 40.8 21.9)
+				(xy 40.8 22)
+				(xy 34.8 22)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 21.9)
+				(xy 69.4 21.9)
+				(xy 69.4 22)
+				(xy 42.4 22)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22)
+				(xy 33.3 22)
+				(xy 33.3 22.1)
+				(xy 0.6 22.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.7 22)
+				(xy 41 22)
+				(xy 41 22.1)
+				(xy 34.7 22.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 22)
+				(xy 69.4 22)
+				(xy 69.4 22.1)
+				(xy 42.3 22.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.1)
+				(xy 33.5 22.1)
+				(xy 33.5 22.2)
+				(xy 0.6 22.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.5 22.1)
+				(xy 41.1 22.1)
+				(xy 41.1 22.2)
+				(xy 34.5 22.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.1 22.1)
+				(xy 69.4 22.1)
+				(xy 69.4 22.2)
+				(xy 42.1 22.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.2)
+				(xy 41.6 22.2)
+				(xy 41.6 22.3)
+				(xy 0.6 22.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.7 22.2)
+				(xy 69.4 22.2)
+				(xy 69.4 22.3)
+				(xy 41.7 22.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.3)
+				(xy 33.5 22.3)
+				(xy 33.5 22.4)
+				(xy 0.6 22.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 33.8 22.3)
+				(xy 34.2 22.3)
+				(xy 34.2 23.4)
+				(xy 33.8 23.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.5 22.3)
+				(xy 69.4 22.3)
+				(xy 69.4 22.4)
+				(xy 34.5 22.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.4)
+				(xy 33.3 22.4)
+				(xy 33.3 22.5)
+				(xy 0.6 22.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.7 22.4)
+				(xy 41.6 22.4)
+				(xy 41.6 22.5)
+				(xy 34.7 22.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.7 22.4)
+				(xy 69.4 22.4)
+				(xy 69.4 22.5)
+				(xy 41.7 22.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.5)
+				(xy 33.1 22.5)
+				(xy 33.1 22.6)
+				(xy 0.6 22.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 22.5)
+				(xy 41.1 22.5)
+				(xy 41.1 22.6)
+				(xy 34.9 22.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.1 22.5)
+				(xy 69.4 22.5)
+				(xy 69.4 22.6)
+				(xy 42.1 22.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.6)
+				(xy 33 22.6)
+				(xy 33 22.7)
+				(xy 0.6 22.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35 22.6)
+				(xy 41 22.6)
+				(xy 41 22.7)
+				(xy 35 22.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 22.6)
+				(xy 69.4 22.6)
+				(xy 69.4 22.7)
+				(xy 42.3 22.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.7)
+				(xy 32.9 22.7)
+				(xy 32.9 22.9)
+				(xy 0.6 22.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 22.7)
+				(xy 40.8 22.7)
+				(xy 40.8 22.8)
+				(xy 35.1 22.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 22.7)
+				(xy 69.4 22.7)
+				(xy 69.4 22.8)
+				(xy 42.4 22.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 22.8)
+				(xy 40.7 22.8)
+				(xy 40.7 22.9)
+				(xy 35.1 22.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 22.8)
+				(xy 69.4 22.8)
+				(xy 69.4 22.9)
+				(xy 42.5 22.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 22.9)
+				(xy 32.8 22.9)
+				(xy 32.8 23.1)
+				(xy 0.6 23.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 22.9)
+				(xy 40.7 22.9)
+				(xy 40.7 23)
+				(xy 35.2 23)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 22.9)
+				(xy 69.4 22.9)
+				(xy 69.4 23.1)
+				(xy 42.6 23.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 23)
+				(xy 40.6 23)
+				(xy 40.6 23.1)
+				(xy 35.2 23.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 23.1)
+				(xy 32.7 23.1)
+				(xy 32.7 23.4)
+				(xy 0.6 23.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.3 23.1)
+				(xy 40.5 23.1)
+				(xy 40.5 23.4)
+				(xy 35.3 23.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 23.1)
+				(xy 69.4 23.1)
+				(xy 69.4 23.3)
+				(xy 42.7 23.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.8 23.3)
+				(xy 69.4 23.3)
+				(xy 69.4 23.9)
+				(xy 42.8 23.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 23.4)
+				(xy 40.5 23.4)
+				(xy 40.5 23.6)
+				(xy 0.6 23.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 23.6)
+				(xy 40.4 23.6)
+				(xy 40.4 23.7)
+				(xy 0.6 23.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 23.7)
+				(xy 40.5 23.7)
+				(xy 40.5 23.8)
+				(xy 0.6 23.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 23.8)
+				(xy 32.6 23.8)
+				(xy 32.6 23.9)
+				(xy 0.6 23.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 33.8 23.8)
+				(xy 34.2 23.8)
+				(xy 34.2 25)
+				(xy 33.8 25)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.4 23.8)
+				(xy 40.5 23.8)
+				(xy 40.5 23.9)
+				(xy 35.4 23.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 23.9)
+				(xy 32.7 23.9)
+				(xy 32.7 24.2)
+				(xy 0.6 24.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.3 23.9)
+				(xy 40.5 23.9)
+				(xy 40.5 24.1)
+				(xy 35.3 24.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.7 23.9)
+				(xy 69.4 23.9)
+				(xy 69.4 24.2)
+				(xy 42.7 24.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.3 24.1)
+				(xy 40.6 24.1)
+				(xy 40.6 24.2)
+				(xy 35.3 24.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 24.2)
+				(xy 32.8 24.2)
+				(xy 32.8 24.4)
+				(xy 0.6 24.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 24.2)
+				(xy 40.6 24.2)
+				(xy 40.6 24.3)
+				(xy 35.2 24.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.6 24.2)
+				(xy 69.4 24.2)
+				(xy 69.4 24.3)
+				(xy 42.6 24.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.2 24.3)
+				(xy 40.7 24.3)
+				(xy 40.7 24.4)
+				(xy 35.2 24.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.5 24.3)
+				(xy 69.4 24.3)
+				(xy 69.4 24.4)
+				(xy 42.5 24.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 24.4)
+				(xy 32.9 24.4)
+				(xy 32.9 24.5)
+				(xy 0.6 24.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35.1 24.4)
+				(xy 40.8 24.4)
+				(xy 40.8 24.5)
+				(xy 35.1 24.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.4 24.4)
+				(xy 69.4 24.4)
+				(xy 69.4 24.5)
+				(xy 42.4 24.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 24.5)
+				(xy 33 24.5)
+				(xy 33 24.6)
+				(xy 0.6 24.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 35 24.5)
+				(xy 40.9 24.5)
+				(xy 40.9 24.6)
+				(xy 35 24.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 24.5)
+				(xy 69.4 24.5)
+				(xy 69.4 24.6)
+				(xy 42.3 24.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 24.6)
+				(xy 33.1 24.6)
+				(xy 33.1 24.7)
+				(xy 0.6 24.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.9 24.6)
+				(xy 41.1 24.6)
+				(xy 41.1 24.7)
+				(xy 34.9 24.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.2 24.6)
+				(xy 69.4 24.6)
+				(xy 69.4 24.7)
+				(xy 42.2 24.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 24.7)
+				(xy 33.2 24.7)
+				(xy 33.2 24.8)
+				(xy 0.6 24.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.8 24.7)
+				(xy 41.3 24.7)
+				(xy 41.3 24.8)
+				(xy 34.8 24.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.9 24.7)
+				(xy 69.4 24.7)
+				(xy 69.4 24.8)
+				(xy 41.9 24.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 24.8)
+				(xy 3.9 24.8)
+				(xy 3.9 24.9)
+				(xy 0.6 24.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 24.8)
+				(xy 33.4 24.8)
+				(xy 33.4 24.9)
+				(xy 6.1 24.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.6 24.8)
+				(xy 69.4 24.8)
+				(xy 69.4 24.9)
+				(xy 34.6 24.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 24.9)
+				(xy 3.8 24.9)
+				(xy 3.8 27.1)
+				(xy 0.6 27.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 24.9)
+				(xy 33.7 24.9)
+				(xy 33.7 25)
+				(xy 6.2 25)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 34.3 24.9)
+				(xy 69.4 24.9)
+				(xy 69.4 25)
+				(xy 34.3 25)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 25)
+				(xy 69.4 25)
+				(xy 69.4 26.2)
+				(xy 6.2 26.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 26.2)
+				(xy 61.6 26.2)
+				(xy 61.6 26.3)
+				(xy 6.2 26.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.4 26.2)
+				(xy 69.4 26.2)
+				(xy 69.4 26.3)
+				(xy 62.4 26.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 26.3)
+				(xy 61.4 26.3)
+				(xy 61.4 26.4)
+				(xy 6.2 26.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.6 26.3)
+				(xy 69.4 26.3)
+				(xy 69.4 26.4)
+				(xy 62.6 26.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 26.4)
+				(xy 61.2 26.4)
+				(xy 61.2 26.5)
+				(xy 6.2 26.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.8 26.4)
+				(xy 69.4 26.4)
+				(xy 69.4 26.5)
+				(xy 62.8 26.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 26.5)
+				(xy 61.1 26.5)
+				(xy 61.1 26.6)
+				(xy 6.2 26.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.9 26.5)
+				(xy 69.4 26.5)
+				(xy 69.4 26.6)
+				(xy 62.9 26.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 26.6)
+				(xy 61 26.6)
+				(xy 61 26.7)
+				(xy 6.2 26.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63 26.6)
+				(xy 69.4 26.6)
+				(xy 69.4 26.7)
+				(xy 63 26.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 26.7)
+				(xy 60.9 26.7)
+				(xy 60.9 26.9)
+				(xy 6.2 26.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.1 26.7)
+				(xy 69.4 26.7)
+				(xy 69.4 26.9)
+				(xy 63.1 26.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 26.9)
+				(xy 60.8 26.9)
+				(xy 60.8 27.1)
+				(xy 6.2 27.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.2 26.9)
+				(xy 69.4 26.9)
+				(xy 69.4 27.2)
+				(xy 63.2 27.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.1)
+				(xy 3.9 27.1)
+				(xy 3.9 27.2)
+				(xy 0.6 27.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 27.1)
+				(xy 60.8 27.1)
+				(xy 60.8 27.2)
+				(xy 6.1 27.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.2)
+				(xy 60.7 27.2)
+				(xy 60.7 27.3)
+				(xy 0.6 27.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.3 27.2)
+				(xy 69.4 27.2)
+				(xy 69.4 27.7)
+				(xy 63.3 27.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.3)
+				(xy 4.7 27.3)
+				(xy 4.7 27.4)
+				(xy 0.6 27.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.3 27.3)
+				(xy 60.7 27.3)
+				(xy 60.7 27.4)
+				(xy 5.3 27.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.4)
+				(xy 4.5 27.4)
+				(xy 4.5 27.5)
+				(xy 0.6 27.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.5 27.4)
+				(xy 60.7 27.4)
+				(xy 60.7 27.5)
+				(xy 5.5 27.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.5)
+				(xy 4.3 27.5)
+				(xy 4.3 27.6)
+				(xy 0.6 27.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.7 27.5)
+				(xy 60.7 27.5)
+				(xy 60.7 27.6)
+				(xy 5.7 27.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.6)
+				(xy 4.2 27.6)
+				(xy 4.2 27.7)
+				(xy 0.6 27.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.8 27.6)
+				(xy 60.7 27.6)
+				(xy 60.7 27.7)
+				(xy 5.8 27.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.7)
+				(xy 4.1 27.7)
+				(xy 4.1 27.8)
+				(xy 0.6 27.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.9 27.7)
+				(xy 60.8 27.7)
+				(xy 60.8 27.8)
+				(xy 5.9 27.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.2 27.7)
+				(xy 69.4 27.7)
+				(xy 69.4 28)
+				(xy 63.2 28)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.8)
+				(xy 4 27.8)
+				(xy 4 27.9)
+				(xy 0.6 27.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6 27.8)
+				(xy 60.8 27.8)
+				(xy 60.8 27.9)
+				(xy 6 27.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 27.9)
+				(xy 3.9 27.9)
+				(xy 3.9 28.1)
+				(xy 0.6 28.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 27.9)
+				(xy 60.8 27.9)
+				(xy 60.8 28)
+				(xy 6.1 28)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 28)
+				(xy 60.9 28)
+				(xy 60.9 28.1)
+				(xy 6.1 28.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.1 28)
+				(xy 69.4 28)
+				(xy 69.4 28.2)
+				(xy 63.1 28.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 28.1)
+				(xy 3.8 28.1)
+				(xy 3.8 28.9)
+				(xy 0.6 28.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.1)
+				(xy 60.9 28.1)
+				(xy 60.9 28.2)
+				(xy 6.2 28.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.2)
+				(xy 61 28.2)
+				(xy 61 28.3)
+				(xy 6.2 28.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63 28.2)
+				(xy 69.4 28.2)
+				(xy 69.4 28.3)
+				(xy 63 28.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.3)
+				(xy 61.1 28.3)
+				(xy 61.1 28.4)
+				(xy 6.2 28.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.9 28.3)
+				(xy 69.4 28.3)
+				(xy 69.4 28.4)
+				(xy 62.9 28.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.4)
+				(xy 61.2 28.4)
+				(xy 61.2 28.5)
+				(xy 6.2 28.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 62.8 28.4)
+				(xy 69.4 28.4)
+				(xy 69.4 28.5)
+				(xy 62.8 28.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.5)
+				(xy 60.9 28.5)
+				(xy 60.9 28.6)
+				(xy 6.2 28.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.1 28.5)
+				(xy 69.4 28.5)
+				(xy 69.4 28.6)
+				(xy 63.1 28.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.6)
+				(xy 60.7 28.6)
+				(xy 60.7 28.7)
+				(xy 6.2 28.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.3 28.6)
+				(xy 69.4 28.6)
+				(xy 69.4 28.7)
+				(xy 63.3 28.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.7)
+				(xy 60.6 28.7)
+				(xy 60.6 28.8)
+				(xy 6.2 28.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.8 28.7)
+				(xy 62.2 28.7)
+				(xy 62.2 29.8)
+				(xy 61.8 29.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.4 28.7)
+				(xy 69.4 28.7)
+				(xy 69.4 28.9)
+				(xy 63.4 28.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 28.8)
+				(xy 45.8 28.8)
+				(xy 45.8 28.9)
+				(xy 6.2 28.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 46.2 28.8)
+				(xy 55.9 28.8)
+				(xy 55.9 28.9)
+				(xy 46.2 28.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.4 28.8)
+				(xy 60.6 28.8)
+				(xy 60.6 28.9)
+				(xy 56.4 28.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 28.9)
+				(xy 3.9 28.9)
+				(xy 3.9 29.2)
+				(xy 0.6 29.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 28.9)
+				(xy 45.5 28.9)
+				(xy 45.5 29)
+				(xy 6.1 29)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 46.5 28.9)
+				(xy 55.6 28.9)
+				(xy 55.6 29)
+				(xy 46.5 29)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.7 28.9)
+				(xy 60.5 28.9)
+				(xy 60.5 29)
+				(xy 56.7 29)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.5 28.9)
+				(xy 69.4 28.9)
+				(xy 69.4 29.8)
+				(xy 63.5 29.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 29)
+				(xy 45.3 29)
+				(xy 45.3 29.1)
+				(xy 6.2 29.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 46.7 29)
+				(xy 55.5 29)
+				(xy 55.5 29.1)
+				(xy 46.7 29.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.8 29)
+				(xy 60.5 29)
+				(xy 60.5 29.1)
+				(xy 56.8 29.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 29.1)
+				(xy 45.2 29.1)
+				(xy 45.2 29.2)
+				(xy 6.3 29.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 46.8 29.1)
+				(xy 55.4 29.1)
+				(xy 55.4 29.2)
+				(xy 46.8 29.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57 29.1)
+				(xy 60.5 29.1)
+				(xy 60.5 29.2)
+				(xy 57 29.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 29.2)
+				(xy 4 29.2)
+				(xy 4 29.3)
+				(xy 0.6 29.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 29.2)
+				(xy 45.1 29.2)
+				(xy 45.1 29.3)
+				(xy 6.4 29.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 46.9 29.2)
+				(xy 55.3 29.2)
+				(xy 55.3 29.3)
+				(xy 46.9 29.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.1 29.2)
+				(xy 60.5 29.2)
+				(xy 60.5 29.4)
+				(xy 57.1 29.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 29.3)
+				(xy 4.1 29.3)
+				(xy 4.1 29.4)
+				(xy 0.6 29.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.5 29.3)
+				(xy 45 29.3)
+				(xy 45 29.4)
+				(xy 6.5 29.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 47 29.3)
+				(xy 55.2 29.3)
+				(xy 55.2 29.4)
+				(xy 47 29.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 29.4)
+				(xy 4.2 29.4)
+				(xy 4.2 29.5)
+				(xy 0.6 29.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.6 29.4)
+				(xy 45 29.4)
+				(xy 45 29.5)
+				(xy 6.6 29.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 47 29.4)
+				(xy 55.1 29.4)
+				(xy 55.1 29.5)
+				(xy 47 29.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.2 29.4)
+				(xy 60.5 29.4)
+				(xy 60.5 29.6)
+				(xy 57.2 29.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 29.5)
+				(xy 4.3 29.5)
+				(xy 4.3 29.6)
+				(xy 0.6 29.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.7 29.5)
+				(xy 44.9 29.5)
+				(xy 44.9 29.6)
+				(xy 6.7 29.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 47.1 29.5)
+				(xy 55.1 29.5)
+				(xy 55.1 29.6)
+				(xy 47.1 29.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 29.6)
+				(xy 4.5 29.6)
+				(xy 4.5 29.8)
+				(xy 0.6 29.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.8 29.6)
+				(xy 44.9 29.6)
+				(xy 44.9 29.7)
+				(xy 6.8 29.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 47.1 29.6)
+				(xy 55 29.6)
+				(xy 55 29.8)
+				(xy 47.1 29.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.3 29.6)
+				(xy 60.5 29.6)
+				(xy 60.5 29.8)
+				(xy 57.3 29.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.9 29.7)
+				(xy 44.9 29.7)
+				(xy 44.9 29.8)
+				(xy 6.9 29.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 29.8)
+				(xy 4.3 29.8)
+				(xy 4.3 29.9)
+				(xy 0.6 29.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 4.8 29.8)
+				(xy 5.2 29.8)
+				(xy 5.2 30.9)
+				(xy 4.8 30.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7 29.8)
+				(xy 44.8 29.8)
+				(xy 44.8 29.9)
+				(xy 7 29.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 47.2 29.8)
+				(xy 55 29.8)
+				(xy 55 30.2)
+				(xy 47.2 30.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.3 29.8)
+				(xy 69.4 29.8)
+				(xy 69.4 30.2)
+				(xy 57.3 30.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 29.9)
+				(xy 4.1 29.9)
+				(xy 4.1 30)
+				(xy 0.6 30)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.1 29.9)
+				(xy 44.8 29.9)
+				(xy 44.8 30)
+				(xy 7.1 30)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 30)
+				(xy 4 30)
+				(xy 4 30.1)
+				(xy 0.6 30.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.2 30)
+				(xy 44.8 30)
+				(xy 44.8 30.1)
+				(xy 7.2 30.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 30.1)
+				(xy 3.9 30.1)
+				(xy 3.9 30.2)
+				(xy 0.6 30.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.3 30.1)
+				(xy 44.8 30.1)
+				(xy 44.8 30.2)
+				(xy 7.3 30.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 30.2)
+				(xy 3.8 30.2)
+				(xy 3.8 30.4)
+				(xy 0.6 30.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.4 30.2)
+				(xy 44.9 30.2)
+				(xy 44.9 30.3)
+				(xy 7.4 30.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 47.1 30.2)
+				(xy 55 30.2)
+				(xy 55 30.5)
+				(xy 47.1 30.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.3 30.2)
+				(xy 60.5 30.2)
+				(xy 60.5 30.4)
+				(xy 57.3 30.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 61.8 30.2)
+				(xy 62.2 30.2)
+				(xy 62.2 31.5)
+				(xy 61.8 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.5 30.2)
+				(xy 69.4 30.2)
+				(xy 69.4 31.1)
+				(xy 63.5 31.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.5 30.3)
+				(xy 44.9 30.3)
+				(xy 44.9 30.4)
+				(xy 7.5 30.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 30.4)
+				(xy 3.7 30.4)
+				(xy 3.7 30.6)
+				(xy 0.6 30.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.6 30.4)
+				(xy 24.9 30.4)
+				(xy 24.9 30.5)
+				(xy 7.6 30.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.2 30.4)
+				(xy 60.5 30.4)
+				(xy 60.5 30.6)
+				(xy 57.2 30.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.7 30.5)
+				(xy 24.7 30.5)
+				(xy 24.7 30.6)
+				(xy 7.7 30.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 47 30.5)
+				(xy 54.9 30.5)
+				(xy 54.9 30.6)
+				(xy 47 30.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 30.6)
+				(xy 3.6 30.6)
+				(xy 3.6 30.9)
+				(xy 0.6 30.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.8 30.6)
+				(xy 24.6 30.6)
+				(xy 24.6 30.7)
+				(xy 7.8 30.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57.1 30.6)
+				(xy 60.5 30.6)
+				(xy 60.5 30.8)
+				(xy 57.1 30.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 30.7)
+				(xy 6.5 30.7)
+				(xy 6.5 30.8)
+				(xy 6.4 30.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 7.9 30.7)
+				(xy 24.5 30.7)
+				(xy 24.5 30.8)
+				(xy 7.9 30.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 30.8)
+				(xy 6.6 30.8)
+				(xy 6.6 30.9)
+				(xy 6.4 30.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 8 30.8)
+				(xy 23.1 30.8)
+				(xy 23.1 30.9)
+				(xy 8 30.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 57 30.8)
+				(xy 60.5 30.8)
+				(xy 60.5 30.9)
+				(xy 57 30.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 30.9)
+				(xy 6.7 30.9)
+				(xy 6.7 31)
+				(xy 0.6 31)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 8.1 30.9)
+				(xy 22.9 30.9)
+				(xy 22.9 31)
+				(xy 8.1 31)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.8 30.9)
+				(xy 60.5 30.9)
+				(xy 60.5 31)
+				(xy 56.8 31)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 31)
+				(xy 6.8 31)
+				(xy 6.8 31.1)
+				(xy 0.6 31.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 8.2 31)
+				(xy 22.9 31)
+				(xy 22.9 31.1)
+				(xy 8.2 31.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.7 31)
+				(xy 60.5 31)
+				(xy 60.5 31.1)
+				(xy 56.7 31.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 31.1)
+				(xy 6.9 31.1)
+				(xy 6.9 31.2)
+				(xy 0.6 31.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 8.3 31.1)
+				(xy 22.8 31.1)
+				(xy 22.8 31.2)
+				(xy 8.3 31.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.7 31.1)
+				(xy 55.9 31.1)
+				(xy 55.9 31.2)
+				(xy 55.7 31.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 56.4 31.1)
+				(xy 60.6 31.1)
+				(xy 60.6 31.2)
+				(xy 56.4 31.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.4 31.1)
+				(xy 69.4 31.1)
+				(xy 69.4 31.3)
+				(xy 63.4 31.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 31.2)
+				(xy 7 31.2)
+				(xy 7 31.3)
+				(xy 0.6 31.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 8.4 31.2)
+				(xy 22.8 31.2)
+				(xy 22.8 31.3)
+				(xy 8.4 31.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.6 31.2)
+				(xy 60.6 31.2)
+				(xy 60.6 31.3)
+				(xy 55.6 31.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 31.3)
+				(xy 3.6 31.3)
+				(xy 3.6 31.5)
+				(xy 0.6 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 4.8 31.3)
+				(xy 5.2 31.3)
+				(xy 5.2 32.5)
+				(xy 4.8 32.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 31.3)
+				(xy 7.1 31.3)
+				(xy 7.1 31.4)
+				(xy 6.4 31.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 8.5 31.3)
+				(xy 22.8 31.3)
+				(xy 22.8 31.4)
+				(xy 8.5 31.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.5 31.3)
+				(xy 60.7 31.3)
+				(xy 60.7 31.4)
+				(xy 55.5 31.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.3 31.3)
+				(xy 69.4 31.3)
+				(xy 69.4 31.4)
+				(xy 63.3 31.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.4 31.4)
+				(xy 7.2 31.4)
+				(xy 7.2 31.5)
+				(xy 6.4 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 8.6 31.4)
+				(xy 22.8 31.4)
+				(xy 22.8 31.5)
+				(xy 8.6 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.3 31.4)
+				(xy 30.6 31.4)
+				(xy 30.6 31.5)
+				(xy 25.3 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 31.4)
+				(xy 45.2 31.4)
+				(xy 45.2 31.5)
+				(xy 32.7 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.4 31.4)
+				(xy 60.9 31.4)
+				(xy 60.9 31.5)
+				(xy 55.4 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 63.1 31.4)
+				(xy 69.4 31.4)
+				(xy 69.4 31.5)
+				(xy 63.1 31.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 31.5)
+				(xy 3.7 31.5)
+				(xy 3.7 31.8)
+				(xy 0.6 31.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 31.5)
+				(xy 7.3 31.5)
+				(xy 7.3 31.6)
+				(xy 6.3 31.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 31.5)
+				(xy 30.5 31.5)
+				(xy 30.5 32.5)
+				(xy 25.2 32.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 31.5)
+				(xy 45.3 31.5)
+				(xy 45.3 31.6)
+				(xy 32.7 31.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 55.3 31.5)
+				(xy 69.4 31.5)
+				(xy 69.4 31.6)
+				(xy 55.3 31.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 31.6)
+				(xy 7.4 31.6)
+				(xy 7.4 31.7)
+				(xy 6.3 31.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 31.6)
+				(xy 69.4 31.6)
+				(xy 69.4 31.7)
+				(xy 32.7 31.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.3 31.7)
+				(xy 7.5 31.7)
+				(xy 7.5 31.8)
+				(xy 6.3 31.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.8 31.7)
+				(xy 69.4 31.7)
+				(xy 69.4 32.3)
+				(xy 32.8 32.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 31.8)
+				(xy 3.8 31.8)
+				(xy 3.8 31.9)
+				(xy 0.6 31.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.2 31.8)
+				(xy 7.6 31.8)
+				(xy 7.6 31.9)
+				(xy 6.2 31.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 31.9)
+				(xy 3.9 31.9)
+				(xy 3.9 32)
+				(xy 0.6 32)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6.1 31.9)
+				(xy 7.7 31.9)
+				(xy 7.7 32)
+				(xy 6.1 32)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 32)
+				(xy 4 32)
+				(xy 4 32.1)
+				(xy 0.6 32.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 6 32)
+				(xy 7.8 32)
+				(xy 7.8 32.1)
+				(xy 6 32.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 32.1)
+				(xy 4.1 32.1)
+				(xy 4.1 32.2)
+				(xy 0.6 32.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.9 32.1)
+				(xy 7.9 32.1)
+				(xy 7.9 32.2)
+				(xy 5.9 32.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 32.2)
+				(xy 4.2 32.2)
+				(xy 4.2 32.3)
+				(xy 0.6 32.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.8 32.2)
+				(xy 8 32.2)
+				(xy 8 32.3)
+				(xy 5.8 32.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 32.3)
+				(xy 4.4 32.3)
+				(xy 4.4 32.4)
+				(xy 0.6 32.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.6 32.3)
+				(xy 8.1 32.3)
+				(xy 8.1 32.4)
+				(xy 5.6 32.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 32.3)
+				(xy 69.4 32.3)
+				(xy 69.4 32.6)
+				(xy 32.7 32.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 32.4)
+				(xy 4.6 32.4)
+				(xy 4.6 32.5)
+				(xy 0.6 32.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 5.4 32.4)
+				(xy 8.3 32.4)
+				(xy 8.3 32.5)
+				(xy 5.4 32.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 32.5)
+				(xy 22.8 32.5)
+				(xy 22.8 32.9)
+				(xy 0.6 32.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 32.5)
+				(xy 30.6 32.5)
+				(xy 30.6 32.7)
+				(xy 25.2 32.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 32.6)
+				(xy 69.4 32.6)
+				(xy 69.4 32.7)
+				(xy 32.6 32.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 32.7)
+				(xy 30.7 32.7)
+				(xy 30.7 32.8)
+				(xy 25.2 32.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.5 32.7)
+				(xy 69.4 32.7)
+				(xy 69.4 32.8)
+				(xy 32.5 32.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 32.8)
+				(xy 30.8 32.8)
+				(xy 30.8 32.9)
+				(xy 25.2 32.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.4 32.8)
+				(xy 69.4 32.8)
+				(xy 69.4 32.9)
+				(xy 32.4 32.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 32.9)
+				(xy 22.9 32.9)
+				(xy 22.9 33.1)
+				(xy 0.6 33.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 32.9)
+				(xy 30.9 32.9)
+				(xy 30.9 33)
+				(xy 25.1 33)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.3 32.9)
+				(xy 69.4 32.9)
+				(xy 69.4 33)
+				(xy 32.3 33)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 33)
+				(xy 31.1 33)
+				(xy 31.1 33.1)
+				(xy 25.1 33.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.1 33)
+				(xy 69.4 33)
+				(xy 69.4 33.1)
+				(xy 32.1 33.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 33.1)
+				(xy 23.1 33.1)
+				(xy 23.1 33.2)
+				(xy 0.6 33.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 33.1)
+				(xy 31.4 33.1)
+				(xy 31.4 33.2)
+				(xy 24.9 33.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 31.8 33.1)
+				(xy 69.4 33.1)
+				(xy 69.4 33.2)
+				(xy 31.8 33.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 33.2)
+				(xy 69.4 33.2)
+				(xy 69.4 33.4)
+				(xy 0.6 33.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 33.4)
+				(xy 23.6 33.4)
+				(xy 23.6 33.5)
+				(xy 0.6 33.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.4 33.4)
+				(xy 31.2 33.4)
+				(xy 31.2 33.5)
+				(xy 24.4 33.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32 33.4)
+				(xy 69.4 33.4)
+				(xy 69.4 33.5)
+				(xy 32 33.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 33.5)
+				(xy 23.4 33.5)
+				(xy 23.4 33.6)
+				(xy 0.6 33.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.6 33.5)
+				(xy 31 33.5)
+				(xy 31 33.6)
+				(xy 24.6 33.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.2 33.5)
+				(xy 69.4 33.5)
+				(xy 69.4 33.6)
+				(xy 32.2 33.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 33.6)
+				(xy 23.2 33.6)
+				(xy 23.2 33.7)
+				(xy 0.6 33.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.8 33.6)
+				(xy 30.9 33.6)
+				(xy 30.9 33.7)
+				(xy 24.8 33.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.4 33.6)
+				(xy 69.4 33.6)
+				(xy 69.4 33.7)
+				(xy 32.4 33.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 33.7)
+				(xy 23.1 33.7)
+				(xy 23.1 33.9)
+				(xy 0.6 33.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 33.7)
+				(xy 30.8 33.7)
+				(xy 30.8 33.8)
+				(xy 24.9 33.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.5 33.7)
+				(xy 69.4 33.7)
+				(xy 69.4 33.8)
+				(xy 32.5 33.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 33.8)
+				(xy 30.7 33.8)
+				(xy 30.7 33.9)
+				(xy 24.9 33.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 33.8)
+				(xy 69.4 33.8)
+				(xy 69.4 34)
+				(xy 32.6 34)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 33.9)
+				(xy 23 33.9)
+				(xy 23 34)
+				(xy 0.6 34)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25 33.9)
+				(xy 30.6 33.9)
+				(xy 30.6 34)
+				(xy 25 34)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 34)
+				(xy 22.9 34)
+				(xy 22.9 34.3)
+				(xy 0.6 34.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 34)
+				(xy 30.6 34)
+				(xy 30.6 34.1)
+				(xy 25.1 34.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 34)
+				(xy 69.4 34)
+				(xy 69.4 34.2)
+				(xy 32.7 34.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 34.1)
+				(xy 30.5 34.1)
+				(xy 30.5 34.3)
+				(xy 25.1 34.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.8 34.2)
+				(xy 69.4 34.2)
+				(xy 69.4 34.8)
+				(xy 32.8 34.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 34.3)
+				(xy 22.8 34.3)
+				(xy 22.8 34.8)
+				(xy 0.6 34.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 34.3)
+				(xy 30.5 34.3)
+				(xy 30.5 34.5)
+				(xy 25.2 34.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 34.5)
+				(xy 30.4 34.5)
+				(xy 30.4 34.6)
+				(xy 25.2 34.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 34.6)
+				(xy 30.5 34.6)
+				(xy 30.5 34.8)
+				(xy 25.2 34.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 34.8)
+				(xy 22.9 34.8)
+				(xy 22.9 35.1)
+				(xy 0.6 35.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 34.8)
+				(xy 30.5 34.8)
+				(xy 30.5 35)
+				(xy 25.1 35)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 34.8)
+				(xy 69.4 34.8)
+				(xy 69.4 35.1)
+				(xy 32.7 35.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 35)
+				(xy 30.6 35)
+				(xy 30.6 35.1)
+				(xy 25.1 35.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.1)
+				(xy 23 35.1)
+				(xy 23 35.2)
+				(xy 0.6 35.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25 35.1)
+				(xy 30.6 35.1)
+				(xy 30.6 35.2)
+				(xy 25 35.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 35.1)
+				(xy 69.4 35.1)
+				(xy 69.4 35.3)
+				(xy 32.6 35.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.2)
+				(xy 23.1 35.2)
+				(xy 23.1 35.3)
+				(xy 0.6 35.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 35.2)
+				(xy 30.7 35.2)
+				(xy 30.7 35.3)
+				(xy 24.9 35.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.3)
+				(xy 23.2 35.3)
+				(xy 23.2 35.4)
+				(xy 0.6 35.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.8 35.3)
+				(xy 30.8 35.3)
+				(xy 30.8 35.4)
+				(xy 24.8 35.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.5 35.3)
+				(xy 69.4 35.3)
+				(xy 69.4 35.4)
+				(xy 32.5 35.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.4)
+				(xy 23.3 35.4)
+				(xy 23.3 35.5)
+				(xy 0.6 35.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.7 35.4)
+				(xy 30.9 35.4)
+				(xy 30.9 35.5)
+				(xy 24.7 35.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.4 35.4)
+				(xy 69.4 35.4)
+				(xy 69.4 35.5)
+				(xy 32.4 35.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.5)
+				(xy 23.4 35.5)
+				(xy 23.4 35.6)
+				(xy 0.6 35.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.6 35.5)
+				(xy 31 35.5)
+				(xy 31 35.6)
+				(xy 24.6 35.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.2 35.5)
+				(xy 69.4 35.5)
+				(xy 69.4 35.6)
+				(xy 32.2 35.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.6)
+				(xy 23.6 35.6)
+				(xy 23.6 35.7)
+				(xy 0.6 35.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.4 35.6)
+				(xy 31.2 35.6)
+				(xy 31.2 35.7)
+				(xy 24.4 35.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32 35.6)
+				(xy 69.4 35.6)
+				(xy 69.4 35.7)
+				(xy 32 35.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.7)
+				(xy 69.4 35.7)
+				(xy 69.4 35.9)
+				(xy 0.6 35.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 35.9)
+				(xy 23.7 35.9)
+				(xy 23.7 36)
+				(xy 0.6 36)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.3 35.9)
+				(xy 31.3 35.9)
+				(xy 31.3 36)
+				(xy 24.3 36)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 31.9 35.9)
+				(xy 69.4 35.9)
+				(xy 69.4 36)
+				(xy 31.9 36)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36)
+				(xy 23.4 36)
+				(xy 23.4 36.1)
+				(xy 0.6 36.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.6 36)
+				(xy 31.1 36)
+				(xy 31.1 36.1)
+				(xy 24.6 36.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.2 36)
+				(xy 69.4 36)
+				(xy 69.4 36.1)
+				(xy 32.2 36.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36.1)
+				(xy 23.3 36.1)
+				(xy 23.3 36.2)
+				(xy 0.6 36.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.7 36.1)
+				(xy 30.9 36.1)
+				(xy 30.9 36.2)
+				(xy 24.7 36.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.3 36.1)
+				(xy 69.4 36.1)
+				(xy 69.4 36.2)
+				(xy 32.3 36.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36.2)
+				(xy 23.2 36.2)
+				(xy 23.2 36.3)
+				(xy 0.6 36.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.8 36.2)
+				(xy 30.8 36.2)
+				(xy 30.8 36.3)
+				(xy 24.8 36.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.4 36.2)
+				(xy 69.4 36.2)
+				(xy 69.4 36.3)
+				(xy 32.4 36.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36.3)
+				(xy 23.1 36.3)
+				(xy 23.1 36.4)
+				(xy 0.6 36.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 36.3)
+				(xy 30.7 36.3)
+				(xy 30.7 36.4)
+				(xy 24.9 36.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.5 36.3)
+				(xy 69.4 36.3)
+				(xy 69.4 36.4)
+				(xy 32.5 36.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36.4)
+				(xy 23 36.4)
+				(xy 23 36.6)
+				(xy 0.6 36.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25 36.4)
+				(xy 30.6 36.4)
+				(xy 30.6 36.6)
+				(xy 25 36.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 36.4)
+				(xy 69.4 36.4)
+				(xy 69.4 36.5)
+				(xy 32.6 36.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 36.5)
+				(xy 69.4 36.5)
+				(xy 69.4 36.8)
+				(xy 32.7 36.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36.6)
+				(xy 22.9 36.6)
+				(xy 22.9 36.8)
+				(xy 0.6 36.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 36.6)
+				(xy 30.5 36.6)
+				(xy 30.5 36.9)
+				(xy 25.1 36.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36.8)
+				(xy 9.8 36.8)
+				(xy 9.8 36.9)
+				(xy 0.6 36.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.2 36.8)
+				(xy 19.9 36.8)
+				(xy 19.9 36.9)
+				(xy 10.2 36.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.4 36.8)
+				(xy 22.9 36.8)
+				(xy 22.9 36.9)
+				(xy 20.4 36.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.8 36.8)
+				(xy 69.4 36.8)
+				(xy 69.4 37.4)
+				(xy 32.8 37.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 36.9)
+				(xy 9.5 36.9)
+				(xy 9.5 37)
+				(xy 0.6 37)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.5 36.9)
+				(xy 19.6 36.9)
+				(xy 19.6 37)
+				(xy 10.5 37)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.7 36.9)
+				(xy 22.8 36.9)
+				(xy 22.8 37)
+				(xy 20.7 37)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 36.9)
+				(xy 30.5 36.9)
+				(xy 30.5 37)
+				(xy 25.2 37)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 37)
+				(xy 9.3 37)
+				(xy 9.3 37.1)
+				(xy 0.6 37.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.7 37)
+				(xy 19.5 37)
+				(xy 19.5 37.1)
+				(xy 10.7 37.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.8 37)
+				(xy 22.8 37)
+				(xy 22.8 37.1)
+				(xy 20.8 37.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 37)
+				(xy 30.4 37)
+				(xy 30.4 37.1)
+				(xy 25.2 37.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 37.1)
+				(xy 9.2 37.1)
+				(xy 9.2 37.2)
+				(xy 0.6 37.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.8 37.1)
+				(xy 19.4 37.1)
+				(xy 19.4 37.2)
+				(xy 10.8 37.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21 37.1)
+				(xy 22.8 37.1)
+				(xy 22.8 37.2)
+				(xy 21 37.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 37.1)
+				(xy 30.5 37.1)
+				(xy 30.5 37.3)
+				(xy 25.2 37.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 37.2)
+				(xy 9.1 37.2)
+				(xy 9.1 37.3)
+				(xy 0.6 37.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.9 37.2)
+				(xy 19.3 37.2)
+				(xy 19.3 37.3)
+				(xy 10.9 37.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.1 37.2)
+				(xy 22.8 37.2)
+				(xy 22.8 37.3)
+				(xy 21.1 37.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 37.3)
+				(xy 9 37.3)
+				(xy 9 37.5)
+				(xy 0.6 37.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11 37.3)
+				(xy 19.2 37.3)
+				(xy 19.2 37.4)
+				(xy 11 37.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.1 37.3)
+				(xy 22.9 37.3)
+				(xy 22.9 37.4)
+				(xy 21.1 37.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 37.3)
+				(xy 30.5 37.3)
+				(xy 30.5 37.6)
+				(xy 25.1 37.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11 37.4)
+				(xy 19.1 37.4)
+				(xy 19.1 37.5)
+				(xy 11 37.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.2 37.4)
+				(xy 22.9 37.4)
+				(xy 22.9 37.6)
+				(xy 21.2 37.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 37.4)
+				(xy 69.4 37.4)
+				(xy 69.4 37.6)
+				(xy 32.7 37.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 37.5)
+				(xy 8.9 37.5)
+				(xy 8.9 37.8)
+				(xy 0.6 37.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11.1 37.5)
+				(xy 19.1 37.5)
+				(xy 19.1 37.6)
+				(xy 11.1 37.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11.1 37.6)
+				(xy 19 37.6)
+				(xy 19 37.8)
+				(xy 11.1 37.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.3 37.6)
+				(xy 23 37.6)
+				(xy 23 37.8)
+				(xy 21.3 37.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25 37.6)
+				(xy 30.6 37.6)
+				(xy 30.6 37.7)
+				(xy 25 37.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 37.6)
+				(xy 69.4 37.6)
+				(xy 69.4 37.8)
+				(xy 32.6 37.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25 37.7)
+				(xy 30.7 37.7)
+				(xy 30.7 37.8)
+				(xy 25 37.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 37.8)
+				(xy 8.8 37.8)
+				(xy 8.8 38.2)
+				(xy 0.6 38.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11.2 37.8)
+				(xy 19 37.8)
+				(xy 19 38.2)
+				(xy 11.2 38.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.3 37.8)
+				(xy 23.1 37.8)
+				(xy 23.1 37.9)
+				(xy 21.3 37.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 37.8)
+				(xy 30.7 37.8)
+				(xy 30.7 37.9)
+				(xy 24.9 37.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.5 37.8)
+				(xy 69.4 37.8)
+				(xy 69.4 37.9)
+				(xy 32.5 37.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.3 37.9)
+				(xy 23.2 37.9)
+				(xy 23.2 38)
+				(xy 21.3 38)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.8 37.9)
+				(xy 30.8 37.9)
+				(xy 30.8 38)
+				(xy 24.8 38)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.4 37.9)
+				(xy 69.4 37.9)
+				(xy 69.4 38)
+				(xy 32.4 38)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.3 38)
+				(xy 23.3 38)
+				(xy 23.3 38.1)
+				(xy 21.3 38.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.7 38)
+				(xy 31 38)
+				(xy 31 38.1)
+				(xy 24.7 38.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.3 38)
+				(xy 69.4 38)
+				(xy 69.4 38.1)
+				(xy 32.3 38.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.3 38.1)
+				(xy 23.5 38.1)
+				(xy 23.5 38.2)
+				(xy 21.3 38.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.5 38.1)
+				(xy 31.1 38.1)
+				(xy 31.1 38.2)
+				(xy 24.5 38.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.1 38.1)
+				(xy 69.4 38.1)
+				(xy 69.4 38.2)
+				(xy 32.1 38.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 38.2)
+				(xy 8.9 38.2)
+				(xy 8.9 38.5)
+				(xy 0.6 38.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11.1 38.2)
+				(xy 19 38.2)
+				(xy 19 38.4)
+				(xy 11.1 38.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.3 38.2)
+				(xy 31.6 38.2)
+				(xy 31.6 38.3)
+				(xy 21.3 38.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 31.7 38.2)
+				(xy 69.4 38.2)
+				(xy 69.4 38.3)
+				(xy 31.7 38.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.3 38.3)
+				(xy 23.5 38.3)
+				(xy 23.5 38.4)
+				(xy 21.3 38.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.8 38.3)
+				(xy 24.2 38.3)
+				(xy 24.2 39.4)
+				(xy 23.8 39.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.5 38.3)
+				(xy 69.4 38.3)
+				(xy 69.4 38.4)
+				(xy 24.5 38.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11.1 38.4)
+				(xy 19.1 38.4)
+				(xy 19.1 38.5)
+				(xy 11.1 38.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.2 38.4)
+				(xy 23.3 38.4)
+				(xy 23.3 38.5)
+				(xy 21.2 38.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.7 38.4)
+				(xy 31.6 38.4)
+				(xy 31.6 38.5)
+				(xy 24.7 38.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 31.7 38.4)
+				(xy 69.4 38.4)
+				(xy 69.4 38.5)
+				(xy 31.7 38.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 38.5)
+				(xy 9 38.5)
+				(xy 9 38.7)
+				(xy 0.6 38.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11 38.5)
+				(xy 19.1 38.5)
+				(xy 19.1 38.6)
+				(xy 11 38.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.2 38.5)
+				(xy 23.1 38.5)
+				(xy 23.1 38.6)
+				(xy 21.2 38.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 38.5)
+				(xy 31.1 38.5)
+				(xy 31.1 38.6)
+				(xy 24.9 38.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.1 38.5)
+				(xy 69.4 38.5)
+				(xy 69.4 38.6)
+				(xy 32.1 38.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 11 38.6)
+				(xy 19.2 38.6)
+				(xy 19.2 38.7)
+				(xy 11 38.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.1 38.6)
+				(xy 23 38.6)
+				(xy 23 38.7)
+				(xy 21.1 38.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25 38.6)
+				(xy 31 38.6)
+				(xy 31 38.7)
+				(xy 25 38.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.3 38.6)
+				(xy 69.4 38.6)
+				(xy 69.4 38.7)
+				(xy 32.3 38.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 38.7)
+				(xy 9.1 38.7)
+				(xy 9.1 38.8)
+				(xy 0.6 38.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.9 38.7)
+				(xy 19.3 38.7)
+				(xy 19.3 38.8)
+				(xy 10.9 38.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21.1 38.7)
+				(xy 22.9 38.7)
+				(xy 22.9 38.8)
+				(xy 21.1 38.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 38.7)
+				(xy 30.8 38.7)
+				(xy 30.8 38.8)
+				(xy 25.1 38.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.4 38.7)
+				(xy 40.4 38.7)
+				(xy 40.4 38.8)
+				(xy 32.4 38.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.8 38.7)
+				(xy 41.2 38.7)
+				(xy 41.2 39.8)
+				(xy 40.8 39.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.6 38.7)
+				(xy 69.4 38.7)
+				(xy 69.4 38.8)
+				(xy 41.6 38.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 38.8)
+				(xy 9.2 38.8)
+				(xy 9.2 38.9)
+				(xy 0.6 38.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.8 38.8)
+				(xy 19.4 38.8)
+				(xy 19.4 38.9)
+				(xy 10.8 38.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 21 38.8)
+				(xy 22.9 38.8)
+				(xy 22.9 38.9)
+				(xy 21 38.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 38.8)
+				(xy 30.7 38.8)
+				(xy 30.7 38.9)
+				(xy 25.1 38.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.5 38.8)
+				(xy 35.8 38.8)
+				(xy 35.8 38.9)
+				(xy 32.5 38.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.2 38.8)
+				(xy 40.3 38.8)
+				(xy 40.3 38.9)
+				(xy 36.2 38.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.7 38.8)
+				(xy 69.4 38.8)
+				(xy 69.4 38.9)
+				(xy 41.7 38.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 38.9)
+				(xy 9.3 38.9)
+				(xy 9.3 39)
+				(xy 0.6 39)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.7 38.9)
+				(xy 19.5 38.9)
+				(xy 19.5 39)
+				(xy 10.7 39)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.8 38.9)
+				(xy 22.8 38.9)
+				(xy 22.8 39)
+				(xy 20.8 39)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 38.9)
+				(xy 30.7 38.9)
+				(xy 30.7 39)
+				(xy 25.2 39)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 38.9)
+				(xy 35.5 38.9)
+				(xy 35.5 39)
+				(xy 32.6 39)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.5 38.9)
+				(xy 40.1 38.9)
+				(xy 40.1 39)
+				(xy 36.5 39)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.9 38.9)
+				(xy 69.4 38.9)
+				(xy 69.4 39)
+				(xy 41.9 39)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39)
+				(xy 9.5 39)
+				(xy 9.5 39.1)
+				(xy 0.6 39.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.5 39)
+				(xy 19.6 39)
+				(xy 19.6 39.1)
+				(xy 10.5 39.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.7 39)
+				(xy 22.8 39)
+				(xy 22.8 39.1)
+				(xy 20.7 39.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 39)
+				(xy 30.6 39)
+				(xy 30.6 39.1)
+				(xy 25.2 39.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 39)
+				(xy 35.3 39)
+				(xy 35.3 39.1)
+				(xy 32.6 39.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.7 39)
+				(xy 40 39)
+				(xy 40 39.1)
+				(xy 36.7 39.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42 39)
+				(xy 69.4 39)
+				(xy 69.4 39.1)
+				(xy 42 39.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39.1)
+				(xy 9.8 39.1)
+				(xy 9.8 39.2)
+				(xy 0.6 39.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 10.2 39.1)
+				(xy 19.9 39.1)
+				(xy 19.9 39.2)
+				(xy 10.2 39.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 20.4 39.1)
+				(xy 22.7 39.1)
+				(xy 22.7 39.2)
+				(xy 20.4 39.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.3 39.1)
+				(xy 30.5 39.1)
+				(xy 30.5 39.4)
+				(xy 25.3 39.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 39.1)
+				(xy 35.2 39.1)
+				(xy 35.2 39.2)
+				(xy 32.7 39.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.8 39.1)
+				(xy 39.9 39.1)
+				(xy 39.9 39.2)
+				(xy 36.8 39.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.1 39.1)
+				(xy 69.4 39.1)
+				(xy 69.4 39.3)
+				(xy 42.1 39.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39.2)
+				(xy 22.7 39.2)
+				(xy 22.7 39.4)
+				(xy 0.6 39.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 39.2)
+				(xy 35.1 39.2)
+				(xy 35.1 39.3)
+				(xy 32.7 39.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.9 39.2)
+				(xy 39.9 39.2)
+				(xy 39.9 39.3)
+				(xy 36.9 39.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.8 39.3)
+				(xy 35 39.3)
+				(xy 35 39.5)
+				(xy 32.8 39.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37 39.3)
+				(xy 39.8 39.3)
+				(xy 39.8 39.4)
+				(xy 37 39.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.2 39.3)
+				(xy 69.4 39.3)
+				(xy 69.4 39.4)
+				(xy 42.2 39.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39.4)
+				(xy 30.5 39.4)
+				(xy 30.5 39.6)
+				(xy 0.6 39.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37 39.4)
+				(xy 39.7 39.4)
+				(xy 39.7 39.5)
+				(xy 37 39.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 39.4)
+				(xy 69.4 39.4)
+				(xy 69.4 39.8)
+				(xy 42.3 39.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.8 39.5)
+				(xy 34.9 39.5)
+				(xy 34.9 39.8)
+				(xy 32.8 39.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.1 39.5)
+				(xy 39.7 39.5)
+				(xy 39.7 39.8)
+				(xy 37.1 39.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39.6)
+				(xy 30.4 39.6)
+				(xy 30.4 39.7)
+				(xy 0.6 39.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39.7)
+				(xy 30.5 39.7)
+				(xy 30.5 39.8)
+				(xy 0.6 39.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39.8)
+				(xy 22.6 39.8)
+				(xy 22.6 39.9)
+				(xy 0.6 39.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 23.8 39.8)
+				(xy 24.2 39.8)
+				(xy 24.2 41)
+				(xy 23.8 41)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.4 39.8)
+				(xy 30.5 39.8)
+				(xy 30.5 39.9)
+				(xy 25.4 39.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.8 39.8)
+				(xy 34.8 39.8)
+				(xy 34.8 39.9)
+				(xy 32.8 39.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.2 39.8)
+				(xy 69.4 39.8)
+				(xy 69.4 40.2)
+				(xy 37.2 40.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 39.9)
+				(xy 22.7 39.9)
+				(xy 22.7 40.2)
+				(xy 0.6 40.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.3 39.9)
+				(xy 30.5 39.9)
+				(xy 30.5 40.1)
+				(xy 25.3 40.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.7 39.9)
+				(xy 34.8 39.9)
+				(xy 34.8 40.2)
+				(xy 32.7 40.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.3 40.1)
+				(xy 30.6 40.1)
+				(xy 30.6 40.2)
+				(xy 25.3 40.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 40.2)
+				(xy 22.8 40.2)
+				(xy 22.8 40.4)
+				(xy 0.6 40.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 40.2)
+				(xy 30.6 40.2)
+				(xy 30.6 40.3)
+				(xy 25.2 40.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.6 40.2)
+				(xy 34.9 40.2)
+				(xy 34.9 40.3)
+				(xy 32.6 40.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37.1 40.2)
+				(xy 39.7 40.2)
+				(xy 39.7 40.5)
+				(xy 37.1 40.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 40.8 40.2)
+				(xy 41.2 40.2)
+				(xy 41.2 41.3)
+				(xy 40.8 41.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.3 40.2)
+				(xy 69.4 40.2)
+				(xy 69.4 40.6)
+				(xy 42.3 40.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.2 40.3)
+				(xy 30.7 40.3)
+				(xy 30.7 40.4)
+				(xy 25.2 40.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.5 40.3)
+				(xy 34.9 40.3)
+				(xy 34.9 40.4)
+				(xy 32.5 40.4)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 40.4)
+				(xy 22.9 40.4)
+				(xy 22.9 40.5)
+				(xy 0.6 40.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25.1 40.4)
+				(xy 30.8 40.4)
+				(xy 30.8 40.5)
+				(xy 25.1 40.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.4 40.4)
+				(xy 34.9 40.4)
+				(xy 34.9 40.5)
+				(xy 32.4 40.5)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 40.5)
+				(xy 23 40.5)
+				(xy 23 40.6)
+				(xy 0.6 40.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 25 40.5)
+				(xy 30.9 40.5)
+				(xy 30.9 40.6)
+				(xy 25 40.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.3 40.5)
+				(xy 35 40.5)
+				(xy 35 40.6)
+				(xy 32.3 40.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37 40.5)
+				(xy 39.7 40.5)
+				(xy 39.7 40.6)
+				(xy 37 40.6)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 40.6)
+				(xy 23.1 40.6)
+				(xy 23.1 40.7)
+				(xy 0.6 40.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.9 40.6)
+				(xy 31.1 40.6)
+				(xy 31.1 40.7)
+				(xy 24.9 40.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 32.2 40.6)
+				(xy 35 40.6)
+				(xy 35 40.7)
+				(xy 32.2 40.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 37 40.6)
+				(xy 39.8 40.6)
+				(xy 39.8 40.7)
+				(xy 37 40.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.2 40.6)
+				(xy 69.4 40.6)
+				(xy 69.4 40.7)
+				(xy 42.2 40.7)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 40.7)
+				(xy 23.2 40.7)
+				(xy 23.2 40.8)
+				(xy 0.6 40.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.8 40.7)
+				(xy 31.3 40.7)
+				(xy 31.3 40.8)
+				(xy 24.8 40.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 31.9 40.7)
+				(xy 35.1 40.7)
+				(xy 35.1 40.8)
+				(xy 31.9 40.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.9 40.7)
+				(xy 39.9 40.7)
+				(xy 39.9 40.8)
+				(xy 36.9 40.8)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42.1 40.7)
+				(xy 69.4 40.7)
+				(xy 69.4 40.9)
+				(xy 42.1 40.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 40.8)
+				(xy 23.4 40.8)
+				(xy 23.4 40.9)
+				(xy 0.6 40.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.6 40.8)
+				(xy 35.2 40.8)
+				(xy 35.2 40.9)
+				(xy 24.6 40.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.8 40.8)
+				(xy 39.9 40.8)
+				(xy 39.9 40.9)
+				(xy 36.8 40.9)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 40.9)
+				(xy 23.7 40.9)
+				(xy 23.7 41)
+				(xy 0.6 41)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 24.3 40.9)
+				(xy 35.3 40.9)
+				(xy 35.3 41)
+				(xy 24.3 41)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.7 40.9)
+				(xy 40 40.9)
+				(xy 40 41)
+				(xy 36.7 41)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 42 40.9)
+				(xy 69.4 40.9)
+				(xy 69.4 41)
+				(xy 42 41)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 41)
+				(xy 35.5 41)
+				(xy 35.5 41.1)
+				(xy 0.6 41.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.5 41)
+				(xy 40.1 41)
+				(xy 40.1 41.1)
+				(xy 36.5 41.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.9 41)
+				(xy 69.4 41)
+				(xy 69.4 41.1)
+				(xy 41.9 41.1)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 41.1)
+				(xy 35.8 41.1)
+				(xy 35.8 41.2)
+				(xy 0.6 41.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 36.2 41.1)
+				(xy 40.3 41.1)
+				(xy 40.3 41.2)
+				(xy 36.2 41.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.7 41.1)
+				(xy 69.4 41.1)
+				(xy 69.4 41.2)
+				(xy 41.7 41.2)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 41.2)
+				(xy 40.4 41.2)
+				(xy 40.4 41.3)
+				(xy 0.6 41.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 41.6 41.2)
+				(xy 69.4 41.2)
+				(xy 69.4 41.3)
+				(xy 41.6 41.3)
+			)
+		)
+		(filled_polygon
+			(layer "B.Cu")
+			(pts
+				(xy 0.6 41.3)
+				(xy 69.4 41.3)
+				(xy 69.4 44.4)
+				(xy 0.6 44.4)
+			)
+		)
+	)
+)

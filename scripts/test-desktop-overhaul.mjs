@@ -74,7 +74,7 @@ try{
   }
   // These are native applications now, not browser aliases: the window must be the app
  // itself, and the browser must not have been navigated on its behalf.
- for(const kind of ['mail','calendar','chat','docs','notes','contacts','settings','calculator','clock']){
+ for(const kind of ['mail','calendar','messages','docs','notes','contacts','settings','calculator','clock']){
   const window=await launch(kind);const s=await state();
   const opened=s.desktop.windows[String(window)];
   assert.ok(opened,`${kind} opened no window`);

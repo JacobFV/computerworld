@@ -225,6 +225,7 @@ impl Calculator {
                     url: format!("calc:{id}"),
                     fields: Default::default(),
                 },
+                style: None,
             });
         }
         for (index, entry) in self.history.iter().enumerate() {

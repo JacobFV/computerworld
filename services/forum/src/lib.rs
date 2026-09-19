@@ -691,6 +691,7 @@ fn form_with(
                 id: format!("{id}-submit"),
                 text: "Submit".into(),
                 action,
+                style: None,
             }))
             .collect(),
     }

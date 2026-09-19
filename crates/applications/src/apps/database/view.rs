@@ -2002,6 +2002,7 @@ pub fn page(c: &Client, page: &mut cw_protocol::Page) {
             id: id.clone(),
             text: t,
             action: act(&id),
+            style: None,
         });
     }
     if c.tab == Tab::Browse {
@@ -2051,6 +2052,7 @@ pub fn page(c: &Client, page: &mut cw_protocol::Page) {
             id: id.into(),
             text: label.into(),
             action: act(id),
+            style: None,
         });
     }
 }

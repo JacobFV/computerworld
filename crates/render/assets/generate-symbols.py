@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
-"""Rebuild the original monochrome symbol set (requires cairosvg and pillow).
+"""Rebuild the original monochrome symbol set (requires pillow, and cairosvg or an
+ImageMagick `convert` / `rsvg-convert` on the PATH).
 
 Each symbol is authored on a 24x24 grid, rasterized to a 96px alpha mask and tinted
 by the renderer (`Primitive::Symbol`). Original artwork, repository MIT license.
 Also writes src/symbols.rs, the embedded lookup table.
+
+`--missing` rasterizes only symbols with no PNG yet (every SVG and the table are
+still rewritten), so adding a glyph never re-encodes the ones already shipped.
 """
 import io
 import math
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
-import cairosvg
 from PIL import Image
+
+try:
+    import cairosvg
+except ImportError:  # pragma: no cover - depends on the machine
+    cairosvg = None
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "symbols"
@@ -203,6 +214,25 @@ SYMBOLS = {
     "drop": f'<path {S} d="M12 3.500s6 6.500 6 10.500a6 6 0 0 1-12 0c0-4 6-10.500 6-10.500Z"/>',
     "thermometer": f'<path {S} d="M10 13.500V5a2 2 0 0 1 4 0v8.500a4 4 0 1 1-4 0Z"/><circle cx="12" cy="17" r="1.800" {F}/>',
     "stamp": f'<path {S} d="M5 21h14M6 17.500h12v-3H6ZM9.500 14.500 10 10a3 3 0 1 1 4 0l.5 4.500"/>',
+    # Source-control and developer-tool glyphs for the code-hosting and chat sites.
+    "branch": f'<circle cx="6" cy="4.500" r="2.200" {S}/><circle cx="6" cy="19.500" r="2.200" {S}/><circle cx="18" cy="8" r="2.200" {S}/><path {S} d="M6 6.700v10.600M18 10.200c0 3.300-2.500 4.500-6 4.800-3 .3-5 1-6 2.300"/>',
+    "fork": f'<circle cx="6" cy="4.500" r="2.200" {S}/><circle cx="18" cy="4.500" r="2.200" {S}/><circle cx="12" cy="19.500" r="2.200" {S}/><path {S} d="M6 6.700v1.800a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V6.700M12 11.500v5.800"/>',
+    "commit": f'<circle cx="12" cy="12" r="3.800" {S}/><path {S} d="M2.500 12h5.700M15.800 12h5.700"/>',
+    "merge": f'<circle cx="6" cy="4.500" r="2.200" {S}/><circle cx="6" cy="19.500" r="2.200" {S}/><circle cx="18" cy="13" r="2.200" {S}/><path {S} d="M6 6.700v10.600M6 7c.5 3.500 3.500 6 9.800 6"/>',
+    "pull-request": f'<circle cx="6" cy="4.500" r="2.200" {S}/><circle cx="6" cy="19.500" r="2.200" {S}/><circle cx="18" cy="19.500" r="2.200" {S}/><path {S} d="M6 6.700v10.600M13 4.500h2.500a2.500 2.500 0 0 1 2.500 2.500v10.300M13 4.500 15.500 2M13 4.500 15.500 7"/>',
+    "code": f'<path {S} d="m8 7.500-5 4.500 5 4.500M16 7.500l5 4.500-5 4.500M13.500 4.500l-3 15"/>',
+    "file": f'<path {S} d="M6.500 2.800H14l4.500 4.600V20a1.300 1.300 0 0 1-1.300 1.300H6.500A1.300 1.300 0 0 1 5.200 20V4.100a1.300 1.300 0 0 1 1.300-1.300Zm7.500.2v4.800h4.700"/>',
+    "issue-open": f'<circle cx="12" cy="12" r="9" {S}/><circle cx="12" cy="12" r="2.600" {F}/>',
+    "issue-closed": f'<circle cx="12" cy="12" r="9" {S}/><path {S} d="m8 12.300 2.800 2.800L16.200 9.800"/>',
+    "x-circle": f'<circle cx="12" cy="12" r="9" {S}/><path {S} d="m9 9 6 6m0-6-6 6"/>',
+    "comment": f'<path {S} d="M4 5.500A1.500 1.500 0 0 1 5.500 4h13A1.500 1.500 0 0 1 20 5.500v9a1.500 1.500 0 0 1-1.500 1.500H11l-4.500 4v-4H5.500A1.500 1.500 0 0 1 4 14.500Z"/>',
+    "hash": f'<path {S} d="M9.500 3.500 7.500 20.500M16.500 3.500l-2 17M3.500 9h17M3 15h17"/>',
+    "at": f'<circle cx="12" cy="12" r="3.800" {S}/><path {S} d="M15.800 12v1.500a2.500 2.500 0 0 0 5 0V12a8.800 8.800 0 1 0-3.400 6.950"/>',
+    "emoji": f'<circle cx="12" cy="12" r="9" {S}/><circle cx="8.700" cy="9.800" r="1.400" {F}/><circle cx="15.300" cy="9.800" r="1.400" {F}/><path {S} d="M7.500 14.200c1 1.900 2.500 2.800 4.500 2.800s3.500-.9 4.500-2.800"/>',
+    "bold": f'<path {S} stroke-width="2.600" d="M7 4.500h6a3.750 3.750 0 0 1 0 7.500H7ZM7 12h7a3.750 3.750 0 0 1 0 7.500H7Z"/>',
+    "italic": f'<path {S} stroke-width="2.400" d="M10 4.500h9M5 19.500h9M14.500 4.500l-5 15"/>',
+    "thread": f'<path {S} d="M3.500 5A1.500 1.500 0 0 1 5 3.500h9A1.500 1.500 0 0 1 15.500 5v6a1.500 1.500 0 0 1-1.500 1.500H8.500l-3.500 3V12.500H5A1.500 1.500 0 0 1 3.500 11Z"/><path {S} d="M18.500 8.500H19a1.500 1.500 0 0 1 1.500 1.500v6a1.500 1.500 0 0 1-1.500 1.500h-.500v3l-3.500-3H10.500"/>',
+    "star-filled": f'<path {F} d="m12 2.6 2.8 6 6.6.8-4.9 4.5 1.3 6.5L12 17.2l-5.8 3.2 1.3-6.5-4.9-4.5 6.6-.8Z"/>',
 }
 
 
@@ -214,13 +244,29 @@ def dedupe(tag):
     return text
 
 
-def main():
+def rasterize(svg, path):
+    """96 px RGBA of `svg` (a file at `path`): cairosvg, else rsvg-convert, else ImageMagick."""
+    if cairosvg is not None:
+        return cairosvg.svg2png(bytestring=svg.encode(), output_width=96, output_height=96)
+    if shutil.which("rsvg-convert"):
+        return subprocess.run(["rsvg-convert", "-w", "96", "-h", "96", str(path)],
+                              check=True, capture_output=True).stdout
+    if shutil.which("convert"):
+        return subprocess.run(["convert", "-background", "none", "-density", "384", str(path),
+                               "-resize", "96x96", "png32:-"], check=True, capture_output=True).stdout
+    sys.exit("no SVG rasterizer: install cairosvg, rsvg-convert or ImageMagick")
+
+
+def main(argv):
     OUT.mkdir(exist_ok=True)
+    missing_only = "--missing" in argv
     names = sorted(SYMBOLS)
     for name in names:
         svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">{re.sub(r"<[^>]+>", dedupe, SYMBOLS[name])}</svg>'
         (OUT / f"{name}.svg").write_text(svg)
-        png = cairosvg.svg2png(bytestring=svg.encode(), output_width=96, output_height=96)
+        if missing_only and (OUT / f"{name}.png").exists():
+            continue
+        png = rasterize(svg, OUT / f"{name}.svg")
         rgba = Image.open(io.BytesIO(png)).convert("RGBA")
         alpha = rgba.getchannel("A")
         Image.merge("LA", (Image.new("L", alpha.size, 255), alpha)).save(OUT / f"{name}.png", optimize=True)
@@ -234,4 +280,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

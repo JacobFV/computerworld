@@ -2689,6 +2689,7 @@ impl Kicad {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for l in Layer::ALL {
@@ -2697,6 +2698,7 @@ impl Kicad {
                 id: id.clone(),
                 text: format!("Layer {}", l.user_name()),
                 action: act(&id),
+                style: None,
             });
         }
         let b = &self.session.board;

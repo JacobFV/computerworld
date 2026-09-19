@@ -47,6 +47,17 @@ fn click(world: &mut World, actor: &str, target: &str) {
 #[test]
 fn desktop_shell_lifecycle_is_interactive_and_snapshotted() {
     let (mut world, actor) = world("virtual-windows-11");
+    // The pointer is part of the scene, so the shell is compared with it parked in one place.
+    let park = |world: &mut World| {
+        action(
+            world,
+            &actor,
+            "pointer.v1",
+            "move",
+            json!({"x":480,"y":300,"width":960,"height":640}),
+        );
+    };
+    park(&mut world);
     let home = world.scene(&actor, 960, 640).unwrap();
     click(&mut world, &actor, "shell:launch:terminal");
     action(
@@ -74,6 +85,7 @@ fn desktop_shell_lifecycle_is_interactive_and_snapshotted() {
     world.restore(&snapshot).unwrap();
     assert_eq!(world.scene(&actor, 960, 640).unwrap(), opened);
     click(&mut world, &actor, "window:0:close");
+    park(&mut world);
     assert_eq!(world.scene(&actor, 960, 640).unwrap(), home);
 }
 #[test]
@@ -281,4 +293,158 @@ fn terminal_transcript_carries_prompt_echo_and_exit_status() {
             .unwrap()["label"],
         "alice@alice-mac tmp %"
     );
+}
+/// The centre of the control carrying `target`, and the whole scene it was found in.
+fn centre_of(world: &mut World, actor: &str, target: &str, width: u32, height: u32) -> (i32, i32) {
+    let scene = world.scene(actor, width, height).unwrap();
+    let node = scene
+        .nodes
+        .iter()
+        .find(|node| node.interaction.as_deref() == Some(target))
+        .unwrap_or_else(|| panic!("missing interaction {target}"));
+    let bounds = node.transform.bounds(node.bounds);
+    (
+        bounds.x + (bounds.width / 2) as i32,
+        bounds.y + (bounds.height / 2) as i32,
+    )
+}
+#[test]
+fn desktop_frames_draw_the_pointer_where_it_last_moved() {
+    use cw_scene::Primitive;
+    for theme in [
+        "virtual-macos-golden-gate",
+        "virtual-windows-11",
+        "virtual-ubuntu-24",
+    ] {
+        let (mut world, actor) = world(theme);
+        let before = world.scene(&actor, 960, 640).unwrap();
+        let idle = world.render(&actor, 960, 640).unwrap();
+        // No pointer yet: the pointer node is there, empty, so the node sequence never
+        // changes when one arrives and only its own pixels are repainted.
+        let empty = before.nodes.last().unwrap();
+        assert_eq!(empty.bounds.width, 0, "{theme}");
+        assert!(empty.interaction.is_none() && empty.semantic.is_none());
+
+        // Over the bare desktop nothing else reacts to the pointer: the node sequence
+        // is the same as without one.
+        action(
+            &mut world,
+            &actor,
+            "pointer.v1",
+            "move",
+            json!({"x":480,"y":300,"width":960,"height":640}),
+        );
+        let parked = world.scene(&actor, 960, 640).unwrap();
+        assert!(
+            before
+                .nodes
+                .iter()
+                .map(|n| n.id)
+                .eq(parked.nodes.iter().map(|n| n.id)),
+            "{theme}: the pointer arriving must not change the node sequence"
+        );
+        let (x, y) = centre_of(&mut world, &actor, "shell:launch:terminal", 960, 640);
+        action(
+            &mut world,
+            &actor,
+            "pointer.v1",
+            "move",
+            json!({"x":x,"y":y,"width":960,"height":640}),
+        );
+        let scene = world.scene(&actor, 960, 640).unwrap();
+        let [outline, cursor] = &scene.nodes[scene.nodes.len() - 2..] else {
+            unreachable!()
+        };
+        assert!(
+            matches!(
+                outline.primitive,
+                Primitive::Path {
+                    fill: None,
+                    stroke: Some(_),
+                    ..
+                }
+            ) && matches!(
+                cursor.primitive,
+                Primitive::Path {
+                    fill: Some(_),
+                    stroke: None,
+                    ..
+                }
+            ),
+            "{theme}: {:?} under {:?}",
+            outline.primitive,
+            cursor.primitive
+        );
+        assert!(cursor.interaction.is_none() && cursor.semantic.is_none());
+        assert!(outline.interaction.is_none() && outline.semantic.is_none());
+        let painted = cursor.painted_bounds();
+        assert!(
+            painted.contains(x, y),
+            "{theme}: {painted:?} misses ({x}, {y})"
+        );
+        assert!(
+            painted.width <= 40 && painted.height <= 40,
+            "{theme}: {painted:?}"
+        );
+        assert!(
+            scene.nodes.iter().all(|n| n.z <= cursor.z),
+            "{theme}: the pointer is painted over everything"
+        );
+        // The glyph is in the frame, and what it points at is still what a click hits.
+        let moved = world.render(&actor, 960, 640).unwrap();
+        assert_ne!(idle.rgba, moved.rgba, "{theme}");
+        assert_eq!(
+            scene
+                .hit_test(x, y)
+                .and_then(|node| node.interaction.as_deref()),
+            Some("shell:launch:terminal"),
+            "{theme}"
+        );
+        // The launcher is a control, so the pointer over it is a hand; over the empty
+        // desktop it is an arrow, and the two differ in the frame.
+        let arrow_at = |world: &mut World, x: i32, y: i32| {
+            action(
+                world,
+                &actor,
+                "pointer.v1",
+                "move",
+                json!({"x":x,"y":y,"width":960,"height":640}),
+            );
+            let scene = world.scene(&actor, 960, 640).unwrap();
+            match &scene.nodes.last().unwrap().primitive {
+                Primitive::Path { points, .. } => points.clone(),
+                other => panic!("{other:?}"),
+            }
+        };
+        let hand = arrow_at(&mut world, x, y);
+        let arrow = arrow_at(&mut world, 480, 300);
+        assert_ne!(hand, arrow, "{theme}");
+    }
+    // A phone has no pointer at all: the node stays empty and the frame is unchanged.
+    for theme in ["virtual-ios-18", "virtual-android-12"] {
+        let (mut world, actor) = world(theme);
+        let idle = world.render(&actor, 390, 844).unwrap();
+        action(
+            &mut world,
+            &actor,
+            "pointer.v1",
+            "move",
+            json!({"x":195,"y":600,"width":390,"height":844}),
+        );
+        let scene = world.scene(&actor, 390, 844).unwrap();
+        assert!(
+            !scene
+                .nodes
+                .iter()
+                .any(|n| matches!(n.primitive, Primitive::Path { .. })
+                    && n.painted_bounds().contains(195, 600)
+                    && n.z >= 2_000_000),
+            "{theme}"
+        );
+        assert_eq!(
+            idle.rgba,
+            world.render(&actor, 390, 844).unwrap().rgba,
+            "{theme}"
+        );
+    }
 }

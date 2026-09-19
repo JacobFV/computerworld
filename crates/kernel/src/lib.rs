@@ -177,10 +177,12 @@ impl Runtime {
                     &format!("service {}", service.id),
                     0,
                 );
-                computer
-                    .processes
-                    .own_listener(pid, format!("{}:{}", service.node, service.port))
-                    .map_err(computer_error)?;
+                for port in cw_network::service_ports(service) {
+                    computer
+                        .processes
+                        .own_listener(pid, format!("{}:{}", service.node, port))
+                        .map_err(computer_error)?;
+                }
                 network.own_service_listener(&service.id, &service.node, pid)?;
             }
         }

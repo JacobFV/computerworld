@@ -1,0 +1,857 @@
+{
+  "id": "whatsapp",
+  "kind": "static-site",
+  "node": "whatsapp",
+  "domains": ["whatsapp.com","www.whatsapp.com","web.whatsapp.com"],
+  "port": 80,
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "WhatsApp - Secure and reliable free private messaging and calling",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-3","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-4","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-5","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-6","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {
+            "kind": "card",
+            "id": "hero",
+            "children": [
+              {"kind":"heading","id":"h","text":"Message privately","level":1},
+              {"kind":"text","id":"t","text":"Simple, reliable, private messaging and calling for free, available all over the world. More than three billion people use WhatsApp."},
+              {
+                "kind": "row",
+                "id": "hero-links",
+                "children": [
+                  {"kind":"link","id":"hero-dl","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"hero-web","text":"Use WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 14,
+                "align": "center"
+              }
+            ],
+            "style": {"background":"#075e54","radius":16,"padding":32}
+          },
+          {"kind":"spacer","id":"gap-3","height":14},
+          {
+            "kind": "grid",
+            "id": "features",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "feat",
+                "children": [
+                  {"kind":"heading","id":"feat-name","text":"Private messaging","level":3},
+                  {"kind":"text","id":"feat-desc","text":"End-to-end encryption means only you and the person you are talking to can read or listen. Not even WhatsApp."},
+                  {"kind":"link","id":"feat-link","text":"Learn more","url":"http://whatsapp.com/security"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "feat-2",
+                "children": [
+                  {"kind":"heading","id":"feat-name-2","text":"Stay connected","level":3},
+                  {"kind":"text","id":"feat-desc-2","text":"Voice and video calls with up to 32 people, on Wi-Fi or mobile data, wherever you are."},
+                  {"kind":"link","id":"feat-link-2","text":"Learn more","url":"http://whatsapp.com/features"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "feat-3",
+                "children": [
+                  {"kind":"heading","id":"feat-name-3","text":"Communities","level":3},
+                  {"kind":"text","id":"feat-desc-3","text":"Bring groups together under one roof with announcements and admin tools."},
+                  {"kind":"link","id":"feat-link-3","text":"Learn more","url":"http://whatsapp.com/features"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "feat-4",
+                "children": [
+                  {"kind":"heading","id":"feat-name-4","text":"Express yourself","level":3},
+                  {"kind":"text","id":"feat-desc-4","text":"Stickers, GIFs, voice notes, status updates and message reactions."},
+                  {"kind":"link","id":"feat-link-4","text":"Learn more","url":"http://whatsapp.com/features"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "feat-5",
+                "children": [
+                  {"kind":"heading","id":"feat-name-5","text":"For business","level":3},
+                  {"kind":"text","id":"feat-desc-5","text":"Reach customers where they already are with the WhatsApp Business app and Platform."},
+                  {"kind":"link","id":"feat-link-5","text":"Learn more","url":"http://whatsapp.com/business"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "feat-6",
+                "children": [
+                  {"kind":"heading","id":"feat-name-6","text":"Every device","level":3},
+                  {"kind":"text","id":"feat-desc-6","text":"Android, iPhone, Mac, Windows, and the browser. Up to four linked devices."},
+                  {"kind":"link","id":"feat-link-6","text":"Learn more","url":"http://whatsapp.com/download"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 12
+          },
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/download": {
+        "version": 1,
+        "title": "Download WhatsApp",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-3","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"styled","id":"nav-here","text":"Download","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-4","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-5","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Download WhatsApp","level":1},
+          {"kind":"text","id":"t","text":"WhatsApp works on the phone first. Install it on your phone, then link a computer or a second device."},
+          {
+            "kind": "card",
+            "id": "platforms",
+            "children": [
+              {"kind":"styled","id":"platforms-head","text":"Platform | Requirements | Where","style":{"size":12,"weight":"bold","color":"#5b6478"}},
+              {"kind":"text","id":"platforms-row","text":"Android | Android 5.1 or later | Google Play"},
+              {"kind":"text","id":"platforms-row-2","text":"iPhone | iOS 15.1 or later | App Store"},
+              {"kind":"text","id":"platforms-row-3","text":"Mac | macOS 12 or later, Apple silicon or Intel | Mac App Store or direct download"},
+              {"kind":"text","id":"platforms-row-4","text":"Windows | Windows 10 version 1903 or later | Microsoft Store or direct download"},
+              {"kind":"text","id":"platforms-row-5","text":"Browser | Chrome, Firefox, Safari, Edge; current version | web.whatsapp.com"}
+            ],
+            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+          },
+          {"kind":"heading","id":"h-2","text":"Linked devices","level":2},
+          {"kind":"text","id":"t-2","text":"Your phone does not need to stay online for linked devices to work, and messages stay end-to-end encrypted on every one of them. Link up to four devices from Settings, Linked Devices."},
+          {"kind":"link","id":"web","text":"Use WhatsApp Web","url":"http://whatsapp.com/web"},
+          {"kind":"link","id":"help","text":"How to link a device","url":"http://whatsapp.com/help/link-a-device"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/features": {
+        "version": 1,
+        "title": "WhatsApp features",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"styled","id":"nav-here","text":"Features","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-2","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-3","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-4","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-5","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Features","level":1},
+          {"kind":"text","id":"t","text":"Everything WhatsApp does, on every platform, for free."},
+          {"kind":"heading","id":"h-2","text":"Messaging","level":2},
+          {"kind":"text","id":"t-2","text":"Text, photos, videos, documents up to 2GB, voice messages, locations and contacts. Messages can be edited within 15 minutes and deleted for everyone within two days. Disappearing messages can be set to 24 hours, 7 days or 90 days per chat."},
+          {"kind":"heading","id":"h-3","text":"Calls","level":2},
+          {"kind":"text","id":"t-3","text":"Voice and video calls with up to 32 participants, call links you can share, screen sharing on video calls, and picture-in-picture on mobile."},
+          {"kind":"heading","id":"h-4","text":"Groups and Communities","level":2},
+          {"kind":"text","id":"t-4","text":"Groups of up to 1,024 members with admin approval, polls and events. Communities bundle related groups with an announcement channel for up to 5,000 members."},
+          {"kind":"heading","id":"h-5","text":"Channels and Status","level":2},
+          {"kind":"text","id":"t-5","text":"Follow channels from organisations and people you care about; share status updates that disappear after 24 hours with the contacts you choose."},
+          {"kind":"heading","id":"h-6","text":"Meta AI","level":2},
+          {"kind":"text","id":"t-6","text":"Ask questions or generate images in a chat with Meta AI, or mention @Meta AI in a group. Your personal messages remain end-to-end encrypted; only messages sent to Meta AI are seen by it."},
+          {"kind":"link","id":"security","text":"How encryption keeps calls and messages private","url":"http://whatsapp.com/security"},
+          {"kind":"link","id":"dl","text":"Download","url":"http://whatsapp.com/download"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/security": {
+        "version": 1,
+        "title": "WhatsApp security",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"styled","id":"nav-here","text":"Security","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-2","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-3","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-4","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-5","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Security","level":1},
+          {"kind":"text","id":"t","text":"Personal messages, calls, photos, videos, voice messages, documents and status updates are secured with end-to-end encryption by default. They are locked with a key that only the recipient has."},
+          {"kind":"heading","id":"h-2","text":"How it works","level":2},
+          {"kind":"text","id":"t-2","text":"WhatsApp uses the Signal protocol. Each message is encrypted with a unique key on the sender's device and decrypted only on the recipient's. Verify it in any chat: tap the contact name, Encryption, and compare the 60-digit security code or scan the QR code in person."},
+          {"kind":"heading","id":"h-3","text":"Protect your account","level":2},
+          {"kind":"text","id":"t-3","text":"Two-step verification: Settings, Account, Two-step verification. A six-digit PIN that is asked for when you register your number on a new phone."},
+          {"kind":"text","id":"t-4","text":"Passkeys: sign in with your face, fingerprint or device PIN instead of an SMS code."},
+          {"kind":"text","id":"t-5","text":"Never share your registration code with anyone. WhatsApp will never ask for it."},
+          {"kind":"text","id":"t-6","text":"Chat lock hides a chat behind your device biometrics; Silence Unknown Callers stops calls from numbers you do not know."},
+          {"kind":"heading","id":"h-4","text":"Encrypted backups","level":2},
+          {"kind":"text","id":"t-7","text":"Turn on end-to-end encrypted backup so your Google Drive or iCloud backup is protected with a password or a 64-digit key that only you hold."},
+          {"kind":"link","id":"backup","text":"Back up and restore your chats","url":"http://whatsapp.com/help/backup-and-restore"},
+          {"kind":"link","id":"block","text":"Block and report contacts","url":"http://whatsapp.com/help/blocked-contacts"},
+          {"kind":"link","id":"wiki","text":"Signal protocol on Wikipedia","url":"http://en.wikipedia.org/"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/business": {
+        "version": 1,
+        "title": "WhatsApp Business",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"styled","id":"nav-here","text":"Business","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-3","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-4","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-5","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"WhatsApp Business","level":1},
+          {"kind":"text","id":"t","text":"Two ways to reach customers on WhatsApp: the free Business app for small businesses, and the Business Platform for companies that need to message at scale."},
+          {
+            "kind": "grid",
+            "id": "options",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "biz",
+                "children": [
+                  {"kind":"heading","id":"h-2","text":"WhatsApp Business app","level":2},
+                  {"kind":"text","id":"t-2","text":"Free. A business profile with hours, address and catalogue, quick replies, labels, away messages and greeting messages. Up to four linked devices."},
+                  {"kind":"link","id":"biz-dl","text":"Download the Business app","url":"http://whatsapp.com/download"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "biz-2",
+                "children": [
+                  {"kind":"heading","id":"h-3","text":"WhatsApp Business Platform","level":2},
+                  {"kind":"text","id":"t-3","text":"The Cloud API for order updates, support conversations and marketing, with verified business accounts and a 1,000 free service conversations a month. Conversation-based pricing by country."},
+                  {"kind":"link","id":"biz-help","text":"Help Center","url":"http://whatsapp.com/help"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 12
+          },
+          {"kind":"heading","id":"h-4","text":"Pricing","level":2},
+          {
+            "kind": "card",
+            "id": "pricing",
+            "children": [
+              {"kind":"styled","id":"pricing-head","text":"Conversation type | Started by | Price (US)","style":{"size":12,"weight":"bold","color":"#5b6478"}},
+              {"kind":"text","id":"pricing-row","text":"Marketing | Business | $0.025 per message"},
+              {"kind":"text","id":"pricing-row-2","text":"Utility | Business | $0.004 per message"},
+              {"kind":"text","id":"pricing-row-3","text":"Authentication | Business | $0.0135 per message"},
+              {"kind":"text","id":"pricing-row-4","text":"Service | Customer | Free within 24 hours"}
+            ],
+            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+          },
+          {"kind":"text","id":"t-4","text":"Payments in the app are available in Brazil, India and Singapore. Businesses on the Platform must follow the Business Messaging Policy; customers can block or report any business."},
+          {"kind":"link","id":"li","text":"Find business tools on LinkedIn","url":"http://linkedin.com/"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/help": {
+        "version": 1,
+        "title": "WhatsApp Help Center",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-3","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-4","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"styled","id":"nav-here","text":"Help","style":{"size":13,"weight":"bold","color":"#ffffff"}},
+                  {"kind":"link","id":"nav-5","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Help Center","level":1},
+          {"kind":"text","id":"t","text":"Answers to common questions. If you cannot find what you need, use Contact Us from Settings, Help in the app."},
+          {
+            "kind": "grid",
+            "id": "faqs",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "faq",
+                "children": [
+                  {"kind":"heading","id":"faq-title","text":"How to link a device","level":3},
+                  {"kind":"text","id":"faq-desc","text":"Use WhatsApp on your computer or a second phone without keeping your phone online."},
+                  {"kind":"link","id":"faq-link","text":"Read","url":"http://whatsapp.com/help/link-a-device"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "faq-2",
+                "children": [
+                  {"kind":"heading","id":"faq-title-2","text":"How to back up and restore your chats","level":3},
+                  {"kind":"text","id":"faq-desc-2","text":"End-to-end encrypted backups to Google Drive or iCloud, and moving to a new phone."},
+                  {"kind":"link","id":"faq-link-2","text":"Read","url":"http://whatsapp.com/help/backup-and-restore"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "faq-3",
+                "children": [
+                  {"kind":"heading","id":"faq-title-3","text":"How to block and unblock a contact","level":3},
+                  {"kind":"text","id":"faq-desc-3","text":"What a blocked contact can and cannot see, and how to report spam."},
+                  {"kind":"link","id":"faq-link-3","text":"Read","url":"http://whatsapp.com/help/blocked-contacts"}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 12
+          },
+          {"kind":"heading","id":"h-2","text":"Quick answers","level":2},
+          {"kind":"text","id":"t-2","text":"Did not receive the verification code? Wait for the countdown, then choose \"Call me\". Make sure your phone has signal and that WhatsApp is not restricted by a battery-saver setting."},
+          {"kind":"text","id":"t-3","text":"Changed your number? Settings, Account, Change Number moves your account, groups and settings to the new number."},
+          {"kind":"text","id":"t-4","text":"Deleted a chat by accident? Restore from your latest backup by reinstalling WhatsApp; anything after the backup is lost."},
+          {"kind":"text","id":"t-5","text":"Want to leave a group quietly? Only the admins are notified when you leave."},
+          {"kind":"link","id":"security","text":"Security features","url":"http://whatsapp.com/security"},
+          {"kind":"link","id":"web","text":"WhatsApp Web","url":"http://whatsapp.com/web"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/help/link-a-device": {
+        "version": 1,
+        "title": "How to link a device - WhatsApp Help Center",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-3","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-4","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-5","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-6","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"link","id":"crumb","text":"Help Center","url":"http://whatsapp.com/help"},
+          {"kind":"heading","id":"h","text":"How to link a device","level":1},
+          {"kind":"text","id":"t","text":"Linked devices let you use WhatsApp on up to four computers, tablets or phones at once, without keeping your phone online."},
+          {"kind":"heading","id":"h-2","text":"Link a computer","level":2},
+          {"kind":"text","id":"t-2","text":"1. Open WhatsApp Web or the desktop app on the computer; it shows a QR code. 2. On your phone, open WhatsApp, tap Settings (iPhone) or the three dots (Android), then Linked Devices, then Link a Device. 3. Unlock your phone if asked and point the camera at the QR code."},
+          {"kind":"heading","id":"h-3","text":"Link with a phone number instead","level":2},
+          {"kind":"text","id":"t-3","text":"On the computer, choose \"Link with phone number\", enter your number, and type the eight-character code it gives you into your phone under Linked Devices."},
+          {"kind":"heading","id":"h-4","text":"Link a second phone","level":2},
+          {"kind":"text","id":"t-4","text":"Install WhatsApp on the second phone, tap the three dots on the registration screen and choose \"Link to existing account\". Then scan its QR code with your main phone."},
+          {"kind":"heading","id":"h-5","text":"Good to know","level":2},
+          {"kind":"text","id":"t-5","text":"Linked devices stay signed in for 14 days without your phone connecting. Messages and calls stay end-to-end encrypted. Log out of a device from the Linked Devices list at any time."},
+          {"kind":"link","id":"web","text":"Open WhatsApp Web","url":"http://whatsapp.com/web"},
+          {"kind":"link","id":"next","text":"Next: back up and restore","url":"http://whatsapp.com/help/backup-and-restore"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/help/backup-and-restore": {
+        "version": 1,
+        "title": "How to back up and restore your chats - WhatsApp Help Center",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-3","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-4","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-5","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-6","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"link","id":"crumb","text":"Help Center","url":"http://whatsapp.com/help"},
+          {"kind":"heading","id":"h","text":"How to back up and restore your chats","level":1},
+          {"kind":"text","id":"t","text":"WhatsApp does not store your messages on its servers, so a backup is the only copy besides your phone."},
+          {"kind":"heading","id":"h-2","text":"Back up","level":2},
+          {"kind":"text","id":"t-2","text":"Android: Settings, Chats, Chat backup, then choose the Google account and the frequency (daily, weekly or monthly). iPhone: Settings, Chats, Chat Backup, Back Up Now, with iCloud Drive turned on."},
+          {"kind":"heading","id":"h-3","text":"Encrypt the backup","level":2},
+          {"kind":"text","id":"t-3","text":"In Chat Backup, turn on End-to-end encrypted backup and choose a password or let WhatsApp generate a 64-digit key. Keep it safe: without it the backup cannot be restored, not even by WhatsApp."},
+          {"kind":"heading","id":"h-4","text":"Restore","level":2},
+          {"kind":"text","id":"t-4","text":"Install WhatsApp on the new phone with the same number and the same Google or Apple account. When it finds the backup, tap Restore. Media may take longer than messages."},
+          {"kind":"heading","id":"h-5","text":"Moving between Android and iPhone","level":2},
+          {"kind":"text","id":"t-5","text":"Use Chat transfer: Settings, Chats, Transfer chats, and scan the QR code with the new phone while both are on the same Wi-Fi network. Both phones need the latest WhatsApp."},
+          {"kind":"link","id":"security","text":"Security features","url":"http://whatsapp.com/security"},
+          {"kind":"link","id":"next","text":"Next: block and unblock a contact","url":"http://whatsapp.com/help/blocked-contacts"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/help/blocked-contacts": {
+        "version": 1,
+        "title": "How to block and unblock a contact - WhatsApp Help Center",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-3","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-4","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-5","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"link","id":"nav-6","text":"WhatsApp Web","url":"http://whatsapp.com/web"}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"link","id":"crumb","text":"Help Center","url":"http://whatsapp.com/help"},
+          {"kind":"heading","id":"h","text":"How to block and unblock a contact","level":1},
+          {"kind":"text","id":"t","text":"Blocking stops messages, calls and status updates from a contact. They are not told they have been blocked."},
+          {"kind":"heading","id":"h-2","text":"Block","level":2},
+          {"kind":"text","id":"t-2","text":"Open the chat, tap the name at the top, scroll down and tap Block. Or go to Settings, Privacy, Blocked contacts, and add a contact. For a number you do not know, the first message includes a Block and Report option."},
+          {"kind":"heading","id":"h-3","text":"What a blocked contact sees","level":2},
+          {"kind":"text","id":"t-3","text":"Your last seen, online status, status updates and profile photo changes are hidden from them. Their messages never reach you and show a single tick on their side. They cannot call you."},
+          {"kind":"heading","id":"h-4","text":"Unblock","level":2},
+          {"kind":"text","id":"t-4","text":"Settings, Privacy, Blocked contacts, then swipe (iPhone) or long-press (Android) and Unblock. Messages sent while blocked are not delivered afterwards."},
+          {"kind":"heading","id":"h-5","text":"Report","level":2},
+          {"kind":"text","id":"t-5","text":"Report sends the last five messages from that contact to WhatsApp for review. Reporting spam and blocking at the same time also deletes the chat."},
+          {"kind":"link","id":"help","text":"Help Center","url":"http://whatsapp.com/help"},
+          {"kind":"link","id":"security","text":"Security","url":"http://whatsapp.com/security"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      },
+      "/web": {
+        "version": 1,
+        "title": "WhatsApp Web",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {"kind":"styled","id":"mark","text":"WhatsApp","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {"kind":"link","id":"nav","text":"Features","url":"http://whatsapp.com/features"},
+                  {"kind":"link","id":"nav-2","text":"Security","url":"http://whatsapp.com/security"},
+                  {"kind":"link","id":"nav-3","text":"Business","url":"http://whatsapp.com/business"},
+                  {"kind":"link","id":"nav-4","text":"Download","url":"http://whatsapp.com/download"},
+                  {"kind":"link","id":"nav-5","text":"Help","url":"http://whatsapp.com/help"},
+                  {"kind":"styled","id":"nav-here","text":"WhatsApp Web","style":{"size":13,"weight":"bold","color":"#ffffff"}}
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {"background":"#075e54","padding":14}
+          },
+          {"kind":"spacer","id":"gap-2","height":18},
+          {"kind":"heading","id":"h","text":"Use WhatsApp on your computer","level":1},
+          {
+            "kind": "grid",
+            "id": "link",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "qr-card",
+                "children": [
+                  {"kind":"thumbnail","id":"qr","label":"QR code","style":{"background":"#ffffff","border":"#d9d9de","height":220,"radius":8}},
+                  {"kind":"text","id":"qr-note","text":"Scan this QR code with your phone. It refreshes every 60 seconds."}
+                ],
+                "style": {"background":"#f0f2f5","radius":12,"padding":16}
+              },
+              {
+                "kind": "card",
+                "id": "steps",
+                "children": [
+                  {"kind":"heading","id":"h-2","text":"Steps to log in","level":2},
+                  {"kind":"text","id":"t","text":"1. Open WhatsApp on your phone. 2. Tap Settings on iPhone, or the three dots on Android. 3. Tap Linked Devices, then Link a Device. 4. Point your phone at this screen to scan the QR code."},
+                  {"kind":"link","id":"phone-link","text":"Link with phone number instead","url":"http://whatsapp.com/help/link-a-device"},
+                  {"kind":"text","id":"t-2","text":"Keep me signed in is on. Log out from Linked Devices on your phone at any time."}
+                ],
+                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+              }
+            ],
+            "gap": 16
+          },
+          {"kind":"text","id":"t-3","text":"Your personal messages are end-to-end encrypted on every linked device."},
+          {"kind":"link","id":"dl","text":"Download the desktop app","url":"http://whatsapp.com/download"},
+          {"kind":"link","id":"help","text":"Help Center","url":"http://whatsapp.com/help"},
+          {"kind":"spacer","id":"gap","height":24},
+          {"kind":"divider","id":"rule"},
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {"kind":"link","id":"foot","text":"Help Center","url":"http://whatsapp.com/help"},
+              {"kind":"link","id":"foot-2","text":"Security","url":"http://whatsapp.com/security"},
+              {"kind":"link","id":"foot-3","text":"WhatsApp on X","url":"http://x.com/"}
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {"kind":"text","id":"foot-note","text":"Copyright 2026 WhatsApp LLC. Simulated site."}
+        ],
+        "theme": {"accent":"#25d366","background":"#ffffff","surface":"#f0f2f5","ink":"#111b21","muted":"#6e6e73","content_width":1000}
+      }
+    },
+    "records": {}
+  },
+  "network_node": {
+    "address": "203.0.113.113",
+    "zone": "internet",
+    "link": {"from":"pop-west","latency_us":1500}
+  },
+  "search_entries": [
+    {
+      "url": "http://whatsapp.com/",
+      "title": "WhatsApp - Secure and reliable free private messaging and calling",
+      "snippet": "End-to-end encrypted messages and calls, groups, communities and linked devices.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": ["whatsapp","messaging","chat app","encrypted"]
+    },
+    {
+      "url": "http://whatsapp.com/download",
+      "title": "Download WhatsApp",
+      "snippet": "WhatsApp for Android, iPhone, Mac, Windows and the browser.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": ["download whatsapp","whatsapp desktop","whatsapp for mac","whatsapp windows"]
+    },
+    {
+      "url": "http://whatsapp.com/web",
+      "title": "WhatsApp Web",
+      "snippet": "Scan the QR code with your phone to use WhatsApp in the browser.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": ["whatsapp web","web.whatsapp.com","qr code","link device"]
+    },
+    {
+      "url": "http://whatsapp.com/features",
+      "title": "WhatsApp features",
+      "snippet": "Messaging, calls with up to 32 people, groups, communities, channels and status.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["whatsapp features","group call","communities","disappearing messages"]
+    },
+    {
+      "url": "http://whatsapp.com/security",
+      "title": "WhatsApp security",
+      "snippet": "End-to-end encryption with the Signal protocol, two-step verification, passkeys and encrypted backups.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": ["whatsapp security","end-to-end encryption","two-step verification","signal protocol"]
+    },
+    {
+      "url": "http://whatsapp.com/business",
+      "title": "WhatsApp Business",
+      "snippet": "The free Business app and the Business Platform with conversation-based pricing.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["whatsapp business","business api","cloud api","whatsapp pricing"]
+    },
+    {
+      "url": "http://whatsapp.com/help",
+      "title": "WhatsApp Help Center",
+      "snippet": "Linking a device, backups, blocking contacts, verification codes and changing your number.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": ["whatsapp help","verification code","change number","whatsapp support"]
+    },
+    {
+      "url": "http://whatsapp.com/help/link-a-device",
+      "title": "How to link a device - WhatsApp Help Center",
+      "snippet": "Link a computer or a second phone with a QR code or a phone number.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["link device","whatsapp on computer","linked devices"]
+    },
+    {
+      "url": "http://whatsapp.com/help/backup-and-restore",
+      "title": "How to back up and restore your chats - WhatsApp Help Center",
+      "snippet": "Google Drive and iCloud backups, encrypted backups and moving to a new phone.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": ["whatsapp backup","restore chats","new phone","chat transfer"]
+    },
+    {
+      "url": "http://whatsapp.com/help/blocked-contacts",
+      "title": "How to block and unblock a contact - WhatsApp Help Center",
+      "snippet": "What a blocked contact sees, how to unblock and how to report spam.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": ["block contact","unblock","report spam","whatsapp blocked"]
+    }
+  ]
+}

@@ -1,8 +1,12 @@
-//! Membership-scoped persistent chat service.
+//! Membership-scoped persistent chat service: the company's plain internal chat at
+//! chat.internal. Slack, Discord and texting are their own kinds (`cw-service-slack`,
+//! `cw-service-discord`, `cw-service-messages`) with their own semantics; this one keeps
+//! the original flat rendering so existing worlds and checkpoints replay unchanged.
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-/// Skins this instance may wear; Slack and Discord get branded layouts, `plain` is chat.internal.
-pub const SKINS: &[&str] = &["plain", "slack", "discord"];
+/// The only skin: the original rendering. The key stays so a seed naming a skin that no
+/// longer lives here fails loudly instead of quietly rendering as plain chat.
+pub const SKINS: &[&str] = &["plain"];
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct ChatState {
@@ -16,10 +20,6 @@ pub struct ChatState {
     /// alice/bob names exactly one conversation whichever of them opens it.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub dms: BTreeMap<String, Channel>,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub workspace: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub theme: Option<cw_protocol::PageTheme>,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -173,7 +173,6 @@ use cw_protocol::{HttpRequest, HttpResponse, Result as SimResult};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde_json::{json, Value};
-pub mod skins;
 pub struct ChatService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(ChatService)
@@ -183,6 +182,15 @@ fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResp
     for (id, c) in &s.channels {
         if c.members.contains(actor) {
             e.push(web::link(id, &c.title, format!("/channels/{id}")));
+        }
+    }
+    for (id, c) in &s.dms {
+        if c.members.contains(actor) {
+            e.push(web::link(
+                &format!("dm-{id}"),
+                &c.title,
+                format!("/channels/{id}"),
+            ));
         }
     }
     if let Some(id) = channel {
@@ -254,12 +262,7 @@ impl Service for ChatService {
         let parts: Vec<_> = path.trim_matches('/').split('/').collect();
         let api = p.starts_with("/api/");
         let method = r.method.to_ascii_uppercase();
-        // The plain skin keeps the original flat page; a branded instance gets the workspace.
-        let skinned = (!s.skin.is_plain()).then(|| skins::look(s.skin.as_str()));
-        let render = |s: &ChatState, open: Option<&str>| match &skinned {
-            Some(look) => skins::workspace(s, &c.actor, open, look),
-            None => view(s, &c.actor, open),
-        };
+        let render = |s: &ChatState, open: Option<&str>| view(s, &c.actor, open);
         if method == "GET" {
             return match parts.as_slice() {
                 [""] => render(&s, None),
@@ -280,8 +283,6 @@ impl Service for ChatService {
                         .map(|(id, ch)| (id, &ch.title))
                         .collect::<BTreeMap<_, _>>(),
                 ),
-                // Slack permalinks are `/archives/<channel>`; seeded prose links them that way.
-                ["archives", id] if !api => render(&s, Some(id)),
                 ["channels", id] | ["dms", id] if !api => render(&s, Some(id)),
                 ["channels", id] | ["dms", id] | ["channels", id, "messages"] => {
                     web::domain(s.channel(&c.actor, id).map(|ch| json!(ch)))

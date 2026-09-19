@@ -1,18 +1,21 @@
 //! Contacts assembled from the people the machine's own services really know about:
-//! mailbox users and chat channel members. No address book is invented.
+//! mailbox users and the Messages directory of names and handles. No address book is
+//! invented.
 use super::look::{action, look, notice, screen, INK, LINE, MUTED};
 use super::Status;
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
 use cw_scene::{Color, Rect};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Contacts {
     pub mail_base: String,
-    pub chat_base: String,
-    /// Person to the channels they share with this user.
+    #[serde(alias = "chat_base")]
+    pub messages_base: String,
+    /// Person to what is known about them: their name and the handles Messages reaches
+    /// them on, or nothing but the address mail came from.
     pub people: BTreeMap<String, Vec<String>>,
     pub selected: Option<String>,
     pub status: Status,
@@ -20,18 +23,18 @@ pub struct Contacts {
 impl Contacts {
     pub const KIND: &'static str = "contacts";
     pub fn launch(argument: &str, window: u64, _clock_us: u64) -> (Self, Vec<AppEffect>) {
-        // The argument may carry both bases as "mail|chat"; either half may be empty.
-        let (mail, chat) = argument.split_once('|').unwrap_or((argument, ""));
+        // The argument may carry both bases as "mail|messages"; either half may be empty.
+        let (mail, messages) = argument.split_once('|').unwrap_or((argument, ""));
         let app = Self {
             mail_base: if mail.is_empty() {
                 "http://mail.internal/".into()
             } else {
                 mail.to_owned()
             },
-            chat_base: if chat.is_empty() {
-                "http://chat.internal/".into()
+            messages_base: if messages.is_empty() {
+                "http://messages.internal/".into()
             } else {
-                chat.to_owned()
+                messages.to_owned()
             },
             people: BTreeMap::new(),
             selected: None,
@@ -63,9 +66,9 @@ impl Contacts {
         vec![
             AppEffect::Http {
                 window,
-                tag: "channels".into(),
+                tag: "contacts".into(),
                 method: "GET".into(),
-                url: format!("{}/api/channels", self.chat_base.trim_end_matches('/')),
+                url: format!("{}/api/contacts", self.messages_base.trim_end_matches('/')),
                 body: String::new(),
             },
             AppEffect::Http {
@@ -99,21 +102,29 @@ impl Contacts {
         }
         self.status = Status::Idle;
         match tag {
-            "channels" => {
-                let channels: BTreeMap<String, String> =
-                    serde_json::from_str(body).unwrap_or_default();
-                // Membership lives on the channel, so each one is fetched in turn.
-                Ok(channels
-                    .keys()
-                    .take(16)
-                    .map(|id| AppEffect::Http {
-                        window,
-                        tag: format!("channel:{id}"),
-                        method: "GET".into(),
-                        url: format!("{}/api/channels/{id}", self.chat_base.trim_end_matches('/')),
-                        body: String::new(),
-                    })
-                    .collect())
+            "contacts" => {
+                #[derive(Deserialize)]
+                struct Contact {
+                    user: String,
+                    #[serde(default)]
+                    name: String,
+                    #[serde(default)]
+                    handles: Vec<String>,
+                }
+                let contacts: Vec<Contact> = serde_json::from_str(body).unwrap_or_default();
+                for contact in contacts {
+                    let known = self.people.entry(contact.user).or_default();
+                    for line in std::iter::once(contact.name)
+                        .chain(contact.handles)
+                        .filter(|l| !l.is_empty())
+                    {
+                        if !known.contains(&line) {
+                            known.push(line);
+                        }
+                    }
+                }
+                let _ = window;
+                Ok(vec![])
             }
             "messages" => {
                 #[derive(Deserialize)]
@@ -135,31 +146,7 @@ impl Contacts {
                 }
                 Ok(vec![])
             }
-            other => {
-                let id = other
-                    .strip_prefix("channel:")
-                    .ok_or_else(|| format!("unexpected contacts reply {other}"))?;
-                #[derive(Default, Deserialize)]
-                struct Channel {
-                    #[serde(default)]
-                    title: String,
-                    #[serde(default)]
-                    members: BTreeSet<String>,
-                }
-                let channel: Channel = serde_json::from_str(body).unwrap_or_default();
-                let title = if channel.title.is_empty() {
-                    id.to_owned()
-                } else {
-                    channel.title
-                };
-                for member in channel.members {
-                    let shared = self.people.entry(member).or_default();
-                    if !shared.contains(&title) {
-                        shared.push(title.clone());
-                    }
-                }
-                Ok(vec![])
-            }
+            other => Err(format!("unexpected contacts reply {other}")),
         }
     }
     pub fn text(&mut self, _text: &str) -> Result<(), String> {
@@ -239,12 +226,14 @@ impl Contacts {
             id: "contacts:reload".into(),
             text: "Reload".into(),
             action: act("contacts:reload"),
+            style: None,
         });
         for (person, shared) in &self.people {
             page.elements.push(E::Button {
                 id: format!("contacts:person:{person}"),
                 text: format!("{person} ({})", shared.join(", ")),
                 action: act(&format!("contacts:person:{person}")),
+                style: None,
             });
         }
         if let Some(person) = &self.selected {
@@ -252,6 +241,7 @@ impl Contacts {
                 id: format!("contacts:mail:{person}"),
                 text: format!("Write to {person}"),
                 action: act(&format!("contacts:mail:{person}")),
+                style: None,
             });
         }
     }
@@ -402,9 +392,9 @@ impl Contacts {
             top + 46,
             text_w,
             &if shared.is_empty() {
-                "No shared channels".to_owned()
+                "Known only from mail".to_owned()
             } else {
-                format!("Shared channels: {}", shared.join(", "))
+                format!("Reach at: {}", shared.join(", "))
             },
             12,
             MUTED,
@@ -427,16 +417,14 @@ mod tests {
         let (mut app, effects) = Contacts::launch("|", 1, 0);
         assert_eq!(effects.len(), 2);
         let more = app
-            .http(1, "channels", 200, r#"{"general":"General"}"#)
+            .http(
+                1,
+                "contacts",
+                200,
+                r#"[{"user":"alice","name":"Alice Chen","handles":["+14155550100"],"imessage":true},{"user":"bob","name":"Bob Martinez","handles":["+14155550101"],"imessage":true}]"#,
+            )
             .unwrap();
-        assert_eq!(more.len(), 1);
-        app.http(
-            1,
-            "channel:general",
-            200,
-            r#"{"title":"General","members":["alice","bob"]}"#,
-        )
-        .unwrap();
+        assert!(more.is_empty());
         app.http(
             1,
             "messages",
@@ -453,7 +441,7 @@ mod tests {
             app.people.keys().cloned().collect::<Vec<_>>(),
             vec!["alice", "bob", "carol"]
         );
-        assert_eq!(app.people["alice"], vec!["General"]);
+        assert_eq!(app.people["alice"], vec!["Alice Chen", "+14155550100"]);
         assert!(app.people["carol"].is_empty());
     }
     #[test]

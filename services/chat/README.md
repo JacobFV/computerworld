@@ -1,6 +1,10 @@
 # Chat service (`chat`)
 
-Register `cw_service_chat::ChatService` or `register(&mut Registry)`.
+The company's plain internal chat at `chat.internal`. Register `cw_service_chat::ChatService`
+or `register(&mut Registry)`. Slack, Discord and texting are their own kinds with their
+own semantics (`services/slack`, `services/discord`, `services/messages`); this one keeps
+the original flat rendering so existing worlds and checkpoints replay unchanged, and its
+only skin is `plain`.
 
 Seed:
 ```json

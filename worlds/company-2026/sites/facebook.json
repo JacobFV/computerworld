@@ -1,0 +1,739 @@
+{
+  "id": "facebook",
+  "kind": "social",
+  "node": "facebook",
+  "domains": [
+    "facebook.com",
+    "www.facebook.com",
+    "m.facebook.com",
+    "fb.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "microblog",
+    "brand": "Facebook",
+    "tagline": "Connect with friends and the world around you",
+    "explore_title": "Groups",
+    "theme": {
+      "accent": "#1877f2",
+      "background": "#f0f2f5",
+      "surface": "#ffffff",
+      "ink": "#050505",
+      "muted": "#65676b",
+      "content_width": 900
+    },
+    "accounts": {
+      "alice.chen": {
+        "handle": "alice.chen",
+        "name": "Alice Chen",
+        "actor": "alice",
+        "bio": "Works at Northstar. Lives in Seattle, Washington. Will fix your bike, will not fix your printer.",
+        "location": "Seattle, WA",
+        "followers": 412,
+        "following": 388,
+        "site": "http://alicechen.dev/",
+        "domain": "",
+        "headline": "",
+        "verified": false
+      },
+      "bob.martinez": {
+        "handle": "bob.martinez",
+        "name": "Bob Martinez",
+        "actor": "bob",
+        "bio": "Northstar. Sunday league goalkeeper, Tuesday trivia, Thursday regrets. Ask me about my sourdough starter (his name is Kevin).",
+        "location": "Seattle, WA",
+        "followers": 296,
+        "following": 301,
+        "site": "http://bmartinez.net/",
+        "domain": "",
+        "headline": "",
+        "verified": false
+      },
+      "carol.nakamura": {
+        "handle": "carol.nakamura",
+        "name": "Carol Nakamura",
+        "actor": "carol",
+        "bio": "Engineering manager at Northstar. Mom of two, one of them a dog. Ballard.",
+        "location": "Seattle, WA",
+        "followers": 538,
+        "following": 402,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "maya.okafor": {
+        "handle": "maya.okafor",
+        "name": "Maya Okafor",
+        "bio": "Nurse at Swedish. Marathon in training, forever. Alice's college roommate and still her emergency contact.",
+        "location": "Seattle, WA",
+        "followers": 611,
+        "following": 540,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "dev.patel": {
+        "handle": "dev.patel",
+        "name": "Dev Patel",
+        "bio": "High school chemistry teacher. Board game night host. Owner of one very loud cat named Nimbus.",
+        "location": "Fremont, Seattle",
+        "followers": 344,
+        "following": 390,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "rosa.lindqvist": {
+        "handle": "rosa.lindqvist",
+        "name": "Rosa Lindqvist",
+        "bio": "Landscape architect. Grows more tomatoes than any household needs and gives them to you whether you want them or not.",
+        "location": "Ballard, Seattle",
+        "followers": 487,
+        "following": 455,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "jonah.reyes": {
+        "handle": "jonah.reyes",
+        "name": "Jonah Reyes",
+        "bio": "Bob's brother-in-law. Contractor. If you are reading this, your deck is probably fine.",
+        "location": "Tacoma, WA",
+        "followers": 203,
+        "following": 180,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "hana.sato": {
+        "handle": "hana.sato",
+        "name": "Hana Sato",
+        "bio": "Carol's neighbour, retired librarian, current pickleball menace.",
+        "location": "Ballard, Seattle",
+        "followers": 172,
+        "following": 220,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "sunrise.bakery": {
+        "handle": "sunrise.bakery",
+        "name": "Sunrise Bakery Ballard",
+        "bio": "Family bakery on NW Market St since 2009. Cardamom buns Thursday to Sunday. Order ahead for cakes. Open 7am to 3pm, closed Mondays.",
+        "location": "Ballard, Seattle",
+        "followers": 4820,
+        "following": 12,
+        "verified": true,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "site": ""
+      },
+      "fremont.neighbors": {
+        "handle": "fremont.neighbors",
+        "name": "Fremont Neighbors",
+        "bio": "Community page for the Fremont and Wallingford neighbourhoods. Lost and found, block parties, the troll, the bridge, and who is grilling this weekend. Be kind.",
+        "location": "Fremont, Seattle",
+        "followers": 9130,
+        "following": 3,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "ballard.playhouse": {
+        "handle": "ballard.playhouse",
+        "name": "Ballard Playhouse",
+        "bio": "Community theatre since 1978. Volunteer run, all ages, no experience required. Fall 2026 season: Our Town, then a musical we have not been allowed to announce yet.",
+        "location": "Ballard, Seattle",
+        "followers": 2760,
+        "following": 45,
+        "verified": true,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "site": ""
+      }
+    },
+    "posts": {
+      "p-3101": {
+        "author": "sunrise.bakery",
+        "text": "Cardamom buns are back for the season starting Thursday. Same recipe, same oven, same line out the door by 8. Set an alarm.",
+        "tick": 2,
+        "likes": 318,
+        "reposts": 41,
+        "id": "p-3101"
+      },
+      "p-3102": {
+        "author": "rosa.lindqvist",
+        "text": "Tomato update: it is September and I have 40 pounds of Sungolds. Bag on the porch, take some, no need to ask. If you take the whole bag I will know.",
+        "tick": 2,
+        "likes": 88,
+        "reposts": 6,
+        "id": "p-3102"
+      },
+      "p-3103": {
+        "author": "carol.nakamura",
+        "text": "We shipped the big thing at work this week. Two years. I have taken Friday off to sit on the deck and not look at a laptop. Rosa, I will be over for tomatoes.",
+        "tick": 3,
+        "likes": 142,
+        "reposts": 2,
+        "id": "p-3103"
+      },
+      "p-3104": {
+        "author": "rosa.lindqvist",
+        "text": "Congrats Carol!! Bag is on the porch. Bring the dog.",
+        "tick": 3,
+        "likes": 21,
+        "reposts": 0,
+        "reply_to": "p-3103",
+        "id": "p-3104"
+      },
+      "p-3105": {
+        "author": "alice.chen",
+        "text": "Yes we did. Proudest I have been of a piece of software. Also I am never doing that again until next time.",
+        "tick": 3,
+        "likes": 64,
+        "reposts": 0,
+        "reply_to": "p-3103",
+        "id": "p-3105"
+      },
+      "p-3106": {
+        "author": "fremont.neighbors",
+        "text": "LOST CAT: Nimbus, grey tabby, very loud, white socks on both front paws, answers to his name and to the sound of a treat bag. Last seen near N 36th and Fremont Ave Thursday night. He is friendly but fast. Please check garages and sheds. Message Dev Patel or this page.",
+        "tick": 4,
+        "likes": 210,
+        "reposts": 388,
+        "id": "p-3106"
+      },
+      "p-3107": {
+        "author": "dev.patel",
+        "text": "Thank you everyone for sharing. He got out through the bathroom window screen. If you hear yelling at 2am that is either him or me looking for him.",
+        "tick": 4,
+        "likes": 96,
+        "reposts": 4,
+        "reply_to": "p-3106",
+        "id": "p-3107"
+      },
+      "p-3108": {
+        "author": "maya.okafor",
+        "text": "Shared to my whole floor at work. Half of them live in Fremont. He will turn up, they always do.",
+        "tick": 4,
+        "likes": 30,
+        "reposts": 0,
+        "reply_to": "p-3106",
+        "id": "p-3108"
+      },
+      "p-3109": {
+        "author": "bob.martinez",
+        "text": "Kevin the sourdough starter turns 3 today. He has outlived two phones and one relationship. Cake is being made from him, which feels dark, but that is the deal we have.",
+        "tick": 5,
+        "likes": 120,
+        "reposts": 9,
+        "id": "p-3109"
+      },
+      "p-3110": {
+        "author": "jonah.reyes",
+        "text": "Happy birthday Kevin. Bring a loaf Sunday and I will look at your gutter for free.",
+        "tick": 5,
+        "likes": 18,
+        "reposts": 0,
+        "reply_to": "p-3109",
+        "id": "p-3110"
+      },
+      "p-3111": {
+        "author": "ballard.playhouse",
+        "text": "AUDITIONS for Our Town, Saturday Sept 26, 10am to 2pm at the Playhouse. Ages 14 and up. No monologue needed, we will give you sides. We especially need a Stage Manager (the character, though honestly also the job). Rehearsals Tues/Thurs evenings from October.",
+        "tick": 6,
+        "likes": 154,
+        "reposts": 77,
+        "id": "p-3111"
+      },
+      "p-3112": {
+        "author": "hana.sato",
+        "text": "I played Mrs Gibbs in 1994 and I am available to be typecast again. Also I still have the hat.",
+        "tick": 6,
+        "likes": 67,
+        "reposts": 1,
+        "reply_to": "p-3111",
+        "id": "p-3112"
+      },
+      "p-3113": {
+        "author": "ballard.playhouse",
+        "text": "Hana we were hoping you would say that. Bring the hat.",
+        "tick": 6,
+        "likes": 44,
+        "reposts": 0,
+        "reply_to": "p-3112",
+        "id": "p-3113"
+      },
+      "p-3114": {
+        "author": "fremont.neighbors",
+        "text": "FOUND: Nimbus is home! He was in a neighbour's garage two blocks over, asleep on a bag of potting soil, extremely unbothered. Thank you to the 400 people who shared. This is why this page exists.",
+        "tick": 7,
+        "likes": 892,
+        "reposts": 130,
+        "id": "p-3114"
+      },
+      "p-3115": {
+        "author": "dev.patel",
+        "text": "He is home. He is furious about the bath. I am putting a lock on the screen and a tracker on him. Thank you Fremont, I owe this neighbourhood a lot of board game nights.",
+        "tick": 7,
+        "likes": 301,
+        "reposts": 12,
+        "reply_to": "p-3114",
+        "id": "p-3115"
+      },
+      "p-3116": {
+        "author": "alice.chen",
+        "text": "Best outcome. Nimbus you absolute menace.",
+        "tick": 7,
+        "likes": 22,
+        "reposts": 0,
+        "reply_to": "p-3114",
+        "id": "p-3116"
+      },
+      "p-3117": {
+        "author": "sunrise.bakery",
+        "text": "BAKE SALE for Ballard Playhouse this Sunday Sept 27, 9am to noon, on our patio. All proceeds to the Our Town set budget. We are donating buns, Hana Sato is bringing lemon bars, Rosa has threatened a tomato tart. Cash or tap.",
+        "tick": 8,
+        "likes": 266,
+        "reposts": 98,
+        "id": "p-3117"
+      },
+      "p-3118": {
+        "author": "rosa.lindqvist",
+        "text": "It is not a threat, it is a promise. Two tomato tarts. Somebody has to eat these.",
+        "tick": 8,
+        "likes": 39,
+        "reposts": 0,
+        "reply_to": "p-3117",
+        "id": "p-3118"
+      },
+      "p-3119": {
+        "author": "maya.okafor",
+        "text": "Happy birthday to Alice Chen, who once drove me to the airport at 4am and did not complain even a little (she complained a medium amount). Love you. Dinner is on me this year, no arguments.",
+        "tick": 9,
+        "likes": 178,
+        "reposts": 0,
+        "id": "p-3119"
+      },
+      "p-3120": {
+        "author": "carol.nakamura",
+        "text": "Happy birthday Alice! The team got you a cake shaped like a render frame. It is a rectangle. We tried.",
+        "tick": 9,
+        "likes": 93,
+        "reposts": 0,
+        "reply_to": "p-3119",
+        "id": "p-3120"
+      },
+      "p-3121": {
+        "author": "bob.martinez",
+        "text": "Happy birthday. Kevin says hi. There is a loaf with your name on it, literally, I scored it in.",
+        "tick": 9,
+        "likes": 55,
+        "reposts": 0,
+        "reply_to": "p-3119",
+        "id": "p-3121"
+      },
+      "p-3122": {
+        "author": "alice.chen",
+        "text": "Thank you all. 4am airport runs are the true measure of friendship and Maya I would do it again. Bob the loaf is beautiful. Carol the rectangle made me cry a little.",
+        "tick": 9,
+        "likes": 141,
+        "reposts": 0,
+        "reply_to": "p-3119",
+        "id": "p-3122"
+      },
+      "p-3123": {
+        "author": "jonah.reyes",
+        "text": "Anyone in Ballard need a hand hauling stuff to the Playhouse bake sale Sunday? I have the truck and nothing to do before noon. Comment or message me.",
+        "tick": 10,
+        "likes": 24,
+        "reposts": 5,
+        "id": "p-3123"
+      },
+      "p-3124": {
+        "author": "hana.sato",
+        "text": "Pickleball, Gilman Park, Wednesday 6pm. Beginners welcome. Carol Nakamura I know you said you would come and I have it in writing.",
+        "tick": 10,
+        "likes": 36,
+        "reposts": 2,
+        "id": "p-3124"
+      },
+      "p-3125": {
+        "author": "carol.nakamura",
+        "text": "I did say that. I will be there. I will lose. Bringing the dog as moral support.",
+        "tick": 10,
+        "likes": 28,
+        "reposts": 0,
+        "reply_to": "p-3124",
+        "id": "p-3125"
+      },
+      "p-3126": {
+        "author": "fremont.neighbors",
+        "text": "Block party planning for Oct 10 on N 35th between Fremont and Evanston. We need: a grill captain, two people for the kids' table, and someone who owns a PA that actually works. Sign-up in the comments. Street closure permit is approved.",
+        "tick": 11,
+        "likes": 167,
+        "reposts": 44,
+        "id": "p-3126"
+      },
+      "p-3127": {
+        "author": "dev.patel",
+        "text": "Grill captain. I have a chemistry degree, I understand heat. Nimbus will be staying indoors.",
+        "tick": 11,
+        "likes": 71,
+        "reposts": 0,
+        "reply_to": "p-3126",
+        "id": "p-3127"
+      },
+      "p-3128": {
+        "author": "ballard.playhouse",
+        "text": "Our Town is CAST. Thank you to the 61 people who auditioned, which is a record. Rehearsals start Tuesday. Bake sale raised $2,140 for the set, which means the set will now have a second ladder. Opening night Nov 13. Tickets soon.",
+        "tick": 12,
+        "likes": 402,
+        "reposts": 120,
+        "id": "p-3128"
+      },
+      "p-3129": {
+        "author": "bob.martinez",
+        "text": "Sunday league result: we lost 4-1, I saved a penalty, and I am choosing to remember only the second part.",
+        "tick": 12,
+        "likes": 83,
+        "reposts": 1,
+        "id": "p-3129"
+      }
+    },
+    "follows": {
+      "alice": [
+        "bob.martinez",
+        "carol.nakamura",
+        "maya.okafor",
+        "dev.patel",
+        "rosa.lindqvist",
+        "sunrise.bakery",
+        "fremont.neighbors",
+        "ballard.playhouse"
+      ],
+      "bob": [
+        "alice.chen",
+        "carol.nakamura",
+        "jonah.reyes",
+        "dev.patel",
+        "sunrise.bakery",
+        "fremont.neighbors"
+      ],
+      "carol": [
+        "alice.chen",
+        "bob.martinez",
+        "rosa.lindqvist",
+        "hana.sato",
+        "sunrise.bakery",
+        "ballard.playhouse",
+        "fremont.neighbors"
+      ]
+    },
+    "likes": {
+      "p-3114": [
+        "alice",
+        "bob",
+        "carol"
+      ],
+      "p-3119": [
+        "bob",
+        "carol"
+      ],
+      "p-3117": [
+        "alice"
+      ]
+    },
+    "reposts": {
+      "p-3106": [
+        "alice",
+        "carol"
+      ]
+    },
+    "connections": {},
+    "messages": {
+      "c-birthday": {
+        "id": "c-birthday",
+        "title": "Alice's birthday dinner",
+        "members": [
+          "maya.okafor",
+          "alice.chen",
+          "bob.martinez",
+          "carol.nakamura"
+        ],
+        "messages": [
+          {
+            "id": "dm-1",
+            "from": "maya.okafor",
+            "text": "Ok group chat without Alice (jk she is in here, hi Alice). Dinner Saturday 7pm, the Thai place on Market. I booked for four.",
+            "tick": 8
+          },
+          {
+            "id": "dm-2",
+            "from": "carol.nakamura",
+            "text": "In. Can we make it 7:30? Pickleball is Wednesday not Saturday but I am pre-emptively tired.",
+            "tick": 8
+          },
+          {
+            "id": "dm-3",
+            "from": "bob.martinez",
+            "text": "7:30 works. I am bringing bread whether or not the restaurant allows it.",
+            "tick": 8
+          },
+          {
+            "id": "dm-4",
+            "from": "alice.chen",
+            "text": "You are all ridiculous and I love you. 7:30. Bob, ask first.",
+            "tick": 9
+          }
+        ]
+      },
+      "c-bakesale": {
+        "id": "c-bakesale",
+        "title": "Bake sale logistics",
+        "members": [
+          "sunrise.bakery",
+          "carol.nakamura"
+        ],
+        "messages": [
+          {
+            "id": "dm-5",
+            "from": "sunrise.bakery",
+            "text": "Hi Carol, Hana said you might be able to bring folding tables Sunday? We have two and need four.",
+            "tick": 8
+          },
+          {
+            "id": "dm-6",
+            "from": "carol.nakamura",
+            "text": "Yes, I have two in the garage. Jonah Reyes has a truck and offered to haul, I will loop him in. What time do you want them?",
+            "tick": 8
+          },
+          {
+            "id": "dm-7",
+            "from": "sunrise.bakery",
+            "text": "8am would be perfect. Thank you! Buns on us.",
+            "tick": 9
+          }
+        ]
+      }
+    },
+    "next_id": 3200
+  },
+  "search_entries": [
+    {
+      "url": "http://facebook.com/",
+      "title": "Facebook - log in or sign up",
+      "snippet": "Your feed: updates from friends, pages and groups you follow, newest first.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "facebook",
+        "fb",
+        "feed",
+        "friends",
+        "social"
+      ]
+    },
+    {
+      "url": "http://facebook.com/explore",
+      "title": "Facebook - Groups",
+      "snippet": "The most shared posts across neighbourhood groups and pages, ranked by reach.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "facebook",
+        "groups",
+        "community",
+        "popular"
+      ]
+    },
+    {
+      "url": "http://facebook.com/alice.chen",
+      "title": "Alice Chen | Facebook",
+      "snippet": "Works at Northstar. Lives in Seattle, Washington. Will fix your bike, will not fix your printer.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "alice chen",
+        "facebook",
+        "profile",
+        "seattle"
+      ]
+    },
+    {
+      "url": "http://facebook.com/bob.martinez",
+      "title": "Bob Martinez | Facebook",
+      "snippet": "Northstar. Sunday league goalkeeper, Tuesday trivia. Ask me about my sourdough starter Kevin.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "bob martinez",
+        "facebook",
+        "profile",
+        "sourdough"
+      ]
+    },
+    {
+      "url": "http://facebook.com/carol.nakamura",
+      "title": "Carol Nakamura | Facebook",
+      "snippet": "Engineering manager at Northstar. Mom of two, one of them a dog. Ballard.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "carol nakamura",
+        "facebook",
+        "profile",
+        "ballard"
+      ]
+    },
+    {
+      "url": "http://facebook.com/sunrise.bakery",
+      "title": "Sunrise Bakery Ballard | Facebook",
+      "snippet": "Family bakery on NW Market St since 2009. Cardamom buns Thursday to Sunday. Hours, orders and the bake sale.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "sunrise bakery",
+        "ballard",
+        "bakery",
+        "cardamom buns",
+        "cake",
+        "hours"
+      ]
+    },
+    {
+      "url": "http://facebook.com/fremont.neighbors",
+      "title": "Fremont Neighbors | Facebook",
+      "snippet": "Community page for Fremont and Wallingford: lost and found, block parties, and who is grilling this weekend.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "fremont",
+        "neighbors",
+        "community",
+        "seattle",
+        "lost and found",
+        "block party"
+      ]
+    },
+    {
+      "url": "http://facebook.com/ballard.playhouse",
+      "title": "Ballard Playhouse | Facebook",
+      "snippet": "Community theatre since 1978. Fall 2026 season: Our Town. Auditions, rehearsals and tickets.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "ballard playhouse",
+        "community theatre",
+        "our town",
+        "auditions",
+        "seattle theatre"
+      ]
+    },
+    {
+      "url": "http://facebook.com/fremont.neighbors/status/p-3106",
+      "title": "LOST CAT: Nimbus, grey tabby, Fremont",
+      "snippet": "The neighbourhood page's lost cat post, shared 388 times before Nimbus turned up in a garage.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "lost cat",
+        "nimbus",
+        "fremont",
+        "grey tabby",
+        "missing pet"
+      ]
+    },
+    {
+      "url": "http://facebook.com/fremont.neighbors/status/p-3114",
+      "title": "FOUND: Nimbus is home",
+      "snippet": "Update from Fremont Neighbors: the cat was asleep on a bag of potting soil two blocks over.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "found cat",
+        "nimbus",
+        "fremont",
+        "home"
+      ]
+    },
+    {
+      "url": "http://facebook.com/sunrise.bakery/status/p-3117",
+      "title": "Bake sale for Ballard Playhouse, Sunday Sept 27",
+      "snippet": "Sunrise Bakery hosts a bake sale on its patio, all proceeds to the Our Town set budget.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "bake sale",
+        "ballard",
+        "playhouse",
+        "sunrise bakery",
+        "fundraiser",
+        "september 27"
+      ]
+    },
+    {
+      "url": "http://facebook.com/ballard.playhouse/status/p-3111",
+      "title": "Auditions for Our Town, Saturday Sept 26",
+      "snippet": "Ballard Playhouse audition call, ages 14 and up, no monologue needed.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "auditions",
+        "our town",
+        "ballard playhouse",
+        "community theatre",
+        "september 26"
+      ]
+    },
+    {
+      "url": "http://facebook.com/maya.okafor/status/p-3119",
+      "title": "Maya Okafor: happy birthday Alice Chen",
+      "snippet": "Birthday wishes for Alice from her college roommate, with replies from Carol and Bob.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "alice chen",
+        "birthday",
+        "maya okafor"
+      ]
+    },
+    {
+      "url": "http://facebook.com/fremont.neighbors/status/p-3126",
+      "title": "Block party planning for Oct 10",
+      "snippet": "Fremont Neighbors needs a grill captain, a kids' table crew and a working PA. Street closure approved.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "block party",
+        "fremont",
+        "october 10",
+        "street closure",
+        "neighbourhood"
+      ]
+    }
+  ],
+  "network_node": {
+    "address": "198.51.100.100",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1200
+    }
+  }
+}

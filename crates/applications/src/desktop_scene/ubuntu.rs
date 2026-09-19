@@ -29,7 +29,7 @@ const APPS: [(&str, &str); 25] = [
     ("kicad", "KiCad"),
     ("mail", "Thunderbird Mail"),
     ("calendar", "Calendar"),
-    ("chat", "Chat"),
+    ("messages", "Messages"),
     ("docs", "LibreOffice Writer"),
     ("spreadsheet", "LibreOffice Calc"),
     ("notes", "Notes"),

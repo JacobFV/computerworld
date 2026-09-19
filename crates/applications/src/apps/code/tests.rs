@@ -869,6 +869,10 @@ fn alt_click_adds_a_cursor_and_a_plain_click_takes_them_away() {
 
 /// Paint the workbench and hand back its scene.
 fn painted(app: &Code) -> cw_scene::Scene {
+    painted_at(app, None)
+}
+/// Paint the workbench with the pointer over its content at `pointer`, if anywhere.
+fn painted_at(app: &Code, pointer: Option<(i32, i32)>) -> cw_scene::Scene {
     let mut p = Painter::themed(DesktopTheme::Ubuntu, 1200, 800, 1);
     render::render(
         app,
@@ -882,11 +886,24 @@ fn painted(app: &Code) -> cw_scene::Scene {
             clipboard: None,
             share_to: None,
             editor: None,
-            pointer: None,
+            pointer,
             files: Default::default(),
         },
     );
     p.scene
+}
+/// Every piece of text the scene paints.
+fn texts(scene: &cw_scene::Scene) -> Vec<String> {
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| match &n.primitive {
+            cw_scene::Primitive::Text { text, .. }
+            | cw_scene::Primitive::UiText { text, .. }
+            | cw_scene::Primitive::UiTextBold { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .collect()
 }
 fn targets(scene: &cw_scene::Scene) -> Vec<String> {
     scene
@@ -1197,8 +1214,16 @@ fn requests(effects: &[AppEffect]) -> Vec<Request> {
         })
         .collect()
 }
-/// Where a program is stopped, as an adapter would report it.
+/// Where a program is stopped, as an adapter would report it: two frames, each with
+/// a Locals scope of its own (references 100 and 200).
 fn stopped_at(line: u32, reason: Stopped) -> State {
+    let locals = |reference: u64| {
+        vec![Scope {
+            name: "Locals".into(),
+            reference,
+            expensive: false,
+        }]
+    };
     State {
         stopped: reason,
         frames: vec![
@@ -1207,20 +1232,27 @@ fn stopped_at(line: u32, reason: Stopped) -> State {
                 name: "main".into(),
                 path: "/home/alice/project/main.py".into(),
                 line,
+                scopes: locals(100),
             },
             Frame {
                 id: 2,
                 name: "<module>".into(),
                 path: "/home/alice/project/main.py".into(),
-                line: 9,
+                line: 6,
+                scopes: locals(200),
             },
         ],
-        scopes: vec![Scope {
-            name: "Locals".into(),
-            reference: 100,
-            expensive: false,
-        }],
+        scopes: locals(100),
         output: String::new(),
+    }
+}
+/// A variable as a reply carries it.
+fn var(name: &str, value: &str) -> Variable {
+    Variable {
+        name: name.into(),
+        value: value.into(),
+        kind: "int".into(),
+        reference: 0,
     }
 }
 
@@ -1394,9 +1426,47 @@ fn the_debugger_view_shows_only_what_the_machine_reported() {
         .console
         .iter()
         .any(|l| l.text == "1" && l.kind == debug::ConsoleKind::Output));
-    // Another frame of the stack can be looked at.
-    app.click(W, "code:frame:1", 0).unwrap();
+    // Another frame of the stack can be looked at: the editor moves to its line, and
+    // the Variables view asks for that frame's own locals, not the innermost frame's.
+    let effects = app.click(W, "code:frame:1", 0).unwrap();
     assert_eq!(app.debug.session.as_ref().unwrap().frame, 1);
+    assert!(
+        requests(&effects)
+            .iter()
+            .any(|r| matches!(r, Request::Variables { reference: 200, .. })),
+        "{effects:?}"
+    );
+    let tab = app.active_tab().unwrap();
+    assert_eq!(tab.doc.line_of(tab.doc.cursor), 5);
+    app.debug_reply(
+        W,
+        "vars:200",
+        Ok(Reply::Variables {
+            variables: vec![var("__name__", "'__main__'")],
+        }),
+    );
+    app.run_command(W, "workbench.view.debug").unwrap();
+    let shown = texts(&painted(&app));
+    assert!(
+        shown.iter().any(|t| t == "__name__: '__main__'"),
+        "{shown:?}"
+    );
+    assert!(!shown.iter().any(|t| t.starts_with("x: ")), "{shown:?}");
+    // Back on the innermost frame, its locals (answered meanwhile) are shown again
+    // without another request: every frame's values belong to the same stop.
+    app.debug_reply(
+        W,
+        "vars:100",
+        Ok(Reply::Variables {
+            variables: vec![var("x", "1")],
+        }),
+    );
+    let effects = app.click(W, "code:frame:0", 0).unwrap();
+    assert!(requests(&effects)
+        .iter()
+        .all(|r| !matches!(r, Request::Variables { .. })));
+    let shown = texts(&painted(&app));
+    assert!(shown.iter().any(|t| t == "x: 1"), "{shown:?}");
     // A watch expression is evaluated where the program is stopped.
     app.run_command(W, "workbench.debug.viewlet.action.addWatchExpression")
         .unwrap();
@@ -1468,6 +1538,101 @@ fn the_debugger_view_shows_only_what_the_machine_reported() {
     );
     // The breakpoint outlived the session, as VS Code's do.
     assert_eq!(app.debug.breakpoints.len(), 1);
+}
+
+#[test]
+fn hovering_a_name_while_stopped_shows_its_value() {
+    let mut app = workspace();
+    open(
+        &mut app,
+        "main.py",
+        "def main():\n    x = 1\n    return x\n\n\nmain()\n",
+    );
+    app.run_command(W, "workbench.action.debug.start").unwrap();
+    let (cw, rh) = render::cell(app.settings.font_size, app.platform);
+    let target = "code:editor:0:0:0:0:30";
+    let at = |col: i32, row: i32| (col * cw as i32 + 1, row * rh as i32 + 1);
+    // Nothing is stopped yet, so the pointer over a name shows nothing.
+    let (x, y) = at(11, 2);
+    assert!(app.hover(W, target, x, y).is_empty());
+    assert!(app.debug.hover.is_none());
+    app.debug_reply(
+        W,
+        "launch",
+        Ok(Reply::Launched {
+            session: 7,
+            state: stopped_at(3, Stopped::Step),
+        }),
+    );
+    app.debug_reply(
+        W,
+        "vars:100",
+        Ok(Reply::Variables {
+            variables: vec![var("x", "1")],
+        }),
+    );
+    // Over the `x` of `return x`: a local the view already holds needs no request.
+    assert!(app.hover(W, target, x, y).is_empty());
+    let hover = app.debug.hover.clone().expect("a hover");
+    assert_eq!(
+        (hover.word.as_str(), hover.value.as_deref()),
+        ("x", Some("1"))
+    );
+    // The value is a plate beside the pointer, and only while the pointer is there.
+    let scene = painted_at(&app, Some((300, 200)));
+    assert!(targets(&scene).contains(&"code:hover".to_owned()));
+    assert!(texts(&scene).iter().any(|t| t == "x: 1"));
+    let plate = scene
+        .nodes
+        .iter()
+        .find(|n| n.interaction.as_deref() == Some("code:hover"))
+        .unwrap();
+    assert_eq!(
+        plate.semantic.as_ref().map(|s| s.label.as_str()),
+        Some("x: 1")
+    );
+    assert!(!targets(&painted(&app)).contains(&"code:hover".to_owned()));
+    // Over `main` on the last line: not captured, so the machine is asked, in the frame
+    // on show and as a hover, which changes nothing.
+    let (x, y) = at(1, 5);
+    let effects = app.hover(W, target, x, y);
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Evaluate { frame: 1, expression, context, .. })
+            if expression == "main" && context == "hover"
+    ));
+    assert_eq!(app.debug.hover.as_ref().unwrap().value, None);
+    assert!(!targets(&painted_at(&app, Some((300, 200)))).contains(&"code:hover".to_owned()));
+    // Still there while the machine thinks: no second request.
+    assert!(app.hover(W, target, x + 2, y).is_empty());
+    app.debug_reply(
+        W,
+        "hover",
+        Ok(Reply::Evaluated {
+            result: var("main", "<function main at 0x1>"),
+        }),
+    );
+    assert!(texts(&painted_at(&app, Some((300, 200))))
+        .iter()
+        .any(|t| t == "main: <function main at 0x1>"));
+    // Off the name, nothing is shown; a name the machine cannot evaluate shows nothing.
+    let (x, y) = at(0, 3);
+    app.hover(W, target, x, y);
+    assert!(app.debug.hover.is_none());
+    let (x, y) = at(4, 1);
+    app.hover(W, target, x, y);
+    assert_eq!(app.debug.hover.as_ref().unwrap().word, "x");
+    let (x, y) = at(1, 5);
+    app.hover(W, target, x, y);
+    app.debug_reply(W, "hover", Err("name 'main' is not defined".into()));
+    assert!(app.debug.hover.is_none());
+    assert!(app.debug.error.is_none());
+    // Stepping ends the stop the value belonged to.
+    app.hover(W, target, at(11, 2).0, at(11, 2).1);
+    assert!(app.debug.hover.is_some());
+    app.run_command(W, "workbench.action.debug.stepOver")
+        .unwrap();
+    assert!(app.debug.hover.is_none());
 }
 
 #[test]

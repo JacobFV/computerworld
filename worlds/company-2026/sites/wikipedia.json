@@ -5,7 +5,9 @@
   "domains": [
     "wikipedia.org",
     "en.wikipedia.org",
-    "www.wikipedia.org"
+    "www.wikipedia.org",
+    "m.wikipedia.org",
+    "en.m.wikipedia.org"
   ],
   "port": 80,
   "initial_state": {

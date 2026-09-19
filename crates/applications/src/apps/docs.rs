@@ -265,12 +265,14 @@ impl Docs {
             id: "docs:reload".into(),
             text: "Reload".into(),
             action: act("docs:reload"),
+            style: None,
         });
         for document in &self.documents {
             page.elements.push(E::Button {
                 id: format!("docs:open:{}", document.id),
                 text: document.title.clone(),
                 action: act(&format!("docs:open:{}", document.id)),
+                style: None,
             });
         }
         if self.open.is_some() {
@@ -284,6 +286,7 @@ impl Docs {
                 id: "docs:save".into(),
                 text: "Save".into(),
                 action: act("docs:save"),
+                style: None,
             });
         }
     }

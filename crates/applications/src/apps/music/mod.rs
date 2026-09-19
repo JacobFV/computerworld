@@ -1309,6 +1309,7 @@ impl Music {
             id: id.clone(),
             text,
             action: act(id),
+            style: None,
         };
         if let Some(text) = self.status.notice() {
             page.elements.push(E::Text {

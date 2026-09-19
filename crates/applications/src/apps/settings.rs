@@ -98,6 +98,7 @@ impl Settings {
                 id: format!("settings:section:{index}"),
                 text: (*name).into(),
                 action: act(&format!("settings:section:{index}")),
+                style: None,
             });
         }
         for switch in SECTIONS[self.section.min(SECTIONS.len() - 1)].1 {
@@ -105,6 +106,7 @@ impl Settings {
                 id: format!("shell:toggle:{switch}"),
                 text: label_for(switch).into(),
                 action: act(&format!("shell:toggle:{switch}")),
+                style: None,
             });
         }
         if self.section == 1 {
@@ -113,6 +115,7 @@ impl Settings {
                     id: format!("shell:set:{name}:100"),
                     text: format!("{label} to 100%"),
                     action: act(&format!("shell:set:{name}:100")),
+                    style: None,
                 });
             }
         }

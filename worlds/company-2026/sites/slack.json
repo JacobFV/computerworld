@@ -1,6 +1,6 @@
 {
   "id": "slack",
-  "kind": "chat",
+  "kind": "slack",
   "node": "slack",
   "domains": [
     "slack.com",
@@ -9,12 +9,13 @@
   ],
   "port": 80,
   "initial_state": {
-    "skin": "slack",
     "workspace": "Northstar",
-    "next_id": 20,
+    "next_id": 44,
     "channels": {
       "eng": {
         "title": "eng",
+        "topic": "CI, reviews and the Atlas launch",
+        "purpose": "Where the engineering team talks shop",
         "members": [
           "admin",
           "alice",
@@ -26,14 +27,14 @@
             "id": "chat-1",
             "author": "bob",
             "text": "Windows CI went red again. The BFS path test only fails there, about one run in four.",
-            "time": 30,
+            "time": 349920000000,
             "reactions": {}
           },
           {
             "id": "chat-2",
             "author": "alice",
-            "text": "That smells like hash-map iteration order.",
-            "time": 30,
+            "text": "That smells like hash-map iteration order. `HashMap` walks its buckets differently every run.",
+            "time": 350040000000,
             "reactions": {
               "eyes": [
                 "bob",
@@ -45,15 +46,23 @@
             "id": "chat-3",
             "author": "bob",
             "text": "Filed it: http://github.com/northstar/atlas/issues/14",
-            "time": 31,
+            "time": 351060000000,
             "reactions": {},
             "parent": "chat-1"
           },
           {
             "id": "chat-4",
+            "author": "carol",
+            "text": "Thanks. Tagging it P2 until we know it is only the test.",
+            "time": 351300000000,
+            "reactions": {},
+            "parent": "chat-1"
+          },
+          {
+            "id": "chat-5",
             "author": "alice",
             "text": "Priya's answer on Stack Overflow nails it: http://stackoverflow.com/questions/t-4411",
-            "time": 33,
+            "time": 363900000000,
             "reactions": {
               "tada": [
                 "bob",
@@ -62,35 +71,131 @@
             }
           },
           {
-            "id": "chat-5",
-            "author": "bob",
-            "text": "Wrote it up while it was fresh: http://bmartinez.net/posts/hash-order-bit-me",
-            "time": 34,
-            "reactions": {}
-          },
-          {
             "id": "chat-6",
-            "author": "carol",
-            "text": "Launch checklist is in the doc: http://docs.google.com/documents/atlas-launch - alice owns the confirmation, tracked as OPS-1: http://linear.app/projects/OPS/issues/1",
-            "time": 35,
+            "author": "alice",
+            "text": "Sort the neighbours before you walk them and the path is deterministic. :white_check_mark:",
+            "time": 363960000000,
             "reactions": {}
           },
           {
             "id": "chat-7",
+            "author": "bob",
+            "text": "Wrote it up while it was fresh: http://bmartinez.net/posts/hash-order-bit-me",
+            "time": 433200000000,
+            "reactions": {
+              "+1": [
+                "alice",
+                "carol"
+              ]
+            }
+          },
+          {
+            "id": "chat-8",
+            "author": "bob",
+            "text": "tl;dr never assert on iteration order, even in a test that only runs on Linux.",
+            "time": 433320000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-9",
+            "author": "carol",
+            "text": "Launch checklist: http://docs.google.com/documents/atlas-launch - @alice owns the confirmation.",
+            "time": 528420000000,
+            "reactions": {
+              "white_check_mark": [
+                "alice"
+              ]
+            }
+          },
+          {
+            "id": "chat-10",
+            "author": "carol",
+            "text": "Tracked as OPS-1: http://linear.app/projects/OPS/issues/1",
+            "time": 528480000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-11",
             "author": "alice",
-            "text": "Fix is up for review: http://github.com/northstar/atlas/pull/15",
-            "time": 36,
+            "text": "On it. Confirmation email copy goes to legal today.",
+            "time": 528720000000,
+            "reactions": {},
+            "parent": "chat-9"
+          },
+          {
+            "id": "chat-12",
+            "author": "alice",
+            "text": "Fix is up: http://github.com/northstar/atlas/pull/15 - `sort_unstable` on the adjacency list.",
+            "time": 607260000000,
             "reactions": {
               "+1": [
                 "bob",
                 "carol"
+              ],
+              "rocket": [
+                "bob"
               ]
             }
+          },
+          {
+            "id": "chat-13",
+            "author": "bob",
+            "text": "Reviewing now. If the Windows job goes green three times in a row I will stop refreshing.",
+            "time": 607440000000,
+            "reactions": {
+              "joy": [
+                "carol"
+              ]
+            }
+          },
+          {
+            "id": "chat-14",
+            "author": "admin",
+            "text": "Heads up: the CI runners get their kernel patch tonight at 22:00, expect 15 min of queued jobs.",
+            "time": 607920000000,
+            "reactions": {
+              "eyes": [
+                "alice"
+              ]
+            }
+          },
+          {
+            "id": "chat-15",
+            "author": "bob",
+            "text": "@admin can that wait until after the release candidate is cut tomorrow morning?",
+            "time": 608280000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-16",
+            "author": "admin",
+            "text": "Yes, moving it to Friday 22:00. :+1:",
+            "time": 608580000000,
+            "reactions": {
+              "+1": [
+                "bob"
+              ]
+            },
+            "parent": "chat-14"
+          },
+          {
+            "id": "chat-17",
+            "author": "alice",
+            "text": "Closing the loop: http://github.com/northstar/atlas/pull/15 makes the walk order stable.",
+            "time": 608700000000,
+            "reactions": {},
+            "parent": "chat-1"
           }
+        ],
+        "pins": [
+          "chat-5",
+          "chat-9"
         ]
       },
       "random": {
         "title": "random",
+        "topic": "Anything goes",
+        "purpose": "Non-work chatter",
         "members": [
           "alice",
           "bob",
@@ -98,17 +203,17 @@
         ],
         "messages": [
           {
-            "id": "chat-8",
+            "id": "chat-18",
             "author": "bob",
             "text": "which monitor did you get?",
-            "time": 40,
+            "time": 99000000000,
             "reactions": {}
           },
           {
-            "id": "chat-9",
+            "id": "chat-19",
             "author": "alice",
-            "text": "this one: http://amazon.com/dp/b0monitor27 - 27 inch, 4K, one USB-C cable for power and picture.",
-            "time": 40,
+            "text": "this one: http://amazon.com/dp/b0monitor27 - 27 inch, 4K, one USB-C cable for everything.",
+            "time": 99180000000,
             "reactions": {
               "+1": [
                 "bob"
@@ -116,18 +221,26 @@
             }
           },
           {
-            "id": "chat-10",
+            "id": "chat-20",
             "author": "bob",
             "text": "Sold. Ordering one before carol notices the budget.",
-            "time": 40,
+            "time": 99600000000,
             "reactions": {},
-            "parent": "chat-8"
+            "parent": "chat-18"
           },
           {
-            "id": "chat-11",
+            "id": "chat-21",
             "author": "carol",
-            "text": "Launch week soundtrack: http://open.spotify.com/playlist/ship-it",
-            "time": 41,
+            "text": ":eyes: I notice everything.",
+            "time": 99660000000,
+            "reactions": {},
+            "parent": "chat-18"
+          },
+          {
+            "id": "chat-22",
+            "author": "carol",
+            "text": "Launch week soundtrack: http://open.spotify.com/playlist/ship-it :fire:",
+            "time": 544200000000,
             "reactions": {
               "tada": [
                 "alice",
@@ -136,16 +249,32 @@
             }
           },
           {
-            "id": "chat-12",
+            "id": "chat-23",
             "author": "carol",
-            "text": "And the walkthrough, for anyone who has not watched it: http://youtube.com/watch?v=atlas-walkthrough",
-            "time": 41,
+            "text": "And the walkthrough, if you have not watched it: http://youtube.com/watch?v=atlas-walkthrough",
+            "time": 544320000000,
             "reactions": {}
+          },
+          {
+            "id": "chat-24",
+            "author": "bob",
+            "text": "coffee machine on 3 is fixed :pray:",
+            "time": 604500000000,
+            "reactions": {
+              "heart": [
+                "alice"
+              ],
+              "pray": [
+                "carol"
+              ]
+            }
           }
         ]
       },
       "incidents": {
         "title": "incidents",
+        "topic": "Live incidents and postmortems",
+        "purpose": "One thread per incident; admin runs the postmortem",
         "members": [
           "admin",
           "alice",
@@ -154,25 +283,41 @@
         ],
         "messages": [
           {
-            "id": "chat-13",
+            "id": "chat-25",
             "author": "admin",
             "text": "INC-4: elevated API latency. Status page is updated: http://status.northstar.example/",
-            "time": 50,
+            "time": 453720000000,
             "reactions": {}
           },
           {
-            "id": "chat-14",
+            "id": "chat-26",
             "author": "admin",
             "text": "Recovered after 12 minutes. Cause was a cold cache on the new pop.",
-            "time": 51,
+            "time": 454440000000,
             "reactions": {},
-            "parent": "chat-13"
+            "parent": "chat-25"
           },
           {
-            "id": "chat-15",
+            "id": "chat-27",
+            "author": "alice",
+            "text": "Nice catch. Do we pre-warm on deploy now?",
+            "time": 454500000000,
+            "reactions": {},
+            "parent": "chat-25"
+          },
+          {
+            "id": "chat-28",
+            "author": "admin",
+            "text": "We do from tomorrow. It is in the postmortem.",
+            "time": 454800000000,
+            "reactions": {},
+            "parent": "chat-25"
+          },
+          {
+            "id": "chat-29",
             "author": "carol",
-            "text": "Postmortem is OPS-7: http://linear.app/projects/OPS/issues/7 - admin owns it.",
-            "time": 51,
+            "text": "Postmortem is OPS-7: http://linear.app/projects/OPS/issues/7 - @admin owns it.",
+            "time": 459000000000,
             "reactions": {
               "+1": [
                 "admin"
@@ -180,16 +325,21 @@
             }
           },
           {
-            "id": "chat-16",
+            "id": "chat-30",
             "author": "admin",
             "text": "Apology posted from @NorthstarHQ: http://x.com/NorthstarHQ",
-            "time": 52,
+            "time": 461100000000,
             "reactions": {}
           }
+        ],
+        "pins": [
+          "chat-25"
         ]
       },
       "general": {
         "title": "general",
+        "topic": "Company-wide announcements",
+        "purpose": "Everyone at Northstar",
         "members": [
           "admin",
           "alice",
@@ -198,20 +348,88 @@
         ],
         "messages": [
           {
-            "id": "chat-17",
+            "id": "chat-31",
             "author": "carol",
             "text": "New starters: the intranet has everything - http://intranet.internal/",
-            "time": 20,
+            "time": 86700000000,
             "reactions": {}
           },
           {
-            "id": "chat-18",
+            "id": "chat-32",
             "author": "admin",
             "text": "And the public guide for anything you would send outside: http://guide.example/",
-            "time": 20,
+            "time": 86880000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-33",
+            "author": "carol",
+            "text": "Atlas launches Thursday the 24th. Dress rehearsal Monday, release candidate Wednesday. :rocket:",
+            "time": 345600000000,
+            "reactions": {
+              "rocket": [
+                "admin",
+                "alice",
+                "bob"
+              ],
+              "tada": [
+                "alice"
+              ]
+            }
+          },
+          {
+            "id": "chat-34",
+            "author": "admin",
+            "text": "Office wifi will drop for a minute around 12:30 today while the new AP goes in.",
+            "time": 603000000000,
+            "reactions": {
+              "eyes": [
+                "bob"
+              ]
+            }
+          }
+        ],
+        "pins": [
+          "chat-33"
+        ]
+      },
+      "atlas-release": {
+        "title": "atlas-release",
+        "topic": "Release candidate coordination",
+        "purpose": "The people cutting and checking the Atlas release candidate",
+        "members": [
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "messages": [
+          {
+            "id": "chat-35",
+            "author": "carol",
+            "text": "RC plan: @bob cuts the candidate Wednesday morning, @alice runs the clean-machine install.",
+            "time": 549600000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-36",
+            "author": "bob",
+            "text": "Ack. Tag will be `v1.0.0-rc1`.",
+            "time": 549900000000,
+            "reactions": {
+              "white_check_mark": [
+                "carol"
+              ]
+            }
+          },
+          {
+            "id": "chat-37",
+            "author": "alice",
+            "text": "Ack too. I will use the Windows laptop for the install run.",
+            "time": 549960000000,
             "reactions": {}
           }
-        ]
+        ],
+        "private": true
       }
     },
     "dms": {
@@ -223,24 +441,95 @@
         ],
         "messages": [
           {
-            "id": "chat-19",
+            "id": "chat-38",
             "author": "bob",
             "text": "did carol see the flaky test before the launch review?",
-            "time": 32,
+            "time": 520320000000,
             "reactions": {}
           },
           {
-            "id": "chat-20",
+            "id": "chat-39",
             "author": "alice",
             "text": "She did. It is on the board as OPS-2 and it is not blocking the launch.",
-            "time": 32,
+            "time": 520500000000,
             "reactions": {
               "+1": [
                 "bob"
               ]
             }
+          },
+          {
+            "id": "chat-40",
+            "author": "bob",
+            "text": "your PR looks good, one nit about the comment on the sort",
+            "time": 607560000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-41",
+            "author": "alice",
+            "text": "fixed, pushed :tada:",
+            "time": 607620000000,
+            "reactions": {
+              "heart": [
+                "bob"
+              ]
+            }
           }
         ]
+      },
+      "alice|bob|carol": {
+        "title": "alice, bob, carol",
+        "members": [
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "messages": [
+          {
+            "id": "chat-42",
+            "author": "carol",
+            "text": "Standup at 9:30 today instead of 9, I have the dentist first.",
+            "time": 603600000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-43",
+            "author": "bob",
+            "text": "np :+1:",
+            "time": 603660000000,
+            "reactions": {}
+          },
+          {
+            "id": "chat-44",
+            "author": "alice",
+            "text": "ok! :pray: good luck",
+            "time": 603660000000,
+            "reactions": {}
+          }
+        ]
+      }
+    },
+    "members": {
+      "alice": {
+        "display_name": "alice",
+        "title": "Software Engineer",
+        "status": "🚀 launch week"
+      },
+      "bob": {
+        "display_name": "bob",
+        "title": "Software Engineer",
+        "status": "🪟 fighting Windows CI"
+      },
+      "carol": {
+        "display_name": "carol",
+        "title": "Engineering Manager",
+        "status": "📋 in reviews"
+      },
+      "admin": {
+        "display_name": "admin",
+        "title": "IT & Operations",
+        "status": "🟢 on call"
       }
     }
   },
@@ -261,7 +550,7 @@
     {
       "url": "http://slack.com/archives/eng",
       "title": "#eng · Northstar on Slack",
-      "snippet": "Engineering: the Windows CI failure, the Stack Overflow answer and the Atlas launch checklist.",
+      "snippet": "Engineering: the Windows CI failure, the Stack Overflow answer, the fix under review and the Atlas launch checklist.",
       "authority": 6,
       "keywords": [
         "eng",

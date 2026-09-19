@@ -89,6 +89,8 @@ pub struct Pal {
     pub bp_off: Color,
     /// The line the debugger has the program stopped on.
     pub stopped: Color,
+    /// The line of another frame of the call stack, when that frame is the one on show.
+    pub focused_frame: Color,
 }
 pub fn pal(dark: bool) -> Pal {
     if dark {
@@ -141,6 +143,7 @@ pub fn pal(dark: bool) -> Pal {
             bp: hex(0xE51400),
             bp_off: hex(0x848484),
             stopped: Color(255, 213, 0, 45),
+            focused_frame: Color(122, 189, 122, 70),
         }
     } else {
         Pal {
@@ -192,6 +195,7 @@ pub fn pal(dark: bool) -> Pal {
             bp: hex(0xE51400),
             bp_off: hex(0x848484),
             stopped: Color(255, 213, 0, 60),
+            focused_frame: Color(122, 189, 122, 80),
         }
     }
 }
@@ -436,6 +440,7 @@ pub fn render(app: &Workbench, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let r = Rect::new(mx, area.height as i32, mw, panel_h);
         panel(app, p, &pal, r);
     }
+    hover_plate(app, p, &pal, env);
     status_bar(app, p, &pal, Rect::new(0, status_y, w, STATUS_H));
     if let Some(notice) = &app.notice {
         let nw = 380.min(w.saturating_sub(20));
@@ -1423,7 +1428,7 @@ fn variables_section(
 ) -> i32 {
     let mut y = debug_header(p, pal, r, y, "VARIABLES");
     let bottom = r.y + r.height as i32;
-    for scope in &session.scopes {
+    for scope in session.shown_scopes() {
         if y > bottom - 20 {
             return y;
         }
@@ -1596,6 +1601,42 @@ fn watch_section(app: &Workbench, p: &mut Painter, pal: &Pal, r: Rect, y: i32) -
         y += 20;
     }
     y + 8
+}
+
+/// The value of the name the pointer rests on, as a plate beside the pointer, above
+/// everything else. It is drawn only while the pointer is over this window, so moving
+/// away takes it with it; a value the machine has not answered yet shows nothing.
+fn hover_plate(app: &Workbench, p: &mut Painter, pal: &Pal, env: &crate::AppEnv<'_>) {
+    let (Some(hover), Some((px, py))) = (&app.debug.hover, env.pointer) else {
+        return;
+    };
+    let Some(value) = &hover.value else {
+        return;
+    };
+    // One line of it: a structure's repr can run long.
+    let value: String = value
+        .lines()
+        .next()
+        .unwrap_or("")
+        .chars()
+        .take(160)
+        .collect();
+    let text = format!("{}: {}", hover.word, value);
+    let (cw, ch) = text_cell(12);
+    let w = (cw * cells(&text) as u32 + 16).clamp(24, env.width.saturating_sub(8).max(24));
+    let h = ch + 12;
+    let x = (px + 12).min(env.width as i32 - w as i32 - 4).max(4);
+    let y = if py + 20 + h as i32 <= env.height as i32 {
+        py + 20
+    } else {
+        (py - 8 - h as i32).max(4)
+    };
+    let plate = Rect::new(x, y, w, h);
+    p.z += 2;
+    p.border(plate, pal.widget, 3, pal.widget_border);
+    mono(p, x + 8, y + 5, &text, 12, pal.fg);
+    p.region(plate, "code:hover", &text);
+    p.z -= 2;
 }
 
 /// The call stack, innermost frame first.
@@ -2455,12 +2496,15 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
         vec![]
     };
     let bracket = tab.doc.matching_bracket();
-    // Where the debugger has the program stopped, when it is in this file.
-    let stopped_line = app
-        .debug
-        .session
-        .as_ref()
-        .filter(|s| !s.ended)
+    // Where the debugger has the program stopped, when it is in this file: the
+    // innermost frame's line, and the line of the frame on show when it is another.
+    let debugging = app.debug.session.as_ref().filter(|s| !s.ended);
+    let stopped_line = debugging
+        .and_then(|s| s.frames.first())
+        .filter(|f| f.path == tab.path)
+        .map(|f| f.line);
+    let focused_line = debugging
+        .filter(|s| s.frame != 0)
         .and_then(super::debug::Session::at)
         .filter(|(path, _)| *path == tab.path)
         .map(|(_, line)| line);
@@ -2519,9 +2563,12 @@ fn text_editor(app: &Workbench, p: &mut Painter, pal: &Pal, tab: &Tab, r: Rect, 
                 );
             }
         }
-        // The line the program is stopped on, as the debugger reported it.
+        // The line the program is stopped on, as the debugger reported it, and the
+        // line of the frame selected in the call stack when it is an outer one.
         if stopped_line == Some(line as u32 + 1) && starts_line {
             p.box_(Rect::new(r.x, y, r.width, rh), pal.stopped, 0);
+        } else if focused_line == Some(line as u32 + 1) && starts_line {
+            p.box_(Rect::new(r.x, y, r.width, rh), pal.focused_frame, 0);
         }
         // Selections, including the newline at the end of a fully selected row.
         for (from, to) in selections.iter().copied() {

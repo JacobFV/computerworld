@@ -192,6 +192,9 @@ impl Cad {
         if !self.path.is_empty() {
             return parent(&self.path);
         }
+        if !self.start_folder.is_empty() {
+            return self.start_folder.clone();
+        }
         if self.home.is_empty() {
             return "/".into();
         }
@@ -264,6 +267,10 @@ impl Cad {
             d.loading = false;
             d.entries.clear();
             d.error = Some(reason.to_owned());
+        } else if !self.start_folder.is_empty() {
+            // The folder FreeCAD was launched on is not there: its dialogs start on
+            // Documents instead.
+            self.start_folder.clear();
         } else {
             self.log(ReportKind::Error, reason);
         }
@@ -460,10 +467,12 @@ impl Cad {
         match then {
             "new" => {
                 let (home, platform) = (self.home.clone(), self.platform);
+                let start_folder = std::mem::take(&mut self.start_folder);
                 let (fresh, _) = Freecad::launch("", window, 0);
                 *self = *fresh.0;
                 self.home = home;
                 self.platform = platform;
+                self.start_folder = start_folder;
                 self.log(ReportKind::Log, "New document Unnamed");
                 Ok(vec![])
             }
@@ -578,10 +587,12 @@ impl Cad {
                 match io::load_native(&text) {
                     Ok(doc) => {
                         let (home, platform) = (self.home.clone(), self.platform);
+                        let start_folder = std::mem::take(&mut self.start_folder);
                         let (fresh, _) = Freecad::launch("", 0, 0);
                         *self = *fresh.0;
                         self.home = home;
                         self.platform = platform;
+                        self.start_folder = start_folder;
                         self.doc = doc;
                         self.path = path.to_owned();
                         self.active_body = self.doc.bodies().first().map(|b| (*b).to_owned());
@@ -808,8 +819,18 @@ impl Cad {
         Ok(vec![effect])
     }
 
-    /// Open a document or import a file named at launch.
+    /// Open a document or import a file named at launch; a folder (no file extension)
+    /// is where the file dialogs start, once it is known to exist.
     pub(crate) fn open_path(&mut self, window: u64, path: &str) -> Vec<AppEffect> {
+        let name = path.trim_end_matches('/').rsplit('/').next().unwrap_or("");
+        if !name.contains('.') {
+            self.start_folder = path.trim_end_matches('/').to_owned();
+            return vec![AppEffect::ListDirectory {
+                window,
+                tab: 1,
+                path: self.start_folder.clone(),
+            }];
+        }
         let purpose = if path.ends_with(".FCStd.json") {
             Purpose::Open
         } else {

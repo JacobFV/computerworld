@@ -49,6 +49,43 @@ Internet nodes are reached through an edge router and three points of presence, 
 latency is realistically higher than the LAN's 10 µs: a few milliseconds to the
 company's own site, more to a distant one.
 
+### The sites
+
+Every site is a seed file under `sites/`, grouped here by the service kind that renders it
+(the variant in parentheses is its `mode`, `layout` or `skin`). Alternate spellings
+(`www.`, `m.`, `youtu.be`, `twitter.com`, `youtubemusic.com`, …) are extra `domains` on the
+same seed.
+
+| Kind | Sites |
+|---|---|
+| assistant | chatgpt.com, claude.ai |
+| bank | northwind.example, paypal.com |
+| calendar (gcal) | calendar.google.com |
+| chat / slack / discord / messages | chat.internal, slack.com, discord.com, messages.internal |
+| docs (gdocs, plain) | docs.google.com, notion.so |
+| drive (gdrive, dropbox) | drive.google.com, dropbox.com |
+| forum (subreddits) | reddit.com, yelp.com |
+| forum (qa) | stackoverflow.com, quora.com |
+| forum (linkfeed) | news.ycombinator.com, craigslist.org |
+| geo (maps, weather) | maps.google.com, openstreetmap.org, weather.com |
+| git (github, plain) | github.com, gitlab.com |
+| issues (linear) | linear.app |
+| mail (gmail, outlook, plain) | mail.google.com, outlook.com, mail.com |
+| media (video) | youtube.com, tiktok.com, twitch.tv, vimeo.com, netflix.com |
+| media (audio, music) | spotify.com, soundcloud.com, music.youtube.com |
+| press (wire) | reuters.com, bbc.com, news.google.com |
+| press (magazine) | theverge.com, arstechnica.com, nytimes.com, cnn.com |
+| press (blog) | alicechen.dev, bmartinez.net, eng.northstar.example, medium.com, substack.com |
+| search (google, bing, ddg) | google.com, bing.com, duckduckgo.com |
+| shop (retail) | amazon.com, etsy.com, ebay.com, booking.com, airbnb.com, uber.com, doordash.com |
+| shop (tickets) | ticketmaster.com |
+| social (microblog) | x.com, mastodon.social, facebook.com, bsky.app |
+| social (photos) | instagram.com, pinterest.com |
+| social (professional) | linkedin.com |
+| speaker | kitchen, livingroom and office-tv `.speaker.internal` (cast targets; `bedroom.speaker.internal` is declared in DNS but unplugged: nothing listens) |
+| static-site | intranet.internal, northstar.example, status.northstar.example, guide.example, apple.com, microsoft.com, zoom.us, whatsapp.com, figma.com, cloudflare.com, aws.amazon.com, stripe.com, npmjs.com, pypi.org, crates.io, docs.rs |
+| wiki | wikipedia.org, imdb.com, archive.org |
+
 ### Adding or editing a site
 
 Seed data lives in one file per site under `worlds/company-2026/sites/<service-id>.json`,
@@ -68,7 +105,13 @@ never directly in `world.json`. The basename must equal the `id`.
 
 `search_entries` is build-only: `scripts/build-search-index.mjs` harvests it into the
 search engines' indexes and strips it before the splice, which is what makes a search
-result a link that really resolves. `scripts/build-content.sh` runs the splice, the
+result a link that really resolves. Its `vertical` is one of the engines' `all`, `news`,
+`videos` or `images`. `network_node` (see the header of `scripts/build-world.mjs`) lets a
+site bring its own host on a documentation-range address; the splice also emits a DNS A
+record for every domain a site declares, so no name depends on the runtime's auto-add. In
+`world.json` a spliced service is written on one line — the seed file is the reviewable
+copy — while the hand-written computers, network and `.internal` services stay
+pretty-printed. `scripts/build-content.sh` runs the splice, the
 index and the browser-demo regeneration, and is idempotent.
 
 `cargo test -p computerworld --test internet_links` is the guard: it asks every declared

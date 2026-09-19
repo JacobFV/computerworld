@@ -60,6 +60,7 @@ fn main() -> Result<()> {
         node: "counter-node".into(),
         domains: vec!["counter.internal".into()],
         port: 80,
+        tls: true,
         initial_state: json!({"count":4}),
     });
     let mut world = computerworld::World::with_registry(definition, 7, registry)?;

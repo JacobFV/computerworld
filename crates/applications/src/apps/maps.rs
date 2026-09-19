@@ -380,12 +380,14 @@ impl Maps {
             id: "maps:reload".into(),
             text: "Reload".into(),
             action: act("maps:reload"),
+            style: None,
         });
         for (mode, label) in TRAVEL {
             page.elements.push(E::Button {
                 id: format!("maps:mode:{mode}"),
                 text: (*label).into(),
                 action: act(&format!("maps:mode:{mode}")),
+                style: None,
             });
         }
         for place in self.results() {
@@ -393,6 +395,7 @@ impl Maps {
                 id: format!("maps:place:{}", place.id),
                 text: format!("{} — {}", place.name, place.address),
                 action: act(&format!("maps:place:{}", place.id)),
+                style: None,
             });
             page.elements.push(E::Button {
                 id: format!("maps:save:{}", place.id),
@@ -406,6 +409,7 @@ impl Maps {
                     place.name
                 ),
                 action: act(&format!("maps:save:{}", place.id)),
+                style: None,
             });
         }
         if let Some(id) = &self.selected {
@@ -414,6 +418,7 @@ impl Maps {
                     id: format!("maps:{prefix}:{id}"),
                     text: label.into(),
                     action: act(&format!("maps:{prefix}:{id}")),
+                    style: None,
                 });
             }
         }
@@ -422,6 +427,7 @@ impl Maps {
                 id: "maps:route".into(),
                 text: "Directions".into(),
                 action: act("maps:route"),
+                style: None,
             });
         }
         if let Some(route) = &self.route {
@@ -443,6 +449,7 @@ impl Maps {
                 id: "maps:clear-route".into(),
                 text: "Clear route".into(),
                 action: act("maps:clear-route"),
+                style: None,
             });
         }
     }
@@ -540,70 +547,141 @@ impl Maps {
         self.list_body(p, l, Rect::new(r.x, pane.top(), r.width, r.height));
         p.end_pane(pane, None);
     }
-    /// The map itself: every place the service sent, plotted from its own micro-degrees.
+    /// The map itself: every place the service sent, plotted from its own micro-degrees on
+    /// the streets, water and arterials `cw_map` derives from them — the same map the
+    /// maps sites serve, drawn here with the scene's own paths.
     fn canvas(&self, p: &mut Painter, theme: DesktopTheme, l: &super::look::Look, r: Rect) {
-        p.box_(r, Color::rgb(232, 236, 230), 0);
+        p.box_(r, tint(cw_map::palette::LAND), 0);
         if !theme.mobile() {
             p.vline(r.x, r.y, r.height, LINE);
         }
         let places = self.results();
-        let Some(frame) = Frame::around(&places) else {
+        let Some(shown) = cw_map::Bbox::around(places.iter().map(|p| (p.lat, p.lon))) else {
             notice(p, r.width, r.y + r.height as i32 / 2, "No places to map");
             return;
         };
-        let inner = Rect::new(
-            r.x + 18,
-            r.y + 18,
-            r.width.saturating_sub(36).max(1),
-            r.height.saturating_sub(36).max(1),
-        );
-        // Grid lines are the frame's own quarters: a scale that is real, not decoration.
-        for step in 1..4 {
-            let x = inner.x + (inner.width as i32 * step) / 4;
-            let y = inner.y + (inner.height as i32 * step) / 4;
-            p.vline(x, inner.y, inner.height, Color(0, 0, 0, 12));
-            p.hline(inner.x, y, inner.width, Color(0, 0, 0, 12));
-        }
-        if let Some(route) = &self.route {
-            if let (Some(a), Some(b)) = (self.place(&route.from), self.place(&route.to)) {
-                let (ax, ay) = frame.project(a.lat, a.lon, inner);
-                let (bx, by) = frame.project(b.lat, b.lon, inner);
-                // The service walks latitude first, then longitude; the drawn line takes
-                // the same two legs rather than a diagonal it never travels.
-                p.line(vec![(ax, ay), (ax, by), (bx, by)], l.accent, 3);
-            }
-        }
-        for place in &places {
-            let (x, y) = frame.project(place.lat, place.lon, inner);
-            let on = self.selected.as_deref() == Some(place.id.as_str());
-            let radius = if on { 9 } else { 6 };
-            p.circle(x, y, radius + 2, Color::WHITE);
-            p.circle(
-                x,
-                y,
-                radius,
-                if self.saved.contains(&place.id) {
-                    Color::rgb(214, 158, 46)
-                } else {
-                    l.accent
-                },
-            );
-            p.region(
-                Rect::new(x - 12, y - 12, 24, 24),
-                &format!("maps:place:{}", place.id),
-                &place.name,
-            );
-            if on {
-                p.label(
-                    x - 70,
-                    y + 12,
-                    140,
-                    &place.name,
-                    11,
-                    INK,
-                    true,
-                    Align::Center,
-                );
+        let world =
+            cw_map::Bbox::around(self.places.iter().map(|p| (p.lat, p.lon))).unwrap_or(shown);
+        let mapped: Vec<cw_map::Place> = places
+            .iter()
+            .map(|place| cw_map::Place {
+                id: place.id.clone(),
+                name: place.name.clone(),
+                kind: place.kind.clone(),
+                lat: place.lat,
+                lon: place.lon,
+                street: street(&place.address),
+            })
+            .collect();
+        // The service walks latitude first, then longitude; the drawn line takes the same
+        // two legs rather than a diagonal it never travels.
+        let route = self.route.as_ref().and_then(|route| {
+            let from = self.place(&route.from)?;
+            let to = self.place(&route.to)?;
+            Some(cw_map::Route {
+                from: (from.lat, from.lon),
+                to: (to.lat, to.lon),
+            })
+        });
+        let scene = cw_map::Scene {
+            view: cw_map::View::new(shown.padded(12, 4_000), r.width, r.height),
+            places: &mapped,
+            selected: self.selected.as_deref(),
+            route,
+            world,
+        };
+        let at = |&(x, y): &(i32, i32)| (r.x + x, r.y + y);
+        let placed = |pts: &[(i32, i32)]| pts.iter().map(at).collect::<Vec<_>>();
+        for layer in cw_map::geometry(&scene).layers {
+            match layer {
+                cw_map::Layer::Water(polys) => {
+                    for poly in &polys {
+                        p.path(placed(poly), tint(cw_map::palette::WATER));
+                    }
+                }
+                cw_map::Layer::Blocks(polys) => {
+                    for poly in &polys {
+                        p.path(placed(poly), tint(cw_map::palette::BLOCK));
+                    }
+                }
+                cw_map::Layer::Parks(polys) => {
+                    for poly in &polys {
+                        p.path(placed(poly), tint(cw_map::palette::PARK));
+                    }
+                }
+                cw_map::Layer::Streets { lines, width } => {
+                    for line in &lines {
+                        p.line(
+                            placed(line),
+                            tint(cw_map::palette::STREET_EDGE),
+                            width as u16,
+                        );
+                    }
+                    for line in &lines {
+                        p.line(
+                            placed(line),
+                            tint(cw_map::palette::STREET),
+                            width.saturating_sub(2).max(1) as u16,
+                        );
+                    }
+                }
+                cw_map::Layer::Arterials { roads, width } => {
+                    for road in &roads {
+                        p.line(
+                            placed(&road.points),
+                            tint(cw_map::palette::ARTERIAL_EDGE),
+                            width as u16,
+                        );
+                    }
+                    for road in &roads {
+                        p.line(
+                            placed(&road.points),
+                            tint(cw_map::palette::ARTERIAL),
+                            width.saturating_sub(2).max(1) as u16,
+                        );
+                    }
+                }
+                cw_map::Layer::Route(pts) => {
+                    p.line(placed(&pts), Color::WHITE, 7);
+                    p.line(placed(&pts), l.accent, 4);
+                }
+                cw_map::Layer::Pins(pins) => {
+                    for pin in &pins {
+                        let (x, y) = (r.x + pin.x, r.y + pin.y);
+                        let radius = cw_map::pin_radius(pin.kind);
+                        p.circle(x, y, radius + 2, Color::WHITE);
+                        p.circle(
+                            x,
+                            y,
+                            radius,
+                            if self.saved.contains(&pin.id) {
+                                Color::rgb(214, 158, 46)
+                            } else {
+                                l.accent
+                            },
+                        );
+                        if !pin.id.is_empty() {
+                            p.region(
+                                Rect::new(x - 12, y - 12, 24, 24),
+                                &format!("maps:place:{}", pin.id),
+                                &pin.name,
+                            );
+                        }
+                    }
+                }
+                cw_map::Layer::Labels(labels) => {
+                    for label in &labels {
+                        let (x, y) = (r.x + label.x, r.y + label.y);
+                        match label.kind {
+                            cw_map::LabelKind::Place => {
+                                p.label(x - 70, y, 140, &label.text, 11, INK, true, Align::Center);
+                            }
+                            cw_map::LabelKind::Street => {
+                                p.label(x, y, 160, &label.text, 10, MUTED, false, Align::Left);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -790,40 +868,22 @@ impl Maps {
     }
 }
 
-/// The bounding box of the places on screen, in micro-degrees. Projection is integer
-/// arithmetic on the service's own coordinates, so the same dataset plots identically
-/// on every machine and every replay.
-struct Frame {
-    min_lat: i64,
-    min_lon: i64,
-    span_lat: i64,
-    span_lon: i64,
+/// A map colour as a scene colour.
+fn tint(c: cw_map::Rgba) -> Color {
+    Color(c.0, c.1, c.2, c.3)
 }
-impl Frame {
-    fn around(places: &[&Place]) -> Option<Self> {
-        let first = places.first()?;
-        let (mut min_lat, mut max_lat) = (first.lat, first.lat);
-        let (mut min_lon, mut max_lon) = (first.lon, first.lon);
-        for place in places {
-            min_lat = min_lat.min(place.lat);
-            max_lat = max_lat.max(place.lat);
-            min_lon = min_lon.min(place.lon);
-            max_lon = max_lon.max(place.lon);
-        }
-        Some(Self {
-            min_lat,
-            min_lon,
-            // A single place, or a row of them, still needs a span to divide by.
-            span_lat: (max_lat - min_lat).max(1),
-            span_lon: (max_lon - min_lon).max(1),
-        })
-    }
-    /// North is up and east is right, which is the only orientation a map may have.
-    fn project(&self, lat: i64, lon: i64, r: Rect) -> (i32, i32) {
-        let x = i64::from(r.x) + (lon - self.min_lon) * i64::from(r.width) / self.span_lon;
-        let y = i64::from(r.y) + i64::from(r.height)
-            - (lat - self.min_lat) * i64::from(r.height) / self.span_lat;
-        (x as i32, y as i32)
+/// "410 Bayfront Ave, Seattle WA" -> "Bayfront Ave": the street an address names, which is
+/// the arterial the map draws through the place — the same extraction the service uses.
+fn street(address: &str) -> String {
+    let head = address.split(',').next().unwrap_or(address).trim();
+    let without_number = head
+        .split_once(' ')
+        .filter(|(n, _)| n.chars().all(|c| c.is_ascii_digit()))
+        .map_or(head, |(_, rest)| rest);
+    if without_number.is_empty() {
+        "the main road".into()
+    } else {
+        without_number.into()
     }
 }
 
@@ -968,22 +1028,46 @@ mod tests {
         assert_eq!(app.status, Status::Denied("places unavailable".into()));
     }
     #[test]
-    fn projection_is_integer_and_puts_north_up_and_east_right() {
-        let north = Place {
-            lat: 2_000_000,
-            lon: 1_000_000,
-            ..Place::default()
-        };
-        let south_east = Place {
-            lat: 1_000_000,
-            lon: 2_000_000,
-            ..Place::default()
-        };
-        let places = vec![&north, &south_east];
-        let frame = Frame::around(&places).unwrap();
-        let r = Rect::new(0, 0, 100, 100);
-        assert_eq!(frame.project(north.lat, north.lon, r), (0, 0));
-        assert_eq!(frame.project(south_east.lat, south_east.lon, r), (100, 100));
+    fn the_canvas_draws_the_shared_street_map_around_the_places() {
+        let app = app();
+        let places = app.results();
+        let shown = cw_map::Bbox::around(places.iter().map(|p| (p.lat, p.lon))).unwrap();
+        let view = cw_map::View::new(shown.padded(12, 4_000), 300, 200);
+        // North is up and east is right: the cafe is north-west of the centre.
+        let cafe = view.project(47_610_400, -122_340_900);
+        let centre = view.project(47_606_200, -122_332_100);
+        assert!(cafe.0 < centre.0 && cafe.1 < centre.1);
+        assert_eq!(street("410 Bayfront Ave, Seattle WA"), "Bayfront Ave");
+        assert_eq!(street("Pier St"), "Pier St");
+        let mapped: Vec<cw_map::Place> = places
+            .iter()
+            .map(|p| cw_map::Place {
+                id: p.id.clone(),
+                name: p.name.clone(),
+                kind: p.kind.clone(),
+                lat: p.lat,
+                lon: p.lon,
+                street: street(&p.address),
+            })
+            .collect();
+        let map = cw_map::geometry(&cw_map::Scene {
+            view,
+            places: &mapped,
+            selected: None,
+            route: None,
+            world: shown,
+        });
+        assert!(map
+            .layers
+            .iter()
+            .any(|l| matches!(l, cw_map::Layer::Streets { lines, .. } if !lines.is_empty())));
+        assert!(map.layers.iter().any(
+            |l| matches!(l, cw_map::Layer::Arterials { roads, .. } if roads.iter().any(|r| r.name == "Bayfront Ave"))
+        ));
+        assert!(map
+            .layers
+            .iter()
+            .any(|l| matches!(l, cw_map::Layer::Pins(pins) if pins.len() == 2)));
     }
     #[test]
     fn every_painted_control_is_one_the_model_accepts() {

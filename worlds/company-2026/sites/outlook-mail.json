@@ -9,9 +9,7 @@
     "brand": "Outlook",
     "domain": "outlook.com",
     "users": ["alice", "bob", "carol", "admin"],
-    "accounts": {
-      "bob": "bmartinez@outlook.com"
-    },
+    "accounts": {"bob": "bmartinez@outlook.com"},
     "names": {
       "alice": "Alice Chen",
       "bob": "Bob Martinez",
@@ -21,16 +19,28 @@
       "alice@northstar.example": "Alice Chen",
       "alice.chen@gmail.com": "Alice Chen",
       "nadia.fischer@meridianlabs.example": "Nadia Fischer",
-      "messages-noreply@linkedin.com": "LinkedIn"
+      "messages-noreply@linkedin.com": "LinkedIn",
+      "orders@amazon.com": "Amazon.com",
+      "transaction@etsy.com": "Etsy",
+      "reminders@harborline-dental.example": "Harborline Dental",
+      "no-reply@cascadeair.example": "Cascade Air",
+      "hello@thesundayloaf.example": "The Sunday Loaf",
+      "m.delacroix@bayfrontproperties.example": "Marc Delacroix",
+      "elena.martinez@gmail.com": "Elena Martinez",
+      "luis.martinez@gmail.com": "Luis Martinez",
+      "rosa.martinez@gmail.com": "Abuela Rosa",
+      "tickets@ticketmaster.com": "Ticketmaster",
+      "tracking@pugetparcel.example": "Puget Parcel",
+      "account-security@outlook.com": "Microsoft account team",
+      "statements@northwind.example": "Northwind Bank",
+      "calendar-notification@google.com": "Google Calendar",
+      "secure-notice@outlook-verify.example": "Outlook Security Center",
+      "members@rivergate-fitness.example": "Rivergate Fitness",
+      "no-reply@dropbox.com": "Dropbox",
+      "priya@raman.example": "Priya Raman",
+      "carol.nakamura@gmail.com": "Carol Nakamura"
     },
-    "external_contacts": [
-      "alice.chen@gmail.com",
-      "alice@northstar.example",
-      "bob@northstar.example",
-      "carol@northstar.example",
-      "messages-noreply@linkedin.com",
-      "nadia.fischer@meridianlabs.example"
-    ],
+    "external_contacts": ["account-security@outlook.com", "alice.chen@gmail.com", "alice@northstar.example", "bob@northstar.example", "calendar-notification@google.com", "carol.nakamura@gmail.com", "elena.martinez@gmail.com", "hello@thesundayloaf.example", "luis.martinez@gmail.com", "m.delacroix@bayfrontproperties.example", "members@rivergate-fitness.example", "messages-noreply@linkedin.com", "nadia.fischer@meridianlabs.example", "no-reply@cascadeair.example", "no-reply@dropbox.com", "orders@amazon.com", "priya@raman.example", "reminders@harborline-dental.example", "rosa.martinez@gmail.com", "secure-notice@outlook-verify.example", "statements@northwind.example", "tickets@ticketmaster.com", "tracking@pugetparcel.example", "transaction@etsy.com"],
     "messages": {
       "mail-1": {
         "id": "mail-1",
@@ -41,7 +51,12 @@
         "body": "Moving this off the work account.\n\nNadia Fischer · Technical Recruiter at Meridian Labs\n\n\"Hi Bob — your CI work on Northstar's Atlas release came up twice in our team this week. We are hiring for a build-reliability role and I would love twenty minutes of your time.\"\n\nHer profile and the thread are on LinkedIn: http://linkedin.com/",
         "time": 1260000000,
         "mailboxes": {
-          "bob": {"folders": ["inbox"], "labels": ["Personal"], "read": false, "starred": true}
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Personal"],
+            "read": false,
+            "starred": true
+          }
         }
       },
       "mail-2": {
@@ -53,7 +68,11 @@
         "body": "Hi Nadia — thanks for reaching out. Twenty minutes is fine, but not this week: we are shipping something and I am on the CI section of the checklist.\n\nNext Tuesday afternoon, my time? Please use this address rather than my work one.",
         "time": 2000000000,
         "mailboxes": {
-          "bob": {"folders": ["sent"], "labels": ["Personal"], "read": true}
+          "bob": {
+            "folders": ["sent"],
+            "labels": ["Personal"],
+            "read": true
+          }
         }
       },
       "mail-3": {
@@ -65,20 +84,481 @@
         "body": "You asked which one I got — this is it, and it is worth the money: http://amazon.com/dp/b0monitor27\n\n$429.99, single cable to the laptop, no dock.",
         "time": 2600000000,
         "mailboxes": {
-          "bob": {"folders": ["inbox"], "labels": [], "read": true}
+          "bob": {
+            "folders": ["inbox"],
+            "labels": [],
+            "read": true
+          }
+        }
+      },
+      "mail-4": {
+        "id": "mail-4",
+        "sender": "orders@amazon.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Your Amazon.com order 1002 has shipped",
+        "body": "Hello Bob,\n\nYour order 1002 (Lumen 11-port Thunderbolt Dock, $189.99) has shipped and is on its way. Estimated delivery: Friday 18 September by 8 pm.\n\nTrack your package: http://amazon.com/orders\n\nCarrier: Puget Parcel. You will get a text when it is out for delivery.\n\nAmazon.com",
+        "time": 720000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Receipts"],
+            "read": true
+          }
+        }
+      },
+      "mail-5": {
+        "id": "mail-5",
+        "sender": "reminders@harborline-dental.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Reminder: hygiene appointment Tue 22 Sep, 08:00",
+        "body": "Hi Bob,\n\nThis is a reminder of your hygiene appointment with Dr. Okonkwo on Tuesday 22 September at 08:00 at Harborline Dental, 128 Bayfront Ave.\n\nPlease arrive ten minutes early. If you need to reschedule, reply to this email or call the front desk. Appointments cancelled with less than 24 hours' notice are charged at $45.\n\nSee you Tuesday,\nHarborline Dental",
+        "time": 2400000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Health"],
+            "read": false,
+            "starred": true
+          }
+        }
+      },
+      "mail-6": {
+        "id": "mail-6",
+        "sender": "bob",
+        "to": ["reminders@harborline-dental.example"],
+        "cc": [],
+        "subject": "Re: Reminder: hygiene appointment Tue 22 Sep, 08:00",
+        "body": "Confirming Tuesday 22 September at 08:00. Thanks.\n\nBob Martinez",
+        "time": 3300000000,
+        "thread_id": "mail-5",
+        "mailboxes": {
+          "bob": {
+            "folders": ["sent"],
+            "labels": ["Health"],
+            "read": true
+          }
+        }
+      },
+      "mail-7": {
+        "id": "mail-7",
+        "sender": "hello@thesundayloaf.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "The Sunday Loaf #41: sourdough for people who forget things",
+        "body": "This week's letter.\n\nThe forgiving loaf. If you left your starter in the fridge for three weeks (hi), here is the schedule that still works: feed it Friday night, mix Saturday morning at 75% hydration, bulk in the oven with the light on, shape at 6 pm, cold-retard overnight, bake Sunday at 240 °C in a lidded pot for 20 minutes, then 25 uncovered.\n\nAlso in this issue: why a sharper blade matters less than a wetter one, and a reader's rye that we could not stop eating.\n\nThe Sunday Loaf goes to 4,100 people every week. Forward it to one of them.\n\nUnsubscribe · Update preferences",
+        "time": 3900000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Newsletters"],
+            "read": true
+          }
+        }
+      },
+      "mail-8": {
+        "id": "mail-8",
+        "sender": "no-reply@cascadeair.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Your itinerary: SEA → LIS, 9 October — confirmation CX7Q2M",
+        "body": "Cascade Air · Booking confirmed\n\nConfirmation: CX7Q2M\nPassenger: Bob Martinez\n\nOutbound · Fri 9 Oct\nCA 418 · Seattle (SEA) 18:05 → Lisbon (LIS) 13:50 +1 · via Reykjavik (KEF)\nSeat 14A · 1 checked bag\n\nReturn · Sun 18 Oct\nCA 419 · Lisbon (LIS) 15:30 → Seattle (SEA) 19:40 · via Reykjavik (KEF)\nSeat 15C · 1 checked bag\n\nTotal charged: $1,184.60 to card ending 8821.\n\nCheck-in opens 24 hours before departure. Fare rules: changes permitted for a $150 fee plus fare difference.",
+        "time": 8400000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Travel"],
+            "read": true,
+            "starred": true
+          }
+        }
+      },
+      "mail-9": {
+        "id": "mail-9",
+        "sender": "m.delacroix@bayfrontproperties.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Boiler service — access to unit 4B on Thursday 24 Sep",
+        "body": "Dear Bob,\n\nThe annual boiler inspection for the building is booked for Thursday 24 September. The engineer will need access to unit 4B between 10:00 and 13:00. If you will not be home, please confirm that I may let them in with the master key.\n\nSeparately, a reminder that the lease renewal paperwork for November is ready whenever you want to go through it; the proposed increase is 3%, as we discussed.\n\nKind regards,\nMarc Delacroix\nBayfront Properties",
+        "time": 13500000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Home"],
+            "read": false
+          }
+        }
+      },
+      "mail-10": {
+        "id": "mail-10",
+        "sender": "bob",
+        "to": ["m.delacroix@bayfrontproperties.example"],
+        "cc": [],
+        "subject": "Re: Boiler service — access to unit 4B on Thursday 24 Sep",
+        "body": "Hi Marc,\n\nThursday is fine. I will be at work, so yes, please let the engineer in with the master key. The boiler cupboard is unlocked.\n\nOn the renewal: 3% is fine. Send the paperwork over and I will sign it Friday after work.\n\nThanks,\nBob",
+        "time": 15000000000,
+        "thread_id": "mail-9",
+        "mailboxes": {
+          "bob": {
+            "folders": ["sent"],
+            "labels": ["Home"],
+            "read": true
+          }
+        }
+      },
+      "mail-11": {
+        "id": "mail-11",
+        "sender": "elena.martinez@gmail.com",
+        "to": ["bmartinez@outlook.com", "luis.martinez@gmail.com", "rosa.martinez@gmail.com"],
+        "cc": [],
+        "subject": "Abuela's 80th — Saturday 3 October?",
+        "body": "Hi all,\n\nAbuela turns 80 on the 5th and I would like to do a lunch on Saturday 3 October so everyone can make it. Thinking Harborline Coffee has the back room, or we do it at ours if the weather holds.\n\nBob, can you make the cake? Luis, you are on the photo book — I know you have the old albums.\n\nReply with yes/no and any dates that do not work.\n\nElena",
+        "time": 19800000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Family"],
+            "read": true,
+            "starred": true
+          }
+        }
+      },
+      "mail-12": {
+        "id": "mail-12",
+        "sender": "luis.martinez@gmail.com",
+        "to": ["elena.martinez@gmail.com"],
+        "cc": ["bmartinez@outlook.com", "rosa.martinez@gmail.com"],
+        "subject": "Re: Abuela's 80th — Saturday 3 October?",
+        "body": "3 October works. Photo book is on me — I scanned the 1970s albums last winter so this is mostly picking the good ones.\n\nDo we want to do a speech? I vote Bob.\n\nL",
+        "time": 21900000000,
+        "thread_id": "mail-11",
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Family"],
+            "read": true
+          }
+        }
+      },
+      "mail-13": {
+        "id": "mail-13",
+        "sender": "bob",
+        "to": ["elena.martinez@gmail.com"],
+        "cc": ["luis.martinez@gmail.com", "rosa.martinez@gmail.com"],
+        "subject": "Re: Abuela's 80th — Saturday 3 October?",
+        "body": "Yes to the 3rd, yes to the cake (the tres leches, not the chocolate — she says chocolate is for children). Back room at Harborline is a good shout; it fits twelve.\n\nLuis, I am not doing a speech alone. We can do it together and you can hold the microphone.\n\nB",
+        "time": 24000000000,
+        "thread_id": "mail-11",
+        "mailboxes": {
+          "bob": {
+            "folders": ["sent"],
+            "labels": ["Family"],
+            "read": true
+          }
+        }
+      },
+      "mail-14": {
+        "id": "mail-14",
+        "sender": "rosa.martinez@gmail.com",
+        "to": ["elena.martinez@gmail.com"],
+        "cc": ["bmartinez@outlook.com", "luis.martinez@gmail.com"],
+        "subject": "Re: Abuela's 80th — Saturday 3 October?",
+        "body": "I can read all of this you know. Tres leches yes. No speeches longer than two minutes. Bring the baby.\n\nLove, Abuela",
+        "time": 28800000000,
+        "thread_id": "mail-11",
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Family"],
+            "read": false
+          }
+        }
+      },
+      "mail-15": {
+        "id": "mail-15",
+        "sender": "calendar-notification@google.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Invitation: Strength 45 · Rivergate Fitness @ Mon 21 Sep 07:00 (Alice Chen)",
+        "body": "Alice Chen has invited you to an event.\n\nStrength 45 · Rivergate Fitness\nMonday 21 September · 07:00 – 07:45\nRivergate Fitness, 1200 Rivergate Blvd\n\n\"You said you would come once. This is the once.\"\n\nRSVP in Google Calendar: http://calendar.google.com/",
+        "time": 86700000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Invites"],
+            "read": true
+          }
+        }
+      },
+      "mail-16": {
+        "id": "mail-16",
+        "sender": "tickets@ticketmaster.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Your tickets: Sonic Meridian — Ship It Tour, Sat 26 Sep",
+        "body": "Order TM-2287 · 2 × Floor standing · $164.00 total incl. fees\n\nSonic Meridian — Ship It Tour\nCascade Arena · Saturday 26 September · doors 18:30\n\nYour tickets are in the Ticketmaster app and at http://ticketmaster.com/my-tickets. Screenshots are not accepted at the door.\n\nEvent page: http://ticketmaster.com/event/meridian-tour",
+        "time": 88200000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Receipts"],
+            "read": true
+          }
+        }
+      },
+      "mail-17": {
+        "id": "mail-17",
+        "sender": "account-security@outlook.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Your Microsoft account password was reset",
+        "body": "Hi Bob,\n\nThe password for bmartinez@outlook.com was changed on 18 September at 09:41 from a Windows PC in Seattle, WA.\n\nIf this was you, no action is needed. If it was not, secure your account now at http://outlook.com/ and review your recent sign-in activity.\n\nThanks,\nThe Microsoft account team",
+        "time": 88920000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Security"],
+            "read": true
+          }
+        }
+      },
+      "mail-18": {
+        "id": "mail-18",
+        "sender": "secure-notice@outlook-verify.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "URGENT: Your mailbox will be suspended in 24 hours",
+        "body": "Dear User,\n\nOur system has detected unusual activity on your account. To avoid permanent suspension you must verify your identity within 24 HOURS by confirming your password at the link below.\n\n>> Verify account now <<\n\nFailure to comply will result in loss of all e-mails and contacts.\n\nOutlook Security Center\n(This is an automated message, do not reply)",
+        "time": 90900000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["junk"],
+            "labels": ["Junk"],
+            "read": false
+          }
+        }
+      },
+      "mail-19": {
+        "id": "mail-19",
+        "sender": "tracking@pugetparcel.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Out for delivery: parcel PP-88213 (Amazon.com)",
+        "body": "Your parcel PP-88213 is out for delivery today, Friday 18 September, and should arrive between 14:00 and 18:00.\n\nDelivery instructions on file: leave with concierge if no answer.\n\nThis is the Amazon.com order 1002 shipment (1 × dock, 1.1 kg).",
+        "time": 93600000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Receipts"],
+            "read": true
+          }
+        }
+      },
+      "mail-20": {
+        "id": "mail-20",
+        "sender": "tracking@pugetparcel.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Delivered: parcel PP-88213 left with concierge",
+        "body": "Parcel PP-88213 was delivered at 15:47 and left with the concierge at your building, as instructed. Signed: R. Ortega.\n\nThanks for using Puget Parcel.",
+        "time": 110880000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Receipts"],
+            "read": false
+          }
+        }
+      },
+      "mail-21": {
+        "id": "mail-21",
+        "sender": "transaction@etsy.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Your Etsy order 5001 confirmed — Letterpress Map Print, Puget Sound",
+        "body": "Thanks for your order, Bob!\n\nOrder 5001 · Letterpress Map Print, Puget Sound · $42.00 + $6.50 shipping\nShop: Tideline Press\nEstimated dispatch: 3–5 business days\n\nView your order: http://etsy.com/orders/5001\n\nA note from the seller: \"Thank you! Prints ship flat in a rigid mailer.\"",
+        "time": 99000000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Receipts"],
+            "read": true
+          }
+        }
+      },
+      "mail-22": {
+        "id": "mail-22",
+        "sender": "statements@northwind.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Your Northwind card statement is ready",
+        "body": "Your Northwind card (...8821) statement for the period ending 15 September is ready.\n\nStatement balance: $1,712.83\nMinimum due: $35.00\nDue date: 10 October\n\nSign in at http://northwind.example/ to view it. Autopay is set to pay the statement balance in full on the due date.",
+        "time": 100800000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["archive"],
+            "labels": ["Finance"],
+            "read": true
+          }
+        }
+      },
+      "mail-23": {
+        "id": "mail-23",
+        "sender": "members@rivergate-fitness.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Class booked: Strength 45, Mon 21 Sep 07:00",
+        "body": "You are booked into Strength 45 on Monday 21 September at 07:00 with Sam. Please cancel at least 6 hours ahead if you cannot make it, or the class is marked as attended.\n\nYour guest pass was applied by Alice Chen. Membership options are at the front desk.",
+        "time": 105000000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Health"],
+            "read": true
+          }
+        }
+      },
+      "mail-24": {
+        "id": "mail-24",
+        "sender": "calendar-notification@google.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Invitation: Dinner at Marrow Point @ Fri 2 Oct 19:00 (Carol Nakamura)",
+        "body": "Carol Nakamura has invited you to an event.\n\nDinner at Marrow Point\nFriday 2 October · 19:00 – 21:30\nMarrow Point Kitchen, 905 Pike St, Seattle\n\n\"Post-release dinner, my treat. Alice is coming too.\"\n\nRSVP in Google Calendar: http://calendar.google.com/",
+        "time": 174000000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Invites"],
+            "read": false
+          }
+        }
+      },
+      "mail-25": {
+        "id": "mail-25",
+        "sender": "no-reply@dropbox.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Elena Martinez shared \"Abuela 80 photos\" with you",
+        "body": "Elena Martinez shared a folder with you on Dropbox: Abuela 80 photos (312 files).\n\nOpen it at http://dropbox.com/\n\nYou are receiving this because you have a Dropbox account under bmartinez@outlook.com.",
+        "time": 176400000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Family"],
+            "read": false
+          }
+        }
+      },
+      "mail-26": {
+        "id": "mail-26",
+        "sender": "messages-noreply@linkedin.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Priya Raman wants to connect",
+        "body": "Priya Raman · Software engineer\n\n\"Hi Bob — I answered the BFS question you posted and then found your blog. Hash order bit me too. Would be good to connect.\"\n\nAccept or view the profile on LinkedIn: http://linkedin.com/",
+        "time": 180900000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["archive"],
+            "labels": ["Social"],
+            "read": true
+          }
+        }
+      },
+      "mail-27": {
+        "id": "mail-27",
+        "sender": "bob",
+        "to": ["elena.martinez@gmail.com"],
+        "cc": [],
+        "subject": "Cake logistics",
+        "body": "Tres leches serves 12 comfortably. I will make it Friday night and bring it Saturday morning; do you have the tall cake box or should I buy one?\n\nAlso: candles. Eight big ones, not eighty small ones. Abuela will set the room on fire otherwise.",
+        "time": 183600000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["drafts"],
+            "labels": ["Draft"],
+            "read": true
+          }
+        }
+      },
+      "mail-28": {
+        "id": "mail-28",
+        "sender": "bob",
+        "to": ["luis.martinez@gmail.com"],
+        "cc": [],
+        "subject": "Photos for the book — the 1998 camping trip",
+        "body": "Do you have the ones from the 1998 camping trip, the ones where Dad is holding the fish and Abuela is clearly unimpressed? Those have to go in.\n\nI can scan the ones I have Sunday if you send me the list of what you are missing.",
+        "time": 189000000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["sent"],
+            "labels": ["Family"],
+            "read": true
+          }
+        }
+      },
+      "mail-29": {
+        "id": "mail-29",
+        "sender": "hello@thesundayloaf.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "The Sunday Loaf #40: the flat loaf post-mortem",
+        "body": "Last week half of you wrote in about flat loaves. The short answer is under-proofed shaping or an exhausted starter, and the long answer is this issue. Also: a reader's question about baking at altitude, and why we stopped recommending the dutch-oven preheat at 260 °C.",
+        "time": 0,
+        "mailboxes": {
+          "bob": {
+            "folders": ["archive"],
+            "labels": ["Newsletters"],
+            "read": true
+          }
+        }
+      },
+      "mail-30": {
+        "id": "mail-30",
+        "sender": "carol.nakamura@gmail.com",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Lisbon — the list you asked for",
+        "body": "Since you are going: the monastery at Belém first thing before the queue, pastéis de nata at the original bakery next door, the ferry to Cacilhas for grilled fish at sunset, and tram 28 once, early, then never again. Book the monastery. Wear shoes with grip, the pavement is glass when wet.\n\nBring me back a tin of the sardines with the nice labels.\n\nC",
+        "time": 198000000000,
+        "mailboxes": {
+          "bob": {
+            "folders": ["inbox"],
+            "labels": ["Travel"],
+            "read": false
+          }
+        }
+      },
+      "mail-31": {
+        "id": "mail-31",
+        "sender": "secure-notice@outlook-verify.example",
+        "to": ["bmartinez@outlook.com"],
+        "cc": [],
+        "subject": "Re: URGENT: Your mailbox will be suspended in 24 hours",
+        "body": "FINAL NOTICE. Your account has 12 HOURS remaining. Verify now to avoid deletion.\n\n>> Verify account now <<",
+        "time": 169200000000,
+        "thread_id": "mail-18",
+        "mailboxes": {
+          "bob": {
+            "folders": ["junk"],
+            "labels": ["Junk"],
+            "read": false
+          }
         }
       }
     },
-    "next_id": 3
+    "next_id": 31
   },
   "search_entries": [
     {
       "url": "http://outlook.com/",
       "title": "Outlook",
-      "snippet": "Personal mail: the recruiter thread, the reply to Meridian Labs and everything kept off the work account.",
+      "snippet": "Bob Martinez's personal mail: the recruiter thread kept off the work account, receipts, the dentist, the flight to Lisbon and Abuela's 80th.",
       "vertical": "all",
       "authority": 4,
-      "keywords": ["outlook", "hotmail", "mail", "email", "personal mail", "webmail"]
+      "keywords": ["outlook", "hotmail", "mail", "email", "personal mail", "webmail", "bob martinez"]
     },
     {
       "url": "http://outlook.com/threads/mail-1",
@@ -89,12 +569,36 @@
       "keywords": ["recruiter", "meridian labs", "nadia fischer", "linkedin", "bob martinez", "forward"]
     },
     {
-      "url": "http://outlook.com/?folder=sent",
-      "title": "Sent Items - Outlook",
-      "snippet": "The reply to Meridian Labs: twenty minutes next Tuesday, and please use this address rather than the work one.",
+      "url": "http://outlook.com/threads/mail-8",
+      "title": "Your itinerary: SEA → LIS, 9 October — confirmation CX7Q2M - Outlook",
+      "snippet": "Cascade Air booking CX7Q2M: Seattle to Lisbon via Reykjavik on Friday 9 October, returning Sunday 18 October, $1,184.60.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["cascade air", "itinerary", "lisbon", "flight", "cx7q2m", "bob martinez", "travel"]
+    },
+    {
+      "url": "http://outlook.com/threads/mail-11",
+      "title": "Abuela's 80th — Saturday 3 October? - Outlook",
+      "snippet": "The family thread: Elena proposes lunch at Harborline Coffee on 3 October, Luis takes the photo book, Bob takes the tres leches, Abuela limits speeches to two minutes.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": ["abuela", "80th", "birthday", "family", "tres leches", "harborline coffee", "elena martinez"]
+    },
+    {
+      "url": "http://outlook.com/threads/mail-5",
+      "title": "Reminder: hygiene appointment Tue 22 Sep, 08:00 - Outlook",
+      "snippet": "Harborline Dental reminds Bob of his 08:00 hygiene appointment with Dr. Okonkwo on Tuesday 22 September; Bob confirms.",
       "vertical": "all",
       "authority": 2,
-      "keywords": ["sent items", "outlook", "meridian labs", "reply"]
+      "keywords": ["dentist", "harborline dental", "appointment", "reminder", "hygiene"]
+    },
+    {
+      "url": "http://outlook.com/?folder=junk",
+      "title": "Junk Email - Outlook",
+      "snippet": "The \"your mailbox will be suspended in 24 hours\" messages from outlook-verify.example, filed where they belong.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": ["junk", "spam", "phishing", "suspended", "verify account"]
     },
     {
       "site": "hotmail.com",

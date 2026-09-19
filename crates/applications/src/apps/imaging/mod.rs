@@ -3395,6 +3395,7 @@ impl Studio {
                 id: target.clone(),
                 text: tool.id().into(),
                 action: act(target),
+                style: None,
             });
         }
         for command in ["undo", "redo", "save", "save-as", "open"] {
@@ -3403,6 +3404,7 @@ impl Studio {
                 id: target.clone(),
                 text: command.into(),
                 action: act(target),
+                style: None,
             });
         }
     }

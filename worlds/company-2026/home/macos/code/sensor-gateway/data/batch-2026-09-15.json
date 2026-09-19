@@ -1,0 +1,11 @@
+[
+  {"node": "node-01af", "channel": "vin", "value": 5.012, "unit": "V", "at": "2026-09-15T14:02:10Z"},
+  {"node": "node-01af", "channel": "v33", "value": 3.298, "unit": "V", "at": "2026-09-15T14:02:10Z"},
+  {"node": "node-01af", "channel": "iload", "value": 0.084, "unit": "A", "at": "2026-09-15T14:02:10Z"},
+  {"node": "node-01af", "channel": "temp", "value": 27.4, "unit": "degC", "at": "2026-09-15T14:02:10Z"},
+  {"node": "node-01af", "channel": "v33", "value": 3.301, "unit": "V", "at": "2026-09-15T14:02:20Z"},
+  {"node": "node-01af", "channel": "iload", "value": 0.212, "unit": "A", "at": "2026-09-15T14:02:50Z"},
+  {"node": "node-02b3", "channel": "temp", "value": 33.0, "unit": "degC", "at": "2026-09-15T14:02:50Z"},
+  {"node": "node-02b3", "channel": "rh", "value": 41.2, "unit": "%", "at": "2026-09-15T14:02:50Z"},
+  {"node": "node-02b3", "channel": "v33", "value": 3.41, "unit": "V", "at": "2026-09-15T14:03:00Z"}
+]

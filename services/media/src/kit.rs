@@ -57,6 +57,8 @@ pub fn cover(id: &str, of: &str, label: &str, size: (u32, u32), radius: u32) -> 
         },
         width: side,
         height: side,
+        style: None,
+        action: None,
     }
 }
 /// The colour a header behind `of`'s artwork is washed with.
@@ -108,16 +110,10 @@ pub fn line_bold(id: &str, s: impl Into<String>, size: u16, color: &str) -> Page
         web::style().size(size).bold().color(color).one_line(),
     )
 }
-/// Soaks up a row's spare width so the pills before it keep their own size, as chips and
-/// button rows do on every one of these sites instead of stretching edge to edge.
-pub fn rest(id: &str) -> PageElement {
-    web::styled(id, "", web::style().flex(64))
-}
-/// `children` laid out at their natural widths, left-aligned.
-pub fn pills(id: &str, gap: u32, mut children: Vec<PageElement>) -> PageElement {
-    children.push(rest(&format!("{id}-rest")));
-    web::styled_row(id, gap, "center", web::style(), children)
-}
+/// The shared spacer and chip-row helpers, kept under their old names here.
+pub use web::pills;
+#[allow(unused_imports)]
+pub use web::rest;
 /// An icon then its words, as a pill's content: "+ Create", "Shuffle".
 pub fn labelled(id: &str, icon: &str, words: &str, size: u16, color: &str) -> PageElement {
     let glyph = u32::from(size) + 4;

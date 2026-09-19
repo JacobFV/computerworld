@@ -423,6 +423,7 @@ impl Photos {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for name in &self.entries {
@@ -430,6 +431,7 @@ impl Photos {
                 id: format!("photos:open:{name}"),
                 text: name.clone(),
                 action: act(&format!("photos:open:{name}")),
+                style: None,
             });
         }
         if let Some(open) = &self.open {
@@ -447,6 +449,7 @@ impl Photos {
                     id: id.into(),
                     text: label.into(),
                     action: act(id),
+                    style: None,
                 });
             }
         }

@@ -1,0 +1,39 @@
+{
+  "capture": "fixtures/news.capture.json",
+  "structure": {
+    "wanted": 42,
+    "found": 42,
+    "role_kept": 42,
+    "missing": [],
+    "recall": 1,
+    "role_agreement": 1,
+    "interactive": {
+      "capture": 25,
+      "render": 27
+    }
+  },
+  "visual": [
+    {
+      "scroll": 0,
+      "aligned_to": 0,
+      "colour_similarity": 0.936,
+      "ssim": 0.881,
+      "cells": 3008
+    },
+    {
+      "scroll": 700,
+      "aligned_to": 625,
+      "colour_similarity": 0.956,
+      "ssim": 0.562,
+      "cells": 3072
+    },
+    {
+      "scroll": 1400,
+      "aligned_to": 1258,
+      "colour_similarity": 0.853,
+      "ssim": 0.635,
+      "cells": 1024
+    }
+  ],
+  "fidelity": 0.902
+}

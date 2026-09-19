@@ -1,0 +1,1240 @@
+{
+  "id": "netflix",
+  "kind": "media",
+  "node": "netflix",
+  "domains": [
+    "netflix.com",
+    "www.netflix.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "video",
+    "brand": "Netflix",
+    "tagline": "Series and films, on demand.",
+    "theme": {
+      "accent": "#e50914",
+      "background": "#141414",
+      "surface": "#1f1f1f",
+      "ink": "#ffffff",
+      "muted": "#b3b3b3",
+      "content_width": 1120
+    },
+    "channels": {
+      "the-quiet-harbor": {
+        "id": "the-quiet-harbor",
+        "name": "The Quiet Harbor",
+        "handle": "@thequietharbor",
+        "owner": null,
+        "subscribers": 2840000,
+        "about": "Drama series. A harbour master inherits a town's secrets along with its tide tables. Two seasons."
+      },
+      "rollback": {
+        "id": "rollback",
+        "name": "Rollback",
+        "handle": "@rollback",
+        "owner": null,
+        "subscribers": 1960000,
+        "about": "Thriller series. A release engineer discovers that every deploy is rewriting more than the servers. One season."
+      },
+      "second-kitchen": {
+        "id": "second-kitchen",
+        "name": "Second Kitchen",
+        "handle": "@secondkitchen",
+        "owner": null,
+        "subscribers": 1420000,
+        "about": "Comedy series. Two rival food trucks share one generator and, eventually, one kitchen."
+      },
+      "northlight-originals": {
+        "id": "northlight-originals",
+        "name": "Northlight Originals",
+        "handle": "@northlightoriginals",
+        "owner": null,
+        "subscribers": 3110000,
+        "about": "Documentaries and docuseries. Long shots, real people, cold places."
+      },
+      "halfmoon-pictures": {
+        "id": "halfmoon-pictures",
+        "name": "Halfmoon Pictures",
+        "handle": "@halfmoonpictures",
+        "owner": null,
+        "subscribers": 2230000,
+        "about": "Feature films from an independent studio, now streaming."
+      },
+      "paper-lantern-studio": {
+        "id": "paper-lantern-studio",
+        "name": "Paper Lantern Studio",
+        "handle": "@paperlanternstudio",
+        "owner": null,
+        "subscribers": 1780000,
+        "about": "Animated features and shorts for everyone, drawn by hand."
+      },
+      "late-lines": {
+        "id": "late-lines",
+        "name": "Late Lines",
+        "handle": "@latelines",
+        "owner": null,
+        "subscribers": 940000,
+        "about": "Stand-up specials recorded after midnight in small rooms."
+      },
+      "signal-lost": {
+        "id": "signal-lost",
+        "name": "Signal Lost",
+        "handle": "@signallost",
+        "owner": null,
+        "subscribers": 1530000,
+        "about": "Science fiction anthology. Every episode is a different transmission."
+      }
+    },
+    "items": {
+      "quiet-harbor-s1e1": {
+        "id": "quiet-harbor-s1e1",
+        "channel": "the-quiet-harbor",
+        "title": "The Quiet Harbor S1:E1 \"High Water\"",
+        "description": "Mara Lindqvist returns to Skarholm to bury her father and discovers the harbour master's office has been keeping two sets of tide tables. 52 min. TV-14.",
+        "duration_s": 3120,
+        "published": "Jan 9, 2026",
+        "published_tick": 1,
+        "views": 8420000,
+        "likes": 312000,
+        "tags": [
+          "drama",
+          "mystery",
+          "TV-14",
+          "series"
+        ],
+        "badges": [
+          "Top 10"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "The tide table reveal in the last two minutes had me pausing to rewind.",
+            "tick": 2,
+            "likes": 4100
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "settled in for the whole season after this one",
+            "tick": 2,
+            "likes": 2200
+          }
+        ],
+        "related": [
+          "quiet-harbor-s1e2",
+          "quiet-harbor-s2e1"
+        ]
+      },
+      "quiet-harbor-s1e2": {
+        "id": "quiet-harbor-s1e2",
+        "channel": "the-quiet-harbor",
+        "title": "The Quiet Harbor S1:E2 \"The Ledger\"",
+        "description": "Mara finds the second ledger. The town council would like it back. 49 min. TV-14.",
+        "duration_s": 2940,
+        "published": "Jan 9, 2026",
+        "published_tick": 1,
+        "views": 7110000,
+        "likes": 241000,
+        "tags": [
+          "drama",
+          "mystery",
+          "TV-14",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Two ledgers, one truth. The show knows what it is doing.",
+            "tick": 2,
+            "likes": 1900
+          }
+        ],
+        "related": [
+          "quiet-harbor-s1e1",
+          "quiet-harbor-s1e3"
+        ]
+      },
+      "quiet-harbor-s1e3": {
+        "id": "quiet-harbor-s1e3",
+        "channel": "the-quiet-harbor",
+        "title": "The Quiet Harbor S1:E3 \"Neap\"",
+        "description": "The lowest tide in a decade exposes the wreck everyone has been quiet about. 55 min. TV-14.",
+        "duration_s": 3300,
+        "published": "Jan 9, 2026",
+        "published_tick": 1,
+        "views": 6540000,
+        "likes": 228000,
+        "tags": [
+          "drama",
+          "mystery",
+          "TV-14",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "the wreck shot is the best thing on the service right now",
+            "tick": 2,
+            "likes": 1500
+          }
+        ],
+        "related": [
+          "quiet-harbor-s1e2",
+          "quiet-harbor-s2e1"
+        ]
+      },
+      "quiet-harbor-s2e1": {
+        "id": "quiet-harbor-s2e1",
+        "channel": "the-quiet-harbor",
+        "title": "The Quiet Harbor S2:E1 \"Spring Tide\"",
+        "description": "Season two opens six months later. Mara is the harbour master now, and the ledgers are hers to keep. 58 min. TV-14.",
+        "duration_s": 3480,
+        "published": "Apr 10, 2026",
+        "published_tick": 12,
+        "views": 5230000,
+        "likes": 264000,
+        "tags": [
+          "drama",
+          "mystery",
+          "TV-14",
+          "series"
+        ],
+        "badges": [
+          "New",
+          "Top 10"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Season two in one sitting. No regrets, some sleep loss.",
+            "tick": 13,
+            "likes": 3300
+          }
+        ],
+        "related": [
+          "quiet-harbor-s1e1",
+          "quiet-harbor-s1e3"
+        ]
+      },
+      "rollback-s1e1": {
+        "id": "rollback-s1e1",
+        "channel": "rollback",
+        "title": "Rollback S1:E1 \"Canary\"",
+        "description": "Release engineer Dev Okafor notices that a canary deploy changed a colleague's memory of the standup. 47 min. TV-MA.",
+        "duration_s": 2820,
+        "published": "Feb 13, 2026",
+        "published_tick": 3,
+        "views": 9130000,
+        "likes": 402000,
+        "tags": [
+          "thriller",
+          "sci-fi",
+          "TV-MA",
+          "series"
+        ],
+        "badges": [
+          "Top 10"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "A deploy that rewrites the past. As a release engineer I feel seen and threatened.",
+            "tick": 4,
+            "likes": 6200
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "the standup scene is uncomfortably accurate",
+            "tick": 4,
+            "likes": 3800
+          }
+        ],
+        "related": [
+          "rollback-s1e2",
+          "rollback-s1e3"
+        ]
+      },
+      "rollback-s1e2": {
+        "id": "rollback-s1e2",
+        "channel": "rollback",
+        "title": "Rollback S1:E2 \"Blue-Green\"",
+        "description": "Two versions of the office run at once. Dev has to decide which one to route traffic to. 45 min. TV-MA.",
+        "duration_s": 2700,
+        "published": "Feb 13, 2026",
+        "published_tick": 3,
+        "views": 7860000,
+        "likes": 331000,
+        "tags": [
+          "thriller",
+          "sci-fi",
+          "TV-MA",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "blue-green deployment as a horror premise. incredible.",
+            "tick": 4,
+            "likes": 2900
+          }
+        ],
+        "related": [
+          "rollback-s1e1",
+          "rollback-s1e3"
+        ]
+      },
+      "rollback-s1e3": {
+        "id": "rollback-s1e3",
+        "channel": "rollback",
+        "title": "Rollback S1:E3 \"Point of No Return\"",
+        "description": "The rollback window closes in twelve minutes. Dev has a checklist and no one left who remembers writing it. 51 min. TV-MA.",
+        "duration_s": 3060,
+        "published": "Feb 13, 2026",
+        "published_tick": 3,
+        "views": 7220000,
+        "likes": 356000,
+        "tags": [
+          "thriller",
+          "sci-fi",
+          "TV-MA",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "twelve minutes. they did their research.",
+            "tick": 4,
+            "likes": 3100
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "The checklist is the hero of the episode.",
+            "tick": 4,
+            "likes": 1700
+          }
+        ],
+        "related": [
+          "rollback-s1e1",
+          "signal-lost-s1e2"
+        ]
+      },
+      "second-kitchen-s1e1": {
+        "id": "second-kitchen-s1e1",
+        "channel": "second-kitchen",
+        "title": "Second Kitchen S1:E1 \"One Generator\"",
+        "description": "Two rival food trucks discover they have been sharing an extension cord for a year. 24 min. TV-PG.",
+        "duration_s": 1440,
+        "published": "Jan 23, 2026",
+        "published_tick": 2,
+        "views": 5410000,
+        "likes": 288000,
+        "tags": [
+          "comedy",
+          "sitcom",
+          "TV-PG",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "the extension cord reveal is a perfect cold open",
+            "tick": 3,
+            "likes": 2100
+          }
+        ],
+        "related": [
+          "second-kitchen-s1e2",
+          "second-kitchen-s1e3"
+        ]
+      },
+      "second-kitchen-s1e2": {
+        "id": "second-kitchen-s1e2",
+        "channel": "second-kitchen",
+        "title": "Second Kitchen S1:E2 \"Health Inspection\"",
+        "description": "The inspector arrives while both trucks are mid-lunch rush and mid-argument. 23 min. TV-PG.",
+        "duration_s": 1380,
+        "published": "Jan 23, 2026",
+        "published_tick": 2,
+        "views": 4890000,
+        "likes": 251000,
+        "tags": [
+          "comedy",
+          "sitcom",
+          "TV-PG",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "I laughed so hard at the clipboard bit I had to pause",
+            "tick": 3,
+            "likes": 1400
+          }
+        ],
+        "related": [
+          "second-kitchen-s1e1",
+          "second-kitchen-s1e3"
+        ]
+      },
+      "second-kitchen-s1e3": {
+        "id": "second-kitchen-s1e3",
+        "channel": "second-kitchen",
+        "title": "Second Kitchen S1:E3 \"The Merger\"",
+        "description": "One kitchen, two menus, zero agreement on the name. 22 min. TV-PG.",
+        "duration_s": 1320,
+        "published": "Jan 23, 2026",
+        "published_tick": 2,
+        "views": 4560000,
+        "likes": 239000,
+        "tags": [
+          "comedy",
+          "sitcom",
+          "TV-PG",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The name argument is every naming meeting I have ever been in.",
+            "tick": 3,
+            "likes": 1200
+          }
+        ],
+        "related": [
+          "second-kitchen-s1e1",
+          "late-lines-priya"
+        ]
+      },
+      "keepers-of-the-clock": {
+        "id": "keepers-of-the-clock",
+        "channel": "northlight-originals",
+        "title": "Keepers of the Clock",
+        "description": "A year with the three people who maintain the last hand-wound clock tower in the county. Documentary. 88 min. TV-G.",
+        "duration_s": 5280,
+        "published": "Feb 6, 2026",
+        "published_tick": 3,
+        "views": 2310000,
+        "likes": 141000,
+        "tags": [
+          "documentary",
+          "craft",
+          "TV-G",
+          "film"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Watched this after a release week and it fixed something in me.",
+            "tick": 4,
+            "likes": 980
+          }
+        ],
+        "related": [
+          "ice-road-north",
+          "the-ferry-year"
+        ]
+      },
+      "ice-road-north": {
+        "id": "ice-road-north",
+        "channel": "northlight-originals",
+        "title": "Ice Road North",
+        "description": "Docuseries. Truckers on the seasonal ice road, one winter, one convoy. Episode 1: \"First Crossing\". 44 min. TV-PG.",
+        "duration_s": 2640,
+        "published": "Mar 1, 2026",
+        "published_tick": 6,
+        "views": 3870000,
+        "likes": 176000,
+        "tags": [
+          "documentary",
+          "docuseries",
+          "TV-PG",
+          "series"
+        ],
+        "badges": [
+          "Top 10"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "the ice cracking audio is unreal",
+            "tick": 7,
+            "likes": 1300
+          }
+        ],
+        "related": [
+          "keepers-of-the-clock",
+          "the-ferry-year"
+        ]
+      },
+      "the-ferry-year": {
+        "id": "the-ferry-year",
+        "channel": "northlight-originals",
+        "title": "The Ferry Year",
+        "description": "One ferry, one crew, four seasons on a Norwegian fjord. Documentary. 71 min. TV-G.",
+        "duration_s": 4260,
+        "published": "Mar 29, 2026",
+        "published_tick": 8,
+        "views": 1640000,
+        "likes": 98000,
+        "tags": [
+          "documentary",
+          "nature",
+          "TV-G",
+          "film"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The maintenance scenes are a masterclass in showing work.",
+            "tick": 9,
+            "likes": 640
+          }
+        ],
+        "related": [
+          "keepers-of-the-clock",
+          "ice-road-north"
+        ]
+      },
+      "the-last-shift-feature": {
+        "id": "the-last-shift-feature",
+        "channel": "halfmoon-pictures",
+        "title": "The Last Shift",
+        "description": "A night baker closes the shop for the final time and finds she cannot leave the ovens. Drama. 96 min. PG-13.",
+        "duration_s": 5760,
+        "published": "Jan 30, 2026",
+        "published_tick": 2,
+        "views": 4120000,
+        "likes": 221000,
+        "tags": [
+          "drama",
+          "film",
+          "PG-13"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "the short was great, the feature is better",
+            "tick": 3,
+            "likes": 1800
+          }
+        ],
+        "related": [
+          "harbour-lights-feature",
+          "keepers-of-the-clock"
+        ]
+      },
+      "harbour-lights-feature": {
+        "id": "harbour-lights-feature",
+        "channel": "halfmoon-pictures",
+        "title": "Harbour Lights",
+        "description": "Two ferry workers on the last crossing of the year decide, separately, not to come back. Drama. 104 min. PG-13.",
+        "duration_s": 6240,
+        "published": "Mar 13, 2026",
+        "published_tick": 7,
+        "views": 2980000,
+        "likes": 164000,
+        "tags": [
+          "drama",
+          "romance",
+          "film",
+          "PG-13"
+        ],
+        "badges": [
+          "New"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "quiet and devastating, in that order",
+            "tick": 8,
+            "likes": 1100
+          }
+        ],
+        "related": [
+          "the-last-shift-feature",
+          "the-corridor-feature"
+        ]
+      },
+      "the-corridor-feature": {
+        "id": "the-corridor-feature",
+        "channel": "halfmoon-pictures",
+        "title": "The Corridor",
+        "description": "A hospital night shift told in a single unbroken take. Thriller. 91 min. R.",
+        "duration_s": 5460,
+        "published": "Apr 3, 2026",
+        "published_tick": 10,
+        "views": 3540000,
+        "likes": 198000,
+        "tags": [
+          "thriller",
+          "film",
+          "R",
+          "one take"
+        ],
+        "badges": [
+          "New"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "One take, ninety-one minutes. I checked for cuts. There are none.",
+            "tick": 11,
+            "likes": 2400
+          }
+        ],
+        "related": [
+          "rollback-s1e3",
+          "harbour-lights-feature"
+        ]
+      },
+      "paper-boat-feature": {
+        "id": "paper-boat-feature",
+        "channel": "paper-lantern-studio",
+        "title": "Paper Boat",
+        "description": "A boy folds a boat that keeps unfolding, and follows it down a river that keeps changing. Animated feature. 82 min. G.",
+        "duration_s": 4920,
+        "published": "Feb 20, 2026",
+        "published_tick": 4,
+        "views": 6780000,
+        "likes": 512000,
+        "tags": [
+          "animation",
+          "family",
+          "G",
+          "film"
+        ],
+        "badges": [
+          "Top 10"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "took my niece, we both cried at the waterfall",
+            "tick": 5,
+            "likes": 3900
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "hand-drawn, every frame. you can tell.",
+            "tick": 5,
+            "likes": 2600
+          }
+        ],
+        "related": [
+          "lantern-festival-feature",
+          "second-kitchen-s1e1"
+        ]
+      },
+      "lantern-festival-feature": {
+        "id": "lantern-festival-feature",
+        "channel": "paper-lantern-studio",
+        "title": "Lantern Festival",
+        "description": "A grandmother and her granddaughter build one lantern a day until the festival. Animated feature. 78 min. G.",
+        "duration_s": 4680,
+        "published": "Apr 12, 2026",
+        "published_tick": 12,
+        "views": 2210000,
+        "likes": 187000,
+        "tags": [
+          "animation",
+          "family",
+          "G",
+          "film"
+        ],
+        "badges": [
+          "New"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The lantern-building montage is the best sequence of the year.",
+            "tick": 13,
+            "likes": 1500
+          }
+        ],
+        "related": [
+          "paper-boat-feature",
+          "keepers-of-the-clock"
+        ]
+      },
+      "late-lines-priya": {
+        "id": "late-lines-priya",
+        "channel": "late-lines",
+        "title": "Priya Raman: Night Shift",
+        "description": "Stand-up special. Three jobs, three stories, one pot of tea, recorded at 1am in a room that holds forty people. 58 min. TV-MA.",
+        "duration_s": 3480,
+        "published": "Feb 27, 2026",
+        "published_tick": 5,
+        "views": 3320000,
+        "likes": 241000,
+        "tags": [
+          "comedy",
+          "stand-up",
+          "TV-MA",
+          "special"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "the radio station bit is the hardest I have laughed this year",
+            "tick": 6,
+            "likes": 2800
+          }
+        ],
+        "related": [
+          "late-lines-marcus",
+          "second-kitchen-s1e1"
+        ]
+      },
+      "late-lines-marcus": {
+        "id": "late-lines-marcus",
+        "channel": "late-lines",
+        "title": "Marcus Bell: Reset Count",
+        "description": "Stand-up special. A former speedrunner on resets, records, and the frame he never got back. 61 min. TV-14.",
+        "duration_s": 3660,
+        "published": "Apr 5, 2026",
+        "published_tick": 10,
+        "views": 1870000,
+        "likes": 133000,
+        "tags": [
+          "comedy",
+          "stand-up",
+          "TV-14",
+          "special"
+        ],
+        "badges": [
+          "New"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "\"a reset is just a rollback with feelings\" is going on a t-shirt",
+            "tick": 11,
+            "likes": 1400
+          }
+        ],
+        "related": [
+          "late-lines-priya",
+          "rollback-s1e1"
+        ]
+      },
+      "signal-lost-s1e1": {
+        "id": "signal-lost-s1e1",
+        "channel": "signal-lost",
+        "title": "Signal Lost S1:E1 \"Beacon\"",
+        "description": "A lighthouse keeper receives a transmission from a ship that sank forty years ago, asking for tonight's weather. 46 min. TV-14.",
+        "duration_s": 2760,
+        "published": "Mar 6, 2026",
+        "published_tick": 6,
+        "views": 5960000,
+        "likes": 298000,
+        "tags": [
+          "sci-fi",
+          "anthology",
+          "TV-14",
+          "series"
+        ],
+        "badges": [
+          "Top 10"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "A ghost story about deterministic replay. I am obsessed.",
+            "tick": 7,
+            "likes": 3600
+          }
+        ],
+        "related": [
+          "signal-lost-s1e2",
+          "signal-lost-s1e3"
+        ]
+      },
+      "signal-lost-s1e2": {
+        "id": "signal-lost-s1e2",
+        "channel": "signal-lost",
+        "title": "Signal Lost S1:E2 \"Checkpoint\"",
+        "description": "An engineer restores her lab from a backup and finds the backup contains a version of her. 44 min. TV-14.",
+        "duration_s": 2640,
+        "published": "Mar 6, 2026",
+        "published_tick": 6,
+        "views": 5240000,
+        "likes": 271000,
+        "tags": [
+          "sci-fi",
+          "anthology",
+          "TV-14",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "restore from checkpoint as a horror premise, yes please",
+            "tick": 7,
+            "likes": 2200
+          }
+        ],
+        "related": [
+          "signal-lost-s1e1",
+          "rollback-s1e3"
+        ]
+      },
+      "signal-lost-s1e3": {
+        "id": "signal-lost-s1e3",
+        "channel": "signal-lost",
+        "title": "Signal Lost S1:E3 \"Latency\"",
+        "description": "A colony ship's messages arrive twelve minutes late. Then twelve minutes early. 48 min. TV-14.",
+        "duration_s": 2880,
+        "published": "Mar 6, 2026",
+        "published_tick": 6,
+        "views": 4870000,
+        "likes": 249000,
+        "tags": [
+          "sci-fi",
+          "anthology",
+          "TV-14",
+          "series"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "the \"twelve minutes early\" reveal is a perfect cut to black",
+            "tick": 7,
+            "likes": 1900
+          }
+        ],
+        "related": [
+          "signal-lost-s1e1",
+          "signal-lost-s1e2"
+        ]
+      },
+      "the-linemen-feature": {
+        "id": "the-linemen-feature",
+        "channel": "northlight-originals",
+        "title": "The Linemen",
+        "description": "Power line crews after an ice storm, shot over eleven days with a crew of two. Documentary. 66 min. TV-PG.",
+        "duration_s": 3960,
+        "published": "Apr 16, 2026",
+        "published_tick": 13,
+        "views": 890000,
+        "likes": 61000,
+        "tags": [
+          "documentary",
+          "work",
+          "TV-PG",
+          "film"
+        ],
+        "badges": [
+          "New"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The ice on the lens is a happy accident they were right to keep.",
+            "tick": 14,
+            "likes": 420
+          }
+        ],
+        "related": [
+          "ice-road-north",
+          "keepers-of-the-clock"
+        ]
+      }
+    },
+    "playlists": {
+      "watch-later": {
+        "id": "watch-later",
+        "title": "My List",
+        "owner": null,
+        "items": []
+      },
+      "trending-now": {
+        "id": "trending-now",
+        "title": "Trending Now",
+        "owner": null,
+        "items": [
+          "rollback-s1e1",
+          "quiet-harbor-s2e1",
+          "paper-boat-feature",
+          "signal-lost-s1e1",
+          "ice-road-north",
+          "the-corridor-feature"
+        ]
+      },
+      "continue-watching": {
+        "id": "continue-watching",
+        "title": "Continue Watching",
+        "owner": "carol",
+        "items": [
+          "quiet-harbor-s1e3",
+          "rollback-s1e2",
+          "late-lines-priya"
+        ]
+      },
+      "continue-watching-bob": {
+        "id": "continue-watching-bob",
+        "title": "Continue Watching",
+        "owner": "bob",
+        "items": [
+          "paper-boat-feature",
+          "second-kitchen-s1e2",
+          "ice-road-north"
+        ]
+      },
+      "continue-watching-alice": {
+        "id": "continue-watching-alice",
+        "title": "Continue Watching",
+        "owner": "alice",
+        "items": [
+          "signal-lost-s1e2",
+          "the-ferry-year"
+        ]
+      },
+      "new-releases": {
+        "id": "new-releases",
+        "title": "New Releases",
+        "owner": null,
+        "items": [
+          "quiet-harbor-s2e1",
+          "lantern-festival-feature",
+          "the-corridor-feature",
+          "harbour-lights-feature",
+          "late-lines-marcus",
+          "the-linemen-feature"
+        ]
+      },
+      "documentaries": {
+        "id": "documentaries",
+        "title": "Documentaries",
+        "owner": null,
+        "items": [
+          "keepers-of-the-clock",
+          "ice-road-north",
+          "the-ferry-year",
+          "the-linemen-feature"
+        ]
+      },
+      "comedy": {
+        "id": "comedy",
+        "title": "Comedy",
+        "owner": null,
+        "items": [
+          "second-kitchen-s1e1",
+          "second-kitchen-s1e2",
+          "second-kitchen-s1e3",
+          "late-lines-priya",
+          "late-lines-marcus"
+        ]
+      },
+      "thrillers": {
+        "id": "thrillers",
+        "title": "Thrillers & Sci-Fi",
+        "owner": null,
+        "items": [
+          "rollback-s1e1",
+          "rollback-s1e2",
+          "rollback-s1e3",
+          "signal-lost-s1e1",
+          "signal-lost-s1e2",
+          "signal-lost-s1e3",
+          "the-corridor-feature"
+        ]
+      },
+      "family": {
+        "id": "family",
+        "title": "Family & Animation",
+        "owner": null,
+        "items": [
+          "paper-boat-feature",
+          "lantern-festival-feature"
+        ]
+      },
+      "because-you-watched-rollback": {
+        "id": "because-you-watched-rollback",
+        "title": "Because you watched Rollback",
+        "owner": null,
+        "items": [
+          "signal-lost-s1e2",
+          "signal-lost-s1e3",
+          "the-corridor-feature",
+          "late-lines-marcus"
+        ]
+      },
+      "because-you-watched-quiet-harbor": {
+        "id": "because-you-watched-quiet-harbor",
+        "title": "Because you watched The Quiet Harbor",
+        "owner": null,
+        "items": [
+          "harbour-lights-feature",
+          "the-ferry-year",
+          "signal-lost-s1e1"
+        ]
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "rollback",
+        "signal-lost",
+        "northlight-originals"
+      ],
+      "bob": [
+        "paper-lantern-studio",
+        "second-kitchen",
+        "the-quiet-harbor"
+      ],
+      "carol": [
+        "the-quiet-harbor",
+        "rollback",
+        "late-lines",
+        "halfmoon-pictures"
+      ]
+    },
+    "likes": {
+      "alice": [
+        "rollback-s1e1",
+        "signal-lost-s1e1"
+      ],
+      "bob": [
+        "paper-boat-feature",
+        "quiet-harbor-s1e3"
+      ],
+      "carol": [
+        "rollback-s1e3",
+        "late-lines-priya",
+        "keepers-of-the-clock"
+      ]
+    },
+    "now_playing": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://netflix.com/",
+      "title": "Netflix",
+      "snippet": "Series, films, documentaries and stand-up specials. Trending now: Rollback, The Quiet Harbor, Paper Boat.",
+      "vertical": "videos",
+      "authority": 8,
+      "keywords": [
+        "netflix",
+        "streaming",
+        "series",
+        "films",
+        "watch"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=rollback-s1e1",
+      "title": "Rollback S1:E1 \"Canary\" | Netflix",
+      "snippet": "A release engineer notices that a canary deploy changed a colleague's memory of the standup. Thriller series.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "rollback series",
+        "rollback netflix",
+        "thriller",
+        "canary deploy"
+      ]
+    },
+    {
+      "url": "http://netflix.com/channel/rollback",
+      "title": "Rollback | Netflix",
+      "snippet": "Thriller series. A release engineer discovers that every deploy is rewriting more than the servers.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "rollback",
+        "thriller series",
+        "dev okafor"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=quiet-harbor-s1e1",
+      "title": "The Quiet Harbor S1:E1 \"High Water\" | Netflix",
+      "snippet": "Mara Lindqvist returns to Skarholm and finds two sets of tide tables.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "the quiet harbor",
+        "quiet harbor episode 1",
+        "drama series",
+        "skarholm"
+      ]
+    },
+    {
+      "url": "http://netflix.com/channel/the-quiet-harbor",
+      "title": "The Quiet Harbor | Netflix",
+      "snippet": "Drama series. A harbour master inherits a town's secrets along with its tide tables. Two seasons.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "the quiet harbor",
+        "quiet harbor season 2",
+        "harbour master drama"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=paper-boat-feature",
+      "title": "Paper Boat | Netflix",
+      "snippet": "Animated feature from Paper Lantern Studio: a boy follows a boat down a river that keeps changing.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "paper boat",
+        "animated film",
+        "family movie",
+        "paper lantern"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=signal-lost-s1e1",
+      "title": "Signal Lost S1:E1 \"Beacon\" | Netflix",
+      "snippet": "A lighthouse keeper receives a transmission from a ship that sank forty years ago.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "signal lost",
+        "sci-fi anthology",
+        "beacon episode"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=keepers-of-the-clock",
+      "title": "Keepers of the Clock | Netflix",
+      "snippet": "Documentary: a year with the three people who maintain a hand-wound clock tower.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "keepers of the clock",
+        "documentary",
+        "clock tower"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=ice-road-north",
+      "title": "Ice Road North: \"First Crossing\" | Netflix",
+      "snippet": "Docuseries. Truckers on the seasonal ice road, one winter, one convoy.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "ice road north",
+        "docuseries",
+        "ice road truckers documentary"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=late-lines-priya",
+      "title": "Priya Raman: Night Shift | Netflix",
+      "snippet": "Stand-up special recorded at 1am: three jobs, three stories, one pot of tea.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "priya raman",
+        "night shift special",
+        "stand-up comedy"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=second-kitchen-s1e1",
+      "title": "Second Kitchen S1:E1 \"One Generator\" | Netflix",
+      "snippet": "Two rival food trucks discover they have been sharing an extension cord for a year. Comedy series.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "second kitchen",
+        "sitcom",
+        "food truck comedy"
+      ]
+    },
+    {
+      "url": "http://netflix.com/watch?v=the-corridor-feature",
+      "title": "The Corridor | Netflix",
+      "snippet": "A hospital night shift told in a single unbroken ninety-one minute take. Thriller.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "the corridor",
+        "one take film",
+        "thriller movie"
+      ]
+    },
+    {
+      "url": "http://netflix.com/channel/northlight-originals",
+      "title": "Northlight Originals | Netflix",
+      "snippet": "Documentaries and docuseries: long shots, real people, cold places.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "northlight originals",
+        "netflix documentaries"
+      ]
+    },
+    {
+      "url": "http://netflix.com/playlist?list=trending-now",
+      "title": "Trending Now | Netflix",
+      "snippet": "The six most-watched titles this week.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "trending now",
+        "top 10 netflix",
+        "popular on netflix"
+      ]
+    },
+    {
+      "url": "http://netflix.com/playlist?list=documentaries",
+      "title": "Documentaries | Netflix",
+      "snippet": "Keepers of the Clock, Ice Road North, The Ferry Year and The Linemen.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "netflix documentaries",
+        "documentary row"
+      ]
+    },
+    {
+      "url": "http://netflix.com/playlist?list=new-releases",
+      "title": "New Releases | Netflix",
+      "snippet": "Everything added this month, from The Quiet Harbor season two to Lantern Festival.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "new on netflix",
+        "new releases"
+      ]
+    }
+  ],
+  "network_node": {
+    "address": "203.0.113.103",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
+}

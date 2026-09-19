@@ -2,7 +2,7 @@
   "id": "reddit",
   "kind": "forum",
   "node": "reddit",
-  "domains": ["reddit.com", "www.reddit.com", "old.reddit.com"],
+  "domains": ["reddit.com", "www.reddit.com", "old.reddit.com", "m.reddit.com"],
   "port": 80,
   "initial_state": {
     "mode": "subreddits",

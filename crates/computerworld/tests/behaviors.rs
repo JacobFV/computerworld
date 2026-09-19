@@ -615,6 +615,8 @@ fn native_image_is_fetched_over_network_and_survives_portable_checkpoint() {
                 alt: "Four colored pixels".into(),
                 width: 20,
                 height: 20,
+                style: None,
+                action: None,
             });
             HttpResponse::page(&page)
         }
@@ -647,6 +649,7 @@ fn native_image_is_fetched_over_network_and_survives_portable_checkpoint() {
         node: "image-node".into(),
         domains: vec!["images.internal".into()],
         port: 80,
+        tls: true,
         initial_state: Value::Null,
     });
     let mut registry = cw_sdk::Registry::new();

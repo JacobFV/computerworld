@@ -1,5 +1,80 @@
 # Changelog
 
+## Unreleased
+
+### The desktop
+
+- **The pointer is drawn.** Every desktop frame carries the machine's own mouse pointer,
+  shaped for what is under it: arrow, I-beam over text, hand over links and buttons,
+  resize arrows on window edges, grab and grabbing during drags, crosshair on canvases.
+  macOS draws it black with a white edge, Windows and Ubuntu white with a black edge;
+  phones have none. The glyph and the `cursor` hint in an action's reply come from one
+  `CursorKind`. The site and the browser demo send hover moves from a mouse and hide the
+  host cursor over a desktop.
+- **The debugger follows the frame you pick.** Every stopped frame carries its own scopes
+  (`Frame.scopes`; `State.scopes` remains the innermost frame's), so clicking a frame in
+  the Call Stack moves the editor to it and the Variables view shows that frame's locals
+  with no replay. Hovering an identifier, or a dotted path, while stopped shows its value
+  in a tooltip: from the captured values when it has them, otherwise by a side-effect-free
+  hover evaluation in the selected frame.
+- **FreeCAD grows up.** Additive and subtractive primitives (box, cylinder, sphere, cone,
+  torus) on planes, faces or datums; PartDesign Boolean (fuse, cut, common) between
+  bodies; datum planes, lines and points as sketch and primitive supports; expressions
+  (`Pad.Length = Sketch.Constraints.width * 2`) bound through the property editor's f(x)
+  field, evaluated on every recompute, shown blue and italic. `.FCStd.json`, STEP, STL,
+  OBJ and DXF open in FreeCAD from the file manager and `xdg-open`; KiCad project,
+  schematic and board files open in KiCad. FreeCAD launched bare starts in
+  `~/Documents/Parts`. Loft, pipe and multiple documents are still absent.
+- **Machines that have been used.** `worlds/company-2026/home/` seeds each desktop with an
+  engineer's files, built by `scripts/build-home.mjs`: FreeCAD parts written by the CAD
+  engine itself (a motor-mount bracket with datum, expression and pattern; a bearing
+  housing; an enclosure lid; a STEP export), a KiCad sensor-node project written by the EDA
+  engine that passes ERC and DRC, a Python telemetry package and a Node service that run
+  under the in-world interpreters, notes, datasheets and scripts. alice-mac leans CAD,
+  bob-windows EE, carol-ubuntu software.
+- **Messages is texting, not Slack.** The phone and desktop Messages app talks to a new
+  `messages` service with contacts (E.164 handles, Apple IDs), N-party conversations,
+  iMessage and SMS, delivery and read receipts and tapbacks. Slack (`slack` service:
+  workspace, channels with topics, group DMs, threads, reactions, pins, unread counts,
+  mentions) and Discord (`discord` service: server, roles, categories, text and voice
+  channels, member list) are their own services; `chat` remains the plain internal chat.
+  Contacts reads the messages directory.
+
+### The internet
+
+- **Maps show a map.** `maps.google.com`, `openstreetmap.org` and the Maps app draw the
+  same deterministic street map from the geo service's places: water, parks, blocks, a
+  street grid, arterials named from the places' addresses, the route, pins and labels,
+  rasterized by the new `cw-map` crate and served as an image.
+- **Slack looks like Slack, GitHub like GitHub.** Slack: rail, sidebar with unread badges,
+  grouped messages with real clock times and date dividers, emoji, reaction chips,
+  collapsed threads opening a thread pane, member pane, a pinned composer. GitHub: header,
+  repo tabs, branch selector, latest-commit bar, file table with per-path last commits,
+  rendered README, About column with languages; commits, commit, tree, blob with line
+  numbers, branches, issues and pull requests with labels, reviews, a real unified diff
+  computed between commits, merge box, profiles and stargazers.
+- **Forty more sites, and the thin ones filled in.** news.google.com, nytimes, bbc, cnn,
+  medium, substack, facebook, instagram, pinterest, bsky, tiktok, twitch, vimeo, netflix,
+  soundcloud, apple, microsoft, zoom, whatsapp, figma, cloudflare, aws, stripe, npm, PyPI,
+  crates.io, docs.rs, imdb, archive.org, ebay, booking, airbnb, uber, doordash, paypal,
+  yelp, craigslist, quora, notion, gitlab, mail.com, with `www.` and `m.` aliases.
+  YouTube has 41 videos on 14 channels, the intranet 13 pages, Linear 6 projects, Stack
+  Overflow 21 questions, the calendar 48 events. Every site domain now has a DNS record in
+  the world file, written by `scripts/build-world.mjs`.
+- **`https://` works.** Every service listens on 443 as well as its port (`tls`, default
+  true), so the address bar's own placeholder is reachable. An unresolvable host or a
+  refused port renders a "This site can't be reached" page in the tab; a 404 renders a
+  404 page instead of raw JSON.
+- **The page format can express real interfaces.** Links and buttons take a style and
+  shrink to their text; a monospace face (`Style::mono`, DejaVu Sans Mono); `pin: "top"`
+  for sticky headers; images take a style and an action; rows justify and give natural
+  width to unflexed children; the icon set is the whole bundled symbol set plus git and
+  chat glyphs; `services/common` gains `rest`, `pills`, `chip`, `avatar`, `inline_link`.
+- **Automatic site conversion, assessed.** `research/dom-to-site.md` and
+  `scripts/dom-to-site/` capture a real page's box tree with Playwright and convert it to
+  a site seed, validated and rendered in the in-world browser, scoring 0.9 fidelity on a
+  fixture news page. It is a prototype, not a tool.
+
 ## 0.1.1 — 2026-09-19
 
 The same engine as 0.1.0 with two more wheels and a docs site. Package and engine

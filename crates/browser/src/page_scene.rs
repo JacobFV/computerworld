@@ -3,7 +3,8 @@
 use super::ImageAsset;
 use cw_protocol::{Page, PageElement, Style};
 use cw_scene::{
-    metrics, Color, Lang, Node, Primitive, Rect, Scene, Semantic, Style as TextStyle, Typeface,
+    metrics, Color, Lang, Node, Primitive, Rect, RoundedClip, Scene, Semantic, Style as TextStyle,
+    Typeface,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -132,8 +133,54 @@ fn style_of(e: &PageElement) -> Option<&Style> {
         | PageElement::Badge { style, .. }
         | PageElement::Icon { style, .. }
         | PageElement::Divider { style, .. } => Some(style),
+        PageElement::Link { style, .. }
+        | PageElement::Button { style, .. }
+        | PageElement::Image { style, .. } => style.as_ref(),
         _ => None,
     }
+}
+/// The face a styled element's text is measured with: the monospace family when the
+/// style asks for it, otherwise the page face.
+fn face_of(style: &Style) -> Typeface {
+    if style.mono == Some(true) {
+        Typeface::Mono
+    } else {
+        FACE
+    }
+}
+/// Text in the face `style` asks for: the fixed-pitch `Text` primitive for monospace
+/// (one grid cell per character, which is what `Typeface::Mono` measures), otherwise
+/// proportional UI text.
+fn text_primitive(style: &Style, text: &str, size: u16, color: Color, ts: TextStyle) -> Primitive {
+    if style.mono == Some(true) {
+        Primitive::Text {
+            text: text.to_owned(),
+            color,
+            size,
+        }
+    } else {
+        ui_text(text, size, color, ts)
+    }
+}
+/// Inner horizontal padding of a link or button: a link is bare text unless it is boxed
+/// (filled or bordered), a button is always a padded pill.
+fn control_pad(style: &Style, button: bool) -> u32 {
+    let boxed = style.background.is_some() || style.border.is_some();
+    style
+        .padding
+        .unwrap_or(if button {
+            14
+        } else if boxed {
+            8
+        } else {
+            0
+        })
+        .min(64)
+}
+/// Whether a row child is a one-line control (a link, a button, a chip) that sits at
+/// its own width in a row of chips rather than filling a cell.
+fn explicit_flex(e: &PageElement) -> bool {
+    style_of(e).is_some_and(|s| s.flex.is_some())
 }
 /// A width the author fixed: a style's, or a picture's declared size, which a row keeps
 /// rather than stretching the picture across a flex share.
@@ -216,6 +263,30 @@ impl Layout<'_> {
         n.clip = Some(Rect::new(0, 0, self.scene.width, self.scene.height));
         self.scene.nodes.push(n);
     }
+    /// A picture node, its corners rounded by `radius` (an avatar), as one click
+    /// target when `action` names one.
+    fn picture(
+        &mut self,
+        id: u64,
+        r: Rect,
+        p: Primitive,
+        radius: u32,
+        semantic: Semantic,
+        action: Option<&str>,
+    ) {
+        if self.dry {
+            return;
+        }
+        let mut n = Node::new(id, r, p);
+        n.z = self.scene.nodes.len() as i32;
+        n.semantic = Some(semantic);
+        n.interaction = action.map(str::to_owned);
+        n.clip = Some(Rect::new(0, 0, self.scene.width, self.scene.height));
+        if radius > 0 {
+            n.rounded_clip = Some(RoundedClip { rect: r, radius });
+        }
+        self.scene.nodes.push(n);
+    }
     fn decor(&mut self, r: Rect, fill: Color, radius: u32, border: Option<Color>) {
         let id = self.decoration;
         self.decoration += 1;
@@ -247,6 +318,13 @@ impl Layout<'_> {
         }
         self.node(id, r, ui_text(text, size, color, style), None, None);
     }
+    /// `ts` with the page's language filled in where the element named none.
+    fn with_lang(&self, mut ts: TextStyle) -> TextStyle {
+        if ts.lang.is_auto() {
+            ts.lang = self.lang;
+        }
+        ts
+    }
     fn caption(&mut self, r: Rect, s: &str, size: u16, color: Color, bold: impl Into<TextStyle>) {
         let id = self.decoration;
         self.decoration += 1;
@@ -275,9 +353,30 @@ impl Layout<'_> {
                 longest(text, true.into(), if *level <= 1 { 18 } else { 15 })
             }
             PageElement::Text { text, .. } => longest(text, false.into(), 13),
-            PageElement::Link { text, .. } => longest(text, false.into(), 13) + 24,
-            PageElement::Button { id, text, .. } => {
-                metrics::text_width(FACE, true, submit_label(id, text), 12) + 30
+            PageElement::Link { text, style, .. } => {
+                let plain = Style::default();
+                let style = style.as_ref().unwrap_or(&plain);
+                let size = style.size.unwrap_or(13).clamp(6, 96);
+                let ts = self.text_style(style);
+                let pad = control_pad(style, false) * 2;
+                // One-line text is ellipsized to whatever width it gets, so it never
+                // needs more than its longest word to draw; asking for the whole line
+                // would wrap its row instead.
+                pad + text
+                    .split_whitespace()
+                    .map(|word| metrics::text_width(face_of(style), ts, word, size))
+                    .max()
+                    .unwrap_or(0)
+            }
+            PageElement::Button {
+                id, text, style, ..
+            } => {
+                let plain = Style::default();
+                let style = style.as_ref().unwrap_or(&plain);
+                let size = style.size.unwrap_or(12).clamp(6, 96);
+                let ts = self.button_text_style(style);
+                metrics::text_width(face_of(style), ts, submit_label(id, text), size)
+                    + control_pad(style, true) * 2
             }
             // The label sits above the field on one line, so it sets the floor too.
             PageElement::Input { label, .. } => {
@@ -288,11 +387,12 @@ impl Layout<'_> {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
                 let bold = self.text_style(style);
                 let pad = style.padding.unwrap_or(0).min(64) * 2;
-                pad + if style.one_line.unwrap_or(false) {
-                    metrics::text_width(FACE, bold, text, size)
-                } else {
-                    longest(text, bold, size)
-                }
+                let face = face_of(style);
+                pad + text
+                    .split_whitespace()
+                    .map(|word| metrics::text_width(face, bold, word, size))
+                    .max()
+                    .unwrap_or(0)
             }
             PageElement::Badge { text, style, .. } => {
                 let size = style.size.unwrap_or(10).clamp(6, 96);
@@ -340,6 +440,62 @@ impl Layout<'_> {
         // A fixed width is a promise the author made; it is honoured as-is.
         style_of(e).and_then(|s| s.width).unwrap_or(natural)
     }
+    /// The width `e` takes when nothing constrains it, the way CSS's max-content width
+    /// is: text on one line, a picture at its size, a row as the sum of its children.
+    /// A row child sits at this width when a sibling flexes or the row justifies.
+    fn content_width(&self, e: &PageElement) -> u32 {
+        let widest = |children: &[PageElement]| {
+            children
+                .iter()
+                .map(|c| self.content_width(c))
+                .max()
+                .unwrap_or(0)
+        };
+        let natural = match e {
+            PageElement::Heading { text, level, .. } => {
+                metrics::text_width(FACE, true, text, if *level <= 1 { 18 } else { 15 })
+            }
+            PageElement::Text { text, .. } => metrics::text_width(FACE, false, text, 13),
+            PageElement::Link { text, style, .. } => {
+                let plain = Style::default();
+                let style = style.as_ref().unwrap_or(&plain);
+                let size = style.size.unwrap_or(13).clamp(6, 96);
+                metrics::text_width(face_of(style), self.text_style(style), text, size)
+                    + control_pad(style, false) * 2
+            }
+            PageElement::Styled { text, style, .. } => {
+                let size = style.size.unwrap_or(13).clamp(6, 96);
+                metrics::text_width(face_of(style), self.text_style(style), text, size)
+                    + style.padding.unwrap_or(0).min(64) * 2
+            }
+            PageElement::Image { width, .. } => *width,
+            PageElement::Thumbnail { .. } => 120,
+            PageElement::Input { .. } => 240,
+            PageElement::Row {
+                children,
+                gap,
+                style,
+                ..
+            } => {
+                style.padding.unwrap_or(0).min(64) * 2
+                    + children.iter().map(|c| self.content_width(c)).sum::<u32>()
+                    + (*gap).min(128) * children.len().saturating_sub(1) as u32
+            }
+            PageElement::Card {
+                children, style, ..
+            } => style.padding.unwrap_or(14).min(64) * 2 + widest(children),
+            PageElement::Grid {
+                children, style, ..
+            } => style.padding.unwrap_or(0).min(64) * 2 + widest(children),
+            PageElement::Group { children, .. } | PageElement::Form { children, .. } => {
+                widest(children)
+            }
+            _ => return self.min_width(e),
+        };
+        style_of(e)
+            .and_then(|s| s.width)
+            .unwrap_or(natural.max(self.min_width(e)))
+    }
     fn measure(&mut self, e: &PageElement, w: u32, forced: Option<u32>) -> u32 {
         let was = std::mem::replace(&mut self.dry, true);
         let h = self.place(e, 0, 0, w, forced);
@@ -358,6 +514,17 @@ impl Layout<'_> {
     }
     fn bold_of(&self, style: &Style) -> bool {
         matches!(style.weight.as_deref(), Some("bold") | Some("medium"))
+    }
+    /// A button's text is bold unless its style says "regular".
+    fn button_text_style(&self, style: &Style) -> TextStyle {
+        TextStyle::new(
+            style.weight.as_deref() != Some("regular"),
+            style.italic.unwrap_or(false),
+            style
+                .lang
+                .as_deref()
+                .map_or(self.lang, cw_scene::Lang::from_tag),
+        )
     }
     /// Weight, slant and language of a styled element's text.
     fn text_style(&self, style: &Style) -> TextStyle {
@@ -482,18 +649,40 @@ impl Layout<'_> {
                 h + 34
             }
             PageElement::Button {
-                id: action, text, ..
+                id: action,
+                text,
+                style,
+                ..
             } => {
                 let text = submit_label(action, text);
-                let bw = (metrics::text_width(FACE, true, text, 12) + 30).min(w);
+                let plain = Style::default();
+                let style = style.as_ref().unwrap_or(&plain);
+                let size = style.size.unwrap_or(12).clamp(6, 96);
+                let face = face_of(style);
+                let ts = self.button_text_style(style);
+                let pad = control_pad(style, true);
+                // The pill's vertical padding follows its horizontal one at the ratio
+                // the default 34 px button has.
+                let vpad = style.padding.map_or(9, |p| p.min(64) * 2 / 3);
+                let lh = line_height(size);
+                let shown = metrics::ellipsize(face, ts, text, size, w.saturating_sub(pad * 2));
+                let tw = metrics::text_width(face, ts, &shown, size);
+                let bw = style.width.unwrap_or(tw + pad * 2).min(w);
+                let bh = style.height.unwrap_or(lh + vpad * 2);
+                let bx = x + Self::offset(style, w, bw);
+                let edge = style.border.as_deref().and_then(parse_color);
                 self.node(
                     id,
-                    Rect::new(x, y, bw, 34),
+                    Rect::new(bx, y, bw, bh),
                     Primitive::RoundedBox {
-                        fill: self.accent,
-                        border: None,
-                        border_width: 0,
-                        radius: 6,
+                        fill: style
+                            .background
+                            .as_deref()
+                            .and_then(parse_color)
+                            .unwrap_or(self.accent),
+                        border: edge,
+                        border_width: u32::from(edge.is_some()),
+                        radius: style.radius.unwrap_or(6).min(64),
                     },
                     Some(Semantic {
                         role: "button".into(),
@@ -503,51 +692,106 @@ impl Layout<'_> {
                     }),
                     Some(action),
                 );
-                self.text(
+                let colour = style
+                    .color
+                    .as_deref()
+                    .and_then(parse_color)
+                    .unwrap_or(Color::WHITE);
+                let tw = tw.min(bw.saturating_sub(pad * 2).max(1));
+                let ts = self.with_lang(ts);
+                self.node(
                     id + 1,
-                    Rect::new(x + 14, y + 9, bw.saturating_sub(22), 19),
-                    text,
-                    12,
-                    Color::WHITE,
-                    true,
+                    Rect::new(
+                        bx + (bw.saturating_sub(tw) / 2) as i32,
+                        y + (bh.saturating_sub(lh) / 2) as i32,
+                        tw + 4,
+                        lh + 3,
+                    ),
+                    text_primitive(style, &shown, size, colour, ts),
+                    None,
+                    None,
                 );
-                46
+                bh + GAP
             }
             PageElement::Link {
-                id: action, text, ..
+                id: action,
+                text,
+                style,
+                ..
             } => {
-                // A long link wraps and its pill grows with it, as a link in a page does.
-                let lines: Vec<String> = metrics::wrap(FACE, false, text, 13, w.saturating_sub(24))
+                // Bare, a link is accent-coloured text at its own width, as a link in a
+                // paragraph or a sidebar is; a style makes it a nav item, a tab or a
+                // bordered button. A long one wraps, and its box grows with it.
+                let plain = Style::default();
+                let styled = style.is_some();
+                let style = style.as_ref().unwrap_or(&plain);
+                let size = style.size.unwrap_or(13).clamp(6, 96);
+                let face = face_of(style);
+                let ts = self.text_style(style);
+                let boxed = style.background.is_some() || style.border.is_some();
+                let pad = control_pad(style, false);
+                let lh = line_height(size);
+                let inner = style.width.map_or(w, |v| v.min(w)).saturating_sub(pad * 2);
+                let lines: Vec<String> = if style.one_line == Some(true) {
+                    vec![metrics::ellipsize(face, ts, text, size, inner)]
+                } else {
+                    metrics::wrap(face, ts, text, size, inner)
+                        .iter()
+                        .map(|l| l.trim_end().to_owned())
+                        .collect()
+                };
+                let tw = lines
                     .iter()
-                    .map(|l| l.trim_end().to_owned())
-                    .collect();
-                let extra = lines.len().saturating_sub(1) as u32 * 17;
-                self.node(
-                    id,
-                    Rect::new(x, y, w, 38 + extra),
-                    Primitive::RoundedBox {
-                        fill: Color::rgb(242, 246, 252),
-                        border: None,
-                        border_width: 0,
-                        radius: 6,
-                    },
-                    Some(Semantic {
-                        role: "link".into(),
-                        label: text.clone(),
-                        focusable: true,
-                        ..Semantic::default()
-                    }),
-                    Some(action),
+                    .map(|l| metrics::text_width(face, ts, l, size))
+                    .max()
+                    .unwrap_or(0)
+                    .min(inner.max(1));
+                let body = lines.len() as u32 * lh;
+                let bw = style.width.unwrap_or(tw + pad * 2).min(w);
+                let bh = style.height.unwrap_or(body + pad * 2);
+                let bx = x + Self::offset(style, w, bw);
+                let colour = style
+                    .color
+                    .as_deref()
+                    .and_then(parse_color)
+                    .unwrap_or(self.accent);
+                let semantic = Semantic {
+                    role: "link".into(),
+                    label: text.clone(),
+                    focusable: true,
+                    ..Semantic::default()
+                };
+                let text_rect = Rect::new(
+                    bx + pad as i32,
+                    y + pad as i32,
+                    bw.saturating_sub(pad * 2).max(1),
+                    body.max(lh),
                 );
-                self.text(
-                    id + 1,
-                    Rect::new(x + 12, y + 11, w.saturating_sub(24), 21 + extra),
-                    &lines.join("\n"),
-                    13,
-                    self.accent,
-                    false,
-                );
-                46 + extra
+                let ts = self.with_lang(ts);
+                let primitive = text_primitive(style, &lines.join("\n"), size, colour, ts);
+                if boxed {
+                    let edge = style.border.as_deref().and_then(parse_color);
+                    self.node(
+                        id,
+                        Rect::new(bx, y, bw, bh),
+                        Primitive::RoundedBox {
+                            fill: style
+                                .background
+                                .as_deref()
+                                .and_then(parse_color)
+                                .unwrap_or(Color::TRANSPARENT),
+                            border: edge,
+                            border_width: u32::from(edge.is_some()),
+                            radius: style.radius.unwrap_or(6).min(64),
+                        },
+                        Some(semantic),
+                        Some(action),
+                    );
+                    self.node(id + 1, text_rect, primitive, None, None);
+                } else {
+                    self.node(id, text_rect, primitive, Some(semantic), Some(action));
+                }
+                bh + if styled { 6 } else { 9 }
             }
             PageElement::Heading { text, level, .. } => {
                 let size = if *level <= 1 { 18 } else { 15 };
@@ -591,30 +835,64 @@ impl Layout<'_> {
                 alt,
                 width,
                 height,
+                style,
+                action,
                 ..
             } => {
+                let plain = Style::default();
+                let style = style.as_ref().unwrap_or(&plain);
                 if let Some(a) = self.images.get(asset_id) {
-                    let natural_w = if *width == 0 { a.width } else { *width };
+                    let natural_w =
+                        style
+                            .width
+                            .unwrap_or(if *width == 0 { a.width } else { *width });
                     let natural_h = if *height == 0 { a.height } else { *height };
-                    let dw = natural_w.min(w);
+                    let dw = natural_w.min(w).max(1);
                     // A picture narrowed to its column keeps its proportions.
-                    let dh = (u64::from(natural_h) * u64::from(dw) / u64::from(natural_w.max(1)))
-                        .min(4096) as u32;
-                    self.node(
+                    let dh = style.height.unwrap_or_else(|| {
+                        (u64::from(natural_h) * u64::from(dw) / u64::from(natural_w.max(1)))
+                            .min(4096) as u32
+                    });
+                    let r = Rect::new(x + Self::offset(style, w, dw), y, dw, dh);
+                    let (semantic, target) = match action {
+                        Some(action) => (
+                            Semantic {
+                                role: if action.method.eq_ignore_ascii_case("GET") {
+                                    "link".into()
+                                } else {
+                                    "button".into()
+                                },
+                                label: alt.clone(),
+                                focusable: true,
+                                ..Semantic::default()
+                            },
+                            Some(asset_id.as_str()),
+                        ),
+                        None => (
+                            Semantic {
+                                role: "img".into(),
+                                label: alt.clone(),
+                                ..Semantic::default()
+                            },
+                            None,
+                        ),
+                    };
+                    let radius = style.radius.unwrap_or(0).min(dw.min(dh) / 2);
+                    self.picture(
                         id,
-                        Rect::new(x, y, dw, dh),
+                        r,
                         Primitive::Image {
                             width: a.width,
                             height: a.height,
                             rgba: a.rgba.clone(),
                         },
-                        Some(Semantic {
-                            role: "img".into(),
-                            label: alt.clone(),
-                            ..Semantic::default()
-                        }),
-                        None,
+                        radius,
+                        semantic,
+                        target,
                     );
+                    if let Some(edge) = style.border.as_deref().and_then(parse_color) {
+                        self.decor(r, Color::TRANSPARENT, radius, Some(edge));
+                    }
                     dh + GAP
                 } else {
                     self.text(id, Rect::new(x, y, w, 24), alt, 13, self.muted, false);
@@ -705,15 +983,16 @@ impl Layout<'_> {
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
                 let bold = self.text_style(style);
+                let face = face_of(style);
                 let pad = style.padding.unwrap_or(0).min(64);
                 let colour = self.ink_of(style);
                 let w = style.width.map_or(w, |v| v.min(w));
                 let inner = w.saturating_sub(pad * 2);
                 let lh = line_height(size);
                 let lines: Vec<String> = if style.one_line.unwrap_or(false) {
-                    vec![metrics::ellipsize(FACE, bold, text, size, inner)]
+                    vec![metrics::ellipsize(face, bold, text, size, inner)]
                 } else {
-                    metrics::wrap(FACE, bold, text, size, inner)
+                    metrics::wrap(face, bold, text, size, inner)
                         .iter()
                         .map(|l| l.trim_end().to_owned())
                         .collect()
@@ -733,11 +1012,12 @@ impl Layout<'_> {
                     label: text.clone(),
                     ..Semantic::default()
                 };
+                let bold = self.with_lang(bold);
                 if style.align.is_none() || style.align.as_deref() == Some("left") {
                     self.node(
                         id,
                         Rect::new(x + pad as i32, y + pad as i32, inner, body.max(lh)),
-                        ui_text(&lines.join("\n"), size, colour, bold),
+                        text_primitive(style, &lines.join("\n"), size, colour, bold),
                         Some(semantic),
                         None,
                     );
@@ -745,23 +1025,20 @@ impl Layout<'_> {
                     // Per-line nodes are the only way to align wrapped text; the first
                     // carries the accessible name for the whole block, the rest are decor.
                     for (i, line) in lines.iter().enumerate() {
-                        let tw = metrics::text_width(FACE, bold, line, size);
+                        let tw = metrics::text_width(face, bold, line, size);
                         let r = Rect::new(
                             x + pad as i32 + Self::offset(style, inner, tw),
                             y + pad as i32 + (i as u32 * lh) as i32,
                             tw.max(1),
                             lh,
                         );
+                        let primitive = text_primitive(style, line, size, colour, bold);
                         if i == 0 {
-                            self.node(
-                                id,
-                                r,
-                                ui_text(line, size, colour, bold),
-                                Some(semantic.clone()),
-                                None,
-                            );
+                            self.node(id, r, primitive, Some(semantic.clone()), None);
                         } else {
-                            self.caption(r, line, size, colour, bold);
+                            let n = self.decoration;
+                            self.decoration += 1;
+                            self.node(n, r, primitive, None, None);
                         }
                     }
                 }
@@ -1062,9 +1339,17 @@ impl Layout<'_> {
             return box_h;
         }
         let avail = inner.saturating_sub(gap * (children.len() as u32 - 1));
+        // Once any child flexes (or the row justifies its children), the others are
+        // chips at their own width: a "+ Create" pill next to a spacer, a nav bar's
+        // items. Without either, every child fills an equal share as before.
+        let chips = style.justify.is_some() || children.iter().any(explicit_flex);
         let fixed: Vec<Option<u32>> = children
             .iter()
-            .map(|c| fixed_width(c).map(|v| v.min(avail)))
+            .map(|c| {
+                fixed_width(c)
+                    .or_else(|| (chips && !explicit_flex(c)).then(|| self.content_width(c)))
+                    .map(|v| v.min(avail))
+            })
             .collect();
         // A flex child never shrinks below its content: those that would are held at
         // their minimum, and the rest share what is left, as `min-width: auto` does.
@@ -1119,8 +1404,20 @@ impl Layout<'_> {
         let box_h = forced.or(style.height).unwrap_or(content + pad * 2);
         self.row_decor(x, y, w, box_h, style);
         let band = box_h.saturating_sub(pad * 2);
-        let mut cx = x + pad as i32;
-        for ((child, cw), ch) in children.iter().zip(&widths).zip(&heights) {
+        // Room the children leave, placed as `justify` says: `flex: 1` children have
+        // already taken it all, so this only moves a row of chips.
+        let spare = avail.saturating_sub(widths.iter().sum::<u32>());
+        let slots = children.len() as u32 - 1;
+        // The leading offset, and what each gap grows by: `space-between` shares the
+        // spare width over the gaps, the odd pixels going to the first ones.
+        let (lead, extra, odd) = match style.justify.as_deref() {
+            Some("center") => (spare / 2, 0, 0),
+            Some("end") => (spare, 0, 0),
+            Some("space-between") if slots > 0 => (0, spare / slots, spare % slots),
+            _ => (0, 0, 0),
+        };
+        let mut cx = x + pad as i32 + lead as i32;
+        for (i, ((child, cw), ch)) in children.iter().zip(&widths).zip(&heights).enumerate() {
             let (cy, forced) = match align {
                 "center" => (y + pad as i32 + (band.saturating_sub(*ch) / 2) as i32, None),
                 "end" => (y + pad as i32 + band.saturating_sub(*ch) as i32, None),
@@ -1128,7 +1425,7 @@ impl Layout<'_> {
                 _ => (y + pad as i32, None),
             };
             self.place(child, cx, cy, *cw, forced);
-            cx += (*cw + gap) as i32;
+            cx += (*cw + gap + extra + u32::from((i as u32) < odd)) as i32;
         }
         box_h
     }
@@ -1476,7 +1773,21 @@ pub(super) fn layout_scrolled(
     let mut side_y = 116 - scroll;
     let mut form_y = 88 - scroll;
     let mut deferred = Vec::new();
-    let pinned = |e: &PageElement| style_of(e).and_then(|s| s.pin.as_deref()) == Some("bottom");
+    fn pin_of(e: &PageElement) -> Option<&str> {
+        style_of(e).and_then(|s| s.pin.as_deref())
+    }
+    let pinned = |e: &PageElement| matches!(pin_of(e), Some("top" | "bottom"));
+    // A sticky header is measured first: the page flows below it, never under it.
+    let tops: Vec<&PageElement> = page
+        .elements
+        .iter()
+        .filter(|e| pin_of(e) == Some("top"))
+        .collect();
+    let top_heights: Vec<u32> = tops.iter().map(|e| p.measure(e, width, None)).collect();
+    let header = top_heights.iter().sum::<u32>().min(height);
+    y += header as i32;
+    side_y += header as i32;
+    form_y += header as i32;
     for e in &page.elements {
         if pinned(e) {
             continue;
@@ -1519,27 +1830,42 @@ pub(super) fn layout_scrolled(
         y += 18;
         p.element(e, x, &mut y, mainw);
     }
-    // Pinned bars span the viewport on its bottom edge, stacked in page order, and the
-    // page under them is clipped away so a click on a bar never reaches what it covers.
-    let bars: Vec<&PageElement> = page.elements.iter().filter(|e| pinned(e)).collect();
-    // Everything the page holds, unscrolled: the flowed columns plus the bars pinned
-    // over its bottom edge, which the last row must be able to scroll clear of.
+    // Pinned bars span the viewport on its top or bottom edge, stacked in page order,
+    // and the page under them is clipped away so a click on a bar never reaches what
+    // it covers.
+    let bars: Vec<&PageElement> = page
+        .elements
+        .iter()
+        .filter(|e| pin_of(e) == Some("bottom"))
+        .collect();
+    // Everything the page holds, unscrolled: the flowed columns (which already start
+    // below the header) plus the bars pinned over its bottom edge, which the last row
+    // must be able to scroll clear of.
     let mut extent = (y.max(side_y).max(form_y) + scroll).max(0) as u32 + 16;
-    if !bars.is_empty() {
+    if !bars.is_empty() || !tops.is_empty() {
         let heights: Vec<u32> = bars.iter().map(|e| p.measure(e, width, None)).collect();
-        let total = heights.iter().sum::<u32>().min(height);
+        let total = heights
+            .iter()
+            .sum::<u32>()
+            .min(height.saturating_sub(header));
         extent += total;
         let edge = height.saturating_sub(total);
-        // Content wholly behind the bars keeps a one-row clip strip above them rather than
-        // none, so it stays in the page (reachable by scrolling) yet paints nothing there.
-        let visible = Rect::new(0, 0, width, edge.max(1));
+        // Content wholly behind the bars keeps a one-row clip strip between them rather
+        // than none, so it stays in the page (reachable by scrolling) yet paints nothing
+        // there.
+        let visible = Rect::new(0, header as i32, width, edge.saturating_sub(header).max(1));
         for node in &mut p.scene.nodes {
             node.clip = Some(
                 node.clip
                     .unwrap_or(visible)
                     .intersection(visible)
-                    .unwrap_or(Rect::new(0, 0, 1, 1)),
+                    .unwrap_or(Rect::new(0, header as i32, 1, 1)),
             );
+        }
+        let mut ty = 0;
+        for (e, h) in tops.into_iter().zip(top_heights) {
+            p.place(e, 0, ty, width, None);
+            ty += h as i32;
         }
         let mut by = edge as i32;
         for (e, h) in bars.into_iter().zip(heights) {
@@ -1783,6 +2109,7 @@ mod tests {
             id: "doc".into(),
             text: "Project plan".into(),
             url: "/documents/doc".into(),
+            style: None,
         });
         let scene = layout(&page, &BTreeMap::new(), &BTreeMap::new(), 900, 500, 100);
         assert!(scene
@@ -2000,6 +2327,7 @@ mod tests {
             id: id.into(),
             text: text.into(),
             url: format!("/{id}"),
+            style: None,
         }
     }
     #[test]
@@ -2023,8 +2351,9 @@ mod tests {
             .map(|l| node_by_label(&wide, l).bounds.y)
             .collect();
         assert_eq!(tops.len(), 1);
-        // Phone: more than one line, and no link narrower than its own text.
-        let narrow = scene(&page, 390);
+        // Phone: more than one line, and no link narrower than its own text. (Bare links
+        // are only as wide as their words, so a 390 px phone still fits this nav.)
+        let narrow = scene(&page, 300);
         let rows: BTreeSet<i32> = ["Product", "Pricing", "Careers", "Contact", "Documentation"]
             .iter()
             .map(|l| node_by_label(&narrow, l).bounds.y)
@@ -2033,7 +2362,7 @@ mod tests {
         for label in ["Product", "Documentation"] {
             let width = node_by_label(&narrow, label).bounds.width;
             assert!(
-                width >= metrics::text_width(FACE, false, label, 13) + 24,
+                width >= metrics::text_width(FACE, false, label, 13),
                 "{label} was crushed to {width}"
             );
         }
@@ -2106,14 +2435,241 @@ mod tests {
             .is_some_and(|s| s.role == "text" && s.label.is_empty())));
     }
     #[test]
-    fn a_long_link_wraps_and_its_pill_grows() {
+    fn a_long_link_wraps_and_a_short_one_is_bare_text_at_its_own_width() {
         let mut page = Page::new("Links");
         let title = "Show HN: Atlas, a simulated machine you can replay byte for byte";
         page.elements = vec![link("short", "Home"), link("long", title)];
         page.validate().unwrap();
         let scene = scene(&page, 260);
-        assert_eq!(node_by_label(&scene, "Home").bounds.height, 38);
-        assert!(node_by_label(&scene, title).bounds.height > 38);
+        let home = node_by_label(&scene, "Home");
+        assert_eq!(home.bounds.height, 17);
+        assert_eq!(
+            home.bounds.width,
+            metrics::text_width(FACE, false, "Home", 13)
+        );
+        assert!(
+            matches!(&home.primitive, Primitive::UiText { color, .. } if *color == Color::rgb(34, 112, 205))
+        );
+        assert!(!scene
+            .nodes
+            .iter()
+            .any(|n| matches!(&n.primitive, Primitive::RoundedBox { fill, .. } if *fill == Color::rgb(242, 246, 252))));
+        assert!(node_by_label(&scene, title).bounds.height > 17);
+    }
+    fn action(url: &str) -> PageAction {
+        PageAction {
+            method: "GET".into(),
+            url: url.into(),
+            fields: BTreeMap::new(),
+        }
+    }
+    #[test]
+    fn styled_links_and_buttons_take_their_style_and_their_own_width() {
+        let mut page = Page::new("Nav");
+        page.elements = vec![
+            PageElement::Link {
+                id: "tab".into(),
+                text: "Pull requests".into(),
+                url: "/pulls".into(),
+                style: Some(
+                    Style::default()
+                        .size(14)
+                        .bold()
+                        .color("#ffffff")
+                        .background("#24292f")
+                        .border("#57606a")
+                        .radius(4)
+                        .padding(6),
+                ),
+            },
+            PageElement::Button {
+                id: "merge".into(),
+                text: "Merge".into(),
+                action: action("/merge"),
+                style: Some(
+                    Style::default()
+                        .background("#2da44e")
+                        .color("#ffffff")
+                        .width(200)
+                        .radius(3),
+                ),
+            },
+            PageElement::Button {
+                id: "plain".into(),
+                text: "Save".into(),
+                action: action("/save"),
+                style: None,
+            },
+            PageElement::Link {
+                id: "sha".into(),
+                text: "a1b2c3d".into(),
+                url: "/commit/a1b2c3d".into(),
+                style: Some(Style::default().size(12).mono().color("#0969da")),
+            },
+        ];
+        page.validate().unwrap();
+        let scene = scene(&page, 600);
+        let tab = find(&scene, "tab");
+        let tw = metrics::text_width(FACE, true, "Pull requests", 14);
+        assert_eq!(tab.bounds.width, tw + 12);
+        assert_eq!(tab.bounds.height, line_height(14) + 12);
+        assert!(
+            matches!(&tab.primitive, Primitive::RoundedBox { fill, border: Some(_), radius: 4, .. } if *fill == Color::rgb(0x24, 0x29, 0x2f))
+        );
+        assert_eq!(tab.semantic.as_ref().unwrap().role, "link");
+        let merge = find(&scene, "merge");
+        assert_eq!(merge.bounds.width, 200);
+        assert!(
+            matches!(&merge.primitive, Primitive::RoundedBox { fill, radius: 3, .. } if *fill == Color::rgb(0x2d, 0xa4, 0x4e))
+        );
+        let plain = find(&scene, "plain");
+        assert_eq!(plain.bounds.height, 34);
+        assert_eq!(
+            plain.bounds.width,
+            metrics::text_width(FACE, true, "Save", 12) + 28
+        );
+        assert!(
+            matches!(&plain.primitive, Primitive::RoundedBox { fill, .. } if *fill == Color::rgb(34, 112, 205))
+        );
+        let sha = find(&scene, "sha");
+        assert!(matches!(&sha.primitive, Primitive::Text { size: 12, .. }));
+        assert_eq!(sha.bounds.width, cw_scene::text_cell(12).0 * 7);
+        // Deterministic, and the scaled layout keeps the monospace text.
+        assert_eq!(scene, self::scene(&page, 600));
+    }
+    #[test]
+    fn rows_justify_chips_and_give_flexing_siblings_the_rest() {
+        let chip = |id: &str, text: &str| PageElement::Badge {
+            id: id.into(),
+            text: text.into(),
+            style: Style::default().padding(8),
+        };
+        let mut page = Page::new("Chips");
+        page.elements = vec![
+            PageElement::Row {
+                id: "between".into(),
+                children: vec![chip("a", "Code"), chip("b", "Issues"), chip("c", "Pulls")],
+                gap: 8,
+                align: "center".into(),
+                style: Style::default().justify("space-between"),
+            },
+            PageElement::Row {
+                id: "end".into(),
+                children: vec![chip("d", "Code"), chip("e", "Issues")],
+                gap: 8,
+                align: "center".into(),
+                style: Style::default().justify("end"),
+            },
+            PageElement::Row {
+                id: "flex".into(),
+                children: vec![
+                    chip("f", "Filter"),
+                    styled("search", Style::default().flex(1)),
+                    chip("g", "New"),
+                ],
+                gap: 8,
+                align: "center".into(),
+                style: Style::default(),
+            },
+        ];
+        page.validate().unwrap();
+        let scene = scene(&page, 600);
+        let at = |label: &str| node_by_label(&scene, label).bounds;
+        let width = |text: &str| metrics::text_width(FACE, true, text, 10) + 18;
+        assert_eq!(at("Code").width, width("Code"));
+        assert_eq!(at("Code").x, 16);
+        assert_eq!(at("Pulls").x + at("Pulls").width as i32, 16 + 568);
+        let mid = at("Issues");
+        assert!(mid.x > at("Code").x + at("Code").width as i32 + 8);
+        let end: Vec<&Node> = scene
+            .nodes
+            .iter()
+            .filter(|n| n.semantic.as_ref().is_some_and(|s| s.label == "Issues"))
+            .collect();
+        assert_eq!(end[1].bounds.x + end[1].bounds.width as i32, 16 + 568);
+        let f = at("Filter");
+        let g = at("New");
+        let search = find_text(&scene, "cell");
+        assert_eq!(f.width, width("Filter"));
+        assert_eq!(g.width, width("New"));
+        assert_eq!(search.bounds.width, 568 - f.width - g.width - 16);
+    }
+    fn find_text<'a>(scene: &'a Scene, label: &str) -> &'a Node {
+        scene
+            .nodes
+            .iter()
+            .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == label))
+            .unwrap()
+    }
+    #[test]
+    fn a_top_pinned_header_stays_put_and_the_page_flows_below_it() {
+        let mut page = Page::new("App");
+        page.elements = vec![
+            PageElement::Row {
+                id: "header".into(),
+                children: vec![styled("brand", Style::default().bold())],
+                gap: 0,
+                align: "center".into(),
+                style: Style::default()
+                    .pin("top")
+                    .background("#1f2328")
+                    .padding(12),
+            },
+            PageElement::Text {
+                id: "body".into(),
+                text: "first paragraph".into(),
+            },
+        ];
+        page.validate().unwrap();
+        let unscrolled = layout(&page, &BTreeMap::new(), &BTreeMap::new(), 400, 300, 0);
+        let scrolled = layout(&page, &BTreeMap::new(), &BTreeMap::new(), 400, 300, 40);
+        let header = |s: &Scene| {
+            s.nodes
+                .iter()
+                .find(|n| matches!(&n.primitive, Primitive::RoundedBox { fill, .. } if *fill == Color::rgb(0x1f, 0x23, 0x28)))
+                .unwrap()
+                .bounds
+        };
+        assert_eq!(header(&unscrolled).y, 0);
+        assert_eq!(header(&scrolled).y, 0, "the header scrolls with nothing");
+        let body = node_by_label(&unscrolled, "first paragraph").bounds;
+        assert!(body.y >= header(&unscrolled).height as i32);
+        let moved = node_by_label(&scrolled, "first paragraph").bounds;
+        assert_eq!(moved.y, body.y - 40);
+        // What scrolls under the header is clipped away, never painted over it.
+        let clip = node_by_label(&scrolled, "first paragraph").clip.unwrap();
+        assert_eq!(clip.y, header(&scrolled).height as i32);
+    }
+    #[test]
+    fn a_styled_image_is_rounded_and_can_be_a_link() {
+        let mut page = Page::new("Profile");
+        page.elements = vec![PageElement::Image {
+            id: "avatar".into(),
+            source: "/avatar.rgba".into(),
+            alt: "Ada Lovelace".into(),
+            width: 40,
+            height: 40,
+            style: Some(Style::default().radius(20)),
+            action: Some(action("/users/ada")),
+        }];
+        page.validate().unwrap();
+        let images = BTreeMap::from([(
+            "avatar".to_string(),
+            Arc::new(ImageAsset {
+                width: 40,
+                height: 40,
+                rgba: vec![255; 40 * 40 * 4],
+            }),
+        )]);
+        let scene = layout(&page, &BTreeMap::new(), &images, 400, 300, 0);
+        let picture = find(&scene, "avatar");
+        assert_eq!(picture.rounded_clip.as_ref().map(|c| c.radius), Some(20));
+        let semantic = picture.semantic.as_ref().unwrap();
+        assert_eq!(
+            (semantic.role.as_str(), semantic.label.as_str()),
+            ("link", "Ada Lovelace")
+        );
+        assert!(semantic.focusable);
     }
     #[test]
     fn a_search_form_is_a_field_and_a_search_button() {
@@ -2137,6 +2693,7 @@ mod tests {
                     id: "search-submit".into(),
                     text: "Submit".into(),
                     action,
+                    style: None,
                 },
             ],
         }];

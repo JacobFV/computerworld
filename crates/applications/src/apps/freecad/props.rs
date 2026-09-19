@@ -2,7 +2,7 @@
 //! editable one really editable, recomputing the document as it changes.
 use super::commands::parse_quantity;
 use super::*;
-use cw_cad::document::{AxisRef, ChamferType, Extent, HoleCut, PlaneRef, Support};
+use cw_cad::document::{AxisRef, BoolType, ChamferType, Extent, HoleCut, PlaneRef, Support};
 use cw_cad::math::fmt_num;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -19,6 +19,9 @@ pub struct Row {
     pub name: String,
     pub value: String,
     pub kind: Kind,
+    /// The expression the property is bound to, when it is (FreeCAD shows such a
+    /// value in blue italics and edits it through the f(x) button).
+    pub expression: Option<String>,
 }
 fn row(group: &'static str, name: &str, value: String, kind: Kind) -> Row {
     Row {
@@ -26,6 +29,18 @@ fn row(group: &'static str, name: &str, value: String, kind: Kind) -> Row {
         name: name.to_owned(),
         value,
         kind,
+        expression: None,
+    }
+}
+/// The key a property's expression is stored under: constraints as FreeCAD's
+/// `Constraints.<name>`, everything else by its property name.
+pub(crate) fn expression_key(row: &Row) -> String {
+    if row.group == "Constraints" {
+        format!("Constraints.{}", row.name)
+    } else if row.name == "Attachment Offset" {
+        "AttachmentOffset".into()
+    } else {
+        row.name.clone()
     }
 }
 fn mm(v: f64) -> String {
@@ -61,6 +76,7 @@ fn axis_name(a: &AxisRef) -> String {
         AxisRef::Z => "Z_Axis".into(),
         AxisRef::SketchLine(i) => format!("Edge{}", i + 1),
         AxisRef::Edge(r) => r.name.clone(),
+        AxisRef::Datum(d) => d.clone(),
     }
 }
 fn parse_axis(v: &str) -> Result<AxisRef, String> {
@@ -137,17 +153,88 @@ impl Cad {
                     Kind::ReadOnly,
                 ));
             }
+            Feature::Primitive { shape, offset, .. } => {
+                for (name, value) in shape.dimensions() {
+                    v.push(row(
+                        shape.name(),
+                        name,
+                        if name == "Angle" {
+                            deg(value)
+                        } else {
+                            mm(value)
+                        },
+                        Kind::Number,
+                    ));
+                }
+                v.push(row(
+                    "Attachment",
+                    "Support",
+                    self.support_text(&o.feature),
+                    Kind::ReadOnly,
+                ));
+                v.push(row(
+                    "Attachment",
+                    "Attachment Offset",
+                    mm(*offset),
+                    Kind::Number,
+                ));
+            }
+            Feature::Boolean { kind, bodies } => {
+                v.push(row(
+                    "Boolean",
+                    "Type",
+                    kind.label().into(),
+                    Kind::Enum(BoolType::ALL.iter().map(|b| b.label().to_owned()).collect()),
+                ));
+                v.push(row(
+                    "Boolean",
+                    "Group",
+                    bodies
+                        .iter()
+                        .map(|b| self.label_of(b))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    Kind::ReadOnly,
+                ));
+            }
+            Feature::DatumPlane { offset, angle, .. }
+            | Feature::DatumLine { offset, angle, .. } => {
+                v.push(row(
+                    "Attachment",
+                    "Support",
+                    self.support_text(&o.feature),
+                    Kind::ReadOnly,
+                ));
+                v.push(row(
+                    "Attachment",
+                    "Attachment Offset",
+                    mm(*offset),
+                    Kind::Number,
+                ));
+                v.push(row("Attachment", "Angle", deg(*angle), Kind::Number));
+            }
+            Feature::DatumPoint { offset, x, y, .. } => {
+                v.push(row(
+                    "Attachment",
+                    "Support",
+                    self.support_text(&o.feature),
+                    Kind::ReadOnly,
+                ));
+                v.push(row(
+                    "Attachment",
+                    "Attachment Offset",
+                    mm(*offset),
+                    Kind::Number,
+                ));
+                v.push(row("Attachment", "X", mm(*x), Kind::Number));
+                v.push(row("Attachment", "Y", mm(*y), Kind::Number));
+            }
             Feature::Sketch {
                 sketch,
-                support,
+                support: _,
                 offset,
             } => {
-                let s = match support {
-                    Support::Plane { plane } => plane.name().to_owned(),
-                    Support::Face { feature, face } => {
-                        format!("{}:{}", self.label_of(feature), face.name)
-                    }
-                };
+                let s = self.support_text(&o.feature);
                 v.push(row("Attachment", "Support", s, Kind::ReadOnly));
                 v.push(row(
                     "Attachment",
@@ -403,6 +490,7 @@ impl Cad {
                     PlaneRef::SketchH => "H_Axis".to_owned(),
                     PlaneRef::Base(p) => p.name().to_owned(),
                     PlaneRef::Face(r) => r.name.clone(),
+                    PlaneRef::Datum(d) => d.clone(),
                 };
                 v.push(row(
                     "Base",
@@ -536,7 +624,81 @@ impl Cad {
                 ));
             }
         }
+        for r in &mut v {
+            if r.kind == Kind::Number {
+                r.expression = o.expressions.get(&expression_key(r)).cloned();
+            }
+        }
         v
+    }
+
+    fn support_text(&self, f: &Feature) -> String {
+        match f.support() {
+            Some(Support::Plane { plane }) => plane.name().to_owned(),
+            Some(Support::Face { feature, face }) => {
+                format!("{}:{}", self.label_of(feature), face.name)
+            }
+            Some(Support::Datum { datum }) => self.label_of(datum),
+            None => String::new(),
+        }
+    }
+
+    /// The expression a property is bound to, or nothing.
+    pub(crate) fn expression_of(&self, object: &str, name: &str) -> String {
+        let key = self
+            .property_rows(object)
+            .into_iter()
+            .find(|r| r.name == name)
+            .map(|r| expression_key(&r))
+            .unwrap_or_else(|| name.to_owned());
+        self.doc
+            .get(object)
+            .and_then(|o| o.expressions.get(&key))
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Bind a property to an expression (an empty text unbinds it); the document is
+    /// recomputed with the expression evaluated, and a bad expression is refused.
+    pub(crate) fn set_expression(
+        &mut self,
+        object: &str,
+        name: &str,
+        text: &str,
+    ) -> Result<(), String> {
+        let row = self
+            .property_rows(object)
+            .into_iter()
+            .find(|r| r.name == name)
+            .ok_or_else(|| format!("{object} has no property {name}"))?;
+        if row.kind != Kind::Number {
+            return Err(format!("{name} cannot be bound to an expression"));
+        }
+        let key = expression_key(&row);
+        let text = text.trim().trim_start_matches('=').trim().to_owned();
+        let mut doc = self.doc.clone();
+        let o = doc.get_mut(object).ok_or("no such object")?;
+        if text.is_empty() {
+            if o.expressions.remove(&key).is_none() {
+                return Ok(());
+            }
+        } else {
+            cw_cad::expr::parse(&text)?;
+            o.expressions.insert(key.clone(), text.clone());
+            let errors = cw_cad::document::evaluate_expressions(&mut doc);
+            if let Some(e) = errors.get(&(object.to_owned(), key.clone())) {
+                return Err(format!("{name}: {e}"));
+            }
+        }
+        self.checkpoint(&format!("Set expression {name}"));
+        self.doc = doc;
+        self.recompute();
+        self.status = if text.is_empty() {
+            format!("{name} is no longer bound")
+        } else {
+            format!("{name} = {text}")
+        };
+        Ok(())
     }
 
     pub(crate) fn property_text(&self, object: &str, name: &str) -> Result<String, String> {
@@ -556,6 +718,18 @@ impl Cad {
             .into_iter()
             .find(|r| r.name == name)
             .ok_or_else(|| format!("no property {name}"))?;
+        if row.expression.is_some() {
+            // A bound value is set by its expression: the click edits that.
+            self.field = Some(Field {
+                target: FieldTarget::Expression {
+                    object,
+                    name: name.to_owned(),
+                },
+                text: row.expression.unwrap_or_default(),
+                replace: true,
+            });
+            return Ok(vec![]);
+        }
         match row.kind {
             Kind::ReadOnly => Err(format!("{name} is read-only")),
             Kind::Bool(on) => {
@@ -647,9 +821,9 @@ impl Cad {
         let o = doc.get_mut(object).ok_or("no such object")?;
         if name == "Attachment Offset" {
             let v = parse_quantity(text, false)?;
-            match &mut o.feature {
-                Feature::Sketch { offset, .. } => *offset = v,
-                _ => return Err("no attachment".into()),
+            match o.feature.attachment_offset_mut() {
+                Some(offset) => *offset = v,
+                None => return Err("no attachment".into()),
             }
         } else {
             set_feature_property(&mut o.feature, name, text)?;
@@ -826,6 +1000,16 @@ pub(crate) fn set_feature_property(f: &mut Feature, name: &str, text: &str) -> R
             }
             *occurrences = n;
         }
+        (Feature::Boolean { kind, .. }, "Type") => {
+            *kind = BoolType::by_name(text).ok_or("unknown boolean type")?
+        }
+        (
+            f @ (Feature::Primitive { .. }
+            | Feature::DatumPlane { .. }
+            | Feature::DatumLine { .. }
+            | Feature::DatumPoint { .. }),
+            name,
+        ) => f.set_number(name, num(name == "Angle")?)?,
         (_, other) => return Err(format!("{other} cannot be changed here")),
     }
     Ok(())

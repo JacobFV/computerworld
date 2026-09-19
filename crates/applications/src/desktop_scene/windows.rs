@@ -33,7 +33,7 @@ const APPS: [(&str, &str); 24] = [
     ("kicad", "KiCad 8.0"),
     ("mail", "Outlook"),
     ("calendar", "Calendar"),
-    ("chat", "Teams"),
+    ("messages", "Phone Link"),
     ("docs", "Word"),
     ("spreadsheet", "Excel"),
     ("notes", "Sticky Notes"),

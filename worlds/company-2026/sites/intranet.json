@@ -43,6 +43,74 @@
           },
           {
             "kind": "row",
+            "id": "intranet-nav",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "nav-here",
+                "text": "Home",
+                "level": 3
+              },
+              {
+                "kind": "link",
+                "id": "nav",
+                "text": "Directory",
+                "url": "http://intranet.internal/directory"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Teams",
+                "url": "http://intranet.internal/teams"
+              },
+              {
+                "kind": "link",
+                "id": "nav-3",
+                "text": "Handbook",
+                "url": "http://intranet.internal/handbook"
+              },
+              {
+                "kind": "link",
+                "id": "nav-4",
+                "text": "On-call",
+                "url": "http://intranet.internal/oncall"
+              },
+              {
+                "kind": "link",
+                "id": "nav-5",
+                "text": "HR",
+                "url": "http://intranet.internal/hr"
+              },
+              {
+                "kind": "link",
+                "id": "nav-6",
+                "text": "IT",
+                "url": "http://intranet.internal/it"
+              },
+              {
+                "kind": "link",
+                "id": "nav-7",
+                "text": "Facilities",
+                "url": "http://intranet.internal/facilities"
+              },
+              {
+                "kind": "link",
+                "id": "nav-8",
+                "text": "News",
+                "url": "http://intranet.internal/news"
+              }
+            ],
+            "gap": 12,
+            "align": "center",
+            "style": {
+              "background": "#f4f6fb",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 10
+            }
+          },
+          {
+            "kind": "row",
             "id": "banner",
             "children": [
               {
@@ -467,6 +535,3051 @@
               "radius": 10,
               "padding": 18
             }
+          },
+          {
+            "kind": "spacer",
+            "id": "ann-gap",
+            "height": 16
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "ann-title",
+            "text": "Announcements",
+            "level": 2
+          },
+          {
+            "kind": "grid",
+            "id": "announcements",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "ann-card",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ann-h",
+                    "text": "Atlas 1.0 release review moved to Thursday 5 March, 14:00",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ann-p",
+                    "text": "Priya. The release lead for this cycle is named in the handbook document on docs.internal; the checklist owner is Carol."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "ann-a",
+                    "text": "Atlas launch checklist (docs.internal)",
+                    "url": "http://docs.internal/"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ann-card-2",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ann-h-2",
+                    "text": "INC-4 postmortem published",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ann-p-2",
+                    "text": "Jonas. Twelve minutes of elevated API latency on 19 February traced to a snapshot compaction job on app-server. Action items are in OPS-7."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "ann-a-2",
+                    "text": "Incident response handbook",
+                    "url": "http://intranet.internal/handbook/incident-response"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ann-card-3",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ann-h-3",
+                    "text": "Open enrollment for the dental plan closes 13 March",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ann-p-3",
+                    "text": "Mei. Nothing to do if you are keeping last year's choices. Changes go through the HR page."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "ann-a-3",
+                    "text": "Benefits and leave",
+                    "url": "http://intranet.internal/hr"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ann-card-4",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ann-h-4",
+                    "text": "Laptop refresh: 2022 machines eligible now",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ann-p-4",
+                    "text": "Grace. If your laptop is older than four years, file a ticket and pick a model from the IT page. Turnaround is about a week."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "ann-a-4",
+                    "text": "IT help",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "week-title",
+            "text": "This week (2 to 6 March 2026)",
+            "level": 2
+          },
+          {
+            "kind": "card",
+            "id": "week",
+            "children": [
+              {
+                "kind": "text",
+                "id": "wk",
+                "text": "Mon 2 Mar, 10:00. Engineering weekly, Orion room. Priya."
+              },
+              {
+                "kind": "text",
+                "id": "wk-2",
+                "text": "Tue 3 Mar, 11:30. Support office hours with the runtime team, Vega room. Tom and Dmitri."
+              },
+              {
+                "kind": "text",
+                "id": "wk-3",
+                "text": "Wed 4 Mar, 15:00. Design review: Atlas desktop shell, Lyra room. Marcus and Leila."
+              },
+              {
+                "kind": "text",
+                "id": "wk-4",
+                "text": "Thu 5 Mar, 14:00. Atlas 1.0 release review, Orion room and the team calendar. Priya."
+              },
+              {
+                "kind": "text",
+                "id": "wk-5",
+                "text": "Fri 6 Mar, 16:30. Demo Friday and kitchen social. Everyone."
+              },
+              {
+                "kind": "link",
+                "id": "wk-cal",
+                "text": "Team calendar",
+                "url": "http://calendar.internal/"
+              }
+            ],
+            "style": {
+              "background": "#f4f6fb",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 16
+            }
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/directory": {
+        "version": 1,
+        "title": "Directory",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Directory",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "People directory",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Sixteen people across two floors of 40 Foundry Lane. Email is first name at northstar.example. Desks are floor, wing and seat: 2A-04 is the second floor, wing A, seat 4."
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 12
+          },
+          {
+            "kind": "card",
+            "id": "people",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "people-head",
+                "text": "Name | Role | Team | Email | Desk",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "people-row",
+                "text": "Rafael Costa | CEO and founder | Leadership | rafael@northstar.example | 2C-01"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-2",
+                "text": "Priya Raman | Engineering manager | Engineering | priya@northstar.example | 2A-01"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-3",
+                "text": "Alice Chen | Staff systems engineer | Engineering | alice@northstar.example | 2A-04"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-4",
+                "text": "Bob Martinez | Senior engineer | Engineering | bob@northstar.example | 2A-05"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-5",
+                "text": "Carol Nguyen | Engineer | Engineering | carol@northstar.example | 2A-06"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-6",
+                "text": "Dmitri Volkov | Engineer, runtime | Engineering | dmitri@northstar.example | 2A-07"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-7",
+                "text": "Hana Sato | Engineer, browser | Engineering | hana@northstar.example | 2A-08"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-8",
+                "text": "Nadia Petrova | Technical writer | Engineering | nadia@northstar.example | 2A-09"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-9",
+                "text": "Jonas Lindqvist | Site reliability engineer | Operations | jonas@northstar.example | 2A-10"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-10",
+                "text": "Grace Park | IT administrator | Operations | grace@northstar.example | 1A-01"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-11",
+                "text": "Marcus Webb | Head of design | Design | marcus@northstar.example | 2B-01"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-12",
+                "text": "Leila Haddad | Product designer | Design | leila@northstar.example | 2B-02"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-13",
+                "text": "Tom Okafor | Support lead | Support | tom@northstar.example | 1A-03"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-14",
+                "text": "Sofia Reyes | Support engineer | Support | sofia@northstar.example | 1A-04"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-15",
+                "text": "Ethan Brooks | Finance lead | Finance | ethan@northstar.example | 1B-02"
+              },
+              {
+                "kind": "text",
+                "id": "people-row-16",
+                "text": "Mei Tanaka | People partner | People | mei@northstar.example | 1B-01"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-4",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Looking for a team, not a person?",
+            "level": 3
+          },
+          {
+            "kind": "link",
+            "id": "to-teams",
+            "text": "Teams and what they own",
+            "url": "http://intranet.internal/teams"
+          },
+          {
+            "kind": "link",
+            "id": "to-facilities",
+            "text": "Office map and rooms",
+            "url": "http://intranet.internal/facilities"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/teams": {
+        "version": 1,
+        "title": "Teams",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Teams",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Teams",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Northstar Workshop is one product, Atlas, and six small teams around it. Every team has a lead, a chat channel and a page it owns here."
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 12
+          },
+          {
+            "kind": "grid",
+            "id": "teams",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "team",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "team-name",
+                    "text": "Engineering",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-lead",
+                    "text": "Lead: Priya Raman. Chat: #eng."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-blurb",
+                    "text": "Atlas core, the runtime, the browser and the public docs. Alice, Bob, Carol, Dmitri, Hana and Nadia."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "team-link",
+                    "text": "Team page",
+                    "url": "http://intranet.internal/handbook"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "team-2",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "team-name-2",
+                    "text": "Operations",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-lead-2",
+                    "text": "Lead: Jonas Lindqvist. Chat: #ops."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-blurb-2",
+                    "text": "app-server, git-server, the status page, backups and the on-call rotation. Grace runs IT."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "team-link-2",
+                    "text": "Team page",
+                    "url": "http://intranet.internal/oncall"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "team-3",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "team-name-3",
+                    "text": "Design",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-lead-3",
+                    "text": "Lead: Marcus Webb. Chat: #design."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-blurb-3",
+                    "text": "The desktop shell, the browser chrome, northstar.example and the brand. Leila designs the product."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "team-link-3",
+                    "text": "Team page",
+                    "url": "http://intranet.internal/facilities"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "team-4",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "team-name-4",
+                    "text": "Support",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-lead-4",
+                    "text": "Lead: Tom Okafor. Chat: #support."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-blurb-4",
+                    "text": "help.northstar.example, the ticket queue and customer escalations to engineering. Sofia handles tier two."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "team-link-4",
+                    "text": "Team page",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "team-5",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "team-name-5",
+                    "text": "Finance",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-lead-5",
+                    "text": "Lead: Ethan Brooks. Chat: #finance."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-blurb-5",
+                    "text": "Invoices, payroll, expense approval and the annual plan."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "team-link-5",
+                    "text": "Team page",
+                    "url": "http://intranet.internal/hr"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              },
+              {
+                "kind": "card",
+                "id": "team-6",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "team-name-6",
+                    "text": "People",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-lead-6",
+                    "text": "Lead: Mei Tanaka. Chat: #people."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "team-blurb-6",
+                    "text": "Hiring, onboarding, benefits, leave and the handbook outside engineering."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "team-link-6",
+                    "text": "Team page",
+                    "url": "http://intranet.internal/hr"
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-4",
+            "height": 16
+          },
+          {
+            "kind": "link",
+            "id": "eng-blog",
+            "text": "Public engineering blog",
+            "url": "http://eng.northstar.example/"
+          },
+          {
+            "kind": "link",
+            "id": "status",
+            "text": "Public status page",
+            "url": "http://status.northstar.example/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/hr": {
+        "version": 1,
+        "title": "HR: benefits, leave and expenses",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "HR",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "People and HR",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Owned by Mei Tanaka (mei@northstar.example). Payroll questions go to Ethan Brooks in Finance."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Benefits",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Health: the company pays 100% of the employee premium on the standard medical plan and 60% for dependants. Dental and vision are optional add-ons; open enrollment for 2026 closes on 13 March."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Retirement: 4% employer match on the pension plan from your first day, vested immediately."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Learning: 1,200 per person per year for books, courses and conferences. DevCon tickets come out of the engineering budget, not yours."
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Equipment: a laptop, a monitor and a chair for home. See the IT page for models."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Leave policy",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-6",
+            "text": "25 days of paid leave a year plus the company holidays, accrued monthly, up to 5 days carried into the next year. Book leave in the team calendar and tell your lead at least two weeks ahead for anything longer than three days."
+          },
+          {
+            "kind": "text",
+            "id": "t-7",
+            "text": "Sick leave is not counted against your allowance. Message your lead in the morning and rest. After five consecutive days, the People team will check in about a doctor's note."
+          },
+          {
+            "kind": "text",
+            "id": "t-8",
+            "text": "Parental leave: 16 weeks fully paid for every new parent, taken in up to two blocks in the first year."
+          },
+          {
+            "kind": "link",
+            "id": "to-holidays",
+            "text": "2026 company holidays",
+            "url": "http://intranet.internal/holidays"
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "Expense policy",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-9",
+            "text": "Anything under 75 needs a receipt and your lead's name in the memo. Over 75 needs approval from your lead before you spend. Travel is booked through Finance; meals while travelling are capped at 60 a day."
+          },
+          {
+            "kind": "text",
+            "id": "t-10",
+            "text": "Submit expenses by the 20th to be reimbursed with that month's payroll. Use the expense form on docs.internal and attach the receipt image."
+          },
+          {
+            "kind": "heading",
+            "id": "h-5",
+            "text": "Payroll dates 2026",
+            "level": 2
+          },
+          {
+            "kind": "card",
+            "id": "payroll",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "payroll-head",
+                "text": "Month | Pay date | Expense cutoff",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "payroll-row",
+                "text": "March | Fri 27 Mar | Fri 20 Mar"
+              },
+              {
+                "kind": "text",
+                "id": "payroll-row-2",
+                "text": "April | Tue 28 Apr | Mon 20 Apr"
+              },
+              {
+                "kind": "text",
+                "id": "payroll-row-3",
+                "text": "May | Thu 28 May | Wed 20 May"
+              },
+              {
+                "kind": "text",
+                "id": "payroll-row-4",
+                "text": "June | Fri 26 Jun | Mon 22 Jun"
+              },
+              {
+                "kind": "text",
+                "id": "payroll-row-5",
+                "text": "July | Tue 28 Jul | Mon 20 Jul"
+              },
+              {
+                "kind": "text",
+                "id": "payroll-row-6",
+                "text": "August | Fri 28 Aug | Thu 20 Aug"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
+          },
+          {
+            "kind": "text",
+            "id": "t-11",
+            "text": "Pay lands on the last working day on or before the 28th. Payslips are in your mail on the morning of pay day."
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 8
+          },
+          {
+            "kind": "link",
+            "id": "cal",
+            "text": "Team calendar for booking leave",
+            "url": "http://calendar.internal/"
+          },
+          {
+            "kind": "link",
+            "id": "mail",
+            "text": "Read mail",
+            "url": "http://mail.internal/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/it": {
+        "version": 1,
+        "title": "IT help",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "IT",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "IT help",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Grace Park (grace@northstar.example) runs IT. Ask in #it-help on chat for anything quick; file a ticket for anything that needs hardware or an account change."
+          },
+          {
+            "kind": "row",
+            "id": "row",
+            "children": [
+              {
+                "kind": "button",
+                "id": "tickets",
+                "text": "Open the ticket queue",
+                "action": {
+                  "method": "GET",
+                  "url": "http://issues.internal/",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "link",
+                "id": "chat",
+                "text": "Chat: #it-help",
+                "url": "http://chat.internal/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Getting a laptop",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "New starters get a laptop before day one. Current models: a 14-inch MacBook Pro (alice-mac is one), a Windows workstation (bob-windows) or an Ubuntu laptop (carol-ubuntu). Refreshes happen at four years; file a ticket titled \"Laptop refresh\" with the model you want."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "VPN",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Everything on .internal (intranet, mail, chat, docs, git, issues, calendar) is reachable from the office network without a VPN. From home, install the VPN profile from the ticket Grace sends you, connect to vpn.northstar.example, and sign in with your company account. The tunnel drops after 12 hours; reconnect."
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "Password reset",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Your company password unlocks mail, chat, docs and git. To reset it, open a ticket titled \"Password reset\" from a device that is already signed in, or come to desk 1A-01 with your badge. Grace will not reset a password over chat."
+          },
+          {
+            "kind": "heading",
+            "id": "h-5",
+            "text": "Printers",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "One printer per floor: \"Foundry-1\" outside the kitchen and \"Foundry-2\" by the Orion room. Both accept jobs from the office network by name. Toner and paper live in the cupboard under Foundry-1."
+          },
+          {
+            "kind": "heading",
+            "id": "h-6",
+            "text": "Smart speakers and the office TV",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-6",
+            "text": "The kitchen and living room speakers and the office TV are on the local network at kitchen.speaker.internal, livingroom.speaker.internal and office-tv.speaker.internal. They accept play, pause and volume from any signed-in machine. Do not put them on the guest network."
+          },
+          {
+            "kind": "link",
+            "id": "to-facilities",
+            "text": "Facilities: rooms and where the speakers are",
+            "url": "http://intranet.internal/facilities"
+          },
+          {
+            "kind": "heading",
+            "id": "h-7",
+            "text": "Ticket queue",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-7",
+            "text": "IT tickets are the OPS project on issues.internal with the \"it\" label. Say what you tried, which machine, and when it last worked. Hardware requests are handled Tuesday and Thursday afternoons."
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/holidays": {
+        "version": 1,
+        "title": "2026 company holidays",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Company holidays 2026",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "The office is closed on these days and they do not count against your leave. On-call still runs; the on-call engineer gets the day back."
+          },
+          {
+            "kind": "card",
+            "id": "holidays",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "holidays-head",
+                "text": "Date | Day | Holiday",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row",
+                "text": "1 Jan | Thursday | New Year's Day"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-2",
+                "text": "19 Jan | Monday | Martin Luther King Jr. Day"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-3",
+                "text": "16 Feb | Monday | Presidents' Day"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-4",
+                "text": "3 Apr | Friday | Spring break (company day)"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-5",
+                "text": "25 May | Monday | Memorial Day"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-6",
+                "text": "19 Jun | Friday | Juneteenth"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-7",
+                "text": "3 Jul | Friday | Independence Day (observed)"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-8",
+                "text": "7 Sep | Monday | Labor Day"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-9",
+                "text": "26 Nov | Thursday | Thanksgiving"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-10",
+                "text": "27 Nov | Friday | Day after Thanksgiving"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-11",
+                "text": "24 Dec | Thursday | Christmas Eve"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-12",
+                "text": "25 Dec | Friday | Christmas Day"
+              },
+              {
+                "kind": "text",
+                "id": "holidays-row-13",
+                "text": "31 Dec | Thursday | New Year's Eve"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 12
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "The week between Christmas and New Year is a quiet week: no releases, no meetings, and only the on-call engineer needs to watch the pager."
+          },
+          {
+            "kind": "link",
+            "id": "to-hr",
+            "text": "Leave policy",
+            "url": "http://intranet.internal/hr"
+          },
+          {
+            "kind": "link",
+            "id": "to-oncall",
+            "text": "On-call rotation",
+            "url": "http://intranet.internal/oncall"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/handbook": {
+        "version": 1,
+        "title": "Engineering handbook",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Handbook",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Engineering handbook",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "How engineering at Northstar works. Short on purpose; if a page here disagrees with what the team does, fix the page. The company-wide handbook document lives on docs.internal."
+          },
+          {
+            "kind": "grid",
+            "id": "chapters",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "hb",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "hb-title",
+                    "text": "Code review",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "hb-desc",
+                    "text": "Who reviews what, how long a review may wait, and what \"approved\" means."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://intranet.internal/handbook/code-review",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "card",
+                "id": "hb-2",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "hb-title-2",
+                    "text": "Release process",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "hb-desc-2",
+                    "text": "From a green main branch to a tagged Atlas release, including the release review."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://intranet.internal/handbook/release-process",
+                  "fields": {}
+                }
+              },
+              {
+                "kind": "card",
+                "id": "hb-3",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "hb-title-3",
+                    "text": "Incident response",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "hb-desc-3",
+                    "text": "Paging, roles, the status page and the postmortem."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d8dee9",
+                  "radius": 10,
+                  "padding": 14
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://intranet.internal/handbook/incident-response",
+                  "fields": {}
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Principles",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Determinism first. Atlas gives the same bytes back for the same seed; any change that breaks replay is a bug, whatever else it fixes."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Small changes, reviewed quickly. A pull request under 300 lines gets a review the same working day."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Tests are the contract. The internet_links and behaviors suites are release blockers; a red suite on main is everyone's problem until it is green."
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Write it down. Decisions go in the pull request or the docs, not only in chat."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Where things are",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "git",
+            "text": "Source repositories (git.internal)",
+            "url": "http://git.internal/"
+          },
+          {
+            "kind": "link",
+            "id": "gh",
+            "text": "northstar/atlas on GitHub",
+            "url": "http://github.com/"
+          },
+          {
+            "kind": "link",
+            "id": "guide",
+            "text": "Public docs and guide",
+            "url": "http://help.northstar.example/"
+          },
+          {
+            "kind": "link",
+            "id": "blog",
+            "text": "Engineering blog",
+            "url": "http://eng.northstar.example/"
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Handbook document on docs.internal",
+            "url": "http://docs.internal/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/handbook/code-review": {
+        "version": 1,
+        "title": "Code review",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Handbook",
+            "url": "http://intranet.internal/handbook"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Code review",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Every change to Atlas lands through a pull request with at least one approval from someone who did not write it. The author merges; the reviewer approves."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Who reviews",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Runtime and snapshot code: Alice or Dmitri. Browser and page rendering: Hana or Bob. Services and the synthetic internet: Carol or Bob. Docs and the public guide: Nadia. If you are unsure, ask in #eng and the first person to answer takes it."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Turnaround",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Under 300 lines: same working day. Under 1,000 lines: next working day, and consider splitting it. Over 1,000 lines: talk to Priya first; it will not get a good review as one change."
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "What approval means",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "\"Approved\" means the reviewer would be comfortable being paged for this change. Check that the behavior suites cover it, that replay still matches, and that any new page passes validate (unique element ids, known icons, heading levels 1 to 6)."
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Nitpicks are marked \"nit:\" and never block a merge. Anything that would block should say why and what would unblock it."
+          },
+          {
+            "kind": "heading",
+            "id": "h-5",
+            "text": "Author checklist",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-6",
+            "text": "One topic per pull request. Title in the imperative. Description says what changed and how you tested it. CI green, including cargo fmt and clippy. Screenshots for anything the desktop shell paints."
+          },
+          {
+            "kind": "link",
+            "id": "next",
+            "text": "Release process",
+            "url": "http://intranet.internal/handbook/release-process"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/handbook/release-process": {
+        "version": 1,
+        "title": "Release process",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Handbook",
+            "url": "http://intranet.internal/handbook"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Release process",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Atlas releases from main on a tag. Patch releases go out whenever a fix is ready; minor releases every six weeks or so; 1.0 is the one everyone is watching."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Steps",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "1. The release lead for the cycle (named in the handbook document on docs.internal) opens a release issue in OPS on issues.internal and links the checklist document."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "2. Freeze: no feature merges to main for 48 hours before the tag. Fixes are fine."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "3. Run the full suite locally and in CI: unit tests, internet_links, behaviors, and the browser and desktop scripts. All green or no release."
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "4. Release review, 30 minutes, with the lead, one reviewer from each of runtime and browser, and Tom for support. Walk the checklist. The release code goes into the checklist document only after the review."
+          },
+          {
+            "kind": "text",
+            "id": "t-6",
+            "text": "5. Tag, build the wheels and the npm package, publish, and update the status page and the changelog. Post in #general."
+          },
+          {
+            "kind": "text",
+            "id": "t-7",
+            "text": "6. Watch for 24 hours. The release lead is the first escalation for anything the release broke."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Versioning",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-8",
+            "text": "Semantic versions. A change that alters replayed bytes for an existing seed is a major version, no exceptions."
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Atlas launch checklist and handbook document",
+            "url": "http://docs.internal/"
+          },
+          {
+            "kind": "link",
+            "id": "issues",
+            "text": "Release issues (OPS)",
+            "url": "http://issues.internal/"
+          },
+          {
+            "kind": "link",
+            "id": "status",
+            "text": "Status page",
+            "url": "http://status.northstar.example/"
+          },
+          {
+            "kind": "link",
+            "id": "next",
+            "text": "Incident response",
+            "url": "http://intranet.internal/handbook/incident-response"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/handbook/incident-response": {
+        "version": 1,
+        "title": "Incident response",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Handbook",
+            "url": "http://intranet.internal/handbook"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Incident response",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "An incident is anything a customer can notice: the API down or slow, a bad release, lost data. When in doubt, declare it; a false alarm costs ten minutes, a late one costs trust."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Roles",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Incident lead: the on-call engineer until they hand off. Runs the response, decides on rollback, and is the only person who updates the status page."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Communications: whoever the lead names, usually Tom. Posts in #incidents every 15 minutes, even if the update is \"still looking\"."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Scribe: keeps a timeline in the incident issue. Every action, every time."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Steps",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "1. Page: acknowledge within 5 minutes. 2. Declare in #incidents with a number (INC-n) and open the OPS issue. 3. Update status.northstar.example within 10 minutes. 4. Mitigate first, understand later; rollback is always allowed. 5. Resolve on the status page. 6. Postmortem within five working days."
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "Postmortems",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-6",
+            "text": "Blameless. The write-up says what happened, when, what made it worse, what made it better, and the action items with owners and dates. INC-4 (19 February, snapshot compaction) is the template to copy."
+          },
+          {
+            "kind": "heading",
+            "id": "h-5",
+            "text": "Severity",
+            "level": 2
+          },
+          {
+            "kind": "card",
+            "id": "sev",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "sev-head",
+                "text": "Level | Meaning | Response",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "sev-row",
+                "text": "SEV1 | API down or data at risk | Page on-call and Jonas, all hands"
+              },
+              {
+                "kind": "text",
+                "id": "sev-row-2",
+                "text": "SEV2 | Degraded for many customers | Page on-call, update status page"
+              },
+              {
+                "kind": "text",
+                "id": "sev-row-3",
+                "text": "SEV3 | Degraded for a few, workaround exists | On-call handles in working hours"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
+          },
+          {
+            "kind": "link",
+            "id": "oncall",
+            "text": "On-call rotation and escalation",
+            "url": "http://intranet.internal/oncall"
+          },
+          {
+            "kind": "link",
+            "id": "status",
+            "text": "Status page",
+            "url": "http://status.northstar.example/"
+          },
+          {
+            "kind": "link",
+            "id": "issues",
+            "text": "OPS issues",
+            "url": "http://issues.internal/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/oncall": {
+        "version": 1,
+        "title": "On-call rotation",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "On-call",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "On-call",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "One primary and one secondary, Monday 09:00 to the next Monday 09:00. The primary carries the pager; the secondary is called if the primary does not acknowledge in 5 minutes. Swaps are fine; update this table and the calendar."
+          },
+          {
+            "kind": "card",
+            "id": "rotation",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "rotation-head",
+                "text": "Week | Primary | Secondary | Notes",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "rotation-row",
+                "text": "2 to 8 Mar | Alice Chen | Jonas Lindqvist | Atlas 1.0 release review on 5 Mar"
+              },
+              {
+                "kind": "text",
+                "id": "rotation-row-2",
+                "text": "9 to 15 Mar | Bob Martinez | Dmitri Volkov | Dental enrollment closes 13 Mar (not an incident)"
+              },
+              {
+                "kind": "text",
+                "id": "rotation-row-3",
+                "text": "16 to 22 Mar | Carol Nguyen | Alice Chen | Snapshot compaction change ships 17 Mar"
+              },
+              {
+                "kind": "text",
+                "id": "rotation-row-4",
+                "text": "23 to 29 Mar | Dmitri Volkov | Hana Sato | Payroll on 27 Mar; keep app-server quiet"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Escalation",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "1. Primary on-call (pager, 5 minutes). 2. Secondary on-call (pager, 5 minutes). 3. Jonas Lindqvist, operations lead. 4. Priya Raman, engineering manager. 5. Rafael Costa for anything customer-facing that will last more than an hour."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Customers reach on-call through support: Tom or Sofia triage help.northstar.example and page for SEV1 and SEV2 only."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Handover",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Monday 09:15 in #ops: open incidents, noisy alerts, anything scheduled for the week. Ten minutes, written down."
+          },
+          {
+            "kind": "link",
+            "id": "ir",
+            "text": "Incident response handbook",
+            "url": "http://intranet.internal/handbook/incident-response"
+          },
+          {
+            "kind": "link",
+            "id": "cal",
+            "text": "Team calendar",
+            "url": "http://calendar.internal/"
+          },
+          {
+            "kind": "link",
+            "id": "hol",
+            "text": "Company holidays",
+            "url": "http://intranet.internal/holidays"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/facilities": {
+        "version": 1,
+        "title": "Facilities",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Facilities",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Facilities",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "40 Foundry Lane, two floors. Badge in at the street door; the lift needs a badge after 19:00. Facilities questions go to Grace Park or #office on chat."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Office map",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Ground floor (1): reception and wing A on the left as you enter (support and IT, desks 1A-01 to 1A-06), wing B on the right (finance and people, 1B-01 to 1B-04), the kitchen at the back with the long table, and the living room beyond it with the sofas and the bookshelf."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "First floor (2): wing A along the windows is engineering (2A-01 to 2A-12), wing B is design (2B-01 to 2B-04), wing C at the end is Rafael's office and the quiet room. The three meeting rooms are in the middle."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Rooms",
+            "level": 2
+          },
+          {
+            "kind": "card",
+            "id": "rooms",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "rooms-head",
+                "text": "Room | Floor | Seats | Use",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "rooms-row",
+                "text": "Orion | 2 | 12 | Engineering weekly, release reviews; has the office TV"
+              },
+              {
+                "kind": "text",
+                "id": "rooms-row-2",
+                "text": "Vega | 2 | 6 | Interviews, support office hours"
+              },
+              {
+                "kind": "text",
+                "id": "rooms-row-3",
+                "text": "Lyra | 2 | 4 | Design reviews, calls"
+              },
+              {
+                "kind": "text",
+                "id": "rooms-row-4",
+                "text": "Quiet room | 2 | 2 | No meetings; heads-down work"
+              },
+              {
+                "kind": "text",
+                "id": "rooms-row-5",
+                "text": "Kitchen | 1 | 16 | Lunch, demo Friday"
+              },
+              {
+                "kind": "text",
+                "id": "rooms-row-6",
+                "text": "Living room | 1 | 8 | Reading, informal chats, the bedroom-style nap corner"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Book Orion, Vega and Lyra in the team calendar. The kitchen and living room are first come, first served."
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "Smart speakers and screens",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Kitchen speaker (kitchen.speaker.internal): by the coffee machine. Plays whatever the demo Friday playlist is; keep it below volume 6 before 17:00."
+          },
+          {
+            "kind": "text",
+            "id": "t-6",
+            "text": "Living room speaker (livingroom.speaker.internal): on the bookshelf. Quiet music only; the living room doubles as a place to rest."
+          },
+          {
+            "kind": "text",
+            "id": "t-7",
+            "text": "Office TV (office-tv.speaker.internal): in Orion. Cast slides to it from any signed-in laptop; it shows the status page when idle."
+          },
+          {
+            "kind": "text",
+            "id": "t-8",
+            "text": "Bedroom: there is no bedroom in the office. The living room nap corner is the closest thing, and the speaker there is the living room one. Home speakers are yours, not IT's."
+          },
+          {
+            "kind": "link",
+            "id": "it",
+            "text": "IT help for speaker and network problems",
+            "url": "http://intranet.internal/it"
+          },
+          {
+            "kind": "link",
+            "id": "cal",
+            "text": "Book a room in the calendar",
+            "url": "http://calendar.internal/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
+          }
+        ],
+        "theme": {
+          "accent": "#2f5fd0",
+          "background": "#ffffff",
+          "surface": "#f4f6fb",
+          "ink": "#10131a",
+          "muted": "#5b6478",
+          "content_width": 980
+        }
+      },
+      "/news": {
+        "version": 1,
+        "title": "Internal news",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Northstar Workshop",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Home",
+                    "url": "http://intranet.internal/"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Directory",
+                    "url": "http://intranet.internal/directory"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Handbook",
+                    "url": "http://intranet.internal/handbook"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "On-call",
+                    "url": "http://intranet.internal/oncall"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "HR",
+                    "url": "http://intranet.internal/hr"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "IT",
+                    "url": "http://intranet.internal/it"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "News",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#10131a",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 16
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Internal news",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Company posts, newest first. Anyone can post; send it to Nadia and it goes up the same day."
+          },
+          {
+            "kind": "card",
+            "id": "post",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "post-title",
+                "text": "Atlas 1.0 is feature complete",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "post-meta",
+                "text": "27 Feb 2026. Priya Raman."
+              },
+              {
+                "kind": "text",
+                "id": "post-body",
+                "text": "The last 1.0 item, deterministic snapshot restore across machines, merged on Thursday. From here to the tag it is fixes only. Thank you to Alice for the runtime work, Hana for the browser, and Carol for holding the checklist together. The release review is on 5 March."
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "card",
+            "id": "post-2",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "post-title-2",
+                "text": "INC-4 postmortem",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "post-meta-2",
+                "text": "24 Feb 2026. Jonas Lindqvist."
+              },
+              {
+                "kind": "text",
+                "id": "post-body-2",
+                "text": "On 19 February the API served slow responses for 12 minutes because a snapshot compaction job ran on app-server during peak. Compaction now runs at 03:00 and is capped at one core. Postmortem in OPS-7; the write-up is also the new template."
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "card",
+            "id": "post-3",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "post-title-3",
+                "text": "Welcome Nadia and Sofia",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "post-meta-3",
+                "text": "20 Feb 2026. Mei Tanaka."
+              },
+              {
+                "kind": "text",
+                "id": "post-body-3",
+                "text": "Nadia Petrova joins engineering as our first technical writer; she owns the public guide. Sofia Reyes joins support from a hardware company and has already closed eleven tickets. Say hello in #general."
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "card",
+            "id": "post-4",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "post-title-4",
+                "text": "Expense cutoffs are now the 20th",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "post-meta-4",
+                "text": "13 Feb 2026. Ethan Brooks."
+              },
+              {
+                "kind": "text",
+                "id": "post-body-4",
+                "text": "To get expenses into the same month's payroll, submit by the 20th. Anything later rolls to the next month. The payroll table on the HR page has the exact dates."
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "card",
+            "id": "post-5",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "post-title-5",
+                "text": "The new desktop shell is in the nightly",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "post-meta-5",
+                "text": "6 Feb 2026. Marcus Webb."
+              },
+              {
+                "kind": "text",
+                "id": "post-body-5",
+                "text": "The redesigned Atlas desktop shell (windows, dock, notifications) is behind a flag in the nightly build. Leila would like feedback in #design by the 20th, especially on the browser chrome."
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 10,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 8
+          },
+          {
+            "kind": "link",
+            "id": "blog",
+            "text": "Public engineering blog",
+            "url": "http://eng.northstar.example/"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Company announcements on the home page",
+            "url": "http://intranet.internal/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 20
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "text",
+            "id": "foot",
+            "text": "Questions about a page: #intranet on chat, or people@northstar.example."
           }
         ],
         "theme": {
@@ -493,6 +3606,174 @@
         "northstar",
         "handbook",
         "internal"
+      ],
+      "vertical": "all"
+    },
+    {
+      "url": "http://intranet.internal/directory",
+      "title": "Northstar Workshop: people directory",
+      "snippet": "Names, roles, teams, email addresses and desks for everyone at Northstar Workshop.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "directory",
+        "people",
+        "northstar",
+        "email",
+        "desk"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/hr",
+      "title": "Northstar HR: benefits, leave, expenses, payroll",
+      "snippet": "25 days of leave, 4% pension match, expense cutoffs on the 20th and the 2026 payroll dates.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "hr",
+        "benefits",
+        "leave",
+        "expenses",
+        "payroll"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/it",
+      "title": "Northstar IT help",
+      "snippet": "Laptops, VPN, password reset, printers, the smart speakers and the IT ticket queue.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "it",
+        "vpn",
+        "password",
+        "laptop",
+        "printer",
+        "ticket"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/holidays",
+      "title": "Northstar company holidays 2026",
+      "snippet": "The thirteen days the office is closed in 2026, from New Year's Day to New Year's Eve.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "holidays",
+        "2026",
+        "office closed",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/handbook",
+      "title": "Northstar engineering handbook",
+      "snippet": "Code review, the release process and incident response for the Atlas team.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "handbook",
+        "engineering",
+        "atlas",
+        "process"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/handbook/code-review",
+      "title": "Handbook: code review",
+      "snippet": "Who reviews what, turnaround times and what approval means at Northstar.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "code review",
+        "pull request",
+        "approval",
+        "handbook"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/handbook/release-process",
+      "title": "Handbook: release process",
+      "snippet": "Freeze, full suite, release review, tag and publish: how an Atlas release ships.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "release",
+        "process",
+        "atlas",
+        "tag",
+        "checklist"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/handbook/incident-response",
+      "title": "Handbook: incident response",
+      "snippet": "Roles, steps, severities and blameless postmortems, with INC-4 as the template.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "incident",
+        "response",
+        "postmortem",
+        "sev1",
+        "status"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/oncall",
+      "title": "Northstar on-call rotation",
+      "snippet": "Primary and secondary on-call for the next four weeks of March 2026 and the escalation path.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "on-call",
+        "oncall",
+        "rotation",
+        "escalation",
+        "pager"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/teams",
+      "title": "Northstar teams",
+      "snippet": "Engineering, Operations, Design, Support, Finance and People: leads, channels and what each owns.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "teams",
+        "engineering",
+        "design",
+        "support",
+        "operations"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/facilities",
+      "title": "Northstar facilities: office map, rooms and speakers",
+      "snippet": "40 Foundry Lane: the office map, meeting rooms, and the kitchen, living room and office TV speakers.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "facilities",
+        "office",
+        "rooms",
+        "speaker",
+        "kitchen",
+        "living room",
+        "office tv"
+      ]
+    },
+    {
+      "url": "http://intranet.internal/news",
+      "title": "Northstar internal news",
+      "snippet": "Atlas 1.0 feature complete, the INC-4 postmortem, new starters and the expense cutoff change.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "news",
+        "internal",
+        "atlas 1.0",
+        "announcements"
       ]
     }
   ]

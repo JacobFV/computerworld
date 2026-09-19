@@ -1,0 +1,37 @@
+{
+  "source": "file:///home/brandonin/Documents/computerworld/scripts/dom-to-site/fixtures/news.html",
+  "dropped": [
+    {
+      "tag": "div",
+      "id": "ad-leaderboard",
+      "class": "ad-banner",
+      "why": "ad/tracker pattern"
+    }
+  ],
+  "inline_links_dropped": [],
+  "notes": [
+    "press seed synthesised: 7 articles, 5 sections"
+  ],
+  "detected_kind": {
+    "kind": "press",
+    "confidence": 0.96,
+    "signals": {
+      "press": 25,
+      "shop": 0,
+      "forum": 0,
+      "docs": 0,
+      "mail": 1,
+      "social": 0
+    }
+  },
+  "theme": {
+    "accent": "#1a5fb4",
+    "background": "#fafaf7",
+    "surface": "#ffffff",
+    "ink": "#4c5366",
+    "muted": "#1c1f26",
+    "content_width": 1040
+  },
+  "element_count": null,
+  "validation": "ok"
+}

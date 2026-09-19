@@ -1,6 +1,6 @@
 // Live machines on the page. One Wasm module, a world per scene, one session per machine
 // and a canvas each. Nothing is fetched after boot: every frame is rendered here, in this tab.
-import init, { World } from './demo/pkg/web/computerworld.js';
+import init, { World, installFont, fontPackStatus } from './demo/pkg/web/computerworld.js';
 import definition from './demo/examples/browser/world-definition.js';
 
 const SEED = 2026;
@@ -87,11 +87,17 @@ function wire(tile, env, machine, size, after) {
       pointer_type: e.pointerType || 'mouse',
     };
   };
+  // A desktop paints its own pointer into the frame, so a mouse over it hides the host's;
+  // a phone paints none, and there the host cursor still follows the machine's hint.
+  const phone = tile.classList.contains('phone');
+  let hint = 'default';
+  const showCursor = e => { canvas.style.cursor = !phone && e.pointerType === 'mouse' ? 'none' : hint; };
   const send = (family, op, payload) => {
     try {
       const result = env.step([{ family, op, machine, payload }]);
       const cursor = result.outcomes[0]?.value?.cursor;
-      if (cursor) canvas.style.cursor = cursor;
+      if (cursor && canvas.style.cursor !== 'none') canvas.style.cursor = cursor;
+      if (cursor) hint = cursor;
     } catch (error) {
       console.warn(machine, error);
     }
@@ -99,6 +105,8 @@ function wire(tile, env, machine, size, after) {
   };
 
   let gesture = null, queued = null, frame = 0;
+  canvas.addEventListener('pointerenter', showCursor);
+  canvas.addEventListener('pointerleave', e => { if (gesture === null) canvas.style.cursor = hint; else showCursor(e); });
   canvas.addEventListener('pointerdown', e => {
     e.preventDefault();
     canvas.focus();
@@ -107,13 +115,15 @@ function wire(tile, env, machine, size, after) {
     send('pointer.v1', 'down', at(e));
   });
   canvas.addEventListener('pointermove', e => {
-    if (gesture !== e.pointerId) return;
+    // A mouse moves the machine's pointer as it hovers; a finger only while it drags.
+    if (gesture === null ? e.pointerType !== 'mouse' : gesture !== e.pointerId) return;
+    showCursor(e);
     queued = at(e);
     if (!frame) frame = requestAnimationFrame(() => { frame = 0; if (queued) { send('pointer.v1', 'move', queued); queued = null; } });
   });
   canvas.addEventListener('pointerup', e => {
     if (gesture !== e.pointerId) return;
-    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+    if (frame) { cancelAnimationFrame(frame); frame = 0; queued = null; }
     send('pointer.v1', 'up', at(e));
     gesture = null;
     canvas.releasePointerCapture(e.pointerId);
@@ -145,6 +155,25 @@ export async function boot(note) {
   note('Downloading the simulator, about 10 MB…');
   await init();
   const running = new Map();   // scene id → { booting, stop }, least recently shown first
+  const redraws = new Set();   // every running scene's repaint, for when a font lands
+
+  // The Wasm build does not embed the CJK and emoji faces; layout is final without them,
+  // but their glyphs draw as boxes until the file is installed. Emoji are everywhere
+  // (Slack reactions, message tapbacks), so those two come first and the rest follow in
+  // the background; every running scene is repainted as each file lands.
+  const fontPack = (async () => {
+    const pending = fontPackStatus().files.filter(f => !f.installed);
+    const first = new Set(['noto-emoji.ttf', 'noto-color-emoji.ttf', 'noto-sans-sc.ttf', 'noto-sans-kr.ttf']);
+    const fetchFonts = files => Promise.all(files.map(async f => {
+      try {
+        const r = await fetch(new URL(`./demo/pkg/web/${f.path}`, import.meta.url));
+        if (r.ok) { installFont(new Uint8Array(await r.arrayBuffer())); redraws.forEach(redraw => redraw()); }
+      } catch (error) { console.warn('font pack', f.file, error); }
+    }));
+    await fetchFonts(pending.filter(f => first.has(f.file)));
+    await fetchFonts(pending.filter(f => !first.has(f.file)));
+  })();
+  window.computerworldFonts = fontPack;
 
   /** Stop the scenes shown longest ago. Their screens stay as they were left, as pictures. */
   function retire() {
@@ -189,8 +218,10 @@ export async function boot(note) {
         }));
       }
       redraw();
+      redraws.add(redraw);
       for (const m of machines) { m.tile.classList.add('live'); note('', m.id); }
       entry.stop = () => {
+        redraws.delete(redraw);
         for (const m of machines) {
           // A copy of the last frame, with none of the listeners that drove the machine.
           const canvas = m.tile.querySelector('canvas');

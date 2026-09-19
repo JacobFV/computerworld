@@ -86,4 +86,6 @@ with deterministic desktop/mobile chrome in Rust. `UiText` is proportional and p
 its face from `Scene::typeface` — Inter, Open Sans, Ubuntu or Roboto per platform,
 DejaVu Sans as the fallback. `RoundedBox` supplies antialiased rounded surfaces with
 matching hit tests. Existing `Text` and its golden pixels remain unchanged. Application nodes
-can now have translated scene coordinates inside window content clips.
+can now have translated scene coordinates inside window content clips. The mouse pointer
+is part of a desktop frame: a `Path` glyph at the last pointer position, shaped for what is
+under it (see [Pointer](desktop-gui.md#pointer)); phones draw none.

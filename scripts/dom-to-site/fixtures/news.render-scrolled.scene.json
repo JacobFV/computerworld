@@ -1,0 +1,1171 @@
+{
+ "width": 1280,
+ "height": 800,
+ "scroll": 700,
+ "crop": {
+  "x": 110,
+  "y": 0,
+  "width": 1060,
+  "height": 800
+ },
+ "url": "http://meridian.example/",
+ "nodes": [
+  {
+   "id": 1743679770169520,
+   "role": "text",
+   "label": "The Meridian Ledger",
+   "value": null,
+   "bounds": {
+    "height": 34,
+    "width": 337,
+    "x": 134,
+    "y": -669
+   },
+   "interaction": null
+  },
+  {
+   "id": 1194231086620272,
+   "role": "link",
+   "label": "Front page",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 90,
+    "x": 583,
+    "y": -670
+   },
+   "interaction": "front-page-link"
+  },
+  {
+   "id": 1938297206343392,
+   "role": "text",
+   "label": "Front page",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 90,
+    "x": 583,
+    "y": -670
+   },
+   "interaction": null
+  },
+  {
+   "id": 1144785515016304,
+   "role": "link",
+   "label": "World",
+   "value": null,
+   "bounds": {
+    "height": 30,
+    "width": 50,
+    "x": 739,
+    "y": -670
+   },
+   "interaction": "world-link"
+  },
+  {
+   "id": 866327592319312,
+   "role": "text",
+   "label": "World",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 50,
+    "x": 739,
+    "y": -670
+   },
+   "interaction": null
+  },
+  {
+   "id": 1062896444329760,
+   "role": "link",
+   "label": "Business",
+   "value": null,
+   "bounds": {
+    "height": 30,
+    "width": 70,
+    "x": 807,
+    "y": -670
+   },
+   "interaction": "business-link"
+  },
+  {
+   "id": 1733850225112592,
+   "role": "text",
+   "label": "Business",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 70,
+    "x": 807,
+    "y": -670
+   },
+   "interaction": null
+  },
+  {
+   "id": 1501476812180336,
+   "role": "link",
+   "label": "Technology",
+   "value": null,
+   "bounds": {
+    "height": 30,
+    "width": 90,
+    "x": 895,
+    "y": -670
+   },
+   "interaction": "technology-link"
+  },
+  {
+   "id": 695816311574512,
+   "role": "text",
+   "label": "Technology",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 90,
+    "x": 895,
+    "y": -670
+   },
+   "interaction": null
+  },
+  {
+   "id": 544447923516992,
+   "role": "link",
+   "label": "Culture",
+   "value": null,
+   "bounds": {
+    "height": 30,
+    "width": 60,
+    "x": 1003,
+    "y": -670
+   },
+   "interaction": "culture-link"
+  },
+  {
+   "id": 648032626988768,
+   "role": "text",
+   "label": "Culture",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 60,
+    "x": 1003,
+    "y": -670
+   },
+   "interaction": null
+  },
+  {
+   "id": 1487906972868064,
+   "role": "link",
+   "label": "Opinion",
+   "value": null,
+   "bounds": {
+    "height": 30,
+    "width": 65,
+    "x": 1081,
+    "y": -670
+   },
+   "interaction": "opinion-link"
+  },
+  {
+   "id": 1661858476892256,
+   "role": "text",
+   "label": "Opinion",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 65,
+    "x": 1081,
+    "y": -670
+   },
+   "interaction": null
+  },
+  {
+   "id": 1387597109279616,
+   "role": "text",
+   "label": "BREAKING · Council approves the harbour redevelopment plan after a nine-hour session",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 1028,
+    "x": 126,
+    "y": -608
+   },
+   "interaction": null
+  },
+  {
+   "id": 883579095152896,
+   "role": "img",
+   "label": "The harbour at dusk, cranes idle over the redevelopment site",
+   "value": null,
+   "bounds": {
+    "height": 260,
+    "width": 618,
+    "x": 156,
+    "y": -504
+   },
+   "interaction": null
+  },
+  {
+   "id": 1889373302216272,
+   "role": "text",
+   "label": "LIVE",
+   "value": null,
+   "bounds": {
+    "height": 29,
+    "width": 43,
+    "x": 156,
+    "y": -232
+   },
+   "interaction": null
+  },
+  {
+   "id": 2004658585842000,
+   "role": "text",
+   "label": "Harbour plan passes as council splits down the middle",
+   "value": null,
+   "bounds": {
+    "height": 78,
+    "width": 618,
+    "x": 156,
+    "y": -197
+   },
+   "interaction": null
+  },
+  {
+   "id": 198314295340416,
+   "role": "text",
+   "label": "Nine hours of testimony, one deciding vote and a promise that the fishing fleet keeps its berths. What the plan changes, and what it does not.",
+   "value": null,
+   "bounds": {
+    "height": 42,
+    "width": 618,
+    "x": 156,
+    "y": -113
+   },
+   "interaction": null
+  },
+  {
+   "id": 1534239787309728,
+   "role": "text",
+   "label": "By Ines Okafor and Tomas Reyes · 14 minutes ago",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 618,
+    "x": 156,
+    "y": -65
+   },
+   "interaction": null
+  },
+  {
+   "id": 392765820467552,
+   "role": "text",
+   "label": "Briefs",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 298,
+    "x": 830,
+    "y": -508
+   },
+   "interaction": null
+  },
+  {
+   "id": 1582077696281424,
+   "role": "link",
+   "label": "Ferry crews vote to strike from Monday",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 298,
+    "x": 830,
+    "y": -483
+   },
+   "interaction": "ferry-crews-vote-to-stri-2"
+  },
+  {
+   "id": 591415610107552,
+   "role": "text",
+   "label": "Ferry crews vote to strike from Monday",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 298,
+    "x": 830,
+    "y": -483
+   },
+   "interaction": null
+  },
+  {
+   "id": 2033955771296032,
+   "role": "link",
+   "label": "Grain prices settle after a jittery week",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 298,
+    "x": 830,
+    "y": -441
+   },
+   "interaction": "grain-prices-settle-afte-2"
+  },
+  {
+   "id": 800711368582096,
+   "role": "text",
+   "label": "Grain prices settle after a jittery week",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 298,
+    "x": 830,
+    "y": -441
+   },
+   "interaction": null
+  },
+  {
+   "id": 349072144850304,
+   "role": "link",
+   "label": "Atlas 1.0 ships with a replayable machine",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 298,
+    "x": 830,
+    "y": -399
+   },
+   "interaction": "atlas-1-0-ships-with-a-r-2"
+  },
+  {
+   "id": 231353931514240,
+   "role": "text",
+   "label": "Atlas 1.0 ships with a replayable machine",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 298,
+    "x": 830,
+    "y": -399
+   },
+   "interaction": null
+  },
+  {
+   "id": 827176750594448,
+   "role": "link",
+   "label": "Lantern festival draws a record crowd",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 298,
+    "x": 830,
+    "y": -357
+   },
+   "interaction": "lantern-festival-draws-a-2"
+  },
+  {
+   "id": 153005977174656,
+   "role": "text",
+   "label": "Lantern festival draws a record crowd",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 298,
+    "x": 830,
+    "y": -357
+   },
+   "interaction": null
+  },
+  {
+   "id": 489623713947408,
+   "role": "link",
+   "label": "Opinion: the case for quieter streets",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 298,
+    "x": 830,
+    "y": -315
+   },
+   "interaction": "opinion-the-case-for-qui-2"
+  },
+  {
+   "id": 777607263130720,
+   "role": "text",
+   "label": "Opinion: the case for quieter streets",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 298,
+    "x": 830,
+    "y": -315
+   },
+   "interaction": null
+  },
+  {
+   "id": 1858448548617024,
+   "role": "text",
+   "label": "Top stories",
+   "value": null,
+   "bounds": {
+    "height": 26,
+    "width": 1008,
+    "x": 136,
+    "y": -7
+   },
+   "interaction": null
+  },
+  {
+   "id": 412168376386496,
+   "role": "img",
+   "label": "A row of wind turbines on a ridge",
+   "value": null,
+   "bounds": {
+    "height": 140,
+    "width": 325,
+    "x": 136,
+    "y": 25
+   },
+   "interaction": null
+  },
+  {
+   "id": 1417755871877552,
+   "role": "text",
+   "label": "Business",
+   "value": null,
+   "bounds": {
+    "height": 29,
+    "width": 68,
+    "x": 150,
+    "y": 191
+   },
+   "interaction": null
+  },
+  {
+   "id": 1649641157614576,
+   "role": "link",
+   "label": "Wind auction draws four bidders",
+   "value": null,
+   "bounds": {
+    "height": 15,
+    "width": 297,
+    "x": 150,
+    "y": 226
+   },
+   "interaction": "wind-auction-draws-four--2"
+  },
+  {
+   "id": 545795342730832,
+   "role": "text",
+   "label": "Wind auction draws four bidders",
+   "value": null,
+   "bounds": {
+    "height": 21,
+    "width": 297,
+    "x": 150,
+    "y": 226
+   },
+   "interaction": null
+  },
+  {
+   "id": 1058843972942032,
+   "role": "text",
+   "label": "The ridge lease attracted more interest than any since 2019, the ministry said.",
+   "value": null,
+   "bounds": {
+    "height": 34,
+    "width": 297,
+    "x": 150,
+    "y": 253
+   },
+   "interaction": null
+  },
+  {
+   "id": 1710372974273136,
+   "role": "text",
+   "label": "Priya Natarajan",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 297,
+    "x": 150,
+    "y": 293
+   },
+   "interaction": null
+  },
+  {
+   "id": 1420289765294560,
+   "role": "img",
+   "label": "Students outside the new library",
+   "value": null,
+   "bounds": {
+    "height": 140,
+    "width": 325,
+    "x": 477,
+    "y": 25
+   },
+   "interaction": null
+  },
+  {
+   "id": 726141876442208,
+   "role": "text",
+   "label": "Culture",
+   "value": null,
+   "bounds": {
+    "height": 29,
+    "width": 60,
+    "x": 491,
+    "y": 191
+   },
+   "interaction": null
+  },
+  {
+   "id": 756715388446928,
+   "role": "link",
+   "label": "The new library opens its doors",
+   "value": null,
+   "bounds": {
+    "height": 15,
+    "width": 297,
+    "x": 491,
+    "y": 226
+   },
+   "interaction": "the-new-library-opens-it-2"
+  },
+  {
+   "id": 1619209476683104,
+   "role": "text",
+   "label": "The new library opens its doors",
+   "value": null,
+   "bounds": {
+    "height": 21,
+    "width": 297,
+    "x": 491,
+    "y": 226
+   },
+   "interaction": null
+  },
+  {
+   "id": 1001148660344496,
+   "role": "text",
+   "label": "Twelve years after the fire, the reading rooms are back, with a roof garden on top.",
+   "value": null,
+   "bounds": {
+    "height": 34,
+    "width": 297,
+    "x": 491,
+    "y": 253
+   },
+   "interaction": null
+  },
+  {
+   "id": 942853112606624,
+   "role": "text",
+   "label": "Sam Whitfield",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 297,
+    "x": 491,
+    "y": 293
+   },
+   "interaction": null
+  },
+  {
+   "id": 1805220661702416,
+   "role": "img",
+   "label": "A laptop showing a terminal",
+   "value": null,
+   "bounds": {
+    "height": 140,
+    "width": 325,
+    "x": 818,
+    "y": 25
+   },
+   "interaction": null
+  },
+  {
+   "id": 131416298552608,
+   "role": "text",
+   "label": "Technology",
+   "value": null,
+   "bounds": {
+    "height": 29,
+    "width": 83,
+    "x": 832,
+    "y": 191
+   },
+   "interaction": null
+  },
+  {
+   "id": 342475075081040,
+   "role": "link",
+   "label": "Atlas 1.0 ships with a replayable machine",
+   "value": null,
+   "bounds": {
+    "height": 36,
+    "width": 297,
+    "x": 832,
+    "y": 226
+   },
+   "interaction": "atlas-1-0-ships-with-a-r-4"
+  },
+  {
+   "id": 350171656478512,
+   "role": "text",
+   "label": "Atlas 1.0 ships with a replayable machine",
+   "value": null,
+   "bounds": {
+    "height": 42,
+    "width": 297,
+    "x": 832,
+    "y": 226
+   },
+   "interaction": null
+  },
+  {
+   "id": 1365737501426016,
+   "role": "text",
+   "label": "The simulator refuses to read a clock, and that turns out to be the whole product.",
+   "value": null,
+   "bounds": {
+    "height": 34,
+    "width": 297,
+    "x": 832,
+    "y": 274
+   },
+   "interaction": null
+  },
+  {
+   "id": 29342560353824,
+   "role": "text",
+   "label": "Jonathan Hale",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 297,
+    "x": 832,
+    "y": 314
+   },
+   "interaction": null
+  },
+  {
+   "id": 1746451840869536,
+   "role": "text",
+   "label": "Latest",
+   "value": null,
+   "bounds": {
+    "height": 32,
+    "width": 656,
+    "x": 136,
+    "y": 366
+   },
+   "interaction": null
+  },
+  {
+   "id": 1579878673025008,
+   "role": "link",
+   "label": "Ferry crews vote to strike from Monday",
+   "value": null,
+   "bounds": {
+    "height": 18,
+    "width": 656,
+    "x": 136,
+    "y": 412
+   },
+   "interaction": "ferry-crews-vote-to-stri-4"
+  },
+  {
+   "id": 1580978184653216,
+   "role": "text",
+   "label": "Ferry crews vote to strike from Monday",
+   "value": null,
+   "bounds": {
+    "height": 24,
+    "width": 656,
+    "x": 136,
+    "y": 412
+   },
+   "interaction": null
+  },
+  {
+   "id": 1882857033325536,
+   "role": "text",
+   "label": "The union says the new roster leaves crews with nine-day stretches at sea; the operator says the roster is legal and the ferries will run.",
+   "value": null,
+   "bounds": {
+    "height": 38,
+    "width": 656,
+    "x": 136,
+    "y": 442
+   },
+   "interaction": null
+  },
+  {
+   "id": 469755758209776,
+   "role": "text",
+   "label": "World · 1 hour ago",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 656,
+    "x": 136,
+    "y": 486
+   },
+   "interaction": null
+  },
+  {
+   "id": 2036154794552448,
+   "role": "link",
+   "label": "Grain prices settle after a jittery week",
+   "value": null,
+   "bounds": {
+    "height": 18,
+    "width": 656,
+    "x": 136,
+    "y": 525
+   },
+   "interaction": "grain-prices-settle-afte-4"
+  },
+  {
+   "id": 2032856259667824,
+   "role": "text",
+   "label": "Grain prices settle after a jittery week",
+   "value": null,
+   "bounds": {
+    "height": 24,
+    "width": 656,
+    "x": 136,
+    "y": 525
+   },
+   "interaction": null
+  },
+  {
+   "id": 1387375831979376,
+   "role": "text",
+   "label": "Futures closed within a cent of Monday's open after a week that saw two of the biggest daily swings of the year.",
+   "value": null,
+   "bounds": {
+    "height": 38,
+    "width": 656,
+    "x": 136,
+    "y": 555
+   },
+   "interaction": null
+  },
+  {
+   "id": 1068164083726800,
+   "role": "text",
+   "label": "Business · 2 hours ago",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 656,
+    "x": 136,
+    "y": 599
+   },
+   "interaction": null
+  },
+  {
+   "id": 820579680825184,
+   "role": "link",
+   "label": "Lantern festival draws a record crowd",
+   "value": null,
+   "bounds": {
+    "height": 18,
+    "width": 656,
+    "x": 136,
+    "y": 638
+   },
+   "interaction": "lantern-festival-draws-a-4"
+  },
+  {
+   "id": 826077238966240,
+   "role": "text",
+   "label": "Lantern festival draws a record crowd",
+   "value": null,
+   "bounds": {
+    "height": 24,
+    "width": 656,
+    "x": 136,
+    "y": 638
+   },
+   "interaction": null
+  },
+  {
+   "id": 192229505566704,
+   "role": "text",
+   "label": "Organisers counted forty thousand lanterns on the river, and a few in the trees.",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 656,
+    "x": 136,
+    "y": 668
+   },
+   "interaction": null
+  },
+  {
+   "id": 1095018509940704,
+   "role": "text",
+   "label": "Culture · 3 hours ago",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 656,
+    "x": 136,
+    "y": 693
+   },
+   "interaction": null
+  },
+  {
+   "id": 487424690690992,
+   "role": "link",
+   "label": "Opinion: the case for quieter streets",
+   "value": null,
+   "bounds": {
+    "height": 18,
+    "width": 656,
+    "x": 136,
+    "y": 732
+   },
+   "interaction": "opinion-the-case-for-qui-4"
+  },
+  {
+   "id": 488524202319200,
+   "role": "text",
+   "label": "Opinion: the case for quieter streets",
+   "value": null,
+   "bounds": {
+    "height": 24,
+    "width": 656,
+    "x": 136,
+    "y": 732
+   },
+   "interaction": null
+  },
+  {
+   "id": 414282301896176,
+   "role": "text",
+   "label": "Closing three streets to through traffic did not create gridlock. It created a place people wanted to stand around in.",
+   "value": null,
+   "bounds": {
+    "height": 38,
+    "width": 656,
+    "x": 136,
+    "y": 762
+   },
+   "interaction": null
+  },
+  {
+   "id": 518162515142816,
+   "role": "text",
+   "label": "Opinion · 5 hours ago",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 656,
+    "x": 136,
+    "y": 806
+   },
+   "interaction": null
+  },
+  {
+   "id": 1567000761398864,
+   "role": "text",
+   "label": "Newsletter",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 296,
+    "x": 832,
+    "y": 382
+   },
+   "interaction": null
+  },
+  {
+   "id": 1239923129367553,
+   "role": "textbox",
+   "label": "Email address",
+   "value": "",
+   "bounds": {
+    "height": 36,
+    "width": 264,
+    "x": 848,
+    "y": 444
+   },
+   "interaction": "email"
+  },
+  {
+   "id": 1133785554115760,
+   "role": "button",
+   "label": "Subscribe",
+   "value": null,
+   "bounds": {
+    "height": 34,
+    "width": 97,
+    "x": 848,
+    "y": 493
+   },
+   "interaction": "subscribe-submit"
+  },
+  {
+   "id": 568632661516416,
+   "role": "text",
+   "label": "Most read",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 296,
+    "x": 832,
+    "y": 583
+   },
+   "interaction": null
+  },
+  {
+   "id": 203223521226384,
+   "role": "link",
+   "label": "1. Ferry crews vote to strike",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 260,
+    "x": 850,
+    "y": 626
+   },
+   "interaction": "1-ferry-crews-vote-to-st-2"
+  },
+  {
+   "id": 2198467243638736,
+   "role": "text",
+   "label": "1. Ferry crews vote to strike",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 260,
+    "x": 850,
+    "y": 626
+   },
+   "interaction": null
+  },
+  {
+   "id": 945209000863328,
+   "role": "link",
+   "label": "2. Wind auction draws four bidders",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 260,
+    "x": 850,
+    "y": 651
+   },
+   "interaction": "2-wind-auction-draws-fou-2"
+  },
+  {
+   "id": 498518355080672,
+   "role": "text",
+   "label": "2. Wind auction draws four bidders",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 260,
+    "x": 850,
+    "y": 651
+   },
+   "interaction": null
+  },
+  {
+   "id": 2123626833967648,
+   "role": "link",
+   "label": "3. Atlas 1.0 ships",
+   "value": null,
+   "bounds": {
+    "height": 13,
+    "width": 260,
+    "x": 850,
+    "y": 676
+   },
+   "interaction": "3-atlas-1-0-ships-link"
+  },
+  {
+   "id": 2227211537439424,
+   "role": "text",
+   "label": "3. Atlas 1.0 ships",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 260,
+    "x": 850,
+    "y": 676
+   },
+   "interaction": null
+  },
+  {
+   "id": 159462282888944,
+   "role": "text",
+   "label": "17°",
+   "value": null,
+   "bounds": {
+    "height": 37,
+    "width": 56,
+    "x": 832,
+    "y": 754
+   },
+   "interaction": null
+  },
+  {
+   "id": 180371145927136,
+   "role": "text",
+   "label": "Light rain, clearing by evening",
+   "value": null,
+   "bounds": {
+    "height": 17,
+    "width": 228,
+    "x": 900,
+    "y": 751
+   },
+   "interaction": null
+  },
+  {
+   "id": 1350336437021616,
+   "role": "link",
+   "label": "Full forecast",
+   "value": null,
+   "bounds": {
+    "height": 15,
+    "width": 109,
+    "x": 900,
+    "y": 774
+   },
+   "interaction": "full-forecast-link"
+  },
+  {
+   "id": 638083511201984,
+   "role": "text",
+   "label": "Full forecast",
+   "value": null,
+   "bounds": {
+    "height": 21,
+    "width": 109,
+    "x": 900,
+    "y": 774
+   },
+   "interaction": null
+  },
+  {
+   "id": 1530575990755600,
+   "role": "link",
+   "label": "About",
+   "value": null,
+   "bounds": {
+    "height": 10,
+    "width": 44,
+    "x": 144,
+    "y": 905
+   },
+   "interaction": "about-link"
+  },
+  {
+   "id": 415415526381888,
+   "role": "text",
+   "label": "About",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 44,
+    "x": 144,
+    "y": 905
+   },
+   "interaction": null
+  },
+  {
+   "id": 1756860323459008,
+   "role": "link",
+   "label": "Contact",
+   "value": null,
+   "bounds": {
+    "height": 10,
+    "width": 54,
+    "x": 204,
+    "y": 905
+   },
+   "interaction": "contact-link"
+  },
+  {
+   "id": 599944131550976,
+   "role": "text",
+   "label": "Contact",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 54,
+    "x": 204,
+    "y": 905
+   },
+   "interaction": null
+  },
+  {
+   "id": 449080441908304,
+   "role": "link",
+   "label": "Privacy",
+   "value": null,
+   "bounds": {
+    "height": 10,
+    "width": 53,
+    "x": 274,
+    "y": 905
+   },
+   "interaction": "privacy-link"
+  },
+  {
+   "id": 909493639732016,
+   "role": "text",
+   "label": "Privacy",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 53,
+    "x": 274,
+    "y": 905
+   },
+   "interaction": null
+  },
+  {
+   "id": 805555192763344,
+   "role": "link",
+   "label": "Terms",
+   "value": null,
+   "bounds": {
+    "height": 10,
+    "width": 44,
+    "x": 343,
+    "y": 905
+   },
+   "interaction": "terms-link"
+  },
+  {
+   "id": 563913671632048,
+   "role": "text",
+   "label": "Terms",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 44,
+    "x": 343,
+    "y": 905
+   },
+   "interaction": null
+  },
+  {
+   "id": 281464542021840,
+   "role": "text",
+   "label": "© 2026 The Meridian Ledger. A fictional newspaper used as a conversion fixture.",
+   "value": null,
+   "bounds": {
+    "height": 16,
+    "width": 992,
+    "x": 144,
+    "y": 927
+   },
+   "interaction": null
+  }
+ ]
+}

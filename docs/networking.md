@@ -7,7 +7,10 @@ own request; cached pages remain snapshots of received content.
 
 Each computer has its own node identity and address. Network definitions contain
 links, routes, DNS records, placement and gateway policy. Service instances bind
-at their configured node/port and own domain names. The network distinguishes
+at their configured node/port and own domain names; unless a service sets
+`tls: false` it also listens on 443, so `https://` reaches the same handler as
+`http://` and the browser shows whichever scheme was asked for (the first
+service placed on a node owns that node's 443). The network distinguishes
 local, synthetic internet and host zones. DNS cache expiry and link latency use
 logical microseconds; configured loss uses seeded simulation state. Links are
 required unless `network.implicit_lan` is explicitly true (default false). DNS

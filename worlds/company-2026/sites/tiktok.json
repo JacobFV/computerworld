@@ -1,0 +1,1360 @@
+{
+  "id": "tiktok",
+  "kind": "media",
+  "node": "tiktok",
+  "domains": [
+    "tiktok.com",
+    "www.tiktok.com",
+    "m.tiktok.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "video",
+    "brand": "TikTok",
+    "tagline": "Short videos, one after another.",
+    "theme": {
+      "accent": "#fe2c55",
+      "background": "#000000",
+      "surface": "#161823",
+      "ink": "#ffffff",
+      "muted": "#a8a8b0",
+      "content_width": 1120
+    },
+    "channels": {
+      "minutemeals": {
+        "id": "minutemeals",
+        "name": "Minute Meals",
+        "handle": "@minutemeals",
+        "owner": null,
+        "subscribers": 2140000,
+        "about": "One pan, one minute, no talking. Recipes in the caption."
+      },
+      "deskcat": {
+        "id": "deskcat",
+        "name": "Desk Cat Diaries",
+        "handle": "@deskcat",
+        "owner": null,
+        "subscribers": 3880000,
+        "about": "A grey cat named Pixel who sits on keyboards for a living."
+      },
+      "codewithjun": {
+        "id": "codewithjun",
+        "name": "Code With Jun",
+        "handle": "@codewithjun",
+        "owner": null,
+        "subscribers": 912000,
+        "about": "Sixty-second programming lessons. Rust, Python and the occasional regex."
+      },
+      "stitchlab": {
+        "id": "stitchlab",
+        "name": "Stitch Lab",
+        "handle": "@stitchlab",
+        "owner": null,
+        "subscribers": 1560000,
+        "about": "Thrift flips and sewing hacks. Machines optional."
+      },
+      "citywalks": {
+        "id": "citywalks",
+        "name": "City Walks",
+        "handle": "@citywalks",
+        "owner": null,
+        "subscribers": 704000,
+        "about": "Silent walks through cities at golden hour. No narration, just streets."
+      },
+      "plantparent": {
+        "id": "plantparent",
+        "name": "Plant Parent",
+        "handle": "@plantparent",
+        "owner": null,
+        "subscribers": 1230000,
+        "about": "Keeping houseplants alive with a spreadsheet and a spray bottle."
+      },
+      "trickshotmax": {
+        "id": "trickshotmax",
+        "name": "Trickshot Max",
+        "handle": "@trickshotmax",
+        "owner": null,
+        "subscribers": 5210000,
+        "about": "Bottle flips, paper tosses and one very patient roommate."
+      },
+      "mira-dances": {
+        "id": "mira-dances",
+        "name": "Mira Dances",
+        "handle": "@miradances",
+        "owner": null,
+        "subscribers": 4470000,
+        "about": "Original choreography and tutorials. Learn the steps in the pinned video."
+      },
+      "tinyhistory": {
+        "id": "tinyhistory",
+        "name": "Tiny History",
+        "handle": "@tinyhistory",
+        "owner": null,
+        "subscribers": 1980000,
+        "about": "A historian explains one thing in ninety seconds or less."
+      },
+      "alice-builds": {
+        "id": "alice-builds",
+        "name": "Alice Builds",
+        "handle": "@alicebuilds",
+        "owner": "alice",
+        "subscribers": 48200,
+        "about": "Deterministic systems, but short. The long versions are on my YouTube."
+      },
+      "carol-ships": {
+        "id": "carol-ships",
+        "name": "Carol Ships It",
+        "handle": "@carolships",
+        "owner": "carol",
+        "subscribers": 15300,
+        "about": "Release-day energy in vertical video."
+      }
+    },
+    "items": {
+      "garlic-noodles": {
+        "id": "garlic-noodles",
+        "channel": "minutemeals",
+        "title": "Garlic noodles in 58 seconds",
+        "description": "Butter, garlic, soy, brown sugar, noodles. That is the whole recipe. #minutemeals #garlicnoodles #easyrecipe",
+        "duration_s": 58,
+        "published": "Mar 2, 2026",
+        "published_tick": 4,
+        "views": 8412000,
+        "likes": 1210000,
+        "tags": [
+          "#fyp",
+          "#cooking",
+          "#easyrecipe",
+          "#noodles"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Made this at 11pm and regret nothing.",
+            "tick": 5,
+            "likes": 4210
+          },
+          {
+            "id": "c2",
+            "author": "plantparent",
+            "text": "the butter to garlic ratio is correct and I will not be taking questions",
+            "tick": 5,
+            "likes": 9800
+          }
+        ],
+        "related": [
+          "egg-fried-rice",
+          "ten-minute-curry"
+        ]
+      },
+      "egg-fried-rice": {
+        "id": "egg-fried-rice",
+        "channel": "minutemeals",
+        "title": "Egg fried rice, day-old rice only",
+        "description": "Cold rice, two eggs, scallions, a screaming hot pan. #minutemeals #friedrice",
+        "duration_s": 44,
+        "published": "Feb 18, 2026",
+        "published_tick": 2,
+        "views": 5230000,
+        "likes": 640000,
+        "tags": [
+          "#fyp",
+          "#cooking",
+          "#friedrice"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "the pan sound at 0:12 is ASMR",
+            "tick": 3,
+            "likes": 2300
+          }
+        ],
+        "related": [
+          "garlic-noodles",
+          "ten-minute-curry"
+        ]
+      },
+      "ten-minute-curry": {
+        "id": "ten-minute-curry",
+        "channel": "minutemeals",
+        "title": "Ten minute chickpea curry",
+        "description": "Tinned chickpeas, coconut milk, curry paste. Rice optional, naan mandatory. #minutemeals #curry #vegan",
+        "duration_s": 61,
+        "published": "Apr 9, 2026",
+        "published_tick": 9,
+        "views": 3110000,
+        "likes": 402000,
+        "tags": [
+          "#cooking",
+          "#vegan",
+          "#curry"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tinyhistory",
+            "text": "made this for my seminar group and they demanded the link",
+            "tick": 10,
+            "likes": 870
+          }
+        ],
+        "related": [
+          "garlic-noodles",
+          "egg-fried-rice"
+        ]
+      },
+      "pixel-vs-keyboard": {
+        "id": "pixel-vs-keyboard",
+        "channel": "deskcat",
+        "title": "Pixel discovers the mechanical keyboard",
+        "description": "He has typed 14 characters into the production terminal. We did not ship them. #deskcat #catsoftiktok",
+        "duration_s": 22,
+        "published": "Jan 20, 2026",
+        "published_tick": 1,
+        "views": 21400000,
+        "likes": 3900000,
+        "tags": [
+          "#fyp",
+          "#catsoftiktok",
+          "#cat",
+          "#wfh"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "This is why we have code review.",
+            "tick": 2,
+            "likes": 15200
+          },
+          {
+            "id": "c2",
+            "author": "codewithjun",
+            "text": "14 chars is a valid Rust program if you squint",
+            "tick": 2,
+            "likes": 7700
+          },
+          {
+            "id": "c3",
+            "author": "bob",
+            "text": "pixel for release manager",
+            "tick": 2,
+            "likes": 4100
+          }
+        ],
+        "related": [
+          "pixel-standup",
+          "pixel-box"
+        ]
+      },
+      "pixel-standup": {
+        "id": "pixel-standup",
+        "channel": "deskcat",
+        "title": "Pixel joins the standup",
+        "description": "He has no blockers. He has never had a blocker. #deskcat #standup #wfh",
+        "duration_s": 19,
+        "published": "Feb 27, 2026",
+        "published_tick": 3,
+        "views": 9870000,
+        "likes": 1450000,
+        "tags": [
+          "#catsoftiktok",
+          "#wfh",
+          "#standup"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "yesterday: nap. today: nap. blockers: the door.",
+            "tick": 4,
+            "likes": 6200
+          }
+        ],
+        "related": [
+          "pixel-vs-keyboard",
+          "pixel-box"
+        ]
+      },
+      "pixel-box": {
+        "id": "pixel-box",
+        "channel": "deskcat",
+        "title": "The box was for the monitor. It is Pixel's now.",
+        "description": "Forty inches of ultrawide, one cat, zero regrets. #deskcat #boxcat",
+        "duration_s": 15,
+        "published": "Apr 1, 2026",
+        "published_tick": 8,
+        "views": 12300000,
+        "likes": 2100000,
+        "tags": [
+          "#fyp",
+          "#catsoftiktok",
+          "#boxcat"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mira-dances",
+            "text": "the little turn at 0:09 is choreography",
+            "tick": 9,
+            "likes": 3400
+          }
+        ],
+        "related": [
+          "pixel-vs-keyboard",
+          "pixel-standup"
+        ]
+      },
+      "rust-borrow-60s": {
+        "id": "rust-borrow-60s",
+        "channel": "codewithjun",
+        "title": "The Rust borrow checker in 60 seconds",
+        "description": "One owner, many readers or one writer, never both. That is genuinely most of it. #rustlang #coding #learnontiktok",
+        "duration_s": 60,
+        "published": "Feb 4, 2026",
+        "published_tick": 2,
+        "views": 1840000,
+        "likes": 212000,
+        "tags": [
+          "#coding",
+          "#rustlang",
+          "#learnontiktok",
+          "#programming"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Cleanest explanation of aliasing XOR mutability I have seen at this length.",
+            "tick": 3,
+            "likes": 5100
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "60 seconds. it took me 60 days.",
+            "tick": 3,
+            "likes": 3300
+          }
+        ],
+        "related": [
+          "regex-in-45",
+          "hashmap-order"
+        ]
+      },
+      "regex-in-45": {
+        "id": "regex-in-45",
+        "channel": "codewithjun",
+        "title": "Every regex you actually need, 45 seconds",
+        "description": "Anchors, groups, quantifiers, done. The rest is showing off. #regex #coding #learnontiktok",
+        "duration_s": 45,
+        "published": "Mar 11, 2026",
+        "published_tick": 5,
+        "views": 2210000,
+        "likes": 267000,
+        "tags": [
+          "#coding",
+          "#regex",
+          "#learnontiktok"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "stitchlab",
+            "text": "I do not code and I watched this three times",
+            "tick": 6,
+            "likes": 1200
+          }
+        ],
+        "related": [
+          "rust-borrow-60s",
+          "hashmap-order"
+        ]
+      },
+      "hashmap-order": {
+        "id": "hashmap-order",
+        "channel": "codewithjun",
+        "title": "Why your hash map changes order every run",
+        "description": "Random seeds per process. It is a feature until your test depends on it. #coding #rustlang #python #bug",
+        "duration_s": 52,
+        "published": "Apr 15, 2026",
+        "published_tick": 10,
+        "views": 1330000,
+        "likes": 148000,
+        "tags": [
+          "#coding",
+          "#bug",
+          "#rustlang",
+          "#python"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "This bug has personally cost me a weekend. Share widely.",
+            "tick": 11,
+            "likes": 2800
+          }
+        ],
+        "related": [
+          "rust-borrow-60s",
+          "alice-replay-loop"
+        ]
+      },
+      "thrift-blazer-flip": {
+        "id": "thrift-blazer-flip",
+        "channel": "stitchlab",
+        "title": "Thrifted blazer to cropped jacket",
+        "description": "Two seams, one hem, four dollars. #thriftflip #sewing #diy",
+        "duration_s": 71,
+        "published": "Jan 29, 2026",
+        "published_tick": 1,
+        "views": 6720000,
+        "likes": 890000,
+        "tags": [
+          "#thriftflip",
+          "#sewing",
+          "#diy",
+          "#fyp"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mira-dances",
+            "text": "wearing this to rehearsal immediately",
+            "tick": 2,
+            "likes": 4400
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "tutorial energy: unmatched",
+            "tick": 2,
+            "likes": 900
+          }
+        ],
+        "related": [
+          "jeans-tote",
+          "invisible-hem"
+        ]
+      },
+      "jeans-tote": {
+        "id": "jeans-tote",
+        "channel": "stitchlab",
+        "title": "Old jeans into a tote bag",
+        "description": "Cut at the thigh, sew the bottom, strap from the waistband. #upcycle #sewing #diy",
+        "duration_s": 66,
+        "published": "Mar 3, 2026",
+        "published_tick": 4,
+        "views": 4180000,
+        "likes": 520000,
+        "tags": [
+          "#upcycle",
+          "#sewing",
+          "#diy"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "plantparent",
+            "text": "made one for my plant cuttings, thank you",
+            "tick": 5,
+            "likes": 1300
+          }
+        ],
+        "related": [
+          "thrift-blazer-flip",
+          "invisible-hem"
+        ]
+      },
+      "invisible-hem": {
+        "id": "invisible-hem",
+        "channel": "stitchlab",
+        "title": "The invisible hem trick",
+        "description": "Fold, fold again, blind stitch, iron. Nobody will see it. #sewing #sewinghacks",
+        "duration_s": 38,
+        "published": "Apr 20, 2026",
+        "published_tick": 11,
+        "views": 2950000,
+        "likes": 361000,
+        "tags": [
+          "#sewing",
+          "#sewinghacks",
+          "#diy"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "deskcat",
+            "text": "pixel has requested a cape",
+            "tick": 12,
+            "likes": 2100
+          }
+        ],
+        "related": [
+          "thrift-blazer-flip",
+          "jeans-tote"
+        ]
+      },
+      "lisbon-golden-hour": {
+        "id": "lisbon-golden-hour",
+        "channel": "citywalks",
+        "title": "Lisbon at golden hour, no words",
+        "description": "Tram 28 route on foot. Sound on. #citywalks #lisbon #travel",
+        "duration_s": 88,
+        "published": "Feb 12, 2026",
+        "published_tick": 3,
+        "views": 3420000,
+        "likes": 470000,
+        "tags": [
+          "#travel",
+          "#lisbon",
+          "#citywalks",
+          "#fyp"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tinyhistory",
+            "text": "the tiled facade at 0:41 is 18th century, ask me how I know",
+            "tick": 4,
+            "likes": 2600
+          }
+        ],
+        "related": [
+          "seoul-night-market",
+          "seattle-rain-walk"
+        ]
+      },
+      "seoul-night-market": {
+        "id": "seoul-night-market",
+        "channel": "citywalks",
+        "title": "Seoul night market walk",
+        "description": "Steam, neon, hotteok. Ninety seconds of it. #citywalks #seoul #streetfood",
+        "duration_s": 90,
+        "published": "Mar 19, 2026",
+        "published_tick": 6,
+        "views": 5890000,
+        "likes": 730000,
+        "tags": [
+          "#travel",
+          "#seoul",
+          "#streetfood"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "minutemeals",
+            "text": "I need the hotteok recipe now",
+            "tick": 7,
+            "likes": 5500
+          }
+        ],
+        "related": [
+          "lisbon-golden-hour",
+          "seattle-rain-walk"
+        ]
+      },
+      "seattle-rain-walk": {
+        "id": "seattle-rain-walk",
+        "channel": "citywalks",
+        "title": "Seattle in the rain",
+        "description": "Pike Place to the waterfront, umbrellas optional. #citywalks #seattle #rain",
+        "duration_s": 79,
+        "published": "Apr 4, 2026",
+        "published_tick": 9,
+        "views": 1980000,
+        "likes": 240000,
+        "tags": [
+          "#travel",
+          "#seattle",
+          "#rain"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "I can see our office in this. we should have gone for a walk.",
+            "tick": 10,
+            "likes": 800
+          }
+        ],
+        "related": [
+          "lisbon-golden-hour",
+          "seoul-night-market"
+        ]
+      },
+      "monstera-rescue": {
+        "id": "monstera-rescue",
+        "channel": "plantparent",
+        "title": "Rescuing a $3 clearance monstera",
+        "description": "Root rot, two yellow leaves, one very optimistic owner. Update in four weeks. #plants #monstera #plantrescue",
+        "duration_s": 74,
+        "published": "Jan 25, 2026",
+        "published_tick": 1,
+        "views": 4630000,
+        "likes": 610000,
+        "tags": [
+          "#plants",
+          "#monstera",
+          "#plantrescue",
+          "#fyp"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "stitchlab",
+            "text": "the way you said \"it will be fine\" with zero confidence",
+            "tick": 2,
+            "likes": 3900
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "four weeks later?? we need the update",
+            "tick": 2,
+            "likes": 2100
+          }
+        ],
+        "related": [
+          "monstera-update",
+          "watering-spreadsheet"
+        ]
+      },
+      "monstera-update": {
+        "id": "monstera-update",
+        "channel": "plantparent",
+        "title": "Monstera rescue: week four",
+        "description": "It lived. Three new leaves, one of them fenestrated. #plants #monstera #plantrescue",
+        "duration_s": 49,
+        "published": "Feb 22, 2026",
+        "published_tick": 3,
+        "views": 3870000,
+        "likes": 550000,
+        "tags": [
+          "#plants",
+          "#monstera",
+          "#plantrescue"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "I have never been this invested in a plant",
+            "tick": 4,
+            "likes": 3000
+          }
+        ],
+        "related": [
+          "monstera-rescue",
+          "watering-spreadsheet"
+        ]
+      },
+      "watering-spreadsheet": {
+        "id": "watering-spreadsheet",
+        "channel": "plantparent",
+        "title": "Yes I water my plants with a spreadsheet",
+        "description": "Twenty-two plants, one sheet, zero dead since October. #plants #spreadsheet #wfh",
+        "duration_s": 57,
+        "published": "Mar 30, 2026",
+        "published_tick": 7,
+        "views": 2210000,
+        "likes": 290000,
+        "tags": [
+          "#plants",
+          "#spreadsheet",
+          "#organized"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "A deterministic watering schedule. Respect.",
+            "tick": 8,
+            "likes": 1500
+          }
+        ],
+        "related": [
+          "monstera-rescue",
+          "monstera-update"
+        ]
+      },
+      "bottle-flip-fridge": {
+        "id": "bottle-flip-fridge",
+        "channel": "trickshotmax",
+        "title": "Bottle flip onto the top of the fridge",
+        "description": "Attempt 212. My roommate was making tea. #trickshot #bottleflip",
+        "duration_s": 12,
+        "published": "Feb 1, 2026",
+        "published_tick": 2,
+        "views": 32600000,
+        "likes": 5100000,
+        "tags": [
+          "#fyp",
+          "#trickshot",
+          "#bottleflip"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "deskcat",
+            "text": "pixel watched this six times",
+            "tick": 3,
+            "likes": 12000
+          },
+          {
+            "id": "c2",
+            "author": "mira-dances",
+            "text": "the celebration is the real content",
+            "tick": 3,
+            "likes": 8800
+          }
+        ],
+        "related": [
+          "paper-toss-mile",
+          "stairs-catch"
+        ]
+      },
+      "paper-toss-mile": {
+        "id": "paper-toss-mile",
+        "channel": "trickshotmax",
+        "title": "Paper toss from the other room",
+        "description": "Through the doorway, off the lamp, in the bin. Took nine days. #trickshot #papertoss",
+        "duration_s": 14,
+        "published": "Mar 8, 2026",
+        "published_tick": 5,
+        "views": 18900000,
+        "likes": 2700000,
+        "tags": [
+          "#trickshot",
+          "#papertoss",
+          "#fyp"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "codewithjun",
+            "text": "nine days is a reasonable sprint",
+            "tick": 6,
+            "likes": 4300
+          }
+        ],
+        "related": [
+          "bottle-flip-fridge",
+          "stairs-catch"
+        ]
+      },
+      "stairs-catch": {
+        "id": "stairs-catch",
+        "channel": "trickshotmax",
+        "title": "Catching a phone thrown down three flights",
+        "description": "Do not do this. We did it with a case, a pillow and a witness. #trickshot #donttrythis",
+        "duration_s": 21,
+        "published": "Apr 12, 2026",
+        "published_tick": 10,
+        "views": 24100000,
+        "likes": 3600000,
+        "tags": [
+          "#trickshot",
+          "#fyp",
+          "#donttrythis"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "\"witness\" is doing a lot of work here",
+            "tick": 11,
+            "likes": 6100
+          }
+        ],
+        "related": [
+          "bottle-flip-fridge",
+          "paper-toss-mile"
+        ]
+      },
+      "ship-day-dance": {
+        "id": "ship-day-dance",
+        "channel": "mira-dances",
+        "title": "Ship Day (original choreography)",
+        "description": "Eight counts, four moves, one release button. Tutorial pinned. #dance #shipday #choreography",
+        "duration_s": 31,
+        "published": "Jan 31, 2026",
+        "published_tick": 2,
+        "views": 15700000,
+        "likes": 2900000,
+        "tags": [
+          "#fyp",
+          "#dance",
+          "#choreography",
+          "#shipday"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Doing this in the release channel every Thursday now.",
+            "tick": 3,
+            "likes": 9400
+          },
+          {
+            "id": "c2",
+            "author": "trickshotmax",
+            "text": "the button press on beat 8 is elite",
+            "tick": 3,
+            "likes": 5200
+          }
+        ],
+        "related": [
+          "ship-day-tutorial",
+          "rainy-window-dance"
+        ]
+      },
+      "ship-day-tutorial": {
+        "id": "ship-day-tutorial",
+        "channel": "mira-dances",
+        "title": "Ship Day tutorial, slowed down",
+        "description": "Half speed, then full. Mirror mode on. #dance #tutorial #shipday",
+        "duration_s": 84,
+        "published": "Feb 7, 2026",
+        "published_tick": 3,
+        "views": 6900000,
+        "likes": 880000,
+        "tags": [
+          "#dance",
+          "#tutorial",
+          "#shipday"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Learned it. Deployed it. No regressions.",
+            "tick": 4,
+            "likes": 3700
+          }
+        ],
+        "related": [
+          "ship-day-dance",
+          "rainy-window-dance"
+        ]
+      },
+      "rainy-window-dance": {
+        "id": "rainy-window-dance",
+        "channel": "mira-dances",
+        "title": "Rainy window, slow combo",
+        "description": "Something softer for a grey afternoon. #dance #contemporary #rain",
+        "duration_s": 42,
+        "published": "Mar 25, 2026",
+        "published_tick": 7,
+        "views": 8300000,
+        "likes": 1400000,
+        "tags": [
+          "#dance",
+          "#contemporary",
+          "#fyp"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "citywalks",
+            "text": "filmed in the same rain as my Seattle walk, I am sure of it",
+            "tick": 8,
+            "likes": 2200
+          }
+        ],
+        "related": [
+          "ship-day-dance",
+          "ship-day-tutorial"
+        ]
+      },
+      "why-lighthouses": {
+        "id": "why-lighthouses",
+        "channel": "tinyhistory",
+        "title": "Why lighthouses stopped needing keepers",
+        "description": "Automation, a 1980s story. Ninety seconds, one lamp. #history #lighthouse #learnontiktok",
+        "duration_s": 89,
+        "published": "Feb 15, 2026",
+        "published_tick": 3,
+        "views": 4720000,
+        "likes": 690000,
+        "tags": [
+          "#history",
+          "#learnontiktok",
+          "#lighthouse"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "citywalks",
+            "text": "filming one of these next month, thank you for the context",
+            "tick": 4,
+            "likes": 1800
+          }
+        ],
+        "related": [
+          "why-seven-days",
+          "why-qwerty"
+        ]
+      },
+      "why-seven-days": {
+        "id": "why-seven-days",
+        "channel": "tinyhistory",
+        "title": "Why a week has seven days",
+        "description": "Babylon, the moon, and a habit nobody managed to break. #history #learnontiktok #calendar",
+        "duration_s": 78,
+        "published": "Mar 14, 2026",
+        "published_tick": 6,
+        "views": 6100000,
+        "likes": 840000,
+        "tags": [
+          "#history",
+          "#learnontiktok",
+          "#calendar",
+          "#fyp"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "and yet the sprint is two of them",
+            "tick": 7,
+            "likes": 4900
+          },
+          {
+            "id": "c2",
+            "author": "tinyhistory",
+            "text": "@bob the sprint is a 20th century invention and a separate video",
+            "tick": 7,
+            "likes": 3100
+          }
+        ],
+        "related": [
+          "why-lighthouses",
+          "why-qwerty"
+        ]
+      },
+      "why-qwerty": {
+        "id": "why-qwerty",
+        "channel": "tinyhistory",
+        "title": "Why the keyboard is QWERTY",
+        "description": "It was not to slow you down. That myth is older than the layout. #history #keyboard #learnontiktok",
+        "duration_s": 82,
+        "published": "Apr 18, 2026",
+        "published_tick": 11,
+        "views": 3560000,
+        "likes": 510000,
+        "tags": [
+          "#history",
+          "#keyboard",
+          "#learnontiktok"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "deskcat",
+            "text": "pixel prefers dvorak",
+            "tick": 12,
+            "likes": 7300
+          }
+        ],
+        "related": [
+          "why-lighthouses",
+          "why-seven-days"
+        ]
+      },
+      "alice-replay-loop": {
+        "id": "alice-replay-loop",
+        "channel": "alice-builds",
+        "title": "Replaying a bug 40 times in 8 seconds",
+        "description": "Same seed, same crash, every time. This is what deterministic replay buys you. #coding #determinism #rustlang",
+        "duration_s": 8,
+        "published": "Mar 27, 2026",
+        "published_tick": 7,
+        "views": 512000,
+        "likes": 61000,
+        "tags": [
+          "#coding",
+          "#determinism",
+          "#rustlang",
+          "#learnontiktok"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "codewithjun",
+            "text": "okay this is the one that finally sold me on the idea",
+            "tick": 8,
+            "likes": 2400
+          }
+        ],
+        "related": [
+          "hashmap-order",
+          "rust-borrow-60s"
+        ]
+      },
+      "carol-release-face": {
+        "id": "carol-release-face",
+        "channel": "carol-ships",
+        "title": "My face when the release checklist has 41 items",
+        "description": "Item 42: breathe. #shipday #releasemanager #wfh",
+        "duration_s": 11,
+        "published": "Apr 7, 2026",
+        "published_tick": 9,
+        "views": 288000,
+        "likes": 34000,
+        "tags": [
+          "#shipday",
+          "#wfh",
+          "#releasemanager"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mira-dances",
+            "text": "you need the Ship Day dance, I am sending it",
+            "tick": 10,
+            "likes": 900
+          }
+        ],
+        "related": [
+          "ship-day-dance",
+          "alice-replay-loop"
+        ]
+      }
+    },
+    "playlists": {
+      "watch-later": {
+        "id": "watch-later",
+        "title": "Watch later",
+        "owner": null,
+        "items": []
+      },
+      "for-you": {
+        "id": "for-you",
+        "title": "For You",
+        "owner": null,
+        "items": [
+          "bottle-flip-fridge",
+          "pixel-vs-keyboard",
+          "garlic-noodles",
+          "ship-day-dance",
+          "why-seven-days",
+          "monstera-rescue",
+          "seoul-night-market",
+          "rust-borrow-60s"
+        ]
+      },
+      "trending": {
+        "id": "trending",
+        "title": "Trending",
+        "owner": null,
+        "items": [
+          "stairs-catch",
+          "pixel-box",
+          "why-qwerty",
+          "ten-minute-curry",
+          "rainy-window-dance",
+          "invisible-hem"
+        ]
+      },
+      "learn-on-tiktok": {
+        "id": "learn-on-tiktok",
+        "title": "Learn on TikTok",
+        "owner": null,
+        "items": [
+          "rust-borrow-60s",
+          "regex-in-45",
+          "hashmap-order",
+          "why-lighthouses",
+          "why-seven-days",
+          "why-qwerty",
+          "alice-replay-loop"
+        ]
+      },
+      "cook-tonight": {
+        "id": "cook-tonight",
+        "title": "Cook tonight",
+        "owner": null,
+        "items": [
+          "garlic-noodles",
+          "egg-fried-rice",
+          "ten-minute-curry"
+        ]
+      },
+      "dance-tutorials": {
+        "id": "dance-tutorials",
+        "title": "Dance tutorials",
+        "owner": "carol",
+        "items": [
+          "ship-day-dance",
+          "ship-day-tutorial",
+          "rainy-window-dance"
+        ]
+      },
+      "pixel-supercut": {
+        "id": "pixel-supercut",
+        "title": "Pixel supercut",
+        "owner": "bob",
+        "items": [
+          "pixel-vs-keyboard",
+          "pixel-standup",
+          "pixel-box"
+        ]
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "codewithjun",
+        "deskcat",
+        "tinyhistory"
+      ],
+      "bob": [
+        "deskcat",
+        "trickshotmax",
+        "plantparent"
+      ],
+      "carol": [
+        "mira-dances",
+        "minutemeals",
+        "alice-builds",
+        "stitchlab"
+      ]
+    },
+    "likes": {
+      "alice": [
+        "rust-borrow-60s",
+        "hashmap-order"
+      ],
+      "bob": [
+        "pixel-vs-keyboard",
+        "monstera-update"
+      ],
+      "carol": [
+        "ship-day-dance",
+        "garlic-noodles"
+      ]
+    },
+    "now_playing": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://tiktok.com/",
+      "title": "TikTok",
+      "snippet": "Short videos from creators around the world: cooking, coding, dance, cats and ninety-second history.",
+      "vertical": "videos",
+      "authority": 8,
+      "keywords": [
+        "tiktok",
+        "short video",
+        "for you",
+        "viral"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=bottle-flip-fridge",
+      "title": "Bottle flip onto the top of the fridge | TikTok",
+      "snippet": "Trickshot Max lands attempt 212 while his roommate makes tea. 32 million views.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "bottle flip",
+        "trickshot",
+        "viral",
+        "fridge"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=pixel-vs-keyboard",
+      "title": "Pixel discovers the mechanical keyboard | TikTok",
+      "snippet": "Desk Cat Diaries: a grey cat types fourteen characters into a production terminal.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "desk cat",
+        "pixel",
+        "cat keyboard",
+        "catsoftiktok"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=rust-borrow-60s",
+      "title": "The Rust borrow checker in 60 seconds | TikTok",
+      "snippet": "Code With Jun: one owner, many readers or one writer, never both.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "rust",
+        "borrow checker",
+        "learn rust",
+        "coding tiktok"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=hashmap-order",
+      "title": "Why your hash map changes order every run | TikTok",
+      "snippet": "Random per-process hash seeds and the tests that accidentally depend on them.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "hash map order",
+        "nondeterminism",
+        "flaky test"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=garlic-noodles",
+      "title": "Garlic noodles in 58 seconds | TikTok",
+      "snippet": "Minute Meals: butter, garlic, soy, brown sugar, noodles. That is the whole recipe.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "garlic noodles",
+        "easy recipe",
+        "minute meals",
+        "cooking"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=ship-day-dance",
+      "title": "Ship Day (original choreography) | TikTok",
+      "snippet": "Mira Dances: eight counts, four moves, one release button.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "ship day dance",
+        "choreography",
+        "dance trend"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=why-seven-days",
+      "title": "Why a week has seven days | TikTok",
+      "snippet": "Tiny History on Babylon, the moon, and a habit nobody managed to break.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "seven days",
+        "week",
+        "history",
+        "tiny history"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=monstera-rescue",
+      "title": "Rescuing a $3 clearance monstera | TikTok",
+      "snippet": "Plant Parent takes on root rot and two yellow leaves. Update at week four.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "monstera",
+        "plant rescue",
+        "houseplants"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/watch?v=alice-replay-loop",
+      "title": "Replaying a bug 40 times in 8 seconds | TikTok",
+      "snippet": "Alice Builds shows deterministic replay hitting the same crash every run.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "deterministic replay",
+        "alice builds",
+        "bug replay"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/channel/deskcat",
+      "title": "Desk Cat Diaries (@deskcat) | TikTok",
+      "snippet": "A grey cat named Pixel who sits on keyboards for a living. 3.8M followers.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "desk cat diaries",
+        "pixel the cat",
+        "deskcat"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/channel/codewithjun",
+      "title": "Code With Jun (@codewithjun) | TikTok",
+      "snippet": "Sixty-second programming lessons in Rust, Python and the occasional regex.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "code with jun",
+        "coding tiktok",
+        "programming lessons"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/channel/minutemeals",
+      "title": "Minute Meals (@minutemeals) | TikTok",
+      "snippet": "One pan, one minute, no talking. Recipes in the caption.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "minute meals",
+        "one minute recipes"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/channel/tinyhistory",
+      "title": "Tiny History (@tinyhistory) | TikTok",
+      "snippet": "A historian explains one thing in ninety seconds or less.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "tiny history",
+        "history tiktok"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/channel/mira-dances",
+      "title": "Mira Dances (@miradances) | TikTok",
+      "snippet": "Original choreography and tutorials, including the Ship Day dance.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "mira dances",
+        "dance tutorials"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/playlist?list=learn-on-tiktok",
+      "title": "Learn on TikTok | TikTok",
+      "snippet": "Coding and history explainers under ninety seconds, collected in one feed.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "learn on tiktok",
+        "educational",
+        "explainers"
+      ]
+    },
+    {
+      "url": "http://tiktok.com/playlist?list=for-you",
+      "title": "For You | TikTok",
+      "snippet": "The For You feed: the eight most-watched short videos this month.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "for you page",
+        "fyp",
+        "trending tiktok"
+      ]
+    }
+  ],
+  "network_node": {
+    "address": "203.0.113.100",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
+}

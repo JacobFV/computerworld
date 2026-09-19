@@ -5,7 +5,8 @@
   "domains": [
     "amazon.com",
     "www.amazon.com",
-    "smile.amazon.com"
+    "smile.amazon.com",
+    "m.amazon.com"
   ],
   "port": 80,
   "initial_state": {

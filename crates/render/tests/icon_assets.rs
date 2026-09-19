@@ -2,9 +2,35 @@
 //! table does not know paints nothing at all, so a shell that names an icon it
 //! never bundled shows an empty dock slot or home-screen tile instead of an
 //! error. These tests render every advertised id and demand visible artwork.
-use cw_render::{Renderer, ASSET_IDS};
+use cw_render::{Renderer, ASSET_IDS, SYMBOLS};
 use cw_scene::{Color, Node, Rect, Scene};
 use std::collections::BTreeSet;
+
+/// A page may name any bundled symbol and nothing else: the whitelist a page is
+/// validated against and the set the renderer ships are the same list.
+#[test]
+fn page_icons_are_exactly_the_bundled_symbols() {
+    let bundled: BTreeSet<&str> = SYMBOLS
+        .iter()
+        .map(|(name, _)| name.strip_prefix("symbol/").unwrap())
+        .collect();
+    let allowed: BTreeSet<&str> = cw_protocol::PAGE_ICONS.iter().copied().collect();
+    let missing: Vec<_> = allowed.difference(&bundled).collect();
+    let unlisted: Vec<_> = bundled.difference(&allowed).collect();
+    assert!(missing.is_empty(), "page icons with no symbol: {missing:?}");
+    assert!(
+        unlisted.is_empty(),
+        "symbols a page may not name: {unlisted:?}"
+    );
+    // Every symbol is a 96 px mask with visible artwork; a blank one would draw as
+    // an empty square wherever a page names it.
+    for (name, _) in SYMBOLS {
+        let frame = cw_render::decode(name).unwrap_or_else(|| panic!("{name}"));
+        assert_eq!((frame.width, frame.height), (96, 96), "{name}");
+        let inked = frame.rgba.chunks(4).filter(|px| px[3] >= 128).count();
+        assert!(inked * 100 >= 96 * 96 * 2, "{name} is {inked} inked pixels");
+    }
+}
 
 /// The shell namespaces, and every application a shell may place on a home
 /// screen, dock or launcher tile. Both lists are checked against `ASSET_IDS`.

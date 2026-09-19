@@ -87,6 +87,112 @@ fn parse_refresh(value: &str, page_url: &Url) -> Option<Refresh> {
         fetched: None,
     })
 }
+/// The page a browser shows for a request that never reached a server, in the words
+/// and with the error code Chrome uses. `None` for failures that are not the
+/// network's (a malformed request, a refused capability), which stay bare errors.
+fn unreachable_page(url: &Url, error: &SimError) -> Option<Page> {
+    let host = url.host_str().unwrap_or("this site");
+    let (code, detail) = match error.code.as_str() {
+        "dns" => (
+            "ERR_NAME_NOT_RESOLVED",
+            format!("{host}'s server IP address could not be found."),
+        ),
+        "connection_refused" => (
+            "ERR_CONNECTION_REFUSED",
+            format!("{host} refused to connect."),
+        ),
+        "unreachable" => (
+            "ERR_ADDRESS_UNREACHABLE",
+            format!("{host} is unreachable from this computer."),
+        ),
+        "network_denied" => (
+            "ERR_NETWORK_ACCESS_DENIED",
+            format!("Access to {host} is blocked by this computer's network policy."),
+        ),
+        "packet_loss" | "timeout" => (
+            "ERR_CONNECTION_TIMED_OUT",
+            format!("{host} took too long to respond."),
+        ),
+        _ => return None,
+    };
+    let mut page = Page::new(host);
+    page.elements = vec![
+        PageElement::Spacer {
+            id: "error-lead".into(),
+            height: 48,
+        },
+        PageElement::Heading {
+            id: "error-title".into(),
+            text: "This site can't be reached".into(),
+            level: 1,
+        },
+        PageElement::Text {
+            id: "error-detail".into(),
+            text: detail,
+        },
+        PageElement::Text {
+            id: "error-advice".into(),
+            text: "Try:\n• Checking the connection\n• Checking the proxy and the firewall\n• Running Network Diagnostics".into(),
+        },
+        PageElement::Styled {
+            id: "error-code".into(),
+            text: code.into(),
+            style: cw_protocol::Style::default().size(12).color("#5f6368").mono(),
+        },
+        PageElement::Button {
+            id: "error-reload".into(),
+            text: "Reload".into(),
+            action: PageAction {
+                method: "GET".into(),
+                url: url.to_string(),
+                fields: BTreeMap::new(),
+            },
+            style: None,
+        },
+    ];
+    Some(page)
+}
+/// A site's own 404 as a page rather than its JSON, titled with the site the way a
+/// browser's tab is. API paths keep their JSON: a program reading them wants the body.
+fn not_found_page(url: &Url, response: &HttpResponse) -> Option<Page> {
+    if response.status != 404 || url.path().starts_with("/api/") {
+        return None;
+    }
+    let host = url.host_str().unwrap_or("this site");
+    let message = serde_json::from_slice::<serde_json::Value>(&response.body)
+        .ok()
+        .and_then(|v| v.get("error")?.as_str().map(str::to_owned))
+        .filter(|m| !m.is_empty() && m != "route not found");
+    let mut page = Page::new(host);
+    page.elements = vec![
+        PageElement::Spacer {
+            id: "error-lead".into(),
+            height: 48,
+        },
+        PageElement::Heading {
+            id: "error-title".into(),
+            text: "404 Not Found".into(),
+            level: 1,
+        },
+        PageElement::Text {
+            id: "error-detail".into(),
+            text: format!("There is no page at {} on {host}.", url.path()),
+        },
+    ];
+    if let Some(message) = message {
+        page.elements.push(PageElement::Text {
+            id: "error-message".into(),
+            text: message,
+        });
+    }
+    page.elements.push(PageElement::Link {
+        id: "error-home".into(),
+        text: format!("Go to {host}"),
+        url: format!("{}://{host}/", url.scheme()),
+        style: None,
+    });
+    Some(page)
+}
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tab {
     pub history: Vec<HistoryEntry>,
@@ -413,7 +519,18 @@ impl BrowserState {
             self.pending = Some(request.clone());
             let result = transport(request.clone());
             self.pending = None;
-            let response = result?;
+            let response = match result {
+                Ok(response) => response,
+                Err(error) => {
+                    // A host that cannot be reached still gives the tab a page, the
+                    // way Chrome's "This site can't be reached" does; the action
+                    // itself still fails, so the actor learns the request never landed.
+                    if let Some(page) = unreachable_page(&url, &error) {
+                        self.show(url.to_string(), page, 0, replace);
+                    }
+                    return Err(error);
+                }
+            };
             if let Some(header) = response.header("set-cookie") {
                 if let Some(cookie) = parse_cookie(header, url.path()) {
                     let jar = self.cookies.entry(origin).or_default();
@@ -452,6 +569,8 @@ impl BrowserState {
                 let page: Page = serde_json::from_slice(&response.body)?;
                 page.validate()?;
                 page
+            } else if let Some(page) = not_found_page(&url, &response) {
+                page
             } else {
                 let mut page = Page::new(url.as_str());
                 page.elements.push(PageElement::Text {
@@ -472,20 +591,39 @@ impl BrowserState {
                 image_errors,
                 refresh,
             };
-            let tab = self.tab_mut();
-            if replace && !tab.history.is_empty() {
-                tab.history[tab.position] = entry
-            } else {
-                if !tab.history.is_empty() {
-                    tab.history.truncate(tab.position + 1)
-                }
-                tab.history.push(entry);
-                tab.position = tab.history.len() - 1;
-            }
-            self.reset_fields();
+            self.commit(entry, replace);
             return Ok(());
         }
         Err(SimError::new("redirect_limit", "more than 16 redirects"))
+    }
+    /// Show `page` as the tab's document at `url`, with no pictures to fetch.
+    fn show(&mut self, url: String, page: Page, status: u16, replace: bool) {
+        self.commit(
+            HistoryEntry {
+                url,
+                page,
+                status,
+                images: BTreeMap::new(),
+                image_errors: BTreeMap::new(),
+                refresh: None,
+            },
+            replace,
+        );
+    }
+    /// Make `entry` the tab's current document: in place of the one on show when
+    /// `replace`, otherwise as a new history entry that drops any forward history.
+    fn commit(&mut self, entry: HistoryEntry, replace: bool) {
+        let tab = self.tab_mut();
+        if replace && !tab.history.is_empty() {
+            tab.history[tab.position] = entry
+        } else {
+            if !tab.history.is_empty() {
+                tab.history.truncate(tab.position + 1)
+            }
+            tab.history.push(entry);
+            tab.position = tab.history.len() - 1;
+        }
+        self.reset_fields();
     }
     pub fn fill(&mut self, id: &str, value: &str) -> Result<()> {
         if !self.tab().fields.contains_key(id) {
@@ -584,6 +722,10 @@ impl BrowserState {
                 ..
             }
             | PageElement::Icon {
+                action: Some(action),
+                ..
+            }
+            | PageElement::Image {
                 action: Some(action),
                 ..
             } => self.perform(action, Some(id), transport),
@@ -990,6 +1132,7 @@ mod tests {
                 id: "next".into(),
                 text: "next".into(),
                 url: "/second".into(),
+                style: None,
             },
             PageElement::Form {
                 id: "form".into(),
@@ -1013,11 +1156,119 @@ mod tests {
                             url: "/save".into(),
                             fields: BTreeMap::new(),
                         },
+                        style: None,
                     },
                 ],
             },
         ];
         p
+    }
+    #[test]
+    fn an_unreachable_host_shows_an_error_page_and_the_action_still_fails() {
+        let mut b = BrowserState::default();
+        let mut http = |_: HttpRequest| HttpResponse::page(&page());
+        b.navigate("http://internal.test", &mut http).unwrap();
+        let mut dead = |r: HttpRequest| -> Result<HttpResponse> {
+            Err(if r.url.contains("nowhere") {
+                SimError::new("dns", "no such host")
+            } else {
+                SimError::new("connection_refused", "10.0.0.2:443")
+            })
+        };
+        let error = b.navigate("https://nowhere.test/x", &mut dead).unwrap_err();
+        assert_eq!(error.code, "dns");
+        let shown = b.page().unwrap();
+        assert_eq!(shown.title, "nowhere.test");
+        let texts: Vec<&str> = shown
+            .elements
+            .iter()
+            .filter_map(|e| match e {
+                PageElement::Heading { text, .. }
+                | PageElement::Text { text, .. }
+                | PageElement::Styled { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.contains(&"This site can't be reached"), "{texts:?}");
+        assert!(texts.contains(&"ERR_NAME_NOT_RESOLVED"), "{texts:?}");
+        assert!(
+            texts.iter().any(|t| t.contains("nowhere.test")),
+            "{texts:?}"
+        );
+        assert_eq!(b.url(), Some("https://nowhere.test/x"));
+        assert_eq!(b.tab().history[b.tab().position].status, 0);
+        // History still holds the working page behind it.
+        b.back(&mut dead).unwrap();
+        assert_eq!(b.page().unwrap().title, "Site");
+        let error = b.navigate("https://internal.test/", &mut dead).unwrap_err();
+        assert_eq!(error.code, "connection_refused");
+        let shown = b.page().unwrap();
+        assert!(shown.elements.iter().any(
+            |e| matches!(e, PageElement::Styled { text, .. } if text == "ERR_CONNECTION_REFUSED")
+        ));
+        // A refusal that is not the network's leaves the tab alone.
+        let mut denied = |_: HttpRequest| -> Result<HttpResponse> { Err(SimError::denied("no")) };
+        assert!(b
+            .navigate("http://internal.test/again", &mut denied)
+            .is_err());
+        assert_eq!(b.url(), Some("https://internal.test/"));
+    }
+    #[test]
+    fn a_sites_404_is_a_page_but_api_paths_keep_their_json() {
+        let mut b = BrowserState::default();
+        let mut http = |r: HttpRequest| -> Result<HttpResponse> {
+            if r.url.ends_with("/missing") || r.url.ends_with("/api/missing") {
+                HttpResponse::json(404, &serde_json::json!({"error":"route not found"}))
+            } else {
+                HttpResponse::page(&page())
+            }
+        };
+        b.navigate("http://github.test/", &mut http).unwrap();
+        b.navigate("http://github.test/missing", &mut http).unwrap();
+        let shown = b.page().unwrap();
+        assert_eq!(shown.title, "github.test");
+        assert!(shown
+            .elements
+            .iter()
+            .any(|e| matches!(e, PageElement::Heading { text, .. } if text == "404 Not Found")));
+        assert!(shown
+            .elements
+            .iter()
+            .any(|e| matches!(e, PageElement::Link { url, .. } if url == "http://github.test/")));
+        assert_eq!(b.tab().history[b.tab().position].status, 404);
+        b.navigate("http://github.test/api/missing", &mut http)
+            .unwrap();
+        let shown = b.page().unwrap();
+        assert!(shown.elements.iter().any(
+            |e| matches!(e, PageElement::Text { text, .. } if text.contains("route not found"))
+        ));
+    }
+    #[test]
+    fn a_picture_with_an_action_is_a_control() {
+        let mut b = BrowserState::default();
+        let mut http = |r: HttpRequest| -> Result<HttpResponse> {
+            if r.url.ends_with("/users/ada") {
+                return HttpResponse::page(&Page::new("Ada"));
+            }
+            let mut p = Page::new("Profile");
+            p.elements.push(PageElement::Image {
+                id: "avatar".into(),
+                source: "/avatar.rgba".into(),
+                alt: "Ada".into(),
+                width: 40,
+                height: 40,
+                style: Some(cw_protocol::Style::default().radius(20)),
+                action: Some(PageAction {
+                    method: "GET".into(),
+                    url: "/users/ada".into(),
+                    fields: BTreeMap::new(),
+                }),
+            });
+            HttpResponse::page(&p)
+        };
+        b.navigate("http://site.test/", &mut http).unwrap();
+        b.click("avatar", &mut http).unwrap();
+        assert_eq!(b.url(), Some("http://site.test/users/ada"));
     }
     #[test]
     fn links_forms_and_history_use_transport() {
@@ -1194,6 +1445,8 @@ mod image_tests {
             alt: "Company logo".into(),
             width: 20,
             height: 20,
+            style: None,
+            action: None,
         });
         page
     }

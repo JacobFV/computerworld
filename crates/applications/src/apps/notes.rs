@@ -236,6 +236,7 @@ impl Notes {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for name in &self.entries {
@@ -243,6 +244,7 @@ impl Notes {
                 id: format!("notes:open:{name}"),
                 text: name.clone(),
                 action: act(&format!("notes:open:{name}")),
+                style: None,
             });
         }
         if self.open.is_some() {
@@ -256,6 +258,7 @@ impl Notes {
                 id: "notes:save".into(),
                 text: "Save".into(),
                 action: act("notes:save"),
+                style: None,
             });
         }
     }

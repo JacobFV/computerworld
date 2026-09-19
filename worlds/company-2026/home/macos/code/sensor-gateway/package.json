@@ -1,0 +1,21 @@
+{
+  "name": "sensor-gateway",
+  "version": "0.2.0",
+  "description": "Ingests Atlas sensor-node readings, keeps them in a JSON store and reports aggregates and alerts",
+  "main": "src/gateway.js",
+  "bin": {
+    "gateway": "src/gateway.js"
+  },
+  "scripts": {
+    "test": "node test/readings.test.js",
+    "ingest": "node src/gateway.js ingest data/batch-2026-09-15.json",
+    "report": "node src/gateway.js report",
+    "health": "node src/gateway.js health",
+    "typecheck": "tsc -p ."
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "private": true
+}

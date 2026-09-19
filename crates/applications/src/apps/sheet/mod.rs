@@ -2382,6 +2382,7 @@ impl Book {
                 id: "sheet:new".into(),
                 text: "Blank workbook".into(),
                 action: act("sheet:new"),
+                style: None,
             });
             for e in &self.folder.entries {
                 if !e.ends_with('/') {
@@ -2390,6 +2391,7 @@ impl Book {
                         id: id.clone(),
                         text: e.clone(),
                         action: act(&id),
+                        style: None,
                     });
                 }
             }
@@ -2407,6 +2409,7 @@ impl Book {
                 id: id.clone(),
                 text: t.clone(),
                 action: act(&id),
+                style: None,
             });
         }
         page.elements.push(E::Input {
@@ -2450,6 +2453,7 @@ impl Book {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
     }

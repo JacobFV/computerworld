@@ -265,3 +265,88 @@ fn changing_a_variable_changes_what_the_program_prints() {
         "[{\"n\": 0, \"square\": 0}, {\"n\": 1, \"square\": 1}, {\"n\": 9, \"square\": 81}]\n"
     );
 }
+
+const CALL: &str = r#"def square(v):
+    r = v * v
+    return r
+
+n = 7
+out = square(n)
+print(out)
+"#;
+
+/// `Scopes` and `Variables` serve any frame of the stack, not only the innermost.
+#[test]
+fn scopes_are_served_for_any_frame_of_the_stack() {
+    let mut c = machine();
+    c.vfs
+        .write("/home/user/call.py", CALL.as_bytes(), "user", 0)
+        .unwrap();
+    let mut h = OfflineHost;
+    let mut session = DapSession::new();
+    let command: Vec<String> = ["python3", "call.py"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let mut send = |session: &mut DapSession, c: &mut Computer, req: Request| {
+        let mut runner = MachineDebugger::for_command(c, &mut h, 0, &command).expect("a runtime");
+        session.handle(req, &mut runner)
+    };
+    send(&mut session, &mut c, Request::Initialize);
+    send(
+        &mut session,
+        &mut c,
+        Request::SetBreakpoints {
+            path: "/home/user/call.py".into(),
+            breakpoints: vec![SourceBreakpoint {
+                line: 2,
+                ..SourceBreakpoint::default()
+            }],
+        },
+    );
+    send(
+        &mut session,
+        &mut c,
+        Request::Launch {
+            stop_on_entry: false,
+        },
+    );
+    send(&mut session, &mut c, Request::ConfigurationDone);
+    let frames = match body(send(&mut session, &mut c, Request::StackTrace { thread_id: 1 }).0) {
+        Body::StackTrace(f) => f,
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(frames.len(), 2);
+    assert_eq!((frames[0].name.as_str(), frames[0].line), ("square", 2));
+    assert_eq!((frames[1].name.as_str(), frames[1].line), ("<module>", 6));
+    let scopes = match body(
+        send(
+            &mut session,
+            &mut c,
+            Request::Scopes {
+                frame_id: frames[1].id,
+            },
+        )
+        .0,
+    ) {
+        Body::Scopes(s) => s,
+        other => panic!("{other:?}"),
+    };
+    let locals = scopes.iter().find(|s| s.name == "Locals").expect("locals");
+    let vars = match body(
+        send(
+            &mut session,
+            &mut c,
+            Request::Variables {
+                variables_reference: locals.variables_reference,
+            },
+        )
+        .0,
+    ) {
+        Body::Variables(v) => v,
+        other => panic!("{other:?}"),
+    };
+    let n = vars.iter().find(|v| v.name == "n").expect("n");
+    assert_eq!(n.value, "7");
+    assert!(vars.iter().all(|v| v.name != "v"), "{vars:?}");
+}

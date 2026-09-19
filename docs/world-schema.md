@@ -10,7 +10,7 @@ interpreting them. `WorldDefinition::from_json` parses and validates the definit
 | `profiles` | OS definitions: `id`, `name`, `family`, `home`, `case_sensitive`, `shell` |
 | `computers` | Machine `id`, `profile`, `address`, `user`, optional `node`, initial files, installed applications and packages, and an optional `presentation` (`desktop`, `laptop`, `phone`, `server`) |
 | `network` | Nodes, links, DNS records, routes, explicit `implicit_lan` and gateway policy |
-| `services` | Instance `id`, registered `kind`, placement `node`, domains, port, initial state |
+| `services` | Instance `id`, registered `kind`, placement `node`, domains, `port` (80), `tls` (default `true`: a second listener on 443 answers `https://`), initial state |
 | `metadata` | Owner-side JSON; not an actor observation channel. Two keys are load-bearing: `desktop_themes` maps a computer to an OS shell, and `desktop_apps` declares its application catalog. Both change what an actor sees and can launch — see [desktop GUI](desktop-gui.md). `device_presentations` maps a computer to `desktop`, `laptop`, `phone` or `server` (a computer's own `presentation` wins): laptops and phones show a battery, desktop computers and servers none. A phone shell is always a phone; a computer nothing is said about is a desktop computer. |
 
 A computer's node defaults to its machine ID. Explicit nodes have an address and

@@ -1,0 +1,334 @@
+{
+  "id": "archive",
+  "kind": "wiki",
+  "node": "archive",
+  "domains": ["archive.org","www.archive.org","web.archive.org"],
+  "port": 80,
+  "initial_state": {
+    "brand": "Internet Archive",
+    "tagline": "Universal access to all knowledge",
+    "theme": {
+      "accent": "#2c5aa0",
+      "background": "#ffffff",
+      "surface": "#f1f1f1",
+      "ink": "#222222",
+      "muted": "#666666",
+      "content_width": 980
+    },
+    "featured": "Wayback_Machine",
+    "in_the_news": [
+      {"label":"The Software Library passes 1.2 million items","url":"http://archive.org/wiki/Software_Library"},
+      {"label":"Our Friend the Transistor: a 1962 print, scanned in 2K","url":"http://archive.org/wiki/Our_Friend_the_Transistor"},
+      {"label":"Support the Archive","url":"http://archive.org/wiki/Donate"}
+    ],
+    "accounts": {"alice":"alice_c","bob":"bmartinez","carol":"cnakamura"},
+    "articles": {
+      "Wayback_Machine": {
+        "id": "Wayback_Machine",
+        "title": "Wayback Machine",
+        "summary": "The Wayback Machine is the Internet Archive's collection of saved web pages. It holds more than a trillion captures made since 1996, each one a copy of a page as it stood at a recorded moment, and lets a reader open any of them by URL and date. The item Snapshot of northstar.example (2026) is an example of a single capture.",
+        "infobox": [
+          ["Type","Web archive"],
+          ["Founded","1996; public since 2001"],
+          ["Captures","over 1 trillion"],
+          ["Access","By URL and date"]
+        ],
+        "sections": [
+          {"id":"how","heading":"How it works","body":"Crawlers fetch pages and store the bytes with the time of the fetch. A capture is addressed by its original URL and a fourteen-digit timestamp; a request for a date with no capture returns the nearest one. Pages saved on request through Save Page Now are stored the same way as crawled ones and are available within minutes."},
+          {"id":"use","heading":"Using it","body":"Enter a URL to see a calendar of its captures. Choose a date to open that capture. Links inside a saved page point at other captures from the nearest date, so a site can be browsed as it was."},
+          {"id":"limits","heading":"What it does not hold","body":"Pages excluded by their owner, pages behind a login and most content loaded by scripts after the page was fetched. A capture is a record of a response, not a working copy of a service."}
+        ],
+        "references": [{"label":"Wayback Machine — Wikipedia","url":"http://en.wikipedia.org/"}],
+        "see_also": ["Snapshot_of_northstar.example_(2026)","About","Terms"],
+        "categories": ["Collections"],
+        "revisions": [{"rev":1,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Software_Library": {
+        "id": "Software_Library",
+        "title": "Software Library",
+        "summary": "The Software Library is the Internet Archive's collection of historical software: shareware, freeware, demos, operating systems and the disk images they came on. Many items run in the browser through an emulator, so a 1990s program can be tried without installing anything. The item Cavern Runner 98 is a shareware game from the collection.",
+        "infobox": [
+          ["Type","Software collection"],
+          ["Items","about 1.2 million"],
+          ["Emulation","In-browser (DOS, Windows 3.x, Macintosh, Apple II, arcade)"],
+          ["Curated since","2013"]
+        ],
+        "sections": [
+          {"id":"scope","heading":"Scope","body":"The library preserves programs as they were distributed: original archives, disk and CD images, documentation, registration cards and the shareware nag screens. Sub-collections cover MS-DOS games, Windows 3.x shareware, classic Macintosh software and console and arcade ROMs contributed by their rights holders."},
+          {"id":"emulation","heading":"Emulation","body":"Items with an emulator badge run in the browser. The emulator boots a disk image built from the item's files; nothing is downloaded to the reader's machine except the page. Saved states are kept in the browser and are not uploaded."},
+          {"id":"contribute","heading":"Contributing","body":"Anyone with an account can upload software they have the right to share. Uploads are reviewed for malware and for takedown requests, then added to the appropriate sub-collection."}
+        ],
+        "references": [{"label":"Retrocomputing discussion on Reddit","url":"http://reddit.com/"}],
+        "see_also": ["Cavern_Runner_98","About","Terms"],
+        "categories": ["Collections"],
+        "revisions": [{"rev":2,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Live_Music_Archive": {
+        "id": "Live_Music_Archive",
+        "title": "Live Music Archive",
+        "summary": "The Live Music Archive holds audience and soundboard recordings of concerts by artists who permit their live performances to be recorded and shared. It grew from the tape-trading communities of the 1990s and now holds over 250,000 recordings.",
+        "infobox": [
+          ["Type","Audio collection"],
+          ["Recordings","over 250,000"],
+          ["Formats","FLAC, MP3, Ogg Vorbis"],
+          ["Policy","Artist opt-in"]
+        ],
+        "sections": [
+          {"id":"policy","heading":"Artist policy","body":"Only artists who have explicitly allowed taping appear here. An artist can withdraw at any time, in which case their recordings are removed from public access but preserved. Commercial releases are never accepted."},
+          {"id":"listening","heading":"Listening","body":"Every recording streams in the browser and downloads in lossless form. Set lists, tapers' notes and recording equipment are recorded per item, and recordings of the same show are grouped so a listener can compare sources."}
+        ],
+        "references": [{"label":"Tape trading — Wikipedia","url":"http://en.wikipedia.org/"}],
+        "see_also": ["About","Terms"],
+        "categories": ["Collections"],
+        "revisions": [{"rev":3,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Open_Library": {
+        "id": "Open_Library",
+        "title": "Open Library",
+        "summary": "Open Library is the Internet Archive's catalogue of books, with one web page for every book ever published as its stated goal. Public-domain works can be read in full; many in-copyright works can be borrowed one reader at a time. The item The Ledger of Ashby Hall is a public-domain novel from the collection.",
+        "infobox": [
+          ["Type","Book catalogue and lending library"],
+          ["Records","over 50 million editions"],
+          ["Readable in full","about 4 million"],
+          ["Launched","2006"]
+        ],
+        "sections": [
+          {"id":"catalogue","heading":"The catalogue","body":"Records come from library catalogues, publishers and readers. Each work has a page collecting its editions; each edition records its publisher, year, pagination and identifiers. Anyone can correct a record."},
+          {"id":"reading","heading":"Reading and borrowing","body":"Public-domain books open directly in the reader, page by page, with the scanned page alongside its text. Books still in copyright are lent one copy per reader for one hour or fourteen days, the way a library lends a physical book."}
+        ],
+        "references": [{"label":"Open Library — Wikipedia","url":"http://en.wikipedia.org/"}],
+        "see_also": ["The_Ledger_of_Ashby_Hall","About"],
+        "categories": ["Collections"],
+        "revisions": [{"rev":4,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Prelinger_Archives": {
+        "id": "Prelinger_Archives",
+        "title": "Prelinger Archives",
+        "summary": "The Prelinger Archives is a collection of ephemeral films: advertising, educational, industrial and amateur films made between 1927 and the 1980s that were never intended to last. Around 7,000 are available here. The item Our Friend the Transistor is a 1962 educational film from the collection.",
+        "infobox": [
+          ["Type","Film collection"],
+          ["Films online","about 7,000"],
+          ["Period","1927–1987"],
+          ["Licence","Mostly public domain"]
+        ],
+        "sections": [
+          {"id":"scope","heading":"What is in it","body":"Classroom films, sponsored films made by manufacturers and trade bodies, home movies and civic-education shorts. They record what companies, schools and governments wanted people to think, which makes them a rich record of the ordinary."},
+          {"id":"reuse","heading":"Reuse","body":"Most films are in the public domain and may be downloaded in the original scan resolution and reused without permission. Items with a known rights holder are marked."}
+        ],
+        "references": [{"label":"Ephemeral film — Wikipedia","url":"http://en.wikipedia.org/"}],
+        "see_also": ["Our_Friend_the_Transistor","About"],
+        "categories": ["Collections"],
+        "revisions": [{"rev":5,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Cavern_Runner_98": {
+        "id": "Cavern_Runner_98",
+        "title": "Cavern Runner 98",
+        "summary": "Cavern Runner 98 is a 1998 shareware platform game for MS-DOS and Windows 95 by the two-person studio Lodestone Software. The shareware release contains the first of three episodes, fifteen levels, and a registration screen asking for 19.95 dollars by post. It runs in the browser through the Software Library's DOS emulator.",
+        "infobox": [
+          ["Collection","Software Library"],
+          ["Year","1998"],
+          ["Publisher","Lodestone Software"],
+          ["Platform","MS-DOS, Windows 95"],
+          ["Size","2.3 MB (ZIP)"],
+          ["Emulation","Runs in browser"],
+          ["Views","48,211"]
+        ],
+        "sections": [
+          {"id":"about","heading":"About the game","body":"The player guides a mine surveyor through flooding caverns, placing lamps to reveal the level and collecting core samples to open the exit. Levels are timed against the rising water. The shareware episode ends with the surveyor reaching the lift shaft and a screen explaining how to order episodes two and three."},
+          {"id":"files","heading":"Files","body":"CAVERN98.ZIP (2.3 MB) contains CAVERN.EXE, the level data, a SETUP.EXE for sound card selection and ORDER.TXT with the postal address. A scan of the registration card is attached as a separate file."},
+          {"id":"notes","heading":"Notes","body":"Uploaded from an original shareware CD-ROM compilation. The game requires a Sound Blaster-compatible card for music; the emulator supplies one."}
+        ],
+        "references": [],
+        "see_also": ["Software_Library"],
+        "categories": ["Software","1998"],
+        "revisions": [{"rev":6,"author":"archive-librarian","tick":2,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Our_Friend_the_Transistor": {
+        "id": "Our_Friend_the_Transistor",
+        "title": "Our Friend the Transistor",
+        "summary": "Our Friend the Transistor is a 1962 educational film, 16 minutes, produced by Meridian Instructional Films for secondary school science classes. It explains the transistor through a series of demonstrations with an oversized model and compares it, at length, with the vacuum tube it replaces. It is in the public domain.",
+        "infobox": [
+          ["Collection","Prelinger Archives"],
+          ["Year","1962"],
+          ["Producer","Meridian Instructional Films"],
+          ["Runtime","16 min"],
+          ["Format","16 mm, colour, sound"],
+          ["Licence","Public domain"],
+          ["Views","12,904"]
+        ],
+        "sections": [
+          {"id":"synopsis","heading":"Synopsis","body":"A teacher in a laboratory coat introduces \"our friend\" and shows what it does: a radio the size of a shoebox becomes one the size of a cigarette packet. The film explains base, emitter and collector with a water-tap model, then visits a factory where transistors are made by hand under microscopes."},
+          {"id":"scan","heading":"About this scan","body":"Scanned in 2K from a 16 mm print with faded colour and a scratched first reel. The soundtrack is intact. The print is the only known copy."}
+        ],
+        "references": [],
+        "see_also": ["Prelinger_Archives"],
+        "categories": ["Films","1962"],
+        "revisions": [{"rev":7,"author":"archive-librarian","tick":2,"comment":"created","section":null}],
+        "talk": []
+      },
+      "The_Midnight_Dispatch": {
+        "id": "The_Midnight_Dispatch",
+        "title": "The Midnight Dispatch",
+        "summary": "The Midnight Dispatch is a radio drama serial broadcast weekly from 1936 to 1939 on a regional network in the American Midwest. Each fifteen-minute episode follows a newspaper night editor who receives a tip the paper cannot print. Forty-one episodes survive from transcription discs and are collected here.",
+        "infobox": [
+          ["Collection","Old Time Radio"],
+          ["Years","1936–1939"],
+          ["Episodes surviving","41 of about 150"],
+          ["Runtime","15 min each"],
+          ["Source","Transcription discs"],
+          ["Views","31,676"]
+        ],
+        "sections": [
+          {"id":"about","heading":"About the serial","body":"The serial was sponsored by a coffee brand whose jingle opens every episode. The night editor, Hal Corrigan, was played by the same actor throughout. Episodes are self-contained; the surviving discs are numbered but the numbering has gaps."},
+          {"id":"audio","heading":"About the audio","body":"The discs were transferred in 2009 at 96 kHz and are offered here as FLAC and MP3. Surface noise has been reduced lightly; the jingle is unchanged."}
+        ],
+        "references": [],
+        "see_also": ["Live_Music_Archive"],
+        "categories": ["Audio","1930s radio"],
+        "revisions": [{"rev":8,"author":"archive-librarian","tick":2,"comment":"created","section":null}],
+        "talk": []
+      },
+      "The_Ledger_of_Ashby_Hall": {
+        "id": "The_Ledger_of_Ashby_Hall",
+        "title": "The Ledger of Ashby Hall",
+        "summary": "The Ledger of Ashby Hall is an 1899 novel by the English writer Harriet Penrose, out of copyright since 1979. A country house is inherited along with its account books, and the heir reads the ledger back through fifty years to find out where the money went. It is available to read in full or to download.",
+        "infobox": [
+          ["Collection","Open Library"],
+          ["Author","Harriet Penrose"],
+          ["Published","1899, London"],
+          ["Pages","312"],
+          ["Licence","Public domain"],
+          ["Formats","Read online, PDF, EPUB, plain text"]
+        ],
+        "sections": [
+          {"id":"about","heading":"About the book","body":"Penrose's only novel was reviewed well and sold poorly. It was rediscovered in the 1990s and is now taught for its use of accounts as narrative: each chapter opens with a page of the ledger, and the story is what the entries do not say."},
+          {"id":"scan","heading":"About this copy","body":"Scanned from the first edition held by a university library. The OCR text has been proofread by volunteers and is complete."}
+        ],
+        "references": [{"label":"Public domain — Wikipedia","url":"http://en.wikipedia.org/"}],
+        "see_also": ["Open_Library"],
+        "categories": ["Books","1899"],
+        "revisions": [{"rev":9,"author":"archive-librarian","tick":2,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Snapshot_of_northstar.example_(2026)": {
+        "id": "Snapshot_of_northstar.example_(2026)",
+        "title": "Snapshot of northstar.example (2026)",
+        "summary": "This item is a Wayback Machine capture of the home page of northstar.example, made on 4 February 2026 at 09:14 UTC. The capture is recorded here as an item because it was submitted through Save Page Now with a note, and notes are kept with the item rather than the capture.",
+        "infobox": [
+          ["Collection","Wayback Machine"],
+          ["URL","http://northstar.example/"],
+          ["Captured","4 February 2026, 09:14 UTC"],
+          ["Size","31 KB"],
+          ["Status","200 OK"]
+        ],
+        "sections": [
+          {"id":"note","heading":"Submitter's note","body":"Saved before the redesign announced for the following week. The page carries the original product description and the pricing table that was later changed. Kept for reference; nothing on the page is unusual."},
+          {"id":"contents","heading":"What the capture holds","body":"The HTML of the home page and the stylesheet it referenced. Images were fetched and stored. A script that loaded the pricing table from a separate endpoint was not executed, so the table appears as it was in the page source."}
+        ],
+        "references": [],
+        "see_also": ["Wayback_Machine"],
+        "categories": ["Web captures","2026"],
+        "revisions": [{"rev":10,"author":"archive-librarian","tick":3,"comment":"created","section":null}],
+        "talk": []
+      },
+      "About": {
+        "id": "About",
+        "title": "About the Internet Archive",
+        "summary": "The Internet Archive is a non-profit digital library founded in 1996 with the mission of universal access to all knowledge. It preserves web pages, software, books, audio and film, and makes them available free of charge to readers, researchers and the public.",
+        "infobox": [
+          ["Founded","1996"],
+          ["Type","Non-profit library"],
+          ["Headquarters","San Francisco"],
+          ["Items","hundreds of millions"]
+        ],
+        "sections": [
+          {"id":"mission","heading":"Mission","body":"Libraries have always kept what was published so that the future could read it. The Internet Archive does the same for what is published digitally, which is to say for most of what is published now."},
+          {"id":"collections","heading":"Collections","body":"The Wayback Machine, the Software Library, the Live Music Archive, Open Library and the Prelinger Archives are the largest. Each is linked under See also."},
+          {"id":"funding","heading":"Funding","body":"The Archive is funded by donations, grants and library partnerships. It sells nothing and shows no advertising."}
+        ],
+        "references": [{"label":"Internet Archive — Wikipedia","url":"http://en.wikipedia.org/"}],
+        "see_also": [
+          "Wayback_Machine",
+          "Software_Library",
+          "Live_Music_Archive",
+          "Open_Library",
+          "Prelinger_Archives",
+          "Donate",
+          "Terms"
+        ],
+        "categories": ["Site"],
+        "revisions": [{"rev":11,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Donate": {
+        "id": "Donate",
+        "title": "Donate",
+        "summary": "The Internet Archive is a non-profit. It has no advertising and no paywall, and it keeps its collections available because readers pay for them. A donation of any size supports the servers, the scanning centres and the staff who keep them running.",
+        "infobox": [
+          ["Tax status","501(c)(3) non-profit"],
+          ["Average gift","25 dollars"],
+          ["Storage cost","about 2 dollars per gigabyte, forever"]
+        ],
+        "sections": [
+          {"id":"how","heading":"How to give","body":"One-time or monthly gifts are accepted by card, bank transfer and cheque. Donors receive a receipt for tax purposes. Nothing else is sent unless asked for."},
+          {"id":"other","heading":"Other ways to help","body":"Upload material you have the right to share, correct catalogue records in Open Library, or run a mirror. The Archive also accepts donations of physical media for digitisation."}
+        ],
+        "references": [],
+        "see_also": ["About","Terms"],
+        "categories": ["Site"],
+        "revisions": [{"rev":12,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      },
+      "Terms": {
+        "id": "Terms",
+        "title": "Terms of Use",
+        "summary": "These terms govern the use of the Internet Archive's collections. They are short because the collections exist to be used.",
+        "infobox": [["Effective","1 January 2026"],["Applies to","All collections and services"]],
+        "sections": [
+          {"id":"access","heading":"Access","body":"Reading, listening, viewing and downloading are free. Items may carry their own licences; where an item does, that licence governs reuse. Where it does not, assume the material may be in copyright and act accordingly."},
+          {"id":"removal","heading":"Removal","body":"A rights holder may ask for an item to be removed from public access. Removed items are preserved but not served. A site owner may exclude their site from the Wayback Machine."},
+          {"id":"conduct","heading":"Conduct","body":"Do not use the collections to harass anyone, do not upload material you have no right to share, and do not fetch at a rate that degrades the service for others."}
+        ],
+        "references": [],
+        "see_also": ["About","Donate"],
+        "categories": ["Site"],
+        "revisions": [{"rev":13,"author":"archive-librarian","tick":1,"comment":"created","section":null}],
+        "talk": []
+      }
+    },
+    "redirects": {
+      "Wayback": "Wayback_Machine",
+      "Web_Archive": "Wayback_Machine",
+      "Software": "Software_Library",
+      "Prelinger": "Prelinger_Archives",
+      "Terms_of_Use": "Terms",
+      "About_us": "About",
+      "Cavern_Runner": "Cavern_Runner_98",
+      "northstar.example": "Snapshot_of_northstar.example_(2026)"
+    },
+    "next_rev": 14
+  },
+  "search_entries": [
+    {"url":"http://archive.org/","title":"Internet Archive: digital library of free books, movies, software, music","snippet":"A non-profit library of millions of free books, films, software, music and web pages.","vertical":"all","authority":8,"keywords":["internet archive","archive.org","digital library","free books","old software"]},
+    {"url":"http://archive.org/wiki/Wayback_Machine","title":"Wayback Machine — Internet Archive","snippet":"Over a trillion saved web pages, addressed by URL and date.","vertical":"all","authority":8,"keywords":["wayback machine","web archive","saved pages","old website","snapshot"]},
+    {"url":"http://archive.org/wiki/Software_Library","title":"Software Library — Internet Archive","snippet":"Historical shareware, freeware and operating systems, many running in the browser through emulation.","vertical":"all","authority":7,"keywords":["software library","shareware","dos games","emulator","retro"]},
+    {"url":"http://archive.org/wiki/Live_Music_Archive","title":"Live Music Archive — Internet Archive","snippet":"Over 250,000 concert recordings from artists who allow taping.","vertical":"all","authority":7,"keywords":["live music archive","concert recordings","bootleg","flac","tapers"]},
+    {"url":"http://archive.org/wiki/Open_Library","title":"Open Library — Internet Archive","snippet":"One web page for every book ever published. Read public-domain books in full, borrow the rest.","vertical":"all","authority":7,"keywords":["open library","borrow books","free ebooks","catalogue"]},
+    {"url":"http://archive.org/wiki/Prelinger_Archives","title":"Prelinger Archives — Internet Archive","snippet":"About 7,000 ephemeral films: educational, industrial, advertising and amateur, 1927–1987.","vertical":"all","authority":7,"keywords":["prelinger","ephemeral films","educational film","public domain film"]},
+    {"url":"http://archive.org/wiki/Cavern_Runner_98","title":"Cavern Runner 98 (1998, Lodestone Software) — Internet Archive","snippet":"Shareware platform game for MS-DOS and Windows 95. Runs in the browser.","vertical":"all","authority":6,"keywords":["cavern runner","shareware","1998","dos game","platformer"]},
+    {"url":"http://archive.org/wiki/Our_Friend_the_Transistor","title":"Our Friend the Transistor (1962) — Internet Archive","snippet":"A 16-minute classroom film explaining the transistor. Public domain, scanned from the only known print.","vertical":"all","authority":6,"keywords":["our friend the transistor","1962","educational film","transistor"]},
+    {"url":"http://archive.org/wiki/The_Midnight_Dispatch","title":"The Midnight Dispatch (1936–1939 radio serial) — Internet Archive","snippet":"Forty-one surviving episodes of a Midwest newspaper radio drama, transferred from transcription discs.","vertical":"all","authority":6,"keywords":["midnight dispatch","old time radio","1930s","radio drama","serial"]},
+    {"url":"http://archive.org/wiki/The_Ledger_of_Ashby_Hall","title":"The Ledger of Ashby Hall by Harriet Penrose (1899) — Internet Archive","snippet":"An out-of-copyright novel, readable in full, downloadable as PDF, EPUB and text.","vertical":"all","authority":6,"keywords":["ledger of ashby hall","harriet penrose","public domain novel","free ebook","1899"]},
+    {"url":"http://archive.org/wiki/Snapshot_of_northstar.example_(2026)","title":"Snapshot of northstar.example, 4 February 2026 — Internet Archive","snippet":"A Wayback Machine capture of the northstar.example home page, saved before its redesign, with the submitter's note.","vertical":"all","authority":6,"keywords":["northstar.example","snapshot","wayback","northstar","capture"]},
+    {"url":"http://archive.org/wiki/About","title":"About the Internet Archive","snippet":"A non-profit digital library founded in 1996 with the mission of universal access to all knowledge.","vertical":"all","authority":7,"keywords":["about","internet archive","non-profit","mission"]},
+    {"url":"http://archive.org/wiki/Donate","title":"Donate to the Internet Archive","snippet":"No advertising, no paywall. A donation of any size keeps the collections online.","vertical":"all","authority":6,"keywords":["donate","internet archive","support"]},
+    {"url":"http://archive.org/wiki/Terms","title":"Terms of Use — Internet Archive","snippet":"Short terms governing access, removal and conduct across the collections.","vertical":"all","authority":5,"keywords":["terms of use","internet archive","policy"]}
+  ],
+  "network_node": {"address":"203.0.113.131","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+}

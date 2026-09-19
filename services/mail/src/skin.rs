@@ -137,6 +137,7 @@ fn button(id: &str, text: &str, url: &str, fields: &[(&str, &str)]) -> PageEleme
                 .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
                 .collect(),
         },
+        style: None,
     }
 }
 fn link_to(folder: &str, thread: Option<&str>, compose: bool) -> PageAction {

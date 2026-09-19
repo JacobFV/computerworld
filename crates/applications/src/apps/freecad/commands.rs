@@ -55,6 +55,20 @@ pub const COMMANDS: &[Cmd] = &[
     c("PartDesign_Mirrored", "Mirror", ""),
     c("PartDesign_LinearPattern", "Linear Pattern", ""),
     c("PartDesign_PolarPattern", "Polar Pattern", ""),
+    c("PartDesign_AdditiveBox", "Additive box", ""),
+    c("PartDesign_AdditiveCylinder", "Additive cylinder", ""),
+    c("PartDesign_AdditiveSphere", "Additive sphere", ""),
+    c("PartDesign_AdditiveCone", "Additive cone", ""),
+    c("PartDesign_AdditiveTorus", "Additive torus", ""),
+    c("PartDesign_SubtractiveBox", "Subtractive box", ""),
+    c("PartDesign_SubtractiveCylinder", "Subtractive cylinder", ""),
+    c("PartDesign_SubtractiveSphere", "Subtractive sphere", ""),
+    c("PartDesign_SubtractiveCone", "Subtractive cone", ""),
+    c("PartDesign_SubtractiveTorus", "Subtractive torus", ""),
+    c("PartDesign_Boolean", "Boolean", ""),
+    c("PartDesign_Plane", "Create a datum plane", ""),
+    c("PartDesign_Line", "Create a datum line", ""),
+    c("PartDesign_Point", "Create a datum point", ""),
     c("PartDesign_MoveTip", "Set tip", ""),
     c("Sketcher_EditSketch", "Edit sketch", ""),
     c("Sketcher_LeaveSketch", "Leave sketch", "Esc"),
@@ -189,13 +203,26 @@ pub const MENUS: &[(&str, &[&str])] = &[
         &[
             "PartDesign_Body",
             "PartDesign_NewSketch",
+            "PartDesign_Plane",
+            "PartDesign_Line",
+            "PartDesign_Point",
             "-",
             "PartDesign_Pad",
             "PartDesign_Revolution",
+            "PartDesign_AdditiveBox",
+            "PartDesign_AdditiveCylinder",
+            "PartDesign_AdditiveSphere",
+            "PartDesign_AdditiveCone",
+            "PartDesign_AdditiveTorus",
             "-",
             "PartDesign_Pocket",
             "PartDesign_Hole",
             "PartDesign_Groove",
+            "PartDesign_SubtractiveBox",
+            "PartDesign_SubtractiveCylinder",
+            "PartDesign_SubtractiveSphere",
+            "PartDesign_SubtractiveCone",
+            "PartDesign_SubtractiveTorus",
             "-",
             "PartDesign_Fillet",
             "PartDesign_Chamfer",
@@ -204,6 +231,7 @@ pub const MENUS: &[(&str, &[&str])] = &[
             "PartDesign_LinearPattern",
             "PartDesign_PolarPattern",
             "-",
+            "PartDesign_Boolean",
             "PartDesign_MoveTip",
         ],
     ),
@@ -322,13 +350,16 @@ pub fn toolbar(sketching: bool) -> Vec<&'static str> {
             "|",
             "PartDesign_Body",
             "PartDesign_NewSketch",
+            "PartDesign_Plane",
             "|",
             "PartDesign_Pad",
             "PartDesign_Revolution",
+            "PartDesign_AdditiveBox",
             "|",
             "PartDesign_Pocket",
             "PartDesign_Hole",
             "PartDesign_Groove",
+            "PartDesign_SubtractiveBox",
             "|",
             "PartDesign_Fillet",
             "PartDesign_Chamfer",
@@ -336,6 +367,8 @@ pub fn toolbar(sketching: bool) -> Vec<&'static str> {
             "PartDesign_Mirrored",
             "PartDesign_LinearPattern",
             "PartDesign_PolarPattern",
+            "|",
+            "PartDesign_Boolean",
         ]);
     }
     t
@@ -435,6 +468,40 @@ impl Cad {
                 ) && !solid
                 {
                     return Err("There is no solid to cut; pad a sketch first".into());
+                }
+            }
+            "PartDesign_Plane" | "PartDesign_Line" | "PartDesign_Point" => {
+                if self.task.is_some() {
+                    return Err("Close the open task first".into());
+                }
+                need_body()?;
+            }
+            other
+                if other.starts_with("PartDesign_Additive")
+                    || other.starts_with("PartDesign_Subtractive") =>
+            {
+                if self.task.is_some() {
+                    return Err("Close the open task first".into());
+                }
+                let body = need_body()?;
+                if other.starts_with("PartDesign_Subtractive")
+                    && !self.model().body_shape.contains_key(&body)
+                {
+                    return Err("There is no solid to cut; add a solid feature first".into());
+                }
+            }
+            "PartDesign_Boolean" => {
+                if self.task.is_some() {
+                    return Err("Close the open task first".into());
+                }
+                let body = need_body()?;
+                if self.doc.bodies().len() < 2 {
+                    return Err("A boolean needs a second body; create one first".into());
+                }
+                if !self.model().body_shape.contains_key(&body)
+                    && self.boolean_tools(&body).is_empty()
+                {
+                    return Err("Select the bodies to combine with the active body".into());
                 }
             }
             "PartDesign_Fillet" | "PartDesign_Chamfer" => {
@@ -662,6 +729,9 @@ impl Cad {
         if let Some(rest) = cmd.strip_prefix("prop:") {
             return self.property_click(rest);
         }
+        if let Some(rest) = cmd.strip_prefix("prop-expr:") {
+            return self.focus_field(&format!("expr:{rest}"));
+        }
         if let Some(rest) = cmd.strip_prefix("choice:") {
             return self.choice(window, rest);
         }
@@ -723,7 +793,7 @@ impl Cad {
                 self.status = format!("{} is the active body", self.label_of(name));
                 Ok(vec![])
             }
-            Some(f) if f.is_solid_feature() => {
+            Some(f) if f.is_solid_feature() || f.is_datum() => {
                 self.open_feature_task(name);
                 Ok(vec![])
             }
@@ -760,6 +830,16 @@ impl Cad {
             let feature = fe.name.clone();
             if self.toggle_original(&feature, name)? {
                 return Ok(vec![]);
+            }
+        }
+        // While choosing a plane for a new sketch, a datum plane of the body is one.
+        if let Some(Task::PickPlane { body, plane }) = &mut self.task {
+            if matches!(
+                self.doc.get(name).map(|o| &o.feature),
+                Some(Feature::DatumPlane { .. })
+            ) && self.doc.body_of(name) == Some(body.as_str())
+            {
+                *plane = name.to_owned();
             }
         }
         self.selection = vec![Sel {
@@ -862,6 +942,8 @@ impl Cad {
             "PartDesign_Mirrored" | "PartDesign_LinearPattern" | "PartDesign_PolarPattern" => {
                 self.new_transform(id)?
             }
+            "PartDesign_Plane" | "PartDesign_Line" | "PartDesign_Point" => self.new_datum(id)?,
+            "PartDesign_Boolean" => self.new_boolean()?,
             "PartDesign_MoveTip" => self.move_tip()?,
             "Sketcher_EditSketch" => {
                 let name = self
@@ -900,6 +982,10 @@ impl Cad {
                     self.start_tool(tool)?;
                 } else if other.starts_with("Sketcher_Constrain") {
                     self.constrain(other)?;
+                } else if other.starts_with("PartDesign_Additive")
+                    || other.starts_with("PartDesign_Subtractive")
+                {
+                    self.new_primitive(other)?;
                 } else {
                     return Err(format!("unknown command {other}"));
                 }
@@ -1210,6 +1296,19 @@ impl Cad {
             FieldTarget::Task {
                 name: name.to_owned(),
             }
+        } else if let Some(name) = rest.strip_prefix("expr:") {
+            let object = self.selected_object().ok_or("Select an object")?.to_owned();
+            if !self
+                .property_rows(&object)
+                .iter()
+                .any(|r| r.name == name && r.kind == super::props::Kind::Number)
+            {
+                return Err(format!("{name} cannot be bound to an expression"));
+            }
+            FieldTarget::Expression {
+                object,
+                name: name.to_owned(),
+            }
         } else if let Some(i) = rest.strip_prefix("constraint:") {
             FieldTarget::Constraint {
                 index: i.parse().map_err(|_| "bad constraint")?,
@@ -1242,6 +1341,7 @@ impl Cad {
             }
             FieldTarget::Property { object, name } => self.property_text(object, name)?,
             FieldTarget::Label { object } => self.label_of(object),
+            FieldTarget::Expression { object, name } => self.expression_of(object, name),
         })
     }
 
@@ -1288,6 +1388,15 @@ impl Cad {
                 let (object, name) = (object.clone(), name.clone());
                 let r = self.set_property(&object, &name, &f.text);
                 if let Err(e) = &r {
+                    self.status = e.clone();
+                }
+                r?;
+            }
+            FieldTarget::Expression { object, name } => {
+                let (object, name) = (object.clone(), name.clone());
+                let r = self.set_expression(&object, &name, &f.text);
+                if let Err(e) = &r {
+                    self.field = Some(f.clone());
                     self.status = e.clone();
                 }
                 r?;
@@ -1342,6 +1451,7 @@ impl Cad {
                 id: format!("freecad:tree:{}", o.name),
                 text: format!("{} [{}]{status}", o.label, o.feature.type_id()),
                 action: act(&format!("freecad:tree:{}", o.name)),
+                style: None,
             });
         }
         if let Some(s) = self.sketch_edit() {
@@ -1371,6 +1481,7 @@ impl Cad {
                         id: format!("freecad:cmd:{id}"),
                         text: format!("{menu} › {label}"),
                         action: act(&format!("freecad:cmd:{id}")),
+                        style: None,
                     });
                 }
             }

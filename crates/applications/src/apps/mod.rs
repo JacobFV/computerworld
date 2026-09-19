@@ -9,7 +9,6 @@ pub mod look;
 
 pub mod calculator;
 pub mod calendar;
-pub mod chat;
 pub mod clock;
 pub mod code;
 pub mod contacts;
@@ -20,6 +19,7 @@ pub mod imaging;
 pub mod kicad;
 pub mod mail;
 pub mod maps;
+pub mod messages;
 pub mod music;
 pub mod notes;
 pub mod photos;
@@ -345,7 +345,7 @@ macro_rules! native_apps {
 native_apps! {
     Calendar => calendar,
     Mail => mail,
-    Chat => chat,
+    Messages => messages,
     Docs => docs,
     Notes => notes,
     Contacts => contacts,
@@ -554,15 +554,36 @@ impl NativeApp {
     pub fn hovers(&self, target: &str) -> bool {
         match self {
             Self::Kicad(a) => a.drags(target),
+            Self::Code(a) => a.hovers(target),
             other => other.studio().is_some_and(|s| s.hovers(target)),
         }
     }
-    /// The pointer moved over `target` with no button down, relative to its top-left.
-    /// Returns whether anything on screen changes because of it.
-    pub fn hover(&mut self, target: &str, x: i32, y: i32) -> bool {
+    /// The pointer moved over `target` in window `window` with no button down, relative
+    /// to the target's top-left. What comes back is what the application asks the
+    /// machine for because of it: Visual Studio Code's editor asks the debugger for the
+    /// value of the name under the pointer; a canvas only redraws.
+    pub fn hover(&mut self, window: u64, target: &str, x: i32, y: i32) -> Vec<AppEffect> {
         match self {
-            Self::Kicad(a) => a.hover(target, x, y),
-            other => other.studio_mut().is_some_and(|s| s.hover(target, x, y)),
+            Self::Kicad(a) => {
+                a.hover(target, x, y);
+                vec![]
+            }
+            Self::Code(a) => a.hover(window, target, x, y),
+            other => {
+                if let Some(s) = other.studio_mut() {
+                    s.hover(target, x, y);
+                }
+                vec![]
+            }
+        }
+    }
+    /// The pointer's shape over a hover surface: a text cursor over the editor, and
+    /// the crosshair a canvas takes aim with.
+    pub fn hover_cursor(&self, target: &str) -> &'static str {
+        match self {
+            Self::Code(_) if target.starts_with("code:editor:") => "text",
+            Self::Code(_) => "pointer",
+            _ => "crosshair",
         }
     }
     /// Modifier keys (`imaging::MOD_*` bits) held for the pointer press about to reach
@@ -703,7 +724,7 @@ impl NativeApp {
     pub fn phone_back(&self, theme: DesktopTheme) -> Option<String> {
         match self {
             Self::Mail(a) => a.phone_back(theme).map(str::to_owned),
-            Self::Chat(a) => a.phone_back().map(str::to_owned),
+            Self::Messages(a) => a.phone_back().map(str::to_owned),
             Self::Notes(a) => a.open.is_some().then(|| "notes:close".to_owned()),
             Self::Docs(a) => (a.open.is_some() && !a.dirty).then(|| "docs:close".to_owned()),
             Self::Contacts(a) => a.selected.is_some().then(|| "contacts:back".to_owned()),
@@ -716,7 +737,7 @@ impl NativeApp {
     pub fn phone_nav(&self, theme: DesktopTheme) -> Option<(&'static str, String, String)> {
         match self {
             Self::Mail(a) => a.phone_nav(theme),
-            Self::Chat(a) => a.phone_nav(),
+            Self::Messages(a) => a.phone_nav(),
             _ => None,
         }
     }
@@ -726,7 +747,7 @@ impl NativeApp {
     pub fn pull_to_refresh(&self) -> Option<&'static str> {
         match self {
             Self::Mail(a) if a.selected.is_none() && !a.mailboxes => Some("mail:reload"),
-            Self::Chat(a) if a.listing => Some("chat:reload"),
+            Self::Messages(a) if a.listing => Some("messages:reload"),
             _ => None,
         }
     }
@@ -747,7 +768,10 @@ impl NativeApp {
                 .compose
                 .as_ref()
                 .map(|c| format!("mail:field:{}", c.field)),
-            Self::Chat(a) => field(a.open.is_some() && (a.composing || !mobile), "chat:compose"),
+            Self::Messages(a) => field(
+                a.open.is_some() && (a.composing || !mobile),
+                "messages:compose",
+            ),
             Self::Docs(a) => field(a.open.is_some() && (a.editing || !mobile), "docs:body"),
             Self::Notes(a) => field(a.open.is_some() && (a.editing || !mobile), "notes:body"),
             Self::Maps(a) => field(a.typing, "maps:search-field"),

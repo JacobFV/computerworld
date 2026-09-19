@@ -305,6 +305,7 @@ fn form_el(
         id: format!("{id}-go"),
         text: submit.into(),
         action: action.clone(),
+        style: None,
     });
     PageElement::Form {
         id: id.into(),

@@ -1,0 +1,238 @@
+{
+  "id": "substack",
+  "kind": "press",
+  "node": "substack",
+  "domains": ["substack.com", "www.substack.com"],
+  "port": 80,
+  "network_node": {
+    "address": "203.0.113.145",
+    "zone": "internet",
+    "link": {"from": "pop-west", "latency_us": 1500}
+  },
+  "initial_state": {
+    "layout": "blog",
+    "brand": "Substack",
+    "tagline": "Newsletters worth the inbox. Five publications, one reading list.",
+    "theme": {"accent": "#ff6719", "background": "#ffffff", "surface": "#f8f6f3", "ink": "#1c1c1c", "muted": "#6e6e6e", "content_width": 720},
+    "sections": [
+      {"id": "the-ledger", "title": "The Ledger"},
+      {"id": "second-breakfast", "title": "Second Breakfast"},
+      {"id": "margin-of-safety", "title": "Margin of Safety"},
+      {"id": "the-lantern-room", "title": "The Lantern Room"},
+      {"id": "ward-seven", "title": "Ward Seven"}
+    ],
+    "articles": {
+      "the-ledger-atlas-and-the-end-of-flaky": {
+        "id": "the-ledger-atlas-and-the-end-of-flaky", "section": "the-ledger",
+        "title": "Atlas, and the end of 'flaky'",
+        "dek": "The Ledger, issue 141. A tech industry newsletter by Oren Sallis. This week: why one release made a whole vocabulary obsolete.",
+        "byline": "Oren Sallis", "date": "Mar 8, 2026", "tick": 12, "read_minutes": 7,
+        "body": [
+          "Every engineering team has a word for the tests that fail sometimes. The word is 'flaky', and it does a lot of work: it lets you re-run the build, get a green, and go home. I want to argue that Northstar's Atlas release last week is the beginning of the end for that word, and that most teams do not want it to end.",
+          "The pitch of Atlas is simple. Run your program in a simulated computer in which time, randomness and message order are controlled, and the test that fails sometimes will fail every time, in the same place, until you fix it. Reuters has the two-paragraph version at http://reuters.com/2026/northstar-atlas-determinism and Ars Technica has the fourteen-minute one at http://arstechnica.com/2026/atlas-deep-dive",
+          "Here is the uncomfortable part. A flaky test is usually a real bug that the team has agreed not to look at. The re-run is a ritual of not looking. A tool that removes the option of not looking is, for a lot of teams, going to feel like a tool that creates bugs, and I expect the first year of adoption to be full of people saying it 'found problems that were not there before'.",
+          "They were there. The word was hiding them. I would give it about two years before 'flaky' starts to sound the way 'works on my machine' does now: less like an explanation and more like a confession.",
+          "Next week: the reproducible-builds draft and why the medical-device people are the ones reading it most closely."
+        ],
+        "links": [
+          {"label": "Reuters: Northstar releases Atlas 1.0", "url": "http://reuters.com/2026/northstar-atlas-determinism"},
+          {"label": "Ars Technica: Atlas deep dive", "url": "http://arstechnica.com/2026/atlas-deep-dive"},
+          {"label": "Previous issue: the consolidation nobody planned", "url": "http://substack.com/posts/the-ledger-consolidation-nobody-planned"}
+        ],
+        "tags": ["tech", "the-ledger", "determinism"], "comments": [
+          {"id": "c1", "author": "alice", "text": "Less like an explanation and more like a confession. I am going to be quoting this in a retro.", "tick": 12, "likes": 34}
+        ]
+      },
+      "the-ledger-consolidation-nobody-planned": {
+        "id": "the-ledger-consolidation-nobody-planned", "section": "the-ledger",
+        "title": "The consolidation nobody planned",
+        "dek": "The Ledger, issue 139. Engineering teams are cutting tool contracts from six to four, and it is not because procurement told them to.",
+        "byline": "Oren Sallis", "date": "Feb 25, 2026", "tick": 9, "read_minutes": 6,
+        "body": [
+          "Reuters had a survey this week that I have not been able to stop thinking about: the median engineering team now holds four developer-tool contracts, down from six two years ago, while spending per engineer went up eleven percent. The story is at http://reuters.com/2026/dev-tools-consolidation",
+          "The easy read is that budgets got cut and teams consolidated. The survey does not support that; spending went up. What went down is the number of vendors, and I think the reason is boring and important: audit trails.",
+          "A team with six tools has six places a change can come from and six logs to reconcile when something goes wrong. A team with four has four. Nobody made a strategic decision here. A lot of engineers, individually, got tired of the reconciling and let the fifth and sixth contracts lapse.",
+          "For vendors, the lesson is that 'integrates with everything' is no longer a feature. 'Is the place the log lives' is the feature. Everything else is a plugin, and plugins do not get renewed."
+        ],
+        "links": [{"label": "Reuters: dev-tools consolidation survey", "url": "http://reuters.com/2026/dev-tools-consolidation"}],
+        "tags": ["tech", "the-ledger", "spending"], "comments": []
+      },
+      "second-breakfast-the-only-bread-recipe": {
+        "id": "second-breakfast-the-only-bread-recipe", "section": "second-breakfast",
+        "title": "The only bread recipe I am going to give you",
+        "dek": "Second Breakfast, a cooking newsletter by Hetty Marlowe. Flour, water, salt, time and one piece of advice about the oven.",
+        "byline": "Hetty Marlowe", "date": "Mar 6, 2026", "tick": 11, "read_minutes": 6,
+        "body": [
+          "Readers keep asking for a bread recipe, and I keep not giving one, because there are a thousand and they are all fine. Here is the one I actually make, twice a week, with the caveat that the recipe is a third of it. The other two-thirds are patience and a very hot pot.",
+          "Mix five hundred grams of strong white flour, ten grams of salt, three grams of instant yeast and three hundred and seventy-five grams of cool water until there is no dry flour. Cover the bowl. Leave it on the counter for twelve to eighteen hours, overnight is ideal, until it is bubbly and has roughly doubled.",
+          "Tip it onto a floured surface, fold it over itself four times, and let it rest, seam side down, on a floured cloth for an hour. Meanwhile put a lidded cast-iron pot in the oven and heat both to 250 degrees Celsius, or as hot as your oven goes. This is the piece of advice: the pot must be genuinely, alarmingly hot. Preheat it for the full hour.",
+          "Drop the dough into the pot, lid on, bake thirty minutes, lid off, bake another fifteen until it is darker than you think it should be. Let it cool completely before cutting. It will sing as it cools. That is the crust contracting and it is the best sound in a kitchen.",
+          "That is the recipe. Next week, what to do with the half loaf you did not finish, which is the real subject of this newsletter."
+        ],
+        "links": [{"label": "Previous: the case for eating dinner at four", "url": "http://substack.com/posts/second-breakfast-dinner-at-four"}],
+        "tags": ["cooking", "second-breakfast", "bread"], "comments": [
+          {"id": "c1", "author": "carol", "text": "Made this Saturday. It sang. I was not prepared.", "tick": 11, "likes": 41},
+          {"id": "c2", "author": "bob", "text": "Darker than you think it should be is the whole secret of baking and nobody says it.", "tick": 11, "likes": 18}
+        ]
+      },
+      "second-breakfast-dinner-at-four": {
+        "id": "second-breakfast-dinner-at-four", "section": "second-breakfast",
+        "title": "The case for eating dinner at four",
+        "dek": "Second Breakfast. An essay about the meal nobody schedules and the hour everyone is actually hungry.",
+        "byline": "Hetty Marlowe", "date": "Feb 13, 2026", "tick": 6, "read_minutes": 5,
+        "body": [
+          "My grandmother ate her main meal at four in the afternoon, and for most of my life I thought this was an eccentricity. I have come round to thinking it was the only sensible thing anyone in my family has ever done about food.",
+          "Four is when you are hungry. Not peckish, not grazing at a desk: hungry, in a way that makes a plate of roasted vegetables and a piece of bread feel like a reward. By eight, when most of us eat, the hunger has curdled into something closer to habit, and we eat too much of it too fast.",
+          "The practical objection is that nobody else eats at four. This is true. I have made peace with eating alone at four and then sitting with the family at seven with a cup of tea and a small bowl of whatever they are having. The conversation is the same. The digestion is not.",
+          "Try it for a week. Cook the thing you would have cooked at seven, eat it at four, and see whether the evening feels longer. It does."
+        ],
+        "links": [],
+        "tags": ["cooking", "second-breakfast", "essay"], "comments": []
+      },
+      "margin-of-safety-hearthline-numbers": {
+        "id": "margin-of-safety-hearthline-numbers", "section": "margin-of-safety",
+        "title": "Hearthline: the numbers under the story",
+        "dek": "Margin of Safety, a finance newsletter by Desmond Achebe. The bakery IPO is a great narrative. Here is the filing.",
+        "byline": "Desmond Achebe", "date": "Mar 2, 2026", "tick": 10, "read_minutes": 8,
+        "body": [
+          "Hearthline's IPO has the best story of the year: a founder who refused to franchise, two hundred stores that are all hers, and a plan to double without changing any of that. I like the story. I read the filing anyway, and I want to walk through what it says when it is not telling a story.",
+          "Revenue last year was four hundred and twenty million dollars on two hundred stores, so about two million per store, which is very good for a bakery. Operating margin was four percent, which is thin. The filing attributes the thinness to a commissary network that is 'ahead of the store base', meaning they built the central kitchens for four hundred stores and are running them for two hundred. That is either prudent or expensive, depending on whether the next two hundred arrive.",
+          "The plan calls for forty new stores a year. The most Hearthline has ever opened in a year is eighteen. The filing does not explain where the extra capacity comes from, and the founder's own stated reason for not franchising, that quality does not survive being done fast, is the strongest argument against her own plan.",
+          "The valuation being sought, around two billion dollars, is roughly five times revenue. For a company growing at eighteen stores a year that is generous. For one growing at forty it is reasonable. So the entire question is whether forty is real, and the filing gives you no way to know.",
+          "My position: it is a wonderful company and I am not buying at this price. I will happily be wrong. The news coverage is warmer than I am; The New York Times ran a nice piece on the founder."
+        ],
+        "links": [{"label": "Previous: what a flood costs, and who pays", "url": "http://substack.com/posts/margin-of-safety-what-a-flood-costs"}],
+        "tags": ["finance", "margin-of-safety", "ipo"], "comments": [
+          {"id": "c1", "author": "bob", "text": "The commissary-ahead-of-the-store-base line is the whole thesis. Either she is right and it is cheap or she is wrong and it is a fixed cost with no revenue against it.", "tick": 10, "likes": 22}
+        ]
+      },
+      "margin-of-safety-what-a-flood-costs": {
+        "id": "margin-of-safety-what-a-flood-costs", "section": "margin-of-safety",
+        "title": "What a flood costs, and who pays",
+        "dek": "Margin of Safety. Harbourside's damage estimate is weeks away. The insurance industry already has one.",
+        "byline": "Desmond Achebe", "date": "Feb 27, 2026", "tick": 8, "read_minutes": 6,
+        "body": [
+          "Harbourside will not publish its damage estimate for a fortnight. The reinsurers published theirs on Tuesday, and it is worth reading if you want to understand how the cost of a flood actually gets divided up.",
+          "The headline figure is about three hundred and forty million in insured losses. Roughly a third falls on primary insurers, who will pass most of it to their reinsurers under existing treaties. The reinsurers, in turn, will raise next year's premiums for every coastal town on the same stretch, whether or not it flooded.",
+          "Then there is the uninsured loss, which nobody publishes because nobody knows it. Harbourside's seafront businesses are old, and old businesses on old policies are often underinsured. The chandlery owner quoted in every news story lost his stock; whether he gets it back depends on a policy written before the 2019 report anyone could have read.",
+          "That report, which recommended raising the barrier for a cost the council did not want to find, is the real subject here. The raise would have cost perhaps twenty million. The flood cost seventeen times that. This is not a subtle calculation, and every coastal council is doing it this week, and most of them will still decide it can wait."
+        ],
+        "links": [],
+        "tags": ["finance", "margin-of-safety", "insurance"], "comments": []
+      },
+      "the-lantern-room-chapter-one": {
+        "id": "the-lantern-room-chapter-one", "section": "the-lantern-room",
+        "title": "The Lantern Room, chapter one: The Relief Boat",
+        "dek": "A serial novel by Ines Farrow, in weekly instalments. A keeper, an island, a boat that comes once a month, and the month it does not.",
+        "byline": "Ines Farrow", "date": "Feb 6, 2026", "tick": 5, "read_minutes": 9,
+        "body": [
+          "The relief boat was due on the fourth and it did not come. Margaret Hale logged this in the book at noon, as she logged everything, in the same hand she used for the weather and the shipping: 'Relief not sighted. Sea moderate. Wind SW 4.' Then she went up and trimmed the lamp, because the lamp did not care what day it was.",
+          "She had kept the light on Skerrow for six years, four of them alone. The island was half a mile long and had one building, which was the tower and the two rooms at its foot, and one tree, which had been planted by a keeper in 1871 and had not grown since she arrived. The relief boat brought oil, flour, letters and the month's newspapers, in that order of importance, and took away the log and whatever she had written to the Board.",
+          "On the fifth there was fog, which excused the boat. On the sixth the fog lifted and the sea was flat and the boat did not come, and that excused nothing. She counted the oil. Eleven days at full burn, nineteen if she trimmed low after midnight, which the Board forbade and every keeper did.",
+          "On the seventh she saw a sail to the north, and it was not the relief boat, and it was not anything she recognised. It stood off the island for an hour, close enough that she could see there was one figure on deck and that the figure was looking at the tower, and then it turned and went east. She logged it. 'Unknown sail, one hand, stood off 1 hr, departed E.' She did not log that she had gone down to the landing with the flare pistol, and stayed there until dark.",
+          "The lamp burned. She trimmed it low at midnight, as she always did, and sat in the lantern room and watched the beam go round, and thought about the nineteen days, and about the sail, and about the fact that in six years she had never once needed the flare pistol and had cleaned it every Sunday regardless.",
+          "Chapter two, The Letters, follows next week."
+        ],
+        "links": [{"label": "Chapter two: The Letters", "url": "http://substack.com/posts/the-lantern-room-chapter-two"}],
+        "tags": ["fiction", "the-lantern-room", "serial"], "comments": [
+          {"id": "c1", "author": "alice", "text": "The tree that has not grown since she arrived. I am in.", "tick": 5, "likes": 57}
+        ]
+      },
+      "the-lantern-room-chapter-two": {
+        "id": "the-lantern-room-chapter-two", "section": "the-lantern-room",
+        "title": "The Lantern Room, chapter two: The Letters",
+        "dek": "The serial continues. Margaret opens the box of letters she was told never to open, and the sail comes back.",
+        "byline": "Ines Farrow", "date": "Feb 20, 2026", "tick": 7, "read_minutes": 9,
+        "body": [
+          "The box had been in the store room when she arrived, under the spare wicks, with a Board seal on it and a note in her predecessor's hand that said only: 'Not yours.' She had respected that for six years, on the principle that a keeper who opens things that are not hers is a keeper who will one day open the wrong valve. On the ninth day without the boat she broke the seal.",
+          "The letters were from the Board to the keeper before the keeper before her, a man named Elias Crane, and they were all about the sail. A vessel had stood off Skerrow in the autumn of 1889, once a week for a month, and Crane had reported it, and the Board had told him to keep his log and his counsel. The last letter was different. It was not from the Board. It was from Crane, unsent, addressed to whoever came after him, and it began: 'If it has come back, do not go down to the landing.'",
+          "She read it in the lantern room, by the light of the lamp, which was where she read everything that mattered. When she had finished she put the letters back in the box and the box back under the wicks, and went down and counted the oil again, and it was the same as it had been, which was the first thing that day that had behaved.",
+          "The sail came back on the tenth. It stood off to the north for an hour, as before, and then it did something it had not done. It came in. She watched it round the point and drop a small boat, and she watched one figure row the small boat towards the landing, and she thought about Crane's letter, and she picked up the flare pistol and the log, and she went down.",
+          "Chapter three follows next week. Previous chapter: http://substack.com/posts/the-lantern-room-chapter-one"
+        ],
+        "links": [{"label": "Chapter one: The Relief Boat", "url": "http://substack.com/posts/the-lantern-room-chapter-one"}],
+        "tags": ["fiction", "the-lantern-room", "serial"], "comments": [
+          {"id": "c1", "author": "carol", "text": "She went down. Of course she went down. See you next Friday.", "tick": 7, "likes": 39}
+        ]
+      },
+      "ward-seven-the-pier-vote-explained": {
+        "id": "ward-seven-the-pier-vote-explained", "section": "ward-seven",
+        "title": "The Pier 4 vote, explained by someone who sat through all four meetings",
+        "dek": "Ward Seven, a local-politics newsletter for Port Ellery by Nadia Kessler. The council is split 4-3. Here is what each of the seven actually said.",
+        "byline": "Nadia Kessler", "date": "Mar 4, 2026", "tick": 13, "read_minutes": 8,
+        "body": [
+          "The national press has discovered Port Ellery, which means you have now read that the council is 'split' and 'used to agree on everything'. Both true. Neither useful if you live here and want to know what happens next. I have sat through all four meetings since the January vote. Here is what I heard.",
+          "The four who voted to advance the housing plan are not a bloc. Two of them, Ferris and Lund, want the apartments and would let the pier go. The other two, Ochoa and Whitcombe, voted yes specifically to keep the plan alive long enough to amend it, and both have said in the chamber that they will vote no on a final plan that removes the commercial landing. That is the fact the national coverage keeps missing: the real count on the plan as written is 2-5.",
+          "The three who voted no are also not a bloc. Osei wants the pier repaired and the upland lot developed, which is the 2017 plan. Baptiste wants no development at all. Ruiz will vote for anything the engineer says is affordable.",
+          "So the engineer's report in May is the whole game. If it says the pier can be repaired in phases for less than eleven million, you have Osei, Ochoa, Whitcombe and Ruiz for a modified plan, which is four. If it says the pier is unsalvageable, you have Ferris, Lund and probably Ruiz for the original, which is three, and a very long summer.",
+          "The developer's June deadline is, in my reading, soft. They have spent two years on this. They are not walking away over a month. The next public meeting is March 19 at the high school gym. Bring a coat; the heating has been broken since November, which is a separate scandal I will get to."
+        ],
+        "links": [{"label": "Previous: the high school gym heating, a timeline", "url": "http://substack.com/posts/ward-seven-gym-heating-timeline"}],
+        "tags": ["local-politics", "ward-seven", "port-ellery"], "comments": [
+          {"id": "c1", "author": "bob", "text": "The real count is 2-5. This is the single most useful sentence anyone has written about this vote.", "tick": 13, "likes": 29}
+        ]
+      },
+      "ward-seven-gym-heating-timeline": {
+        "id": "ward-seven-gym-heating-timeline", "section": "ward-seven",
+        "title": "The high school gym heating: a timeline",
+        "dek": "Ward Seven. Four months, three work orders, one boiler, and the public meetings that keep getting held in the coldest room in town.",
+        "byline": "Nadia Kessler", "date": "Feb 11, 2026", "tick": 4, "read_minutes": 5,
+        "body": [
+          "November 3: the gym boiler fails during a basketball practice. A work order is filed the same day. November 18: a contractor inspects and quotes a repair. The quote exceeds the amount the facilities manager can approve alone, so it goes to the school board.",
+          "December 9: the school board meets and defers the item because the December meeting is for the budget. January 13: the board approves the repair. January 20: the contractor reports the part is on back order. February 3: the part arrives. February 4: the contractor discovers the part is wrong.",
+          "February 11, today: the part is reordered. The gym is at eleven degrees. The council's public meeting on Pier 4 was held there last week because it is the only room in town that seats three hundred, and three hundred people sat in their coats for four hours, which I suspect shortened the meeting and may be the only reason it ended before midnight.",
+          "None of this is anyone's fault, exactly, which is what makes it worth writing down. It is what a small town's process looks like when nothing goes wrong except everything taking one step longer than it should."
+        ],
+        "links": [],
+        "tags": ["local-politics", "ward-seven"], "comments": []
+      },
+      "the-ledger-the-inbox-is-a-building-code": {
+        "id": "the-ledger-the-inbox-is-a-building-code", "section": "the-ledger",
+        "title": "The inbox is a building code now",
+        "dek": "The Ledger, issue 140. On the Gridline suit, and why the interesting question is not whether Gridline is a monopoly.",
+        "byline": "Oren Sallis", "date": "Mar 4, 2026", "tick": 3, "read_minutes": 6,
+        "body": [
+          "Fourteen states are suing Gridline for making rival calendar invitations look broken in its inbox. The coverage has focused on whether Gridline is a monopoly, which is a fine question for a court and a boring one for us. The interesting question is what an inbox is.",
+          "For four hundred million people the inbox is where work arrives. A change to how it renders a message is not a product decision in the ordinary sense; it is closer to a change in the wiring code for a building everyone lives in. We do not let a landlord rewire the building to make a competitor's appliances trip the breaker, and we do not think of that as an antitrust question. We think of it as a safety one.",
+          "I do not know how the case comes out. I do think that within five years the largest inboxes will be regulated the way utilities are, with a published spec for what a message may do and a process for changing it, and that the Gridline suit will look in hindsight like the moment that became obvious.",
+          "Gridline's argument, that the display difference is a security feature, is not crazy. It is also exactly the argument a landlord would make."
+        ],
+        "links": [],
+        "tags": ["tech", "the-ledger", "antitrust"], "comments": []
+      },
+      "second-breakfast-the-half-loaf": {
+        "id": "second-breakfast-the-half-loaf", "section": "second-breakfast",
+        "title": "What to do with the half loaf",
+        "dek": "Second Breakfast. The real subject of this newsletter: four things to make from bread that is a day past its best.",
+        "byline": "Hetty Marlowe", "date": "Jan 23, 2026", "tick": 2, "read_minutes": 5,
+        "body": [
+          "A loaf is at its best for about six hours and edible for about three days, and the gap between those two numbers is where most of the good cooking in my kitchen happens. Here are the four things I make most.",
+          "Panzanella, if it is summer or you can pretend it is: tear the bread, toast it in a little oil until it is hard, then toss it with tomatoes, a great deal of their juice, red onion, vinegar and basil, and leave it twenty minutes so the bread drinks the dressing.",
+          "Bread soup, if it is winter: fry garlic in olive oil, add stock and the torn bread, simmer until it collapses, and finish with a beaten egg and a lot of black pepper. It is peasant food and it is better than most restaurant food.",
+          "Croutons, obviously, but made in a pan, not the oven, in butter, and eaten mostly before they reach the salad. And breadcrumbs, blitzed and frozen, which is not a recipe but is the reason I never buy them. The bread recipe itself is at http://substack.com/posts/second-breakfast-the-only-bread-recipe"
+        ],
+        "links": [{"label": "The only bread recipe I am going to give you", "url": "http://substack.com/posts/second-breakfast-the-only-bread-recipe"}],
+        "tags": ["cooking", "second-breakfast", "bread"], "comments": []
+      }
+    },
+    "subscribers": ["carol.nakamura@gmail.com", "bmartinez@outlook.com"],
+    "saved": {"alice": ["the-lantern-room-chapter-one"], "carol": ["second-breakfast-the-only-bread-recipe"]},
+    "follows": {"alice": ["publication", "fiction"], "bob": ["the-ledger", "margin-of-safety"]}
+  },
+  "search_entries": [
+    {"url": "http://substack.com/", "title": "Substack", "snippet": "Newsletters worth the inbox: The Ledger, Second Breakfast, Margin of Safety, The Lantern Room and Ward Seven.", "vertical": "news", "authority": 7, "keywords": ["substack", "newsletter", "newsletters", "subscribe"]},
+    {"url": "http://substack.com/posts/the-ledger-atlas-and-the-end-of-flaky", "title": "Atlas, and the end of 'flaky' - The Ledger on Substack", "snippet": "Why one release made a whole vocabulary obsolete. A tech industry newsletter by Oren Sallis.", "vertical": "news", "authority": 7, "keywords": ["the ledger", "atlas", "flaky tests", "oren sallis", "northstar"]},
+    {"url": "http://substack.com/posts/the-ledger-consolidation-nobody-planned", "title": "The consolidation nobody planned - The Ledger on Substack", "snippet": "Engineering teams are cutting tool contracts from six to four, and it is not because procurement told them to.", "vertical": "news", "authority": 6, "keywords": ["the ledger", "developer tools", "consolidation", "audit trail"]},
+    {"url": "http://substack.com/posts/the-ledger-the-inbox-is-a-building-code", "title": "The inbox is a building code now - The Ledger on Substack", "snippet": "On the Gridline suit, and why the interesting question is not whether Gridline is a monopoly.", "vertical": "news", "authority": 6, "keywords": ["the ledger", "gridline", "inbox", "antitrust"]},
+    {"url": "http://substack.com/posts/second-breakfast-the-only-bread-recipe", "title": "The only bread recipe I am going to give you - Second Breakfast on Substack", "snippet": "Flour, water, salt, time and one piece of advice about the oven.", "vertical": "news", "authority": 7, "keywords": ["bread recipe", "no knead bread", "second breakfast", "hetty marlowe", "cooking newsletter"]},
+    {"url": "http://substack.com/posts/second-breakfast-the-half-loaf", "title": "What to do with the half loaf - Second Breakfast on Substack", "snippet": "Four things to make from bread that is a day past its best.", "vertical": "news", "authority": 6, "keywords": ["stale bread", "panzanella", "bread soup", "second breakfast"]},
+    {"url": "http://substack.com/posts/margin-of-safety-hearthline-numbers", "title": "Hearthline: the numbers under the story - Margin of Safety on Substack", "snippet": "The bakery IPO is a great narrative. Here is the filing. A finance newsletter by Desmond Achebe.", "vertical": "news", "authority": 7, "keywords": ["hearthline", "ipo", "margin of safety", "desmond achebe", "finance newsletter"]},
+    {"url": "http://substack.com/posts/margin-of-safety-what-a-flood-costs", "title": "What a flood costs, and who pays - Margin of Safety on Substack", "snippet": "Harbourside's damage estimate is weeks away. The insurance industry already has one.", "vertical": "news", "authority": 6, "keywords": ["harbourside", "insurance", "reinsurance", "flood cost"]},
+    {"url": "http://substack.com/posts/the-lantern-room-chapter-one", "title": "The Lantern Room, chapter one: The Relief Boat - Ines Farrow on Substack", "snippet": "A serial novel in weekly instalments. A keeper, an island, a boat that comes once a month, and the month it does not.", "vertical": "news", "authority": 6, "keywords": ["the lantern room", "serial novel", "fiction", "ines farrow", "lighthouse"]},
+    {"url": "http://substack.com/posts/the-lantern-room-chapter-two", "title": "The Lantern Room, chapter two: The Letters - Ines Farrow on Substack", "snippet": "Margaret opens the box of letters she was told never to open, and the sail comes back.", "vertical": "news", "authority": 6, "keywords": ["the lantern room", "chapter two", "serial", "fiction"]},
+    {"url": "http://substack.com/posts/ward-seven-the-pier-vote-explained", "title": "The Pier 4 vote, explained by someone who sat through all four meetings - Ward Seven on Substack", "snippet": "The council is split 4-3. Here is what each of the seven actually said. A local-politics newsletter for Port Ellery.", "vertical": "news", "authority": 7, "keywords": ["ward seven", "port ellery", "pier 4", "council vote", "nadia kessler"]},
+    {"url": "http://substack.com/posts/ward-seven-gym-heating-timeline", "title": "The high school gym heating: a timeline - Ward Seven on Substack", "snippet": "Four months, three work orders, one boiler, and the public meetings that keep getting held in the coldest room in town.", "vertical": "news", "authority": 6, "keywords": ["ward seven", "port ellery", "gym heating", "school board"]},
+    {"url": "http://substack.com/the-ledger", "title": "The Ledger - Substack", "snippet": "A tech industry newsletter by Oren Sallis.", "vertical": "news", "authority": 6, "keywords": ["the ledger", "tech newsletter", "oren sallis"]},
+    {"url": "http://substack.com/the-lantern-room", "title": "The Lantern Room - Substack", "snippet": "A serial novel by Ines Farrow, in weekly instalments.", "vertical": "news", "authority": 6, "keywords": ["the lantern room", "serial novel", "fiction newsletter"]}
+  ]
+}

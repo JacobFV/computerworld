@@ -24,6 +24,24 @@ const items = { total, parts };
 console.log(JSON.stringify(items));
 "#;
 
+const PY_CALL: &str = r#"def square(v):
+    r = v * v
+    return r
+
+n = 7
+out = square(n)
+print(out)
+"#;
+
+const JS_CALL: &str = r#"function square(v) {
+  const r = v * v;
+  return r;
+}
+const n = 7;
+const out = square(n);
+console.log(out);
+"#;
+
 fn machine() -> Computer {
     let mut c = Computer::new("pc", "user", "linux", true);
     c.vfs
@@ -32,7 +50,117 @@ fn machine() -> Computer {
     c.vfs
         .write("/home/user/main.js", JS.as_bytes(), "user", 0)
         .unwrap();
+    c.vfs
+        .write("/home/user/call.py", PY_CALL.as_bytes(), "user", 0)
+        .unwrap();
+    c.vfs
+        .write("/home/user/call.js", JS_CALL.as_bytes(), "user", 0)
+        .unwrap();
     c
+}
+
+fn variables(c: &mut Computer, session: u64, reference: u64) -> Vec<cw_protocol::debug::Variable> {
+    match c
+        .debug(0, &Request::Variables { session, reference })
+        .expect("variables")
+    {
+        Reply::Variables { variables } => variables,
+        other => panic!("expected variables, got {other:?}"),
+    }
+}
+
+fn evaluate(c: &mut Computer, session: u64, frame: u64, expression: &str, context: &str) -> String {
+    match c
+        .debug(
+            0,
+            &Request::Evaluate {
+                session,
+                frame,
+                expression: expression.into(),
+                context: context.into(),
+            },
+        )
+        .expect("a value")
+    {
+        Reply::Evaluated { result } => result.value,
+        other => panic!("expected a value, got {other:?}"),
+    }
+}
+
+/// Stopped inside `square`, every frame of the stack carries its own scopes, so the
+/// caller's locals are read without a replay; a hover in the caller's frame reads
+/// there too, and the program goes on to print what it would have anyway.
+#[test]
+fn an_outer_frame_has_its_own_variables_and_a_hover_there_changes_nothing() {
+    for (kind, program) in [
+        ("python", "/home/user/call.py"),
+        ("node", "/home/user/call.js"),
+    ] {
+        let mut c = machine();
+        let (id, state) = launched(
+            c.debug(0, &launch(kind, program, &[2]))
+                .unwrap_or_else(|e| panic!("{kind}: {e}")),
+        );
+        assert_eq!(state.frames.len(), 2, "{kind}: {:?}", state.frames);
+        assert_eq!(
+            (state.frames[0].line, state.frames[1].line),
+            (2, 6),
+            "{kind}"
+        );
+        assert_eq!(
+            state.scopes, state.frames[0].scopes,
+            "{kind}: the state's scopes are the innermost frame's"
+        );
+        let locals_of = |frame: &cw_protocol::debug::Frame| {
+            frame
+                .scopes
+                .iter()
+                .find(|s| s.name == "Locals")
+                .unwrap_or_else(|| panic!("{kind}: locals of {}", frame.name))
+                .reference
+        };
+        let inner = variables(&mut c, id, locals_of(&state.frames[0]));
+        let v = inner.iter().find(|v| v.name == "v").expect("v");
+        assert_eq!(v.value, "7", "{kind}");
+        assert!(
+            inner.iter().all(|v| v.name != "n"),
+            "{kind}: n is not a local of square"
+        );
+        let outer = variables(&mut c, id, locals_of(&state.frames[1]));
+        let n = outer.iter().find(|v| v.name == "n").expect("n");
+        assert_eq!(n.value, "7", "{kind}: the caller's own locals");
+
+        // A hover reads in the frame it names.
+        assert_eq!(evaluate(&mut c, id, state.frames[1].id, "n", "hover"), "7");
+        assert_eq!(evaluate(&mut c, id, state.frames[0].id, "v", "hover"), "7");
+        assert!(
+            c.debug(
+                0,
+                &Request::Evaluate {
+                    session: id,
+                    frame: state.frames[1].id,
+                    expression: "v".into(),
+                    context: "hover".into(),
+                }
+            )
+            .is_err(),
+            "{kind}: square's v is not in the caller's frame"
+        );
+
+        // The program was not changed by any of it.
+        let state = stopped(
+            c.debug(
+                0,
+                &Request::Resume {
+                    session: id,
+                    step: Step::Continue,
+                },
+            )
+            .unwrap(),
+        );
+        assert_eq!(state.stopped, Stopped::Exited { code: 0 }, "{kind}");
+        assert_eq!(state.output, "49\n", "{kind}");
+    }
 }
 
 fn launch(kind: &str, program: &str, lines: &[u32]) -> Request {

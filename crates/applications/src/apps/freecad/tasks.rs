@@ -3,7 +3,8 @@
 use super::commands::parse_quantity;
 use super::*;
 use cw_cad::document::{
-    AxisRef, BasePlane, ChamferType, Extent, HoleCut, PlaneRef, SubRef, Support,
+    AxisRef, BasePlane, BoolType, ChamferType, Extent, HoleCut, PlaneRef, Primitive, SubRef,
+    Support,
 };
 use cw_cad::math::fmt_num;
 use cw_cad::sketch::Sketch;
@@ -32,6 +33,9 @@ impl Cad {
     /// Create Sketch: on the selected planar face, on a selected base plane, or ask.
     pub(crate) fn new_sketch(&mut self) -> Result<(), String> {
         let body = self.body().ok_or("There is no body; create one first")?;
+        if let Some(datum) = self.selected_datum_plane() {
+            return self.create_sketch(&body, Support::Datum { datum });
+        }
         if let Some(sel) = self
             .selection
             .iter()
@@ -85,6 +89,185 @@ impl Cad {
         self.expanded.insert(body.to_owned());
         self.task = None;
         self.open_sketch(&name)
+    }
+
+    /// A selected datum plane, for a new sketch or primitive to attach to.
+    pub(crate) fn selected_datum_plane(&self) -> Option<String> {
+        self.selection
+            .iter()
+            .filter(|s| s.sub.is_empty())
+            .map(|s| s.object.clone())
+            .find(|o| {
+                matches!(
+                    self.doc.get(o).map(|x| &x.feature),
+                    Some(Feature::DatumPlane { .. })
+                )
+            })
+    }
+    /// Datum planes of a body, for the plane chooser.
+    pub(crate) fn datum_planes(&self, body: &str) -> Vec<String> {
+        match self.doc.get(body).map(|o| &o.feature) {
+            Some(Feature::Body { group, .. }) => group
+                .iter()
+                .filter(|g| {
+                    matches!(
+                        self.doc.get(g).map(|x| &x.feature),
+                        Some(Feature::DatumPlane { .. })
+                    )
+                })
+                .cloned()
+                .collect(),
+            _ => vec![],
+        }
+    }
+    /// What a new attached object (primitive, datum) goes on: a selected datum plane,
+    /// a selected planar face, else the XY plane.
+    fn attachment(&self) -> Result<Support, String> {
+        if let Some(datum) = self.selected_datum_plane() {
+            return Ok(Support::Datum { datum });
+        }
+        if let Some(sel) = self
+            .selection
+            .iter()
+            .find(|s| s.sub.starts_with("Face"))
+            .cloned()
+        {
+            let model = self.model();
+            let shape = model
+                .shapes
+                .get(&sel.object)
+                .ok_or("the face has no shape")?
+                .clone();
+            let i = match Cad::element_of(&sel.sub) {
+                Some(Element::Face(i)) => i,
+                _ => return Err("bad face".into()),
+            };
+            if cw_cad::solid::face_frame(&shape.mesh, &shape.topo, i).is_none() {
+                return Err("The selected face is not planar".into());
+            }
+            return Ok(Support::Face {
+                feature: sel.object.clone(),
+                face: SubRef::face(&shape.topo, &shape.mesh, i),
+            });
+        }
+        Ok(Support::Plane {
+            plane: BasePlane::XY,
+        })
+    }
+
+    /// An additive or subtractive primitive with FreeCAD's default dimensions.
+    pub(crate) fn new_primitive(&mut self, id: &str) -> Result<(), String> {
+        let body = self.body().ok_or("There is no body")?;
+        let (subtractive, kind) = match id.strip_prefix("PartDesign_Additive") {
+            Some(k) => (false, k),
+            None => (
+                true,
+                id.strip_prefix("PartDesign_Subtractive")
+                    .ok_or("unknown primitive")?,
+            ),
+        };
+        let shape = Primitive::default_of(kind).ok_or("unknown primitive")?;
+        let support = self.attachment()?;
+        let label = super::commands::command(id)
+            .map(|c| c.label)
+            .unwrap_or("Primitive");
+        self.begin_feature(
+            &body,
+            Feature::Primitive {
+                shape,
+                subtractive,
+                support,
+                offset: 0.0,
+            },
+            label,
+        )
+    }
+
+    /// Bodies other than `body` the selection names, as a Boolean's tools.
+    pub(crate) fn boolean_tools(&self, body: &str) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .selection
+            .iter()
+            .filter(|s| s.sub.is_empty() && s.object != body)
+            .map(|s| s.object.clone())
+            .filter(|o| {
+                matches!(
+                    self.doc.get(o).map(|x| &x.feature),
+                    Some(Feature::Body { .. })
+                )
+            })
+            .collect();
+        out.dedup();
+        out
+    }
+
+    /// A Boolean of the active body with the selected bodies (or the only other one).
+    pub(crate) fn new_boolean(&mut self) -> Result<(), String> {
+        let body = self.body().ok_or("There is no body")?;
+        let mut tools = self.boolean_tools(&body);
+        if tools.is_empty() {
+            let others: Vec<String> = self
+                .doc
+                .bodies()
+                .into_iter()
+                .filter(|b| *b != body)
+                .map(str::to_owned)
+                .collect();
+            if others.len() == 1 {
+                tools = others;
+            } else {
+                return Err("Select the bodies to combine with the active body".into());
+            }
+        }
+        self.begin_feature(
+            &body,
+            Feature::Boolean {
+                kind: BoolType::Fuse,
+                bodies: tools.clone(),
+            },
+            "Boolean",
+        )?;
+        // The tool bodies hide, as FreeCAD's do once they are consumed.
+        for t in tools {
+            if let Some(o) = self.doc.get_mut(&t) {
+                o.visible = false;
+            }
+        }
+        Ok(())
+    }
+
+    /// A datum plane, line or point on the selected face, datum plane or the XY plane.
+    pub(crate) fn new_datum(&mut self, id: &str) -> Result<(), String> {
+        let body = self.body().ok_or("There is no body")?;
+        let support = self.attachment()?;
+        let (feature, label) = match id {
+            "PartDesign_Plane" => (
+                Feature::DatumPlane {
+                    support,
+                    offset: 0.0,
+                    angle: 0.0,
+                },
+                "Datum plane",
+            ),
+            "PartDesign_Line" => (
+                Feature::DatumLine {
+                    support,
+                    offset: 0.0,
+                    angle: 0.0,
+                },
+                "Datum line",
+            ),
+            _ => (
+                Feature::DatumPoint {
+                    support,
+                    offset: 0.0,
+                    x: 0.0,
+                    y: 0.0,
+                },
+                "Datum point",
+            ),
+        };
+        self.begin_feature(&body, feature, label)
     }
 
     /// The sketch a new sketch-based feature uses: the selected one, else the last
@@ -628,6 +811,68 @@ impl Cad {
                     value: occurrences.to_string(),
                 },
             ],
+            Feature::Primitive { shape, offset, .. } => {
+                let mut v: Vec<Param> = shape
+                    .dimensions()
+                    .into_iter()
+                    .map(|(name, value)| Param::Number {
+                        name,
+                        label: name,
+                        value: if name == "Angle" {
+                            deg(value)
+                        } else {
+                            mm(value)
+                        },
+                    })
+                    .collect();
+                v.push(Param::Number {
+                    name: "AttachmentOffset",
+                    label: "Attachment offset",
+                    value: mm(*offset),
+                });
+                v
+            }
+            Feature::Boolean { kind, .. } => vec![Param::Choice {
+                name: "Type",
+                label: "Type",
+                value: kind.label().into(),
+                options: BoolType::ALL
+                    .iter()
+                    .map(|b| (b.label().to_owned(), b.label().to_owned()))
+                    .collect(),
+            }],
+            Feature::DatumPlane { offset, angle, .. }
+            | Feature::DatumLine { offset, angle, .. } => {
+                vec![
+                    Param::Number {
+                        name: "AttachmentOffset",
+                        label: "Attachment offset",
+                        value: mm(*offset),
+                    },
+                    Param::Number {
+                        name: "Angle",
+                        label: "Angle",
+                        value: deg(*angle),
+                    },
+                ]
+            }
+            Feature::DatumPoint { offset, x, y, .. } => vec![
+                Param::Number {
+                    name: "X",
+                    label: "X",
+                    value: mm(*x),
+                },
+                Param::Number {
+                    name: "Y",
+                    label: "Y",
+                    value: mm(*y),
+                },
+                Param::Number {
+                    name: "AttachmentOffset",
+                    label: "Attachment offset",
+                    value: mm(*offset),
+                },
+            ],
             Feature::PolarPattern {
                 axis,
                 angle,
@@ -706,7 +951,8 @@ impl Cad {
         } else {
             parse_quantity(text, angle)?
         };
-        if !count && !angle && v <= 0.0 && name != "Length2" {
+        let signed = matches!(name, "Length2" | "AttachmentOffset" | "X" | "Y" | "Radius2");
+        if !count && !angle && v <= 0.0 && !signed {
             return Err(format!("{name} must be positive"));
         }
         let (f, _) = self.feature_mut()?;
@@ -773,6 +1019,13 @@ impl Cad {
                 }
                 *angle = v
             }
+            (
+                f @ (Feature::Primitive { .. }
+                | Feature::DatumPlane { .. }
+                | Feature::DatumLine { .. }
+                | Feature::DatumPoint { .. }),
+                name,
+            ) => f.set_number(name, v)?,
             _ => return Err(format!("the task has no {name} field")),
         }
         self.recompute();
@@ -875,6 +1128,9 @@ impl Cad {
             (Feature::Hole { drill_point, .. }, "DrillPoint") => {
                 *drill_point = if value == "Angled" { Some(118.0) } else { None };
             }
+            (Feature::Boolean { kind, .. }, "Type") => {
+                *kind = BoolType::by_name(value).ok_or("unknown boolean type")?
+            }
             _ => return Err(format!("the task has no {name} choice")),
         }
         self.recompute();
@@ -972,6 +1228,18 @@ impl Cad {
                     }
                     originals.remove(i);
                 }
+                Feature::Boolean { bodies, .. } => {
+                    if bodies.len() <= 1 {
+                        return Err("A boolean needs at least one body".into());
+                    }
+                    if i >= bodies.len() {
+                        return Err("no such body".into());
+                    }
+                    let gone = bodies.remove(i);
+                    if let Some(o) = self.doc.get_mut(&gone) {
+                        o.visible = true;
+                    }
+                }
                 _ => return Err("this feature has no references".into()),
             }
             self.recompute();
@@ -997,8 +1265,14 @@ impl Cad {
                     Ok(vec![])
                 }
                 Some(Task::PickPlane { body, plane }) => {
-                    let p = cw_cad::document::plane_by_name(&plane).ok_or("Select a plane")?;
-                    self.create_sketch(&body, Support::Plane { plane: p })?;
+                    let support = match cw_cad::document::plane_by_name(&plane) {
+                        Some(p) => Support::Plane { plane: p },
+                        None if self.datum_planes(&body).contains(&plane) => {
+                            Support::Datum { datum: plane }
+                        }
+                        None => return Err("Select a plane".into()),
+                    };
+                    self.create_sketch(&body, support)?;
                     Ok(vec![])
                 }
                 Some(Task::Sketch(_)) => {
@@ -1041,6 +1315,35 @@ impl Cad {
     /// While a pattern's task is open, a tree click adds or removes an original.
     pub(crate) fn toggle_original(&mut self, feature: &str, clicked: &str) -> Result<bool, String> {
         let is_tool = self.model().tools.contains_key(clicked);
+        let is_body = matches!(
+            self.doc.get(clicked).map(|o| &o.feature),
+            Some(Feature::Body { .. })
+        );
+        let own_body = self.doc.body_of(feature).map(str::to_owned);
+        if let Some(Object {
+            feature: Feature::Boolean { bodies, .. },
+            ..
+        }) = self.doc.get_mut(feature)
+        {
+            // A Boolean's task takes bodies: a click on one adds or removes it.
+            if !is_body || own_body.as_deref() == Some(clicked) {
+                return Ok(false);
+            }
+            let shown = if let Some(i) = bodies.iter().position(|b| b == clicked) {
+                if bodies.len() > 1 {
+                    bodies.remove(i);
+                }
+                true
+            } else {
+                bodies.push(clicked.to_owned());
+                false
+            };
+            if let Some(o) = self.doc.get_mut(clicked) {
+                o.visible = shown;
+            }
+            self.recompute();
+            return Ok(true);
+        }
         let Some(Object { feature: f, .. }) = self.doc.get_mut(feature) else {
             return Ok(false);
         };

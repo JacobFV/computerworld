@@ -12,14 +12,14 @@ fn world() -> (World, String) {
     let mut definition = reference_world();
     definition.metadata["desktop_themes"] = json!({ "alice-mac": "virtual-macos-golden-gate" });
     definition.metadata["desktop_apps"] = json!([
-        {"id":"chat","label":"Messages","kind":"native","url":"http://chat.internal/","icon":"chat"},
+        {"id":"messages","label":"Messages","kind":"native","url":"http://messages.internal/","icon":"messages"},
     ]);
     if let Some(computer) = definition
         .computers
         .iter_mut()
         .find(|c| c.id == "alice-mac")
     {
-        computer.installed_apps.push("chat".into());
+        computer.installed_apps.push("messages".into());
     }
     let mut world = World::new(definition, 11).unwrap();
     let mut config = EnvironmentConfig::desktop("alice", "alice-mac");
@@ -186,21 +186,21 @@ fn a_screenshot_is_a_real_png_of_the_screen() {
 fn sharing_hands_the_thing_on_screen_to_an_application_that_can_receive_it() {
     let (mut world, actor) = world();
     browse(&mut world, &actor, "http://intranet.internal/");
-    shell(&mut world, &actor, "shell:share:chat");
+    shell(&mut world, &actor, "shell:share:messages");
     let state = desktop(&world, &actor);
     assert!(
         state["windows"]
             .as_object()
             .unwrap()
             .values()
-            .any(|w| w["app_id"] == "chat" || w["state"]["app"] == "chat"),
+            .any(|w| w["app_id"] == "messages" || w["state"]["app"] == "messages"),
         "sharing opened no messaging application"
     );
     let notice = state["notifications"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|n| n["app"] == "chat")
+        .find(|n| n["app"] == "messages")
         .expect("the share was announced");
     assert_eq!(notice["body"], "http://intranet.internal/");
     // The page is really in hand: it is the Messages draft, waiting to be sent.
@@ -208,10 +208,10 @@ fn sharing_hands_the_thing_on_screen_to_an_application_that_can_receive_it() {
         .as_object()
         .unwrap()
         .values()
-        .find(|w| w["state"]["app"] == "chat")
+        .find(|w| w["state"]["app"] == "messages")
         .unwrap();
     assert_eq!(chat["state"]["draft"], "http://intranet.internal/");
-    assert_eq!(chat["state"]["base"], "http://chat.internal/");
+    assert_eq!(chat["state"]["base"], "http://messages.internal/");
     // Only applications that can actually receive something are share targets.
     assert!(world
         .step(
@@ -408,11 +408,11 @@ fn sharing_from_files_hands_over_the_selected_file() {
         let mut definition = reference_world();
         definition.metadata["desktop_themes"] = json!({ "alice-mac": theme });
         definition.metadata["desktop_apps"] = json!([
-            {"id":"chat","label":"Messages","kind":"native","url":"http://chat.internal/","icon":"chat"},
+            {"id":"messages","label":"Messages","kind":"native","url":"http://messages.internal/","icon":"messages"},
         ]);
         for c in &mut definition.computers {
             if c.id == "alice-mac" {
-                c.installed_apps.push("chat".into());
+                c.installed_apps.push("messages".into());
             }
         }
         let mut world = World::new(definition, 11).unwrap();
@@ -440,8 +440,8 @@ fn sharing_from_files_hands_over_the_selected_file() {
                 .map(|n| n.transform.bounds(n.bounds))
         };
         // Nothing selected: Share is greyed, not a refusal waiting to happen.
-        assert!(find(&world, "shell:share:chat").is_none(), "{theme}");
-        for target in ["open:0", "shell:share:chat"] {
+        assert!(find(&world, "shell:share:messages").is_none(), "{theme}");
+        for target in ["open:0", "shell:share:messages"] {
             let b = find(&world, target).unwrap_or_else(|| panic!("{theme}: missing {target}"));
             act(
                 &mut world,
@@ -457,7 +457,7 @@ fn sharing_from_files_hands_over_the_selected_file() {
             .as_object()
             .unwrap()
             .values()
-            .find(|w| w["state"]["app"] == "chat")
+            .find(|w| w["state"]["app"] == "messages")
             .unwrap_or_else(|| panic!("{theme}: sharing opened no Messages window"));
         assert_eq!(chat["state"]["draft"], "/home/alice", "{theme}");
     }
@@ -475,7 +475,7 @@ fn start_pages_its_pinned_apps_and_stays_open() {
                 "files",
                 "mail",
                 "calendar",
-                "chat",
+                "messages",
                 "docs",
                 "editor",
                 "terminal",

@@ -206,10 +206,10 @@ def build_dejavu(rows):
         font.save(path)
         before = (HERE / master).stat().st_size
         print(f"{path.name:22s} {before:>8,} -> {path.stat().st_size:>8,}")
-        # The mono face drives the fixed-cell `Text` primitive, which measures
-        # by the font's own advances rather than the table.
-        if weight != "mono":
-            rows.append(("dejavu", weight, font["head"].unitsPerEm, table(font, WIDE)))
+        # The mono face drives the fixed-cell `Text` primitive; its row tabulates
+        # coverage for `Typeface::Mono`, which measures on the terminal grid rather
+        # than by these advances (they are all the same anyway).
+        rows.append(("dejavu", weight, font["head"].unitsPerEm, table(font, WIDE)))
 
 
 def write_metrics(rows):

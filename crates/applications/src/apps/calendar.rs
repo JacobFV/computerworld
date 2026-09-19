@@ -379,6 +379,7 @@ impl Calendar {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for event in self.events_on(self.cursor_day) {
@@ -386,11 +387,13 @@ impl Calendar {
                 id: format!("cal:event:{}", event.id),
                 text: format!("{} — {}", clock_label(event.start), event.title),
                 action: act(&format!("cal:event:{}", event.id)),
+                style: None,
             });
             page.elements.push(E::Button {
                 id: format!("cal:edit:{}", event.id),
                 text: format!("Edit {}", event.title),
                 action: act(&format!("cal:edit:{}", event.id)),
+                style: None,
             });
         }
         if let Some(draft) = &self.draft {
@@ -412,6 +415,7 @@ impl Calendar {
                     id: id.into(),
                     text: label.into(),
                     action: act(id),
+                    style: None,
                 });
             }
         }
@@ -420,6 +424,7 @@ impl Calendar {
                 id: "cal:delete".into(),
                 text: "Delete".into(),
                 action: act("cal:delete"),
+                style: None,
             });
         }
     }

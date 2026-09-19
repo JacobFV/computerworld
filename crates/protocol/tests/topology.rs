@@ -78,6 +78,7 @@ fn duplicate_page_targets_fail() {
             id: "same".into(),
             text: "next".into(),
             url: "/next".into(),
+            style: None,
         },
     ];
     assert!(page.validate().is_err());
@@ -87,4 +88,67 @@ fn page_versions_are_checked() {
     let mut page = Page::new("future");
     page.version = 42;
     assert!(page.validate().is_err());
+}
+
+#[test]
+fn links_buttons_and_images_keep_their_old_wire_shape_and_validate_their_styles() {
+    use cw_protocol::{Page, PageElement, Style, PAGE_ICONS};
+    // A page written before styles existed still parses, and one that sets none
+    // serialises exactly as it did.
+    let old = r#"{"version":1,"title":"t","elements":[
+        {"kind":"link","id":"l","text":"Home","url":"/"},
+        {"kind":"button","id":"b","text":"Go","action":{"method":"GET","url":"/go"}},
+        {"kind":"image","id":"i","source":"/a.rgba","alt":"a","width":8,"height":8}]}"#;
+    let page: Page = serde_json::from_str(old).unwrap();
+    page.validate().unwrap();
+    let json = serde_json::to_string(&page).unwrap();
+    assert!(!json.contains("style") && !json.contains("action\":null"));
+    let mut bad = page.clone();
+    bad.elements[0] = PageElement::Link {
+        id: "l".into(),
+        text: "Home".into(),
+        url: "/".into(),
+        style: Some(Style::default().color("red")),
+    };
+    assert!(bad.validate().is_err(), "a link's style is validated");
+    let mut pinned = page.clone();
+    pinned.elements.push(PageElement::Divider {
+        id: "d".into(),
+        style: Style::default().pin("top"),
+    });
+    pinned.validate().unwrap();
+    for (pin, justify) in [(Some("left"), None), (None, Some("around"))] {
+        let style = Style {
+            pin: pin.map(str::to_owned),
+            justify: justify.map(str::to_owned),
+            ..Style::default()
+        };
+        let mut page = page.clone();
+        page.elements.push(PageElement::Divider {
+            id: "x".into(),
+            style,
+        });
+        assert!(page.validate().is_err(), "{pin:?} {justify:?}");
+    }
+    let mono = Style::default().mono().justify("space-between");
+    assert_eq!(
+        (mono.mono, mono.justify.as_deref()),
+        (Some(true), Some("space-between"))
+    );
+    assert!(serde_json::to_string(&Style::default()).unwrap() == "{}");
+    for name in [
+        "branch",
+        "pull-request",
+        "issue-open",
+        "hash",
+        "at",
+        "star-filled",
+        "thread",
+    ] {
+        assert!(PAGE_ICONS.contains(&name), "{name}");
+    }
+    assert!(
+        PAGE_ICONS.windows(2).all(|w| w[0] < w[1]),
+        "sorted, no duplicates"
+    );
 }

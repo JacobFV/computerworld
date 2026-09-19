@@ -1,0 +1,163 @@
+{
+  "id": "meridian-press",
+  "kind": "press",
+  "node": "meridian-press",
+  "domains": [
+    "meridian.example",
+    "www.meridian.example"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "203.0.113.250",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
+  "initial_state": {
+    "layout": "magazine",
+    "brand": "The Meridian Ledger",
+    "tagline": "Converted from a captured front page.",
+    "theme": {
+      "accent": "#1a5fb4",
+      "background": "#fafaf7",
+      "surface": "#ffffff",
+      "ink": "#4c5366",
+      "muted": "#1c1f26",
+      "content_width": 1040
+    },
+    "sections": [
+      {
+        "id": "world",
+        "title": "World"
+      },
+      {
+        "id": "business",
+        "title": "Business"
+      },
+      {
+        "id": "technology",
+        "title": "Technology"
+      },
+      {
+        "id": "culture",
+        "title": "Culture"
+      },
+      {
+        "id": "opinion",
+        "title": "Opinion"
+      }
+    ],
+    "articles": {
+      "wind-auction": {
+        "id": "wind-auction",
+        "section": "business",
+        "year": "2026",
+        "title": "Wind auction draws four bidders",
+        "dek": "The ridge lease attracted more interest than any since 2019, the ministry said.",
+        "byline": "Priya Natarajan",
+        "date": "Sep 19, 2026",
+        "tick": 100,
+        "read_minutes": 4,
+        "body": [
+          "The ridge lease attracted more interest than any since 2019, the ministry said.",
+          "This article body was synthesised: the converter keeps a headline and its standfirst and never copies a publication's prose."
+        ]
+      },
+      "library-opens": {
+        "id": "library-opens",
+        "section": "culture",
+        "year": "2026",
+        "title": "The new library opens its doors",
+        "dek": "Twelve years after the fire, the reading rooms are back, with a roof garden on top.",
+        "byline": "Sam Whitfield",
+        "date": "Sep 19, 2026",
+        "tick": 99,
+        "read_minutes": 4,
+        "body": [
+          "Twelve years after the fire, the reading rooms are back, with a roof garden on top.",
+          "This article body was synthesised: the converter keeps a headline and its standfirst and never copies a publication's prose."
+        ]
+      },
+      "atlas-1": {
+        "id": "atlas-1",
+        "section": "technology",
+        "year": "2026",
+        "title": "Atlas 1.0 ships with a replayable machine",
+        "dek": "The simulator refuses to read a clock, and that turns out to be the whole product.",
+        "byline": "Jonathan Hale",
+        "date": "Sep 19, 2026",
+        "tick": 98,
+        "read_minutes": 4,
+        "body": [
+          "The simulator refuses to read a clock, and that turns out to be the whole product.",
+          "This article body was synthesised: the converter keeps a headline and its standfirst and never copies a publication's prose."
+        ]
+      },
+      "ferry-strike": {
+        "id": "ferry-strike",
+        "section": "world",
+        "year": "2026",
+        "title": "Ferry crews vote to strike from Monday",
+        "dek": "The union says the new roster leaves crews with nine-day stretches at sea; the operator says the roster is legal and the ferries will run.",
+        "byline": "World",
+        "date": "Sep 19, 2026",
+        "tick": 97,
+        "read_minutes": 4,
+        "body": [
+          "The union says the new roster leaves crews with nine-day stretches at sea; the operator says the roster is legal and the ferries will run.",
+          "This article body was synthesised: the converter keeps a headline and its standfirst and never copies a publication's prose."
+        ]
+      },
+      "grain-prices": {
+        "id": "grain-prices",
+        "section": "business",
+        "year": "2026",
+        "title": "Grain prices settle after a jittery week",
+        "dek": "Futures closed within a cent of Monday's open after a week that saw two of the biggest daily swings of the year.",
+        "byline": "Business",
+        "date": "Sep 19, 2026",
+        "tick": 96,
+        "read_minutes": 4,
+        "body": [
+          "Futures closed within a cent of Monday's open after a week that saw two of the biggest daily swings of the year.",
+          "This article body was synthesised: the converter keeps a headline and its standfirst and never copies a publication's prose."
+        ]
+      },
+      "lantern-festival": {
+        "id": "lantern-festival",
+        "section": "culture",
+        "year": "2026",
+        "title": "Lantern festival draws a record crowd",
+        "dek": "Organisers counted forty thousand lanterns on the river, and a few in the trees.",
+        "byline": "Culture",
+        "date": "Sep 19, 2026",
+        "tick": 95,
+        "read_minutes": 4,
+        "body": [
+          "Organisers counted forty thousand lanterns on the river, and a few in the trees.",
+          "This article body was synthesised: the converter keeps a headline and its standfirst and never copies a publication's prose."
+        ]
+      },
+      "quiet-streets": {
+        "id": "quiet-streets",
+        "section": "opinion",
+        "year": "2026",
+        "title": "Opinion: the case for quieter streets",
+        "dek": "Closing three streets to through traffic did not create gridlock. It created a place people wanted to stand around in.",
+        "byline": "Opinion",
+        "date": "Sep 19, 2026",
+        "tick": 94,
+        "read_minutes": 4,
+        "body": [
+          "Closing three streets to through traffic did not create gridlock. It created a place people wanted to stand around in.",
+          "This article body was synthesised: the converter keeps a headline and its standfirst and never copies a publication's prose."
+        ]
+      }
+    },
+    "subscribers": [],
+    "saved": {},
+    "follows": {}
+  }
+}

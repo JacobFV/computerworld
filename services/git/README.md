@@ -40,3 +40,27 @@ text. The service receives no local working-tree paths or host files.
 
 Statuses: 400 malformed JSON; 403 ACL denial; 404 missing route/repository;
 405 wrong method; 409 stale/non-fast-forward ref; 422 bad hash, ref or parent.
+
+## The `github` skin
+
+`"skin":"github"` in the initial state dresses the same repositories as github.com:
+repositories carry an `owner`, `description`, `topics`, `stars`, `forks`, `issues`
+and `pull_requests` (one shared number space; a pull request has `head`, `base`,
+`reviews`, optional `draft` and `merged_by`), and `gists` sit beside them. The
+`/repos/*` and `/api/git/*` routes above stay byte-identical; everything else is
+the owner-namespaced surface, every page derived from the commit graph:
+
+| Route | Page |
+|---|---|
+| `/`, `/search?q=`, `/{owner}` | Home feed, repository search, profile with pinned repositories and a contribution graph |
+| `/{owner}/{repo}` | Code: tabs, branch selector, latest commit, file table with each path's last commit, README, About column with a languages bar |
+| `/{owner}/{repo}/tree/{branch}/{path}`, `/blob/{branch}/{path}` | Folders and files (line numbers, Raw/Blame); `/blob/{path}` resolves on the default branch |
+| `/{owner}/{repo}/commits/{branch}`, `/commit/{sha}`, `/branches` | History by day, one commit with its unified diff, branches with ahead/behind counts |
+| `/{owner}/{repo}/issues[?state=closed]`, `/issues/{n}`, `/issues/new` | Issue list with label chips, an issue's timeline and sidebar, the new-issue form |
+| `/{owner}/{repo}/pulls`, `/pull/{n}[/commits\|/files]`, `/compare` | Pull requests; conversation with reviews and the merge box, commits, files changed as a diff |
+| `/{owner}/{repo}/stargazers`, `/gists`, `/gist/{id}` | Stargazers, gist index, one gist |
+
+POST `star`, `issues`, `pulls`, `issues/{n}/comments|state`, `pull/{n}/comments|state|reviews|merge`
+mutate and land on the page they changed; prefix a route with `/api/` for JSON.
+Ticks on this site are hours from Saturday 1 August 2026; the world clock (microseconds)
+only advances "now" past the newest seeded event.

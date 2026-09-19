@@ -876,6 +876,7 @@ impl Kicad {
                 id: id.clone(),
                 text,
                 action: act(&id),
+                style: None,
             });
         }
         let s = scene(&self.session.board);

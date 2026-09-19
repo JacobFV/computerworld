@@ -140,9 +140,8 @@ impl Environment {
             (Some(DesktopTheme::Android), "mail") => "Gmail",
             (Some(DesktopTheme::Ubuntu), "mail") => "Thunderbird",
             (_, "mail") => "Mail",
-            (Some(DesktopTheme::Windows), "chat") => "Teams",
-            (Some(DesktopTheme::Ubuntu), "chat") => "Chat",
-            (_, "chat") => "Messages",
+            (Some(DesktopTheme::Windows), "messages") => "Phone Link",
+            (_, "messages") => "Messages",
             (Some(DesktopTheme::Windows), "docs") => "Word",
             (Some(DesktopTheme::Ubuntu), "docs") => "Writer",
             (Some(DesktopTheme::Android), "docs") => "Docs",
@@ -306,7 +305,7 @@ impl Environment {
                 let generic = entry.get("label").and_then(Value::as_str).unwrap_or(kind);
                 inventory.push(ApplicationEntry {
                     id: kind.into(),
-                    label: if kind == "chat" && theme == Some(DesktopTheme::Ios) {
+                    label: if kind == "messages" && theme == Some(DesktopTheme::Ios) {
                         "Messages".into()
                     } else {
                         Self::application_label(theme, kind, generic)
@@ -908,8 +907,8 @@ impl Environment {
         // Sharing is a real hand-off: the thing on screen opens in a messaging app.
         if let Some(via) = target.strip_prefix("shell:share") {
             let via = via.trim_start_matches(':');
-            let kind = if via.is_empty() { "chat" } else { via };
-            if !matches!(kind, "chat" | "mail") {
+            let kind = if via.is_empty() { "messages" } else { via };
+            if !matches!(kind, "messages" | "mail") {
                 return Err(SimError::invalid("nothing here can receive a share"));
             }
             if !self.runtime.computer(machine)?.application_available(kind) {

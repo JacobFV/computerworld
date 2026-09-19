@@ -1136,6 +1136,31 @@ fn states() -> Vec<(&'static str, Cad)> {
     let mut m = c.clone();
     m.run(W, "Std_Measure").unwrap();
     out.push(("measure", m));
+    // The newer features: a primitive's panel, a datum plane's, a Boolean's, the
+    // plane chooser with a datum in it, and a property bound to an expression.
+    let mut pr = c.clone();
+    pr.run(W, "PartDesign_AdditiveCylinder").unwrap();
+    out.push(("primitive task", pr.clone()));
+    pr.task_command(W, "ok").unwrap();
+    pr.run(W, "PartDesign_Plane").unwrap();
+    out.push(("datum task", pr.clone()));
+    pr.task_command(W, "ok").unwrap();
+    pr.selection.clear();
+    pr.run(W, "PartDesign_NewSketch").unwrap();
+    out.push(("pick plane with datum", pr.clone()));
+    pr.task_command(W, "cancel").unwrap();
+    pr.run(W, "PartDesign_Body").unwrap();
+    pr.run(W, "PartDesign_AdditiveBox").unwrap();
+    pr.task_command(W, "ok").unwrap();
+    pr.run(W, "PartDesign_Boolean").unwrap();
+    out.push(("boolean task", pr.clone()));
+    pr.task_command(W, "ok").unwrap();
+    pr.command(W, "tree:Pad", None).unwrap();
+    pr.set_expression("Pad", "Length", "Cylinder.Height * 2")
+        .unwrap();
+    out.push(("bound property", pr.clone()));
+    pr.command(W, "prop-expr:Length", None).unwrap();
+    out.push(("expression field", pr));
     let mut f = c.clone();
     f.run(W, "Std_Export").unwrap();
     f.listed(vec!["a/".into(), "b.stl".into()]);
@@ -1332,4 +1357,333 @@ fn keyboard_view_shortcuts_and_arrows() {
     assert!(!c.doc.get("Body").unwrap().visible);
     // Typing with no field focused and no shortcut is refused, not swallowed.
     assert!(c.type_text("q").is_err());
+}
+
+#[test]
+fn primitives_are_made_through_their_panels_and_attach_to_faces() {
+    let mut c = padded();
+    // 40 × 20 × 10 pad, then an additive box on the XY plane with the defaults.
+    c.run(W, "PartDesign_AdditiveBox").unwrap();
+    assert!(matches!(&c.task, Some(Task::Feature(f)) if f.name == "Box"));
+    let params: Vec<&str> = c
+        .task_params()
+        .iter()
+        .map(|p| match p {
+            super::tasks::Param::Number { name, .. }
+            | super::tasks::Param::Toggle { name, .. }
+            | super::tasks::Param::Choice { name, .. } => *name,
+        })
+        .collect();
+    assert_eq!(params, ["Length", "Width", "Height", "AttachmentOffset"]);
+    // Grow it out of the pad: 10 × 10 from z = 0 up to z = 30 adds 10 × 10 × 20.
+    c.command(W, "field:task:Height", None).unwrap();
+    c.type_text("30").unwrap();
+    c.key(W, "Enter").unwrap();
+    assert!((body_shape(&c).volume() - 10000.0).abs() < 1e-6);
+    assert!(c.command(W, "field:task:Width", None).is_ok());
+    c.type_text("-3").unwrap();
+    assert!(c.key(W, "Enter").is_err(), "a negative width is refused");
+    c.field = None;
+    c.task_command(W, "ok").unwrap();
+    assert_eq!(
+        c.doc.get("Box").unwrap().feature.type_id(),
+        "PartDesign::AdditiveBox"
+    );
+    // A subtractive cylinder on the pad's top face: the face is the attachment.
+    c.set_view(StdView::Isometric);
+    c.fit_all();
+    let at = wpx(&c, v3(30.0, 10.0, 10.0));
+    click(&mut c, at);
+    assert!(c.selection[0].sub.starts_with("Face"), "{:?}", c.selection);
+    c.run(W, "PartDesign_SubtractiveCylinder").unwrap();
+    let Some(Feature::Primitive { support, .. }) = c.doc.get("Cylinder").map(|o| &o.feature) else {
+        panic!("no cylinder");
+    };
+    assert!(matches!(support, cw_cad::document::Support::Face { .. }));
+    // Its axis is at the world origin's foot on the face, where the 30 mm box stands:
+    // a quarter of the 5 mm radius, 10 mm tall cylinder is inside the box, whether
+    // it stands on the face or is sunk 5 mm into it with the offset.
+    let quarter = cw_cad::math::PI * 25.0 * 10.0 / 4.0;
+    assert!((body_shape(&c).volume() - (10000.0 - quarter)).abs() < 1e-6);
+    c.command(W, "field:task:AttachmentOffset", None).unwrap();
+    c.type_text("-5").unwrap();
+    c.key(W, "Enter").unwrap();
+    let v = body_shape(&c).volume();
+    assert!((v - (10000.0 - quarter)).abs() < 1e-6, "{v}");
+    let b = body_shape(&c).mesh.bounds().unwrap();
+    assert!((b.min.z - 0.0).abs() < 1e-6 && (b.max.z - 30.0).abs() < 1e-6);
+    c.task_command(W, "ok").unwrap();
+    // The property editor shows the cylinder's dimensions under its own group.
+    c.command(W, "tree:Cylinder", None).unwrap();
+    let rows = c.property_rows("Cylinder");
+    assert!(rows
+        .iter()
+        .any(|r| r.group == "Cylinder" && r.name == "Radius"));
+    assert!(rows
+        .iter()
+        .any(|r| r.name == "Support" && r.value.contains("Face")));
+    c.command(W, "prop:Radius", None).unwrap();
+    c.type_text("2").unwrap();
+    c.key(W, "Enter").unwrap();
+    let v = body_shape(&c).volume();
+    assert!(
+        (v - (10000.0 - cw_cad::math::PI * 4.0 * 10.0 / 4.0)).abs() < 1e-6,
+        "{v}"
+    );
+    // Every primitive kind has a command that makes it.
+    for id in [
+        "PartDesign_AdditiveSphere",
+        "PartDesign_AdditiveCone",
+        "PartDesign_AdditiveTorus",
+        "PartDesign_SubtractiveSphere",
+        "PartDesign_SubtractiveBox",
+    ] {
+        c.selection.clear();
+        c.run(W, id).unwrap();
+        c.task_command(W, "cancel").unwrap();
+    }
+    // A subtractive primitive needs a solid.
+    let mut e = cad();
+    assert!(e.run(W, "PartDesign_SubtractiveSphere").is_err());
+    assert!(e.run(W, "PartDesign_AdditiveSphere").is_ok());
+}
+
+#[test]
+fn a_boolean_between_two_bodies_from_the_toolbar() {
+    let mut c = padded();
+    assert!(
+        c.run(W, "PartDesign_Boolean").is_err(),
+        "one body is not enough"
+    );
+    // A second body with a 10 mm sphere at the origin; the first body is then active
+    // again and the Boolean takes the only other body as its tool.
+    c.run(W, "PartDesign_Body").unwrap();
+    assert_eq!(c.body().as_deref(), Some("Body001"));
+    c.run(W, "PartDesign_AdditiveSphere").unwrap();
+    c.command(W, "field:task:Radius", None).unwrap();
+    c.type_text("10").unwrap();
+    c.key(W, "Enter").unwrap();
+    c.task_command(W, "ok").unwrap();
+    c.double_click(W, "tree:Body").unwrap();
+    assert_eq!(c.body().as_deref(), Some("Body"));
+    c.selection.clear();
+    c.run(W, "PartDesign_Boolean").unwrap();
+    let Some(Feature::Boolean { bodies, kind }) = c.doc.get("Boolean").map(|o| &o.feature) else {
+        panic!("no boolean");
+    };
+    assert_eq!(bodies, &["Body001".to_owned()]);
+    assert_eq!(*kind, cw_cad::document::BoolType::Fuse);
+    assert!(
+        !c.doc.get("Body001").unwrap().visible,
+        "the tool body hides"
+    );
+    let sphere = 4.0 / 3.0 * cw_cad::math::PI * 1000.0;
+    // An eighth of the sphere is inside the 40 × 20 × 10 pad's corner... the pad spans
+    // x 0..40, y 0..20, z 0..10, so the sphere's +x +y +z octant overlaps it.
+    let fused = body_shape(&c).volume();
+    assert!(
+        (fused - (8000.0 + sphere * 7.0 / 8.0)).abs() < 1e-3,
+        "{fused}"
+    );
+    c.choice(W, "task/Type:Cut").unwrap();
+    let cut = body_shape(&c).volume();
+    assert!((cut - (8000.0 - sphere / 8.0)).abs() < 1e-3, "{cut}");
+    c.choice(W, "task/Type:Common").unwrap();
+    let common = body_shape(&c).volume();
+    assert!((common - sphere / 8.0).abs() < 1e-3, "{common}");
+    // A tree click on a body toggles it as a tool; the last one cannot be removed.
+    c.command(W, "tree:Body001", None).unwrap();
+    assert!(
+        matches!(c.doc.get("Boolean").map(|o| &o.feature), Some(Feature::Boolean { bodies, .. }) if bodies.len() == 1)
+    );
+    c.task_command(W, "ok").unwrap();
+    assert_eq!(
+        c.doc.get("Boolean").unwrap().feature.type_id(),
+        "PartDesign::Boolean"
+    );
+    // The property editor edits the type too, and it saves and loads.
+    c.command(W, "tree:Boolean", None).unwrap();
+    c.set_property("Boolean", "Type", "Fuse").unwrap();
+    assert!((body_shape(&c).volume() - fused).abs() < 1e-3);
+    let text = cw_cad::io::save_native(&c.doc);
+    assert_eq!(cw_cad::io::load_native(&text).unwrap(), c.doc);
+}
+
+#[test]
+fn datum_planes_take_sketches_and_primitives() {
+    let mut c = padded();
+    c.selection.clear();
+    c.run(W, "PartDesign_Plane").unwrap();
+    assert!(matches!(&c.task, Some(Task::Feature(f)) if f.name == "DatumPlane"));
+    c.command(W, "field:task:AttachmentOffset", None).unwrap();
+    c.type_text("10").unwrap();
+    c.key(W, "Enter").unwrap();
+    c.task_command(W, "ok").unwrap();
+    let Some(cw_cad::document::DatumGeom::Plane(f)) = c.model().datums.get("DatumPlane").copied()
+    else {
+        panic!("no datum plane");
+    };
+    assert!((f.origin.z - 10.0).abs() < 1e-9);
+    // Datums show in the tree under the body, and are not solid features.
+    assert!(!c.doc.get("DatumPlane").unwrap().feature.is_solid_feature());
+    assert!(
+        c.available("PartDesign_MoveTip").is_err() || c.selected_object() != Some("DatumPlane")
+    );
+    // A new sketch with the datum plane selected attaches to it.
+    c.command(W, "tree:DatumPlane", None).unwrap();
+    c.run(W, "PartDesign_NewSketch").unwrap();
+    let name = c.sketch_edit().unwrap().name.clone();
+    assert!(matches!(
+        c.doc.get(&name).map(|o| &o.feature),
+        Some(Feature::Sketch { support: cw_cad::document::Support::Datum { datum }, .. }) if datum == "DatumPlane"
+    ));
+    assert!((c.model().frames[&name].origin.z - 10.0).abs() < 1e-9);
+    tools::rectangle(sketch_of(&mut c), v2(0.0, 0.0), v2(10.0, 10.0), false).unwrap();
+    c.leave_sketch();
+    c.run(W, "PartDesign_Pad").unwrap();
+    c.task_command(W, "ok").unwrap();
+    // The pad starts at z = 10 on top of the 10 mm pad: one solid of 8000 + 1000.
+    assert!((body_shape(&c).volume() - 9000.0).abs() < 1e-6);
+    // The plane chooser offers the datum plane too, and a tree click picks it.
+    c.selection.clear();
+    c.run(W, "PartDesign_NewSketch").unwrap();
+    assert!(matches!(&c.task, Some(Task::PickPlane { .. })));
+    c.command(W, "tree:DatumPlane", None).unwrap();
+    assert!(matches!(&c.task, Some(Task::PickPlane { plane, .. }) if plane == "DatumPlane"));
+    c.task_command(W, "ok").unwrap();
+    let name = c.sketch_edit().unwrap().name.clone();
+    assert!((c.model().frames[&name].origin.z - 10.0).abs() < 1e-9);
+    c.leave_sketch();
+    // A datum line and point, then the datum plane's angle from the property editor
+    // moves the sketch and pad with it.
+    c.selection.clear();
+    c.run(W, "PartDesign_Line").unwrap();
+    c.task_command(W, "ok").unwrap();
+    c.run(W, "PartDesign_Point").unwrap();
+    c.command(W, "field:task:X", None).unwrap();
+    c.type_text("7").unwrap();
+    c.key(W, "Enter").unwrap();
+    c.task_command(W, "ok").unwrap();
+    assert!(
+        matches!(c.model().datums.get("DatumPoint"), Some(cw_cad::document::DatumGeom::Point(p)) if (p.x - 7.0).abs() < 1e-9)
+    );
+    c.command(W, "tree:DatumPlane", None).unwrap();
+    c.command(W, "prop:Angle", None).unwrap();
+    c.type_text("90").unwrap();
+    c.key(W, "Enter").unwrap();
+    // The pad now grows along -Y from the plane z = 10 turned upright: it no longer
+    // touches the first pad, so the body reports the failure.
+    assert!(c.model().error("Pad001").is_some());
+    c.undo().unwrap();
+    assert!((body_shape(&c).volume() - 9000.0).abs() < 1e-6);
+    // Double-clicking a datum opens its panel.
+    c.double_click(W, "tree:DatumPlane").unwrap();
+    assert!(matches!(&c.task, Some(Task::Feature(f)) if f.name == "DatumPlane"));
+    c.task_command(W, "cancel").unwrap();
+}
+
+#[test]
+fn expressions_bind_properties_through_the_fx_button() {
+    let mut c = padded();
+    // Name the rectangle's width constraint so the pad can read it.
+    c.command(W, "tree:Sketch", None).unwrap();
+    if let Some(Feature::Sketch { sketch, .. }) = c.doc.get_mut("Sketch").map(|o| &mut o.feature) {
+        sketch
+            .add_constraint(
+                cw_cad::sketch::Constraint::new(T::DistanceX, 0, Pos::Start)
+                    .with_second(0, Pos::End)
+                    .with_value(40.0)
+                    .named("width"),
+            )
+            .unwrap();
+    }
+    c.recompute();
+    c.command(W, "tree:Pad", None).unwrap();
+    // The f(x) button opens the expression field; Enter binds it.
+    c.command(W, "prop-expr:Length", None).unwrap();
+    assert!(
+        matches!(&c.field, Some(Field { target: FieldTarget::Expression { name, .. }, .. }) if name == "Length")
+    );
+    c.type_text("Sketch.Constraints.width / 2").unwrap();
+    c.key(W, "Enter").unwrap();
+    let rows = c.property_rows("Pad");
+    let length = rows.iter().find(|r| r.name == "Length").unwrap();
+    assert_eq!(
+        length.expression.as_deref(),
+        Some("Sketch.Constraints.width / 2")
+    );
+    assert_eq!(length.value, "20 mm");
+    assert!((body_shape(&c).volume() - 40.0 * 20.0 * 20.0).abs() < 1e-6);
+    // Changing the constraint in the sketch's property editor flows into the pad.
+    c.command(W, "tree:Sketch", None).unwrap();
+    c.command(W, "prop:width", None).unwrap();
+    c.type_text("30").unwrap();
+    c.key(W, "Enter").unwrap();
+    assert!((body_shape(&c).volume() - 30.0 * 20.0 * 15.0).abs() < 1e-6);
+    // A click on the bound value edits the expression, not the number.
+    c.command(W, "tree:Pad", None).unwrap();
+    c.command(W, "prop:Length", None).unwrap();
+    assert!(matches!(
+        &c.field,
+        Some(Field {
+            target: FieldTarget::Expression { .. },
+            ..
+        })
+    ));
+    c.field = None;
+    // A bad expression is refused and leaves the binding alone.
+    c.command(W, "prop-expr:Length", None).unwrap();
+    c.type_text("Nothing.Here * 2").unwrap();
+    assert!(c.key(W, "Enter").is_err());
+    assert!(c.status.contains("Nothing.Here"));
+    c.field = None;
+    assert_eq!(
+        c.expression_of("Pad", "Length"),
+        "Sketch.Constraints.width / 2"
+    );
+    // The document saves and loads with the binding; undo removes it.
+    let text = cw_cad::io::save_native(&c.doc);
+    assert!(text.contains("ExpressionEngine"));
+    assert_eq!(cw_cad::io::load_native(&text).unwrap(), c.doc);
+    c.command(W, "prop-expr:Length", None).unwrap();
+    c.type_text("").unwrap();
+    c.key(W, "Enter").unwrap();
+    assert_eq!(c.expression_of("Pad", "Length"), "");
+    assert!(
+        (body_shape(&c).volume() - 30.0 * 20.0 * 15.0).abs() < 1e-6,
+        "the value stays"
+    );
+    c.undo().unwrap();
+    assert_eq!(
+        c.expression_of("Pad", "Length"),
+        "Sketch.Constraints.width / 2"
+    );
+    // Only numbers bind.
+    assert!(c.command(W, "prop-expr:Type", None).is_err());
+    // A sketch constraint itself can be bound to another object's property.
+    c.command(W, "tree:Sketch", None).unwrap();
+    c.set_expression("Sketch", "width", "Pad.Length2 + 12")
+        .unwrap();
+    assert!((body_shape(&c).volume() - 12.0 * 20.0 * 6.0).abs() < 1e-6);
+}
+
+#[test]
+fn launched_on_a_folder_the_dialogs_start_there_while_it_exists() {
+    let (app, effects) = Freecad::launch("/home/carol/Documents/Parts", W, 0);
+    assert!(
+        matches!(&effects[..], [AppEffect::ListDirectory { path, .. }] if path == "/home/carol/Documents/Parts")
+    );
+    let mut c = *app.0;
+    c.home = "/home/carol".into();
+    c.listed(vec!["bracket.FCStd.json".into()]);
+    let mut o = c.clone();
+    o.run(W, "Std_Open").unwrap();
+    assert!(
+        matches!(&o.dialog, Some(Dialog::File(d)) if d.folder == "/home/carol/Documents/Parts")
+    );
+    // When the folder is not there, Documents it is.
+    c.listing_failed("folder not found");
+    c.run(W, "Std_Open").unwrap();
+    assert!(matches!(&c.dialog, Some(Dialog::File(d)) if d.folder == "/home/carol/Documents"));
+    assert!(c.report.is_empty(), "a missing start folder is no error");
 }

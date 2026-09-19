@@ -32,6 +32,16 @@ mod view3d;
 
 pub use layout::Layout;
 
+/// Files a file manager opens with FreeCAD: its documents and the CAD exchange
+/// formats it imports.
+pub fn opens(name: &str) -> bool {
+    let lower = name.rsplit('/').next().unwrap_or(name).to_ascii_lowercase();
+    lower.ends_with(".fcstd.json")
+        || [".step", ".stp", ".stl", ".obj", ".dxf"]
+            .iter()
+            .any(|e| lower.ends_with(e))
+}
+
 /// Undo levels kept. Each holds a whole document, so this bounds a snapshot's size.
 const UNDO_LIMIT: usize = 30;
 /// Report view lines kept.
@@ -158,6 +168,8 @@ pub enum FieldTarget {
     FolderName,
     /// Renaming a tree item's label.
     Label { object: String },
+    /// The expression bound to a Data property (the f(x) button).
+    Expression { object: String, name: String },
 }
 
 /// A sketch open in the Sketcher.
@@ -208,7 +220,8 @@ pub struct FeatureEdit {
 pub enum Task {
     Sketch(Box<SketchEdit>),
     Feature(Box<FeatureEdit>),
-    /// Create Sketch with nothing selected: choose a base plane.
+    /// Create Sketch with nothing selected: choose a base plane or a datum plane of
+    /// the body (`plane` is the base plane's or the datum's name).
     PickPlane {
         body: String,
         plane: String,
@@ -370,6 +383,10 @@ pub struct Cad {
     /// What to do once the pending save lands (New or Open after "Save changes?").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub after_save: Option<String>,
+    /// The folder FreeCAD was launched on (`~/Documents/Parts`): where its file
+    /// dialogs start while it exists.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub start_folder: String,
     #[serde(skip)]
     cache: Cache,
 }
@@ -432,6 +449,7 @@ impl Freecad {
             view_size: (0, 0),
             io_read: None,
             after_save: None,
+            start_folder: String::new(),
             cache: Cache::default(),
         };
         cad.camera.half_height = 60.0;

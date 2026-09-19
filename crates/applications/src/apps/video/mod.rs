@@ -2549,6 +2549,7 @@ impl Editor {
                 id: id.clone(),
                 text,
                 action: act(id),
+                style: None,
             });
         };
         page.elements.push(E::Heading {

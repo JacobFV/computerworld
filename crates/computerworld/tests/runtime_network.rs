@@ -24,11 +24,12 @@ try:
     urllib.request.urlopen('http://intranet.internal/definitely-missing')
 except urllib.error.HTTPError as e:
     print('HTTPError', e.code)
-for url in ['https://intranet.internal/', 'http://nowhere.invalid/']:
-    try:
-        urllib.request.urlopen(url)
-    except urllib.error.URLError as e:
-        print('URLError', e.reason)
+with urllib.request.urlopen('https://intranet.internal/') as r:
+    print('https', r.status)
+try:
+    urllib.request.urlopen('http://nowhere.invalid/')
+except urllib.error.URLError as e:
+    print('URLError', e.reason)
 c = http.client.HTTPConnection('intranet.internal', 80, timeout=5)
 c.request('GET', '/')
 r = c.getresponse()
@@ -58,7 +59,7 @@ http.get('http://intranet.internal/', (res) => {
   res.on('end', () => console.log('http', res.statusCode, n > 100));
 });
 fetch('http://intranet.internal/').then(async (r) => console.log('fetch', r.status, (await r.json()).title));
-fetch('https://intranet.internal/').catch((e) => console.log('https', e.message, e.cause.code));
+fetch('https://intranet.internal/').then((r) => console.log('https', r.status));
 fetch('http://nowhere.invalid/').catch((e) => console.log('dns', e.cause.message));
 const net = require('net');
 const s = net.connect(80, 'intranet.internal', () => s.end('GET / HTTP/1.1\r\nHost: intranet.internal\r\nConnection: close\r\n\r\n'));
@@ -81,7 +82,8 @@ fn python_reaches_world_services() {
         "200 application/vnd.computerworld.page+json Northstar Workshop"
     );
     assert_eq!(lines[3], "HTTPError 404");
-    assert_eq!(lines[4], "URLError [Errno 111] Connection refused");
+    // Every site listens on 443 as well, so https reaches the same page.
+    assert_eq!(lines[4], "https 200");
     assert_eq!(lines[5], "URLError [Errno -2] Name or service not known");
     assert_eq!(lines[6], "http.client 200 True");
     assert_eq!(lines[7], "HTTP/1.1 200 OK");
@@ -103,7 +105,7 @@ fn node_reaches_world_services() {
     assert!(out.contains("lookup null 10.0."), "{out}");
     assert!(out.contains("http 200 true\n"), "{out}");
     assert!(out.contains("fetch 200 Northstar Workshop\n"), "{out}");
-    assert!(out.contains("https fetch failed ECONNREFUSED\n"), "{out}");
+    assert!(out.contains("https 200\n"), "{out}");
     assert!(
         out.contains("dns getaddrinfo ENOTFOUND nowhere.invalid\n"),
         "{out}"

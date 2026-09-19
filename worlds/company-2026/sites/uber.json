@@ -1,0 +1,236 @@
+{
+  "id": "uber",
+  "kind": "shop",
+  "node": "uber",
+  "domains": ["uber.com", "www.uber.com", "m.uber.com", "ubereats.com"],
+  "port": 80,
+  "network_node": {"address": "198.51.100.113", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "initial_state": {
+    "mode": "retail",
+    "brand": "Uber",
+    "tagline": "A simulated ride and delivery app. Every driver, restaurant, address and fare here is invented; nothing moves and nothing is charged.",
+    "currency": "USD",
+    "theme": {
+      "accent": "#000000",
+      "background": "#ffffff",
+      "surface": "#f3f3f3",
+      "ink": "#000000",
+      "muted": "#6b6b6b",
+      "content_width": 1080
+    },
+    "categories": [
+      {"id": "rides", "title": "Rides"},
+      {"id": "eats", "title": "Uber Eats"},
+      {"id": "scooters", "title": "Scooters"},
+      {"id": "reserve", "title": "Reserve"}
+    ],
+    "products": {
+      "ride-uberx-annex-airport": {
+        "id": "ride-uberx-annex-airport", "category": "rides",
+        "title": "UberX - Bridgetown Annex to Portland Airport (PDX)",
+        "seller": "UberX",
+        "price_cents": 3240, "rating_sum": 4700, "rating_count": 1000, "stock": 50, "fast_shipping": true,
+        "bullets": ["Estimated fare $32.40, 24-31 min", "Pickup: 55 Rivergate Way, Portland OR", "Drop-off: PDX Terminal, departures level", "Seats up to 4"],
+        "description": "Everyday ride from the Northstar Bridgetown Annex to the airport. The estimate assumes the I-84 route; surge is shown before you confirm. Nearest driver is usually 3-5 minutes away on a weekday afternoon.",
+        "reviews": []
+      },
+      "ride-comfort-annex-airport": {
+        "id": "ride-comfort-annex-airport", "category": "rides",
+        "title": "Comfort - Bridgetown Annex to Portland Airport (PDX)",
+        "seller": "Uber Comfort",
+        "price_cents": 4185, "rating_sum": 4800, "rating_count": 1000, "stock": 50, "fast_shipping": true,
+        "bullets": ["Estimated fare $41.85, 24-31 min", "Newer cars with extra legroom", "Set the temperature and quiet mode before pickup", "Seats up to 4"],
+        "description": "Same route as UberX, in a newer car with more legroom and the option to ask for a quiet ride. Drivers on Comfort have a 4.85 rating or better.",
+        "reviews": []
+      },
+      "ride-xl-pearl-hawthorne": {
+        "id": "ride-xl-pearl-hawthorne", "category": "rides",
+        "title": "UberXL - Pearl District to Hawthorne (SE 34th and Hawthorne)",
+        "seller": "UberXL",
+        "price_cents": 2690, "rating_sum": 4650, "rating_count": 1000, "stock": 50, "fast_shipping": true,
+        "bullets": ["Estimated fare $26.90, 14-19 min", "Pickup: NW 11th and Lovejoy, Portland OR", "Drop-off: SE 34th and Hawthorne", "Seats up to 6"],
+        "description": "Van or large SUV for a group of up to six across the river to Hawthorne. The estimate crosses the Burnside Bridge; the Morrison route is about the same.",
+        "reviews": []
+      },
+      "ride-black-downtown-vineyard": {
+        "id": "ride-black-downtown-vineyard", "category": "rides",
+        "title": "Uber Black - Downtown Portland to Tualatin Hills vineyards",
+        "seller": "Uber Black",
+        "price_cents": 11800, "rating_sum": 4900, "rating_count": 1000, "stock": 20, "fast_shipping": false,
+        "bullets": ["Estimated fare $118.00, 38-48 min", "Pickup: SW 5th and Morrison, Portland OR", "Drop-off: 9200 Vineyard Ridge Rd, Tualatin Hills", "Professional driver, luxury sedan, seats 4"],
+        "description": "Luxury sedan with a commercially licensed driver out to the vineyards on the west hills. Black rides can be scheduled up to 30 days ahead under Reserve.",
+        "reviews": []
+      },
+      "ride-uberx-annex-hq": {
+        "id": "ride-uberx-annex-hq", "category": "rides",
+        "title": "UberX - Portland Union Station to Bridgetown Annex",
+        "seller": "UberX",
+        "price_cents": 1420, "rating_sum": 4700, "rating_count": 1000, "stock": 50, "fast_shipping": true,
+        "bullets": ["Estimated fare $14.20, 9-13 min", "Pickup: 800 NW 6th Ave, Portland OR", "Drop-off: 55 Rivergate Way", "Seats up to 4"],
+        "description": "The short hop from the train to the Annex, for anyone coming down from Seattle on the Cascades. Drivers wait in the pickup zone on NW Irving.",
+        "reviews": []
+      },
+      "eats-pho-lovejoy": {
+        "id": "eats-pho-lovejoy", "category": "eats",
+        "title": "Pho Lovejoy - Beef pho (large) with a side of spring rolls",
+        "seller": "Pho Lovejoy",
+        "price_cents": 1895, "rating_sum": 1410, "rating_count": 300, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.49, 25-35 min", "4.7 stars from 300 ratings", "Rare beef and brisket, herbs on the side", "Two spring rolls with nuoc cham"],
+        "description": "Large bowl of beef pho from the Lovejoy Street shop, broth packed separately so the noodles do not go soft on the way. Herbs, lime and jalapeno in a bag on top.",
+        "reviews": []
+      },
+      "eats-hawthorne-burger": {
+        "id": "eats-hawthorne-burger", "category": "eats",
+        "title": "Hawthorne Burger Co. - Double smash burger combo",
+        "seller": "Hawthorne Burger Co.",
+        "price_cents": 1650, "rating_sum": 1520, "rating_count": 320, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.99, 20-30 min", "4.8 stars from 320 ratings", "Two smashed patties, American cheese, house sauce", "Fries and a fountain drink"],
+        "description": "The combo from the Hawthorne window: two smash patties on a potato bun, shoestring fries and a drink. Ask for the pickles on the side in the notes if you want the bun to survive.",
+        "reviews": [
+          {"id": "rv-1", "author": "alice", "stars": 4, "title": "Arrived hot", "body": "Twenty-two minutes to the Annex and the fries were still crisp, which is rare.", "tick": 6}
+        ]
+      },
+      "eats-tacos-division": {
+        "id": "eats-tacos-division", "category": "eats",
+        "title": "Taqueria Division - Three al pastor tacos with rice and beans",
+        "seller": "Taqueria Division",
+        "price_cents": 1425, "rating_sum": 1450, "rating_count": 310, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 25-40 min", "4.7 stars from 310 ratings", "Corn tortillas, pineapple, onion, cilantro", "Salsa verde and roja included"],
+        "description": "Three al pastor tacos off the trompo at the Division Street cart, with a side of rice and refried beans. Tortillas are doubled so they hold.",
+        "reviews": []
+      },
+      "eats-sushi-pearl": {
+        "id": "eats-sushi-pearl", "category": "eats",
+        "title": "Pearl Sushi Bar - Salmon and avocado roll set (16 pieces)",
+        "seller": "Pearl Sushi Bar",
+        "price_cents": 2450, "rating_sum": 1290, "rating_count": 280, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.49, 30-45 min", "4.6 stars from 280 ratings", "Salmon avocado roll and a spicy tuna roll", "Miso soup included"],
+        "description": "Two rolls, sixteen pieces, from the Pearl District bar, with miso soup, ginger and wasabi. Packed in a chilled bag.",
+        "reviews": []
+      },
+      "eats-thai-belmont": {
+        "id": "eats-thai-belmont", "category": "eats",
+        "title": "Belmont Thai Kitchen - Green curry with chicken and jasmine rice",
+        "seller": "Belmont Thai Kitchen",
+        "price_cents": 1595, "rating_sum": 1380, "rating_count": 290, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.49, 25-35 min", "4.8 stars from 290 ratings", "Spice level chosen at checkout, 1 to 5", "Rice packed separately"],
+        "description": "Green curry with chicken, Thai eggplant and basil from the Belmont Street kitchen. Level 3 is medium for most people; level 5 is a commitment.",
+        "reviews": []
+      },
+      "eats-pizza-alberta": {
+        "id": "eats-pizza-alberta", "category": "eats",
+        "title": "Alberta Street Pizza - 16-inch pepperoni and hot honey",
+        "seller": "Alberta Street Pizza",
+        "price_cents": 2600, "rating_sum": 1500, "rating_count": 310, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.99, 35-50 min", "4.8 stars from 310 ratings", "Cup-and-char pepperoni, hot honey drizzle", "Feeds 3-4"],
+        "description": "Sixteen-inch New York style pie with cupped pepperoni and a hot honey drizzle after the oven. Ranch on the side is an extra $1.",
+        "reviews": []
+      },
+      "eats-breakfast-stumptown": {
+        "id": "eats-breakfast-stumptown", "category": "eats",
+        "title": "Rivergate Bakehouse - Breakfast sandwich and a 12 oz latte",
+        "seller": "Rivergate Bakehouse",
+        "price_cents": 1375, "rating_sum": 1210, "rating_count": 260, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.49, 15-25 min", "4.7 stars from 260 ratings", "Egg, cheddar and bacon on a brioche bun", "Oat milk available"],
+        "description": "The morning order from the bakehouse two blocks from the Annex. Sandwich wrapped in foil, latte in a lidded cup with a splash guard. Available until 11:00.",
+        "reviews": []
+      },
+      "eats-ramen-mississippi": {
+        "id": "eats-ramen-mississippi", "category": "eats",
+        "title": "Mississippi Ramen - Tonkotsu ramen with ajitama egg",
+        "seller": "Mississippi Ramen",
+        "price_cents": 1750, "rating_sum": 1470, "rating_count": 300, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 25-40 min", "4.9 stars from 300 ratings", "Broth, noodles and toppings packed separately", "Extra chashu $4"],
+        "description": "Eighteen-hour pork bone broth from the Mississippi Avenue shop, with noodles and toppings in their own tubs so you assemble it hot. Comes with assembly instructions on the lid.",
+        "reviews": [
+          {"id": "rv-2", "author": "carol", "stars": 5, "title": "The separate tubs work", "body": "Noodles were still springy after a thirty-minute ride. Best delivery ramen I have had.", "tick": 8}
+        ]
+      },
+      "scooter-30min": {
+        "id": "scooter-30min", "category": "scooters",
+        "title": "Scooter ride - 30 minutes, downtown Portland zone",
+        "seller": "Uber Scooters",
+        "price_cents": 995, "rating_sum": 4300, "rating_count": 1000, "stock": 200, "fast_shipping": true,
+        "bullets": ["$1.00 to unlock plus $0.30 a minute, about $9.95 for 30 minutes", "Helmet recommended, 18+", "Park in a marked corral to avoid the $5 fee", "Zone: downtown, Pearl, inner east side"],
+        "description": "Unlock a scooter with the app and ride within the downtown zone. The price shown is a 30-minute estimate. Riding outside the zone slows the scooter to walking pace.",
+        "reviews": []
+      },
+      "scooter-daypass": {
+        "id": "scooter-daypass", "category": "scooters",
+        "title": "Scooter day pass - unlimited 30-minute rides for 24 hours",
+        "seller": "Uber Scooters",
+        "price_cents": 1900, "rating_sum": 4400, "rating_count": 1000, "stock": 200, "fast_shipping": true,
+        "bullets": ["$19.00 for 24 hours", "Unlimited rides up to 30 minutes each", "Rides over 30 minutes charged at $0.30 a minute", "Zone: downtown, Pearl, inner east side"],
+        "description": "A day pass that covers every ride under 30 minutes for 24 hours from the first unlock. Worth it after the third ride.",
+        "reviews": []
+      },
+      "reserve-black-airport": {
+        "id": "reserve-black-airport", "category": "reserve",
+        "title": "Reserve - Uber Black to PDX, scheduled pickup with 15-minute wait",
+        "seller": "Uber Reserve",
+        "price_cents": 6900, "rating_sum": 4900, "rating_count": 1000, "stock": 20, "fast_shipping": false,
+        "bullets": ["Upfront price $69.00 from the Annex, includes the reservation fee", "Schedule up to 90 days ahead", "Driver waits 15 minutes free", "Cancel free until 1 hour before pickup"],
+        "description": "A Black car booked in advance for the airport run, with an upfront price that does not change with surge and a driver assigned the night before. Flight number can be added so the pickup tracks delays.",
+        "reviews": []
+      },
+      "reserve-comfort-early": {
+        "id": "reserve-comfort-early", "category": "reserve",
+        "title": "Reserve - Comfort, early-morning pickup (04:00-06:00) anywhere in Portland",
+        "seller": "Uber Reserve",
+        "price_cents": 4800, "rating_sum": 4800, "rating_count": 1000, "stock": 20, "fast_shipping": false,
+        "bullets": ["Upfront price $48.00 within the city, includes the reservation fee", "Guaranteed driver for pre-dawn pickups", "Driver waits 15 minutes free", "Cancel free until 1 hour before pickup"],
+        "description": "For the first flight out. A Comfort car reserved the night before for any pickup between 04:00 and 06:00 within Portland city limits; the airport is the usual destination.",
+        "reviews": []
+      }
+    },
+    "carts": {
+      "bob": {"eats-pizza-alberta": 1, "eats-hawthorne-burger": 1}
+    },
+    "orders": {
+      "trip-8f3a1c": {
+        "id": "trip-8f3a1c", "buyer": "alice", "tick": 2, "date": "2026-03-01",
+        "items": [{"product": "ride-uberx-annex-hq", "title": "UberX - Portland Union Station to Bridgetown Annex (11 min, 2.8 mi, driver Teodor, 4.96)", "qty": 1, "price_cents": 1420}],
+        "total_cents": 1620, "status": "Completed, $2.00 tip added", "confirmation": "TRP-C4W9HN", "seats": [], "venue": ""
+      },
+      "trip-9b02d7": {
+        "id": "trip-9b02d7", "buyer": "alice", "tick": 3, "date": "2026-03-02",
+        "items": [{"product": "ride-comfort-annex-airport", "title": "Comfort - Bridgetown Annex to Portland Airport (27 min, 12.1 mi, driver Yolanda, 4.98)", "qty": 1, "price_cents": 4185}],
+        "total_cents": 4685, "status": "Completed, $5.00 tip added", "confirmation": "TRP-M7K2QD", "seats": [], "venue": ""
+      },
+      "eats-1042977": {
+        "id": "eats-1042977", "buyer": "alice", "tick": 6, "date": "2026-03-09",
+        "items": [
+          {"product": "eats-hawthorne-burger", "title": "Hawthorne Burger Co. - Double smash burger combo", "qty": 1, "price_cents": 1650},
+          {"product": "eats-tacos-division", "title": "Taqueria Division - Three al pastor tacos with rice and beans", "qty": 1, "price_cents": 1425}
+        ],
+        "total_cents": 3873, "status": "Delivered, 24 min (fees $4.98, tip $3.00, courier Priyanka)", "confirmation": "EAT-X8N3FP", "seats": [], "venue": ""
+      },
+      "trip-a17e40": {
+        "id": "trip-a17e40", "buyer": "bob", "tick": 8, "date": "2026-03-12",
+        "items": [{"product": "ride-xl-pearl-hawthorne", "title": "UberXL - Pearl District to Hawthorne (17 min, 4.4 mi, driver Sam, 4.91)", "qty": 1, "price_cents": 2690}],
+        "total_cents": 2690, "status": "Completed", "confirmation": "TRP-Q2ZD8L", "seats": [], "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": ["eats-ramen-mississippi", "reserve-black-airport"],
+      "bob": ["eats-pizza-alberta"],
+      "carol": ["eats-thai-belmont", "eats-ramen-mississippi"]
+    },
+    "messages": [],
+    "next_order": 1042978
+  },
+  "search_entries": [
+    {"url": "http://uber.com/", "title": "Uber - simulated rides, Uber Eats, scooters and Reserve", "snippet": "Estimated fares between invented Portland addresses, meals from eight invented restaurants, scooter passes and scheduled cars.", "vertical": "all", "authority": 6, "keywords": ["uber", "ride", "taxi", "get a ride", "uber eats", "food delivery"]},
+    {"url": "http://uber.com/s?c=rides", "title": "Rides - UberX, Comfort, XL and Black fare estimates", "snippet": "Bridgetown Annex to PDX from $32.40, Union Station to the Annex $14.20, Pearl to Hawthorne in an XL $26.90.", "vertical": "all", "authority": 5, "keywords": ["uber fare", "uberx price", "ride to airport", "uber portland"]},
+    {"url": "http://uber.com/s?c=eats", "title": "Uber Eats - pho, burgers, tacos, sushi, Thai, pizza, ramen and breakfast", "snippet": "Eight invented Portland restaurants with delivery fees and times on every dish.", "vertical": "all", "authority": 5, "keywords": ["uber eats", "order food", "food delivery portland", "delivery near me"]},
+    {"url": "http://uber.com/dp/ride-uberx-annex-airport", "title": "UberX - Bridgetown Annex to Portland Airport, estimated $32.40", "snippet": "24-31 minutes via I-84, seats 4, surge shown before you confirm.", "vertical": "all", "authority": 5, "keywords": ["uber to pdx", "airport ride portland", "annex to airport", "uberx estimate"]},
+    {"url": "http://uber.com/dp/ride-black-downtown-vineyard", "title": "Uber Black - Downtown Portland to Tualatin Hills vineyards, $118.00", "snippet": "Luxury sedan with a licensed driver, 38-48 minutes, seats 4. Schedule under Reserve up to 30 days ahead.", "vertical": "all", "authority": 3, "keywords": ["uber black", "wine tour car", "luxury ride portland"]},
+    {"url": "http://uber.com/dp/eats-ramen-mississippi", "title": "Mississippi Ramen - Tonkotsu ramen with ajitama egg, $17.50 on Uber Eats", "snippet": "4.9 stars from 300 ratings. Broth, noodles and toppings packed separately. Delivery fee $2.99, 25-40 min.", "vertical": "all", "authority": 4, "keywords": ["ramen delivery", "tonkotsu ramen", "mississippi ramen", "ramen portland"]},
+    {"url": "http://uber.com/dp/eats-pizza-alberta", "title": "Alberta Street Pizza - 16-inch pepperoni and hot honey, $26.00 on Uber Eats", "snippet": "4.8 stars from 310 ratings. Feeds 3-4. Delivery fee $3.99, 35-50 min.", "vertical": "all", "authority": 4, "keywords": ["pizza delivery", "hot honey pizza", "alberta street pizza", "pizza portland"]},
+    {"url": "http://uber.com/dp/eats-thai-belmont", "title": "Belmont Thai Kitchen - Green curry with chicken, $15.95 on Uber Eats", "snippet": "4.8 stars from 290 ratings. Spice level 1 to 5 chosen at checkout. Delivery fee $2.49, 25-35 min.", "vertical": "all", "authority": 4, "keywords": ["thai delivery", "green curry", "thai food portland", "belmont thai"]},
+    {"url": "http://uber.com/dp/scooter-daypass", "title": "Uber scooter day pass - $19.00 for 24 hours", "snippet": "Unlimited rides up to 30 minutes in the downtown, Pearl and inner east side zone.", "vertical": "all", "authority": 3, "keywords": ["scooter rental", "uber scooter", "e-scooter portland", "scooter day pass"]},
+    {"url": "http://uber.com/dp/reserve-black-airport", "title": "Uber Reserve - Black to PDX, $69.00 upfront", "snippet": "Schedule up to 90 days ahead, driver assigned the night before, 15-minute free wait, free cancellation until an hour before.", "vertical": "all", "authority": 4, "keywords": ["uber reserve", "schedule uber", "book uber in advance", "airport car service"]},
+    {"url": "http://uber.com/orders/trip-9b02d7", "title": "Trip receipt trip-9b02d7 - Comfort to Portland Airport, $46.85", "snippet": "2 March 2026, 27 minutes, 12.1 miles, driver Yolanda. Fare $41.85 plus a $5.00 tip.", "vertical": "all", "authority": 3, "keywords": ["uber receipt", "trip receipt", "airport trip receipt", "trip-9b02d7"]},
+    {"url": "http://uber.com/orders", "title": "Activity - your trips and Uber Eats orders", "snippet": "Every trip and food order for the signed-in account with the receipt total.", "vertical": "all", "authority": 3, "keywords": ["uber activity", "trip history", "uber receipts", "past trips"]}
+  ]
+}

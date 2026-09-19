@@ -243,9 +243,16 @@ pub struct ServiceDefinition {
     pub domains: Vec<String>,
     #[serde(default = "port")]
     pub port: u16,
+    /// Whether the service also answers `https://` (`true` unless said otherwise): it
+    /// then listens on 443 as well as `port`, so either scheme reaches it. The first
+    /// service placed on a node owns its 443.
+    #[serde(default = "yes")]
+    pub tls: bool,
     #[serde(default)]
     pub initial_state: Value,
 }
+/// The port a service answers `https://` on when `tls` is set.
+pub const TLS_PORT: u16 = 443;
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NetworkDefinition {
     #[serde(default)]
@@ -455,12 +462,29 @@ pub const MAX_PAGE_EXTENT: u32 = 8192;
 /// (`symbol/<name>`), tinted with the icon's colour. An unknown name is refused by
 /// `Page::validate` rather than drawn as nothing.
 pub const PAGE_ICONS: &[&str] = &[
+    "accessibility",
+    "airplane",
+    "apps",
+    "archive",
     "arrow-left",
     "arrow-right",
     "arrow-up",
+    "at",
+    "backspace",
+    "backward",
+    "battery",
+    "battery-vertical",
     "bell",
+    "bluetooth",
+    "bold",
+    "book",
+    "branch",
+    "brush",
+    "bucket",
     "calendar",
+    "camera",
     "cast",
+    "cellular",
     "chat",
     "check",
     "chevron-down",
@@ -469,59 +493,150 @@ pub const PAGE_ICONS: &[&str] = &[
     "chevron-up",
     "clock",
     "close",
+    "cloud",
+    "code",
+    "comment",
+    "commit",
     "compass",
+    "compose",
+    "contrast",
+    "control-center",
     "copy",
+    "crop",
+    "desktop",
+    "dial",
+    "display",
+    "dnd",
     "document",
     "download",
+    "drive",
+    "drop",
     "edit",
+    "eject",
+    "emoji",
+    "eraser",
     "eye",
+    "eye-off",
+    "eyedropper",
+    "file",
+    "film",
     "filters",
     "flag",
+    "flashlight",
+    "flip-h",
+    "flip-v",
     "folder",
+    "fork",
+    "forward",
+    "fruit",
     "gear",
     "globe",
+    "grid",
     "grid-view",
+    "hand",
+    "hash",
     "headphones",
     "heart",
     "heart-fill",
+    "highlighter",
     "home",
+    "hotspot",
     "image",
+    "inbox",
     "info",
+    "issue-closed",
+    "issue-open",
+    "italic",
+    "keyboard",
+    "lasso",
+    "layers",
+    "leaf",
     "library",
+    "line-tool",
     "link",
     "list-view",
+    "location",
     "lock",
+    "magic",
+    "marker",
     "menu",
+    "merge",
     "mic",
     "minus",
+    "moon",
     "more",
     "more-vertical",
+    "move",
     "music",
+    "new-tab",
+    "night-light",
+    "palette",
+    "paperclip",
+    "paste",
     "pause",
+    "pencil",
     "person",
+    "pin",
     "play",
     "plus",
+    "power",
+    "pull-request",
     "queue",
     "radio",
+    "redo",
     "reload",
+    "rename",
     "repeat",
     "repeat-one",
     "reply",
+    "resize",
+    "rotate-ccw",
+    "rotate-cw",
+    "rotate-lock",
+    "ruler",
+    "scissors",
+    "screenshot",
     "search",
+    "select-ellipse",
+    "select-rect",
     "send",
+    "shapes",
     "share",
+    "shield",
     "shuffle",
+    "sidebar",
+    "signal",
     "skip-next",
     "skip-previous",
     "sliders",
+    "sort",
+    "split",
+    "stamp",
     "star",
+    "star-filled",
     "star-outline",
+    "sun",
+    "tabs",
     "tag",
+    "terminal",
+    "text-tool",
+    "thermometer",
+    "thread",
     "thumb-up",
     "thumb-up-fill",
     "trash",
+    "ubuntu",
+    "undo",
     "volume",
     "volume-mute",
+    "wallet",
+    "wand",
+    "wifi",
+    "wifi-fill",
+    "windows",
+    "x-circle",
+    "zoom-in",
+    "zoom-out",
 ];
 /// `#rrggbb` or `#rrggbbaa`; nothing else, so renderers never guess.
 /// Standard base64 (RFC 4648, padded or not; whitespace ignored), as world files carry
@@ -589,10 +704,19 @@ pub struct Style {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub one_line: Option<bool>,
     /// "bottom" keeps a top-level element on the bottom edge of the viewport while the
-    /// rest of the page scrolls under it, as a site's player bar does. Honoured on
-    /// top-level elements only; anywhere else it is ignored.
+    /// rest of the page scrolls under it, as a site's player bar does; "top" holds it
+    /// on the top edge, a sticky header. Honoured on top-level elements only; anywhere
+    /// else it is ignored.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pin: Option<String>,
+    /// On a `Row`, where its children sit when they do not fill it:
+    /// "start" (the default) | "center" | "end" | "space-between".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub justify: Option<String>,
+    /// `true` sets the text in the bundled monospace face (a commit hash, a code span,
+    /// a file path), measured with `Typeface::Mono`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mono: Option<bool>,
     /// `true` on a `Row` lays its children out on one line at their own widths
     /// (`width`, or their min-content width) and, when they run past the row, lets it
     /// scroll sideways instead of wrapping: a shelf of album covers. The browser
@@ -677,6 +801,14 @@ impl Style {
         self.scroll_x = Some(true);
         self
     }
+    pub fn justify(mut self, v: impl Into<String>) -> Self {
+        self.justify = Some(v.into());
+        self
+    }
+    pub fn mono(mut self) -> Self {
+        self.mono = Some(true);
+        self
+    }
     fn validate(&self) -> Result<()> {
         for c in [&self.color, &self.background, &self.border]
             .into_iter()
@@ -706,8 +838,21 @@ impl Style {
         if self.size.is_some_and(|v| !(6..=96).contains(&v)) {
             return Err(SimError::invalid("style size must be 6 through 96"));
         }
-        if self.pin.as_deref().is_some_and(|edge| edge != "bottom") {
-            return Err(SimError::invalid("style pin must be bottom"));
+        if self
+            .pin
+            .as_deref()
+            .is_some_and(|edge| !matches!(edge, "top" | "bottom"))
+        {
+            return Err(SimError::invalid("style pin must be top or bottom"));
+        }
+        if self
+            .justify
+            .as_deref()
+            .is_some_and(|j| !matches!(j, "start" | "center" | "end" | "space-between"))
+        {
+            return Err(SimError::invalid(
+                "style justify must be start, center, end or space-between",
+            ));
         }
         Ok(())
     }
@@ -848,6 +993,15 @@ impl Page {
                     | PageElement::Thumbnail { style, .. }
                     | PageElement::Badge { style, .. }
                     | PageElement::Divider { style, .. } => style.validate()?,
+                    PageElement::Link {
+                        style: Some(style), ..
+                    }
+                    | PageElement::Button {
+                        style: Some(style), ..
+                    }
+                    | PageElement::Image {
+                        style: Some(style), ..
+                    } => style.validate()?,
                     PageElement::Spacer { height, .. } if *height > MAX_PAGE_EXTENT => {
                         return Err(SimError::invalid("spacer height exceeds 8192"))
                     }
@@ -883,15 +1037,24 @@ pub enum PageElement {
         id: String,
         text: String,
     },
+    /// Navigation. Without a style it is plain accent-coloured text at its own width;
+    /// with one it takes the style's size, weight, colour, fill, border, radius,
+    /// padding and width, so it can be a nav item, a tab or a bordered button.
     Link {
         id: String,
         text: String,
         url: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        style: Option<Style>,
     },
+    /// A control that performs `action`. Without a style it is the accent pill at its
+    /// text's width; a style restyles it the way `Link`'s does.
     Button {
         id: String,
         text: String,
         action: PageAction,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        style: Option<Style>,
     },
     Input {
         id: String,
@@ -909,12 +1072,18 @@ pub enum PageElement {
         id: String,
         children: Vec<PageElement>,
     },
+    /// A picture fetched from `source`. `Style::radius` rounds its corners (an avatar);
+    /// with `action` the picture is one click target named `alt`.
     Image {
         id: String,
         source: String,
         alt: String,
         width: u32,
         height: u32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        style: Option<Style>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        action: Option<PageAction>,
     },
     /// Children laid out left to right. Fixed-width children take `Style::width`; the
     /// rest split the remainder by `Style::flex`. `align` is "start"|"center"|"end"|"stretch".

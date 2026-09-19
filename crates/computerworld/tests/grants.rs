@@ -86,9 +86,10 @@ fn the_gateway_still_stands_between_a_granted_actor_and_the_host() {
     let mut world = World::new(reference_world(), 1).unwrap();
     let id = session(&mut world, &["http.v1"]);
     // `allow_host` is false, so a granted actor still cannot reach outside the world.
+    // Hosts that exist only outside the world; anthropic.com is a site in it.
     for url in [
         "http://example.com/",
-        "https://anthropic.com/",
+        "https://outside.example.net/",
         "http://127.0.0.1/",
     ] {
         let (ok, _) = run(&mut world, &id, "http.v1", "request", request(url));

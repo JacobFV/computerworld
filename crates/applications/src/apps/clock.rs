@@ -166,6 +166,7 @@ impl Clock {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         let controls: &[(&str, &str)] = match self.face {
@@ -188,6 +189,7 @@ impl Clock {
                 id: (*id).into(),
                 text: (*label).into(),
                 action: act(id),
+                style: None,
             });
         }
         for (index, lap) in self.laps.iter().enumerate() {

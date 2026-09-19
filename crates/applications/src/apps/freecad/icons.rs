@@ -512,6 +512,81 @@ pub fn draw(p: &mut Painter, id: &str, x: i32, y: i32, size: u32, enabled: bool)
                 );
             }
         }
+        "PartDesign_AdditiveBox" | "PartDesign::AdditiveBox" => {
+            g.block(YELLOW, YELLOW_DARK);
+        }
+        "PartDesign_SubtractiveBox" | "PartDesign::SubtractiveBox" => {
+            g.block(LIGHT_BLUE, BLUE);
+        }
+        "PartDesign_AdditiveCylinder" | "PartDesign::AdditiveCylinder" => {
+            g.poly(
+                &[(3.0, 4.0), (13.0, 4.0), (13.0, 13.0), (3.0, 13.0)],
+                YELLOW,
+                Some(YELLOW_DARK),
+            );
+            g.ring(8.0, 4.0, 5.0, YELLOW_DARK);
+        }
+        "PartDesign_SubtractiveCylinder" | "PartDesign::SubtractiveCylinder" => {
+            g.poly(
+                &[(3.0, 4.0), (13.0, 4.0), (13.0, 13.0), (3.0, 13.0)],
+                LIGHT_BLUE,
+                Some(BLUE),
+            );
+            g.ring(8.0, 4.0, 5.0, BLUE);
+        }
+        "PartDesign_AdditiveSphere" | "PartDesign::AdditiveSphere" => {
+            g.dot(8.0, 8.0, 6.0, YELLOW);
+            g.ring(8.0, 8.0, 6.0, YELLOW_DARK);
+        }
+        "PartDesign_SubtractiveSphere" | "PartDesign::SubtractiveSphere" => {
+            g.dot(8.0, 8.0, 6.0, LIGHT_BLUE);
+            g.ring(8.0, 8.0, 6.0, BLUE);
+        }
+        "PartDesign_AdditiveCone" | "PartDesign::AdditiveCone" => {
+            g.poly(
+                &[(8.0, 2.0), (14.0, 13.0), (2.0, 13.0)],
+                YELLOW,
+                Some(YELLOW_DARK),
+            );
+        }
+        "PartDesign_SubtractiveCone" | "PartDesign::SubtractiveCone" => {
+            g.poly(
+                &[(8.0, 2.0), (14.0, 13.0), (2.0, 13.0)],
+                LIGHT_BLUE,
+                Some(BLUE),
+            );
+        }
+        "PartDesign_AdditiveTorus" | "PartDesign::AdditiveTorus" => {
+            g.dot(8.0, 8.0, 6.5, YELLOW);
+            g.ring(8.0, 8.0, 6.5, YELLOW_DARK);
+            g.dot(8.0, 8.0, 2.5, WHITE);
+            g.ring(8.0, 8.0, 2.5, YELLOW_DARK);
+        }
+        "PartDesign_SubtractiveTorus" | "PartDesign::SubtractiveTorus" => {
+            g.dot(8.0, 8.0, 6.5, LIGHT_BLUE);
+            g.ring(8.0, 8.0, 6.5, BLUE);
+            g.dot(8.0, 8.0, 2.5, WHITE);
+            g.ring(8.0, 8.0, 2.5, BLUE);
+        }
+        "PartDesign_Boolean" | "PartDesign::Boolean" => {
+            g.dot(6.0, 8.0, 5.0, YELLOW);
+            g.ring(6.0, 8.0, 5.0, YELLOW_DARK);
+            g.dot(10.0, 8.0, 5.0, LIGHT_BLUE);
+            g.ring(10.0, 8.0, 5.0, BLUE);
+        }
+        "PartDesign_Plane" | "PartDesign::Plane" => g.poly(
+            &[(1.0, 12.0), (5.0, 4.0), (15.0, 4.0), (11.0, 12.0)],
+            Color(255, 200, 80, 160),
+            Some(YELLOW_DARK),
+        ),
+        "PartDesign_Line" | "PartDesign::Line" => {
+            g.line(&[(2.0, 14.0), (14.0, 2.0)], YELLOW_DARK, 2);
+        }
+        "PartDesign_Point" | "PartDesign::Point" => {
+            g.dot(8.0, 8.0, 3.0, YELLOW_DARK);
+            g.line(&[(8.0, 1.0), (8.0, 15.0)], YELLOW_DARK, 1);
+            g.line(&[(1.0, 8.0), (15.0, 8.0)], YELLOW_DARK, 1);
+        }
         "PartDesign_MoveTip" => {
             g.block(YELLOW, YELLOW_DARK);
             g.poly(

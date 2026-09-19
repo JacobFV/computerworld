@@ -677,6 +677,7 @@ impl Kicad {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for (i, entry) in self.session.listing.iter().enumerate() {
@@ -685,6 +686,7 @@ impl Kicad {
                 id: id.clone(),
                 text: entry.clone(),
                 action: act(&id),
+                style: None,
             });
         }
         if let Some(Dialog::OpenProject { .. }) = &self.ui.dialog {
@@ -694,6 +696,7 @@ impl Kicad {
                     id: id.clone(),
                     text: path.clone(),
                     action: act(&id),
+                    style: None,
                 });
             }
         }

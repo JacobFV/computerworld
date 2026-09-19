@@ -1,0 +1,1044 @@
+{
+  "id": "craigslist",
+  "kind": "forum",
+  "node": "craigslist",
+  "domains": [
+    "craigslist.org",
+    "www.craigslist.org",
+    "portland.craigslist.org"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "198.51.100.121",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
+  "initial_state": {
+    "mode": "linkfeed",
+    "brand": "craigslist",
+    "tagline": "portland: for sale, housing, jobs, gigs, community, services",
+    "item_word": "listing",
+    "reply_word": "reply",
+    "theme": {
+      "accent": "#551a8b",
+      "background": "#ffffff",
+      "surface": "#f0f0f0",
+      "ink": "#000000",
+      "muted": "#666666",
+      "content_width": 960
+    },
+    "members": {
+      "alice-pdx": {
+        "handle": "alice-pdx",
+        "name": "alice-pdx",
+        "actor": "alice",
+        "reputation": 14,
+        "flair": "",
+        "bio": "Clearing out a spare room.",
+        "site": ""
+      },
+      "bob_m": {
+        "handle": "bob_m",
+        "name": "bob_m",
+        "actor": "bob",
+        "reputation": 9,
+        "flair": "",
+        "bio": "Buying and selling bikes since forever.",
+        "site": ""
+      },
+      "carol_nk": {
+        "handle": "carol_nk",
+        "name": "carol_nk",
+        "actor": "carol",
+        "reputation": 6,
+        "flair": "",
+        "bio": "",
+        "site": ""
+      },
+      "sellr_7731": {
+        "handle": "sellr_7731",
+        "name": "sellr_7731",
+        "actor": null,
+        "reputation": 22,
+        "flair": "",
+        "bio": "Cash only, no holds.",
+        "site": ""
+      },
+      "nw_landlord": {
+        "handle": "nw_landlord",
+        "name": "nw_landlord",
+        "actor": null,
+        "reputation": 31,
+        "flair": "",
+        "bio": "Small landlord, three buildings, no management company.",
+        "site": ""
+      },
+      "stjohns_mike": {
+        "handle": "stjohns_mike",
+        "name": "stjohns_mike",
+        "actor": null,
+        "reputation": 18,
+        "flair": "",
+        "bio": "",
+        "site": ""
+      },
+      "hawthorne_hh": {
+        "handle": "hawthorne_hh",
+        "name": "hawthorne_hh",
+        "actor": null,
+        "reputation": 5,
+        "flair": "",
+        "bio": "Household of four looking for a fifth.",
+        "site": ""
+      },
+      "gigs.pdx": {
+        "handle": "gigs.pdx",
+        "name": "gigs.pdx",
+        "actor": null,
+        "reputation": 40,
+        "flair": "",
+        "bio": "Posting on behalf of a small events company.",
+        "site": ""
+      },
+      "lostcat_fp": {
+        "handle": "lostcat_fp",
+        "name": "lostcat_fp",
+        "actor": null,
+        "reputation": 2,
+        "flair": "",
+        "bio": "",
+        "site": ""
+      },
+      "tuneup_tony": {
+        "handle": "tuneup_tony",
+        "name": "tuneup_tony",
+        "actor": null,
+        "reputation": 27,
+        "flair": "",
+        "bio": "Mobile bike mechanic. Weekends.",
+        "site": ""
+      },
+      "k_hiring": {
+        "handle": "k_hiring",
+        "name": "k_hiring",
+        "actor": null,
+        "reputation": 12,
+        "flair": "",
+        "bio": "Hiring manager at a downtown bakery.",
+        "site": ""
+      },
+      "quietstreet": {
+        "handle": "quietstreet",
+        "name": "quietstreet",
+        "actor": null,
+        "reputation": 8,
+        "flair": "",
+        "bio": "",
+        "site": ""
+      },
+      "vinylguy": {
+        "handle": "vinylguy",
+        "name": "vinylguy",
+        "actor": null,
+        "reputation": 16,
+        "flair": "",
+        "bio": "Thinning the collection, not ending it.",
+        "site": ""
+      }
+    },
+    "boards": {},
+    "threads": {
+      "t-7000": {
+        "id": "t-7000",
+        "board": "",
+        "author": "alice-pdx",
+        "title": "Solid oak dining table + 4 chairs - $220 (Alder District)",
+        "body": "Oak table 60x36, seats six with the leaf, four matching chairs. One chair has a wobble, easy fix. Pickup only, second floor walk-up, bring a friend. Cash. No holds.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "furniture"
+        ],
+        "tick": 40,
+        "score": 3,
+        "views": 412,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-100",
+            "author": "sellr_7731",
+            "parent": null,
+            "body": "Still available? Can pick up Saturday.",
+            "tick": 41,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-101",
+            "author": "alice-pdx",
+            "parent": null,
+            "body": "Yes, Saturday works. Reply with a time.",
+            "tick": 41,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7001": {
+        "id": "t-7001",
+        "board": "",
+        "author": "stjohns_mike",
+        "title": "IKEA Kallax 4x4 white - $60 (St. Johns)",
+        "body": "Assembled, minor scuff on one corner. Disassemble it yourself or bring a van. Text preferred.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "furniture"
+        ],
+        "tick": 39,
+        "score": 2,
+        "views": 288,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7002": {
+        "id": "t-7002",
+        "board": "",
+        "author": "quietstreet",
+        "title": "Mid-century dresser, 6 drawer, walnut veneer - $180 (Belmont)",
+        "body": "Real 1960s piece, drawers glide, veneer good except a water ring on top. Photo in person. Will not ship. Price firm.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "furniture",
+          "vintage"
+        ],
+        "tick": 38,
+        "score": 4,
+        "views": 530,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7003": {
+        "id": "t-7003",
+        "board": "",
+        "author": "bob_m",
+        "title": "Surly Cross-Check 56cm, steel, 1x10 - $650 (Hawthorne)",
+        "body": "Cross-Check frame, built up as a commuter: 1x10, 38mm tyres, fenders, rear rack. New chain and cassette this spring. Test ride with ID. Priced to sell, not to haggle.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "bikes"
+        ],
+        "tick": 37,
+        "score": 6,
+        "views": 745,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-102",
+            "author": "tuneup_tony",
+            "parent": null,
+            "body": "Which crank? If it is the original I know someone looking.",
+            "tick": 37,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-103",
+            "author": "bob_m",
+            "parent": null,
+            "body": "Original Surly crank, 40t ring. Send them over.",
+            "tick": 38,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7004": {
+        "id": "t-7004",
+        "board": "",
+        "author": "stjohns_mike",
+        "title": "Kids' bike 20 inch, Trek Precaliber - $90 (St. Johns)",
+        "body": "Outgrown. Blue, coaster brake plus hand brake, tyres hold air. Helmet included if it fits.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "bikes",
+          "kids"
+        ],
+        "tick": 36,
+        "score": 2,
+        "views": 201,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7005": {
+        "id": "t-7005",
+        "board": "",
+        "author": "sellr_7731",
+        "title": "Peloton bike, original model, works - $300 (Foster-Powell)",
+        "body": "Bought 2022, ridden maybe fifty times. Screen works, needs your own subscription. You haul. Cash only.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "fitness",
+          "bikes"
+        ],
+        "tick": 35,
+        "score": 1,
+        "views": 610,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-104",
+            "author": "hawthorne_hh",
+            "parent": null,
+            "body": "Would you take 250?",
+            "tick": 36,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-105",
+            "author": "sellr_7731",
+            "parent": null,
+            "body": "300, no holds, first with cash.",
+            "tick": 36,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7006": {
+        "id": "t-7006",
+        "board": "",
+        "author": "vinylguy",
+        "title": "27 inch 4K monitor, Dell U2723QE, USB-C - $280 (Alder District)",
+        "body": "Two years old, no dead pixels, comes with the stand and the USB-C cable. Selling because I went ultrawide. Firm.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "electronics"
+        ],
+        "tick": 34,
+        "score": 5,
+        "views": 820,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7007": {
+        "id": "t-7007",
+        "board": "",
+        "author": "alice-pdx",
+        "title": "ThinkPad T14 gen 3, 32GB, 1TB, Linux - $520 (Alder District)",
+        "body": "Ryzen 7, fresh install of whatever you want or blank. Battery at 88 percent health. Charger included. Local pickup, will demo.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "electronics",
+          "computers"
+        ],
+        "tick": 33,
+        "score": 4,
+        "views": 690,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-106",
+            "author": "k_hiring",
+            "parent": null,
+            "body": "Does the keyboard have the backlight?",
+            "tick": 34,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-107",
+            "author": "alice-pdx",
+            "parent": null,
+            "body": "Yes, backlit, US layout.",
+            "tick": 34,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7008": {
+        "id": "t-7008",
+        "board": "",
+        "author": "vinylguy",
+        "title": "Vinyl lot - 40 records, jazz and soul, mostly VG+ - $150 (Hawthorne)",
+        "body": "Not splitting the lot. List available on request. Blue Note reissues, some originals, one Coltrane with a seam split. Priced for a quick sale.",
+        "url": null,
+        "tags": [
+          "for sale",
+          "music",
+          "vinyl"
+        ],
+        "tick": 32,
+        "score": 7,
+        "views": 934,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7009": {
+        "id": "t-7009",
+        "board": "",
+        "author": "sellr_7731",
+        "title": "Free: moving boxes, about 30, plus packing paper (Foster-Powell)",
+        "body": "On the porch at the corner of 62nd and Foster from Saturday morning. Take what you want. Gone when gone.",
+        "url": null,
+        "tags": [
+          "free",
+          "moving"
+        ],
+        "tick": 31,
+        "score": 9,
+        "views": 1120,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7010": {
+        "id": "t-7010",
+        "board": "",
+        "author": "nw_landlord",
+        "title": "1BR apartment, top floor, laundry in building - $1,450/mo (Belmont)",
+        "body": "650 sq ft, hardwood, gas range, radiator heat included. Cats OK with deposit, no dogs. Twelve-month lease, first and deposit. Showings Thursday and Saturday, reply for a slot.",
+        "url": null,
+        "tags": [
+          "housing",
+          "apts",
+          "1br"
+        ],
+        "tick": 30,
+        "score": 8,
+        "views": 2140,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-108",
+            "author": "carol_nk",
+            "parent": null,
+            "body": "Is there bike parking in the building?",
+            "tick": 30,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-109",
+            "author": "nw_landlord",
+            "parent": null,
+            "body": "Covered rack in the back, locked gate.",
+            "tick": 31,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7011": {
+        "id": "t-7011",
+        "board": "",
+        "author": "nw_landlord",
+        "title": "Studio, ground floor, near the streetcar - $1,100/mo (Alder District)",
+        "body": "420 sq ft, murphy bed stays, water and trash included, electric is yours. No smoking. Available October 1.",
+        "url": null,
+        "tags": [
+          "housing",
+          "apts",
+          "studio"
+        ],
+        "tick": 29,
+        "score": 3,
+        "views": 1380,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7012": {
+        "id": "t-7012",
+        "board": "",
+        "author": "hawthorne_hh",
+        "title": "Room in 4BR house, shared bath, garden - $780/mo (Hawthorne)",
+        "body": "Four of us, ages 26 to 34, two work from home. Room is 11x12 with a closet, second floor, street-facing. Utilities split five ways, about 60 a month. Looking for someone who does their dishes. Six-month minimum.",
+        "url": null,
+        "tags": [
+          "housing",
+          "rooms"
+        ],
+        "tick": 28,
+        "score": 5,
+        "views": 1650,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-110",
+            "author": "quietstreet",
+            "parent": null,
+            "body": "Is the room available before the first?",
+            "tick": 29,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-111",
+            "author": "hawthorne_hh",
+            "parent": null,
+            "body": "Current housemate leaves the 25th, so yes.",
+            "tick": 29,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7013": {
+        "id": "t-7013",
+        "board": "",
+        "author": "stjohns_mike",
+        "title": "Detached garage for storage or workshop - $250/mo (St. Johns)",
+        "body": "Single car garage, power, no water, alley access, roll-up door with a new lock. No living in it, no autobody. Month to month.",
+        "url": null,
+        "tags": [
+          "housing",
+          "storage",
+          "parking"
+        ],
+        "tick": 27,
+        "score": 2,
+        "views": 540,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7014": {
+        "id": "t-7014",
+        "board": "",
+        "author": "k_hiring",
+        "title": "Bakery counter staff, mornings, $19/hr + tips (Downtown)",
+        "body": "Shifts 06:00-13:00, four or five days, weekends required. Espresso experience a plus, not required; we train. Health stipend after 90 days. Reply with availability, no resume needed.",
+        "url": null,
+        "tags": [
+          "jobs",
+          "food",
+          "part-time"
+        ],
+        "tick": 26,
+        "score": 6,
+        "views": 1830,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-112",
+            "author": "hawthorne_hh",
+            "parent": null,
+            "body": "Are the weekend shifts the same hours?",
+            "tick": 27,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-113",
+            "author": "k_hiring",
+            "parent": null,
+            "body": "Saturday and Sunday are 06:00-14:00.",
+            "tick": 27,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7015": {
+        "id": "t-7015",
+        "board": "",
+        "author": "gigs.pdx",
+        "title": "Warehouse associate, days, full time - $22/hr (Northwest Industrial)",
+        "body": "Receiving and pick/pack for a small e-commerce warehouse. Forklift cert a plus. Lift 50 lb. Benefits after 60 days. Interviews this week.",
+        "url": null,
+        "tags": [
+          "jobs",
+          "warehouse",
+          "full-time"
+        ],
+        "tick": 25,
+        "score": 4,
+        "views": 1420,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7016": {
+        "id": "t-7016",
+        "board": "",
+        "author": "carol_nk",
+        "title": "Part-time bookkeeper for a small engineering shop, remote OK - $35/hr (Alder District)",
+        "body": "Ten hours a week, monthly close, payroll through a provider, one bank account. Must know accrual basis. Send a short note about what you have done, not a resume.",
+        "url": null,
+        "tags": [
+          "jobs",
+          "office",
+          "part-time",
+          "remote"
+        ],
+        "tick": 24,
+        "score": 5,
+        "views": 980,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7017": {
+        "id": "t-7017",
+        "board": "",
+        "author": "gigs.pdx",
+        "title": "Event crew for Saturday load-in/load-out - $150 cash (Convention Center)",
+        "body": "Two shifts, 07:00-11:00 and 21:00-01:00, either or both. Lifting, hauling, following directions. Closed-toe shoes. Reply with which shift.",
+        "url": null,
+        "tags": [
+          "gigs",
+          "events",
+          "labor"
+        ],
+        "tick": 23,
+        "score": 7,
+        "views": 2210,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-114",
+            "author": "stjohns_mike",
+            "parent": null,
+            "body": "Both shifts, have my own gloves.",
+            "tick": 23,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-115",
+            "author": "gigs.pdx",
+            "parent": null,
+            "body": "You are on the list, check messages for the address.",
+            "tick": 24,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7018": {
+        "id": "t-7018",
+        "board": "",
+        "author": "quietstreet",
+        "title": "Need someone to move a piano across the room - $80 (Belmont)",
+        "body": "Upright piano, one room to the next, hardwood floors, no stairs. Two people ideally. Sunday afternoon.",
+        "url": null,
+        "tags": [
+          "gigs",
+          "labor",
+          "moving"
+        ],
+        "tick": 22,
+        "score": 3,
+        "views": 640,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7019": {
+        "id": "t-7019",
+        "board": "",
+        "author": "vinylguy",
+        "title": "Photographer for a 40th birthday, 2 hours - $200 (Hawthorne)",
+        "body": "Backyard party, about thirty people, golden hour. Candids, not portraits. Share the raw files after. Show me a few examples in your reply.",
+        "url": null,
+        "tags": [
+          "gigs",
+          "creative",
+          "photography"
+        ],
+        "tick": 21,
+        "score": 2,
+        "views": 480,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7020": {
+        "id": "t-7020",
+        "board": "",
+        "author": "lostcat_fp",
+        "title": "LOST CAT - grey tabby, white chest, 'Miso' - (Foster-Powell)",
+        "body": "Missing since Tuesday night near 65th and Holgate. Grey tabby, white bib and paws, green collar with a bell, chipped. Shy but will come to food. Please check garages and sheds. Reward.",
+        "url": null,
+        "tags": [
+          "community",
+          "lost and found",
+          "pets"
+        ],
+        "tick": 20,
+        "score": 12,
+        "views": 3100,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-116",
+            "author": "sellr_7731",
+            "parent": null,
+            "body": "Saw a grey tabby with a bell behind the laundromat on 67th this morning.",
+            "tick": 21,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-117",
+            "author": "lostcat_fp",
+            "parent": null,
+            "body": "Checking now, thank you.",
+            "tick": 21,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-118",
+            "author": "lostcat_fp",
+            "parent": null,
+            "body": "FOUND. She was in a neighbour's shed two doors down. Thank you everyone.",
+            "tick": 22,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7021": {
+        "id": "t-7021",
+        "board": "",
+        "author": "quietstreet",
+        "title": "Found: set of keys with a red carabiner, Laurelhurst Park (Belmont)",
+        "body": "Found on the path near the pond Sunday. Describe the other keychain and they are yours.",
+        "url": null,
+        "tags": [
+          "community",
+          "lost and found"
+        ],
+        "tick": 19,
+        "score": 4,
+        "views": 720,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7022": {
+        "id": "t-7022",
+        "board": "",
+        "author": "gigs.pdx",
+        "title": "Free outdoor movie Friday: 'The Princess Bride', dusk (St. Johns)",
+        "body": "Cathedral Park lawn, screen goes up at eight, film at dusk. Bring a blanket. Food carts on site. Rain date Saturday.",
+        "url": null,
+        "tags": [
+          "community",
+          "events",
+          "free"
+        ],
+        "tick": 18,
+        "score": 15,
+        "views": 2840,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-119",
+            "author": "hawthorne_hh",
+            "parent": null,
+            "body": "Is it dog friendly?",
+            "tick": 18,
+            "score": 1,
+            "comments": []
+          },
+          {
+            "id": "r-120",
+            "author": "gigs.pdx",
+            "parent": null,
+            "body": "Leashed dogs are fine.",
+            "tick": 19,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7023": {
+        "id": "t-7023",
+        "board": "",
+        "author": "alice-pdx",
+        "title": "Neighbourhood cleanup Saturday 9am, coffee provided (Alder District)",
+        "body": "Meet at the corner of Kearney and 11th. Bags and grabbers supplied, bring gloves. Two hours, then coffee at Northlight. Kids welcome.",
+        "url": null,
+        "tags": [
+          "community",
+          "volunteers",
+          "events"
+        ],
+        "tick": 17,
+        "score": 6,
+        "views": 560,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7024": {
+        "id": "t-7024",
+        "board": "",
+        "author": "tuneup_tony",
+        "title": "Mobile bike tune-up at your door - $60 (all east side)",
+        "body": "Full tune: brakes, gears, true wheels, bearings check, chain wear. Parts extra at cost. Weekends and weekday evenings. Twelve years wrenching in shops, now on my own.",
+        "url": null,
+        "tags": [
+          "services",
+          "bikes",
+          "repair"
+        ],
+        "tick": 16,
+        "score": 8,
+        "views": 1290,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-121",
+            "author": "bob_m",
+            "parent": null,
+            "body": "Booked him for two bikes last month. Showed up on time, both shift like new.",
+            "tick": 17,
+            "score": 1,
+            "comments": []
+          }
+        ]
+      },
+      "t-7025": {
+        "id": "t-7025",
+        "board": "",
+        "author": "stjohns_mike",
+        "title": "Handyman: fences, gates, decks, small repairs - hourly (St. Johns)",
+        "body": "Licensed and insured. Fences and gates are the speciality; also drywall patches, door hanging, gutter cleaning. Free estimate on anything over two hours. Photos of recent work on request.",
+        "url": null,
+        "tags": [
+          "services",
+          "handyman",
+          "carpentry"
+        ],
+        "tick": 15,
+        "score": 5,
+        "views": 870,
+        "accepted": null,
+        "replies": []
+      },
+      "t-7026": {
+        "id": "t-7026",
+        "board": "",
+        "author": "carol_nk",
+        "title": "Math tutoring, algebra through calculus, in person or online - $45/hr (Belmont)",
+        "body": "Engineering degree, six years tutoring high school and first-year college students. First half hour free to see if we get along. Evenings and weekends.",
+        "url": null,
+        "tags": [
+          "services",
+          "tutoring",
+          "education"
+        ],
+        "tick": 14,
+        "score": 3,
+        "views": 450,
+        "accepted": null,
+        "replies": []
+      }
+    },
+    "votes": {},
+    "subscriptions": {},
+    "next_id": 7100
+  },
+  "search_entries": [
+    {
+      "url": "http://craigslist.org/",
+      "title": "craigslist: portland",
+      "snippet": "Classifieds for portland: for sale, housing, jobs, gigs, community and services, newest first.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "craigslist",
+        "classifieds",
+        "portland",
+        "for sale",
+        "housing",
+        "jobs",
+        "gigs"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/newest",
+      "title": "craigslist portland - newest listings",
+      "snippet": "Every listing in the order it was posted.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "craigslist",
+        "newest",
+        "listings",
+        "portland"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7003",
+      "title": "Surly Cross-Check 56cm, steel, 1x10 - $650 (Hawthorne) - craigslist",
+      "snippet": "Commuter build with fenders and rack, new chain and cassette. Test ride with ID.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "surly cross-check",
+        "bike for sale",
+        "commuter bike",
+        "steel bike",
+        "craigslist",
+        "hawthorne"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7000",
+      "title": "Solid oak dining table + 4 chairs - $220 (Alder District) - craigslist",
+      "snippet": "Seats six with the leaf; one wobbly chair. Pickup only, second-floor walk-up.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "dining table",
+        "oak table",
+        "furniture for sale",
+        "craigslist"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7007",
+      "title": "ThinkPad T14 gen 3, 32GB, 1TB, Linux - $520 - craigslist",
+      "snippet": "Ryzen 7, backlit keyboard, battery at 88 percent. Local pickup with a demo.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "thinkpad",
+        "laptop for sale",
+        "used laptop",
+        "linux laptop",
+        "craigslist"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7010",
+      "title": "1BR apartment, top floor, laundry in building - $1,450/mo (Belmont) - craigslist",
+      "snippet": "650 sq ft, hardwood, heat included, cats OK. Showings Thursday and Saturday.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "apartment for rent",
+        "1 bedroom",
+        "belmont",
+        "portland rent",
+        "craigslist housing"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7012",
+      "title": "Room in 4BR house, shared bath, garden - $780/mo (Hawthorne) - craigslist",
+      "snippet": "Four housemates, utilities about 60 a month, six-month minimum.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "room for rent",
+        "roommate",
+        "hawthorne",
+        "shared house",
+        "craigslist"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7014",
+      "title": "Bakery counter staff, mornings, $19/hr + tips (Downtown) - craigslist",
+      "snippet": "06:00-13:00 shifts, weekends required, training provided, health stipend after 90 days.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "bakery job",
+        "barista",
+        "part-time job",
+        "portland jobs",
+        "craigslist jobs"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7017",
+      "title": "Event crew for Saturday load-in/load-out - $150 cash - craigslist",
+      "snippet": "Two shifts at the convention center; lifting and hauling, closed-toe shoes.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "gig",
+        "event crew",
+        "cash work",
+        "labor gig",
+        "craigslist gigs"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7020",
+      "title": "LOST CAT - grey tabby, white chest, 'Miso' (Foster-Powell) - craigslist",
+      "snippet": "Missing near 65th and Holgate; green collar with a bell. Update: found in a neighbour's shed.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "lost cat",
+        "grey tabby",
+        "miso",
+        "foster-powell",
+        "lost and found"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7022",
+      "title": "Free outdoor movie Friday: The Princess Bride (St. Johns) - craigslist",
+      "snippet": "Cathedral Park lawn, film at dusk, food carts, rain date Saturday.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "outdoor movie",
+        "free event",
+        "princess bride",
+        "cathedral park",
+        "st johns",
+        "community events"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7024",
+      "title": "Mobile bike tune-up at your door - $60 (all east side) - craigslist",
+      "snippet": "Full tune at your home, parts at cost, weekends and evenings.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "bike tune-up",
+        "mobile bike mechanic",
+        "bike repair",
+        "craigslist services"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/item?id=t-7009",
+      "title": "Free: moving boxes, about 30, plus packing paper - craigslist",
+      "snippet": "On the porch at 62nd and Foster from Saturday morning. Gone when gone.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "free moving boxes",
+        "free stuff",
+        "craigslist free"
+      ]
+    },
+    {
+      "url": "http://craigslist.org/u/nw_landlord",
+      "title": "nw_landlord - craigslist",
+      "snippet": "Small landlord, three buildings: the Belmont one-bedroom and the Alder District studio.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "nw_landlord",
+        "landlord",
+        "apartments",
+        "craigslist"
+      ]
+    }
+  ]
+}

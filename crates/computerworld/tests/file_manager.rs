@@ -148,6 +148,14 @@ fn open_files(world: &mut World, actor: &str, path: &str) {
         "launch",
         json!({"kind":"files","argument":path}),
     );
+    // The home folder holds a dozen entries; a maximised window lists them all.
+    act(
+        world,
+        actor,
+        "application.v1",
+        "shell",
+        json!({"target":"shell:maximize"}),
+    );
 }
 fn select(world: &mut World, actor: &str, name: &str) {
     let target = row(world, actor, name);

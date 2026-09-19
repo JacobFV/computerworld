@@ -4038,14 +4038,7 @@ impl Workbench {
     /// <first row>:<first column>:<wrap columns>:<visible rows>` is how the view
     /// painted it, and the group it names takes the focus.
     fn editor_point(&mut self, target: &str, dx: i32, dy: i32) -> Option<usize> {
-        let mut parts = target.strip_prefix("code:editor:")?.split(':');
-        let mut num = || {
-            parts
-                .next()
-                .and_then(|v| v.parse::<usize>().ok())
-                .unwrap_or(0)
-        };
-        let (group, first, hscroll, wrap, rows) = (num(), num(), num(), num(), num());
+        let (group, first, hscroll, wrap, rows) = editor_target(target)?;
         if group < self.group_count() && group != self.focus_group {
             self.go_to_group(group);
         }
@@ -4055,34 +4048,65 @@ impl Workbench {
         if wrap > 0 {
             self.wrap_cols = wrap;
         }
-        let (cell_w, row_h) = render::cell(self.settings.font_size, self.platform);
+        let cell = render::cell(self.settings.font_size, self.platform);
+        let tab_size = self.settings.tab_size;
         let tab = self.active.and_then(|i| self.tabs.get_mut(i))?;
         tab.scroll = first;
-        let row = first + (dy.max(0) as u32 / row_h) as usize;
-        let col = hscroll + ((dx.max(0) as u32 + cell_w / 2) / cell_w) as usize;
+        Some(point_to_offset(
+            &tab.doc.text,
+            (first, hscroll, wrap),
+            (dx, dy),
+            cell,
+            tab_size,
+        ))
+    }
+    /// The identifier, or dotted path such as `a.b`, under a point of the editor's text
+    /// area, without moving anything: what a hover asks the debugger about.
+    pub(super) fn identifier_at(&self, target: &str, dx: i32, dy: i32) -> Option<String> {
+        let (group, first, hscroll, wrap, _) = editor_target(target)?;
+        let tab = self.tabs.get(self.group_active(group)?)?;
+        if tab.kind != TabKind::File {
+            return None;
+        }
         let text = &tab.doc.text;
-        let rows = crate::editor_rows(text, wrap);
-        let Some(&(start, end)) = rows.get(row) else {
-            return Some(text.len());
-        };
-        let content = &text[start..end];
-        // Columns on screen count tab stops, so a click past a tab lands where it looks.
-        let width = render::columns(content, self.settings.tab_size);
-        Some(if col < width {
-            start + render::byte_at_column(content, col, self.settings.tab_size)
-        } else if rows.get(row + 1).is_some_and(|(next, _)| *next == end) {
-            // A soft-wrapped row ends before its last character, which belongs to it.
-            content
-                .char_indices()
-                .next_back()
-                .map_or(start, |(i, _)| start + i)
-        } else {
-            end
-        })
+        let pos = point_to_offset(
+            text,
+            (first, hscroll, wrap),
+            (dx, dy),
+            render::cell(self.settings.font_size, self.platform),
+            self.settings.tab_size,
+        );
+        if !text[pos..].chars().next().is_some_and(buffer::is_word) {
+            return None;
+        }
+        let part = |c: char| buffer::is_word(c) || c == '.';
+        let start = text[..pos]
+            .char_indices()
+            .rev()
+            .take_while(|(_, c)| part(*c))
+            .last()
+            .map_or(pos, |(i, _)| i);
+        let end = text[pos..]
+            .char_indices()
+            .find(|(_, c)| !part(*c))
+            .map_or(text.len(), |(i, _)| pos + i);
+        let word = text[start..end].trim_matches('.');
+        // A number is not a name, and neither is what starts with one.
+        if word.is_empty() || word.starts_with(|c: char| c.is_ascii_digit()) {
+            return None;
+        }
+        Some(word.to_owned())
     }
     /// Whether `target` follows the pointer while it is held: the minimap.
     pub fn drags(&self, target: &str) -> bool {
         target.starts_with("code:minimap:")
+    }
+    /// Whether `target` wants the pointer passing over it: the editor's text, where a
+    /// name under the pointer shows its value while the debugger has the program
+    /// stopped; and anything of the workbench while such a value is showing, so that
+    /// moving off the name takes it away.
+    pub fn hovers(&self, target: &str) -> bool {
+        target.starts_with("code:editor:") || self.debug.hover.is_some()
     }
     /// The pointer on the minimap: press or drag anywhere on it and the editor scrolls
     /// to the row under the pointer, which is what VS Code's minimap does.
@@ -4619,6 +4643,8 @@ impl Workbench {
                 let i: usize = arg.parse().map_err(|_| "invalid frame")?;
                 self.select_frame(window, i)
             }
+            // The value plate under the pointer is there to be read, not clicked.
+            "hover" => Ok(vec![]),
             "var" => {
                 let reference: u64 = arg.parse().map_err(|_| "invalid variable")?;
                 Ok(self.debug_expand(window, reference))
@@ -4874,6 +4900,7 @@ impl Workbench {
             action: act(id.clone()),
             id,
             text,
+            style: None,
         };
         page.elements.push(E::Heading {
             id: "code-workspace".into(),
@@ -5051,6 +5078,48 @@ impl Workbench {
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         render::render(self, p, env);
+    }
+}
+/// `code:editor:<group>:<first row>:<first column>:<wrap columns>:<visible rows>`, as
+/// the view painted a text area: which group, and how it was scrolled and wrapped.
+fn editor_target(target: &str) -> Option<(usize, usize, usize, usize, usize)> {
+    let mut parts = target.strip_prefix("code:editor:")?.split(':');
+    let mut num = || {
+        parts
+            .next()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(0)
+    };
+    Some((num(), num(), num(), num(), num()))
+}
+/// The byte offset under a point of a text area painted from row `first` and column
+/// `hscroll`, wrapped at `wrap` columns, with cells of `cell` pixels.
+fn point_to_offset(
+    text: &str,
+    (first, hscroll, wrap): (usize, usize, usize),
+    (dx, dy): (i32, i32),
+    (cell_w, row_h): (u32, u32),
+    tab_size: usize,
+) -> usize {
+    let row = first + (dy.max(0) as u32 / row_h) as usize;
+    let col = hscroll + ((dx.max(0) as u32 + cell_w / 2) / cell_w) as usize;
+    let rows = crate::editor_rows(text, wrap);
+    let Some(&(start, end)) = rows.get(row) else {
+        return text.len();
+    };
+    let content = &text[start..end];
+    // Columns on screen count tab stops, so a click past a tab lands where it looks.
+    let width = render::columns(content, tab_size);
+    if col < width {
+        start + render::byte_at_column(content, col, tab_size)
+    } else if rows.get(row + 1).is_some_and(|(next, _)| *next == end) {
+        // A soft-wrapped row ends before its last character, which belongs to it.
+        content
+            .char_indices()
+            .next_back()
+            .map_or(start, |(i, _)| start + i)
+    } else {
+        end
     }
 }
 /// `files.exclude` defaults: version-control internals are not part of the workspace.

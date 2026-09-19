@@ -713,7 +713,7 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
                 p,
                 share,
                 &format!("shell:share:{kind}"),
-                if kind == "chat" {
+                if kind == "messages" {
                     "Share with Messages"
                 } else {
                     "Share with Mail"

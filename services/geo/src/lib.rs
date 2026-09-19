@@ -222,6 +222,19 @@ fn street(address: &str) -> String {
         without_number.into()
     }
 }
+/// Percent-encoding for a query value: place ids are slugs, but nothing here assumes so.
+fn encode(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for b in value.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}
 fn tokens(q: &str) -> Vec<String> {
     q.to_ascii_lowercase()
         .split(|c: char| !c.is_ascii_alphanumeric())
@@ -497,6 +510,7 @@ fn form_el(
         id: format!("{id}-go"),
         text: submit.into(),
         action: action.clone(),
+        style: None,
     });
     PageElement::Form {
         id: id.into(),
@@ -517,8 +531,74 @@ fn chip(id: &str, text: impl Into<String>, p: &Palette) -> PageElement {
             .padding(6),
     )
 }
-/// The map itself is a flat stand-in labelled with the coordinates it stands for — honest about
-/// being a simulation, and still the anchor the rest of the page hangs off.
+/// Widest and tallest map a page may ask for.
+const MAP_LIMIT: (u32, u32) = (960, 480);
+/// Micro-degrees of latitude a map centred on a place spans at zoom 0; each zoom level halves it.
+const MAP_SPAN_AT_ZOOM_0: i64 = 64_000;
+const MAP_ZOOM_DEFAULT: u32 = 3;
+/// The map on a page: a picture this site serves from `GET /map.rgba`, drawn by `cw_map` from
+/// the places alone, so the same streets appear here and in the native Maps app.
+fn map_image(id: &str, alt: &str, width: u32, height: u32, query: &str) -> PageElement {
+    web::image(
+        id,
+        format!("/map.rgba?w={width}&h={height}{query}"),
+        alt,
+        width,
+        height,
+    )
+}
+/// `GET /map.rgba?w=&h=&center=<place>&zoom=<n>&route=<from>|<to>|<mode>&sel=<place>`: the map
+/// as a page image. A route frames both ends; otherwise `center` frames one place at `zoom`;
+/// otherwise every place is in view.
+fn map_response(s: &GeoState, r: &HttpRequest) -> Result<HttpResponse> {
+    let number = |k: &str| web::query(r, k).and_then(|v| v.parse::<u32>().ok());
+    let width = number("w").unwrap_or(640).clamp(16, MAP_LIMIT.0);
+    let height = number("h").unwrap_or(320).clamp(16, MAP_LIMIT.1);
+    let places: Vec<cw_map::Place> = s
+        .places
+        .values()
+        .map(|p| cw_map::Place {
+            id: p.id.clone(),
+            name: p.name.clone(),
+            kind: p.kind.clone(),
+            lat: p.lat,
+            lon: p.lon,
+            street: street(&p.address),
+        })
+        .collect();
+    let world = cw_map::Bbox::around(places.iter().map(|p| (p.lat, p.lon)))
+        .unwrap_or_else(|| cw_map::Bbox::centred(0, 0, MAP_SPAN_AT_ZOOM_0));
+    let route = web::query(r, "route").and_then(|spec| {
+        let mut parts = spec.split('|');
+        let from = s.places.get(parts.next()?)?;
+        let to = s.places.get(parts.next()?)?;
+        Some(cw_map::Route {
+            from: (from.lat, from.lon),
+            to: (to.lat, to.lon),
+        })
+    });
+    let center = web::query(r, "center").and_then(|id| s.places.get(&id));
+    let bbox = match (route, center) {
+        (Some(route), _) => cw_map::Bbox::around([route.from, route.to])
+            .unwrap_or(world)
+            .padded(25, 6_000),
+        (None, Some(place)) => {
+            let zoom = number("zoom").unwrap_or(MAP_ZOOM_DEFAULT).min(8);
+            cw_map::Bbox::centred(place.lat, place.lon, MAP_SPAN_AT_ZOOM_0 >> zoom)
+        }
+        (None, None) => world.padded(10, 4_000),
+    };
+    let selected = web::query(r, "sel");
+    let scene = cw_map::Scene {
+        view: cw_map::View::new(bbox, width, height),
+        places: &places,
+        selected: selected.as_deref(),
+        route,
+        world,
+    };
+    web::rgba_response(width, height, &cw_map::render(&scene))
+}
+/// A flat stand-in labelled with what it stands for: a weather icon, or a place card's corner.
 fn map_tile(id: &str, label: &str, height: u32, p: &Palette) -> PageElement {
     web::thumbnail(
         id,
@@ -665,11 +745,12 @@ fn maps_home(s: &GeoState, p: &Palette, actor: &str) -> Result<HttpResponse> {
             web::style().size(14).color(p.muted.clone()),
         ));
     }
-    els.push(map_tile(
+    els.push(map_image(
         "home-tile",
-        "Interactive map · pick a place below",
-        200,
-        p,
+        "Map of every place · pick one below",
+        720,
+        280,
+        "",
     ));
     els.push(web::spacer("home-gap", 16));
     els.push(form_el(
@@ -771,7 +852,7 @@ fn place_page(s: &GeoState, p: &Palette, actor: &str, id: &str) -> Result<HttpRe
     };
     let saved = s.saved_of(actor).iter().any(|x| x == id);
     let mut els = chrome(s, p, actor, "");
-    els.push(map_tile(
+    els.push(map_image(
         "place-tile",
         &format!(
             "{} · {}, {}",
@@ -779,8 +860,12 @@ fn place_page(s: &GeoState, p: &Palette, actor: &str, id: &str) -> Result<HttpRe
             coord(place.lat),
             coord(place.lon)
         ),
-        220,
-        p,
+        720,
+        240,
+        &format!(
+            "&center={id}&zoom={MAP_ZOOM_DEFAULT}&sel={id}",
+            id = encode(&place.id)
+        ),
     ));
     els.push(web::spacer("place-gap", 12));
     els.push(web::heading("place-name", &place.name));
@@ -982,11 +1067,18 @@ fn directions_page(s: &GeoState, p: &Palette, actor: &str, route: &Route) -> Res
     let from = s.place(&route.from).cloned().unwrap_or_default();
     let to = s.place(&route.to).cloned().unwrap_or_default();
     let mut els = chrome(s, p, actor, "");
-    els.push(map_tile(
+    els.push(map_image(
         "dir-tile",
         &format!("{} → {}", from.name, to.name),
-        200,
-        p,
+        720,
+        280,
+        &format!(
+            "&route={}%7C{}%7C{}&sel={}",
+            encode(&route.from),
+            encode(&route.to),
+            encode(&route.mode),
+            encode(&route.to)
+        ),
     ));
     els.push(web::spacer("dir-gap", 12));
     els.push(web::heading(
@@ -1410,6 +1502,7 @@ impl Service for GeoService {
             return match parts.as_slice() {
                 [""] | ["maps"] if s.maps() => maps_home(&s, &p, &c.actor),
                 [""] => weather_home(&s, &p, &c.actor),
+                ["map.rgba"] if s.maps() => map_response(&s, r),
                 ["maps", "place", id] => place_page(&s, &p, &c.actor, id),
                 ["maps", "saved"] => saved_page(&s, &p, &c.actor),
                 ["maps", "notes"] => notes_page(&s, &p, &c.actor),
@@ -1604,6 +1697,58 @@ mod tests {
             get(&mut state, "http://maps.google.com/maps/place/nope").status,
             404
         );
+    }
+    #[test]
+    fn pages_carry_a_served_map_and_the_map_endpoint_draws_it() {
+        let mut state = init(maps_seed());
+        let home = body(&get(&mut state, "http://maps.google.com/"));
+        assert!(home.contains("/map.rgba?w=720&h=280"), "{home}");
+        let place = body(&get(
+            &mut state,
+            "http://maps.google.com/maps/place/northstar-hq",
+        ));
+        assert!(
+            place.contains("/map.rgba?w=720&h=240&center=northstar-hq&zoom=3&sel=northstar-hq"),
+            "{place}"
+        );
+        let dir = body(&get(
+            &mut state,
+            "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=driving",
+        ));
+        assert!(
+            dir.contains("/map.rgba?w=720&h=280&route=northstar-hq%7Cdevcon-center%7Cdriving"),
+            "{dir}"
+        );
+        let url = "http://maps.google.com/map.rgba?w=96&h=64&route=northstar-hq%7Cdevcon-center%7Cdriving&sel=devcon-center";
+        let before = state.clone();
+        let picture = get(&mut state, url);
+        assert_eq!(picture.status, 200);
+        assert_eq!(
+            picture.headers.get("content-type").map(String::as_str),
+            Some(cw_protocol::RGBA_MEDIA_TYPE)
+        );
+        let asset: Value = serde_json::from_slice(&picture.body).unwrap();
+        assert_eq!(asset["width"], 96);
+        assert_eq!(asset["height"], 64);
+        assert_eq!(asset["rgba"].as_array().unwrap().len(), 96 * 64 * 4);
+        assert_eq!(picture, get(&mut state, url), "the map must be pure");
+        assert_eq!(before, state);
+        // A place-centred map is a different picture, and sizes are clamped, never refused.
+        let centred = get(
+            &mut state,
+            "http://maps.google.com/map.rgba?w=96&h=64&center=northstar-hq&zoom=4",
+        );
+        assert_ne!(centred.body, picture.body);
+        let huge: Value = serde_json::from_slice(
+            &get(&mut state, "http://maps.google.com/map.rgba?w=5000&h=5000").body,
+        )
+        .unwrap();
+        assert_eq!(
+            (huge["width"].as_u64(), huge["height"].as_u64()),
+            (Some(960), Some(480))
+        );
+        let mut weather = init(weather_seed());
+        assert_eq!(get(&mut weather, "http://weather.com/map.rgba").status, 404);
     }
     #[test]
     fn directions_are_integer_only_and_cached_on_first_lookup() {

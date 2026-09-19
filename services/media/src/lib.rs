@@ -44,7 +44,7 @@ const OBJECTS: &[&str] = &[
     "history",
     "devices",
 ];
-const ARRAYS: &[&str] = &[];
+const ARRAYS: &[&str] = &["sections"];
 /// `mode` is the documented discriminant; an unlisted value is a seed typo, not a fallback.
 /// `video` is a video site (youtube.com), `audio` a Spotify-style player (spotify.com) and
 /// `music` a YouTube Music-style one (music.youtube.com). The two music modes share one
@@ -262,30 +262,36 @@ fn flags(item: &Value, prefix: &str, theme: &PageTheme) -> Vec<PageElement> {
 }
 /// One video tile: artwork, duration, title, channel, view count — the unit the home grid repeats.
 fn video_card(state: &Value, id: &str, theme: &PageTheme) -> PageElement {
+    video_tile(state, id, "tile", theme)
+}
+/// The same tile under a caller-chosen id prefix, so a video shown twice on one page (a home
+/// section and the grid) keeps every element id unique.
+fn video_tile(state: &Value, id: &str, prefix: &str, theme: &PageTheme) -> PageElement {
     let item = record(state, "items", id).cloned().unwrap_or(Value::Null);
     let channel = web::text(&item, "channel");
     let channel_name = record(state, "channels", &channel)
         .map(|c| web::text(c, "name"))
         .unwrap_or(channel);
+    let tile = &format!("{prefix}-{id}");
     web::card_action(
-        &format!("tile-{id}"),
+        tile,
         web::style().padding(4),
         web::visit(format!("/watch?v={id}")),
         vec![
             art(
-                &format!("tile-{id}-art"),
+                &format!("{tile}-art"),
                 &web::text(&item, "title"),
                 0,
                 150,
                 8,
             ),
             web::styled_row(
-                &format!("tile-{id}-meta"),
+                &format!("{tile}-meta"),
                 8,
                 "center",
                 web::style(),
                 std::iter::once(web::badge(
-                    &format!("tile-{id}-duration"),
+                    &format!("{tile}-duration"),
                     clock(num(&item, "duration_s")),
                     web::style()
                         .background("#000000")
@@ -294,26 +300,26 @@ fn video_card(state: &Value, id: &str, theme: &PageTheme) -> PageElement {
                         .padding(4)
                         .radius(4),
                 ))
-                .chain(flags(&item, &format!("tile-{id}"), theme))
+                .chain(flags(&item, tile, theme))
                 .chain(std::iter::once(web::styled(
-                    &format!("tile-{id}-published"),
+                    &format!("{tile}-published"),
                     web::text(&item, "published"),
                     web::style().size(11).color(muted(theme)),
                 )))
                 .collect(),
             ),
             web::styled(
-                &format!("tile-{id}-title"),
+                &format!("{tile}-title"),
                 web::text(&item, "title"),
                 web::style().size(15).medium().color(ink(theme)),
             ),
             web::styled(
-                &format!("tile-{id}-channel"),
+                &format!("{tile}-channel"),
                 channel_name,
                 web::style().size(13).color(muted(theme)),
             ),
             web::styled(
-                &format!("tile-{id}-views"),
+                &format!("{tile}-views"),
                 format!("{} views", grouped(num(&item, "views"))),
                 web::style().size(12).color(muted(theme)),
             ),
@@ -473,15 +479,36 @@ fn home(state: &Value, theme: &PageTheme) -> Result<HttpResponse> {
         })
         .collect();
     let tiles = ids.iter().map(|id| video_card(state, id, theme)).collect();
-    web::themed_page(
-        &web::text(state, "brand"),
-        theme.clone(),
-        vec![
-            chrome(state, "video", theme),
-            web::styled_row("chips", 8, "center", web::style().padding(12), chips),
-            web::grid("home-grid", 3, 20, tiles),
-        ],
-    )
+    let mut elements = vec![
+        chrome(state, "video", theme),
+        web::styled_row("chips", 8, "center", web::style().padding(12), chips),
+    ];
+    elements.extend(sections(state, theme));
+    elements.push(web::grid("home-grid", 3, 20, tiles));
+    web::themed_page(&web::text(state, "brand"), theme.clone(), elements)
+}
+/// Optional seed `sections`: `[{"title", "items": [ids]}]`, each a titled row of tiles above the
+/// grid. Unknown ids are skipped and a seed without the key renders exactly as before.
+fn sections(state: &Value, theme: &PageTheme) -> Vec<PageElement> {
+    let mut out = vec![];
+    let listed = state.get("sections").and_then(Value::as_array);
+    for (index, section) in listed.into_iter().flatten().enumerate() {
+        let tiles: Vec<PageElement> = web::strings(section, "items")
+            .iter()
+            .filter(|id| record(state, "items", id).is_some())
+            .map(|id| video_tile(state, id, &format!("section-{index}"), theme))
+            .collect();
+        if tiles.is_empty() {
+            continue;
+        }
+        out.push(web::styled(
+            &format!("section-{index}-title"),
+            web::text(section, "title"),
+            web::style().size(18).bold().color(ink(theme)).padding(12),
+        ));
+        out.push(web::grid(&format!("section-{index}-grid"), 3, 20, tiles));
+    }
+    out
 }
 /// The watch page. `list` keeps a playlist queue in the sidebar so playback has somewhere to go.
 fn watch(

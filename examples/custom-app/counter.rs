@@ -37,6 +37,7 @@ impl Application for Counter {
                 url: "increment".into(),
                 fields: BTreeMap::new(),
             },
+            style: None,
         });
         Ok(page)
     }

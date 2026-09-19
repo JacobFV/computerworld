@@ -123,6 +123,13 @@ fn every_declared_domain_answers_from_a_real_machine() {
             Some(response) => dead.push(format!("{url} ({service}) -> {}", response.status)),
             None => dead.push(format!("{url} ({service}) -> no response")),
         }
+        // And over https, which every site serves unless its definition opts out.
+        let secure = url.replacen("http://", "https://", 1);
+        match get(&mut world, &session, &secure) {
+            Some(response) if response.status < 500 => {}
+            Some(response) => dead.push(format!("{secure} ({service}) -> {}", response.status)),
+            None => dead.push(format!("{secure} ({service}) -> no response")),
+        }
     }
     assert!(dead.is_empty(), "domains that do not answer:\n{dead:#?}");
 }
@@ -180,9 +187,10 @@ fn the_alternate_domains_reach_the_same_site_as_the_canonical_one() {
 #[test]
 fn every_link_a_page_paints_leads_somewhere_real() {
     let (mut world, session) = world();
+    // Both schemes: an address bar defaults to https, a typed link is often http.
     let roots: Vec<String> = domains(&world)
         .keys()
-        .map(|d| format!("http://{d}/"))
+        .flat_map(|d| [format!("http://{d}/"), format!("https://{d}/")])
         .collect();
     let mut queue: VecDeque<(String, usize)> = roots.iter().cloned().map(|u| (u, 0)).collect();
     let mut seen: BTreeSet<String> = roots.iter().cloned().collect();
@@ -281,6 +289,7 @@ fn the_world_still_reaches_its_own_intranet() {
         "http://mail.internal/",
         "http://docs.internal/",
         "http://chat.internal/",
+        "http://messages.internal/",
         "http://calendar.internal/",
         "http://git.internal/",
         "http://issues.internal/",

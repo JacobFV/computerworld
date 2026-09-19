@@ -327,6 +327,7 @@ fn button(id: &str, text: impl Into<String>, action: PageAction) -> PageElement 
         id: id.into(),
         text: text.into(),
         action,
+        style: None,
     }
 }
 fn bubble(p: &Palette, index: usize, message: &Message) -> PageElement {

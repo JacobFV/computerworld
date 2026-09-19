@@ -38,11 +38,12 @@ types:
 | `Request::Resume { step }` | `Continue`, `Over`, `Into`, `Out` |
 | `Request::Pause` | Stop it where it is |
 | `Request::Variables { reference }` | A scope's variables, or what one of them holds |
-| `Request::Evaluate { frame, expression, context }` | The watch list (`watch`) and the Debug Console (`repl`) |
+| `Request::Evaluate { frame, expression, context }` | The watch list (`watch`), the Debug Console (`repl`) and a name the pointer rests on in the editor (`hover`) |
 | `Request::Terminate` | End the session, killing the program |
 | `Reply::Launched { session, state }` | The session's handle, and where it stopped |
 | `Reply::Stopped { state }` | Where it stopped after a step, a continue or a pause |
-| `State` | `stopped` (`Entry`, `Breakpoint`, `Step`, `Pause`, `Exception`, `Exited`), the `frames` innermost first, the innermost frame's `scopes`, and everything the program wrote since the last reply |
+| `State` | `stopped` (`Entry`, `Breakpoint`, `Step`, `Pause`, `Exception`, `Exited`), the `frames` innermost first, the innermost frame's `scopes` again, and everything the program wrote since the last reply |
+| `Frame` | One frame of the call stack: its `id`, `name`, `path`, `line` and its own `scopes`, captured with the stop so that any frame's variables are a `Variables` request away |
 | `Reply::Breakpoints { verified }` | For each breakpoint sent, in order, whether the runtime can stop there |
 | `Reply::Variables`, `Reply::Evaluated` | Variables, and one expression's value |
 
@@ -96,10 +97,13 @@ Three consequences are worth knowing:
   serialised to JSON and read back carries on stepping where it stopped.
 * Inspecting is not free. Moving the program is `O(stops)` runs of it, so a session that
   steps a hundred times through a long program is not what this is for.
-* The variables of a stop are captured when it happens — four levels deep, two hundred
-  children per value, two thousand values in all — because `DebugAdapter::variables` is
-  answered from what the machine holds, without running anything. A structure deeper
-  than that comes back with nothing to open.
+* The variables of a stop are captured when it happens, for every frame of the stack
+  — four levels deep, two hundred children per value, two thousand values in all —
+  because `DebugAdapter::variables` is answered from what the machine holds, without
+  running anything. The locals of every frame are read before any globals, and an
+  outer frame's globals only one level deep, so a wide global object (Node's) does
+  not spend the budget before the caller's own variables. A structure deeper than
+  that, or a scope beyond the budget, comes back with nothing to open.
 
 A run that a front end suspends (`Step::Suspend`) ends where it stands and keeps what it
 did; the session resumes it by replay when the next request arrives.
@@ -209,6 +213,19 @@ rather than guessed at; and the Debug Console opens on the first session
 (`debug.internalConsoleOptions`). The console keeps the debugger's own narration apart
 from the program's output, which is what lets a traceback printed by a debugged program
 become a problem at its line, exactly as one printed in the terminal does.
+
+Clicking a frame in the Call Stack (`code:frame:<i>`) selects it: the editor moves to
+that frame's file and line (the innermost frame's line stays in the debugger's yellow;
+the selected outer frame's is the paler focused-frame shade, as in VS Code), the
+Variables view shows that frame's own scopes from what the stop already captured, and
+the watches and the Debug Console evaluate there. While the program is stopped, the
+pointer resting on a name in the editor shows its value on a plate beside the pointer:
+a name among the frame's captured variables (including a dotted path such as `a.b` into
+one already opened) is shown at once; any other is asked of the machine with
+`Request::Evaluate` in context `hover`, which changes nothing, and one the machine
+cannot evaluate shows nothing. The plate is a region (`code:hover`) whose label is
+`name: value`, so `semantic.v1` reads it, and it goes away when the pointer moves off
+the name, when the program moves and when the session ends.
 
 `crates/computer/tests/debug_seam.rs` drives the whole seam with an adapter of its own,
 and `crates/applications/src/apps/code/tests.rs` drives the view against replies, so both

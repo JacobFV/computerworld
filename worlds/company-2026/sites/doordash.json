@@ -1,0 +1,279 @@
+{
+  "id": "doordash",
+  "kind": "shop",
+  "node": "doordash",
+  "domains": ["doordash.com", "www.doordash.com"],
+  "port": 80,
+  "network_node": {"address": "198.51.100.114", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "initial_state": {
+    "mode": "retail",
+    "brand": "DoorDash",
+    "tagline": "A simulated food delivery app. Every restaurant, dasher and order here is invented; nothing is cooked and nothing is charged.",
+    "currency": "USD",
+    "theme": {
+      "accent": "#eb1700",
+      "background": "#ffffff",
+      "surface": "#f6f6f6",
+      "ink": "#191919",
+      "muted": "#606060",
+      "content_width": 1080
+    },
+    "categories": [
+      {"id": "pizza", "title": "Pizza"},
+      {"id": "thai", "title": "Thai"},
+      {"id": "mexican", "title": "Mexican"},
+      {"id": "burgers", "title": "Burgers"},
+      {"id": "sushi", "title": "Sushi"},
+      {"id": "desserts", "title": "Desserts"},
+      {"id": "grocery", "title": "Grocery"}
+    ],
+    "products": {
+      "bayfront-pizza-margherita": {
+        "id": "bayfront-pizza-margherita", "category": "pizza",
+        "title": "Margherita, 14-inch - Bayfront Pizza Co.",
+        "seller": "Bayfront Pizza Co.",
+        "price_cents": 1900, "rating_sum": 1980, "rating_count": 410, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 30-40 min, 1.2 mi from Northstar HQ", "4.8 stars from 410 ratings", "San Marzano tomatoes, fior di latte, basil", "Wood-fired, blistered crust"],
+        "description": "The house margherita from the wood oven on Bayfront Avenue. Sliced unless you say otherwise in the notes; the box has a vent so the crust stays crisp.",
+        "reviews": [
+          {"id": "rv-1", "author": "alice", "stars": 5, "title": "Office lunch standard", "body": "Two of these feed the fourth floor pod. Arrives in thirty minutes almost every time.", "tick": 4}
+        ]
+      },
+      "bayfront-pizza-sausage": {
+        "id": "bayfront-pizza-sausage", "category": "pizza",
+        "title": "Fennel sausage and broccolini, 14-inch - Bayfront Pizza Co.",
+        "seller": "Bayfront Pizza Co.",
+        "price_cents": 2300, "rating_sum": 1400, "rating_count": 290, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 30-40 min", "4.8 stars from 290 ratings", "House fennel sausage, broccolini, chilli, pecorino", "White base, no tomato"],
+        "description": "White pie with crumbled fennel sausage, charred broccolini and a shake of chilli. The one the staff order.",
+        "reviews": []
+      },
+      "bayfront-pizza-garlic-knots": {
+        "id": "bayfront-pizza-garlic-knots", "category": "pizza",
+        "title": "Garlic knots, 6 - Bayfront Pizza Co.",
+        "seller": "Bayfront Pizza Co.",
+        "price_cents": 700, "rating_sum": 1100, "rating_count": 230, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 30-40 min", "4.8 stars from 230 ratings", "Six knots, garlic butter, parmesan", "Marinara on the side"],
+        "description": "Six knots from the pizza dough, brushed with garlic butter and parmesan out of the oven. Marinara in a tub.",
+        "reviews": []
+      },
+      "siam-corner-pad-thai": {
+        "id": "siam-corner-pad-thai", "category": "thai",
+        "title": "Pad thai with prawns - Siam Corner",
+        "seller": "Siam Corner",
+        "price_cents": 1650, "rating_sum": 1710, "rating_count": 360, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.99, 25-35 min, 0.8 mi from Northstar HQ", "4.8 stars from 360 ratings", "Rice noodles, prawns, egg, bean sprouts, peanuts", "Lime and chilli flakes on the side"],
+        "description": "Pad thai from the corner of Pike and Ninth, peanuts and lime packed separately so nothing goes soggy. Vegetarian version with tofu is the same price.",
+        "reviews": []
+      },
+      "siam-corner-massaman": {
+        "id": "siam-corner-massaman", "category": "thai",
+        "title": "Massaman beef curry with jasmine rice - Siam Corner",
+        "seller": "Siam Corner",
+        "price_cents": 1795, "rating_sum": 1420, "rating_count": 300, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.99, 25-35 min", "4.7 stars from 300 ratings", "Slow-cooked beef, potato, roasted peanuts", "Mild; ask for extra chilli in the notes"],
+        "description": "Slow-cooked massaman with potato and peanuts, rice in its own container. The mildest curry on the menu and the one most people order twice.",
+        "reviews": [
+          {"id": "rv-2", "author": "carol", "stars": 5, "title": "Rice packed separately, thank you", "body": "Curry was still hot and the rice was not mush. Portion is big enough for lunch the next day.", "tick": 5}
+        ]
+      },
+      "siam-corner-tom-kha": {
+        "id": "siam-corner-tom-kha", "category": "thai",
+        "title": "Tom kha gai soup, 24 oz - Siam Corner",
+        "seller": "Siam Corner",
+        "price_cents": 1195, "rating_sum": 1250, "rating_count": 270, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.99, 25-35 min", "4.6 stars from 270 ratings", "Coconut, galangal, lemongrass, chicken, mushroom", "Comes with a small rice"],
+        "description": "Coconut chicken soup in a leak-proof 24 oz tub, with a small rice. The office sick-day order.",
+        "reviews": []
+      },
+      "la-esquina-burrito": {
+        "id": "la-esquina-burrito", "category": "mexican",
+        "title": "Carnitas burrito - La Esquina",
+        "seller": "La Esquina",
+        "price_cents": 1350, "rating_sum": 1880, "rating_count": 390, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.49, 20-30 min, 1.5 mi from Northstar HQ", "4.8 stars from 390 ratings", "Carnitas, rice, black beans, pico, crema, cheese", "Salsa verde and roja on the side"],
+        "description": "Foil-wrapped carnitas burrito the size of a forearm from the Rivergate Boulevard taqueria. Add guacamole for $2.50 in the notes.",
+        "reviews": []
+      },
+      "la-esquina-tacos": {
+        "id": "la-esquina-tacos", "category": "mexican",
+        "title": "Street tacos, 4 (carne asada) - La Esquina",
+        "seller": "La Esquina",
+        "price_cents": 1400, "rating_sum": 1620, "rating_count": 340, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.49, 20-30 min", "4.8 stars from 340 ratings", "Four corn tortillas, carne asada, onion, cilantro", "Lime and radish"],
+        "description": "Four carne asada street tacos on doubled corn tortillas, with limes and pickled radish. Tortillas wrapped in foil, meat in a tub, assemble at the desk.",
+        "reviews": []
+      },
+      "la-esquina-chips-guac": {
+        "id": "la-esquina-chips-guac", "category": "mexican",
+        "title": "Chips and guacamole - La Esquina",
+        "seller": "La Esquina",
+        "price_cents": 850, "rating_sum": 1290, "rating_count": 280, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.49, 20-30 min", "4.6 stars from 280 ratings", "Fresh-fried tortilla chips, 8 oz guacamole", "Guacamole made to order"],
+        "description": "A bag of chips fried that hour and an 8 oz tub of guacamole with lime and serrano. Enough for three people to argue over.",
+        "reviews": []
+      },
+      "puget-burger-classic": {
+        "id": "puget-burger-classic", "category": "burgers",
+        "title": "Classic cheeseburger with fries - Puget Burger",
+        "seller": "Puget Burger",
+        "price_cents": 1550, "rating_sum": 1730, "rating_count": 370, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 25-35 min, 2.0 mi from Northstar HQ", "4.7 stars from 370 ratings", "Quarter-pound patty, cheddar, lettuce, tomato, house sauce", "Skin-on fries"],
+        "description": "A quarter-pound grass-fed patty on a brioche bun with skin-on fries. Fries are packed in a vented bag; they arrive better than most.",
+        "reviews": [
+          {"id": "rv-3", "author": "bob", "stars": 4, "title": "Solid, ask for the sauce on the side", "body": "Good burger, arrives in under thirty. The house sauce soaks the bun if the dasher takes the long way.", "tick": 7}
+        ]
+      },
+      "puget-burger-mushroom": {
+        "id": "puget-burger-mushroom", "category": "burgers",
+        "title": "Mushroom swiss burger with fries - Puget Burger",
+        "seller": "Puget Burger",
+        "price_cents": 1695, "rating_sum": 1380, "rating_count": 300, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 25-35 min", "4.6 stars from 300 ratings", "Sauteed mushrooms, swiss, caramelised onion, garlic aioli", "Skin-on fries"],
+        "description": "The same patty under a heap of sauteed mushrooms, swiss and caramelised onion, with garlic aioli. Substitute a portobello for a vegetarian version at no charge.",
+        "reviews": []
+      },
+      "puget-burger-shake": {
+        "id": "puget-burger-shake", "category": "burgers",
+        "title": "Salted caramel milkshake, 16 oz - Puget Burger",
+        "seller": "Puget Burger",
+        "price_cents": 750, "rating_sum": 1190, "rating_count": 250, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $2.99, 25-35 min", "4.8 stars from 250 ratings", "Vanilla ice cream, salted caramel, whipped cream", "Arrives thick, spoon included"],
+        "description": "A thick shake that is still a shake after twenty-five minutes in an insulated bag. Comes with a spoon for the first five.",
+        "reviews": []
+      },
+      "umi-sushi-platter": {
+        "id": "umi-sushi-platter", "category": "sushi",
+        "title": "Nigiri and roll platter, 20 pieces - Umi Sushi",
+        "seller": "Umi Sushi",
+        "price_cents": 3200, "rating_sum": 1540, "rating_count": 320, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.99, 35-45 min, 2.4 mi from Northstar HQ", "4.8 stars from 320 ratings", "8 nigiri (salmon, tuna, yellowtail, prawn), 12 roll pieces", "Chilled bag, ginger and wasabi"],
+        "description": "The one-person platter from Umi on Third Avenue: eight nigiri and a California and spicy tuna roll, packed in a chilled bag with soy, ginger and wasabi.",
+        "reviews": []
+      },
+      "umi-sushi-poke": {
+        "id": "umi-sushi-poke", "category": "sushi",
+        "title": "Salmon poke bowl - Umi Sushi",
+        "seller": "Umi Sushi",
+        "price_cents": 1750, "rating_sum": 1410, "rating_count": 300, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.99, 35-45 min", "4.7 stars from 300 ratings", "Sushi rice, salmon, edamame, cucumber, avocado, ponzu", "Sauce on the side"],
+        "description": "Salmon poke over sushi rice with edamame, cucumber and avocado; the ponzu and spicy mayo come in tubs so you dress it when it lands.",
+        "reviews": []
+      },
+      "umi-sushi-miso": {
+        "id": "umi-sushi-miso", "category": "sushi",
+        "title": "Miso soup and edamame - Umi Sushi",
+        "seller": "Umi Sushi",
+        "price_cents": 700, "rating_sum": 1010, "rating_count": 220, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.99, 35-45 min", "4.6 stars from 220 ratings", "12 oz miso with tofu and wakame", "Salted edamame"],
+        "description": "A 12 oz miso and a bowl of salted edamame. The add-on that turns a poke bowl into a meal.",
+        "reviews": []
+      },
+      "marrow-creamery-pints": {
+        "id": "marrow-creamery-pints", "category": "desserts",
+        "title": "Two pints, choose your flavours - Marrow Point Creamery",
+        "seller": "Marrow Point Creamery",
+        "price_cents": 1600, "rating_sum": 1690, "rating_count": 350, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.99, 20-30 min, 0.6 mi from Northstar HQ", "4.8 stars from 350 ratings", "Flavours in the notes: honey lavender, brown butter, sea salt chocolate, blackberry", "Packed with dry ice"],
+        "description": "Two pints of small-batch ice cream from the creamery on Bayfront Avenue, packed with dry ice so they arrive scoopable, not soup. Name two flavours in the order notes.",
+        "reviews": [
+          {"id": "rv-4", "author": "alice", "stars": 5, "title": "Brown butter is the one", "body": "Arrived frozen solid in twenty minutes. The dry ice trick works.", "tick": 9}
+        ]
+      },
+      "quill-cafe-cookies": {
+        "id": "quill-cafe-cookies", "category": "desserts",
+        "title": "Half dozen brown butter chocolate chip cookies - Quill Cafe",
+        "seller": "Quill Cafe",
+        "price_cents": 1500, "rating_sum": 1450, "rating_count": 300, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.99, 20-30 min, 1.1 mi from Northstar HQ", "4.8 stars from 300 ratings", "Six large cookies, baked that morning", "Flaky salt on top"],
+        "description": "Six big cookies from the cafe inside Quill & Kettle Books, baked before opening. Sold until they run out, usually mid-afternoon.",
+        "reviews": []
+      },
+      "quill-cafe-carrot-cake": {
+        "id": "quill-cafe-carrot-cake", "category": "desserts",
+        "title": "Carrot cake slice with cream cheese frosting - Quill Cafe",
+        "seller": "Quill Cafe",
+        "price_cents": 650, "rating_sum": 1180, "rating_count": 250, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $1.99, 20-30 min", "4.7 stars from 250 ratings", "Generous slice, walnuts, cream cheese frosting", "Fork included"],
+        "description": "A thick slice of the cafe's carrot cake, with walnuts and a lot of frosting, in a clamshell with a fork.",
+        "reviews": []
+      },
+      "ninth-pike-grocery-basics": {
+        "id": "ninth-pike-grocery-basics", "category": "grocery",
+        "title": "Breakfast basics bundle: milk, eggs, bread, butter, bananas - Ninth & Pike Market",
+        "seller": "Ninth & Pike Market",
+        "price_cents": 2150, "rating_sum": 1290, "rating_count": 280, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.99, 40-60 min, 0.4 mi from Northstar HQ", "4.6 stars from 280 ratings", "Half gallon 2%, dozen eggs, sourdough loaf, salted butter, 6 bananas", "Substitutions confirmed by text"],
+        "description": "A shopper picks the bundle from the market on Pike Street and texts before substituting anything. Add items in the notes; they are charged at shelf price.",
+        "reviews": []
+      },
+      "ninth-pike-grocery-produce": {
+        "id": "ninth-pike-grocery-produce", "category": "grocery",
+        "title": "Weekly produce box, seasonal - Ninth & Pike Market",
+        "seller": "Ninth & Pike Market",
+        "price_cents": 3400, "rating_sum": 1120, "rating_count": 240, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.99, 40-60 min", "4.7 stars from 240 ratings", "About 8 lb of what is good this week", "Contents listed on the market's chalkboard each Monday"],
+        "description": "A box of whatever the market's produce buyer thinks is best that week, around eight pounds. In March that means citrus, chard, leeks, apples from storage and the first asparagus.",
+        "reviews": []
+      },
+      "ninth-pike-grocery-coffee": {
+        "id": "ninth-pike-grocery-coffee", "category": "grocery",
+        "title": "Harborline Coffee whole bean, 12 oz, Bayfront Blend - Ninth & Pike Market",
+        "seller": "Ninth & Pike Market",
+        "price_cents": 1650, "rating_sum": 1370, "rating_count": 290, "stock": 100, "fast_shipping": true,
+        "bullets": ["Delivery fee $3.99, 40-60 min", "4.7 stars from 290 ratings", "Medium roast, whole bean, roasted this week", "Grind on request in the notes"],
+        "description": "The Harborline house blend as sold at the market, roasted on Bayfront Avenue within the week. Ask for a grind in the notes and the shopper will run it through the market's grinder.",
+        "reviews": []
+      }
+    },
+    "carts": {
+      "bob": {"puget-burger-classic": 2, "puget-burger-shake": 1, "la-esquina-chips-guac": 1},
+      "carol": {"siam-corner-tom-kha": 1}
+    },
+    "orders": {
+      "dd-58201773": {
+        "id": "dd-58201773", "buyer": "alice", "tick": 4, "date": "2026-03-03",
+        "items": [
+          {"product": "bayfront-pizza-margherita", "title": "Margherita, 14-inch - Bayfront Pizza Co.", "qty": 2, "price_cents": 1900},
+          {"product": "bayfront-pizza-garlic-knots", "title": "Garlic knots, 6 - Bayfront Pizza Co.", "qty": 1, "price_cents": 700}
+        ],
+        "total_cents": 5598, "status": "Delivered in 31 min (fees $4.98, tip $6.00, dasher Marcus)", "confirmation": "DD-7HQ2KX", "seats": [], "venue": ""
+      },
+      "dd-58210409": {
+        "id": "dd-58210409", "buyer": "bob", "tick": 7, "date": "2026-03-11",
+        "items": [
+          {"product": "siam-corner-massaman", "title": "Massaman beef curry with jasmine rice - Siam Corner", "qty": 1, "price_cents": 1795},
+          {"product": "siam-corner-pad-thai", "title": "Pad thai with prawns - Siam Corner", "qty": 1, "price_cents": 1650}
+        ],
+        "total_cents": 4243, "status": "Delivered in 27 min (fees $3.98, tip $4.00, dasher Lin)", "confirmation": "DD-N3WV8P", "seats": [], "venue": ""
+      },
+      "dd-58218856": {
+        "id": "dd-58218856", "buyer": "alice", "tick": 9, "date": "2026-03-13",
+        "items": [{"product": "marrow-creamery-pints", "title": "Two pints, choose your flavours - Marrow Point Creamery (brown butter, blackberry)", "qty": 1, "price_cents": 1600}],
+        "total_cents": 2298, "status": "Delivered in 19 min (fees $3.98, tip $3.00, dasher Ines)", "confirmation": "DD-K5RT2M", "seats": [], "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": ["bayfront-pizza-margherita", "marrow-creamery-pints", "siam-corner-pad-thai"],
+      "bob": ["puget-burger-classic", "la-esquina-burrito"],
+      "carol": ["siam-corner-massaman", "umi-sushi-poke"]
+    },
+    "messages": [],
+    "next_order": 58218857
+  },
+  "search_entries": [
+    {"url": "http://doordash.com/", "title": "DoorDash - simulated food delivery near Northstar HQ", "snippet": "Pizza, Thai, Mexican, burgers, sushi, desserts and groceries from eight invented Seattle restaurants and one market, with delivery fees and times on every item.", "vertical": "all", "authority": 6, "keywords": ["doordash", "food delivery", "order food", "delivery near me", "takeout", "dinner delivery"]},
+    {"url": "http://doordash.com/s?c=pizza", "title": "Pizza delivery - DoorDash", "snippet": "Bayfront Pizza Co.: margherita $19, fennel sausage and broccolini $23, garlic knots $7. Delivery fee $2.99, 30-40 min.", "vertical": "all", "authority": 5, "keywords": ["pizza delivery", "pizza near me", "bayfront pizza", "order pizza seattle"]},
+    {"url": "http://doordash.com/s?c=thai", "title": "Thai delivery - DoorDash", "snippet": "Siam Corner on Pike and Ninth: pad thai, massaman and tom kha, delivery fee $1.99, 25-35 min.", "vertical": "all", "authority": 5, "keywords": ["thai delivery", "thai food near me", "siam corner", "pad thai delivery"]},
+    {"url": "http://doordash.com/s?c=grocery", "title": "Grocery delivery from Ninth & Pike Market - DoorDash", "snippet": "A breakfast basics bundle, a seasonal produce box and Harborline coffee beans, shopped and delivered in 40-60 minutes.", "vertical": "all", "authority": 4, "keywords": ["grocery delivery", "groceries delivered", "ninth and pike market", "same day groceries"]},
+    {"url": "http://doordash.com/dp/bayfront-pizza-margherita", "title": "Margherita, 14-inch - Bayfront Pizza Co. - $19.00", "snippet": "Wood-fired, San Marzano tomatoes and fior di latte. 4.8 stars from 410 ratings, 30-40 minutes to Northstar HQ.", "vertical": "all", "authority": 5, "keywords": ["margherita pizza", "wood fired pizza seattle", "bayfront pizza margherita", "office pizza order"]},
+    {"url": "http://doordash.com/dp/siam-corner-massaman", "title": "Massaman beef curry - Siam Corner - $17.95", "snippet": "Slow-cooked beef with potato and peanuts, jasmine rice packed separately. 4.7 stars from 300 ratings.", "vertical": "all", "authority": 4, "keywords": ["massaman curry", "thai curry delivery", "siam corner massaman", "beef curry"]},
+    {"url": "http://doordash.com/dp/la-esquina-burrito", "title": "Carnitas burrito - La Esquina - $13.50", "snippet": "Forearm-sized carnitas burrito from the Rivergate Boulevard taqueria, 4.8 stars from 390 ratings, 20-30 minutes.", "vertical": "all", "authority": 4, "keywords": ["burrito delivery", "carnitas burrito", "la esquina", "mexican food seattle"]},
+    {"url": "http://doordash.com/dp/puget-burger-classic", "title": "Classic cheeseburger with fries - Puget Burger - $15.50", "snippet": "Quarter-pound grass-fed patty, cheddar, house sauce, skin-on fries. 4.7 stars from 370 ratings.", "vertical": "all", "authority": 4, "keywords": ["burger delivery", "cheeseburger near me", "puget burger", "burger and fries"]},
+    {"url": "http://doordash.com/dp/umi-sushi-platter", "title": "Nigiri and roll platter, 20 pieces - Umi Sushi - $32.00", "snippet": "Eight nigiri and two rolls in a chilled bag. 4.8 stars from 320 ratings, 35-45 minutes.", "vertical": "all", "authority": 4, "keywords": ["sushi delivery", "sushi platter", "umi sushi", "nigiri delivery seattle"]},
+    {"url": "http://doordash.com/dp/marrow-creamery-pints", "title": "Two pints - Marrow Point Creamery - $16.00", "snippet": "Small-batch ice cream packed with dry ice. Honey lavender, brown butter, sea salt chocolate or blackberry. 4.8 stars.", "vertical": "all", "authority": 4, "keywords": ["ice cream delivery", "marrow point creamery", "pints delivered", "dessert delivery"]},
+    {"url": "http://doordash.com/dp/ninth-pike-grocery-produce", "title": "Weekly produce box - Ninth & Pike Market - $34.00", "snippet": "About eight pounds of what is good this week, listed on the market chalkboard each Monday.", "vertical": "all", "authority": 3, "keywords": ["produce box", "vegetable box delivery", "seasonal produce", "csa box"]},
+    {"url": "http://doordash.com/orders/dd-58201773", "title": "Order dd-58201773 - two margheritas and garlic knots, $55.98", "snippet": "3 March 2026, delivered in 31 minutes by Marcus. Confirmation DD-7HQ2KX.", "vertical": "all", "authority": 3, "keywords": ["doordash receipt", "pizza order receipt", "order dd-58201773"]},
+    {"url": "http://doordash.com/orders", "title": "Orders - DoorDash", "snippet": "Past orders for the signed-in account with delivery time, dasher and confirmation code.", "vertical": "all", "authority": 3, "keywords": ["doordash orders", "order history", "reorder"]}
+  ]
+}

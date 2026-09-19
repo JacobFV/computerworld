@@ -4,6 +4,7 @@ use cw_protocol::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
 pub fn load<T: DeserializeOwned + Default>(value: &Value) -> Result<T> {
     if value.is_null() {
         Ok(T::default())
@@ -104,7 +105,117 @@ pub fn link(id: &str, text: impl Into<String>, url: impl Into<String>) -> PageEl
         id: id.into(),
         text: text.into(),
         url: url.into(),
+        style: None,
     }
+}
+/// A link with explicit presentation: a nav item, a tab, a bordered button that
+/// navigates. `style.color` replaces the accent, `background`/`border` box it.
+pub fn styled_link(
+    id: &str,
+    text: impl Into<String>,
+    url: impl Into<String>,
+    style: Style,
+) -> PageElement {
+    PageElement::Link {
+        id: id.into(),
+        text: text.into(),
+        url: url.into(),
+        style: Some(style),
+    }
+}
+/// A link that reads as part of the text around it: `size` pixels, in `color`, on one
+/// line at its own width. A username, a channel name, a repository in a sentence.
+pub fn inline_link(
+    id: &str,
+    text: impl Into<String>,
+    url: impl Into<String>,
+    size: u16,
+    color: &str,
+) -> PageElement {
+    styled_link(
+        id,
+        text,
+        url,
+        Style::default().size(size).color(color).one_line(),
+    )
+}
+/// A button with explicit presentation; `submit` is what it performs.
+pub fn styled_button(
+    id: &str,
+    text: impl Into<String>,
+    action: PageAction,
+    style: Style,
+) -> PageElement {
+    PageElement::Button {
+        id: id.into(),
+        text: text.into(),
+        action,
+        style: Some(style),
+    }
+}
+/// A small rounded label at its own width: a tag, a filter, a language pill. `fill`
+/// is its background and `ink` its text colour; `style` is chained on top (a border,
+/// a radius other than fully round, a size other than 12).
+pub fn chip(id: &str, text: impl Into<String>, fill: &str, ink: &str, style: Style) -> PageElement {
+    let size = style.size.unwrap_or(12);
+    let pad = style.padding.unwrap_or(10);
+    PageElement::Badge {
+        id: id.into(),
+        text: text.into(),
+        style: Style {
+            size: Some(size),
+            padding: Some(pad),
+            // No radius: a badge is fully round unless told otherwise.
+            radius: style.radius,
+            background: Some(fill.into()),
+            color: Some(ink.into()),
+            ..style
+        },
+    }
+}
+/// A round avatar `size` pixels across, tinted from `name` and showing its initials:
+/// the stand-in for a profile picture on every site that has one.
+pub fn avatar(id: &str, name: &str, size: u32) -> PageElement {
+    let initials: String = name
+        .split(|c: char| c.is_whitespace() || c == '-' || c == '_' || c == '.')
+        .filter(|w| !w.is_empty())
+        .take(2)
+        .filter_map(|w| w.chars().next())
+        .flat_map(char::to_uppercase)
+        .collect();
+    PageElement::Thumbnail {
+        id: id.into(),
+        label: initials,
+        style: Style::default()
+            .width(size)
+            .height(size)
+            .radius(size / 2)
+            .size((size * 2 / 5).clamp(6, 96) as u16)
+            .background(avatar_tint(name))
+            .color("#ffffff"),
+        action: None,
+    }
+}
+/// A saturated, readable tint chosen from a name, stable across sites and sessions.
+pub fn avatar_tint(name: &str) -> String {
+    const PALETTE: [&str; 8] = [
+        "#5b6dcd", "#2f8f6f", "#c2603a", "#8a4fb8", "#2e86ab", "#b8536b", "#5f7d2e", "#9a6b1f",
+    ];
+    let mut h = 0xcbf29ce484222325u64;
+    for b in name.bytes() {
+        h = (h ^ u64::from(b)).wrapping_mul(0x100000001b3);
+    }
+    PALETTE[(h % 8) as usize].into()
+}
+/// Soaks up a row's spare width so the chips before it keep their own size, as chips
+/// and button rows do on every site instead of stretching edge to edge.
+pub fn rest(id: &str) -> PageElement {
+    styled(id, "", style().flex(64))
+}
+/// `children` laid out at their natural widths, left-aligned, the rest of the row empty.
+pub fn pills(id: &str, gap: u32, mut children: Vec<PageElement>) -> PageElement {
+    children.push(rest(&format!("{id}-rest")));
+    styled_row(id, gap, "center", style(), children)
 }
 pub fn form(id: &str, url: &str, fields: &[(&str, &str, &str)]) -> PageElement {
     let action = PageAction {
@@ -130,6 +241,7 @@ pub fn form(id: &str, url: &str, fields: &[(&str, &str, &str)]) -> PageElement {
                 id: format!("{id}-submit"),
                 text: "Submit".into(),
                 action,
+                style: None,
             }))
             .collect(),
     }
@@ -240,6 +352,44 @@ pub fn styled(id: &str, text: impl Into<String>, style: Style) -> PageElement {
         text: text.into(),
         style,
     }
+}
+/// A picture served by this site: `source` is a same-origin URL the browser fetches,
+/// expecting `cw_protocol::RGBA_MEDIA_TYPE`, and `alt` is its accessible name.
+pub fn image(
+    id: &str,
+    source: impl Into<String>,
+    alt: impl Into<String>,
+    width: u32,
+    height: u32,
+) -> PageElement {
+    PageElement::Image {
+        id: id.into(),
+        source: source.into(),
+        alt: alt.into(),
+        width,
+        height,
+        style: None,
+        action: None,
+    }
+}
+/// A `{width, height, rgba}` response in `cw_protocol::RGBA_MEDIA_TYPE`, the form an
+/// `Image` element's URL must answer with. `rgba` is straight-alpha RGBA8, row-major.
+pub fn rgba_response(width: u32, height: u32, rgba: &[u8]) -> Result<HttpResponse> {
+    #[derive(Serialize)]
+    struct Asset<'a> {
+        width: u32,
+        height: u32,
+        rgba: &'a [u8],
+    }
+    Ok(HttpResponse {
+        status: 200,
+        headers: BTreeMap::from([("content-type".into(), cw_protocol::RGBA_MEDIA_TYPE.into())]),
+        body: serde_json::to_vec(&Asset {
+            width,
+            height,
+            rgba,
+        })?,
+    })
 }
 pub fn thumbnail(id: &str, label: impl Into<String>, style: Style) -> PageElement {
     PageElement::Thumbnail {
@@ -411,6 +561,47 @@ pub fn links(prefix: &str, text: &str) -> Vec<PageElement> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn chips_avatars_and_pills_are_well_formed() {
+        let PageElement::Thumbnail {
+            label, style: s, ..
+        } = avatar("a", "Grace Hopper", 40)
+        else {
+            panic!()
+        };
+        assert_eq!(label, "GH");
+        assert_eq!((s.width, s.radius), (Some(40), Some(20)));
+        assert_eq!(avatar_tint("Grace Hopper"), avatar_tint("Grace Hopper"));
+        let PageElement::Badge { style: s, .. } = chip("c", "rust", "#dea584", "#111111", style())
+        else {
+            panic!()
+        };
+        assert_eq!(s.background.as_deref(), Some("#dea584"));
+        let PageElement::Row { children, .. } = pills("p", 8, vec![link("l", "Home", "/")]) else {
+            panic!()
+        };
+        assert_eq!(children.len(), 2);
+        assert!(
+            matches!(&children[1], PageElement::Styled { style, .. } if style.flex == Some(64))
+        );
+        let PageElement::Link { style: Some(s), .. } =
+            inline_link("i", "@ada", "/u/ada", 13, "#1264a3")
+        else {
+            panic!()
+        };
+        assert_eq!(s.one_line, Some(true));
+        let mut page = Page::new("t");
+        page.elements = vec![
+            avatar("a", "Grace Hopper", 40),
+            chip("c", "rust", "#dea584", "#111111", style()),
+            pills(
+                "p",
+                8,
+                vec![inline_link("i", "@ada", "/u/ada", 13, "#1264a3")],
+            ),
+        ];
+        page.validate().unwrap();
+    }
     #[test]
     fn forms_have_scoped_controls_and_wire_names() {
         let first = form("one", "/save", &[("title", "Title", "")]);

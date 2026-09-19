@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 
 const APPS: [&str; 8] = [
     "notes",
-    "chat",
+    "messages",
     "mail",
     "calculator",
     "calendar",
@@ -28,7 +28,7 @@ impl Desk {
         let mut d = reference_world();
         d.metadata["desktop_themes"] = json!({ "alice-mac": theme });
         let urls = [
-            ("chat", "http://chat.internal/"),
+            ("messages", "http://messages.internal/"),
             ("mail", "http://mail.internal/"),
             ("weather", "http://weather.com/"),
         ];
@@ -394,22 +394,22 @@ fn the_soft_keyboard_appears_only_for_a_focused_text_field() {
     assert_eq!(d.desktop()["windows"][&calc]["state"], before);
     // Messages starts on its conversation list; an open conversation is not a focused
     // composer until it is tapped.
-    d.launch("chat", "");
+    d.launch("messages", "");
     assert!(!d.keyboard_up(), "the conversation list raises no keyboard");
-    let conversation = d.first_target("chat:channel:");
+    let conversation = d.first_target("messages:open:");
     d.tap(&conversation);
     assert!(!d.keyboard_up(), "a conversation alone raises no keyboard");
     let window = d.desktop()["focused"].as_u64().unwrap().to_string();
     d.act("keyboard.v1", "type", json!({"text": "lost"}));
     assert_eq!(d.desktop()["windows"][&window]["state"]["draft"], "");
-    d.tap("chat:compose");
+    d.tap("messages:compose");
     assert!(d.keyboard_up(), "the tapped composer takes text");
     let focus = d.scene().focus.unwrap();
     assert_eq!(focus.role, "textbox");
     assert!(focus
         .interaction
         .as_deref()
-        .is_some_and(|i| i.ends_with(":content:chat:compose")));
+        .is_some_and(|i| i.ends_with(":content:messages:compose")));
     d.act("keyboard.v1", "type", json!({"text": "hi"}));
     assert_eq!(d.desktop()["windows"][&window]["state"]["draft"], "hi");
     // Mail's compose sheet focuses its To field at once.
@@ -419,7 +419,7 @@ fn the_soft_keyboard_appears_only_for_a_focused_text_field() {
     assert!(d.keyboard_up());
     // On a desktop, an open conversation's composer has the focus without a tap.
     let mut desk = Desk::new("virtual-macos-golden-gate", None, (1280, 800));
-    desk.launch("chat", "");
+    desk.launch("messages", "");
     assert!(
         desk.scene().focus.unwrap().keyboard.text_entry,
         "a desktop composer is focused with its conversation"
@@ -798,21 +798,24 @@ fn a_phone_messages_starts_on_its_conversation_list() {
         ("virtual-android-12", (412, 915)),
     ] {
         let mut d = Desk::new(theme, None, size);
-        d.launch("chat", "");
+        d.launch("messages", "");
         let chat = |d: &Desk| d.desktop()["windows"]["0"]["state"].clone();
         let listing = |d: &Desk| chat(d)["listing"] == json!(true);
         assert!(listing(&d), "{theme}: the list is the root screen");
-        assert!(d.find("chat:compose").is_none(), "{theme}: no composer yet");
-        let conversation = d.first_target("chat:channel:");
+        assert!(
+            d.find("messages:compose").is_none(),
+            "{theme}: no composer yet"
+        );
+        let conversation = d.first_target("messages:open:");
         d.tap(&conversation);
         assert!(!listing(&d), "{theme}: the conversation is open");
         assert!(
-            d.find("chat:compose").is_some(),
+            d.find("messages:compose").is_some(),
             "{theme}: the conversation"
         );
         // Back: the navigation bar's chevron on iOS, the system button on Android.
         if theme == "virtual-ios-18" {
-            d.tap("chat:back");
+            d.tap("messages:back");
         } else {
             d.shell("shell:mobile-back");
         }

@@ -91,9 +91,10 @@ and runnable demos in [`examples/`](examples/).
   Android 12) with native applications: terminal, file manager, editor, browser,
   spreadsheet, image and video editors, and professional tools on exact engines.
 - **A synthetic internet.** DNS, routes, links with latency and HTTP between machines
-  and services: mail, chat, documents, drive, calendar, Git remotes, issues, search,
-  wiki, forum, social, press, media, shop, bank, maps and an assistant, each with its
-  own state, plus a browsable web of independent sites. The browser renders received
+  and services: mail, chat, texting (iMessage/SMS), Slack, Discord, documents, drive,
+  calendar, Git remotes, issues, search, wiki, forum, social, press, media, shop, bank,
+  maps and an assistant, each with its own state, plus a browsable web of independent
+  sites. The browser renders received
   pages natively; no DOM or Chromium.
 - **Time and chance under control.** Deterministic scheduling, controlled RNG and IDs,
   persistent sessions, portable snapshots and recorded-action replay.

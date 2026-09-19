@@ -333,6 +333,7 @@ impl Weather {
                 id: id.into(),
                 text: label.into(),
                 action: act(id),
+                style: None,
             });
         }
         for city in &self.cities {
@@ -345,6 +346,7 @@ impl Weather {
                     city.cond
                 ),
                 action: act(&format!("weather:city:{}", city.id)),
+                style: None,
             });
             page.elements.push(E::Button {
                 id: format!("weather:save:{}", city.id),
@@ -358,6 +360,7 @@ impl Weather {
                     city.city
                 ),
                 action: act(&format!("weather:save:{}", city.id)),
+                style: None,
             });
         }
         if let Some(city) = self.current() {
@@ -391,6 +394,7 @@ impl Weather {
                 id: format!("weather:ack:{}", alert.id),
                 text: format!("Acknowledge {}", alert.title),
                 action: act(&format!("weather:ack:{}", alert.id)),
+                style: None,
             });
         }
     }
