@@ -1,18 +1,39 @@
 # computerworld.dev — the project site
 
 A single static page: no framework, no build step, no third-party requests. Every screen
-on it is a running machine — the simulator downloads when the page loads and each panel
-boots into it, with no button to press. `.github/workflows/pages.yml` deploys it, and
-builds the Wasm bundle and the world definition into `site/demo/` for the page to import.
+on it is a running machine — the simulator downloads when the page loads and each scene
+boots into it as the slideshow reaches it, with no button to press.
+`.github/workflows/pages.yml` deploys it, and builds the Wasm bundle and the world
+definition into `site/demo/` for the page to import.
 
 ```sh
 # Preview (the machines need the Wasm bundle built once)
 bash scripts/build-wasm.sh && node examples/browser/build.mjs
 mkdir -p site/demo/examples site/demo/pkg
 cp -r examples/browser site/demo/examples/browser && cp -r pkg/web site/demo/pkg/web
-python3 -m http.server 8000 --directory site
+node scripts/serve-site.mjs 8000
 ```
 
-`site/demo/` is generated and git-ignored. The screenshots in `site/media/` are rendered
-by the simulator itself; regenerate them by rendering the scenes you want with
-`World::render` (the `render` feature) and saving the frames as JPEG.
+## The cast
+
+`cast.js` is the slideshow: the scenes in `scenes/`, in the order they are shown. A scene
+names its machines — each a copy of one of the five graphical computers in the reference
+world, added under an id of its own — and an `open()` that drives them from a fresh boot to
+something mid-work, using the same actions an agent would send. Each scene runs in a world
+to itself, so what it shows never depends on which others the visitor passed first; the
+machines within one share that world, which is how the two phones in `texting` are in one
+conversation, and a scene's `sync()` is how the phone that did not just act catches up.
+Only the few scenes nearest the visitor stay running; the rest keep their last frame.
+`#<scene id>` links to a scene.
+
+To add one, write `scenes/<id>.js`, import it in `cast.js`, and render its still:
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/usr/bin/google-chrome \
+  node scripts/render-site-stills.mjs <scene id>      # or no id, for all of them
+```
+
+`site/media/scenes/<machine>.jpg` is what a machine shows until it is running, and all it
+shows to a browser that cannot run the simulator. The script makes them by booting the
+page itself, so a still is always a frame the machine really draws. `site/demo/` is
+generated and git-ignored.

@@ -3,250 +3,96 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Computerworld — a computer your agent can actually use</title>
-<meta name="description" content="Deterministic simulated computers: five OS desktops, real apps, a synthetic internet and byte-identical replay. One Rust runtime for Python, Node, browsers and native.">
-<meta property="og:title" content="Computerworld">
-<meta property="og:description" content="Deterministic simulated computers for agents: five OS desktops, real apps, a synthetic internet, byte-identical replay.">
-<meta property="og:image" content="./media/ubuntu-vscode.jpg">
-<meta name="theme-color" content="#07080c">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0d13'/%3E%3Cpath d='M9 20l4-8 3 5 2-3 5 6z' fill='%2364d2ff'/%3E%3C/svg%3E">
+<title>ComputerWorld — an ultra computer world simulator written in Rust</title>
+<meta name="description" content="ComputerWorld: an ultra computer world simulator written in Rust. Five OS shells, real applications, a synthetic internet and byte-identical replay, from Python, Node, the browser and native.">
+<meta property="og:title" content="ComputerWorld">
+<meta property="og:description" content="An ultra computer world simulator written in Rust.">
+<meta property="og:image" content="./media/scenes/mac-freecad.jpg">
+<meta name="theme-color" content="#0c0b0a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0b0a'/%3E%3Cpath d='M9 20l4-8 3 5 2-3 5 6z' fill='%23ffb454'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#stage">Skip to the machines</a>
 
-<header class="nav">
-  <a class="brand" href="./"><span class="mark">◈</span> computerworld</a>
-  <nav>
-    <a href="#gallery">Machines</a>
-    <a href="#what">What it is</a>
-    <a href="#code">Code</a>
-    <a href="https://github.com/JacobFV/computerworld" class="ghost">GitHub ↗</a>
-  </nav>
+<a class="gh" href="https://github.com/JacobFV/computerworld">
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.19c0 .21.14.46.55.38A8 8 0 0 0 8 0Z"/></svg>
+  <span>GitHub</span>
+  <b id="stars" hidden></b>
+</a>
+
+<main>
+
+<header class="title">
+  <h1>ComputerWorld</h1>
+  <p>an ultra computer world simulator written in Rust</p>
 </header>
 
-<main id="main">
+<section id="stage" class="stage" aria-roledescription="carousel" aria-label="Machines running in this page">
+  <div class="track" id="track"></div>
+  <nav class="pager" aria-label="Machines">
+    <button id="prev" aria-label="Previous machine">&larr;</button>
+    <div class="ticks" id="ticks" role="tablist"></div>
+    <button id="next" aria-label="Next machine">&rarr;</button>
+  </nav>
+  <noscript><img src="./media/scenes/mac-freecad.jpg" width="960" height="600" alt="FreeCAD on macOS inside the simulation, with a bored mounting plate in the 3D view"></noscript>
+</section>
 
-<section class="hero">
-  <p class="eyebrow reveal">Deterministic computer-use environments</p>
-  <h1 class="reveal">A whole computer,<br>in a function call.</h1>
-  <p class="lede reveal">Five OS desktops, thirty real applications, a browsable internet and a shell that runs
-  Python and Node — simulated end to end, with no host OS, no network and no flakiness.
-  Same seed in, same bytes out, every single time.</p>
-  <div class="cta reveal">
-    <a class="btn primary" href="#gallery">See the other four machines</a>
-    <a class="btn" href="https://github.com/JacobFV/computerworld/releases/latest">Download a release ↗</a>
-  </div>
-  <pre class="snip reveal"><code>pip install computerworld   <span class="dim"># or grab the Wasm bundle for Node and browsers</span></code></pre>
-
-  <article class="tile hero-tile" data-machine="carol-ubuntu" data-size="1280x800" data-label="Ubuntu 24.04">
-    <header><b>Ubuntu 24.04</b> <span>running right here — click the menus, type in the editor, run the file</span></header>
-    <div class="screen">
-      <img src="./media/ubuntu-vscode.jpg" width="1440" height="900" alt="VS Code open on Ubuntu inside the simulation, running a Python script in its integrated terminal" loading="eager">
-      <p class="booting" data-boot-note>Starting the machine…</p>
+<section class="install">
+  <div class="codebox">
+    <div class="bar">
+      <div class="tabs" role="tablist" aria-label="Language">
+        <button role="tab" aria-selected="true" data-lang="py">Python</button>
+        <button role="tab" aria-selected="false" data-lang="js">JavaScript</button>
+        <button role="tab" aria-selected="false" data-lang="rs">Rust</button>
+      </div>
+      <button class="copy" id="copy">Copy</button>
     </div>
-    <footer class="chips" hidden>
-      <button data-app="code">VS Code</button>
-      <button data-app="kicad">KiCad</button>
-      <button data-app="freecad">FreeCAD</button>
-      <button data-app="gimp">GIMP</button>
-      <button data-app="files">Files</button>
-      <button data-app="terminal">Terminal</button>
-    </footer>
-  </article>
-  <p class="caption">Not a mock-up, and not a video. That is the simulator's own renderer, its own VS Code, and
-  its own <code>python3</code> printing to its own terminal — in this tab, with no server behind it.</p>
-</section>
+<pre id="install" title="Copy"><code>pip install computerworld</code></pre>
+<pre data-lang="py"><code><span class="k">from</span> computerworld <span class="k">import</span> World
 
-<section class="strip reveal">
-  <div><b>5</b><span>OS shells</span></div>
-  <div><b>29</b><span>native apps</span></div>
-  <div><b>48</b><span>services on a fake internet</span></div>
-  <div><b>0</b><span>host syscalls</span></div>
-  <div><b>1</b><span>Rust runtime, everywhere</span></div>
-</section>
+world = <span class="t">World</span>(definition, seed=<span class="n">42</span>)
+env = world.<span class="f">environment</span>({<span class="s">"actor"</span>: <span class="s">"alice"</span>, <span class="s">"machines"</span>: [<span class="s">"alice-mac"</span>],
+                         <span class="s">"actions"</span>: [<span class="s">"pointer.v1"</span>, <span class="s">"keyboard.v1"</span>, <span class="s">"application.v1"</span>],
+                         <span class="s">"observations"</span>: [<span class="s">"semantic.v1"</span>]})
 
-<section id="what" class="what">
-  <h2 class="reveal">What is actually in here</h2>
-  <div class="cards">
-    <article class="card reveal">
-      <h3>Desktops that behave</h3>
-      <p>macOS, Windows 11, Ubuntu, iOS and Android, each with its own window manager,
-      menus, panels and gestures. Click to select, double-click to open. Every painted
-      control does something real, or says why it cannot.</p>
-    </article>
-    <article class="card reveal">
-      <h3>Applications, not screenshots</h3>
-      <p>VS Code, Excel, Numbers, Calc, KiCad, FreeCAD, GIMP, Paint, Clipchamp, iMovie,
-      Kdenlive, Apple Music, YouTube Music, Mail, Photos and more — with real documents,
-      real file formats and real undo.</p>
-    </article>
-    <article class="card reveal">
-      <h3>A web to browse</h3>
-      <p>Search engines, mail, drive, video, social, news, shopping, banking and maps live
-      on a synthetic network with its own DNS and routing. Pages reflow on a phone, links
-      work, and nothing leaves the process.</p>
-    </article>
-    <article class="card reveal">
-      <h3>A shell that runs code</h3>
-      <p>A POSIX-ish shell with truthful exit codes, plus <code>python3</code> and
-      <code>node</code> written from scratch in Rust. CPython tracebacks and Node stack
-      traces, byte for byte, on a virtual clock and seeded randomness. They open
-      sockets, spawn child processes and run threads — and stop on a breakpoint in
-      VS Code's debugger.</p>
-    </article>
-    <article class="card reveal">
-      <h3>Replay you can trust</h3>
-      <p>Snapshot, restore, fork. Same world, same seed, same actions gives the same state
-      hash and the same pixels — on x86, on ARM, in Wasm. Flaky evals are a tooling
-      problem, and this is the tooling.</p>
-    </article>
-    <article class="card reveal">
-      <h3>Made for agents</h3>
-      <p>Structured scenes with roles and names, focus and caret geometry, occlusion, whole
-      pane text — or raw RGBA if your model prefers pixels. Capabilities are granted per
-      session, so an agent sees exactly what you allow.</p>
-    </article>
-  </div>
-</section>
+env.<span class="f">step</span>([{<span class="s">"family"</span>: <span class="s">"application.v1"</span>, <span class="s">"op"</span>: <span class="s">"launch"</span>,
+           <span class="s">"machine"</span>: <span class="s">"alice-mac"</span>, <span class="s">"payload"</span>: {<span class="s">"kind"</span>: <span class="s">"code"</span>}}])
 
-<section id="gallery" class="gallery">
-  <h2 class="reveal">Four more machines. All of them live.</h2>
-  <p class="sub reveal">Same world, same tab, same simulator the Ubuntu machine above is running on. Click the
-  menus, type in the editor, scroll the lists, swipe the phones, open something else.</p>
+scene = env.<span class="f">scene</span>(<span class="n">1440</span>, <span class="n">900</span>)     <span class="c"># roles, names, geometry — no pixels needed</span>
+frame = env.<span class="f">render</span>(<span class="n">1440</span>, <span class="n">900</span>)    <span class="c"># or exact RGBA, if your model wants pixels</span></code></pre>
+<pre data-lang="js" hidden><code><span class="k">import</span> init, { World } <span class="k">from</span> <span class="s">"computerworld"</span>;
+<span class="k">await</span> <span class="f">init</span>();
 
-  <div class="tiles">
-    <article class="tile wide reveal" data-machine="alice-mac" data-size="1100x700" data-label="macOS">
-      <header><b>macOS</b> <span>Music · Safari · Photos · Numbers</span></header>
-      <div class="screen"><img src="./media/macos-music.jpg" width="1440" height="900" alt="Apple Music running on macOS inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
-      <footer class="chips" hidden>
-        <button data-app="music">Music</button>
-        <button data-app="browser">Safari</button>
-        <button data-app="photos">Photos</button>
-        <button data-app="spreadsheet">Numbers</button>
-        <button data-app="freecad">FreeCAD</button>
-        <button data-app="mail">Mail</button>
-      </footer>
-    </article>
+<span class="k">const</span> world = <span class="k">new</span> <span class="t">World</span>(definition, <span class="n">42n</span>);
+<span class="k">const</span> env = world.<span class="f">environment</span>({ actor: <span class="s">"alice"</span>, machines: [<span class="s">"alice-mac"</span>],
+  actions: [<span class="s">"pointer.v1"</span>, <span class="s">"keyboard.v1"</span>, <span class="s">"application.v1"</span>],
+  observations: [<span class="s">"semantic.v1"</span>] });
 
-    <article class="tile wide reveal" data-machine="bob-windows" data-size="1100x700" data-label="Windows 11">
-      <header><b>Windows 11</b> <span>Excel · Paint · Edge · Notepad</span></header>
-      <div class="screen"><img src="./media/windows-excel.jpg" width="1440" height="900" alt="Excel open on a CSV in Windows 11 inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
-      <footer class="chips" hidden>
-        <button data-app="spreadsheet">Excel</button>
-        <button data-app="paint">Paint</button>
-        <button data-app="browser">Edge</button>
-        <button data-app="database">DB Browser</button>
-        <button data-app="editor">Notepad</button>
-        <button data-app="files">Explorer</button>
-      </footer>
-    </article>
+env.<span class="f">step</span>([{ family: <span class="s">"pointer.v1"</span>, op: <span class="s">"click"</span>,
+            machine: <span class="s">"alice-mac"</span>, payload: { x: <span class="n">480</span>, y: <span class="n">620</span>, width: <span class="n">1440</span>, height: <span class="n">900</span> } }]);
 
-    <article class="tile phone reveal" data-machine="alice-phone" data-size="390x844" data-label="iOS 18">
-      <header><b>iOS</b> <span>swipe it</span></header>
-      <div class="screen"><img src="./media/ios-music.jpg" width="402" height="874" alt="Apple Music on iOS inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
-      <footer class="chips" hidden>
-        <button data-app="music">Music</button>
-        <button data-app="browser">Safari</button>
-        <button data-app="mail">Mail</button>
-        <button data-home="1">Home</button>
-      </footer>
-    </article>
+<span class="k">const</span> scene = env.<span class="f">scene</span>(<span class="n">1440</span>, <span class="n">900</span>);
+<span class="k">const</span> snapshot = world.<span class="f">snapshot</span>();   <span class="c">// fork it, replay it, diff it</span></code></pre>
+<pre data-lang="rs" hidden><code><span class="k">use</span> computerworld::{reference_world, <span class="t">ActionEnvelope</span>, <span class="t">EnvironmentConfig</span>, <span class="t">World</span>};
 
-    <article class="tile phone reveal" data-machine="bob-android" data-size="412x892" data-label="Android 15">
-      <header><b>Android</b> <span>three-button nav</span></header>
-      <div class="screen"><img src="./media/android-music.jpg" width="412" height="892" alt="YouTube Music on Android inside the simulation" loading="lazy"><p class="booting" data-boot-note>Starting…</p></div>
-      <footer class="chips" hidden>
-        <button data-app="music">YT Music</button>
-        <button data-app="browser">Chrome</button>
-        <button data-app="photos">Photos</button>
-        <button data-home="1">Home</button>
-      </footer>
-    </article>
-  </div>
-</section>
+<span class="k">let</span> <span class="k">mut</span> world = <span class="t">World</span>::<span class="f">new</span>(<span class="f">reference_world</span>(), <span class="n">7</span>)?;
+<span class="k">let</span> session = world.<span class="f">environment</span>(<span class="t">EnvironmentConfig</span>::<span class="f">desktop</span>(<span class="s">"alice"</span>, <span class="s">"alice-mac"</span>))?;
 
-<section id="code" class="code">
-  <h2 class="reveal">Three lines to a running machine</h2>
-  <div class="tabs reveal" role="tablist">
-    <button role="tab" aria-selected="true" data-lang="py">Python</button>
-    <button role="tab" aria-selected="false" data-lang="js">JavaScript</button>
-    <button role="tab" aria-selected="false" data-lang="rs">Rust</button>
-  </div>
-  <div class="codebox reveal">
-    <button class="copy" id="copy">Copy</button>
-<pre data-lang="py"><code>from computerworld import World
-
-world = World(definition, seed=42)
-env = world.environment({"actor": "alice", "machines": ["alice-mac"],
-                         "actions": ["pointer.v1", "keyboard.v1", "application.v1"],
-                         "observations": ["semantic.v1"]})
-
-env.step([{"family": "application.v1", "op": "launch",
-           "machine": "alice-mac", "payload": {"kind": "code"}}])
-
-scene = env.scene(1440, 900)     # roles, names, geometry — no pixels needed
-frame = env.render(1440, 900)    # or exact RGBA, if your model wants pixels
-assert world.state_hash() == replay.state_hash()</code></pre>
-<pre data-lang="js" hidden><code>import init, { World } from "computerworld";
-await init();
-
-const world = new World(definition, 42n);
-const env = world.environment({ actor: "alice", machines: ["alice-mac"],
-  actions: ["pointer.v1", "keyboard.v1", "application.v1"],
-  observations: ["semantic.v1"] });
-
-env.step([{ family: "pointer.v1", op: "click",
-            machine: "alice-mac", payload: { x: 480, y: 620, width: 1440, height: 900 } }]);
-
-const scene = env.scene(1440, 900);
-const snapshot = world.snapshot();   // fork it, replay it, diff it</code></pre>
-<pre data-lang="rs" hidden><code>use computerworld::{reference_world, ActionEnvelope, EnvironmentConfig, World};
-
-let mut world = World::new(reference_world(), 7)?;
-let session = world.environment(EnvironmentConfig::desktop("alice", "alice-mac"))?;
-
-world.step(&session, vec![ActionEnvelope::new(
-    "terminal.v1", "execute", "alice-mac",
-    serde_json::json!({ "command": "python3 primes.py" }),
+world.<span class="f">step</span>(&amp;session, <span class="f">vec!</span>[<span class="t">ActionEnvelope</span>::<span class="f">new</span>(
+    <span class="s">"terminal.v1"</span>, <span class="s">"execute"</span>, <span class="s">"alice-mac"</span>,
+    serde_json::<span class="f">json!</span>({ <span class="s">"command"</span>: <span class="s">"python3 primes.py"</span> }),
 )])?;
 
-let checkpoint = world.snapshot();
-let branch = world.fork(&checkpoint)?;   // explore both futures</code></pre>
-  </div>
-</section>
-
-<section class="determinism reveal">
-  <h2>Determinism is the product</h2>
-  <p>No wall clock. No host entropy. No sockets, no subprocesses, no file system underneath.
-  Time moves when you step it, randomness comes from your seed, and the network is part of
-  the world. That is why a run from last week reproduces today, on another machine, in
-  another language binding, down to the last byte of the frame.</p>
-  <div class="pill-row">
-    <span class="pill">snapshot / restore / fork</span>
-    <span class="pill">state hashes</span>
-    <span class="pill">recorded trajectories</span>
-    <span class="pill">identical native &amp; Wasm pixels</span>
-  </div>
-</section>
-
-<section class="closing reveal">
-  <h2>Point an agent at it.</h2>
-  <p>Alpha, and moving fast. Pin a version, keep your world and seed, and tell us what breaks.</p>
-  <div class="cta">
-    <a class="btn primary" href="https://github.com/JacobFV/computerworld">Read the code ↗</a>
-    <a class="btn" href="https://github.com/JacobFV/computerworld/blob/main/docs/agent-api.md">Agent API ↗</a>
-    <a class="btn" href="https://github.com/JacobFV/computerworld/releases/latest">Releases ↗</a>
+<span class="k">let</span> checkpoint = world.<span class="f">snapshot</span>();
+<span class="k">let</span> branch = world.<span class="f">fork</span>(&amp;checkpoint)?;   <span class="c">// explore both futures</span></code></pre>
   </div>
 </section>
 
 </main>
 
-<footer>
-  <span>MIT licensed. Built with one deterministic Rust runtime.</span>
-  <span class="dim">The OS views are synthetic, not vendor operating systems, and no vendor logos are used.</span>
-</footer>
+<footer><span>MIT licensed.</span></footer>
 
-<script src="./app.js" defer></script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
