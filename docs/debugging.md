@@ -200,6 +200,16 @@ again whenever they change while a program runs. Everything else in the view —
 stack, the variables, the watch values, the Debug Console's output — is what the last
 reply said, and is cleared when the session ends.
 
+Starting a session is VS Code's own sequence. The editors in the active group are
+written first (`debug.saveBeforeStart`), so the debugger runs the program on screen;
+the configuration's `program`, `cwd` and arguments go through VS Code's variables —
+`${workspaceFolder}`, `${file}`, `${fileBasenameNoExtension}`, `${relativeFile}`,
+`${lineNumber}` and the rest, with anything this world cannot resolve left standing
+rather than guessed at; and the Debug Console opens on the first session
+(`debug.internalConsoleOptions`). The console keeps the debugger's own narration apart
+from the program's output, which is what lets a traceback printed by a debugged program
+become a problem at its line, exactly as one printed in the terminal does.
+
 `crates/computer/tests/debug_seam.rs` drives the whole seam with an adapter of its own,
 and `crates/applications/src/apps/code/tests.rs` drives the view against replies, so both
 halves are tested against the contract an adapter has to meet — including what the view

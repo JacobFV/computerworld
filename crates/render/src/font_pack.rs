@@ -165,6 +165,9 @@ fn slot(face: FaceId) -> Option<usize> {
     FONT_PACK.iter().position(|p| p.face == face)
 }
 
+// Only the native build embeds the pack; a Wasm bundle fetches it, so the macro is
+// gated with the static it fills.
+#[cfg(not(target_family = "wasm"))]
 macro_rules! pack_bytes {
     ($($name:literal),* $(,)?) => {
         [$(include_bytes!(concat!("../assets/fonts/pack/", $name)) as &[u8]),*]
