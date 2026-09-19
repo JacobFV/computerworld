@@ -220,16 +220,14 @@ fn copy_node(
             )?;
         }
     } else {
+        let replacing = c.vfs.lstat(to).is_ok();
         let bytes = c.vfs.read_as(from, &c.user).map_err(Fail::from)?;
         c.vfs.write_as(to, &bytes, &c.user, t).map_err(Fail::from)?;
-        if !o.preserve {
-            // A fresh copy is born with the umask applied, but coreutils keeps the
-            // source's execute bits even without -p.
-            let mode = c.vfs.lstat(to).map_err(Fail::from)?.mode;
-            let wanted = (mode & !0o111) | (meta.mode & 0o111 & mode_mask(mode));
-            if wanted != mode {
-                let _ = c.vfs.chmod_as(to, wanted, &c.user);
-            }
+        if !o.preserve && !replacing {
+            // A new copy takes the source's permissions through the umask, and loses
+            // its setuid/setgid bits — coreutils will not hand those on without -p.
+            let mode = meta.mode & 0o777 & !c.vfs.umask();
+            c.vfs.chmod_as(to, mode, &c.user).map_err(Fail::from)?;
         }
     }
     if o.preserve {
@@ -242,18 +240,6 @@ fn copy_node(
     }
     Ok(())
 }
-/// Execute bits a copy may keep: only where the corresponding read bit survived the
-/// umask, which is how `cp` of a `755` file lands as `755` and of a `700` file as `700`.
-fn mode_mask(mode: u16) -> u16 {
-    let mut mask = 0;
-    for shift in [6, 3, 0] {
-        if (mode >> shift) & 4 != 0 {
-            mask |= 1 << shift;
-        }
-    }
-    mask
-}
-
 /// `mv`. A rename within the VFS, with the directory rule and the overwrite rules
 /// coreutils applies.
 pub(crate) fn mv(c: &mut Computer, args: &[String], _t: u64) -> Result<String, Fail> {

@@ -611,6 +611,17 @@ fn copy_move_remove_follow_coreutils() {
     ok(&mut c, "mkdir -p /tmp/e");
     ok(&mut c, "cp -rT /tmp/d /tmp/e");
     assert_eq!(ok(&mut c, "cat /tmp/e/two.txt"), "two\n");
+    // Without -p a new copy takes the source's permissions through the umask.
+    ok(
+        &mut c,
+        "chmod 700 /tmp/one.txt; cp /tmp/one.txt /tmp/copy700.txt",
+    );
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/copy700.txt"), "700\n");
+    ok(
+        &mut c,
+        "chmod 777 /tmp/one.txt; cp /tmp/one.txt /tmp/copy777.txt",
+    );
+    assert_eq!(ok(&mut c, "stat -c %a /tmp/copy777.txt"), "755\n");
     // -p carries the mode and the timestamps.
     ok(&mut c, "chmod 641 /tmp/one.txt");
     ok(&mut c, "touch -d 2026-09-19T08:00:00 /tmp/one.txt");
