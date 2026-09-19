@@ -423,6 +423,10 @@ fn explorer_home_gallery_pins_and_this_pc_open_what_they_name() {
 fn a_star_puts_a_row_in_starred_and_takes_it_out_again() {
     let (mut world, actor) = world("virtual-ubuntu-24");
     open_files(&mut world, &actor);
+    // Files opens in its icon grid; the star column is the list view's.
+    assert_eq!(tab(&world, &actor)["view"], "grid");
+    click(&mut world, &actor, "files-view");
+    assert_eq!(tab(&world, &actor)["view"], "list");
     let notes = row(&world, &actor, "notes.txt");
     let star = notes.replace("open:", "files-star:");
     click(&mut world, &actor, &star);
@@ -460,6 +464,43 @@ fn a_star_puts_a_row_in_starred_and_takes_it_out_again() {
         desktop(&world, &actor)["starred"],
         json!([format!("{HOME}/Documents/")])
     );
+}
+
+/// Nautilus's icon grid has no star column: the selected item carries a star button,
+/// a starred one keeps a star on its icon, and the context menu stars the selection.
+#[test]
+fn the_icon_grid_stars_from_the_item_and_from_the_context_menu() {
+    let (mut world, actor) = world("virtual-ubuntu-24");
+    open_files(&mut world, &actor);
+    assert_eq!(tab(&world, &actor)["view"], "grid");
+    let notes = row(&world, &actor, "notes.txt");
+    let star = notes.replace("open:", "files-star:");
+    // Nothing is starred or selected yet, so no item carries a star.
+    assert!(!painted(&world, &actor, &star));
+    click(&mut world, &actor, &notes);
+    click(&mut world, &actor, &star);
+    assert_eq!(
+        desktop(&world, &actor)["starred"],
+        json!([format!("{HOME}/notes.txt")])
+    );
+    // The context menu over the selection offers the opposite: Unstar.
+    act(
+        &mut world,
+        &actor,
+        "application.v1",
+        "shell",
+        json!({"target":"shell:panel:context"}),
+    );
+    let scene = world.scene(&actor, W, H).unwrap();
+    let unstar = scene
+        .nodes
+        .iter()
+        .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == "Unstar"))
+        .and_then(|n| n.interaction.clone())
+        .expect("the context menu offers Unstar");
+    assert!(unstar.ends_with(":content:files-star"), "{unstar}");
+    click(&mut world, &actor, &unstar);
+    assert_eq!(desktop(&world, &actor)["starred"], json!([]));
 }
 
 #[test]

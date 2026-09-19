@@ -51,8 +51,26 @@ const DOCK: [&str; 13] = [
     "editor", "terminal", "code",
 ];
 
-fn app_name(kind: &str) -> Option<&'static str> {
+pub(super) fn app_name(kind: &str) -> Option<&'static str> {
     APPS.iter().find(|(k, _)| *k == kind).map(|(_, n)| *n)
+}
+/// The title this shell shows for a window: the document it presents, or the
+/// name its Launchpad icon carries when it presents none.
+pub(super) fn window_title(w: &WindowView) -> String {
+    match w.kind.as_str() {
+        // Terminal titles a window with the user and the shell it runs.
+        "terminal" => w
+            .shell_identity()
+            .map(|(user, _, _)| format!("{user} — -zsh"))
+            .unwrap_or_else(|| "Terminal".into()),
+        "editor" if w.document.is_empty() => "Untitled".to_owned(),
+        "editor" => basename(&w.document).to_owned(),
+        "files" if !w.caption.is_empty() => w.caption.clone(),
+        "files" => basename(&w.document).to_owned(),
+        "browser" if w.caption.is_empty() => "New Tab".into(),
+        "browser" => w.caption.clone(),
+        kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
+    }
 }
 fn basename(path: &str) -> &str {
     path.trim_end_matches('/')
@@ -297,16 +315,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             }
         }
         kind => {
-            let name = match kind {
-                // Terminal titles a window with the user and the shell it runs.
-                "terminal" => w
-                    .shell_identity()
-                    .map(|(user, _, _)| format!("{user} — -zsh"))
-                    .unwrap_or_else(|| "Terminal".into()),
-                "editor" if w.document.is_empty() => "Untitled".to_owned(),
-                "editor" => basename(&w.document).to_owned(),
-                _ => w.title.clone(),
-            };
+            let name = window_title(w);
             let edited = if w.modified { " — Edited" } else { "" };
             let width = r.width.saturating_sub(180);
             let measured = p.measure(&name, 13, true) + p.measure(edited, 13, false);
@@ -875,6 +884,11 @@ fn menu_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
                     format!("Wi-Fi {}", if wifi { "on" } else { "off" })
                 },
             ),
+        ]
+        .into_iter()
+        // The battery item exists only on a Mac that has one: a desktop Mac's menu
+        // bar has no battery.
+        .chain(ctx.battery.then(|| {
             (
                 "battery",
                 25,
@@ -885,9 +899,8 @@ fn menu_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
                 } else {
                     "Battery".to_owned()
                 },
-            ),
-        ]
-        .into_iter()
+            )
+        }))
         .enumerate()
         {
             x -= size + 18;
@@ -2033,7 +2046,10 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
     }
     let desired_x = match panel {
         "apple" => 8,
-        "context" => ctx.hover.map_or(ctx.width as i32 / 3, |(x, _)| x),
+        "context" => ctx
+            .anchor
+            .or(ctx.hover)
+            .map_or(ctx.width as i32 / 3, |(x, _)| x),
         name => menu_layout(p, ctx)
             .iter()
             .find(|(label, _, _)| label.eq_ignore_ascii_case(name))
@@ -2044,7 +2060,8 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         .max(8)
         .min(ctx.width.saturating_sub(width + 8) as i32);
     let top = if panel == "context" {
-        ctx.hover
+        ctx.anchor
+            .or(ctx.hover)
             .map_or(120, |(_, y)| y)
             .clamp(30, ctx.height as i32 - 200)
     } else {
@@ -2264,6 +2281,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         }
     }
     fn browser(tabs: &[&str], active: usize) -> WindowView {

@@ -108,6 +108,50 @@ pub fn cos(x: f64) -> f64 {
     sin(x + PI / 2.0)
 }
 
+/// Arctangent, by reduction to `|x| <= tan(π/12)` and a Taylor series.
+pub fn atan(x: f64) -> f64 {
+    if x < 0.0 {
+        return -atan(-x);
+    }
+    if x > 1.0 {
+        return PI / 2.0 - atan(1.0 / x);
+    }
+    const SQRT3: f64 = 1.732_050_807_568_877_2;
+    const TAN_PI_12: f64 = 0.267_949_192_431_122_7;
+    let (base, r) = if x > TAN_PI_12 {
+        (PI / 6.0, (x * SQRT3 - 1.0) / (x + SQRT3))
+    } else {
+        (0.0, x)
+    };
+    let r2 = r * r;
+    let mut term = r;
+    let mut sum = 0.0;
+    for i in 0..20 {
+        sum += term / (2 * i + 1) as f64;
+        term = -term * r2;
+    }
+    base + sum
+}
+
+/// The angle of `(x, y)` from the positive x axis, in `(-π, π]`.
+pub fn atan2(y: f64, x: f64) -> f64 {
+    if x > 0.0 {
+        atan(y / x)
+    } else if x < 0.0 {
+        if y >= 0.0 {
+            atan(y / x) + PI
+        } else {
+            atan(y / x) - PI
+        }
+    } else if y > 0.0 {
+        PI / 2.0
+    } else if y < 0.0 {
+        -PI / 2.0
+    } else {
+        0.0
+    }
+}
+
 /// Round half away from zero, without relying on a platform `round`.
 pub fn round(x: f64) -> f64 {
     if x >= 0.0 {
@@ -163,6 +207,13 @@ mod tests {
         assert!(close(sin(-PI / 2.0), -1.0));
         assert!(sin(PI).abs() < 1e-12);
         assert!(close(cos(7.0 * PI / 4.0), SQRT2 / 2.0));
+        assert!(close(atan(1.0), PI / 4.0));
+        assert!(close(atan(0.5), 0.463_647_609_000_806_1));
+        assert!(close(atan(-20.0), -1.520_837_931_072_953_7));
+        assert!(close(atan2(1.0, -1.0), 3.0 * PI / 4.0));
+        assert!(close(atan2(-1.0, -1.0), -3.0 * PI / 4.0));
+        assert!(close(atan2(-2.0, 0.0), -PI / 2.0));
+        assert_eq!(atan2(0.0, 0.0), 0.0);
         assert_eq!(round(2.5), 3.0);
         assert_eq!(round(-2.5), -3.0);
         assert_eq!(div255(255 * 255), 255);

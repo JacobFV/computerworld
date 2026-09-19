@@ -154,18 +154,22 @@ fn the_exported_spice_deck_charges_with_the_rc_time_constant() {
 #[test]
 fn a_symbol_without_a_model_stops_simulation_until_excluded() {
     let mut s = rc_schematic();
-    s.place("Timer:NE555P", Pt::new(6000, 3000), Xf::IDENTITY)
+    // A push button has no simulation model; it starts excluded, as KiCad's does. Put
+    // it back in the simulation to see the refusal.
+    let sw = s
+        .place("Switch:SW_Push", Pt::new(6000, 3000), Xf::IDENTITY)
         .unwrap();
+    s.symbol_mut(sw).unwrap().exclude_from_sim = false;
     s.annotate(true, false);
     let err = netlist::spice_netlist(&s, "rc", None).unwrap_err();
     assert!(
-        err.contains("U1") && err.contains("no simulation model"),
+        err.contains("SW1") && err.contains("no simulation model"),
         "{err}"
     );
     let u = s
         .symbols
         .iter_mut()
-        .find(|x| x.reference() == "U1")
+        .find(|x| x.reference() == "SW1")
         .unwrap();
     u.exclude_from_sim = true;
     let deck = netlist::spice_netlist(&s, "rc", None).unwrap();
@@ -173,7 +177,7 @@ fn a_symbol_without_a_model_stops_simulation_until_excluded() {
         deck.skipped,
         vec![
             "J1 is excluded from simulation",
-            "U1 is excluded from simulation"
+            "SW1 is excluded from simulation"
         ]
     );
 }
@@ -260,6 +264,7 @@ pub fn routed_board(s: &Schematic) -> Board {
         spoke_width: 500_000,
         fill: vec![],
         filled: false,
+        keepout: false,
     });
     b
 }
@@ -406,7 +411,7 @@ fn project_files_round_trip() {
     assert_eq!(files::write_schematic(&back, "rc"), text);
     let mut b = routed_board(&s);
     zones::fill_all(&mut b);
-    b.footprints[0].rot = 1;
+    b.footprints[0].angle = 900;
     b.footprints[1].back = true;
     let text = files::write_board(&b);
     assert!(text.starts_with("(kicad_pcb\n\t(version 20240108)"));

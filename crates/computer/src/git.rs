@@ -125,6 +125,129 @@ fn changes(a: &BTreeMap<String, Vec<u8>>, b: &BTreeMap<String, Vec<u8>>) -> BTre
     }
     out
 }
+/// The commit a revision names: `HEAD`, `HEAD~<n>` / `HEAD^…`, a branch, or a hash (or
+/// a unique prefix of one). `None` is a branch with no commits yet.
+fn resolve(g: &Repository, rev: &str) -> Result<Option<String>, String> {
+    let (base, back) = match rev.split_once('~') {
+        Some((base, n)) => (base, n.parse::<usize>().map_err(|_| "invalid revision")?),
+        None => (
+            rev.trim_end_matches('^'),
+            rev.len() - rev.trim_end_matches('^').len(),
+        ),
+    };
+    let mut hash = match base {
+        "HEAD" | "" => g.refs.get(&g.branch).cloned(),
+        name if g.refs.contains_key(name) => g.refs.get(name).cloned(),
+        prefix if prefix.len() >= 4 => {
+            let mut found = g.commits.keys().filter(|h| h.starts_with(prefix));
+            let first = found.next().cloned();
+            if found.next().is_some() {
+                return Err(format!("ambiguous revision {prefix}"));
+            }
+            match first {
+                Some(h) => Some(h),
+                None => return Err(format!("unknown revision {rev}")),
+            }
+        }
+        _ => return Err(format!("unknown revision {rev}")),
+    };
+    for _ in 0..back {
+        let id = hash.ok_or_else(|| format!("{rev} is before the first commit"))?;
+        hash = g
+            .commits
+            .get(&id)
+            .ok_or("missing commit object")?
+            .parents
+            .first()
+            .cloned();
+    }
+    Ok(hash)
+}
+/// The files a revision's commit holds; empty before the first commit.
+fn tree_at(g: &Repository, rev: &str) -> Result<BTreeMap<String, Vec<u8>>, String> {
+    Ok(match resolve(g, rev)? {
+        Some(hash) => g
+            .commits
+            .get(&hash)
+            .ok_or("missing commit object")?
+            .files
+            .clone(),
+        None => BTreeMap::new(),
+    })
+}
+/// Split `<rev> [--] <paths>` the way git does: `--` separates for certain, and without
+/// it the first argument that names a commit is the revision and the rest are paths.
+/// Paths are repository-relative; a folder (or `.`) stands for everything under it.
+fn revision_and_paths(
+    args: &[String],
+    g: &Repository,
+    r: &str,
+    c: &Computer,
+    default: &str,
+) -> Result<(String, Vec<String>), String> {
+    let mut rev = default.to_owned();
+    let mut raw: Vec<&String> = vec![];
+    let mut after = false;
+    let mut first = true;
+    for arg in args {
+        if arg == "--" {
+            after = true;
+            first = false;
+            continue;
+        }
+        if !after && arg.starts_with('-') {
+            continue;
+        }
+        if first && !after && resolve(g, arg).is_ok() {
+            rev = arg.clone();
+            first = false;
+            continue;
+        }
+        first = false;
+        raw.push(arg);
+    }
+    // Every path the repository knows about, so a folder can stand for its files.
+    let known: Vec<String> = g
+        .index
+        .keys()
+        .chain(tree_at(g, &rev)?.keys())
+        .chain(files(c, r).keys())
+        .cloned()
+        .collect();
+    let mut paths: Vec<String> = vec![];
+    for arg in raw {
+        let resolved = c.resolve(arg);
+        let rel = if resolved == r {
+            String::new()
+        } else {
+            resolved
+                .strip_prefix(&format!("{r}/"))
+                .ok_or("path outside repository")?
+                .to_owned()
+        };
+        for path in &known {
+            if rel.is_empty() || *path == rel || path.starts_with(&format!("{rel}/")) {
+                paths.push(path.clone());
+            }
+        }
+    }
+    paths.sort();
+    paths.dedup();
+    Ok((rev, paths))
+}
+/// What `git reset` prints when it has moved the index: the paths that differ between
+/// the index and the worktree afterwards.
+fn unstaged_report(index: &BTreeMap<String, Vec<u8>>, work: &BTreeMap<String, Vec<u8>>) -> String {
+    let changed = changes(index, work);
+    if changed.is_empty() {
+        return String::new();
+    }
+    let mut out = String::from("Unstaged changes after reset:\n");
+    for (path, state) in changed {
+        out.push_str(&format!("{state}\t{path}\n"));
+    }
+    out
+}
 pub fn execute(
     c: &mut Computer,
     args: &[String],
@@ -147,11 +270,26 @@ pub fn execute(
     }
     match run(c, args, t, host) {
         Ok(s) => CommandResult::success(s),
-        Err(e) => CommandResult::error(format!("git: {e}\n")),
+        Err(e) => {
+            // The shell's vocabulary: 2 means "outside the simulated surface", which
+            // is what an unknown subcommand or option is; everything else is 1.
+            let outside = e.starts_with("unknown option") || e.starts_with("unsupported command");
+            CommandResult {
+                exit_code: if outside { 2 } else { 1 },
+                ..CommandResult::error(format!("git: {e}\n"))
+            }
+        }
     }
 }
 fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Result<String, String> {
     let command = a.first().map(String::as_str).unwrap_or("status");
+    // A global option is refused before the repository is even looked for, so an
+    // unsupported flag never hides behind "not a git repository".
+    if command.starts_with('-') && command != "-C" {
+        return Err(format!(
+            "unknown option: {command}\nusage: git [-C <path>] <command> [<args>]"
+        ));
+    }
     if command == "init" {
         let r = a.get(1).map(|s| c.resolve(s)).unwrap_or(c.cwd.clone());
         c.vfs
@@ -355,6 +493,106 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
             }
             s
         }
+        // `git reset [--soft|--mixed|--hard] [<commit>]` moves the branch and, unless
+        // soft, the index (and with --hard the worktree) to it. With paths it moves
+        // nothing: it copies those paths from the commit into the index, which is how
+        // `git reset HEAD -- <path>` unstages.
+        "reset" => {
+            let mode = a
+                .iter()
+                .skip(1)
+                .find_map(|s| match s.as_str() {
+                    "--soft" => Some("soft"),
+                    "--mixed" => Some("mixed"),
+                    "--hard" => Some("hard"),
+                    _ => None,
+                })
+                .unwrap_or("mixed");
+            let (rev, paths) = revision_and_paths(&a[1..], &g, &r, c, "HEAD")?;
+            let from = tree_at(&g, &rev)?;
+            if paths.is_empty() {
+                let hash = resolve(&g, &rev)?;
+                match hash {
+                    Some(hash) => {
+                        g.refs.insert(g.branch.clone(), hash);
+                    }
+                    // `git reset` before the first commit leaves an unborn branch.
+                    None => {
+                        g.refs.remove(&g.branch);
+                    }
+                }
+                if mode != "soft" {
+                    g.index = from.clone();
+                }
+                if mode == "hard" {
+                    materialize(c, &r, &work, &from, t)?;
+                }
+                match mode {
+                    "soft" => String::new(),
+                    _ => unstaged_report(&from, if mode == "hard" { &from } else { &work }),
+                }
+            } else {
+                if mode != "mixed" {
+                    return Err(format!("cannot do a {mode} reset with paths"));
+                }
+                for p in &paths {
+                    match from.get(p) {
+                        Some(v) => g.index.insert(p.clone(), v.clone()),
+                        None => g.index.remove(p),
+                    };
+                }
+                unstaged_report(&g.index, &work)
+            }
+        }
+        // `git restore [--staged] [--worktree] [--source=<rev>] <paths>` puts files back:
+        // the worktree from the index (Discard Changes), or the index from HEAD (Unstage).
+        "restore" => {
+            let staged = a.iter().any(|s| s == "--staged" || s == "-S");
+            let worktree = a.iter().any(|s| s == "--worktree" || s == "-W") || !staged;
+            let source = a
+                .iter()
+                .find_map(|s| s.strip_prefix("--source="))
+                .map(str::to_owned);
+            let default = if staged { "HEAD" } else { "" };
+            let (rev, paths) = revision_and_paths(&a[1..], &g, &r, c, default)?;
+            let rev = source.unwrap_or(rev);
+            if paths.is_empty() {
+                return Err("you must specify path(s) to restore".into());
+            }
+            // With no source, the worktree comes from the index and the index from HEAD.
+            let from = if rev.is_empty() {
+                g.index.clone()
+            } else {
+                tree_at(&g, &rev)?
+            };
+            if staged {
+                for p in &paths {
+                    match from.get(p) {
+                        Some(v) => g.index.insert(p.clone(), v.clone()),
+                        None => g.index.remove(p),
+                    };
+                }
+            }
+            if worktree {
+                let source = if staged && rev.is_empty() {
+                    g.index.clone()
+                } else {
+                    from.clone()
+                };
+                let before: BTreeMap<String, Vec<u8>> = work
+                    .iter()
+                    .filter(|(p, _)| paths.contains(p))
+                    .map(|(p, v)| (p.clone(), v.clone()))
+                    .collect();
+                let after: BTreeMap<String, Vec<u8>> = source
+                    .iter()
+                    .filter(|(p, _)| paths.contains(p))
+                    .map(|(p, v)| (p.clone(), v.clone()))
+                    .collect();
+                materialize(c, &r, &before, &after, t)?;
+            }
+            String::new()
+        }
         "branch" => {
             if let Some(name) = a.get(1) {
                 if g.refs.contains_key(name) {
@@ -369,6 +607,26 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
                     .map(|k| format!("{} {k}\n", if k == &g.branch { "*" } else { " " }))
                     .collect()
             }
+        }
+        // `git checkout -- <paths>` is the old spelling of `git restore <paths>`.
+        "checkout" if a.iter().any(|s| s == "--") => {
+            let (rev, paths) = revision_and_paths(&a[1..], &g, &r, c, "")?;
+            if paths.is_empty() {
+                return Err("you must specify path(s) to check out".into());
+            }
+            let from = if rev.is_empty() {
+                g.index.clone()
+            } else {
+                tree_at(&g, &rev)?
+            };
+            let keep = |m: &BTreeMap<String, Vec<u8>>| -> BTreeMap<String, Vec<u8>> {
+                m.iter()
+                    .filter(|(p, _)| paths.contains(p))
+                    .map(|(p, v)| (p.clone(), v.clone()))
+                    .collect()
+            };
+            materialize(c, &r, &keep(&work), &keep(&from), t)?;
+            String::new()
         }
         "checkout" | "switch" => {
             let create = a.get(1).is_some_and(|s| s == "-b" || s == "-c");

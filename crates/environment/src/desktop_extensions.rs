@@ -14,6 +14,36 @@ pub(crate) struct DesktopApp {
     pub label: String,
     #[allow(dead_code)] // Theme renderers currently select icons by installed application ID.
     pub icon: String,
+    /// Other names a launcher search accepts for this application: the generic name of
+    /// its kind ("Web Browser" for Firefox, "Editor" for Text Editor), so a query that
+    /// names the job finds the product that does it, as a real launcher's keywords do.
+    pub aliases: &'static [&'static str],
+}
+/// One row of the application inventory an actor can read with `application.v1 list`.
+/// Unlike the catalogue, it also carries what is *not* launchable, and why.
+#[derive(Clone, Debug)]
+pub(crate) struct ApplicationEntry {
+    pub id: String,
+    pub label: String,
+    /// `builtin` — one of the four the compositor implements itself; `native` — an
+    /// application shipped with the simulator; `web` — a `desktop_apps` alias that
+    /// opens a site in the browser.
+    pub kind: &'static str,
+    pub installed: bool,
+    pub launchable: bool,
+    /// The documented reason `launch` would refuse this application right now, from
+    /// `cw_protocol::reason`. `None` when it is launchable.
+    pub blocked_by: Option<&'static str>,
+}
+/// Generic names for the four built-in kinds, so a search for the job finds the product.
+fn builtin_aliases(kind: &str) -> &'static [&'static str] {
+    match kind {
+        "files" => &["Files", "File Manager", "Explorer", "Finder"],
+        "browser" => &["Browser", "Web Browser"],
+        "terminal" => &["Terminal", "Console", "Shell"],
+        "editor" => &["Text Editor", "Editor", "Notepad", "Notes", "TextEdit"],
+        _ => &[],
+    }
 }
 
 impl Environment {
@@ -46,15 +76,17 @@ impl Environment {
         }
         let computer = self.runtime.computer(machine)?;
         if !computer.application_available(kind) || !computer.application_available("browser") {
-            return Err(SimError::not_found("application is not installed"));
+            return Err(SimError::not_found("application is not installed")
+                .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
         }
         let grants = &self.session(id)?.config.actions;
         if !grants.iter().any(|family| family == "application.v1")
             || !grants.iter().any(|family| family == "browser.v1")
         {
-            return Err(SimError::denied(
-                "browser application interaction is not permitted",
-            ));
+            return Err(
+                SimError::denied("browser application interaction is not permitted")
+                    .because(cw_protocol::reason::BROWSER_FAMILY_REQUIRED),
+            );
         }
         let url = entry
             .get("url")
@@ -161,66 +193,95 @@ impl Environment {
             }
         }
     }
+    /// The name this machine's shell shows for an application. One table, shared by
+    /// the launcher's pixels, this catalogue and a window's title, so the three can
+    /// never disagree about what an application is called.
+    pub(crate) fn application_label(
+        theme: Option<DesktopTheme>,
+        kind: &str,
+        generic: &str,
+    ) -> String {
+        theme
+            .and_then(|theme| theme.app_label(kind))
+            .map(str::to_owned)
+            .unwrap_or_else(|| {
+                if cw_applications::NativeApp::KINDS.contains(&kind) {
+                    Self::native_label(theme, kind).to_owned()
+                } else {
+                    generic.to_owned()
+                }
+            })
+    }
     pub(crate) fn desktop_catalog(&self, id: &str, machine: &str) -> Vec<DesktopApp> {
+        self.application_inventory(id, machine)
+            .into_iter()
+            .filter(|entry| entry.launchable)
+            .map(|entry| DesktopApp {
+                icon: entry.id.clone(),
+                aliases: builtin_aliases(&entry.id),
+                id: entry.id,
+                label: entry.label,
+            })
+            .collect()
+    }
+    /// Every application this world knows about on this machine, launchable or not.
+    /// Catalogue order: the four built-ins, then the applications shipped with the
+    /// simulator, then the world's own `desktop_apps` web aliases.
+    pub(crate) fn application_inventory(&self, id: &str, machine: &str) -> Vec<ApplicationEntry> {
         let Ok(computer) = self.runtime.computer(machine) else {
             return Vec::new();
         };
         let Ok(session) = self.session(id) else {
             return Vec::new();
         };
-        if !session
-            .config
-            .actions
-            .iter()
-            .any(|family| family == "application.v1")
-        {
-            return Vec::new();
-        }
-        let mut catalog = Vec::new();
-        for (kind, alternate, label) in [
+        let granted = |family: &str| session.config.actions.iter().any(|f| f == family);
+        let apps = granted("application.v1");
+        let theme = self.desktop_theme(id, machine);
+        let blocked = |installed: bool, web: bool| {
+            if !installed {
+                Some(cw_protocol::reason::APPLICATION_NOT_INSTALLED)
+            } else if !apps {
+                Some(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED)
+            } else if web && !granted("browser.v1") {
+                Some(cw_protocol::reason::BROWSER_FAMILY_REQUIRED)
+            } else {
+                None
+            }
+        };
+        let mut inventory: Vec<ApplicationEntry> = Vec::new();
+        for (kind, alternate, generic) in [
             ("files", "file_manager", "Files"),
             ("browser", "browser", "Browser"),
             ("terminal", "terminal", "Terminal"),
             ("editor", "text_editor", "Text Editor"),
         ] {
-            if computer.application_available(kind) || computer.application_available(alternate) {
-                if kind == "browser"
-                    && !session
-                        .config
-                        .actions
-                        .iter()
-                        .any(|family| family == "browser.v1")
-                {
-                    continue;
-                }
-                catalog.push(DesktopApp {
-                    id: kind.into(),
-                    label: match (self.desktop_theme(id, machine), kind) {
-                        (Some(DesktopTheme::Macos), "files") => "Finder",
-                        (Some(DesktopTheme::Macos | DesktopTheme::Ios), "browser") => "Safari",
-                        (Some(DesktopTheme::Macos), "editor") => "TextEdit",
-                        (Some(DesktopTheme::Windows), "files") => "File Explorer",
-                        (Some(DesktopTheme::Windows), "editor") => "Notepad",
-                        (Some(DesktopTheme::Ubuntu), "browser") => "Web Browser",
-                        (Some(DesktopTheme::Ios), "editor") => "Notes",
-                        (Some(DesktopTheme::Android), "editor") => "Editor",
-                        _ => label,
-                    }
-                    .into(),
-                    icon: kind.into(),
-                });
-            }
+            let installed =
+                computer.application_available(kind) || computer.application_available(alternate);
+            let blocked_by = blocked(installed, kind == "browser");
+            inventory.push(ApplicationEntry {
+                id: kind.into(),
+                label: Self::application_label(theme, kind, generic),
+                kind: "builtin",
+                installed,
+                launchable: blocked_by.is_none(),
+                blocked_by,
+            });
         }
-        // Applications that ship with the simulator, when the machine has them installed.
-        let theme = self.desktop_theme(id, machine);
+        // Applications that ship with the simulator.
         for kind in cw_applications::NativeApp::KINDS {
-            if catalog.iter().any(|app| &app.id == kind) || !computer.application_available(kind) {
+            if inventory.iter().any(|app| &app.id == kind) {
                 continue;
             }
-            catalog.push(DesktopApp {
+            let installed = computer.application_available(kind);
+            // A native application talks to its service itself; it needs no browser.
+            let blocked_by = blocked(installed, false);
+            inventory.push(ApplicationEntry {
                 id: (*kind).into(),
-                label: Self::native_label(theme, kind).into(),
-                icon: (*kind).into(),
+                label: Self::application_label(theme, kind, Self::native_label(theme, kind)),
+                kind: "native",
+                installed,
+                launchable: blocked_by.is_none(),
+                blocked_by,
             });
         }
         if let Some(entries) = self
@@ -234,29 +295,30 @@ impl Environment {
                 let Some(kind) = entry.get("id").and_then(Value::as_str) else {
                     continue;
                 };
-                if catalog.iter().any(|app| app.id == kind) {
+                if inventory.iter().any(|app| app.id == kind)
+                    || entry.get("kind").and_then(Value::as_str) != Some("browser")
+                {
                     continue;
                 }
-                if let Ok(Some(alias)) = self.desktop_alias(id, machine, kind) {
-                    catalog.push(DesktopApp {
-                        id: alias.id,
-                        label: if kind == "chat"
-                            && matches!(self.desktop_theme(id, machine), Some(DesktopTheme::Ios))
-                        {
-                            "Messages".into()
-                        } else {
-                            alias.label
-                        },
-                        icon: entry
-                            .get("icon")
-                            .and_then(Value::as_str)
-                            .unwrap_or("browser")
-                            .into(),
-                    });
-                }
+                let installed = computer.application_available(kind)
+                    && computer.application_available("browser");
+                let blocked_by = blocked(installed, true);
+                let generic = entry.get("label").and_then(Value::as_str).unwrap_or(kind);
+                inventory.push(ApplicationEntry {
+                    id: kind.into(),
+                    label: if kind == "chat" && theme == Some(DesktopTheme::Ios) {
+                        "Messages".into()
+                    } else {
+                        Self::application_label(theme, kind, generic)
+                    },
+                    kind: "web",
+                    installed,
+                    launchable: blocked_by.is_none(),
+                    blocked_by,
+                });
             }
         }
-        catalog
+        inventory
     }
 
     pub(crate) fn desktop_panel_text(
@@ -276,11 +338,23 @@ impl Environment {
             }
             return Ok(true);
         }
-        // A phone's system surface is modal: typing reaches nothing behind it.
+        // A phone's system surface is modal: typing reaches nothing behind it. Nor does
+        // it reach an application with no text field focused: a phone has no keyboard
+        // up then, and nothing on screen would take the characters.
         let phone = self
             .desktop_theme(id, machine)
             .is_some_and(DesktopTheme::mobile);
-        Ok(phone && phone_overlay(&self.session(id)?.machines[machine]))
+        let m = &self.session(id)?.machines[machine];
+        let fieldless = m.active_app.is_none()
+            && !m.address_focused
+            && !m.browser_visible
+            && m.desktop
+                .focused
+                .and_then(|w| m.desktop.windows.get(&w))
+                .is_some_and(|w| {
+                    matches!(&w.state, cw_applications::AppState::Native(app) if !app.takes_text(true))
+                });
+        Ok(phone && (phone_overlay(m) || fieldless))
     }
 
     pub(crate) fn desktop_panel_key(
@@ -312,6 +386,12 @@ impl Environment {
                 let app = self.desktop_catalog(id, machine).into_iter().find(|app| {
                     app.label.to_lowercase().contains(&query)
                         || app.id.to_lowercase().contains(&query)
+                        // A launcher's keywords: "Web Browser" finds Firefox, the way
+                        // a real .desktop file's Keywords= line does.
+                        || app
+                            .aliases
+                            .iter()
+                            .any(|alias| alias.to_lowercase().contains(&query))
                 });
                 if let Some(app) = app {
                     self.shell_action(id, machine, actor, &format!("shell:launch:{}", app.id))?;
@@ -324,6 +404,153 @@ impl Environment {
             _ => {}
         }
         Ok(true)
+    }
+
+    /// A control of a phone's Recents screen. `slot:<n>` centres a card (or, at -1,
+    /// the Clear all slot past the oldest), `clear` closes every application,
+    /// `select` toggles Select mode on the centred card, `copy` puts that card's text
+    /// on the clipboard, and `screenshot` captures the centred application itself.
+    fn recents_action(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        what: &str,
+    ) -> Result<Value> {
+        let open = self.session(id)?.machines[machine].desktop.panel.as_deref() == Some("overview");
+        if !open {
+            return Err(SimError::invalid("Recents is not open"));
+        }
+        let order = self.session(id)?.machines[machine]
+            .desktop
+            .ordered_windows();
+        let desktop = &self.session(id)?.machines[machine].desktop;
+        let centred = desktop.overview.slot.unwrap_or_else(|| {
+            desktop
+                .focused
+                .and_then(|f| order.iter().position(|w| *w == f))
+                .unwrap_or(order.len().saturating_sub(1)) as i32
+        });
+        let card = usize::try_from(centred)
+            .ok()
+            .and_then(|i| order.get(i).copied());
+        if let Some(slot) = what.strip_prefix("slot:") {
+            let slot: i32 = slot
+                .parse()
+                .map_err(|_| SimError::invalid("invalid Recents slot"))?;
+            if order.is_empty() || slot < -1 || slot >= order.len() as i32 {
+                return Err(SimError::invalid("no such Recents slot"));
+            }
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            desktop.overview.slot = Some(slot);
+            desktop.overview.select = false;
+            return Ok(Value::Null);
+        }
+        match what {
+            "clear" => {
+                if order.is_empty() {
+                    return Err(SimError::invalid("there are no recent applications"));
+                }
+                for window in order {
+                    self.machine_mut(id, machine)?
+                        .desktop
+                        .close(window)
+                        .map_err(SimError::invalid)?;
+                }
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                desktop.panel = None;
+                desktop.overview = Default::default();
+                desktop.home();
+                self.sync_desktop_visibility(id, machine)?;
+                Ok(Value::Null)
+            }
+            "select" => {
+                card.ok_or_else(|| SimError::invalid("no application card is centred"))?;
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                desktop.overview.select = !desktop.overview.select;
+                Ok(Value::Null)
+            }
+            "copy" => {
+                let window =
+                    card.ok_or_else(|| SimError::invalid("no application card is centred"))?;
+                if !self.session(id)?.machines[machine].desktop.overview.select {
+                    return Err(SimError::invalid("Select is not on"));
+                }
+                let text = self.window_text(id, machine, window)?;
+                if text.is_empty() {
+                    return Err(SimError::invalid("this card shows no text to copy"));
+                }
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                desktop.copy_text(&text).map_err(SimError::invalid)?;
+                desktop.overview.select = false;
+                Ok(json!({ "copied": text }))
+            }
+            "screenshot" => {
+                // What Recents captures is the application, not the carousel over it:
+                // the card's application is shown alone for the capture, and Recents
+                // comes back over it afterwards.
+                let window =
+                    card.ok_or_else(|| SimError::invalid("no application card is centred"))?;
+                let saved = self.session(id)?.machines[machine].desktop.clone();
+                {
+                    let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                    desktop.focus(window).map_err(SimError::invalid)?;
+                }
+                let result = self.effects(
+                    id,
+                    machine,
+                    actor,
+                    vec![cw_applications::AppEffect::Screenshot {
+                        window,
+                        path: String::new(),
+                    }],
+                );
+                let notices = self.session(id)?.machines[machine]
+                    .desktop
+                    .notifications
+                    .clone();
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                *desktop = saved;
+                desktop.notifications = notices;
+                result.map(|()| Value::Null)
+            }
+            _ => Err(SimError::invalid("unknown Recents control")),
+        }
+    }
+    /// The text window `window` shows, from its semantic projection (a browser's from
+    /// the page it has loaded).
+    fn window_text(&self, id: &str, machine: &str, window: u64) -> Result<String> {
+        let m = &self.session(id)?.machines[machine];
+        let state = &m
+            .desktop
+            .windows
+            .get(&window)
+            .ok_or_else(|| SimError::invalid("window not found"))?
+            .state;
+        if let AppState::Browser { .. } = state {
+            let browser = if m.active_browser_window == Some(window) {
+                &m.browser
+            } else {
+                m.browser_windows.get(&window).unwrap_or(&m.browser)
+            };
+            return Ok(browser
+                .page()
+                .map(cw_applications::page_text)
+                .unwrap_or_default());
+        }
+        let mut page = m
+            .desktop
+            .window_page(window)
+            .ok_or_else(|| SimError::invalid("window not found"))?;
+        // The window list the desktop projection starts with is the shell's, not the card's.
+        page.elements.retain(|e| {
+            !matches!(e, cw_protocol::PageElement::Button { id, .. } if id.starts_with("focus:"))
+        });
+        if let AppState::Native(app) = state {
+            page.elements.clear();
+            app.page(&mut page);
+        }
+        Ok(cw_applications::page_text(&page))
     }
 
     /// What a finger dragged from `from` to `to` on a phone amounts to, as the shell
@@ -426,6 +653,47 @@ impl Environment {
                 }
                 if d.focused.is_some() && panel.is_none() && from.1 > h - 40 && dx > 0 {
                     return target("shell:switcher");
+                }
+                Ok(None)
+            }
+            // Sideways on Android: Recents walks its carousel (past the oldest card is
+            // Clear all), and the home screen walks its pages.
+            DesktopTheme::Android if horizontal => {
+                if panel == Some("overview") {
+                    let order = d.ordered_windows();
+                    if order.is_empty() {
+                        return Ok(None);
+                    }
+                    let centred = d.overview.slot.unwrap_or_else(|| {
+                        d.focused
+                            .and_then(|f| order.iter().position(|w| *w == f))
+                            .unwrap_or(order.len() - 1) as i32
+                    });
+                    // The content follows the finger: a swipe to the right brings the
+                    // older cards (and then Clear all) in from the left.
+                    let next = if dx > 0 { centred - 1 } else { centred + 1 };
+                    if next < -1 || next >= order.len() as i32 {
+                        return Ok(None);
+                    }
+                    return Ok(Some(format!("shell:recents:slot:{next}")));
+                }
+                if home {
+                    let installed: Vec<String> = self
+                        .desktop_catalog(id, machine)
+                        .into_iter()
+                        .map(|app| app.id)
+                        .collect();
+                    let pages = home_page_count(theme, &installed, size.0, size.1).max(1);
+                    let page = d.home_page.min(pages - 1);
+                    return Ok(match (dx < 0, page) {
+                        (true, page) if page + 1 < pages => {
+                            Some(format!("shell:home-page:{}", page + 1))
+                        }
+                        (false, page) if page > 0 => Some(format!("shell:home-page:{}", page - 1)),
+                        // Past the last page there is nothing; before the first, Pixel's
+                        // Discover feed, which this world has no service for.
+                        _ => None,
+                    });
                 }
                 Ok(None)
             }
@@ -534,9 +802,13 @@ impl Environment {
                 "page" => "page",
                 _ => return Err(SimError::invalid("unknown shell panel")),
             };
-            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let m = self.machine_mut(id, machine)?;
+            let at = m.pointer_position;
+            let desktop = &mut m.desktop;
             let closing = desktop.panel.as_deref() == Some(name);
             desktop.panel = if closing { None } else { Some(name.into()) };
+            desktop.panel_at = if closing { None } else { at };
+            desktop.overview = Default::default();
             // A power flyout sits over an open launcher rather than replacing it, which
             // is what Start does; every other panel takes the screen.
             desktop.panel_over_launcher = !closing && name == "power" && desktop.launcher_open;
@@ -910,6 +1182,26 @@ impl Environment {
                         .shell_action(id, machine, actor, "shell:back")
                         .map(Some);
                 }
+                // An application's own screens come first: a conversation goes back to
+                // the list, a drawer closes, a message goes back to its mailbox.
+                let theme = self.desktop_theme(id, machine);
+                let inner = state
+                    .desktop
+                    .focused
+                    .and_then(|window| state.desktop.windows.get(&window))
+                    .and_then(|window| match (&window.state, theme) {
+                        (AppState::Native(app), Some(theme)) => app.phone_back(theme),
+                        _ => None,
+                    });
+                if let Some(target) = inner {
+                    let effects = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .click(&target)
+                        .map_err(SimError::invalid)?;
+                    self.effects(id, machine, actor, effects)?;
+                    return Ok(Some(Value::Null));
+                }
                 // The file manager's own back stack: the folder above, until the root.
                 let inside_folder = state
                     .desktop
@@ -932,6 +1224,10 @@ impl Environment {
                 self.sync_desktop_visibility(id, machine)?;
                 Ok(Some(Value::Null))
             }
+            // Pixel Recents: the carousel, Clear all, Select and Screenshot.
+            recents if recents.starts_with("shell:recents:") => self
+                .recents_action(id, machine, actor, &recents["shell:recents:".len()..])
+                .map(Some),
             "shell:dismiss" => {
                 let desktop = &mut self.machine_mut(id, machine)?.desktop;
                 desktop.panel = None;

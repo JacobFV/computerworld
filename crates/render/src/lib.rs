@@ -1,15 +1,20 @@
 //! Deterministic portable CPU compositor. No browser, GPU, host font or clock.
 //! A renderer owns disposable glyph/text caches and a retained RGBA framebuffer.
 mod assets;
+mod colr;
 mod font_pack;
 mod glyph_fit;
 #[cfg(test)]
 mod script_tests;
 mod symbols;
+#[cfg(test)]
+mod text_style_tests;
 pub use assets::{ASSET_IDS, SYMBOLS};
 use cw_scene::{
-    text::{self as shaping, FaceId, GlyphRef},
-    text_cell, wrap_text, Color, Damage, Node, Primitive, Rect, Scene, Transform, Typeface,
+    metrics,
+    text::{self as shaping, terminal, FaceId, GlyphRef},
+    text_cell, wrap_text, Color, Damage, Lang, Node, Primitive, Rect, Scene, Style, Transform,
+    Typeface,
 };
 pub use font_pack::{
     font_pack_status, install_font, FontPackError, FontPackStatus, PackFile, FONT_PACK,
@@ -28,18 +33,32 @@ pub const UI_FONT_SHA256: &str = "a8ef62637fccede99b4736e2a376aafb723807e217dba9
 /// rasterizes to the pixels the master produced.
 const UI_FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-sans.ttf");
 const FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-mono.ttf");
-/// Latin subsets of the per-platform UI families, regular then strong weight.
-const FACE_BYTES: [&[u8]; 8] = [
+/// Latin subsets of the per-platform UI families: regular, strong weight, italic and
+/// strong italic of each. In a static so each face is in the binary once.
+static FACE_BYTES: [&[u8]; 16] = [
     include_bytes!("../assets/fonts/inter-regular.ttf"),
     include_bytes!("../assets/fonts/inter-bold.ttf"),
+    include_bytes!("../assets/fonts/inter-italic.ttf"),
+    include_bytes!("../assets/fonts/inter-bold-italic.ttf"),
     include_bytes!("../assets/fonts/opensans-regular.ttf"),
     include_bytes!("../assets/fonts/opensans-bold.ttf"),
+    include_bytes!("../assets/fonts/opensans-italic.ttf"),
+    include_bytes!("../assets/fonts/opensans-bold-italic.ttf"),
     include_bytes!("../assets/fonts/ubuntu-regular.ttf"),
     include_bytes!("../assets/fonts/ubuntu-bold.ttf"),
+    include_bytes!("../assets/fonts/ubuntu-italic.ttf"),
+    include_bytes!("../assets/fonts/ubuntu-bold-italic.ttf"),
     include_bytes!("../assets/fonts/roboto-regular.ttf"),
     include_bytes!("../assets/fonts/roboto-bold.ttf"),
+    include_bytes!("../assets/fonts/roboto-italic.ttf"),
+    include_bytes!("../assets/fonts/roboto-bold-italic.ttf"),
 ];
-fn face_index(typeface: Typeface, bold: bool) -> Option<usize> {
+/// DejaVu Sans Oblique and Bold Oblique, subset to text scripts (see build-fonts.py).
+static OBLIQUE_BYTES: [&[u8]; 2] = [
+    include_bytes!("../assets/fonts/dejavu-sans-oblique.ttf"),
+    include_bytes!("../assets/fonts/dejavu-sans-bold-oblique.ttf"),
+];
+fn face_index(typeface: Typeface, bold: bool, italic: bool) -> Option<usize> {
     let family = match typeface {
         Typeface::DejaVu => return None,
         Typeface::Inter => 0,
@@ -47,8 +66,13 @@ fn face_index(typeface: Typeface, bold: bool) -> Option<usize> {
         Typeface::Ubuntu => 2,
         Typeface::Roboto => 3,
     };
-    Some(family * 2 + usize::from(bold))
+    Some(family * 4 + usize::from(bold) + 2 * usize::from(italic))
 }
+/// Glyph-cache codes of the fonts a character can be drawn with.
+const MONO: u8 = 0;
+const PLATFORM: u8 = 3; // + face_index, 3..=18
+const OBLIQUE: u8 = 19; // + bold
+const FALLBACK: u8 = 64; // + FaceId
 /// Backdrop blur radius per pass; three passes reach three times this distance.
 const MAX_BACKDROP_BLUR: u32 = 48;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,19 +106,25 @@ struct Mask {
     width: u32,
     height: u32,
     alpha: Vec<u8>,
+    /// Premultiplied RGBA of colour glyphs (emoji) drawn over the alpha coverage;
+    /// empty when the block has none.
+    color: Vec<u8>,
     spans: Vec<(u32, u32, u32)>,
 }
-/// (style, family, text, size, width, height) of a rasterized text block.
-type TextKey = (u8, Typeface, String, u16, u32, u32);
+/// (primitive, style, family, text, size, width, height) of a rasterized text block.
+type TextKey = (u8, Style, Typeface, String, u16, u32, u32);
 /// Cache limits bound resident text memory across arbitrary navigation histories.
 pub struct Renderer {
     font: Font,
     ui_font: Option<Font>,
     bold_font: Option<Font>,
-    faces: [Option<Font>; 8],
+    faces: [Option<Font>; 16],
+    oblique: [Option<Font>; 2],
     glyphs: BTreeMap<(u8, char, u16), Arc<Glyph>>,
     /// Shaped glyphs of the fallback faces, by glyph id.
     shaped: BTreeMap<(FaceId, u16, u16), Arc<Glyph>>,
+    /// Colour emoji glyphs by glyph id and pixel size (`None`: not a colour glyph).
+    colors: BTreeMap<(u16, u16), Arc<Option<colr::ColorGlyph>>>,
     texts: BTreeMap<TextKey, Arc<Mask>>,
     /// Font-pack generation the cached text masks were drawn with.
     pack_generation: u32,
@@ -117,8 +147,10 @@ impl Renderer {
             ui_font: None,
             bold_font: None,
             faces: Default::default(),
+            oblique: Default::default(),
             glyphs: BTreeMap::new(),
             shaped: BTreeMap::new(),
+            colors: BTreeMap::new(),
             texts: BTreeMap::new(),
             pack_generation: font_pack::generation(),
             assets: BTreeMap::new(),
@@ -151,6 +183,8 @@ impl Renderer {
         self.pack_generation = generation;
         self.texts.clear();
         self.glyphs.clear();
+        self.shaped.clear();
+        self.colors.clear();
         true
     }
     fn render_full(&mut self, scene: &Scene) {
@@ -191,17 +225,38 @@ impl Renderer {
         self.frame.rgba.resize(len as usize, 0);
     }
     fn glyph(&mut self, c: char, size: u16, ui: u8, typeface: Typeface) -> Arc<Glyph> {
+        self.glyph_styled(c, size, ui, false, typeface)
+    }
+    /// A character of the table-driven faces: `ui` 0 is the terminal's monospace
+    /// face, 1 and 2 the UI faces (regular, bold), `italic` slants the UI faces.
+    fn glyph_styled(
+        &mut self,
+        c: char,
+        size: u16,
+        ui: u8,
+        italic: bool,
+        typeface: Typeface,
+    ) -> Arc<Glyph> {
         let size = size.clamp(1, 256);
-        // Platform families are Latin subsets; anything else falls back to DejaVu.
-        let face = if ui > 0 && typeface.covers(ui == 2, c) {
-            face_index(typeface, ui == 2)
-        } else {
-            None
+        // Platform families are Latin subsets; anything else falls back to DejaVu,
+        // and italic text to the upright faces for what no italic face has. This is
+        // `metrics::table_face`, so the advance measured is the glyph drawn.
+        let bold = ui == 2;
+        let face = match (
+            ui,
+            metrics::table_face(typeface, Style::new(bold, italic, Lang::Auto), c),
+        ) {
+            (0, _) => None,
+            (_, Some((Typeface::DejaVu, true))) => Some(OBLIQUE + u8::from(bold)),
+            (_, Some((family, slanted))) => {
+                face_index(family, bold, slanted).map(|f| PLATFORM + f as u8)
+            }
+            (_, None) => None,
         };
-        let ui = face.map_or(ui, |f| 3 + f as u8);
+        let ui = face.unwrap_or(ui);
         // Terminal text has no shaping, but a character DejaVu Sans Mono lacks still
         // draws from the fallback chain rather than as a box.
-        let fallback = if ui == 0 && !shaping::dejavu_mono_covers(c) {
+        let fallback = if ui == MONO && !shaping::dejavu_mono_covers(c) {
             shaping::script_face(false, c).and_then(|face| {
                 let font = font_pack::face_font(face);
                 if font.is_none() {
@@ -212,7 +267,7 @@ impl Renderer {
         } else {
             None
         };
-        let ui = fallback.map_or(ui, |(face, _)| 16 + face as u8);
+        let ui = fallback.map_or(ui, |(face, _)| FALLBACK + face as u8);
         if let Some(g) = self.glyphs.get(&(ui, c, size)) {
             return g.clone();
         }
@@ -223,7 +278,14 @@ impl Renderer {
         }
         let font = if let Some((_, font)) = fallback {
             font
-        } else if let Some(face) = face {
+        } else if (OBLIQUE..OBLIQUE + 2).contains(&ui) {
+            let i = usize::from(ui - OBLIQUE);
+            self.oblique[i].get_or_insert_with(|| {
+                Font::from_bytes(OBLIQUE_BYTES[i], FontSettings::default())
+                    .expect("bundled oblique font is valid")
+            })
+        } else if (PLATFORM..OBLIQUE).contains(&ui) {
+            let face = usize::from(ui - PLATFORM);
             self.faces[face].get_or_insert_with(|| {
                 Font::from_bytes(FACE_BYTES[face], FontSettings::default())
                     .expect("bundled platform font is valid")
@@ -301,7 +363,38 @@ impl Renderer {
         ui: u8,
         typeface: Typeface,
     ) -> Arc<Mask> {
-        let key = (ui, typeface, text.to_owned(), size, width, height);
+        self.text_styled(
+            text,
+            size,
+            width,
+            height,
+            ui,
+            Style::from(ui == 2),
+            typeface,
+        )
+    }
+    /// Rasterize a text block: `ui` 0 is the terminal grid (`Text`), 1 and 2 are
+    /// `UiText`/`UiTextBold` in `style` (italic and language; its weight is `ui`'s).
+    #[allow(clippy::too_many_arguments)]
+    fn text_styled(
+        &mut self,
+        text: &str,
+        size: u16,
+        width: u32,
+        height: u32,
+        ui: u8,
+        style: Style,
+        typeface: Typeface,
+    ) -> Arc<Mask> {
+        let style = if ui == 0 {
+            Style::default()
+        } else {
+            Style {
+                bold: ui == 2,
+                ..style
+            }
+        };
+        let key = (ui, style, typeface, text.to_owned(), size, width, height);
         if let Some(mask) = self.texts.get(&key) {
             return mask.clone();
         }
@@ -309,7 +402,7 @@ impl Renderer {
             || self
                 .texts
                 .values()
-                .map(|m| m.alpha.len() + m.spans.len() * 12)
+                .map(|m| m.alpha.len() + m.color.len() + m.spans.len() * 12)
                 .sum::<usize>()
                 > 16 * 1024 * 1024
         {
@@ -321,6 +414,7 @@ impl Renderer {
                 width: 0,
                 height: 0,
                 alpha: Vec::new(),
+                color: Vec::new(),
                 spans: Vec::new(),
             });
         }
@@ -328,28 +422,46 @@ impl Renderer {
             width,
             height,
             alpha: vec![0; len as usize],
+            color: Vec::new(),
             spans: Vec::new(),
         };
         let size = size.clamp(1, 256);
         if ui > 0 {
             // Tabulated 1/64-pixel advances and word wrapping are shared with layout
             // code, avoiding platform floating-point drift. Raster origins are integers.
-            let bold = ui == 2;
             let line_height = size as i64 + (size as i64 + 3) / 4;
             // Wrapping, fallback faces, bidi order and shaping all come from the same
             // layout the scene metrics measure with; Latin text takes its original
             // per-character path through it unchanged.
-            let lines = shaping::layout(typeface, bold, text, size, width);
+            let lines = shaping::layout(typeface, style, text, size, width);
             for (row, line) in lines.iter().enumerate() {
                 let baseline = size as i64 + row as i64 * line_height;
                 if baseline - size as i64 >= height as i64 {
                     break;
                 }
+                // Emoji clusters draw in colour when the colour face is installed;
+                // otherwise their monochrome glyphs stay (and the page is told).
+                let color = if line.emoji.is_empty() {
+                    None
+                } else {
+                    let face = font_pack::color_emoji();
+                    if face.is_none() {
+                        font_pack::note_missing(FaceId::ColorEmoji);
+                    }
+                    face
+                };
                 for placed in &line.glyphs {
+                    if color.is_some() && placed.face == Some(FaceId::Emoji) {
+                        continue;
+                    }
                     let g = match (placed.face, placed.glyph) {
-                        (None, GlyphRef::Char(c)) => {
-                            self.glyph(if c == '\t' { ' ' } else { c }, size, ui, typeface)
-                        }
+                        (None, GlyphRef::Char(c)) => self.glyph_styled(
+                            if c == '\t' { ' ' } else { c },
+                            size,
+                            ui,
+                            style.italic,
+                            typeface,
+                        ),
                         (Some(face), GlyphRef::Index(index)) => {
                             match self.shaped_glyph(face, index, size) {
                                 Some(g) => g,
@@ -364,19 +476,14 @@ impl Renderer {
                         - (placed.y + 32).div_euclid(64)
                         - g.metrics.height as i64
                         - g.metrics.ymin as i64;
-                    for gy in 0..g.metrics.height {
-                        let py = y + gy as i64;
-                        if py < 0 || py >= height as i64 {
-                            continue;
-                        }
-                        for gx in 0..g.metrics.width {
-                            let px = x + gx as i64;
-                            if px >= 0 && px < width as i64 {
-                                let i = py as usize * width as usize + px as usize;
-                                mask.alpha[i] =
-                                    mask.alpha[i].max(g.alpha[gy * g.metrics.width + gx]);
-                            }
-                        }
+                    blit(&mut mask, &g, x, y);
+                }
+                if let Some(face) = color {
+                    for span in &line.emoji {
+                        let cluster = &line.text[span.text.clone()];
+                        self.color_cluster(
+                            &mut mask, face, cluster, span.x0, span.x1, baseline, size,
+                        );
                     }
                 }
             }
@@ -388,35 +495,30 @@ impl Renderer {
                 if baseline - size as i64 >= height as i64 {
                     break;
                 }
-                for (col, c) in line.chars().enumerate() {
-                    let g = self.glyph(c, size, 0, Typeface::DejaVu);
-                    let x = col as i64 * cell as i64 + g.metrics.xmin as i64;
-                    let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
-                    for gy in 0..g.metrics.height {
-                        let py = y + gy as i64;
-                        if py < 0 || py >= height as i64 {
-                            continue;
-                        }
-                        for gx in 0..g.metrics.width {
-                            let px = x + gx as i64;
-                            if px >= 0 && px < width as i64 {
-                                let i = py as usize * width as usize + px as usize;
-                                mask.alpha[i] =
-                                    mask.alpha[i].max(g.alpha[gy * g.metrics.width + gx]);
-                            }
-                        }
+                if terminal::is_simple(line) {
+                    for (col, c) in line.chars().enumerate() {
+                        let g = self.glyph(c, size, 0, Typeface::DejaVu);
+                        let x = col as i64 * cell as i64 + g.metrics.xmin as i64;
+                        let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
+                        blit(&mut mask, &g, x, y);
                     }
+                } else {
+                    self.terminal_row(&mut mask, line, size, cell, baseline);
                 }
             }
         }
         for y in 0..height {
             let mut x = 0;
+            let inked = |x: u32| {
+                let i = (y * width + x) as usize;
+                mask.alpha[i] != 0 || mask.color.get(i * 4 + 3).is_some_and(|a| *a != 0)
+            };
             while x < width {
-                while x < width && mask.alpha[(y * width + x) as usize] == 0 {
+                while x < width && !inked(x) {
                     x += 1
                 }
                 let start = x;
-                while x < width && mask.alpha[(y * width + x) as usize] != 0 {
+                while x < width && inked(x) {
                     x += 1
                 }
                 if start < x {
@@ -425,10 +527,166 @@ impl Renderer {
             }
         }
         let mask = Arc::new(mask);
-        if mask.alpha.len() + mask.spans.len() * 12 <= 16 * 1024 * 1024 {
+        if mask.alpha.len() + mask.color.len() + mask.spans.len() * 12 <= 16 * 1024 * 1024 {
             self.texts.insert(key, mask.clone());
         }
         mask
+    }
+    /// One terminal row that needs more than the plain grid: clusters in visual
+    /// order, each drawn inside its own cells (see `cw_scene::text::terminal`).
+    fn terminal_row(&mut self, mask: &mut Mask, line: &str, size: u16, cell: u32, baseline: i64) {
+        for cluster in terminal::layout_line(line, size) {
+            let x0 = i64::from(cluster.col) * i64::from(cell);
+            let room = i64::from(cluster.width) * i64::from(cell) * 64;
+            let text = &line[cluster.text.clone()];
+            match cluster.face {
+                None => {
+                    // Monospace base with its marks: every character at the cell's
+                    // origin, the way DejaVu Sans Mono positions combining marks.
+                    for (k, c) in text.chars().enumerate() {
+                        let c = if cluster.rtl && k == 0 {
+                            unicode_mirror(c)
+                        } else {
+                            c
+                        };
+                        let g = self.glyph(c, size, 0, Typeface::DejaVu);
+                        let x = x0 + g.metrics.xmin as i64;
+                        let y = baseline - g.metrics.height as i64 - g.metrics.ymin as i64;
+                        blit(mask, &g, x, y);
+                    }
+                }
+                Some(FaceId::Emoji) if font_pack::color_emoji().is_some() => {
+                    let face = font_pack::color_emoji().expect("checked");
+                    let (glyphs, advance) = color_shape(face, text, size);
+                    // Fit the cluster into its two cells.
+                    let px = fit_size(size, advance, room);
+                    let scaled = advance * i64::from(px) / i64::from(size);
+                    let origin = x0 * 64 + (room - scaled) / 2;
+                    for (glyph, x, y) in glyphs {
+                        let x = origin + x * i64::from(px) / i64::from(size);
+                        let y = y * i64::from(px) / i64::from(size);
+                        self.blit_color(mask, face, glyph, px, x, y, baseline);
+                    }
+                }
+                Some(face) => {
+                    if face == FaceId::Emoji {
+                        font_pack::note_missing(FaceId::ColorEmoji);
+                    }
+                    // Shaped glyphs of a wider cluster (a CJK glyph is 1 em, two cells
+                    // 1.2 em; Arabic letters can exceed one cell) are drawn at the
+                    // whole pixel size that fits, centred in the cells.
+                    let px = fit_size(size, cluster.advance, room);
+                    let scaled = cluster.advance * i64::from(px) / i64::from(size);
+                    let origin = x0 * 64 + (room - scaled) / 2;
+                    for placed in &cluster.glyphs {
+                        let GlyphRef::Index(index) = placed.glyph else {
+                            continue;
+                        };
+                        let g = match self.shaped_glyph(face, index, px) {
+                            Some(g) => g,
+                            None => self.glyph('\u{FFFF}', px, 0, Typeface::DejaVu),
+                        };
+                        let x = origin + placed.x * i64::from(px) / i64::from(size);
+                        let y = placed.y * i64::from(px) / i64::from(size);
+                        let x = (x + 32).div_euclid(64) + g.metrics.xmin as i64;
+                        let y = baseline
+                            - (y + 32).div_euclid(64)
+                            - g.metrics.height as i64
+                            - g.metrics.ymin as i64;
+                        blit(mask, &g, x, y);
+                    }
+                }
+            }
+        }
+    }
+    /// A colour emoji cluster between pen positions `x0` and `x1` (1/64 pixel):
+    /// shaped with the colour face and centred on the monochrome glyphs' span, so
+    /// layout is the same with or without the colour face.
+    #[allow(clippy::too_many_arguments)]
+    fn color_cluster(
+        &mut self,
+        mask: &mut Mask,
+        face: &'static rustybuzz::Face<'static>,
+        cluster: &str,
+        x0: i64,
+        x1: i64,
+        baseline: i64,
+        size: u16,
+    ) {
+        let (glyphs, advance) = color_shape(face, cluster, size);
+        let origin = x0 + (x1 - x0 - advance) / 2;
+        for (glyph, x, y) in glyphs {
+            self.blit_color(mask, face, glyph, size, origin + x, y, baseline);
+        }
+    }
+    /// Composite one colour glyph (premultiplied) into the block's colour layer, its
+    /// pen at `x` (1/64 pixel) and `y` above the baseline (1/64 pixel).
+    #[allow(clippy::too_many_arguments)]
+    fn blit_color(
+        &mut self,
+        mask: &mut Mask,
+        face: &'static rustybuzz::Face<'static>,
+        glyph: u16,
+        size: u16,
+        x: i64,
+        y: i64,
+        baseline: i64,
+    ) {
+        let key = (glyph, size);
+        let raster = match self.colors.get(&key) {
+            Some(r) => r.clone(),
+            None => {
+                if self.colors.len() >= 1024
+                    || self
+                        .colors
+                        .values()
+                        .filter_map(|g| g.as_ref().as_ref())
+                        .map(|g| g.rgba.len())
+                        .sum::<usize>()
+                        > 16 * 1024 * 1024
+                {
+                    self.colors.clear();
+                }
+                let raster = Arc::new(colr::rasterize(
+                    face,
+                    rustybuzz::ttf_parser::GlyphId(glyph),
+                    f32::from(size),
+                    rustybuzz::ttf_parser::RgbaColor::new(0, 0, 0, 255),
+                ));
+                self.colors.insert(key, raster.clone());
+                raster
+            }
+        };
+        let Some(g) = raster.as_ref() else {
+            return;
+        };
+        if mask.color.is_empty() {
+            mask.color = vec![0; mask.alpha.len() * 4];
+        }
+        let left = (x + 32).div_euclid(64) + i64::from(g.left);
+        let top = baseline - (y + 32).div_euclid(64) - i64::from(g.top);
+        let (w, h) = (i64::from(mask.width), i64::from(mask.height));
+        for gy in 0..i64::from(g.height) {
+            let py = top + gy;
+            if py < 0 || py >= h {
+                continue;
+            }
+            for gx in 0..i64::from(g.width) {
+                let px = left + gx;
+                if px < 0 || px >= w {
+                    continue;
+                }
+                let s = &g.rgba[((gy * i64::from(g.width) + gx) * 4) as usize..][..4];
+                if s[3] == 0 {
+                    continue;
+                }
+                let d = &mut mask.color[((py * w + px) * 4) as usize..][..4];
+                let keep = 255 - u32::from(s[3]);
+                for i in 0..4 {
+                    d[i] = (u32::from(s[i]) + (u32::from(d[i]) * keep + 127) / 255).min(255) as u8;
+                }
+            }
+        }
     }
     fn paint(&mut self, scene: &Scene, damage: &[Rect]) {
         let viewport = Rect::new(0, 0, scene.width, scene.height);
@@ -455,20 +713,34 @@ impl Renderer {
                         0,
                         scene.typeface,
                     )),
-                    Primitive::UiTextBold { text, size, .. } => Some(self.text(
+                    Primitive::UiTextBold {
+                        text,
+                        size,
+                        italic,
+                        lang,
+                        ..
+                    } => Some(self.text_styled(
                         text,
                         *size,
                         node.bounds.width,
                         node.bounds.height,
                         2,
+                        Style::new(true, *italic, *lang),
                         scene.typeface,
                     )),
-                    Primitive::UiText { text, size, .. } => Some(self.text(
+                    Primitive::UiText {
+                        text,
+                        size,
+                        italic,
+                        lang,
+                        ..
+                    } => Some(self.text_styled(
                         text,
                         *size,
                         node.bounds.width,
                         node.bounds.height,
                         1,
+                        Style::new(false, *italic, *lang),
                         scene.typeface,
                     )),
                     _ => None,
@@ -635,17 +907,27 @@ impl Renderer {
                     let right =
                         (node.bounds.x as i64 + end as i64).min(area.x as i64 + area.width as i64);
                     for x in left..right {
-                        let alpha = mask.alpha
-                            [(row * mask.width) as usize + (x - node.bounds.x as i64) as usize];
-                        let color = Color(
-                            color.0,
-                            color.1,
-                            color.2,
-                            mul_alpha(
-                                mul_alpha(mul_alpha(color.3, alpha), node.opacity),
-                                clip_coverage(x, y),
-                            ),
-                        );
+                        let i = (row * mask.width) as usize + (x - node.bounds.x as i64) as usize;
+                        let alpha = mask.alpha[i];
+                        let color = if mask.color.is_empty() {
+                            Color(
+                                color.0,
+                                color.1,
+                                color.2,
+                                mul_alpha(
+                                    mul_alpha(mul_alpha(color.3, alpha), node.opacity),
+                                    clip_coverage(x, y),
+                                ),
+                            )
+                        } else {
+                            let c = text_pixel(*color, alpha, &mask.color[i * 4..i * 4 + 4]);
+                            Color(
+                                c.0,
+                                c.1,
+                                c.2,
+                                mul_alpha(mul_alpha(c.3, node.opacity), clip_coverage(x, y)),
+                            )
+                        };
                         if color.3 == 0 {
                             continue;
                         }
@@ -845,9 +1127,13 @@ impl Renderer {
                         if local_x >= mask.width as i64 || local_y >= mask.height as i64 {
                             continue;
                         }
-                        let a =
-                            mask.alpha[local_y as usize * mask.width as usize + local_x as usize];
-                        Color(color.0, color.1, color.2, mul_alpha(color.3, a))
+                        let i = local_y as usize * mask.width as usize + local_x as usize;
+                        let a = mask.alpha[i];
+                        if mask.color.is_empty() {
+                            Color(color.0, color.1, color.2, mul_alpha(color.3, a))
+                        } else {
+                            text_pixel(*color, a, &mask.color[i * 4..i * 4 + 4])
+                        }
                     }
                     Primitive::Shadow { color, .. } => {
                         let Some(mask) = shadow else { continue };
@@ -1005,6 +1291,70 @@ fn normalize_damage(input: &[Rect], viewport: Rect) -> Vec<Rect> {
 }
 fn mul_alpha(a: u8, b: u8) -> u8 {
     ((a as u32 * b as u32 + 127) / 255) as u8
+}
+/// Max-composite a glyph's coverage into a text mask with its top-left at (x, y).
+fn blit(mask: &mut Mask, g: &Glyph, x: i64, y: i64) {
+    let (width, height) = (mask.width as i64, mask.height as i64);
+    for gy in 0..g.metrics.height {
+        let py = y + gy as i64;
+        if py < 0 || py >= height {
+            continue;
+        }
+        for gx in 0..g.metrics.width {
+            let px = x + gx as i64;
+            if px >= 0 && px < width {
+                let i = py as usize * width as usize + px as usize;
+                mask.alpha[i] = mask.alpha[i].max(g.alpha[gy * g.metrics.width + gx]);
+            }
+        }
+    }
+}
+/// A text pixel with a colour layer: the colour glyph (premultiplied) over the
+/// text colour at `alpha` coverage, as one straight-alpha colour.
+fn text_pixel(text: Color, alpha: u8, glyph: &[u8]) -> Color {
+    let ta = u32::from(mul_alpha(text.3, alpha));
+    let ga = u32::from(glyph[3]);
+    let out = ga + (ta * (255 - ga) + 127) / 255;
+    if out == 0 {
+        return Color(text.0, text.1, text.2, 0);
+    }
+    let channel = |t: u8, g: u8| {
+        let premultiplied = u32::from(g) * 255 + u32::from(t) * ta * (255 - ga) / 255;
+        ((premultiplied + out / 2) / out).min(255) as u8
+    };
+    Color(
+        channel(text.0, glyph[0]),
+        channel(text.1, glyph[1]),
+        channel(text.2, glyph[2]),
+        out.min(255) as u8,
+    )
+}
+/// The whole pixel size at which something `advance` wide (1/64 pixel at `size`)
+/// fits in `room`: `size` itself when it already fits.
+fn fit_size(size: u16, advance: i64, room: i64) -> u16 {
+    if advance > room && advance > 0 {
+        (i64::from(size) * room / advance).clamp(1, i64::from(size)) as u16
+    } else {
+        size
+    }
+}
+/// Shape an emoji cluster with the colour face: glyph ids with pen x and y (1/64
+/// pixel at `size`), and the total advance.
+fn color_shape(face: &rustybuzz::Face<'_>, text: &str, size: u16) -> (Vec<(u16, i64, i64)>, i64) {
+    let mut pen = 0;
+    let mut out = Vec::new();
+    for g in shaping::shape_with(face, text, false) {
+        out.push((
+            g.glyph,
+            pen + shaping::scale(g.x_offset, g.upem, size),
+            shaping::scale(g.y_offset, g.upem, size),
+        ));
+        pen += shaping::scale(g.x_advance, g.upem, size);
+    }
+    (out, pen)
+}
+fn unicode_mirror(c: char) -> char {
+    shaping::mirrored(c)
 }
 fn blend(dst: &mut [u8], src: Color) {
     if src.3 == 255 {
@@ -1451,15 +1801,15 @@ mod tests {
         );
     }
     /// DejaVu is subset (see `assets/build-fonts.py`) and the Noto fallback faces
-    /// cover Hebrew, Arabic, Thai, Devanagari, CJK and emoji; a codepoint outside
+    /// cover the scripts listed in `cw_scene::text`, CJK and emoji; a codepoint outside
     /// all of them has nowhere left to go. It must then draw `.notdef` — a visible
     /// hollow box — rather than nothing at all, because a glyph that silently renders
     /// as blank is indistinguishable from a rendering bug and unreadable to an OCR
     /// consumer. (`script_tests` pins that the covered scripts draw real glyphs.)
     #[test]
     fn uncovered_codepoints_draw_a_visible_notdef_box() {
-        // Georgian, Armenian, Ethiopic, Cherokee, Khmer: covered by no bundled face.
-        for uncovered in ['\u{10A0}', '\u{0531}', '\u{1200}', '\u{13A0}', '\u{1780}'] {
+        // Tibetan, Syriac, Cherokee, Mongolian, Tifinagh: covered by no bundled face.
+        for uncovered in ['\u{0F40}', '\u{0710}', '\u{13A0}', '\u{1820}', '\u{2D30}'] {
             for ui in [0u8, 1, 2] {
                 let mut renderer = Renderer::new();
                 let glyph = renderer.glyph(uncovered, 24, ui, Typeface::DejaVu);
@@ -1471,7 +1821,7 @@ mod tests {
                 );
                 // Every uncovered codepoint maps to glyph 0, so they are the
                 // same mark: predictable, not merely non-empty.
-                let other = renderer.glyph('\u{10D0}', 24, ui, Typeface::DejaVu);
+                let other = renderer.glyph('\u{1401}', 24, ui, Typeface::DejaVu);
                 assert_eq!(
                     glyph.alpha, other.alpha,
                     "U+{:04X} at ui={ui} is not the shared .notdef",
@@ -1483,7 +1833,7 @@ mod tests {
         // above would pass with the whole face replaced by boxes.
         let mut renderer = Renderer::new();
         let lambda = renderer.glyph('\u{03BB}', 24, 1, Typeface::DejaVu);
-        let notdef = renderer.glyph('\u{10A0}', 24, 1, Typeface::DejaVu);
+        let notdef = renderer.glyph('\u{13A0}', 24, 1, Typeface::DejaVu);
         assert_ne!(lambda.alpha, notdef.alpha, "λ must not be .notdef");
     }
     #[test]
@@ -1570,6 +1920,7 @@ fn shadow_mask(width: u32, height: u32, radius: u32, blur: u32) -> Mask {
         width,
         height,
         alpha,
+        color: Vec::new(),
         spans: Vec::new(),
     }
 }

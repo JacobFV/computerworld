@@ -173,6 +173,7 @@ chat, browser discovery and service debugging.
 | Agent actions, observations and evaluation | [Agent API](docs/agent-api.md) |
 | Every family, op, payload and the privileged/actor split | [Action families](docs/action-families.md) |
 | Desktop shell, windows and interaction targets | [Desktop GUI](docs/desktop-gui.md) |
+| Debugging a program in the world | [Debugging](docs/debugging.md) |
 | Application and service extensions | [App SDK](docs/application-sdk.md), [service SDK](docs/service-sdk.md) |
 | Authoring examples | [Custom app](docs/custom-application.md), [custom service](docs/custom-service.md) |
 | Semantics and isolation | [Computers](docs/computers.md), [networking](docs/networking.md), [security](docs/security.md) |

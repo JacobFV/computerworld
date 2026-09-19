@@ -1,6 +1,6 @@
 //! Contacts assembled from the people the machine's own services really know about:
 //! mailbox users and chat channel members. No address book is invented.
-use super::look::{action, header, look, notice, INK, LINE, MUTED};
+use super::look::{action, look, notice, screen, INK, LINE, MUTED};
 use super::Status;
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -183,6 +183,11 @@ impl Contacts {
             .strip_prefix("contacts:")
             .ok_or("interaction does not belong to contacts")?;
         match command {
+            // A phone's back button: from a contact card to the list.
+            "back" => {
+                self.selected.take().ok_or("no contact is open")?;
+                Ok(vec![])
+            }
             "reload" => {
                 self.people.clear();
                 self.selected = None;
@@ -254,7 +259,37 @@ impl Contacts {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let top = header(p, theme, &l, width, &self.title(theme));
+        let narrow = theme.mobile() || width < 520;
+        // A phone shows a contact's card in place of the list.
+        if narrow {
+            if let Some(person) = self
+                .selected
+                .as_ref()
+                .filter(|p| self.people.contains_key(*p))
+            {
+                let back = Rect::new(4, 6, 110, 30);
+                p.button(
+                    back,
+                    Color::TRANSPARENT,
+                    l.radius,
+                    "contacts:back",
+                    "Back to contacts",
+                );
+                p.symbol("chevron-left", back.x + 2, back.y + 5, 20, l.accent);
+                p.left(
+                    back.x + 24,
+                    back.y + 6,
+                    86,
+                    &self.title(theme),
+                    15,
+                    l.accent,
+                );
+                self.card(p, &l, width, person, 0, 40);
+                return;
+            }
+        }
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let top = screen.top;
         action(
             p,
             &l,
@@ -265,23 +300,28 @@ impl Contacts {
         );
         if let Some(text) = self.status.notice() {
             notice(p, width, top + 40, text);
+            screen.end(p);
             return;
         }
         if self.people.is_empty() {
             notice(p, width, top + 40, "No contacts yet");
+            screen.end(p);
             return;
         }
-        let list_w = if theme.mobile() || width < 520 {
-            width
-        } else {
-            260
-        };
-        let mut y = top + 40;
+        let list_w = if narrow { width } else { 260 };
+        let list = screen.column(
+            p,
+            "list",
+            Rect::new(
+                0,
+                top + 38,
+                list_w,
+                (height as i32 - top - 38).max(1) as u32,
+            ),
+        );
+        let mut y = list.top + 2;
         for (person, shared) in &self.people {
             let r = Rect::new(4, y, list_w.saturating_sub(8), l.row.max(36));
-            if r.y as u32 + r.height > height {
-                break;
-            }
             let on = self.selected.as_deref() == Some(person.as_str());
             p.button(
                 r,
@@ -327,43 +367,15 @@ impl Contacts {
             }
             y += r.height as i32 + 1;
         }
-        if list_w == width {
+        list.end(p);
+        screen.end(p);
+        if narrow {
             return;
         }
         let x = list_w as i32;
         p.vline(x, top, height, LINE);
         match &self.selected {
-            Some(person) => {
-                p.strong(
-                    x + 20,
-                    top + 20,
-                    width.saturating_sub(list_w + 40),
-                    person,
-                    18,
-                    INK,
-                );
-                let shared = &self.people[person];
-                p.left(
-                    x + 20,
-                    top + 46,
-                    width.saturating_sub(list_w + 40),
-                    &if shared.is_empty() {
-                        "No shared channels".to_owned()
-                    } else {
-                        format!("Shared channels: {}", shared.join(", "))
-                    },
-                    12,
-                    MUTED,
-                );
-                action(
-                    p,
-                    &l,
-                    Rect::new(x + 20, top + 74, 132, 28),
-                    "Write a message",
-                    &format!("contacts:mail:{person}"),
-                    true,
-                );
-            }
+            Some(person) => self.card(p, &l, width, person, x, top),
             None => notice(
                 p,
                 width.saturating_sub(list_w),
@@ -371,6 +383,40 @@ impl Contacts {
                 "Select a contact",
             ),
         }
+    }
+    /// A contact's card from `x` rightwards and `top` down.
+    fn card(
+        &self,
+        p: &mut Painter,
+        l: &super::look::Look,
+        width: u32,
+        person: &str,
+        x: i32,
+        top: i32,
+    ) {
+        let text_w = width.saturating_sub(x as u32 + 40);
+        p.strong(x + 20, top + 20, text_w, person, 18, INK);
+        let shared = self.people.get(person).cloned().unwrap_or_default();
+        p.left(
+            x + 20,
+            top + 46,
+            text_w,
+            &if shared.is_empty() {
+                "No shared channels".to_owned()
+            } else {
+                format!("Shared channels: {}", shared.join(", "))
+            },
+            12,
+            MUTED,
+        );
+        action(
+            p,
+            l,
+            Rect::new(x + 20, top + 74, 132, 28),
+            "Write a message",
+            &format!("contacts:mail:{person}"),
+            true,
+        );
     }
 }
 

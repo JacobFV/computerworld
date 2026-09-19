@@ -90,9 +90,37 @@ world.restore(checkpoint)
 Keep `world` and `env` alive for an episode; do not construct a process or runtime
 per action. Configuration/actions/results are Python dictionaries and lists.
 Python seeds are unsigned 64-bit integers. Invalid binding calls raise `ValueError`;
-individual failed actions appear in `result["outcomes"]` and must also be checked.
-The handles are synchronous and not thread-shareable; independent processes can
-own independent worlds.
+individual failed actions appear in `result["outcomes"]` and must also be checked. Codes
+and refusal reasons are in [Errors and refusals](agent-api.md#errors-and-refusals).
+
+## Threading
+
+`World`, `Environment` and `Snapshot` may be passed to other threads and called from
+them. A `World` and every `Environment` minted from it share one lock around the Rust
+world, so calls from several threads are **serialized**, not concurrent: a call that
+arrives while another is running waits for it. Nothing is silently dropped and nothing
+races.
+
+```python
+import threading
+frame = {}
+t = threading.Thread(target=lambda: frame.update(env.render(320, 240)))
+t.start(); t.join()          # works: the render happens on that thread
+```
+
+What threads do *not* buy you is parallel simulation. One `World` is one state machine,
+and the order its actions land in is the order the threads took the lock — which is not
+deterministic across runs. **Keep an episode on one thread**, or give each thread its own
+`World` (`World(definition, seed)`, or `world.fork(world.snapshot())`, whose result is an
+independent world). Threads are for keeping a UI responsive or for driving independent
+worlds side by side, not for splitting one episode.
+
+If a call panics inside the simulation, the lock is poisoned and every later call on that
+world raises `RuntimeError` naming the situation. That is a deliberate change from
+earlier alpha builds, where the objects were marked `unsendable` and a call from a second
+thread **aborted the interpreter** instead of raising. Nothing here aborts the host
+process. `crates/python/tests/test_threading.py` asserts both halves: a call from a
+second thread succeeds, and a poisoned world raises rather than dying.
 
 `Environment` exposes `id`, `step`, `observe`, `scene(width=1024, height=768)` and
 `render(width=1024, height=768)`. Scene access requires a `semantic.v1` or `pixels.v1`

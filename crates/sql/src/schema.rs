@@ -42,6 +42,14 @@ pub struct Table {
     pub rows: BTreeMap<i64, Vec<Value>>,
     pub temp: bool,
     pub ordinal: u64,
+    /// A `WITHOUT ROWID` table: its rows are keyed by the primary key. The engine
+    /// still numbers them internally, but no rowid is visible and the file stores
+    /// the table as an index B-tree in primary-key order.
+    #[serde(default)]
+    pub without_rowid: bool,
+    /// Each primary key column's collation and direction, in key order.
+    #[serde(default)]
+    pub pk_order: Vec<(Collation, bool)>,
 }
 impl Table {
     pub fn column(&self, name: &str) -> Option<usize> {
@@ -59,11 +67,86 @@ impl Table {
         row
     }
     pub fn is_rowid_name(&self, name: &str) -> bool {
-        ["rowid", "oid", "_rowid_"]
-            .iter()
-            .any(|r| r.eq_ignore_ascii_case(name))
+        !self.without_rowid
+            && ["rowid", "oid", "_rowid_"]
+                .iter()
+                .any(|r| r.eq_ignore_ascii_case(name))
             && self.column(name).is_none()
     }
+    /// Stored rows in the order a full scan visits them: rowid order, or primary key
+    /// order (with each key column's collation and direction) for a WITHOUT ROWID table.
+    pub fn scan_ids(&self) -> Vec<i64> {
+        let mut ids: Vec<i64> = self.rows.keys().copied().collect();
+        if self.without_rowid {
+            let key: Vec<(usize, Collation, bool)> = self
+                .primary_key
+                .iter()
+                .zip(&self.pk_order)
+                .map(|(c, (coll, desc))| (*c, *coll, *desc))
+                .collect();
+            ids.sort_by(|a, b| {
+                let (ra, rb) = (&self.rows[a], &self.rows[b]);
+                for (c, coll, desc) in &key {
+                    let o = crate::value::compare(
+                        ra.get(*c).unwrap_or(&Value::Null),
+                        rb.get(*c).unwrap_or(&Value::Null),
+                        *coll,
+                    );
+                    let o = if *desc { o.reverse() } else { o };
+                    if o != std::cmp::Ordering::Equal {
+                        return o;
+                    }
+                }
+                a.cmp(b)
+            });
+        }
+        ids
+    }
+    /// A WITHOUT ROWID table's record order in the file: the primary key columns,
+    /// then every other column in table order.
+    pub fn record_columns(&self) -> Vec<usize> {
+        let mut out = self.primary_key.clone();
+        out.extend((0..self.columns.len()).filter(|c| !self.primary_key.contains(c)));
+        out
+    }
+}
+/// SQLite's estimate of a column's width (`szEst`), scaled so an integer is 1: text and
+/// blob columns count as about 20 bytes unless their type gives a length.
+pub fn size_estimate(decl_type: &str) -> u32 {
+    if decl_type.trim().is_empty() {
+        return 1;
+    }
+    let lower = decl_type.to_ascii_lowercase();
+    let aff = Affinity::from_type(decl_type);
+    let v = if matches!(aff, Affinity::Text | Affinity::Blob) {
+        // Only CHAR types (and BLOB(n)) read a length; others are assumed 16 bytes.
+        let digits_after = |at: usize| -> u32 {
+            let rest = &lower[at..];
+            let start = rest.find(|c: char| c.is_ascii_digit());
+            start.map_or(0, |s| {
+                rest[s..]
+                    .chars()
+                    .take_while(char::is_ascii_digit)
+                    .collect::<String>()
+                    .parse()
+                    .unwrap_or(0)
+            })
+        };
+        if let Some(i) = lower.find("char") {
+            digits_after(i + 4)
+        } else if let Some(i) = lower.find("blob") {
+            if lower[i + 4..].trim_start().starts_with('(') {
+                digits_after(i + 4)
+            } else {
+                16
+            }
+        } else {
+            16
+        }
+    } else {
+        0
+    };
+    (v / 4 + 1).min(255)
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IndexOrigin {
@@ -165,11 +248,25 @@ pub struct View {
     pub ordinal: u64,
 }
 
+/// A trigger as the schema keeps it: its `CREATE TRIGGER` text, parsed again when it
+/// fires, and the table or view it watches.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Trigger {
+    pub name: String,
+    /// Lower-case key of the table (or view) in `State`.
+    pub table: String,
+    pub sql: String,
+    pub ordinal: u64,
+    pub temp: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct State {
     pub tables: BTreeMap<String, Arc<Table>>,
     pub indexes: BTreeMap<String, Arc<Index>>,
     pub views: BTreeMap<String, View>,
+    #[serde(default)]
+    pub triggers: BTreeMap<String, Trigger>,
     pub next_ordinal: u64,
     pub user_version: i64,
     pub foreign_keys: bool,
@@ -212,6 +309,13 @@ impl State {
             None
         }
     }
+    /// Triggers on a table or view, most recently created first (the order they fire).
+    pub fn triggers_on(&self, table: &str) -> Vec<&Trigger> {
+        let key = table.to_ascii_lowercase();
+        let mut v: Vec<&Trigger> = self.triggers.values().filter(|t| t.table == key).collect();
+        v.sort_by_key(|t| std::cmp::Reverse(t.ordinal));
+        v
+    }
     pub fn ordinal(&mut self) -> u64 {
         self.next_ordinal += 1;
         self.next_ordinal
@@ -230,11 +334,6 @@ pub fn build_table(
     ct: &crate::ast::CreateTable,
     sql: String,
 ) -> Result<(Table, Vec<Index>), SqlError> {
-    if ct.without_rowid {
-        return Err(SqlError::new(
-            "WITHOUT ROWID tables are not supported by this engine",
-        ));
-    }
     if ct.columns.is_empty() {
         return Err(SqlError::new("a table needs at least one column"));
     }
@@ -348,7 +447,41 @@ pub fn build_table(
     let mut ipk = None;
     let mut autoincrement = false;
     let mut primary_key = Vec::new();
-    if let Some((cols, autoinc)) = &pk {
+    let mut pk_order = Vec::new();
+    if ct.without_rowid {
+        match &pk {
+            None => {
+                return Err(SqlError::new(format!(
+                    "PRIMARY KEY missing on table {}",
+                    ct.name
+                )))
+            }
+            Some((_, true)) => {
+                return Err(SqlError::new(
+                    "AUTOINCREMENT not allowed on WITHOUT ROWID tables",
+                ))
+            }
+            Some(_) => {}
+        }
+    }
+    if let Some((cols, _)) = &pk {
+        for (c, coll, desc) in cols {
+            let collation = match coll {
+                Some(name) => Collation::parse(name)
+                    .ok_or_else(|| SqlError::new(format!("no such collation sequence: {name}")))?,
+                None => columns[*c].collation,
+            };
+            pk_order.push((collation, *desc));
+        }
+    }
+    if let Some((cols, _)) = pk.as_ref().filter(|_| ct.without_rowid) {
+        primary_key = cols.iter().map(|c| c.0).collect();
+        for &(c, _, _) in cols {
+            columns[c].primary_key = true;
+            // Every primary key column of a WITHOUT ROWID table is NOT NULL.
+            columns[c].not_null = true;
+        }
+    } else if let Some((cols, autoinc)) = &pk {
         primary_key = cols.iter().map(|c| c.0).collect();
         for &(c, _, _) in cols {
             columns[c].primary_key = true;
@@ -387,6 +520,8 @@ pub fn build_table(
         rows: BTreeMap::new(),
         temp: ct.temporary,
         ordinal,
+        without_rowid: ct.without_rowid,
+        pk_order,
     };
     let mut indexes = Vec::new();
     let mut n = 0;

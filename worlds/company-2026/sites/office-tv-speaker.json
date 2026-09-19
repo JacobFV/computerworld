@@ -1,0 +1,27 @@
+{
+  "id": "office-tv-speaker",
+  "kind": "speaker",
+  "node": "office-tv-speaker",
+  "domains": [
+    "office-tv.speaker.internal"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "10.0.2.22",
+    "zone": "local",
+    "link": {
+      "from": "app-server",
+      "latency_us": 10
+    }
+  },
+  "initial_state": {
+    "name": "Office TV",
+    "model": "Television",
+    "protocols": [
+      "airplay",
+      "cast",
+      "dlna"
+    ],
+    "volume": 20
+  }
+}

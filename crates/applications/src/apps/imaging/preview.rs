@@ -229,7 +229,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
 
     let area = Rect::new(0, top, w, h.saturating_sub(top as u32));
     if open {
-        view::canvas(p, &s, area, st, false);
+        view::canvas(p, &s, area, st, false, env.pointer);
         view::scrollbars(p, &s, area, st);
     } else {
         p.box_(area, s.backdrop, 0);

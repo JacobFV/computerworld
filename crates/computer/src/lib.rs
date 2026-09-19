@@ -1,12 +1,17 @@
 //! Pure, serializable computer substrate. No host filesystem, clock, or process access.
+mod awk;
+mod datautils;
+pub mod debug;
 pub mod debugger;
 pub mod git;
 mod gzipcmd;
 pub mod packages;
 pub mod process;
 pub mod runtimes;
+mod sed;
 pub mod shell;
 mod sqlite;
+mod textutils;
 pub mod vfs;
 use cw_protocol::{HttpRequest, HttpResponse};
 pub use packages::*;
@@ -24,6 +29,12 @@ pub struct CommandResult {
     /// application must erase its scrollback itself when this is set.
     #[serde(default)]
     pub clear: bool,
+    /// Documents or URLs `xdg-open` (`open`, `start`) asked the desktop to open, in the
+    /// order they were asked for. A shell cannot open a window; the interface layer
+    /// launches the right application when it sees these, and appends its own refusal
+    /// to `stderr` when it cannot.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub open: Vec<String>,
 }
 impl CommandResult {
     pub fn success(stdout: impl Into<String>) -> Self {
@@ -175,6 +186,12 @@ pub struct Computer {
     /// goes to it instead of to the shell.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session: Option<runtimes::RuntimeSession>,
+    /// Programs paused under a debugger (`debug::DebugAdapter`).
+    #[serde(default, skip_serializing_if = "debug_is_empty")]
+    pub debug: debug::DebugTable,
+}
+fn debug_is_empty(t: &debug::DebugTable) -> bool {
+    t.sessions.is_empty() && t.next == 0
 }
 impl Computer {
     pub fn validate(&self) -> cw_protocol::Result<()> {
@@ -229,6 +246,7 @@ impl Computer {
             runtime_elapsed_micros: 0,
             tty: false,
             session: None,
+            debug: debug::DebugTable::default(),
         }
     }
     pub fn from_definition(

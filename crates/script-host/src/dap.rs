@@ -332,6 +332,16 @@ impl DapSession {
         Self::default()
     }
 
+    /// A session that carries on from host calls already made: the journal
+    /// answers them, so replaying the program does not repeat them. This is
+    /// how a session kept as data (in a world's snapshot) comes back to life.
+    pub fn with_journal(journal: Journal) -> Self {
+        Self {
+            journal,
+            ..Self::default()
+        }
+    }
+
     pub fn capabilities() -> Capabilities {
         Capabilities {
             supports_configuration_done_request: true,

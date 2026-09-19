@@ -15,6 +15,7 @@ pub use cw_service_press as press;
 pub use cw_service_search as search;
 pub use cw_service_shop as shop;
 pub use cw_service_social as social;
+pub use cw_service_speaker as speaker;
 pub use cw_service_static_site as static_site;
 pub use cw_service_wiki as wiki;
 /// The simulated public web's kinds; the eight content packages bind sites to these.
@@ -53,6 +54,7 @@ pub fn register(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
     press::register(registry)?;
     search::register(registry)?;
     shop::register(registry)?;
+    speaker::register(registry)?;
     social::register(registry)?;
     wiki::register(registry)?;
     Ok(())
@@ -76,7 +78,8 @@ mod tests {
     #[test]
     fn registry_has_independent_optional_services() {
         let r = super::registry().unwrap();
-        assert_eq!(r.service_kinds().count(), 18);
+        assert_eq!(r.service_kinds().count(), 19);
+        assert!(r.service("speaker").is_ok());
         assert!(r.service("git").is_ok());
         assert!(r.service("static-site").is_ok());
         for kind in super::WEB_KINDS {

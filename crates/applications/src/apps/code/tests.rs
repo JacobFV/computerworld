@@ -251,8 +251,24 @@ fn run_saves_then_executes_the_file_and_tracebacks_become_problems() {
     let mut app = workspace();
     open(&mut app, "main.py", "print(x)\n");
     app.text_effects(W, "#").unwrap();
-    let effects = app.key(W, "F5", 0).unwrap();
-    // Saved first, then a terminal session is started and the file run in it.
+    // F5 is Start Debugging: it asks the machine's debugger first.
+    let asked = app.key(W, "F5", 0).unwrap();
+    assert!(matches!(
+        &asked[0],
+        AppEffect::Debug { request, .. }
+            if matches!(request, cw_protocol::debug::Request::Launch(l) if l.kind == "python")
+    ));
+    // This machine has none, so it says so and runs the file the way Run does: saved
+    // first, then a terminal session is started and the file run in it.
+    let effects = app.debug_reply(
+        W,
+        "launch",
+        Err("no debug adapter for Python is installed on this machine".into()),
+    );
+    assert_eq!(
+        app.notice.as_deref(),
+        Some("no debug adapter for Python is installed on this machine; running without debugging")
+    );
     let AppEffect::WriteFile { path, content, .. } = &effects[0] else {
         panic!("saved first")
     };
@@ -636,11 +652,11 @@ fn clipboard_and_drag_selection_go_through_the_desktop() {
         vec![("/work/a.txt".into(), Ok("hello world".into()))],
     )
     .unwrap();
-    d.click("code:editor:0:0:0:30").unwrap();
+    d.click("code:editor:0:0:0:0:30").unwrap();
     // Press at column 0, release at column 5: "hello" is selected.
     let (cw, _) = render::cell(14, Platform::Linux);
-    d.press_at("code:editor:0:0:0:30", 0, 2).unwrap();
-    d.click_at("code:editor:0:0:0:30", 5 * cw as i32, 2)
+    d.press_at("code:editor:0:0:0:0:30", 0, 2).unwrap();
+    d.click_at("code:editor:0:0:0:0:30", 5 * cw as i32, 2)
         .unwrap();
     let code = |d: &DesktopState| match &d.windows[&id].state {
         AppState::Native(NativeApp::Code(c)) => c.clone(),
@@ -729,4 +745,743 @@ fn every_painted_control_is_a_real_target_or_announced_disabled() {
             probe.click(W, t, 0).unwrap_or_else(|e| panic!("{t}: {e}"));
         }
     }
+}
+
+/// The text of the active editor.
+fn text(app: &Code) -> String {
+    app.active_tab().unwrap().doc.text.clone()
+}
+/// Every caret, in text order.
+fn carets(app: &Code) -> Vec<usize> {
+    let doc = &app.active_tab().unwrap().doc;
+    let mut all: Vec<usize> = doc.all_carets().into_iter().map(|(c, _)| c).collect();
+    all.sort();
+    all
+}
+
+#[test]
+fn several_cursors_type_delete_and_undo_as_one_edit() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "one\ntwo\nthree\n");
+    app.run_command(W, "editor.action.insertCursorBelow")
+        .unwrap();
+    app.run_command(W, "editor.action.insertCursorBelow")
+        .unwrap();
+    assert_eq!(
+        carets(&app),
+        [0, 4, 8],
+        "one caret at the start of each line"
+    );
+    // Typing happens at every caret, and the undo history holds it as one step.
+    app.text_effects(W, "#").unwrap();
+    app.text_effects(W, " ").unwrap();
+    assert_eq!(text(&app), "# one\n# two\n# three\n");
+    assert_eq!(carets(&app), [2, 8, 14]);
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "#one\n#two\n#three\n");
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "one\ntwo\nthree\n");
+    app.run_command(W, "redo").unwrap();
+    assert_eq!(text(&app), "#one\n#two\n#three\n");
+    // Backspace at every caret, and the carets move together.
+    let mut app2 = workspace();
+    open(&mut app2, "main.py", "one\ntwo\nthree\n");
+    app2.run_command(W, "editor.action.insertCursorBelow")
+        .unwrap();
+    app2.text_effects(W, "x").unwrap();
+    app2.key(W, "ArrowRight", 0).unwrap();
+    assert_eq!(carets(&app2), [2, 7]);
+    app2.key(W, "Backspace", 0).unwrap();
+    assert_eq!(text(&app2), "xne\nxwo\nthree\n");
+    // Escape leaves one cursor.
+    app2.key(W, "Escape", 0).unwrap();
+    assert_eq!(carets(&app2).len(), 1);
+}
+
+#[test]
+fn ctrl_d_adds_the_next_occurrence_and_ctrl_shift_l_takes_them_all() {
+    let mut app = workspace();
+    open(
+        &mut app,
+        "main.py",
+        "value = 1\nprint(value)\nvalue += value\n",
+    );
+    // With nothing selected the first press selects the word at the caret.
+    app.run_command(W, "editor.action.addSelectionToNextFindMatch")
+        .unwrap();
+    assert_eq!(app.active_tab().unwrap().doc.selected_text(), "value");
+    app.run_command(W, "editor.action.addSelectionToNextFindMatch")
+        .unwrap();
+    assert_eq!(carets(&app).len(), 2);
+    // Typing replaces every selected occurrence.
+    app.text_effects(W, "total").unwrap();
+    assert_eq!(text(&app), "total = 1\nprint(total)\nvalue += value\n");
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "value = 1\nprint(value)\nvalue += value\n");
+    // Select all occurrences: four of them, and one edit changes them all.
+    let mut app = workspace();
+    open(
+        &mut app,
+        "main.py",
+        "value = 1\nprint(value)\nvalue += value\n",
+    );
+    app.run_command(W, "editor.action.selectHighlights")
+        .unwrap();
+    assert_eq!(carets(&app).len(), 4);
+    app.text_effects(W, "n").unwrap();
+    assert_eq!(text(&app), "n = 1\nprint(n)\nn += n\n");
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(text(&app), "value = 1\nprint(value)\nvalue += value\n");
+}
+
+#[test]
+fn alt_click_adds_a_cursor_and_a_plain_click_takes_them_away() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "one\ntwo\nthree\n");
+    let (cw, rh) = render::cell(app.settings.font_size, app.platform);
+    let target = "code:editor:0:0:0:0:30";
+    // A plain click puts one caret on line 2, column 1.
+    app.press_at(target, cw as i32, rh as i32).unwrap();
+    app.click_at(W, target, cw as i32, rh as i32, 0).unwrap();
+    assert_eq!(carets(&app), [5]);
+    // Alt held, the next click adds a second caret rather than moving the first.
+    app.modifiers = crate::apps::imaging::MOD_ALT;
+    app.press_at(target, cw as i32, 2 * rh as i32).unwrap();
+    app.click_at(W, target, cw as i32, 2 * rh as i32, 0)
+        .unwrap();
+    assert_eq!(carets(&app), [5, 9]);
+    app.text_effects(W, "!").unwrap();
+    assert_eq!(text(&app), "one\nt!wo\nt!hree\n");
+    // Without Alt the extra cursors go away again.
+    app.modifiers = 0;
+    app.press_at(target, cw as i32, 0).unwrap();
+    app.click_at(W, target, cw as i32, 0, 0).unwrap();
+    assert_eq!(carets(&app), [1]);
+}
+
+/// Paint the workbench and hand back its scene.
+fn painted(app: &Code) -> cw_scene::Scene {
+    let mut p = Painter::themed(DesktopTheme::Ubuntu, 1200, 800, 1);
+    render::render(
+        app,
+        &mut p,
+        &crate::AppEnv {
+            theme: DesktopTheme::Ubuntu,
+            width: 1200,
+            height: 800,
+            clock_us: 0,
+            settings: &crate::SystemSettings::DEFAULT,
+            clipboard: None,
+            share_to: None,
+            editor: None,
+            pointer: None,
+            files: Default::default(),
+        },
+    );
+    p.scene
+}
+fn targets(scene: &cw_scene::Scene) -> Vec<String> {
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| n.interaction.clone())
+        .collect()
+}
+
+#[test]
+fn splitting_the_editor_gives_each_group_its_own_editors() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "print(1)\n");
+    assert_eq!(app.group_count(), 1);
+    app.run_command(W, "workbench.action.splitEditorRight")
+        .unwrap();
+    assert_eq!(app.group_count(), 2);
+    assert_eq!(app.focus_group, 1, "the new group takes the focus");
+    assert!(matches!(&app.layout, Slot::Split { row: true, children } if children.len() == 2));
+    // Both groups show the file, and the two editors are painted side by side.
+    assert_eq!(app.group_tabs(0).len(), 1);
+    assert_eq!(app.group_tabs(1).len(), 1);
+    let scene = painted(&app);
+    let editors: Vec<String> = targets(&scene)
+        .into_iter()
+        .filter(|t| t.starts_with("code:editor:"))
+        .collect();
+    assert_eq!(editors.len(), 2, "{editors:?}");
+    assert!(editors.iter().any(|t| t.starts_with("code:editor:0:")));
+    assert!(editors.iter().any(|t| t.starts_with("code:editor:1:")));
+    // The two views are one document, as they are in VS Code: typing in the focused
+    // group shows up in the other, and so does undo.
+    app.active_mut().unwrap().doc.set(0, false);
+    app.text_effects(W, "# ").unwrap();
+    let other = app.group_tabs(0)[0];
+    assert_eq!(app.tabs[other].doc.text, "# print(1)\n");
+    assert!(app.tabs[other].dirty());
+    app.run_command(W, "undo").unwrap();
+    assert_eq!(app.tabs[other].doc.text, "print(1)\n");
+    // Opening another file only touches the focused group.
+    open(&mut app, "README.md", "# hi\n");
+    assert_eq!(app.group_tabs(0).len(), 1);
+    assert_eq!(app.group_tabs(1).len(), 2);
+    // Focusing a group brings back its editor.
+    app.run_command(W, "workbench.action.focusFirstEditorGroup")
+        .unwrap();
+    assert_eq!(app.focus_group, 0);
+    assert_eq!(
+        app.active_tab().unwrap().path,
+        "/home/alice/project/main.py"
+    );
+    app.run_command(W, "workbench.action.focusNextGroup")
+        .unwrap();
+    assert_eq!(app.focus_group, 1);
+    assert_eq!(app.active_tab().unwrap().name(), "README.md");
+    // Move it to the other group: it leaves this one and lands there.
+    app.run_command(W, "workbench.action.moveEditorToPreviousGroup")
+        .unwrap();
+    assert_eq!(app.focus_group, 0);
+    assert_eq!(app.active_tab().unwrap().name(), "README.md");
+    assert_eq!(app.group_tabs(0).len(), 2);
+    assert_eq!(app.group_tabs(1).len(), 1);
+    // Closing the last editor of a group closes the group with it.
+    app.go_to_group(1);
+    let only = app.group_tabs(1)[0];
+    app.close_tab(only, true).unwrap();
+    assert_eq!(app.group_count(), 1);
+    assert_eq!(app.layout, Slot::Leaf(0));
+    assert_eq!(app.group_tabs(0).len(), 2);
+    // A third group splits downwards under the second.
+    app.run_command(W, "workbench.action.splitEditorDown")
+        .unwrap();
+    assert!(matches!(&app.layout, Slot::Split { row: false, .. }));
+    assert_eq!(app.group_count(), 2);
+}
+
+#[test]
+fn the_minimap_is_a_real_map_that_scrolls_the_editor() {
+    let mut app = workspace();
+    let long: String = (0..200).map(|i| format!("line {i}\n")).collect();
+    open(&mut app, "main.py", &long);
+    let scene = painted(&app);
+    let map = targets(&scene)
+        .into_iter()
+        .find(|t| t.starts_with("code:minimap:"))
+        .expect("the minimap is painted");
+    assert!(app.drags(&map));
+    assert_eq!(app.active_tab().unwrap().scroll, 0);
+    // Pressing half way down the map scrolls the editor to that part of the file.
+    app.pointer(&map, crate::PointerPhase::Down, 0, 300)
+        .unwrap();
+    let scrolled = app.active_tab().unwrap().scroll;
+    assert!(scrolled > 100, "scrolled to row {scrolled}");
+    // Dragging back up moves it again, and the view no longer follows the caret.
+    app.pointer(&map, crate::PointerPhase::Move, 0, 40).unwrap();
+    assert!(app.active_tab().unwrap().scroll < scrolled);
+    assert!(!app.active_tab().unwrap().follow);
+}
+
+#[test]
+fn right_clicking_opens_the_explorers_and_the_editors_own_menus() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "def helper():\n    pass\n");
+    // The Explorer's menu, on the row that was pressed.
+    app.button = 2;
+    app.press_at("code:tree:src/app.js", 0, 0).unwrap();
+    assert_eq!(app.context, Some(ContextKind::Explorer));
+    assert_eq!(app.selected.as_deref(), Some("src/app.js"));
+    let scene = painted(&app);
+    let shown = targets(&scene);
+    for id in [
+        "explorer.newFile",
+        "renameFile",
+        "deleteFile",
+        "copyFilePath",
+        "revealFileInOS",
+        "openInIntegratedTerminal",
+    ] {
+        assert!(
+            shown.iter().any(|t| t == &format!("code:cmd:{id}")),
+            "{id} is not in the menu: {shown:?}"
+        );
+    }
+    // Copy Path really copies the machine path.
+    let effects = app.click(W, "code:cmd:copyFilePath", 0).unwrap();
+    assert!(matches!(&effects[0], AppEffect::CopyText { text, .. }
+        if text == "/home/alice/project/src/app.js"));
+    assert_eq!(app.context, None, "the menu closes when an entry is chosen");
+    // Reveal in the file manager opens it on the containing folder.
+    app.button = 2;
+    app.press_at("code:tree:src/app.js", 0, 0).unwrap();
+    let effects = app.click(W, "code:cmd:revealFileInOS", 0).unwrap();
+    assert!(
+        matches!(&effects[0], AppEffect::Launch { kind, argument, .. }
+        if kind == "files" && argument == "/home/alice/project/src")
+    );
+    // Open in Integrated Terminal starts a shell in that folder.
+    app.button = 2;
+    app.press_at("code:tree:src/app.js", 0, 0).unwrap();
+    let effects = app
+        .click(W, "code:cmd:openInIntegratedTerminal", 0)
+        .unwrap();
+    assert!(matches!(&effects[0], AppEffect::ShellRun { cwd, .. }
+        if cwd == "/home/alice/project/src"));
+    assert_eq!(app.terminals[app.term].cwd, "/home/alice/project/src");
+    // The editor's own menu, at the caret the right click placed.
+    app.button = 2;
+    app.press_at("code:editor:0:0:0:0:30", 0, 0).unwrap();
+    assert_eq!(app.context, Some(ContextKind::Editor));
+    let shown = targets(&painted(&app));
+    for id in [
+        "editor.action.clipboardCopyAction",
+        "editor.action.revealDefinition",
+        "workbench.action.showCommands",
+    ] {
+        assert!(shown.iter().any(|t| t == &format!("code:cmd:{id}")), "{id}");
+    }
+    // Clicking away closes it.
+    app.click(W, "code:menu-close", 0).unwrap();
+    assert_eq!(app.context, None);
+}
+
+#[test]
+fn go_to_definition_finds_where_the_workspace_defines_the_name() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "from util import helper\n\nhelper()\n");
+    // The caret on the call.
+    app.active_mut()
+        .unwrap()
+        .doc
+        .set("from util import helper\n\nhel".len(), false);
+    let effects = app
+        .run_command(W, "editor.action.revealDefinition")
+        .unwrap();
+    let AppEffect::ReadFiles { tag, paths, .. } = &effects[0] else {
+        panic!("it reads the workspace: {effects:?}");
+    };
+    assert_eq!(tag, "definition:helper");
+    assert!(paths.iter().any(|p| p.ends_with("src/util.py")));
+    let files = vec![
+        (
+            "/home/alice/project/README.md".to_owned(),
+            Ok("helper\n".to_owned()),
+        ),
+        (
+            "/home/alice/project/src/util.py".to_owned(),
+            Ok("import os\n\n\ndef helper():\n    return 1\n".to_owned()),
+        ),
+    ];
+    app.files_read(W, "definition:helper", files);
+    // The editor opened the file where it is defined, with the name selected.
+    let tab = app.active_tab().unwrap();
+    assert_eq!(tab.path, "/home/alice/project/src/util.py");
+    assert_eq!(tab.reveal, Some((4, 5, 6)));
+    // A name nothing defines says so instead of pretending.
+    app.files_read(
+        W,
+        "definition:nowhere",
+        vec![(
+            "/home/alice/project/README.md".to_owned(),
+            Ok("text\n".to_owned()),
+        )],
+    );
+    assert_eq!(
+        app.notice.as_deref(),
+        Some("No definition found for 'nowhere'")
+    );
+    assert_eq!(definition_in("class Widget:\n", "Widget"), Some((1, 7)));
+    assert_eq!(definition_in("let total = 1;\n", "total"), Some((1, 5)));
+    assert_eq!(definition_in("run() {\n  :\n}\n", "run"), Some((1, 1)));
+    assert_eq!(definition_in("print(helper)\n", "helper"), None);
+}
+
+#[test]
+fn tabs_are_tab_stops_and_whitespace_can_be_seen() {
+    assert_eq!(render::columns("\tx", 4), 5);
+    assert_eq!(render::columns("ab\tx", 4), 5);
+    assert_eq!(render::byte_at_column("\tx", 4, 4), 1);
+    assert_eq!(
+        render::byte_at_column("\tx", 1, 4),
+        0,
+        "the near half of a tab"
+    );
+    let mut app = workspace();
+    open(&mut app, "main.py", "def f():\n\treturn 1\n");
+    // A click at column 4 of the second line is before the `return`, past the tab.
+    let target = "code:editor:0:0:0:0:30";
+    let (cw, rh) = render::cell(app.settings.font_size, app.platform);
+    app.press_at(target, 4 * cw as i32, rh as i32).unwrap();
+    app.click_at(W, target, 4 * cw as i32, rh as i32, 0)
+        .unwrap();
+    assert_eq!(app.active_tab().unwrap().doc.cursor, "def f():\n\t".len());
+    // Whitespace is invisible until it is asked for.
+    let shown = |app: &Code| {
+        painted(app).nodes.iter().any(|n| {
+            matches!(&n.primitive,
+            cw_scene::Primitive::Text { text, .. } if text.contains('→'))
+        })
+    };
+    assert!(!shown(&app));
+    let effects = app
+        .run_command(W, "editor.action.toggleRenderWhitespace")
+        .unwrap();
+    assert!(app.settings.render_whitespace);
+    assert!(shown(&app), "the tab is drawn as an arrow");
+    // And it is saved where VS Code saves it.
+    let written = effects.iter().find_map(|e| match e {
+        AppEffect::WriteFile { content, .. } => Some(content.clone()),
+        _ => None,
+    });
+    assert!(written
+        .unwrap()
+        .contains("\"editor.renderWhitespace\": \"all\""));
+}
+
+#[test]
+fn a_preview_tab_title_is_italic_and_a_pinned_one_upright() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "print('hi')\n");
+    let title_style = |app: &Code| {
+        let mut p = crate::desktop_scene::Painter::new(1100, 700);
+        let env = crate::AppEnv {
+            theme: crate::desktop_scene::DesktopTheme::Ubuntu,
+            width: 1100,
+            height: 700,
+            clock_us: 0,
+            settings: &crate::SystemSettings::DEFAULT,
+            clipboard: None,
+            share_to: None,
+            files: Default::default(),
+            editor: None,
+            pointer: None,
+        };
+        render::render(app, &mut p, &env);
+        // The tree row and breadcrumb name the file too; only the tab is italic.
+        p.scene
+            .nodes
+            .iter()
+            .filter(|n| n.painted_text() == Some("main.py"))
+            .filter_map(|n| n.primitive.text_style())
+            .filter(|s| s.italic)
+            .count()
+    };
+    assert!(app.tabs[0].preview);
+    assert_eq!(title_style(&app), 1);
+    app.activate(W, "code:tab:0", 0).unwrap();
+    assert_eq!(title_style(&app), 0);
+}
+
+use cw_protocol::debug::{Frame, Reply, Request, Scope, State, Step, Stopped, Variable};
+
+/// The launch a Start Debugging asked the machine for.
+fn launch_of(effects: &[AppEffect]) -> cw_protocol::debug::Launch {
+    match effects.first() {
+        Some(AppEffect::Debug { request, .. }) => match request {
+            Request::Launch(l) => l.clone(),
+            other => panic!("not a launch: {other:?}"),
+        },
+        other => panic!("nothing was asked of the debugger: {other:?}"),
+    }
+}
+fn requests(effects: &[AppEffect]) -> Vec<Request> {
+    effects
+        .iter()
+        .filter_map(|e| match e {
+            AppEffect::Debug { request, .. } => Some(request.clone()),
+            _ => None,
+        })
+        .collect()
+}
+/// Where a program is stopped, as an adapter would report it.
+fn stopped_at(line: u32, reason: Stopped) -> State {
+    State {
+        stopped: reason,
+        frames: vec![
+            Frame {
+                id: 1,
+                name: "main".into(),
+                path: "/home/alice/project/main.py".into(),
+                line,
+            },
+            Frame {
+                id: 2,
+                name: "<module>".into(),
+                path: "/home/alice/project/main.py".into(),
+                line: 9,
+            },
+        ],
+        scopes: vec![Scope {
+            name: "Locals".into(),
+            reference: 100,
+            expensive: false,
+        }],
+        output: String::new(),
+    }
+}
+
+#[test]
+fn breakpoints_are_kept_whether_or_not_anything_is_running() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "a = 1\nb = 2\nprint(a + b)\n");
+    // The gutter is a target on every painted row.
+    let shown = targets(&painted(&app));
+    assert!(shown.iter().any(|t| t == "code:gutter:0:2"), "{shown:?}");
+    // A click on it sets a breakpoint; another takes it away.
+    app.click(W, "code:gutter:0:2", 0).unwrap();
+    assert_eq!(app.debug.breakpoints.len(), 1);
+    assert_eq!(app.debug.breakpoints[0].line, 2);
+    assert_eq!(app.debug.breakpoints[0].path, "/home/alice/project/main.py");
+    app.click(W, "code:gutter:0:2", 0).unwrap();
+    assert!(app.debug.breakpoints.is_empty());
+    // F9 sets one where the caret is.
+    app.active_mut().unwrap().doc.set("a = 1\nb".len(), false);
+    app.key(W, "F9", 0).unwrap();
+    assert_eq!(app.debug.breakpoints[0].line, 2);
+    // A condition is asked for and kept, and the breakpoint says so.
+    app.run_command(W, "editor.debug.action.conditionalBreakpoint")
+        .unwrap();
+    assert_eq!(app.focus, Focus::Debug);
+    app.text_effects(W, "b > 1").unwrap();
+    app.key(W, "Enter", 0).unwrap();
+    assert_eq!(app.debug.breakpoints[0].condition.as_deref(), Some("b > 1"));
+    assert!(app.debug.prompt.is_none());
+    // The view lists it, with the file and line it is on.
+    app.run_command(W, "workbench.view.debug").unwrap();
+    let scene = painted(&app);
+    assert!(scene.nodes.iter().any(|n| n
+        .painted_text()
+        .is_some_and(|t| t.contains("main.py:2") && t.contains("b > 1"))));
+    // Remove All Breakpoints clears them.
+    app.click(
+        W,
+        "code:cmd:workbench.debug.viewlet.action.removeAllBreakpoints",
+        0,
+    )
+    .unwrap();
+    assert!(app.debug.breakpoints.is_empty());
+    assert_eq!(
+        app.enabled("workbench.debug.viewlet.action.removeAllBreakpoints"),
+        Err("There are no breakpoints")
+    );
+}
+
+#[test]
+fn the_debugger_view_shows_only_what_the_machine_reported() {
+    let mut app = workspace();
+    open(
+        &mut app,
+        "main.py",
+        "def main():\n    x = 1\n    return x\n\n\nmain()\n",
+    );
+    app.click(W, "code:gutter:0:3", 0).unwrap();
+    // Start Debugging asks for the program, with the breakpoints that are set.
+    let asked = app.run_command(W, "workbench.action.debug.start").unwrap();
+    let launch = launch_of(&asked);
+    assert_eq!(launch.kind, "python");
+    assert_eq!(launch.program, "/home/alice/project/main.py");
+    assert_eq!(launch.cwd, "/home/alice/project");
+    assert_eq!(launch.breakpoints.len(), 1);
+    assert_eq!(launch.breakpoints[0].line, 3);
+    // Until the machine answers, nothing pretends to be stopped anywhere.
+    assert!(app.debug.busy);
+    assert_eq!(
+        app.enabled("workbench.action.debug.stepOver"),
+        Err("The program is running")
+    );
+    // The machine stops it on the breakpoint.
+    let effects = app.debug_reply(
+        W,
+        "launch",
+        Ok(Reply::Launched {
+            session: 7,
+            state: stopped_at(
+                3,
+                Stopped::Breakpoint {
+                    path: "/home/alice/project/main.py".into(),
+                    line: 3,
+                },
+            ),
+        }),
+    );
+    let session = app.debug.session.as_ref().expect("a session");
+    assert_eq!(session.id, 7);
+    assert_eq!(session.frames.len(), 2);
+    assert_eq!(
+        app.active_tab().unwrap().path,
+        "/home/alice/project/main.py"
+    );
+    // Locals are asked for at once, because the view shows them expanded.
+    assert!(requests(&effects).iter().any(|r| matches!(
+        r,
+        Request::Variables {
+            session: 7,
+            reference: 100
+        }
+    )));
+    app.debug_reply(
+        W,
+        "vars:100",
+        Ok(Reply::Variables {
+            variables: vec![
+                Variable {
+                    name: "x".into(),
+                    value: "1".into(),
+                    kind: "int".into(),
+                    reference: 0,
+                },
+                Variable {
+                    name: "rows".into(),
+                    value: "[1, 2]".into(),
+                    kind: "list".into(),
+                    reference: 101,
+                },
+            ],
+        }),
+    );
+    let text: Vec<String> = painted(&app)
+        .nodes
+        .iter()
+        .filter_map(|n| n.painted_text().map(str::to_owned))
+        .collect();
+    assert!(text.iter().any(|t| t.contains("x: 1")), "{text:?}");
+    assert!(
+        text.iter().any(|t| t.contains("main  main.py:3")),
+        "{text:?}"
+    );
+    assert!(text.iter().any(|t| t == "Paused on breakpoint"), "{text:?}");
+    // The toolbar's buttons are real now.
+    let shown = targets(&painted(&app));
+    for id in [
+        "continue", "stepOver", "stepInto", "stepOut", "restart", "stop",
+    ] {
+        let target = format!("code:cmd:workbench.action.debug.{id}");
+        assert!(shown.contains(&target), "{target} is not painted");
+    }
+    // Expanding a value asks the machine what it holds.
+    let effects = app.click(W, "code:var:101", 0).unwrap();
+    assert!(requests(&effects)
+        .iter()
+        .any(|r| matches!(r, Request::Variables { reference: 101, .. })));
+    // A step is a step request, and what comes back is what is shown.
+    let effects = app
+        .run_command(W, "workbench.action.debug.stepOver")
+        .unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Resume {
+            session: 7,
+            step: Step::Over
+        })
+    ));
+    app.debug_reply(
+        W,
+        "resume",
+        Ok(Reply::Stopped {
+            state: State {
+                output: "1\n".into(),
+                ..stopped_at(4, Stopped::Step)
+            },
+        }),
+    );
+    assert_eq!(app.debug.session.as_ref().unwrap().frames[0].line, 4);
+    assert!(app
+        .debug
+        .console
+        .iter()
+        .any(|l| l.text == "1" && l.kind == debug::ConsoleKind::Output));
+    // Another frame of the stack can be looked at.
+    app.click(W, "code:frame:1", 0).unwrap();
+    assert_eq!(app.debug.session.as_ref().unwrap().frame, 1);
+    // A watch expression is evaluated where the program is stopped.
+    app.run_command(W, "workbench.debug.viewlet.action.addWatchExpression")
+        .unwrap();
+    app.text_effects(W, "x * 2").unwrap();
+    let effects = app.key(W, "Enter", 0).unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Evaluate { expression, context, .. })
+            if expression == "x * 2" && context == "watch"
+    ));
+    app.debug_reply(
+        W,
+        "watch:0",
+        Ok(Reply::Evaluated {
+            result: Variable {
+                name: "x * 2".into(),
+                value: "2".into(),
+                kind: "int".into(),
+                reference: 0,
+            },
+        }),
+    );
+    assert_eq!(app.debug.watches[0].value.as_deref(), Some("2"));
+    // The Debug Console evaluates in the frame on show.
+    app.run_command(W, "workbench.debug.action.toggleRepl")
+        .unwrap();
+    assert_eq!(app.panel, PanelTab::Debug);
+    app.text_effects(W, "x + 1").unwrap();
+    let effects = app.key(W, "Enter", 0).unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Evaluate { expression, context, .. })
+            if expression == "x + 1" && context == "repl"
+    ));
+    app.debug_reply(
+        W,
+        "repl",
+        Ok(Reply::Evaluated {
+            result: Variable {
+                name: "x + 1".into(),
+                value: "2".into(),
+                kind: "int".into(),
+                reference: 0,
+            },
+        }),
+    );
+    assert!(app
+        .debug
+        .console
+        .iter()
+        .any(|l| l.text == "2" && l.kind == debug::ConsoleKind::Result));
+    // A failed evaluation is the debugger's own words, not a guess.
+    app.debug_reply(W, "repl", Err("name 'zz' is not defined".into()));
+    assert!(app
+        .debug
+        .console
+        .iter()
+        .any(|l| l.text == "name 'zz' is not defined" && l.kind == debug::ConsoleKind::Error));
+    // Stopping ends the session, and the toolbar goes with it.
+    let effects = app.run_command(W, "workbench.action.debug.stop").unwrap();
+    assert!(matches!(
+        requests(&effects).first(),
+        Some(Request::Terminate { session: 7 })
+    ));
+    app.debug_reply(W, "terminate", Ok(Reply::Terminated));
+    assert!(app.debug.session.is_none());
+    assert!(
+        !targets(&painted(&app)).contains(&"code:cmd:workbench.action.debug.stepOver".to_owned())
+    );
+    // The breakpoint outlived the session, as VS Code's do.
+    assert_eq!(app.debug.breakpoints.len(), 1);
+}
+
+#[test]
+fn a_launch_json_is_written_and_read_back() {
+    let mut app = workspace();
+    open(&mut app, "main.py", "print(1)\n");
+    let effects = app.run_command(W, "debug.addConfiguration").unwrap();
+    let written = effects
+        .iter()
+        .find_map(|e| match e {
+            AppEffect::WriteFile { path, content, .. } => Some((path.clone(), content.clone())),
+            _ => None,
+        })
+        .expect("it writes the file VS Code writes");
+    assert_eq!(written.0, "/home/alice/project/.vscode/launch.json");
+    assert!(written.1.contains("\"type\": \"python\""));
+    assert!(written.1.contains("${workspaceFolder}/main.py"));
+    // What was written is what is read back.
+    let configs = debug::parse_launch_json(&written.1);
+    assert_eq!(configs.len(), 1);
+    assert_eq!(configs[0].kind, "python");
+    assert_eq!(configs[0].program, "${workspaceFolder}/main.py");
+    // A file that is not JSON gives no configurations rather than a guess.
+    assert!(debug::parse_launch_json("nonsense").is_empty());
 }

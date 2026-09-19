@@ -801,6 +801,69 @@ impl Runtime {
         result
     }
 
+    /// Start the machine process an open application window runs as. An application on
+    /// the screen is something the machine is running, so it is in the process table:
+    /// `ps` lists it and `kill` really ends it. `holding` is what the window has open
+    /// on top of the program's own footprint, in bytes.
+    pub fn start_window_process(
+        &mut self,
+        machine: &str,
+        command: &str,
+        holding: u64,
+    ) -> Result<u64> {
+        let tick = self.tick();
+        let computer = self.computer_mut(machine)?;
+        let user = computer.user.clone();
+        // A window is not on a terminal; it is on the display.
+        let pid = computer.processes.spawn(1, &user, command, tick);
+        computer
+            .processes
+            .hold(pid, holding)
+            .map_err(computer_error)?;
+        Ok(pid)
+    }
+    /// End a window's process, as closing the window does.
+    pub fn end_window_process(&mut self, machine: &str, pid: u64) -> Result<()> {
+        let tick = self.tick();
+        let computer = self.computer_mut(machine)?;
+        if computer.processes.get(pid).is_some() {
+            let _ = computer.processes.exit(pid, 0, tick);
+            let _ = computer.processes.wait(1, pid);
+        }
+        self.close_process_network(machine, pid);
+        Ok(())
+    }
+    /// Whether a pid is still a live process on `machine`.
+    pub fn process_alive(&self, machine: &str, pid: u64) -> bool {
+        self.computer(machine).is_ok_and(|c| {
+            c.processes.get(pid).is_some_and(|p| {
+                !matches!(
+                    p.state,
+                    cw_computer::ProcessState::Zombie { .. }
+                        | cw_computer::ProcessState::Exited { .. }
+                )
+            })
+        })
+    }
+    /// Serve one Run and Debug request on `machine`: the machine hands it to the debug
+    /// adapter for the program's runtime, or says why it has none.
+    pub fn debug(
+        &mut self,
+        machine: &str,
+        actor: &str,
+        request: &cw_protocol::debug::Request,
+    ) -> Result<cw_protocol::debug::Reply> {
+        let tick = self.tick();
+        self.event(
+            "debug.request",
+            Some(machine),
+            Some(actor),
+            serde_json::to_value(request).unwrap_or_default(),
+        );
+        self.computer_mut(machine)?
+            .debug(tick, request)
+            .map_err(SimError::invalid)
+    }
     pub fn execute(&mut self, machine: &str, actor: &str, command: &str) -> Result<CommandResult> {
         self.computer(machine)?;
         self.event(

@@ -417,6 +417,7 @@ impl NativeApp {
     /// Whether `target` follows a pointer drag (a canvas, a slider).
     pub fn drags(&self, target: &str) -> bool {
         match self {
+            Self::Code(a) => a.drags(target),
             Self::Kicad(a) => a.drags(target),
             Self::Freecad(a) => a.drags(target),
             Self::Spreadsheet(_) | Self::Excel(_) => sheet::Book::drags(target),
@@ -457,6 +458,10 @@ impl NativeApp {
         if let Some(v) = self.video_mut() {
             return v.bytes(window, path, result);
         }
+        if let Some(studio) = self.studio_mut() {
+            studio.bytes_loaded(path, result);
+            return Ok(vec![]);
+        }
         let book = self.book_mut().ok_or("this application reads no files")?;
         book.bytes(path, result, clock_us);
         Ok(vec![])
@@ -482,6 +487,10 @@ impl NativeApp {
             v.saved(path, result);
             return Ok(vec![]);
         }
+        if let Some(studio) = self.studio_mut() {
+            studio.bytes_saved(path, result);
+            return Ok(vec![]);
+        }
         let book = self.book_mut().ok_or("this application writes no files")?;
         book.saved(path, result);
         Ok(vec![])
@@ -491,17 +500,45 @@ impl NativeApp {
         if let Self::Freecad(a) = self {
             a.pointer_button(button);
         }
+        if let Self::Code(a) = self {
+            a.button = button;
+        }
     }
     /// Whether a secondary-button press on `target` belongs to the application (a
     /// right-drag that pans a 3D view) rather than opening the context menu.
     pub fn takes_secondary(&self, target: &str) -> bool {
-        matches!(self, Self::Freecad(a) if a.drags(target))
-    }
-    /// A wheel turn over `target`; `false` when the application has no use for it.
-    pub fn wheel(&mut self, target: &str, x: i32, y: i32, delta: i32) -> Result<bool, String> {
         match self {
-            Self::Freecad(a) => a.wheel(target, x, y, delta),
-            _ => Ok(false),
+            Self::Freecad(a) => a.drags(target),
+            // Visual Studio Code has context menus of its own.
+            Self::Code(a) => a.takes_secondary(target),
+            _ => false,
+        }
+    }
+    /// A wheel turn over `target`, at (`x`, `y`) inside it, for applications that give
+    /// the wheel a meaning of their own; `false` leaves it to the platform, which
+    /// scrolls the pane under the pointer.
+    pub fn wheel(
+        &mut self,
+        target: &str,
+        x: i32,
+        y: i32,
+        wheel: crate::Wheel,
+    ) -> Result<bool, String> {
+        match self {
+            Self::Freecad(a) => a.wheel(target, x, y, wheel.dy),
+            Self::Code(a) => a.wheel(target, wheel),
+            Self::Spreadsheet(a) => a.0.wheel(target, wheel),
+            Self::Excel(a) => a.0.wheel(target, wheel),
+            Self::Kicad(a) => a.wheel(target, x, y, wheel),
+            Self::Database(a) => a.0.wheel(target, wheel),
+            other if other.video().is_some() => match other.video_mut() {
+                Some(video) => video.timeline_wheel(target, x, wheel),
+                None => Ok(false),
+            },
+            other => match other.studio_mut() {
+                Some(studio) => studio.wheel(target, x, y, wheel),
+                None => Ok(false),
+            },
         }
     }
     /// Menu entries this application puts in the Mac's global menu bar panel `panel`.
@@ -517,7 +554,7 @@ impl NativeApp {
     pub fn hovers(&self, target: &str) -> bool {
         match self {
             Self::Kicad(a) => a.drags(target),
-            _ => false,
+            other => other.studio().is_some_and(|s| s.hovers(target)),
         }
     }
     /// The pointer moved over `target` with no button down, relative to its top-left.
@@ -525,7 +562,17 @@ impl NativeApp {
     pub fn hover(&mut self, target: &str, x: i32, y: i32) -> bool {
         match self {
             Self::Kicad(a) => a.hover(target, x, y),
-            _ => false,
+            other => other.studio_mut().is_some_and(|s| s.hover(target, x, y)),
+        }
+    }
+    /// Modifier keys (`imaging::MOD_*` bits) held for the pointer press about to reach
+    /// a drag surface: an image editor's Ctrl- or Option-click sets a clone source.
+    pub fn pointer_modifiers(&mut self, modifiers: u8) {
+        if let Self::Code(a) = self {
+            a.modifiers = modifiers;
+        }
+        if let Some(s) = self.studio_mut() {
+            s.modifiers = modifiers;
         }
     }
     /// A pointer press, move or release on a drag surface, relative to its top-left.
@@ -540,6 +587,9 @@ impl NativeApp {
     ) -> Result<Vec<AppEffect>, String> {
         if let Self::Freecad(a) = self {
             return a.pointer(window, target, phase, x, y);
+        }
+        if let Self::Code(a) = self {
+            return a.pointer(target, phase, x, y);
         }
         if let Some(book) = self.book_mut() {
             return book.pointer(target, phase, x, y);
@@ -647,14 +697,90 @@ impl NativeApp {
             .map(|v| v.background(window))
             .unwrap_or_default()
     }
-    /// Whether keystrokes insert text. Every application but the music player has a
-    /// field that is always ready for typing; the player takes text only while its search
-    /// or playlist-title field is focused, so a phone shows no keyboard over it otherwise.
-    pub fn takes_text(&self) -> bool {
+    /// Where a phone's Back (Android's navigation bar button, iOS's navigation bar
+    /// chevron) goes inside the application before it leaves it: the control that
+    /// returns to the parent screen, or `None` on a root screen.
+    pub fn phone_back(&self, theme: DesktopTheme) -> Option<String> {
         match self {
-            Self::Music(app) => app.takes_text(),
-            other => other.accepts_text(),
+            Self::Mail(a) => a.phone_back(theme).map(str::to_owned),
+            Self::Chat(a) => a.phone_back().map(str::to_owned),
+            Self::Notes(a) => a.open.is_some().then(|| "notes:close".to_owned()),
+            Self::Docs(a) => (a.open.is_some() && !a.dirty).then(|| "docs:close".to_owned()),
+            Self::Contacts(a) => a.selected.is_some().then(|| "contacts:back".to_owned()),
+            _ => None,
         }
+    }
+    /// The leading control a phone's navigation bar shows for the application, as
+    /// (`back` or `menu`, target, label): a way to the parent screen named for it, or
+    /// Gmail's drawer button. The shell paints it in the bar, where each platform puts it.
+    pub fn phone_nav(&self, theme: DesktopTheme) -> Option<(&'static str, String, String)> {
+        match self {
+            Self::Mail(a) => a.phone_nav(theme),
+            Self::Chat(a) => a.phone_nav(),
+            _ => None,
+        }
+    }
+    /// What pulling the list down past its top and letting go does on a phone (iOS's
+    /// UIRefreshControl, Android's swipe-to-refresh): the control that reloads from the
+    /// service, for the applications whose lists refresh that way.
+    pub fn pull_to_refresh(&self) -> Option<&'static str> {
+        match self {
+            Self::Mail(a) if a.selected.is_none() && !a.mailboxes => Some("mail:reload"),
+            Self::Chat(a) if a.listing => Some("chat:reload"),
+            _ => None,
+        }
+    }
+    /// The text field that has the keyboard focus, named by the control that shows it,
+    /// or `None` when nothing in the application is taking text. This is the one answer
+    /// the platform uses for text focus: a phone paints its soft keyboard exactly when
+    /// there is a field, the keystroke router sends typing to it, and the published
+    /// focus names it.
+    ///
+    /// `mobile` is whether the application runs on a phone, where a field must be
+    /// tapped before it has the focus (Messages' composer, a note's body) while the same
+    /// field is focused on a desktop as soon as its conversation or note is open.
+    pub fn text_field(&self, mobile: bool) -> Option<String> {
+        let field = |on: bool, name: &str| on.then(|| name.to_owned());
+        match self {
+            Self::Calendar(a) => field(a.draft.is_some(), "cal:title"),
+            Self::Mail(a) => a
+                .compose
+                .as_ref()
+                .map(|c| format!("mail:field:{}", c.field)),
+            Self::Chat(a) => field(a.open.is_some() && (a.composing || !mobile), "chat:compose"),
+            Self::Docs(a) => field(a.open.is_some() && (a.editing || !mobile), "docs:body"),
+            Self::Notes(a) => field(a.open.is_some() && (a.editing || !mobile), "notes:body"),
+            Self::Maps(a) => field(a.typing, "maps:search-field"),
+            Self::Music(a) => field(a.takes_text(), "music:search"),
+            // Visual Studio Code types into whatever has its focus, bar the Explorer
+            // tree and an editor group with no file open.
+            Self::Code(a) => match a.focus {
+                code::Focus::Explorer => None,
+                code::Focus::Editor if a.active.is_none() => None,
+                code::Focus::Editor => Some("code:editor".into()),
+                code::Focus::Terminal => Some("code:terminal".into()),
+                code::Focus::Search | code::Focus::SearchReplace => Some("code:search".into()),
+                code::Focus::ScmMessage => Some("code:scm-message".into()),
+                code::Focus::Quick => Some("code:quick".into()),
+                code::Focus::Find | code::Focus::Replace => Some("code:find".into()),
+                code::Focus::Inline => Some("code:inline".into()),
+                code::Focus::Debug if a.debug.prompt.is_some() => Some("code:debug-prompt".into()),
+                code::Focus::Debug => Some("code:repl-input".into()),
+            },
+            Self::Freecad(a) => field(a.0.field.is_some(), "freecad:field"),
+            // No field anywhere: typed digits on a desktop are the calculator's keys,
+            // not text, and the rest have nothing to type into.
+            Self::Contacts(_)
+            | Self::Settings(_)
+            | Self::Calculator(_)
+            | Self::Clock(_)
+            | Self::Weather(_) => None,
+            other => field(other.accepts_text(), "field"),
+        }
+    }
+    /// Whether keystrokes insert text: a field has the focus (see `text_field`).
+    pub fn takes_text(&self, mobile: bool) -> bool {
+        self.text_field(mobile).is_some()
     }
 }
 
@@ -756,6 +882,106 @@ mod tests {
             Status::Denied("mailbox unavailable".into())
         );
         assert!(matches!(Status::from_status(500, "{}"), Status::Offline(_)));
+    }
+    #[test]
+    fn kicad_zooms_about_the_pointer_and_pans_with_modifiers() {
+        let (mut app, _) = NativeApp::launch("kicad", "", 1, 0).unwrap();
+        let NativeApp::Kicad(k) = &mut app else {
+            unreachable!()
+        };
+        // Wheel away from a canvas, or in the project manager, is not KiCad's.
+        assert!(!k
+            .wheel("kicad:open", 10, 10, crate::Wheel::vertical(-120))
+            .unwrap());
+        let target = "kicad:canvas:sch:0:0:100:800:600";
+        let before = kicad::View {
+            x0: 0,
+            y0: 0,
+            zoom: 100,
+            fit: false,
+        };
+        // A notch towards the screen zooms in, keeping the world point under the pointer.
+        assert!(k
+            .wheel(target, 400, 300, crate::Wheel::vertical(-120))
+            .unwrap());
+        let v = k.ui.view;
+        assert!(v.zoom > before.zoom);
+        assert_eq!(v.world(400, 300), before.world(400, 300));
+        // Shift pans up and down, Ctrl left and right, a tenth of the canvas a notch at
+        // the zoom the canvas showed (600 px and 800 px at 100 px per 1000 mils).
+        let shift = crate::Wheel {
+            dy: 120,
+            shift: true,
+            ..Default::default()
+        };
+        assert!(k.wheel(target, 400, 300, shift).unwrap());
+        assert_eq!((k.ui.view.x0, k.ui.view.y0), (0, 600));
+        let ctrl = crate::Wheel {
+            dy: 120,
+            ctrl: true,
+            ..Default::default()
+        };
+        assert!(k.wheel(target, 400, 300, ctrl).unwrap());
+        assert_eq!((k.ui.view.x0, k.ui.view.y0), (800, 0));
+    }
+    #[test]
+    fn the_code_terminal_walks_its_scrollback_by_lines() {
+        let (mut app, _) = NativeApp::launch("code", "", 1, 0).unwrap();
+        let NativeApp::Code(c) = &mut app else {
+            unreachable!()
+        };
+        if c.terminals.is_empty() {
+            c.terminals.push(Default::default());
+        }
+        assert!(c
+            .wheel("code:terminal", crate::Wheel::vertical(-120))
+            .unwrap());
+        let lifted = c.terminals[c.term].scroll;
+        assert!(lifted > 0, "rolling back lifts the view off the tail");
+        assert!(c
+            .wheel("code:terminal", crate::Wheel::vertical(10_000))
+            .unwrap());
+        assert_eq!(c.terminals[c.term].scroll, 0);
+        assert!(!c
+            .wheel("code:terminal", crate::Wheel::vertical(120))
+            .unwrap());
+        // No file is open: the editor has nothing to scroll.
+        assert!(!c
+            .wheel("code:editor:0:0:0:30", crate::Wheel::vertical(120))
+            .unwrap());
+    }
+    #[test]
+    fn text_focus_is_reported_truthfully() {
+        let launch = |kind: &str| NativeApp::launch(kind, "", 1, 0).unwrap().0;
+        for kind in ["contacts", "settings", "calculator", "clock", "weather"] {
+            assert_eq!(launch(kind).text_field(false), None, "{kind}");
+            assert_eq!(launch(kind).text_field(true), None, "{kind}");
+        }
+        let mut notes = launch("notes");
+        assert_eq!(notes.text_field(false), None, "no note is open");
+        notes.click(1, "notes:new", 0).unwrap();
+        assert_eq!(notes.text_field(true).as_deref(), Some("notes:body"));
+        let mut mail = launch("mail");
+        assert_eq!(mail.text_field(true), None);
+        mail.click(1, "mail:compose", 0).unwrap();
+        assert_eq!(mail.text_field(true).as_deref(), Some("mail:field:to"));
+        mail.click(1, "mail:field:subject", 0).unwrap();
+        assert_eq!(mail.text_field(true).as_deref(), Some("mail:field:subject"));
+    }
+    #[test]
+    fn page_text_reads_what_a_page_shows_in_order() {
+        use cw_protocol::PageElement as E;
+        let mut page = cw_protocol::Page::new("T");
+        page.elements.push(E::Heading {
+            id: "h".into(),
+            text: "Inbox".into(),
+            level: 1,
+        });
+        page.elements.push(E::Text {
+            id: "t".into(),
+            text: "From carol".into(),
+        });
+        assert_eq!(crate::page_text(&page), "Inbox\nFrom carol");
     }
     #[test]
     fn retained_text_is_bounded_and_drops_control_characters() {

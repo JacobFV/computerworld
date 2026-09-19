@@ -39,5 +39,9 @@ opt-level = 2
 [profile.dev.package.cw-regex]
 opt-level = 2
 
+# Sites rasterise cover artwork per request; unoptimised, a page of covers is slow.
+[profile.dev.package.cw-artwork]
+opt-level = 2
+
 [profile.dev.package.cw-jsvm]
 opt-level = 2

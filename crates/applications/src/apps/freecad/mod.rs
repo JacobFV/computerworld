@@ -16,7 +16,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
+mod browse;
 mod commands;
+mod file_dialog;
 mod files;
 pub mod icons;
 mod layout;
@@ -152,6 +154,8 @@ pub enum FieldTarget {
     Constraint { index: usize },
     /// The file name box of the file dialog.
     FileName,
+    /// The name of a folder the file dialog is about to create.
+    FolderName,
     /// Renaming a tree item's label.
     Label { object: String },
 }
@@ -345,11 +349,18 @@ pub struct Cad {
     /// The user's home folder, where file dialogs start.
     #[serde(default)]
     pub home: String,
+    /// The desktop the window opened on; its file dialogs follow that platform's
+    /// conventions (which button Return presses in "Replace?").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub platform: Option<DesktopTheme>,
     #[serde(default)]
     pub active_body: Option<String>,
     /// Bumped on every document change; keys the derived model.
     #[serde(default)]
     pub rev: u64,
+    /// The world's clock at the last interaction: what a file's timestamp records.
+    #[serde(default)]
+    pub clock_us: u64,
     /// Width the 3D view was last painted at, so keyboard zoom centres on it.
     #[serde(default)]
     pub view_size: (u32, u32),
@@ -387,7 +398,7 @@ impl std::ops::DerefMut for Freecad {
 
 impl Freecad {
     pub const KIND: &'static str = "freecad";
-    pub fn launch(argument: &str, window: u64, _clock_us: u64) -> (Self, Vec<AppEffect>) {
+    pub fn launch(argument: &str, window: u64, clock_us: u64) -> (Self, Vec<AppEffect>) {
         let (doc, body) = document::with_body("Unnamed");
         let mut cad = Cad {
             doc,
@@ -414,8 +425,10 @@ impl Freecad {
             button: 0,
             view_props: Default::default(),
             home: String::new(),
+            platform: None,
             active_body: Some(body),
             rev: 0,
+            clock_us,
             view_size: (0, 0),
             io_read: None,
             after_save: None,
@@ -429,8 +442,9 @@ impl Freecad {
         (Freecad(Box::new(cad)), effects)
     }
     /// The shell tells a fresh window where the user's files are.
-    pub fn attach(&mut self, home: &str) {
+    pub fn attach(&mut self, home: &str, platform: Option<DesktopTheme>) {
         self.home = home.trim_end_matches('/').to_owned();
+        self.platform = platform;
     }
     pub fn kind(&self) -> &'static str {
         Self::KIND
@@ -466,20 +480,17 @@ impl Freecad {
     pub fn text(&mut self, text: &str) -> Result<(), String> {
         self.0.type_text(text)
     }
-    pub fn key(
-        &mut self,
-        window: u64,
-        key: &str,
-        _clock_us: u64,
-    ) -> Result<Vec<AppEffect>, String> {
+    pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
+        self.0.clock_us = clock_us;
         self.0.key(window, key)
     }
     pub fn click(
         &mut self,
         window: u64,
         target: &str,
-        _clock_us: u64,
+        clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        self.0.clock_us = clock_us;
         let command = target
             .strip_prefix("freecad:")
             .ok_or("interaction does not belong to FreeCAD")?
@@ -543,6 +554,10 @@ impl Freecad {
         self.0.button = button;
     }
     pub fn wheel(&mut self, target: &str, x: i32, y: i32, delta: i32) -> Result<bool, String> {
+        // The file dialog's list and sidebar scroll under the wheel.
+        if self.0.file_dialog_wheel(target, delta) {
+            return Ok(true);
+        }
         let Some(size) = view3d::view_size_of(target) else {
             return Ok(false);
         };

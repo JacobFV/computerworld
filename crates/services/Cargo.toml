@@ -22,6 +22,7 @@ cw-service-media = { path = "../../services/media" }
 cw-service-press = { path = "../../services/press" }
 cw-service-search = { path = "../../services/search" }
 cw-service-shop = { path = "../../services/shop" }
+cw-service-speaker = { path = "../../services/speaker" }
 cw-service-social = { path = "../../services/social" }
 cw-service-wiki = { path = "../../services/wiki" }
 [dev-dependencies]

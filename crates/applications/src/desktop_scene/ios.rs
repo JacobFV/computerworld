@@ -54,7 +54,40 @@ const LIBRARY_GROUPS: [(&str, &[&str]); 6] = [
     ("Developer", &["terminal", "editor"]),
 ];
 
-fn app_name(kind: &str) -> Option<&'static str> {
+/// The title this shell paints in a window's navigation bar. A phone leaves it
+/// empty where the application's own content carries the name instead.
+pub(super) fn navigation_title(w: &WindowView) -> String {
+    match w.kind.as_str() {
+        // Files names the folder it is showing, taken from the window's real path.
+        "files" => w
+            .document
+            .trim_end_matches('/')
+            .rsplit('/')
+            .find(|s| !s.is_empty())
+            .unwrap_or("Browse")
+            .to_owned(),
+        "editor" => String::new(),
+        kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
+    }
+}
+/// The name this window goes by, for a reader that needs one even where the bar
+/// is left blank.
+pub(super) fn window_title(w: &WindowView) -> String {
+    let painted = navigation_title(w);
+    if !painted.is_empty() {
+        return painted;
+    }
+    if w.kind == "editor" && !w.document.is_empty() {
+        return w
+            .document
+            .rsplit('/')
+            .find(|s| !s.is_empty())
+            .unwrap_or(&w.document)
+            .to_owned();
+    }
+    app_name(&w.kind).map_or_else(|| w.title.clone(), str::to_owned)
+}
+pub(super) fn app_name(kind: &str) -> Option<&'static str> {
     APPS.iter().find(|(k, _, _)| *k == kind).map(|(_, _, n)| *n)
 }
 fn asset(kind: &str) -> &str {
@@ -1834,23 +1867,46 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
     }
     let ink = if dark { Color::WHITE } else { INK };
     let folder = window.document.trim_end_matches('/');
-    let title = match window.kind.as_str() {
-        // Files names the folder it is showing, taken from the window's real path.
-        "files" => folder
-            .rsplit('/')
-            .find(|s| !s.is_empty())
-            .unwrap_or("Browse"),
-        "editor" => "",
-        kind => app_name(kind).unwrap_or(window.title.as_str()),
-    };
-    p.strong_center(90, 62, ctx.width.saturating_sub(180), title, 17, ink);
-    if !dark && window.kind != "files" {
+    let title = navigation_title(window);
+    let title = title.as_str();
+    // An application with a large title shows it in its content, not twice: the bar
+    // stays clear until the large title has scrolled under it, and then carries the
+    // title inline over a hairline, as UINavigationBar does.
+    let large = window
+        .content
+        .as_ref()
+        .and_then(|c| c.scrolls.iter().find(|a| a.title.is_some()));
+    let inline = large.is_none_or(|a| a.title_collapsed());
+    if inline {
+        let title = large.and_then(|a| a.title.as_deref()).unwrap_or(title);
+        p.strong_center(90, 62, ctx.width.saturating_sub(180), title, 17, ink);
+    }
+    if !dark && window.kind != "files" && inline {
         p.hline(0, 95, ctx.width, HAIRLINE);
     }
     // In Files the chevron pops one folder, exactly like the crumb the content draws;
     // at the root there is nowhere to pop to, so no chevron is painted at all. No other
     // application gets a way "Home" in its navigation bar: an iPhone has none there, and
     // leaving an application is the home indicator's swipe.
+    // An application's own way back to its parent screen (Mail's Mailboxes, a
+    // conversation's list) is the bar's leading chevron, named for where it goes.
+    if let Some((target, label)) = window.chrome("nav").and_then(|nav| {
+        let mut parts = nav.splitn(3, '\t');
+        (parts.next()? == "back").then_some(())?;
+        Some((parts.next()?, parts.next().unwrap_or("")))
+    }) {
+        p.symbol("chevron-left", 8, 61, 22, BLUE);
+        let text = if label.is_empty() {
+            0
+        } else {
+            p.left(29, 62, 120, label, 17, BLUE)
+        };
+        p.region(
+            Rect::new(4, 51, text + 34, 42),
+            &window.action(&format!("content:{target}")),
+            if label.is_empty() { "Back" } else { label },
+        );
+    }
     if window.kind == "files" && !folder.is_empty() {
         let label = folder
             .rsplit_once('/')
@@ -2346,6 +2402,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         };
         let mut p = Painter::themed(DesktopTheme::Ios, 390, 844, 1);
         background(&mut p, &ctx);
@@ -2409,6 +2468,9 @@ mod tests {
             user: "alice",
             home: "/Users/alice",
             recents: &[],
+            battery: true,
+            anchor: None,
+            overview: Default::default(),
         }
     }
     fn ids(p: &Painter) -> Vec<String> {

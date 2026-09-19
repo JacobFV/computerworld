@@ -7,7 +7,7 @@
 //! `ReadFile` delivers lossy UTF-8 and would destroy image bytes; a build with no
 //! rasterizer, or a file that will not decode, says so rather than showing a gap.
 use super::imaging::{self, Product, Studio};
-use super::look::{action, header, look, notice, FAINT, INK, LINE, MUTED};
+use super::look::{action, look, notice, screen, FAINT, INK, LINE, MUTED};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
 use cw_scene::{Color, Rect};
@@ -523,7 +523,8 @@ impl Photos {
             self.edit_button(p, env, open);
             return;
         }
-        let mut top = header(p, theme, &l, width, &self.title(theme));
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let mut top = screen.top;
         // Windows puts its verbs in a labelled command bar; the other desktops keep a
         // compact toolbar; the phones put the two controls under the large title.
         let mut left = 0;
@@ -626,14 +627,19 @@ impl Photos {
         let body = width.saturating_sub(left as u32);
         if let Some(problem) = &self.problem {
             notice(p, body, top + 24, problem);
-            return;
-        }
-        if self.entries.is_empty() {
+        } else if self.entries.is_empty() {
             notice(p, body, top + 24, "No photos");
             notice(p, body, top + 46, &self.folder);
-            return;
+        } else {
+            let grid = screen.column(
+                p,
+                "grid",
+                Rect::new(left, top, body, (height as i32 - top).max(1) as u32),
+            );
+            self.grid(p, theme, &l, left, grid.top, body);
+            grid.end(p);
         }
-        self.grid(p, theme, &l, left, top, body, height);
+        screen.end(p);
     }
     #[allow(clippy::too_many_arguments)]
     fn grid(
@@ -644,7 +650,6 @@ impl Photos {
         left: i32,
         top: i32,
         body: u32,
-        height: u32,
     ) {
         let columns = self.columns(theme, body).max(1);
         // iOS packs its grid edge to edge with hairline gutters; everything else breathes.
@@ -662,9 +667,6 @@ impl Photos {
             let row = index as u32 / columns;
             let x = left + pad as i32 + (column * (cell + gap)) as i32;
             let y = top + pad as i32 + (row * (cell + label_h + gap)) as i32;
-            if y as u32 + cell > height {
-                break;
-            }
             let r = Rect::new(x, y, cell, cell);
             p.button(
                 r,

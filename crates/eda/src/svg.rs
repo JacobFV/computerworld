@@ -119,6 +119,31 @@ pub fn plot(board: &Board, layers: &[Layer], title: &str) -> String {
                 }
                 let c = f.pad_pos(p);
                 let (w, h) = f.pad_size(p);
+                if !f.orthogonal() && p.shape != PadShape::Circle {
+                    // A pad turned to an arbitrary angle: its true outline.
+                    match f.pad_shape(p) {
+                        crate::pcb::Shape::Seg { a, b, r } => out.push(format!(
+                            "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" style=\"stroke-width:{}; stroke-linecap:round\"/>",
+                            n(a.x), n(a.y), n(b.x), n(b.y), n(2 * r)
+                        )),
+                        shape => {
+                            let pts: Vec<String> = shape
+                                .corners()
+                                .unwrap_or([c; 4])
+                                .iter()
+                                .map(|q| format!("{},{}", n(q.x), n(q.y)))
+                                .collect();
+                            out.push(format!(
+                                "<polygon points=\"{}\" style=\"stroke:none\"/>",
+                                pts.join(" ")
+                            ));
+                        }
+                    }
+                    if p.drill > 0 && layer.is_copper() {
+                        out.push(format!("<circle cx=\"{}\" cy=\"{}\" r=\"{}\" style=\"fill:#000000; stroke:none\"/>", n(c.x), n(c.y), n(p.drill / 2)));
+                    }
+                    continue;
+                }
                 match p.shape {
                     PadShape::Circle => out.push(format!(
                         "<circle cx=\"{}\" cy=\"{}\" r=\"{}\" style=\"stroke:none\"/>",

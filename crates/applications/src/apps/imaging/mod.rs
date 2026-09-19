@@ -15,9 +15,13 @@
 use crate::desktop_scene::DesktopTheme;
 use crate::{AppEffect, PointerPhase, CLIPBOARD_IMAGE};
 use cw_raster::adjust::{Adjustment, Channel, Tone};
+use cw_raster::document::StrokeMode;
 use cw_raster::draw::{Brush, BrushKind, Shape, ShapeKind};
 use cw_raster::filter::Filter;
+use cw_raster::gradient::{Gradient, GradientShape, Repeat};
+use cw_raster::jpeg::Subsampling;
 use cw_raster::mask::{Mask, SelectMode, P16};
+use cw_raster::path::{Anchor, Path};
 use cw_raster::transform::Resample;
 use cw_raster::{BlendMode, Canvas, Document, IRect, Rgba};
 use serde::{Deserialize, Serialize};
@@ -115,6 +119,9 @@ impl Product {
                 Pencil,
                 Eraser,
                 Fill,
+                Gradient,
+                Clone,
+                Repair,
                 Shape,
                 Text,
                 Picker,
@@ -127,12 +134,16 @@ impl Product {
                 Lasso,
                 MagicWand,
                 Crop,
+                Paths,
                 Text,
                 Fill,
+                Gradient,
                 Brush,
                 Pencil,
                 Airbrush,
                 Eraser,
+                Clone,
+                Heal,
                 Picker,
                 Zoom,
                 Pan,
@@ -149,9 +160,11 @@ impl Product {
                 Pencil,
                 Eraser,
                 Fill,
+                Gradient,
                 Picker,
                 Text,
                 Shape,
+                Clone,
             ],
             Self::Sketchbook => &[
                 Pencil, Brush, Airbrush, Marker, Eraser, Fill, RectSelect, Picker,
@@ -268,6 +281,46 @@ impl Product {
             Self::Paint | Self::Pixelmator | Self::Gimp | Self::Pinta | Self::Sketchbook
         )
     }
+    /// Formats a save sheet offers. GIMP saves only XCF and exports the others.
+    pub fn save_formats(self, export: bool) -> &'static [Format] {
+        use Format::*;
+        match self {
+            Self::Gimp if export => &[Png, Jpeg, Bmp],
+            Self::Gimp => &[Xcf],
+            Self::Paint | Self::Pinta => &[Png, Jpeg, Bmp],
+            Self::Preview | Self::Pixelmator => &[Png, Jpeg],
+            _ => &[Png],
+        }
+    }
+    /// Whether the Open sheet lists this file, i.e. whether the product opens it.
+    pub fn opens(self, name: &str) -> bool {
+        match (name.rsplit_once('.'), Format::of(name)) {
+            (Some((stem, _)), Some(format)) if !stem.is_empty() => match format {
+                Format::Png | Format::Jpeg => true,
+                Format::Bmp => !self.mobile(),
+                Format::Xcf => self == Self::Gimp,
+            },
+            _ => false,
+        }
+    }
+    /// The quality a JPEG export starts at: GIMP 90, Pinta 85, Preview and Pixelmator
+    /// their sliders' starting point, and Paint the fixed quality it always writes.
+    pub fn default_jpeg_quality(self) -> u8 {
+        match self {
+            Self::Gimp => 90,
+            Self::Pinta => 85,
+            Self::Paint => 90,
+            _ => 80,
+        }
+    }
+    /// The modifier a click holds to set a clone source: Ctrl in GIMP and Pinta,
+    /// Option on a Mac.
+    pub fn source_modifier(self) -> (u8, &'static str) {
+        match self {
+            Self::Pixelmator | Self::Preview => (MOD_ALT, "Option"),
+            _ => (MOD_CTRL, "Ctrl"),
+        }
+    }
     pub fn mobile(self) -> bool {
         matches!(
             self,
@@ -320,9 +373,20 @@ pub enum Tool {
     Zoom,
     Pan,
     Shape,
+    /// A colour ramp along a dragged line.
+    Gradient,
+    /// Clone stamp: paints with pixels from a source point set by a modifier-click.
+    Clone,
+    /// GIMP's Heal: clones, blended into the colour around the brush.
+    Heal,
+    /// Pixelmator's Repair: paint over something and it is rebuilt from its
+    /// surroundings.
+    Repair,
+    /// GIMP's Paths tool: Bézier anchors and handles.
+    Paths,
 }
 impl Tool {
-    pub const ALL: [Tool; 19] = [
+    pub const ALL: [Tool; 24] = [
         Self::RectSelect,
         Self::EllipseSelect,
         Self::Lasso,
@@ -342,6 +406,11 @@ impl Tool {
         Self::Zoom,
         Self::Pan,
         Self::Shape,
+        Self::Gradient,
+        Self::Clone,
+        Self::Heal,
+        Self::Repair,
+        Self::Paths,
     ];
     pub fn id(self) -> &'static str {
         match self {
@@ -364,6 +433,11 @@ impl Tool {
             Self::Zoom => "zoom",
             Self::Pan => "pan",
             Self::Shape => "shape",
+            Self::Gradient => "gradient",
+            Self::Clone => "clone",
+            Self::Heal => "heal",
+            Self::Repair => "repair",
+            Self::Paths => "paths",
         }
     }
     pub fn parse(id: &str) -> Option<Self> {
@@ -390,7 +464,19 @@ impl Tool {
             Self::Zoom => "zoom-in",
             Self::Pan => "hand",
             Self::Shape => "shapes",
+            Self::Gradient => "contrast",
+            Self::Clone => "stamp",
+            Self::Heal | Self::Repair => "magic",
+            Self::Paths => "edit",
         }
+    }
+    /// Brushes that copy or rebuild pixels rather than lay colour.
+    pub fn retouches(self) -> bool {
+        matches!(self, Self::Clone | Self::Heal | Self::Repair)
+    }
+    /// Tools with a round tip whose outline follows the pointer over the canvas.
+    pub fn has_tip(self) -> bool {
+        self.paints() || self.retouches()
     }
     pub fn paints(self) -> bool {
         matches!(
@@ -404,11 +490,16 @@ impl Tool {
                 | Self::Eraser
         )
     }
-    /// Tools whose drag spans a rectangle.
+    /// Tools whose drag spans a rectangle (or, for a gradient, a line).
     fn spans(self) -> bool {
         matches!(
             self,
-            Self::RectSelect | Self::EllipseSelect | Self::Crop | Self::Shape | Self::Move
+            Self::RectSelect
+                | Self::EllipseSelect
+                | Self::Crop
+                | Self::Shape
+                | Self::Move
+                | Self::Gradient
         )
     }
 }
@@ -430,12 +521,109 @@ pub enum Panel {
         entries: Vec<String>,
         loading: bool,
     },
-    /// Name the file a save writes. Typing goes to `name`.
+    /// Name the file a save writes. Typing goes to `name`; its extension is the format.
     Save {
         folder: String,
         name: String,
         entries: Vec<String>,
+        /// GIMP's Export As (PNG, JPEG, BMP) rather than Save As (XCF).
+        #[serde(default)]
+        export: bool,
     },
+}
+
+/// Image file formats the editors read and write.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Format {
+    Png,
+    Jpeg,
+    Bmp,
+    /// GIMP's native layered format.
+    Xcf,
+}
+impl Format {
+    pub fn of(path: &str) -> Option<Self> {
+        let ext = path.rsplit_once('.')?.1.to_ascii_lowercase();
+        Some(match ext.as_str() {
+            "png" => Self::Png,
+            "jpg" | "jpeg" => Self::Jpeg,
+            "bmp" => Self::Bmp,
+            "xcf" => Self::Xcf,
+            _ => return None,
+        })
+    }
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Png => "png",
+            Self::Jpeg => "jpg",
+            Self::Bmp => "bmp",
+            Self::Xcf => "xcf",
+        }
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Png => "PNG",
+            Self::Jpeg => "JPEG",
+            Self::Bmp => "BMP",
+            Self::Xcf => "XCF",
+        }
+    }
+    /// Formats the environment decodes; the rest are read as bytes and decoded here.
+    fn decoded_by_environment(self) -> bool {
+        matches!(self, Self::Png | Self::Jpeg)
+    }
+}
+
+/// Clone and heal: where the source is, and how it follows the brush.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Retouch {
+    /// The source point set by the modifier-click, in image pixels.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<(i32, i32)>,
+    /// Aligned cloning keeps the offset of the first stroke after the source was set;
+    /// otherwise every stroke starts again from the source point.
+    #[serde(default)]
+    pub aligned: bool,
+    /// The offset an aligned clone keeps (source minus where its first stroke began).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offset: Option<(i32, i32)>,
+    /// The offset of the stroke under way, so the source marker follows the brush.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active: Option<(i32, i32)>,
+}
+
+/// Gradient tool options.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GradientOptions {
+    pub shape: GradientShape,
+    pub repeat: Repeat,
+    /// FG to Transparent rather than FG to BG.
+    pub transparent: bool,
+    pub reverse: bool,
+}
+
+/// A curve being shaped before it is drawn: Paint's Curve (a line, then two bends) or
+/// Pinta's Line/Curve (a spline through control points that stays editable).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CurveEdit {
+    /// Paint: start, first control, second control, end. Pinta: the control points.
+    pub points: Vec<P16>,
+    /// Paint: how many bends have been placed (0, 1).
+    pub bends: u8,
+}
+
+/// Modifier bits carried by a pointer press.
+pub const MOD_CTRL: u8 = 1;
+pub const MOD_ALT: u8 = 2;
+pub const MOD_SHIFT: u8 = 4;
+pub const MOD_META: u8 = 8;
+
+fn is_zero(v: &u8) -> bool {
+    *v == 0
+}
+fn yes() -> bool {
+    true
 }
 
 /// A pointer drag in progress.
@@ -452,6 +640,21 @@ pub enum Gesture {
     },
     Lasso {
         points: Vec<P16>,
+    },
+    /// Pinta's Freeform Shape, drawn as the pointer goes.
+    Freehand {
+        points: Vec<P16>,
+    },
+    /// A point of the curve being shaped, held by the pointer.
+    CurvePoint {
+        index: usize,
+    },
+    /// A path anchor (`which` 0) or its incoming (1) or outgoing (2) handle; `fresh`
+    /// while the drag that placed the anchor pulls out its handles.
+    Anchor {
+        index: usize,
+        which: u8,
+        fresh: bool,
     },
     /// Hand tool: where the drag began, and the scroll then.
     Pan {
@@ -558,6 +761,35 @@ pub struct Studio {
     /// Where new files are saved when the document has no folder of its own.
     #[serde(default)]
     pub folder: String,
+    /// Where the pointer is over the image (sub16), from hover and drag events.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hover: Option<P16>,
+    /// Modifier keys held for the pointer press being handled (`MOD_*` bits).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub modifiers: u8,
+    #[serde(default)]
+    pub retouch: Retouch,
+    #[serde(default)]
+    pub gradient: GradientOptions,
+    /// GIMP's active path, being drawn with the Paths tool.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path_edit: Option<Path>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub curve: Option<CurveEdit>,
+    /// GIMP's dialogs' Preview checkbox.
+    #[serde(default = "yes")]
+    pub preview: bool,
+    /// JPEG quality last chosen (0: the product's default).
+    #[serde(default)]
+    pub jpeg_quality: u8,
+    #[serde(default)]
+    pub subsampling: Subsampling,
+    /// GIMP's "Save using better but slower compression" (zlib tiles).
+    #[serde(default)]
+    pub xcf_zlib: bool,
+    /// A file named in the save sheet, waiting on its format's options dialog.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending: Option<String>,
 }
 
 /// A `P16` from integer image pixel centres.
@@ -604,7 +836,11 @@ pub fn dialog_params(id: &str) -> &'static [Param] {
             ("gamma", 10, 999, 100),
             ("white", 1, 255, 255),
         ],
+        "jpeg" => &[("quality", 0, 100, 90), ("subsampling", 0, 1, 0)],
+        "jpeg-quality" => &[("quality", 1, 100, 85)],
+        "stroke-path" => &[("line-width", 1, 500, 6), ("antialias", 0, 1, 1)],
         "curves" => &[
+            ("channel", 0, 3, 0),
             ("c0", 0, 255, 0),
             ("c1", 0, 255, 64),
             ("c2", 0, 255, 128),
@@ -678,6 +914,7 @@ fn option_range(id: &str) -> Option<(i32, i32)> {
         "size" => (1, 500),
         "hardness" | "opacity" | "tolerance" | "layer-opacity" => (0, 100),
         "font-size" => (6, 400),
+        "jpeg-quality" => (1, 100),
         "zoom" => (10, 800),
         _ => return None,
     })
@@ -691,6 +928,10 @@ enum Operation {
     Rotate(i32, bool),
     New(u32, u32, bool),
     Color(Rgba, u8),
+    /// Write the pending JPEG at this quality and subsampling.
+    Jpeg(u8, Subsampling),
+    /// Stroke the active path this wide, antialiased or not.
+    StrokePath(u32, bool),
 }
 fn operation(id: &str, v: &BTreeMap<String, i32>) -> Option<Operation> {
     let g = |k: &str| v.get(k).copied().unwrap_or(0);
@@ -710,8 +951,17 @@ fn operation(id: &str, v: &BTreeMap<String, i32>) -> Option<Operation> {
             out_black: 0,
             out_white: 255,
         }]),
+        "jpeg" | "jpeg-quality" => Operation::Jpeg(
+            g("quality").clamp(1, 100) as u8,
+            if g("subsampling") == 1 {
+                Subsampling::Quartered
+            } else {
+                Subsampling::Full
+            },
+        ),
+        "stroke-path" => Operation::StrokePath(g("line-width").max(1) as u32, g("antialias") != 0),
         "curves" => Operation::Adjust(vec![Adjustment::Curves {
-            channel: Channel::Value,
+            channel: Channel::ALL[g("channel").clamp(0, 3) as usize],
             points: (0..5)
                 .map(|i| {
                     (
@@ -845,15 +1095,32 @@ fn operation(id: &str, v: &BTreeMap<String, i32>) -> Option<Operation> {
     })
 }
 
-/// The adjustments of a dialog, for a live preview. Filters are not previewed.
-pub fn preview_adjustments(panel: Option<&Panel>) -> Vec<Adjustment> {
-    match panel {
-        Some(Panel::Dialog { id, values }) => match operation(id, values) {
-            Some(Operation::Adjust(a)) => a,
-            _ => vec![],
-        },
-        _ => vec![],
+/// Run a dialog's adjustments or filter on `layer` through `selection`: what OK does,
+/// and what the canvas previews while the dialog is open. `None` for dialogs that do
+/// not change pixels of the layer (resize, colours, export options).
+fn run_dialog(
+    id: &str,
+    values: &BTreeMap<String, i32>,
+    layer: &mut Canvas,
+    selection: Option<&Mask>,
+) -> Option<()> {
+    match operation(id, values)? {
+        Operation::Adjust(list) => {
+            for adj in &list {
+                cw_raster::adjust::apply(layer, adj, selection);
+            }
+        }
+        Operation::Filter(f) => {
+            cw_raster::filter::apply(layer, &f, selection);
+        }
+        _ => return None,
     }
+    // Preview's sharpness rides along with its colour sliders.
+    if id == "adjust-color" && values.get("sharpness").copied().unwrap_or(0) > 0 {
+        let amount = values["sharpness"] as u32;
+        cw_raster::filter::apply(layer, &Filter::Sharpen { amount }, selection);
+    }
+    Some(())
 }
 
 /// One-shot operations by id.
@@ -907,6 +1174,22 @@ impl Studio {
             tab: String::new(),
             focus: String::new(),
             folder: "Pictures".into(),
+            hover: None,
+            modifiers: 0,
+            retouch: Retouch {
+                // GIMP's Alignment defaults to None, Pinta restarts every stroke and
+                // Pixelmator's "Fix source position" is off: the source follows.
+                aligned: product == Product::Pixelmator,
+                ..Retouch::default()
+            },
+            gradient: GradientOptions::default(),
+            path_edit: None,
+            curve: None,
+            preview: true,
+            jpeg_quality: 0,
+            subsampling: Subsampling::Full,
+            xcf_zlib: false,
+            pending: None,
         }
     }
     /// Open on `argument` (an image path), or on what the product shows when it starts
@@ -983,10 +1266,61 @@ impl Studio {
     fn open_path(&mut self, window: u64, path: &str) -> Vec<AppEffect> {
         self.loading = Some(path.to_owned());
         self.status = None;
+        // PNG and JPEG are decoded by the environment; bitmaps and XCF files are read
+        // as bytes and decoded by the engine.
+        if Format::of(path).is_some_and(|f| !f.decoded_by_environment()) {
+            return vec![AppEffect::ReadBytes {
+                window,
+                path: path.to_owned(),
+            }];
+        }
         vec![AppEffect::ReadImage {
             window,
             path: path.to_owned(),
         }]
+    }
+    /// A file read as bytes arrived (a bitmap or an XCF), or could not be read.
+    pub fn bytes_loaded(&mut self, path: &str, result: Result<Vec<u8>, String>) {
+        if self.loading.as_deref() != Some(path) {
+            return;
+        }
+        let opened = result.and_then(|bytes| match Format::of(path) {
+            Some(Format::Xcf) => cw_raster::xcf::read(&bytes).map(|o| (o.document, o.notes)),
+            Some(Format::Bmp) => cw_raster::bmp::decode(&bytes)
+                .map(|c| (Document::from_canvas(c, &self.layer_name(path)), vec![])),
+            _ => Err("this file is not an image".into()),
+        });
+        match opened {
+            Ok((doc, notes)) => {
+                self.opened(path, doc);
+                self.status = notes.into_iter().next();
+            }
+            Err(reason) => self.image_failed(path, &reason),
+        }
+    }
+    /// The name a single-layer image's layer takes when opened.
+    fn layer_name(&self, path: &str) -> String {
+        match self.product {
+            Product::Gimp | Product::Pinta | Product::Pixelmator => file_name(path).to_owned(),
+            _ => "Background".to_owned(),
+        }
+    }
+    /// A document was opened from `path`.
+    fn opened(&mut self, path: &str, doc: Document) {
+        self.loading = None;
+        self.doc = Some(doc);
+        self.path = path.to_owned();
+        self.modified = false;
+        self.zoom = 0;
+        self.scroll = (0, 0);
+        self.crop = None;
+        self.text = None;
+        self.panel = None;
+        self.status = None;
+        self.path_edit = None;
+        self.curve = None;
+        self.retouch.source = None;
+        self.retouch.offset = None;
     }
     fn open_sheet(mut self, window: u64) -> (Self, Vec<AppEffect>) {
         let effects = self.show_open(window);
@@ -1011,7 +1345,8 @@ impl Studio {
     }
     /// A folder listing for the open or save sheet.
     pub fn listed(&mut self, mut listing: Vec<String>) {
-        listing.retain(|e| e.ends_with('/') || is_image(e));
+        let product = self.product;
+        listing.retain(|e| e.ends_with('/') || product.opens(e));
         listing.truncate(LISTING_LIMIT);
         match &mut self.panel {
             Some(Panel::Open {
@@ -1058,20 +1393,8 @@ impl Studio {
         if self.loading.as_deref() != Some(path) {
             return Err("that image was not asked for".into());
         }
-        self.loading = None;
-        let name = match self.product {
-            Product::Gimp | Product::Pinta | Product::Pixelmator => file_name(path).to_owned(),
-            _ => "Background".to_owned(),
-        };
-        self.doc = Some(Document::from_canvas(canvas, &name));
-        self.path = path.to_owned();
-        self.modified = false;
-        self.zoom = 0;
-        self.scroll = (0, 0);
-        self.crop = None;
-        self.text = None;
-        self.panel = None;
-        self.status = None;
+        let name = self.layer_name(path);
+        self.opened(path, Document::from_canvas(canvas, &name));
         Ok(())
     }
     pub fn image_failed(&mut self, path: &str, reason: &str) {
@@ -1095,14 +1418,25 @@ impl Studio {
             ));
         }
     }
-    /// Where a save of this document goes without asking, if anywhere: its own file
-    /// when that is a PNG, which is the only format the environment encodes.
+    /// Where a save of this document goes without asking, if anywhere: its own file,
+    /// when that is in a format the product saves (for GIMP, only XCF).
     pub fn save_target(&self) -> Option<String> {
-        (!self.path.is_empty() && self.path.to_ascii_lowercase().ends_with(".png"))
-            .then(|| self.path.clone())
+        Format::of(&self.path)
+            .filter(|f| self.product.save_formats(false).contains(f))
+            .map(|_| self.path.clone())
+    }
+    /// GIMP's File ▸ Overwrite: the PNG, JPEG or bitmap the image came from.
+    pub fn overwrite_target(&self) -> Option<String> {
+        Format::of(&self.path)
+            .filter(|f| self.product.save_formats(true).contains(f))
+            .map(|_| self.path.clone())
     }
     /// A PNG name for this document that its folder does not already hold.
     pub fn suggested_name(&self, entries: &[String], suffix: &str) -> String {
+        self.suggested_as(entries, suffix, "png")
+    }
+    /// A name with extension `ext` that the folder does not already hold.
+    pub fn suggested_as(&self, entries: &[String], suffix: &str, ext: &str) -> String {
         let stem = if self.path.is_empty() {
             match self.product {
                 Product::Paint | Product::Pinta | Product::Gimp => "Untitled".to_owned(),
@@ -1114,24 +1448,69 @@ impl Studio {
             name.rsplit_once('.').map_or(name, |(s, _)| s).to_owned()
         };
         let taken = |n: &str| entries.iter().any(|e| e == n);
-        let first = format!("{stem}{suffix}.png");
+        let first = format!("{stem}{suffix}.{ext}");
         if !taken(&first) {
             return first;
         }
         (2..1000)
-            .map(|i| format!("{stem}{suffix} {i}.png"))
+            .map(|i| format!("{stem}{suffix} {i}.{ext}"))
             .find(|n| !taken(n))
             .unwrap_or(first)
     }
+    /// Write `path` in its format. A JPEG from GIMP or Pinta first asks for its
+    /// quality, as both do; everything else is written at once.
     fn write(&mut self, window: u64, path: String) -> Result<Vec<AppEffect>, String> {
+        self.doc.as_ref().ok_or("there is no image to save")?;
+        if Format::of(&path) == Some(Format::Jpeg)
+            && matches!(self.product, Product::Gimp | Product::Pinta)
+        {
+            self.pending = Some(path);
+            let id = if self.product == Product::Gimp {
+                "jpeg"
+            } else {
+                "jpeg-quality"
+            };
+            let values = dialog_params(id)
+                .iter()
+                .map(|(k, _, _, d)| ((*k).to_owned(), *d))
+                .collect();
+            self.show_dialog(id, values)?;
+            return Ok(vec![]);
+        }
+        self.write_now(window, path)
+    }
+    /// Encode the image as `path`'s format and hand it to the environment.
+    fn write_now(&mut self, window: u64, path: String) -> Result<Vec<AppEffect>, String> {
         let doc = self.doc.as_ref().ok_or("there is no image to save")?;
-        let flat = doc.composite();
-        Ok(vec![AppEffect::WriteImage {
+        let format = Format::of(&path).unwrap_or(Format::Png);
+        let bytes = match format {
+            Format::Png => {
+                let flat = doc.composite();
+                return Ok(vec![AppEffect::WriteImage {
+                    window,
+                    path,
+                    width: flat.width(),
+                    height: flat.height(),
+                    rgba: flat.into_pixels(),
+                }]);
+            }
+            Format::Jpeg => {
+                cw_raster::jpeg::encode(&doc.composite(), self.quality(), self.subsampling)
+            }
+            Format::Bmp => cw_raster::bmp::encode(&doc.composite()),
+            Format::Xcf => cw_raster::xcf::write(
+                doc,
+                if self.xcf_zlib {
+                    cw_raster::xcf::Compression::Zlib
+                } else {
+                    cw_raster::xcf::Compression::Rle
+                },
+            ),
+        };
+        Ok(vec![AppEffect::WriteBytes {
             window,
             path,
-            width: flat.width(),
-            height: flat.height(),
-            rgba: flat.into_pixels(),
+            bytes,
         }])
     }
     /// Save in place when possible, otherwise ask for a name.
@@ -1139,19 +1518,28 @@ impl Studio {
         self.doc.as_ref().ok_or("there is no image to save")?;
         match self.save_target() {
             Some(path) => self.write(window, path),
-            None => Ok(self.save_as(window)),
+            None => Ok(self.save_sheet(window, false)),
         }
     }
     pub fn save_as(&mut self, window: u64) -> Vec<AppEffect> {
+        self.save_sheet(window, false)
+    }
+    /// The Save (or GIMP's Export) sheet, named for the document in a format it offers.
+    fn save_sheet(&mut self, window: u64, export: bool) -> Vec<AppEffect> {
         let folder = if self.path.is_empty() {
             self.folder.clone()
         } else {
             folder_of(&self.path).to_owned()
         };
+        let formats = self.product.save_formats(export);
+        let format = Format::of(&self.path)
+            .filter(|f| formats.contains(f))
+            .unwrap_or(formats[0]);
         self.panel = Some(Panel::Save {
             folder: folder.clone(),
-            name: self.suggested_name(&[], ""),
+            name: self.suggested_as(&[], "", format.extension()),
             entries: vec![],
+            export,
         });
         vec![AppEffect::ListDirectory {
             window,
@@ -1161,7 +1549,7 @@ impl Studio {
     }
     /// The environment wrote the file.
     pub fn saved(&mut self, path: &str) {
-        if path.to_ascii_lowercase().ends_with(".png") {
+        if Format::of(path).is_some() {
             self.path = path.to_owned();
         }
         self.modified = false;
@@ -1169,6 +1557,18 @@ impl Studio {
             self.panel = None;
         }
         self.status = Some(format!("Saved {}", file_name(path)));
+    }
+    /// Bytes this editor wrote (a JPEG, a bitmap, an XCF) were saved, or not.
+    pub fn bytes_saved(&mut self, path: &str, result: Result<(), String>) {
+        match result {
+            Ok(()) => self.saved(path),
+            Err(reason) => {
+                self.status = Some(format!(
+                    "“{}” could not be saved: {reason}",
+                    file_name(path)
+                ))
+            }
+        }
     }
 
     // ----- text --------------------------------------------------------------------
@@ -1325,6 +1725,16 @@ impl Studio {
             (i64::from(y - oy) * 16 * 100 + 50) / z,
         )
     }
+    /// The centre of view pixel `(x, y)` in image sub16 units: the point whose image
+    /// pixel the view draws there, which a position readout names.
+    pub fn view_centre(&self, vw: u32, vh: u32, x: i32, y: i32) -> P16 {
+        let z = i64::from(self.effective_zoom(vw, vh));
+        let (ox, oy) = self.origin(vw, vh);
+        (
+            (i64::from(x - ox) * 1600 + 800) / z,
+            (i64::from(y - oy) * 1600 + 800) / z,
+        )
+    }
     /// Keep the scroll inside the image for a `vw` x `vh` view.
     fn clamp_scroll(&mut self, vw: u32, vh: u32) {
         let Some(doc) = &self.doc else {
@@ -1404,6 +1814,7 @@ impl Studio {
             "opacity" => self.opacity = v as u8,
             "tolerance" => self.tolerance = v as u8,
             "font-size" => self.font_size = v as u16,
+            "jpeg-quality" => self.jpeg_quality = v as u8,
             "zoom" => self.zoom = v as u32,
             "layer-opacity" => {
                 let active = self.doc()?.active();
@@ -1438,6 +1849,7 @@ impl Studio {
             "opacity" => i32::from(self.opacity),
             "tolerance" => i32::from(self.tolerance),
             "font-size" => i32::from(self.font_size),
+            "jpeg-quality" => i32::from(self.quality()),
             "zoom" => self.zoom as i32,
             "layer-opacity" => self
                 .doc
@@ -1450,12 +1862,24 @@ impl Studio {
         if !self.product.dialogs().contains(&id) {
             return Err(format!("{} has no {id} command", self.product.name()));
         }
-        let mut values: BTreeMap<String, i32> = dialog_params(id)
+        let values: BTreeMap<String, i32> = dialog_params(id)
             .iter()
             .map(|(k, _, _, d)| ((*k).to_owned(), *d))
             .collect();
+        self.show_dialog(id, values)
+    }
+    /// Show dialog `id` without asking whether the product lists it: the export
+    /// options a save leads to, and Stroke Path, open this way.
+    fn show_dialog(&mut self, id: &str, mut values: BTreeMap<String, i32>) -> Result<(), String> {
         match id {
             "new-image" => {}
+            "jpeg" | "jpeg-quality" => {
+                values.insert("quality".into(), i32::from(self.quality()));
+                values.insert(
+                    "subsampling".into(),
+                    i32::from(self.subsampling == Subsampling::Quartered),
+                );
+            }
             "color" => {
                 let c = if self.slot == 1 {
                     self.secondary
@@ -1481,23 +1905,47 @@ impl Studio {
         });
         Ok(())
     }
-    fn apply_dialog(&mut self) -> Result<(), String> {
+    /// The JPEG quality in force: the last chosen, or the product's own default.
+    pub fn quality(&self) -> u8 {
+        if self.jpeg_quality == 0 {
+            self.product.default_jpeg_quality()
+        } else {
+            self.jpeg_quality
+        }
+    }
+    fn apply_dialog(&mut self, window: u64) -> Result<Vec<AppEffect>, String> {
         let Some(Panel::Dialog { id, values }) = self.panel.clone() else {
             return Err("no dialog is open".into());
         };
         let op = operation(&id, &values).ok_or("unknown dialog")?;
         let label = view::dialog_title(self.product, &id);
         match op {
-            Operation::Adjust(list) => self.edit(|d| {
-                for adj in &list {
-                    d.adjust(&label, adj);
-                }
+            // Exactly what the canvas previewed, as one step.
+            Operation::Adjust(_) | Operation::Filter(_) => self.edit(|d| {
+                d.edit_layer(&label, |layer, sel| {
+                    run_dialog(&id, &values, layer, sel)?;
+                    match sel {
+                        Some(m) => m.bounds(),
+                        None => Some(layer.bounds()),
+                    }
+                });
                 Ok(())
             })?,
-            Operation::Filter(f) => self.edit(|d| {
-                d.filter(&label, &f);
-                Ok(())
-            })?,
+            Operation::Jpeg(quality, subsampling) => {
+                let path = self.pending.take().ok_or("there is no export waiting")?;
+                self.jpeg_quality = quality;
+                self.subsampling = subsampling;
+                self.panel = None;
+                return self.write_now(window, path);
+            }
+            Operation::StrokePath(width, antialias) => {
+                let path = self.path_edit.clone().ok_or("there is no path to stroke")?;
+                let shape = path.stroke(self.primary, width, antialias);
+                self.edit(|d| {
+                    d.edit_layer("Stroke Path", |layer, sel| shape.draw(layer, sel));
+                    Ok(())
+                })?;
+            }
             Operation::Resize(w, h, r) => self.edit(|d| d.resize(w, h, r))?,
             Operation::Rotate(a, expand) => {
                 if a != 0 {
@@ -1519,16 +1967,73 @@ impl Studio {
                 }
             }
         }
-        // Preview's sharpness rides along with its colour sliders.
-        if id == "adjust-color" && values.get("sharpness").copied().unwrap_or(0) > 0 {
-            let amount = values["sharpness"] as u32;
-            self.edit(|d| {
-                d.filter("Sharpness", &Filter::Sharpen { amount });
-                Ok(())
-            })?;
-        }
         self.panel = None;
-        Ok(())
+        Ok(vec![])
+    }
+    /// Whether an open dialog shows its effect on the canvas: always in Pinta,
+    /// Pixelmator and Preview, and in GIMP while its Preview box is ticked.
+    pub fn previewing(&self) -> bool {
+        self.product != Product::Gimp || self.preview
+    }
+    /// The active layer as the edit in progress would leave it, for the canvas to show
+    /// before anything is committed: an open dialog's adjustment or filter, a layer
+    /// being dragged with the Move tool, a gradient being dragged out. `None` when the
+    /// layer shows as it is. Cancelling any of these restores the view exactly, since
+    /// the document itself was never touched.
+    pub fn preview_layer(&self) -> Option<Canvas> {
+        let doc = self.doc.as_ref()?;
+        let active = &doc.active_layer().canvas;
+        if let Some(Panel::Dialog { id, values }) = &self.panel {
+            if !self.previewing() {
+                return None;
+            }
+            let mut layer = active.clone();
+            run_dialog(id, values, &mut layer, doc.selection())?;
+            return Some(layer);
+        }
+        match &self.gesture {
+            Some(Gesture::Span {
+                tool: Tool::Move,
+                start,
+                end,
+            }) => {
+                let (a, b) = (pixel_of(*start), pixel_of(*end));
+                let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+                let mut out = Canvas::new(active.width(), active.height());
+                out.put(dx, dy, active);
+                Some(out)
+            }
+            Some(Gesture::Span {
+                tool: Tool::Gradient,
+                start,
+                end,
+            }) => {
+                let mut layer = active.clone();
+                self.gradient_for(*start, *end)
+                    .apply(&mut layer, doc.selection())?;
+                Some(layer)
+            }
+            _ => None,
+        }
+    }
+    /// The gradient the tool lays between two points, with its options.
+    pub fn gradient_for(&self, start: P16, end: P16) -> Gradient {
+        let fg = self.primary;
+        Gradient {
+            shape: self.gradient.shape,
+            repeat: self.gradient.repeat,
+            from: fg,
+            to: if self.gradient.transparent {
+                [fg[0], fg[1], fg[2], 0]
+            } else {
+                self.secondary
+            },
+            reverse: self.gradient.reverse,
+            start,
+            end,
+            opacity: cw_raster::fmath::percent255(self.opacity),
+            blend: BlendMode::Normal,
+        }
     }
     /// Apply a one-shot operation.
     fn run_action(&mut self, id: &str) -> Result<(), String> {
@@ -1553,6 +2058,60 @@ impl Studio {
         Ok(())
     }
 
+    /// The wheel over the canvas scrolls an image larger than its view (Shift, or a
+    /// sideways turn, scrolls across), and Ctrl+wheel zooms one step a notch keeping
+    /// the image point under the pointer where it is, as every one of these editors
+    /// does. Returns whether the view moved.
+    pub fn wheel(
+        &mut self,
+        target: &str,
+        x: i32,
+        y: i32,
+        wheel: crate::Wheel,
+    ) -> Result<bool, String> {
+        let Some(command) = target
+            .strip_prefix(self.prefix())
+            .and_then(|t| t.strip_prefix(':'))
+        else {
+            return Ok(false);
+        };
+        let mut parts = command.split(':');
+        if parts.next() != Some("canvas") || self.doc.is_none() {
+            return Ok(false);
+        }
+        let (Some(vw), Some(vh)) = (
+            parts.next().and_then(|v| v.parse::<u32>().ok()),
+            parts.next().and_then(|v| v.parse::<u32>().ok()),
+        ) else {
+            return Ok(false);
+        };
+        let before = (self.scroll, self.zoom);
+        if wheel.ctrl {
+            let at = self.to_image(vw, vh, x, y);
+            let (px, py) = ((at.0 / 16) as i32, (at.1 / 16) as i32);
+            let notches = crate::wheel_steps(-wheel.dy, 120);
+            for _ in 0..notches.unsigned_abs().min(8) {
+                self.step_zoom(notches > 0, vw, vh);
+            }
+            let z = i64::from(self.effective_zoom(vw, vh).max(1));
+            self.scroll = (
+                px - (i64::from(x) * 100 / z) as i32,
+                py - (i64::from(y) * 100 / z) as i32,
+            );
+        } else {
+            let z = i64::from(self.effective_zoom(vw, vh).max(1));
+            let across = wheel.horizontal();
+            let down = if wheel.shift && wheel.dx == 0 {
+                0
+            } else {
+                wheel.dy
+            };
+            self.scroll.0 += (i64::from(across) * 100 / z) as i32;
+            self.scroll.1 += (i64::from(down) * 100 / z) as i32;
+        }
+        self.clamp_scroll(vw, vh);
+        Ok(before != (self.scroll, self.zoom))
+    }
     /// Whether `target` (a full target) is one of this editor's drag surfaces.
     pub fn drags(&self, target: &str) -> bool {
         let Some(command) = target
@@ -1585,6 +2144,7 @@ impl Studio {
                     return Err(format!("{} has no {rest} tool", self.product.name()));
                 }
                 let effects = self.commit_text(window);
+                self.commit_curve();
                 if self.tool != tool {
                     self.crop = None;
                 }
@@ -1602,8 +2162,73 @@ impl Studio {
                 if !self.product.tools().contains(&Tool::Shape) {
                     return Err(format!("{} has no shapes", self.product.name()));
                 }
+                self.commit_curve();
                 self.shape = kind;
                 self.tool = Tool::Shape;
+            }
+            // Gradient tool options.
+            "gradient-shape" => {
+                self.gradient.shape = GradientShape::parse(rest).ok_or("unknown gradient shape")?
+            }
+            "gradient-repeat" => {
+                self.gradient.repeat = Repeat::parse(rest).ok_or("unknown repeat mode")?
+            }
+            "gradient-colors" => {
+                self.gradient.transparent = match rest {
+                    "fg-bg" => false,
+                    "fg-transparent" => true,
+                    _ => return Err("gradient colours are fg-bg or fg-transparent".into()),
+                }
+            }
+            "gradient-reverse" => self.gradient.reverse = !self.gradient.reverse,
+            // Clone: whether the source follows the brush from stroke to stroke.
+            "aligned" => {
+                self.retouch.aligned = match rest {
+                    "on" => true,
+                    "off" => false,
+                    "" => !self.retouch.aligned,
+                    _ => return Err("aligned is on or off".into()),
+                };
+                self.retouch.offset = None;
+            }
+            "clone-source" => {
+                // `clone-source:<x>:<y>`: set the source without a modifier-click.
+                let (x, y) = rest.split_once(':').ok_or("clone-source:<x>:<y>")?;
+                let (x, y) = (parse_i32(x)?, parse_i32(y)?);
+                let doc = self.doc.as_ref().ok_or("no image is open")?;
+                if !doc.bounds().contains(x, y) {
+                    return Err("the source must be on the image".into());
+                }
+                self.set_source(x, y);
+            }
+            "path" => return self.path_command(rest),
+            "curve-edit" => match rest {
+                "commit" => self.commit_curve(),
+                "cancel" => self.curve = None,
+                _ => return Err("curve-edit commit or cancel".into()),
+            },
+            "preview-toggle" => self.preview = !self.preview,
+            "xcf-compression" => self.xcf_zlib = !self.xcf_zlib,
+            "format" => {
+                let format = Format::of(&format!("x.{rest}")).ok_or("unknown format")?;
+                let product = self.product;
+                let Some(Panel::Save { name, export, .. }) = &mut self.panel else {
+                    return Err("the save sheet is not showing".into());
+                };
+                if !product.save_formats(*export).contains(&format) {
+                    return Err(format!("{} cannot save {}", product.name(), format.label()));
+                }
+                let stem = match name.rsplit_once('.') {
+                    Some((stem, ext)) if Format::of(&format!("x.{ext}")).is_some() => stem,
+                    _ => name.as_str(),
+                };
+                *name = format!("{stem}.{}", format.extension());
+            }
+            "overwrite" => {
+                let path = self
+                    .overwrite_target()
+                    .ok_or("the image did not come from a PNG, JPEG or BMP file")?;
+                return self.write_now(window, path);
             }
             "outline" => self.outline = rest != "none",
             "fill" => self.fill = rest != "none",
@@ -1731,26 +2356,52 @@ impl Studio {
             "save" => return self.save(window),
             "save-as" | "export" => {
                 self.doc.as_ref().ok_or("there is no image to save")?;
-                return Ok(self.save_as(window));
+                let effects = self.save_sheet(window, head == "export");
+                // `save-as:<ext>`: Paint's "Save as ▸ JPEG picture" names the format.
+                if !rest.is_empty() {
+                    self.command(window, &format!("format:{rest}"))?;
+                }
+                return Ok(effects);
             }
             "save-confirm" => {
-                let Some(Panel::Save { folder, name, .. }) = self.panel.clone() else {
+                let Some(Panel::Save {
+                    folder,
+                    name,
+                    export,
+                    ..
+                }) = self.panel.clone()
+                else {
                     return Err("the save sheet is not showing".into());
                 };
                 let name = name.trim();
                 if name.is_empty() || name.contains('/') {
                     return Err("that is not a usable file name".into());
                 }
-                let name = if name.to_ascii_lowercase().ends_with(".png") {
-                    name.to_owned()
-                } else {
-                    format!("{name}.png")
+                let formats = self.product.save_formats(export);
+                let name = match Format::of(name) {
+                    Some(f) if formats.contains(&f) => name.to_owned(),
+                    // GIMP's own answer to a PNG named in Save: the sheet stays, with
+                    // the reason.
+                    Some(f) => {
+                        self.status = Some(if self.product == Product::Gimp && !export {
+                            format!(
+                                "{} is not XCF: use File ▸ Export As to write other formats",
+                                f.label()
+                            )
+                        } else {
+                            format!("{} cannot save {} files", self.product.name(), f.label())
+                        });
+                        return Ok(vec![]);
+                    }
+                    // No extension: the sheet's first format.
+                    None => format!("{name}.{}", formats[0].extension()),
                 };
                 return self.write(window, join(&folder, &name));
             }
             "close-panel" | "cancel" => {
                 self.panel = None;
                 self.crop = None;
+                self.pending = None;
             }
             "menu" => {
                 let open = matches!(&self.panel, Some(Panel::Menu { id }) if id == rest);
@@ -1759,7 +2410,7 @@ impl Studio {
                 });
             }
             "dialog" => self.open_dialog(rest)?,
-            "apply" => self.apply_dialog()?,
+            "apply" => return self.apply_dialog(window),
             "reset" => {
                 let Some(Panel::Dialog { id, values }) = &mut self.panel else {
                     return Err("no dialog is open".into());
@@ -2041,9 +2692,11 @@ impl Studio {
         }
         let p = self.to_image(vw, vh, x, y);
         let (px, py) = pixel_of(p);
+        self.hover = Some(self.view_centre(vw, vh, x, y));
         if phase == PointerPhase::Cancel {
             if matches!(self.gesture, Some(Gesture::Paint)) {
                 self.doc()?.end_stroke();
+                self.retouch.active = None;
             }
             self.gesture = None;
             return Ok(vec![]);
@@ -2061,6 +2714,12 @@ impl Studio {
                     self.doc()?.begin_stroke(brush, p);
                     self.gesture = Some(Gesture::Paint);
                 }
+                t if t.retouches() => self.retouch_down(p)?,
+                Tool::Paths => self.path_down(p, vw, vh)?,
+                Tool::Shape if self.shape == ShapeKind::Freeform => {
+                    self.gesture = Some(Gesture::Freehand { points: vec![p] })
+                }
+                Tool::Shape if self.curve.is_some() => self.curve_down(p, vw, vh),
                 t if t.spans() => {
                     self.gesture = Some(Gesture::Span {
                         tool: t,
@@ -2149,6 +2808,83 @@ impl Studio {
                     if doc.end_stroke().is_some() {
                         self.modified = true;
                     }
+                    self.gesture = None;
+                    self.retouch.active = None;
+                }
+            }
+            Some(Gesture::Freehand { mut points }) => {
+                if points
+                    .last()
+                    .is_none_or(|l| (l.0 - p.0).abs() + (l.1 - p.1).abs() >= 16)
+                {
+                    points.push(p);
+                }
+                if phase == PointerPhase::Move {
+                    self.gesture = Some(Gesture::Freehand { points });
+                    return Ok(effects);
+                }
+                self.gesture = None;
+                if points.len() >= 3 {
+                    let shape = Shape {
+                        kind: ShapeKind::Freeform,
+                        points,
+                        outline: self.outline.then_some(self.primary),
+                        fill: self.fill.then_some(self.secondary),
+                        width: self.size.max(1),
+                        antialias: self.antialias,
+                    };
+                    if self.doc()?.shape(&shape).is_some() {
+                        self.modified = true;
+                    }
+                }
+            }
+            Some(Gesture::CurvePoint { index }) => {
+                let paint = self.product == Product::Paint;
+                if let Some(curve) = &mut self.curve {
+                    if let Some(q) = curve.points.get_mut(index) {
+                        *q = p;
+                    }
+                    // Paint's first bend pulls both control points together.
+                    if paint && curve.bends == 0 && index == 1 {
+                        curve.points[2] = p;
+                    }
+                    if phase == PointerPhase::Up {
+                        self.gesture = None;
+                        if paint {
+                            curve.bends += 1;
+                            if curve.bends >= 2 {
+                                self.commit_curve();
+                            }
+                        }
+                    }
+                }
+            }
+            Some(Gesture::Anchor {
+                index,
+                which,
+                fresh,
+            }) => {
+                if let Some(path) = &mut self.path_edit {
+                    if let Some(a) = path.anchors.get_mut(index) {
+                        match (fresh, which) {
+                            // Dragging out of a new anchor pulls symmetric handles.
+                            (true, _) => {
+                                if p != a.point {
+                                    *a = Anchor::smooth(a.point, p);
+                                }
+                            }
+                            (false, 0) => {
+                                let (dx, dy) = (p.0 - a.point.0, p.1 - a.point.1);
+                                a.point = p;
+                                a.cin = (a.cin.0 + dx, a.cin.1 + dy);
+                                a.cout = (a.cout.0 + dx, a.cout.1 + dy);
+                            }
+                            (false, 1) => a.cin = p,
+                            (false, _) => a.cout = p,
+                        }
+                    }
+                }
+                if phase == PointerPhase::Up {
                     self.gesture = None;
                 }
             }
@@ -2239,8 +2975,32 @@ impl Studio {
                     self.modified = true;
                 }
             }
+            Tool::Gradient => {
+                if clicked {
+                    return Ok(());
+                }
+                let gradient = self.gradient_for(start, end);
+                if self.doc()?.gradient(&gradient).is_some() {
+                    self.modified = true;
+                }
+            }
             Tool::Shape => {
                 if clicked {
+                    return Ok(());
+                }
+                // Paint's Curve and Pinta's Line/Curve stay open for bending.
+                if self.product == Product::Paint && self.shape == ShapeKind::Curve {
+                    self.curve = Some(CurveEdit {
+                        points: vec![start, start, end, end],
+                        bends: 0,
+                    });
+                    return Ok(());
+                }
+                if self.product == Product::Pinta && self.shape == ShapeKind::Line {
+                    self.curve = Some(CurveEdit {
+                        points: vec![start, end],
+                        bends: 0,
+                    });
                     return Ok(());
                 }
                 let shape = Shape {
@@ -2269,7 +3029,274 @@ impl Studio {
         Ok(())
     }
 
+    /// How far from a point (sub16) a press still takes it: six view pixels.
+    fn grab_radius(&self, vw: u32, vh: u32) -> i64 {
+        6 * 16 * 100 / i64::from(self.effective_zoom(vw, vh).max(1))
+    }
+
+    /// Set the clone source; the next stroke measures its offset from it.
+    fn set_source(&mut self, x: i32, y: i32) {
+        self.retouch.source = Some((x, y));
+        self.retouch.offset = None;
+        self.status = Some(format!("Clone source set at {x}, {y}"));
+    }
+
+    /// Press with the clone, heal or repair brush: a modifier-click sets the source,
+    /// a plain press starts a stroke.
+    fn retouch_down(&mut self, p: P16) -> Result<(), String> {
+        let brush = self.brush();
+        let merged = self.merged;
+        let (px, py) = pixel_of(p);
+        if self.tool == Tool::Repair {
+            self.doc()?
+                .begin_stroke_with(brush, p, StrokeMode::Repair, false);
+            self.gesture = Some(Gesture::Paint);
+            return Ok(());
+        }
+        let (bit, key) = self.product.source_modifier();
+        if self.modifiers & bit != 0 {
+            if self.doc()?.bounds().contains(px, py) {
+                self.set_source(px, py);
+            }
+            return Ok(());
+        }
+        let Some((sx, sy)) = self.retouch.source else {
+            self.status = Some(format!("{key}-click to set a clone source first"));
+            return Ok(());
+        };
+        let offset = match (self.retouch.aligned, self.retouch.offset) {
+            (true, Some(o)) => o,
+            _ => (sx - px, sy - py),
+        };
+        if self.retouch.aligned {
+            self.retouch.offset = Some(offset);
+        }
+        self.retouch.active = Some(offset);
+        let mode = if self.tool == Tool::Heal {
+            StrokeMode::Heal {
+                dx: offset.0,
+                dy: offset.1,
+            }
+        } else {
+            StrokeMode::Clone {
+                dx: offset.0,
+                dy: offset.1,
+            }
+        };
+        self.doc()?.begin_stroke_with(brush, p, mode, merged);
+        self.gesture = Some(Gesture::Paint);
+        Ok(())
+    }
+
+    /// Press with GIMP's Paths tool (Design mode): take an anchor or handle under the
+    /// pointer, Ctrl-click the first anchor to close the path, or add an anchor.
+    fn path_down(&mut self, p: P16, vw: u32, vh: u32) -> Result<(), String> {
+        let radius = self.grab_radius(vw, vh);
+        let ctrl = self.modifiers & MOD_CTRL != 0;
+        let path = self.path_edit.get_or_insert_with(Path::default);
+        if let Some((index, which)) = path.hit(p, radius) {
+            if ctrl && index == 0 && which == 0 && !path.closed && path.anchors.len() >= 2 {
+                path.closed = true;
+                return Ok(());
+            }
+            self.gesture = Some(Gesture::Anchor {
+                index,
+                which,
+                fresh: false,
+            });
+            return Ok(());
+        }
+        if path.closed {
+            self.status = Some("The path is closed; drag its anchors, or delete it".into());
+            return Ok(());
+        }
+        path.anchors.push(Anchor::corner(p));
+        self.gesture = Some(Gesture::Anchor {
+            index: path.anchors.len() - 1,
+            which: 0,
+            fresh: true,
+        });
+        Ok(())
+    }
+
+    /// The Paths dock and menu commands: stroke, fill, select, close, delete.
+    fn path_command(&mut self, op: &str) -> Result<Vec<AppEffect>, String> {
+        if !self.product.tools().contains(&Tool::Paths) {
+            return Err(format!("{} has no paths", self.product.name()));
+        }
+        let path = self
+            .path_edit
+            .clone()
+            .filter(|p| p.anchors.len() >= 2)
+            .ok_or("draw a path with the Paths tool first")?;
+        match op {
+            "stroke" => {
+                let values = dialog_params("stroke-path")
+                    .iter()
+                    .map(|(k, _, _, d)| ((*k).to_owned(), *d))
+                    .collect();
+                self.show_dialog("stroke-path", values)?;
+            }
+            "fill" => {
+                let shape = path.fill(self.primary, self.antialias);
+                self.edit(|d| {
+                    d.edit_layer("Fill Path", |layer, sel| shape.draw(layer, sel));
+                    Ok(())
+                })?;
+            }
+            "select" => {
+                let points = path.flatten();
+                self.edit(|d| {
+                    d.select_polygon(&points, SelectMode::Replace);
+                    Ok(())
+                })?;
+            }
+            "close" => {
+                if let Some(p) = &mut self.path_edit {
+                    p.closed = true;
+                }
+            }
+            "delete" => self.path_edit = None,
+            _ => return Err(format!("unknown path command {op}")),
+        }
+        Ok(vec![])
+    }
+
+    /// Press while a curve is being shaped. Paint: place the next bend. Pinta: take a
+    /// control point, add one on the curve, or finish the curve and start a new line.
+    fn curve_down(&mut self, p: P16, vw: u32, vh: u32) {
+        let radius = self.grab_radius(vw, vh);
+        let Some(curve) = &mut self.curve else {
+            return;
+        };
+        if self.product == Product::Paint {
+            let index = if curve.bends == 0 { 1 } else { 2 };
+            curve.points[index] = p;
+            if curve.bends == 0 {
+                curve.points[2] = p;
+            }
+            self.gesture = Some(Gesture::CurvePoint { index });
+            return;
+        }
+        let near = |q: P16| (q.0 - p.0).abs().max((q.1 - p.1).abs()) <= radius;
+        if let Some(index) = curve.points.iter().position(|q| near(*q)) {
+            self.gesture = Some(Gesture::CurvePoint { index });
+            return;
+        }
+        // On the curve: a new control point between the two it runs between.
+        let flat = Path::through(&curve.points, false).flatten();
+        let on_curve = flat
+            .windows(2)
+            .any(|w| cw_raster::mask::near_segment(w[0], w[1], radius, p.0, p.1));
+        if on_curve {
+            let nearest = |q: &P16| (q.0 - p.0).pow(2) + (q.1 - p.1).pow(2);
+            let (at, _) = flat
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, q)| nearest(q))
+                .unwrap_or((0, &p));
+            // Control points appear in the flattened curve in order; the new point
+            // goes after the last one at or before the nearest sample.
+            let index = curve
+                .points
+                .iter()
+                .filter(|c| flat.iter().position(|q| q == *c).is_some_and(|i| i <= at))
+                .count()
+                .clamp(1, curve.points.len());
+            curve.points.insert(index, p);
+            self.gesture = Some(Gesture::CurvePoint { index });
+            return;
+        }
+        self.commit_curve();
+        self.gesture = Some(Gesture::Span {
+            tool: Tool::Shape,
+            start: p,
+            end: p,
+        });
+    }
+
+    /// Draw the curve being shaped, if there is one.
+    fn commit_curve(&mut self) {
+        let Some(curve) = self.curve.take() else {
+            return;
+        };
+        let points = if self.product == Product::Paint {
+            curve.points
+        } else {
+            Path::through(&curve.points, false).flatten()
+        };
+        let shape = Shape {
+            kind: if self.product == Product::Paint {
+                ShapeKind::Curve
+            } else {
+                ShapeKind::Polyline
+            },
+            points,
+            outline: Some(self.primary),
+            fill: None,
+            width: self.size.max(1),
+            antialias: self.antialias,
+        };
+        if let Some(doc) = self.doc.as_mut() {
+            if doc.shape(&shape).is_some() {
+                self.modified = true;
+            }
+        }
+    }
+
+    /// Whether `target` (a full target) wants the pointer while no button is down:
+    /// the canvas, for the pointer position readout and the brush outline.
+    pub fn hovers(&self, target: &str) -> bool {
+        self.doc.is_some()
+            && target
+                .strip_prefix(self.prefix())
+                .and_then(|t| t.strip_prefix(':'))
+                .is_some_and(|c| c.starts_with("canvas:"))
+    }
+    /// The pointer passed over the canvas at `(x, y)` (relative to it). Returns whether
+    /// what is shown changed.
+    pub fn hover(&mut self, target: &str, x: i32, y: i32) -> bool {
+        let Some(rest) = target
+            .strip_prefix(self.prefix())
+            .and_then(|t| t.strip_prefix(":canvas:"))
+        else {
+            return false;
+        };
+        let mut parts = rest
+            .split(':')
+            .map(|v| v.parse::<u32>().unwrap_or(1).max(1));
+        let (vw, vh) = (parts.next().unwrap_or(1), parts.next().unwrap_or(1));
+        if self.doc.is_none() {
+            return false;
+        }
+        let p = self.view_centre(vw, vh, x, y);
+        let changed = self.hover != Some(p);
+        self.hover = Some(p);
+        changed
+    }
+    /// The image pixel under the pointer, when the pointer (`pointer`, in the frame's
+    /// coordinates) is over the canvas painted at `area`.
+    pub fn pointer_pixel(
+        &self,
+        area: cw_scene::Rect,
+        pointer: Option<(i32, i32)>,
+    ) -> Option<(i32, i32)> {
+        let (x, y) = pointer?;
+        if !area.contains(x, y) {
+            return None;
+        }
+        self.hover.map(pixel_of)
+    }
+
     pub fn key(&mut self, window: u64, key: &str) -> Result<Vec<AppEffect>, String> {
+        // A curve being shaped: Enter draws it, Escape drops it.
+        if self.curve.is_some() {
+            match key {
+                "Enter" => return self.command(window, "curve-edit:commit"),
+                "Escape" => return self.command(window, "curve-edit:cancel"),
+                _ => {}
+            }
+        }
         // Text being typed takes its own keys first.
         if let Some(entry) = self.text.as_mut().filter(|t| !t.pending) {
             match key {
@@ -2300,7 +3327,8 @@ impl Studio {
             "Ctrl+z" => "undo",
             "Ctrl+y" | "Ctrl+Shift+z" | "Ctrl+Shift+Z" => "redo",
             "Ctrl+s" => "save",
-            "Ctrl+Shift+s" | "Ctrl+Shift+S" | "Ctrl+Shift+e" | "Ctrl+Shift+E" => "save-as",
+            "Ctrl+Shift+s" | "Ctrl+Shift+S" => "save-as",
+            "Ctrl+Shift+e" | "Ctrl+Shift+E" => "export",
             "Ctrl+o" => "open",
             "Ctrl+n" => "new",
             "Ctrl+a" => "select-all",
@@ -2347,6 +3375,12 @@ impl Studio {
             }
         }
         facts.push(format!("tool: {}", self.tool.id()));
+        if let Some((x, y)) = self.hover.map(pixel_of) {
+            facts.push(format!("pointer at {x}, {y}"));
+        }
+        if let (Some((x, y)), true) = (self.retouch.source, self.tool.retouches()) {
+            facts.push(format!("clone source {x}, {y}"));
+        }
         facts.push(format!("color: #{}", cw_raster::hex(self.primary)));
         if let Some(status) = &self.status {
             facts.push(status.clone());

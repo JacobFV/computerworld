@@ -42,6 +42,7 @@ const OBJECTS: &[&str] = &[
     "albums",
     "library",
     "history",
+    "devices",
 ];
 const ARRAYS: &[&str] = &[];
 /// `mode` is the documented discriminant; an unlisted value is a seed typo, not a fallback.
@@ -1297,6 +1298,7 @@ fn render(
                 &catalog::search(state, &web::query(request, "q").unwrap_or_default()),
             )
         }
+        ["art", key] => return kit::artwork(key, request),
         [""] if state.get("items").is_none() => return landing(state),
         _ => {}
     }
@@ -1370,7 +1372,9 @@ impl Service for MediaService {
         let path = web::path(request);
         let method = request.method.to_ascii_uppercase();
         if method == "GET" {
-            return render(state, ctx, request, true);
+            // A page refreshing itself is not a visit: it plays nothing and counts nothing.
+            let visit = request.header(cw_protocol::REFRESH_HEADER).is_none();
+            return render(state, ctx, request, visit);
         }
         if method != "POST" {
             return web::error(405, "method not allowed");
@@ -2448,5 +2452,197 @@ mod tests {
             json!({"q": "tiling"}),
         );
         assert!(text(&searched).contains("result-tiling"));
+    }
+
+    fn seed_with_extras(mode: &str) -> Value {
+        let mut seed = music_seed(mode);
+        seed["items"]["warm-cache"]["lyrics"] = json!([
+            [2000, "first line"],
+            [6000, "second line"],
+            [12000, "third line"]
+        ]);
+        seed["devices"] = json!({"livingroom": {"name": "Living Room", "kind": "speaker",
+            "url": "http://livingroom.speaker.internal/", "protocols": ["airplay", "cast"]}});
+        MediaService.initialize(seed, &ctx()).unwrap()
+    }
+
+    #[test]
+    fn volume_mute_and_output_are_the_listeners_and_outlast_a_new_play() {
+        let mut state = seed_with_extras("audio");
+        api(
+            &mut state,
+            0,
+            PLAYER,
+            json!({"action": "play", "context": "album:cold-reads"}),
+        );
+        let p = api(
+            &mut state,
+            0,
+            PLAYER,
+            json!({"action": "volume", "level": 35}),
+        );
+        assert_eq!(
+            (p["volume"].clone(), p["muted"].clone()),
+            (json!(35), json!(false))
+        );
+        let p = api(&mut state, 0, PLAYER, json!({"action": "mute"}));
+        assert_eq!(p["muted"], json!(true));
+        // Moving the slider unmutes, as it does in every player.
+        let p = api(
+            &mut state,
+            0,
+            PLAYER,
+            json!({"action": "volume", "level": 60}),
+        );
+        assert_eq!(
+            (p["volume"].clone(), p["muted"].clone()),
+            (json!(60), json!(false))
+        );
+        assert_eq!(
+            refused(
+                &mut state,
+                0,
+                PLAYER,
+                json!({"action": "volume", "level": 101})
+            ),
+            400
+        );
+        let p = api(
+            &mut state,
+            0,
+            PLAYER,
+            json!({"action": "output", "device": "livingroom"}),
+        );
+        assert_eq!(p["device"], json!("livingroom"));
+        assert_eq!(p["device_name"], json!("Living Room"));
+        assert_eq!(
+            refused(
+                &mut state,
+                0,
+                PLAYER,
+                json!({"action": "output", "device": "attic"})
+            ),
+            400
+        );
+        // A new play keeps the volume and where the sound goes.
+        let p = api(
+            &mut state,
+            S,
+            PLAYER,
+            json!({"action": "play", "context": "album:tiling"}),
+        );
+        assert_eq!(
+            (p["volume"].clone(), p["device"].clone()),
+            (json!(60), json!("livingroom"))
+        );
+        let catalog = json_at(&mut state, S, "http://spotify.com/api/catalog");
+        assert_eq!(
+            catalog["devices"][0]["protocols"],
+            json!(["airplay", "cast"])
+        );
+        // Back to this device.
+        let p = api(
+            &mut state,
+            S,
+            PLAYER,
+            json!({"action": "output", "device": ""}),
+        );
+        assert_eq!(p["device"], json!(""));
+    }
+
+    #[test]
+    fn lyrics_are_served_with_the_catalogue_and_follow_the_clock_on_both_sites() {
+        for (mode, host) in [("audio", "spotify.com"), ("music", "music.youtube.com")] {
+            let mut state = seed_with_extras(mode);
+            let catalog = json_at(&mut state, 0, &format!("http://{host}/api/catalog"));
+            let warm = catalog["tracks"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|t| t["id"] == "warm-cache")
+                .unwrap()
+                .clone();
+            assert_eq!(warm["lyrics"][1], json!([6000, "second line"]));
+            api(
+                &mut state,
+                0,
+                &format!("http://{host}/api/player"),
+                json!({"action": "play", "context": "album:cold-reads", "item": "warm-cache"}),
+            );
+            let page = |state: &mut Value, tick: u64| {
+                let url = if mode == "audio" {
+                    format!("http://{host}/lyrics")
+                } else {
+                    format!("http://{host}/watch?v=warm-cache&list=OLAK-cold-reads&tab=lyrics")
+                };
+                let reply = get_at(state, tick, &url);
+                assert_eq!(reply.status, 200);
+                let page: cw_protocol::Page = serde_json::from_slice(&reply.body).unwrap();
+                page.validate().unwrap();
+                page
+            };
+            // The lit line is the one the clock has reached.
+            let lit = |page: &cw_protocol::Page| -> String {
+                let text = serde_json::to_string(page).unwrap();
+                ["first line", "second line", "third line"]
+                    .into_iter()
+                    .find(|line| {
+                        let at = text.find(&format!("\"text\":\"{line}\"")).unwrap();
+                        text[at..].split('}').next().unwrap().contains("#ffffff\"")
+                    })
+                    .unwrap_or("none")
+                    .to_owned()
+            };
+            assert_eq!(lit(&page(&mut state, S)), "none", "{mode}");
+            assert_eq!(lit(&page(&mut state, 3 * S)), "first line", "{mode}");
+            assert_eq!(lit(&page(&mut state, 7 * S)), "second line", "{mode}");
+            // A line is a seek control to where it is sung.
+            let text = serde_json::to_string(&page(&mut state, 7 * S)).unwrap();
+            assert!(text.contains("\"position_ms\":\"12000\""), "{mode}");
+        }
+    }
+
+    #[test]
+    fn covers_are_served_as_page_images_the_size_the_page_asks_for() {
+        let mut state = seed_with_extras("audio");
+        let reply = get_at(
+            &mut state,
+            0,
+            "http://spotify.com/art/cold-reads?size=40&radius=20",
+        );
+        assert_eq!(reply.status, 200);
+        assert_eq!(
+            reply.header("content-type"),
+            Some(cw_protocol::RGBA_MEDIA_TYPE)
+        );
+        let image: Value = serde_json::from_slice(&reply.body).unwrap();
+        assert_eq!(
+            (image["width"].clone(), image["height"].clone()),
+            (json!(40), json!(40))
+        );
+        let rgba = image["rgba"].as_array().unwrap();
+        assert_eq!(rgba.len(), 40 * 40 * 4);
+        // Round: the corner is transparent.
+        assert_eq!(rgba[3], json!(0));
+        // The same key is the same picture every time; another key is another picture.
+        let again = get_at(
+            &mut state,
+            5,
+            "http://spotify.com/art/cold-reads?size=40&radius=20",
+        );
+        assert_eq!(again.body, reply.body);
+        let other = get_at(
+            &mut state,
+            5,
+            "http://spotify.com/art/tiling?size=40&radius=20",
+        );
+        assert_ne!(other.body, reply.body);
+        // Pages use them, with the album named as the picture's alternative text.
+        let page = text(&get_at(
+            &mut state,
+            0,
+            "http://spotify.com/album/cold-reads",
+        ));
+        assert!(page.contains("/art/cold-reads?size=180"));
     }
 }

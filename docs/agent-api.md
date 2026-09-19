@@ -253,13 +253,77 @@ pub struct ActionEffect {
 ```
 
 Tags are `window.opened`, `window.closed`, `window.moved`, `window.focused`,
-`window.title`, `content`, `document`, `navigate`, `focus`, `terminal` and `application`.
+`window.title`, `content`, `document`, `navigate`, `focus`, `terminal`, `application`,
+`scroll` (a pane, a terminal's scrollback, a browser page or an application's own wheel
+use moved, or a list was pulled past its end), `clipboard`, `notifications`, `settings`
+(a system setting or the screen's power state), `shell` (launcher search text, a
+selected desktop icon, the virtual desktop, an expanded launcher group, Recents, the
+on-screen keyboard's plane, the calendar panel's month) and `library` (recent
+documents, stars, bookmarks, downloads). A browser's form fields, tabs and zoom report
+`content`.
 An empty `changed` (`ActionEffect::is_noop`) means the action was accepted and changed
 nothing observable — a real answer, distinct from failure. A failed action can still carry
 an effect when it mutated state before failing, which is the case worth seeing. `effect`
 is `None` only when the action was refused by its grants and never reached a machine.
 `state` is content-derived like the scene digest, so equal values mean equal observable
 state across restores.
+
+## Errors and refusals
+
+A refused action is not an exception: it is an `ActionOutcome` with `success: false` and
+an `error`. The error is
+
+```rust
+pub struct SimError {
+    pub code: String,            // one of four, below
+    pub message: String,         // a fixed constant, never composed from world state
+    pub reason: Option<String>,  // the closed vocabulary below; absent when there is none
+}
+```
+
+**`code` says what class of failure it is. `reason` says what to do about it.** Both are
+stable; `message` is a compile-time constant picked by `reason` (or by `code` when there
+is none), so a refusal can never disclose a path, a machine id, another actor's state or
+an evaluator's answer through its text. That is also why a refusal carries no detail
+beyond this table: the detail an agent may safely have is the reason.
+
+| `code` | Meaning |
+|---|---|
+| `denied` | The session's grants do not allow this. Change the `EnvironmentConfig`, or do something else. Retrying identically will fail identically. |
+| `not_found` | The thing named does not exist on this machine — an application, a path, a window. |
+| `invalid` | The envelope itself is wrong: an unknown `op`, a missing or malformed payload field, an out-of-range value. |
+| `action_failed` | The action was allowed and well-formed, and the machine could not carry it out. |
+
+`reason` is drawn from `cw_protocol::reason`. The table below is the whole vocabulary;
+`crates/computerworld/tests/error_codes.rs` asserts that it matches `reason::ALL`, and
+that every row is one the environment really returns.
+
+<!-- error-codes -->
+
+| `reason` | `code` | Fixed message | What to do |
+|---|---|---|---|
+| `action_family_not_granted` | `denied` | the session was not granted this action family | Add the family to `EnvironmentConfig::actions`. |
+| `machine_not_granted` | `denied` | the session was not granted this machine | Add the machine to `EnvironmentConfig::machines`. |
+| `browser_family_required` | `denied` | this action also requires the browser.v1 action family | The action is browser-backed (launching the browser, a click that lands in page content, Enter in an address bar). Add `browser.v1` as well as `application.v1`. |
+| `application_family_required` | `denied` | this action also requires the application.v1 action family | The action drives the desktop shell. Add `application.v1`. |
+| `pixels_not_granted` | `denied` | this action requires the pixels.v1 observation channel | Add `pixels.v1` to `EnvironmentConfig::observations`. |
+| `visual_observation_not_granted` | `denied` | this requires the semantic.v1 or pixels.v1 observation channel | `scene()` and `render()` need one of them. |
+| `unknown_session` | `denied` | unknown actor session | The session id is not one this world minted, or the world was rebuilt. Mint a new one. |
+| `action_budget_exceeded` | `denied` | the batch is larger than this session's action budget | Split the batch, or raise `action_budget`. The whole batch is refused before any of it runs. |
+| `application_not_installed` | `not_found` | this machine does not have that application installed | Call `application.v1 list` to see what is here; add the id to the computer's `installed_apps` to put it there. |
+| `unsupported_operation` | `invalid` | this action family does not support that operation | Check the `op` against [action families](action-families.md). |
+| `no_desktop_shell` | `invalid` | this machine has no desktop shell to drive | Give the machine a `metadata.desktop_themes` entry, or a `virtual-*` profile. |
+
+<!-- /error-codes -->
+
+An error with no `reason` carries its code's own fixed message (`action is not
+permitted`, `requested resource not found`, `invalid action`, `action failed`). Treat a
+missing `reason` as "no further detail", never as a different code.
+
+Two refusals are raised rather than returned per-action, because they refuse the whole
+call before any action runs: `action_budget_exceeded` and `unknown_session`. In the
+bindings those surface as a raised exception (`ValueError` in Python); everything else is
+in `result["outcomes"][i]["error"]`.
 
 ### Cost
 

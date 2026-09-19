@@ -1,15 +1,20 @@
 //! Native OS shell composition. Application scenes retain independent state and coordinates.
 use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
+pub mod scroll;
 pub mod shared;
-pub use app_content::{app_content, app_content_with};
+pub use app_content::{
+    app_content, app_content_scrolled, app_content_with, kind_label, standard_places, PlaceKind,
+    SideItem, StandardPlace, EDITOR_PANE,
+};
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 mod android;
 mod ios;
 pub(crate) mod macos;
 mod ubuntu;
 mod windows;
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DesktopTheme {
     Macos,
     Windows,
@@ -55,6 +60,42 @@ impl DesktopTheme {
     }
     pub fn mobile(self) -> bool {
         matches!(self, Self::Ios | Self::Android)
+    }
+    /// The name this shell shows for a window: the document it presents, or the
+    /// application's own name when it presents none. This is the same function the
+    /// frame paints with, so the title an agent reads in `Scene::windows` is the
+    /// title on the screen, and neither is ever a bare application id.
+    pub fn window_title(self, w: &WindowView) -> String {
+        match self {
+            Self::Macos => macos::window_title(w),
+            Self::Windows => windows::window_title(w),
+            Self::Ubuntu => ubuntu::window_title(w),
+            Self::Ios => ios::window_title(w),
+            Self::Android => android::window_title(w),
+        }
+    }
+    /// The name this shell paints under an application's launcher icon, or `None`
+    /// when this shell has no icon for that application. This is the *only* source of
+    /// a launcher label: a catalogue an agent reads and the pixels it sees are the
+    /// same table, so searching for what is on screen always finds it.
+    pub fn app_label(self, id: &str) -> Option<&'static str> {
+        match self {
+            Self::Macos => macos::app_name(id),
+            Self::Windows => windows::app_label(id),
+            Self::Ubuntu => ubuntu::app_name(id),
+            Self::Ios => ios::app_name(id),
+            Self::Android => android::app_name(id),
+        }
+    }
+    /// The screen a machine of this shell has before anything has said otherwise, in
+    /// the logical pixels scenes are laid out in, portrait for a phone: an iPhone's
+    /// 390 x 844 points, a Pixel's 412 x 915 dp, and a 1280 x 800 desktop.
+    pub fn native_screen(self) -> (u32, u32) {
+        match self {
+            Self::Ios => (390, 844),
+            Self::Android => (412, 915),
+            _ => (1280, 800),
+        }
     }
 }
 pub fn work_area(theme: DesktopTheme, width: u32, height: u32) -> Rect {
@@ -145,11 +186,13 @@ fn default_frame(theme: DesktopTheme, width: u32, height: u32, maximized: bool) 
     )
 }
 /// Pages of a paged home screen at this screen size, for these installed applications
-/// (empty meaning all). Only iOS pages its home screen; every other shell has one.
+/// (empty meaning all). iOS and Pixel Launcher page their home screens; the desktop
+/// shells have one.
 /// The router asks this so a swipe walks exactly the pages the shell paints.
 pub fn home_page_count(theme: DesktopTheme, installed: &[String], width: u32, height: u32) -> u32 {
     match theme {
         DesktopTheme::Ios => ios::home_pages(installed, width, height),
+        DesktopTheme::Android => android::home_pages(installed, width, height),
         _ => 1,
     }
 }
@@ -263,6 +306,9 @@ pub fn render_desktop_with_options(
         user: &options.user,
         home: &options.home,
         recents: &options.recents,
+        battery: options.battery,
+        anchor: options.anchor,
+        overview: options.overview,
     };
     let mut p = Painter::themed(theme, width, height, 1 << 60);
     background(&mut p, &ctx);
@@ -317,6 +363,22 @@ pub fn render_desktop_with_options(
                     }
                 }
                 p.scene.nodes.push(n);
+            }
+            // Panes move with the content and take the window's namespace.
+            for area in &content.scrolls {
+                let bounds = Rect::new(
+                    area.bounds.x + r.x,
+                    area.bounds.y + r.y,
+                    area.bounds.width,
+                    area.bounds.height,
+                );
+                if let Some(bounds) = bounds.intersection(r) {
+                    let mut area = area.clone();
+                    area.bounds = bounds;
+                    area.target = w.action(&format!("content:{}", area.target));
+                    area.window = Some(w.id);
+                    p.scene.scrolls.push(area);
+                }
             }
         }
         // Client pixels follow the frame's rounded silhouette, inside its hairline.

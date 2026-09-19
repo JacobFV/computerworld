@@ -12,6 +12,8 @@ const INK: Color = Color::rgb(29, 29, 31);
 const MUTED: Color = Color::rgb(112, 114, 120);
 const FAINT: Color = Color::rgb(160, 162, 168);
 const LINE: Color = Color(0, 0, 0, 26);
+/// The pane a plain-text editor's rows scroll in.
+pub const EDITOR_PANE: &str = "text";
 
 struct Look {
     accent: Color,
@@ -220,41 +222,66 @@ fn explorer_tint(name: &str) -> Color {
         _ => Color::rgb(245, 187, 64),
     }
 }
+/// Where a row of a platform's standard sidebar leads. Lists the desktop keeps
+/// (Recents, Starred) and Explorer's views (Home, Gallery) are not folders; the rest
+/// are absolute folders on the machine.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PlaceKind {
+    Recents,
+    Starred,
+    /// Explorer's Home: the pinned Quick access folders (and, in Explorer, the lists).
+    QuickAccess,
+    /// Explorer's Gallery: the images in Pictures.
+    Gallery,
+    Home(String),
+    Folder(String),
+    Trash(String),
+    /// The computer: Macintosh HD, This PC, Other Locations.
+    Root,
+}
+/// One row of a standard sidebar, before any application decides what clicking it does.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StandardPlace {
+    pub label: String,
+    pub symbol: &'static str,
+    pub tint: Option<Color>,
+    /// Explorer's pinned Quick access folders carry a pin.
+    pub pinned: bool,
+    pub kind: PlaceKind,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub enum SideItem {
+    Heading(&'static str),
+    Place(StandardPlace),
+    Gap,
+}
 /// The platform's standard sidebar, holding only places that can really be opened:
 /// the lists the desktop keeps, the home folder, the standard folders that exist in it
 /// right now, the Trash and the computer. AirDrop, iCloud, Tags, OneDrive and Network
 /// have nothing behind them in the simulator and are left out rather than faked.
-fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec<Side> {
-    use crate::FileScope;
-    let files = &env.files;
-    let folder_at = |path: &str| {
-        tab.scope == FileScope::Folder
-            && !path.is_empty()
-            && tab.path.trim_end_matches('/') == path.trim_end_matches('/')
-    };
-    let row = |label: &str, symbol: &'static str, action: String, current: bool| {
-        Side::Row(Place {
+/// Files, Finder and Explorer draw it; an application's native file dialog lists the
+/// same places, so the two can never disagree about what the machine holds.
+pub fn standard_places(t: DesktopTheme, files: &crate::FilesEnv<'_>) -> Vec<SideItem> {
+    let row = |label: &str, symbol: &'static str, kind: PlaceKind| {
+        SideItem::Place(StandardPlace {
             label: label.to_owned(),
             symbol,
             tint: None,
-            action,
-            current,
             pinned: false,
+            kind,
         })
     };
-    let standard = |names: &[&str], explorer: bool| -> Vec<Side> {
+    let standard = |names: &[&str], explorer: bool| -> Vec<SideItem> {
         names
             .iter()
             .filter(|name| files.has(name))
             .map(|name| {
-                let path = files.folder(name);
-                Side::Row(Place {
+                SideItem::Place(StandardPlace {
                     label: (*name).to_owned(),
                     symbol: folder_symbol(name),
                     tint: explorer.then(|| explorer_tint(name)),
-                    current: folder_at(&path),
-                    action: format!("files-location:{path}"),
                     pinned: explorer,
+                    kind: PlaceKind::Folder(files.folder(name)),
                 })
             })
             .collect()
@@ -263,25 +290,10 @@ fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec
     let mut out = Vec::new();
     match t {
         DesktopTheme::Ubuntu => {
-            out.push(row(
-                "Recent",
-                "clock",
-                "files-recents".into(),
-                tab.scope == FileScope::Recents,
-            ));
-            out.push(row(
-                "Starred",
-                "star",
-                "files-starred".into(),
-                tab.scope == FileScope::Starred,
-            ));
+            out.push(row("Recent", "clock", PlaceKind::Recents));
+            out.push(row("Starred", "star", PlaceKind::Starred));
             if has_home {
-                out.push(row(
-                    "Home",
-                    "home",
-                    "files-home".into(),
-                    folder_at(files.home),
-                ));
+                out.push(row("Home", "home", PlaceKind::Home(files.home.to_owned())));
             }
             out.extend(standard(
                 &[
@@ -295,68 +307,73 @@ fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec
                 false,
             ));
             if !files.trash.is_empty() {
-                out.push(row(
-                    "Trash",
-                    "trash",
-                    "files-trash".into(),
-                    folder_at(&files.trash),
-                ));
+                out.push(row("Trash", "trash", PlaceKind::Trash(files.trash.clone())));
             }
-            out.push(Side::Gap);
-            out.push(row(
-                "Other Locations",
-                "plus",
-                "files-root".into(),
-                folder_at("/"),
-            ));
+            out.push(SideItem::Gap);
+            out.push(row("Other Locations", "plus", PlaceKind::Root));
         }
         DesktopTheme::Macos => {
-            out.push(Side::Heading("Favorites"));
-            out.push(row(
-                "Recents",
-                "clock",
-                "files-recents".into(),
-                tab.scope == FileScope::Recents,
-            ));
+            out.push(SideItem::Heading("Favorites"));
+            out.push(row("Recents", "clock", PlaceKind::Recents));
             out.extend(standard(&["Desktop", "Documents", "Downloads"], false));
-            out.push(Side::Heading("Locations"));
-            out.push(row(
-                "Macintosh HD",
-                "drive",
-                "files-root".into(),
-                folder_at("/"),
-            ));
+            out.push(SideItem::Heading("Locations"));
+            out.push(row("Macintosh HD", "drive", PlaceKind::Root));
         }
         DesktopTheme::Windows => {
             if has_home {
-                out.push(row(
-                    "Home",
-                    "home",
-                    "files-quick-access".into(),
-                    tab.scope == FileScope::QuickAccess,
-                ));
+                out.push(row("Home", "home", PlaceKind::QuickAccess));
                 if files.has("Pictures") {
-                    out.push(row(
-                        "Gallery",
-                        "image",
-                        "files-gallery".into(),
-                        tab.scope == FileScope::Gallery,
-                    ));
+                    out.push(row("Gallery", "image", PlaceKind::Gallery));
                 }
             }
-            out.push(Side::Gap);
+            out.push(SideItem::Gap);
             out.extend(standard(&crate::QUICK_ACCESS, true));
-            out.push(Side::Gap);
-            out.push(row(
-                "This PC",
-                "desktop",
-                "files-root".into(),
-                folder_at("/"),
-            ));
+            out.push(SideItem::Gap);
+            out.push(row("This PC", "desktop", PlaceKind::Root));
         }
         _ => {}
     }
     out
+}
+/// The file manager's sidebar: each standard place as the command that opens it in
+/// this tab, lit when it is the place the tab is showing.
+fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec<Side> {
+    use crate::FileScope;
+    let folder_at = |path: &str| {
+        tab.scope == FileScope::Folder
+            && !path.is_empty()
+            && tab.path.trim_end_matches('/') == path.trim_end_matches('/')
+    };
+    standard_places(t, &env.files)
+        .into_iter()
+        .map(|item| match item {
+            SideItem::Heading(h) => Side::Heading(h),
+            SideItem::Gap => Side::Gap,
+            SideItem::Place(place) => {
+                let (action, current) = match &place.kind {
+                    PlaceKind::Recents => ("files-recents".into(), tab.scope == FileScope::Recents),
+                    PlaceKind::Starred => ("files-starred".into(), tab.scope == FileScope::Starred),
+                    PlaceKind::QuickAccess => (
+                        "files-quick-access".into(),
+                        tab.scope == FileScope::QuickAccess,
+                    ),
+                    PlaceKind::Gallery => ("files-gallery".into(), tab.scope == FileScope::Gallery),
+                    PlaceKind::Home(path) => ("files-home".into(), folder_at(path)),
+                    PlaceKind::Folder(path) => (format!("files-location:{path}"), folder_at(path)),
+                    PlaceKind::Trash(path) => ("files-trash".into(), folder_at(path)),
+                    PlaceKind::Root => ("files-root".into(), folder_at("/")),
+                };
+                Side::Row(Place {
+                    label: place.label,
+                    symbol: place.symbol,
+                    tint: place.tint,
+                    action,
+                    current,
+                    pinned: place.pinned,
+                })
+            }
+        })
+        .collect()
 }
 /// Draw the sidebar `places` describes. Every row is a real command; the lit row is
 /// the place the tab is showing, so the sidebar and the listing cannot disagree.
@@ -821,12 +838,22 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     }
     p.hline(x, top + 26, content, LINE);
     let footer = if t == DesktopTheme::Ubuntu { 0 } else { 26 };
-    let body = top + 27;
+    let viewport = Rect::new(
+        x,
+        top + 27,
+        content,
+        h.saturating_sub((top + 27) as u32 + footer).max(1),
+    );
+    // Every row is painted in a pane that scrolls; each folder keeps its own place, so
+    // Back returns to where the list was.
+    let pane = p.pane(&folder_pane(path, tab.scope), viewport);
+    let body = pane.top();
     if tab.view == crate::FileView::Grid {
         grid(
             p,
+            env,
             &l,
-            Rect::new(x, body, content, h.saturating_sub(body as u32 + footer)),
+            Rect::new(x, body, content, viewport.height),
             tab,
             &rows_shown,
         );
@@ -834,9 +861,9 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     let rows = if tab.view == crate::FileView::Grid {
         0
     } else {
-        h.saturating_sub(body as u32 + footer) / l.row
+        rows_shown.len()
     };
-    for (i, index) in rows_shown.iter().copied().take(rows as usize).enumerate() {
+    for (i, index) in rows_shown.iter().copied().take(rows).enumerate() {
         let entry = &entries[index];
         let y = body + (i as u32 * l.row) as i32;
         let directory = entry.ends_with('/');
@@ -997,6 +1024,7 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         };
         p.center(x, body + 60, content, empty, 15, FAINT);
     }
+    p.end_pane(pane, None);
     if footer > 0 {
         let fy = h.saturating_sub(footer) as i32;
         p.box_(
@@ -1055,7 +1083,7 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
 
 /// What each platform's Kind (Type) column calls an entry, read off the name the way
 /// the platform reads it: by extension. Nothing here is a guess about the contents.
-fn kind_label(t: DesktopTheme, entry: &str) -> String {
+pub fn kind_label(t: DesktopTheme, entry: &str) -> String {
     if entry.ends_with('/') {
         return if t == DesktopTheme::Windows {
             "File folder".into()
@@ -1084,13 +1112,32 @@ fn kind_label(t: DesktopTheme, entry: &str) -> String {
     }
 }
 
+/// The scroll pane a folder's listing is painted in: one per place, named by a stable
+/// digest of the path because a pane name is a single segment.
+fn folder_pane(path: &str, scope: crate::FileScope) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in format!("{scope:?}{path}").bytes() {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("files-{hash:016x}")
+}
+
 /// Icon grid. Same rows, same order, same `open:<i>` targets as the list — only the
 /// arrangement differs, so switching view cannot move a file out from under a click.
-fn grid(p: &mut Painter, l: &Look, area: Rect, tab: &crate::FileTab, rows: &[usize]) {
+/// GNOME Files marks a starred item with a star on its icon, and the selected item
+/// carries the star button too, so starring does not need the list's star column.
+fn grid(
+    p: &mut Painter,
+    env: &crate::AppEnv<'_>,
+    l: &Look,
+    area: Rect,
+    tab: &crate::FileTab,
+    rows: &[usize],
+) {
     const CELL: u32 = 96;
     let columns = (area.width / CELL).max(1);
-    let capacity = (columns * (area.height / CELL).max(1)) as usize;
-    for (i, index) in rows.iter().copied().take(capacity).enumerate() {
+    let stars = env.theme == DesktopTheme::Ubuntu;
+    for (i, index) in rows.iter().copied().enumerate() {
         let entry = &tab.entries[index];
         let cell = Rect::new(
             area.x + (i as u32 % columns * CELL) as i32,
@@ -1120,6 +1167,37 @@ fn grid(p: &mut Painter, l: &Look, area: Rect, tab: &crate::FileTab, rows: &[usi
             false,
             Align::Center,
         );
+        if stars {
+            let path = if tab.scope.absolute() {
+                entry_name(entry).to_owned()
+            } else {
+                tab.child(entry_name(entry))
+            };
+            let starred = env.files.starred(&path);
+            if starred || tab.selected == Some(index) {
+                let star = Rect::new(cell.x + CELL as i32 - 30, cell.y + 8, 22, 22);
+                p.region_above(
+                    star,
+                    &format!("files-star:{i}"),
+                    &format!(
+                        "{} {}",
+                        if starred { "Unstar" } else { "Star" },
+                        entry_name(entry)
+                            .trim_end_matches('/')
+                            .rsplit('/')
+                            .next()
+                            .unwrap_or_default()
+                    ),
+                );
+                p.symbol(
+                    if starred { "star" } else { "star-outline" },
+                    star.x + 3,
+                    star.y + 3,
+                    16,
+                    if starred { INK } else { MUTED },
+                );
+            }
+        }
     }
 }
 
@@ -1140,27 +1218,31 @@ fn files_mobile(
         Color::rgb(248, 250, 240)
     };
     let recents = tab.scope == crate::FileScope::Recents;
+    let tab_bar = if ios { 50 } else { 0 };
     let mut top;
-    if ios {
-        // Leading crumb, large title and search field. Recents is not a folder, so it
-        // gets no enclosing-folder crumb to climb out of.
-        if recents {
-            p.strong(16, 40, w.saturating_sub(32), "Recents", 32, INK);
+    // The listing scrolls; on iOS the large title and the search field scroll with it,
+    // and the title collapses into the navigation bar (which carries the crumb back to
+    // the enclosing folder) once it has gone under it.
+    let titled = ios.then(|| {
+        let title = if recents {
+            "Recents"
         } else {
-            p.button(
-                Rect::new(4, 0, 170, 36),
-                Color::TRANSPARENT,
-                8,
-                "files-up",
-                "Enclosing folder",
-            );
-            p.symbol("chevron-left", 8, 7, 20, l.accent);
-            p.left(28, 7, 140, parent(path, l.root), 17, l.accent);
-            p.strong(16, 40, w.saturating_sub(32), current(path, l.root), 32, INK);
-        }
+            current(path, l.root)
+        };
+        let pane = p
+            .pane(
+                &folder_pane(path, tab.scope),
+                Rect::new(0, 0, w, h.saturating_sub(tab_bar).max(1)),
+            )
+            .titled(title, 44);
+        p.strong(16, pane.top() + 4, w.saturating_sub(32), title, 32, INK);
+        pane
+    });
+    if let Some(pane) = &titled {
+        let y0 = pane.top() - 90 + 54;
         // Real field: typing lands in `tab.query` and the rows below are what survives
         // it, so nothing on this screen is outside the filter it advertises.
-        let field = Rect::new(16, 90, w.saturating_sub(32), 36);
+        let field = Rect::new(16, y0 + 90, w.saturating_sub(32), 36);
         p.box_(field, Color(118, 118, 128, 30), 10);
         p.region(field, "files-search", "Search");
         p.symbol("search", field.x + 8, field.y + 10, 16, FAINT);
@@ -1189,7 +1271,7 @@ fn files_mobile(
             p.button(clear, Color::TRANSPARENT, 11, "files-search-clear", "Clear");
             p.symbol("close", clear.x + 5, clear.y + 5, 12, MUTED);
         }
-        top = 138;
+        top = y0 + 138;
     } else {
         // Breadcrumb chips: storage root, enclosing folder, current folder.
         let mut cx = 16;
@@ -1235,11 +1317,21 @@ fn files_mobile(
             cx += width as i32 + 10;
         }
         p.hline(0, 42, w, LINE);
-        top = 50;
+        top = 0;
     }
-    let tab_bar = if ios { 50 } else { 0 };
-    let rows = h.saturating_sub(top as u32 + tab_bar) / l.row;
-    for (i, index) in rows_shown.iter().copied().take(rows as usize).enumerate() {
+    // Android's crumbs stay put over the list; iOS's title scrolls with it.
+    let pane = match titled {
+        Some(pane) => pane,
+        None => {
+            let pane = p.pane(
+                &folder_pane(path, tab.scope),
+                Rect::new(0, 43, w, h.saturating_sub(43).max(1)),
+            );
+            top = pane.top() + 7;
+            pane
+        }
+    };
+    for (i, index) in rows_shown.iter().copied().enumerate() {
         let entry = &entries[index];
         let y = top + (i as u32 * l.row) as i32;
         let directory = entry.ends_with('/');
@@ -1309,6 +1401,7 @@ fn files_mobile(
         };
         p.center(0, top + 70, w, empty, 17, MUTED);
     }
+    p.end_pane(pane, None);
     top = h.saturating_sub(tab_bar) as i32;
     if ios {
         p.box_(Rect::new(0, top, w, tab_bar), Color(249, 249, 249, 245), 0);
@@ -1359,14 +1452,12 @@ fn parent_label(path: &str, root: &str) -> String {
 
 /// Wrap `text` to `cells` columns, tagging every line with the colour that says which
 /// stream it came from.
+/// Rows of `cells` terminal cells: wide characters (CJK, emoji) take two, combining
+/// marks none, exactly as `Primitive::Text` lays them out.
 fn wrap_into(lines: &mut Vec<(String, Color)>, text: &str, color: Color, cells: usize) {
     for line in text.lines() {
-        let chars: Vec<_> = line.chars().collect();
-        if chars.is_empty() {
-            lines.push((String::new(), color));
-        }
-        for chunk in chars.chunks(cells) {
-            lines.push((chunk.iter().collect::<String>(), color));
+        for row in cw_scene::wrap_text(line, cells) {
+            lines.push((row, color));
         }
     }
 }
@@ -1466,7 +1557,7 @@ fn terminal(
         size,
         prompt,
     );
-    let offset = sig.chars().count() as i32 * 8;
+    let offset = cw_scene::text::terminal::columns(&sig) as i32 * 8;
     mono(
         p,
         Rect::new(
@@ -1494,11 +1585,9 @@ fn terminal(
     );
     // Where the caret really is: `cursor` is a byte offset into the input, and a click
     // on the line above moved it there.
-    let before = input
-        .get(..cursor.min(input.len()))
-        .unwrap_or(input)
-        .chars()
-        .count() as i32;
+    let before =
+        cw_scene::text::terminal::columns(input.get(..cursor.min(input.len())).unwrap_or(input))
+            as i32;
     let caret = offset + before * 8;
     // Block cursor on the desktops, a bar on touch keyboards.
     p.box_(
@@ -1720,7 +1809,30 @@ fn editor(
     let rows = crate::editor_rows(text, columns);
     let (visual, visual_col) = crate::editor_caret_cell(text, end, columns);
     let capacity = (h.saturating_sub(toolbar + status + ROW_H) / ROW_H).max(1) as usize;
-    let first = visual.saturating_sub(capacity.saturating_sub(1));
+    // The view scrolls on its own (the wheel, the scroll bar, a finger), independent
+    // of the caret, and always by whole rows so the click grid stays exact. An edit or
+    // a caret move brings the caret back into view, moving the view as little as it
+    // takes; before the view is first scrolled, it follows the caret the same way.
+    let last_first = rows.len().saturating_sub(capacity);
+    let stored = p.scroll.offsets.get(EDITOR_PANE).copied();
+    let mut first = stored.map_or(0, |o| o.max(0) as usize / ROW_H as usize);
+    first = first.min(last_first);
+    let follow = stored.is_none() || p.scroll.reveals(EDITOR_PANE);
+    if follow {
+        if visual < first {
+            first = visual;
+        } else if visual >= first + capacity {
+            first = visual + 1 - capacity;
+        }
+    }
+    // The offset published is the one asked for when it is the view's (so a trackpad's
+    // small turns accumulate), or the caret's row when the view followed the caret.
+    let offset = match stored {
+        Some(o) if !follow || o.max(0) as usize / ROW_H as usize == first => {
+            o.clamp(0, (last_first as u32 * ROW_H) as i32)
+        }
+        _ => (first as u32 * ROW_H) as i32,
+    };
     let origin = (left as i32, toolbar as i32 + 10);
     // The hit region starts at the first line's top-left corner, so the offsets
     // `click_at` reports are already relative to the text grid.
@@ -1740,6 +1852,13 @@ fn editor(
         },
         "Document text",
     );
+    // The rows are a pane: clipped to whole rows, published with the document's real
+    // extent, and given the platform's scroll bar when the document does not fit.
+    let mut pane = p.pane(
+        EDITOR_PANE,
+        Rect::new(0, origin.1, w, capacity as u32 * ROW_H),
+    );
+    pane.offset = offset;
     // Logical line of the first painted row; a gutter numbers each line once, on the
     // row it starts on, and leaves its soft-wrapped continuations blank.
     let mut line = text[..rows.get(first).map_or(0, |r| r.0)]
@@ -1770,17 +1889,21 @@ fn editor(
             INK,
         );
     }
-    // Caret where the model says it is, on the same grid the click arrives on.
-    p.box_(
-        Rect::new(
-            origin.0 + visual_col as i32 * CELL_W,
-            origin.1 + ((visual - first) as u32 * ROW_H) as i32,
-            if mobile { 2 } else { 1 },
-            ROW_H,
-        ),
-        if mobile { Color::rgb(204, 149, 0) } else { INK },
-        0,
-    );
+    // Caret where the model says it is, on the same grid the click arrives on; scrolled
+    // out of view, it is not painted at all.
+    if (first..first + capacity).contains(&visual) {
+        p.box_(
+            Rect::new(
+                origin.0 + visual_col as i32 * CELL_W,
+                origin.1 + ((visual - first) as u32 * ROW_H) as i32,
+                if mobile { 2 } else { 1 },
+                ROW_H,
+            ),
+            if mobile { Color::rgb(204, 149, 0) } else { INK },
+            0,
+        );
+    }
+    p.end_pane(pane, Some(rows.len().max(1) as u32 * ROW_H));
     let sy = h.saturating_sub(status) as i32;
     let position = format!("Ln {}, Col {}", row + 1, col + 1);
     match t {
@@ -1876,8 +1999,17 @@ pub fn app_content(state: &crate::AppState, theme: DesktopTheme, width: u32, hei
 }
 /// The same projection, with the machine facts a native application is allowed to read.
 pub fn app_content_with(state: &crate::AppState, env: &crate::AppEnv<'_>) -> Scene {
+    app_content_scrolled(state, env, &crate::Scroll::default())
+}
+/// The projection of a window whose panes are scrolled to `scroll`.
+pub fn app_content_scrolled(
+    state: &crate::AppState,
+    env: &crate::AppEnv<'_>,
+    scroll: &crate::Scroll,
+) -> Scene {
     let (theme, width, height) = (env.theme, env.width, env.height);
     let mut p = Painter::themed(theme, width, height, 1_u64 << 52);
+    p.scroll = scroll.clone();
     match state {
         crate::AppState::Native(app) => app.render(&mut p, env),
         crate::AppState::Files { tabs, active } => files(&mut p, env, tabs, *active),
@@ -2112,6 +2244,48 @@ mod tests {
         }
     }
 
+    /// Wide characters take two cells in the transcript's rows and under the caret,
+    /// exactly as `Primitive::Text` draws them.
+    #[test]
+    fn terminal_rows_and_caret_count_cells_not_characters() {
+        let output = "日本語のテキストが長く続くと折り返されます";
+        let state = AppState::Terminal {
+            input: "echo 中文".into(),
+            prompt: "me@box:/$".into(),
+            transcript: vec![crate::TerminalEntry::new("me@box:/$", "cat", output, "", 0)],
+            history: vec![],
+            cursor: "echo 中文".len(),
+            scroll: 0,
+        };
+        let scene = app_content(&state, DesktopTheme::Ubuntu, 16 + 8 * 20, 400);
+        let rows: Vec<&str> = scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                Primitive::Text { text, .. } if !text.starts_with("me@") => Some(text.as_str()),
+                _ => None,
+            })
+            .filter(|t| t.chars().any(|c| c > '\u{3000}'))
+            .collect();
+        // Twenty cells hold ten ideographs.
+        assert_eq!(rows[0], "日本語のテキストが長");
+        assert!(rows
+            .iter()
+            .all(|r| cw_scene::text::terminal::columns(r) <= 20));
+        // "echo 中文" is nine cells, so the caret sits nine cells past the prompt.
+        assert_eq!(cw_scene::text::terminal::columns("echo 中文"), 9);
+        assert_eq!(crate::caret_for_column("echo 中文", 7 * 8), "echo 中".len());
+        assert_eq!(
+            crate::caret_for_column("echo 中文", 9 * 8),
+            "echo 中文".len()
+        );
+        // The editor soft-wraps and places its caret on the same cells.
+        let text = "中文中文中文";
+        assert_eq!(crate::editor_rows(text, 5), [(0, 6), (6, 12), (12, 18)]);
+        assert_eq!(crate::editor_caret_cell(text, 9, 5), (1, 2));
+        assert_eq!(crate::caret_for_point_wrapped(text, 0, 5, 2 * 8, 18), 9);
+        assert_eq!(crate::editor_rows("e\u{301}xyz", 3), [(0, 5), (5, 6)]);
+    }
     /// The scrollbar really scrolls, and the caret really sits where `cursor` says.
     #[test]
     fn terminal_scrollbar_pages_and_the_caret_follows_the_cursor() {

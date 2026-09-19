@@ -2,7 +2,9 @@
 //! with a live preview; OK keeps it, Cancel returns the document to where it was.
 use super::commands::parse_quantity;
 use super::*;
-use cw_cad::document::{AxisRef, BasePlane, Extent, HoleCut, PlaneRef, SubRef, Support};
+use cw_cad::document::{
+    AxisRef, BasePlane, ChamferType, Extent, HoleCut, PlaneRef, SubRef, Support,
+};
 use cw_cad::math::fmt_num;
 use cw_cad::sketch::Sketch;
 
@@ -184,9 +186,21 @@ impl Cad {
             return Err("Select one or more edges of the body first".into());
         }
         let feature = if id == "PartDesign_Fillet" {
-            Feature::Fillet { edges, radius: 1.0 }
+            Feature::Fillet {
+                edges,
+                radius: 1.0,
+                all_edges: false,
+            }
         } else {
-            Feature::Chamfer { edges, size: 1.0 }
+            Feature::Chamfer {
+                edges,
+                size: 1.0,
+                kind: cw_cad::document::ChamferType::Equal,
+                size2: 1.0,
+                angle: 45.0,
+                flip: false,
+                all_edges: false,
+            }
         };
         let label = if id == "PartDesign_Fillet" {
             "Fillet"
@@ -408,16 +422,71 @@ impl Cad {
                     on: *reversed,
                 },
             ],
-            Feature::Fillet { radius, .. } => vec![Param::Number {
-                name: "Radius",
-                label: "Radius",
-                value: mm(*radius),
-            }],
-            Feature::Chamfer { size, .. } => vec![Param::Number {
-                name: "Size",
-                label: "Size",
-                value: mm(*size),
-            }],
+            Feature::Fillet {
+                radius, all_edges, ..
+            } => vec![
+                Param::Number {
+                    name: "Radius",
+                    label: "Radius",
+                    value: mm(*radius),
+                },
+                Param::Toggle {
+                    name: "UseAllEdges",
+                    label: "All edges",
+                    on: *all_edges,
+                },
+            ],
+            Feature::Chamfer {
+                size,
+                kind,
+                size2,
+                angle,
+                flip,
+                all_edges,
+                ..
+            } => {
+                let mut v = vec![Param::Choice {
+                    name: "ChamferType",
+                    label: "Type",
+                    value: kind.label().into(),
+                    options: ChamferType::ALL
+                        .iter()
+                        .map(|c| (c.label().to_owned(), c.label().to_owned()))
+                        .collect(),
+                }];
+                v.push(Param::Number {
+                    name: "Size",
+                    label: "Size",
+                    value: mm(*size),
+                });
+                if *kind == ChamferType::TwoDistances {
+                    v.push(Param::Number {
+                        name: "Size2",
+                        label: "Size2",
+                        value: mm(*size2),
+                    });
+                }
+                if *kind == ChamferType::DistanceAngle {
+                    v.push(Param::Number {
+                        name: "ChamferAngle",
+                        label: "Angle",
+                        value: deg(*angle),
+                    });
+                }
+                if *kind != ChamferType::Equal {
+                    v.push(Param::Toggle {
+                        name: "FlipDirection",
+                        label: "Flip direction",
+                        on: *flip,
+                    });
+                }
+                v.push(Param::Toggle {
+                    name: "UseAllEdges",
+                    label: "All edges",
+                    on: *all_edges,
+                });
+                v
+            }
             Feature::Hole {
                 diameter,
                 depth,
@@ -623,7 +692,7 @@ impl Cad {
             self.sketch_edit_mut().ok_or("no sketch")?.fillet_radius = v;
             return Ok(());
         }
-        let angle = matches!(name, "Angle" | "CutAngle" | "DrillAngle");
+        let angle = matches!(name, "Angle" | "CutAngle" | "DrillAngle" | "ChamferAngle");
         let count = name == "Occurrences";
         let v = if count {
             let n: u32 = text
@@ -654,6 +723,13 @@ impl Cad {
             }
             (Feature::Fillet { radius, .. }, "Radius") => *radius = v,
             (Feature::Chamfer { size, .. }, "Size") => *size = v,
+            (Feature::Chamfer { size2, .. }, "Size2") => *size2 = v,
+            (Feature::Chamfer { angle, .. }, "ChamferAngle") => {
+                if !(v > 0.0 && v < 180.0) {
+                    return Err("Angle must be greater than 0 and less than 180".into());
+                }
+                *angle = v;
+            }
             (Feature::Hole { diameter, .. }, "Diameter") => *diameter = v,
             (Feature::Hole { depth, .. }, "Depth") => *depth = v,
             (
@@ -722,6 +798,11 @@ impl Cad {
                 | Feature::PolarPattern { reversed, .. },
                 "Reversed",
             ) => *reversed = !*reversed,
+            (
+                Feature::Fillet { all_edges, .. } | Feature::Chamfer { all_edges, .. },
+                "UseAllEdges",
+            ) => *all_edges = !*all_edges,
+            (Feature::Chamfer { flip, .. }, "FlipDirection") => *flip = !*flip,
             _ => return Err(format!("the task has no {name} option")),
         }
         self.recompute();
@@ -758,6 +839,12 @@ impl Cad {
             ) => *a = axis(value).ok_or("unknown axis")?,
             (Feature::LinearPattern { direction, .. }, "Direction") => {
                 *direction = axis(value).ok_or("unknown direction")?
+            }
+            (Feature::Chamfer { kind, .. }, "ChamferType") => {
+                *kind = ChamferType::ALL
+                    .into_iter()
+                    .find(|c| c.label() == value)
+                    .ok_or("unknown chamfer type")?
             }
             (Feature::Mirrored { plane, .. }, "Plane") => {
                 *plane = match value {
@@ -818,6 +905,10 @@ impl Cad {
         }
         if target == "filetype" {
             return self.file_command(window, &format!("type:{value}"));
+        }
+        // The Mac panel's folder pop-up: the folder and each one above it.
+        if target == "filepath" {
+            return self.file_command(window, &format!("crumb:{value}"));
         }
         Err("unknown choice".into())
     }
@@ -1037,16 +1128,15 @@ impl Cad {
                 _ => model.shapes.get(&s.object),
             };
             if let Some(shape) = shape {
-                let m = &shape.mesh;
                 out.push((
                     format!("{} volume", self.label_of(&s.object)),
-                    format!("{} mm³", fmt_num(m.volume(), 2)),
+                    format!("{} mm³", fmt_num(shape.volume(), 2)),
                 ));
                 out.push((
                     "Surface area".into(),
-                    format!("{} mm²", fmt_num(m.area(), 2)),
+                    format!("{} mm²", fmt_num(shape.area(), 2)),
                 ));
-                if let Some(c) = m.center_of_mass() {
+                if let Some(c) = shape.center_of_mass() {
                     out.push((
                         "Center of mass".into(),
                         format!(
@@ -1057,7 +1147,7 @@ impl Cad {
                         ),
                     ));
                 }
-                if let Some(b) = m.bounds() {
+                if let Some(b) = shape.mesh.bounds() {
                     let d = b.size();
                     out.push((
                         "Bounding box".into(),

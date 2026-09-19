@@ -76,6 +76,43 @@ impl Session {
             json!({"x": x, "y": y, "width": W, "height": H}),
         );
     }
+    /// A press held with modifier keys (`["ctrl"]`, `["alt"]`).
+    fn pointer_with(&mut self, op: &str, (x, y): (i32, i32), modifiers: &[&str]) -> Value {
+        self.act(
+            "pointer.v1",
+            op,
+            json!({"x": x, "y": y, "width": W, "height": H, "modifiers": modifiers}),
+        )
+    }
+    /// Everything the screen shows, as text: labels and the like.
+    fn screen_text(&self) -> String {
+        let scene = self.world.scene(&self.actor, W, H).unwrap();
+        scene
+            .nodes
+            .iter()
+            .filter(|n| !matches!(n.primitive, cw_scene::Primitive::Image { .. }))
+            .map(|n| format!("{:?}", n.primitive))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+    /// The canvas's picture as the screen shows it: the largest image on screen.
+    fn canvas_pixels(&self) -> Vec<u8> {
+        let scene = self.world.scene(&self.actor, W, H).unwrap();
+        scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                cw_scene::Primitive::Image {
+                    width,
+                    height,
+                    rgba,
+                } => Some((width * height, rgba.clone())),
+                _ => None,
+            })
+            .max_by_key(|(area, _)| *area)
+            .map(|(_, rgba)| rgba)
+            .expect("an image on screen")
+    }
     fn drag(&mut self, points: &[(i32, i32)]) {
         self.pointer("down", points[0]);
         for p in &points[1..] {
@@ -258,7 +295,7 @@ fn gimp_runs_filters_from_its_menus_exports_and_pinta_reopens_and_pastes() {
     assert_eq!(inverted.pixel(0, 0), cw_raster::BLACK);
     // File ▸ Export As…
     s.control(gimp, "gimp:menu:file");
-    s.control(gimp, "gimp:save-as");
+    s.control(gimp, "gimp:export");
     for _ in 0.."Untitled.png".len() {
         s.key("Backspace");
     }
@@ -374,7 +411,10 @@ fn phone_photo_editors_bake_their_look_into_the_saved_file() {
     s.control(photos, "photos:open:screen-0.png");
     s.control(photos, "photos:begin-edit:ios");
     let editor = s.studio(photos);
-    assert_eq!(editor.doc.as_ref().map(|d| d.width()), Some(1280));
+    // The screenshot is of the phone's own screen, so the picture is that size.
+    let doc = editor.doc.as_ref().expect("the screenshot opened");
+    let (w, h) = (doc.width(), doc.height());
+    assert_eq!((w, h), (390, 844), "an iPhone's screen, portrait");
     s.control(photos, "photos:edit:focus:saturation");
     s.control(photos, "photos:edit:set:saturation:-100");
     let path = s.studio(photos).path;
@@ -385,7 +425,7 @@ fn phone_photo_editors_bake_their_look_into_the_saved_file() {
     };
     assert!(state.editing.is_none(), "Done leaves edit mode");
     let png = decode(&s.file(&path));
-    for (x, y) in [(640, 400), (100, 700), (1200, 20)] {
+    for (x, y) in [(w / 2, h / 2), (w / 4, h * 3 / 4), (w - 20, 20)] {
         let p = px(&png, x, y);
         assert_eq!(
             (p[0], p[1]),
@@ -415,7 +455,8 @@ fn phone_photo_editors_bake_their_look_into_the_saved_file() {
         "the original is untouched"
     );
     let copy = decode(&g.file("Pictures/screen-0-edited.png"));
-    let p = px(&copy, 640, 400);
+    assert_eq!((copy.0, copy.1), (412, 915), "a Pixel's screen, portrait");
+    let p = px(&copy, copy.0 / 2, copy.1 / 2);
     assert_eq!((p[0], p[1]), (p[1], p[2]), "Onyx is monochrome: {p:?}");
     let state = match g.state(photos) {
         AppState::Native(NativeApp::Photos(p)) => p,
@@ -488,4 +529,196 @@ fn the_same_drags_give_the_same_world() {
         (doc.composite().hash(), s.world.state_hash().unwrap())
     };
     assert_eq!(run(), run());
+}
+
+#[test]
+fn hovering_the_canvas_shows_the_pointer_position_in_the_status_bar() {
+    let mut s = session("bob-windows", "virtual-windows-11", &["paint"]);
+    let window = s.launch("paint", "");
+    s.act("application.v1", "maximize", json!({}));
+    let at = s.at(window, (321, 123));
+    let reply = s.pointer_with("move", at, &[]);
+    assert_eq!(reply["cursor"], "crosshair", "the canvas takes the hover");
+    assert!(
+        s.screen_text().contains("321, 123px"),
+        "Paint's status bar reads the pixel under the pointer"
+    );
+    // Off the canvas the position goes blank.
+    s.pointer_with("move", (5, 5), &[]);
+    assert!(!s.screen_text().contains("321, 123px"));
+
+    // GIMP shows the coordinates at the left of its status bar.
+    let mut g = session("carol-ubuntu", "virtual-ubuntu-24", &["gimp"]);
+    let gimp = g.launch("gimp", "");
+    g.act("application.v1", "maximize", json!({}));
+    g.control(gimp, "gimp:dialog:new-image");
+    g.control(gimp, "gimp:set:width:200");
+    g.control(gimp, "gimp:set:height:100");
+    g.control(gimp, "gimp:apply");
+    let at = g.at(gimp, (150, 40));
+    g.pointer_with("move", at, &[]);
+    assert!(g.screen_text().contains("150, 40"));
+}
+
+#[test]
+fn a_filter_previews_on_the_canvas_and_cancel_restores_it_exactly() {
+    let mut s = session("carol-ubuntu", "virtual-ubuntu-24", &["gimp"]);
+    let gimp = s.launch("gimp", "");
+    s.act("application.v1", "maximize", json!({}));
+    s.control(gimp, "gimp:dialog:new-image");
+    s.control(gimp, "gimp:set:width:64");
+    s.control(gimp, "gimp:set:height:48");
+    s.control(gimp, "gimp:apply");
+    s.control(gimp, "gimp:tool:brush");
+    s.control(gimp, "gimp:set:size:5");
+    let (a, b) = (s.at(gimp, (8, 24)), s.at(gimp, (56, 24)));
+    s.drag(&[a, b]);
+    let doc = s.studio(gimp).doc.unwrap();
+    let shown = s.canvas_pixels();
+    // Filters ▸ Blur ▸ Gaussian Blur…: the canvas blurs as the radius changes.
+    s.control(gimp, "gimp:menu:filters");
+    s.control(gimp, "gimp:dialog:gaussian-blur");
+    s.control(gimp, "gimp:set:radius:6");
+    let previewed = s.canvas_pixels();
+    assert_ne!(previewed, shown, "the preview is on the canvas");
+    assert_eq!(s.studio(gimp).doc.unwrap(), doc, "nothing is applied yet");
+    // Unticking Preview shows the image as it is; ticking it shows the blur again.
+    s.control(gimp, "gimp:preview-toggle");
+    assert_eq!(s.canvas_pixels(), shown);
+    s.control(gimp, "gimp:preview-toggle");
+    assert_eq!(s.canvas_pixels(), previewed);
+    s.control(gimp, "gimp:cancel");
+    assert_eq!(s.canvas_pixels(), shown, "Cancel restores the view exactly");
+    assert_eq!(s.studio(gimp).doc.unwrap(), doc, "and the image");
+}
+
+#[test]
+fn the_clone_stamp_takes_its_source_from_a_ctrl_click_and_paints_it_elsewhere() {
+    let mut s = session("carol-ubuntu", "virtual-ubuntu-24", &["gimp"]);
+    let gimp = s.launch("gimp", "");
+    s.act("application.v1", "maximize", json!({}));
+    s.control(gimp, "gimp:dialog:new-image");
+    s.control(gimp, "gimp:set:width:120");
+    s.control(gimp, "gimp:set:height:80");
+    s.control(gimp, "gimp:apply");
+    // A red blot to copy.
+    s.control(gimp, "gimp:fg:ff0000");
+    s.control(gimp, "gimp:tool:brush");
+    s.control(gimp, "gimp:set:size:9");
+    let blot = s.at(gimp, (20, 20));
+    s.pointer("click", blot);
+    assert_eq!(s.studio(gimp).doc.unwrap().pixel(20, 20), [255, 0, 0, 255]);
+    s.control(gimp, "gimp:tool:clone");
+    // A plain press without a source paints nothing and says why.
+    let dest = s.at(gimp, (80, 50));
+    s.drag(&[dest]);
+    assert_eq!(s.studio(gimp).doc.unwrap().pixel(80, 50), cw_raster::WHITE);
+    // Ctrl-click sets the source.
+    s.pointer_with("down", blot, &["ctrl"]);
+    s.pointer_with("up", blot, &[]);
+    assert_eq!(s.studio(gimp).retouch.source, Some((20, 20)));
+    // A drag elsewhere paints the blot there.
+    let (d0, d1) = (s.at(gimp, (80, 50)), s.at(gimp, (82, 50)));
+    s.drag(&[d0, d1]);
+    let doc = s.studio(gimp).doc.unwrap();
+    assert_eq!(doc.pixel(80, 50), [255, 0, 0, 255]);
+    assert_eq!(doc.undo_label(), Some("Clone"));
+    assert_eq!(doc.pixel(100, 70), cw_raster::WHITE);
+    // An unknown modifier is refused, not ignored.
+    assert!(s
+        .try_act(
+            "pointer.v1",
+            "down",
+            json!({"x": dest.0, "y": dest.1, "width": W, "height": H, "modifiers": ["hyper"]}),
+        )
+        .is_err());
+}
+
+#[test]
+fn gimp_exports_a_jpeg_that_reopens_and_saves_layers_as_xcf() {
+    let mut s = session("carol-ubuntu", "virtual-ubuntu-24", &["gimp"]);
+    let gimp = s.launch("gimp", "");
+    s.act("application.v1", "maximize", json!({}));
+    s.control(gimp, "gimp:dialog:new-image");
+    s.control(gimp, "gimp:set:width:96");
+    s.control(gimp, "gimp:set:height:64");
+    s.control(gimp, "gimp:apply");
+    // A gradient across the background, and a blue stroke on a second layer.
+    s.control(gimp, "gimp:tool:gradient");
+    s.control(gimp, "gimp:fg:204080");
+    s.control(gimp, "gimp:bg:f0e0c0");
+    let (a, b) = (s.at(gimp, (0, 32)), s.at(gimp, (95, 32)));
+    s.drag(&[a, b]);
+    s.control(gimp, "gimp:layer:new");
+    s.control(gimp, "gimp:layer:blend:multiply");
+    s.control(gimp, "gimp:tool:brush");
+    s.control(gimp, "gimp:fg:0000ff");
+    s.control(gimp, "gimp:set:size:6");
+    let (a, b) = (s.at(gimp, (10, 50)), s.at(gimp, (80, 50)));
+    s.drag(&[a, b]);
+    let doc = s.studio(gimp).doc.unwrap();
+    assert_eq!(doc.layers().len(), 2);
+
+    // File ▸ Save: XCF, with both layers.
+    s.key("Ctrl+s");
+    for _ in 0.."Untitled.xcf".len() {
+        s.key("Backspace");
+    }
+    s.act("keyboard.v1", "type", json!({"text": "layered.xcf"}));
+    s.key("Enter");
+    let studio = s.studio(gimp);
+    assert!(
+        studio.path.ends_with("Pictures/layered.xcf"),
+        "{}",
+        studio.path
+    );
+    assert!(!studio.modified);
+    let bytes = s.file(&studio.path);
+    assert_eq!(&bytes[..13], b"gimp xcf v011");
+    let reopened = s.launch("gimp", &studio.path);
+    let back = s.studio(reopened).doc.expect("the XCF opened");
+    assert_eq!(
+        back.layers(),
+        doc.layers(),
+        "names, modes and pixels survive"
+    );
+    assert_eq!(back.active(), doc.active());
+
+    // File ▸ Export As… a JPEG: the quality dialog, then the file.
+    s.control(reopened, "gimp:menu:file");
+    s.control(reopened, "gimp:export");
+    s.control(reopened, "gimp:format:jpg");
+    s.control(reopened, "gimp:save-confirm");
+    assert!(
+        s.has_target("gimp:set:subsampling:1"),
+        "the JPEG options show"
+    );
+    s.control(reopened, "gimp:set:quality:92");
+    s.control(reopened, "gimp:apply");
+    let jpeg_path = s.studio(reopened).path;
+    assert!(jpeg_path.ends_with("Pictures/layered.jpg"), "{jpeg_path}");
+    let jpeg = s.file(&jpeg_path);
+    assert_eq!(&jpeg[..3], &[0xff, 0xd8, 0xff]);
+    // It opens again, and looks like the image that was exported.
+    let again = s.launch("gimp", &jpeg_path);
+    let opened = s.studio(again).doc.expect("the JPEG opened");
+    assert_eq!((opened.width(), opened.height()), (96, 64));
+    let flat = back.composite();
+    let mut worst = 0;
+    for y in (0..64).step_by(3) {
+        for x in (0..96).step_by(3) {
+            let (p, q) = (flat.get(x, y), opened.pixel(x, y));
+            for c in 0..3 {
+                worst = worst.max(p[c].abs_diff(q[c]));
+            }
+        }
+    }
+    assert!(
+        worst < 40,
+        "quality 92 stays close: worst channel error {worst}"
+    );
+    // The same export twice writes the same bytes.
+    s.control(reopened, "gimp:menu:file");
+    s.control(reopened, "gimp:overwrite");
+    assert_eq!(s.file(&jpeg_path), jpeg);
 }

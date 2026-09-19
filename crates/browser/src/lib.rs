@@ -9,7 +9,7 @@ mod page_scene;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
 
-pub const RGBA_MEDIA_TYPE: &str = "application/vnd.computerworld.rgba+json";
+pub use cw_protocol::RGBA_MEDIA_TYPE;
 const MAX_IMAGE_BYTES: usize = 4 * 1024 * 1024;
 const MAX_CACHE_BYTES: usize = 16 * 1024 * 1024;
 /// A portable pixel asset; integer RGBA8, row-major, straight alpha.
@@ -43,6 +43,49 @@ pub struct HistoryEntry {
     pub images: BTreeMap<String, Arc<ImageAsset>>,
     #[serde(default)]
     pub image_errors: BTreeMap<String, String>,
+    /// The response asked to be fetched again after a while (`refresh: <s>; url=<path>`),
+    /// as a page whose content moves with the world clock does: a music player's bar.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refresh: Option<Refresh>,
+}
+/// A page's own refresh: `url` is requested again (`REFRESH_HEADER` set, so the site
+/// can tell it from a visit) once `after_ms` of world time has passed since `fetched`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Refresh {
+    pub after_ms: u64,
+    pub url: String,
+    /// World tick the page was first seen or last refreshed at (`refresh_due` stamps it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fetched: Option<u64>,
+}
+pub use cw_protocol::REFRESH_HEADER;
+/// Refresh intervals a page may ask for, in milliseconds of world time.
+const REFRESH_MIN_MS: u64 = 1_000;
+const REFRESH_MAX_MS: u64 = 3_600_000;
+/// `Refresh: 1; url=/lyrics`, as browsers read it.
+fn parse_refresh(value: &str, page_url: &Url) -> Option<Refresh> {
+    let mut parts = value.split(';');
+    let seconds: f64 = parts.next()?.trim().parse().ok()?;
+    if !seconds.is_finite() || seconds < 0.0 {
+        return None;
+    }
+    let after_ms = ((seconds * 1000.0) as u64).clamp(REFRESH_MIN_MS, REFRESH_MAX_MS);
+    let url = match parts.next().map(str::trim) {
+        Some(rest) => {
+            let (key, target) = rest.split_once('=')?;
+            if !key.trim().eq_ignore_ascii_case("url") {
+                return None;
+            }
+            page_url.join(target.trim()).ok()?
+        }
+        None => page_url.clone(),
+    };
+    // A page refreshes itself, never another site.
+    (url.origin() == page_url.origin()).then(|| Refresh {
+        after_ms,
+        url: url.to_string(),
+        fetched: None,
+    })
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tab {
@@ -51,6 +94,9 @@ pub struct Tab {
     pub focused: Option<String>,
     pub fields: BTreeMap<String, String>,
     pub scroll_y: i32,
+    /// How far each sideways-scrolling row of the page is scrolled, by row id.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub scroll_x: BTreeMap<String, i32>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cookie {
@@ -246,12 +292,100 @@ impl BrowserState {
         tab.fields = fields;
         tab.focused = None;
         tab.scroll_y = 0;
+        tab.scroll_x.clear();
     }
-    fn request<F>(
+    fn request<F>(&mut self, request: HttpRequest, transport: &mut F, replace: bool) -> Result<()>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        self.request_with(request, transport, replace, replace)
+    }
+    /// Whether the page on show wants attention at `now`: a refresh that is due, or one
+    /// not yet stamped. Read-only, so a caller can skip taking the state mutably.
+    pub fn refresh_pending(&self, now: u64) -> bool {
+        self.tab()
+            .history
+            .get(self.tab().position)
+            .and_then(|e| e.refresh.as_ref())
+            .is_some_and(|r| {
+                r.fetched
+                    .is_none_or(|at| now >= at.saturating_add(r.after_ms.saturating_mul(1_000)))
+            })
+    }
+    /// Whether the page on show asked to be refreshed and has waited long enough at
+    /// `now` (world microseconds). A page not yet stamped is stamped here, so its wait
+    /// starts when it was first seen.
+    pub fn refresh_due(&mut self, now: u64) -> bool {
+        let position = self.tab().position;
+        let Some(refresh) = self
+            .tab_mut()
+            .history
+            .get_mut(position)
+            .and_then(|e| e.refresh.as_mut())
+        else {
+            return false;
+        };
+        match refresh.fetched {
+            None => {
+                refresh.fetched = Some(now);
+                false
+            }
+            Some(at) => now >= at.saturating_add(refresh.after_ms.saturating_mul(1_000)),
+        }
+    }
+    /// Fetch the page on show again, as its `refresh` asked, and show what comes back in
+    /// its place. What the person had typed, where the field focus was and how far the
+    /// page was scrolled all stay; pictures come from the cache.
+    pub fn refresh<F>(&mut self, now: u64, transport: &mut F) -> Result<()>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        let url = self
+            .tab()
+            .history
+            .get(self.tab().position)
+            .and_then(|e| e.refresh.as_ref())
+            .map(|r| r.url.clone())
+            .ok_or_else(|| SimError::invalid("the page asked for no refresh"))?;
+        let (fields, focused, scroll, shelves) = {
+            let tab = self.tab();
+            (
+                tab.fields.clone(),
+                tab.focused.clone(),
+                tab.scroll_y,
+                tab.scroll_x.clone(),
+            )
+        };
+        let mut request = HttpRequest::get(url);
+        request.headers.insert(REFRESH_HEADER.into(), "1".into());
+        let result = self.request_with(request, transport, true, false);
+        let position = self.tab().position;
+        let tab = self.tab_mut();
+        for (id, value) in fields {
+            if tab.fields.contains_key(&id) {
+                tab.fields.insert(id, value);
+            }
+        }
+        tab.focused = focused.filter(|f| tab.fields.contains_key(f));
+        tab.scroll_y = scroll;
+        tab.scroll_x = shelves;
+        // Stamp the new copy (or, when the fetch failed, the old one) so the next try
+        // waits its interval again rather than hammering the network every step.
+        if let Some(r) = tab
+            .history
+            .get_mut(position)
+            .and_then(|e| e.refresh.as_mut())
+        {
+            r.fetched = Some(now);
+        }
+        result
+    }
+    fn request_with<F>(
         &mut self,
         mut request: HttpRequest,
         transport: &mut F,
         replace: bool,
+        fresh_images: bool,
     ) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
@@ -326,13 +460,17 @@ impl BrowserState {
                 });
                 page
             };
-            let (images, image_errors) = self.load_images(&page, &url, transport, replace);
+            let (images, image_errors) = self.load_images(&page, &url, transport, fresh_images);
+            let refresh = response
+                .header("refresh")
+                .and_then(|value| parse_refresh(value, &url));
             let entry = HistoryEntry {
                 url: url.to_string(),
                 page,
                 status: response.status,
                 images,
                 image_errors,
+                refresh,
             };
             let tab = self.tab_mut();
             if replace && !tab.history.is_empty() {
@@ -436,12 +574,16 @@ impl BrowserState {
             PageElement::Button { action, .. } | PageElement::Form { action, .. } => {
                 self.perform(action, Some(id), transport)
             }
-            // Cards and thumbnails are controls only when they carry a real action.
+            // Cards, thumbnails and icons are controls only when they carry a real action.
             PageElement::Card {
                 action: Some(action),
                 ..
             }
             | PageElement::Thumbnail {
+                action: Some(action),
+                ..
+            }
+            | PageElement::Icon {
                 action: Some(action),
                 ..
             } => self.perform(action, Some(id), transport),
@@ -702,13 +844,14 @@ impl BrowserState {
         // reflows instead of running off the side.
         let zoom = u32::from(self.zoom());
         let css = |v: u32| (v * 100 / zoom).max(1);
-        let mut scene = layout_page_with_images(
+        let mut scene = page_scene::layout_scrolled(
             &entry.page,
             &self.tab().fields,
             &entry.images,
             css(width),
             css(height),
             self.tab().scroll_y,
+            &self.tab().scroll_x,
         );
         if zoom != 100 {
             page_scene::scale(&mut scene, zoom, width, height);
@@ -1119,6 +1262,83 @@ mod image_tests {
             .back(&mut |_| panic!("history must not refetch"))
             .unwrap();
         assert_eq!(browser.scene(200, 200), old_frame);
+    }
+    #[test]
+    fn a_page_that_asks_to_be_refreshed_is_fetched_again_on_the_world_clock() {
+        let mut browser = BrowserState::default();
+        let mut seen: Vec<(String, bool)> = vec![];
+        let mut version = 0;
+        let serve = |r: HttpRequest, version: u32| {
+            if r.url.ends_with("/logo.rgba") {
+                return Ok(image_response(9));
+            }
+            let mut page = image_page("/logo.rgba");
+            page.elements.push(PageElement::Input {
+                id: "q".into(),
+                label: "Search".into(),
+                value: String::new(),
+                placeholder: String::new(),
+            });
+            page.elements.push(PageElement::Text {
+                id: "position".into(),
+                text: format!("version {version}"),
+            });
+            let mut response = HttpResponse::page(&page)?;
+            response
+                .headers
+                .insert("refresh".into(), "1; url=/player?live=1".into());
+            Ok(response)
+        };
+        browser
+            .navigate("https://site.test/player", &mut |r: HttpRequest| {
+                seen.push((r.url.clone(), r.header(REFRESH_HEADER).is_some()));
+                serve(r, 0)
+            })
+            .unwrap();
+        let refresh = browser.tab().history[0].refresh.clone().unwrap();
+        assert_eq!(
+            (refresh.after_ms, refresh.url.as_str()),
+            (1_000, "https://site.test/player?live=1")
+        );
+        // The first look stamps it; a second before its interval is up does nothing.
+        assert!(browser.refresh_pending(5_000_000));
+        assert!(!browser.refresh_due(5_000_000));
+        assert!(!browser.refresh_pending(5_500_000));
+        assert!(browser.refresh_pending(6_000_000));
+        browser.fill("q", "half typed").unwrap();
+        browser.tab_mut().scroll_y = 40;
+        assert!(browser.refresh_due(6_000_000));
+        version += 1;
+        browser
+            .refresh(6_000_000, &mut |r: HttpRequest| {
+                seen.push((r.url.clone(), r.header(REFRESH_HEADER).is_some()));
+                serve(r, version)
+            })
+            .unwrap();
+        // It fetched the page again, marked as a refresh, and not its (cached) picture.
+        assert_eq!(
+            seen,
+            [
+                ("https://site.test/player".to_owned(), false),
+                ("https://site.test/logo.rgba".to_owned(), false),
+                ("https://site.test/player?live=1".to_owned(), true),
+            ]
+        );
+        assert!(matches!(
+            browser.page().unwrap().elements.last(),
+            Some(PageElement::Text { text, .. }) if text == "version 1"
+        ));
+        // What was typed and where the page was scrolled survive; the history did not grow.
+        assert_eq!(browser.tab().fields["q"], "half typed");
+        assert_eq!(browser.tab().scroll_y, 40);
+        assert_eq!(browser.tab().history.len(), 1);
+        assert!(!browser.refresh_pending(6_500_000));
+        // A refresh aimed at another site is ignored.
+        assert!(parse_refresh(
+            "1; url=https://evil.test/",
+            &Url::parse("https://site.test/").unwrap()
+        )
+        .is_none());
     }
     #[test]
     fn asset_origin_redirect_and_decode_errors_are_explicit() {

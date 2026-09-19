@@ -2,20 +2,36 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
+pub mod debug;
+
 pub const SCHEMA_VERSION: u32 = 1;
 pub const PAGE_MEDIA_TYPE: &str = "application/vnd.computerworld.page+json";
+/// A page image: JSON `{width, height, rgba}`, straight-alpha RGBA8, row-major.
+pub const RGBA_MEDIA_TYPE: &str = "application/vnd.computerworld.rgba+json";
+/// Set on a request a browser makes because the page on show asked to be refreshed
+/// (a `refresh: <seconds>; url=<path>` response header), so a site can tell a page
+/// keeping itself current from a person visiting it.
+pub const REFRESH_HEADER: &str = "x-computerworld-refresh";
 pub type Result<T> = std::result::Result<T, SimError>;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 #[error("{code}: {message}")]
 pub struct SimError {
     pub code: String,
     pub message: String,
+    /// Machine-readable refusal reason from the closed vocabulary in [`reason`].
+    /// `code` says what class of failure this is; `reason` says what to do about it.
+    /// Only a reason this crate declares survives the actor boundary, and the message
+    /// it carries there is a compile-time constant, so a refusal can be acted on
+    /// without any refusal ever disclosing world state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 impl SimError {
     pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             code: code.into(),
             message: message.into(),
+            reason: None,
         }
     }
     pub fn invalid(message: impl Into<String>) -> Self {
@@ -26,6 +42,101 @@ impl SimError {
     }
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new("not_found", message)
+    }
+    /// Attach a documented reason. `reason` must be one of [`reason::ALL`]; anything
+    /// else is dropped at the actor boundary rather than passed through unchecked.
+    #[must_use]
+    pub fn because(mut self, reason: &'static str) -> Self {
+        self.reason = Some(reason.to_owned());
+        self
+    }
+}
+/// The closed vocabulary of refusal reasons an actor may be told, and the fixed
+/// message each one carries. Documented in `docs/agent-api.md`; the table there and
+/// [`reason::ALL`] are kept in step by `crates/computerworld/tests/error_codes.rs`.
+pub mod reason {
+    /// The session's `actions` list does not contain the family this action named.
+    pub const FAMILY_NOT_GRANTED: &str = "action_family_not_granted";
+    /// The session's `machines` list does not contain the machine this action named.
+    pub const MACHINE_NOT_GRANTED: &str = "machine_not_granted";
+    /// The action is browser-backed and the session also needs `browser.v1`.
+    pub const BROWSER_FAMILY_REQUIRED: &str = "browser_family_required";
+    /// The action drives the desktop shell and the session also needs `application.v1`.
+    pub const APPLICATION_FAMILY_REQUIRED: &str = "application_family_required";
+    /// Pixel capture needs `pixels.v1` in the session's `observations`.
+    pub const PIXELS_NOT_GRANTED: &str = "pixels_not_granted";
+    /// `scene()`/`render()` need `semantic.v1` or `pixels.v1` in `observations`.
+    pub const VISUAL_NOT_GRANTED: &str = "visual_observation_not_granted";
+    /// The session id is not one this world minted.
+    pub const UNKNOWN_SESSION: &str = "unknown_session";
+    /// The batch is larger than the session's `action_budget`.
+    pub const BUDGET_EXCEEDED: &str = "action_budget_exceeded";
+    /// The machine's `installed_apps` does not list this application.
+    pub const APPLICATION_NOT_INSTALLED: &str = "application_not_installed";
+    /// The family exists and was granted, but does not implement this `op`.
+    pub const UNSUPPORTED_OPERATION: &str = "unsupported_operation";
+    /// The machine this session named has no desktop shell to drive.
+    pub const NO_DESKTOP_SHELL: &str = "no_desktop_shell";
+    /// Every reason, with the code it travels under and the fixed message it carries.
+    pub const ALL: &[(&str, &str, &str)] = &[
+        (
+            FAMILY_NOT_GRANTED,
+            "denied",
+            "the session was not granted this action family",
+        ),
+        (
+            MACHINE_NOT_GRANTED,
+            "denied",
+            "the session was not granted this machine",
+        ),
+        (
+            BROWSER_FAMILY_REQUIRED,
+            "denied",
+            "this action also requires the browser.v1 action family",
+        ),
+        (
+            APPLICATION_FAMILY_REQUIRED,
+            "denied",
+            "this action also requires the application.v1 action family",
+        ),
+        (
+            PIXELS_NOT_GRANTED,
+            "denied",
+            "this action requires the pixels.v1 observation channel",
+        ),
+        (
+            VISUAL_NOT_GRANTED,
+            "denied",
+            "this requires the semantic.v1 or pixels.v1 observation channel",
+        ),
+        (UNKNOWN_SESSION, "denied", "unknown actor session"),
+        (
+            BUDGET_EXCEEDED,
+            "denied",
+            "the batch is larger than this session's action budget",
+        ),
+        (
+            APPLICATION_NOT_INSTALLED,
+            "not_found",
+            "this machine does not have that application installed",
+        ),
+        (
+            UNSUPPORTED_OPERATION,
+            "invalid",
+            "this action family does not support that operation",
+        ),
+        (
+            NO_DESKTOP_SHELL,
+            "invalid",
+            "this machine has no desktop shell to drive",
+        ),
+    ];
+    /// The code and fixed message a reason travels with, or `None` when the reason is
+    /// not one this crate declares.
+    pub fn resolve(reason: &str) -> Option<(&'static str, &'static str)> {
+        ALL.iter()
+            .find(|(name, _, _)| *name == reason)
+            .map(|(_, code, message)| (*code, *message))
     }
 }
 impl From<serde_json::Error> for SimError {
@@ -90,6 +201,11 @@ pub struct ComputerDefinition {
     pub installed_apps: Vec<String>,
     #[serde(default)]
     pub packages: Vec<String>,
+    /// What the machine is, `desktop`, `laptop`, `phone` or `server`, stated by the
+    /// computer itself (a device added to a running world). A world's
+    /// `metadata.device_presentations` says the same for the computers it declares.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<String>,
 }
 impl ComputerDefinition {
     /// The seeded files that are not text, decoded.
@@ -314,6 +430,10 @@ pub struct Page {
     pub elements: Vec<PageElement>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<PageTheme>,
+    /// BCP 47 language of the page (the `<html lang>` attribute): picks regional Han
+    /// forms for its text. Absent means inferred from the text itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
 }
 /// Radius and padding budget: pages describe documents, not arbitrary geometry.
 pub const MAX_STYLE_SPAN: u32 = 64;
@@ -324,6 +444,78 @@ pub const MAX_STYLE_RADIUS: u32 = 512;
 pub const MAX_PAGE_GAP: u32 = 128;
 pub const MAX_GRID_COLUMNS: u32 = 12;
 pub const MAX_PAGE_EXTENT: u32 = 8192;
+/// Glyphs a page's `Icon` may name: the monochrome symbols every renderer bundles
+/// (`symbol/<name>`), tinted with the icon's colour. An unknown name is refused by
+/// `Page::validate` rather than drawn as nothing.
+pub const PAGE_ICONS: &[&str] = &[
+    "arrow-left",
+    "arrow-right",
+    "arrow-up",
+    "bell",
+    "calendar",
+    "cast",
+    "chat",
+    "check",
+    "chevron-down",
+    "chevron-left",
+    "chevron-right",
+    "chevron-up",
+    "clock",
+    "close",
+    "compass",
+    "copy",
+    "document",
+    "download",
+    "edit",
+    "eye",
+    "filters",
+    "flag",
+    "folder",
+    "gear",
+    "globe",
+    "grid-view",
+    "headphones",
+    "heart",
+    "heart-fill",
+    "home",
+    "image",
+    "info",
+    "library",
+    "link",
+    "list-view",
+    "lock",
+    "menu",
+    "mic",
+    "minus",
+    "more",
+    "more-vertical",
+    "music",
+    "pause",
+    "person",
+    "play",
+    "plus",
+    "queue",
+    "radio",
+    "reload",
+    "repeat",
+    "repeat-one",
+    "reply",
+    "search",
+    "send",
+    "share",
+    "shuffle",
+    "skip-next",
+    "skip-previous",
+    "sliders",
+    "star",
+    "star-outline",
+    "tag",
+    "thumb-up",
+    "thumb-up-fill",
+    "trash",
+    "volume",
+    "volume-mute",
+];
 /// `#rrggbb` or `#rrggbbaa`; nothing else, so renderers never guess.
 /// Standard base64 (RFC 4648, padded or not; whitespace ignored), as world files carry
 /// binary seeds.
@@ -394,6 +586,19 @@ pub struct Style {
     /// top-level elements only; anywhere else it is ignored.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pin: Option<String>,
+    /// `true` on a `Row` lays its children out on one line at their own widths
+    /// (`width`, or their min-content width) and, when they run past the row, lets it
+    /// scroll sideways instead of wrapping: a shelf of album covers. The browser
+    /// publishes it as a horizontal scroll area, `pane:row:<row id>`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scroll_x: Option<bool>,
+    /// Italic text (`font-style: italic`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    /// BCP 47 language of this element's text (an HTML `lang` attribute), overriding
+    /// the page's. It picks regional Han forms: `zh-Hant`, `ja`, `ko`, ...
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
 }
 /// Chainable presentation setters keep page-building call sites to one line each.
 impl Style {
@@ -403,6 +608,14 @@ impl Style {
     }
     pub fn bold(mut self) -> Self {
         self.weight = Some("bold".into());
+        self
+    }
+    pub fn italic(mut self) -> Self {
+        self.italic = Some(true);
+        self
+    }
+    pub fn lang(mut self, tag: impl Into<String>) -> Self {
+        self.lang = Some(tag.into());
         self
     }
     pub fn medium(mut self) -> Self {
@@ -451,6 +664,10 @@ impl Style {
     }
     pub fn pin(mut self, edge: impl Into<String>) -> Self {
         self.pin = Some(edge.into());
+        self
+    }
+    pub fn scroll_x(mut self) -> Self {
+        self.scroll_x = Some(true);
         self
     }
     fn validate(&self) -> Result<()> {
@@ -544,6 +761,7 @@ impl PageElement {
             | Self::Thumbnail { id, .. }
             | Self::Badge { id, .. }
             | Self::Divider { id, .. }
+            | Self::Icon { id, .. }
             | Self::Spacer { id, .. } => id,
         }
     }
@@ -606,6 +824,19 @@ impl Page {
                         style.validate()?;
                         visit(children, ids, depth + 1)?
                     }
+                    PageElement::Icon {
+                        name, label, style, ..
+                    } => {
+                        style.validate()?;
+                        if !PAGE_ICONS.contains(&name.as_str()) {
+                            return Err(SimError::invalid(format!("unknown page icon {name}")));
+                        }
+                        if label.trim().is_empty() {
+                            return Err(SimError::invalid(
+                                "an icon needs a label to be its accessible name",
+                            ));
+                        }
+                    }
                     PageElement::Styled { style, .. }
                     | PageElement::Thumbnail { style, .. }
                     | PageElement::Badge { style, .. }
@@ -629,6 +860,7 @@ impl Page {
             title: title.into(),
             elements: vec![],
             theme: None,
+            lang: None,
         }
     }
 }
@@ -739,6 +971,19 @@ pub enum PageElement {
         #[serde(default)]
         style: Style,
     },
+    /// A glyph from `PAGE_ICONS`, drawn `Style::size` pixels square (20 by default) in
+    /// `Style::color`, padded by `Style::padding` over `Style::background`. `label` is its
+    /// accessible name and is required. With `action` the padded square is one click
+    /// target (a transport button, a like button); without, it is a picture.
+    Icon {
+        id: String,
+        name: String,
+        label: String,
+        #[serde(default)]
+        style: Style,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        action: Option<PageAction>,
+    },
     /// Vertical gap.
     Spacer {
         id: String,
@@ -844,6 +1089,21 @@ pub mod effect {
     pub const TERMINAL: &str = "terminal";
     /// A registered application's projected page changed.
     pub const APPLICATION: &str = "application";
+    /// A view scrolled: a window's pane, a terminal's scrollback, a browser page, an
+    /// application's own wheel use (a grid, a timeline), or a list pulled past its end.
+    pub const SCROLL: &str = "scroll";
+    /// What Copy put down (text or files) changed.
+    pub const CLIPBOARD: &str = "clipboard";
+    /// A notification was posted or dismissed.
+    pub const NOTIFICATIONS: &str = "notifications";
+    /// A system setting (a toggle, a slider) or the screen's power state changed.
+    pub const SETTINGS: &str = "settings";
+    /// Shell state with no focus change: launcher search text, a selected desktop
+    /// icon, the virtual desktop on screen, an expanded launcher group, a phone's
+    /// Recents carousel, the on-screen keyboard's plane, the calendar panel's month.
+    pub const SHELL: &str = "shell";
+    /// The user's saved places changed: recent documents, stars, bookmarks, downloads.
+    pub const LIBRARY: &str = "library";
 }
 /// Coarse, app-level consequence of one action. `ActionOutcome::success` reports the
 /// envelope; this reports what moved in the world the actor can see. Derived by
@@ -1201,6 +1461,34 @@ mod tests {
             style: Style::default(),
         }];
         assert!(page.validate().is_err());
+    }
+    #[test]
+    fn icons_name_a_bundled_glyph_and_carry_a_label() {
+        let icon = |name: &str, label: &str, style: Style| {
+            let mut page = Page::new("p");
+            page.elements = vec![PageElement::Icon {
+                id: "like".into(),
+                name: name.into(),
+                label: label.into(),
+                style,
+                action: Some(PageAction {
+                    method: "POST".into(),
+                    url: "/items/x/like".into(),
+                    fields: BTreeMap::new(),
+                }),
+            }];
+            page.validate()
+        };
+        assert!(icon("thumb-up", "Like", Style::default()).is_ok());
+        assert!(icon("thumbs-up", "Like", Style::default()).is_err());
+        assert!(icon("thumb-up", " ", Style::default()).is_err());
+        assert!(icon("heart", "Save", Style::default().color("red")).is_err());
+        // It round-trips as the documented `icon` kind.
+        let json = r#"{"kind":"icon","id":"i","name":"play","label":"Play"}"#;
+        let parsed: PageElement = serde_json::from_str(json).unwrap();
+        assert!(
+            matches!(parsed, PageElement::Icon { ref name, ref action, .. } if name == "play" && action.is_none())
+        );
     }
     #[test]
     fn legacy_pages_deserialize_without_theme() {

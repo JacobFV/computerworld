@@ -1,0 +1,8 @@
+[package]
+name = "cw-artwork"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Deterministic generative cover artwork shared by the music applications and the music sites"
+
+[dependencies]

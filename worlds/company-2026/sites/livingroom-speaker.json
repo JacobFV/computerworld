@@ -1,0 +1,26 @@
+{
+  "id": "livingroom-speaker",
+  "kind": "speaker",
+  "node": "livingroom-speaker",
+  "domains": [
+    "livingroom.speaker.internal"
+  ],
+  "port": 80,
+  "network_node": {
+    "address": "10.0.2.20",
+    "zone": "local",
+    "link": {
+      "from": "app-server",
+      "latency_us": 10
+    }
+  },
+  "initial_state": {
+    "name": "Living Room",
+    "model": "Stereo speaker",
+    "protocols": [
+      "airplay",
+      "cast"
+    ],
+    "volume": 35
+  }
+}

@@ -1,6 +1,6 @@
 //! Clock, stopwatch and timer over simulation time. There is no host clock anywhere in
 //! this file; every reading is derived from the `clock_us` the shell threads in.
-use super::look::{action, header, look, INK, LINE, MUTED};
+use super::look::{action, look, screen, INK, LINE, MUTED};
 use crate::desktop_scene::shared::{arc_points, CalendarDate};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -201,7 +201,8 @@ impl Clock {
         let (theme, width, height) = (env.theme, env.width, env.height);
         let l = look(theme);
         p.scene.background = l.surface;
-        let mut top = header(p, theme, &l, width, &self.title(theme));
+        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
+        let mut top = screen.top;
         let mut x = 8;
         for (target, label) in [
             ("clock:world", "World"),
@@ -292,16 +293,30 @@ impl Clock {
             );
             x += w as i32 + 8;
         }
-        for (index, lap) in self.laps.iter().rev().take(4).enumerate() {
-            p.left(
-                width as i32 - 150,
-                top + 12 + index as i32 * 18,
-                140,
-                &format!("Lap {}  {}", self.laps.len() - index, duration(*lap)),
-                11,
-                MUTED,
+        // Every lap, newest first, in a list that scrolls once it outgrows its column.
+        if !self.laps.is_empty() {
+            let laps = p.pane(
+                "laps",
+                Rect::new(
+                    width as i32 - 156,
+                    top + 8,
+                    150,
+                    (height as i32 - top - 64).max(18) as u32,
+                ),
             );
+            for (index, lap) in self.laps.iter().rev().enumerate() {
+                p.left(
+                    width as i32 - 150,
+                    laps.top() + 4 + index as i32 * 18,
+                    140,
+                    &format!("Lap {}  {}", self.laps.len() - index, duration(*lap)),
+                    11,
+                    MUTED,
+                );
+            }
+            p.end_pane(laps, None);
         }
+        screen.end(p);
     }
     /// An analogue face drawn from the world clock the shell already carries.
     fn world_face(

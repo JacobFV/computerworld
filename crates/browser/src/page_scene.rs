@@ -2,7 +2,9 @@
 //! page element; this layer never reads services, users or privileged world state.
 use super::ImageAsset;
 use cw_protocol::{Page, PageElement, Style};
-use cw_scene::{metrics, Color, Node, Primitive, Rect, Scene, Semantic, Typeface};
+use cw_scene::{
+    metrics, Color, Lang, Node, Primitive, Rect, Scene, Semantic, Style as TextStyle, Typeface,
+};
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
@@ -54,20 +56,8 @@ fn mix(a: Color, b: Color, pct: u32) -> Color {
     let c = |a: u8, b: u8| ((u32::from(a) * (100 - pct) + u32::from(b) * pct) / 100) as u8;
     Color(c(a.0, b.0), c(a.1, b.1), c(a.2, b.2), a.3)
 }
-fn ui_text(text: &str, size: u16, color: Color, bold: bool) -> Primitive {
-    if bold {
-        Primitive::UiTextBold {
-            text: text.into(),
-            size,
-            color,
-        }
-    } else {
-        Primitive::UiText {
-            text: text.into(),
-            size,
-            color,
-        }
-    }
+fn ui_text(text: &str, size: u16, color: Color, style: TextStyle) -> Primitive {
+    Primitive::ui_text(text, color, size, style)
 }
 /// Whether a block holds reading matter — a sentence, a field, a picture — rather than
 /// a stack of small controls like a vote arrow over a score.
@@ -140,8 +130,17 @@ fn style_of(e: &PageElement) -> Option<&Style> {
         | PageElement::Styled { style, .. }
         | PageElement::Thumbnail { style, .. }
         | PageElement::Badge { style, .. }
+        | PageElement::Icon { style, .. }
         | PageElement::Divider { style, .. } => Some(style),
         _ => None,
+    }
+}
+/// A width the author fixed: a style's, or a picture's declared size, which a row keeps
+/// rather than stretching the picture across a flex share.
+fn fixed_width(e: &PageElement) -> Option<u32> {
+    match e {
+        PageElement::Image { width, .. } if *width > 0 => Some(*width),
+        _ => style_of(e).and_then(|s| s.width),
     }
 }
 /// Accessible name for a card: the first text its subtree offers.
@@ -154,7 +153,7 @@ fn label_of(children: &[PageElement]) -> String {
             | PageElement::Badge { text, .. }
             | PageElement::Link { text, .. }
             | PageElement::Button { text, .. } => text.clone(),
-            PageElement::Thumbnail { label, .. } => label.clone(),
+            PageElement::Thumbnail { label, .. } | PageElement::Icon { label, .. } => label.clone(),
             PageElement::Row { children, .. }
             | PageElement::Grid { children, .. }
             | PageElement::Card { children, .. }
@@ -172,6 +171,8 @@ struct Layout<'a> {
     scene: Scene,
     fields: &'a BTreeMap<String, String>,
     images: &'a BTreeMap<String, Arc<ImageAsset>>,
+    /// How far each sideways-scrolling row (`Style::scroll_x`) is scrolled, by row id.
+    hscroll: &'a BTreeMap<String, i32>,
     used: BTreeSet<u64>,
     decoration: u64,
     accent: Color,
@@ -182,6 +183,8 @@ struct Layout<'a> {
     /// Measurement runs the real placement with output suppressed, so the measure
     /// pass can never disagree with the place pass.
     dry: bool,
+    /// The page's language (`Page::lang`), for text that does not name its own.
+    lang: Lang,
 }
 impl Layout<'_> {
     fn id(&mut self, s: &str) -> u64 {
@@ -229,28 +232,22 @@ impl Layout<'_> {
             None,
         );
     }
-    fn text(&mut self, id: u64, r: Rect, text: &str, size: u16, color: Color, bold: bool) {
-        self.node(
-            id,
-            r,
-            if bold {
-                Primitive::UiTextBold {
-                    text: text.into(),
-                    size,
-                    color,
-                }
-            } else {
-                Primitive::UiText {
-                    text: text.into(),
-                    size,
-                    color,
-                }
-            },
-            None,
-            None,
-        );
+    fn text(
+        &mut self,
+        id: u64,
+        r: Rect,
+        text: &str,
+        size: u16,
+        color: Color,
+        style: impl Into<TextStyle>,
+    ) {
+        let mut style = style.into();
+        if style.lang.is_auto() {
+            style.lang = self.lang;
+        }
+        self.node(id, r, ui_text(text, size, color, style), None, None);
     }
-    fn caption(&mut self, r: Rect, s: &str, size: u16, color: Color, bold: bool) {
+    fn caption(&mut self, r: Rect, s: &str, size: u16, color: Color, bold: impl Into<TextStyle>) {
         let id = self.decoration;
         self.decoration += 1;
         self.text(id, r, s, size, color, bold);
@@ -260,7 +257,7 @@ impl Layout<'_> {
     /// the way CSS's min-content width is. Rows wrap and grids drop columns to keep
     /// every child at least this wide.
     fn min_width(&self, e: &PageElement) -> u32 {
-        let longest = |text: &str, bold: bool, size: u16| {
+        let longest = |text: &str, bold: TextStyle, size: u16| {
             text.split_whitespace()
                 .map(|word| metrics::text_width(FACE, bold, word, size))
                 .max()
@@ -275,10 +272,10 @@ impl Layout<'_> {
         };
         let natural = match e {
             PageElement::Heading { text, level, .. } => {
-                longest(text, true, if *level <= 1 { 18 } else { 15 })
+                longest(text, true.into(), if *level <= 1 { 18 } else { 15 })
             }
-            PageElement::Text { text, .. } => longest(text, false, 13),
-            PageElement::Link { text, .. } => longest(text, false, 13) + 24,
+            PageElement::Text { text, .. } => longest(text, false.into(), 13),
+            PageElement::Link { text, .. } => longest(text, false.into(), 13) + 24,
             PageElement::Button { id, text, .. } => {
                 metrics::text_width(FACE, true, submit_label(id, text), 12) + 30
             }
@@ -289,7 +286,7 @@ impl Layout<'_> {
             PageElement::Image { width, .. } => (*width).min(96),
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
-                let bold = matches!(style.weight.as_deref(), Some("bold") | Some("medium"));
+                let bold = self.text_style(style);
                 let pad = style.padding.unwrap_or(0).min(64) * 2;
                 pad + if style.one_line.unwrap_or(false) {
                     metrics::text_width(FACE, bold, text, size)
@@ -305,6 +302,10 @@ impl Layout<'_> {
             // A hairline (a progress bar's segment) carries no caption, so it has no floor.
             PageElement::Thumbnail { style, .. } if style.height.is_some_and(|h| h < 12) => 1,
             PageElement::Thumbnail { .. } => 48,
+            PageElement::Icon { style, .. } => {
+                u32::from(style.size.unwrap_or(20).clamp(6, 96))
+                    + 2 * style.padding.unwrap_or(0).min(64)
+            }
             PageElement::Card {
                 children, style, ..
             } => style.padding.unwrap_or(14).min(64) * 2 + widest(children),
@@ -357,6 +358,17 @@ impl Layout<'_> {
     }
     fn bold_of(&self, style: &Style) -> bool {
         matches!(style.weight.as_deref(), Some("bold") | Some("medium"))
+    }
+    /// Weight, slant and language of a styled element's text.
+    fn text_style(&self, style: &Style) -> TextStyle {
+        TextStyle::new(
+            self.bold_of(style),
+            style.italic.unwrap_or(false),
+            style
+                .lang
+                .as_deref()
+                .map_or(self.lang, cw_scene::Lang::from_tag),
+        )
     }
     /// Horizontal offset of `text_width` inside `w` for the style's alignment.
     fn offset(style: &Style, w: u32, text_width: u32) -> i32 {
@@ -542,11 +554,7 @@ impl Layout<'_> {
                 self.node(
                     id,
                     Rect::new(x, y, w, 30),
-                    Primitive::UiTextBold {
-                        text: text.clone(),
-                        size,
-                        color: self.ink,
-                    },
+                    ui_text(text, size, self.ink, TextStyle::new(true, false, self.lang)),
                     Some(Semantic {
                         role: "heading".into(),
                         label: text.clone(),
@@ -563,11 +571,12 @@ impl Layout<'_> {
                 self.node(
                     id,
                     Rect::new(x, y, w, h),
-                    Primitive::UiText {
-                        text: lines.join("\n"),
-                        size: 13,
-                        color: self.ink,
-                    },
+                    ui_text(
+                        &lines.join("\n"),
+                        13,
+                        self.ink,
+                        TextStyle::new(false, false, self.lang),
+                    ),
                     Some(Semantic {
                         role: "text".into(),
                         label: text.clone(),
@@ -585,8 +594,12 @@ impl Layout<'_> {
                 ..
             } => {
                 if let Some(a) = self.images.get(asset_id) {
-                    let dw = if *width == 0 { a.width } else { *width }.min(w);
-                    let dh = if *height == 0 { a.height } else { *height }.min(4096);
+                    let natural_w = if *width == 0 { a.width } else { *width };
+                    let natural_h = if *height == 0 { a.height } else { *height };
+                    let dw = natural_w.min(w);
+                    // A picture narrowed to its column keeps its proportions.
+                    let dh = (u64::from(natural_h) * u64::from(dw) / u64::from(natural_w.max(1)))
+                        .min(4096) as u32;
                     self.node(
                         id,
                         Rect::new(x, y, dw, dh),
@@ -607,6 +620,15 @@ impl Layout<'_> {
                     self.text(id, Rect::new(x, y, w, 24), alt, 13, self.muted, false);
                     32
                 }
+            }
+            PageElement::Row {
+                id: row,
+                children,
+                gap,
+                style,
+                ..
+            } if style.scroll_x == Some(true) => {
+                self.scroll_row(row, children, *gap, x, y, w, style, forced)
             }
             PageElement::Row {
                 children,
@@ -682,7 +704,7 @@ impl Layout<'_> {
             }
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
-                let bold = self.bold_of(style);
+                let bold = self.text_style(style);
                 let pad = style.padding.unwrap_or(0).min(64);
                 let colour = self.ink_of(style);
                 let w = style.width.map_or(w, |v| v.min(w));
@@ -889,6 +911,81 @@ impl Layout<'_> {
                 );
                 bh + 6
             }
+            PageElement::Icon {
+                id: target,
+                name,
+                label,
+                style,
+                action,
+            } => {
+                let size = u32::from(style.size.unwrap_or(20).clamp(6, 96));
+                let pad = style.padding.unwrap_or(0).min(64);
+                let bw = style.width.unwrap_or(size + 2 * pad).min(w);
+                let bh = style.height.unwrap_or(size + 2 * pad);
+                let bx = x + Self::offset(style, w, bw);
+                let r = Rect::new(bx, y, bw, bh);
+                let edge = style.border.as_deref().and_then(parse_color);
+                let primitive = Primitive::RoundedBox {
+                    fill: style
+                        .background
+                        .as_deref()
+                        .and_then(parse_color)
+                        .unwrap_or(Color::TRANSPARENT),
+                    border: edge,
+                    border_width: u32::from(edge.is_some()),
+                    radius: style.radius.unwrap_or(bw.min(bh) / 2).min(64),
+                };
+                match action {
+                    Some(action) => {
+                        let role = if action.method.eq_ignore_ascii_case("GET") {
+                            "link"
+                        } else {
+                            "button"
+                        };
+                        self.node(
+                            id,
+                            r,
+                            primitive,
+                            Some(Semantic {
+                                role: role.into(),
+                                label: label.clone(),
+                                focusable: true,
+                                ..Semantic::default()
+                            }),
+                            Some(target),
+                        );
+                    }
+                    None => self.node(
+                        id,
+                        r,
+                        primitive,
+                        Some(Semantic {
+                            role: "img".into(),
+                            label: label.clone(),
+                            ..Semantic::default()
+                        }),
+                        None,
+                    ),
+                }
+                let glyph = self.decoration;
+                self.decoration += 1;
+                self.node(
+                    glyph,
+                    Rect::new(
+                        bx + (bw.saturating_sub(size) / 2) as i32,
+                        y + (bh.saturating_sub(size) / 2) as i32,
+                        size,
+                        size,
+                    ),
+                    Primitive::Symbol {
+                        asset: format!("symbol/{name}"),
+                        color: self.ink_of(style),
+                    },
+                    None,
+                    None,
+                );
+                bh + 6
+            }
             PageElement::Divider { style, .. } => {
                 let colour = style
                     .color
@@ -967,7 +1064,7 @@ impl Layout<'_> {
         let avail = inner.saturating_sub(gap * (children.len() as u32 - 1));
         let fixed: Vec<Option<u32>> = children
             .iter()
-            .map(|c| style_of(c).and_then(|s| s.width).map(|v| v.min(avail)))
+            .map(|c| fixed_width(c).map(|v| v.min(avail)))
             .collect();
         // A flex child never shrinks below its content: those that would are held at
         // their minimum, and the rest share what is left, as `min-width: auto` does.
@@ -1032,6 +1129,72 @@ impl Layout<'_> {
             };
             self.place(child, cx, cy, *cw, forced);
             cx += (*cw + gap) as i32;
+        }
+        box_h
+    }
+    /// A row that scrolls sideways: every child at its own width on one line, shifted by
+    /// the row's scroll offset and clipped to the row, which is published as a
+    /// horizontal scroll area so a wheel or a swipe over it moves it.
+    #[allow(clippy::too_many_arguments)]
+    fn scroll_row(
+        &mut self,
+        row: &str,
+        children: &[PageElement],
+        gap: u32,
+        x: i32,
+        y: i32,
+        w: u32,
+        style: &Style,
+        forced: Option<u32>,
+    ) -> u32 {
+        let w = style.width.map_or(w, |v| v.min(w));
+        let pad = style.padding.unwrap_or(0).min(64);
+        let gap = gap.min(128);
+        let widths: Vec<u32> = children
+            .iter()
+            .map(|c| fixed_width(c).unwrap_or_else(|| self.min_width(c)).max(1))
+            .collect();
+        let heights: Vec<u32> = children
+            .iter()
+            .zip(&widths)
+            .map(|(c, cw)| self.measure(c, *cw, None))
+            .collect();
+        let content =
+            widths.iter().sum::<u32>() + gap * children.len().saturating_sub(1) as u32 + pad * 2;
+        let band = heights.iter().copied().max().unwrap_or(0);
+        let box_h = forced.or(style.height).unwrap_or(band + pad * 2);
+        self.row_decor(x, y, w, box_h, style);
+        let max = content.saturating_sub(w) as i32;
+        let offset = self.hscroll.get(row).copied().unwrap_or(0).clamp(0, max);
+        let view = Rect::new(x, y, w, box_h);
+        let mark = self.scene.nodes.len();
+        let mut cx = x + pad as i32 - offset;
+        for (child, cw) in children.iter().zip(&widths) {
+            // Children wholly outside the row are not drawn at all.
+            if cx + (*cw as i32) > x && cx < x + w as i32 {
+                self.place(child, cx, y + pad as i32, *cw, Some(band));
+            }
+            cx += (*cw + gap) as i32;
+        }
+        if !self.dry {
+            for n in &mut self.scene.nodes[mark..] {
+                n.clip = Some(
+                    n.clip
+                        .unwrap_or(view)
+                        .intersection(view)
+                        .unwrap_or(Rect::new(x, y, 0, 0)),
+                );
+            }
+            self.scene.scrolls.push(cw_scene::ScrollArea {
+                target: format!("pane:row:{row}"),
+                window: None,
+                bounds: view,
+                offset,
+                extent: content.max(w),
+                title: None,
+                title_height: 0,
+                horizontal: true,
+            });
         }
         box_h
     }
@@ -1170,6 +1333,16 @@ pub(super) fn scale(scene: &mut Scene, percent: u32, width: u32, height: u32) {
             _ => {}
         }
     }
+    // The page still fills the viewport; its offset and extent stay in CSS pixels,
+    // the units `browser.v1 scroll` takes. A row that scrolls sideways is drawn larger
+    // or smaller with everything else.
+    for area in &mut scene.scrolls {
+        area.bounds = if area.horizontal {
+            rect(area.bounds)
+        } else {
+            Rect::new(0, 0, width, height)
+        };
+    }
     scene.width = width;
     scene.height = height;
 }
@@ -1180,6 +1353,26 @@ pub(super) fn layout(
     width: u32,
     height: u32,
     scroll: i32,
+) -> Scene {
+    layout_scrolled(
+        page,
+        fields,
+        images,
+        width,
+        height,
+        scroll,
+        &BTreeMap::new(),
+    )
+}
+/// `layout`, with sideways-scrolling rows at the offsets `hscroll` names.
+pub(super) fn layout_scrolled(
+    page: &Page,
+    fields: &BTreeMap<String, String>,
+    images: &BTreeMap<String, Arc<ImageAsset>>,
+    width: u32,
+    height: u32,
+    scroll: i32,
+    hscroll: &BTreeMap<String, i32>,
 ) -> Scene {
     let theme = page.theme.as_ref();
     let themed = theme.is_some();
@@ -1205,6 +1398,7 @@ pub(super) fn layout(
         scene: Scene::new(width, height),
         fields,
         images,
+        hscroll,
         used: BTreeSet::new(),
         decoration: 1 << 52,
         accent,
@@ -1217,6 +1411,7 @@ pub(super) fn layout(
         },
         surface,
         dry: false,
+        lang: page.lang.as_deref().map_or(Lang::Auto, Lang::from_tag),
     };
     p.scene.background = colour(|t| t.background.as_ref(), Color::rgb(248, 250, 253));
     let special = !themed
@@ -1327,9 +1522,13 @@ pub(super) fn layout(
     // Pinned bars span the viewport on its bottom edge, stacked in page order, and the
     // page under them is clipped away so a click on a bar never reaches what it covers.
     let bars: Vec<&PageElement> = page.elements.iter().filter(|e| pinned(e)).collect();
+    // Everything the page holds, unscrolled: the flowed columns plus the bars pinned
+    // over its bottom edge, which the last row must be able to scroll clear of.
+    let mut extent = (y.max(side_y).max(form_y) + scroll).max(0) as u32 + 16;
     if !bars.is_empty() {
         let heights: Vec<u32> = bars.iter().map(|e| p.measure(e, width, None)).collect();
         let total = heights.iter().sum::<u32>().min(height);
+        extent += total;
         let edge = height.saturating_sub(total);
         // Content wholly behind the bars keeps a one-row clip strip above them rather than
         // none, so it stays in the page (reachable by scrolling) yet paints nothing there.
@@ -1377,6 +1576,16 @@ pub(super) fn layout(
             true,
         );
     }
+    p.scene.scrolls.push(cw_scene::ScrollArea {
+        target: "pane:page".into(),
+        window: None,
+        bounds: Rect::new(0, 0, width, height),
+        offset: scroll,
+        extent,
+        title: None,
+        title_height: 0,
+        horizontal: false,
+    });
     p.scene
 }
 
@@ -1394,12 +1603,124 @@ mod tests {
             style,
         }
     }
+    #[test]
+    fn an_icon_is_a_labelled_button_over_a_tinted_symbol() {
+        let mut page = Page::new("Player");
+        page.elements = vec![PageElement::Icon {
+            id: "like".into(),
+            name: "thumb-up".into(),
+            label: "Like".into(),
+            style: Style::default().size(24).padding(8).color("#ff0000"),
+            action: Some(PageAction {
+                method: "POST".into(),
+                url: "/items/x/like".into(),
+                fields: BTreeMap::new(),
+            }),
+        }];
+        page.validate().unwrap();
+        let s = scene(&page, 400);
+        let button = find(&s, "like");
+        assert_eq!((button.bounds.width, button.bounds.height), (40, 40));
+        let semantic = button.semantic.as_ref().unwrap();
+        assert_eq!(
+            (semantic.role.as_str(), semantic.label.as_str()),
+            ("button", "Like")
+        );
+        let glyph = s
+            .nodes
+            .iter()
+            .find(|n| matches!(&n.primitive, Primitive::Symbol { asset, .. } if asset == "symbol/thumb-up"))
+            .expect("the glyph is drawn");
+        assert_eq!(
+            glyph.bounds,
+            Rect::new(button.bounds.x + 8, button.bounds.y + 8, 24, 24)
+        );
+        assert!(
+            matches!(glyph.primitive, Primitive::Symbol { color, .. } if color == Color::rgb(255, 0, 0))
+        );
+        // Without an action it is a picture with the same name, and no click target.
+        if let PageElement::Icon { action, .. } = &mut page.elements[0] {
+            *action = None;
+        }
+        let s = scene(&page, 400);
+        assert!(s.nodes.iter().all(|n| n.interaction.is_none()));
+        assert!(s.nodes.iter().any(|n| n
+            .semantic
+            .as_ref()
+            .is_some_and(|m| m.role == "img" && m.label == "Like")));
+    }
     fn find<'a>(scene: &'a Scene, action: &str) -> &'a Node {
         scene
             .nodes
             .iter()
             .find(|n| n.interaction.as_deref() == Some(action))
             .unwrap()
+    }
+    #[test]
+    fn page_language_and_italic_reach_the_text_primitives() {
+        let mut page = Page::new("記事");
+        page.lang = Some("ja-JP".into());
+        page.elements = vec![
+            PageElement::Heading {
+                id: "h".into(),
+                text: "骨の話".into(),
+                level: 1,
+            },
+            PageElement::Text {
+                id: "t".into(),
+                text: "直次".into(),
+            },
+            PageElement::Styled {
+                id: "quote".into(),
+                text: "an italic pull quote that is long enough to wrap".into(),
+                style: Style::default().italic(),
+            },
+            PageElement::Styled {
+                id: "tc".into(),
+                text: "骨".into(),
+                style: Style::default().lang("zh-TW").bold(),
+            },
+        ];
+        let scene_of = |page: &Page| scene(page, 220);
+        let scene = scene_of(&page);
+        let style_of = |text: &str| {
+            scene
+                .nodes
+                .iter()
+                .find(|n| n.painted_text().is_some_and(|t| t.contains(text)))
+                .and_then(|n| n.primitive.text_style())
+                .unwrap()
+        };
+        assert_eq!(style_of("骨の話"), TextStyle::new(true, false, Lang::Ja));
+        assert_eq!(style_of("直次"), TextStyle::new(false, false, Lang::Ja));
+        assert_eq!(style_of("italic"), TextStyle::new(false, true, Lang::Ja));
+        assert_eq!(style_of("骨"), TextStyle::new(true, false, Lang::Ja));
+        let tc = scene
+            .nodes
+            .iter()
+            .find(|n| n.painted_text() == Some("骨"))
+            .unwrap();
+        assert_eq!(
+            tc.primitive.text_style(),
+            Some(TextStyle::new(true, false, Lang::ZhHant))
+        );
+        // The italic block wraps with italic metrics.
+        let quote = scene
+            .nodes
+            .iter()
+            .find(|n| n.painted_text().is_some_and(|t| t.contains("italic")))
+            .unwrap();
+        for line in quote.painted_text().unwrap().lines() {
+            assert!(
+                metrics::text_width(FACE, TextStyle::new(false, true, Lang::Ja), line, 13)
+                    <= quote.bounds.width
+            );
+        }
+        // Scene JSON only carries the new fields where they are set.
+        let json = serde_json::to_string(&scene).unwrap();
+        assert!(json.contains(r#""lang":"ja""#) && json.contains(r#""italic":true"#));
+        let plain = scene_of(&Page::new("p"));
+        assert!(!serde_json::to_string(&plain).unwrap().contains("lang"));
     }
     #[test]
     fn mail_uses_one_title_and_fields_remain_hit_testable() {

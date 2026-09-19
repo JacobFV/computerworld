@@ -10,15 +10,19 @@ use cw_eda::drc;
 use cw_eda::footprints::{PadKind, PadShape, MM};
 use cw_eda::geom::{mm, parse_mm, Pt, Rect as WRect};
 use cw_eda::gerber;
-use cw_eda::pcb::{posture45, BoardItem, DrawShape, Drawing, Layer, Track, Via, Zone};
+use cw_eda::pcb::{
+    angle_text, parse_angle, posture45, BoardItem, DrawShape, Drawing, Layer, Shape, Track, Via,
+    Zone,
+};
+use cw_eda::router::{via_collision, Router};
 use cw_eda::zones;
 use cw_scene::{Color, Rect};
 use serde::{Deserialize, Serialize};
 
 pub const PCB_BG: Color = Color::rgb(0, 16, 35);
 const PANEL_W: u32 = 220;
-const MIN_ZOOM: i64 = 2;
-const MAX_ZOOM: i64 = 800;
+pub(super) const MIN_ZOOM: i64 = 2;
+pub(super) const MAX_ZOOM: i64 = 800;
 const WIDTHS: [i64; 6] = [250_000, 400_000, 500_000, 800_000, 1_000_000, 1_500_000];
 
 /// A track being routed.
@@ -49,6 +53,15 @@ pub struct PcbUi {
     pub track_width: i64,
     pub diagonal_first: bool,
     pub grid: i64,
+    /// Router mode: highlight collisions instead of walking around obstacles.
+    #[serde(default)]
+    pub highlight_collisions: bool,
+    /// The walkaround path from the route's last corner to the pointer.
+    #[serde(default)]
+    pub preview: Vec<Pt>,
+    /// What the track being drawn would violate (highlight-collisions mode).
+    #[serde(default)]
+    pub collisions: Vec<(Pt, String)>,
 }
 impl PcbUi {
     pub fn new() -> Self {
@@ -64,6 +77,9 @@ impl PcbUi {
             track_width: 250_000,
             diagonal_first: false,
             grid: 250_000,
+            highlight_collisions: false,
+            preview: vec![],
+            collisions: vec![],
         }
     }
 }
@@ -213,10 +229,59 @@ impl Kicad {
             }
         );
     }
+    /// The router for the route in progress, on its current layer.
+    fn router(&self) -> Option<Router> {
+        let route = self.ui.pcb.route.as_ref()?;
+        Some(Router::new(
+            &self.session.board,
+            route.net,
+            route.layer,
+            route.width,
+        ))
+    }
+    /// Recompute what the route in progress would add to reach the pointer: the
+    /// walkaround path, or in highlight mode the straight posture and its collisions.
+    pub(super) fn update_route_preview(&mut self) {
+        self.ui.pcb.preview.clear();
+        self.ui.pcb.collisions.clear();
+        let (Some(route), Some(hover)) = (self.ui.pcb.route.as_ref(), self.ui.hover) else {
+            return;
+        };
+        let last = *route.points.last().expect("a route has a start");
+        let Some(router) = self.router() else { return };
+        if self.ui.pcb.highlight_collisions {
+            let path = posture45(last, hover, self.ui.pcb.diagonal_first);
+            let mut all = route.points.clone();
+            all.extend(path.iter().skip(1));
+            self.ui.pcb.collisions = router
+                .collisions(&all)
+                .into_iter()
+                .map(|c| (c.at, c.item))
+                .collect();
+            self.ui.pcb.preview = path;
+        } else if let Some(path) = router.walkaround(last, hover, self.ui.pcb.diagonal_first) {
+            self.ui.pcb.preview = path;
+        }
+    }
     fn close_zone(&mut self) {
         let outline = std::mem::take(&mut self.ui.pcb.poly);
         if outline.len() < 3 {
             self.ui.status = "A zone needs at least three corners".into();
+            return;
+        }
+        if self.pcb_tool() == "keepout" {
+            self.ui.dialog = Some(Dialog::ZoneProperties {
+                outline,
+                net: 0,
+                layer: if self.ui.pcb.layer.is_copper() {
+                    self.ui.pcb.layer
+                } else {
+                    Layer::FCu
+                },
+                clearance: "0".into(),
+                keepout: true,
+                error: String::new(),
+            });
             return;
         }
         let net = self
@@ -235,6 +300,7 @@ impl Kicad {
                 Layer::FCu
             },
             clearance: "0.5".into(),
+            keepout: false,
             error: String::new(),
         });
         self.ui.focus = Some("clearance".into());
@@ -377,11 +443,36 @@ impl Kicad {
                         if end == last {
                             return Ok(vec![]);
                         }
-                        let path = posture45(last, end, self.ui.pcb.diagonal_first);
+                        let (net, rlayer, width) = (route.net, route.layer, route.width);
+                        let router = Router::new(&self.session.board, net, rlayer, width);
+                        let path = if self.ui.pcb.highlight_collisions {
+                            posture45(last, end, self.ui.pcb.diagonal_first)
+                        } else {
+                            // Walk around: the shortest clear 45° path, or refuse.
+                            router
+                                .walkaround(last, end, self.ui.pcb.diagonal_first)
+                                .ok_or(
+                                    "Walkaround: no clear path to that point (an obstacle's clearance is in the way)",
+                                )?
+                        };
+                        let route = self.ui.pcb.route.as_mut().expect("routing");
                         for q in &path[1..] {
                             route.points.push(*q);
                             route.layers.push(route.layer);
                         }
+                        let hits = router.collisions(&route.points);
+                        self.ui.pcb.collisions =
+                            hits.iter().map(|c| (c.at, c.item.clone())).collect();
+                        if !hits.is_empty() {
+                            self.ui.status = format!(
+                                "Collides with {}",
+                                hits.iter()
+                                    .map(|c| c.item.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
+                        }
+                        let route = self.ui.pcb.route.as_ref().expect("routing");
                         let arrived = target
                             .is_some_and(|(net, _)| net == route.net && route.net != 0)
                             && end != route.points[0];
@@ -390,6 +481,7 @@ impl Kicad {
                         }
                     }
                 }
+                self.update_route_preview();
                 Ok(vec![])
             }
             "via" => {
@@ -416,7 +508,7 @@ impl Kicad {
                 });
                 Ok(vec![])
             }
-            "zone" => {
+            "zone" | "keepout" => {
                 if phase != PointerPhase::Up {
                     return Ok(vec![]);
                 }
@@ -473,10 +565,67 @@ impl Kicad {
     pub(super) fn pcb_activate(&mut self, _window: u64) -> Result<Vec<AppEffect>, String> {
         match self.pcb_tool() {
             "route" => self.finish_route(),
-            "zone" => self.close_zone(),
+            "zone" | "keepout" => self.close_zone(),
             "line" => self.ui.pcb.poly.clear(),
+            "select" => {
+                // Double-clicking a footprint opens its properties, as in KiCad.
+                if let [BoardItem::Footprint(id)] = self.board_selected().as_slice() {
+                    return self.open_fp_properties(*id);
+                }
+            }
             _ => {}
         }
+        Ok(vec![])
+    }
+    fn open_fp_properties(&mut self, id: u64) -> Result<Vec<AppEffect>, String> {
+        let f = self
+            .session
+            .board
+            .footprint(id)
+            .ok_or("footprint not found")?;
+        self.ui.dialog = Some(Dialog::FootprintProperties {
+            id,
+            back: f.back,
+            locked: f.locked,
+            fields: vec![
+                ("Position X".into(), mm_text(f.pos.x)),
+                ("Position Y".into(), mm_text(f.pos.y)),
+                ("Orientation".into(), angle_text(f.angle)),
+            ],
+            error: String::new(),
+        });
+        self.ui.focus = Some("Orientation".into());
+        Ok(vec![])
+    }
+    /// Turn the selected footprints by `delta` tenths of a degree counter-clockwise.
+    fn rotate_selection(&mut self, delta: i32) -> Result<Vec<AppEffect>, String> {
+        let ids: Vec<u64> = self
+            .board_selected()
+            .iter()
+            .filter_map(|i| match i {
+                BoardItem::Footprint(id) => Some(*id),
+                _ => None,
+            })
+            .collect();
+        if ids.is_empty() {
+            return Err("select a footprint first".into());
+        }
+        self.pcb_edit();
+        for id in &ids {
+            let f = self
+                .session
+                .board
+                .footprint_mut(*id)
+                .expect("selected footprint");
+            f.angle = (f.angle + delta).rem_euclid(3600);
+        }
+        let shown = self
+            .session
+            .board
+            .footprint(ids[0])
+            .map(|f| angle_text(f.angle))
+            .unwrap_or_default();
+        self.ui.status = format!("Rotated to {shown}°");
         Ok(vec![])
     }
     fn describe_board_selection(&self) -> String {
@@ -605,7 +754,14 @@ impl Kicad {
                 parts.get(1).copied().unwrap_or(""),
                 &parts[2.min(parts.len())..],
             ),
-            "rotate" | "flip" => {
+            "rotate" => self.rotate_selection(900),
+            "rotate-cw" => self.rotate_selection(-900),
+            "rotate45" => self.rotate_selection(450),
+            "properties" => match self.board_selected().as_slice() {
+                [BoardItem::Footprint(id)] => self.open_fp_properties(*id),
+                _ => Err("select one footprint to edit its properties".into()),
+            },
+            "flip" => {
                 let ids: Vec<u64> = self
                     .board_selected()
                     .iter()
@@ -624,14 +780,18 @@ impl Kicad {
                         .board
                         .footprint_mut(id)
                         .expect("selected footprint");
-                    if parts[0] == "rotate" {
-                        f.rot = (f.rot + 1) % 4;
-                    } else {
-                        f.back = !f.back;
-                    }
+                    f.back = !f.back;
                 }
                 Ok(vec![])
             }
+            "router" => {
+                self.ui.dialog = Some(Dialog::RouterSettings {
+                    walkaround: !self.ui.pcb.highlight_collisions,
+                });
+                Ok(vec![])
+            }
+            "3d" => self.launch_frame(window, "3d"),
+            "fped" => self.launch_frame(window, "fped"),
             "delete" => {
                 let sel = self.board_selected();
                 if sel.is_empty() {
@@ -645,7 +805,10 @@ impl Kicad {
             }
             "tool" => {
                 let tool = parts.get(1).copied().unwrap_or("select");
-                if !matches!(tool, "select" | "route" | "via" | "zone" | "rect" | "line") {
+                if !matches!(
+                    tool,
+                    "select" | "route" | "via" | "zone" | "keepout" | "rect" | "line"
+                ) {
                     return Err(format!("unknown tool {tool}"));
                 }
                 self.set_pcb_tool(tool);
@@ -656,14 +819,24 @@ impl Kicad {
                     Layer::parse(parts.get(1).copied().unwrap_or("")).ok_or("unknown layer")?;
                 self.ui.pcb.layer = layer;
                 self.ui.pcb.hidden.retain(|l| *l != layer);
-                if let Some(route) = &mut self.ui.pcb.route {
+                if let Some(route) = &self.ui.pcb.route {
                     if layer.is_copper() && layer != route.layer {
-                        // Changing layer mid-route drops a via where the route stands.
+                        // Changing layer mid-route drops a via where the route stands;
+                        // the walkaround router will not put one into a clearance.
                         let at = *route.points.last().expect("a route has a start");
+                        if !self.ui.pcb.highlight_collisions {
+                            let d = self.session.board.rules.via_diameter;
+                            if let Some(hit) = via_collision(&self.session.board, route.net, at, d)
+                            {
+                                return Err(format!("A via here would collide with {hit}"));
+                            }
+                        }
+                        let route = self.ui.pcb.route.as_mut().expect("routing");
                         route.vias.push(at);
                         route.layer = layer;
                     }
                 }
+                self.update_route_preview();
                 Ok(vec![])
             }
             "eye" => {
@@ -776,6 +949,10 @@ impl Kicad {
     pub(super) fn pcb_key(&mut self, window: u64, key: &str) -> Result<Vec<AppEffect>, String> {
         let command = match key {
             "r" | "R" => "rotate",
+            "Shift+R" | "Shift+r" => "rotate-cw",
+            "Ctrl+r" | "Meta+r" => "rotate45",
+            "e" | "E" => "properties",
+            "Alt+3" => "3d",
             "f" | "F" => "flip",
             "Delete" | "Backspace" => "delete",
             "x" | "X" => "tool:route",
@@ -813,6 +990,8 @@ impl Kicad {
                 if self.ui.pcb.route.is_some() || !self.ui.pcb.poly.is_empty() {
                     self.ui.pcb.route = None;
                     self.ui.pcb.poly.clear();
+                    self.ui.pcb.preview.clear();
+                    self.ui.pcb.collisions.clear();
                 } else if self.pcb_tool() != "select" {
                     self.set_pcb_tool("select");
                 } else {
@@ -832,10 +1011,12 @@ impl Kicad {
             Dialog::UpdatePcb { changes, applied } => match cmd {
                 "ok" | "apply" if !applied => {
                     self.pcb_edit();
-                    let done = self
-                        .session
-                        .board
-                        .update_from_schematic(&self.session.schematic, true);
+                    let libs = self.session.project_footprints();
+                    let done = self.session.board.update_from_schematic_with(
+                        &self.session.schematic,
+                        true,
+                        &libs,
+                    );
                     self.ui.view.fit = true;
                     self.ui.status = format!("Update PCB: {} change(s) applied", done.len());
                     self.ui.dialog = Some(Dialog::UpdatePcb {
@@ -1062,6 +1243,7 @@ impl Kicad {
                 net,
                 layer,
                 clearance,
+                keepout,
                 ..
             } => match cmd {
                 "net" => {
@@ -1074,6 +1256,7 @@ impl Kicad {
                         net: n,
                         layer,
                         clearance,
+                        keepout,
                         error: String::new(),
                     });
                     Ok(vec![])
@@ -1087,6 +1270,18 @@ impl Kicad {
                         net,
                         layer: l,
                         clearance,
+                        keepout,
+                        error: String::new(),
+                    });
+                    Ok(vec![])
+                }
+                "keepout" => {
+                    self.ui.dialog = Some(Dialog::ZoneProperties {
+                        outline,
+                        net,
+                        layer,
+                        clearance,
+                        keepout: !keepout,
                         error: String::new(),
                     });
                     Ok(vec![])
@@ -1099,6 +1294,7 @@ impl Kicad {
                             net,
                             layer,
                             clearance,
+                            keepout,
                         });
                         return Ok(vec![]);
                     };
@@ -1107,7 +1303,7 @@ impl Kicad {
                     let id = b.take_id();
                     b.zones.push(Zone {
                         id,
-                        net,
+                        net: if keepout { 0 } else { net },
                         layer,
                         outline,
                         clearance: c,
@@ -1116,13 +1312,101 @@ impl Kicad {
                         spoke_width: 500_000,
                         fill: vec![],
                         filled: false,
+                        keepout,
                     });
                     zones::fill_all(b);
-                    self.ui.status = format!("Zone added on {} and filled", layer.name());
+                    self.ui.status = if keepout {
+                        format!("Rule area (keepout) added on {}", layer.name())
+                    } else {
+                        format!("Zone added on {} and filled", layer.name())
+                    };
                     self.close_dialog();
                     Ok(vec![])
                 }
                 other => Err(format!("unknown zone command {other}")),
+            },
+            Dialog::FootprintProperties {
+                id,
+                mut back,
+                mut locked,
+                fields,
+                ..
+            } => match cmd {
+                "side" | "lock" => {
+                    if cmd == "side" {
+                        back = !back;
+                    } else {
+                        locked = !locked;
+                    }
+                    self.ui.dialog = Some(Dialog::FootprintProperties {
+                        id,
+                        back,
+                        locked,
+                        fields,
+                        error: String::new(),
+                    });
+                    Ok(vec![])
+                }
+                "ok" => {
+                    let d = self.ui.dialog.clone().expect("open");
+                    let x = parse_mm(&d.value("Position X"), 1_000_000);
+                    let y = parse_mm(&d.value("Position Y"), 1_000_000);
+                    let angle = parse_angle(d.value("Orientation").trim_end_matches('°'));
+                    let (Some(x), Some(y), Some(angle)) = (x, y, angle) else {
+                        self.ui.dialog = Some(Dialog::FootprintProperties {
+                            id,
+                            back,
+                            locked,
+                            fields,
+                            error: "Position is in mm and orientation in degrees (any angle, e.g. 45 or 22.5)."
+                                .into(),
+                        });
+                        return Ok(vec![]);
+                    };
+                    self.pcb_edit();
+                    let f = self
+                        .session
+                        .board
+                        .footprint_mut(id)
+                        .ok_or("footprint not found")?;
+                    f.pos = Pt::new(x, y);
+                    f.angle = angle;
+                    f.back = back;
+                    f.locked = locked;
+                    self.ui.status = format!(
+                        "{} at {} mm, {} mm, {}°",
+                        f.reference,
+                        mm_text(x),
+                        mm_text(y),
+                        angle_text(angle)
+                    );
+                    self.close_dialog();
+                    Ok(vec![])
+                }
+                other => Err(format!("unknown footprint command {other}")),
+            },
+            Dialog::RouterSettings { walkaround } => match cmd {
+                "mode" => {
+                    self.ui.dialog = Some(Dialog::RouterSettings {
+                        walkaround: arg == "walkaround",
+                    });
+                    Ok(vec![])
+                }
+                "ok" => {
+                    self.ui.pcb.highlight_collisions = !walkaround;
+                    self.ui.status = format!(
+                        "Router mode: {}",
+                        if walkaround {
+                            "walk around"
+                        } else {
+                            "highlight collisions"
+                        }
+                    );
+                    self.close_dialog();
+                    self.update_route_preview();
+                    Ok(vec![])
+                }
+                other => Err(format!("unknown router settings command {other}")),
             },
             _ => Err("not a PCB dialog".into()),
         }
@@ -1228,6 +1512,20 @@ impl Kicad {
                     "Rotate counterclockwise (R)",
                 ),
                 (
+                    icons::rotate,
+                    need_fp("kicad:pcb:rotate45"),
+                    "Rotate 45° counterclockwise (Ctrl+R)",
+                ),
+                (
+                    icons::properties,
+                    if matches!(self.board_selected().as_slice(), [BoardItem::Footprint(_)]) {
+                        Ok("kicad:pcb:properties".into())
+                    } else {
+                        Err("select one footprint first")
+                    },
+                    "Footprint properties (E)",
+                ),
+                (
                     icons::flip,
                     need_fp("kicad:pcb:flip"),
                     "Change side / flip (F)",
@@ -1262,6 +1560,19 @@ impl Kicad {
                     icons::fill,
                     zones_present("kicad:pcb:fill"),
                     "Fill all zones (B)",
+                ),
+            ],
+            vec![
+                (
+                    icons::settings,
+                    Ok("kicad:pcb:router".into()),
+                    "Interactive router settings",
+                ),
+                (icons::viewer3d, proj("kicad:pcb:3d"), "3D Viewer (Alt+3)"),
+                (
+                    icons::footprint_editor,
+                    proj("kicad:pcb:fped"),
+                    "Footprint Editor",
                 ),
             ],
         ];
@@ -1352,6 +1663,7 @@ impl Kicad {
             (icons::route, "route", "Route tracks (X)"),
             (icons::via, "via", "Add a free-standing via"),
             (icons::zone, "zone", "Add a filled zone"),
+            (icons::keepout, "keepout", "Add a rule area (keepout)"),
             (icons::line, "line", "Draw a line"),
             (icons::rect, "rect", "Draw a rectangle"),
         ] {
@@ -1518,7 +1830,31 @@ impl Kicad {
                 }
             };
             if layer.is_copper() {
-                for z in b.zones.iter().filter(|z| z.layer == layer) {
+                // Rule areas: a hatched outline, as KiCad draws keepouts.
+                for z in b.zones.iter().filter(|z| z.layer == layer && z.keepout) {
+                    let d = moved(BoardItem::Zone(z.id));
+                    let mut outline: Vec<Pt> = z.outline.iter().map(|x| q(x.add(d))).collect();
+                    if outline.is_empty() {
+                        continue;
+                    }
+                    outline.push(outline[0]);
+                    let red = Color(200, 60, 60, 220);
+                    cv.stroke(p, &outline, red, 0, 2);
+                    let r = cw_eda::pcb::bbox_of(&outline);
+                    let mut k = r.min.x - r.height();
+                    let step = 1000.max(r.width().max(r.height()) / 12);
+                    while k < r.max.x {
+                        // Diagonal hatch clipped to the bounding box of the outline.
+                        let a = Pt::new(k.max(r.min.x), r.max.y - (k.max(r.min.x) - k));
+                        let e = k + r.height();
+                        let bpt = Pt::new(e.min(r.max.x), r.min.y + (e - e.min(r.max.x)));
+                        if a.x < bpt.x {
+                            cv.stroke(p, &[a, bpt], Color(200, 60, 60, 90), 0, 1);
+                        }
+                        k += step;
+                    }
+                }
+                for z in b.zones.iter().filter(|z| z.layer == layer && !z.keepout) {
                     let d = moved(BoardItem::Zone(z.id));
                     for r in &z.fill {
                         let (x0, y0) = cv.pt(q(r.min.add(d)));
@@ -1598,6 +1934,34 @@ impl Kicad {
                     let (pw, ph) = f.pad_size(pad);
                     let (px, py) = cv.pt(c);
                     let (sw, sh) = (cv.len(pw / 1000).max(2), cv.len(ph / 1000).max(2));
+                    if !f.orthogonal() {
+                        // A pad turned to an arbitrary angle: its true outline.
+                        match f.pad_shape(pad) {
+                            Shape::Seg { a, b: e, r } => cv.stroke(
+                                p,
+                                &[q(a.add(d)), q(e.add(d))],
+                                pad_color,
+                                2 * r / 1000,
+                                2,
+                            ),
+                            shape => {
+                                if let Some(corners) = shape.corners() {
+                                    let pts: Vec<Pt> =
+                                        corners.iter().map(|x| q(x.add(d))).collect();
+                                    cv.fill(p, &pts, pad_color);
+                                }
+                            }
+                        }
+                        if pad.drill > 0 && layer.is_copper() {
+                            p.circle(
+                                px,
+                                py,
+                                (cv.len(pad.drill / 1000) / 2).max(1) as u32,
+                                Color::rgb(20, 20, 20),
+                            );
+                        }
+                        continue;
+                    }
                     match pad.shape {
                         PadShape::Circle => p.circle(px, py, (sw / 2).max(1) as u32, pad_color),
                         PadShape::Oval => p.box_(
@@ -1725,11 +2089,23 @@ impl Kicad {
                 let last = *route.points.last().expect("a route has a start");
                 let col = layer_color(route.layer);
                 let mut pts: Vec<Pt> = route.points.clone();
-                for x in &posture45(last, hover, self.ui.pcb.diagonal_first)[1..] {
+                // The router's own path to the pointer when it has one (walkaround), the
+                // plain posture otherwise.
+                let ahead = if self.ui.pcb.preview.first() == Some(&last) {
+                    self.ui.pcb.preview.clone()
+                } else {
+                    posture45(last, hover, self.ui.pcb.diagonal_first)
+                };
+                for x in &ahead[1..] {
                     pts.push(*x);
                 }
                 let pts: Vec<Pt> = pts.iter().map(|x| q(*x)).collect();
                 cv.stroke(p, &pts, col, route.width / 1000, 1);
+                // Collisions the track would make, ringed in red.
+                for (at, _) in &self.ui.pcb.collisions {
+                    let (x, y) = cv.pt(q(*at));
+                    p.ring(x, y, 10, 2, Color::rgb(255, 40, 40));
+                }
                 for v in &route.vias {
                     let (x, y) = cv.pt(q(*v));
                     p.circle(
@@ -2176,6 +2552,7 @@ impl Kicad {
                 net,
                 layer,
                 clearance,
+                keepout,
                 error,
                 ..
             } => {
@@ -2235,16 +2612,29 @@ impl Kicad {
                     ox,
                     body.y + 118,
                     240,
-                    "Pad connections: thermal reliefs",
+                    if *keepout {
+                        "Rule area: keeps tracks, vias, pads and fills out"
+                    } else {
+                        "Pad connections: thermal reliefs"
+                    },
                     12,
                     w::MUTED,
                     false,
                     Align::Left,
                 );
+                w::checkbox(
+                    p,
+                    &c,
+                    ox,
+                    body.y + 140,
+                    "Rule area (keepout)",
+                    *keepout,
+                    "kicad:dlg:keepout",
+                );
                 if !error.is_empty() {
                     p.label(
                         ox,
-                        body.y + 140,
+                        body.y + 170,
                         240,
                         error,
                         12,
@@ -2284,12 +2674,16 @@ impl Kicad {
             ("kicad:pcb:tool:route", "Route Tracks"),
             ("kicad:pcb:tool:via", "Add Via"),
             ("kicad:pcb:tool:zone", "Add Filled Zone"),
+            ("kicad:pcb:tool:keepout", "Add Rule Area"),
             ("kicad:pcb:tool:rect", "Draw Rectangle"),
             ("kicad:pcb:tool:line", "Draw Line"),
             ("kicad:pcb:drc", "Design Rules Checker"),
             ("kicad:pcb:fill", "Fill All Zones"),
             ("kicad:pcb:plot", "Plot"),
             ("kicad:pcb:setup", "Board Setup"),
+            ("kicad:pcb:router", "Interactive Router Settings"),
+            ("kicad:pcb:3d", "3D Viewer"),
+            ("kicad:pcb:fped", "Footprint Editor"),
         ] {
             page.elements.push(E::Button {
                 id: id.into(),
@@ -2310,11 +2704,12 @@ impl Kicad {
             page.elements.push(E::Text {
                 id: format!("kicad-footprint-{}", f.id),
                 text: format!(
-                    "{} {} at {} mm, {} mm{}",
+                    "{} {} at {} mm, {} mm, {}°{}",
                     f.reference,
                     f.fp_id,
                     mm_text(f.pos.x),
                     mm_text(f.pos.y),
+                    angle_text(f.angle),
                     if f.back { " (back)" } else { "" }
                 ),
             });
@@ -2403,7 +2798,10 @@ fn pcb_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                 ),
                 MenuItem::new("Delete", "Del", sel("kicad:pcb:delete")).sep(),
                 MenuItem::new("Rotate", "R", sel("kicad:pcb:rotate")),
+                MenuItem::new("Rotate Clockwise", "Shift+R", sel("kicad:pcb:rotate-cw")),
+                MenuItem::new("Rotate 45°", "Ctrl+R", sel("kicad:pcb:rotate45")),
                 MenuItem::new("Change Side / Flip", "F", sel("kicad:pcb:flip")),
+                MenuItem::new("Properties...", "E", sel("kicad:pcb:properties")).sep(),
             ],
         ),
         (
@@ -2413,6 +2811,7 @@ fn pcb_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                 MenuItem::new("Zoom Out", "F2", Ok("kicad:pcb:zoom:out".into())),
                 MenuItem::new("Zoom to Fit", "Home", Ok("kicad:pcb:zoom:fit".into())),
                 MenuItem::new("Show Ratsnest", "", Ok("kicad:pcb:ratsnest".into())).sep(),
+                MenuItem::new("3D Viewer", "Alt+3", Ok("kicad:pcb:3d".into())).sep(),
             ],
         ),
         (
@@ -2420,6 +2819,7 @@ fn pcb_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
             vec![
                 MenuItem::new("Via", "", Ok("kicad:pcb:tool:via".into())),
                 MenuItem::new("Zone", "", Ok("kicad:pcb:tool:zone".into())),
+                MenuItem::new("Rule Area", "", Ok("kicad:pcb:tool:keepout".into())),
                 MenuItem::new("Line", "", Ok("kicad:pcb:tool:line".into())).sep(),
                 MenuItem::new("Rectangle", "", Ok("kicad:pcb:tool:rect".into())),
             ],
@@ -2430,6 +2830,12 @@ fn pcb_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                 MenuItem::new("Single Track", "X", Ok("kicad:pcb:tool:route".into())),
                 MenuItem::new("Switch to F.Cu", "PgUp", Ok("kicad:pcb:layer:F.Cu".into())).sep(),
                 MenuItem::new("Switch to B.Cu", "PgDn", Ok("kicad:pcb:layer:B.Cu".into())),
+                MenuItem::new(
+                    "Interactive Router Settings...",
+                    "",
+                    Ok("kicad:pcb:router".into()),
+                )
+                .sep(),
             ],
         ),
         (
@@ -2450,6 +2856,7 @@ fn pcb_menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
                 ),
                 MenuItem::new("Fill All Zones", "B", zones("kicad:pcb:fill")).sep(),
                 MenuItem::new("Unfill All Zones", "Ctrl+B", zones("kicad:pcb:unfill")),
+                MenuItem::new("Footprint Editor", "", Ok("kicad:pcb:fped".into())).sep(),
             ],
         ),
         (

@@ -39,6 +39,48 @@ pub struct MachineSession {
     /// Press identity remains stable even if focusing changes the taskbar action.
     #[serde(default)]
     pub pointer_press: Option<(String, cw_scene::Rect)>,
+    /// A finger dragging a list on a phone: it follows the finger move by move, and
+    /// flings on release.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub touch_scroll: Option<TouchScroll>,
+    /// The screen size the actor last addressed this machine at (the `width` and
+    /// `height` its pointer actions state), which is the screen a screenshot captures.
+    /// Recorded from actions, never from observations, so it replays exactly.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub viewport: Option<(u32, u32)>,
+    /// Something scrolled during the action being dispatched, so its effect reports
+    /// `scroll` even where the view that moved is an application's own (a grid's rows).
+    /// Cleared before each action; never part of the state.
+    #[serde(skip)]
+    pub scrolled: bool,
+    /// The machine process each open window runs as, so an open application is a real
+    /// entry in `ps` and `kill` on it really closes the window.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub window_processes: BTreeMap<u64, u64>,
+}
+/// A list under a finger. The pane it took (or the application's own wheel use when
+/// no pane can move there), where the finger and the list were when it took it, and
+/// the last two finger samples with the world clock at each, from which the release
+/// velocity is measured.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TouchScroll {
+    pub window: u64,
+    /// `None`: no published pane moves here, so the application's own wheel use
+    /// (a grid by rows, a terminal's scrollback) is driven instead.
+    pub pane: Option<String>,
+    /// Where the drag started, which is where the application's wheel is aimed.
+    pub at: (i32, i32),
+    /// The pane's offset, and the finger's y, when the drag took it.
+    pub origin: i32,
+    pub anchor: i32,
+    /// The pane's furthest offset and viewport height when it was taken.
+    pub max: i32,
+    pub height: u32,
+    /// The finger's y already handed to the application's wheel.
+    pub applied: i32,
+    /// The latest finger sample and the one before it: (y, world clock in µs).
+    pub last: (i32, u64),
+    pub prev: Option<(i32, u64)>,
 }
 impl Default for MachineSession {
     fn default() -> Self {
@@ -57,6 +99,10 @@ impl Default for MachineSession {
             touch_start: None,
             pointer_position: None,
             pointer_press: None,
+            touch_scroll: None,
+            viewport: None,
+            scrolled: false,
+            window_processes: BTreeMap::new(),
         }
     }
 }
@@ -281,6 +327,8 @@ impl Environment {
             let Some(theme) = self.desktop_theme(id, &machine) else {
                 continue;
             };
+            // Applications that follow the platform learn it from the desktop.
+            self.machine_mut(id, &machine)?.desktop.theme = Some(theme);
             let desktop = &self.session(id)?.machines[&machine].desktop;
             let home = desktop.home_folder();
             if theme.mobile() || home == "/" {
@@ -320,9 +368,9 @@ impl Environment {
         session
     }
     pub fn session(&self, id: &str) -> Result<&ActorSession> {
-        self.sessions
-            .get(id)
-            .ok_or_else(|| SimError::denied("unknown actor session"))
+        self.sessions.get(id).ok_or_else(|| {
+            SimError::denied("unknown actor session").because(cw_protocol::reason::UNKNOWN_SESSION)
+        })
     }
     pub fn observe(&self, id: &str) -> Result<Observation> {
         let session = self.session(id)?;
@@ -367,7 +415,8 @@ impl Environment {
     pub fn step(&mut self, id: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
         let config = self.session(id)?.config.clone();
         if actions.len() > config.action_budget as usize {
-            return Err(SimError::denied("action batch exceeds budget"));
+            return Err(SimError::denied("action batch exceeds budget")
+                .because(cw_protocol::reason::BUDGET_EXCEEDED));
         }
         let mut outcomes = Vec::with_capacity(actions.len());
         for (index, action) in actions.iter().enumerate() {
@@ -375,6 +424,9 @@ impl Environment {
             // bracket the dispatch with an actor-visible projection of the target.
             let permitted = config.machines.contains(&action.machine)
                 && config.actions.contains(&action.family);
+            if let Ok(m) = self.machine_mut(id, &action.machine) {
+                m.scrolled = false;
+            }
             let before = permitted
                 .then(|| {
                     self.session(id)
@@ -386,9 +438,19 @@ impl Environment {
                 .flatten();
             let result = if permitted {
                 self.dispatch(id, &config.actor, action)
+            } else if config.machines.contains(&action.machine) {
+                Err(SimError::denied("action is not permitted")
+                    .because(cw_protocol::reason::FAMILY_NOT_GRANTED))
             } else {
-                Err(SimError::denied("action is not permitted"))
+                Err(SimError::denied("action is not permitted")
+                    .because(cw_protocol::reason::MACHINE_NOT_GRANTED))
             };
+            // Windows and machine processes are two views of one fact; reconcile them
+            // after every action, so a `kill` from the shell closes the window it named
+            // and a window that opened is in `ps` before the next observation.
+            if permitted {
+                self.sync_window_processes(id, &action.machine)?;
+            }
             // Windows that share one document (KiCad's frames) all show the copy the
             // action changed, whether the action succeeded or stopped part-way.
             if permitted
@@ -451,6 +513,13 @@ impl Environment {
                     json!({"session":id,"error":actor_error(e).message}),
                 );
             }
+        }
+        // A page that asked to be refreshed (a music site's player bar, whose position
+        // moves with the clock) is fetched again once its interval of world time has
+        // passed, so what the next observation shows is what the site shows now.
+        let machines: Vec<String> = self.session(id)?.machines.keys().cloned().collect();
+        for machine in machines {
+            self.refresh_pages(id, &machine, &config.actor);
         }
         let state_hash = if self.verify_steps {
             self.state_hash()?
@@ -686,7 +755,38 @@ fn download_name(url: &str) -> String {
         safe
     }
 }
+/// Flatten a refusal for the actor. The code is one of four, and the message is a
+/// compile-time constant, so a failing action can never leak world state through its
+/// error text. A `reason` from `cw_protocol::reason` survives — and carries that
+/// vocabulary's own fixed message — so the refusal still says what to do about it.
+/// Resident memory a desktop application is modelled to hold while a window of it is
+/// open, over and above the document that window has loaded. Published, not measured:
+/// the table is in `docs/shell.md` and an agent can predict every number in it.
+fn window_footprint(app: &str) -> u64 {
+    const MB: u64 = 1 << 20;
+    match app {
+        "browser" => 320 * MB,
+        "code" => 180 * MB,
+        "gimp" | "pixelmator" | "sketchbook" | "pinta" | "paint" => 140 * MB,
+        "kdenlive" | "imovie" | "clipchamp" | "videoeditor" => 210 * MB,
+        "freecad" | "kicad" => 240 * MB,
+        "docs" | "spreadsheet" | "excel" | "database" => 120 * MB,
+        "photos" | "preview" | "music" | "maps" => 90 * MB,
+        "files" => 45 * MB,
+        "editor" => 30 * MB,
+        "terminal" => 12 * MB,
+        "calculator" | "clock" | "weather" | "notes" | "contacts" => 24 * MB,
+        _ => 60 * MB,
+    }
+}
 fn actor_error(e: SimError) -> SimError {
+    if let Some((name, code, message)) = e
+        .reason
+        .as_deref()
+        .and_then(|r| cw_protocol::reason::ALL.iter().find(|(n, _, _)| *n == r))
+    {
+        return SimError::new(*code, *message).because(name);
+    }
     let code = match e.code.as_str() {
         "denied" => "denied",
         "not_found" => "not_found",
@@ -739,11 +839,11 @@ impl Environment {
         }
         match (action.family.as_str(), action.op.as_str()) {
             ("terminal.v1", "execute") => {
-                let value = serde_json::to_value(self.runtime.execute(
-                    machine,
-                    actor,
-                    string(p, "command")?,
-                )?)?;
+                let mut result = self
+                    .runtime
+                    .execute(machine, actor, string(p, "command")?)?;
+                self.open_from_shell(id, machine, actor, &mut result)?;
+                let value = serde_json::to_value(&result)?;
                 self.machine_mut(id, machine)?.terminal = value.clone();
                 Ok(value)
             }
@@ -786,6 +886,27 @@ impl Environment {
             }
             ("browser.v1", _) => self.browser_action(id, actor, action),
             ("application.v1", "event") => self.custom_event(id, machine, actor, p),
+            // What is on this machine, what this session may open, and where it cannot
+            // the documented reason why. An agent should never have to guess an id.
+            ("application.v1", "list") => {
+                let all = p.get("installed").and_then(Value::as_bool) == Some(false);
+                Ok(Value::Array(
+                    self.application_inventory(id, machine)
+                        .into_iter()
+                        .filter(|entry| entry.installed || all)
+                        .map(|entry| {
+                            json!({
+                                "id": entry.id,
+                                "label": entry.label,
+                                "kind": entry.kind,
+                                "installed": entry.installed,
+                                "launchable": entry.launchable,
+                                "blocked_by": entry.blocked_by,
+                            })
+                        })
+                        .collect(),
+                ))
+            }
             ("application.v1", "launch") => {
                 let requested = string(p, "kind")?;
                 let alias = self.desktop_alias(id, machine, requested)?;
@@ -804,14 +925,16 @@ impl Environment {
                 {
                     return Err(SimError::denied(
                         "browser application interaction is not permitted",
-                    ));
+                    )
+                    .because(cw_protocol::reason::BROWSER_FAMILY_REQUIRED));
                 }
                 let computer = self.runtime.computer(machine)?;
                 if alias.is_none()
                     && !computer.application_available(requested)
                     && !computer.application_available(canonical)
                 {
-                    return Err(SimError::not_found("application is not installed"));
+                    return Err(SimError::not_found("application is not installed")
+                        .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
                 }
                 if self.app_registry.application(string(p, "kind")?).is_ok() {
                     return self.custom_launch(id, machine, actor, p);
@@ -864,6 +987,13 @@ impl Environment {
                     home.as_str()
                 } else {
                     arg
+                };
+                // GNOME Files opens in its icon grid; the list is a toggle away.
+                let grid = self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu);
+                self.machine_mut(id, machine)?.desktop.file_view = if grid {
+                    cw_applications::FileView::Grid
+                } else {
+                    cw_applications::FileView::List
                 };
                 let (window, effects) = self
                     .machine_mut(id, machine)?
@@ -1047,55 +1177,31 @@ impl Environment {
                         .clamp(-32768, 32768) as i32)
                 };
                 let (x, y) = (coord("x")?, coord("y")?);
-                let width = p
-                    .get("width")
-                    .and_then(integer_u64)
-                    .unwrap_or(1024)
-                    .min(8192) as u32;
-                let height = p
-                    .get("height")
-                    .and_then(integer_u64)
-                    .unwrap_or(768)
-                    .min(8192) as u32;
-                let delta = p
-                    .get("delta_y")
-                    .and_then(integer_i64)
-                    .unwrap_or(0)
-                    .clamp(-100_000, 100_000) as i32;
+                let (width, height) = self.pointer_size(id, machine, p)?;
+                let delta = |k: &str| {
+                    p.get(k)
+                        .and_then(integer_i64)
+                        .unwrap_or(0)
+                        .clamp(-100_000, 100_000) as i32
+                };
+                let held = |name: &str| {
+                    p.get("modifiers")
+                        .and_then(Value::as_array)
+                        .is_some_and(|m| {
+                            m.iter()
+                                .filter_map(Value::as_str)
+                                .any(|m| m.eq_ignore_ascii_case(name))
+                        })
+                };
+                let wheel = cw_applications::Wheel {
+                    dx: delta("delta_x"),
+                    dy: delta("delta_y"),
+                    shift: held("shift"),
+                    ctrl: held("ctrl") || held("control") || held("meta"),
+                };
                 self.machine_mut(id, machine)?.pointer_position = Some((x, y));
-                let scene = self.scene(id, width, height)?;
-                let Some(node) = scene.hit_test(x, y) else {
-                    return Ok(json!({"handled": false}));
-                };
-                let bounds = node.transform.bounds(node.bounds);
-                let Some((window, inner)) = node
-                    .interaction
-                    .as_deref()
-                    .and_then(|t| t.strip_prefix("window:"))
-                    .and_then(|t| t.split_once(':'))
-                    .and_then(|(w, op)| {
-                        Some((
-                            w.parse::<u64>().ok()?,
-                            op.strip_prefix("content:")?.to_owned(),
-                        ))
-                    })
-                else {
-                    return Ok(json!({"handled": false}));
-                };
-                if !self
-                    .session(id)?
-                    .config
-                    .actions
-                    .iter()
-                    .any(|family| family == "application.v1")
-                {
-                    return Err(SimError::denied("application interaction is not permitted"));
-                }
-                let handled = self
-                    .machine_mut(id, machine)?
-                    .desktop
-                    .wheel(window, &inner, x - bounds.x, y - bounds.y, delta)
-                    .map_err(SimError::invalid)?;
+                self.record_viewport(id, machine, p, (width, height))?;
+                let handled = self.scroll_at(id, machine, (x, y), (width, height), wheel)?;
                 Ok(json!({"handled": handled}))
             }
             ("pointer.v1", "click" | "down" | "move" | "up" | "cancel" | "double_click") => {
@@ -1109,17 +1215,25 @@ impl Environment {
                     .and_then(integer_i64)
                     .ok_or_else(|| SimError::invalid("y required"))?
                     .clamp(-32768, 32768) as i32;
-                let width = p
-                    .get("width")
-                    .and_then(integer_u64)
-                    .unwrap_or(1024)
-                    .min(8192) as u32;
-                let height = p
-                    .get("height")
-                    .and_then(integer_u64)
-                    .unwrap_or(768)
-                    .min(8192) as u32;
+                let (width, height) = self.pointer_size(id, machine, p)?;
                 self.machine_mut(id, machine)?.pointer_position = Some((x, y));
+                self.record_viewport(id, machine, p, (width, height))?;
+                // Keys held with the pointer (`["ctrl"]`, `["alt"]`…): an image editor's
+                // Ctrl- or Option-click sets a clone source.
+                let modifiers = match p.get("modifiers") {
+                    None | Some(Value::Null) => 0,
+                    Some(Value::Array(names)) => {
+                        let names: Vec<&str> = names.iter().filter_map(Value::as_str).collect();
+                        if names.len() != p["modifiers"].as_array().map_or(0, Vec::len) {
+                            return Err(SimError::invalid("modifiers are key names"));
+                        }
+                        cw_applications::modifier_bits(&names).map_err(SimError::invalid)?
+                    }
+                    Some(_) => return Err(SimError::invalid("modifiers are a list of key names")),
+                };
+                self.machine_mut(id, machine)?.desktop.pointer_modifiers = modifiers;
+                self.machine_mut(id, machine)?.desktop.pointer_button =
+                    p.get("button").and_then(integer_u64).unwrap_or(0).min(2) as u8;
                 let released_press = if action.op == "up" {
                     self.machine_mut(id, machine)?.pointer_press.take()
                 } else {
@@ -1133,9 +1247,11 @@ impl Environment {
                 let mobile = matches!(theme, Some(DesktopTheme::Ios | DesktopTheme::Android));
                 if mobile && action.op == "down" {
                     self.machine_mut(id, machine)?.touch_start = Some((x, y));
+                    self.end_touch_scroll(id, machine)?;
                 }
                 if action.op == "cancel" {
                     self.machine_mut(id, machine)?.touch_start = None;
+                    self.end_touch_scroll(id, machine)?;
                 }
                 // A drag surface inside an application (a canvas, a slider) holds the
                 // pointer from press to release: moves and the release go to it before
@@ -1165,6 +1281,24 @@ impl Environment {
                         });
                     }
                 }
+                // A finger that has taken a list moves it with every sample, and on
+                // release lets it fling; neither is a tap or a shell gesture.
+                if let (true, Some(theme)) = (mobile, theme) {
+                    if action.op == "move" {
+                        if let Some(value) =
+                            self.touch_scroll_move(id, machine, (x, y), (width, height), theme)?
+                        {
+                            return Ok(value);
+                        }
+                    }
+                    if action.op == "up"
+                        && self.session(id)?.machines[machine].touch_scroll.is_some()
+                    {
+                        self.machine_mut(id, machine)?.touch_start = None;
+                        self.touch_scroll_release(id, machine, y, (width, height), theme)?;
+                        return Ok(Value::Null);
+                    }
+                }
                 if mobile && action.op == "up" {
                     if let Some(start) = self.machine_mut(id, machine)?.touch_start.take() {
                         let pressed = released_press.as_ref().map(|(target, _)| target.as_str());
@@ -1177,6 +1311,37 @@ impl Environment {
                             (width, height),
                             pressed,
                         )?;
+                        // A drag that is no shell gesture and starts inside an
+                        // application scrolls what is under the finger, as on every
+                        // phone: the content follows the finger, so an upward swipe
+                        // moves further down the list.
+                        let (dx, dy) = (x - start.0, y - start.1);
+                        if gesture.is_none() && dy.abs() > SWIPE_SLOP && dy.abs() >= dx.abs() {
+                            self.scroll_at(
+                                id,
+                                machine,
+                                start,
+                                (width, height),
+                                cw_applications::Wheel::vertical(-dy),
+                            )?;
+                            return Ok(Value::Null);
+                        }
+                        // A sideways drag moves a shelf that scrolls sideways under it.
+                        if gesture.is_none()
+                            && dx.abs() > SWIPE_SLOP
+                            && self.scroll_at(
+                                id,
+                                machine,
+                                start,
+                                (width, height),
+                                cw_applications::Wheel {
+                                    dx: -dx,
+                                    ..Default::default()
+                                },
+                            )?
+                        {
+                            return Ok(Value::Null);
+                        }
                         if let Some(target) = gesture {
                             // A card swiped up in the overview closes that application.
                             if let Some(window) = target
@@ -1193,7 +1358,8 @@ impl Environment {
                                 {
                                     return Err(SimError::denied(
                                         "application interaction is not permitted",
-                                    ));
+                                    )
+                                    .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
                                 }
                                 self.machine_mut(id, machine)?
                                     .desktop
@@ -1253,6 +1419,11 @@ impl Environment {
                             return Ok(json!({"cursor":cursor}));
                         }
                     }
+                }
+                // The secondary button opens a menu on the press. Its release activates
+                // nothing, so it never clicks what happens to be under the pointer.
+                if action.op == "up" && p.get("button").and_then(integer_u64) == Some(2) {
+                    return Ok(Value::Null);
                 }
                 let scene = self.scene(id, width, height)?;
                 if action.op == "move" {
@@ -1355,7 +1526,8 @@ impl Environment {
                         .iter()
                         .any(|family| family == "application.v1")
                     {
-                        return Err(SimError::denied("application interaction is not permitted"));
+                        return Err(SimError::denied("application interaction is not permitted")
+                            .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
                     }
                     // Pressing an application's drag surface captures the pointer at
                     // once, on a phone as on a desktop: a finger drawing on a canvas is a
@@ -1556,8 +1728,488 @@ impl Environment {
                 if let Some(extension) = self.extensions.get(&action.family).cloned() {
                     extension.execute(&mut self.runtime, actor, action)
                 } else {
-                    Err(SimError::invalid("unsupported action operation"))
+                    Err(SimError::invalid("unsupported action operation")
+                        .because(cw_protocol::reason::UNSUPPORTED_OPERATION))
                 }
+            }
+        }
+    }
+    /// Scroll whatever is under `(x, y)` by `wheel`: first the application's own use
+    /// of the wheel (a canvas zooms, a grid moves by rows, a terminal walks its
+    /// scrollback), then the innermost published pane that can still move that way,
+    /// then the panes around it. Returns whether anything moved.
+    fn scroll_at(
+        &mut self,
+        id: &str,
+        machine: &str,
+        at: (i32, i32),
+        size: (u32, u32),
+        wheel: cw_applications::Wheel,
+    ) -> Result<bool> {
+        let moved = self.scroll_under(id, machine, at, size, wheel)?;
+        if moved {
+            self.machine_mut(id, machine)?.scrolled = true;
+        }
+        Ok(moved)
+    }
+    fn scroll_under(
+        &mut self,
+        id: &str,
+        machine: &str,
+        (x, y): (i32, i32),
+        (width, height): (u32, u32),
+        wheel: cw_applications::Wheel,
+    ) -> Result<bool> {
+        let scene = self.scene(id, width, height)?;
+        let Some(node) = scene.hit_test(x, y) else {
+            return Ok(false);
+        };
+        let bounds = node.transform.bounds(node.bounds);
+        let Some((window, inner)) = node
+            .interaction
+            .as_deref()
+            .and_then(|t| t.strip_prefix("window:"))
+            .and_then(|t| t.split_once(':'))
+            .and_then(|(w, op)| {
+                Some((
+                    w.parse::<u64>().ok()?,
+                    op.strip_prefix("content:").unwrap_or("").to_owned(),
+                ))
+            })
+        else {
+            return Ok(false);
+        };
+        if !self
+            .session(id)?
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "application.v1")
+        {
+            return Err(SimError::denied("application interaction is not permitted")
+                .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
+        }
+        if self
+            .machine_mut(id, machine)?
+            .desktop
+            .wheel(window, &inner, x - bounds.x, y - bounds.y, wheel)
+            .map_err(SimError::invalid)?
+        {
+            return Ok(true);
+        }
+        if wheel.dy == 0 && wheel.dx == 0 {
+            return Ok(false);
+        }
+        for area in scene.scrolls_at(Some(window), x, y) {
+            // A sideways pane takes the wheel's x, or its y with Shift held, as every
+            // desktop does; an upright one takes y, and ignores a Shift-turn.
+            let delta = match (area.horizontal, wheel.dx, wheel.shift) {
+                (true, 0, true) => wheel.dy,
+                (true, dx, _) => dx,
+                (false, _, true) if wheel.dx == 0 => 0,
+                (false, _, _) => wheel.dy,
+            };
+            if delta == 0 {
+                continue;
+            }
+            let next = (area.offset.saturating_add(delta)).clamp(0, area.max_offset());
+            if next == area.offset {
+                continue;
+            }
+            let Some(pane) = area
+                .target
+                .split_once(":content:pane:")
+                .map(|(_, pane)| pane.to_owned())
+            else {
+                continue;
+            };
+            return self.set_pane_offset(id, machine, window, &pane, next);
+        }
+        Ok(false)
+    }
+    /// Refresh every browser page on `machine` whose `refresh` is due (see
+    /// `cw_browser::BrowserState::refresh`). A failed refresh keeps the page it had.
+    fn refresh_pages(&mut self, id: &str, machine: &str, actor: &str) {
+        let now = self.runtime.tick();
+        let wanted = self
+            .session(id)
+            .ok()
+            .and_then(|s| s.machines.get(machine))
+            .is_some_and(|m| {
+                m.browser.refresh_pending(now)
+                    || m.browser_windows.values().any(|b| b.refresh_pending(now))
+            });
+        if !wanted {
+            return;
+        }
+        let runtime = &mut self.runtime;
+        let Some(state) = Arc::make_mut(&mut self.sessions)
+            .get_mut(id)
+            .and_then(|s| s.machines.get_mut(machine))
+        else {
+            return;
+        };
+        let mut failures = vec![];
+        for browser in std::iter::once(&mut state.browser).chain(state.browser_windows.values_mut())
+        {
+            if !browser.refresh_due(now) {
+                continue;
+            }
+            let mut http = |r| runtime.http(machine, actor, r);
+            if let Err(e) = browser.refresh(now, &mut http) {
+                failures.push(e.message);
+            }
+        }
+        for message in failures {
+            self.runtime.record_event(
+                "browser.refresh_failed",
+                Some(machine),
+                Some(actor),
+                json!({"session": id, "error": message}),
+            );
+        }
+    }
+    /// Scroll pane `pane` of window `window` to `offset`: a browser's page scrolls its
+    /// tab, every other pane is the window's own. Returns whether the view moved.
+    fn set_pane_offset(
+        &mut self,
+        id: &str,
+        machine: &str,
+        window: u64,
+        pane: &str,
+        offset: i32,
+    ) -> Result<bool> {
+        let m = self.machine_mut(id, machine)?;
+        let browser = matches!(
+            m.desktop.windows.get(&window).map(|w| &w.state),
+            Some(AppState::Browser { .. })
+        );
+        if browser && (pane == "page" || pane.starts_with("row:")) {
+            let tab = if m.active_browser_window == Some(window) {
+                m.browser.tab_mut()
+            } else if let Some(state) = m.browser_windows.get_mut(&window) {
+                state.tab_mut()
+            } else {
+                m.browser.tab_mut()
+            };
+            let moved = match pane.strip_prefix("row:") {
+                // A shelf on the page that scrolls sideways.
+                Some(row) => tab.scroll_x.insert(row.to_owned(), offset) != Some(offset),
+                None => {
+                    let moved = tab.scroll_y != offset;
+                    tab.scroll_y = offset;
+                    moved
+                }
+            };
+            m.scrolled |= moved;
+            return Ok(moved);
+        }
+        let moved = m
+            .desktop
+            .scroll_pane(window, pane, offset)
+            .map_err(SimError::invalid)?;
+        m.scrolled |= moved;
+        Ok(moved)
+    }
+    /// Pull `window`'s pane past an end by `stretch` pixels (0 lets it go).
+    fn set_stretch(&mut self, id: &str, machine: &str, window: u64, pane: &str, stretch: i32) {
+        if let Ok(m) = self.machine_mut(id, machine) {
+            if let Some(w) = m.desktop.windows.get_mut(&window) {
+                w.scroll.stretch = (stretch != 0).then(|| (pane.to_owned(), stretch));
+            }
+        }
+    }
+    /// The screen a pointer action addresses: the `width` and `height` it states,
+    /// each falling back to the machine's screen as last addressed (or its native one).
+    fn pointer_size(&self, id: &str, machine: &str, p: &Value) -> Result<(u32, u32)> {
+        let screen = self.screen_size(id, machine)?;
+        let side = |key: &str, fallback: u32| {
+            p.get(key)
+                .and_then(integer_u64)
+                .unwrap_or(u64::from(fallback))
+                .min(8192) as u32
+        };
+        Ok((side("width", screen.0), side("height", screen.1)))
+    }
+    /// Remember the screen size a pointer action addressed the machine at, when it
+    /// stated one.
+    fn record_viewport(
+        &mut self,
+        id: &str,
+        machine: &str,
+        payload: &Value,
+        size: (u32, u32),
+    ) -> Result<()> {
+        if payload.get("width").is_some()
+            && payload.get("height").is_some()
+            && size.0 > 0
+            && size.1 > 0
+        {
+            self.machine_mut(id, machine)?.viewport = Some(size);
+        }
+        Ok(())
+    }
+    /// The screen of `machine` as the actor last addressed it, or the shell's native
+    /// screen (portrait on a phone) before any action has said: what a screenshot of it
+    /// captures, at its real size and orientation.
+    fn screen_size(&self, id: &str, machine: &str) -> Result<(u32, u32)> {
+        let recorded = self
+            .session(id)?
+            .machines
+            .get(machine)
+            .and_then(|m| m.viewport);
+        Ok(recorded.unwrap_or_else(|| {
+            self.desktop_theme(id, machine)
+                .unwrap_or(DesktopTheme::Ubuntu)
+                .native_screen()
+        }))
+    }
+    /// A finger that stops touching lets go of any list it held: a rubber band springs
+    /// back.
+    fn end_touch_scroll(&mut self, id: &str, machine: &str) -> Result<()> {
+        if let Some(drag) = self.machine_mut(id, machine)?.touch_scroll.take() {
+            if let Some(pane) = &drag.pane {
+                self.set_stretch(id, machine, drag.window, pane, 0);
+            }
+        }
+        Ok(())
+    }
+    /// A finger moving on a phone. Once it has travelled past the slop, mostly
+    /// vertically, from somewhere no shell gesture starts, inside the application in
+    /// front, it takes the list under it; from then on every move scrolls that list so
+    /// the content stays under the finger, pulling past an end with the rubber band.
+    /// `None` when the move is not a list's.
+    fn touch_scroll_move(
+        &mut self,
+        id: &str,
+        machine: &str,
+        (x, y): (i32, i32),
+        size: (u32, u32),
+        theme: DesktopTheme,
+    ) -> Result<Option<Value>> {
+        let tick = self.runtime.tick();
+        let m = &self.session(id)?.machines[machine];
+        if let Some(mut drag) = m.touch_scroll.clone() {
+            drag.prev = Some(drag.last);
+            drag.last = (y, tick);
+            self.touch_scroll_to(id, machine, &mut drag, y, size)?;
+            self.machine_mut(id, machine)?.touch_scroll = Some(drag);
+            return Ok(Some(json!({"cursor": "default"})));
+        }
+        let Some(start) = m.touch_start else {
+            return Ok(None);
+        };
+        let (dx, dy) = (x - start.0, y - start.1);
+        if dy.abs() <= SWIPE_SLOP || dy.abs() < dx.abs() {
+            return Ok(None);
+        }
+        let d = &m.desktop;
+        if d.screen != cw_applications::ScreenState::Active
+            || d.panel.is_some()
+            || d.launcher_open
+            || m.active_app.is_some()
+        {
+            return Ok(None);
+        }
+        let Some(focused) = d.focused else {
+            return Ok(None);
+        };
+        // Where the platform's own gestures start: the status bar and the home
+        // indicator on iOS, the status bar and the navigation bar on Android.
+        let h = size.1 as i32;
+        let edge = match theme {
+            DesktopTheme::Ios => start.1 < 50 || start.1 > h - 60,
+            _ => start.1 < 40 || start.1 >= h - cw_applications::desktop_scene::ANDROID_NAV_BAR,
+        };
+        if edge
+            || self
+                .touch_gesture(id, machine, theme, start, (x, y), size, None)?
+                .is_some()
+        {
+            return Ok(None);
+        }
+        if !self
+            .session(id)?
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "application.v1")
+        {
+            return Ok(None);
+        }
+        let scene = self.scene(id, size.0, size.1)?;
+        let window = scene
+            .hit_test(start.0, start.1)
+            .and_then(|n| n.interaction.as_deref())
+            .and_then(|t| t.strip_prefix("window:"))
+            .and_then(|t| t.split_once(':'))
+            .and_then(|(w, _)| w.parse::<u64>().ok());
+        if window != Some(focused) {
+            return Ok(None);
+        }
+        // The innermost pane that can scroll at all takes the finger, even at an end:
+        // pulled further, it stretches.
+        let areas = scene.scrolls_at(Some(focused), start.0, start.1);
+        // A list that refreshes by pulling bounces even when it is short, as iOS's and
+        // Android's refreshable lists do.
+        let refreshes = matches!(
+            m.desktop.windows.get(&focused).map(|w| &w.state),
+            Some(AppState::Native(app)) if app.pull_to_refresh().is_some()
+        );
+        let area = areas
+            .iter()
+            .copied()
+            .find(|a| a.max_offset() > 0)
+            .or_else(|| {
+                areas
+                    .iter()
+                    .copied()
+                    .find(|a| refreshes && a.target.ends_with(":content:pane:main"))
+            });
+        let pane = area.and_then(|a| {
+            a.target
+                .split_once(":content:pane:")
+                .map(|(_, pane)| pane.to_owned())
+        });
+        let mut drag = TouchScroll {
+            window: focused,
+            pane: pane.clone(),
+            at: start,
+            origin: area.filter(|_| pane.is_some()).map_or(0, |a| a.offset),
+            anchor: start.1,
+            max: area.map_or(0, |a| a.max_offset()),
+            height: area.map_or(size.1, |a| a.bounds.height),
+            applied: start.1,
+            last: (y, tick),
+            // The finger came down at the start; with the world clock unmoved since,
+            // that sample is a frame before this one.
+            prev: Some((start.1, tick)),
+        };
+        // The press was not a tap on whatever the finger came down on.
+        self.machine_mut(id, machine)?.pointer_press = None;
+        self.touch_scroll_to(id, machine, &mut drag, y, size)?;
+        self.machine_mut(id, machine)?.touch_scroll = Some(drag);
+        Ok(Some(json!({"cursor": "default"})))
+    }
+    /// Move the list a finger holds so the content is under the finger at `y`.
+    fn touch_scroll_to(
+        &mut self,
+        id: &str,
+        machine: &str,
+        drag: &mut TouchScroll,
+        y: i32,
+        size: (u32, u32),
+    ) -> Result<bool> {
+        match drag.pane.clone() {
+            Some(pane) => {
+                let raw = drag.origin + (drag.anchor - y);
+                let offset = raw.clamp(0, drag.max.max(0));
+                // Past an end the content still follows, but resists: pulled down at the
+                // top it comes down after the finger; pushed up at the end, it goes up.
+                let stretch =
+                    -cw_applications::desktop_scene::scroll::rubber_band(raw - offset, drag.height);
+                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset)?;
+                self.set_stretch(id, machine, drag.window, &pane, stretch);
+                Ok(moved)
+            }
+            None => {
+                // An application's own use of the wheel moves in its own steps (rows,
+                // lines), so it is handed the finger's travel a step's worth at a time.
+                let delta = drag.applied - y;
+                if delta.abs() < TOUCH_STEP {
+                    return Ok(false);
+                }
+                drag.applied = y;
+                self.scroll_at(
+                    id,
+                    machine,
+                    drag.at,
+                    size,
+                    cw_applications::Wheel::vertical(delta),
+                )
+            }
+        }
+    }
+    /// The finger holding a list lifts at `y`. The list lands under it, then keeps
+    /// going as far as the platform's deceleration carries the finger's last velocity
+    /// (measured from the last two samples and the world clock between them), stopping
+    /// at an end; a rubber band springs back. A finger that rested before lifting does
+    /// not fling. Returns whether the list moved.
+    fn touch_scroll_release(
+        &mut self,
+        id: &str,
+        machine: &str,
+        y: i32,
+        size: (u32, u32),
+        theme: DesktopTheme,
+    ) -> Result<bool> {
+        let tick = self.runtime.tick();
+        let Some(mut drag) = self.machine_mut(id, machine)?.touch_scroll.take() else {
+            return Ok(false);
+        };
+        if y != drag.last.0 {
+            drag.prev = Some(drag.last);
+            drag.last = (y, tick);
+        }
+        let velocity = match drag.prev {
+            _ if tick.saturating_sub(drag.last.1) > FINGER_STOPPED_US => 0,
+            Some(prev) => {
+                let elapsed = drag.last.1.saturating_sub(prev.1).max(FRAME_US);
+                i64::from(drag.last.0 - prev.0) * 1_000_000 / elapsed as i64
+            }
+            None => 0,
+        };
+        // The content follows the finger, so a finger flung upwards carries the list
+        // further down it.
+        let fling = cw_applications::desktop_scene::scroll::fling_distance(
+            theme == DesktopTheme::Android,
+            velocity,
+        );
+        match drag.pane.clone() {
+            Some(pane) => {
+                // Pulled far enough down past the top of a phone screen's list, the
+                // release refreshes it, as iOS's refresh control and Android's
+                // swipe-to-refresh do.
+                let pulled = cw_applications::desktop_scene::scroll::rubber_band(
+                    -(drag.origin + (drag.anchor - y)),
+                    drag.height,
+                );
+                let refresh = (pane == "main" && pulled >= PULL_TO_REFRESH)
+                    .then(|| {
+                        let m = self.session(id).ok()?.machines.get(machine)?;
+                        match &m.desktop.windows.get(&drag.window)?.state {
+                            AppState::Native(app) => app.pull_to_refresh(),
+                            _ => None,
+                        }
+                    })
+                    .flatten();
+                let raw = drag.origin + (drag.anchor - y) - fling;
+                let offset = raw.clamp(0, drag.max.max(0));
+                self.set_stretch(id, machine, drag.window, &pane, 0);
+                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset)?;
+                if let Some(target) = refresh {
+                    let actor = self.session(id)?.config.actor.clone();
+                    let effects = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .click(target)
+                        .map_err(SimError::invalid)?;
+                    self.effects(id, machine, &actor, effects)?;
+                }
+                Ok(moved)
+            }
+            None => {
+                let delta = drag.applied - y - fling;
+                if delta == 0 {
+                    return Ok(false);
+                }
+                self.scroll_at(
+                    id,
+                    machine,
+                    drag.at,
+                    size,
+                    cw_applications::Wheel::vertical(delta),
+                )
             }
         }
     }
@@ -1643,12 +2295,24 @@ impl Environment {
                 }
             }
             "scroll" => {
-                machine.browser.tab_mut().scroll_y =
+                let to = |key: &str| {
                     a.payload
-                        .get("y")
+                        .get(key)
                         .and_then(integer_i64)
                         .unwrap_or(0)
-                        .clamp(0, i32::MAX as i64) as i32;
+                        .clamp(0, i32::MAX as i64) as i32
+                };
+                // `{"row": id, "x": n}` scrolls one of the page's sideways shelves.
+                match a.payload.get("row").and_then(Value::as_str) {
+                    Some(row) => {
+                        machine
+                            .browser
+                            .tab_mut()
+                            .scroll_x
+                            .insert(row.to_owned(), to("x"));
+                    }
+                    None => machine.browser.tab_mut().scroll_y = to("y"),
+                }
             }
             "submit" => machine
                 .browser
@@ -1785,7 +2449,8 @@ impl Environment {
                         }
                     } else {
                         match self.runtime.execute_in(machine, actor, &cwd, &command) {
-                            Ok((result, after)) => {
+                            Ok((mut result, after)) => {
+                                self.open_from_shell(id, machine, actor, &mut result)?;
                                 let entry = cw_applications::TerminalEntry::new(
                                     &prompt,
                                     command,
@@ -1823,6 +2488,24 @@ impl Environment {
                         .machine_mut(id, machine)?
                         .desktop
                         .shell_ran(window, &tag, outcome)
+                        .map_err(SimError::invalid)?;
+                    pending.extend(more);
+                }
+                Debug {
+                    window,
+                    tag,
+                    request,
+                } => {
+                    // The machine's debugger, or the reason it has none: either way the
+                    // view is told, and shows only what came back.
+                    let reply = self
+                        .runtime
+                        .debug(machine, actor, &request)
+                        .map_err(|e| e.message);
+                    let more = self
+                        .machine_mut(id, machine)?
+                        .desktop
+                        .debug_reply(window, &tag, reply)
                         .map_err(SimError::invalid)?;
                     pending.extend(more);
                 }
@@ -1903,7 +2586,8 @@ impl Environment {
                     // The prompt is captured before the command runs, so `cd` is echoed
                     // under the directory it was typed in, not the one it moved to.
                     let prompt = self.machine_mut(id, machine)?.desktop.prompt.clone();
-                    let result = self.runtime.execute_at_terminal(machine, actor, &command)?;
+                    let mut result = self.runtime.execute_at_terminal(machine, actor, &command)?;
+                    self.open_from_shell(id, machine, actor, &mut result)?;
                     let entry = cw_applications::TerminalEntry::new(
                         &prompt,
                         command,
@@ -2067,11 +2751,14 @@ impl Environment {
                         .iter()
                         .any(|c| c == "pixels.v1")
                     {
-                        return Err(SimError::denied("pixel capture is not permitted"));
+                        return Err(SimError::denied("pixel capture is not permitted")
+                            .because(cw_protocol::reason::PIXELS_NOT_GRANTED));
                     }
                     // The screen is rasterised from the same scene an observer sees, so a
-                    // screenshot cannot show something the actor could not.
-                    let scene = self.scene(id, 1280, 800)?;
+                    // screenshot cannot show something the actor could not, at the size
+                    // and orientation the machine's screen really has.
+                    let (width, height) = self.screen_size(id, machine)?;
+                    let scene = self.scene(id, width, height)?;
                     let png = self
                         .capture
                         .clone()
@@ -2285,6 +2972,41 @@ impl Environment {
         }
         Ok(())
     }
+    /// How the world presents `machine`: `desktop`, `laptop`, `phone` or `server`,
+    /// as the computer states it (`presentation`) or else the world's
+    /// `device_presentations` metadata. A phone shell is a phone whatever is stated; a
+    /// machine nothing is (truthfully) said about is a desktop computer.
+    pub(crate) fn form_factor(&self, machine: &str, theme: DesktopTheme) -> String {
+        if theme.mobile() {
+            return "phone".into();
+        }
+        let definition = self.runtime.definition();
+        let stated = definition
+            .computers
+            .iter()
+            .find(|c| c.id == machine)
+            .and_then(|c| c.presentation.clone())
+            .or_else(|| {
+                definition
+                    .metadata
+                    .get("device_presentations")
+                    .and_then(|p| p.get(machine))
+                    .and_then(Value::as_str)
+                    .map(str::to_owned)
+            });
+        match stated.as_deref() {
+            Some(kind @ ("desktop" | "laptop" | "server")) => kind.to_owned(),
+            _ => "desktop".to_owned(),
+        }
+    }
+    /// Whether the machine has a battery for its shell to report: laptops and phones
+    /// do, desktop computers and servers do not.
+    fn has_battery(&self, machine: &str, theme: DesktopTheme) -> bool {
+        matches!(
+            self.form_factor(machine, theme).as_str(),
+            "laptop" | "phone"
+        )
+    }
     fn desktop_theme(&self, id: &str, machine: &str) -> Option<DesktopTheme> {
         let session = self.session(id).ok()?;
         if !session
@@ -2311,6 +3033,166 @@ impl Environment {
             return None;
         }
         DesktopTheme::from_profile(configured.unwrap_or(&computer.profile))
+    }
+    /// Open what `xdg-open` asked for. The shell can check that a target exists; only
+    /// the interface layer can open a window, and only it knows whether this session is
+    /// allowed to. A refusal is appended to the command's own stderr with the status
+    /// `xdg-open` uses for "no application found", so the shell tells the truth.
+    pub(crate) fn open_from_shell(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        result: &mut cw_computer::CommandResult,
+    ) -> Result<()> {
+        // `dispatch` is past the grant gate `step` applies, so this path applies it
+        // itself: running a command must never be a way to drive applications the
+        // session was not granted.
+        let granted = self
+            .session(id)?
+            .config
+            .actions
+            .iter()
+            .any(|family| family == "application.v1");
+        for target in std::mem::take(&mut result.open) {
+            if !granted {
+                result.stderr.push_str(&format!(
+                    "xdg-open: cannot open {target}: {}\n",
+                    actor_error(
+                        SimError::denied("application interaction is not permitted")
+                            .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED)
+                    )
+                    .message
+                ));
+                result.exit_code = 3;
+                continue;
+            }
+            let url = target.starts_with("http://")
+                || target.starts_with("https://")
+                || target.starts_with("file://");
+            let kind = if url {
+                "browser".to_owned()
+            } else if self
+                .runtime
+                .computer(machine)?
+                .vfs
+                .stat(&target)
+                .is_ok_and(|m| m.is_dir)
+            {
+                "files".to_owned()
+            } else {
+                // The same rule a file manager uses when a document is double-clicked.
+                cw_applications::opener(&target).to_owned()
+            };
+            let launch = ActionEnvelope::new(
+                "application.v1",
+                "launch",
+                machine,
+                json!({"kind":kind,"argument":target}),
+            );
+            if let Err(e) = self.dispatch(id, actor, &launch) {
+                let refusal = actor_error(e);
+                result.stderr.push_str(&format!(
+                    "xdg-open: cannot open {target} with {kind}: {}\n",
+                    refusal.message
+                ));
+                result.exit_code = 3;
+            }
+        }
+        Ok(())
+    }
+    /// Keep the machine's process table and the session's open windows in step, in both
+    /// directions: a window that opened gets a process, a window that closed loses it,
+    /// and a process an actor killed from the shell closes its window. An application on
+    /// the screen is something the machine is running, and `ps` says so.
+    pub(crate) fn sync_window_processes(&mut self, id: &str, machine: &str) -> Result<()> {
+        let Ok(session) = self.session(id) else {
+            return Ok(());
+        };
+        let Some(state) = session.machines.get(machine) else {
+            return Ok(());
+        };
+        // A process that is gone takes its window with it.
+        let killed: Vec<u64> = state
+            .window_processes
+            .iter()
+            .filter(|(window, pid)| {
+                state.desktop.windows.contains_key(window)
+                    && !self.runtime.process_alive(machine, **pid)
+            })
+            .map(|(window, _)| *window)
+            .collect();
+        let closed = !killed.is_empty();
+        for window in killed {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let _ = desktop.close(window);
+            self.machine_mut(id, machine)?
+                .window_processes
+                .remove(&window);
+            self.machine_mut(id, machine)?
+                .browser_windows
+                .remove(&window);
+        }
+        if closed {
+            // The same tidy-up closing a window by hand does: focus, the visible
+            // browser, and any per-window browser state the window owned.
+            self.sync_desktop_visibility(id, machine)?;
+        }
+        // A window that closed ends its process.
+        let ended: Vec<(u64, u64)> = {
+            let state = &self.session(id)?.machines[machine];
+            state
+                .window_processes
+                .iter()
+                .filter(|(window, _)| !state.desktop.windows.contains_key(window))
+                .map(|(window, pid)| (*window, *pid))
+                .collect()
+        };
+        for (window, pid) in ended {
+            self.runtime.end_window_process(machine, pid)?;
+            self.machine_mut(id, machine)?
+                .window_processes
+                .remove(&window);
+        }
+        // A window that opened starts one.
+        let started: Vec<(u64, String, u64)> = {
+            let state = &self.session(id)?.machines[machine];
+            let computer = self.runtime.computer(machine)?;
+            state
+                .desktop
+                .windows
+                .values()
+                .filter(|w| !state.window_processes.contains_key(&w.id))
+                .map(|w| {
+                    let document = presented(&w.state);
+                    // What the window really holds: the bytes of the document it opened.
+                    let holding = computer
+                        .vfs
+                        .stat(&document)
+                        .map(|m| m.size as u64)
+                        .unwrap_or(0);
+                    let command = if document.is_empty() {
+                        w.app_id.clone()
+                    } else {
+                        format!("{} {document}", w.app_id)
+                    };
+                    (
+                        w.id,
+                        command,
+                        holding.saturating_add(window_footprint(&w.app_id)),
+                    )
+                })
+                .collect()
+        };
+        for (window, command, holding) in started {
+            let pid = self
+                .runtime
+                .start_window_process(machine, &command, holding)?;
+            self.machine_mut(id, machine)?
+                .window_processes
+                .insert(window, pid);
+        }
+        Ok(())
     }
     fn sync_desktop_visibility(&mut self, id: &str, machine: &str) -> Result<()> {
         let state = self.machine_mut(id, machine)?;
@@ -2362,7 +3244,8 @@ impl Environment {
             .iter()
             .any(|family| family == "application.v1")
         {
-            return Err(SimError::denied("application interaction is not permitted"));
+            return Err(SimError::denied("application interaction is not permitted")
+                .because(cw_protocol::reason::APPLICATION_FAMILY_REQUIRED));
         }
         if let Some(result) = self.desktop_panel_action(id, machine, actor, target)? {
             return Ok(result);
@@ -2389,7 +3272,8 @@ impl Environment {
             if let Some((kind, argument)) = kind.split_once('/') {
                 let (kind, argument) = (kind.to_owned(), argument.to_owned());
                 if !self.runtime.computer(machine)?.application_available(&kind) {
-                    return Err(SimError::not_found("application is not installed"));
+                    return Err(SimError::not_found("application is not installed")
+                        .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
                 }
                 return self.dispatch(
                     id,
@@ -2405,7 +3289,8 @@ impl Environment {
             if self.desktop_alias(id, machine, kind)?.is_none()
                 && !self.runtime.computer(machine)?.application_available(kind)
             {
-                return Err(SimError::not_found("application is not installed"));
+                return Err(SimError::not_found("application is not installed")
+                    .because(cw_protocol::reason::APPLICATION_NOT_INSTALLED));
             }
             let existing = self.session(id)?.machines[machine]
                 .desktop
@@ -2581,7 +3466,8 @@ impl Environment {
             .iter()
             .any(|c| c == "semantic.v1" || c == "pixels.v1")
         {
-            return Err(SimError::denied("visual observation is not permitted"));
+            return Err(SimError::denied("visual observation is not permitted")
+                .because(cw_protocol::reason::VISUAL_NOT_GRANTED));
         }
         let m = s
             .machines
@@ -2668,7 +3554,7 @@ impl Environment {
                     };
                     browser.scene(content_rect.width.max(1), content_rect.height.max(1))
                 } else {
-                    cw_applications::desktop_scene::app_content_with(
+                    cw_applications::desktop_scene::app_content_scrolled(
                         &window.state,
                         &cw_applications::AppEnv {
                             theme,
@@ -2688,6 +3574,7 @@ impl Environment {
                                 .filter(|(x, y)| content_rect.contains(*x, *y))
                                 .map(|(x, y)| (x - content_rect.x, y - content_rect.y)),
                         },
+                        &window.scroll,
                     )
                 };
                 let (document, caption, modified) = match &window.state {
@@ -2772,7 +3659,38 @@ impl Environment {
                     _ => (false, false),
                 };
                 let (dark_chrome, chrome) = match &window.state {
-                    AppState::Native(app) => (app.dark_chrome(), app.chrome()),
+                    AppState::Native(app) => {
+                        let mut chrome = app.chrome();
+                        // A phone's navigation bar carries the application's way to its
+                        // parent screen, or Gmail's drawer button.
+                        if let Some((kind, target, label)) =
+                            app.phone_nav(theme).filter(|_| theme.mobile())
+                        {
+                            chrome.push(("nav".into(), format!("{kind}\t{target}\t{label}")));
+                        }
+                        (app.dark_chrome(), chrome)
+                    }
+                    // Whether the selected file is starred, for a context menu that
+                    // offers Star or Unstar on it.
+                    AppState::Files { .. } => (
+                        false,
+                        window
+                            .state
+                            .file_tab()
+                            .and_then(|t| t.selected_path())
+                            .map(|path| {
+                                vec![(
+                                    "starred".to_owned(),
+                                    if m.desktop.is_starred(&path) {
+                                        "1"
+                                    } else {
+                                        "0"
+                                    }
+                                    .to_owned(),
+                                )]
+                            })
+                            .unwrap_or_default(),
+                    ),
                     _ => (false, vec![]),
                 };
                 views.push(WindowView {
@@ -2897,6 +3815,9 @@ impl Environment {
                         .unwrap_or_default(),
                     recents: m.desktop.recents.clone(),
                     home: m.desktop.home_folder(),
+                    battery: self.has_battery(&s.focused_machine, theme),
+                    anchor: m.desktop.panel_at.filter(|_| m.desktop.panel.is_some()),
+                    overview: m.desktop.overview,
                 },
             );
             self.decorate(&mut scene, m, published, theme.mobile());
@@ -2961,6 +3882,7 @@ fn cursor_for_target(target: &str, captured: bool) -> &'static str {
         return "crosshair";
     }
     if target.ends_with("editor-text")
+        || target.contains(":content:editor-text:")
         || target.ends_with("terminal-input")
         || target.ends_with("shell:address")
     {
@@ -3850,7 +4772,9 @@ fn scene_windows(theme: DesktopTheme, views: &[WindowView]) -> Vec<SceneWindow> 
         .enumerate()
         .map(|(z, v)| SceneWindow {
             id: v.id,
-            title: v.title.clone(),
+            // The title the frame paints, not the raw application id the compositor
+            // stores: what an agent reads here is what it can see on the screen.
+            title: theme.window_title(v),
             app: v.kind.clone(),
             bounds: v.rect,
             content: window_content_rect_for_kind(theme, v.rect, &v.kind),
@@ -3981,7 +4905,8 @@ fn attach_buffer(scene: &mut Scene, buffer: &mut TextBuffer, content: Rect) {
 fn caret_after(anchor: &Node, offset: u32) -> Caret {
     let (cw, ch) = anchor.cell().unwrap_or_else(|| cw_scene::text_cell(13));
     let b = anchor.painted_bounds();
-    let painted = anchor.painted_text().unwrap_or("").chars().count() as u32;
+    // Cells on the node's grid: a wide character (CJK, emoji) takes two.
+    let painted = cw_scene::text::terminal::columns(anchor.painted_text().unwrap_or("")) as u32;
     Caret {
         bounds: Rect::new(
             b.x.saturating_add((painted * cw) as i32),
@@ -4181,7 +5106,7 @@ fn text_entry_of(m: &MachineSession, phone: bool) -> bool {
         }
         // A native application takes text while it has a field focused; a music player
         // with none takes no text, so a phone paints no keyboard over it.
-        Some(AppState::Native(app)) => app.takes_text(),
+        Some(AppState::Native(app)) => app.takes_text(phone),
         // A file manager takes text only while it is searching or renaming, which is
         // exactly the condition `DesktopState::text` checks.
         Some(state @ AppState::Files { .. }) => {
@@ -4233,6 +5158,21 @@ fn typed_of(m: &MachineSession, phone: bool) -> String {
     let skip = text.chars().count().saturating_sub(64);
     text.chars().skip(skip).collect()
 }
+/// How far a finger may drift before a touch is a drag rather than a tap: past it, a
+/// press in an application's content scrolls it instead of pressing what it started on.
+const SWIPE_SLOP: i32 = 12;
+/// A finger's travel handed to an application's own wheel use at a time while it
+/// drags on a phone: about a row, so a grid or a scrollback moves as the finger does.
+const TOUCH_STEP: i32 = 16;
+/// One display frame at 60 Hz, in µs: the interval assumed between two finger samples
+/// when the world clock did not move between them, as touch samples arrive per frame.
+const FRAME_US: u64 = 16_667;
+/// A finger that rested this long (µs of world clock) before lifting has stopped, and
+/// the list does not fling (Android's VelocityTracker assumes the same 40 ms).
+const FINGER_STOPPED_US: u64 = 40_000;
+/// How far (in rubber-banded pixels) a list must be pulled down past its top for the
+/// release to refresh it.
+const PULL_TO_REFRESH: i32 = 56;
 /// A phone's system surface over the screen — Control Center, the shade, the App
 /// Switcher, Settings, a sheet — other than Search. It is modal on the device: it has
 /// no text field, the soft keyboard goes down under it, and keystrokes reach nothing
@@ -4368,14 +5308,26 @@ fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow], phone: b
             bind(&mut focus, "address", Some(action), true);
             focus.value = Some(address.clone());
         }
-        Some(AppState::Native(app)) => {
-            bind(
+        // The application's focused text field, when it has one, is the target: the
+        // same answer that decides whether a phone paints its keyboard.
+        Some(AppState::Native(app)) => match app.text_field(phone) {
+            Some(field) => {
+                bind(
+                    &mut focus,
+                    "application",
+                    Some(format!("window:{id}:content:{field}")),
+                    true,
+                );
+                // Whatever the control is painted as, what has the focus is a field.
+                focus.role = "textbox".into();
+            }
+            None => bind(
                 &mut focus,
                 "application",
                 Some(format!("window:{id}:focus")),
-                app.takes_text(),
-            );
-        }
+                false,
+            ),
+        },
         // A file manager takes text only while it is searching or renaming.
         Some(files @ AppState::Files { .. }) if text_entry_of(m, phone) => {
             let tab = files.file_tab();
@@ -4524,6 +5476,23 @@ struct Visible {
     address_focused: bool,
     focused_input: Option<String>,
     terminal: u64,
+    /// Every browser's tabs, fields and zoom, their scroll positions aside.
+    browser: u64,
+    /// Every browser tab's scroll position.
+    browser_scroll: u64,
+    clipboard: u64,
+    notifications: u64,
+    /// System settings and the screen's power state.
+    settings: u64,
+    /// Shell state that is no focus change (see `effect::SHELL`).
+    shell: u64,
+    /// Recents, stars, bookmarks and downloads.
+    library: u64,
+    /// An application's own wheel use moved its view during the action. It carries no
+    /// state of its own (the view it moved is in `content`), so it is left out of the
+    /// digest: equal digests still mean equal observable state.
+    #[serde(skip)]
+    scrolled: bool,
 }
 #[derive(Clone, PartialEq, Eq, Serialize)]
 struct VisibleWindow {
@@ -4534,7 +5503,11 @@ struct VisibleWindow {
     maximized: bool,
     document: String,
     /// Digest of the window's whole application state: text, caret, tabs, dirty flag.
+    /// A terminal's scrollback position is its `scroll`, not its content.
     content: u64,
+    /// Digest of where the window's panes are scrolled (and a pane pulled past its end),
+    /// and of a terminal's scrollback position.
+    scroll: u64,
 }
 /// Path, URL or document a window presents; empty when it presents none.
 fn presented(state: &AppState) -> String {
@@ -4546,32 +5519,83 @@ fn presented(state: &AppState) -> String {
         AppState::Terminal { .. } => String::new(),
     }
 }
+/// A browser's state as it bears on what is shown, split into its scroll positions and
+/// everything else. Storage and cookies are not shown and are left out.
+fn browser_view(b: &BrowserState) -> (u64, u64) {
+    let tabs: Vec<_> = b
+        .tabs
+        .iter()
+        .map(|t| (&t.history, t.position, &t.focused, &t.fields))
+        .collect();
+    let scrolls: Vec<i32> = b.tabs.iter().map(|t| t.scroll_y).collect();
+    (
+        cw_scene::digest(&(tabs, b.active, &b.zoom, &b.pending)),
+        cw_scene::digest(&scrolls),
+    )
+}
 fn visible(m: &MachineSession) -> Visible {
+    let browsers: Vec<(u64, u64)> = std::iter::once(&m.browser)
+        .chain(m.browser_windows.values())
+        .map(browser_view)
+        .collect();
+    let d = &m.desktop;
     Visible {
-        focused: m.desktop.focused,
-        windows: m
-            .desktop
+        focused: d.focused,
+        windows: d
             .windows
             .values()
-            .map(|w| VisibleWindow {
-                id: w.id,
-                title: w.title.clone(),
-                frame: w.frame,
-                minimized: w.minimized,
-                maximized: w.maximized,
-                document: presented(&w.state),
-                content: cw_scene::digest(&w.state),
+            .map(|w| {
+                let (content, scroll) = match &w.state {
+                    AppState::Terminal { scroll, .. } => {
+                        let mut still = w.state.clone();
+                        if let AppState::Terminal { scroll, .. } = &mut still {
+                            *scroll = 0;
+                        }
+                        (
+                            cw_scene::digest(&still),
+                            cw_scene::digest(&(&w.scroll, scroll)),
+                        )
+                    }
+                    state => (cw_scene::digest(state), cw_scene::digest(&w.scroll)),
+                };
+                VisibleWindow {
+                    id: w.id,
+                    title: w.title.clone(),
+                    frame: w.frame,
+                    minimized: w.minimized,
+                    maximized: w.maximized,
+                    document: presented(&w.state),
+                    content,
+                    scroll,
+                }
             })
             .collect(),
         url: m.browser.url().map(str::to_owned),
         app: m.active_app.clone(),
         page: cw_scene::digest(&m.custom_page),
-        panel: m.desktop.panel.clone(),
-        launcher: m.desktop.launcher_open,
-        home_page: m.desktop.home_page,
+        panel: d.panel.clone(),
+        launcher: d.launcher_open,
+        home_page: d.home_page,
         address_focused: m.address_focused,
         focused_input: m.focused_input.clone(),
         terminal: cw_scene::digest(&m.terminal),
+        browser: cw_scene::digest(&browsers.iter().map(|b| b.0).collect::<Vec<_>>()),
+        browser_scroll: cw_scene::digest(&browsers.iter().map(|b| b.1).collect::<Vec<_>>()),
+        clipboard: cw_scene::digest(&(&d.clipboard, &d.clipboard_text)),
+        notifications: cw_scene::digest(&d.notifications),
+        settings: cw_scene::digest(&(&d.settings, &d.screen)),
+        shell: cw_scene::digest(&(
+            &d.search,
+            &d.desktop_selection,
+            (d.workspace, d.workspaces),
+            &d.library_group,
+            &d.overview,
+            d.panel_month,
+            &d.keyboard,
+            &d.file_view,
+        )),
+        library: cw_scene::digest(&(&d.recents, &d.starred, &d.bookmarks, &d.downloads)),
+        scrolled: m.scrolled,
     }
 }
 fn effect_of(before: &Visible, after: &Visible) -> ActionEffect {
@@ -4628,6 +5652,33 @@ fn effect_of(before: &Visible, after: &Visible) -> ActionEffect {
     }
     if before.terminal != after.terminal {
         changed.insert(effect::TERMINAL);
+    }
+    if before.browser != after.browser {
+        changed.insert(effect::CONTENT);
+    }
+    let window_scrolled = after.windows.iter().any(|w| {
+        before
+            .windows
+            .iter()
+            .any(|o| o.id == w.id && o.scroll != w.scroll)
+    });
+    if window_scrolled || before.browser_scroll != after.browser_scroll || after.scrolled {
+        changed.insert(effect::SCROLL);
+    }
+    for (tag, was, is) in [
+        (effect::CLIPBOARD, before.clipboard, after.clipboard),
+        (
+            effect::NOTIFICATIONS,
+            before.notifications,
+            after.notifications,
+        ),
+        (effect::SETTINGS, before.settings, after.settings),
+        (effect::SHELL, before.shell, after.shell),
+        (effect::LIBRARY, before.library, after.library),
+    ] {
+        if was != is {
+            changed.insert(tag);
+        }
     }
     ActionEffect {
         changed: changed.into_iter().map(str::to_owned).collect(),

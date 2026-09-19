@@ -31,21 +31,20 @@ pub fn render(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
         8,
         LINE,
     );
-    let mark = p.scene.nodes.len();
+    // The page scrolls inside its card; each view keeps its own place.
+    let pane = p.pane(&app.view_pane(), page);
     body(
         app,
         p,
         env,
         Rect::new(
             page.x + 28,
-            page.y + 20,
+            pane.top() + 20,
             page.width.saturating_sub(56),
             page.height.saturating_sub(20),
         ),
     );
-    for n in &mut p.scene.nodes[mark..] {
-        n.clip = Some(n.clip.and_then(|c| c.intersection(page)).unwrap_or(page));
-    }
+    p.end_pane(pane, None);
     player_bar(
         app,
         p,
@@ -75,6 +74,17 @@ pub fn render(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
     if let Some(draft) = &app.draft {
         art::composer(p, draft, all, &s);
+    }
+    if app.popup == Some(super::Popup::Output) {
+        art::output_picker(
+            p,
+            app,
+            DesktopTheme::Windows,
+            env.level("volume"),
+            Rect::new(w as i32 - 330, h as i32 - bar as i32 - 8, 300, 0),
+            all,
+            &s,
+        );
     }
 }
 
@@ -279,9 +289,6 @@ fn tiles(p: &mut Painter, area: Rect, mut y: i32, cards: &[Tile]) -> i32 {
     let size = 150u32;
     let per = ((area.width + 16) / (size + 16)).max(1);
     for chunk in cards.chunks(per as usize) {
-        if y > area.y + area.height as i32 {
-            break;
-        }
         for (i, (key, title, sub, target, round)) in chunk.iter().enumerate() {
             let x = area.x + (i as u32 * (size + 16)) as i32;
             p.button(
@@ -329,9 +336,6 @@ fn table(
     p.right(area.x + w as i32 - 92, y, 50, "Time", 12, MUTED);
     y += 24;
     for (i, t) in tracks.iter().enumerate() {
-        if y + 40 > area.y + area.height as i32 {
-            break;
-        }
         let r = Rect::new(area.x, y, w, 40);
         let current = live.as_ref().is_some_and(|l| l.id == t.id);
         art::row(
@@ -778,9 +782,6 @@ fn body(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, area: Rect) {
             let mut y = y;
             for (i, id) in player.queue.iter().enumerate() {
                 let Some(t) = c.track(id) else { continue };
-                if y + 40 > area.y + area.height as i32 {
-                    break;
-                }
                 let r = Rect::new(area.x, y, area.width, 40);
                 p.button(
                     r,
@@ -987,7 +988,58 @@ fn player_bar(app: &Music, p: &mut Painter, env: &crate::AppEnv<'_>, r: Rect) {
             art::icon(p, rr, symbol, 16, on(lit), target, label);
         }
     }
+    // Right: Cast to device, mute, the volume slider, then the play queue. The volume is
+    // Media Player's own; Windows mixes it under the master volume.
     let q = Rect::new(r.x + r.width as i32 - 52, y + 14, 32, 32);
+    let slider = Rect::new(q.x - 116, y + 20, 104, 20);
+    let mute = Rect::new(slider.x - 36, y + 14, 32, 32);
+    let cast = Rect::new(mute.x - 40, y + 14, 32, 32);
+    match player {
+        Some(pl) => {
+            art::icon(
+                p,
+                mute,
+                if pl.audible() == 0 {
+                    "volume-mute"
+                } else {
+                    "volume"
+                },
+                16,
+                INK,
+                "music:mute",
+                if pl.muted { "Unmute" } else { "Mute" },
+            );
+            art::volume_slider(
+                p,
+                slider,
+                pl.audible(),
+                "music:volume:",
+                4,
+                ACCENT,
+                Color(0, 0, 0, 60),
+                Some((14, ACCENT)),
+            );
+            art::icon(
+                p,
+                cast,
+                "cast",
+                16,
+                if pl.device.is_empty() { INK } else { ACCENT },
+                "music:output",
+                "Cast to device",
+            );
+        }
+        None => {
+            art::icon_off(p, mute, "volume", 16, INK, "Nothing is playing");
+            p.box_(
+                Rect::new(slider.x, slider.y + 8, slider.width, 4),
+                Color(0, 0, 0, 30),
+                2,
+            );
+            p.disabled("Nothing is playing");
+            art::icon_off(p, cast, "cast", 16, INK, "Nothing is playing");
+        }
+    }
     art::icon(
         p,
         q,

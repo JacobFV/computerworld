@@ -124,6 +124,41 @@ reliefs, DRC, Gerber RS-274X/Excellon output and SVG plots.
   and they follow the pointer with no button down (`NativeApp::hovers`), so the wire,
   track or symbol being placed is drawn under it.
 
+### Music
+
+`music` is one player with five faces over the `media` service the world backs it with
+(spotify.com, or music.youtube.com on Android): Apple Music on macOS and iOS, YouTube
+Music on Android, Media Player on Windows 11 and Rhythmbox on Ubuntu. Its controls are
+listed in [action-families.md](action-families.md#music-player-controls).
+
+- **Artwork is real artwork.** Every album, artist and playlist has a cover generated
+  from its id by `crates/artwork`: a palette and a composition (a sunset, a Bauhaus
+  grid, waves, orbits, shards, stripes, a halftone) laid out in a 1000-unit square. The
+  players draw it with the renderer's own shapes at any size, round for an artist's
+  avatar; the sites serve the same composition rasterised from `GET /art/<key>` (see
+  [service-sdk.md](service-sdk.md)), so an album looks the same everywhere.
+- **Volume is state.** The service keeps a volume and a mute with the listener's
+  session, which every player's slider sets and the machine's own output volume then
+  scales — Music's toolbar slider, Media Player's and Rhythmbox's volume buttons. On the
+  phones, where the real players use the device's volume, the slider is the machine's
+  (`shell:set:volume:<pct>`) until the music is playing on a speaker, when it is the
+  session's again.
+- **Lyrics are time-synced.** Catalogue songs carry `[start_ms, line]` lyrics; the line
+  being sung is the last one that has started at the world clock's position, lit in
+  Apple Music's lyrics panel, YouTube Music's LYRICS tab, and spotify.com's lyrics view.
+  Tapping a line seeks to it. A song with none says so, and YouTube Music greys the tab
+  out, as it does.
+- **Casting is real.** The account's speakers are `speaker` services on the network
+  (`crates/../services/speaker`: Living Room, Kitchen, Office TV in the reference
+  world). Opening AirPlay, Cast or Cast to device asks each one whether it is there; one
+  that does not answer is shown disabled with why. Picking one hands it the session —
+  the queue, the position, the repeat mode and the volume — which it carries forward on
+  the same clock with the same calculation, and every later change is sent on. Its own
+  page says what it is playing.
+- **Shelves scroll sideways.** Home's and Explore's shelves are horizontal panes: the
+  wheel's `delta_x` (or Shift with the wheel), the bar along their bottom edge on a
+  desktop, and a sideways swipe on a phone.
+
 ### Visual Studio Code
 
 `code` is installed on the reference world's macOS, Windows and Ubuntu desktops. It
@@ -152,15 +187,46 @@ nothing it opens `~/project` when the machine has one and the Welcome page other
   missing interpreter shows the shell's own `command not found` and exit 127.
 - Problems are what tools reported: CPython and Node tracebacks and bash line errors
   from runs, and the JSON parser's error for an open JSON file. Each opens its line.
-- Source Control runs `git status`, `git add`, `git commit`, `git init`, `git branch`
-  and `git checkout` in the workspace and logs them in the Output panel.
+- Source Control runs `git status`, `git add`, `git commit`, `git init`, `git branch`,
+  `git checkout`, `git reset` (Unstage) and `git restore`/`git checkout --` (Discard
+  Changes; a new file is trashed instead) in the workspace and logs them in the Output
+  panel.
+- The editor area splits right and down into up to four groups (`Ctrl+\`, View: Split
+  Editor Right/Down, Move Editor into Next/Previous Group, Focus *n*th Editor Group).
+  A file open in two groups is one document: an edit in one appears in the other, and
+  one undo takes it back in both.
+- The minimap is a scaled map of the file's lines drawn from the same tokens as the
+  text; pressing or dragging it scrolls the editor to that part of the file.
+- Multiple cursors: Alt+click adds one, `Ctrl+Alt+Up`/`Down` add one above or below,
+  `Ctrl+D` adds the next occurrence of the selection, `Ctrl+Shift+L` all of them, and
+  `Escape` drops the extras. Typing, pasting, Backspace, Delete and the arrows act at
+  every cursor, and each keystroke is one undo step.
+- Tabs in the text are tab stops (`editor.tabSize` columns), including where a click
+  lands; `editor.renderWhitespace` (View: Toggle Render Whitespace) draws spaces as
+  middle dots and tabs as arrows.
+- A right press opens the context menu for what is under it: the Explorer's (New File,
+  New Folder, Rename, Delete, Copy Path, Reveal in the file manager, Open in Integrated
+  Terminal) or the editor's (Cut, Copy, Paste, Go to Definition, Command Palette). Go to
+  Definition reads the workspace and opens where the name under the caret is defined
+  (`def`/`class`, `function`, `const`/`let`/`var`, `fn`, `struct`, `enum`, `trait` and
+  `impl`), and says so when nothing defines it.
 - Settings (`workbench.colorTheme`, `editor.fontSize`, `editor.tabSize`,
   `editor.wordWrap`) persist to VS Code's own `settings.json` for the platform
   (`~/.config/Code/User`, `~/Library/Application Support/Code/User`,
   `~/AppData/Roaming/Code/User`) and are read back at launch.
 
-Not implemented, and so not drawn: extensions, the debugger (Run executes without one),
-split editors, the minimap, multiple cursors and the Accounts menu.
+- Run and Debug keeps breakpoints (a click in the gutter, `F9`, or a condition through
+  Add Conditional Breakpoint), the exception filters, the watch list and the Debug
+  Console, and sends every one of them to the machine's debug adapter
+  (`cw_computer::debug`, see [debugging](debugging.md)). No adapter is installed for
+  this build's Python and JavaScript runtimes yet, so nothing stops anywhere: the view
+  reports the machine's own reason and `F5` runs the file in the integrated terminal, as
+  Run Without Debugging does. Breakpoints are kept regardless, and the call stack,
+  variables, watch values and Debug Console only ever show what a reply said.
+
+Not implemented, and so not drawn: extensions, a debug adapter for the interpreters
+(the view and the machine's half of the seam are there; see [debugging](debugging.md))
+and the Accounts menu.
 
 Launchers, search, task switching and platform panels expose semantic hit regions.
 Mobile profiles implement Home, recent apps and supported vertical swipes for
@@ -199,25 +265,46 @@ and view size. The model is real, in the `cw-cad` kernel:
   green. Tools add FreeCAD's automatic constraints (coincident on a snapped point,
   horizontal/vertical when drawn so); a drag on geometry moves it through the solver.
 - Pad, Pocket (length, two lengths, through all, symmetric, reversed), Revolution,
-  Groove, Hole (counterbore, countersink, drill point), Fillet and Chamfer (straight
-  edges between planes, circular edges between a face and a coaxial cylinder),
-  Mirrored, Linear and Polar Pattern are recomputed in order from their parameters;
-  sketches attach to base planes or to planar faces, and a face or edge reference keeps
-  FreeCAD's element name plus where it was, so it is found again after an upstream edit
-  renumbers the shape. A feature that fails is marked in the tree and reported, as
-  "Result has multiple solids" and the like.
-- Solids are closed triangle meshes whose triangles remember the analytic surface they
-  approximate (curves tessellated at 64 segments per turn). Booleans are BSP-tree CSG,
-  healed to watertight meshes (weld, T-junction insertion, ear clipping, flat-vertex
-  collapse), so volumes, areas and centres of mass are those of the polygonal solid.
+  Groove, Hole (counterbore, countersink, drill point), Fillet and Chamfer (equal
+  distance, two distances, distance and angle, all edges), Mirrored, Linear and Polar
+  Pattern are recomputed in order from their parameters; sketches attach to base planes
+  or to planar faces, and a face or edge reference keeps FreeCAD's element name plus
+  where it was, so it is found again after an upstream edit renumbers the shape. A
+  feature that fails is marked in the tree and reported, as "Result has multiple
+  solids" and the like.
+- Solids are exact boundary representations: faces on planes, cylinders, cones,
+  spheres, tori, surfaces of revolution and extrusion, rolling-ball tubes and ruled
+  surfaces, bounded by edges on lines, circles, ellipses, B-splines and *traced* curves
+  (found by Newton's method on two surfaces' distance fields, so a cylinder-cylinder
+  intersection is exact rather than sampled), with seams on periodic faces and point
+  edges at poles, as OpenCascade has them. Booleans intersect faces pairwise, split
+  every face in its own parameter plane and classify the pieces against the other
+  solid, then merge faces that share a surface (FreeCAD's Refine); coplanar faces,
+  tangent surfaces, holes that reach through and solids that touch are all handled.
+  Volume, area and centre of mass come from the divergence theorem over the exact
+  surfaces (Green's theorem in the parameter plane, Gauss–Kronrod along the exact
+  boundary curves) and match closed-form values to rounding — a pad of a 3 mm circle is
+  π·9·h, not a 64-gon's. Tessellation is for the screen and for mesh formats only.
+- Fillets and chamfers roll a ball (or lay a flat) along any set of edges: straight
+  edges between surfaces swept along them, circular edges between coaxial surfaces of
+  revolution, and closed edges between curved faces (a branch pipe's saddle), with
+  spherical corner blends where three rounded edges meet at a corner of planes, and
+  FreeCAD's refusals ("Fillet not possible on selected shapes") when a radius will not
+  fit.
 - The 3D view is a z-buffer raster (2× supersampled, headlight shading, depth-tested
   edges and vertices) delivered as an `Image` primitive; sketches in edit are drawn as
   vector paths over it. Picking uses the same projection as drawing.
 - Files: the native document is FCStd's `Document.xml` structure as JSON
-  (`*.FCStd.json`); STL (binary and ASCII) and OBJ import as mesh objects and export
-  from any shape; DXF (R12) imports into and exports from sketches; SVG exports a
-  hidden-line projection of the view at 1:1 in millimetres. Binary files move through
-  `AppEffect::ReadBytes` and `WriteBytes`.
+  (`*.FCStd.json`); STEP (AP214 and AP242) writes the exact B-rep as a
+  `MANIFOLD_SOLID_BREP` of `ADVANCED_FACE`s on `PLANE`, `CYLINDRICAL_SURFACE`,
+  `CONICAL_SURFACE`, `SPHERICAL_SURFACE`, `TOROIDAL_SURFACE` and
+  `B_SPLINE_SURFACE_WITH_KNOTS`, with `EDGE_CURVE`s on `LINE`, `CIRCLE`, `ELLIPSE` and
+  `B_SPLINE_CURVE_WITH_KNOTS`, millimetre units and a header a reader expects, and
+  reads such files back (including other systems' inch units and rational splines) as
+  exact `Part::Feature` solids; STL (binary and ASCII) and OBJ import as mesh objects
+  and export the display tessellation of any shape; DXF (R12) imports into and exports
+  from sketches; SVG exports a hidden-line projection of the view at 1:1 in
+  millimetres. Binary files move through `AppEffect::ReadBytes` and `WriteBytes`.
 - Undo and Redo cover every document change (30 levels); snapshots hold the document
   and view, and the model is recomputed from it on restore.
 

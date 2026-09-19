@@ -17,6 +17,188 @@ pub enum Align {
     Left,
     Center,
     Right,
+    /// Excel's Center Across Selection: the text is centred over the run of cells to
+    /// its right that share this alignment and are empty, without merging them.
+    CenterAcross,
+}
+/// A border line's style, as SpreadsheetML names them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Line {
+    #[default]
+    Thin,
+    Medium,
+    Thick,
+    Double,
+    Dotted,
+    Dashed,
+    Hair,
+    MediumDashed,
+    DashDot,
+    MediumDashDot,
+    DashDotDot,
+    MediumDashDotDot,
+    SlantDashDot,
+}
+impl Line {
+    pub const ALL: [Line; 13] = [
+        Line::Thin,
+        Line::Medium,
+        Line::Thick,
+        Line::Double,
+        Line::Dotted,
+        Line::Dashed,
+        Line::Hair,
+        Line::MediumDashed,
+        Line::DashDot,
+        Line::MediumDashDot,
+        Line::DashDotDot,
+        Line::MediumDashDotDot,
+        Line::SlantDashDot,
+    ];
+    /// The `style` attribute of an XLSX border edge.
+    pub fn name(self) -> &'static str {
+        match self {
+            Line::Thin => "thin",
+            Line::Medium => "medium",
+            Line::Thick => "thick",
+            Line::Double => "double",
+            Line::Dotted => "dotted",
+            Line::Dashed => "dashed",
+            Line::Hair => "hair",
+            Line::MediumDashed => "mediumDashed",
+            Line::DashDot => "dashDot",
+            Line::MediumDashDot => "mediumDashDot",
+            Line::DashDotDot => "dashDotDot",
+            Line::MediumDashDotDot => "mediumDashDotDot",
+            Line::SlantDashDot => "slantDashDot",
+        }
+    }
+    pub fn parse(s: &str) -> Option<Self> {
+        Line::ALL
+            .into_iter()
+            .find(|l| l.name().eq_ignore_ascii_case(s))
+    }
+    /// Stroke width in pixels at 100%.
+    pub fn width(self) -> u32 {
+        match self {
+            Line::Medium | Line::MediumDashed | Line::MediumDashDot | Line::MediumDashDotDot => 2,
+            Line::SlantDashDot => 2,
+            Line::Thick | Line::Double => 3,
+            _ => 1,
+        }
+    }
+    /// Dash pattern: (on, off) pixel runs, none for a solid line.
+    pub fn dashes(self) -> &'static [u32] {
+        match self {
+            Line::Dotted => &[1, 1],
+            Line::Hair => &[1, 1],
+            Line::Dashed | Line::MediumDashed => &[3, 1],
+            Line::DashDot | Line::MediumDashDot | Line::SlantDashDot => &[3, 1, 1, 1],
+            Line::DashDotDot | Line::MediumDashDotDot => &[3, 1, 1, 1, 1, 1],
+            _ => &[],
+        }
+    }
+    /// How heavy a line looks, for picking which of two shared edges shows.
+    pub fn weight(self) -> u32 {
+        match self {
+            Line::Hair => 0,
+            Line::Dotted | Line::Dashed | Line::DashDot | Line::DashDotDot => 1,
+            Line::Thin => 2,
+            Line::MediumDashed | Line::MediumDashDot | Line::MediumDashDotDot => 3,
+            Line::SlantDashDot | Line::Medium => 4,
+            Line::Double => 5,
+            Line::Thick => 6,
+        }
+    }
+}
+/// One edge of a cell's border.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Edge {
+    pub line: Line,
+    pub color: [u8; 3],
+}
+impl Edge {
+    pub const fn new(line: Line, color: [u8; 3]) -> Self {
+        Self { line, color }
+    }
+}
+/// A cell's four border edges. Each cell keeps its own; where two cells share an edge,
+/// the heavier of the two is drawn, as Excel does.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Borders {
+    pub left: Option<Edge>,
+    pub right: Option<Edge>,
+    pub top: Option<Edge>,
+    pub bottom: Option<Edge>,
+}
+impl Borders {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+}
+/// How a merge divides a range: into one cell, one per row (Excel's Merge Across,
+/// Sheets' Merge horizontally) or one per column (Sheets' Merge vertically).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MergeMode {
+    All,
+    Across,
+    Down,
+}
+impl MergeMode {
+    pub fn areas(self, r: Range) -> Vec<Range> {
+        match self {
+            Self::All => vec![r],
+            Self::Across => (r.start.row..=r.end.row)
+                .map(|row| Range::new(Cell::new(row, r.start.col), Cell::new(row, r.end.col)))
+                .collect(),
+            Self::Down => (r.start.col..=r.end.col)
+                .map(|col| Range::new(Cell::new(r.start.row, col), Cell::new(r.end.row, col)))
+                .collect(),
+        }
+    }
+}
+/// Excel's border presets (Home › Borders), which Calc, Numbers and Sheets also offer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BorderPreset {
+    Bottom,
+    Top,
+    Left,
+    Right,
+    None,
+    All,
+    Outside,
+    ThickOutside,
+    Inside,
+    InsideHorizontal,
+    InsideVertical,
+    DoubleBottom,
+    ThickBottom,
+    TopBottom,
+    TopThickBottom,
+    TopDoubleBottom,
+}
+impl BorderPreset {
+    pub fn parse(s: &str) -> Option<Self> {
+        Some(match s {
+            "bottom" => Self::Bottom,
+            "top" => Self::Top,
+            "left" => Self::Left,
+            "right" => Self::Right,
+            "none" => Self::None,
+            "all" => Self::All,
+            "outside" => Self::Outside,
+            "thickoutside" => Self::ThickOutside,
+            "inside" => Self::Inside,
+            "insideh" => Self::InsideHorizontal,
+            "insidev" => Self::InsideVertical,
+            "doublebottom" => Self::DoubleBottom,
+            "thickbottom" => Self::ThickBottom,
+            "topbottom" => Self::TopBottom,
+            "topthickbottom" => Self::TopThickBottom,
+            "topdoublebottom" => Self::TopDoubleBottom,
+            _ => return None,
+        })
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Style {
@@ -34,6 +216,8 @@ pub struct Style {
     pub fill: Option<[u8; 3]>,
     #[serde(default)]
     pub color: Option<[u8; 3]>,
+    #[serde(default, skip_serializing_if = "Borders::is_empty")]
+    pub borders: Borders,
 }
 impl Default for Style {
     fn default() -> Self {
@@ -45,6 +229,7 @@ impl Default for Style {
             align: Align::General,
             fill: None,
             color: None,
+            borders: Borders::default(),
         }
     }
 }
@@ -107,9 +292,28 @@ pub struct Chart {
     pub title: String,
     /// The cell its top-left corner sits over.
     pub anchor: Cell,
-    /// Size in columns and rows.
+    /// Size in columns and rows: its bottom-right corner is over the cell `cols` columns
+    /// and `rows` rows from the anchor.
     pub cols: u32,
     pub rows: u32,
+    /// Pixel offsets (at 100%) into the corner cells, as a drawing's two-cell anchor
+    /// keeps them: [from column, from row, to column, to row].
+    #[serde(default)]
+    pub offsets: [u32; 4],
+}
+impl Chart {
+    /// The two corners: (cell, x offset, y offset) of the top-left and bottom-right.
+    pub fn corners(&self) -> ((Cell, u32, u32), (Cell, u32, u32)) {
+        let o = self.offsets;
+        (
+            (self.anchor, o[0], o[1]),
+            (
+                Cell::new(self.anchor.row + self.rows, self.anchor.col + self.cols),
+                o[2],
+                o[3],
+            ),
+        )
+    }
 }
 /// One series of a chart: its name and a value per category (`None` for a gap).
 #[derive(Clone, Debug, PartialEq)]
@@ -161,9 +365,19 @@ pub struct Sheet {
     pub filter: Option<AutoFilter>,
     #[serde(default)]
     pub charts: Vec<Chart>,
+    /// Merged areas, each shown as one cell holding its top-left cell's content.
+    #[serde(default)]
+    pub merges: Vec<Range>,
+    /// Conditional formatting rules, highest priority first.
+    #[serde(default)]
+    pub conditional: Vec<crate::conditional::CondFormat>,
+    #[serde(default)]
+    pub pivots: Vec<crate::pivot::Pivot>,
 }
 /// Default column width in pixels (Excel's 8.43 characters of Calibri 11).
 pub const DEFAULT_COL_WIDTH: u32 = 64;
+/// Default row height in pixels at 100% (Excel's 15 points).
+pub const ROW_HEIGHT: u32 = 20;
 impl Sheet {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
@@ -173,6 +387,35 @@ impl Sheet {
             freeze: (0, 0),
             filter: None,
             charts: Vec::new(),
+            merges: Vec::new(),
+            conditional: Vec::new(),
+            pivots: Vec::new(),
+        }
+    }
+    /// The merged area covering `c`, if it is in one.
+    pub fn merge_at(&self, c: Cell) -> Option<Range> {
+        self.merges.iter().copied().find(|m| m.contains(c))
+    }
+    /// `r` grown until it cuts through no merged area, as Excel extends a selection.
+    pub fn expand_merges(&self, r: Range) -> Range {
+        let mut out = r;
+        loop {
+            let mut grown = out;
+            for m in &self.merges {
+                if m.intersect(&grown).is_some() {
+                    grown = Range::new(
+                        Cell::new(
+                            grown.start.row.min(m.start.row),
+                            grown.start.col.min(m.start.col),
+                        ),
+                        Cell::new(grown.end.row.max(m.end.row), grown.end.col.max(m.end.col)),
+                    );
+                }
+            }
+            if grown == out {
+                return out;
+            }
+            out = grown;
         }
     }
     pub fn col_width(&self, col: u32) -> u32 {
@@ -710,7 +953,7 @@ impl Workbook {
             names: self.names.clone(),
         }
     }
-    fn book_edit<T>(
+    pub(crate) fn book_edit<T>(
         &mut self,
         f: impl FnOnce(&mut Self) -> Result<T, String>,
     ) -> Result<T, String> {
@@ -1357,6 +1600,44 @@ impl Workbook {
                     }
                 }
             }
+            s.merges = s
+                .merges
+                .iter()
+                .filter_map(|m| shrink_range(*m, rows, &adjust, removed))
+                .filter(|m| !m.is_single())
+                .collect();
+            for cf in &mut s.conditional {
+                cf.ranges = cf
+                    .ranges
+                    .iter()
+                    .filter_map(|r| shrink_range(*r, rows, &adjust, removed))
+                    .collect();
+            }
+            s.conditional.retain(|cf| !cf.ranges.is_empty());
+            for p in &mut s.pivots {
+                let k = if rows { p.at.row } else { p.at.col };
+                if let Some(n) = adjust(k) {
+                    if rows {
+                        p.at.row = n;
+                    } else {
+                        p.at.col = n;
+                    }
+                }
+                p.extent = p
+                    .extent
+                    .and_then(|e| shrink_range(e, rows, &adjust, removed));
+            }
+            let changed_name = s.name.clone();
+            for other in wb.sheets.iter_mut() {
+                for p in &mut other.pivots {
+                    if p.source_sheet.eq_ignore_ascii_case(&changed_name) {
+                        if let Some(r) = shrink_range(p.source, rows, &adjust, removed) {
+                            p.source = r;
+                        }
+                    }
+                }
+            }
+            let s = &mut wb.sheets[sheet];
             if let Some(f) = &mut s.filter {
                 match shrink_range(f.range, rows, &adjust, removed) {
                     Some(r) => f.range = r,
@@ -1395,6 +1676,13 @@ impl Workbook {
         let first = range.start.row + u32::from(header);
         if first > range.end.row {
             return Ok(());
+        }
+        if self.sheets[sheet]
+            .merges
+            .iter()
+            .any(|m| m.intersect(&range).is_some())
+        {
+            return Err("To do this, all the merged cells need to be the same size.".into());
         }
         let body = Range::new(Cell::new(first, range.start.col), range.end);
         let cells: Vec<Cell> = body.cells().collect();
@@ -1561,6 +1849,13 @@ impl Workbook {
                     *s = name.to_owned();
                 }
             }
+            for s in wb.sheets.iter_mut() {
+                for p in &mut s.pivots {
+                    if p.source_sheet.eq_ignore_ascii_case(&old) {
+                        p.source_sheet = name.to_owned();
+                    }
+                }
+            }
             Ok(())
         })
     }
@@ -1644,6 +1939,7 @@ impl Workbook {
                 anchor: Cell::new(range.start.row, right.min(MAX_COLS - 8)),
                 cols: 7,
                 rows: 15,
+                offsets: [0; 4],
             });
             Ok(s.charts.len() - 1)
         })
@@ -1765,6 +2061,401 @@ impl Workbook {
                 .collect();
             ChartData { categories, series }
         }
+    }
+
+    /// Place a chart by its two corners: (cell, x, y pixel offset at 100%) each, as a
+    /// drag or a resize leaves it.
+    pub fn place_chart(
+        &mut self,
+        sheet: usize,
+        index: usize,
+        from: (Cell, u32, u32),
+        to: (Cell, u32, u32),
+    ) -> Result<(), String> {
+        self.check_sheet(sheet)?;
+        if index >= self.sheets[sheet].charts.len() {
+            return Err("no such chart".into());
+        }
+        if to.0.row < from.0.row || to.0.col < from.0.col {
+            return Err("a chart's corners are out of order".into());
+        }
+        if to.0.row >= MAX_ROWS || to.0.col >= MAX_COLS {
+            return Err("the chart would leave the sheet".into());
+        }
+        self.book_edit(|wb| {
+            let c = &mut wb.sheets[sheet].charts[index];
+            c.anchor = from.0;
+            c.cols = to.0.col - from.0.col;
+            c.rows = to.0.row - from.0.row;
+            c.offsets = [from.1, from.2, to.1, to.2];
+            Ok(())
+        })
+    }
+
+    // ----- merged cells -----
+
+    /// Merge `range` into one cell (or, by `mode`, each of its rows or each of its
+    /// columns into one), as Excel does: the upper-left value stays and the rest are
+    /// cleared. Merged areas it touches are absorbed. `center` is Merge & Center.
+    pub fn merge(
+        &mut self,
+        sheet: usize,
+        range: Range,
+        mode: MergeMode,
+        center: bool,
+    ) -> Result<(), String> {
+        self.check_sheet(sheet)?;
+        let range = self.sheets[sheet].expand_merges(range);
+        if u64::from(range.rows()) * u64::from(range.cols()) > 1_000_000 {
+            return Err("that range is too large to merge".into());
+        }
+        let areas: Vec<Range> = mode
+            .areas(range)
+            .into_iter()
+            .filter(|r| !r.is_single())
+            .collect();
+        if areas.is_empty() && !center {
+            return Err("select more than one cell to merge".into());
+        }
+        self.book_edit(|wb| {
+            let s = &mut wb.sheets[sheet];
+            s.merges.retain(|m| m.intersect(&range).is_none());
+            for a in &areas {
+                for c in a.cells() {
+                    if c != a.start {
+                        s.cells.remove(&c);
+                    }
+                }
+                s.merges.push(*a);
+            }
+            s.merges.sort();
+            if center {
+                for a in areas
+                    .iter()
+                    .copied()
+                    .chain((areas.is_empty()).then_some(range))
+                {
+                    let mut style = s
+                        .cells
+                        .get(&a.start)
+                        .map(|d| d.style.clone())
+                        .unwrap_or_default();
+                    style.align = Align::Center;
+                    let input = s
+                        .cells
+                        .get(&a.start)
+                        .map(|d| d.input.clone())
+                        .unwrap_or(Input::Value(Value::Empty));
+                    let value = s
+                        .cells
+                        .get(&a.start)
+                        .map(|d| d.value.clone())
+                        .unwrap_or_default();
+                    s.cells.insert(
+                        a.start,
+                        CellData {
+                            input,
+                            value,
+                            style,
+                        },
+                    );
+                }
+            }
+            Ok(())
+        })
+    }
+    /// Whether merging `range` would throw away values other than the upper-left ones
+    /// (Excel warns before it does).
+    pub fn merge_loses_data(&self, sheet: usize, range: Range, mode: MergeMode) -> bool {
+        let Some(s) = self.sheets.get(sheet) else {
+            return false;
+        };
+        let range = s.expand_merges(range);
+        let keep: Vec<Cell> = mode.areas(range).iter().map(|a| a.start).collect();
+        s.cells.iter().any(|(c, d)| {
+            range.contains(*c)
+                && !matches!(d.input, Input::Value(Value::Empty))
+                && !keep.contains(c)
+        })
+    }
+    /// Unmerge every merged area that `range` touches.
+    pub fn unmerge(&mut self, sheet: usize, range: Range) -> Result<(), String> {
+        self.check_sheet(sheet)?;
+        if !self.sheets[sheet]
+            .merges
+            .iter()
+            .any(|m| m.intersect(&range).is_some())
+        {
+            return Err("there are no merged cells in the selection".into());
+        }
+        self.book_edit(|wb| {
+            wb.sheets[sheet]
+                .merges
+                .retain(|m| m.intersect(&range).is_none());
+            Ok(())
+        })
+    }
+
+    // ----- borders -----
+
+    /// Apply one of the border presets to `range` with the given pen (line style and
+    /// colour; the thick and double presets bring their own line).
+    pub fn apply_border(
+        &mut self,
+        sheet: usize,
+        range: Range,
+        preset: BorderPreset,
+        pen: Edge,
+    ) -> Result<(), String> {
+        let with = |line: Line| Edge::new(line, pen.color);
+        let (r0, r1, c0, c1) = (
+            range.start.row,
+            range.end.row,
+            range.start.col,
+            range.end.col,
+        );
+        self.check_sheet(sheet)?;
+        if u64::from(range.rows()) * u64::from(range.cols()) > 1_000_000 {
+            return Err("that range is too large to format cell by cell".into());
+        }
+        let cells: Vec<Cell> = range.cells().collect();
+        self.cells_edit(sheet, cells.clone(), |wb| {
+            for c in &cells {
+                let mut style = wb.style(sheet, *c);
+                let b = &mut style.borders;
+                let (top, bottom, left, right) =
+                    (c.row == r0, c.row == r1, c.col == c0, c.col == c1);
+                match preset {
+                    BorderPreset::None => *b = Borders::default(),
+                    BorderPreset::All => {
+                        *b = Borders {
+                            left: Some(pen),
+                            right: Some(pen),
+                            top: Some(pen),
+                            bottom: Some(pen),
+                        }
+                    }
+                    BorderPreset::Outside | BorderPreset::ThickOutside => {
+                        let e = if preset == BorderPreset::ThickOutside {
+                            with(Line::Thick)
+                        } else {
+                            pen
+                        };
+                        if top {
+                            b.top = Some(e);
+                        }
+                        if bottom {
+                            b.bottom = Some(e);
+                        }
+                        if left {
+                            b.left = Some(e);
+                        }
+                        if right {
+                            b.right = Some(e);
+                        }
+                    }
+                    BorderPreset::Inside
+                    | BorderPreset::InsideHorizontal
+                    | BorderPreset::InsideVertical => {
+                        let h = preset != BorderPreset::InsideVertical;
+                        let v = preset != BorderPreset::InsideHorizontal;
+                        if h && !top {
+                            b.top = Some(pen);
+                        }
+                        if h && !bottom {
+                            b.bottom = Some(pen);
+                        }
+                        if v && !left {
+                            b.left = Some(pen);
+                        }
+                        if v && !right {
+                            b.right = Some(pen);
+                        }
+                    }
+                    BorderPreset::Top => {
+                        if top {
+                            b.top = Some(pen);
+                        }
+                    }
+                    BorderPreset::Bottom => {
+                        if bottom {
+                            b.bottom = Some(pen);
+                        }
+                    }
+                    BorderPreset::Left => {
+                        if left {
+                            b.left = Some(pen);
+                        }
+                    }
+                    BorderPreset::Right => {
+                        if right {
+                            b.right = Some(pen);
+                        }
+                    }
+                    BorderPreset::DoubleBottom | BorderPreset::ThickBottom => {
+                        if bottom {
+                            b.bottom = Some(with(if preset == BorderPreset::DoubleBottom {
+                                Line::Double
+                            } else {
+                                Line::Thick
+                            }));
+                        }
+                    }
+                    BorderPreset::TopBottom
+                    | BorderPreset::TopThickBottom
+                    | BorderPreset::TopDoubleBottom => {
+                        if top {
+                            b.top = Some(pen);
+                        }
+                        if bottom {
+                            b.bottom = Some(match preset {
+                                BorderPreset::TopThickBottom => with(Line::Thick),
+                                BorderPreset::TopDoubleBottom => with(Line::Double),
+                                _ => pen,
+                            });
+                        }
+                    }
+                }
+                let input = wb
+                    .cell(sheet, *c)
+                    .map(|d| d.input.clone())
+                    .unwrap_or(Input::Value(Value::Empty));
+                let value = wb.value(sheet, *c);
+                let data = CellData {
+                    input,
+                    value,
+                    style,
+                };
+                if data.is_blank() {
+                    wb.sheets[sheet].cells.remove(c);
+                } else {
+                    wb.sheets[sheet].cells.insert(*c, data);
+                }
+            }
+            Ok(())
+        })
+    }
+    /// The edge drawn between `c` and its neighbour below (`vertical` false) or to its
+    /// right (`vertical` true): the heavier of the two cells' own edges there.
+    pub fn shared_edge(&self, sheet: usize, c: Cell, vertical: bool) -> Option<Edge> {
+        let s = self.sheets.get(sheet)?;
+        let mine = s.cells.get(&c).and_then(|d| {
+            if vertical {
+                d.style.borders.right
+            } else {
+                d.style.borders.bottom
+            }
+        });
+        let next = if vertical {
+            Cell::new(c.row, c.col + 1)
+        } else {
+            Cell::new(c.row + 1, c.col)
+        };
+        let theirs = s.cells.get(&next).and_then(|d| {
+            if vertical {
+                d.style.borders.left
+            } else {
+                d.style.borders.top
+            }
+        });
+        match (mine, theirs) {
+            (Some(a), Some(b)) => Some(if b.line.weight() > a.line.weight() {
+                b
+            } else {
+                a
+            }),
+            (a, b) => a.or(b),
+        }
+    }
+
+    // ----- text to columns -----
+
+    /// Split the text of a one-column range at `delimiter` into the columns to its
+    /// right, typing each piece in as an entry (so numbers become numbers), as Excel's
+    /// Text to Columns does with a delimiter. `merge_runs` treats consecutive
+    /// delimiters as one.
+    pub fn text_to_columns(
+        &mut self,
+        sheet: usize,
+        range: Range,
+        delimiter: char,
+        merge_runs: bool,
+    ) -> Result<(), String> {
+        self.check_sheet(sheet)?;
+        if range.cols() != 1 {
+            return Err("Text to Columns can convert only one column at a time.".into());
+        }
+        let used_end = self
+            .used_range(sheet)
+            .map_or(range.start.row, |u| u.end.row);
+        let last = range.end.row.min(used_end);
+        let mut pieces: Vec<(u32, Vec<String>)> = Vec::new();
+        let mut widest = 1;
+        for row in range.start.row..=last {
+            let c = Cell::new(row, range.start.col);
+            if matches!(
+                self.cell(sheet, c).map(|d| &d.input),
+                Some(Input::Formula(_)) | None
+            ) {
+                continue;
+            }
+            let text = self.display(sheet, c);
+            let mut parts: Vec<String> = text.split(delimiter).map(str::to_owned).collect();
+            if merge_runs {
+                parts.retain(|p| !p.is_empty());
+            }
+            widest = widest.max(parts.len());
+            pieces.push((row, parts));
+        }
+        if range.start.col as usize + widest > MAX_COLS as usize {
+            return Err("the split data would run past the last column".into());
+        }
+        let target = Range::new(
+            range.start,
+            Cell::new(last, range.start.col + widest as u32 - 1),
+        );
+        let cells: Vec<Cell> = target.cells().collect();
+        self.cells_edit(sheet, cells, |wb| {
+            let mut touched = Vec::new();
+            for (row, parts) in &pieces {
+                for (k, p) in parts.iter().enumerate() {
+                    let c = Cell::new(*row, range.start.col + k as u32);
+                    let (input, fmt) = Self::parse_entry(p)
+                        .unwrap_or((Input::Value(Value::Text(p.clone())), None));
+                    let input = match input {
+                        Input::Formula(_) => Input::Value(Value::Text(p.clone())),
+                        other => other,
+                    };
+                    let mut style = wb.style(sheet, c);
+                    if let Some(f) = fmt {
+                        if style.format == "General" {
+                            style.format = f.into();
+                        }
+                    }
+                    wb.put(sheet, c, input, Some(style));
+                    touched.push((sheet, c));
+                }
+            }
+            wb.recalc(&touched);
+            Ok(())
+        })
+    }
+    /// A new sheet at position `at` (before the sheet now there).
+    pub fn insert_sheet(&mut self, at: usize, name: &str) -> Result<usize, String> {
+        validate_sheet_name(name)?;
+        if self.sheet_index(name).is_some() {
+            return Err(format!("a sheet named {name} already exists"));
+        }
+        let at = at.min(self.sheets.len());
+        self.book_edit(|wb| {
+            wb.sheets.insert(at, Sheet::new(name));
+            Ok(at)
+        })
+    }
+    /// Recalculate every formula now (Excel's Calculate Now): volatile functions such
+    /// as RAND and NOW draw again.
+    pub fn calculate_now(&mut self) {
+        self.recalc_all();
     }
 
     // ----- statistics -----

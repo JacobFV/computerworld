@@ -37,6 +37,8 @@ fn menus(k: &Kicad) -> Vec<(&'static str, Vec<MenuItem>)> {
             vec![
                 MenuItem::new("Schematic Editor", "Ctrl+E", need("kicad:pm:launch:sch")),
                 MenuItem::new("PCB Editor", "Ctrl+P", need("kicad:pm:launch:pcb")),
+                MenuItem::new("Symbol Editor", "", need("kicad:pm:launch:symed")),
+                MenuItem::new("Footprint Editor", "", need("kicad:pm:launch:fped")),
                 MenuItem::new("Open Project Directory", "", need("kicad:pm:folder")).sep(),
             ],
         ),
@@ -112,7 +114,7 @@ impl Kicad {
                 }])
             }
             ("launch", frame) => match frame {
-                "sch" | "pcb" => self.launch_frame(window, frame),
+                "sch" | "pcb" | "symed" | "fped" => self.launch_frame(window, frame),
                 other => Err(format!("unknown editor {other}")),
             },
             ("file", i) => {
@@ -402,6 +404,18 @@ impl Kicad {
                 "PCB Editor",
                 "Edit the project PCB design",
             ),
+            (
+                "symed",
+                icons::symbol_editor,
+                "Symbol Editor",
+                "Edit the project's schematic symbol libraries",
+            ),
+            (
+                "fped",
+                icons::footprint_editor,
+                "Footprint Editor",
+                "Edit the project's PCB footprint libraries",
+            ),
         ] {
             let r = Rect::new(lx + 20, y, lw.saturating_sub(40).min(460), 64);
             match need(&format!("kicad:pm:launch:{frame}")) {
@@ -656,6 +670,8 @@ impl Kicad {
             ("kicad:pm:open", "Open Project"),
             ("kicad:pm:launch:sch", "Schematic Editor"),
             ("kicad:pm:launch:pcb", "PCB Editor"),
+            ("kicad:pm:launch:symed", "Symbol Editor"),
+            ("kicad:pm:launch:fped", "Footprint Editor"),
         ] {
             page.elements.push(E::Button {
                 id: id.into(),

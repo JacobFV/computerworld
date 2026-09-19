@@ -7,11 +7,15 @@
 //! plus a geometric hint, so it survives the renumbering a parameter change causes
 //! (FreeCAD 1.0's answer to the topological naming problem is its element map; this is
 //! the same idea at this kernel's scale).
-use crate::csg::{self, Op};
+use crate::brep::blend::{self, Dress};
+use crate::brep::boolean::{boolean, Op};
+use crate::brep::build::{self, Region2, Seg2, Wire2};
+use crate::brep::mass::{self, MassProps};
+use crate::brep::{tess, Solid};
 use crate::math::{self, Frame, Xform, TAU, V2, V3};
 use crate::mesh::{Mesh, Surface};
 use crate::sketch::{profile, Geom, Sketch, SolveReport};
-use crate::solid::{self, Dress, EdgeKind, Topology};
+use crate::solid::{self, EdgeKind, Topology};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -239,6 +243,38 @@ impl PlaneRef {
     }
 }
 
+/// FreeCAD's `ChamferType`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChamferType {
+    #[default]
+    #[serde(rename = "Equal distance")]
+    Equal,
+    #[serde(rename = "Two distances")]
+    TwoDistances,
+    #[serde(rename = "Distance and Angle")]
+    DistanceAngle,
+}
+impl ChamferType {
+    pub fn label(self) -> &'static str {
+        match self {
+            ChamferType::Equal => "Equal distance",
+            ChamferType::TwoDistances => "Two distances",
+            ChamferType::DistanceAngle => "Distance and Angle",
+        }
+    }
+    pub const ALL: [ChamferType; 3] = [
+        ChamferType::Equal,
+        ChamferType::TwoDistances,
+        ChamferType::DistanceAngle,
+    ];
+}
+fn one() -> f64 {
+    1.0
+}
+fn forty_five() -> f64 {
+    45.0
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "Type")]
 pub enum HoleCut {
@@ -329,6 +365,9 @@ pub enum Feature {
         edges: Vec<SubRef>,
         #[serde(rename = "Radius")]
         radius: f64,
+        /// Round every edge of the base shape.
+        #[serde(rename = "UseAllEdges", default)]
+        all_edges: bool,
     },
     #[serde(rename = "PartDesign::Chamfer")]
     Chamfer {
@@ -336,6 +375,19 @@ pub enum Feature {
         edges: Vec<SubRef>,
         #[serde(rename = "Size")]
         size: f64,
+        #[serde(rename = "ChamferType", default)]
+        kind: ChamferType,
+        /// Second distance (Two distances).
+        #[serde(rename = "Size2", default = "one")]
+        size2: f64,
+        /// Degrees (Distance and angle).
+        #[serde(rename = "Angle", default = "forty_five")]
+        angle: f64,
+        /// Swap which face the first size is measured on.
+        #[serde(rename = "FlipDirection", default)]
+        flip: bool,
+        #[serde(rename = "UseAllEdges", default)]
+        all_edges: bool,
     },
     #[serde(rename = "PartDesign::Hole")]
     Hole {
@@ -393,6 +445,12 @@ pub enum Feature {
         #[serde(rename = "Mesh")]
         mesh: Arc<Mesh>,
     },
+    /// An imported exact solid, outside any body (FreeCAD's `Part::Feature`).
+    #[serde(rename = "Part::Feature")]
+    Part {
+        #[serde(rename = "Shape")]
+        solid: Arc<Solid>,
+    },
 }
 impl Feature {
     pub fn type_id(&self) -> &'static str {
@@ -410,6 +468,7 @@ impl Feature {
             Feature::LinearPattern { .. } => "PartDesign::LinearPattern",
             Feature::PolarPattern { .. } => "PartDesign::PolarPattern",
             Feature::Mesh { .. } => "Mesh::Feature",
+            Feature::Part { .. } => "Part::Feature",
         }
     }
     /// The base name FreeCAD gives a new object of this type.
@@ -428,6 +487,7 @@ impl Feature {
             Feature::LinearPattern { .. } => "LinearPattern",
             Feature::PolarPattern { .. } => "PolarPattern",
             Feature::Mesh { .. } => "Mesh",
+            Feature::Part { .. } => "Part",
         }
     }
     /// The sketch a sketch-based feature consumes.
@@ -453,7 +513,10 @@ impl Feature {
     pub fn is_solid_feature(&self) -> bool {
         !matches!(
             self,
-            Feature::Body { .. } | Feature::Sketch { .. } | Feature::Mesh { .. }
+            Feature::Body { .. }
+                | Feature::Sketch { .. }
+                | Feature::Mesh { .. }
+                | Feature::Part { .. }
         )
     }
 }
@@ -602,16 +665,49 @@ pub enum Status {
     Inactive,
 }
 
-/// A computed shape: the mesh and the faces, edges and vertices recovered from it.
+/// A computed shape: the exact solid (for Part Design results; an imported mesh has
+/// none), its display mesh, and the faces, edges and vertices the view shows and picks —
+/// the B-rep's own, in its order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shape {
+    pub solid: Option<Arc<Solid>>,
     pub mesh: Mesh,
     pub topo: Topology,
+    /// Volume, area and centre of mass, exact for solids.
+    pub props: Option<MassProps>,
 }
 impl Shape {
+    /// A shape that is only a mesh (an imported STL or OBJ).
     pub fn new(mesh: Mesh) -> Arc<Shape> {
         let topo = solid::topology(&mesh);
-        Arc::new(Shape { mesh, topo })
+        Arc::new(Shape {
+            solid: None,
+            mesh,
+            topo,
+            props: None,
+        })
+    }
+    pub fn from_solid(s: Solid) -> Arc<Shape> {
+        let (mesh, topo) = tess::tessellate(&s);
+        let props = Some(mass::mass_props(&s));
+        Arc::new(Shape {
+            solid: Some(Arc::new(s)),
+            mesh,
+            topo,
+            props,
+        })
+    }
+    pub fn volume(&self) -> f64 {
+        self.props.map_or_else(|| self.mesh.volume(), |p| p.volume)
+    }
+    pub fn area(&self) -> f64 {
+        self.props.map_or_else(|| self.mesh.area(), |p| p.area)
+    }
+    pub fn center_of_mass(&self) -> Option<V3> {
+        match self.props {
+            Some(p) => Some(p.center),
+            None => self.mesh.center_of_mass(),
+        }
     }
 }
 
@@ -622,7 +718,7 @@ pub struct Model {
     /// The body's shape after each solid feature, and each mesh object's mesh.
     pub shapes: BTreeMap<String, Arc<Shape>>,
     /// Each additive/subtractive feature's tool and whether it adds.
-    pub tools: BTreeMap<String, (Arc<Mesh>, bool)>,
+    pub tools: BTreeMap<String, (Arc<Solid>, bool)>,
     /// Where each sketch sits, and the solver's word on it.
     pub frames: BTreeMap<String, Frame>,
     pub reports: BTreeMap<String, SolveReport>,
@@ -639,11 +735,14 @@ impl Model {
 }
 
 /// Length that reaches through anything in the model.
-fn through_all(base: &Mesh, frame: &Frame) -> f64 {
+fn through_all(base: &Solid, frame: &Frame) -> f64 {
     let b = base.bounds();
-    let reach = b
-        .map(|b| b.diagonal() + b.center().dist(frame.origin) + b.min.len().max(b.max.len()))
-        .unwrap_or(100.0);
+    let reach = if b.is_empty() {
+        100.0
+    } else {
+        let c = b.min.lerp(b.max, 0.5);
+        b.diagonal() + c.dist(frame.origin) + b.min.len().max(b.max.len())
+    };
     reach * 2.0 + 10.0
 }
 
@@ -715,11 +814,20 @@ pub fn recompute(doc: &mut Document) -> Model {
     let bodies: Vec<String> = doc.bodies().into_iter().map(str::to_owned).collect();
     // Sketches outside bodies, and meshes.
     for o in &doc.objects {
-        if let Feature::Mesh { mesh } = &o.feature {
-            model
-                .shapes
-                .insert(o.name.clone(), Shape::new((**mesh).clone()));
-            model.status.insert(o.name.clone(), Status::Ok);
+        match &o.feature {
+            Feature::Mesh { mesh } => {
+                model
+                    .shapes
+                    .insert(o.name.clone(), Shape::new((**mesh).clone()));
+                model.status.insert(o.name.clone(), Status::Ok);
+            }
+            Feature::Part { solid } => {
+                model
+                    .shapes
+                    .insert(o.name.clone(), Shape::from_solid((**solid).clone()));
+                model.status.insert(o.name.clone(), Status::Ok);
+            }
+            _ => {}
         }
     }
     for body in bodies {
@@ -801,7 +909,11 @@ fn feature_step(
     base: Option<Arc<Shape>>,
 ) -> Result<Option<Arc<Shape>>, String> {
     let object = doc.get(name).ok_or("missing object")?.clone();
-    let base_mesh = || base.as_ref().map(|b| b.mesh.clone()).unwrap_or_default();
+    let base_solid = || -> Solid {
+        base.as_ref()
+            .and_then(|b| b.solid.as_ref().map(|s| (**s).clone()))
+            .unwrap_or_default()
+    };
     let profile_of = |model: &Model, profile: &str| -> Result<(Sketch, Frame), String> {
         let o = doc
             .get(profile)
@@ -815,19 +927,20 @@ fn feature_step(
             .ok_or_else(|| format!("{profile} could not be placed"))?;
         Ok((sketch.clone(), frame))
     };
-    let finish = |mesh: Mesh, what: &str| -> Result<Option<Arc<Shape>>, String> {
-        if mesh.is_empty() || mesh.volume() <= 1e-9 {
+    let finish = |s: Result<Solid, String>, what: &str| -> Result<Option<Arc<Shape>>, String> {
+        let s = s.map_err(|e| format!("{what}: {e}"))?;
+        if s.is_empty() || mass::mass_props(&s).volume <= 1e-9 {
             return Err(format!("{what}: Resulting shape is empty"));
         }
-        if solids(&mesh) > 1 {
+        if s.lumps().len() > 1 {
             return Err(format!(
                 "{what}: Result has multiple solids: that is not currently supported."
             ));
         }
-        Ok(Some(Shape::new(mesh)))
+        Ok(Some(Shape::from_solid(s)))
     };
     match &object.feature {
-        Feature::Body { .. } | Feature::Mesh { .. } => Ok(None),
+        Feature::Body { .. } | Feature::Mesh { .. } | Feature::Part { .. } => Ok(None),
         Feature::Sketch {
             support,
             offset,
@@ -887,15 +1000,15 @@ fn feature_step(
             let pocket = matches!(object.feature, Feature::Pocket { .. });
             let what = if pocket { "Pocket" } else { "Pad" };
             let (sketch, frame) = profile_of(model, profile)?;
-            let regions = profile::regions(&sketch)?;
-            let base_m = base_mesh();
-            if pocket && base_m.is_empty() {
+            let regions = profile::exact_regions(&sketch)?;
+            let base_s = base_solid();
+            if pocket && base_s.is_empty() {
                 return Err(
                     "Pocket: Cannot do a pocket without a base shape; create a Pad first".into(),
                 );
             }
             let l = match extent {
-                Extent::ThroughAll => through_all(&base_m, &frame),
+                Extent::ThroughAll => through_all(&base_s, &frame),
                 _ => *length,
             };
             if (l.is_nan() || l <= 0.0) || !l.is_finite() {
@@ -910,12 +1023,12 @@ fn feature_step(
             if pocket != *reversed {
                 (z0, z1) = (-z1, -z0);
             }
-            let tool = solid::extrude(&sketch, &regions, &frame, z0, z1);
+            let tool = build::extrude(&regions, &frame, z0, z1);
             model
                 .tools
                 .insert(name.into(), (Arc::new(tool.clone()), !pocket));
-            let out = csg::boolean(
-                &base_m,
+            let out = boolean(
+                &base_s,
                 &tool,
                 if pocket { Op::Difference } else { Op::Union },
             );
@@ -938,7 +1051,7 @@ fn feature_step(
             let groove = matches!(object.feature, Feature::Groove { .. });
             let what = if groove { "Groove" } else { "Revolution" };
             let (sketch, frame) = profile_of(model, profile)?;
-            let regions = profile::regions(&sketch)?;
+            let regions = profile::exact_regions(&sketch)?;
             let (o, d) = match axis {
                 AxisRef::Edge(r) => edge_axis(r, base.as_ref())?,
                 other => sketch_axis(&frame, &sketch, other)?,
@@ -953,64 +1066,121 @@ fn feature_step(
             } else {
                 (start, sweep)
             };
-            let tool = solid::revolve(&sketch, &regions, &frame, o, d, start, sweep)
+            let tool = build::revolve(&regions, &frame, o, d, start, sweep)
                 .map_err(|e| format!("{what}: {e}"))?;
             model
                 .tools
                 .insert(name.into(), (Arc::new(tool.clone()), !groove));
-            let base_m = base_mesh();
-            if groove && base_m.is_empty() {
+            let base_s = base_solid();
+            if groove && base_s.is_empty() {
                 return Err("Groove: Cannot do a groove without a base shape".into());
             }
-            let out = csg::boolean(
-                &base_m,
+            let out = boolean(
+                &base_s,
                 &tool,
                 if groove { Op::Difference } else { Op::Union },
             );
             finish(out, what)
         }
-        Feature::Fillet { edges, radius }
-        | Feature::Chamfer {
-            edges,
-            size: radius,
-        } => {
+        Feature::Fillet { .. } | Feature::Chamfer { .. } => {
             let chamfer = matches!(object.feature, Feature::Chamfer { .. });
             let what = if chamfer { "Chamfer" } else { "Fillet" };
             let shape = base.clone().ok_or(format!("{what}: No base shape"))?;
-            if edges.is_empty() {
-                return Err(format!("{what}: No edges selected"));
+            let solid = shape
+                .solid
+                .clone()
+                .ok_or(format!("{what}: the base is not a solid"))?;
+            let (edges, all_edges) = match &object.feature {
+                Feature::Fillet {
+                    edges, all_edges, ..
+                }
+                | Feature::Chamfer {
+                    edges, all_edges, ..
+                } => (edges.clone(), *all_edges),
+                _ => unreachable!(),
+            };
+            let (idx, fresh): (Vec<usize>, Vec<SubRef>) = if all_edges {
+                (0..solid.edges.len())
+                    .filter(|e| !solid.edges[*e].degenerate && !is_seam(&solid, *e))
+                    .map(|i| (i, SubRef::edge(&shape.topo, &shape.mesh, i)))
+                    .unzip()
+            } else {
+                if edges.is_empty() {
+                    return Err(if chamfer {
+                        "Chamfer: No edges specified".into()
+                    } else {
+                        "Fillet: No edges selected".into()
+                    });
+                }
+                let mut idx = Vec::new();
+                let mut fresh = Vec::new();
+                for r in &edges {
+                    let i = resolve(r, &shape.mesh, &shape.topo)
+                        .ok_or_else(|| format!("{what}: {} was not found", r.name))?;
+                    idx.push(i);
+                    fresh.push(SubRef::edge(&shape.topo, &shape.mesh, i));
+                }
+                (idx, fresh)
+            };
+            if !all_edges {
+                if let Some(Object {
+                    feature: Feature::Fillet { edges, .. } | Feature::Chamfer { edges, .. },
+                    ..
+                }) = doc.get_mut(name)
+                {
+                    *edges = fresh;
+                }
             }
-            let mut tools = Vec::new();
-            let mut fresh = Vec::new();
-            for r in edges {
-                let i = resolve(r, &shape.mesh, &shape.topo)
-                    .ok_or_else(|| format!("{what}: {} was not found", r.name))?;
-                let dress = if chamfer {
-                    Dress::Chamfer(*radius)
+            let dress = match &object.feature {
+                Feature::Fillet { radius, .. } => Dress::Fillet(*radius),
+                Feature::Chamfer {
+                    size,
+                    kind,
+                    size2,
+                    angle,
+                    flip,
+                    ..
+                } => {
+                    let (a, b) = match kind {
+                        ChamferType::Equal => (*size, *size),
+                        ChamferType::TwoDistances => (*size, *size2),
+                        ChamferType::DistanceAngle => {
+                            if !(*angle > 0.0 && *angle < 180.0) {
+                                return Err(
+                                    "Chamfer: Angle must be greater than 0 and less than 180"
+                                        .into(),
+                                );
+                            }
+                            (*size, size * math::tan(math::radians(*angle)))
+                        }
+                    };
+                    if *kind == ChamferType::TwoDistances && *size2 <= 0.0 {
+                        return Err("Chamfer: Size2 must be greater than zero".into());
+                    }
+                    if *flip {
+                        Dress::Chamfer(b, a)
+                    } else {
+                        Dress::Chamfer(a, b)
+                    }
+                }
+                _ => unreachable!(),
+            };
+            let out = blend::dress(&solid, &idx, dress, what).map_err(|e| {
+                // FreeCAD's words first, the reason after.
+                let head = if chamfer {
+                    "Failed to create chamfer"
                 } else {
-                    Dress::Fillet(*radius)
+                    "Fillet not possible on selected shapes"
                 };
-                let (tool, cut) = solid::dress_tool(&shape.mesh, &shape.topo, i, dress)
-                    .map_err(|e| format!("{what} on {}: {e}", r.name))?;
-                tools.push((tool, cut));
-                fresh.push(SubRef::edge(&shape.topo, &shape.mesh, i));
-            }
-            if let Some(Object {
-                feature: Feature::Fillet { edges, .. } | Feature::Chamfer { edges, .. },
-                ..
-            }) = doc.get_mut(name)
-            {
-                *edges = fresh;
-            }
-            let mut out = shape.mesh.clone();
-            // Cuts first, then additions: an added round must not be cut by a
-            // neighbouring edge's tool.
-            for (tool, _) in tools.iter().filter(|t| t.1) {
-                out = csg::boolean(&out, tool, Op::Difference);
-            }
-            for (tool, _) in tools.iter().filter(|t| !t.1) {
-                out = csg::boolean(&out, tool, Op::Union);
-            }
+                if e.starts_with("Fillet radius")
+                    || e.starts_with("Size must")
+                    || e.starts_with("No edges")
+                {
+                    e
+                } else {
+                    format!("{head} ({})", e.trim_start_matches(&format!("{what}: ")))
+                }
+            });
             finish(out, what)
         }
         Feature::Hole {
@@ -1022,8 +1192,8 @@ fn feature_step(
             drill_point,
         } => {
             let (sketch, frame) = profile_of(model, profile)?;
-            let base_m = base_mesh();
-            if base_m.is_empty() {
+            let base_s = base_solid();
+            if base_s.is_empty() {
                 return Err("Hole: Cannot create a hole without a base shape".into());
             }
             let r = diameter / 2.0;
@@ -1031,7 +1201,7 @@ fn feature_step(
                 return Err("Hole: Diameter too small".into());
             }
             let d = if *all {
-                through_all(&base_m, &frame)
+                through_all(&base_s, &frame)
             } else {
                 *depth
             };
@@ -1100,17 +1270,32 @@ fn feature_step(
             } else {
                 rz.push(V2 { x: 0.0, y: -d });
             }
-            let mut tool = Mesh::default();
+            let n = rz.len();
+            let region = Region2 {
+                outer: Wire2 {
+                    segs: (0..n).map(|i| Seg2::Line(rz[i], rz[(i + 1) % n])).collect(),
+                },
+                holes: vec![],
+            };
+            let region = if region.outer.area() < 0.0 {
+                Region2 {
+                    outer: region.outer.reversed(),
+                    holes: vec![],
+                }
+            } else {
+                region
+            };
+            let mut tool = Solid::default();
             for c in centers {
                 let at = frame.to_world(c);
                 let one =
-                    solid::revolve_rz(at, frame.z, &rz, None).map_err(|e| format!("Hole: {e}"))?;
-                tool = csg::boolean(&tool, &one, Op::Union);
+                    build::revolve_rz(at, frame.z, &region).map_err(|e| format!("Hole: {e}"))?;
+                tool = boolean(&tool, &one, Op::Union).map_err(|e| format!("Hole: {e}"))?;
             }
             model
                 .tools
                 .insert(name.into(), (Arc::new(tool.clone()), false));
-            finish(csg::boolean(&base_m, &tool, Op::Difference), "Hole")
+            finish(boolean(&base_s, &tool, Op::Difference), "Hole")
         }
         Feature::Mirrored { originals, plane } => {
             let what = "Mirrored";
@@ -1221,6 +1406,11 @@ fn feature_step(
     }
 }
 
+/// Whether an edge is a seam (used twice by one face): not something to round.
+fn is_seam(s: &Solid, e: usize) -> bool {
+    matches!(s.edge_faces(e), Some((a, b)) if a == b)
+}
+
 fn sketch_of(doc: &Document, feature: &str) -> Result<Sketch, String> {
     let profile = doc
         .get(feature)
@@ -1252,11 +1442,15 @@ fn transform_feature(
     xs: Result<Vec<Xform>, String>,
 ) -> Result<Option<Arc<Shape>>, String> {
     let shape = base.ok_or(format!("{what}: No base shape"))?;
+    let mut out = shape
+        .solid
+        .as_ref()
+        .map(|s| (**s).clone())
+        .ok_or(format!("{what}: No base shape"))?;
     if originals.is_empty() {
         return Err(format!("{what}: No originals selected"));
     }
     let xs = xs.map_err(|e| format!("{what}: {e}"))?;
-    let mut out = shape.mesh.clone();
     for original in originals {
         let (tool, adds) = model
             .tools
@@ -1265,18 +1459,19 @@ fn transform_feature(
             .ok_or_else(|| format!("{what}: {original} cannot be transformed"))?;
         for x in &xs {
             let moved = tool.transformed(x);
-            out = csg::boolean(&out, &moved, if adds { Op::Union } else { Op::Difference });
+            out = boolean(&out, &moved, if adds { Op::Union } else { Op::Difference })
+                .map_err(|e| format!("{what}: {e}"))?;
         }
     }
-    if out.is_empty() || out.volume() <= 1e-9 {
+    if out.is_empty() || mass::mass_props(&out).volume <= 1e-9 {
         return Err(format!("{what}: Resulting shape is empty"));
     }
-    if solids(&out) > 1 {
+    if out.lumps().len() > 1 {
         return Err(format!(
             "{what}: Transformed shape does not intersect the support"
         ));
     }
-    Ok(Some(Shape::new(out)))
+    Ok(Some(Shape::from_solid(out)))
 }
 
 /// A starter document: one body, as Part Design's "Create body" makes.

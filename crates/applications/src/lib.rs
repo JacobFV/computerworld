@@ -3,6 +3,7 @@
 pub mod apps;
 pub mod desktop_scene;
 pub use apps::{AppEnv, FilesEnv, NativeApp};
+pub use desktop_scene::scroll::{Scroll, ScrollBar};
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -74,6 +75,23 @@ pub const QUICK_ACCESS: [&str; 6] = [
     "Videos",
 ];
 /// What Explorer's Gallery collects: image files, by extension, the way it decides.
+fn is_zero_u8(v: &u8) -> bool {
+    *v == 0
+}
+/// `pointer.v1`'s `modifiers` names as bits: `ctrl`, `alt` (Option), `shift`, `meta`
+/// (Command). Unknown names are refused.
+pub fn modifier_bits(names: &[&str]) -> Result<u8, String> {
+    names.iter().try_fold(0u8, |bits, name| {
+        Ok(bits
+            | match name.to_ascii_lowercase().as_str() {
+                "ctrl" | "control" => apps::imaging::MOD_CTRL,
+                "alt" | "option" => apps::imaging::MOD_ALT,
+                "shift" => apps::imaging::MOD_SHIFT,
+                "meta" | "cmd" | "command" | "super" => apps::imaging::MOD_META,
+                other => return Err(format!("unknown modifier {other}")),
+            })
+    })
+}
 pub fn is_image(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
     [
@@ -257,6 +275,15 @@ pub enum AppEffect {
     PasteImage {
         window: u64,
     },
+    /// A Run and Debug request for the machine's debugger (`cw_computer::Computer::debug`):
+    /// launch a program, step it, read its variables, evaluate an expression in a frame.
+    /// The reply, or the reason there is none, goes to `DesktopState::debug_reply` under
+    /// `tag`, which says what the application asked for.
+    Debug {
+        window: u64,
+        tag: String,
+        request: cw_protocol::debug::Request,
+    },
 }
 /// What a `ShellRun` produced: the finished command (`None` when only the prompt was
 /// asked for), where the session stands afterwards and the prompt it would print next.
@@ -297,6 +324,11 @@ pub enum FileView {
     #[default]
     List,
     Grid,
+}
+impl FileView {
+    pub fn is_list(&self) -> bool {
+        *self == Self::List
+    }
 }
 /// The two columns a listing really has. There is deliberately no size or date key: a
 /// listing carries neither, and a column that sorted on invented metadata would be a
@@ -775,6 +807,10 @@ pub struct Window {
     /// Virtual desktop this window lives on.
     #[serde(default)]
     pub workspace: u32,
+    /// Where each of the window's scrolling panes is scrolled to. Platform state, so
+    /// every application scrolls the same way and a snapshot restores the view.
+    #[serde(default, skip_serializing_if = "Scroll::is_empty")]
+    pub scroll: Scroll,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DesktopState {
@@ -794,6 +830,14 @@ pub struct DesktopState {
     pub stacking: Vec<u64>,
     #[serde(default)]
     pub pointer_capture: Option<PointerCapture>,
+    /// Modifier keys the latest pointer action held (`apps::imaging::MOD_*` bits):
+    /// `pointer.v1`'s `modifiers`, handed to an application's drag surface on a press.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub pointer_modifiers: u8,
+    /// The button of the latest pointer action (0 left, 1 middle, 2 right), handed to an
+    /// application on a press so a right click can open its own context menu.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub pointer_button: u8,
     /// Home folder of this machine's user; empty falls back to the root.
     #[serde(default)]
     pub home: String,
@@ -864,6 +908,69 @@ pub struct DesktopState {
     /// the page dots move it; shells clamp it to the pages the screen really has.
     #[serde(default)]
     pub home_page: u32,
+    /// The desktop this machine's session shows, set by the environment at login. An
+    /// application whose behaviour follows the platform (a native file dialog's
+    /// default button) learns it from here when its window opens.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<desktop_scene::DesktopTheme>,
+    /// The view a new file manager window or tab starts in: the platform's own default
+    /// (Files opens in the icon grid; Finder's and Explorer's windows here in the list).
+    #[serde(default, skip_serializing_if = "FileView::is_list")]
+    pub file_view: FileView,
+    /// Where the pointer was when the open panel was opened, so a context menu stays
+    /// where it was summoned.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panel_at: Option<(i32, i32)>,
+    /// Where a phone's Recents carousel is, and whether it is selecting text.
+    #[serde(default, skip_serializing_if = "Overview::is_default")]
+    pub overview: Overview,
+}
+/// Pixel Recents: which slot of the carousel is centred, and whether Select mode is
+/// on. Slots are the windows in `ordered_windows` order (oldest first), and slot -1 is
+/// the Clear all slot past the oldest card. `None` centres the focused window.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Overview {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slot: Option<i32>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub select: bool,
+}
+impl Overview {
+    pub fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+}
+/// Every string a semantic page shows, in page order, one per line: headings, text,
+/// button and link labels, field values. What a phone's Recents "Select" can take
+/// from an application card, read from the application's own projection rather than
+/// recognised in its pixels.
+pub fn page_text(page: &cw_protocol::Page) -> String {
+    fn walk(value: &serde_json::Value, out: &mut Vec<String>) {
+        match value {
+            serde_json::Value::Object(map) => {
+                for key in ["title", "text", "label", "value"] {
+                    if let Some(serde_json::Value::String(s)) = map.get(key) {
+                        if !s.trim().is_empty() && out.last() != Some(s) {
+                            out.push(s.clone());
+                        }
+                    }
+                }
+                for (key, child) in map {
+                    if !matches!(key.as_str(), "title" | "text" | "label" | "value") {
+                        walk(child, out);
+                    }
+                }
+            }
+            serde_json::Value::Array(items) => items.iter().for_each(|i| walk(i, out)),
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(
+        &serde_json::to_value(&page.elements).unwrap_or_default(),
+        &mut out,
+    );
+    out.join("\n")
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Bookmark {
@@ -1073,6 +1180,55 @@ pub enum WindowSnap {
     Full,
 }
 /// Where a pointer is in a press on an application's drag surface.
+/// `delta` pixels of wheel turn as whole steps of `unit` pixels, never zero for a turn
+/// that moved: a small trackpad nudge still moves a row.
+pub fn wheel_steps(delta: i32, unit: i32) -> i32 {
+    if delta == 0 {
+        return 0;
+    }
+    let steps = delta / unit.max(1);
+    if steps == 0 {
+        delta.signum()
+    } else {
+        steps
+    }
+}
+/// Height of one terminal line, so a wheel notch walks the scrollback by whole lines.
+const TERMINAL_LINE: i32 = 19;
+/// One turn of a pointer wheel (or a trackpad scroll), in pixels as a browser reports
+/// them: positive `dy` rolls towards the user and moves content up, 120 per notch.
+/// `shift` and `ctrl` are the modifiers held, which applications give meanings of
+/// their own (Shift scrolls sideways, Ctrl zooms).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Wheel {
+    pub dx: i32,
+    pub dy: i32,
+    pub shift: bool,
+    pub ctrl: bool,
+}
+impl Wheel {
+    pub fn vertical(dy: i32) -> Self {
+        Self {
+            dy,
+            ..Self::default()
+        }
+    }
+    /// The vertical turn as whole steps of `unit` pixels (see `wheel_steps`).
+    pub fn lines(&self, unit: i32) -> i32 {
+        wheel_steps(self.dy, unit)
+    }
+    /// The turn along the axis Shift selects: a vertical wheel scrolls sideways with
+    /// Shift held, as on every desktop.
+    pub fn horizontal(&self) -> i32 {
+        if self.dx != 0 {
+            self.dx
+        } else if self.shift {
+            self.dy
+        } else {
+            0
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PointerPhase {
     Down,
@@ -1358,7 +1514,10 @@ impl DesktopState {
                 let path = if argument.is_empty() { "/" } else { argument };
                 (
                     AppState::Files {
-                        tabs: vec![FileTab::new(path)],
+                        tabs: vec![FileTab {
+                            view: self.file_view,
+                            ..FileTab::new(path)
+                        }],
                         active: 0,
                     },
                     vec![AppEffect::ListDirectory {
@@ -1445,7 +1604,7 @@ impl DesktopState {
                 }
                 // FreeCAD's file dialogs start in the user's Documents folder.
                 if let NativeApp::Freecad(cad) = &mut app {
-                    cad.attach(&self.home_folder());
+                    cad.attach(&self.home_folder(), self.theme);
                 }
                 (AppState::Native(app), effects)
             }
@@ -1465,6 +1624,7 @@ impl DesktopState {
                 snapped: None,
                 // A new window opens on the desktop the user is looking at.
                 workspace: self.workspace,
+                scroll: Scroll::default(),
             },
         );
         self.stacking.retain(|window| *window != id);
@@ -1556,7 +1716,40 @@ impl DesktopState {
         }
         Ok(())
     }
+    /// The focused plain-text editor's caret and text length, to tell afterwards
+    /// whether an edit or a caret move happened.
+    fn editor_mark(&self) -> Option<(u64, usize, usize)> {
+        let id = self.focused?;
+        match &self.windows.get(&id)?.state {
+            AppState::Editor { text, cursor, .. } => Some((id, *cursor, text.len())),
+            _ => None,
+        }
+    }
+    /// After an edit or a caret move in a plain-text editor, the view is brought back
+    /// to the caret (as little as it takes), wherever it had been scrolled.
+    fn reveal_editor_caret(&mut self, before: Option<(u64, usize, usize)>) {
+        let Some((id, cursor, len)) = before else {
+            return;
+        };
+        let moved = match self.windows.get(&id).map(|w| &w.state) {
+            Some(AppState::Editor {
+                text, cursor: c, ..
+            }) => (*c, text.len()) != (cursor, len),
+            _ => false,
+        };
+        if moved {
+            if let Some(w) = self.windows.get_mut(&id) {
+                w.scroll.reveal = Some(desktop_scene::EDITOR_PANE.into());
+            }
+        }
+    }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
+        let mark = self.editor_mark();
+        let result = self.text_inner(text);
+        self.reveal_editor_caret(mark);
+        result
+    }
+    fn text_inner(&mut self, text: &str) -> Result<(), String> {
         let window = self
             .focused
             .and_then(|id| self.windows.get_mut(&id))
@@ -1599,6 +1792,12 @@ impl DesktopState {
         Ok(())
     }
     pub fn key(&mut self, key: &str) -> Result<Vec<AppEffect>, String> {
+        let mark = self.editor_mark();
+        let result = self.key_inner(key);
+        self.reveal_editor_caret(mark);
+        result
+    }
+    fn key_inner(&mut self, key: &str) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
         let window = self.windows.get_mut(&id).ok_or("window not found")?;
         if let AppState::Editor { text, cursor, .. } = &window.state {
@@ -1831,8 +2030,14 @@ impl DesktopState {
     /// A pointer pressed on a control of the focused window, before it is released.
     pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
         let id = self.focused.ok_or("no focused window")?;
+        let modifiers = self.pointer_modifiers;
+        let button = self.pointer_button;
         match self.windows.get_mut(&id).map(|w| &mut w.state) {
-            Some(AppState::Native(app)) => app.press_at(target, dx, dy),
+            Some(AppState::Native(app)) => {
+                app.pointer_modifiers(modifiers);
+                app.pointer_button(button);
+                app.press_at(target, dx, dy)
+            }
             _ => Ok(()),
         }
     }
@@ -1880,6 +2085,15 @@ impl DesktopState {
     ) -> Result<Vec<AppEffect>, String> {
         Ok(self.code_mut(id)?.shell_ran(id, tag, outcome))
     }
+    /// What the machine's debugger answered a `Debug` effect with.
+    pub fn debug_reply(
+        &mut self,
+        id: u64,
+        tag: &str,
+        reply: Result<cw_protocol::debug::Reply, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        Ok(self.code_mut(id)?.debug_reply(id, tag, reply))
+    }
     /// A write reached the disk. Editors learn which file, so the right one turns clean.
     pub fn file_written(
         &mut self,
@@ -1903,20 +2117,35 @@ impl DesktopState {
         }
         self.file_saved(id, content).map(|()| vec![])
     }
-    /// A wheel turn over a control of window `id`, at (`dx`, `dy`) inside it. `false`
-    /// when the application has no use for it there.
+    /// A wheel turn over a control of window `id`, at (`dx`, `dy`) inside it, for the
+    /// application's own use of the wheel (a canvas zooms, a grid moves by rows, a
+    /// terminal walks its scrollback). `false` leaves it to the pane under the pointer.
     pub fn wheel(
         &mut self,
         id: u64,
         target: &str,
         dx: i32,
         dy: i32,
-        delta: i32,
+        wheel: Wheel,
     ) -> Result<bool, String> {
         match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
-            AppState::Native(app) => app.wheel(target, dx, dy, delta),
+            AppState::Native(app) => app.wheel(target, dx, dy, wheel),
+            AppState::Terminal { scroll, .. } if wheel.dy != 0 => {
+                // Rolling towards the user moves the view down, towards the tail.
+                let lines = wheel.lines(TERMINAL_LINE);
+                let next = (*scroll as i64 - i64::from(lines)).clamp(0, SCROLL_LIMIT as i64);
+                let moved = next as usize != *scroll;
+                *scroll = next as usize;
+                Ok(moved)
+            }
             _ => Ok(false),
         }
+    }
+    /// Scroll pane `pane` of window `id` to `offset` pixels. The caller clamps it to
+    /// the extent the pane published. Returns whether the view moved.
+    pub fn scroll_pane(&mut self, id: u64, pane: &str, offset: i32) -> Result<bool, String> {
+        let window = self.windows.get_mut(&id).ok_or("window not found")?;
+        Ok(window.scroll.set(pane, offset))
     }
     /// Whether a secondary-button press on `target` of window `id` is the application's.
     pub fn app_takes_secondary(&self, id: u64, target: &str) -> bool {
@@ -2027,6 +2256,10 @@ impl DesktopState {
     /// Whether `target` inside window `id` is a surface that follows a drag (a canvas,
     /// a slider) rather than a button that fires on release.
     pub fn app_drags(&self, id: u64, target: &str) -> bool {
+        // A pane's scroll bar is a drag surface in every window, whatever it shows.
+        if ScrollBar::parse(target).is_some() {
+            return self.windows.contains_key(&id);
+        }
         matches!(
             self.windows.get(&id).map(|w| &w.state),
             Some(AppState::Native(app)) if app.drags(target)
@@ -2057,10 +2290,20 @@ impl DesktopState {
     ) -> Result<Vec<AppEffect>, String> {
         self.focus(id)?;
         let clock = self.clock_us;
+        let modifiers = self.pointer_modifiers;
+        let bar = ScrollBar::parse(target).is_some();
         if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
             app.pointer_button(button);
+            app.pointer_modifiers(modifiers);
         }
-        let effects = match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
+        let window = self.windows.get_mut(&id).ok_or("window not found")?;
+        let effects = match &mut window.state {
+            _ if bar => {
+                window
+                    .scroll
+                    .drag(target, PointerPhase::Down, x - bounds.x, y - bounds.y)?;
+                vec![]
+            }
             AppState::Native(app) => app.pointer(
                 id,
                 target,
@@ -2189,6 +2432,20 @@ impl DesktopState {
         }
         let clock = self.clock_us;
         let window = capture.window;
+        if ScrollBar::parse(&target).is_some() {
+            return Some(match self.windows.get_mut(&window) {
+                Some(w) => w
+                    .scroll
+                    .drag(
+                        &target,
+                        phase,
+                        x - capture.original.x,
+                        y - capture.original.y,
+                    )
+                    .map(|_| vec![]),
+                None => Err("window not found".into()),
+            });
+        }
         Some(match self.windows.get_mut(&window).map(|w| &mut w.state) {
             Some(AppState::Native(app)) => app.pointer(
                 window,
@@ -2533,6 +2790,13 @@ mod tests {
 
 impl DesktopState {
     /// Pure semantic projection; effects are completed separately by the caller.
+    /// The semantic page of window `id`, as `page` projects the focused one.
+    pub fn window_page(&self, id: u64) -> Option<cw_protocol::Page> {
+        let mut view = self.clone();
+        view.windows.get(&id)?;
+        view.focused = Some(id);
+        Some(view.page())
+    }
     pub fn page(&self) -> cw_protocol::Page {
         use cw_protocol::PageElement as E;
         let mut page = cw_protocol::Page::new("Desktop");
@@ -3182,7 +3446,11 @@ impl DesktopState {
                 if tabs.len() >= TAB_LIMIT {
                     return Err("tab limit reached".into());
                 }
-                tabs.push(FileTab::new(&home));
+                let view = tabs.get(*active).map_or(FileView::List, |t| t.view);
+                tabs.push(FileTab {
+                    view,
+                    ..FileTab::new(&home)
+                });
                 *active = tabs.len() - 1;
                 let index = *active;
                 Ok(vec![AppEffect::ListDirectory {
@@ -3395,6 +3663,21 @@ impl DesktopState {
         if target == "editor-save" {
             return self.key("Ctrl+s");
         }
+        // Named rather than pointed at, a scroll bar pages forward by one thumb.
+        if let Some(bar) = ScrollBar::parse(target) {
+            let window = self
+                .focused
+                .and_then(|id| self.windows.get_mut(&id))
+                .ok_or("no focused window")?;
+            let offset = window.scroll.offset(bar.pane).min(bar.max);
+            let page = (i64::from(bar.max) * i64::from(bar.thumb)
+                / i64::from(bar.track.saturating_sub(bar.thumb).max(1)))
+                as i32;
+            window
+                .scroll
+                .set(bar.pane, (offset + page.max(1)).min(bar.max));
+            return Ok(vec![]);
+        }
         if let Some(window) = self.focused.and_then(|id| self.windows.get_mut(&id)) {
             if let AppState::Native(app) = &mut window.state {
                 let (id, clock) = (window.id, self.clock_us);
@@ -3444,15 +3727,25 @@ impl DesktopState {
     /// place its caret where the pointer actually landed.
     pub fn click_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
+        // A click on a pane's scroll bar is a press and release where it landed: the
+        // thumb jumps there, whatever the window shows.
+        if ScrollBar::parse(target).is_some() {
+            let window = self.windows.get_mut(&id).ok_or("window not found")?;
+            window.scroll.drag(target, PointerPhase::Down, dx, dy)?;
+            window.scroll.drag(target, PointerPhase::Up, dx, dy)?;
+            return Ok(vec![]);
+        }
         // A click on a drag surface is a press and release at one point: a dot from a
         // brush, a fill, a slider set to where it was clicked.
         let clock = self.clock_us;
+        let modifiers = self.pointer_modifiers;
         if let Some(AppState::Native(app)) = self
             .windows
             .get_mut(&id)
             .map(|w| &mut w.state)
             .filter(|_| !target.starts_with("focus:"))
         {
+            app.pointer_modifiers(modifiers);
             if app.drags(target) {
                 let mut effects = app.pointer(id, target, PointerPhase::Down, dx, dy, clock)?;
                 effects.extend(app.pointer(id, target, PointerPhase::Up, dx, dy, clock)?);
@@ -3525,9 +3818,11 @@ pub fn caret_for_point(text: &str, first: usize, dx: i32, dy: i32) -> usize {
     caret_for_point_wrapped(text, first, 0, dx, dy)
 }
 /// The rows an editor paints: byte ranges into `text`, one per visual row. With
-/// `columns` > 0 a line longer than that many characters is soft-wrapped, after the
-/// last space that fits or, in a word longer than the row, at the edge. A row that
-/// ends where the next begins is a soft wrap; a newline sits between the others.
+/// `columns` > 0 a line wider than that many cells is soft-wrapped, after the
+/// last space that fits or, in a word longer than the row, at the edge. Cells are
+/// `Primitive::Text`'s: a wide character (CJK, emoji) takes two, a combining mark
+/// none. A row that ends where the next begins is a soft wrap; a newline sits
+/// between the others.
 pub fn editor_rows(text: &str, columns: usize) -> Vec<(usize, usize)> {
     let mut rows = Vec::new();
     let mut start = 0;
@@ -3536,12 +3831,17 @@ pub fn editor_rows(text: &str, columns: usize) -> Vec<(usize, usize)> {
         let mut from = start;
         loop {
             let rest = &text[from..end];
-            match rest.char_indices().nth(columns).filter(|_| columns > 0) {
+            // The first row of `rest` in cells; a cluster is never split.
+            let cut = cw_scene::text::terminal::wrap(rest, columns)
+                .first()
+                .map(|row| row.end)
+                .filter(|&cut| columns > 0 && cut < rest.len());
+            match cut {
                 None => {
                     rows.push((from, end));
                     break;
                 }
-                Some((cut, _)) => {
+                Some(cut) => {
                     let brk = rest[..cut].rfind(' ').map_or(cut, |space| space + 1);
                     rows.push((from, from + brk));
                     from += brk;
@@ -3563,11 +3863,14 @@ pub fn editor_caret_cell(text: &str, cursor: usize, columns: usize) -> (usize, u
     for (i, (start, end)) in rows.iter().enumerate() {
         let soft = rows.get(i + 1).is_some_and(|(next, _)| next == end);
         if cursor >= *start && (cursor < *end || (cursor == *end && !soft)) {
-            return (i, text[*start..cursor].chars().count());
+            return (i, cw_scene::text::terminal::columns(&text[*start..cursor]));
         }
     }
     let (start, end) = rows[rows.len() - 1];
-    (rows.len() - 1, text[start..end].chars().count())
+    (
+        rows.len() - 1,
+        cw_scene::text::terminal::columns(&text[start..end]),
+    )
 }
 /// `caret_for_point` on soft-wrapped rows `columns` characters wide (0: no wrap).
 pub fn caret_for_point_wrapped(
@@ -3586,8 +3889,8 @@ pub fn caret_for_point_wrapped(
         return text.len();
     };
     let content = &text[start..end];
-    match content.char_indices().nth(column) {
-        Some((i, _)) => start + i,
+    match cw_scene::text::terminal::byte_at_column(content, column) {
+        Some(i) => start + i,
         // Past the end of a soft-wrapped row: the caret stays on this row, before its
         // last character, rather than jumping to the start of the next one.
         None if rows.get(row + 1).is_some_and(|(next, _)| *next == end) => content
@@ -3602,10 +3905,8 @@ pub fn caret_for_point_wrapped(
 pub fn caret_for_column(text: &str, dx: i32) -> usize {
     const CELL_W: i32 = 8;
     let column = ((dx.max(0) + CELL_W / 2) / CELL_W) as usize;
-    text.char_indices()
-        .nth(column)
-        .map(|(i, _)| i)
-        .unwrap_or(text.len())
+    // Cells, not characters: a wide character spans two, a combining mark none.
+    cw_scene::text::terminal::byte_at_column(text, column).unwrap_or(text.len())
 }
 fn parent_folder(path: &str) -> &str {
     match path.trim_end_matches('/').rsplit_once('/') {
@@ -3789,6 +4090,21 @@ mod file_manager_tests {
     }
     /// Sorting reorders the screen, so it has to reorder the click targets with it.
     /// Selection stays pinned to the file, not to the row it happened to be on.
+    #[test]
+    fn a_file_manager_opens_in_the_platforms_view_and_new_tabs_keep_it() {
+        let mut d = DesktopState {
+            file_view: FileView::Grid,
+            ..Default::default()
+        };
+        d.launch("files", "/work").unwrap();
+        assert_eq!(d.focused_tab().unwrap().view, FileView::Grid);
+        d.click("files-newtab").unwrap();
+        let AppState::Files { tabs, .. } = &d.windows[&0].state else {
+            panic!("a file manager");
+        };
+        assert_eq!(tabs.len(), 2);
+        assert!(tabs.iter().all(|t| t.view == FileView::Grid));
+    }
     #[test]
     fn display_order_drives_click_targets_and_selection_follows_the_file() {
         let mut d = files(&["b.txt", "a/", "c.txt"]);
