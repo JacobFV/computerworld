@@ -193,7 +193,7 @@ mod tests {
         assert_eq!(Number::parse("1e3").unwrap().micro, 1_000_000_000);
         assert_eq!(Number::parse("2.5e-1").unwrap().micro, 250_000);
         assert!(Number::parse("abc").is_none());
-        assert!(Number::parse("1.").unwrap().int == false || Number::parse("1.").unwrap().micro == 1_000_000);
+        assert!(!Number::parse("1.").unwrap().int || Number::parse("1.").unwrap().micro == 1_000_000);
         assert_eq!(Number::parse("0.9999999").unwrap().micro, 999_999);
         assert_eq!(Number::parse("-0.5").unwrap().round(), -1);
         assert_eq!(Number::parse("0.5").unwrap().round(), 1);
