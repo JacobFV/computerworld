@@ -151,7 +151,7 @@ async function copy(text, report) {
 const install = document.querySelector('#install code');
 const button = document.getElementById('copy');
 if (install && button) {
-  const installs = { py: 'pip install computerworld', js: 'npm install computerworld', rs: 'cargo add computerworld --git https://github.com/JacobFV/computerworld --tag v0.1.1' };
+  const installs = { py: 'pip install computerworld', js: 'npm install computerworld', rs: 'cargo add computerworld --git https://github.com/JacobFV/computerworld --tag v0.1.2' };
   const panes = [...document.querySelectorAll('.codebox pre[data-lang]')];
   const langs = [...document.querySelectorAll('.tabs button')];
   langs.forEach(tab => tab.addEventListener('click', () => {
