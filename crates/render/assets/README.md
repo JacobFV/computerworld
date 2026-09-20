@@ -359,6 +359,38 @@ shearing the bitmap 14/64 of a pixel per pixel of height about the baseline, bot
 integer arithmetic so the result is the same bits on every target. Synthetic bold keeps
 the regular advance, so it sets a little tighter than a designed bold.
 
+### Kerning
+
+Chromium applies the `kern` feature of Liberation Sans, Liberation Serif and the rest
+(about 900 pairs a face in Arimo and Tinos: `Ta` −227, `AV` −152, `P.` −264 of 2048),
+so "Talk" in 13 px Arial is 23.118 px wide, not the 24.559 px its advances add up to.
+The bundled subsets keep no layout tables (`shrink` sets `layout_features = []`; the
+renderer positions Latin text by table, not by shaping), so the pairs are tabulated
+instead: `build-fonts.py --web <dir>` (or `--kern <dir>`, which writes only this table)
+reads the `kern` feature of each instanced master before subsetting and writes
+`crates/scene/src/kerning_data.rs`. `extract_kerning` walks the feature's PairPos
+lookups as HarfBuzz applies them — subtables in order, the first that covers a pair
+settles it, separate lookups add up — expands class pairs (format 2) to glyph pairs and
+maps them to codepoint pairs, since the metrics tables are per codepoint. Per face the
+table is `(left, start)` rows, then sorted right-hand codepoints and their adjustments
+in font units: two binary searches a pair.
+
+The class-kerned families (Lato, Montserrat, Source Sans/Serif, Carlito) pair nearly
+every glyph with every other — over the whole `DEJAVU_RANGES` coverage the table was
+35 MB of source — so pairs are kept for `KERN_RANGES` only: ASCII, Latin-1 and the
+common punctuation of General Punctuation (dashes, quotes, bullet, ellipsis,
+guillemets). That is 199,386 pairs, 1.6 MB of source, about 0.8 MB of data. Greek,
+Cyrillic and Latin Extended text is set unkerned. Cousine, JetBrains Mono, Gelasio
+and Poppins have no `kern` pairs at all.
+
+`cw_scene::metrics::kern` serves them, and `text_width`, `wrap`, `ellipsize` and
+`text::layout` (hence the renderer's glyph placement) all apply them, between two
+characters the family's own face draws. **Only the web faces kern.** Inter, Open Sans,
+Ubuntu Sans, Roboto and DejaVu do have `kern` features upstream, but the desktop
+shells and apps were laid out on plain advances and every golden frame hash pins
+that; kerning them would move all of it for no parity gain, since those faces are
+not what a page's widths are compared with Chromium's on.
+
 ## Symbols
 
 `symbols/*.svg` are original monochrome glyphs (Wi-Fi, battery, chevrons, …) under the

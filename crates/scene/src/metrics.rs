@@ -1,6 +1,7 @@
 //! Deterministic UI text metrics for the bundled font families. Advances come from a
 //! table generated from the exact font files the renderer embeds, so layout code can
 //! measure, centre, wrap and truncate text without rasterizing or consulting a host.
+use crate::kerning_data as kerning;
 use crate::metrics_data as data;
 use crate::metrics_italic as italic;
 use crate::metrics_web as web;
@@ -220,6 +221,26 @@ impl Typeface {
             _ => return None,
         })
     }
+    /// A web family's kern pairs by `bold + 2 * italic`; `None` for the platform and
+    /// DejaVu families, which are laid out unkerned (see [`kern`]).
+    fn web_kerning(self) -> Option<&'static [kerning::Pairs; 4]> {
+        Some(match self {
+            Self::Arimo => &kerning::ARIMO,
+            Self::Tinos => &kerning::TINOS,
+            Self::Cousine => &kerning::COUSINE,
+            Self::Gelasio => &kerning::GELASIO,
+            Self::Carlito => &kerning::CARLITO,
+            Self::Caladea => &kerning::CALADEA,
+            Self::Lato => &kerning::LATO,
+            Self::SourceSans => &kerning::SOURCESANS,
+            Self::SourceSerif => &kerning::SOURCESERIF,
+            Self::Poppins => &kerning::POPPINS,
+            Self::Montserrat => &kerning::MONTSERRAT,
+            Self::Playfair => &kerning::PLAYFAIR,
+            Self::JetBrainsMono => &kerning::JETBRAINSMONO,
+            _ => return None,
+        })
+    }
     /// Which of a web family's faces serves `bold`/`italic`: the face itself when the
     /// family has it, else the nearest it does have, in the order the renderer
     /// synthesises from — the upright of the same weight (synthetic oblique), the
@@ -364,11 +385,68 @@ pub fn advance(typeface: Typeface, style: impl Into<Style>, c: char, size: u16) 
         one
     }
 }
+/// The face's `kern` adjustment between `left` and `right` in font units, with the
+/// face's units per em; `None` when the pair is not kerned. Only the web faces
+/// ([`Typeface::WEB`]) kern, and only between two characters the family's own face
+/// draws (a DejaVu fallback glyph never kerns against its neighbour). The table
+/// covers ASCII, Latin-1 and common punctuation.
+pub fn kern_units(
+    typeface: Typeface,
+    style: impl Into<Style>,
+    left: char,
+    right: char,
+) -> Option<(i16, u32)> {
+    let style = style.into();
+    let faces = typeface.web_kerning()?;
+    let (l, r) = (
+        u16::try_from(left as u32).ok()?,
+        u16::try_from(right as u32).ok()?,
+    );
+    let (family, slanted) = table_face(typeface, style, left)?;
+    if family != typeface || table_face(typeface, style, right) != Some((family, slanted)) {
+        return None;
+    }
+    let i = typeface.web_face_index(style.bold, slanted)?;
+    let (lefts, rights, values) = faces[i]?;
+    let at = lefts.binary_search_by_key(&l, |e| e.0).ok()?;
+    let start = lefts[at].1 as usize;
+    let end = lefts.get(at + 1).map_or(rights.len(), |e| e.1 as usize);
+    let k = rights[start..end].binary_search(&r).ok()?;
+    Some((values[start + k], typeface.table(style.bold, slanted).1))
+}
+/// Pair kerning between `left` and `right` in 1/64 pixel (usually negative), rounded
+/// to nearest like [`advance`]; 0 for an unkerned pair and for every platform and
+/// DejaVu face. Measurement, wrapping, truncation and the renderer's glyph placement
+/// all add it between adjacent characters.
+pub fn kern(
+    typeface: Typeface,
+    style: impl Into<Style>,
+    left: char,
+    right: char,
+    size: u16,
+) -> i64 {
+    kern_units(typeface, style, left, right).map_or(0, |(units, upem)| {
+        (i64::from(units) * i64::from(size) * 64 + i64::from(upem) / 2).div_euclid(i64::from(upem))
+    })
+}
+/// Kerning between an optional previous character and `c`.
+pub(crate) fn kern_after(
+    typeface: Typeface,
+    style: Style,
+    prev: Option<char>,
+    c: char,
+    size: u16,
+) -> i64 {
+    prev.map_or(0, |p| kern(typeface, style, p, c, size))
+}
 fn width_64(typeface: Typeface, style: Style, text: &str, size: u16) -> i64 {
-    text.chars()
-        .filter(|c| *c != '\r')
-        .map(|c| advance(typeface, style, c, size))
-        .sum()
+    let mut prev = None;
+    let mut pen = 0;
+    for c in text.chars().filter(|c| *c != '\r') {
+        pen += kern_after(typeface, style, prev, c, size) + advance(typeface, style, c, size);
+        prev = Some(c);
+    }
+    pen
 }
 /// Advance width of one line in 1/64 pixel, through the complex-text path when the
 /// line needs fallback faces, bidi or shaping (see [`crate::text`]).
@@ -414,25 +492,35 @@ pub(crate) fn wrap_simple_paragraph(
 ) {
     let mut line = String::new();
     let mut pen = 0i64;
+    // The last character on the line, which the next one kerns against.
+    let mut last = None;
     for word in paragraph.split_inclusive(' ') {
+        let first = word.chars().find(|c| *c != '\r');
+        let joint = first.map_or(0, |c| kern_after(typeface, style, last, c, size));
         let visible = width_64(typeface, style, word.trim_end_matches(' '), size);
-        if pen > 0 && pen + visible > limit {
+        if pen > 0 && pen + joint + visible > limit {
             lines.push(std::mem::take(&mut line));
             pen = 0;
+            last = None;
         }
         if visible > limit {
             for c in word.chars().filter(|c| *c != '\r') {
-                let a = advance(typeface, style, c, size);
+                let mut a =
+                    kern_after(typeface, style, last, c, size) + advance(typeface, style, c, size);
                 if pen > 0 && pen + a > limit {
                     lines.push(std::mem::take(&mut line));
                     pen = 0;
+                    a = advance(typeface, style, c, size);
                 }
                 line.push(c);
                 pen += a;
+                last = Some(c);
             }
         } else {
+            let joint = first.map_or(0, |c| kern_after(typeface, style, last, c, size));
             line.extend(word.chars().filter(|c| *c != '\r'));
-            pen += width_64(typeface, style, word, size);
+            pen += joint + width_64(typeface, style, word, size);
+            last = word.chars().rfind(|c| *c != '\r').or(last);
         }
     }
     lines.push(line);
@@ -457,13 +545,15 @@ pub fn ellipsize(
     let ellipsis = advance(typeface, style, '…', size);
     let mut out = String::new();
     let mut pen = 0;
+    let mut prev = None;
     for c in text.chars() {
-        let a = advance(typeface, style, c, size);
-        if pen + a + ellipsis > limit {
+        let a = kern_after(typeface, style, prev, c, size) + advance(typeface, style, c, size);
+        if pen + a + kern(typeface, style, c, '…', size).max(0) + ellipsis > limit {
             break;
         }
         out.push(c);
         pen += a;
+        prev = Some(c);
     }
     let mut out = out.trim_end().to_owned();
     out.push('…');
@@ -515,6 +605,93 @@ mod tests {
             text_width(Typeface::Roboto, false, "Settings", 13)
         );
         assert!(tabulated_advance(Typeface::Inter, false, 'λ', 13).is_some());
+    }
+    #[test]
+    fn web_faces_kern_by_their_gpos_pairs() {
+        // Font units, read from the instanced masters with fontTools.
+        let t = Typeface::Arimo;
+        assert_eq!(kern_units(t, false, 'T', 'a'), Some((-227, 2048)));
+        assert_eq!(kern_units(t, false, 'A', 'V'), Some((-152, 2048)));
+        assert_eq!(kern_units(t, false, 'P', '.'), Some((-264, 2048)));
+        assert_eq!(kern_units(t, false, 'a', 'l'), None);
+        assert_eq!(kern(t, false, 'T', 'a', 13), -92); // -227 * 13 * 64 / 2048 = -92.2
+        assert_eq!(kern(t, false, 'a', 'l', 13), 0);
+        // Chromium measures "Talk" in 13 px Liberation Sans at 23.118 px (24.559
+        // unkerned): (1251 + 1139 + 455 + 1024 - 227) * 13 / 2048.
+        let talk: i64 = width_64(t, Style::default(), "Talk", 13);
+        assert!(
+            (talk - (23.118f64 * 64.0).round() as i64).abs() <= 1,
+            "{talk}"
+        );
+        let plain: i64 = "Talk".chars().map(|c| advance(t, false, c, 13)).sum();
+        assert_eq!(talk, plain + kern(t, false, 'T', 'a', 13));
+        assert_eq!(text_width(t, false, "Talk", 13), 24);
+        // The monospace and unkerned families, and every platform face, stay at the
+        // sum of their advances: desktop scenes are laid out without kerning.
+        for t in [
+            Typeface::DejaVu,
+            Typeface::Inter,
+            Typeface::OpenSans,
+            Typeface::Ubuntu,
+            Typeface::Roboto,
+            Typeface::Mono,
+            Typeface::Cousine,
+            Typeface::JetBrainsMono,
+        ] {
+            for (l, r) in [('T', 'a'), ('A', 'V'), ('P', '.'), ('W', 'o')] {
+                assert_eq!(kern(t, false, l, r, 16), 0, "{t:?} {l}{r}");
+            }
+        }
+        // A fallback glyph does not kern against the family's own.
+        assert_eq!(kern(Typeface::Caladea, false, 'T', 'λ', 16), 0);
+        // Each face has its own pairs.
+        assert!(kern(Typeface::Tinos, true, 'A', 'V', 16) < 0);
+        assert!(
+            kern(
+                Typeface::Lato,
+                Style::new(false, true, Lang::Auto),
+                'T',
+                'o',
+                16
+            ) < 0
+        );
+    }
+    #[test]
+    fn wrapping_and_truncation_respect_kerning() {
+        let t = Typeface::Arimo;
+        let text = "AVAVAVAV ToToToTo";
+        let kerned = text_width(t, false, "AVAVAVAV", 16);
+        let plain: i64 = "AVAVAVAV".chars().map(|c| advance(t, false, c, 16)).sum();
+        assert!(i64::from(kerned) * 64 < plain - 64 * 4, "{kerned} {plain}");
+        // Wide enough for the kerned words but not the unkerned ones: one word a line,
+        // no mid-word break.
+        let lines = wrap(
+            t,
+            false,
+            text,
+            16,
+            kerned.max(text_width(t, false, "ToToToTo", 16)),
+        );
+        assert_eq!(lines, ["AVAVAVAV ", "ToToToTo"]);
+        for line in wrap(t, false, "Talk To AV. Talk To AV. Talk To AV.", 16, 90) {
+            assert!(text_width(t, false, line.trim_end(), 16) <= 90, "{line}");
+        }
+        // A word wider than the line breaks between characters by kerned widths.
+        for line in wrap(t, false, "AVAVAVAVAVAVAVAV", 16, 50) {
+            assert!(text_width(t, false, &line, 16) <= 50, "{line}");
+        }
+        let cut = ellipsize(t, false, "AVAVAVAVAVAVAVAVAVAV", 16, 100);
+        assert!(
+            cut.ends_with('…') && text_width(t, false, &cut, 16) <= 100,
+            "{cut}"
+        );
+        // Layout places glyphs by the same kerned pen, so its width is the measure.
+        let laid = &crate::text::layout(t, false, "Talk", 13, 200)[0];
+        assert_eq!(laid.width, width_64(t, Style::default(), "Talk", 13));
+        assert_eq!(
+            laid.glyphs[1].x,
+            advance(t, false, 'T', 13) + kern(t, false, 'T', 'a', 13)
+        );
     }
     #[test]
     fn the_monospace_face_measures_on_the_terminal_grid() {

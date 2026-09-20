@@ -388,7 +388,11 @@ pub(crate) fn block(
                 // `metrics::wrap` only needs the line text; skip placement for it.
                 let mut placed = Vec::new();
                 let mut pen = 0;
+                let mut prev = None;
                 for c in line.chars().filter(|_| glyphs) {
+                    // Pair kerning moves the glyph, so drawing and measuring agree.
+                    pen += metrics::kern_after(typeface, style, prev, c, size);
+                    prev = Some(c);
                     placed.push(PlacedGlyph {
                         face: None,
                         glyph: GlyphRef::Char(c),
@@ -915,10 +919,21 @@ impl Ctx {
                 match kind {
                     Kind::Hidden => {}
                     Kind::Table => {
+                        // Kerning within the run, left to right only: a table
+                        // run set right to left is mirrored punctuation or digits.
+                        let mut prev = None;
                         let mut place = |c: char| {
                             let drawn = if rtl {
                                 unicode_bidi_mirroring::get_mirrored(c).unwrap_or(c)
                             } else {
+                                pen += metrics::kern_after(
+                                    self.typeface,
+                                    self.style,
+                                    prev,
+                                    c,
+                                    self.size,
+                                );
+                                prev = Some(c);
                                 c
                             };
                             if glyphs {

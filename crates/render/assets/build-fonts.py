@@ -125,6 +125,21 @@ downloads (google/fonts at the same pinned commit, pinned SHA-256):
     per face and one `[Option<..>; 4]` per family indexed by `bold + 2 * italic`,
     `None` where a family has no file for that style (the renderer then
     synthesises bold or oblique from the nearest face it does have).
+  * `crates/scene/src/kerning_data.rs` — the `kern` feature of every web face,
+    read from the same instanced master before it is subset (the subsets keep
+    no layout tables, so the renderer positions by table and needs the pairs
+    here). `extract_kerning` walks the feature's PairPos lookups the way
+    HarfBuzz applies them — subtables in order, the first that covers a pair
+    settles it, lookups accumulate — and expands class pairs (format 2) to the
+    glyph pairs the subset covers, keyed by codepoint since the metrics tables
+    are per codepoint. Pairs are kept for `KERN_RANGES` only — ASCII, Latin-1
+    and the common punctuation of the General Punctuation block — because the
+    class-kerned families (Lato, Montserrat, Source Sans/Serif, Carlito) pair
+    nearly every glyph with every other: over the whole coverage set the table
+    was 35 MB of source. The platform and DejaVu faces are deliberately not
+    tabulated: the desktop scenes and their golden frames were laid out
+    without kerning, and the web faces are the ones a page's widths are
+    compared with Chromium's.
 
 Usage:
   build-fonts.py <source-dir>   rebuild everything (requires the variable fonts)
@@ -134,8 +149,10 @@ Usage:
                                 the italics and the colour emoji from the masters
                                 `fetch-noto-sources.py <dir>` downloads (pinned
                                 commits, pinned SHA-256)
-  build-fonts.py --web <dir>    rebuild the web faces and `metrics_web.rs` from the
-                                masters `fetch-web-sources.py <dir>` downloads
+  build-fonts.py --web <dir>    rebuild the web faces, `metrics_web.rs` and
+                                `kerning_data.rs` from the masters
+                                `fetch-web-sources.py <dir>` downloads
+  build-fonts.py --kern <dir>   rewrite just `kerning_data.rs` from those masters
 Requires fontTools (4.55.3 was used); brotli not needed.
 """
 import sys
@@ -675,10 +692,158 @@ def instance(path, axes):
     location.update(axes)
     return instancer.instantiateVariableFont(font, location)
 
+KERNING = HERE.parents[1] / "scene" / "src" / "kerning_data.rs"
+# The codepoints kerning is tabulated between: ASCII, Latin-1 and common
+# punctuation (dashes, quotes, bullet, ellipsis, per mille, guillemets).
+KERN_RANGES = [(0x20, 0x7E), (0xA0, 0xFF), (0x2010, 0x2027), (0x2030, 0x203A)]
+
+
+def kern_lookups(font):
+    """The PairPos subtables of the `kern` feature, grouped by lookup, in the
+    order HarfBuzz applies them (lookup index order)."""
+    if "GPOS" not in font:
+        return []
+    gpos = font["GPOS"].table
+    indices = set()
+    for record in gpos.FeatureList.FeatureRecord:
+        if record.FeatureTag == "kern":
+            indices.update(record.Feature.LookupListIndex)
+    lookups = []
+    for index in sorted(indices):
+        lookup = gpos.LookupList.Lookup[index]
+        subtables = []
+        for sub in lookup.SubTable:
+            if sub.LookupType == 9:  # extension: unwrap
+                sub = sub.ExtSubTable
+            if sub.LookupType == 2:
+                subtables.append(sub)
+        if subtables:
+            lookups.append(subtables)
+    return lookups
+
+
+def extract_kerning(font, unicodes):
+    """`{(left codepoint, right codepoint): x-advance adjustment in font units}`
+    for every pair of `unicodes` the face's `kern` feature adjusts. Within one
+    lookup the first subtable whose coverage holds the left glyph (and, for a
+    glyph-pair subtable, whose pair set holds the right glyph) settles the
+    pair, as in HarfBuzz; separate lookups add up."""
+    cmap = font.getBestCmap()
+    glyphs = {}  # glyph name -> codepoints it serves
+    for c in unicodes:
+        name = cmap.get(c)
+        if name is not None:
+            glyphs.setdefault(name, []).append(c)
+    total = {}
+    for subtables in kern_lookups(font):
+        settled = {}
+        for sub in subtables:
+            coverage = sub.Coverage.glyphs
+            if sub.Format == 1:
+                for first, pair_set in zip(coverage, sub.PairSet):
+                    if first not in glyphs:
+                        continue
+                    for record in pair_set.PairValueRecord:
+                        second = record.SecondGlyph
+                        if second not in glyphs or (first, second) in settled:
+                            continue
+                        value = record.Value1
+                        settled[(first, second)] = getattr(value, "XAdvance", 0) if value else 0
+            elif sub.Format == 2:
+                class1 = sub.ClassDef1.classDefs
+                class2 = sub.ClassDef2.classDefs
+                covered = [g for g in coverage if g in glyphs]
+                for first in covered:
+                    c1 = class1.get(first, 0)
+                    if c1 >= sub.Class1Count:
+                        continue
+                    row = sub.Class1Record[c1].Class2Record
+                    for second in glyphs:
+                        if (first, second) in settled:
+                            continue
+                        c2 = class2.get(second, 0)
+                        if c2 >= sub.Class2Count:
+                            continue
+                        value = row[c2].Value1
+                        settled[(first, second)] = getattr(value, "XAdvance", 0) if value else 0
+        for pair, value in settled.items():
+            total[pair] = total.get(pair, 0) + value
+    pairs = {}
+    for (first, second), value in total.items():
+        if value == 0:
+            continue
+        for a in glyphs[first]:
+            for b in glyphs[second]:
+                pairs[(a, b)] = value
+    return pairs
+
+
+def write_kerning(rows, families):
+    """`rows`: (face, style, pairs); `families`: (FACE, [ident or None; 4])."""
+    with open(KERNING, "w") as out:
+        out.write("// Generated by crates/render/assets/build-fonts.py --web; do not edit.\n")
+        out.write("// Pair kerning of the web faces' `kern` feature, for the codepoints of\n")
+        out.write("// KERN_RANGES. Per face: `_LEFTS` is (left codepoint, start index), sorted by\n")
+        out.write("// codepoint; that left's pairs are `_RIGHTS[start..next start]` (sorted right\n")
+        out.write("// codepoints) and `_VALUES` at the same indices (x-advance adjustment in font\n")
+        out.write("// units). One `[Option<..>; 4]` per family indexed by `bold + 2 * italic`.\n")
+        out.write("pub type Pairs = Option<(&'static [(u16, u32)], &'static [u16], &'static [i16])>;\n")
+
+        def rows_of(out, items, per):
+            for i in range(0, len(items), per):
+                out.write("    " + "".join(f"{x}," for x in items[i:i + per]) + "\n")
+
+        for face, style, pairs in rows:
+            if not pairs:
+                continue
+            ident = f"{face}_{style}".upper()
+            ordered = sorted(pairs.items())
+            lefts, last = [], None
+            for i, ((a, _b), _v) in enumerate(ordered):
+                if a != last:
+                    lefts.append(f"({a},{i})")
+                    last = a
+            out.write(f"pub static {ident}_LEFTS: &[(u16, u32)] = &[\n")
+            rows_of(out, lefts, 12)
+            out.write("];\n")
+            out.write(f"pub static {ident}_RIGHTS: &[u16] = &[\n")
+            rows_of(out, [b for (_a, b), _v in ordered], 24)
+            out.write("];\n")
+            out.write(f"pub static {ident}_VALUES: &[i16] = &[\n")
+            rows_of(out, [v for _k, v in ordered], 24)
+            out.write("];\n")
+        kerned = {f"{face}_{style}".upper() for face, style, pairs in rows if pairs}
+        for ident, present in families:
+            cells = ", ".join(f"Some(({p}_LEFTS, {p}_RIGHTS, {p}_VALUES))" if p in kerned else "None"
+                              for p in present)
+            out.write(f"pub static {ident}: [Pairs; 4] = [{cells}];\n")
+
+
+def build_kerning(src):
+    """Just `kerning_data.rs`, from the same instanced masters `build_web` uses."""
+    src = Path(src)
+    rows, families = [], []
+    unicodes = codepoints(KERN_RANGES)
+    for face, _licence, styles in WEB_FACES:
+        present = []
+        for style in WEB_STYLES:
+            source = styles.get(style)
+            if source is None:
+                present.append(None)
+                continue
+            master, axes = source
+            pairs = extract_kerning(instance(src / master, axes), unicodes)
+            rows.append((face, style, pairs))
+            present.append(f"{face}_{style}".upper())
+            print(f"{face}-{style.replace('_', '-'):24s} {len(pairs):>6} kern pairs")
+        families.append((face.upper(), present))
+    write_kerning(rows, families)
+    print(f"{KERNING.name}: {KERNING.stat().st_size:,} bytes")
+
 
 def build_web(src):
     src = Path(src)
-    rows, families = [], []
+    rows, families, kern_rows = [], [], []
     for face, licence, styles in WEB_FACES:
         present = []
         for style in WEB_STYLES:
@@ -687,7 +852,10 @@ def build_web(src):
                 present.append(None)
                 continue
             master, axes = source
-            font = shrink(instance(src / master, axes), DEJAVU_RANGES)
+            font = instance(src / master, axes)
+            # Read the kern pairs before subsetting: `shrink` keeps no layout tables.
+            kern_rows.append((face, style, extract_kerning(font, codepoints(KERN_RANGES))))
+            font = shrink(font, DEJAVU_RANGES)
             path = OUT / f"{face}-{style.replace('_', '-')}.ttf"
             font.save(path)
             advances = table(font, DEJAVU_RANGES)
@@ -712,6 +880,7 @@ def build_web(src):
         for ident, present in families:
             cells = ", ".join("None" if p is None else f"Some(({p}, {p}_UPEM))" for p in present)
             out.write(f"pub static {ident}: [Face; 4] = [{cells}];\n")
+    write_kerning(kern_rows, families)
 
 
 def main(argv):
@@ -721,6 +890,9 @@ def main(argv):
         return
     if argv[:1] == ["--web"]:
         build_web(argv[1])
+        return
+    if argv[:1] == ["--kern"]:
+        build_kerning(argv[1])
         return
     dejavu_only = "--dejavu-only" in argv
     rows = []

@@ -29,6 +29,19 @@ unset so existing scenes serialize unchanged: `italic` (bool) and `lang` (`"zh-H
 `"zh-Hant"`, `"ja"`, `"ko"`), which picks regional Han forms. `cw_scene::Style`
 (bold, italic, lang) is what the metrics functions take; a plain `bool` still means
 bold.
+
+Pair kerning: the web faces (`Typeface::WEB` — Arimo, Tinos, Carlito, Caladea, Lato,
+Source Sans 3, Source Serif 4, Montserrat and Playfair Display; Cousine, JetBrains
+Mono, Gelasio and Poppins have no `kern` pairs) kern as Chromium does.
+`metrics::kern(typeface, style, left, right, size)` is the adjustment between two
+adjacent characters in the same 1/64 px as `advance` (`kern_units` gives it in font
+units), and `text_width`, `wrap`, `ellipsize` and `text::layout` all add it, so the
+renderer, which places a run's glyphs from `text::layout`, draws a kerned run exactly
+as wide as it measures. The platform faces and DejaVu (`Inter`, `OpenSans`, `Ubuntu`,
+`Roboto`, `DejaVu`, `Mono`) are not kerned: the desktop shells and apps were laid out,
+and their golden frames pinned, on plain advances, and the bundled subsets carry no
+GPOS for the renderer to have applied. The web engine turns kerning off for a run
+with a non-zero `letter-spacing`, as CSS requires.
 Hit testing uses transformed coordinates, clipping, disabled state and z-order;
 later nodes win equal-z ties. It operates without generating pixels.
 

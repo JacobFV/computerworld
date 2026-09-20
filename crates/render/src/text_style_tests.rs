@@ -326,3 +326,56 @@ fn terminal_cells_hold_wide_characters_marks_and_right_to_left_runs() {
         hash(&terminal("$ ls -la ~/src | grep rs", 200, 14))
     );
 }
+
+fn last_ink_column(frame: &Frame) -> i64 {
+    (0..frame.width)
+        .rfind(|&x| (0..frame.height).any(|y| frame.pixel(x, y).unwrap()[0] < 200))
+        .map(i64::from)
+        .expect("the run draws ink")
+}
+
+/// The renderer places a run's glyphs at the kerned pen positions the scene metrics
+/// measure: the last glyph of a kerned run sits exactly where the measured width
+/// (less its own advance) puts it. Web faces kern; the platform faces do not, so
+/// desktop scenes and their golden frames are as they were.
+#[test]
+fn the_renderer_kerns_a_run_exactly_as_metrics_measure_it() {
+    use cw_scene::metrics::{advance, kern};
+    let size = 32;
+    let text = "AVAVAVAV";
+    for (t, kerned) in [
+        (Typeface::Arimo, true),
+        (Typeface::Tinos, true),
+        (Typeface::Inter, false),
+        (Typeface::DejaVu, false),
+    ] {
+        let style = Style::default();
+        let plain: i64 = text.chars().map(|c| advance(t, style, c, size)).sum();
+        let pairs: i64 = text
+            .chars()
+            .zip(text.chars().skip(1))
+            .map(|(l, r)| kern(t, style, l, r, size))
+            .sum();
+        assert_eq!(pairs < 0, kerned, "{t:?}");
+        let laid = &cw_scene::text::layout(t, style, text, size, 400)[0];
+        assert_eq!(
+            laid.width,
+            plain + pairs,
+            "{t:?}: layout width is the kerned sum"
+        );
+        assert_eq!(
+            i64::from(text_width(t, style, text, size)),
+            (plain + pairs + 63) / 64,
+            "{t:?}: text_width is the kerned sum"
+        );
+        // Ink: the last V's right edge is the lone V's, moved to the kerned pen.
+        let lone = last_ink_column(&styled("V", 100, 48, size, style, t));
+        let pen = plain + pairs - advance(t, style, 'V', size);
+        let run = last_ink_column(&styled(text, 400, 48, size, style, t));
+        assert_eq!(run, (pen + 32).div_euclid(64) + lone, "{t:?}");
+        if kerned {
+            let unkerned = (plain - advance(t, style, 'V', size) + 32).div_euclid(64) + lone;
+            assert!(run + 8 < unkerned, "{t:?}: {run} vs {unkerned}");
+        }
+    }
+}

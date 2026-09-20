@@ -6,6 +6,8 @@ pub mod fonts;
 pub mod metrics;
 pub mod text;
 #[rustfmt::skip]
+mod kerning_data;
+#[rustfmt::skip]
 mod metrics_data;
 #[rustfmt::skip]
 mod metrics_italic;
