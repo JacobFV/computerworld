@@ -9,3 +9,7 @@ cw-sdk = { path = "../../crates/sdk" }
 serde_json.workspace = true
 url.workspace = true
 cw-service-common = { path = "../common" }
+cw-web = { path = "../../crates/web" }
+
+[dev-dependencies]
+cw-service-common = { path = "../common", features = ["validate"] }

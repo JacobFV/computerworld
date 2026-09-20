@@ -118,6 +118,24 @@ mod tests {
                 )
                 .unwrap();
             assert_eq!(response.status, 200, "{kind}");
+            // A migrated kind answers with HTML (docs/html-migration.md): it must parse, carry a
+            // title and pass the strict validator. The rest still serve a valid themed page.
+            if response
+                .header("content-type")
+                .is_some_and(|t| t.starts_with("text/html"))
+            {
+                let html = String::from_utf8(response.body).unwrap();
+                cw_service_common::html::validate_strict(&html)
+                    .unwrap_or_else(|e| panic!("{kind}: {e}"));
+                let dom = cw_web::html::parse(&html);
+                let title = dom
+                    .descendants(cw_web::dom::Document::ROOT)
+                    .find(|n| dom.is(*n, "title"))
+                    .map(|n| dom.text_content(n))
+                    .unwrap_or_default();
+                assert!(!title.trim().is_empty(), "{kind} serves an untitled page");
+                continue;
+            }
             let page: cw_protocol::Page = serde_json::from_slice(&response.body).unwrap();
             page.validate().unwrap_or_else(|e| panic!("{kind}: {e}"));
             // A kind with a `plain` skin serves the unthemed original by default; that is

@@ -150,3 +150,54 @@ logical delay, token and data; `Emit` records named data. `on_effect` receives t
 HTTP/timer result and may return further effects. The kernel schedules these
 continuations, so service-to-service work does not require host tasks or threads.
 The default implementation delegates to `handle` and produces no effects.
+
+## HTML services
+
+A service answers with `text/html` through `cw_service_common::html`, and the browser
+renders it with the `cw-web` engine (see [html-migration.md](html-migration.md) for the
+recipe that moves a `Page` service over, with the search service as the worked example).
+
+**The layer.** `Html` is a node: `el("div").id("x").class("card").attr("title", ..)
+.child(..).text(..)`, with `fragment`, `empty`, `when(cond, |n| ..)`, `maybe(Option)` and
+`each(iter, |item| ..)` for conditional and repeated children. Text is escaped for
+element content, attribute values for attributes, and `style`/`script` bodies are
+emitted verbatim with `</` defused; void elements (`input`, `img`, `meta`, ...) take no
+closing tag. Helpers read like the markup: `link(id, href, text)`, `a(href)`,
+`form(id, action, "get"|"post")`, `text_input(id, name, value)`, `hidden(name, value)`,
+`button(id, label)`, `label(for, text)`, `div(class)`, `span(class)`, and
+`href(path, &[("q", value)])` builds a form-encoded query string. `raw(markup)` exists
+for strings the service itself wrote; never pass it request or seed text.
+
+**Documents and responses.** `Document::new(title).lang("en").stylesheet(css)
+.root_style("--accent: #1a73e8").body_class("skin-google").body([..])` renders
+`<!DOCTYPE html>`, `<html lang style>`, a `<head>` with the title and one `<style>`,
+and the body. `HtmlResponse::ok(&doc)` (or `html::page(&doc)` for a `Result`) is a
+200 with `text/html; charset=utf-8`; `.header("refresh", ..)` adds what a page needs.
+Page responses carry only their content type, so HTML responses do too.
+
+**The CSS file convention.** Each service keeps its stylesheet as a real `.css` file
+next to its source (`services/search/src/search.css`), pulled in with `include_str!`
+and passed to `Document::stylesheet`, which emits it as one inline `<style>`: one
+request per page, nothing for the browser to fetch, and the strict validator sees
+the whole page in one string. The sheet is static; what varies per instance (a
+seeded palette) goes on `<html style>` as custom properties (`--accent`, `--ink`),
+which the sheet reads with `var()`. A skin is a class on `<body>`.
+
+**Ids for the agent API.** The browser's `click`, `fill`, `key` and `submit` address
+elements by `id`, and the semantic observation lists links, buttons, inputs and forms
+by the same id. Every control a person could use carries one, ids are unique per
+page, and a service keeps its ids across a redesign so an agent's script keeps
+working. A block-level `<a id>` wrapping a card makes the whole card one link with
+that id, the way a `Card` with an action was.
+
+**The strict validator.** `html::validate_strict(&html)` (feature `validate`, enabled
+from a service's `[dev-dependencies]` on `cw-service-common`) parses the page, parses
+every `<style>` with `Strictness::Strict` and runs the strict cascade, so an unknown
+property, value, selector or at-rule, a repeated id or a linked stylesheet fails the
+test that calls it. Every service's tests run every page through it.
+
+**Static sites.** The `static-site` service serves `pages` seeds as HTML through
+`cw_web::page::to_document` by default, so every existing site renders through the
+engine with its current look and ids; a site that must stay JSON sets
+`"format": "page"`. The `files` map serves authored HTML, CSS, JavaScript and pictures
+with their media types.

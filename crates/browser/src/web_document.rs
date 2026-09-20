@@ -1543,6 +1543,10 @@ impl WebDocument {
         pctx.caret = self.caret;
         pctx.values = values.clone();
         let mut scene = paint::paint(&self.doc, &styles, &tree, viewport, &pctx);
+        // The document's own scroll is `pane:page`. The engine may also publish the root
+        // box's scroll container under an empty id (`pane:`), with the same bounds and
+        // extent; a wheel would be routed to that twin and the page would never move.
+        scene.scrolls.retain(|area| area.target != "pane:");
         if key.zoom != 100 {
             zoom_scene(&mut scene, u32::from(key.zoom), key.width, key.height);
         }

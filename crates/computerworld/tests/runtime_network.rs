@@ -14,12 +14,12 @@ fn run(world: &mut World, file: &str, src: &str, command: &str) -> (String, Stri
 }
 
 const PY: &str = r#"
-import socket, json, urllib.request, urllib.error, http.client
+import socket, re, urllib.request, urllib.error, http.client
 print(socket.gethostbyname('intranet.internal'))
 print(socket.getaddrinfo('intranet.internal', 80, type=socket.SOCK_STREAM)[0][4])
 with urllib.request.urlopen('http://intranet.internal/') as r:
     body = r.read()
-    print(r.status, r.headers.get_content_type(), json.loads(body)['title'])
+    print(r.status, r.headers.get_content_type(), re.search(r'<title>(.*?)</title>', body.decode()).group(1))
 try:
     urllib.request.urlopen('http://intranet.internal/definitely-missing')
 except urllib.error.HTTPError as e:
@@ -58,7 +58,7 @@ http.get('http://intranet.internal/', (res) => {
   res.on('data', (c) => (n += c.length));
   res.on('end', () => console.log('http', res.statusCode, n > 100));
 });
-fetch('http://intranet.internal/').then(async (r) => console.log('fetch', r.status, (await r.json()).title));
+fetch('http://intranet.internal/').then(async (r) => console.log('fetch', r.status, (await r.text()).match(/<title>(.*?)<\/title>/)[1]));
 fetch('https://intranet.internal/').then((r) => console.log('https', r.status));
 fetch('http://nowhere.invalid/').catch((e) => console.log('dns', e.cause.message));
 const net = require('net');
@@ -79,7 +79,7 @@ fn python_reaches_world_services() {
     assert_eq!(lines[1], format!("('{}', 80)", lines[0]));
     assert_eq!(
         lines[2],
-        "200 application/vnd.computerworld.page+json Northstar Workshop"
+        "200 text/html Northstar Workshop"
     );
     assert_eq!(lines[3], "HTTPError 404");
     // Every site listens on 443 as well, so https reaches the same page.

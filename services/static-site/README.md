@@ -6,7 +6,11 @@ Optional kind `static-site`, registered with `cw_service_static_site::register`.
 {"pages":{"/":{"version":1,"title":"Hello","elements":[{"kind":"text","id":"intro","text":"A synthetic site"}]}},"records":{}}
 ```
 
-Exact page paths respond to GET with the versioned native Page media type.
+Exact page paths respond to GET with the page rendered as `text/html` through
+`cw_web::page::to_document` (element ids, forms, links and the theme are kept, so the
+site renders through the web engine with its current look). A site whose pages must
+stay JSON sets `"format": "page"` at the top level and gets the versioned native Page
+media type instead.
 `GET /api/records` lists shared data. `/api/records/{key}` supports GET,
 PUT/POST (create or replace arbitrary JSON), DELETE. `/records` renders those same
 records as a native page, allowing browser clients to observe API mutations.

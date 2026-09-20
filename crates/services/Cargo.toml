@@ -30,3 +30,5 @@ cw-service-social = { path = "../../services/social" }
 cw-service-wiki = { path = "../../services/wiki" }
 [dev-dependencies]
 serde_json.workspace = true
+cw-service-common = { path = "../../services/common", features = ["validate"] }
+cw-web = { path = "../web" }

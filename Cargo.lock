@@ -534,6 +534,7 @@ name = "cw-service-common"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-web",
  "serde",
  "serde_json",
  "url",
@@ -673,8 +674,11 @@ name = "cw-service-search"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
  "url",
@@ -733,6 +737,7 @@ dependencies = [
  "cw-protocol",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
  "serde_json",
  "url",
 ]
@@ -758,6 +763,7 @@ dependencies = [
  "cw-service-bank",
  "cw-service-calendar",
  "cw-service-chat",
+ "cw-service-common",
  "cw-service-discord",
  "cw-service-docs",
  "cw-service-drive",
@@ -776,6 +782,7 @@ dependencies = [
  "cw-service-speaker",
  "cw-service-static-site",
  "cw-service-wiki",
+ "cw-web",
  "serde_json",
 ]
 

@@ -1,4 +1,6 @@
-//! Shared wire helpers, without service domain semantics.
+//! Shared wire helpers, without service domain semantics. `html` is the template
+//! layer for services that answer with `text/html`.
+pub mod html;
 use cw_protocol::{
     HttpRequest, HttpResponse, Page, PageAction, PageElement, PageTheme, Result, SimError, Style,
 };

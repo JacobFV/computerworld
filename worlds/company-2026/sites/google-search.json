@@ -7,6 +7,11 @@
   "initial_state": {
     "brand": "Google",
     "skin": "google",
+    "header": [
+      {"text": "Gmail", "url": "http://gmail.com/"},
+      {"text": "Images", "url": "/search?v=images"}
+    ],
+    "cta": {"text": "Sign in", "url": "http://mail.google.com/"},
     "theme": {
       "accent": "#1a73e8",
       "background": "#ffffff",

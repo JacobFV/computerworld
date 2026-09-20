@@ -1,9 +1,17 @@
-//! Optional website: native pages, authored files (HTML, CSS, JavaScript, pictures)
-//! served with their media types, and a small shared JSON record API.
+//! Optional website: authored files (HTML, CSS, JavaScript, pictures) served with
+//! their media types, `Page` seeds served as HTML through the `cw_web::page`
+//! converter (or as Page JSON when the site sets `"format": "page"`), and a small
+//! shared JSON record API.
 use cw_protocol::{HttpRequest, HttpResponse, Page, Result, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as wire;
+use cw_service_common::html::{el, Document as HtmlDocument};
 use serde_json::{json, Value};
+/// How `pages` are served: `html` (the default) converts each seed through
+/// `cw_web::page::to_document`, so the site renders through the web engine with its
+/// current look; `page` keeps the native Page media type for anything that must stay
+/// JSON (a client that reads the element tree directly).
+const FORMATS: &[&str] = &["html", "page"];
 pub struct StaticSite;
 pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(StaticSite)
@@ -27,6 +35,7 @@ impl Service for StaticSite {
                 return Err(SimError::invalid(format!("{key} must be an object")));
             }
         }
+        wire::variant(&initial, "format", FORMATS)?;
         for (path, page) in initial["pages"].as_object().unwrap() {
             if !path.starts_with('/') {
                 return Err(SimError::invalid("page paths must be absolute"));
@@ -123,13 +132,27 @@ impl Service for StaticSite {
             return wire::error(405, "method not allowed");
         }
         if path == "/records" {
-            let mut elements = vec![wire::heading("records", "Shared records")];
-            if let Some(records) = state["records"].as_object() {
-                for (k, v) in records {
-                    elements.push(wire::paragraph(&format!("record-{k}"), format!("{k}: {v}")));
+            let records = state["records"].as_object();
+            let list = el("dl").id("records-list").each(records.into_iter().flatten(), |(k, v)| {
+                cw_service_common::html::fragment([
+                    el("dt").id(format!("record-{k}")).text(k.as_str()),
+                    el("dd").id(format!("record-{k}-value")).text(v.to_string()),
+                ])
+            });
+            let doc = HtmlDocument::new("Records")
+                .lang("en")
+                .stylesheet(RECORDS_CSS)
+                .body([el("h1").id("records").text("Shared records"), list]);
+            return match wire::variant(state, "format", FORMATS)?.as_str() {
+                "page" => {
+                    let mut elements = vec![wire::heading("records", "Shared records")];
+                    for (k, v) in records.into_iter().flatten() {
+                        elements.push(wire::paragraph(&format!("record-{k}"), format!("{k}: {v}")));
+                    }
+                    wire::page("Records", elements)
                 }
-            }
-            return wire::page("Records", elements);
+                _ => wire::html::page(&doc),
+            };
         }
         if let Some(asset) = state["assets"].get(&path) {
             let body = if let Some(bytes) = asset.get("bytes") {
@@ -150,7 +173,11 @@ impl Service for StaticSite {
             });
         }
         if let Some(v) = state["pages"].get(&path) {
-            return HttpResponse::page(&serde_json::from_value::<Page>(v.clone())?);
+            let page = serde_json::from_value::<Page>(v.clone())?;
+            return match wire::variant(state, "format", FORMATS)?.as_str() {
+                "page" => HttpResponse::page(&page),
+                _ => Ok(cw_service_common::html::HtmlResponse::new(200, cw_web::page::to_document(&page)).into()),
+            };
         }
         if let Some(response) = serve_file(state, &path)? {
             return Ok(response);
@@ -158,6 +185,8 @@ impl Service for StaticSite {
         wire::error(404, "page not found")
     }
 }
+/// The `/records` page's stylesheet: a plain list, readable, nothing to fetch.
+const RECORDS_CSS: &str = "body { font-family: sans-serif; margin: 16px; color: #202124 } h1 { font-size: 22px } dt { font-weight: bold; margin-top: 8px } dd { margin: 0; font-family: monospace; white-space: pre-wrap }";
 /// An authored file: `path` itself, `index.html` for a directory path, and a redirect
 /// to the directory form for a directory named without its slash, as web servers do.
 fn serve_file(state: &Value, path: &str) -> Result<Option<HttpResponse>> {
@@ -386,5 +415,73 @@ mod assets_tests {
             serde_json::from_slice::<Value>(&response.body).unwrap()["rgba"],
             json!([255, 0, 0, 255])
         );
+    }
+}
+
+#[cfg(test)]
+mod page_format_tests {
+    use super::*;
+    use cw_service_common::html::validate_strict;
+    fn ctx() -> ServiceContext {
+        ServiceContext {
+            actor: "a".into(),
+            source: "pc".into(),
+            tick: 0,
+            seed: 1,
+            instance: "site".into(),
+        }
+    }
+    fn get(state: &mut Value, path: &str) -> HttpResponse {
+        StaticSite
+            .handle(state, &ctx(), &HttpRequest::get(format!("http://site.test{path}")))
+            .unwrap()
+    }
+    fn seed() -> Value {
+        json!({"pages":{"/":{"version":1,"title":"Atlas","theme":{"accent":"#c00","content_width":700},"elements":[
+            {"kind":"heading","id":"h","text":"Welcome","level":1},
+            {"kind":"text","id":"intro","text":"A synthetic site"},
+            {"kind":"link","id":"docs","text":"Docs","url":"/docs"},
+            {"kind":"form","id":"search","action":{"method":"GET","url":"/find","fields":{"q":"$q"}},
+             "children":[{"kind":"input","id":"q","label":"Query","value":"","placeholder":""},
+                         {"kind":"button","id":"go","text":"Go","action":{"method":"GET","url":"/find","fields":{"q":"$q"}}}]}
+        ]}}})
+    }
+    /// Page seeds are HTML by default: the converter keeps every id, the form and the link,
+    /// and the result passes the strict validator, so every existing site renders through the
+    /// engine unchanged.
+    #[test]
+    fn page_seeds_are_served_as_strict_html_with_their_ids() {
+        let mut state = StaticSite.initialize(seed(), &ctx()).unwrap();
+        let home = get(&mut state, "/");
+        assert_eq!(home.status, 200);
+        assert_eq!(home.header("content-type"), Some("text/html; charset=utf-8"));
+        let html = String::from_utf8(home.body).unwrap();
+        validate_strict(&html).unwrap();
+        let dom = cw_web::html::parse(&html);
+        for id in ["h", "intro", "docs", "search", "q", "go"] {
+            assert_eq!(dom.by_id(id).len(), 1, "#{id}");
+        }
+        let form = dom.by_id("search")[0];
+        assert_eq!(dom.attr(form, "action"), Some("/find"));
+        assert_eq!(dom.attr(dom.by_id("docs")[0], "href"), Some("/docs"));
+        assert!(dom.is(dom.by_id("q")[0], "input"));
+        let records = get(&mut state, "/records");
+        assert_eq!(records.header("content-type"), Some("text/html; charset=utf-8"));
+        validate_strict(&String::from_utf8(records.body).unwrap()).unwrap();
+    }
+    /// `"format": "page"` is the escape hatch: the native media type, byte for byte the seed.
+    #[test]
+    fn the_page_format_keeps_the_native_media_type() {
+        let mut seed = seed();
+        seed["format"] = json!("page");
+        let mut state = StaticSite.initialize(seed, &ctx()).unwrap();
+        let home = get(&mut state, "/");
+        assert_eq!(home.header("content-type"), Some(cw_protocol::PAGE_MEDIA_TYPE));
+        let page: Page = serde_json::from_slice(&home.body).unwrap();
+        assert_eq!(page.title, "Atlas");
+        assert_eq!(get(&mut state, "/records").header("content-type"), Some(cw_protocol::PAGE_MEDIA_TYPE));
+        let mut bad = json!({"format": "xml"});
+        bad["pages"] = json!({});
+        assert!(StaticSite.initialize(bad, &ctx()).is_err());
     }
 }

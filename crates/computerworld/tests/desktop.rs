@@ -108,16 +108,22 @@ fn desktop_browser_address_and_page_hit_targets_use_canonical_network() {
         json!({"key":"Enter"}),
     );
     let scene = world.scene(&actor, 960, 640).unwrap();
+    // The page is longer than the window, and the scene lists its links below the fold
+    // too; the one clicked is the first that is under the pointer where it is drawn.
     let target = scene
         .nodes
         .iter()
-        .find_map(|node| {
-            node.interaction.as_deref().filter(|id| {
+        .filter_map(|node| {
+            let id = node.interaction.as_deref().filter(|id| {
                 id.starts_with("window:0:content:") && !id.starts_with("window:0:content:shell:")
-            })
+            })?;
+            let bounds = node.transform.bounds(node.bounds);
+            let x = bounds.x + (bounds.width / 2) as i32;
+            let y = bounds.y + (bounds.height / 2) as i32;
+            (scene.hit_test(x, y).and_then(|hit| hit.interaction.as_deref()) == Some(id)).then(|| id.to_owned())
         })
-        .expect("network response page has links")
-        .to_owned();
+        .next()
+        .expect("network response page has links");
     click(&mut world, &actor, &target);
     let events = serde_json::to_string(&world.trajectory()).unwrap();
     assert!(events.contains("intranet.internal"));

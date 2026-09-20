@@ -26,3 +26,15 @@ browser action (`click`, `fill`, `key`, `submit`, scrolling) works on the result
 For a site that is just a directory of authored files, the `static-site` service's
 `files` map serves `.html`, `.css`, `.js` and pictures with their media types; see
 [services/static-site/README.md](../services/static-site/README.md).
+
+## HTML services
+
+New services answer with HTML rather than `Page` JSON. Build pages with
+`cw_service_common::html` (`el`, `link`, `form`, `text_input`, `button`, `Document`,
+`HtmlResponse`), keep the stylesheet in a `.css` file next to the source and include
+it with `include_str!`, give every link, input and button an `id` (the agent API), and
+run every page through `html::validate_strict` in the service's tests, with
+`cw-service-common = { path = "..", features = ["validate"] }` under
+`[dev-dependencies]`. [service-sdk.md](service-sdk.md#html-services) describes the
+layer; [html-migration.md](html-migration.md) is the recipe for moving an existing
+`Page` service over, with the search service as the worked example.
