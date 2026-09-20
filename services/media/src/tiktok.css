@@ -60,3 +60,10 @@
 @media (max-width: 1000px) {
   .skin-tiktok .watch-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "comments" "side"; }
 }
+
+@media (max-width: 640px) {
+  .skin-tiktok .masthead { padding: 0 8px; gap: 8px; }
+  .skin-tiktok .masthead .sections { display: none; }
+  .skin-tiktok .masthead .middle { flex: 1 1 auto; }
+  .skin-tiktok .stage { width: auto; }
+}

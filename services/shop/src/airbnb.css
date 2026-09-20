@@ -1,5 +1,5 @@
 /* airbnb.com: the white header with the pill search and its round red button, the
-   icon category bar, rounded photo cards with a heart and the rating on the right. */
+   icon category bar, rounded photo cards with the rating on the right. */
 body.skin-airbnb { font-family: Inter, Arial, sans-serif; font-size: 15px; color: #222; }
 .skin-airbnb .hdr { background: #fff; color: #222; border-bottom: 1px solid #ebebeb; }
 .skin-airbnb .hdr .bar { max-width: 1440px; height: 80px; gap: 24px; padding: 0 40px; }
@@ -43,8 +43,6 @@ body.skin-airbnb { font-family: Inter, Arial, sans-serif; font-size: 15px; color
 .skin-airbnb .card .pic { height: 300px; border-radius: 14px; }
 .skin-airbnb .pic-label { display: none; }
 .skin-airbnb .pic .fave { position: absolute; left: 12px; top: 12px; padding: 4px 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); color: #222; font-size: 13px; line-height: 18px; font-weight: 600; }
-.skin-airbnb .card .heart { display: block; position: absolute; right: 14px; top: 12px; font-size: 0; }
-.skin-airbnb .card .heart::before { content: "♡"; font-size: 28px; line-height: 28px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55); }
 .skin-airbnb .card .info { position: relative; gap: 1px; padding: 12px 0 0; }
 .skin-airbnb .card .name { max-height: 20px; padding-right: 64px; font-size: 15px; line-height: 20px; font-weight: 600; color: #222; white-space: nowrap; text-overflow: ellipsis; }
 .skin-airbnb .card:hover .name { color: #222; }
@@ -72,3 +70,10 @@ body.skin-airbnb { font-family: Inter, Arial, sans-serif; font-size: 15px; color
 .skin-airbnb .ftr .cols, .skin-airbnb .ftr .legal { max-width: 1440px; padding-left: 40px; padding-right: 40px; }
 .skin-airbnb .ftr h3 { font-size: 14px; font-weight: 600; }
 .skin-airbnb .ftr .fitem, .skin-airbnb .ftr .col a { font-size: 14px; color: #222; }
+
+@media (max-width: 900px) {
+  .skin-airbnb .right .host, .skin-airbnb .right .globe { display: none; }
+  .skin-airbnb .search .scope { display: none; }
+  .skin-airbnb .hdr .bar { height: auto; gap: 10px; padding: 8px 10px; }
+  .skin-airbnb .search { flex: 1 1 100%; width: auto; min-width: 0; }
+}

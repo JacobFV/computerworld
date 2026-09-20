@@ -6,7 +6,7 @@
 use super::catalog;
 use super::kit::{self, Row};
 use super::player as catalog_player;
-use super::view::{self, act, cover, div, el, field_form, href, icon, press, short, span, Html};
+use super::view::{self, act, cover, div, el, field_form, here_aware, href, icon, press, short, span, Html};
 use super::*;
 
 /// A `list` query value to the context it plays, and back. YouTube Music's own prefixes:
@@ -77,7 +77,7 @@ pub fn route(
     let (title, section, main) = match parts {
         [""] => {
             let mood = web::query(request, "mood").unwrap_or_default();
-            ("YouTube Music".to_owned(), "home", home(s, ctx, &mood))
+            ("YouTube Music".to_owned(), "home", home(s, ctx, &mood, &back))
         }
         ["explore"] => ("Explore".into(), "explore", explore(s, ctx, &back, "")),
         ["explore", part @ ("new_releases" | "charts" | "moods_and_genres")] => {
@@ -134,40 +134,33 @@ pub fn route(
         &if title == "YouTube Music" { title.clone() } else { format!("{title} - YouTube Music") },
         &format!("page-{}", if section.is_empty() { "detail" } else { section }),
         vec![
-            top_bar(&ctx.actor),
-            div("frame").id("frame").child(sidebar(s, &ctx.actor, section)).child(el("main").id("main").children(main)),
+            top_bar(&ctx.actor, &back),
+            div("frame").id("frame").child(sidebar(s, &ctx.actor, section, &back)).child(el("main").id("main").children(main)),
             player_bar(s, ctx, &back),
         ],
     );
     Ok(kit::live(doc.response(), s, ctx, &back))
 }
-fn top_bar(actor: &str) -> Html {
+fn top_bar(actor: &str, here: &str) -> Html {
     el("header")
         .id("topbar")
         .class("topbar")
         .child(
             div("start").child(span("burger").attr("aria-hidden", "true").each(0..3, |_| el("i"))).child(
-                el("a")
-                    .id("topbar-logo")
-                    .class("logo")
-                    .attr("href", "/")
-                    .attr("aria-label", "YouTube Music")
+                here_aware(el("a").id("topbar-logo").class("logo").attr("href", "/").attr("aria-label", "YouTube Music"), "/", here)
                     .child(span("mark").id("topbar-logo-mark").attr("aria-hidden", "true").child(icon("play")))
                     .child(span("name").id("topbar-logo-name").text("Music")),
             ),
         )
         .child(
-            el("a")
-                .id("topbar-search")
-                .class("searchpill")
-                .attr("href", "/search")
+            here_aware(el("a").id("topbar-search").class("searchpill").attr("href", "/search"), "/search", here)
                 .child(icon("search"))
                 .child(span("hint").id("topbar-search-hint").text("Search songs, albums, artists, podcasts")),
         )
         .child(span("avatar").id("topbar-avatar").attr("aria-label", actor).text(view::initial(actor)))
 }
-fn nav(id: &str, glyph: &str, label: &str, to: &str, on: bool) -> Html {
-    el("a").id(id).class(if on { "nav on" } else { "nav" }).attr("href", to).child(
+fn nav(id: &str, glyph: &str, label: &str, to: &str, on: bool, here: &str) -> Html {
+    here_aware(el("a").id(id).class(if on { "nav on" } else { "nav" }).attr("href", to), to, here).child(
         span("row")
             .id(format!("{id}-row"))
             .child(icon(glyph))
@@ -180,27 +173,21 @@ fn owner(p: &Value) -> String {
         o => label(&o),
     }
 }
-fn sidebar(state: &Value, actor: &str, section: &str) -> Html {
+fn sidebar(state: &Value, actor: &str, section: &str, here: &str) -> Html {
     let entry = |id: &str, title: String, meta: String, to: String| {
-        el("a")
-            .id(format!("nav-list-{id}"))
-            .class("list")
-            .attr("href", to)
+        here_aware(el("a").id(format!("nav-list-{id}")).class("list").attr("href", to.as_str()), &to, here)
             .child(span("title").id(format!("nav-list-{id}-title")).text(title))
             .child(span("meta").id(format!("nav-list-{id}-meta")).text(meta))
     };
     el("nav")
         .id("nav")
         .class("side")
-        .child(nav("nav-home", "home", "Home", "/", section == "home"))
-        .child(nav("nav-explore", "compass", "Explore", "/explore", section == "explore"))
-        .child(nav("nav-library", "library", "Library", "/library", section == "library"))
+        .child(nav("nav-home", "home", "Home", "/", section == "home", here))
+        .child(nav("nav-explore", "compass", "Explore", "/explore", section == "explore", here))
+        .child(nav("nav-library", "library", "Library", "/library", section == "library", here))
         .child(el("hr").id("nav-divider"))
         .child(
-            el("a")
-                .id("nav-new")
-                .class("pill")
-                .attr("href", "/library/playlists")
+            here_aware(el("a").id("nav-new").class("pill").attr("href", "/library/playlists"), "/library/playlists", here)
                 .child(span("label").id("nav-new-text").child(icon("plus")).child(span("").id("nav-new-text-label").text("New playlist"))),
         )
         .child(entry(
@@ -293,17 +280,17 @@ fn label(tag: &str) -> String {
     let mut c = tag.chars();
     c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
 }
-fn chip(id: &str, text_: &str, on: bool, to: String) -> Html {
-    el("a")
-        .id(id)
-        .class(if on { "chip on" } else { "chip" })
-        .attr("href", to)
-        .child(span("").id(format!("{id}-text")).text(text_))
+fn chip(id: &str, text_: &str, on: bool, to: String, here: &str) -> Html {
+    here_aware(
+        el("a").id(id).class(if on { "chip on" } else { "chip" }).attr("href", to.as_str()).child(span("").id(format!("{id}-text")).text(text_)),
+        &to,
+        here,
+    )
 }
-fn home(state: &Value, ctx: &ServiceContext, mood: &str) -> Vec<Html> {
+fn home(state: &Value, ctx: &ServiceContext, mood: &str, here: &str) -> Vec<Html> {
     let mut out = vec![div("chips").id("moods").each(moods(state).iter(), |t| {
         let on = t.eq_ignore_ascii_case(mood);
-        chip(&format!("mood-{}", slug(t)), &label(t), on, if on { "/".into() } else { href("/", &[("mood", t)]) })
+        chip(&format!("mood-{}", slug(t)), &label(t), on, if on { "/".into() } else { href("/", &[("mood", t)]) }, here)
     })];
     let fits = |id: &String| {
         mood.is_empty()
@@ -437,7 +424,7 @@ fn library(state: &Value, ctx: &ServiceContext, tab: &str, back: &str) -> Vec<Ht
     let mut out = vec![
         heading("library-heading", "Library"),
         div("chips").id("library-chips").each(["playlists", "songs", "albums", "artists"], |t| {
-            chip(&format!("library-chip-{t}"), &label(t), t == tab, format!("/library/{t}"))
+            chip(&format!("library-chip-{t}"), &label(t), t == tab, format!("/library/{t}"), back)
         }),
     ];
     let nothing = |text_: &str| el("p").id("library-empty").class("muted").text(text_);
@@ -721,7 +708,7 @@ fn watch(state: &Value, ctx: &ServiceContext, v: &str, tab: &str, back: &str) ->
     let tab_cell = |id: &str, label: &str, on: bool, to: Option<String>| {
         let inner = [span("").id(format!("{id}-text")).text(label), span("line").id(format!("{id}-line"))];
         match to {
-            Some(to) => el("a").id(id).class(if on { "tab on" } else { "tab" }).attr("href", to).children(inner),
+            Some(to) => here_aware(el("a").id(id).class(if on { "tab on" } else { "tab" }).attr("href", to.as_str()).children(inner), &to, back),
             None => span("tab off").id(id).children(inner),
         }
     };
@@ -801,7 +788,7 @@ fn search(state: &Value, ctx: &ServiceContext, q: &str, back: &str) -> Vec<Html>
     if q.trim().is_empty() {
         out.push(heading("search-moods-heading", "Moods & genres"));
         out.push(div("chips").id("search-moods").each(moods(state).iter(), |t| {
-            chip(&format!("search-mood-{}", slug(t)), &label(t), false, href("/", &[("mood", t)]))
+            chip(&format!("search-mood-{}", slug(t)), &label(t), false, href("/", &[("mood", t)]), back)
         }));
         return out;
     }
@@ -898,17 +885,19 @@ fn player_bar(state: &Value, ctx: &ServiceContext, back: &str) -> Html {
                         div("names")
                             .id("bar-text")
                             .child(
-                                el("a")
-                                    .id("bar-title")
-                                    .class("title")
-                                    .attr("href", watch_url(&now.id, &p.context))
+                                here_aware(
+                                    el("a").id("bar-title").class("title").attr("href", watch_url(&now.id, &p.context)),
+                                    &watch_url(&now.id, &p.context),
+                                    back,
+                                )
                                     .child(span("").id("bar-title-text").text(now.title.as_str())),
                             )
                             .child(
-                                el("a")
-                                    .id("bar-meta")
-                                    .class("artist")
-                                    .attr("href", format!("/channel/{}", now.artist_id))
+                                here_aware(
+                                    el("a").id("bar-meta").class("artist").attr("href", format!("/channel/{}", now.artist_id)),
+                                    &format!("/channel/{}", now.artist_id),
+                                    back,
+                                )
                                     .child(span("").id("bar-meta-text").text(match album {
                                         Some(a) => format!("{} • {} • {}", now.artist, a.title, a.year),
                                         None => now.artist.clone(),

@@ -282,7 +282,24 @@ impl Service for MediaService {
         ctx: &ServiceContext,
         request: &HttpRequest,
     ) -> Result<HttpResponse> {
-        let video = web::variant(state, "mode", MODES)? == "video";
+        let mode = web::variant(state, "mode", MODES)?;
+        let video = mode == "video";
+        // Where a control lands when the form does not say where it came from. The three
+        // modes lay their pages out differently, so one mutation has a different home on
+        // each; a fallback that is not a route on this skin is a 404 for whoever pressed it.
+        let library = match mode.as_str() {
+            "audio" => "/collection",
+            "music" => "/library",
+            _ => "/playlists",
+        };
+        let playlist_at = |id: &str| match mode.as_str() {
+            "music" => format!("/playlist?list={id}"),
+            _ => format!("/playlist/{id}"),
+        };
+        let item_at = |id: &str| match mode.as_str() {
+            "audio" => format!("/track/{id}"),
+            _ => format!("/watch?v={id}"),
+        };
         let path = web::path(request);
         let method = request.method.to_ascii_uppercase();
         if method == "GET" {
@@ -307,10 +324,7 @@ impl Service for MediaService {
                     Err("item not found".into())
                 } else {
                     play(state, id, None, ctx, true);
-                    Ok((
-                        json!({"views": num(&state["items"][id], "views")}),
-                        format!("/watch?v={id}"),
-                    ))
+                    Ok((json!({"views": num(&state["items"][id], "views")}), item_at(id)))
                 }
             }
             // Both music modes play through the listener's player; its reply is the player.
@@ -331,12 +345,7 @@ impl Service for MediaService {
                         ctx,
                         &json!({"action": "play", "item": id, "context": context}),
                     )
-                    .map(|_| {
-                        (
-                            json!({"plays": num(&state["items"][id], "plays")}),
-                            format!("/track/{id}"),
-                        )
-                    })
+                    .map(|_| (json!({"plays": num(&state["items"][id], "plays")}), item_at(id)))
                 }
             }
             ["items", id, "queue"] if !video => {
@@ -352,20 +361,20 @@ impl Service for MediaService {
                 None => Err("item not found".into()),
                 Some(_) => {
                     let saved = catalog::save(state, &ctx.actor, &[id.to_string()]);
-                    Ok((json!({"saved": saved}), "/library".to_owned()))
+                    Ok((json!({"saved": saved}), library.to_owned()))
                 }
             },
             ["library", "albums", id] if !video => match catalog::album(state, id) {
                 None => Err("album not found".into()),
                 Some(album) => {
                     let saved = catalog::save(state, &ctx.actor, &album.tracks);
-                    Ok((json!({"saved": saved}), "/library".to_owned()))
+                    Ok((json!({"saved": saved}), library.to_owned()))
                 }
             },
             ["playlists", id, "remove"] => {
                 let item = web::text(&body, "item");
                 catalog::remove_from_playlist(state, &ctx.actor, id, &item)
-                    .map(|p| (p, format!("/playlist/{id}")))
+                    .map(|p| (p, playlist_at(id)))
             }
             ["items", id, "play"] => {
                 if record(state, "items", id).is_none() {
@@ -379,10 +388,7 @@ impl Service for MediaService {
                         ctx,
                         false,
                     );
-                    Ok((
-                        json!({"plays": num(&state["items"][id], "plays")}),
-                        format!("/track/{id}"),
-                    ))
+                    Ok((json!({"plays": num(&state["items"][id], "plays")}), item_at(id)))
                 }
             }
             ["items", id, "like"] => match record(state, "items", id) {
@@ -390,14 +396,7 @@ impl Service for MediaService {
                 Some(_) => {
                     let liked = toggle(state, "likes", &ctx.actor, id);
                     bump(state, id, "likes", if liked { 1 } else { -1 });
-                    Ok((
-                        json!({"liked": liked}),
-                        if video {
-                            format!("/watch?v={id}")
-                        } else {
-                            "/".to_owned()
-                        },
-                    ))
+                    Ok((json!({"liked": liked}), if video { item_at(id) } else { "/".to_owned() }))
                 }
             },
             ["items", id, "comments"] => {
@@ -420,7 +419,7 @@ impl Service for MediaService {
                     let mut comments = comments;
                     comments.push(comment.clone());
                     item["comments"] = Value::Array(comments);
-                    Ok((comment, format!("/watch?v={id}")))
+                    Ok((comment, item_at(id)))
                 } else {
                     Err("item not found".into())
                 }
@@ -436,7 +435,7 @@ impl Service for MediaService {
                         None => Err("comment not found".into()),
                         Some(c) => {
                             c["likes"] = json!(num(c, "likes") + 1);
-                            Ok((c.clone(), format!("/watch?v={id}")))
+                            Ok((c.clone(), item_at(id)))
                         }
                     }
                 }
@@ -468,7 +467,8 @@ impl Service for MediaService {
                         .expect("state is an object")
                         .entry("playlists")
                         .or_insert_with(|| json!({}))[&id] = playlist.clone();
-                    Ok((playlist, format!("/playlist/{id}")))
+                    let at = playlist_at(&id);
+                    Ok((playlist, at))
                 }
             }
             ["playlists", id, "items"] => {
@@ -487,7 +487,7 @@ impl Service for MediaService {
                                 tracks.push(item);
                             }
                             state["playlists"][id]["items"] = json!(tracks);
-                            Ok((state["playlists"][id].clone(), format!("/playlist/{id}")))
+                            Ok((state["playlists"][id].clone(), playlist_at(id)))
                         }
                     }
                 }
@@ -856,7 +856,7 @@ mod tests {
             &mut state,
             "http://youtube.com/results?search_query=determinism",
         ));
-        assert!(hits.contains("1 results"));
+        assert!(hits.contains("1 result for"));
         assert!(hits.contains("result-atlas-walkthrough"));
         let channels = text(&get(
             &mut state,

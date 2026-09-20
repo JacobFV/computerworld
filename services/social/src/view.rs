@@ -11,7 +11,9 @@
 //! `feed-grid`, `post-<id>` (the link that opens the thread), `<id>-row`, `-avatar`,
 //! `-head`, `-name`, `-handle`, `-verified`, `-photo`, `-text`, `-quote`, `-quote-by`,
 //! `-quote-text`, `-acts`, `-like`, `-repost` (buttons, with `-label` inside),
-//! `-replies` (link), `profile`, `profile-avatar`, `name`, `handle`, `headline`, `bio`,
+//! `-replies` (a link, and on the post a thread page is about a plain count instead),
+//! `suggest-<n>` with its own `suggest-<n>-follow` button, `profile`, `profile-avatar`,
+//! `name`, `handle`, `headline`, `bio`,
 //! `followers`, `following-count`, `location`, `site`, `follow`, `connect`, `exp-<n>`,
 //! `reply` (form), `reply-text`, `reply-submit`, `replies-title`, `search` (form),
 //! `search-q`, `search-submit`, `inbox-title`, `inbox-empty`, `thread-<id>` (link),
@@ -220,11 +222,13 @@ impl<'a> View<'a> {
         })
     }
     /// The search box the chrome carries on every page; the search page has its own.
+    /// The magnifier is the submit button, because that is the thing on the page that
+    /// looks like it sends the search.
     fn top_search(&self) -> Node {
         form("top-search", "/search", "post")
             .class("top-search")
             .attr("role", "search")
-            .child(ico("search"))
+            .child(button("top-search-go", "").attr("aria-label", "Search").child(ico("search")))
             .child(
                 text_input("top-q", "q", "")
                     .attr("aria-label", format!("Search {}", self.s.brand))
@@ -251,6 +255,11 @@ impl<'a> View<'a> {
                 ),
         )
     }
+    /// True when `handle`'s profile is not the page being read: a row that lands the reader
+    /// where they already stand is a link with nothing behind it, so no list offers one.
+    fn elsewhere(&self, handle: &str) -> bool {
+        format!("/{handle}") != self.here
+    }
     /// Accounts the actor does not follow yet, the biggest first.
     fn suggestions(&self, title: &str, take: usize) -> Option<Node> {
         let followed = self.s.follows.get(&self.ctx.actor);
@@ -259,7 +268,11 @@ impl<'a> View<'a> {
             .s
             .accounts
             .values()
-            .filter(|a| Some(a.handle.as_str()) != mine && !followed.is_some_and(|f| f.contains(&a.handle)))
+            .filter(|a| {
+                Some(a.handle.as_str()) != mine
+                    && self.elsewhere(&a.handle)
+                    && !followed.is_some_and(|f| f.contains(&a.handle))
+            })
             .collect();
         rest.sort_by(|x, y| y.followers.cmp(&x.followers).then_with(|| x.handle.cmp(&y.handle)));
         if rest.is_empty() {
@@ -270,29 +283,51 @@ impl<'a> View<'a> {
                 .id("suggest")
                 .class("panel")
                 .child(el("h2").class("panel-title").text(title))
-                .each(rest.into_iter().take(take).enumerate(), |(i, acct)| self.person(&format!("suggest-{i}"), acct, "Follow")),
+                .each(rest.into_iter().take(take).enumerate(), |(i, acct)| self.person(&format!("suggest-{i}"), acct, true)),
         )
     }
-    /// One account as a row that opens its profile.
-    fn person(&self, id: &str, acct: &Account, cue: &str) -> Node {
-        a(format!("/{}", acct.handle))
-            .id(id)
-            .class("person")
-            .child(avatar(&format!("{id}-avatar"), Some(acct), &acct.handle, "mid"))
+    /// One account as a row that opens its profile. `follow` adds the real Follow control
+    /// beside it — a one-button form of its own, because a button cannot live inside a link
+    /// and a pill that only opened the profile would be a lie about what it does.
+    fn person(&self, id: &str, acct: &Account, follow: bool) -> Node {
+        div("person")
             .child(
-                span("person-who")
-                    .child(span("person-name").text(acct.name.as_str()))
-                    .child(span("person-handle").text(if self.s.professional() && !acct.headline.is_empty() {
-                        acct.headline.clone()
-                    } else {
-                        display(self.s, &acct.handle)
-                    })),
+                a(format!("/{}", acct.handle))
+                    .id(id)
+                    .class("person-link")
+                    .child(avatar(&format!("{id}-avatar"), Some(acct), &acct.handle, "mid"))
+                    .child(
+                        span("person-who")
+                            .child(span("person-name").text(acct.name.as_str()))
+                            .child(span("person-handle").text(if self.s.professional() && !acct.headline.is_empty() {
+                                acct.headline.clone()
+                            } else {
+                                display(self.s, &acct.handle)
+                            })),
+                    ),
             )
-            .when(!cue.is_empty(), |n| n.child(span("person-cue").text(cue)))
+            .when(follow, |n| {
+                n.child(pill(
+                    &format!("{id}-follow"),
+                    "none",
+                    if self.s.professional() { "Connect" } else { "Follow" },
+                    None,
+                    false,
+                    &format!("/accounts/{}/follow", acct.handle),
+                    &self.here,
+                ))
+            })
     }
     /// What is being talked about: the posts with the most reach, each a link to its thread.
     fn trends(&self, title: &str) -> Option<Node> {
-        let top = self.s.explore();
+        // Never offer the reader the page they are already on: a trend row that lands where
+        // you stand is a link with nothing behind it.
+        let top: Vec<String> = self
+            .s
+            .explore()
+            .into_iter()
+            .filter(|id| format!("/{}/status/{id}", self.s.posts[id].author) != self.here)
+            .collect();
         if top.is_empty() {
             return None;
         }
@@ -324,8 +359,19 @@ impl<'a> View<'a> {
             .get(&self.ctx.actor)
             .into_iter()
             .flatten()
+            .filter(|h| self.elsewhere(h))
             .filter_map(|h| self.s.accounts.get(h))
             .collect()
+    }
+    /// One of Facebook's shortcut rows: a link that says when it is the page being read.
+    fn shortcut(&self, id: &str, icon: &str, url: &str, label: &str) -> Node {
+        let current = url == self.here;
+        a(url)
+            .id(id)
+            .class(if current { "shortcut on" } else { "shortcut" })
+            .when(current, |n| n.attr("aria-current", "page"))
+            .child(ico(icon))
+            .child(span("").text(label))
     }
     fn left(&self) -> Option<Node> {
         match self.skin {
@@ -334,13 +380,13 @@ impl<'a> View<'a> {
                     .id("left")
                     .class("left")
                     .maybe(self.me_card("short-me"))
-                    .child(a("/explore").id("short-groups").class("shortcut").child(ico("explore")).child(span("").text(self.explore_title())))
-                    .child(a(self.inbox_root()).id("short-inbox").class("shortcut").child(ico("inbox")).child(span("").text("Messenger")))
-                    .child(a("/search").id("short-search").class("shortcut").child(ico("search")).child(span("").text("Find friends")))
+                    .child(self.shortcut("short-groups", "explore", "/explore", self.explore_title()))
+                    .child(self.shortcut("short-inbox", "inbox", self.inbox_root(), "Messenger"))
+                    .child(self.shortcut("short-search", "search", "/search", "Find friends"))
                     .child(el("h2").class("left-title").text("Your shortcuts"))
                     .each(
                         self.followed().into_iter().filter(|a| a.actor.is_none()).take(5).enumerate(),
-                        |(i, acct)| self.person(&format!("short-{i}"), acct, ""),
+                        |(i, acct)| self.person(&format!("short-{i}"), acct, false),
                     ),
             ),
             "linkedin" => {
@@ -383,7 +429,7 @@ impl<'a> View<'a> {
                         .id("contacts")
                         .class("panel")
                         .child(el("h2").class("panel-title").text("Contacts"))
-                        .each(contacts.into_iter().take(10).enumerate(), |(i, acct)| self.person(&format!("contact-{i}"), acct, "")),
+                        .each(contacts.into_iter().take(10).enumerate(), |(i, acct)| self.person(&format!("contact-{i}"), acct, false)),
                 )
             }
             "instagram" => aside
@@ -452,6 +498,11 @@ impl<'a> View<'a> {
     /// One timeline entry. The text (and the picture) is the link that opens the thread; the
     /// like and repost buttons are their own forms, so a like never costs a navigation.
     fn post(&self, id: &str) -> Node {
+        self.post_at(id, false)
+    }
+    /// `focused` is the post a thread page is about: on its own page its text opens nothing
+    /// and its reply count is a count, not a link back to where the reader already is.
+    fn post_at(&self, id: &str, focused: bool) -> Node {
         let s = self.s;
         let post = &s.posts[id];
         let acct = s.accounts.get(&post.author);
@@ -464,14 +515,16 @@ impl<'a> View<'a> {
             .child(avatar(&format!("{id}-avatar"), acct, &post.author, "mid"))
             .child(
                 div("who")
-                    .child(
-                        link(
-                            &format!("{id}-name"),
-                            format!("/{}", post.author),
-                            acct.map_or(post.author.clone(), |a| a.name.clone()),
-                        )
-                        .class("name"),
-                    )
+                    .child({
+                        // On the author's own profile the name is the page's own heading:
+                        // a link back to it would land the reader where they already are.
+                        let name = acct.map_or(post.author.clone(), |a| a.name.clone());
+                        if self.here == format!("/{}", post.author) {
+                            span("name").id(format!("{id}-name")).text(name)
+                        } else {
+                            link(&format!("{id}-name"), format!("/{}", post.author), name).class("name")
+                        }
+                    })
                     .when(acct.is_some_and(|a| a.verified), |n| {
                         n.child(span("verified").id(format!("{id}-verified")).attr("title", "Verified").text("✓"))
                     })
@@ -481,9 +534,7 @@ impl<'a> View<'a> {
                         format!("{} · {}", display(s, &post.author), ago(self.ctx.tick, post.tick))
                     })),
             );
-        let open = a(thread.as_str())
-            .id(format!("post-{id}"))
-            .class("post-link")
+        let open = if focused { div("post-link here") } else { a(thread.as_str()).id(format!("post-{id}")).class("post-link") }
             .when(s.photos(), |n| {
                 // The picture itself: a tile in the author's tint, named after what it shows.
                 let shows = if post.image.is_empty() { "Photo" } else { post.image.as_str() };
@@ -505,9 +556,8 @@ impl<'a> View<'a> {
         let acts = div("acts")
             .id(format!("{id}-acts"))
             .child(
-                a(thread.as_str())
+                if focused { span("act replies here") } else { a(thread.as_str()).class("act replies") }
                     .id(format!("{id}-replies"))
-                    .class("act replies")
                     .child(ico("reply"))
                     .child(span("n").text(s.replies_to(id).len().to_string()))
                     .child(span("lbl").text(if s.replies_to(id).len() == 1 { " reply" } else { " replies" })),
@@ -571,8 +621,16 @@ impl<'a> View<'a> {
             main.push(
                 div("tabs")
                     .id("tabs")
-                    .child(link("tab-home", "/", if self.skin == "x" { "For you" } else { "Following" }).class(if home { "tab on" } else { "tab" }))
-                    .child(link("tab-explore", "/explore", self.explore_title()).class(if home { "tab" } else { "tab on" })),
+                    .child(
+                        link("tab-home", "/", if self.skin == "x" { "For you" } else { "Following" })
+                            .class(if home { "tab on" } else { "tab" })
+                            .when(home, |n| n.attr("aria-current", "page")),
+                    )
+                    .child(
+                        link("tab-explore", "/explore", self.explore_title())
+                            .class(if home { "tab" } else { "tab on" })
+                            .when(!home, |n| n.attr("aria-current", "page")),
+                    ),
             );
         }
         if home && self.skin == "instagram" {
@@ -751,7 +809,7 @@ impl<'a> View<'a> {
         chain.reverse();
         let mut main = vec![div("crumb").child(link("thread-back", "/", "←").attr("aria-label", "Back to Home")).child(el("h2").class("crumb-title").text("Post"))];
         main.extend(chain.iter().map(|up| self.post(up).class("ancestor")));
-        main.push(self.post(id).class("focus"));
+        main.push(self.post_at(id, true).class("focus"));
         main.push(
             el("section")
                 .id("reply-box")
@@ -785,7 +843,7 @@ impl<'a> View<'a> {
         let title = if q.trim().is_empty() {
             "Search".to_owned()
         } else {
-            format!("{} results for \"{q}\"", ids.len())
+            format!("{} for \"{q}\"", if ids.len() == 1 { "1 result".to_owned() } else { format!("{} results", ids.len()) })
         };
         let mut main = vec![form("search", "/search", "post")
             .class("search-form")
@@ -813,6 +871,7 @@ impl<'a> View<'a> {
             a(format!("{root}/{}", c.id))
                 .id(format!("thread-{}", c.id))
                 .class(if open == Some(c.id.as_str()) { "thread on" } else { "thread" })
+                .when(open == Some(c.id.as_str()), |n| n.attr("aria-current", "page"))
                 .child(avatar(&format!("thread-{}-avatar", c.id), s.accounts.get(face), face, "mid"))
                 .child(
                     span("thread-body")

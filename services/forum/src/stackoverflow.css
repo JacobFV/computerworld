@@ -18,7 +18,6 @@ a:hover { color: var(--blue); }
 .glyph i:nth-child(2) { bottom: 10px; transform: rotate(8deg); left: 7px; }
 .glyph i:nth-child(3) { bottom: 16px; transform: rotate(22deg); left: 9px; }
 .logo .word { font-size: 18px; line-height: 20px; color: var(--ink); letter-spacing: -.3px; }
-.products { font-size: 13px; color: #525960; padding: 6px 12px; border-radius: 1000px; margin: 0 4px; flex: none; }
 .search { flex: 1; display: flex; align-items: center; height: 33px; margin: 0 8px; border: 1px solid #babfc4; border-radius: 3px; background: #ffffff; padding: 0 0 0 9px; }
 .search:focus-within { border-color: #6bbbf7; box-shadow: 0 0 0 4px rgba(0,116,204,.15); }
 .mag { width: 18px; height: 18px; position: relative; flex: none; }
@@ -156,3 +155,14 @@ form.inline button:hover { color: var(--blue); }
 .badge.rep { font-weight: 700; color: var(--ink); }
 .foot { background: #232629; color: #9199a1; font-size: 11px; line-height: 15px; padding: 32px 24px; display: flex; gap: 24px; justify-content: center; }
 .foot-brand { color: #babfc4; font-weight: 700; font-size: 13px; text-transform: uppercase; }
+
+/* A phone: the left nav and the "hot questions" rail drop and a question takes the width. */
+@media (max-width: 860px) {
+  .wrap { display: block; }
+  .leftnav, .sidebar { display: none; }
+  .bar { padding: 0 8px; }
+  .search { min-width: 0; }
+  .me .me-name { display: none; }
+  .qrow { display: block; }
+  .stats { display: flex; gap: 12px; }
+}

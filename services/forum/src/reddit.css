@@ -52,7 +52,7 @@ a { color: var(--blue); }
 .pbody { flex: 1; min-width: 0; padding: 8px 8px 0 8px; }
 .sub { display: flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; color: var(--meta); flex-wrap: wrap; }
 .sub .board { color: var(--ink); font-weight: 700; }
-.sub .board:hover, .sub .user:hover { text-decoration: underline; }
+.sub a.board:hover, .sub a.user:hover { text-decoration: underline; }
 .sub .user { color: var(--meta); }
 .dot { color: var(--meta); font-size: 8px; margin: 0 2px; }
 .pbody .h3 { font-size: 18px; font-weight: 500; line-height: 22px; margin: 6px 0 4px 0; }
@@ -156,7 +156,7 @@ a.act:hover { background: #e8e8e8; }
 .rhead { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--meta); flex-wrap: wrap; }
 .rhead .avatar { width: 28px; height: 28px; line-height: 28px; font-size: 11px; }
 .rhead .user { color: var(--ink); font-weight: 500; }
-.rhead .user:hover { text-decoration: underline; }
+.rhead a.user:hover { text-decoration: underline; }
 .flair { background: #edeff1; border-radius: 2px; padding: 0 4px; font-size: 12px; color: var(--ink); }
 .rcol .text { padding: 2px 0 0 34px; }
 .rcol .text p { margin-bottom: 6px; }
@@ -187,3 +187,18 @@ form.inline button:hover { background: #e8e8e8; }
 .pages a.on { background: var(--blue); color: #ffffff; border-color: var(--blue); }
 .foot { text-align: center; color: var(--meta); font-size: 12px; padding: 8px 0 24px 0; }
 .foot-brand { display: none; }
+
+/* A phone: the community rail drops, the feed takes the width, and the top bar keeps the
+   search box and the create button. */
+@media (max-width: 860px) {
+  .wrap { display: block; padding: 12px 8px; }
+  .content { width: auto; }
+  .sidebar { display: none; }
+  .top { padding: 0 8px; gap: 8px; }
+  .top .logo .word { display: none; }
+  .search { min-width: 0; }
+  .links { flex: 0 1 auto; min-width: 0; }
+  .links a { padding: 0 6px; }
+  .links a:not(.create):not(.on) { display: none; }
+  .me .me-name, .me .me-rep { display: none; }
+}

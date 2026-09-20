@@ -52,7 +52,7 @@ button.primary { border-radius: 6px; padding: 8px 20px; }
 .acts .pill-form { order: 3; }
 .acts .pill-form:last-child { order: 1; }
 .pill, .act { width: 100%; box-sizing: border-box; justify-content: center; padding: 8px 0; border-radius: 4px; font-size: 15px; font-weight: 600; }
-.pill:hover, .act:hover { background-color: #f0f2f5; }
+.pill:hover, a.act:hover { background-color: #f0f2f5; }
 .pill.on { color: var(--accent); }
 .pill .ico, .act .ico { font-size: 18px; }
 .act .n { margin-right: 4px; }
@@ -91,3 +91,20 @@ button.primary { border-radius: 6px; padding: 8px 20px; }
 .search-form .ico { margin-right: 10px; color: var(--muted); }
 .crumb { margin-bottom: 10px; color: var(--muted); }
 .crumb-title { font-size: 17px; }
+
+/* A phone: the shortcuts and the contacts rail go, the feed takes the width, and the top
+   bar keeps only its search box and its icons. */
+@media (max-width: 860px) {
+  .shell { display: block; padding-top: 8px; }
+  .left, .side { display: none; }
+  .main { padding: 0 8px; }
+  .topbar-in { padding: 0 8px; }
+  .top-search { width: auto; flex: 1 1 auto; min-width: 0; margin-right: 8px; }
+  .top-search input { min-width: 0; }
+  .nav { flex: 0 1 auto; margin-right: 0; justify-content: flex-end; }
+  .nav-item { width: auto; flex: 0 1 auto; padding: 0 6px; }
+  .nav .ico { font-size: 22px; }
+  .topbar .avatar { margin-left: 6px; width: 32px; height: 32px; line-height: 32px; }
+  .logo::before { width: 32px; height: 32px; line-height: 38px; font-size: 32px; }
+  .acts .pill, .acts .act { font-size: 13px; }
+}

@@ -56,7 +56,7 @@ button.primary { padding: 9px 20px; }
 .trend, .person { padding: 8px 0; }
 .trend-kind, .trend-count { color: var(--muted); font-size: 13px; }
 .trend-text { font-weight: 600; font-size: 14px; margin: 2px 0; }
-.person-cue { background-color: var(--accent); color: #ffffff; font-weight: 600; font-size: 13px; padding: 6px 14px; border-radius: 9999px; }
+.person .pill { background-color: var(--accent); color: #ffffff; font-weight: 600; font-size: 13px; padding: 6px 14px; border-radius: 9999px; }
 
 .banner { height: 150px; }
 .profile { border-bottom: 1px solid #d4dbe2; padding-bottom: 14px; }
@@ -79,3 +79,23 @@ button.primary { padding: 9px 20px; }
 .dm-form input { border-color: #d4dbe2; }
 .search-form { margin: 10px 16px; height: 44px; padding: 0 6px 0 16px; border-radius: 9999px; border: 1px solid #d4dbe2; }
 .search-form .ico { margin-right: 10px; color: var(--muted); }
+
+/* A phone: the rail becomes a bar, the right column goes, the feed takes the width. */
+@media (max-width: 860px) {
+  .shell { display: block; }
+  .rail { position: static; height: auto; flex-direction: row; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #d4dbe2; }
+  .rail .brand { flex: none; }
+  .rail .logo { width: 24px; margin-right: 4px; }
+  .rail .wordmark { display: none; }
+  .rail .nav-text { display: none; }
+  .rail .me-card { order: 0; padding: 0; }
+  .rail .me-card .avatar { width: 32px; height: 32px; line-height: 32px; }
+  .nav { flex-direction: row; flex: 1 1 auto; min-width: 0; justify-content: space-around; }
+  .nav-item { flex: 0 1 auto; margin: 0; padding: 8px 4px; }
+  .nav .ico { width: auto; margin-right: 0; }
+  .main { border-left: 0; border-right: 0; }
+  .side { display: none; }
+  .acts { max-width: none; }
+  .post { padding-left: 56px; }
+  .post .post-head .avatar { left: 12px; width: 34px; height: 34px; line-height: 34px; }
+}

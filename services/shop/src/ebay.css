@@ -17,17 +17,14 @@ body.skin-ebay { font-family: Arial, sans-serif; color: #191919; }
 .skin-ebay .logo .c2 { color: #f5af02; }
 .skin-ebay .logo .c3 { color: #86b817; }
 .skin-ebay .shopby { position: relative; width: 84px; padding-right: 16px; font-size: 12px; line-height: 15px; color: #707070; }
-.skin-ebay .shopby::after { content: ""; position: absolute; right: 2px; top: 10px; width: 5px; height: 5px; border-right: 1px solid #707070; border-bottom: 1px solid #707070; transform: rotate(45deg); }
 .skin-ebay .search { height: 48px; background: transparent; border-radius: 0; }
 .skin-ebay .search .glass { display: block; order: 0; position: relative; flex: none; width: 44px; height: 48px; border: 2px solid #191919; border-right: 0; border-radius: 24px 0 0 24px; background: #fff; }
 .skin-ebay .search .glass::before { content: ""; position: absolute; left: 18px; top: 14px; width: 11px; height: 11px; border: 2px solid #707070; border-radius: 50%; }
 .skin-ebay .search .glass::after { content: ""; position: absolute; left: 29px; top: 27px; width: 7px; height: 2px; background: #707070; transform: rotate(45deg); transform-origin: 0 50%; }
 .skin-ebay .search input[type="text"] { order: 1; height: 48px; padding: 0 8px 0 0; border-top: 2px solid #191919; border-bottom: 2px solid #191919; font-size: 16px; background: #fff; }
 .skin-ebay .search .scope { display: block; order: 2; position: relative; flex: none; height: 48px; padding: 0 36px 0 16px; border: 2px solid #191919; border-left: 1px solid #c7c7c7; border-radius: 0 24px 24px 0; background: #fff; font-size: 14px; line-height: 44px; }
-.skin-ebay .search .scope::after { content: ""; position: absolute; right: 18px; top: 16px; width: 6px; height: 6px; border-right: 1px solid #191919; border-bottom: 1px solid #191919; transform: rotate(45deg); }
 .skin-ebay .search .go { order: 3; width: 160px; height: 48px; margin-left: 10px; border-radius: 24px; background: #3665f3; font-size: 16px; font-weight: 700; }
 .skin-ebay .search .go:hover { background: #2b51c4; }
-.skin-ebay .adv { font-size: 12px; color: #707070; }
 .skin-ebay .cats { border-top: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; }
 .skin-ebay .cats .inner { max-width: 1280px; justify-content: center; gap: 28px; }
 .skin-ebay .cat { padding: 8px 0; font-size: 13px; color: #414141; }
@@ -45,8 +42,6 @@ body.skin-ebay { font-family: Arial, sans-serif; color: #191919; }
 .skin-ebay .pic .obj { display: block; width: 64%; height: 64%; border-radius: 8px; background: linear-gradient(135deg, var(--c1), var(--c2)); }
 .skin-ebay .pic .pic-label { display: none; }
 .skin-ebay .pic.main, .skin-ebay .pic.thumb { align-items: center; justify-content: center; background: #f7f7f7; }
-.skin-ebay .card .heart { display: block; position: absolute; right: 8px; top: 8px; width: 32px; height: 32px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
-.skin-ebay .card .heart::before { content: "♡"; position: absolute; left: 0; right: 0; top: 5px; text-align: center; font-size: 18px; line-height: 22px; color: #191919; }
 .skin-ebay .card .info { padding: 8px 0 0; gap: 2px; }
 .skin-ebay .card .name { font-size: 14px; line-height: 20px; max-height: 40px; }
 .skin-ebay .card:hover .name { color: #191919; text-decoration: underline; }
@@ -66,3 +61,14 @@ body.skin-ebay { font-family: Arial, sans-serif; color: #191919; }
 .skin-ebay .ftr .cols, .skin-ebay .ftr .legal { max-width: 1280px; }
 .skin-ebay .ftr h3 { font-size: 13px; color: #414141; }
 .skin-ebay .ftr .fitem, .skin-ebay .ftr .col a { font-size: 12px; }
+
+@media (max-width: 900px) {
+  .skin-ebay .util { flex-wrap: wrap; gap: 8px 12px; padding: 6px 10px; }
+  .skin-ebay .util .grow { display: none; }
+  .skin-ebay .hdr .bar { gap: 10px; padding: 10px; }
+  .skin-ebay .logo { font-size: 30px; line-height: 34px; }
+  .skin-ebay .search .go { width: 80px; }
+  .skin-ebay .search .scope { display: none; }
+  .skin-ebay .card { overflow: hidden; }
+  .skin-ebay .price { font-size: 16px; line-height: 22px; }
+}

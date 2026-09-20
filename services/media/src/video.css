@@ -143,16 +143,15 @@ main { flex: 1; min-width: 0; padding: 0 24px 64px 24px; }
 .upnext { grid-area: side; min-width: 0; }
 .stage { position: relative; aspect-ratio: 16 / 9; background: #000000; border-radius: var(--radius); overflow: hidden; }
 .stage img.still { opacity: .9; }
+.stage form.act { position: absolute; left: 50%; top: 50%; margin: -24px 0 0 -34px; }
 .stage .bigplay {
-  position: absolute; left: 50%; top: 50%; width: 68px; height: 48px; margin: -24px 0 0 -34px; border-radius: 12px;
+  display: block; width: 68px; height: 48px; border-radius: 12px;
   background: rgba(0,0,0,.7); color: #ffffff; text-align: center; line-height: 48px;
 }
+.stage .bigplay:hover { background: rgba(0,0,0,.85); }
 .stage .bigplay .ic { font-size: 22px; }
 .stage .flags { left: 12px; top: 12px; }
-.stage .controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 24px 12px 4px 12px; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.75)); color: #ffffff; }
-.stage .progress { display: block; height: 3px; background: rgba(255,255,255,.3); }
-.stage .progress i { display: block; width: 2%; height: 3px; background: var(--accent); }
-.stage .controls .buttons { display: flex; align-items: center; gap: 12px; height: 40px; font-size: 13px; }
+.stage .runtime { position: absolute; right: 12px; bottom: 12px; padding: 1px 5px; border-radius: 3px; background: rgba(0,0,0,.8); color: #ffffff; font-size: 12px; line-height: 18px; font-weight: 500; }
 .info { padding-top: 12px; }
 .heading { display: flex; align-items: flex-start; gap: 12px; }
 .heading h1 { font-size: 20px; line-height: 28px; font-weight: 700; flex: 1; min-width: 0; }
@@ -254,10 +253,38 @@ main.pg-library h1, main.pg-library h2 { font-size: 20px; line-height: 28px; fon
 
 @media (max-width: 1000px) {
   .guide { display: none; }
+  /* With the guide gone the page is the only thing in the shell, and a flex item will not
+     shrink below its own content: as a block it takes the width it is given. */
+  .shell { display: block; }
   .watch-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "side" "comments"; }
   .masthead .end a { display: none; }
   .listpage { display: block; }
   .listhead { width: auto; margin-bottom: 16px; }
-  .rowcard.long .thumb { width: 168px; }
   .channelcard .thumb.round { margin: 0 16px; }
+  /* A row card stacks: its still over its title. Side by side, the title cannot be made
+     narrow enough to fit a phone without cutting it to a couple of words. */
+  .rowcard .row, .rowcard.long .row { display: block; }
+  .rowcard .thumb, .rowcard.long .thumb { display: block; width: auto; margin-bottom: 6px; }
+  .rowcard .text { display: block; }
+  /* As a grid item its automatic minimum is its own content; a long title would push the
+     card past the screen rather than be clipped by the card. */
+  .rowcard { min-width: 0; }
+}
+
+/* A phone: the masthead keeps the brand and the search box, the links in it give way, the
+   guide is already gone, and the grids drop to one column. */
+@media (max-width: 640px) {
+  .masthead { padding: 6px 8px; gap: 8px; }
+  .masthead .start { gap: 8px; }
+  .masthead .burger { display: none; }
+  .masthead .sections, .masthead .end a { display: none; }
+  .masthead .middle { flex: 1 1 auto; }
+  .searchbox button { width: 44px; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .shelf .rail { gap: 8px; }
+  .billboard .copy { padding: 16px 10px; }
+  .billboard h1 { font-size: 24px; line-height: 30px; }
+  .pg-watch, .pg-home, .pg-results, .pg-channel, .pg-library, .pg-playlist { padding: 0 8px; }
+  .identity { flex-wrap: wrap; }
+  .listhead { flex-wrap: wrap; }
 }

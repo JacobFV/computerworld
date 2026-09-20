@@ -100,3 +100,10 @@
   .skin-twitch .watch-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "comments" "side"; }
   .skin-twitch .comments { position: static; height: 420px; border-left: 0; }
 }
+
+@media (max-width: 640px) {
+  .skin-twitch .upnext { padding: 12px 8px 24px; grid-template-columns: minmax(0, 1fr); }
+  .skin-twitch .masthead { padding: 0 8px; gap: 8px; }
+  .skin-twitch .masthead .sections { display: none; }
+  .skin-twitch .masthead .middle { flex: 1 1 auto; }
+}

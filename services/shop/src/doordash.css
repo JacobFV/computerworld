@@ -7,9 +7,6 @@ body.skin-doordash { font-family: Inter, Arial, sans-serif; color: #191919; }
 .skin-doordash .logo { display: flex; align-items: center; gap: 8px; font-size: 17px; line-height: 24px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #eb1700; }
 .skin-doordash .logo .dash { position: relative; width: 30px; height: 17px; border-radius: 2px 10px 10px 2px; background: #eb1700; transform: skewX(-18deg); }
 .skin-doordash .logo .dash::after { content: ""; position: absolute; left: 8px; top: 6px; width: 12px; height: 5px; border-radius: 0 3px 3px 0; background: #fff; }
-.skin-doordash .toggle { display: flex; padding: 3px; border-radius: 20px; background: #f1f1f1; font-size: 14px; font-weight: 600; }
-.skin-doordash .toggle span { padding: 5px 12px; border-radius: 16px; }
-.skin-doordash .toggle .on { background: #191919; color: #fff; }
 .skin-doordash .addr { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .skin-doordash .addr .pin { width: 10px; height: 10px; border: 2px solid #191919; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
 .skin-doordash .search { height: 40px; border-radius: 20px; background: #f1f1f1; }
@@ -46,8 +43,6 @@ body.skin-doordash { font-family: Inter, Arial, sans-serif; color: #191919; }
 .skin-doordash .card:hover { box-shadow: none; }
 .skin-doordash .card .pic { height: 190px; border-radius: 12px; }
 .skin-doordash .pic-label { display: none; }
-.skin-doordash .card .heart { display: block; position: absolute; right: 10px; top: 10px; width: 32px; height: 32px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
-.skin-doordash .card .heart::before { content: "♡"; position: absolute; left: 0; right: 0; top: 5px; text-align: center; font-size: 18px; line-height: 22px; color: #191919; }
 .skin-doordash .card .info { position: relative; padding: 10px 0 0; gap: 2px; }
 .skin-doordash .card .name { max-height: 22px; padding-right: 76px; font-size: 16px; line-height: 22px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
 .skin-doordash .card:hover .name { color: #191919; text-decoration: underline; }
@@ -76,3 +71,7 @@ body.skin-doordash { font-family: Inter, Arial, sans-serif; color: #191919; }
 .skin-doordash .ftr .legal .brand { color: #fff; }
 /* A delivery cart does not talk about warehouse stock; a shortfall (.outstock) still shows. */
 .skin-doordash .line .instock { display: none; }
+
+@media (max-width: 900px) {
+  .skin-doordash .addr { display: none; }
+}

@@ -75,10 +75,10 @@
 .skin-soundcloud .actions { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--hair); }
 .skin-soundcloud .outline { border-radius: 3px; height: 28px; font-weight: 400; border-color: #cccccc; }
 .skin-soundcloud .outline.on { border-color: #ff5500; color: #ff5500; }
-.skin-soundcloud .trow { border-bottom: 1px solid #f2f2f2; border-radius: 0; }
+.skin-soundcloud .trow, .skin-soundcloud .thead { border-bottom: 1px solid #f2f2f2; border-radius: 0; }
 .skin-soundcloud .trow.current .names .title, .skin-soundcloud .qrow.current .title { color: #ff5500; }
 .skin-soundcloud .extra { position: relative; height: 24px; color: transparent; background: repeating-linear-gradient(90deg, #cccccc 0px, #cccccc 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 3px); opacity: .9; border-top: 6px solid #ffffff; border-bottom: 3px solid #ffffff; }
-.skin-soundcloud .trow.head .extra { background: transparent; border: 0; color: var(--muted); height: auto; }
+.skin-soundcloud .thead .extra { background: transparent; border: 0; color: var(--muted); height: auto; }
 .skin-soundcloud .trow.current .extra { background: repeating-linear-gradient(90deg, #ff5500 0px, #ff5500 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 3px); }
 .skin-soundcloud .banner { position: relative; height: 260px; overflow: hidden; background: var(--wash, #846170); }
 .skin-soundcloud .banner img.still { opacity: .5; }
@@ -132,3 +132,12 @@
 .skin-soundcloud .bar .names .artist { color: #b3b3b3; }
 .skin-soundcloud .bar .scrub .seg { background: #555555; }
 .skin-soundcloud .bar .scrub .seg.on { background: #ff5500; }
+
+/* A phone: the rows of controls wrap and the hero stops being a picture with a column
+   beside it. */
+@media (max-width: 640px) {
+  .skin-soundcloud .actions { flex-wrap: wrap; gap: 12px; }
+  .skin-soundcloud .hero { flex-wrap: wrap; }
+  .skin-soundcloud #main { padding: 12px 8px 32px; }
+  .skin-soundcloud .genres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

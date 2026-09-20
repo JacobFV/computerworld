@@ -69,7 +69,7 @@
 .skin-ytmusic .outline { height: 36px; border-radius: 18px; border-color: rgba(255,255,255,.2); font-size: 14px; font-weight: 500; }
 .skin-ytmusic .subscribe { height: 36px; padding: 0 16px; border-radius: 18px; background: #ffffff; color: #000000; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .skin-ytmusic .subscribe.on { background: rgba(255,255,255,.2); color: #ffffff; }
-.skin-ytmusic .trow { border-bottom: 1px solid rgba(255,255,255,.1); border-radius: 0; min-height: 56px; }
+.skin-ytmusic .trow, .skin-ytmusic .thead { border-bottom: 1px solid rgba(255,255,255,.1); border-radius: 0; min-height: 56px; }
 .skin-ytmusic .trow.current .names .title { color: #ffffff; }
 .skin-ytmusic .num.playing { color: #ffffff; }
 .skin-ytmusic .cells img.cover { width: 32px; height: 32px; border-radius: 2px; }

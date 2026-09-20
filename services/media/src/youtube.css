@@ -6,3 +6,8 @@
 .skin-youtube .brand .word { font-family: Arial, sans-serif; font-size: 20px; letter-spacing: -1.2px; }
 .skin-youtube .masthead .end a { background: transparent; border: 1px solid #3f3f3f; color: #3ea6ff; }
 .skin-youtube .masthead .end a:hover { background: #263850; border-color: transparent; }
+
+@media (max-width: 640px) {
+  .skin-youtube .masthead { padding: 0 8px; gap: 8px; }
+  .skin-youtube .masthead .middle { flex: 1 1 auto; }
+}

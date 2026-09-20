@@ -4,14 +4,14 @@
 //! repeat and a scrubber. `spotify.css` and `soundcloud.css` make it one or the other.
 use super::catalog;
 use super::kit::{self, Row};
-use super::view::{self, act, cover, div, el, field_form, href, icon, press, span, Html};
+use super::view::{self, act, cover, div, el, field_form, here_aware, href, icon, press, span, Html};
 use super::*;
 
 pub fn route(state: &mut Value, ctx: &ServiceContext, request: &HttpRequest, parts: &[&str]) -> Result<HttpResponse> {
     let back = kit::here(request);
     let s: &Value = state;
     let (title, page, main) = match parts {
-        [""] => (web::text(s, "brand"), "home", home(s, ctx)),
+        [""] => (web::text(s, "brand"), "home", home(s, ctx, &back)),
         ["search"] => {
             let q = web::query(request, "q").unwrap_or_default();
             (
@@ -38,13 +38,13 @@ pub fn route(state: &mut Value, ctx: &ServiceContext, request: &HttpRequest, par
         },
         ["playlist"] => match web::query(request, "list") {
             Some(id) if record(s, "playlists", &id).is_some() => (id.clone(), "playlist", playlist_page(s, ctx, &id, &back)),
-            _ => ("Your Library".into(), "library", library(s, &ctx.actor, "all")),
+            _ => ("Your Library".into(), "library", library(s, &ctx.actor, "all", &back)),
         },
         ["collection", "tracks"] => ("Liked Songs".into(), "playlist", liked_page(s, ctx, &back)),
         ["collection", filter @ ("playlists" | "albums" | "artists")] => {
-            ("Your Library".into(), "library", library(s, &ctx.actor, filter))
+            ("Your Library".into(), "library", library(s, &ctx.actor, filter, &back))
         }
-        ["collection"] | ["playlists"] => ("Your Library".into(), "library", library(s, &ctx.actor, "all")),
+        ["collection"] | ["playlists"] => ("Your Library".into(), "library", library(s, &ctx.actor, "all", &back)),
         ["queue"] => ("Queue".into(), "queue", queue(s, ctx, &back)),
         ["lyrics"] => ("Lyrics".into(), "lyrics", lyrics_page(s, ctx, &back)),
         _ => return web::error(404, "route not found"),
@@ -55,36 +55,39 @@ pub fn route(state: &mut Value, ctx: &ServiceContext, request: &HttpRequest, par
         &title,
         &format!("page-{page}"),
         vec![
-            top_bar(s, &ctx.actor),
-            div("frame").id("frame").child(sidebar(s, &ctx.actor)).child(el("main").id("main").class("panel").children(main)),
+            top_bar(s, &ctx.actor, &back),
+            div("frame").id("frame").child(sidebar(s, &ctx.actor, &back)).child(el("main").id("main").class("panel").children(main)),
             player_bar(s, ctx, &back),
         ],
     );
     Ok(kit::live(doc.response(), s, ctx, &back))
 }
-fn top_bar(state: &Value, actor: &str) -> Html {
+fn top_bar(state: &Value, actor: &str, here: &str) -> Html {
     el("header")
         .id("topbar")
         .class("topbar")
         .child(
-            el("a")
-                .id("topbar-logo")
-                .class("logo")
-                .attr("href", "/")
+            here_aware(el("a").id("topbar-logo").class("logo").attr("href", "/"), "/", here)
                 .child(span("mark").id("topbar-logo-mark").attr("aria-hidden", "true").each(0..3, |_| el("i")))
                 .child(span("name").id("topbar-logo-name").text(web::text(state, "brand"))),
         )
         .child(
             div("middle")
-                .child(el("a").id("topbar-home").class("round").attr("href", "/").attr("aria-label", "Home").child(icon("home")))
-                .child(
+                .child(here_aware(
+                    el("a").id("topbar-home").class("round").attr("href", "/").attr("aria-label", "Home").child(icon("home")),
+                    "/",
+                    here,
+                ))
+                .child(here_aware(
                     el("a")
                         .id("topbar-search")
                         .class("searchpill")
                         .attr("href", "/search")
                         .child(icon("search"))
                         .child(span("hint").id("topbar-search-hint").text("What do you want to play?")),
-                ),
+                    "/search",
+                    here,
+                )),
         )
         .child(span("avatar").id("topbar-avatar").attr("aria-label", actor).text(view::initial(actor)))
 }
@@ -93,11 +96,8 @@ fn liked_art(id: &str, class: &str) -> Html {
     span(&format!("likedart {class}")).id(id).attr("role", "img").attr("aria-label", "Liked Songs").child(icon("like-fill"))
 }
 /// One entry of the library panel: art, title and the "Playlist • owner" line.
-fn library_entry(id: &str, art: Html, title: &str, meta: &str, to: String) -> Html {
-    el("a")
-        .id(format!("side-{id}"))
-        .class("entry")
-        .attr("href", to)
+fn library_entry(id: &str, art: Html, title: &str, meta: &str, to: String, here: &str) -> Html {
+    here_aware(el("a").id(format!("side-{id}")).class("entry").attr("href", to.as_str()), &to, here)
         .child(
             span("row")
                 .id(format!("side-{id}-row"))
@@ -120,7 +120,7 @@ fn titled_name(s: &str) -> String {
     let mut c = s.chars();
     c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
 }
-fn sidebar(state: &Value, actor: &str) -> Html {
+fn sidebar(state: &Value, actor: &str, here: &str) -> Html {
     let liked = catalog::liked(state, actor);
     let mut side = el("aside")
         .id("side")
@@ -130,15 +130,12 @@ fn sidebar(state: &Value, actor: &str) -> Html {
                 .id("side-head")
                 .child(el("h2").id("side-heading").child(icon("library")).text("Your Library"))
                 .child(
-                    el("a")
-                        .id("side-create")
-                        .class("pill")
-                        .attr("href", "/collection")
+                    here_aware(el("a").id("side-create").class("pill").attr("href", "/collection"), "/collection", here)
                         .child(span("label").id("side-create-text").child(icon("plus")).child(span("").id("side-create-text-label").text("Create"))),
                 ),
         )
         .child(div("chips").id("side-chips").each(["playlists", "artists", "albums"], |f| {
-            chip(&format!("side-chip-{f}"), &titled_name(f), false, format!("/collection/{f}"))
+            chip(&format!("side-chip-{f}"), &titled_name(f), false, format!("/collection/{f}"), here)
         }))
         .child(library_entry(
             "liked",
@@ -146,6 +143,7 @@ fn sidebar(state: &Value, actor: &str) -> Html {
             "Liked Songs",
             &format!("Playlist • {}", kit::count(liked.len(), "song", "songs")),
             "/collection/tracks".into(),
+            here,
         ));
     for id in keys(state, "playlists") {
         let p = record(state, "playlists", &id).cloned().unwrap_or(Value::Null);
@@ -155,6 +153,7 @@ fn sidebar(state: &Value, actor: &str) -> Html {
             &web::text(&p, "title"),
             &format!("Playlist • {}", owner_name(state, &p)),
             format!("/playlist/{id}"),
+            here,
         ));
     }
     for album in saved_albums(state, actor) {
@@ -164,6 +163,7 @@ fn sidebar(state: &Value, actor: &str) -> Html {
             &album.title,
             &format!("Album • {}", album.artist_name),
             format!("/album/{}", album.id),
+            here,
         ));
     }
     for artist in strings_at(state, "subscriptions", actor) {
@@ -176,16 +176,17 @@ fn sidebar(state: &Value, actor: &str) -> Html {
             &catalog::artist_name(state, &artist),
             "Artist",
             format!("/artist/{artist}"),
+            here,
         ));
     }
     side
 }
-fn chip(id: &str, label: &str, on: bool, to: String) -> Html {
-    el("a")
-        .id(id)
-        .class(if on { "chip on" } else { "chip" })
-        .attr("href", to)
-        .child(span("").id(format!("{id}-text")).text(label))
+fn chip(id: &str, label: &str, on: bool, to: String, here: &str) -> Html {
+    here_aware(
+        el("a").id(id).class(if on { "chip on" } else { "chip" }).attr("href", to.as_str()).child(span("").id(format!("{id}-text")).text(label)),
+        &to,
+        here,
+    )
 }
 /// Albums with every track in the listener's library.
 fn saved_albums(state: &Value, actor: &str) -> Vec<catalog::Album> {
@@ -230,7 +231,7 @@ fn album_tile(prefix: &str, album: &catalog::Album) -> Html {
         false,
     )
 }
-fn home(state: &Value, ctx: &ServiceContext) -> Vec<Html> {
+fn home(state: &Value, ctx: &ServiceContext, here: &str) -> Vec<Html> {
     let actor = &ctx.actor;
     let greeting = match kit::hour(ctx.tick) {
         5..=11 => "Good morning",
@@ -249,7 +250,7 @@ fn home(state: &Value, ctx: &ServiceContext) -> Vec<Html> {
     shortcuts.truncate(8);
     let mut out = vec![
         div("chips").id("home-filters").each([("all", "All", "/"), ("music", "Music", "/search"), ("library", "Library", "/collection")], |(k, label, to)| {
-            chip(&format!("home-filter-{k}"), label, k == "all", to.to_owned())
+            chip(&format!("home-filter-{k}"), label, k == "all", to.to_owned(), here)
         }),
         heading("home-greeting", greeting),
         div("shortcuts").id("home-shortcuts").children(shortcuts),
@@ -346,7 +347,7 @@ fn actions(children: Vec<Html>) -> Html {
     div("actions").id("actions").children(children)
 }
 fn column_head(extra: &str, art: bool) -> Html {
-    div(if art { "trow head with-art" } else { "trow head" })
+    div(if art { "thead with-art" } else { "thead" })
         .id("tracks-head")
         .child(
             span(if art { "cells with-art" } else { "cells" })
@@ -700,7 +701,7 @@ fn search(state: &Value, actor: &str, q: &str, back: &str) -> Vec<Html> {
     out.extend(shelf("results-playlists", "Playlists", list_tiles));
     out
 }
-fn library(state: &Value, actor: &str, filter: &str) -> Vec<Html> {
+fn library(state: &Value, actor: &str, filter: &str, here: &str) -> Vec<Html> {
     let mut out = vec![
         heading("library-heading", "Your Library"),
         div("chips").id("library-chips").each(
@@ -710,7 +711,7 @@ fn library(state: &Value, actor: &str, filter: &str) -> Vec<Html> {
                 ("albums", "Albums", "/collection/albums"),
                 ("artists", "Artists", "/collection/artists"),
             ],
-            |(k, label, to)| chip(&format!("library-chip-{k}"), label, k == filter, to.to_owned()),
+            |(k, label, to)| chip(&format!("library-chip-{k}"), label, k == filter, to.to_owned(), here),
         ),
     ];
     let mut tiles = vec![];

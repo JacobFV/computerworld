@@ -145,3 +145,13 @@ form.inline button { border: 1px solid #c8c9ca; border-radius: 4px; background: 
 .pages a.on { background: var(--ink); color: #ffffff; }
 .foot { background: #f5f5f5; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; padding: 28px 15px; text-align: center; }
 .foot-brand { display: none; }
+
+/* A phone: the location card drops and the category strip wraps under the search box. */
+@media (max-width: 860px) {
+  .wrap { display: block; width: auto; padding: 14px 10px; }
+  .sidebar { display: none; }
+  .bar { width: auto; flex-wrap: wrap; gap: 10px; padding: 10px; }
+  .search { flex: 1 1 100%; min-width: 0; }
+  .cats { width: auto; padding: 0 10px 8px; }
+  .biz { flex-wrap: wrap; }
+}

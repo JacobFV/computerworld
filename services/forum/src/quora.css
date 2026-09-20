@@ -125,3 +125,15 @@ form.inline button { border: 0; background: var(--blue); color: #ffffff; border-
 .pages a.on { background: var(--accent); color: #ffffff; border-color: var(--accent); }
 .foot { text-align: center; color: #939598; font-size: 12px; padding: 12px 0 28px 0; }
 .foot-brand { display: none; }
+
+/* A phone: the topics rail and the writers rail drop, and the bar's tabs give way to the
+   search box. */
+@media (max-width: 860px) {
+  .wrap { display: block; width: auto; padding: 12px 8px; }
+  .leftnav, .sidebar { display: none; }
+  .bar { padding: 0 8px; gap: 6px; }
+  .links a { padding: 0 6px; font-size: 13px; }
+  .links a:not(.on) { display: none; }
+  .search { min-width: 0; margin: 0; }
+  .me .me-name, .me .me-rep { display: none; }
+}

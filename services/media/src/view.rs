@@ -113,6 +113,14 @@ pub fn field_form(id: &str, url: &str, method: &str, field: &str, label: &str, v
         )
         .child(button(&format!("{id}-submit"), submit))
 }
+/// A link that says when it leads to the page it sits on, so a reader and an agent are told
+/// they are already there rather than offered a trip that lands where they stand.
+pub fn here_aware(node: Html, url: &str, here: &str) -> Html {
+    if url != here {
+        return node;
+    }
+    node.class("on").attr("aria-current", "page")
+}
 /// A CSS-drawn glyph: `<span class="ic ic-play">`. The stylesheet draws it.
 pub fn icon(name: &str) -> Html {
     span(&format!("ic ic-{name}")).attr("aria-hidden", "true").child(el("i"))

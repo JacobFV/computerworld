@@ -11,7 +11,13 @@
 //! `<target>-down` (submit buttons of one-button forms) and `<target>-score`; the forms
 //! `search`, `submit`, `compose`, `<reply>-reply`, `<reply>-comment` with inputs
 //! `<form>-<field>` and buttons `<form>-submit`; `<reply>-accept`; `board-<id>-link`,
-//! `board-<id>-sub`, `board-head-sub`; `thread-*`, `member-*`, `list-title`.
+//! `board-<id>-sub`, `board-head-sub`; `thread-*`, `member-*`, `list-title`; `logo`, the
+//! brand mark, which is a link home like every one of these sites draws.
+//!
+//! A link that leads to the page it sits on says so with `aria-current="page"` — the
+//! current nav item, tab, tag or community — and where saying so would still be a dead
+//! control (a byline on its own author's page, a call to action on the page it opens) the
+//! page writes text instead.
 use crate::{ForumState, Reply, Thread};
 use cw_protocol::{HttpResponse, Result};
 use cw_sdk::ServiceContext;
@@ -230,7 +236,12 @@ impl<'a> View<'a> {
         let name = self.s.members.get(handle).map_or(handle, |m| m.name.as_str());
         span("avatar").id(id).attr("aria-hidden", "true").style(&format!("background-color: {}", tint(handle))).text(initials(name))
     }
+    /// A byline. On that member's own page the name is the page's own heading, so it is
+    /// written there as text rather than as a link back to where the reader stands.
     fn author(&self, id: &str, handle: &str) -> Node {
+        if self.at(&format!("/u/{handle}")) {
+            return span("user").id(id).text(self.who(handle));
+        }
         link(id, format!("/u/{handle}"), self.who(handle)).class("user")
     }
 
@@ -290,8 +301,35 @@ impl<'a> View<'a> {
             _ => "create a posting",
         }
     }
+    /// True when a URL is the page being read, so a link to it can say so rather than
+    /// offering the reader a trip to where they already are.
+    fn at(&self, url: &str) -> bool {
+        url == self.here
+    }
+    /// A call to action in a sidebar or a list head. On the page it leads to there is
+    /// nothing left for it to do, so it is not drawn at all.
+    fn cta(&self, id: &str, url: &str, label: &str, class: &str) -> Node {
+        if self.at(url) {
+            return empty();
+        }
+        link(id, url, label).class(class)
+    }
     fn nav_link(&self, id: &str, url: &str, label: &str) -> Node {
-        link(id, url, label).class(if url == self.here { "on" } else { "" })
+        link(id, url, label)
+            .class(if self.at(url) { "on" } else { "" })
+            .when(self.at(url), |n| n.attr("aria-current", "page"))
+    }
+    /// The brand mark every skin leads with: a link home, named `logo` so an agent can
+    /// press the thing a reader presses, and on the front page a link that says it is
+    /// already there. It was `tabindex="-1"` before, which kept it out of the semantic
+    /// tree while leaving it pressable — a control only one of the two readers could see.
+    fn logo(&self, class: &str, label: &str) -> Node {
+        el("a")
+            .id("logo")
+            .class(class)
+            .attr("href", "/")
+            .attr("aria-label", label)
+            .when(self.at("/"), |n| n.attr("aria-current", "page"))
     }
     /// The search box every skin carries once per page. A POST that reads, as it always was.
     fn search_form(&self, placeholder: &str, go: &str) -> Node {
@@ -307,8 +345,9 @@ impl<'a> View<'a> {
         Some(
             el("a")
                 .id("nav-me")
-                .class(if format!("/u/{}", m.handle) == self.here { "me on" } else { "me" })
+                .class(if self.at(&format!("/u/{}", m.handle)) { "me on" } else { "me" })
                 .attr("href", format!("/u/{}", m.handle))
+                .when(self.at(&format!("/u/{}", m.handle)), |n| n.attr("aria-current", "page"))
                 .attr("aria-label", "Profile")
                 .child(self.avatar("nav-me-avatar", &m.handle))
                 .child(span("me-name").id("nav-me-text").text(match self.skin {
@@ -333,7 +372,7 @@ impl<'a> View<'a> {
         el("header")
             .id("masthead")
             .class("pagetop")
-            .child(el("a").class("ylogo").attr("href", "/").attr("aria-label", "Home").attr("tabindex", "-1").text("Y"))
+            .child(self.logo("ylogo", "Home").text("Y"))
             .child(
                 el("nav")
                     .id("nav")
@@ -341,9 +380,9 @@ impl<'a> View<'a> {
                     .child(el("b").id("brand").class("hnname").child(self.nav_link("nav-home", "/", &self.s.brand)))
                     .child(self.nav_link("nav-new", "/newest", "new"))
                     .child(span("sep").text("|"))
-                    .child(link("nav-ask", href("/search", &[("q", "Ask HN")]), "ask"))
+                    .child(self.nav_link("nav-ask", &href("/search", &[("q", "Ask HN")]), "ask"))
                     .child(span("sep").text("|"))
-                    .child(link("nav-show", href("/search", &[("q", "Show HN")]), "show"))
+                    .child(self.nav_link("nav-show", &href("/search", &[("q", "Show HN")]), "show"))
                     .child(span("sep").text("|"))
                     .child(self.nav_link("nav-search", "/search", "search"))
                     .child(span("sep").text("|"))
@@ -364,7 +403,7 @@ impl<'a> View<'a> {
             .id("masthead")
             .class("top")
             .child(
-                el("a").class("logo").attr("href", "/").attr("aria-label", "Front page").attr("tabindex", "-1")
+                self.logo("logo", "Front page")
                     .child(span("snoo").child(el("i")).child(el("b")))
                     .child(span("word").id("brand").text(self.s.brand.as_str())),
             )
@@ -385,11 +424,10 @@ impl<'a> View<'a> {
         el("header").id("masthead").class("top").child(
             div("bar")
                 .child(
-                    el("a").class("logo").attr("href", "/").attr("aria-label", "Home").attr("tabindex", "-1")
+                    self.logo("logo", "Home")
                         .child(span("glyph").child(el("i")).child(el("i")).child(el("i")).child(el("b")))
                         .child(span("word").id("brand").text(self.s.brand.as_str())),
                 )
-                .child(span("products").id("tagline").attr("title", self.s.tagline.as_str()).text("Products"))
                 .child(self.search_form("Search…", "Search"))
                 .maybe(self.me()),
         )
@@ -404,15 +442,13 @@ impl<'a> View<'a> {
             .child(self.nav_link("nav-new", "/newest", "Newest").class("sub"))
             .child(self.nav_link("nav-search", "/search", "Search").class("sub"))
             .child(self.nav_link("nav-submit", "/submit", self.submit_label()).class("sub"))
-            .child(span("group").text("COLLECTIVES"))
-            .child(span("note").text("Explore Collectives"))
             .child(span("group").text("TEAMS"))
             .child(span("note").text("Ask questions, find answers and collaborate at work."))
     }
     fn quora_top(&self) -> Node {
         el("header").id("masthead").class("top").child(
             div("bar")
-                .child(el("a").class("logo").id("brand").attr("href", "/").attr("tabindex", "-1").text(self.s.brand.as_str()))
+                .child(self.logo("logo", &self.s.brand).child(span("word").id("brand").text(self.s.brand.as_str())))
                 .child(
                     el("nav")
                         .id("nav")
@@ -444,10 +480,7 @@ impl<'a> View<'a> {
     }
     fn quora_left(&self) -> Node {
         el("nav").id("topics").class("leftnav").attr("aria-label", "Topics").each(self.tag_counts().into_iter().take(12).enumerate(), |(i, (tag, _))| {
-            el("a")
-                .id(format!("topic-{i}"))
-                .attr("href", Self::tag_url(&tag))
-                .class(if Self::tag_url(&tag) == self.here { "on" } else { "" })
+            self.tag_link(&format!("topic-{i}"), &tag, "", "")
                 .child(span("sq").style(&format!("background-color: {}", tint(&tag))))
                 .child(span("name").text(capital(&tag.replace('-', " "))))
         })
@@ -459,7 +492,7 @@ impl<'a> View<'a> {
             .child(
                 div("bar")
                     .child(
-                        el("a").class("logo").attr("href", "/").attr("aria-label", "Home").attr("tabindex", "-1")
+                        self.logo("logo", "Home")
                             .child(span("word").id("brand").text(self.s.brand.to_lowercase()))
                             .child(span("burst").each(0..5, |_| el("i"))),
                     )
@@ -483,15 +516,22 @@ impl<'a> View<'a> {
         el("nav")
             .id("nav")
             .class("leftbar")
-            .child(el("a").id("nav-home").class("logo").attr("href", "/").child(span("").id("brand").text(self.s.brand.as_str())))
-            .child(self.nav_link("nav-submit", "/submit", self.submit_label()).class("post"))
-            .maybe(self.s.member_of(&self.ctx.actor).map(|m| link("nav-me", format!("/u/{}", m.handle), "my account").class("acct")))
-            .child(self.search_form(&format!("search {}", self.s.brand), "search"))
             .child(
-                div("cal")
-                    .child(span("cal-title").text("event calendar"))
-                    .child(div("days").each(["M", "T", "W", "T", "F", "S", "S"], |d| el("b").text(d)).each(1..=28, |d| el("i").text(d.to_string()))),
+                el("a")
+                    .id("nav-home")
+                    .class(if self.at("/") { "logo on" } else { "logo" })
+                    .attr("href", "/")
+                    .when(self.at("/"), |n| n.attr("aria-current", "page"))
+                    .child(span("").id("brand").text(self.s.brand.as_str())),
             )
+            .child(self.nav_link("nav-submit", "/submit", self.submit_label()).class("post"))
+            .maybe(self.s.member_of(&self.ctx.actor).map(|m| {
+                let url = format!("/u/{}", m.handle);
+                link("nav-me", url.clone(), "my account")
+                    .class(if self.at(&url) { "acct on" } else { "acct" })
+                    .when(self.at(&url), |n| n.attr("aria-current", "page"))
+            }))
+            .child(self.search_form(&format!("search {}", self.s.brand), "search"))
             .child(self.nav_link("nav-new", "/newest", "newest listings"))
             .child(self.nav_link("nav-search", "/search", "search listings"))
             .child(span("small").text("help, faq, abuse, legal"))
@@ -591,11 +631,21 @@ impl<'a> View<'a> {
         }
         out
     }
+    /// A tag chip. On the page that tag already filters, it says so rather than offering
+    /// the reader the filter they are looking at.
+    fn tag_link(&self, id: &str, tag: &str, label: &str, class: &str) -> Node {
+        let url = Self::tag_url(tag);
+        let here = self.at(&url);
+        let classes = if here { format!("{class} on") } else { class.to_owned() };
+        link(id, url, label)
+            .class(&classes)
+            .when(here, |n| n.attr("aria-current", "page"))
+    }
     fn tags(&self, id: &str, item: &str, tags: &[String]) -> Node {
         if tags.is_empty() {
             return empty();
         }
-        div("tags").id(id).each(tags.iter().enumerate(), |(i, tag)| link(&format!("{item}-{i}"), Self::tag_url(tag), tag.as_str()).class("tag"))
+        div("tags").id(id).each(tags.iter().enumerate(), |(i, tag)| self.tag_link(&format!("{item}-{i}"), tag, tag, "tag"))
     }
 
     // ------------------------------------------------------------------ list rows
@@ -748,9 +798,13 @@ impl<'a> View<'a> {
                     .child(
                         el("p")
                             .class("sub")
-                            .child(span("avatar sm").id(format!("{id}-icon")).style(&format!("background-color: {}", tint(&t.board))).text(initials(board.map_or(t.board.as_str(), |b| b.title.as_str()))))
-                            .child(link(&format!("{id}-board"), format!("/r/{}", t.board), format!("r/{}", t.board)).class("board"))
-                            .child(span("dot").text("•"))
+                            // On the board's own page the row does not offer a trip back to it,
+                            // which is what reddit.com does inside a community too.
+                            .when(!self.at(&format!("/r/{}", t.board)), |p| {
+                                p.child(span("avatar sm").id(format!("{id}-icon")).style(&format!("background-color: {}", tint(&t.board))).text(initials(board.map_or(t.board.as_str(), |b| b.title.as_str()))))
+                                    .child(link(&format!("{id}-board"), format!("/r/{}", t.board), format!("r/{}", t.board)).class("board"))
+                                    .child(span("dot").text("•"))
+                            })
                             .child(span("").id(format!("{id}-sub")).text("Posted by ").child(self.author(&format!("{id}-author"), &t.author)).text(format!(" {}", ago(self.ctx.tick, t.tick)))),
                     )
                     .child(div("h3").child(el("a").id(format!("{id}-open")).attr("href", self.s.permalink(t)).child(span("").id(format!("{id}-title")).text(t.title.as_str()))))
@@ -759,9 +813,7 @@ impl<'a> View<'a> {
                     .child(
                         div("actions")
                             .id(format!("{id}-meta"))
-                            .child(link(&format!("{id}-count"), self.s.permalink(t), plural(self.s.conversation_size(t), "comment")).class("act comments"))
-                            .child(span("act").text("Share"))
-                            .child(span("act").text("Save")),
+                            .child(link(&format!("{id}-count"), self.s.permalink(t), plural(self.s.conversation_size(t), "comment")).class("act comments")),
                     ),
             )
     }
@@ -787,7 +839,9 @@ impl<'a> View<'a> {
                         el("p")
                             .class("sub")
                             .id(format!("{id}-sub"))
-                            .child(link(&format!("{id}-board"), format!("/r/{}", t.board), self.board_name(&t.board)).class("cat"))
+                            .when(!self.at(&format!("/r/{}", t.board)), |p| {
+                                p.child(link(&format!("{id}-board"), format!("/r/{}", t.board), self.board_name(&t.board)).class("cat"))
+                            })
                             .when(!b.price.is_empty(), |n| n.child(span("price").text(format!(" · {}", b.price))))
                             .when(!b.hours.is_empty(), |n| n.child(span("hours").text(format!(" · {}", b.hours)))),
                     )
@@ -820,7 +874,7 @@ impl<'a> View<'a> {
         };
         let head = div("listhead")
             .child(el("h1").id("list-title").text(title))
-            .when(self.s.qa(), |h| h.child(link("list-ask", "/submit", self.submit_label()).class("primary")));
+            .when(self.s.qa(), |h| h.child(self.cta("list-ask", "/submit", self.submit_label(), "primary")));
         vec![
             head,
             if ids.is_empty() { el("p").id("list-empty").class("empty").text("Nothing here yet.") } else { empty() },
@@ -848,7 +902,11 @@ impl<'a> View<'a> {
                         .child(span("avatar sm").style(&format!("background-color: {}", tint(&b.id))).text(initials(&b.title)))
                         .child(
                             span("names")
-                                .child(link(&format!("board-{}-link", b.id), format!("/r/{}", b.id), self.board_name(&b.id)))
+                                .child(
+                                    link(&format!("board-{}-link", b.id), format!("/r/{}", b.id), self.board_name(&b.id))
+                                        .class(if self.at(&format!("/r/{}", b.id)) { "on" } else { "" })
+                                        .when(self.at(&format!("/r/{}", b.id)), |n| n.attr("aria-current", "page")),
+                                )
                                 .child(span("members").id(format!("board-{}-members", b.id)).text(format!("{} members", b.members))),
                         )
                         .child(self.post_button(&format!("board-{}-sub", b.id), &format!("/boards/{}/subscribe", b.id), &[], if on { "Joined" } else { "Join" }, on, "join"))
@@ -866,7 +924,7 @@ impl<'a> View<'a> {
                             .child(el("h2").text("About Community"))
                             .child(el("p").id("about-desc").text(b.description.as_str()))
                             .child(div("counts").child(el("b").text(compact(b.members))).child(span("").text("Members")))
-                            .child(link("about-create", "/submit", self.submit_label()).class("primary")),
+                            .child(self.cta("about-create", "/submit", self.submit_label(), "primary")),
                     );
                 } else {
                     side.push(
@@ -875,8 +933,8 @@ impl<'a> View<'a> {
                             .child(div("banner"))
                             .child(el("h2").text("Home"))
                             .child(el("p").id("tagline").text(self.s.tagline.as_str()))
-                            .child(link("home-create", "/submit", self.submit_label()).class("primary"))
-                            .child(link("home-boards", "/r", "Browse Communities").class("secondary")),
+                            .child(self.cta("home-create", "/submit", self.submit_label(), "primary"))
+                            .child(self.cta("home-boards", "/r", "Browse Communities", "secondary")),
                     );
                 }
                 side.extend(self.rail());
@@ -903,14 +961,14 @@ impl<'a> View<'a> {
                     el("section")
                         .class("card yellow")
                         .child(el("h2").text("The Overflow Blog"))
-                        .child(el("p").id("side-tagline").child(span("pencil")).text(self.s.tagline.as_str()))
+                        .child(el("p").id("tagline").child(span("pencil")).text(self.s.tagline.as_str()))
                         .child(el("h2").text("Featured on Meta"))
-                        .child(el("p").child(span("bubble")).text(format!("{} questions from {} members", self.s.threads.len(), self.s.members.len())))
+                        .child(el("p").child(span("bubble")).text(format!("{} from {}", plural(self.s.threads.len(), "question"), plural(self.s.members.len(), "member"))))
                         .child(el("p").child(span("bubble")).text("Policy: answers must show what was tried")),
                 );
                 side.push(el("section").class("card tagbox").child(el("h2").text("Watched Tags")).child(div("tags").each(
                     self.tag_counts().into_iter().take(10).enumerate(),
-                    |(i, (tag, _))| link(&format!("side-tag-{i}"), Self::tag_url(&tag), tag).class("tag"),
+                    |(i, (tag, _))| self.tag_link(&format!("side-tag-{i}"), &tag, &tag, "tag"),
                 )));
                 side.push(el("section").class("hot").child(el("h2").text("Hot Network Questions")).child(el("ul").each(
                     hot.into_iter().filter(|t| thread.is_none_or(|x| x.id != t.id)).take(6).enumerate(),
@@ -918,7 +976,8 @@ impl<'a> View<'a> {
                 )));
             }
             "quora" => {
-                let mut writers: Vec<_> = self.s.members.values().collect();
+                // Not the writer whose page this is: their own row would lead nowhere.
+                let mut writers: Vec<_> = self.s.members.values().filter(|m| !self.at(&format!("/u/{}", m.handle))).collect();
                 writers.sort_by(|a, b| b.reputation.cmp(&a.reputation).then_with(|| a.handle.cmp(&b.handle)));
                 side.push(el("section").class("card writers").child(el("h2").text("Top writers")).child(el("ul").each(writers.into_iter().take(6).enumerate(), |(i, m)| {
                     el("li")
@@ -964,8 +1023,8 @@ impl<'a> View<'a> {
             .child(el("h2").id("tagline").class("city").text(self.s.tagline.split(':').next().unwrap_or("").trim().to_owned()))
             .child(div("cols").each(groups.iter().enumerate(), |(i, (group, subs))| {
                 div("cat")
-                    .child(div("h3").child(link(&format!("cat-{i}"), Self::tag_url(group), group.as_str())))
-                    .child(el("ul").each(subs.iter().enumerate(), |(j, tag)| el("li").child(link(&format!("cat-{i}-{j}"), Self::tag_url(tag), tag.as_str()))))
+                    .child(div("h3").child(self.tag_link(&format!("cat-{i}"), group, group, "")))
+                    .child(el("ul").each(subs.iter().enumerate(), |(j, tag)| el("li").child(self.tag_link(&format!("cat-{i}-{j}"), tag, tag, ""))))
             }))
     }
     pub(crate) fn front(&self, page: usize) -> Result<HttpResponse> {
@@ -1004,9 +1063,17 @@ impl<'a> View<'a> {
     }
     pub(crate) fn boards(&self) -> Result<HttpResponse> {
         let title = if self.is("yelp") { "Categories" } else { "Communities" };
+        // A Q&A seed carries one nameless board as the bucket everything falls into; it is
+        // not a community, and a row for it would link to this very page.
+        let named: Vec<&crate::Board> = self.s.boards.values().filter(|b| !b.id.is_empty()).collect();
         let main = vec![
             div("listhead").child(el("h1").id("list-title").text(title)),
-            el("ul").class("boards card").each(self.s.boards.values(), |b| {
+            if named.is_empty() {
+                el("p").id("list-empty").class("empty").text(format!("No {} here.", title.to_lowercase()))
+            } else {
+                empty()
+            },
+            el("ul").class("boards card").each(named, |b| {
                 el("li")
                     .child(span("avatar").style(&format!("background-color: {}", tint(&b.id))).text(initials(&b.title)))
                     .child(el("p").id(format!("about-{}", b.id)).child(link(&format!("about-{}-link", b.id), format!("/r/{}", b.id), self.board_name(&b.id))).text(format!(" — {}", b.description)))
@@ -1119,9 +1186,9 @@ impl<'a> View<'a> {
                 .child(self.author("thread-author", &t.author))
                 .text(" · ")
                 .child(span("k").text("Viewed "))
-                .text(format!("{} times", compact(t.views))),
+                .text(if t.views == 1 { "once".to_owned() } else { format!("{} times", compact(t.views)) }),
             _ => byline
-                .text(format!("{} points by ", s.score_of(id)))
+                .text(format!("{} by ", plural(s.score_of(id).unsigned_abs() as usize, "point")))
                 .child(self.author("thread-author", &t.author))
                 .text(format!(" {}", ago(self.ctx.tick, t.tick)))
                 .child(span("sep").text(" | "))
@@ -1251,7 +1318,7 @@ impl<'a> View<'a> {
     pub(crate) fn search(mut self, q: &str, page: usize) -> Result<HttpResponse> {
         self.query = q.to_owned();
         let ids = self.s.search(q, self.ctx.tick);
-        let title = if q.trim().is_empty() { "Search".to_owned() } else { format!("{} results for \"{q}\"", ids.len()) };
+        let title = if q.trim().is_empty() { "Search".to_owned() } else { format!("{} for \"{q}\"", plural(ids.len(), "result")) };
         if !q.trim().is_empty() {
             self.base = href("/search", &[("q", q)]);
             self.here = if page > 1 { href(&self.base, &[("p", &page.to_string())]) } else { self.base.clone() };

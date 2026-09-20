@@ -12,6 +12,7 @@ cw-service-common = { path = "../common" }
 cw-artwork = { path = "../../crates/artwork" }
 
 [dev-dependencies]
+url.workspace = true
 cw-service-common = { path = "../common", features = ["validate"] }
 cw-web = { path = "../../crates/web" }
 cw-render = { path = "../../crates/render" }

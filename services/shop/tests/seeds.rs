@@ -237,9 +237,15 @@ fn every_shipped_storefront_serves_strict_html_with_the_agent_ids() {
         let (status, home) = get(&mut state, "alice", &format!("{host}/"));
         assert_eq!(status, 200, "{site}");
         assert!(home.contains(&format!("class=\"skin-{site} ")), "{site} wears its own skin");
-        for id in ["chrome", "wordmark", "hdr-search", "hdr-k", "hdr-search-go", "nav-basket", "nav-orders", "cats", "lead", "deals", "foot"] {
+        for id in ["chrome", "wordmark", "hdr-search", "hdr-k", "hdr-search-go", "nav-basket", "cats", "lead", "deals", "foot"] {
             assert!(!cw_web::html::parse(&home).by_id(id).is_empty(), "{site} home lacks #{id}");
         }
+        // A box office keeps its orders behind `nav-basket` ("My tickets"); a store has both.
+        assert_eq!(
+            cw_web::html::parse(&home).by_id("nav-orders").is_empty(),
+            s.tickets(),
+            "{site}: nav-orders belongs to a store, not a box office"
+        );
         assert_eq!(attr(&home, "hdr-search", "action"), "/s");
         for c in &s.categories {
             assert_eq!(attr(&home, &format!("cat-{}", c.id), "href"), format!("/s?c={}", c.id));

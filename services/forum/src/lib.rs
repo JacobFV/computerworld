@@ -1521,7 +1521,7 @@ mod tests {
             "q=hashmap",
         );
         let page = Dom::of(&page);
-        assert_eq!(page.text("list-title"), "1 results for \"hashmap\"");
+        assert_eq!(page.text("list-title"), "1 result for \"hashmap\"");
         assert_eq!(page.attr("search-q", "value"), "hashmap", "the box keeps the query");
         assert_eq!(page.attr("row-t-4411", "href"), "/questions/t-4411");
     }

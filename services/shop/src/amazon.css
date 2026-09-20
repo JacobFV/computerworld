@@ -5,7 +5,7 @@ body.skin-amazon { background: #e3e6e6; font-family: Arial, sans-serif; }
 .skin-amazon .hdr .bar { max-width: none; gap: 6px; height: 60px; padding: 0 12px; }
 .skin-amazon .logo { position: relative; padding: 6px 10px 12px 8px; border: 1px solid transparent; border-radius: 2px; font-size: 27px; line-height: 30px; letter-spacing: -1px; text-transform: lowercase; color: #fff; }
 .skin-amazon .logo::after { content: ""; position: absolute; left: 12px; right: 14px; bottom: 7px; height: 8px; border-bottom: 3px solid #ff9900; border-radius: 0 0 50% 50%; }
-.skin-amazon .logo:hover, .skin-amazon .nav:hover, .skin-amazon .deliver:hover { border-color: #fff; text-decoration: none; }
+.skin-amazon .logo:hover, .skin-amazon .nav:hover { border-color: #fff; text-decoration: none; }
 .skin-amazon .deliver { position: relative; display: flex; flex-direction: column; padding: 8px 9px 8px 28px; border: 1px solid transparent; border-radius: 2px; line-height: 15px; white-space: nowrap; }
 .skin-amazon .deliver .pin { position: absolute; left: 9px; top: 22px; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
 .skin-amazon .l1 { display: block; font-size: 12px; line-height: 14px; font-weight: 400; color: #ccc; }
@@ -13,7 +13,6 @@ body.skin-amazon { background: #e3e6e6; font-family: Arial, sans-serif; }
 .skin-amazon .search { height: 40px; margin: 0 6px; border-radius: 4px; overflow: hidden; }
 .skin-amazon .search:focus-within { box-shadow: 0 0 0 3px #f90; }
 .skin-amazon .search .scope { display: block; flex: none; height: 40px; padding: 0 22px 0 12px; position: relative; background: #e6e6e6; border-right: 1px solid #cdcdcd; color: #555; font-size: 12px; line-height: 40px; }
-.skin-amazon .search .scope::after { content: ""; position: absolute; right: 9px; top: 15px; width: 5px; height: 5px; border-right: 1px solid #555; border-bottom: 1px solid #555; transform: rotate(45deg); }
 .skin-amazon .search input[type="text"] { font-size: 15px; }
 .skin-amazon .search .go { position: relative; width: 45px; padding: 0; background: #febd69; border-radius: 0; font-size: 0; color: transparent; }
 .skin-amazon .search .go:hover { background: #f3a847; }
@@ -86,3 +85,9 @@ body.skin-amazon.page-detail, body.skin-amazon.page-orders, body.skin-amazon.pag
 .skin-amazon .ftr .fitem, .skin-amazon .ftr .col a { color: #ddd; font-size: 14px; }
 .skin-amazon .ftr .legal { max-width: none; padding: 24px 16px 30px; border-top: 1px solid #3a4553; background: #131a22; text-align: center; color: #999; }
 .skin-amazon .ftr .legal .brand { color: #fff; text-transform: lowercase; font-size: 20px; letter-spacing: -1px; margin-bottom: 6px; }
+
+@media (max-width: 900px) {
+  .skin-amazon .deliver, .skin-amazon .lang { display: none; }
+  .skin-amazon .search .scope { display: none; }
+  .skin-amazon .nav .l1 { display: none; }
+}

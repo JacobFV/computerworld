@@ -50,3 +50,9 @@
 .skin-vimeo form.field input:focus { border: 1px solid var(--accent); }
 .skin-vimeo form.field button { background: var(--accent); border-radius: 6px; font-weight: 700; }
 .skin-vimeo .tabs .tab.on { border-bottom-color: var(--accent); }
+
+@media (max-width: 640px) {
+  .skin-vimeo .masthead { padding: 0 8px; gap: 8px; }
+  .skin-vimeo .masthead .sections { display: none; }
+  .skin-vimeo .masthead .middle { flex: 1 1 auto; }
+}

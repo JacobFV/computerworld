@@ -93,17 +93,16 @@ img.still { position: absolute; left: 0; top: 0; width: 100%; height: 100%; obje
 
 /* ------------------------------------------------------------- track table */
 .tracks { margin-top: 8px; }
-.trow { display: flex; align-items: center; gap: 8px; border-radius: 4px; padding-right: 16px; }
+.trow, .thead { display: flex; align-items: center; gap: 8px; border-radius: 4px; padding-right: 16px; }
 .trow:hover, .trow.current { background: var(--raised); }
-.trow.head { border-bottom: 1px solid rgba(255,255,255,.1); border-radius: 0; color: var(--muted); font-size: 13px; margin-top: 16px; height: 36px; }
-.trow.head:hover { background: transparent; }
-.trow > form.act:first-child, .trow.head > .cells { flex: 1; min-width: 0; }
-.trow.head .dur { margin-left: 40px; }
-.trow.head .dur .ic { font-size: 15px; height: 20px; line-height: 20px; }
+.thead { border-bottom: 1px solid rgba(255,255,255,.1); border-radius: 0; color: var(--muted); font-size: 13px; margin-top: 16px; height: 36px; }
+.trow > form.act:first-child, .thead > .cells { flex: 1; min-width: 0; }
+.thead .dur { margin-left: 40px; }
+.thead .dur .ic { font-size: 15px; height: 20px; line-height: 20px; }
 .rowplay { display: block; width: 100%; min-width: 0; }
 .cells { display: grid; grid-template-columns: 28px minmax(0, 4fr) minmax(0, 3fr); column-gap: 16px; align-items: center; padding: 8px 0 8px 16px; min-width: 0; }
 .cells.with-art { grid-template-columns: 28px 40px minmax(0, 4fr) minmax(0, 3fr); }
-.trow.head .cells { padding-top: 0; padding-bottom: 0; }
+.thead .cells { padding-top: 0; padding-bottom: 0; }
 .num { text-align: right; color: var(--muted); font-size: 15px; display: block; }
 .num.playing { color: var(--accent); }
 .num .ic { width: 28px; }

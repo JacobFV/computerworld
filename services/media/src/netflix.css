@@ -52,3 +52,9 @@
 .skin-netflix .tabs .tab.on { border-bottom-color: #e50914; }
 .skin-netflix .banner { border-radius: 0; height: 240px; margin: 0 -48px; }
 .skin-netflix .tile.stack .thumb { box-shadow: none; }
+
+@media (max-width: 640px) {
+  .skin-netflix .masthead { padding: 0 8px; gap: 10px; }
+  .skin-netflix .masthead .sections { display: none; }
+  .skin-netflix .masthead .middle { flex: 1 1 auto; }
+}

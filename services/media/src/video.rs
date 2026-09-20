@@ -4,7 +4,12 @@
 //! description, comments and the up-next list) and the skin's stylesheet arranges it as
 //! that product: YouTube's grid and guide, Netflix's billboard over rows of posters,
 //! Twitch's followed channels and chat column, Vimeo's staff picks, TikTok's tall tiles.
-use super::view::{self, act, cover, div, el, field_form, href, icon, link, press, short, span, still, Html};
+//!
+//! The stage is a still with one real control on it, `player-play`, which counts a view and
+//! parks the item as this viewer's now playing — the same thing opening `/watch` does. There
+//! is no transport bar: a scrubber, next, volume, settings and fullscreen are page script on
+//! the real sites, this world runs none, and each of them was a glyph that swallowed a click.
+use super::view::{self, act, cover, div, el, field_form, here_aware, href, icon, link, press, short, span, still, Html};
 use super::*;
 
 /// What each product calls the things the service has one name for.
@@ -14,7 +19,12 @@ struct Words {
     subscriptions: &'static str,
     up_next: &'static str,
     comments: &'static str,
+    /// The singular of `comments`, for the one-comment case.
+    comment: &'static str,
     comment_hint: &'static str,
+    /// What one of the things on this site is called, and what several are.
+    item: &'static str,
+    items: &'static str,
     save: &'static str,
     library: &'static str,
     views: &'static str,
@@ -29,7 +39,10 @@ fn words(skin: &str) -> Words {
             subscriptions: "Following",
             up_next: "More like this",
             comments: "Reviews",
+            comment: "Review",
             comment_hint: "Write a review",
+            item: "title",
+            items: "titles",
             save: "My List",
             library: "Categories",
             views: "views",
@@ -42,7 +55,10 @@ fn words(skin: &str) -> Words {
             subscriptions: "Followed Channels",
             up_next: "Recommended",
             comments: "Stream Chat",
+            comment: "Stream Chat",
             comment_hint: "Send a message",
+            item: "stream",
+            items: "streams",
             save: "Watch later",
             library: "Collections",
             views: "viewers",
@@ -55,7 +71,10 @@ fn words(skin: &str) -> Words {
             subscriptions: "Following",
             up_next: "More from Vimeo",
             comments: "Comments",
+            comment: "Comment",
             comment_hint: "Add a comment",
+            item: "video",
+            items: "videos",
             save: "Watch later",
             library: "Showcases",
             views: "views",
@@ -68,7 +87,10 @@ fn words(skin: &str) -> Words {
             subscriptions: "Following accounts",
             up_next: "You may like",
             comments: "Comments",
+            comment: "Comment",
             comment_hint: "Add comment...",
+            item: "video",
+            items: "videos",
             save: "Favorites",
             library: "Collections",
             views: "views",
@@ -81,7 +103,10 @@ fn words(skin: &str) -> Words {
             subscriptions: "Subscriptions",
             up_next: "Up next",
             comments: "Comments",
+            comment: "Comment",
             comment_hint: "Add a comment",
+            item: "video",
+            items: "videos",
             save: "Save",
             library: "Library",
             views: "views",
@@ -96,22 +121,23 @@ fn channel_name(state: &Value, channel: &str) -> String {
 fn is_live(item: &Value) -> bool {
     web::strings(item, "badges").iter().any(|b| b.eq_ignore_ascii_case("live"))
 }
-/// The whole page: masthead, guide and the page's own content.
-fn page(state: &Value, actor: &str, title: &str, class: &str, query: &str, main: Vec<Html>) -> Result<HttpResponse> {
+/// The whole page: masthead, guide and the page's own content. `here` is the path the page
+/// answers at.
+fn page(state: &Value, actor: &str, title: &str, class: &str, query: &str, here: &str, main: Vec<Html>) -> Result<HttpResponse> {
     let doc = view::document(
         state,
         "video",
         title,
         &format!("page-{class}"),
         vec![
-            chrome(state, actor, query),
-            div("shell").child(guide(state, actor, class)).child(el("main").id("page").class(&format!("pg-{class}")).children(main)),
+            chrome(state, actor, query, here),
+            div("shell").child(guide(state, actor, class, here)).child(el("main").id("page").class(&format!("pg-{class}")).children(main)),
         ],
     );
     web::html::page(&doc)
 }
 /// The masthead: the brand, the search box and the way to the library.
-fn chrome(state: &Value, actor: &str, query: &str) -> Html {
+fn chrome(state: &Value, actor: &str, query: &str, here: &str) -> Html {
     let brand = match web::text(state, "brand").as_str() {
         "" => BRAND.to_owned(),
         s => s.to_owned(),
@@ -122,10 +148,7 @@ fn chrome(state: &Value, actor: &str, query: &str) -> Html {
         .class("masthead")
         .child(
             div("start").child(span("burger").attr("aria-hidden", "true").each(0..3, |_| el("i"))).child(
-                el("a")
-                    .id("chrome-home")
-                    .class("brand")
-                    .attr("href", "/")
+                here_aware(el("a").id("chrome-home").class("brand").attr("href", "/"), "/", here)
                     .child(span("mark").attr("aria-hidden", "true").child(el("i")))
                     .child(span("word").id("chrome-brand").text(brand)),
             ),
@@ -133,9 +156,13 @@ fn chrome(state: &Value, actor: &str, query: &str) -> Html {
         .child(
             el("nav")
                 .class("sections")
-                .child(link("chrome-nav-home", "/", words(skin).home))
-                .child(link("chrome-nav-library", "/playlists", words(skin).library))
-                .child(link("chrome-nav-later", "/playlist?list=watch-later", words(skin).later)),
+                .child(here_aware(link("chrome-nav-home", "/", words(skin).home), "/", here))
+                .child(here_aware(link("chrome-nav-library", "/playlists", words(skin).library), "/playlists", here))
+                .child(here_aware(
+                    link("chrome-nav-later", "/playlist?list=watch-later", words(skin).later),
+                    "/playlist?list=watch-later",
+                    here,
+                )),
         )
         .child(
             div("middle").id("chrome-search").child(
@@ -144,7 +171,7 @@ fn chrome(state: &Value, actor: &str, query: &str) -> Html {
         )
         .child(
             div("end")
-                .child(link("chrome-library", "/playlists", "Library"))
+                .child(here_aware(link("chrome-library", "/playlists", "Library"), "/playlists", here))
                 .child(span("avatar").id("chrome-avatar").attr("aria-label", actor).text(view::initial(actor))),
         )
 }
@@ -162,17 +189,18 @@ fn form_search(query: &str) -> Html {
         .child(el("button").id("search-submit").attr("type", "submit").attr("aria-label", "Search").child(icon("search")))
 }
 /// The guide: home and library, the channels this viewer follows, then the rest.
-fn guide(state: &Value, actor: &str, class: &str) -> Html {
+fn guide(state: &Value, actor: &str, class: &str, here: &str) -> Html {
     let skin = view::skin(state, "video");
     let w = words(skin);
     let followed = strings_at(state, "subscriptions", actor);
     let entry = |prefix: &str, id: &str| {
         let channel = record(state, "channels", id).cloned().unwrap_or(Value::Null);
         let live = by_recency(state, |item| web::text(item, "channel") == id && is_live(item));
-        el("a")
-            .id(format!("{prefix}-{id}"))
-            .class("channel")
-            .attr("href", format!("/channel/{id}"))
+        here_aware(
+            el("a").id(format!("{prefix}-{id}")).class("channel").attr("href", format!("/channel/{id}")),
+            &format!("/channel/{id}"),
+            here,
+        )
             .child(cover(&format!("{prefix}-{id}-art"), id, "", 48, 24))
             .child(
                 span("names")
@@ -185,16 +213,21 @@ fn guide(state: &Value, actor: &str, class: &str) -> Html {
     el("nav")
         .id("guide")
         .class("guide")
-        .child(el("a").id("guide-home").class(if class == "home" { "item on" } else { "item" }).attr("href", "/").child(icon("home")).child(span("").text(w.home)))
-        .child(el("a").id("guide-library").class(if class == "library" { "item on" } else { "item" }).attr("href", "/playlists").child(icon("library")).child(span("").text(w.library)))
-        .child(
-            el("a")
-                .id("guide-later")
-                .class("item")
-                .attr("href", "/playlist?list=watch-later")
-                .child(icon("clock"))
-                .child(span("").text(w.later)),
-        )
+        .child(here_aware(
+            el("a").id("guide-home").class(if class == "home" { "item on" } else { "item" }).attr("href", "/").child(icon("home")).child(span("").text(w.home)),
+            "/",
+            here,
+        ))
+        .child(here_aware(
+            el("a").id("guide-library").class(if class == "library" { "item on" } else { "item" }).attr("href", "/playlists").child(icon("library")).child(span("").text(w.library)),
+            "/playlists",
+            here,
+        ))
+        .child(here_aware(
+            el("a").id("guide-later").class("item").attr("href", "/playlist?list=watch-later").child(icon("clock")).child(span("").text(w.later)),
+            "/playlist?list=watch-later",
+            here,
+        ))
         .when(!followed.is_empty(), |g| {
             g.child(el("h3").id("guide-subs-title").text(w.subscriptions))
                 .each(followed.iter().filter(|c| record(state, "channels", c).is_some()), |c| entry("guide-sub", c))
@@ -283,7 +316,10 @@ fn comment_block(state: &Value, item_id: &str, actor: &str, back: &str, w: &Word
     el("section")
         .id("comments")
         .class("comments")
-        .child(el("h2").id("comments-heading").text(format!("{} {}", comments.len(), w.comments)))
+        .child(el("h2").id("comments-heading").text(match comments.len() {
+            1 => format!("1 {}", w.comment),
+            n => format!("{n} {}", w.comments),
+        }))
         .child(
             div("compose")
                 .id("comment-compose")
@@ -375,7 +411,7 @@ pub fn home(state: &Value, actor: &str) -> Result<HttpResponse> {
             );
         }
     }
-    main.push(div("chips").id("chips").child(span("chip on").id("chip-all").text("All")).each(tags.iter(), |tag| {
+    main.push(div("chips").id("chips").child(here_aware(link("chip-all", "/", "All").class("chip"), "/", "/")).each(tags.iter(), |tag| {
         el("a")
             .id(format!("chip-{tag}"))
             .class("chip")
@@ -413,7 +449,7 @@ pub fn home(state: &Value, actor: &str) -> Result<HttpResponse> {
         _ => "Recommended",
     }));
     main.push(div("grid").id("home-grid").each(ids.iter(), |id| video_card(state, id)));
-    page(state, actor, &web::text(state, "brand"), "home", "", main)
+    page(state, actor, &web::text(state, "brand"), "home", "", "/", main)
 }
 /// Optional seed `sections`: `[{"title", "items": [ids]}]`, each a titled shelf of tiles
 /// above the grid. Unknown ids are skipped and a seed without the key renders none.
@@ -455,28 +491,23 @@ pub fn watch(state: &Value, id: &str, list: Option<&str>, actor: &str) -> Result
     let description = web::text(&item, "description");
     let title = web::text(&item, "title");
     let length = num(&item, "duration_s");
+    // The stage is the still the site stands in for the video with, and one real control:
+    // pressing play is what watching is here — it counts a view and parks the item as this
+    // viewer's now playing, which is all `GET /watch` itself does. The transport bar this
+    // used to draw beside it (scrubber, next, volume, settings, fullscreen) is gone: a video
+    // site wires those to page script, this world runs none, and every one of them was a
+    // glyph that swallowed the click.
     let stage = div("stage")
         .id("player")
-        .attr("role", "img")
-        .attr("aria-label", title.as_str())
         .child(still("player-art", id, "", 512))
-        .child(span("bigplay").attr("aria-hidden", "true").child(icon("play")))
         .child(flags(&item, "player"))
-        .child(
-            div("controls")
-                .attr("aria-hidden", "true")
-                .child(span("progress").child(el("i")))
-                .child(
-                    div("buttons")
-                        .child(icon("play"))
-                        .child(icon("next"))
-                        .child(icon("volume"))
-                        .child(span("clock").text(format!("0:00 / {}", clock(length))))
-                        .child(span("grow"))
-                        .child(icon("gear"))
-                        .child(icon("full")),
-                ),
-        );
+        .child(act(
+            "player-play",
+            &format!("/items/{id}/view"),
+            &[("return", &back)],
+            press("bigplay", &format!("Play {title}")).child(icon("play")),
+        ))
+        .child(span("runtime").id("player-runtime").text(clock(length)));
     let info = div("info")
         .id("watch-info")
         .child(div("heading").id("watch-heading").child(el("h1").id("watch-title").text(title.as_str())).child(flags(&item, "watch")))
@@ -555,6 +586,7 @@ pub fn watch(state: &Value, id: &str, list: Option<&str>, actor: &str) -> Result
         &title,
         "watch",
         "",
+        &back,
         vec![div("watch-layout")
             .id("watch-layout")
             .child(div("primary").id("watch-main").child(stage).child(info))
@@ -587,11 +619,11 @@ pub fn channel_page(state: &Value, id: &str, actor: &str) -> Result<HttpResponse
                     .id("channel-identity")
                     .child(el("h1").id("channel-name").text(name.as_str()))
                     .child(span("handle").id("channel-handle").text(format!(
-                        "{} · {} {} · {} videos",
+                        "{} · {} {} · {}",
                         web::text(&channel, "handle"),
                         grouped(num(&channel, "subscribers")),
                         w.subscribers,
-                        owned.len()
+                        kit::count(owned.len(), w.item, w.items)
                     )))
                     .child(el("p").id("channel-about").text(web::text(&channel, "about")))
                     .children(view::links("channel-about", &web::text(&channel, "about")))
@@ -606,7 +638,7 @@ pub fn channel_page(state: &Value, id: &str, actor: &str) -> Result<HttpResponse
         el("nav")
             .id("channel-tabs")
             .class("tabs")
-            .child(link("channel-tab-videos", format!("/channel/{id}"), "Videos").class("tab on"))
+            .child(link("channel-tab-videos", format!("/channel/{id}"), "Videos").class("tab on").attr("aria-current", "page"))
             .each(lists.iter().take(4), |l| {
                 link(
                     &format!("channel-tab-{l}"),
@@ -618,12 +650,14 @@ pub fn channel_page(state: &Value, id: &str, actor: &str) -> Result<HttpResponse
         el("hr").id("channel-divider"),
         div("grid").id("channel-grid").each(owned.iter(), |item| video_card(state, item)),
     ];
-    page(state, actor, &name, "channel", "", main)
+    page(state, actor, &name, "channel", "", &format!("/channel/{id}"), main)
 }
 pub fn results(state: &Value, query: &str, actor: &str) -> Result<HttpResponse> {
     let w = words(view::skin(state, "video"));
     let hits: Vec<String> = by_recency(state, |_| true).into_iter().filter(|id| matches(state, id, query)).collect();
-    let mut main = vec![el("h1").id("results-heading").text(format!("{} results for \"{query}\"", hits.len()))];
+    let mut main = vec![el("h1")
+        .id("results-heading")
+        .text(format!("{} for \"{query}\"", kit::count(hits.len(), "result", "results")))];
     // The channel rows, built once. The real results page leads with the best channel
     // match and puts the others below the videos rather than ahead of them, so a search
     // for a common letter does not bury the videos under a wall of avatars.
@@ -666,12 +700,13 @@ pub fn results(state: &Value, query: &str, actor: &str) -> Result<HttpResponse> 
     if hits.is_empty() {
         main.push(el("p").id("results-empty").class("muted").text("Try different keywords, or fewer of them."));
     }
-    page(state, actor, &format!("{query} - search"), "results", query, main)
+    page(state, actor, &format!("{query} - search"), "results", query, &href("/results", &[("search_query", query)]), main)
 }
 pub fn playlist_page(state: &Value, id: &str, actor: &str) -> Result<HttpResponse> {
     let Some(playlist) = record(state, "playlists", id).cloned() else {
         return web::error(404, "playlist not found");
     };
+    let w = words(view::skin(state, "video"));
     let tracks: Vec<String> = web::strings(&playlist, "items").into_iter().filter(|t| record(state, "items", t).is_some()).collect();
     let title = web::text(&playlist, "title");
     let owner = match web::text(&playlist, "owner") {
@@ -688,7 +723,7 @@ pub fn playlist_page(state: &Value, id: &str, actor: &str) -> Result<HttpRespons
             div("identity")
                 .id("playlist-identity")
                 .child(el("h1").id("playlist-title").text(title.as_str()))
-                .child(span("meta").id("playlist-meta").text(format!("{owner} · {} videos", tracks.len())))
+                .child(span("meta").id("playlist-meta").text(format!("{owner} · {}", kit::count(tracks.len(), w.item, w.items))))
                 .child(match tracks.first() {
                     Some(first) => el("a")
                         .id("playlist-play")
@@ -711,7 +746,8 @@ pub fn playlist_page(state: &Value, id: &str, actor: &str) -> Result<HttpRespons
         &title,
         "playlist",
         "",
-        vec![div("listpage").child(header).child(el("hr").id("playlist-divider")).child(lines), el("hr").id("playlist-foot"), track_bar(state, actor)],
+        &href("/playlist", &[("list", id)]),
+        vec![div("listpage").child(header).child(el("hr").id("playlist-divider")).child(lines), el("hr").id("playlist-foot"), track_bar(state, actor, &href("/playlist", &[("list", id)]))],
     )
 }
 /// Library: every playlist plus the form that creates one, which is what makes them buildable.
@@ -727,13 +763,13 @@ pub fn library(state: &Value, actor: &str) -> Result<HttpResponse> {
             .child(
                 span("thumb")
                     .child(still(&format!("library-{id}-art"), items.first().unwrap_or(id), "", 256))
-                    .child(span("time").text(format!("{} videos", items.len()))),
+                    .child(span("time").text(kit::count(items.len(), w.item, w.items))),
             )
             .child(
                 span("details").child(
                     span("text")
                         .child(span("title").id(format!("library-{id}-title")).text(web::text(&playlist, "title")))
-                        .child(span("channel").id(format!("library-{id}-count")).text(format!("{} tracks", items.len()))),
+                        .child(span("channel").id(format!("library-{id}-count")).text(kit::count(items.len(), w.item, w.items))),
                 ),
             )
     });
@@ -743,6 +779,7 @@ pub fn library(state: &Value, actor: &str) -> Result<HttpResponse> {
         w.library,
         "library",
         "",
+        "/playlists",
         vec![
             el("h1").id("library-heading").text("Your playlists"),
             cards,
@@ -753,7 +790,7 @@ pub fn library(state: &Value, actor: &str) -> Result<HttpResponse> {
     )
 }
 /// What is parked in `now_playing`: inert text plus one real link to it.
-fn track_bar(state: &Value, actor: &str) -> Html {
+fn track_bar(state: &Value, actor: &str, here: &str) -> Html {
     let Some(playing) = record(state, "now_playing", actor).cloned() else {
         return div("nowbar idle").id("bar").text("Nothing playing");
     };
@@ -762,7 +799,7 @@ fn track_bar(state: &Value, actor: &str) -> Html {
     div("nowbar")
         .id("bar")
         .child(cover("bar-art", &id, "", 48, 4))
-        .child(link("bar-title", format!("/track/{id}"), web::text(&item, "title")))
+        .child(here_aware(link("bar-title", format!("/track/{id}"), web::text(&item, "title")), &format!("/track/{id}"), here))
         .child(span("muted").id("bar-meta").text(format!(
             "{} · {} views",
             channel_name(state, &web::text(&item, "channel")),
@@ -774,6 +811,7 @@ pub fn track_page(state: &Value, id: &str, actor: &str) -> Result<HttpResponse> 
     let Some(item) = record(state, "items", id).cloned() else {
         return web::error(404, "track not found");
     };
+    let w = words(view::skin(state, "video"));
     let channel = web::text(&item, "channel");
     let back = format!("/track/{id}");
     let title = web::text(&item, "title");
@@ -808,17 +846,19 @@ pub fn track_page(state: &Value, id: &str, actor: &str) -> Result<HttpResponse> 
                                 &[("return", &back)],
                                 press(if liked { "pill like on" } else { "pill like" }, "").text(format!("♥ {}", grouped(num(&item, "likes")))),
                             ))
+                            // Into the one list every video seed carries. It used to post
+                            // into a "liked" playlist no site has, so it always failed.
                             .child(act(
                                 "track-save",
-                                "/playlists/liked/items",
+                                "/playlists/watch-later/items",
                                 &[("item", id), ("return", &back)],
-                                press("pill", "").text("Add to playlist"),
+                                press("pill", "").child(icon("plus")).child(span("").id("track-save-text").text(w.save)),
                             )),
                     ),
             ),
-        track_bar(state, actor),
+        track_bar(state, actor, &format!("/track/{id}")),
     ];
-    page(state, actor, &title, "playlist", "", main)
+    page(state, actor, &title, "playlist", "", &format!("/track/{id}"), main)
 }
 /// Brand splash for a seed with no catalogue; nothing on it reads as a control.
 pub fn landing(state: &Value) -> Result<HttpResponse> {

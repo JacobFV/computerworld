@@ -91,4 +91,9 @@
   .skin-spotify .banner h1 { font-size: 40px; line-height: 46px; }
   .skin-spotify .bar { flex-wrap: wrap; height: auto; padding: 8px; gap: 4px 8px; }
   .skin-spotify .bar .center { order: 3; flex: 1 1 100%; max-width: none; }
+  .skin-spotify .actions { flex-wrap: wrap; gap: 12px; }
+  .skin-spotify .hero { flex-wrap: wrap; margin: -16px -12px 0 -12px; padding: 24px 12px; }
+  .skin-spotify #main { padding: 12px; }
+  .skin-spotify .banner { margin: 0 -12px; }
+  .skin-spotify .genres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

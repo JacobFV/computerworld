@@ -44,7 +44,7 @@ button.primary { padding: 8px 16px; font-size: 16px; font-weight: 600; }
 .post-head { padding: 0 16px; align-items: flex-start; }
 .post-head .avatar { width: 48px; height: 48px; line-height: 48px; font-size: 16px; }
 .name { display: inline-block; font-size: 14px; font-weight: 600; }
-.name:hover { color: var(--accent); }
+a.name:hover { color: var(--accent); }
 .handle { display: block; font-size: 12px; line-height: 1.3; }
 .verified { width: 13px; height: 13px; line-height: 13px; font-size: 9px; background-color: #666666; }
 .post-text { padding: 8px 16px 12px; line-height: 1.43; }
@@ -55,7 +55,7 @@ button.primary { padding: 8px 16px; font-size: 16px; font-weight: 600; }
 .acts .pill-form { order: 3; }
 .acts .pill-form:last-child { order: 1; }
 .pill, .act { width: 100%; box-sizing: border-box; justify-content: center; padding: 12px 0; border-radius: 4px; font-size: 14px; font-weight: 600; color: #666666; }
-.pill:hover, .act:hover { background-color: #f3f3f3; }
+.pill:hover, a.act:hover { background-color: #f3f3f3; }
 .pill.on { color: var(--accent); }
 .pill .ico, .act .ico { font-size: 18px; }
 .act .n { margin-right: 4px; }
@@ -67,7 +67,7 @@ button.primary { padding: 8px 16px; font-size: 16px; font-weight: 600; }
 .person .avatar { width: 48px; height: 48px; line-height: 48px; }
 .person-name { font-weight: 600; }
 .person-handle { font-size: 12px; white-space: normal; }
-.person-cue { border: 1px solid #666666; color: #666666; font-weight: 600; border-radius: 9999px; padding: 5px 14px; margin-left: 8px; }
+.person .pill { width: auto; border: 1px solid #666666; color: #666666; font-weight: 600; border-radius: 9999px; padding: 5px 14px; }
 .side-foot { text-align: center; font-size: 12px; padding: 16px; }
 
 .banner { height: 200px; }
@@ -103,3 +103,23 @@ button.primary { padding: 8px 16px; font-size: 16px; font-weight: 600; }
 .search-form .ico { margin-right: 10px; color: var(--muted); }
 .crumb { margin-bottom: 8px; color: var(--muted); }
 .crumb-title { font-size: 16px; }
+
+/* A phone: the profile card and the "add to your feed" column go, the feed takes the
+   width, and the top bar keeps its search box and its icons. */
+@media (max-width: 860px) {
+  .shell { display: block; width: auto; box-sizing: border-box; padding: 12px 8px 0; }
+  .left, .side { display: none; }
+  .topbar-in { width: auto; box-sizing: border-box; padding: 0 8px; }
+  .top-search { width: auto; flex: 1 1 auto; min-width: 0; margin-right: 8px; }
+  .top-search input { min-width: 0; }
+  .nav { flex: 0 1 auto; }
+  .nav-item { width: auto; flex: 0 1 auto; padding: 0 6px; }
+  .nav-text { display: none; }
+  .topbar .avatar { margin-left: 8px; }
+  .page-inbox .main { margin-left: 0; }
+  /* The profile header: a smaller portrait and the buttons under it, not beside it. */
+  .profile-row { display: block; padding: 0 12px; margin-top: -48px; }
+  .profile .avatar.huge { width: 88px; height: 88px; line-height: 84px; font-size: 30px; }
+  .profile-acts { margin-top: 8px; padding-bottom: 8px; }
+  .profile-body { padding: 12px; }
+}

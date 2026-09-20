@@ -66,7 +66,7 @@ button.primary { border-radius: 8px; padding: 7px 16px; font-size: 14px; backgro
 .person .avatar { width: 44px; height: 44px; line-height: 44px; }
 .person-name, .me-name { font-size: 14px; }
 .person-handle, .me-handle { font-size: 13px; }
-.person-cue { color: #0095f6; font-weight: 700; font-size: 12px; }
+.person .pill { color: #0095f6; font-weight: 700; font-size: 12px; }
 .side-foot { margin-top: 24px; font-size: 12px; color: #c7c7c7; }
 
 .banner { display: none; }
@@ -101,3 +101,29 @@ button.primary { border-radius: 8px; padding: 7px 16px; font-size: 14px; backgro
 .section-title { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
 .reply-box { border: 0; border-top: 1px solid #dbdbdb; border-radius: 0; padding: 12px 0; }
 .page-profile .side, .page-explore .side, .page-search .side, .page-inbox .side { display: none; }
+
+/* A phone: the rail lies down across the top, the suggestions column goes, and a picture
+   takes the width of the screen. */
+@media (max-width: 860px) {
+  .shell { display: block; }
+  .rail { position: static; height: auto; flex-direction: row; align-items: center; justify-content: space-between; padding: 6px 6px; border-right: 0; border-bottom: 1px solid #dbdbdb; }
+  .rail .brand { flex: none; }
+  .rail .logo { font-size: 22px; }
+  .rail .nav-text { display: none; }
+  .nav { flex-direction: row; flex: 1 1 auto; min-width: 0; justify-content: space-around; }
+  .nav-item { flex: 0 1 auto; margin: 0; padding: 8px 2px; }
+  .nav .ico { width: auto; margin-right: 0; }
+  .main, .page-profile .main, .page-explore .main, .page-search .main, .page-inbox .main { margin-left: 0; padding: 12px 0 0; }
+  .side { display: none; }
+  /* Four rings fit across a phone; the rest would sit off the edge where the strip clips
+     them, and nothing here scrolls sideways. */
+  .stories .story:nth-child(n+5) { display: none; }
+  .story { width: 62px; margin-right: 8px; }
+  .ring, .ring .avatar { width: 62px; }
+  .ring .avatar { height: 56px; line-height: 52px; }
+  .page-explore .feed-grid, .page-profile .feed-grid, .page-search .feed-grid { grid-template-columns: 1fr 1fr; }
+  /* The profile header stops being a 150px portrait with a column beside it. */
+  .profile { padding: 12px 0 20px 100px; min-height: 0; }
+  .profile .avatar.huge { left: 8px; top: 12px; width: 78px; height: 78px; line-height: 78px; font-size: 26px; }
+  .profile-acts { position: static; margin-top: 8px; }
+}

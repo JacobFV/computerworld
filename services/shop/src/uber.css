@@ -5,7 +5,7 @@ body.skin-uber { font-family: Inter, Arial, sans-serif; font-size: 16px; color: 
 .skin-uber .hdr .bar { max-width: none; gap: 6px; height: 64px; padding: 0 64px; background: #000; color: #fff; }
 .skin-uber .logo { margin-right: 22px; font-size: 24px; line-height: 32px; font-weight: 400; color: #fff; }
 .skin-uber .bar .u, .skin-uber .nav { padding: 8px 12px; border-radius: 18px; font-size: 14px; line-height: 20px; font-weight: 500; white-space: nowrap; }
-.skin-uber .bar .u:hover, .skin-uber .nav:hover { background: #333; text-decoration: none; }
+.skin-uber .bar a.u:hover, .skin-uber .nav:hover { background: #333; text-decoration: none; }
 .skin-uber .nav.cart { background: #fff; color: #000; }
 .skin-uber .nav.cart:hover { background: #e2e2e2; }
 .skin-uber .cart .count { background: #000; }
@@ -73,3 +73,9 @@ body.skin-uber { font-family: Inter, Arial, sans-serif; font-size: 16px; color: 
 .skin-uber .ftr .legal .brand { color: #fff; font-size: 24px; font-weight: 400; margin-bottom: 8px; }
 /* A delivery cart does not talk about warehouse stock; a shortfall (.outstock) still shows. */
 .skin-uber .line .instock { display: none; }
+
+@media (max-width: 900px) {
+  .skin-uber .bar .u, .skin-uber .hero .art { display: none; }
+  .skin-uber .hero { padding: 16px 10px; }
+  .skin-uber .pitch { width: auto; }
+}

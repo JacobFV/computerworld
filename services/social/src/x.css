@@ -41,7 +41,7 @@ button.primary { padding: 9px 18px; }
 .acts { justify-content: space-between; max-width: 425px; margin-top: 10px; }
 .acts .lbl { display: none; }
 .pill, .act { padding: 4px 0; }
-.act:hover { color: var(--accent); }
+a.act:hover { color: var(--accent); }
 #main .acts .pill:hover { color: #f91880; }
 .pill.on { color: #f91880; }
 .pill.on .ico-repost { color: #00ba7c; }
@@ -57,7 +57,7 @@ button.primary { padding: 9px 18px; }
 .trend:hover, .person:hover { background-color: rgba(255, 255, 255, 0.03); }
 .trend-kind, .trend-count { color: var(--muted); font-size: 13px; }
 .trend-text { font-weight: 700; margin: 2px 0; }
-.person-cue { background-color: #eff3f4; color: #0f1419; font-weight: 700; font-size: 14px; padding: 7px 16px; border-radius: 9999px; }
+.person .pill { background-color: #eff3f4; color: #0f1419; font-weight: 700; font-size: 14px; padding: 7px 16px; border-radius: 9999px; }
 .side-foot { padding: 0 16px; }
 
 .banner { height: 200px; }
@@ -82,3 +82,25 @@ button.primary { padding: 9px 18px; }
 .dm-form input { border-color: #2f3336; background-color: #202327; }
 .search-form { margin: 8px 16px; height: 44px; padding: 0 6px 0 16px; border-radius: 9999px; background-color: #202327; }
 .search-form .ico { margin-right: 10px; color: var(--muted); }
+
+/* A phone: the rail lies down as an icon bar across the top, the column of cards goes, and
+   the timeline takes the width — which is the shape x.com has on one. */
+@media (max-width: 860px) {
+  .shell { display: block; }
+  .rail { position: static; height: auto; flex-direction: row; align-items: center; justify-content: space-between; padding: 4px 10px; border-bottom: 1px solid #2f3336; }
+  .rail .nav-text { display: none; }
+  .rail .me-card { margin: 0; padding: 4px; }
+  .rail .me-card .me-who { display: none; }
+  .brand { width: 40px; height: 40px; margin-top: 0; }
+  .nav { flex-direction: row; flex: 1 1 auto; min-width: 0; justify-content: space-around; }
+  .nav-item { align-self: auto; flex: 0 1 auto; margin: 0; padding: 10px 4px; font-size: 22px; }
+  .nav .ico { width: auto; margin-right: 0; }
+  .main { border-left: 0; border-right: 0; }
+  .side { display: none; }
+  .acts { max-width: none; }
+  .post { padding-left: 58px; }
+  .post .post-head .avatar { left: 12px; width: 36px; height: 36px; line-height: 36px; }
+  .profile .avatar.huge { width: 84px; height: 84px; line-height: 78px; font-size: 28px; }
+  .profile-row { margin-top: -42px; }
+  .threads { border-right: 0; border-bottom: 1px solid #2f3336; min-height: 0; }
+}

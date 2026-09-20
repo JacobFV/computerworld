@@ -701,7 +701,7 @@ mod tests {
         assert_eq!(doc.attr(search, "method"), Some("post"));
         assert_eq!(doc.attr(one(&doc, "search-q"), "name"), Some("q"));
         assert_eq!(doc.attr(one(&doc, "search-q"), "value"), Some("atlas"));
-        assert_eq!(doc.text_content(one(&doc, "feed-title")), "1 results for \"atlas\"");
+        assert_eq!(doc.text_content(one(&doc, "feed-title")), "1 result for \"atlas\"");
         let (_, doc) = html(&get(&mut state, "http://x.com/messages/c-1"));
         assert_eq!(doc.attr(one(&doc, "thread-c-1"), "href"), Some("/messages/c-1"));
         assert_eq!(doc.text_content(one(&doc, "open-title")), "Comment?");

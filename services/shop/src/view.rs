@@ -18,7 +18,11 @@
 //! `rm-<id>`/`-go`, `subtotal`, `checkout`/`checkout-go`, the order list's `o-<id>`
 //! (`-row`, `-id`, `-t`, `-s`, `-p`), the order's `meta`, `it-<n>` (`-row`, `-n`, `-q`,
 //! `-p`), `seats`, `seat-<n>`, `total-rule`, `total`, `again-<n>`, and `foot`, `empty`.
-//! New, view-only: `nav-favorites`, `cats-all`, `foot-home|orders|basket|favorites`.
+//! New, view-only: `nav-favorites`, `cats-all`, `cats-menu` (the header's category entry,
+//! a link to `/s`), `top-<category>` (the top bar's category links), and
+//! `foot-home|orders|basket|favorites`. `nav-orders` is a store's, not a box office's: a
+//! box office keeps its orders behind `nav-basket` and would otherwise draw two entries
+//! onto the same page. A link that leads to the page it sits on carries `aria-current`.
 use crate::{money, Order, Product, ShopState};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common as web;
@@ -110,6 +114,14 @@ fn date_parts(date: &str) -> Option<(&'static str, String, String)> {
     }
     Some((MONTHS[m - 1], d.to_string(), y.to_owned()))
 }
+/// `1 item`, `4 items`: a count that reads as prose rather than `4 item(s)`.
+fn count(n: usize, word: &str) -> String {
+    if n == 1 {
+        format!("{n} {word}")
+    } else {
+        format!("{n} {word}s")
+    }
+}
 /// Booking's score out of ten, in tenths, and the word beside it.
 fn score(product: &Product) -> Option<(u64, &'static str)> {
     let tenths = (product.rating_sum * 20 + product.rating_count / 2).checked_div(product.rating_count)?;
@@ -127,10 +139,21 @@ pub(crate) struct View<'a> {
     s: &'a ShopState,
     skin: &'static str,
     actor: &'a str,
+    /// The page being rendered, so a link to it can say so rather than offering the reader
+    /// a trip to where they already are.
+    here: String,
 }
 impl<'a> View<'a> {
     pub(crate) fn new(s: &'a ShopState, actor: &'a str) -> Self {
-        Self { s, skin: skin_of(s), actor }
+        Self { s, skin: skin_of(s), actor, here: String::new() }
+    }
+    /// The page this render is of: `/`, `/cart`, `/s?c=<id>`, ...
+    fn at(&self, url: &str) -> bool {
+        url == self.here
+    }
+    /// A link that says when it leads to the page it sits on.
+    fn here_aware(&self, node: Html, url: &str) -> Html {
+        node.when(self.at(url), |n| n.attr("aria-current", "page"))
     }
     fn is(&self, skin: &str) -> bool {
         self.skin == skin
@@ -183,7 +206,7 @@ impl<'a> View<'a> {
     // ---- chrome -------------------------------------------------------------------
     fn logo(&self) -> Html {
         let brand = self.s.brand.as_str();
-        let mark = el("a").id("wordmark").class("logo").attr("href", "/").attr("aria-label", brand);
+        let mark = self.here_aware(el("a").id("wordmark").class("logo").attr("href", "/").attr("aria-label", brand), "/");
         match self.skin {
             "ebay" => mark.each(brand.chars().enumerate(), |(i, c)| span(&format!("c{}", i % 4)).text(c.to_string())),
             "doordash" => mark.child(span("dash")).child(span("name").text(brand)),
@@ -209,13 +232,37 @@ impl<'a> View<'a> {
     fn nav_basket(&self, shown: &str) -> Html {
         let (text, url) = self.basket();
         let count = self.cart_count();
-        el("a").id("nav-basket").class("nav cart").attr("href", url).attr("aria-label", text)
+        self.here_aware(el("a").id("nav-basket").class("nav cart").attr("href", url).attr("aria-label", text), url)
             .child(span("ico").attr("aria-hidden", "true"))
             .when(!self.s.tickets(), |a| a.child(span("count").text(count.to_string())))
             .child(span("l2").text(if shown.is_empty() { text } else { shown }))
     }
+    /// The orders entry. A box office has no second order list: its tickets live behind
+    /// `nav-basket`, and a duplicate "Orders" beside it would land on the same page.
+    /// The words a storefront lines its top bar with. The catalogue's own categories, as
+    /// links that browse them: the hard-coded list they replace led nowhere at all.
+    fn top_cats(&self, take: usize) -> Vec<Html> {
+        self.s
+            .categories
+            .iter()
+            .take(take)
+            .map(|c| {
+                let url = href("/s", &[("c", c.id.as_str())]);
+                self.here_aware(
+                    el("a").id(format!("top-{}", c.id)).class("u").attr("href", url.as_str()).text(c.title.as_str()),
+                    &url,
+                )
+            })
+            .collect()
+    }
+    fn nav_orders(&self, line1: &str, line2: &str) -> Html {
+        if self.s.tickets() {
+            return empty();
+        }
+        self.nav("nav-orders", "/orders", "Orders", line1, line2)
+    }
     fn nav(&self, id: &str, url: &str, name: &str, line1: &str, line2: &str) -> Html {
-        el("a").id(id).class("nav").attr("href", url).attr("aria-label", name)
+        self.here_aware(el("a").id(id).class("nav").attr("href", url).attr("aria-label", name), url)
             .child(span("ico").attr("aria-hidden", "true"))
             .when(!line1.is_empty(), |a| a.child(span("l1").text(line1)))
             .child(span("l2").text(line2))
@@ -232,7 +279,7 @@ impl<'a> View<'a> {
                     .child(self.search(query, "Search Amazon", "All"))
                     .child(div("lang").child(span("flag")).child(span("l2").text("EN")))
                     .child(self.nav("nav-favorites", "/favorites", "Favourites", &format!("Hello, {me}"), "Account & Lists"))
-                    .child(self.nav("nav-orders", "/orders", "Orders", "Returns", "& Orders"))
+                    .child(self.nav_orders("Returns", "& Orders"))
                     .child(self.nav_basket("")),
             ),
             "ebay" => head
@@ -246,24 +293,26 @@ impl<'a> View<'a> {
                         .child(span("u").text("Ship to"))
                         .child(span("u").text("Sell"))
                         .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Watchlist"))
-                        .child(self.nav("nav-orders", "/orders", "Orders", "", "My eBay"))
+                        .child(self.nav_orders("", "My eBay"))
                         .child(span("bell"))
                         .child(self.nav_basket("")),
                 )
                 .child(
                     div("bar")
                         .child(self.logo())
-                        .child(span("shopby").text("Shop by category"))
-                        .child(self.search(query, "Search for anything", "All Categories"))
-                        .child(span("adv").text("Advanced")),
+                        .child(self.here_aware(el("a").id("cats-menu").class("shopby").attr("href", "/s").text("Shop by category"), "/s"))
+                        .child(self.search(query, "Search for anything", "All Categories")),
                 ),
             "etsy" => head.child(
                 div("bar")
                     .child(self.logo())
-                    .child(span("menu").child(span("burger")).child(span("").text("Categories")))
+                    .child(self.here_aware(
+                        el("a").id("cats-menu").class("menu").attr("href", "/s").child(span("burger")).child(span("").text("Categories")),
+                        "/s",
+                    ))
                     .child(self.search(query, "Search for anything", ""))
                     .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Favourites"))
-                    .child(self.nav("nav-orders", "/orders", "Orders", "", "Orders"))
+                    .child(self.nav_orders("", "Orders"))
                     .child(self.nav_basket("")),
             ),
             "airbnb" => head.child(
@@ -275,7 +324,7 @@ impl<'a> View<'a> {
                             .child(span("host").text("Airbnb your home"))
                             .child(span("globe"))
                             .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Wishlists"))
-                            .child(self.nav("nav-orders", "/orders", "Orders", "", "Trips"))
+                            .child(self.nav_orders("", "Trips"))
                             .child(self.nav_basket("Reserve")),
                     ),
             ),
@@ -289,17 +338,8 @@ impl<'a> View<'a> {
                         .child(span("help").text("?"))
                         .child(span("list").text("List your property"))
                         .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Saved"))
-                        .child(self.nav("nav-orders", "/orders", "Orders", "", "Bookings"))
+                        .child(self.nav_orders("", "Bookings"))
                         .child(self.nav_basket("Basket")),
-                )
-                .child(
-                    div("modes")
-                        .child(span("mode on").child(span("bed")).child(span("").text("Stays")))
-                        .child(span("mode").text("Flights"))
-                        .child(span("mode").text("Flight + Hotel"))
-                        .child(span("mode").text("Car rentals"))
-                        .child(span("mode").text("Attractions"))
-                        .child(span("mode").text("Airport taxis")),
                 )
                 .when(home, |h| {
                     h.child(
@@ -309,25 +349,17 @@ impl<'a> View<'a> {
                     )
                 })
                 .child(
-                    div("searchband").child(
-                        self.search(query, "Where are you going?", "")
-                            .child(span("field dates").text("Check-in date — Check-out date"))
-                            .child(span("field guests").text("2 adults · 0 children · 1 room")),
-                    ),
+                    div("searchband").child(self.search(query, "Where are you going?", "")),
                 ),
             "uber" => head
                 .child(
                     div("bar")
                         .child(self.logo())
-                        .child(span("u").text("Ride"))
-                        .child(span("u").text("Drive"))
-                        .child(span("u").text("Business"))
-                        .child(span("u").text("Uber Eats"))
-                        .child(span("u").text("About"))
+                        .children(self.top_cats(5))
                         .child(span("grow"))
                         .child(span("u").text("EN"))
                         .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Saved"))
-                        .child(self.nav("nav-orders", "/orders", "Orders", "", "Activity"))
+                        .child(self.nav_orders("", "Activity"))
                         .child(self.nav_basket("")),
                 )
                 .child(
@@ -344,38 +376,34 @@ impl<'a> View<'a> {
                 div("bar")
                     .child(span("burger"))
                     .child(self.logo())
-                    .child(div("toggle").child(span("on").text("Delivery")).child(span("").text("Pickup")))
                     .child(div("addr").child(span("pin")).child(span("").text("410 Pine St")))
                     .child(self.search(query, "Search stores, dishes, products", ""))
                     .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Saved"))
-                    .child(self.nav("nav-orders", "/orders", "Orders", "", "Orders"))
+                    .child(self.nav_orders("", "Orders"))
                     .child(self.nav_basket("")),
             ),
             "ticketmaster" => head
                 .child(
                     div("bar")
                         .child(self.logo())
-                        .child(span("u").text("Concerts"))
-                        .child(span("u").text("Sports"))
-                        .child(span("u").text("Arts, Theater & Comedy"))
-                        .child(span("u").text("Family"))
+                        .children(self.top_cats(4))
                         .child(span("grow"))
                         .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Favorites"))
-                        .child(self.nav("nav-orders", "/orders", "Orders", "", "Orders"))
+                        .child(self.nav_orders("", "Orders"))
                         .child(self.nav_basket("")),
                 )
                 .child(
                     div("hero")
                         .when(!home, |h| h.class("slim"))
                         .when(home, |h| h.child(el("h1").text("Let's make live happen")).child(el("p").class("sub").text(tagline)))
-                        .child(self.search(query, "Search by artist, event or venue", "City or Zip Code")),
+                        .child(self.search(query, "Search by artist, event or venue", "")),
                 ),
             _ => head.child(
                 div("bar")
                     .child(self.logo())
                     .child(self.search(query, "Search", ""))
                     .child(self.nav("nav-favorites", "/favorites", "Favourites", "", "Favourites"))
-                    .child(self.nav("nav-orders", "/orders", "Orders", "", "Orders"))
+                    .child(self.nav_orders("", "Orders"))
                     .child(self.nav_basket("")),
             ),
         }
@@ -388,14 +416,16 @@ impl<'a> View<'a> {
         el("nav").id("cats").class("cats").child(
             div("inner")
                 .child(
-                    el("a").id("cats-all").class(if current.is_empty() { "cat all" } else { "cat all off" }).attr("href", "/s")
+                    self.here_aware(el("a").id("cats-all").class(if current.is_empty() { "cat all" } else { "cat all off" }).attr("href", "/s"), "/s")
                         .child(span("ico").attr("aria-hidden", "true"))
                         .child(span("t").text("All")),
                 )
                 .each(&self.s.categories, |c| {
                     let (a, b) = tones(&c.id);
-                    el("a").id(format!("cat-{}", c.id)).class(if c.id == current { "cat on" } else { "cat" })
-                        .attr("href", href("/s", &[("c", c.id.as_str())]))
+                    self.here_aware(
+                        el("a").id(format!("cat-{}", c.id)).class(if c.id == current { "cat on" } else { "cat" }).attr("href", href("/s", &[("c", c.id.as_str())])),
+                        &href("/s", &[("c", c.id.as_str())]),
+                    )
                         .child(span("ico").attr("aria-hidden", "true").style(&format!("--c1: {a}; --c2: {b}")).attr("data-letter", c.title.chars().next().unwrap_or(' ').to_string()))
                         .child(span("t").text(c.title.as_str()))
                 }),
@@ -456,10 +486,10 @@ impl<'a> View<'a> {
                     .child(
                         div("col")
                             .child(el("h3").text(if self.is("amazon") { "Let Us Help You" } else { "Your account" }))
-                            .child(link("foot-home", "/", format!("{} home", self.s.brand)))
-                            .child(link("foot-orders", "/orders", "Your orders"))
-                            .child(link("foot-basket", basket_url, basket))
-                            .child(link("foot-favorites", "/favorites", "Favourites")),
+                            .child(self.here_aware(link("foot-home", "/", format!("{} home", self.s.brand)), "/"))
+                            .when(!self.s.tickets(), |c| c.child(self.here_aware(link("foot-orders", "/orders", "Your orders"), "/orders")))
+                            .child(self.here_aware(link("foot-basket", basket_url, basket), basket_url))
+                            .child(self.here_aware(link("foot-favorites", "/favorites", "Favourites"), "/favorites")),
                     ),
             )
             .child(
@@ -470,7 +500,10 @@ impl<'a> View<'a> {
                     )),
             )
     }
-    fn document(&self, title: &str, page_class: &str, query: &str, category: &str, main: Vec<Html>) -> Result<HttpResponse> {
+    /// `here` is the path this page answers at, so the chrome can mark the link that leads
+    /// back to it instead of offering a trip to nowhere.
+    fn document(&self, title: &str, page_class: &str, query: &str, category: &str, here: &str, main: Vec<Html>) -> Result<HttpResponse> {
+        let me = View { s: self.s, skin: self.skin, actor: self.actor, here: here.to_owned() };
         let t = &self.s.theme;
         let or = |v: &Option<String>, fallback: &str| v.clone().unwrap_or_else(|| fallback.to_owned());
         let doc = Document::new(title)
@@ -492,10 +525,10 @@ impl<'a> View<'a> {
                 if self.s.tickets() { " mode-tickets" } else { "" }
             ))
             .body([
-                self.header(query, page_class == "home"),
-                self.cats(category),
+                me.header(query, page_class == "home"),
+                me.cats(category),
                 el("main").id("main").class("wrap").children(main),
-                self.footer(),
+                me.footer(),
             ]);
         page(&doc)
     }
@@ -537,8 +570,7 @@ impl<'a> View<'a> {
             .maybe(blurb.map(|b| span("blurb").text(b.as_str())))
             .maybe(product.bullets.get(2).filter(|_| booking).map(|b| span(if b.starts_with("Free") { "perk free" } else { "perk" }).text(b.as_str())));
         let picture = pic(&format!("t-{id}"), &product.title, "")
-            .when(self.is("airbnb") && tenths >= 48, |p| p.child(span("fave").text("Guest favorite")))
-            .child(span("heart").attr("aria-hidden", "true"));
+            .when(self.is("airbnb") && tenths >= 48, |p| p.child(span("fave").text("Guest favorite")));
         let card = el("a").id(format!("p-{id}")).class("card").attr("href", self.product_url(id))
             .maybe(date.filter(|_| tickets).map(|(mon, day, year)| {
                 span("date").child(span("mon").text(mon)).child(span("day").text(day)).child(span("year").text(year))
@@ -602,7 +634,7 @@ impl<'a> View<'a> {
                 all
             }),
         ];
-        self.document(&s.brand, "home", "", "", main)
+        self.document(&s.brand, "home", "", "", "/", main)
     }
     pub(crate) fn results(&self, query: &str, category: &str) -> Result<HttpResponse> {
         let s = self.s;
@@ -615,15 +647,23 @@ impl<'a> View<'a> {
             (true, true) => "Everything".to_owned(),
             _ => format!("Results for \"{query}\""),
         };
+        let mut params: Vec<(&str, &str)> = Vec::new();
+        if !query.is_empty() {
+            params.push(("k", query));
+        }
+        if !category.is_empty() {
+            params.push(("c", category));
+        }
+        let here = href("/s", &params);
         let main = vec![
-            el("h1").id("lead").class("lead").text(format!("{title} — {} item(s)", hits.len())),
+            el("h1").id("lead").class("lead").text(format!("{title} — {}", count(hits.len(), "item"))),
             if hits.is_empty() {
                 el("p").id("empty").class("empty").text("Nothing matched. Try a broader word.")
             } else {
                 self.grid("hits", hits.iter().copied())
             },
         ];
-        self.document(&format!("{} — {}", title, s.brand), "results", query, category, main)
+        self.document(&format!("{} — {}", title, s.brand), "results", query, category, &here, main)
     }
     pub(crate) fn favorites(&self) -> Result<HttpResponse> {
         let s = self.s;
@@ -636,7 +676,7 @@ impl<'a> View<'a> {
                 self.grid("favs", list.iter().filter_map(|id| s.products.get(id)))
             },
         ];
-        self.document(&format!("Favourites — {}", s.brand), "favorites", "", "", main)
+        self.document(&format!("Favourites — {}", s.brand), "favorites", "", "", "/favorites", main)
     }
     pub(crate) fn detail(&self, id: &str) -> Result<HttpResponse> {
         let s = self.s;
@@ -735,7 +775,7 @@ impl<'a> View<'a> {
                         .child(button("write-go", "Post review").class("secondary")),
                 ),
         );
-        self.document(&format!("{} — {}", product.title, s.brand), "detail", "", &product.category, main)
+        self.document(&format!("{} — {}", product.title, s.brand), "detail", "", &product.category, &format!("/dp/{id}"), main)
     }
     pub(crate) fn event(&self, id: &str) -> Result<HttpResponse> {
         let s = self.s;
@@ -779,7 +819,7 @@ impl<'a> View<'a> {
                 link("venue-map", format!("http://maps.google.com/maps/place/{}", product.venue), format!("Directions to {}", product.venue_name)).class("venue-map"),
             );
         }
-        self.document(&format!("{} — {}", product.title, s.brand), "event", "", &product.category, main)
+        self.document(&format!("{} — {}", product.title, s.brand), "event", "", &product.category, &format!("/event/{id}"), main)
     }
     pub(crate) fn cart(&self) -> Result<HttpResponse> {
         let s = self.s;
@@ -829,7 +869,7 @@ impl<'a> View<'a> {
             .when(!cart.is_empty(), |a| {
                 a.child(form("checkout", "/api/checkout", "post").child(button("checkout-go", "Place your order").class("primary")))
             });
-        self.document(&format!("Cart — {}", s.brand), "cart", "", "", vec![div("cart-layout").child(lines).child(summary)])
+        self.document(&format!("Cart — {}", s.brand), "cart", "", "", self.basket().1, vec![div("cart-layout").child(lines).child(summary)])
     }
     fn when(o: &Order) -> String {
         if o.date.is_empty() {
@@ -863,7 +903,7 @@ impl<'a> View<'a> {
                     )
             }),
         ];
-        self.document(&format!("Orders — {}", s.brand), "orders", "", "", main)
+        self.document(&format!("Orders — {}", s.brand), "orders", "", "", if s.tickets() { "/my-tickets" } else { "/orders" }, main)
     }
     pub(crate) fn order(&self, id: &str) -> Result<HttpResponse> {
         let s = self.s;
@@ -893,6 +933,6 @@ impl<'a> View<'a> {
                 link(&format!("again-{i}"), self.product_url(&item.product), format!("View {}", item.title)).class("again-link")
             }),
         ];
-        self.document(&format!("Order {} — {}", o.id, s.brand), "order", "", "", main)
+        self.document(&format!("Order {} — {}", o.id, s.brand), "order", "", "", &format!("/orders/{id}"), main)
     }
 }

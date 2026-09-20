@@ -13,11 +13,6 @@ a:hover { text-decoration: underline; }
 .mag { display: none; }
 .search input { width: 100%; height: 24px; border: 1px solid #aaaaaa; border-radius: 3px; padding: 0 5px; font-size: 13px; background: #ffffff; font-family: Arial, sans-serif; }
 .search .go { align-self: center; border: 1px solid #aaaaaa; border-radius: 3px; background: #e4e4e4; font-size: 12px; padding: 1px 10px; font-family: Arial, sans-serif; color: #000000; }
-.cal { width: 100%; margin: 4px 0 8px 0; }
-.cal-title { display: block; color: var(--link); margin-bottom: 3px; }
-.days { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--line); background: #ffffff; font-size: 11px; line-height: 17px; }
-.days b { background: #dddddd; font-weight: 400; color: #333333; }
-.days i { font-style: normal; color: var(--link); border-top: 1px solid #eeeeee; }
 .leftbar .small { font-size: 12px; color: var(--link); line-height: 15px; }
 .leftbar a.on { color: var(--accent); font-weight: 700; }
 .content { flex: 1; min-width: 0; }
@@ -31,7 +26,7 @@ a:hover { text-decoration: underline; }
 .cat li { line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* results */
-.listhead h1 { font-size: 15px; font-weight: 700; line-height: 22px; background: #eeeeee; border: 1px solid var(--line); border-radius: 3px; padding: 0 8px; margin-bottom: 6px; flex: 1; }
+.listhead h1 { font-size: 15px; font-weight: 700; line-height: 22px; background: #eeeeee; border-bottom: 1px solid var(--line); padding: 1px 8px; margin-bottom: 6px; flex: 1; }
 .empty { color: var(--muted); padding: 10px 4px; }
 .results { border-bottom: 1px solid #eeeeee; }
 .result { display: flex; align-items: baseline; gap: 6px; padding: 3px 4px; border-top: 1px solid #eeeeee; line-height: 20px; flex-wrap: wrap; }
@@ -74,7 +69,7 @@ a:hover { text-decoration: underline; }
 .field textarea { height: 90px; }
 .primary, form.inline button { border: 1px solid #aaaaaa; border-radius: 3px; background: #e4e4e4; color: #000000; font-size: 13px; padding: 2px 12px; font-family: Arial, sans-serif; }
 .primary:hover, form.inline button:hover { background: #d4d4d4; }
-#replies-title { font-size: 15px; font-weight: 700; background: #eeeeee; border: 1px solid var(--line); border-radius: 3px; padding: 0 8px; line-height: 22px; }
+#replies-title { font-size: 15px; font-weight: 700; background: #eeeeee; border-bottom: 1px solid var(--line); padding: 1px 8px; line-height: 22px; }
 .reply { padding: 8px 4px; border-bottom: 1px solid #eeeeee; }
 .children { margin-left: 24px; border-left: 1px dotted var(--line); padding-left: 10px; }
 .children .reply { border-bottom: 0; }
@@ -95,3 +90,11 @@ form.inline button { font-size: 12px; padding: 0 8px; }
 .badges { display: flex; gap: 12px; font-size: 12px; }
 .foot { text-align: center; color: var(--muted); font-size: 11px; padding: 14px 0 20px 0; border-top: 1px solid #eeeeee; margin-top: 10px; }
 .foot-brand { display: none; }
+
+/* A phone: the left bar lies down above the listings instead of beside them. */
+@media (max-width: 860px) {
+  .wrap { display: block; padding: 8px; }
+  .leftbar { width: auto; margin-bottom: 10px; }
+  .cols { display: block; }
+  .text { max-width: none; }
+}

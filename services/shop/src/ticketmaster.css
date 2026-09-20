@@ -5,14 +5,12 @@ body.skin-ticketmaster { font-family: "Open Sans", Arial, sans-serif; color: #12
 .skin-ticketmaster .hdr .bar { max-width: none; gap: 4px; height: 60px; padding: 0 32px; background: #026cdf; }
 .skin-ticketmaster .logo { margin-right: 28px; font-size: 25px; line-height: 32px; font-weight: 800; font-style: italic; letter-spacing: -1px; text-transform: lowercase; color: #fff; }
 .skin-ticketmaster .bar .u, .skin-ticketmaster .nav { padding: 20px 12px; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; }
-.skin-ticketmaster .bar .u:hover, .skin-ticketmaster .nav:hover { box-shadow: inset 0 -4px 0 #fff; text-decoration: none; }
+.skin-ticketmaster .bar a.u:hover, .skin-ticketmaster .nav:hover { box-shadow: inset 0 -4px 0 #fff; text-decoration: none; }
 .skin-ticketmaster .hero { padding: 64px 32px 72px; background: linear-gradient(115deg, #0a1a3c 0, #1b2f6e 45%, #5a2a82 100%); text-align: center; }
 .skin-ticketmaster .hero.slim { padding: 18px 32px; }
 .skin-ticketmaster .hero h1 { font-size: 44px; line-height: 54px; font-weight: 800; letter-spacing: -1px; text-transform: uppercase; }
 .skin-ticketmaster .hero .sub { margin: 8px 0 28px; font-size: 16px; color: #d6dcf0; }
 .skin-ticketmaster .search { max-width: 920px; height: 56px; margin: 0 auto; padding: 6px; border-radius: 4px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); text-align: left; }
-.skin-ticketmaster .search .scope { display: block; position: relative; flex: none; width: 220px; padding: 0 12px 0 36px; border-right: 1px solid #bfbfbf; color: #646464; font-size: 15px; line-height: 44px; }
-.skin-ticketmaster .search .scope::before { content: ""; position: absolute; left: 12px; top: 14px; width: 9px; height: 9px; border: 2px solid #026cdf; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
 .skin-ticketmaster .search input[type="text"] { height: 44px; padding: 0 16px; font: 16px "Open Sans", Arial, sans-serif; }
 .skin-ticketmaster .search .go { height: 44px; padding: 0 28px; border-radius: 2px; background: #026cdf; font: 600 16px "Open Sans", Arial, sans-serif; }
 .skin-ticketmaster .search .go:hover { background: #0150a7; }
@@ -62,3 +60,9 @@ body.skin-ticketmaster { font-family: "Open Sans", Arial, sans-serif; color: #12
 .skin-ticketmaster .ftr .fitem, .skin-ticketmaster .ftr .col a { color: #c9d0da; }
 .skin-ticketmaster .ftr .legal { border-top: 1px solid #3a434d; color: #9aa4b1; }
 .skin-ticketmaster .ftr .legal .brand { color: #fff; font-style: italic; text-transform: lowercase; font-weight: 800; }
+
+@media (max-width: 900px) {
+  .skin-ticketmaster .bar .u { display: none; }
+  .skin-ticketmaster .hero { padding: 16px 10px; }
+  .skin-ticketmaster .event-hero { margin: -12px -8px 0; padding: 16px; }
+}
