@@ -8,6 +8,7 @@
   "port": 80,
   "initial_state": {
     "layout": "blog",
+    "skin": "blog",
     "brand": "Northstar Engineering",
     "tagline": "How we build Atlas, and what it costs us.",
     "theme": {
@@ -43,7 +44,7 @@
           "The product rule is one sentence: nothing may influence output unless it is a declared, ordered input. In practice that removed three things from every code path inside the sandbox. The wall clock became a tick counter. Ambient randomness became a single seeded stream, threaded explicitly. Iteration over unordered containers became a thing you are not allowed to do where it can reach output.",
           "None of those rules is checkable by a compiler, so we check them by replay. Every run recorded in CI is rerun from its seed and every renderer frame is compared. A mismatch prints the tick, the frame index and the first differing byte, which turns a class of bug that is normally investigated statistically into one you investigate by reading a number.",
           "The replay harness paid for itself in its first month by finding a BFS path test that had been quarantined for four months. Bob's write-up of that one is at http://bmartinez.net/posts/hash-order-bit-me and it is the best short explanation of why this work matters that any of us have written.",
-          "Alice recorded a full end-to-end walkthrough - seed, run, checkpoint, replay - at http://youtube.com/watch?v=atlas-walkthrough . It is twelve minutes and it is the fastest way to understand what Atlas actually is. The source is at http://github.com/northstar/atlas",
+          "Alice recorded a full end-to-end walkthrough - seed, run, checkpoint, replay - at http://youtube.com/watch?v=atlas-walkthrough. It is twelve minutes and it is the fastest way to understand what Atlas actually is. The source is at http://github.com/northstar/atlas",
           "What it cost: roughly 12% throughput on our own workload, a vendored-dependency directory larger than we would like, and a set of caches we deleted because we could no longer justify them. What we would do differently: build the replay harness first. We built it in year two, and every determinism bug found before it existed took an order of magnitude longer to find.",
           "Thanks to everyone who ran a pre-release build and told us it was broken. Alice has written up her own view of the two years at http://alicechen.dev/posts/what-i-learned-shipping-atlas"
         ],

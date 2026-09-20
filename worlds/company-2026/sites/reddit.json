@@ -6,6 +6,7 @@
   "port": 80,
   "initial_state": {
     "mode": "subreddits",
+    "skin": "reddit",
     "brand": "reddit",
     "tagline": "The front page of the internet",
     "theme": {

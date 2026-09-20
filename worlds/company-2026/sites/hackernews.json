@@ -6,6 +6,7 @@
   "port": 80,
   "initial_state": {
     "mode": "linkfeed",
+    "skin": "hackernews",
     "brand": "Hacker News",
     "tagline": "new | past | comments | ask | show | jobs",
     "theme": {

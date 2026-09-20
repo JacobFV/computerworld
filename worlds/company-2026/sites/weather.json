@@ -9,6 +9,7 @@
   "port": 80,
   "initial_state": {
     "mode": "weather",
+    "skin": "weather",
     "brand": "Weather",
     "tagline": "Ten days out, and the reason you are taking a coat.",
     "units": "imperial",

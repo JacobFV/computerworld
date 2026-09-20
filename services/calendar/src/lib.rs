@@ -221,6 +221,8 @@ pub fn register(registry: &mut Registry) -> SimResult<()> {
 pub(crate) struct Nav {
     pub day: Option<u64>,
     pub event: Option<String>,
+    /// `?view=month`: the month grid instead of the week. A view-only affordance.
+    pub month: bool,
 }
 /// The original calendar page. Frozen: `calendar.internal` and its world data read these bytes.
 fn plain(s: &CalendarState, actor: &str) -> SimResult<HttpResponse> {
@@ -337,6 +339,7 @@ impl Service for CalendarService {
         let nav = |event: Option<String>| Nav {
             day: web::query(r, "day").and_then(|d| d.parse().ok()),
             event: event.or_else(|| web::query(r, "event")),
+            month: web::query(r, "view").as_deref() == Some("month"),
         };
         if method == "GET" {
             return match parts.as_slice() {
@@ -375,8 +378,9 @@ impl Service for CalendarService {
                 )
                 .map(|e| {
                     land = Nav {
-                        day: Some(e.start / DAY_US),
+                        day: Some(civil(e.start).index),
                         event: Some(e.id.clone()),
+                        month: false,
                     };
                     json!(e)
                 }),
@@ -385,8 +389,9 @@ impl Service for CalendarService {
                     return web::error(400, "invalid RSVP");
                 };
                 land = Nav {
-                    day: s.visible(&c.actor, id).map(|e| e.start / DAY_US),
+                    day: s.visible(&c.actor, id).map(|e| civil(e.start).index),
                     event: Some((*id).to_owned()),
+                    month: false,
                 };
                 s.respond(&c.actor, id, response)
                     .map(|_| json!({"ok":true}))
@@ -405,16 +410,18 @@ impl Service for CalendarService {
                     optional(&b, "end")?,
                 );
                 land = Nav {
-                    day: s.visible(&c.actor, id).map(|e| e.start / DAY_US),
+                    day: s.visible(&c.actor, id).map(|e| civil(e.start).index),
                     event: Some((*id).to_owned()),
+                    month: false,
                 };
                 result.map(|_| json!({"ok":true}))
             }
             // A page button can only POST, so a deletable event needs a POST spelling too.
             ("DELETE", ["events", id]) | ("POST", ["events", id, "delete"]) => {
                 land = Nav {
-                    day: s.visible(&c.actor, id).map(|e| e.start / DAY_US),
+                    day: s.visible(&c.actor, id).map(|e| civil(e.start).index),
                     event: None,
+                    month: false,
                 };
                 s.delete(&c.actor, id).map(|_| json!({"ok":true}))
             }
@@ -574,59 +581,180 @@ mod tests {
         let r = HttpRequest::get("http://calendar/events/event-1");
         assert_eq!(CalendarService.handle(&mut v, &c, &r).unwrap().status, 404);
     }
+    /// A parsed gcal page, validated strictly on the way in.
+    struct Dom(cw_web::dom::Document);
+    impl Dom {
+        fn of(response: &HttpResponse) -> Dom {
+            assert_eq!(response.status, 200);
+            assert_eq!(response.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+            let html = std::str::from_utf8(&response.body).unwrap();
+            web::html::validate_strict(html).unwrap_or_else(|e| panic!("strict: {e:?}"));
+            Dom(cw_web::html::parse(html))
+        }
+        fn has(&self, id: &str) -> bool {
+            !self.0.by_id(id).is_empty()
+        }
+        fn node(&self, id: &str) -> cw_web::dom::NodeId {
+            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+        }
+        fn text(&self, id: &str) -> String {
+            cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+        }
+        fn tag(&self, id: &str) -> String {
+            self.0.tag(self.node(id)).unwrap_or_default().to_owned()
+        }
+    }
+    fn get(v: &mut Value, actor: &str, url: &str) -> HttpResponse {
+        CalendarService.handle(v, &context(actor), &HttpRequest::get(url)).unwrap()
+    }
+    fn post(v: &mut Value, actor: &str, url: &str, fields: &[(&str, &str)]) -> HttpResponse {
+        // Exactly what the browser sends for an HTML form: urlencoded fields.
+        let body: String = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(fields).finish();
+        let mut r = HttpRequest::get(url);
+        r.method = "POST".into();
+        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        r.body = body.into_bytes();
+        CalendarService.handle(v, &context(actor), &r).unwrap()
+    }
     #[test]
     fn skinned_week_renders_and_navigates() {
-        let c = context("carol");
         let mut v = serde_json::to_value(seeded()).unwrap();
-        let page = |v: &mut Value, url: &str| {
-            let response = CalendarService
-                .handle(v, &c, &HttpRequest::get(url))
-                .unwrap();
-            (response.status, String::from_utf8(response.body).unwrap())
-        };
-        let (status, body) = page(&mut v, "http://calendar/?day=0&event=event-1");
-        assert_eq!(status, 200);
-        assert!(body.contains("Atlas launch review"));
-        assert!(body.contains("Thu 17 Sep") && body.contains("10:00"));
+        let page = Dom::of(&get(&mut v, "carol", "http://calendar/?day=0&event=event-1"));
+        assert_eq!(page.text("wordmark"), "Calendar");
+        assert_eq!(page.text("range"), "September 2026");
+        // Sunday-first week around Thursday 17 September; the days before the epoch are inert.
+        assert_eq!(page.attr("day-0-head", "aria-label"), "Thu 17 Sep");
+        assert_eq!(page.text("day-0-head"), "THU17");
+        assert!(page.has("day-2") && !page.has("day-3"));
+        let chip = "day-0-event-1";
+        assert_eq!(page.tag(chip), "a");
+        assert_eq!(page.attr(chip, "href"), "/?day=0&event=event-1");
+        assert_eq!(page.text(&format!("{chip}-title")), "Atlas launch review");
+        assert_eq!(page.text(&format!("{chip}-clock")), "10:00 – 11:00");
+        // 10:00 is three hours below the 07:00 top of the grid, at 48px an hour.
+        assert!(page.attr(chip, "style").starts_with("top: 144px; height: 46px; left: 0.00%; width: 100.00%"));
+        assert_eq!(page.text("detail-title"), "Atlas launch review");
+        assert_eq!(page.text("detail-when"), "Thu 17 Sep · 10:00 – 11:00");
+        assert_eq!(page.text("detail-location"), "Northstar HQ · Room 2");
         // The conference link is navigation into the rest of the world, not decoration.
-        assert!(body.contains("http://slack.com/archives/eng"));
-        assert_eq!(page(&mut v, "http://calendar/events/event-1").0, 200);
-        assert_eq!(page(&mut v, "http://calendar/events/event-9").0, 404);
+        assert_eq!(page.attr("detail-join", "href"), "http://slack.com/archives/eng");
+        assert_eq!(page.text("guest-alice-rsvp"), "Awaiting reply");
+        // Carol owns it: she can edit and delete, and is not asked whether she is going.
+        assert!(!page.has("rsvp"));
+        assert_eq!(page.attr("edit", "action"), "/events/event-1");
+        assert_eq!(page.attr("edit", "method"), "post");
+        assert_eq!(page.attr("edit-title", "name"), "title");
+        assert_eq!(page.attr("edit-title", "value"), "Atlas launch review");
+        assert_eq!(page.attr("edit-start", "value"), HOUR_US.to_string());
+        assert_eq!(page.attr("delete-form", "action"), "/events/event-1/delete");
+        assert_eq!(page.tag("delete"), "button");
+        assert_eq!(page.attr("detail-permalink", "href"), "/events/event-1");
+        assert_eq!(page.attr("detail-back", "href"), "/?day=0");
+        assert_eq!(page.attr("today", "href"), "/?day=0");
+        assert_eq!(page.attr("prev", "href"), "/?day=0");
+        assert_eq!(page.attr("next", "href"), "/?day=7");
+        assert_eq!(page.attr("create", "href"), "/?day=0");
+        assert_eq!(page.attr("mini-24", "href"), "/?day=7");
+        assert_eq!(page.tag("mini-16"), "span");
+        assert_eq!(page.text("calendar-carol"), "carol");
+        assert_eq!(page.attr("account", "title"), "carol");
+        let permalink = Dom::of(&get(&mut v, "carol", "http://calendar/events/event-1"));
+        assert_eq!(permalink.text("detail-title"), "Atlas launch review");
+        assert_eq!(get(&mut v, "carol", "http://calendar/events/event-9").status, 404);
         // Next week is a real link and shows no events, because the only one is this week.
-        let (_, next) = page(&mut v, "http://calendar/?day=7");
-        assert!(!next.contains("Atlas launch review"));
+        let next = Dom::of(&get(&mut v, "carol", "http://calendar/?day=7"));
+        assert!(!next.has("day-7-event-1") && next.has("day-7") && next.has("day-3"));
+        // With nothing selected the panel is the new-event form, posting the old field names.
+        assert_eq!(next.text("detail-title"), "New event");
+        assert_eq!(next.attr("event", "action"), "/events");
+        assert_eq!(next.attr("event", "method"), "post");
+        for (id, name) in [("event-title", "title"), ("event-start", "start"), ("event-end", "end"), ("event-attendees", "attendees")] {
+            assert_eq!(next.attr(id, "name"), name);
+        }
+        assert_eq!(next.attr("event-start", "value"), (7 * DAY_US + HOUR_US).to_string());
+        assert_eq!(next.tag("event-submit"), "button");
+    }
+    #[test]
+    fn the_month_view_is_the_same_events_in_a_seven_column_grid() {
+        let mut v = serde_json::to_value(seeded()).unwrap();
+        let page = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0"));
+        assert_eq!(page.text("range"), "September 2026");
+        assert_eq!(page.attr("view-week", "href"), "/?day=0");
+        assert_eq!(page.attr("view-month", "href"), "/?view=month&day=0");
+        assert_eq!(page.attr("day-0-event-1", "href"), "/?view=month&day=0&event=event-1");
+        assert_eq!(page.attr("day-0-head", "href"), "/?day=0");
+        assert!(page.has("day-13") && page.has("day-16"), "the grid runs to the Saturday after the 30th");
+        assert_eq!(page.attr("next", "href"), "/?view=month&day=14");
+        assert_eq!(page.attr("prev", "href"), "/?view=month&day=0");
+        let october = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=14"));
+        assert_eq!(october.text("range"), "October 2026");
+        assert_eq!(october.attr("prev", "href"), "/?view=month&day=0");
+        assert_eq!(october.attr("next", "href"), "/?view=month&day=45");
+        let open = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0&event=event-1"));
+        assert_eq!(open.attr("rsvp", "action"), "/events/event-1/rsvp");
+    }
+    #[test]
+    fn overlapping_events_share_a_column_and_long_ones_sit_in_the_all_day_row() {
+        let mut s = seeded();
+        s.create("carol", "Overlap", HOUR_US + HOUR_US / 2, 3 * HOUR_US, vec![], 0).unwrap();
+        s.create("carol", "Trip", 0, 30 * HOUR_US, vec![], 0).unwrap();
+        s.create("carol", "Early", DAY_US - 3 * HOUR_US, DAY_US - 2 * HOUR_US, vec![], 0).unwrap();
+        let mut v = serde_json::to_value(s).unwrap();
+        let page = Dom::of(&get(&mut v, "carol", "http://calendar/"));
+        assert!(page.attr("day-0-event-1", "style").ends_with("left: 0.00%; width: 50.00%"));
+        assert!(page.attr("day-0-event-2", "style").ends_with("left: 50.00%; width: 50.00%"));
+        assert!(page.attr("day-0-event-3", "class").contains("bar lead"));
+        assert!(page.attr("day-1-event-3", "class").contains("bar tail"));
+        assert_eq!(page.attr("day-0-event-3", "style"), "");
+        // 06:00 on Friday is civil day 1, and widens the grid to start at 06:00.
+        assert!(page.attr("day-1-event-4", "style").starts_with("top: 0px"));
     }
     #[test]
     fn skinned_rsvp_and_edit_round_trip_through_the_page() {
-        let alice = context("alice");
         let mut v = serde_json::to_value(seeded()).unwrap();
-        let rsvp = HttpRequest::json(
-            "POST",
-            "http://calendar/events/event-1/rsvp",
-            &json!({"response":"accepted"}),
-        )
-        .unwrap();
-        let response = CalendarService.handle(&mut v, &alice, &rsvp).unwrap();
-        assert_eq!(response.status, 200);
+        let before = Dom::of(&get(&mut v, "alice", "http://calendar/?event=event-1"));
+        assert_eq!(before.attr("rsvp", "action"), "/events/event-1/rsvp");
+        assert_eq!(before.attr("rsvp", "method"), "post");
+        for (id, value) in [("rsvp-yes", "accepted"), ("rsvp-no", "declined"), ("rsvp-maybe", "tentative")] {
+            assert_eq!((before.attr(id, "name"), before.attr(id, "value")), ("response".to_owned(), value.to_owned()));
+        }
+        assert!(!before.has("edit") && !before.has("delete"), "alice does not own it");
+        let answered = post(&mut v, "alice", "http://calendar/events/event-1/rsvp", &[("response", "accepted")]);
         assert_eq!(v["events"]["event-1"]["attendees"]["alice"], "accepted");
-        assert!(String::from_utf8(response.body).unwrap().contains("Going"));
-        let rename = HttpRequest::json(
-            "POST",
-            "http://calendar/events/event-1",
-            &json!({"title":"Atlas launch review (final)"}),
-        )
-        .unwrap();
-        assert_eq!(
-            CalendarService
-                .handle(&mut v, &context("carol"), &rename)
-                .unwrap()
-                .status,
-            200
-        );
-        assert_eq!(
-            v["events"]["event-1"]["title"],
-            "Atlas launch review (final)"
-        );
+        assert_eq!(Dom::of(&answered).text("guest-alice-rsvp"), "Going");
+        let renamed = post(&mut v, "carol", "http://calendar/events/event-1", &[("title", "Atlas launch review (final)"), ("start", ""), ("end", "")]);
+        assert_eq!(Dom::of(&renamed).text("detail-title"), "Atlas launch review (final)");
+        assert_eq!(v["events"]["event-1"]["title"], "Atlas launch review (final)");
+        assert_eq!(v["events"]["event-1"]["start"], HOUR_US);
+        let start = (2 * DAY_US).to_string();
+        let end = (2 * DAY_US + HOUR_US).to_string();
+        let created = post(&mut v, "alice", "http://calendar/events", &[("title", "Pairing"), ("start", &start), ("end", &end), ("attendees", "bob, carol")]);
+        let created = Dom::of(&created);
+        assert_eq!(created.text("detail-title"), "Pairing");
+        assert_eq!(created.text("day-2-event-2-title"), "Pairing");
+        assert_eq!(v["events"]["event-2"]["attendees"]["bob"], "pending");
+        let deleted = Dom::of(&post(&mut v, "alice", "http://calendar/events/event-2/delete", &[]));
+        assert!(!deleted.has("day-2-event-2"));
+        assert_eq!(deleted.text("detail-title"), "New event");
+        assert!(v["events"].get("event-2").is_none());
+    }
+    #[test]
+    fn seed_text_is_escaped_and_described_links_are_numbered_by_word() {
+        let mut s = seeded();
+        let e = s.events.get_mut("event-1").unwrap();
+        e.title = "<b>Bold</b> & co".into();
+        e.description = "Agenda: http://docs.google.com/documents/atlas-launch, then <script>x</script>".into();
+        let mut v = serde_json::to_value(s).unwrap();
+        let response = get(&mut v, "carol", "http://calendar/?event=event-1");
+        let html = String::from_utf8(response.body.clone()).unwrap();
+        assert!(!html.contains("<b>Bold") && !html.contains("<script>x"));
+        let page = Dom::of(&response);
+        assert_eq!(page.text("detail-title"), "<b>Bold</b> & co");
+        assert_eq!(page.attr("detail-link-1", "href"), "http://docs.google.com/documents/atlas-launch");
+        assert!(page.text("detail-description").ends_with("then <script>x</script>"));
     }
     #[test]
     fn unknown_skin_is_a_seed_error() {

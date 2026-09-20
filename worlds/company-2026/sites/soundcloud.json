@@ -14,9 +14,9 @@
     "tagline": "Hear what is next.",
     "theme": {
       "accent": "#ff5500",
-      "background": "#111111",
-      "surface": "#1c1c1c",
-      "ink": "#ffffff",
+      "background": "#f2f2f2",
+      "surface": "#ffffff",
+      "ink": "#333333",
       "muted": "#999999"
     },
     "channels": {

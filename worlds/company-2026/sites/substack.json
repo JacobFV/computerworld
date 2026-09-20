@@ -11,6 +11,7 @@
   },
   "initial_state": {
     "layout": "blog",
+    "skin": "substack",
     "brand": "Substack",
     "tagline": "Newsletters worth the inbox. Five publications, one reading list.",
     "theme": {"accent": "#ff6719", "background": "#ffffff", "surface": "#f8f6f3", "ink": "#1c1c1c", "muted": "#6e6e6e", "content_width": 720},

@@ -1,6 +1,7 @@
-//! The two seeded mailboxes in `worlds/company-2026/sites` must survive `initialize` and render.
+//! The three seeded mailboxes in `worlds/company-2026/sites` must survive `initialize` and render.
 //! A malformed seed is otherwise only discovered when the whole world is built.
-use cw_protocol::{HttpRequest, Page};
+use cw_protocol::HttpRequest;
+use cw_service_common::html::validate_strict;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_mail::{MailService, MailState};
 use serde_json::Value;
@@ -55,13 +56,27 @@ fn check(name: &str, reader: &str, expect: &[&str]) -> MailState {
         .expect("mailbox renders");
     assert_eq!(page.status, 200);
     let body = String::from_utf8(page.body).unwrap();
-    // Duplicate element ids and out-of-budget styles are render-time errors, not review notes.
-    serde_json::from_str::<Page>(&body)
-        .expect("a page")
-        .validate()
-        .expect("the skinned page is well formed");
-    for text in expect {
-        assert!(body.contains(text), "{name}: page is missing {text}");
+    // Unsupported CSS and duplicate element ids are render-time errors, not review notes.
+    validate_strict(&body).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+    let dom = cw_web::html::parse(&body);
+    let text = dom.body().map(|b| dom.text_content(b)).unwrap_or_default();
+    for expected in expect {
+        assert!(text.contains(expected), "{name}: page is missing {expected}");
+    }
+    // Every conversation, the compose window and every folder validate too, not just the inbox.
+    let mut urls = vec!["http://mail/?folder=inbox&compose=1".to_owned()];
+    for folder in cw_service_mail::FOLDERS {
+        urls.push(format!("http://mail/?folder={folder}"));
+    }
+    for m in s.messages.values().filter(|m| m.mailboxes.contains_key(reader)) {
+        urls.push(format!("http://mail/threads/{}", m.thread()));
+    }
+    for url in urls {
+        let page = MailService
+            .handle(&mut state, &context(reader), &HttpRequest::get(&url))
+            .expect("page renders");
+        assert_eq!(page.status, 200, "{name} {url}");
+        validate_strict(&String::from_utf8(page.body).unwrap()).unwrap_or_else(|e| panic!("{name} {url}: {e:?}"));
     }
     s
 }
@@ -134,4 +149,10 @@ fn a_seeded_mailbox_still_sends_and_the_send_survives_serde() {
     // The new message joins the seeded conversation instead of starting a twelfth one.
     assert_eq!(s.thread("carol", "mail-1").len(), 4);
     assert!(s.messages.contains_key("mail-12"));
+}
+#[test]
+fn mail_com_seed_wears_its_own_skin_and_renders_carols_mailbox() {
+    let s = check("mail-com", "carol", &["mail.com", "Compose E-mail", "carol.nakamura@mail.com", "DevCon Seattle"]);
+    assert_eq!(s.skin.as_str(), "mailcom");
+    assert!(s.unread("carol", "inbox") >= 1);
 }

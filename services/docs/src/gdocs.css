@@ -1,0 +1,206 @@
+/* Google Docs, Sheets and Slides. The palette comes in as custom properties on <html> (see
+   gdocs.rs); the product is a class on <body> (kind-doc, kind-sheet, kind-slides) that sets
+   --tint. Measurements follow docs.google.com: a 64px header, the grey template band, 208px
+   file cards; in a file, the title bar, the rounded toolbar band and an 816px page on grey. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { --line: #dadce0; --band: #f1f3f4; --desk: #f9fbfd; --tool: #edf2fa; --tint: #4285f4; }
+body { font-family: Roboto, Arial, sans-serif; font-size: 14px; color: var(--ink); background: var(--paper); min-height: 100vh; }
+.kind-doc { --tint: #4285f4; }
+.kind-sheet { --tint: #0f9d58; }
+.kind-slides { --tint: #f4b400; }
+a { color: inherit; text-decoration: none; }
+h1, h2, p { margin: 0; }
+button, input, textarea, select { font-family: Roboto, Arial, sans-serif; }
+button { cursor: pointer; }
+
+/* ------------------------------------------------------------- shared pieces */
+.icon { display: inline-block; width: 22px; height: 30px; border-radius: 3px; background: var(--tint); position: relative; flex: none; overflow: hidden; }
+.icon::before { content: ""; position: absolute; right: 0; top: 0; width: 8px; height: 8px; background: rgba(255,255,255,.55); border-radius: 0 0 0 3px; }
+.icon::after { content: ""; position: absolute; left: 5px; top: 12px; width: 12px; height: 2px; background: #ffffff; box-shadow: 0 4px 0 #ffffff, 0 8px 0 #ffffff; }
+.icon.kind-sheet::after { left: 5px; top: 11px; width: 12px; height: 11px; background: transparent; border: 2px solid #ffffff; box-shadow: none; }
+.icon.kind-sheet i { position: absolute; left: 10px; top: 11px; width: 2px; height: 11px; background: #ffffff; display: block; }
+.icon.kind-slides::after { left: 5px; top: 12px; width: 12px; height: 9px; background: transparent; border: 2px solid #ffffff; box-shadow: none; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; flex: none; color: #ffffff; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.av0 { background: #1a73e8; } .av1 { background: #d93025; } .av2 { background: #188038; }
+.av3 { background: #e37400; } .av4 { background: #9334e6; } .av5 { background: #0f9d9d; }
+.switch { display: flex; align-items: center; gap: 4px; }
+.switch a { height: 36px; line-height: 36px; padding: 0 16px; border-radius: 18px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.switch a:hover { background: rgba(60,64,67,.08); }
+.switch a.on { background: #e8f0fe; color: var(--accent); }
+.who { display: flex; align-items: center; gap: 12px; margin-left: auto; font-size: 13px; color: var(--muted); }
+.primary { height: 36px; padding: 0 24px; border: 0; border-radius: 18px; background: var(--accent); color: #ffffff; font-size: 14px; font-weight: 500; }
+.primary:hover { box-shadow: 0 1px 3px rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15); }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: var(--muted); }
+.field input, .field select, .field textarea {
+  height: 36px; border: 1px solid var(--line); border-radius: 4px; padding: 0 10px; font-size: 14px; color: var(--ink);
+  background: #ffffff; outline: 0; width: 100%;
+}
+.field textarea { height: 58px; padding: 8px 10px; line-height: 20px; }
+#edit-body { height: 280px; }
+#slide-body { height: 96px; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.none { padding: 48px 0; text-align: center; color: var(--muted); }
+.sr { display: none; }
+
+/* ------------------------------------------------------------------ home */
+.bar { height: 64px; display: flex; align-items: center; padding: 8px 16px 8px 8px; gap: 8px; background: var(--paper); border-bottom: 1px solid #e8eaed; }
+.menu { width: 48px; height: 48px; flex: none; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; }
+.menu i { display: block; width: 18px; height: 2px; background: var(--muted); }
+.brand { display: flex; align-items: center; gap: 10px; width: 210px; flex: none; }
+.brand .icon { width: 28px; height: 38px; }
+.brand .icon::after { left: 7px; top: 16px; width: 14px; }
+.brand .icon.kind-sheet::after, .brand .icon.kind-slides::after { left: 6px; top: 15px; width: 16px; height: 13px; }
+.brand .icon.kind-sheet i { left: 13px; top: 15px; height: 13px; }
+.brand .name { font-size: 22px; color: var(--muted); }
+.inner { width: 1040px; max-width: 100%; margin: 0 auto; padding: 0 24px; }
+.start { background: var(--band); padding: 16px 0 24px 0; }
+.start h2 { font-size: 16px; font-weight: 400; color: var(--ink); line-height: 24px; padding-bottom: 12px; }
+.start-row { display: flex; gap: 28px; align-items: flex-start; }
+.blank { width: 146px; height: 188px; flex: none; background: #ffffff; border: 1px solid var(--line); border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.blank:hover { border-color: var(--accent); }
+.plus { position: relative; width: 56px; height: 56px; display: block; }
+.plus::before { content: ""; position: absolute; left: 0; top: 24px; width: 28px; height: 8px; background: #ea4335; }
+.plus::after { content: ""; position: absolute; left: 28px; top: 24px; width: 28px; height: 8px; background: #34a853; }
+.plus i { position: absolute; left: 24px; top: 0; width: 8px; height: 28px; background: #fbbc04; display: block; }
+.plus b { position: absolute; left: 24px; top: 28px; width: 8px; height: 28px; background: #4285f4; display: block; }
+#create { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; }
+#create .wide, #create .actions { grid-column: 1 / 3; }
+#create .actions { display: flex; justify-content: flex-end; }
+.recent { padding: 16px 0 40px 0; }
+.recent-head { display: flex; align-items: baseline; gap: 16px; height: 48px; padding-top: 8px; }
+.recent-head h1 { font-size: 16px; font-weight: 500; }
+.recent-head .count { font-size: 13px; color: var(--muted); }
+.files { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.file { display: block; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: #ffffff; }
+.file:hover { border-color: var(--accent); }
+.thumb { height: 190px; overflow: hidden; padding: 18px 20px 0 20px; background: #ffffff; border-bottom: 1px solid var(--line); }
+.mini p { font-size: 6px; line-height: 9px; color: #3c4043; margin-bottom: 3px; }
+.mini p.h, .mini-slide p.h { font-weight: 700; font-size: 8px; line-height: 11px; color: #202124; }
+.mini-grid { border-top: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; }
+.mini-grid .r { display: flex; }
+.mini-grid .c { flex: 1; height: 14px; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; font-size: 6px; line-height: 13px; padding: 0 2px; overflow: hidden; white-space: nowrap; color: #3c4043; }
+.mini-grid .c.h { font-weight: 700; background: #f8f9fa; }
+.thumb.kind-slides { background: #f1f3f4; padding: 34px 16px 0 16px; }
+.mini-slide { background: #ffffff; height: 104px; padding: 22px 12px 0 12px; box-shadow: 0 1px 2px rgba(60,64,67,.3); text-align: center; }
+.mini-slide p { font-size: 6px; line-height: 9px; color: var(--muted); margin-top: 5px; }
+.caption { padding: 14px 16px 12px 16px; }
+.caption .name { font-size: 14px; font-weight: 500; letter-spacing: .15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.caption .meta { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.caption .icon { width: 14px; height: 18px; border-radius: 2px; }
+.caption .icon::before { width: 5px; height: 5px; }
+.caption .icon::after { left: 3px; top: 8px; width: 8px; height: 1px; box-shadow: 0 3px 0 #ffffff, 0 6px 0 #ffffff; }
+.caption .icon.kind-sheet::after, .caption .icon.kind-slides::after { left: 3px; top: 7px; width: 8px; height: 7px; border-width: 1px; }
+.caption .icon.kind-sheet i { left: 6px; top: 7px; width: 1px; height: 7px; }
+.caption .kind { display: none; }
+.caption .owner { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.caption .starred { color: #f4b400; font-size: 14px; }
+
+/* ------------------------------------------------------------------ a file */
+.page-file { background: var(--desk); }
+.docbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px 0 12px; height: 64px; }
+.docbar .home { display: flex; align-items: center; justify-content: center; width: 40px; height: 48px; flex: none; }
+.docbar .icon { width: 26px; height: 36px; }
+.docbar .icon::after { left: 6px; top: 15px; width: 14px; }
+.docbar .icon.kind-sheet::after, .docbar .icon.kind-slides::after { left: 5px; top: 14px; width: 16px; height: 13px; }
+.docbar .icon.kind-sheet i { left: 12px; top: 14px; height: 13px; }
+.titles { flex: 1; min-width: 0; }
+.title-row { display: flex; align-items: center; gap: 10px; height: 28px; }
+#head-title { font-size: 18px; font-weight: 400; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#star-form { margin: 0; }
+.star { height: 24px; padding: 0 10px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--muted); font-size: 12px; }
+.star::before { content: "☆ "; font-size: 14px; }
+.star:hover { background: rgba(60,64,67,.08); }
+.star.on { color: #b06000; background: #fef7e0; }
+.star.on::before { content: "★ "; color: #f4b400; }
+.title-row .meta { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.menus { display: flex; gap: 2px; height: 24px; margin-left: -6px; }
+.menus span { padding: 0 7px; line-height: 24px; font-size: 14px; color: var(--ink); border-radius: 4px; }
+.docbar .switch a { height: 32px; line-height: 32px; padding: 0 12px; font-size: 13px; }
+.toolbar { display: flex; align-items: center; height: 40px; margin: 6px 16px 0 16px; padding: 0 12px; border-radius: 24px; background: var(--tool); overflow: hidden; white-space: nowrap; }
+.group { display: flex; align-items: center; gap: 2px; padding: 0 8px; border-right: 1px solid #c7c7c7; height: 20px; }
+.group:last-child { border-right: 0; }
+.tool { min-width: 28px; height: 28px; line-height: 28px; text-align: center; font-size: 15px; color: #444746; border-radius: 4px; }
+.tool.wide { font-size: 14px; padding: 0 8px; }
+.tool.wide::after { content: " ▾"; font-size: 10px; color: #5f6368; }
+.workspace { display: flex; align-items: flex-start; justify-content: center; gap: 24px; padding: 18px 24px 48px 24px; }
+.history { width: 200px; flex: none; padding-top: 6px; }
+.history h2, .notes h2 { font-size: 14px; font-weight: 500; color: var(--ink); padding-bottom: 10px; }
+.rev { font-size: 12px; line-height: 18px; color: var(--muted); padding: 6px 0 6px 12px; border-left: 2px solid var(--line); }
+.rev:first-of-type { border-left-color: var(--accent); color: var(--ink); }
+.column { width: 816px; max-width: 100%; flex: none; }
+.paper {
+  background: #ffffff; border: 1px solid #c7c7c7; min-height: 1056px; padding: 96px 96px 96px 96px;
+  font-family: Arial, sans-serif; font-size: 15px; line-height: 1.5; color: #000000;
+}
+.paper h1 { font-size: 26px; font-weight: 400; line-height: 1.3; padding-bottom: 4px; }
+.paper h2 { font-size: 18.67px; font-weight: 400; line-height: 1.3; padding: 8px 0 4px 0; }
+.paper p.gap { height: 22px; }
+.paper a { color: #1155cc; text-decoration: underline; }
+.item { display: flex; padding-left: 24px; }
+.item.deep { padding-left: 60px; }
+.item .mark { width: 24px; flex: none; font-size: 7px; line-height: 22px; }
+.item .mark.num { font-size: 15px; width: 28px; }
+.item .box { width: 14px; height: 14px; margin: 4px 10px 0 0; border: 2px solid #5f6368; border-radius: 3px; flex: none; font-size: 10px; line-height: 10px; text-align: center; color: #ffffff; }
+.item .box.done { background: var(--accent); border-color: var(--accent); }
+.item .txt { flex: 1; min-width: 0; }
+.panel { background: #ffffff; border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px 18px 20px; margin-top: 20px; }
+.panel h2 { font-size: 14px; font-weight: 500; padding-bottom: 10px; }
+.panel form { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.panel textarea { font-family: Arial, sans-serif; }
+.actions { display: flex; justify-content: flex-end; }
+.notes { width: 280px; flex: none; padding-top: 6px; }
+.note { background: #ffffff; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15); }
+.note-head { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; }
+.note-head .avatar { width: 28px; height: 28px; font-size: 12px; }
+.note .by { font-size: 12px; font-weight: 500; color: var(--ink); }
+.note p { font-size: 14px; line-height: 20px; }
+.note.new { margin: 0; box-shadow: none; border: 1px solid var(--line); }
+.note.new textarea { display: block; width: 100%; height: 76px; border: 1px solid var(--line); border-radius: 16px; padding: 8px 12px; font-size: 14px; line-height: 20px; outline: 0; margin-bottom: 10px; }
+.note.new textarea:focus { border-color: var(--accent); }
+.note.new .primary { height: 32px; padding: 0 16px; }
+
+/* ------------------------------------------------------------------ sheets */
+.kind-sheet.page-file .workspace, .kind-slides.page-file .workspace { padding-top: 10px; }
+.sheet-column { width: auto; flex: 1; min-width: 0; background: #ffffff; border: 1px solid var(--line); }
+.formula { display: flex; align-items: center; height: 30px; margin: 0; border-bottom: 1px solid var(--line); }
+.formula input { height: 28px; border: 0; outline: 0; font-size: 13px; padding: 0 10px; background: transparent; color: var(--ink); }
+#cell-cell { width: 96px; flex: none; border-right: 1px solid var(--line); text-align: center; }
+.fx { width: 36px; flex: none; text-align: center; font-style: italic; color: #80868b; font-family: "Times New Roman", serif; font-size: 15px; border-right: 1px solid var(--line); line-height: 20px; }
+#cell-value { flex: 1; min-width: 0; }
+.formula button { height: 22px; margin-right: 4px; padding: 0 12px; border: 0; border-radius: 11px; background: #e6f4ea; color: #137333; font-size: 12px; font-weight: 500; }
+.formula button:hover { background: #ceead6; }
+.grid-wrap { overflow-x: auto; }
+#sheet { border-collapse: collapse; table-layout: fixed; width: 100%; font-family: Arial, sans-serif; font-size: 13px; }
+#sheet th { background: #f8f9fa; color: #5f6368; font-weight: 400; font-size: 11px; height: 22px; border: 1px solid #e1e1e1; text-align: center; }
+#sheet th.corner, #sheet tbody th { width: 46px; }
+#sheet td { height: 22px; border: 1px solid #e1e1e1; padding: 0 4px; white-space: nowrap; overflow: hidden; color: #000000; }
+#sheet td.h { font-weight: 700; background: #f3f3f3; }
+#sheet td.n { text-align: right; }
+.sheet-tabs { display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px 0 46px; background: #f8f9fa; border-top: 1px solid var(--line); font-size: 14px; color: #444746; }
+.sheet-tabs .add, .sheet-tabs .all { width: 32px; text-align: center; font-size: 17px; }
+.sheet-tabs .tab { height: 36px; line-height: 36px; padding: 0 16px; font-weight: 500; }
+.sheet-tabs .tab.on { background: #e1e9f7; color: #0b57d0; }
+
+/* ------------------------------------------------------------------ slides */
+.deck-wrap { flex: 1; min-width: 0; display: flex; gap: 20px; align-items: flex-start; }
+.filmstrip { width: 184px; flex: none; }
+.frame { display: flex; gap: 8px; padding: 6px 0; }
+.frame .no { width: 16px; font-size: 12px; color: var(--muted); text-align: right; }
+.frame .mini-slide { flex: 1; height: 86px; padding-top: 16px; border: 1px solid var(--line); box-shadow: none; border-radius: 4px; overflow: hidden; }
+.frame.on .mini-slide { border: 2px solid #fbbc04; }
+.deck-column { width: auto; flex: 1; min-width: 0; }
+.slide { background: #ffffff; border: 1px solid #c7c7c7; height: 380px; margin-bottom: 20px; padding: 96px 64px 0 64px; position: relative; text-align: center; }
+.slide .badge { position: absolute; left: 12px; top: 10px; font-size: 11px; color: var(--muted); }
+.slide h2 { font-family: Arial, sans-serif; font-size: 34px; font-weight: 400; line-height: 1.2; color: #000000; }
+.slide p { font-family: Arial, sans-serif; font-size: 18px; line-height: 1.5; color: #595959; padding-top: 18px; }
+
+/* The paper is 816px and the comment rail 280px; below the width that fits the revision
+   rail as well, the rail goes, as it does in the product. */
+@media (max-width: 1400px) {
+  .history { display: none; }
+}
+@media (max-width: 1100px) {
+  .files { grid-template-columns: repeat(2, 1fr); }
+}

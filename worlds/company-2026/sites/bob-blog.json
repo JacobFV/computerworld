@@ -9,6 +9,7 @@
   "port": 80,
   "initial_state": {
     "layout": "blog",
+    "skin": "blog",
     "brand": "Bob Martinez",
     "tagline": "Senior engineer at Northstar. Tests, CI, and the bugs that only happen on one machine.",
     "theme": {
@@ -44,7 +45,7 @@
           "I did what everyone does. I retried it. Then I quarantined it. Then I spent a sprint convinced the runner had a bad disk, because that is the kind of explanation that lets you stop thinking.",
           "The actual cause: when the BFS frontier has two nodes at the same depth, my implementation took whichever came first out of a hash map. Iteration order for that map is unspecified, and the Windows target happened to produce a different order than the one I had developed against. Both paths were shortest. Only one was the one in the assertion.",
           "This is the part I want to underline: nothing was broken. The algorithm was correct, the test was wrong, and the test had been wrong since the day I wrote it. The runner was the only machine honest enough to say so.",
-          "Priya Raman wrote the explanation that finally made it click for me, at http://stackoverflow.com/questions/4411 , and the issue with the full timeline is at http://github.com/northstar/atlas/issues/14 . The fix was nine lines: sort the frontier by node id before pushing, and assert on the path set rather than the path.",
+          "Priya Raman wrote the explanation that finally made it click for me, at http://stackoverflow.com/questions/4411, and the issue with the full timeline is at http://github.com/northstar/atlas/issues/14. The fix was nine lines: sort the frontier by node id before pushing, and assert on the path set rather than the path.",
           "What I changed afterwards is more useful than the fix. Our test builds now use a deliberately hostile hasher, so iteration order changes every run. Two more tests failed the first day. Both of them were also wrong."
         ],
         "links": [

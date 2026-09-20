@@ -11,6 +11,7 @@
   },
   "initial_state": {
     "layout": "wire",
+    "skin": "gnews",
     "brand": "Google News",
     "tagline": "Your briefing, from sources across the web.",
     "theme": {"accent": "#1a73e8", "background": "#ffffff", "surface": "#f1f3f4", "ink": "#202124", "muted": "#5f6368", "content_width": 960},

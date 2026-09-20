@@ -308,11 +308,6 @@
               "border": "#dde3ea",
               "radius": 10,
               "padding": 16
-            },
-            "action": {
-              "method": "GET",
-              "url": "/incidents/inc-4",
-              "fields": {}
             }
           },
           {

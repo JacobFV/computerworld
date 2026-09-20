@@ -18,6 +18,7 @@
   },
   "initial_state": {
     "mode": "subreddits",
+    "skin": "yelp",
     "brand": "Yelp",
     "tagline": "Find the best places in Rosewood",
     "item_word": "business",

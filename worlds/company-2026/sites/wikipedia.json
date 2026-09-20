@@ -12,6 +12,7 @@
   "port": 80,
   "initial_state": {
     "brand": "Wikipedia",
+    "skin": "vector",
     "tagline": "The free encyclopedia",
     "theme": {
       "accent": "#3366cc",

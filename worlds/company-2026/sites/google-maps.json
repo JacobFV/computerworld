@@ -8,6 +8,7 @@
   "port": 80,
   "initial_state": {
     "mode": "maps",
+    "skin": "gmaps",
     "brand": "Google Maps",
     "tagline": "Find a place, get directions, keep the ones you go back to.",
     "units": "imperial",

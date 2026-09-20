@@ -17,7 +17,7 @@
     }
   },
   "initial_state": {
-    "skin": "plain",
+    "skin": "notion",
     "next_id": 0,
     "documents": {
       "team-wiki-home": {

@@ -8,6 +8,7 @@
     "brand": "Claude",
     "tagline": "A thinking partner that shows its sources.",
     "model_label": "Claude Opus 4.5",
+    "skin": "claude",
     "theme": {
       "accent": "#c15f3c",
       "background": "#faf9f5",

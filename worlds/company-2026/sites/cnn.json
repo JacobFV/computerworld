@@ -11,6 +11,7 @@
   },
   "initial_state": {
     "layout": "magazine",
+    "skin": "cnn",
     "brand": "CNN",
     "tagline": "Breaking news, latest news and video.",
     "theme": {"accent": "#cc0000", "background": "#ffffff", "surface": "#f4f4f4", "ink": "#0c0c0c", "muted": "#555555", "content_width": 900},

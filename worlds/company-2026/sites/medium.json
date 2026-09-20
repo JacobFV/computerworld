@@ -11,6 +11,7 @@
   },
   "initial_state": {
     "layout": "blog",
+    "skin": "medium",
     "brand": "Medium",
     "tagline": "Where good ideas find you. Stories from programmers, designers, founders and people who write.",
     "theme": {"accent": "#1a8917", "background": "#ffffff", "surface": "#f7f7f5", "ink": "#242424", "muted": "#6b6b6b", "content_width": 720},

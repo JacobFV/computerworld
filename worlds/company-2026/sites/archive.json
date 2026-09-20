@@ -6,6 +6,7 @@
   "port": 80,
   "initial_state": {
     "brand": "Internet Archive",
+    "skin": "archive",
     "tagline": "Universal access to all knowledge",
     "theme": {
       "accent": "#2c5aa0",

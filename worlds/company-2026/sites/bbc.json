@@ -11,6 +11,7 @@
   },
   "initial_state": {
     "layout": "wire",
+    "skin": "bbc",
     "brand": "BBC News",
     "tagline": "News from the UK and around the world.",
     "theme": {"accent": "#bb1919", "background": "#ffffff", "surface": "#f2f2f2", "ink": "#141414", "muted": "#5a5a5a", "content_width": 960},

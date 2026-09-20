@@ -17,6 +17,7 @@
   },
   "initial_state": {
     "mode": "qa",
+    "skin": "quora",
     "brand": "Quora",
     "tagline": "A place to share knowledge and better understand the world",
     "item_word": "question",

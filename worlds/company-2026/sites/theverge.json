@@ -9,6 +9,7 @@
   "port": 80,
   "initial_state": {
     "layout": "magazine",
+    "skin": "verge",
     "brand": "The Verge",
     "tagline": "Technology, science, art and culture.",
     "theme": {

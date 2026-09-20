@@ -6,6 +6,7 @@
   "port": 80,
   "initial_state": {
     "brand": "IMDb",
+    "skin": "imdb",
     "tagline": "Ratings, reviews and where to watch",
     "theme": {
       "accent": "#b8860b",

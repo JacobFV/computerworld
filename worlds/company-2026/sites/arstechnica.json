@@ -9,6 +9,7 @@
   "port": 80,
   "initial_state": {
     "layout": "magazine",
+    "skin": "ars",
     "brand": "Ars Technica",
     "tagline": "Serving the technologist for over 25 years.",
     "theme": {

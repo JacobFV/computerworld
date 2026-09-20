@@ -1,13 +1,16 @@
 //! Versioned documents, sheets and decks with explicit grants and optimistic edits.
+mod blocks;
 mod gdocs;
+mod notion;
 use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result as SimResult};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
-/// Skins this instance may wear; Google Docs gets a branded layout, `plain` is docs.internal.
-pub const SKINS: &[&str] = &["plain", "gdocs"];
+/// Skins this instance may wear; Google Docs and Notion get branded HTML layouts, `plain` is
+/// docs.internal.
+pub const SKINS: &[&str] = &["plain", "gdocs", "notion"];
 /// Widest sheet the twelve-column page grid can draw once the row-number gutter is spent.
 pub const SHEET_COLUMNS: u8 = 11;
 /// Decks stay small enough that every slide is rendered; an unrendered slide is invisible data.
@@ -409,10 +412,10 @@ fn view(s: &DocsState, actor: &str, screen: Screen) -> SimResult<HttpResponse> {
     web::page("Documents", e)
 }
 fn render(s: &DocsState, actor: &str, screen: Screen) -> SimResult<HttpResponse> {
-    if s.skin.is_plain() {
-        view(s, actor, screen)
-    } else {
-        gdocs::view(s, actor, screen)
+    match s.skin.as_str() {
+        "gdocs" => gdocs::view(s, actor, screen),
+        "notion" => notion::view(s, actor, screen),
+        _ => view(s, actor, screen),
     }
 }
 impl Service for DocsService {
@@ -781,49 +784,312 @@ mod tests {
             )
             .is_ok());
     }
-    /// The skinned pages must be legal pages, and every control on them must carry a route.
-    #[test]
-    fn gdocs_pages_validate_and_only_promise_real_routes() {
-        let c = ctx("alice");
-        let seed = json!({"skin":"gdocs","theme":{"accent":"#1a73e8"},"documents":{
-            "atlas-launch":{"id":"atlas-launch","title":"Atlas launch checklist","owner":"carol","readers":["alice"],"writers":["alice"],"body":"Release code: ATLAS-2026\nSee http://github.com/northstar/atlas\n","revision":1,"starred":["alice"]},
+    /// A parsed HTML response, strictly validated: every skinned page a test fetches goes
+    /// through the engine's strict pipeline, so unsupported CSS or a repeated id fails here.
+    struct Dom(cw_web::dom::Document);
+    impl Dom {
+        fn of(response: &HttpResponse, what: &str) -> Dom {
+            assert_eq!(response.status, 200, "{what}");
+            assert_eq!(
+                response.header("content-type"),
+                Some(web::html::HTML_MEDIA_TYPE),
+                "{what}"
+            );
+            let html = String::from_utf8(response.body.clone()).unwrap();
+            web::html::validate_strict(&html).unwrap_or_else(|e| panic!("{what}: {e:?}"));
+            Dom(cw_web::html::parse(&html))
+        }
+        fn has(&self, id: &str) -> bool {
+            !self.0.by_id(id).is_empty()
+        }
+        fn node(&self, id: &str) -> cw_web::dom::NodeId {
+            *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no element #{id}"))
+        }
+        fn tag(&self, id: &str) -> String {
+            self.0.tag(self.node(id)).unwrap_or_default().to_owned()
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+        }
+        fn text(&self, id: &str) -> String {
+            cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
+        }
+        /// Every `href` and every form `action` the page promises, as a service path.
+        fn routes(&self) -> Vec<(String, String)> {
+            let mut out = Vec::new();
+            for node in self.0.descendants(cw_web::dom::Document::ROOT) {
+                if self.0.is(node, "a") {
+                    if let Some(href) = self.0.attr(node, "href") {
+                        out.push(("GET".to_owned(), href.to_owned()));
+                    }
+                }
+                if self.0.is(node, "form") {
+                    let method = self.0.attr(node, "method").unwrap_or("get").to_ascii_uppercase();
+                    out.push((method, self.0.attr(node, "action").unwrap_or("/").to_owned()));
+                }
+            }
+            out
+        }
+    }
+    /// The seed both skins are measured against: one of each kind, a star, a comment and a
+    /// revision, so every branch of every view is drawn.
+    fn skinned(skin: &str) -> Value {
+        let seed = json!({"skin":skin,"theme":{"accent":"#1a73e8"},"documents":{
+            "atlas-launch":{"id":"atlas-launch","title":"Atlas launch checklist","owner":"carol","readers":["alice"],"writers":["alice"],"body":"Atlas launch checklist\n\nRelease code: ATLAS-2026\nSee http://github.com/northstar/atlas\n- [x] Freeze the branch\n- [ ] Sign off <today> & ship\n","revision":2,"starred":["alice"],"comments":[{"author":"bob","text":"Looks good to me","time":9}],"history":[{"revision":1,"author":"carol","body":"draft","time":3}]},
             "q3-metrics":{"id":"q3-metrics","title":"Q3 metrics","owner":"carol","doc_type":"sheet","writers":["alice"],"revision":1,"cells":{"A1":"Metric","B1":"Q3","A2":"Latency p95","B2":"184 ms"}},
-            "atlas-launch-review":{"id":"atlas-launch-review","title":"Atlas launch review","owner":"carol","doc_type":"slides","readers":["alice"],"revision":1,"slides":[{"title":"Where we are","body":"Ship date locked."}]}}});
-        let mut state = DocsService.initialize(seed, &c).unwrap();
-        let mut grids = 0;
-        for url in [
-            "http://docs.google.com/",
-            "http://docs.google.com/?type=sheet",
-            "http://docs.google.com/starred",
-            "http://docs.google.com/documents/atlas-launch",
-            "http://docs.google.com/documents/q3-metrics",
-            "http://docs.google.com/documents/atlas-launch-review",
-        ] {
-            let response = DocsService
-                .handle(&mut state, &c, &HttpRequest::get(url))
-                .unwrap();
-            assert_eq!(response.status, 200, "{url}");
-            let page: cw_protocol::Page = serde_json::from_slice(&response.body).unwrap();
-            page.validate().expect(url);
-            assert!(page.theme.is_some(), "{url} must carry the skin palette");
-            grids += usize::from(
-                page.elements
-                    .iter()
-                    .any(|e| matches!(e, cw_protocol::PageElement::Grid { .. })),
+            "atlas-launch-review":{"id":"atlas-launch-review","title":"Atlas launch review","owner":"carol","doc_type":"slides","readers":["alice"],"revision":1,"slides":[{"title":"Where we are","body":"Ship date locked."},{"title":"Risks","body":"One vendor is late."}]}}});
+        DocsService.initialize(seed, &ctx("alice")).unwrap()
+    }
+    /// Every page of every skin is strict HTML, and every control on it carries a route this
+    /// crate actually serves.
+    #[test]
+    fn every_page_of_every_skin_is_strict_html_and_only_promises_real_routes() {
+        let c = ctx("alice");
+        for skin in ["gdocs", "notion"] {
+            let mut state = skinned(skin);
+            for path in [
+                "/",
+                "/?type=doc",
+                "/?type=sheet",
+                "/?type=slides",
+                "/starred",
+                "/documents/atlas-launch",
+                "/documents/q3-metrics",
+                "/documents/atlas-launch-review",
+            ] {
+                let what = format!("{skin} {path}");
+                let dom = Dom::of(
+                    &DocsService
+                        .handle(&mut state, &c, &HttpRequest::get(format!("http://docs{path}")))
+                        .unwrap(),
+                    &what,
+                );
+                // Nothing is decoration pretending to be a control: every promised route is one
+                // this crate serves, checked by asking for it.
+                for (method, route) in dom.routes() {
+                    if !route.starts_with('/') {
+                        continue; // an outbound link in the prose
+                    }
+                    let url = format!("http://docs{route}");
+                    let request = if method == "GET" {
+                        HttpRequest::get(url)
+                    } else {
+                        let mut r = HttpRequest::get(url);
+                        r.method = method.clone();
+                        r.headers
+                            .insert("content-type".into(), "application/x-www-form-urlencoded".into());
+                        r
+                    };
+                    let mut probe = state.clone();
+                    // An empty form is refused on its merits (a missing revision, a blank
+                    // title); what must never happen is a control pointing at a route this
+                    // crate does not serve.
+                    if let Ok(response) = DocsService.handle(&mut probe, &c, &request) {
+                        assert!(
+                            response.status != 404 && response.status != 405,
+                            "{what} promises {method} {route}, which answers {}",
+                            response.status
+                        );
+                    }
+                }
+            }
+            // An unknown file type is still a bad request, whatever the skin wears.
+            assert_eq!(
+                DocsService
+                    .handle(&mut state, &c, &HttpRequest::get("http://docs/?type=nonesuch"))
+                    .unwrap()
+                    .status,
+                400
             );
         }
-        assert_eq!(
-            grids, 5,
-            "both file galleries, starred, the sheet and the deck are grids"
+    }
+    /// The Google Docs skin: the gallery, the document, the sheet and the deck, by the ids the
+    /// `Page` version exposed and the ones the layout adds.
+    #[test]
+    fn the_gdocs_skin_draws_the_gallery_the_page_the_grid_and_the_deck() {
+        let c = ctx("alice");
+        let mut state = skinned("gdocs");
+        let home = Dom::of(
+            &DocsService
+                .handle(&mut state, &c, &HttpRequest::get("http://docs/"))
+                .unwrap(),
+            "gdocs /",
         );
-        let bad = DocsService
-            .handle(
-                &mut state,
-                &c,
-                &HttpRequest::get("http://docs.google.com/?type=nonesuch"),
-            )
-            .unwrap();
-        assert_eq!(bad.status, 400);
+        assert_eq!(home.text("chrome-brand"), "Google Docs");
+        assert_eq!(home.text("home-title"), "All files");
+        assert_eq!(home.text("home-count"), "3 files shared with you");
+        for (id, href) in [
+            ("nav-all", "/"),
+            ("nav-doc", "/?type=doc"),
+            ("nav-sheet", "/?type=sheet"),
+            ("nav-slides", "/?type=slides"),
+            ("nav-starred", "/starred"),
+        ] {
+            assert_eq!((home.tag(id), home.attr(id, "href")), ("a".into(), href.into()));
+        }
+        // A file is one link, carrying its own caption.
+        assert_eq!(
+            (home.tag("file-q3-metrics"), home.attr("file-q3-metrics", "href")),
+            ("a".into(), "/documents/q3-metrics".into())
+        );
+        assert_eq!(home.text("file-kind-q3-metrics"), "Sheet");
+        assert_eq!(home.text("file-owner-atlas-launch"), "carol · revision 2");
+        assert!(home.has("file-star-atlas-launch"), "alice starred the checklist");
+        // The create form posts the same four fields plus the type the Page version gained.
+        assert_eq!(
+            (home.attr("create", "action"), home.attr("create", "method")),
+            ("/documents".into(), "post".into())
+        );
+        for (id, name) in [
+            ("create-title", "title"),
+            ("create-readers", "readers"),
+            ("create-writers", "writers"),
+            ("create-body", "body"),
+        ] {
+            assert_eq!(home.attr(id, "name"), name);
+        }
+        assert_eq!(
+            (home.tag("create-type"), home.attr("create-type", "name")),
+            ("select".into(), "type".into())
+        );
+        assert_eq!(home.tag("create-submit"), "button");
+
+        let doc = Dom::of(
+            &DocsService
+                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/atlas-launch"))
+                .unwrap(),
+            "gdocs document",
+        );
+        assert_eq!(doc.text("head-title"), "Atlas launch checklist");
+        assert_eq!(doc.text("head-meta"), "Doc · owner carol · revision 2");
+        assert_eq!(doc.attr("star-form", "action"), "/documents/atlas-launch/star");
+        assert_eq!((doc.tag("star"), doc.text("star")), ("button".into(), "Starred".into()));
+        assert!(doc.has("doc-page") && doc.has("body-line-0"));
+        // `body-link-<n>` numbers by word position over the whole body, as the Page did.
+        assert_eq!(
+            doc.attr("body-link-7", "href"),
+            "http://github.com/northstar/atlas"
+        );
+        assert!(
+            doc.text("body-line-5").contains("Sign off <today> & ship"),
+            "seed text is escaped, not markup: {:?}",
+            doc.text("body-line-5")
+        );
+        assert_eq!(
+            (doc.attr("edit", "action"), doc.attr("edit", "method")),
+            ("/documents/atlas-launch".into(), "post".into())
+        );
+        assert_eq!(doc.attr("edit-revision", "value"), "2");
+        assert_eq!(doc.tag("edit-body"), "textarea");
+        assert_eq!(doc.text("note-text-0"), "Looks good to me");
+        assert_eq!(
+            doc.attr("comment", "action"),
+            "/documents/atlas-launch/comments"
+        );
+        assert!(doc.has("history-1"));
+
+        let sheet = Dom::of(
+            &DocsService
+                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/q3-metrics"))
+                .unwrap(),
+            "gdocs sheet",
+        );
+        assert_eq!(sheet.tag("sheet"), "table");
+        assert_eq!(sheet.text("sheet-A1"), "Metric");
+        assert_eq!(sheet.text("sheet-B2"), "184 ms");
+        assert_eq!(sheet.attr("cell", "action"), "/documents/q3-metrics/cells");
+        assert_eq!(
+            (sheet.attr("cell-cell", "name"), sheet.attr("cell-value", "name")),
+            ("cell".into(), "value".into())
+        );
+
+        let deck = Dom::of(
+            &DocsService
+                .handle(
+                    &mut state,
+                    &c,
+                    &HttpRequest::get("http://docs/documents/atlas-launch-review"),
+                )
+                .unwrap(),
+            "gdocs deck",
+        );
+        assert_eq!(deck.text("slide-title-0"), "Where we are");
+        assert_eq!(deck.text("slide-body-1"), "One vendor is late.");
+        assert_eq!(deck.attr("slide", "action"), "/documents/atlas-launch-review/slides");
+        assert_eq!(deck.attr("slide-index", "name"), "index");
+    }
+    /// The Notion skin keeps the ids the `plain` page exposed, chrome and all.
+    #[test]
+    fn the_notion_skin_keeps_the_plain_ids_in_its_own_layout() {
+        let c = ctx("alice");
+        let mut state = skinned("notion");
+        let home = Dom::of(
+            &DocsService
+                .handle(&mut state, &c, &HttpRequest::get("http://docs/"))
+                .unwrap(),
+            "notion /",
+        );
+        assert_eq!(home.text("title"), "Documents");
+        // The plain page's one link per document is now the sidebar's page list, by doc id.
+        assert_eq!(
+            (home.tag("atlas-launch"), home.attr("atlas-launch", "href")),
+            ("a".into(), "/documents/atlas-launch".into())
+        );
+        assert_eq!(home.attr("side-starred", "href"), "/starred");
+        assert_eq!(home.attr("create", "action"), "/documents");
+        for (id, name) in [
+            ("create-title", "title"),
+            ("create-body", "body"),
+            ("create-readers", "readers"),
+            ("create-writers", "writers"),
+        ] {
+            assert_eq!(home.attr(id, "name"), name);
+        }
+
+        let page = Dom::of(
+            &DocsService
+                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/atlas-launch"))
+                .unwrap(),
+            "notion document",
+        );
+        assert_eq!(page.text("document-title"), "Atlas launch checklist");
+        assert!(page.text("document-body").contains("Release code: ATLAS-2026"));
+        assert_eq!(
+            page.attr("body-link-7", "href"),
+            "http://github.com/northstar/atlas"
+        );
+        assert_eq!(page.text("crumb-meta"), "Revision 2 · owner carol");
+        assert_eq!(page.attr("star-form", "action"), "/documents/atlas-launch/star");
+        assert_eq!(
+            (page.attr("edit", "action"), page.attr("edit-revision", "value")),
+            ("/documents/atlas-launch".into(), "2".into())
+        );
+        assert_eq!(page.tag("comment-0"), "div");
+        assert_eq!(page.attr("comment", "action"), "/documents/atlas-launch/comments");
+        assert_eq!(page.attr("comment-text", "name"), "text");
+
+        let sheet = Dom::of(
+            &DocsService
+                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/q3-metrics"))
+                .unwrap(),
+            "notion sheet",
+        );
+        assert_eq!(sheet.text("cell-B2"), "B2184 ms");
+        let deck = Dom::of(
+            &DocsService
+                .handle(
+                    &mut state,
+                    &c,
+                    &HttpRequest::get("http://docs/documents/atlas-launch-review"),
+                )
+                .unwrap(),
+            "notion deck",
+        );
+        assert!(deck.text("slide-0").contains("Where we are"));
     }
     /// A sheet edited through the skinned page is the same sheet the API serves.
     #[test]

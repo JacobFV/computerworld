@@ -9,6 +9,7 @@
   "port": 80,
   "initial_state": {
     "layout": "blog",
+    "skin": "blog",
     "brand": "Alice Chen",
     "tagline": "Staff systems engineer at Northstar. Renderers, replay, and the long tail of nondeterminism.",
     "theme": {
@@ -46,7 +47,7 @@
           "Three: the fix is usually small and the search is usually not. The bug I will remember is a BFS path test that failed on exactly one Windows runner. Bob chased it for weeks, Priya explained it in four paragraphs on Stack Overflow, and the patch was nine lines. That ratio is the job.",
           "Four: determinism is contagious in the right direction. Once replay works, every other kind of investigation gets cheaper, because 'I cannot reproduce it' stops being a sentence anyone says. Carol's postmortem for our February latency incident was written against a replay of the incident, not against a memory of it.",
           "Five: some of it is just loss. We deleted caches we liked. We vendored dependencies we did not want to own. We gave up real parallelism in places where real parallelism was the point, and we ate the overhead. If your product does not need to answer 'why did this run do that', you should not pay this.",
-          "The walkthrough I recorded is at http://youtube.com/watch?v=atlas-walkthrough , the code is at http://github.com/northstar/atlas , and The Verge wrote it up at http://theverge.com/2026/atlas-determinism if you want the outside view."
+          "The walkthrough I recorded is at http://youtube.com/watch?v=atlas-walkthrough, the code is at http://github.com/northstar/atlas, and The Verge wrote it up at http://theverge.com/2026/atlas-determinism if you want the outside view."
         ],
         "links": [
           {

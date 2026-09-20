@@ -18,6 +18,7 @@
   },
   "initial_state": {
     "mode": "linkfeed",
+    "skin": "craigslist",
     "brand": "craigslist",
     "tagline": "portland: for sale, housing, jobs, gigs, community, services",
     "item_word": "listing",

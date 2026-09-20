@@ -9,6 +9,7 @@
   "port": 80,
   "initial_state": {
     "layout": "wire",
+    "skin": "reuters",
     "brand": "Reuters",
     "tagline": "The wire, as filed.",
     "theme": {

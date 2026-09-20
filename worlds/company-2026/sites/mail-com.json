@@ -5,7 +5,7 @@
   "domains": ["mail.com", "www.mail.com"],
   "port": 80,
   "initial_state": {
-    "skin": "plain",
+    "skin": "mailcom",
     "brand": "mail.com",
     "domain": "mail.com",
     "users": ["alice", "bob", "carol", "admin"],

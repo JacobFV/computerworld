@@ -10,6 +10,7 @@
   "port": 80,
   "initial_state": {
     "mode": "maps",
+    "skin": "osm",
     "brand": "OpenStreetMap",
     "tagline": "The map anyone can edit. Spot something wrong? Leave a note.",
     "units": "metric",

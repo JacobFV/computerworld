@@ -1,0 +1,145 @@
+/* mail.com webmail. The palette comes in as custom properties on <html> (see skin.rs): a navy
+   header, the yellow Compose E-mail button over the folder list, a columned message table
+   and the reading pane beside it. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { --line: #d8dee6; --navy: #0b2a55; --cta: #ffc800; --on: #dbe9fb; --head: #f3f5f8; }
+body { font-family: Arial, "Open Sans", sans-serif; font-size: 13px; color: var(--ink); background: var(--paper); min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+h1, h2, p { margin: 0; }
+button, input, textarea { font-family: Arial, "Open Sans", sans-serif; }
+button { cursor: pointer; }
+
+/* ------------------------------------------------------------------ header */
+.bar { height: 56px; display: flex; align-items: center; background: var(--navy); color: #ffffff; padding: 0 16px 0 0; border-bottom: 3px solid var(--accent); }
+.menu { display: none; }
+.brand { display: flex; align-items: center; gap: 10px; width: 236px; flex: none; padding-left: 18px; }
+.brand .logo { width: 30px; height: 22px; flex: none; position: relative; overflow: hidden; background: #ffffff; border-radius: 3px; }
+.brand .logo i { position: absolute; left: 4px; top: -14px; width: 22px; height: 22px; display: block; border-right: 3px solid var(--accent); border-bottom: 3px solid var(--accent); transform: rotate(45deg); }
+.brand .name { font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -.3px; }
+.search-box { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+#search { width: 420px; max-width: 100%; height: 34px; border-radius: 3px; background: #ffffff; display: flex; align-items: center; padding: 0 3px 0 10px; margin: 0; }
+#search input { flex: 1; min-width: 0; height: 30px; border: 0; outline: 0; background: transparent; padding: 0; margin-left: 8px; font-size: 13px; color: var(--ink); }
+#search button { height: 28px; padding: 0 14px; border: 0; border-radius: 2px; background: var(--accent); color: #ffffff; font-size: 12px; font-weight: 700; }
+#search button:hover { background: #083d82; }
+.mag { width: 16px; height: 16px; position: relative; flex: none; }
+.mag::before { content: ""; position: absolute; left: 0; top: 0; width: 10px; height: 10px; border: 2px solid #64748b; border-radius: 50%; }
+.mag::after { content: ""; position: absolute; left: 10px; top: 10px; width: 6px; height: 2px; background: #64748b; transform: rotate(45deg); transform-origin: 0 50%; }
+#search-clear-form { margin: 0; }
+#search-clear { height: 30px; padding: 0 12px; border: 1px solid rgba(255,255,255,.6); border-radius: 3px; background: transparent; color: #ffffff; font-size: 12px; }
+.account { display: flex; align-items: center; gap: 10px; margin-left: 16px; flex: none; }
+.account .unread { font-size: 11px; font-weight: 700; color: var(--navy); background: var(--cta); border-radius: 9px; padding: 2px 8px; }
+.account .address { font-size: 13px; color: #ffffff; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; flex: none; color: #ffffff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.av0 { background: #2563eb; } .av1 { background: #c2410c; } .av2 { background: #15803d; }
+.av3 { background: #b45309; } .av4 { background: #7c3aed; } .av5 { background: #0e7490; }
+
+/* ------------------------------------------------------------------ folders */
+.panes { display: flex; align-items: stretch; min-height: calc(100vh - 56px); }
+.rail { width: 220px; flex: none; padding: 14px 0 16px 0; background: #ffffff; border-right: 1px solid var(--line); }
+.compose { display: flex; align-items: center; justify-content: center; gap: 8px; height: 38px; margin: 0 14px 14px 14px; border-radius: 3px; background: var(--cta); color: var(--navy); font-size: 14px; font-weight: 700; }
+.compose:hover { background: #ffd633; }
+.compose .pen::before { content: "✎"; font-weight: 400; font-size: 16px; }
+.folder { display: flex; align-items: center; height: 34px; padding: 0 14px 0 18px; font-size: 13px; color: var(--ink); border-left: 3px solid transparent; }
+.folder:hover { background: var(--head); }
+.folder.on { background: var(--on); border-left-color: var(--accent); font-weight: 700; color: var(--accent); }
+.folder.fresh { font-weight: 700; }
+.folder .ico { width: 18px; flex: none; margin-right: 10px; font-size: 14px; line-height: 1; text-align: center; color: var(--muted); font-weight: 400; }
+.ico-inbox::before { content: "✉"; }
+.ico-starred::before { content: "★"; }
+.ico-sent::before { content: "➤"; }
+.ico-archive::before { content: "▤"; }
+.folder .label { flex: 1; }
+.folder .count { font-size: 11px; font-weight: 700; color: #ffffff; background: var(--accent); border-radius: 9px; padding: 1px 7px; }
+.folder .count:empty { display: none; }
+.tags { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.tags-title { padding: 0 18px 6px 18px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+.tag { display: flex; align-items: center; height: 28px; padding: 0 18px 0 21px; font-size: 13px; }
+.tag .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 14px; flex: none; }
+
+/* ------------------------------------------------------------------ the list */
+.list { flex: 5; min-width: 0; background: var(--surface); border-right: 1px solid var(--line); }
+.view-list .list { flex: 1; }
+.list-head { height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.tools { display: none; }
+#list-title { font-size: 17px; font-weight: 700; color: var(--navy); flex: 1; }
+.list-head .count { font-size: 12px; color: var(--muted); }
+.cols { display: flex; align-items: center; height: 28px; padding: 0 16px 0 66px; background: var(--head); border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.c-from { width: 190px; flex: none; }
+.c-subject { flex: 1; }
+.c-date { width: 72px; flex: none; text-align: right; }
+.row { display: flex; align-items: center; height: 38px; padding: 0 16px; border-bottom: 1px solid #e8ecf1; color: var(--ink); white-space: nowrap; }
+.row:hover { background: #f5f8fc; }
+.row.unread { font-weight: 700; }
+.row.open { background: var(--on); }
+.row .check { width: 14px; height: 14px; border: 1px solid #94a3b8; border-radius: 2px; flex: none; background: #ffffff; }
+.row .star { width: 18px; flex: none; margin: 0 10px 0 8px; font-size: 15px; line-height: 1; color: #cbd5e1; font-weight: 400; text-align: center; }
+.row .star.on { color: #f59e0b; }
+.row .avatar { display: none; }
+.row .who { width: 190px; flex: none; display: flex; align-items: baseline; gap: 4px; overflow: hidden; padding-right: 16px; }
+.row .sender { overflow: hidden; text-overflow: ellipsis; }
+.row .n { font-size: 11px; color: var(--muted); font-weight: 400; }
+.row .line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row .snippet, .row .dash { color: var(--muted); font-weight: 400; }
+.chip { display: inline-block; font-size: 11px; font-weight: 400; line-height: 15px; padding: 0 6px; margin-right: 6px; border-radius: 2px; background: #e2e8f0; color: #334155; }
+.row .time { width: 72px; flex: none; text-align: right; font-size: 12px; color: var(--muted); }
+.row.unread .time { color: var(--ink); }
+.none { padding: 40px; text-align: center; color: var(--muted); }
+.view-thread .row .who, .view-thread .c-from { width: 130px; }
+.view-thread .row .snippet, .view-thread .row .dash, .view-thread .row .chip { display: none; }
+
+/* ------------------------------------------------------------------ reading */
+.reading { flex: 7; min-width: 0; background: var(--surface); }
+.view-list .reading { display: none; }
+.vacant-note { padding: 120px 24px; text-align: center; color: var(--muted); }
+.thread-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: var(--head); border-bottom: 1px solid var(--line); }
+.back { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 3px; background: #ffffff; flex: none; display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--accent); }
+#thread-subject { flex: 1; font-size: 17px; font-weight: 700; line-height: 22px; color: var(--navy); }
+#thread-subject .chip { margin: 0 0 0 8px; vertical-align: middle; }
+.size { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.msg { padding: 14px 20px 16px 20px; border-bottom: 1px solid var(--line); }
+.msg-head { display: flex; align-items: center; gap: 12px; }
+.msg-head .avatar { width: 36px; height: 36px; font-size: 13px; }
+.msg-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.msg-who .name { font-weight: 700; font-size: 14px; }
+.msg-who .route { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-head .time { font-size: 12px; color: var(--muted); }
+.msg-labels { padding: 8px 0 0 48px; }
+.msg-body { padding: 14px 0 4px 48px; font-size: 14px; line-height: 21px; }
+.msg-body p { margin: 0 0 12px 0; }
+.msg-body a { color: var(--accent); text-decoration: underline; }
+.msg-actions { display: flex; align-items: center; gap: 6px; margin: 0; padding-left: 48px; }
+.msg-actions button, .msg-label button { height: 28px; padding: 0 12px; border: 1px solid #b6c2d2; border-radius: 3px; background: linear-gradient(#ffffff, #eef2f7); color: var(--navy); font-size: 12px; font-weight: 700; }
+.msg-actions button:hover, .msg-label button:hover { border-color: var(--accent); }
+.msg-actions a { font-size: 12px; color: var(--accent); margin-left: 8px; }
+.msg-actions a:hover { text-decoration: underline; }
+.msg-label { display: flex; gap: 6px; margin: 8px 0 0 0; padding-left: 48px; }
+.msg-label input { height: 28px; width: 200px; border: 1px solid #b6c2d2; border-radius: 3px; padding: 0 8px; font-size: 12px; outline: 0; }
+.msg-label input:focus { border-color: var(--accent); }
+.reply { margin: 16px 20px 24px 20px; border: 1px solid var(--line); border-radius: 3px; padding: 0 14px 14px 14px; }
+.reply-title { margin: 0 -14px 4px -14px; padding: 8px 14px; background: var(--head); border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--navy); }
+.reply-title .arrow { margin-right: 8px; }
+.field { display: flex; align-items: center; border-bottom: 1px solid #e8ecf1; min-height: 36px; }
+.field label { width: 72px; flex: none; font-size: 12px; font-weight: 700; color: var(--muted); }
+.field input { flex: 1; min-width: 0; height: 34px; border: 0; outline: 0; font-size: 13px; color: var(--ink); background: transparent; padding: 0; }
+.field.body { display: block; border-bottom: 0; padding-top: 10px; }
+.field.body label { display: none; }
+.field.body textarea { display: block; width: 100%; height: 140px; border: 1px solid var(--line); border-radius: 3px; outline: 0; font-size: 13px; line-height: 19px; color: var(--ink); padding: 8px; background: #ffffff; }
+.send-row { padding-top: 10px; }
+.primary { height: 34px; padding: 0 26px; border: 0; border-radius: 3px; background: var(--cta); color: var(--navy); font-size: 14px; font-weight: 700; }
+.primary:hover { background: #ffd633; }
+
+/* ------------------------------------------------------------------ compose */
+.window-head { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 20px; background: var(--head); border-bottom: 1px solid var(--line); }
+#compose-title { font-size: 17px; font-weight: 700; color: var(--navy); }
+#compose-close { width: 26px; height: 26px; line-height: 26px; text-align: center; font-size: 18px; color: var(--muted); border-radius: 3px; }
+#compose-close:hover { background: #e2e8f0; }
+.from { margin: 0 20px; height: 36px; line-height: 36px; border-bottom: 1px solid #e8ecf1; font-size: 12px; color: var(--muted); }
+.window form { margin: 0; padding: 0 20px 16px 20px; }
+.window .field.body textarea { height: 300px; }
+
+@media (max-width: 900px) {
+  .rail { width: 64px; }
+  .compose #compose-label, .folder .label, .folder .count, .tags, .account .address { display: none; }
+  .brand { width: auto; padding-right: 16px; }
+}

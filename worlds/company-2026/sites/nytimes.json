@@ -11,6 +11,7 @@
   },
   "initial_state": {
     "layout": "magazine",
+    "skin": "nyt",
     "brand": "The New York Times",
     "tagline": "All the news that fits the page.",
     "theme": {"accent": "#326891", "background": "#ffffff", "surface": "#f7f7f5", "ink": "#121212", "muted": "#5a5a5a", "content_width": 900},

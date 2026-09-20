@@ -1,6 +1,7 @@
 //! The two drives this crate ships with must load and draw. A seed typo that only shows up when
 //! a world boots is the failure this test exists to move forward to `cargo test`.
-use cw_protocol::{HttpRequest, Page};
+use cw_protocol::HttpRequest;
+use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_sdk::{Service, ServiceContext};
 use cw_service_drive::{DriveService, DriveState, NodeKind};
 use serde_json::Value;
@@ -50,7 +51,7 @@ fn the_dropbox_and_drive_atlas_folders_hold_the_same_filenames() {
     // The release code belongs to the doc alone; a copy in a drive would break the search task.
     assert!(!DRIVE.contains("ATLAS-2026") && !DROPBOX.contains("ATLAS-2026"));
 }
-/// Every URL these two sites offer the search index must answer, and answer with a legal page.
+/// Every URL these two sites offer the search index must answer, and answer with a page the engine renders strictly.
 #[test]
 fn every_indexed_page_of_both_drives_renders() {
     for (site, actor) in [(DRIVE, "alice"), (DROPBOX, "carol")] {
@@ -64,8 +65,13 @@ fn every_indexed_page_of_both_drives_renders() {
                 .handle(&mut state, &ctx(actor), &HttpRequest::get(url))
                 .unwrap();
             assert_eq!(response.status, 200, "{url}");
-            let page: Page = serde_json::from_slice(&response.body).unwrap();
-            page.validate().unwrap_or_else(|e| panic!("{url}: {e}"));
+            assert_eq!(response.header("content-type"), Some(HTML_MEDIA_TYPE), "{url}");
+            let html = String::from_utf8(response.body).unwrap();
+            validate_strict(&html).unwrap_or_else(|e| panic!("{url}: {e:?}"));
+            let page = cw_web::html::parse(&html);
+            for id in ["chrome-brand", "find", "find-q", "nav-drive", "nav-trash", "head-title"] {
+                assert_eq!(page.by_id(id).len(), 1, "{url}: #{id}");
+            }
         }
     }
 }
@@ -87,4 +93,9 @@ fn the_dropbox_share_reaches_alice_and_the_public_link_works() {
         response.status, 200,
         "a link opens for someone with no grant"
     );
+    let html = String::from_utf8(response.body).unwrap();
+    validate_strict(&html).unwrap();
+    let page = cw_web::html::parse(&html);
+    assert_eq!(page.text_content(page.by_id("public")[0]), "Opened with a share link");
+    assert_eq!(page.text_content(page.by_id("head-title")[0]), "Atlas assets");
 }

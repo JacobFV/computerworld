@@ -13,6 +13,7 @@
     "brand": "ChatGPT",
     "tagline": "Ask anything.",
     "model_label": "GPT-5",
+    "skin": "chatgpt",
     "theme": {
       "accent": "#10a37f",
       "background": "#212121",
