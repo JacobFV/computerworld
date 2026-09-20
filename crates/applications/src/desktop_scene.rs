@@ -402,7 +402,7 @@ pub fn render_desktop_with_options(
     p.z = 1_000_000;
     chrome(&mut p, &ctx);
     p.z = 2_000_000;
-    pointer(&mut p, &ctx, options.capture.as_deref());
+    pointer(&mut p, &ctx, options.capture.as_deref(), options.cursor);
     p.scene.revision = clock_us;
     p.scene
 }
@@ -412,7 +412,7 @@ pub fn render_desktop_with_options(
 /// and observations see straight through them. A phone, a switched-off screen or a scene
 /// without a pointer still gets both nodes, empty, so the node sequence is stable and a
 /// pointer arriving repaints only its own pixels.
-fn pointer(p: &mut Painter, c: &ShellContext, capture: Option<&str>) {
+fn pointer(p: &mut Painter, c: &ShellContext, capture: Option<&str>, document: Option<CursorKind>) {
     let colors = CursorKind::colors(c.theme).filter(|_| c.screen != crate::ScreenState::Off);
     let hover = c
         .hover
@@ -422,9 +422,10 @@ fn pointer(p: &mut Painter, c: &ShellContext, capture: Option<&str>) {
         p.node(Rect::new(0, 0, 0, 0), Primitive::Region, None);
         return;
     };
-    let kind = match capture {
-        Some(operation) => CursorKind::for_target(operation, true),
-        None => p
+    let kind = match (capture, document) {
+        (Some(operation), _) => CursorKind::for_target(operation, true),
+        (None, Some(kind)) => kind,
+        (None, None) => p
             .scene
             .hit_test(x, y)
             .and_then(|n| n.interaction.as_deref())

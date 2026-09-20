@@ -15,3 +15,14 @@ payload and snapshot/restore tests. A view should represent received content;
 changing service state must not silently update an already loaded page.
 
 The SDK is described in [service-sdk.md](service-sdk.md).
+
+## Serving HTML
+
+A service may answer with `text/html` instead of a native page: the browser renders
+it through the `cw-web` engine, fetching the `<link rel=stylesheet>` sheets and the
+pictures the document references through the same synthetic network, and every
+browser action (`click`, `fill`, `key`, `submit`, scrolling) works on the result.
+`text/plain` is shown as preformatted text and `image/*` responses on their own.
+For a site that is just a directory of authored files, the `static-site` service's
+`files` map serves `.html`, `.css`, `.js` and pictures with their media types; see
+[services/static-site/README.md](../services/static-site/README.md).

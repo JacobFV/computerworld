@@ -1,4 +1,5 @@
-//! Optional native-page website plus a small shared JSON record API.
+//! Optional website: native pages, authored files (HTML, CSS, JavaScript, pictures)
+//! served with their media types, and a small shared JSON record API.
 use cw_protocol::{HttpRequest, HttpResponse, Page, Result, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as wire;
@@ -18,7 +19,7 @@ impl Service for StaticSite {
         if !initial.is_object() {
             return Err(SimError::invalid("static-site state must be an object"));
         }
-        for key in ["pages", "records", "assets"] {
+        for key in ["pages", "records", "assets", "files"] {
             if initial.get(key).is_none() {
                 initial[key] = json!({});
             }
@@ -46,6 +47,24 @@ impl Service for StaticSite {
             }
             if let Some(bytes) = asset.get("bytes") {
                 let _: Vec<u8> = serde_json::from_value(bytes.clone())?;
+            }
+        }
+        for (path, file) in initial["files"].as_object().unwrap() {
+            if !path.starts_with('/') || path.ends_with('/') {
+                return Err(SimError::invalid("file paths must be absolute and name a file"));
+            }
+            let ok = match file {
+                Value::String(_) => true,
+                Value::Object(o) => {
+                    o.get("text").is_some_and(Value::is_string)
+                        || o.get("bytes").is_some_and(|b| serde_json::from_value::<Vec<u8>>(b.clone()).is_ok())
+                }
+                _ => false,
+            };
+            if !ok {
+                return Err(SimError::invalid(
+                    "files are a string, or an object with text or bytes",
+                ));
             }
         }
         Ok(initial)
@@ -130,10 +149,70 @@ impl Service for StaticSite {
                 body,
             });
         }
-        match state["pages"].get(&path) {
-            Some(v) => HttpResponse::page(&serde_json::from_value::<Page>(v.clone())?),
-            None => wire::error(404, "page not found"),
+        if let Some(v) = state["pages"].get(&path) {
+            return HttpResponse::page(&serde_json::from_value::<Page>(v.clone())?);
         }
+        if let Some(response) = serve_file(state, &path)? {
+            return Ok(response);
+        }
+        wire::error(404, "page not found")
+    }
+}
+/// An authored file: `path` itself, `index.html` for a directory path, and a redirect
+/// to the directory form for a directory named without its slash, as web servers do.
+fn serve_file(state: &Value, path: &str) -> Result<Option<HttpResponse>> {
+    let files = state["files"].as_object();
+    let Some(files) = files else { return Ok(None) };
+    let candidate = if path.ends_with('/') { format!("{path}index.html") } else { path.to_owned() };
+    if let Some(file) = files.get(&candidate) {
+        let (body, declared) = match file {
+            Value::String(text) => (text.as_bytes().to_vec(), None),
+            Value::Object(o) => {
+                let body = match (o.get("text"), o.get("bytes")) {
+                    (Some(Value::String(t)), _) => t.as_bytes().to_vec(),
+                    (_, Some(b)) => serde_json::from_value::<Vec<u8>>(b.clone())?,
+                    _ => Vec::new(),
+                };
+                (body, o.get("content_type").and_then(Value::as_str).map(str::to_owned))
+            }
+            _ => return Ok(None),
+        };
+        let content_type = declared.unwrap_or_else(|| content_type_of(&candidate).to_owned());
+        return Ok(Some(HttpResponse {
+            status: 200,
+            headers: std::collections::BTreeMap::from([("content-type".to_owned(), content_type)]),
+            body,
+        }));
+    }
+    if !path.ends_with('/') && files.contains_key(&format!("{path}/index.html")) {
+        return Ok(Some(HttpResponse {
+            status: 301,
+            headers: std::collections::BTreeMap::from([("location".to_owned(), format!("{path}/"))]),
+            body: Vec::new(),
+        }));
+    }
+    Ok(None)
+}
+/// The media type a file extension is served with.
+pub fn content_type_of(path: &str) -> &'static str {
+    let ext = path.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    match ext.as_str() {
+        "html" | "htm" => "text/html; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "js" | "mjs" => "text/javascript; charset=utf-8",
+        "json" => "application/json",
+        "txt" | "md" => "text/plain; charset=utf-8",
+        "xml" => "application/xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "ico" => "image/x-icon",
+        "woff" => "font/woff",
+        "woff2" => "font/woff2",
+        "ttf" => "font/ttf",
+        _ => "application/octet-stream",
     }
 }
 fn allowed(state: &Value, field: &str, actor: &str) -> bool {
@@ -212,6 +291,65 @@ mod tests {
                 .status,
             404
         );
+    }
+}
+
+#[cfg(test)]
+mod files_tests {
+    use super::*;
+    fn ctx() -> ServiceContext {
+        ServiceContext {
+            actor: "a".into(),
+            source: "pc".into(),
+            tick: 0,
+            seed: 1,
+            instance: "site".into(),
+        }
+    }
+    fn get(state: &mut Value, path: &str) -> HttpResponse {
+        StaticSite
+            .handle(
+                state,
+                &ctx(),
+                &HttpRequest {
+                    method: "GET".into(),
+                    url: format!("http://site.test{path}"),
+                    headers: Default::default(),
+                    body: vec![],
+                },
+            )
+            .unwrap()
+    }
+    #[test]
+    fn html_directories_are_served_with_their_media_types() {
+        let mut state = StaticSite
+            .initialize(
+                json!({"files":{
+                    "/index.html":"<h1>Home</h1>",
+                    "/docs/index.html":{"text":"<p>Docs</p>"},
+                    "/style.css":"h1{color:red}",
+                    "/app.js":"console.log(1)",
+                    "/logo.png":{"bytes":[137,80,78,71]},
+                    "/notes.txt":{"text":"plain","content_type":"text/x-notes"}
+                }}),
+                &ctx(),
+            )
+            .unwrap();
+        let home = get(&mut state, "/");
+        assert_eq!(home.header("content-type"), Some("text/html; charset=utf-8"));
+        assert_eq!(home.body, b"<h1>Home</h1>");
+        assert_eq!(get(&mut state, "/docs/").body, b"<p>Docs</p>");
+        let redirect = get(&mut state, "/docs");
+        assert_eq!((redirect.status, redirect.header("location")), (301, Some("/docs/")));
+        assert_eq!(get(&mut state, "/style.css").header("content-type"), Some("text/css; charset=utf-8"));
+        assert_eq!(get(&mut state, "/app.js").header("content-type"), Some("text/javascript; charset=utf-8"));
+        let logo = get(&mut state, "/logo.png");
+        assert_eq!(logo.header("content-type"), Some("image/png"));
+        assert_eq!(logo.body, vec![137, 80, 78, 71]);
+        assert_eq!(get(&mut state, "/notes.txt").header("content-type"), Some("text/x-notes"));
+        assert_eq!(get(&mut state, "/missing.html").status, 404);
+        assert!(StaticSite.initialize(json!({"files":{"relative.html":"x"}}), &ctx()).is_err());
+        assert!(StaticSite.initialize(json!({"files":{"/x.html":7}}), &ctx()).is_err());
     }
 }
 

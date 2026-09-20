@@ -20,3 +20,23 @@ Optional `assets` maps exact paths to `{content_type, json}` or
 `{"content_type":"application/vnd.computerworld.rgba+json","json":{"width":1,"height":1,"rgba":[255,0,0,255]}}`.
 The browser obtains these through the same synthetic DNS/network/service path;
 assets require the site's read ACL and never access the host filesystem.
+
+Optional `files` maps absolute paths to authored files served with the media type
+their extension implies (`.html`, `.css`, `.js`, `.png`, `.jpg`, `.gif`, `.svg`,
+`.txt`, `.json`, ...), so a site can be an ordinary HTML directory:
+
+```json
+{"files":{
+  "/index.html":"<!DOCTYPE html><html><head><link rel=stylesheet href=/site.css></head><body><h1>Hello</h1><img src=/logo.png></body></html>",
+  "/site.css":"h1{color:#c00}",
+  "/logo.png":{"bytes":[137,80,78,71,13,10,26,10]},
+  "/notes.txt":{"text":"plain text","content_type":"text/plain"}
+}}
+```
+
+A value is the file's text, or an object with `text` or `bytes` and an optional
+`content_type` override. A directory URL (`/docs/`) serves its `index.html`; the
+directory named without its slash (`/docs`) redirects to it. The browser renders
+`text/html` through its engine, fetching the page's stylesheets and pictures through
+the same synthetic network; exact `pages` and `assets` paths take precedence over
+`files`.

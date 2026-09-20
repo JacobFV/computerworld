@@ -247,8 +247,13 @@ pub(crate) fn paint_root(p: &mut Painter, root_state: &State) {
 /// Paints `f` and its subtree as one stacking context (or atomically, which is the
 /// same order).
 pub(crate) fn paint_context<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &State) {
-    // 1. Own background and borders.
+    // 1. Own background and borders, then the replaced content of an atomic inline,
+    //    floated, positioned or stacking-context replaced box (an `<img>` in a line, a
+    //    positioned picture), which no child bucket would otherwise paint.
     paint_own(p, f, state);
+    if matches!(&f.kind, FragmentKind::Box { replaced: Some(_), .. }) && p.style_of(f).visibility == Visibility::Visible {
+        replaced::paint(p, f, state);
+    }
     let child_state = enter(p, f, state, true);
     let mut b = Buckets::default();
     for c in &f.children {

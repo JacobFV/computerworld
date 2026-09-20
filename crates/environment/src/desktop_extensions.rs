@@ -533,8 +533,8 @@ impl Environment {
                 m.browser_windows.get(&window).unwrap_or(&m.browser)
             };
             return Ok(browser
-                .page()
-                .map(cw_applications::page_text)
+                .current_page()
+                .map(|page| cw_applications::page_text(&page))
                 .unwrap_or_default());
         }
         let mut page = m
@@ -1010,8 +1010,7 @@ impl Environment {
         if let Some(op) = target.strip_prefix("shell:bookmark") {
             let page = self.session(id)?.machines[machine]
                 .browser
-                .page()
-                .map(|p| p.title.clone())
+                .title()
                 .unwrap_or_default();
             let url = self.session(id)?.machines[machine]
                 .browser

@@ -171,6 +171,9 @@ pub struct ShellOptions {
     /// The window operation a pressed button is dragging (`drag`, `resize:se`), so the
     /// pointer keeps that shape wherever it goes until the button is released.
     pub capture: Option<String>,
+    /// The shape the document under the pointer asked for (an HTML page's computed
+    /// `cursor`), which wins over what the hit target's name would suggest.
+    pub cursor: Option<crate::cursor::CursorKind>,
 }
 /// Words a phone keyboard offers to complete, most common first. A fixed list, so two
 /// machines typing the same letters are offered the same words.

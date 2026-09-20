@@ -1,17 +1,27 @@
 //! Synthetic browser: all requests go through a supplied transport, never the host.
+//!
+//! A tab's history holds documents of two kinds: native `Page` JSON, drawn by
+//! `page_scene`, and HTML (`text/html`, `text/plain` shown as preformatted text, and
+//! pictures shown on their own) rendered by the `cw_web` engine through
+//! `web_document`. Every action (`click`, `fill`, `text`, `key`, `submit`, scrolling,
+//! hover) works on both.
 use cw_protocol::{
     HttpRequest, HttpResponse, Page, PageAction, PageElement, Result, SimError, PAGE_MEDIA_TYPE,
 };
 #[cfg(test)]
 use cw_scene::Primitive;
-use cw_scene::Scene;
+use cw_scene::{AxNode, Scene};
 mod page_scene;
+pub mod web_document;
+pub use web_document::{Inputs, Outcome, SheetSource, WebDocument};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
 
 pub use cw_protocol::RGBA_MEDIA_TYPE;
 const MAX_IMAGE_BYTES: usize = 4 * 1024 * 1024;
 const MAX_CACHE_BYTES: usize = 16 * 1024 * 1024;
+/// The most a stylesheet or a document fetched as a subresource may weigh.
+const MAX_TEXT_RESOURCE_BYTES: usize = 2 * 1024 * 1024;
 /// A portable pixel asset; integer RGBA8, row-major, straight alpha.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImageAsset {
@@ -34,10 +44,22 @@ impl ImageAsset {
 }
 use url::Url;
 
+/// What a history entry shows: a native page, or an HTML document. Both variants are
+/// large and every entry holds exactly one, so neither is worth boxing.
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Content {
+    #[serde(rename = "page")]
+    Page(Page),
+    #[serde(rename = "document")]
+    Web(WebDocument),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HistoryEntry {
     pub url: String,
-    pub page: Page,
+    #[serde(flatten)]
+    pub content: Content,
     pub status: u16,
     #[serde(default)]
     pub images: BTreeMap<String, Arc<ImageAsset>>,
@@ -47,6 +69,35 @@ pub struct HistoryEntry {
     /// as a page whose content moves with the world clock does: a music player's bar.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refresh: Option<Refresh>,
+}
+impl HistoryEntry {
+    /// The native page, when the entry is one.
+    pub fn page(&self) -> Option<&Page> {
+        match &self.content {
+            Content::Page(p) => Some(p),
+            Content::Web(_) => None,
+        }
+    }
+    /// The HTML document, when the entry is one.
+    pub fn web(&self) -> Option<&WebDocument> {
+        match &self.content {
+            Content::Web(w) => Some(w),
+            Content::Page(_) => None,
+        }
+    }
+    pub fn web_mut(&mut self) -> Option<&mut WebDocument> {
+        match &mut self.content {
+            Content::Web(w) => Some(w),
+            Content::Page(_) => None,
+        }
+    }
+    /// The document's title: a page's, or the HTML `<title>`.
+    pub fn title(&self) -> &str {
+        match &self.content {
+            Content::Page(p) => &p.title,
+            Content::Web(w) => &w.title,
+        }
+    }
 }
 /// A page's own refresh: `url` is requested again (`REFRESH_HEADER` set, so the site
 /// can tell it from a visit) once `after_ms` of world time has passed since `fetched`.
@@ -76,7 +127,9 @@ fn parse_refresh(value: &str, page_url: &Url) -> Option<Refresh> {
             if !key.trim().eq_ignore_ascii_case("url") {
                 return None;
             }
-            page_url.join(target.trim()).ok()?
+            page_url
+                .join(target.trim().trim_matches(['\'', '"']))
+                .ok()?
         }
         None => page_url.clone(),
     };
@@ -193,6 +246,105 @@ fn not_found_page(url: &Url, response: &HttpResponse) -> Option<Page> {
     });
     Some(page)
 }
+/// The media type of a response, lower-cased, without parameters.
+fn media_type(response: &HttpResponse) -> String {
+    response
+        .header("content-type")
+        .and_then(|v| v.split(';').next())
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase()
+}
+/// Decodes a picture response into an asset: the native RGBA JSON, PNG or JPEG.
+fn decode_image(media_type: &str, body: &[u8]) -> Result<ImageAsset> {
+    let asset = match media_type {
+        RGBA_MEDIA_TYPE => serde_json::from_slice::<ImageAsset>(body)?,
+        "image/png" => decode_png(body).ok_or_else(|| SimError::new("image_format", "undecodable PNG"))?,
+        "image/jpeg" | "image/jpg" => {
+            decode_jpeg(body).ok_or_else(|| SimError::new("image_format", "undecodable JPEG"))?
+        }
+        _ => {
+            return Err(SimError::new(
+                "image_format",
+                format!("unsupported image media type {media_type}"),
+            ))
+        }
+    };
+    asset.validate()?;
+    Ok(asset)
+}
+fn decode_png(bytes: &[u8]) -> Option<ImageAsset> {
+    let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
+    decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
+    let mut reader = decoder.read_info().ok()?;
+    if u64::from(reader.info().width) * u64::from(reader.info().height) * 4 > MAX_IMAGE_BYTES as u64 {
+        return None;
+    }
+    let mut raw = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut raw).ok()?;
+    let raw = &raw[..info.buffer_size()];
+    let mut rgba = Vec::with_capacity(info.width as usize * info.height as usize * 4);
+    match info.color_type {
+        png::ColorType::Rgba => rgba.extend_from_slice(raw),
+        png::ColorType::Rgb => {
+            for p in raw.as_chunks::<3>().0 {
+                rgba.extend_from_slice(&[p[0], p[1], p[2], 255]);
+            }
+        }
+        png::ColorType::Grayscale => {
+            for p in raw {
+                rgba.extend_from_slice(&[*p, *p, *p, 255]);
+            }
+        }
+        png::ColorType::GrayscaleAlpha => {
+            for p in raw.as_chunks::<2>().0 {
+                rgba.extend_from_slice(&[p[0], p[0], p[0], p[1]]);
+            }
+        }
+        png::ColorType::Indexed => return None,
+    }
+    Some(ImageAsset {
+        width: info.width,
+        height: info.height,
+        rgba,
+    })
+}
+fn decode_jpeg(bytes: &[u8]) -> Option<ImageAsset> {
+    let mut decoder = jpeg_decoder::Decoder::new(std::io::Cursor::new(bytes));
+    decoder.read_info().ok()?;
+    let info = decoder.info()?;
+    if u64::from(info.width) * u64::from(info.height) * 4 > MAX_IMAGE_BYTES as u64 {
+        return None;
+    }
+    let pixels = decoder.decode().ok()?;
+    let (width, height) = (u32::from(info.width), u32::from(info.height));
+    let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
+    match info.pixel_format {
+        jpeg_decoder::PixelFormat::RGB24 => {
+            for p in pixels.as_chunks::<3>().0 {
+                rgba.extend_from_slice(&[p[0], p[1], p[2], 255]);
+            }
+        }
+        jpeg_decoder::PixelFormat::L8 => {
+            for p in &pixels {
+                rgba.extend_from_slice(&[*p, *p, *p, 255]);
+            }
+        }
+        jpeg_decoder::PixelFormat::L16 => {
+            for p in pixels.as_chunks::<2>().0 {
+                rgba.extend_from_slice(&[p[0], p[0], p[0], 255]);
+            }
+        }
+        jpeg_decoder::PixelFormat::CMYK32 => {
+            for p in pixels.as_chunks::<4>().0 {
+                let k = u32::from(p[3]);
+                let c = |v: u8| (u32::from(v) * k / 255) as u8;
+                rgba.extend_from_slice(&[c(p[0]), c(p[1]), c(p[2]), 255]);
+            }
+        }
+    }
+    Some(ImageAsset { width, height, rgba })
+}
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tab {
     pub history: Vec<HistoryEntry>,
@@ -248,8 +400,52 @@ impl BrowserState {
     pub fn tab_mut(&mut self) -> &mut Tab {
         &mut self.tabs[self.active]
     }
+    fn entry(&self) -> Option<&HistoryEntry> {
+        self.tab().history.get(self.tab().position)
+    }
+    fn entry_mut(&mut self) -> Option<&mut HistoryEntry> {
+        let position = self.tab().position;
+        self.tab_mut().history.get_mut(position)
+    }
+    /// The native page on show; `None` for an empty tab or an HTML document (see
+    /// `document` and `current_page`).
     pub fn page(&self) -> Option<&Page> {
-        self.tab().history.get(self.tab().position).map(|e| &e.page)
+        self.entry().and_then(HistoryEntry::page)
+    }
+    /// The HTML document on show, when the tab shows one.
+    pub fn document(&self) -> Option<&WebDocument> {
+        self.entry().and_then(HistoryEntry::web)
+    }
+    pub fn document_mut(&mut self) -> Option<&mut WebDocument> {
+        self.entry_mut().and_then(HistoryEntry::web_mut)
+    }
+    /// The title of the document on show, when there is one.
+    pub fn title(&self) -> Option<String> {
+        self.entry().map(|e| e.title().to_owned())
+    }
+    /// The document on show as a page: the native page itself, or an HTML document
+    /// projected into headings, text, links and controls with its live values.
+    pub fn current_page(&self) -> Option<Cow<'_, Page>> {
+        match &self.entry()?.content {
+            Content::Page(p) => Some(Cow::Borrowed(p)),
+            Content::Web(w) => Some(Cow::Owned(w.to_page(&self.tab().fields))),
+        }
+    }
+    /// Whether `id` names a text control of the document on show.
+    pub fn has_input(&self, id: &str) -> bool {
+        match self.entry().map(|e| &e.content) {
+            Some(Content::Page(p)) => {
+                let mut found = false;
+                walk(&p.elements, &mut |e| {
+                    if let PageElement::Input { id: i, .. } = e {
+                        found |= i == id;
+                    }
+                });
+                found
+            }
+            Some(Content::Web(_)) => self.tab().fields.contains_key(id),
+            None => false,
+        }
     }
     /// The site a zoom level belongs to: scheme, host and port of the page on screen.
     fn zoom_site(&self) -> Option<String> {
@@ -294,10 +490,7 @@ impl BrowserState {
         Ok(next)
     }
     pub fn url(&self) -> Option<&str> {
-        self.tab()
-            .history
-            .get(self.tab().position)
-            .map(|e| e.url.as_str())
+        self.entry().map(|e| e.url.as_str())
     }
     pub fn new_tab(&mut self) -> usize {
         self.tabs.push(Tab::default());
@@ -326,10 +519,13 @@ impl BrowserState {
         Ok(())
     }
     fn resolve(&self, url: &str) -> Result<Url> {
+        let base = self
+            .document()
+            .map(|d| d.base.clone())
+            .or_else(|| self.url().map(str::to_owned));
         let parsed = Url::parse(url)
             .or_else(|_| {
-                self.url()
-                    .and_then(|base| Url::parse(base).ok())
+                base.and_then(|base| Url::parse(&base).ok())
                     .ok_or(url::ParseError::RelativeUrlWithoutBase)?
                     .join(url)
             })
@@ -386,14 +582,19 @@ impl BrowserState {
         Ok(())
     }
     fn reset_fields(&mut self) {
-        let mut fields = BTreeMap::new();
-        if let Some(page) = self.page() {
-            walk(&page.elements, &mut |e| {
-                if let PageElement::Input { id, value, .. } = e {
-                    fields.insert(id.clone(), value.clone());
-                }
-            })
-        }
+        let fields = match self.entry().map(|e| &e.content) {
+            Some(Content::Page(page)) => {
+                let mut fields = BTreeMap::new();
+                walk(&page.elements, &mut |e| {
+                    if let PageElement::Input { id, value, .. } = e {
+                        fields.insert(id.clone(), value.clone());
+                    }
+                });
+                fields
+            }
+            Some(Content::Web(web)) => web.initial_fields(),
+            None => BTreeMap::new(),
+        };
         let tab = self.tab_mut();
         tab.fields = fields;
         tab.focused = None;
@@ -409,9 +610,7 @@ impl BrowserState {
     /// Whether the page on show wants attention at `now`: a refresh that is due, or one
     /// not yet stamped. Read-only, so a caller can skip taking the state mutably.
     pub fn refresh_pending(&self, now: u64) -> bool {
-        self.tab()
-            .history
-            .get(self.tab().position)
+        self.entry()
             .and_then(|e| e.refresh.as_ref())
             .is_some_and(|r| {
                 r.fetched
@@ -422,13 +621,7 @@ impl BrowserState {
     /// `now` (world microseconds). A page not yet stamped is stamped here, so its wait
     /// starts when it was first seen.
     pub fn refresh_due(&mut self, now: u64) -> bool {
-        let position = self.tab().position;
-        let Some(refresh) = self
-            .tab_mut()
-            .history
-            .get_mut(position)
-            .and_then(|e| e.refresh.as_mut())
-        else {
+        let Some(refresh) = self.entry_mut().and_then(|e| e.refresh.as_mut()) else {
             return false;
         };
         match refresh.fetched {
@@ -447,9 +640,7 @@ impl BrowserState {
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
         let url = self
-            .tab()
-            .history
-            .get(self.tab().position)
+            .entry()
             .and_then(|e| e.refresh.as_ref())
             .map(|r| r.url.clone())
             .ok_or_else(|| SimError::invalid("the page asked for no refresh"))?;
@@ -486,6 +677,23 @@ impl BrowserState {
         }
         result
     }
+    /// The cookies to send to `url`, as a header value; empty when none apply.
+    fn cookie_header(&self, url: &Url) -> String {
+        self.cookies
+            .get(&url.origin().ascii_serialization())
+            .map(|cookies| {
+                cookies
+                    .iter()
+                    .filter(|c| {
+                        cookie_path_matches(url.path(), &c.path)
+                            && (!c.secure || url.scheme() == "https")
+                    })
+                    .map(|c| format!("{}={}", c.name, c.value))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            })
+            .unwrap_or_default()
+    }
     fn request_with<F>(
         &mut self,
         mut request: HttpRequest,
@@ -498,23 +706,14 @@ impl BrowserState {
     {
         for _ in 0..=16 {
             let mut url = self.resolve(&request.url)?;
+            let fragment = url.fragment().map(str::to_owned);
             url.set_fragment(None);
             request.url = url.to_string();
             let origin = url.origin().ascii_serialization();
             request.headers.remove("cookie");
-            if let Some(cookies) = self.cookies.get(&origin) {
-                let value = cookies
-                    .iter()
-                    .filter(|c| {
-                        cookie_path_matches(url.path(), &c.path)
-                            && (!c.secure || url.scheme() == "https")
-                    })
-                    .map(|c| format!("{}={}", c.name, c.value))
-                    .collect::<Vec<_>>()
-                    .join("; ");
-                if !value.is_empty() {
-                    request.headers.insert("cookie".into(), value);
-                }
+            let cookies = self.cookie_header(&url);
+            if !cookies.is_empty() {
+                request.headers.insert("cookie".into(), cookies);
             }
             self.pending = Some(request.clone());
             let result = transport(request.clone());
@@ -562,46 +761,158 @@ impl BrowserState {
                     continue;
                 }
             }
-            let page = if response
-                .header("content-type")
-                .is_some_and(|v| v.split(';').next().unwrap_or("").trim() == PAGE_MEDIA_TYPE)
-            {
+            let kind = media_type(&response);
+            let mut document_url = url.clone();
+            document_url.set_fragment(fragment.as_deref());
+            let (content, images, image_errors, refresh) = if kind == PAGE_MEDIA_TYPE {
                 let page: Page = serde_json::from_slice(&response.body)?;
                 page.validate()?;
-                page
+                let (images, image_errors) =
+                    self.load_images(&page, &url, transport, fresh_images);
+                let refresh = response
+                    .header("refresh")
+                    .and_then(|value| parse_refresh(value, &url));
+                (Content::Page(page), images, image_errors, refresh)
+            } else if let Some(html) = html_source(&kind, &document_url, &response) {
+                // A picture shown on its own is the body that just arrived: no second
+                // request for it.
+                if kind.starts_with("image/") || kind == RGBA_MEDIA_TYPE {
+                    if let Ok(asset) = decode_image(&kind, &response.body) {
+                        self.image_cache.insert(url.to_string(), Arc::new(asset));
+                    }
+                }
+                let web = self.load_web(&html, &document_url, transport, false);
+                let refresh = response
+                    .header("refresh")
+                    .map(str::to_owned)
+                    .or_else(|| web.meta_refresh())
+                    .and_then(|value| parse_refresh(&value, &url));
+                (Content::Web(web), BTreeMap::new(), BTreeMap::new(), refresh)
             } else if let Some(page) = not_found_page(&url, &response) {
-                page
+                (Content::Page(page), BTreeMap::new(), BTreeMap::new(), None)
             } else {
                 let mut page = Page::new(url.as_str());
                 page.elements.push(PageElement::Text {
                     id: "response".into(),
                     text: String::from_utf8_lossy(&response.body).into_owned(),
                 });
-                page
+                (Content::Page(page), BTreeMap::new(), BTreeMap::new(), None)
             };
-            let (images, image_errors) = self.load_images(&page, &url, transport, fresh_images);
-            let refresh = response
-                .header("refresh")
-                .and_then(|value| parse_refresh(value, &url));
             let entry = HistoryEntry {
-                url: url.to_string(),
-                page,
+                url: document_url.to_string(),
+                content,
                 status: response.status,
                 images,
                 image_errors,
                 refresh,
             };
             self.commit(entry, replace);
+            if let Some(fragment) = fragment.filter(|f| !f.is_empty()) {
+                if let Some(web) = self.document_mut() {
+                    if let Outcome::ScrollTo(y) = web.jump_to(&fragment) {
+                        self.tab_mut().scroll_y = y;
+                    }
+                }
+            }
             return Ok(());
         }
         Err(SimError::new("redirect_limit", "more than 16 redirects"))
+    }
+    /// Parses an HTML response and fetches what it links: stylesheets (and their
+    /// imports) through the transport, then every picture it or its sheets reference.
+    fn load_web<F>(
+        &mut self,
+        html: &str,
+        url: &Url,
+        transport: &mut F,
+        fresh_images: bool,
+    ) -> WebDocument
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        let mut web = WebDocument::parse(html, url.as_str());
+        for plan in web.sheet_plan() {
+            match plan {
+                web_document::SheetPlan::Inline { media, source } => {
+                    let base = web.base.clone();
+                    web.add_sheet(&base, &media, source, &mut |u| self.fetch_text(u, transport));
+                }
+                web_document::SheetPlan::Linked { url: link, media } => {
+                    if let Some(source) = self.fetch_text(&link, transport) {
+                        web.add_sheet(&link, &media, source, &mut |u| self.fetch_text(u, transport));
+                    }
+                }
+            }
+        }
+        for (reference, resolved) in web.image_references() {
+            match Url::parse(&resolved) {
+                Ok(target) => match self.load_image_from(target, transport, fresh_images, None) {
+                    Ok(asset) => web.add_image(&reference, &resolved, asset),
+                    Err(error) => web.add_image_error(&reference, &resolved, &error.code),
+                },
+                Err(_) => web.add_image_error(&reference, &resolved, "invalid"),
+            }
+        }
+        web
+    }
+    /// Fetches a text subresource (a stylesheet): its body as a string, or `None` when
+    /// the transport refused, the status was not a success or the body is not text.
+    fn fetch_text<F>(&mut self, url: &str, transport: &mut F) -> Option<String>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        let url = Url::parse(url).ok()?;
+        if !matches!(url.scheme(), "http" | "https") || !url.username().is_empty() || url.password().is_some() {
+            return None;
+        }
+        let response = self.fetch_resource(url, transport).ok()?;
+        if !(200..300).contains(&response.status) || response.body.len() > MAX_TEXT_RESOURCE_BYTES {
+            return None;
+        }
+        let kind = media_type(&response);
+        if kind == "text/html" || kind.starts_with("image/") || kind == PAGE_MEDIA_TYPE {
+            return None;
+        }
+        Some(cw_web::html::decode(&response.body))
+    }
+    /// One subresource request with the origin's cookies, following up to eight
+    /// redirects. Cross-origin is allowed: the transport enforces the network policy.
+    fn fetch_resource<F>(&mut self, mut url: Url, transport: &mut F) -> Result<HttpResponse>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        for _ in 0..=8 {
+            if !url.username().is_empty() || url.password().is_some() {
+                return Err(SimError::denied("credentialed subresource"));
+            }
+            let mut request = HttpRequest::get(url.as_str());
+            let cookies = self.cookie_header(&url);
+            if !cookies.is_empty() {
+                request.headers.insert("cookie".into(), cookies);
+            }
+            self.pending = Some(request.clone());
+            let response = transport(request);
+            self.pending = None;
+            let response = response?;
+            if matches!(response.status, 301 | 302 | 303 | 307 | 308) {
+                let location = response
+                    .header("location")
+                    .ok_or_else(|| SimError::invalid("redirect lacks location"))?;
+                url = url
+                    .join(location)
+                    .map_err(|e| SimError::invalid(e.to_string()))?;
+                continue;
+            }
+            return Ok(response);
+        }
+        Err(SimError::new("redirect_limit", "subresource redirect limit"))
     }
     /// Show `page` as the tab's document at `url`, with no pictures to fetch.
     fn show(&mut self, url: String, page: Page, status: u16, replace: bool) {
         self.commit(
             HistoryEntry {
                 url,
-                page,
+                content: Content::Page(page),
                 status,
                 images: BTreeMap::new(),
                 image_errors: BTreeMap::new(),
@@ -625,7 +936,76 @@ impl BrowserState {
         }
         self.reset_fields();
     }
+    /// Carries out what a document's action asked for.
+    fn perform_outcome<F>(&mut self, outcome: Outcome, transport: &mut F) -> Result<()>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        match outcome {
+            Outcome::Nothing => Ok(()),
+            Outcome::ScrollTo(y) => {
+                // The fragment is part of the address the tab shows.
+                if let Some(entry) = self.entry_mut() {
+                    if let Some(url) = entry.web().map(|w| w.url.clone()) {
+                        entry.url = url;
+                    }
+                }
+                self.tab_mut().scroll_y = y;
+                Ok(())
+            }
+            Outcome::Navigate { url, new_tab } => {
+                if new_tab {
+                    self.new_tab();
+                }
+                self.navigate(&url, transport)
+            }
+            Outcome::Request(request) => self.request(request, transport, false),
+        }
+    }
+    /// The tab's document, fields and focus, split for a document action.
+    fn web_parts(&mut self) -> Option<(&mut WebDocument, &mut BTreeMap<String, String>, &mut Option<String>)> {
+        let tab = self.tab_mut();
+        let position = tab.position;
+        let Tab {
+            history,
+            fields,
+            focused,
+            ..
+        } = tab;
+        let web = history.get_mut(position)?.web_mut()?;
+        Some((web, fields, focused))
+    }
     pub fn fill(&mut self, id: &str, value: &str) -> Result<()> {
+        if self.document().is_some() {
+            let (web, fields, focused) = self.web_parts().expect("document");
+            let Some(node) = web.node_for(id) else {
+                return Err(SimError::not_found(format!("input {id}")));
+            };
+            web.notice = None;
+            let doc = web.document();
+            if doc.is(node, "select") {
+                web.choose(node, value)?;
+                *focused = Some(web.id_of(node));
+                return Ok(());
+            }
+            if doc.is(node, "input") && matches!(web_document::input_type(doc, node).as_str(), "checkbox" | "radio") {
+                let on = matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "on" | "checked" | "yes");
+                let mut scratch = BTreeMap::new();
+                if on != web.is_checked(node) {
+                    let _ = web.click(node, &mut scratch, focused)?;
+                }
+                *focused = Some(web.id_of(node));
+                return Ok(());
+            }
+            if !fields.contains_key(id) {
+                return Err(SimError::not_found(format!("input {id}")));
+            }
+            let key = web.id_of(node);
+            fields.insert(key.clone(), value.into());
+            *focused = Some(key);
+            web.set_caret_end();
+            return Ok(());
+        }
         if !self.tab().fields.contains_key(id) {
             return Err(SimError::not_found(format!("input {id}")));
         }
@@ -634,6 +1014,10 @@ impl BrowserState {
         Ok(())
     }
     pub fn text(&mut self, text: &str) -> Result<()> {
+        if self.document().is_some() {
+            let (web, fields, focused) = self.web_parts().expect("document");
+            return web.insert_text(text, fields, focused);
+        }
         let id = self
             .tab()
             .focused
@@ -651,6 +1035,11 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.document().is_some() {
+            let (web, fields, focused) = self.web_parts().expect("document");
+            let outcome = web.key(key, fields, focused)?;
+            return self.perform_outcome(outcome, transport);
+        }
         if key == "Tab" {
             let mut ids = vec![];
             if let Some(p) = self.page() {
@@ -698,6 +1087,14 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.document().is_some() {
+            let (web, fields, focused) = self.web_parts().expect("document");
+            let node = web
+                .node_for(id)
+                .ok_or_else(|| SimError::not_found(format!("element {id}")))?;
+            let outcome = web.click(node, fields, focused)?;
+            return self.perform_outcome(outcome, transport);
+        }
         let element = self
             .page()
             .and_then(|p| find(&p.elements, id))
@@ -732,10 +1129,104 @@ impl BrowserState {
             _ => Err(SimError::invalid("element is not interactive")),
         }
     }
+    /// The render inputs of the tab for a `width` x `height` viewport.
+    fn inputs(&self, width: u32, height: u32) -> Inputs<'_> {
+        let tab = self.tab();
+        Inputs {
+            width,
+            height,
+            zoom: self.zoom(),
+            fields: &tab.fields,
+            focused: tab.focused.as_deref(),
+            scroll_y: tab.scroll_y,
+        }
+    }
+    /// Clicks whatever is painted at `(x, y)` in a `width` x `height` viewport.
+    pub fn click_at<F>(&mut self, x: i32, y: i32, width: u32, height: u32, transport: &mut F) -> Result<()>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        let target = match self.document() {
+            Some(web) => web.hit(x, y, self.inputs(width, height)).map(|n| web.id_of(n)),
+            None => self
+                .scene(width, height)
+                .hit_test(x, y)
+                .and_then(|n| n.interaction.clone()),
+        };
+        let target = target.ok_or_else(|| SimError::not_found("nothing to click there"))?;
+        if target.starts_with("pane:") {
+            return Ok(());
+        }
+        self.click(&target, transport)
+    }
+    /// Moves the pointer over `(x, y)` in a `width` x `height` viewport: an HTML
+    /// document updates its `:hover` state and answers with the CSS cursor for that
+    /// point; a native page answers `None` (its cursor is the shell's business).
+    pub fn hover_at(&mut self, x: i32, y: i32, width: u32, height: u32) -> Option<&'static str> {
+        self.document()?;
+        let zoom = self.zoom();
+        let tab = self.tab_mut();
+        let position = tab.position;
+        let Tab {
+            history,
+            fields,
+            focused,
+            scroll_y,
+            ..
+        } = tab;
+        let web = history.get_mut(position)?.web_mut()?;
+        let inputs = Inputs {
+            width,
+            height,
+            zoom,
+            fields,
+            focused: focused.as_deref(),
+            scroll_y: *scroll_y,
+        };
+        Some(web.hover_at(x, y, inputs))
+    }
+    /// The CSS cursor over `(x, y)` of an HTML document, without moving the hover.
+    pub fn cursor_at(&self, x: i32, y: i32, width: u32, height: u32) -> Option<&'static str> {
+        let web = self.document()?;
+        Some(web.cursor_at(x, y, self.inputs(width, height)))
+    }
+    /// Scrolls a pane of the document on show to `offset` (CSS px) and says whether it
+    /// moved: `page` is the document itself; a native page's `row:<id>` is one of its
+    /// sideways shelves; any other name is an HTML scroll container's interaction id.
+    pub fn scroll_pane(&mut self, pane: &str, offset: i32, horizontal: bool) -> bool {
+        let offset = offset.max(0);
+        let is_web = self.document().is_some();
+        match (pane, horizontal, is_web) {
+            ("page", false, _) => {
+                let tab = self.tab_mut();
+                let moved = tab.scroll_y != offset;
+                tab.scroll_y = offset;
+                moved
+            }
+            ("page", true, true) => self
+                .document_mut()
+                .is_some_and(|w| w.scroll_pane("page", offset, true)),
+            ("page", true, false) => false,
+            (other, _, true) => {
+                let id = other.strip_prefix("row:").unwrap_or(other);
+                self.document_mut()
+                    .is_some_and(|w| w.scroll_pane(id, offset, horizontal))
+            }
+            (other, _, false) => match other.strip_prefix("row:") {
+                Some(row) => self.tab_mut().scroll_x.insert(row.to_owned(), offset) != Some(offset),
+                None => false,
+            },
+        }
+    }
     pub fn submit<F>(&mut self, id: &str, transport: &mut F) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.document().is_some() {
+            let (web, fields, _) = self.web_parts().expect("document");
+            let request = web.submit(id, fields)?;
+            return self.request(request, transport, false);
+        }
         match self.page().and_then(|p| find(&p.elements, id)) {
             Some(PageElement::Form { action, .. }) => {
                 self.perform(action.clone(), Some(id), transport)
@@ -833,7 +1324,14 @@ impl BrowserState {
         }
         for tab in &self.tabs {
             for entry in &tab.history {
-                entry.page.validate()?;
+                match &entry.content {
+                    Content::Page(page) => page.validate()?,
+                    Content::Web(web) => {
+                        for asset in web.images().values() {
+                            asset.validate()?;
+                        }
+                    }
+                }
                 for asset in entry.images.values() {
                     asset.validate()?;
                 }
@@ -871,6 +1369,7 @@ impl BrowserState {
         }
         (images, errors)
     }
+    /// A native page's picture: same-origin only, the native RGBA format only.
     fn load_image<F>(
         &mut self,
         base: &Url,
@@ -881,14 +1380,33 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
-        let mut url = base
+        let url = base
             .join(source)
             .map_err(|e| SimError::invalid(e.to_string()))?;
+        self.load_image_from(url, transport, refresh, Some(base))
+    }
+    /// Fetches and decodes a picture, through the cache. With `same_origin_as`, the
+    /// picture and every redirect must stay on that origin and be the native RGBA
+    /// format (native page assets use a deliberately strict policy); without it, any
+    /// origin the transport allows and any decodable format (RGBA, PNG, JPEG) will do.
+    fn load_image_from<F>(
+        &mut self,
+        mut url: Url,
+        transport: &mut F,
+        refresh: bool,
+        same_origin_as: Option<&Url>,
+    ) -> Result<Arc<ImageAsset>>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
         url.set_fragment(None);
         let original = url.to_string();
-        // Native page assets use a deliberately strict same-origin policy. The
-        // transport still enforces DNS/routing/gateway grants on every request.
-        if url.origin() != base.origin() || !url.username().is_empty() || url.password().is_some() {
+        let allowed = |url: &Url| {
+            same_origin_as.is_none_or(|base| url.origin() == base.origin())
+                && url.username().is_empty()
+                && url.password().is_none()
+        };
+        if !allowed(&url) {
             return Err(SimError::denied("cross-origin native image"));
         }
         if !refresh {
@@ -897,28 +1415,15 @@ impl BrowserState {
             }
         }
         for _ in 0..=8 {
-            if url.origin() != base.origin()
-                || !url.username().is_empty()
-                || url.password().is_some()
-            {
+            if !allowed(&url) {
                 return Err(SimError::denied(
                     "cross-origin or credentialed image redirect",
                 ));
             }
             let mut request = HttpRequest::get(url.as_str());
-            if let Some(cookies) = self.cookies.get(&url.origin().ascii_serialization()) {
-                let value = cookies
-                    .iter()
-                    .filter(|c| {
-                        cookie_path_matches(url.path(), &c.path)
-                            && (!c.secure || url.scheme() == "https")
-                    })
-                    .map(|c| format!("{}={}", c.name, c.value))
-                    .collect::<Vec<_>>()
-                    .join("; ");
-                if !value.is_empty() {
-                    request.headers.insert("cookie".into(), value);
-                }
+            let cookies = self.cookie_header(&url);
+            if !cookies.is_empty() {
+                request.headers.insert("cookie".into(), cookies);
             }
             self.pending = Some(request.clone());
             let response = transport(request);
@@ -939,11 +1444,8 @@ impl BrowserState {
                     format!("image HTTP {}", response.status),
                 ));
             }
-            if response
-                .header("content-type")
-                .and_then(|v| v.split(';').next())
-                != Some(RGBA_MEDIA_TYPE)
-            {
+            let kind = media_type(&response);
+            if same_origin_as.is_some() && kind != RGBA_MEDIA_TYPE {
                 return Err(SimError::new(
                     "image_format",
                     "unsupported native image media type",
@@ -952,9 +1454,7 @@ impl BrowserState {
             if response.body.len() > MAX_IMAGE_BYTES * 4 + 1024 {
                 return Err(SimError::invalid("image response exceeds budget"));
             }
-            let asset: ImageAsset = serde_json::from_slice(&response.body)?;
-            asset.validate()?;
-            let asset = Arc::new(asset);
+            let asset = Arc::new(decode_image(&kind, &response.body)?);
             let existing = self.image_cache.get(&original).map_or(0, |a| a.rgba.len());
             let mut bytes: usize = self
                 .image_cache
@@ -978,8 +1478,12 @@ impl BrowserState {
         Err(SimError::new("redirect_limit", "image redirect limit"))
     }
     pub fn scene(&self, width: u32, height: u32) -> Scene {
-        let Some(entry) = self.tab().history.get(self.tab().position) else {
+        let Some(entry) = self.entry() else {
             return Scene::new(width, height);
+        };
+        let page = match &entry.content {
+            Content::Web(web) => return web.scene(self.inputs(width, height)),
+            Content::Page(page) => page,
         };
         // Zoom works as a browser's does: the page is laid out for a viewport as many
         // CSS pixels wide as fit at that zoom, then drawn larger or smaller, so text
@@ -987,7 +1491,7 @@ impl BrowserState {
         let zoom = u32::from(self.zoom());
         let css = |v: u32| (v * 100 / zoom).max(1);
         let mut scene = page_scene::layout_scrolled(
-            &entry.page,
+            page,
             &self.tab().fields,
             &entry.images,
             css(width),
@@ -999,6 +1503,31 @@ impl BrowserState {
             page_scene::scale(&mut scene, zoom, width, height);
         }
         scene
+    }
+    /// The accessibility view of the document on show at `width` x `height`: for a
+    /// native page the scene's own; for an HTML document every element with a role
+    /// and every text run, with bounds.
+    pub fn semantics(&self, width: u32, height: u32) -> Vec<AxNode> {
+        match self.entry().map(|e| &e.content) {
+            Some(Content::Web(web)) => web.semantics(self.inputs(width, height)),
+            _ => self.scene(width, height).accessibility(),
+        }
+    }
+}
+/// The HTML the engine renders for a response, when the response is one it shows:
+/// HTML itself, plain text as a preformatted block, a picture on its own.
+fn html_source(kind: &str, url: &Url, response: &HttpResponse) -> Option<String> {
+    match kind {
+        "text/html" | "application/xhtml+xml" => Some(cw_web::html::decode(&response.body)),
+        "text/plain" => Some(web_document::text_document(
+            &cw_web::html::decode(&response.body),
+            url.as_str(),
+        )),
+        k if k.starts_with("image/") || k == RGBA_MEDIA_TYPE => {
+            let size = decode_image(kind, &response.body).ok().map(|a| (a.width, a.height));
+            Some(web_document::image_document(url.as_str(), size))
+        }
+        _ => None,
     }
 }
 fn cookie_path_matches(path: &str, prefix: &str) -> bool {
@@ -1121,6 +1650,7 @@ pub fn layout_page_with_images(
 ) -> Scene {
     page_scene::layout(page, fields, images, width, height, scroll_y)
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -1668,5 +2198,275 @@ mod identity_tests {
         };
         assert_eq!(ids(&old), ids(&next));
         next.validate().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod web_tests {
+    use super::*;
+    use cw_scene::Color;
+
+    fn html(status: u16, body: &str) -> HttpResponse {
+        HttpResponse {
+            status,
+            headers: BTreeMap::from([("content-type".into(), "text/html; charset=utf-8".into())]),
+            body: body.as_bytes().to_vec(),
+        }
+    }
+    fn css(body: &str) -> HttpResponse {
+        HttpResponse {
+            status: 200,
+            headers: BTreeMap::from([("content-type".into(), "text/css".into())]),
+            body: body.as_bytes().to_vec(),
+        }
+    }
+    fn rgba(red: u8) -> HttpResponse {
+        let asset = ImageAsset { width: 2, height: 2, rgba: [red, 20, 30, 255].repeat(4) };
+        HttpResponse {
+            status: 200,
+            headers: BTreeMap::from([("content-type".into(), RGBA_MEDIA_TYPE.into())]),
+            body: serde_json::to_vec(&asset).unwrap(),
+        }
+    }
+    const HOME: &str = r##"<!DOCTYPE html><html><head><title>Home</title>
+<link rel="stylesheet" href="/style.css">
+<style>@import url("/imported.css"); p { margin: 0 }</style>
+</head><body>
+<h1 id="title">Welcome aboard</h1>
+<p>The quick brown fox.</p>
+<a id="next" href="/second">Second page</a>
+<a id="blank" href="/second" target="_blank">New tab</a>
+<form id="form" action="/search">
+  <label for="q">Query</label> <input id="q" name="q" value="">
+  <input type="checkbox" id="agree" name="agree">
+  <select id="pick" name="pick"><option value="a">Alpha</option><option value="b">Beta</option></select>
+  <button id="go" type="submit">Go</button>
+</form>
+<form id="pf" method="post" action="/post" enctype="multipart/form-data">
+  <input id="m" name="m"><textarea id="notes" name="notes">a
+b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send" value="yes">Send</button>
+</form>
+<form id="strict" action="/strict"><input id="must" name="must" required><button id="try">Try</button></form>
+<img id="logo" src="/logo.rgba" alt="Logo">
+<div style="height: 3000px"></div>
+<a id="down" href="#bottom">Down</a>
+<p id="bottom">The end.</p>
+</body></html>"##;
+
+    fn serve(requests: &mut Vec<HttpRequest>, r: HttpRequest) -> Result<HttpResponse> {
+        requests.push(r.clone());
+        let path = Url::parse(&r.url).unwrap().path().to_owned();
+        Ok(match path.as_str() {
+            "/" => html(200, HOME),
+            "/style.css" => css("h1 { color: #ff0000 } .imported { color: #0000ff }"),
+            "/imported.css" => css("h1 { font-size: 40px }"),
+            "/logo.rgba" => rgba(200),
+            "/second" => html(200, "<title>Second</title><h1>Second page</h1><p class=imported>Blue text</p>"),
+            "/search" => html(200, "<title>Results</title><p>Results</p>"),
+            "/post" => html(200, "<title>Posted</title><p>Posted</p>"),
+            "/meta" => html(200, r#"<meta http-equiv="refresh" content="2; url=/second"><p>Soon</p>"#),
+            "/plain" => HttpResponse::text(200, "just <text>"),
+            "/tabs" => html(200, r#"<a id="l1" href="/">One</a><input id="i1"><button id="b1">B</button><input id="i2" tabindex="1">"#),
+            _ => html(404, "<title>Lost</title><h1>Lost page</h1><p>No such page here.</p>"),
+        })
+    }
+    fn texts(scene: &Scene) -> Vec<(String, Color, u16)> {
+        scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                Primitive::UiText { text, color, size, .. } | Primitive::UiTextBold { text, color, size, .. } | Primitive::Text { text, color, size } => {
+                    Some((text.clone(), *color, *size))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+    fn browser() -> (BrowserState, Vec<HttpRequest>) {
+        let mut b = BrowserState::default();
+        let mut requests = vec![];
+        b.navigate("http://site.test/", &mut |r| serve(&mut requests, r)).unwrap();
+        (b, requests)
+    }
+
+    #[test]
+    fn an_html_response_renders_through_the_engine_with_its_sheets_and_pictures() {
+        let (b, requests) = browser();
+        let seen: Vec<&str> = requests.iter().map(|r| r.url.as_str()).collect();
+        assert_eq!(seen, ["http://site.test/", "http://site.test/style.css", "http://site.test/imported.css", "http://site.test/logo.rgba"]);
+        let doc = b.document().expect("html document");
+        assert_eq!(doc.title, "Home");
+        assert_eq!(b.title().as_deref(), Some("Home"));
+        assert_eq!(doc.sheets().len(), 3, "linked, imported, inline in cascade order");
+        assert_eq!(doc.sheets()[1].url, "http://site.test/imported.css");
+        let scene = b.scene(800, 600);
+        let texts = texts(&scene);
+        let words: Vec<&str> = texts.iter().map(|t| t.0.as_str()).collect();
+        assert!(words.iter().any(|w| w.contains("Welcome")), "{words:?}");
+        assert!(words.iter().any(|w| w.contains("quick brown fox")), "{words:?}");
+        // The linked sheet coloured the heading red and the imported one sized it.
+        let heading = texts.iter().find(|t| t.0.contains("Welcome")).unwrap();
+        assert_eq!(heading.1, Color::rgb(255, 0, 0));
+        assert_eq!(heading.2, 40);
+        let pictures: Vec<_> = scene.nodes.iter().filter_map(|n| match &n.primitive { Primitive::Image { width, height, rgba } => Some((*width, *height, rgba[0], n.bounds)), _ => None }).collect();
+        assert!(pictures.iter().any(|p| p.2 == 200), "{pictures:?} {:?} {:?}", doc.images().keys().collect::<Vec<_>>(), doc.image_errors);
+        assert_eq!(scene.scrolls[0].target, "pane:page");
+        assert!(scene.scrolls[0].extent > 3000);
+        assert_eq!(b.tab().fields.get("q").map(String::as_str), Some(""));
+        // The accessibility view lists the page's controls and text.
+        let ax = b.semantics(800, 600);
+        assert!(ax.iter().any(|a| a.role == "link" && a.id == "next" && a.name == "Second page"));
+        assert!(ax.iter().any(|a| a.role == "heading" && a.name == "h1: Welcome aboard"));
+        assert!(ax.iter().any(|a| a.role == "textbox" && a.id == "q" && a.name == "Query"));
+        assert!(ax.iter().any(|a| a.role == "text" && a.name.contains("quick")));
+        let page = b.current_page().unwrap();
+        assert!(page.elements.iter().any(|e| matches!(e, PageElement::Link { id, url, .. } if id == "next" && url == "http://site.test/second")));
+        assert!(page.elements.iter().any(|e| matches!(e, PageElement::Form { children, .. } if children.iter().any(|c| matches!(c, PageElement::Input { id, label, .. } if id == "q" && label == "Query")))));
+        assert!(b.has_input("q") && !b.has_input("agree"));
+    }
+
+    #[test]
+    fn links_navigate_and_fragments_scroll() {
+        let (mut b, mut requests) = browser();
+        b.click("down", &mut |r| serve(&mut requests, r)).unwrap();
+        assert!(b.tab().scroll_y > 2000, "{}", b.tab().scroll_y);
+        assert_eq!(b.url(), Some("http://site.test/#bottom"));
+        assert_eq!(requests.len(), 4, "a fragment link makes no request");
+        b.click("next", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.url(), Some("http://site.test/second"));
+        assert_eq!(b.title().as_deref(), Some("Second"));
+        // The imported rule is gone with the old document; the second page has no sheets.
+        let blue = texts(&b.scene(800, 600)).into_iter().find(|t| t.0.contains("Blue")).unwrap();
+        assert_ne!(blue.1, Color::rgb(0, 0, 255));
+        b.back(&mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.title().as_deref(), Some("Home"));
+        b.click("blank", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!((b.tabs.len(), b.active), (2, 1));
+        assert_eq!(b.url(), Some("http://site.test/second"));
+    }
+
+    #[test]
+    fn get_forms_carry_their_data_set_in_the_query() {
+        let (mut b, mut requests) = browser();
+        b.fill("q", "rust lang").unwrap();
+        b.click("agree", &mut |r| serve(&mut requests, r)).unwrap();
+        assert!(b.document().unwrap().is_checked(b.document().unwrap().node_for("agree").unwrap()));
+        assert!(b.semantics(800, 600).iter().any(|a| a.id == "agree" && a.checked == Some(true)));
+        b.fill("pick", "Beta").unwrap();
+        b.click("go", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(requests.last().unwrap().url, "http://site.test/search?q=rust+lang&agree=on&pick=b");
+        assert_eq!(b.title().as_deref(), Some("Results"));
+        b.back(&mut |r| serve(&mut requests, r)).unwrap();
+        b.fill("q", "again").unwrap();
+        b.key("Enter", &mut |r| serve(&mut requests, r)).unwrap();
+        assert!(requests.last().unwrap().url.starts_with("http://site.test/search?q=again"), "{}", requests.last().unwrap().url);
+        b.back(&mut |r| serve(&mut requests, r)).unwrap();
+        b.fill("q", "third").unwrap();
+        b.submit("form", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(requests.last().unwrap().url, "http://site.test/search?q=third&agree=on&pick=b");
+        // A required field left empty blocks the submission with a message.
+        b.back(&mut |r| serve(&mut requests, r)).unwrap();
+        let n = requests.len();
+        let err = b.click("try", &mut |r| serve(&mut requests, r)).unwrap_err();
+        assert!(err.message.contains("fill out"), "{}", err.message);
+        assert_eq!(requests.len(), n);
+        assert!(b.scene(800, 600).nodes.iter().any(|n| n.semantic.as_ref().is_some_and(|s| s.role == "status")));
+    }
+
+    #[test]
+    fn post_forms_send_a_body_and_typing_edits_the_focused_control() {
+        let (mut b, mut requests) = browser();
+        b.click("m", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.tab().focused.as_deref(), Some("m"));
+        b.text("hello").unwrap();
+        b.key("Backspace", &mut |r| serve(&mut requests, r)).unwrap();
+        b.key("Home", &mut |r| serve(&mut requests, r)).unwrap();
+        b.text("say ").unwrap();
+        assert_eq!(b.tab().fields["m"], "say hell");
+        b.click("send", &mut |r| serve(&mut requests, r)).unwrap();
+        let post = requests.last().unwrap();
+        assert_eq!((post.method.as_str(), post.url.as_str()), ("POST", "http://site.test/post"));
+        let body = String::from_utf8_lossy(&post.body);
+        let boundary = post.header("content-type").unwrap().split("boundary=").nth(1).unwrap().to_owned();
+        assert!(body.starts_with(&format!("--{boundary}\r\nContent-Disposition: form-data; name=\"m\"\r\n\r\nsay hell\r\n")), "{body}");
+        assert!(body.contains("name=\"notes\"\r\n\r\na\r\nb\r\n"), "{body}");
+        assert!(body.contains("name=\"h\"\r\n\r\n1\r\n"), "{body}");
+        assert!(body.contains("name=\"send\"\r\n\r\nyes\r\n"), "{body}");
+        assert!(body.ends_with(&format!("--{boundary}--\r\n")));
+        assert_eq!(b.title().as_deref(), Some("Posted"));
+    }
+
+    #[test]
+    fn tab_walks_the_focus_order_and_space_activates() {
+        let mut requests = vec![];
+        let mut b = BrowserState::default();
+        b.navigate("http://site.test/tabs", &mut |r| serve(&mut requests, r)).unwrap();
+        let mut order = vec![];
+        for _ in 0..5 {
+            b.key("Tab", &mut |r| serve(&mut requests, r)).unwrap();
+            order.push(b.tab().focused.clone().unwrap());
+        }
+        assert_eq!(order, ["i2", "l1", "i1", "b1", "i2"]);
+        b.key("Shift+Tab", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.tab().focused.as_deref(), Some("b1"));
+        b.key("Escape", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.tab().focused, None);
+        let (mut b, mut requests) = browser();
+        b.click("agree", &mut |r| serve(&mut requests, r)).unwrap();
+        b.key(" ", &mut |r| serve(&mut requests, r)).unwrap();
+        let doc = b.document().unwrap();
+        assert!(!doc.is_checked(doc.node_for("agree").unwrap()));
+        b.click("next", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.title().as_deref(), Some("Second"));
+    }
+
+    #[test]
+    fn error_bodies_plain_text_and_meta_refresh() {
+        let mut requests = vec![];
+        let mut b = BrowserState::default();
+        b.navigate("http://site.test/nowhere", &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.tab().history[0].status, 404);
+        assert_eq!(b.title().as_deref(), Some("Lost"));
+        assert!(b.document().unwrap().text().contains("Lost page"));
+        b.navigate("http://site.test/plain", &mut |r| serve(&mut requests, r)).unwrap();
+        let words: Vec<String> = texts(&b.scene(400, 300)).into_iter().map(|t| t.0).collect();
+        assert!(words.iter().any(|w| w.contains("just <text>")), "{words:?}");
+        b.navigate("http://site.test/meta", &mut |r| serve(&mut requests, r)).unwrap();
+        let refresh = b.tab().history[b.tab().position].refresh.clone().unwrap();
+        assert_eq!((refresh.after_ms, refresh.url.as_str()), (2_000, "http://site.test/second"));
+        assert!(b.refresh_pending(0));
+    }
+
+    #[test]
+    fn zoom_reflows_hover_names_the_cursor_and_snapshots_round_trip() {
+        let (mut b, mut requests) = browser();
+        let before = texts(&b.scene(600, 400));
+        b.step_zoom("in").unwrap();
+        b.step_zoom("in").unwrap();
+        let after = texts(&b.scene(600, 400));
+        let size = |t: &[(String, Color, u16)]| t.iter().find(|x| x.0.contains("Welcome")).unwrap().2;
+        assert!(size(&after) > size(&before), "{} vs {}", size(&after), size(&before));
+        assert_eq!(b.document().unwrap().last_viewport(), (600, 400, 125));
+        b.step_zoom("reset").unwrap();
+        let scene = b.scene(600, 400);
+        let link = scene.nodes.iter().find(|n| n.interaction.as_deref() == Some("next")).unwrap().bounds;
+        let (lx, ly) = (link.x + 2, link.y + link.height as i32 / 2);
+        assert_eq!(b.hover_at(lx, ly, 600, 400), Some("pointer"));
+        assert_eq!(b.document().unwrap().hovered(), b.document().unwrap().node_for("next"));
+        let input = scene.nodes.iter().find(|n| n.interaction.as_deref() == Some("q")).unwrap().bounds;
+        assert_eq!(b.cursor_at(input.x + 3, input.y + input.height as i32 / 2, 600, 400), Some("text"));
+        assert_eq!(b.cursor_at(599, 399, 600, 400), Some("default"));
+        b.click_at(lx, ly, 600, 400, &mut |r| serve(&mut requests, r)).unwrap();
+        assert_eq!(b.title().as_deref(), Some("Second"));
+        b.back(&mut |r| serve(&mut requests, r)).unwrap();
+        b.fill("q", "kept").unwrap();
+        b.click("agree", &mut |r| serve(&mut requests, r)).unwrap();
+        let frame = b.scene(600, 400);
+        let restored: BrowserState = serde_json::from_slice(&serde_json::to_vec(&b).unwrap()).unwrap();
+        assert_eq!(restored, b);
+        restored.validate_assets().unwrap();
+        assert_eq!(restored.scene(600, 400), frame);
+        assert!(b.scroll_pane("page", 500, false));
+        assert_eq!(b.scene(600, 400).scrolls[0].offset, 500);
     }
 }

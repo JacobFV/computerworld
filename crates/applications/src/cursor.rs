@@ -34,6 +34,22 @@ impl CursorKind {
             Self::Crosshair => "crosshair",
         }
     }
+    /// The shape a CSS cursor name asks for; names this shell has no glyph for
+    /// (`wait`, `help`, `move`) fall back to the arrow.
+    pub fn from_css(name: &str) -> Self {
+        match name {
+            "text" | "vertical-text" => Self::Text,
+            "pointer" => Self::Pointer,
+            "ns-resize" | "row-resize" | "n-resize" | "s-resize" => Self::NsResize,
+            "ew-resize" | "col-resize" | "e-resize" | "w-resize" => Self::EwResize,
+            "nesw-resize" | "ne-resize" | "sw-resize" => Self::NeswResize,
+            "nwse-resize" | "nw-resize" | "se-resize" => Self::NwseResize,
+            "grab" => Self::Grab,
+            "grabbing" => Self::Grabbing,
+            "crosshair" => Self::Crosshair,
+            _ => Self::Default,
+        }
+    }
     /// The shape an interaction target asks for; `captured` while a drag of it is under
     /// way. A resize handle names its edge, a title bar is grabbed, a canvas takes aim,
     /// text is edited, and everything else that reacts to a click is a pointer.

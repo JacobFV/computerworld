@@ -36,6 +36,10 @@ pub struct MachineSession {
     pub touch_start: Option<(i32, i32)>,
     #[serde(default)]
     pub pointer_position: Option<(i32, i32)>,
+    /// The CSS cursor the HTML document under the pointer asked for, so the pointer
+    /// painted into the frame agrees with the hint the move action returned.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pointer_cursor: Option<String>,
     /// Press identity remains stable even if focusing changes the taskbar action.
     #[serde(default)]
     pub pointer_press: Option<(String, cw_scene::Rect)>,
@@ -98,6 +102,7 @@ impl Default for MachineSession {
             address_focused: false,
             touch_start: None,
             pointer_position: None,
+            pointer_cursor: None,
             pointer_press: None,
             touch_scroll: None,
             viewport: None,
@@ -395,7 +400,7 @@ impl Environment {
                         machine,
                     )?)?,
                     "browser.v1" => {
-                        json!({"page":machine.browser.page(),"url":machine.browser.url(),"fields":machine.browser.tab().fields})
+                        json!({"page":machine.browser.current_page(),"url":machine.browser.url(),"fields":machine.browser.tab().fields})
                     }
                     "filesystem.v1" => {
                         let c = self.runtime.computer(id)?;
@@ -1461,6 +1466,10 @@ impl Environment {
                             return Ok(json!({"cursor":cursor}));
                         }
                     }
+                    if let Some(cursor) = self.browser_hover(id, machine, &scene, x, y)? {
+                        return Ok(json!({"cursor":cursor}));
+                    }
+                    self.machine_mut(id, machine)?.pointer_cursor = None;
                     let cursor = scene
                         .hit_test(x, y)
                         .and_then(|n| n.interaction.as_deref())
@@ -1833,9 +1842,54 @@ impl Environment {
             else {
                 continue;
             };
-            return self.set_pane_offset(id, machine, window, &pane, next);
+            let horizontal = area.horizontal;
+            return self.set_pane_offset(id, machine, window, &pane, next, horizontal);
         }
         Ok(false)
+    }
+    /// The pointer moved to `(x, y)` over a browser window showing an HTML document:
+    /// the document's `:hover` follows it and its computed `cursor` names the pointer
+    /// shape. `None` when the point is not over such a document.
+    fn browser_hover(
+        &mut self,
+        id: &str,
+        machine: &str,
+        scene: &cw_scene::Scene,
+        x: i32,
+        y: i32,
+    ) -> Result<Option<String>> {
+        let hit_window = scene
+            .hit_test(x, y)
+            .and_then(|n| n.interaction.as_deref())
+            .and_then(cw_scene::window_of);
+        let Some((window, bounds)) = scene.scrolls_at(None, x, y).into_iter().find_map(|a| {
+            let (prefix, pane) = a.target.split_once(":content:pane:")?;
+            let window: u64 = prefix.strip_prefix("window:")?.parse().ok()?;
+            (pane == "page" && (hit_window.is_none() || hit_window == Some(window))).then_some((window, a.bounds))
+        }) else {
+            return Ok(None);
+        };
+        let m = self.machine_mut(id, machine)?;
+        if !matches!(
+            m.desktop.windows.get(&window).map(|w| &w.state),
+            Some(AppState::Browser { .. })
+        ) {
+            return Ok(None);
+        }
+        let browser = if m.active_browser_window == Some(window) {
+            &mut m.browser
+        } else if let Some(state) = m.browser_windows.get_mut(&window) {
+            state
+        } else {
+            &mut m.browser
+        };
+        let cursor = browser
+            .hover_at(x - bounds.x, y - bounds.y, bounds.width, bounds.height)
+            .map(|css| CursorKind::from_css(css).css_name().to_owned());
+        if cursor.is_some() {
+            m.pointer_cursor = cursor.clone();
+        }
+        Ok(cursor)
     }
     /// Refresh every browser page on `machine` whose `refresh` is due (see
     /// `cw_browser::BrowserState::refresh`). A failed refresh keeps the page it had.
@@ -1888,29 +1942,22 @@ impl Environment {
         window: u64,
         pane: &str,
         offset: i32,
+        horizontal: bool,
     ) -> Result<bool> {
         let m = self.machine_mut(id, machine)?;
         let browser = matches!(
             m.desktop.windows.get(&window).map(|w| &w.state),
             Some(AppState::Browser { .. })
         );
-        if browser && (pane == "page" || pane.starts_with("row:")) {
-            let tab = if m.active_browser_window == Some(window) {
-                m.browser.tab_mut()
+        if browser {
+            let state = if m.active_browser_window == Some(window) {
+                &mut m.browser
             } else if let Some(state) = m.browser_windows.get_mut(&window) {
-                state.tab_mut()
+                state
             } else {
-                m.browser.tab_mut()
+                &mut m.browser
             };
-            let moved = match pane.strip_prefix("row:") {
-                // A shelf on the page that scrolls sideways.
-                Some(row) => tab.scroll_x.insert(row.to_owned(), offset) != Some(offset),
-                None => {
-                    let moved = tab.scroll_y != offset;
-                    tab.scroll_y = offset;
-                    moved
-                }
-            };
+            let moved = state.scroll_pane(pane, offset, horizontal);
             m.scrolled |= moved;
             return Ok(moved);
         }
@@ -2118,7 +2165,7 @@ impl Environment {
                 // top it comes down after the finger; pushed up at the end, it goes up.
                 let stretch =
                     -cw_applications::desktop_scene::scroll::rubber_band(raw - offset, drag.height);
-                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset)?;
+                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset, false)?;
                 self.set_stretch(id, machine, drag.window, &pane, stretch);
                 Ok(moved)
             }
@@ -2196,7 +2243,7 @@ impl Environment {
                 let raw = drag.origin + (drag.anchor - y) - fling;
                 let offset = raw.clamp(0, drag.max.max(0));
                 self.set_stretch(id, machine, drag.window, &pane, 0);
-                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset)?;
+                let moved = self.set_pane_offset(id, machine, drag.window, &pane, offset, false)?;
                 if let Some(target) = refresh {
                     let actor = self.session(id)?.config.actor.clone();
                     let effects = self
@@ -2312,16 +2359,23 @@ impl Environment {
                         .unwrap_or(0)
                         .clamp(0, i32::MAX as i64) as i32
                 };
-                // `{"row": id, "x": n}` scrolls one of the page's sideways shelves.
-                match a.payload.get("row").and_then(Value::as_str) {
-                    Some(row) => {
+                // `{"row": id, "x": n}` scrolls one of the page's sideways shelves (or
+                // an HTML scroll container sideways); `{"pane": id, "y": n}` an HTML
+                // scroll container down; plain `{"y": n}` the page itself.
+                let row = a.payload.get("row").and_then(Value::as_str);
+                let pane = a.payload.get("pane").and_then(Value::as_str);
+                match (row, pane) {
+                    (Some(row), _) => {
                         machine
                             .browser
-                            .tab_mut()
-                            .scroll_x
-                            .insert(row.to_owned(), to("x"));
+                            .scroll_pane(&format!("row:{row}"), to("x"), true);
                     }
-                    None => machine.browser.tab_mut().scroll_y = to("y"),
+                    (None, Some(pane)) => {
+                        machine.browser.scroll_pane(pane, to("y"), false);
+                    }
+                    (None, None) => {
+                        machine.browser.scroll_pane("page", to("y"), false);
+                    }
                 }
             }
             "submit" => machine
@@ -2329,7 +2383,7 @@ impl Environment {
                 .submit(string(&a.payload, "id")?, &mut http)?,
             "click" => {
                 let target = string(&a.payload, "id")?;
-                if page_has_input(machine.browser.page(), target) {
+                if machine.browser.has_input(target) {
                     machine.focused_input = Some(target.into());
                     machine.browser.click(target, &mut http)?;
                 } else {
@@ -3653,7 +3707,7 @@ impl Environment {
                         };
                         (
                             browser.url().unwrap_or(address).to_owned(),
-                            browser.page().map(|p| p.title.clone()).unwrap_or_default(),
+                            browser.title().unwrap_or_default(),
                             false,
                         )
                     }
@@ -3691,8 +3745,8 @@ impl Environment {
                                 .tabs
                                 .iter()
                                 .map(|tab| match tab.history.get(tab.position) {
-                                    Some(entry) if !entry.page.title.is_empty() => {
-                                        entry.page.title.clone()
+                                    Some(entry) if !entry.title().is_empty() => {
+                                        entry.title().to_owned()
                                     }
                                     _ => "New tab".into(),
                                 })
@@ -3866,6 +3920,7 @@ impl Environment {
                     panel: m.desktop.panel.clone(),
                     search: m.desktop.search.clone(),
                     hover: m.pointer_position,
+                    cursor: m.pointer_cursor.as_deref().map(CursorKind::from_css),
                     desktop_selection: m.desktop.desktop_selection.clone(),
                     settings: m.desktop.settings,
                     screen: m.desktop.screen,
@@ -3943,19 +3998,6 @@ impl Environment {
         Ok(scene)
     }
 }
-fn page_has_input(page: Option<&Page>, id: &str) -> bool {
-    fn scan(elements: &[PageElement], id: &str) -> bool {
-        elements.iter().any(|e| match e {
-            PageElement::Input { id: i, .. } => i == id,
-            PageElement::Form { children, .. } | PageElement::Group { children, .. } => {
-                scan(children, id)
-            }
-            _ => false,
-        })
-    }
-    page.is_some_and(|p| scan(&p.elements, id))
-}
-
 fn active_page(m: &MachineSession) -> Page {
     if let Some(page) = &m.custom_page {
         return page.clone();
@@ -3963,8 +4005,8 @@ fn active_page(m: &MachineSession) -> Page {
     if m.browser_visible {
         let mut page = m
             .browser
-            .page()
-            .cloned()
+            .current_page()
+            .map(std::borrow::Cow::into_owned)
             .unwrap_or_else(|| Page::new("Browser"));
         fn fields(elements: &mut [PageElement], values: &BTreeMap<String, String>) {
             for element in elements {
