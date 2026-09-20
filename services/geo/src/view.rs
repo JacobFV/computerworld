@@ -14,10 +14,16 @@
 //! `-name`, `-addr`, `-kind`, `-rating` inside), `place-*`, `save-form`, `place-dir`,
 //! `note-form`, `note-<n>`, `mode-<mode>`, `step-<n>`, `dir-to-place`, `alert-<n>`
 //! (`alert-<n>-ack`), `now-*`, `d-<n>-*`, `wx-today`, `wx-ten`, `locations-form`,
-//! `units-form`, `wx-place`, `foot`.
+//! `units-form`, `wx-place`, `foot`, and the place page's `zoom-in` / `zoom-out`.
+//!
+//! Nothing here is drawn as pressable unless it is: the map's `+` and `−` are links to
+//! this page at the next zoom level and disappear into plain furniture at the ends of the
+//! range, and the app launcher, the account menu and the layer and locate buttons the real
+//! sites hang off their maps are not drawn at all, because this world has nothing behind
+//! them. A tab that leads back to the page it is on says so with `aria-current="page"`.
 use crate::{
     coord, distance_label, duration_label, encode, stars, temp, Day, Forecast, GeoState, Place, Route,
-    MAP_ZOOM_DEFAULT, TRAVEL,
+    MAP_ZOOM_MAX, TRAVEL,
 };
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common as web;
@@ -101,7 +107,6 @@ impl<'a> Chrome<'a> {
         form("hdr-search", "/search", "get")
             .class("search")
             .attr("role", "search")
-            .child(span("burger").attr("aria-hidden", "true").child(el("i")))
             .child(
                 text_input("hdr-q", "q", query)
                     .attr("aria-label", label)
@@ -116,11 +121,14 @@ impl<'a> Chrome<'a> {
                     .child(span("word").text(if self.skin == "osm" { "Go" } else { "Search" })),
             )
     }
+    /// A tab in the site's nav. The current one still links to itself, the way every real
+    /// tab strip does, and says so with `aria-current` so the agent is not misled.
     fn nav_link(id: &str, url: String, label: &str, icon: &str, on: bool) -> Node {
         el("a")
             .id(id)
             .class(if on { "nav on" } else { "nav" })
             .attr("href", url)
+            .when(on, |n| n.attr("aria-current", "page"))
             .child(span(&format!("ico ico-{icon}")).attr("aria-hidden", "true"))
             .child(span("lbl").text(label))
     }
@@ -152,20 +160,23 @@ impl<'a> Chrome<'a> {
         kinds.dedup();
         let chips = if self.skin == "gmaps" {
             div("chips").id("chips").each(kinds.iter().take(7).enumerate(), |(i, kind)| {
+                let on = query.eq_ignore_ascii_case(kind);
                 el("a")
                     .id(format!("chip-{i}"))
-                    .class("chip")
+                    .class(if on { "chip on" } else { "chip" })
                     .attr("href", href("/search", &[("q", kind)]))
+                    .when(on, |n| n.attr("aria-current", "page"))
                     .child(span(&format!("dot k-{kind}")).attr("aria-hidden", "true"))
                     .child(span("lbl").text(plural(kind)))
             })
         } else {
             empty()
         };
+        // Who is signed in, as an initial. The real sites hang an app launcher and an
+        // account menu off it; neither exists in this world, so neither is drawn.
         let initial = self.actor.chars().next().map(|c| c.to_ascii_uppercase().to_string()).unwrap_or_default();
         let account = div("account")
             .attr("aria-hidden", "true")
-            .child(span("apps").each(0..9, |_| el("i")))
             .child(span("avatar").text(initial));
         let top = el("header").id("chrome").class("top");
         if self.skin == "weather" {
@@ -181,27 +192,41 @@ impl<'a> Chrome<'a> {
         }
         top.child(brand).child(self.search(query)).child(nav).child(chips).child(account)
     }
-    /// The map behind (Google) or beside (OpenStreetMap) the panel, and its furniture.
-    fn map(&self, id: &str, alt: &str, query: &str) -> Node {
+    /// The map behind (Google) or beside (OpenStreetMap) the panel.
+    ///
+    /// `zoom` is the level the image is drawn at and the path the `+` and `−` controls
+    /// step through; they are real links to the same page at the next level, and at the
+    /// end of the range the control is drawn as plain furniture rather than as a link
+    /// that would only redraw the picture it is already showing. A page whose frame is
+    /// fixed by its data — every place at once, or both ends of a route — has no level
+    /// to step, so it draws no zoom control at all.
+    fn map(&self, id: &str, alt: &str, query: &str, zoom: Option<(u32, String)>) -> Node {
         let (w, h) = map_size(self.skin);
-        div("map")
-            .id("map")
-            .child(
-                el("img")
-                    .id(id)
-                    .attr("src", format!("/map.rgba?w={w}&h={h}{query}"))
-                    .attr("alt", alt)
-                    .attr("width", w.to_string())
-                    .attr("height", h.to_string()),
-            )
-            .child(
-                div("controls")
-                    .attr("aria-hidden", "true")
-                    .child(span("ctl plus").text("+"))
-                    .child(span("ctl minus").text("−"))
-                    .child(span("ctl locate").child(el("i")))
-                    .child(span("ctl layers").child(el("i"))),
-            )
+        let picture = div("map").id("map").child(
+            el("img")
+                .id(id)
+                .attr("src", format!("/map.rgba?w={w}&h={h}{query}"))
+                .attr("alt", alt)
+                .attr("width", w.to_string())
+                .attr("height", h.to_string()),
+        );
+        let Some((level, base)) = zoom else {
+            return picture;
+        };
+        let step = |id: &str, class: &str, label: &str, glyph: &str, to: Option<u32>| match to {
+            Some(level) => el("a")
+                .id(id)
+                .class(&format!("ctl {class}"))
+                .attr("href", href(&base, &[("zoom", &level.to_string())]))
+                .attr("aria-label", label)
+                .text(glyph),
+            None => span(&format!("ctl {class} off")).attr("aria-hidden", "true").text(glyph),
+        };
+        picture.child(
+            div("controls")
+                .child(step("zoom-in", "plus", "Zoom in", "+", (level < MAP_ZOOM_MAX).then(|| level + 1)))
+                .child(step("zoom-out", "minus", "Zoom out", "−", level.checked_sub(1))),
+        )
     }
     fn footer(&self) -> Node {
         el("footer").id("foot").class("foot").text(
@@ -285,7 +310,9 @@ fn city_card(id: &str, f: &Forecast, imperial: bool) -> Node {
         .child(span("name").id(format!("{id}-city")).text(f.city.as_str()))
         .child(span("now").id(format!("{id}-now")).text(format!("{} · {}", temp(f.now_f, imperial), f.cond)))
 }
-fn dir_form(id: &str, prefix: &str, from: &str, mode_label: &str, submit: &str) -> Node {
+/// The two ends and the travel mode, as a GET form, so the route's URL is the question.
+/// Whatever was already typed comes back in the fields rather than being thrown away.
+fn dir_form(id: &str, prefix: &str, from: &str, to: &str, mode: &str, mode_label: &str, submit: &str) -> Node {
     let field = |name: &str, label: &str, value: &str, dot: &str| {
         let fid = format!("{prefix}-{name}");
         div("field")
@@ -296,9 +323,30 @@ fn dir_form(id: &str, prefix: &str, from: &str, mode_label: &str, submit: &str) 
     form(id, "/maps/dir", "get")
         .class("dirform")
         .child(field("from", "From (place id)", from, "start"))
-        .child(field("to", "To (place id)", "", "end"))
-        .child(field("mode", mode_label, "driving", "how"))
+        .child(field("to", "To (place id)", to, "end"))
+        .child(field("mode", mode_label, mode, "how"))
         .child(button(&format!("{id}-go"), submit).class("primary"))
+}
+
+/// What the mode field is called where there is room to name the four modes; the place
+/// panel, which has less, just says "Mode".
+const MODE_LABEL: &str = "Mode (driving, transit, cycling, walking)";
+
+/// `/maps/dir` with an end still blank. The form's own action has to lead somewhere a
+/// person can act, so it leads back to the form with what was filled in kept, rather than
+/// to an error page.
+pub(crate) fn directions_prompt(s: &GeoState, actor: &str, from: &str, to: &str, mode: &str) -> Result<HttpResponse> {
+    let c = Chrome::new(s, actor);
+    let panel = vec![
+        el("h1").id("title").class("title").text("Directions"),
+        el("p").id("dir-hint").class("hint").text(
+            "Name both ends to see the route. A place id is the last part of its address, \
+             which every place page shows.",
+        ),
+        el("section").class("block").child(dir_form("dir-form", "dir", from, to, mode, MODE_LABEL, "Directions")),
+    ];
+    let map = c.map("map-tile", "Map of every place", "", None);
+    c.maps_page("Directions", "dir", "", map, panel)
 }
 
 pub(crate) fn maps_home(s: &GeoState, actor: &str) -> Result<HttpResponse> {
@@ -312,7 +360,9 @@ pub(crate) fn maps_home(s: &GeoState, actor: &str) -> Result<HttpResponse> {
             "dir-form",
             "dir",
             saved.first().map_or("", String::as_str),
-            "Mode (driving, transit, cycling, walking)",
+            "",
+            "driving",
+            MODE_LABEL,
             "Directions",
         )),
     ];
@@ -340,7 +390,7 @@ pub(crate) fn maps_home(s: &GeoState, actor: &str) -> Result<HttpResponse> {
     // one, at the widest zoom. With no places at all it is the empty world.
     let centre = saved_places.first().map(|p| p.id.as_str()).or_else(|| s.places.keys().next().map(String::as_str));
     let view = centre.map_or(String::new(), |id| format!("&center={}&zoom=0", encode(id)));
-    let map = c.map("home-tile", "Map of every place · pick one below", &view);
+    let map = c.map("home-tile", "Map of every place · pick one below", &view, None);
     c.maps_page(&s.brand, "home", "", map, panel)
 }
 
@@ -369,21 +419,25 @@ pub(crate) fn saved_page(s: &GeoState, actor: &str) -> Result<HttpResponse> {
             })
         },
     ];
-    let map = c.map("map-tile", "Map of every place", "");
+    let map = c.map("map-tile", "Map of every place", "", None);
     c.maps_page("Your places", "saved", "", map, panel)
 }
 
-pub(crate) fn place_page(s: &GeoState, actor: &str, id: &str) -> Result<HttpResponse> {
+/// `zoom` is the level the map is framed at, which `?zoom=` on this page's own URL sets
+/// and the `+` and `−` controls step; out of range it falls back to the default.
+pub(crate) fn place_page(s: &GeoState, actor: &str, id: &str, zoom: u32) -> Result<HttpResponse> {
     let place = match s.place(id) {
         Ok(v) => v,
         Err(e) => return web::error(404, e),
     };
     let c = Chrome::new(s, actor);
     let saved = s.saved_of(actor).iter().any(|x| x == id);
+    let zoom = zoom.min(MAP_ZOOM_MAX);
     let map = c.map(
         "place-tile",
         &format!("{} · {}, {}", place.name, coord(place.lat), coord(place.lon)),
-        &format!("&center={id}&zoom={MAP_ZOOM_DEFAULT}&sel={id}", id = encode(&place.id)),
+        &format!("&center={id}&zoom={zoom}&sel={id}", id = encode(&place.id)),
+        Some((zoom, format!("/maps/place/{}", encode(&place.id)))),
     );
     let fact = |fid: &str, ico: &str, body: Node| div("fact").child(span(&format!("ico ico-{ico}")).attr("aria-hidden", "true")).child(body.id(fid));
     let mut facts = div("facts")
@@ -441,6 +495,8 @@ pub(crate) fn place_page(s: &GeoState, actor: &str, id: &str) -> Result<HttpResp
             "place-dir",
             "place-dir",
             id,
+            "",
+            "driving",
             "Mode",
             "Get directions",
         )),
@@ -493,7 +549,7 @@ pub(crate) fn notes_page(s: &GeoState, actor: &str) -> Result<HttpResponse> {
                 )
         }),
     ];
-    let map = c.map("map-tile", "Map of every place", "");
+    let map = c.map("map-tile", "Map of every place", "", None);
     c.maps_page("Map notes", "notes", "", map, panel)
 }
 
@@ -511,6 +567,7 @@ pub(crate) fn directions_page(s: &GeoState, actor: &str, route: &Route) -> Resul
             encode(&route.mode),
             encode(&route.to)
         ),
+        None,
     );
     let last = route.steps.len().saturating_sub(1);
     let panel = vec![
@@ -520,6 +577,7 @@ pub(crate) fn directions_page(s: &GeoState, actor: &str, route: &Route) -> Resul
                     .id(format!("mode-{mode}"))
                     .class(if *mode == route.mode { "mode on" } else { "mode" })
                     .attr("href", format!("/maps/dir?from={}&to={}&mode={mode}", route.from, route.to))
+                    .when(*mode == route.mode, |n| n.attr("aria-current", "page"))
                     .child(span(&format!("ico ico-{mode}")).attr("aria-hidden", "true"))
                     .child(span("lbl").text(*label))
             }))
@@ -556,7 +614,7 @@ pub(crate) fn search_page(s: &GeoState, actor: &str, q: &str) -> Result<HttpResp
             if hits.is_empty() { el("p").id("empty").class("hint").text("No places matched.") } else { empty() },
             div("list").id("results").each(hits.iter().enumerate(), |(i, p)| place_card(&format!("r-{i}"), p)),
         ];
-        let map = c.map("map-tile", "Map of every place", "");
+        let map = c.map("map-tile", "Map of every place", "", None);
         return c.maps_page("Search", "search", q, map, panel);
     }
     let hits = s.find_cities(q);
@@ -615,6 +673,12 @@ fn day_card(id: &str, d: &Day, imperial: bool, first: bool) -> Node {
 }
 
 pub(crate) fn weather_page(s: &GeoState, actor: &str, city: &str, ten: bool) -> Result<HttpResponse> {
+    weather_view(s, actor, city, ten, false)
+}
+/// `home` is the bare `/`, which shows the same forecast as the Today page but at its own
+/// address: the Home tab is the one you are standing on there, and the Today and 10 day
+/// pills lead somewhere you are not, so neither is marked as the page you are reading.
+fn weather_view(s: &GeoState, actor: &str, city: &str, ten: bool, home: bool) -> Result<HttpResponse> {
     let f = match s.forecast(city) {
         Ok(v) => v,
         Err(e) => return web::error(404, e),
@@ -722,8 +786,16 @@ pub(crate) fn weather_page(s: &GeoState, actor: &str, city: &str, ten: bool) -> 
             .child(
                 div("pills")
                     .id("wx-nav")
-                    .child(link("wx-today", format!("/weather/today/l/{city}"), "Today").class(if ten { "pill" } else { "pill on" }))
-                    .child(link("wx-ten", format!("/weather/tenday/l/{city}"), "10 day").class(if ten { "pill on" } else { "pill" })),
+                    .child(
+                        link("wx-today", format!("/weather/today/l/{city}"), "Today")
+                            .class(if !ten && !home { "pill on" } else { "pill" })
+                            .when(!ten && !home, |n| n.attr("aria-current", "page")),
+                    )
+                    .child(
+                        link("wx-ten", format!("/weather/tenday/l/{city}"), "10 day")
+                            .class(if ten { "pill on" } else { "pill" })
+                            .when(ten, |n| n.attr("aria-current", "page")),
+                    ),
             ),
     );
     let side =
@@ -741,7 +813,12 @@ pub(crate) fn weather_page(s: &GeoState, actor: &str, city: &str, ten: bool) -> 
                 link("wx-place", format!("/maps/place/{}", place.id), format!("{} on the map", place.name)).class("more")
             }));
     main.push(div("cols").child(div("col-main").children(cards)).child(el("aside").class("col-side").child(side)));
-    c.weather_doc(&format!("{} weather", f.city), if ten { "tenday" } else { "today" }, "", main)
+    let page = match (home, ten) {
+        (true, _) => "home",
+        (false, true) => "tenday",
+        (false, false) => "today",
+    };
+    c.weather_doc(&format!("{} weather", f.city), page, "", main)
 }
 
 pub(crate) fn weather_home(s: &GeoState, actor: &str) -> Result<HttpResponse> {
@@ -754,6 +831,6 @@ pub(crate) fn weather_home(s: &GeoState, actor: &str) -> Result<HttpResponse> {
             .child(el("p").id("empty").class("hint").text("No locations are seeded."))];
         return c.weather_doc(&s.brand, "home", "", main);
     }
-    weather_page(s, actor, &city, false)
+    weather_view(s, actor, &city, false, true)
 }
 

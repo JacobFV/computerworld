@@ -317,10 +317,19 @@ impl Service for DiscordService {
             tick: c.tick.saturating_add(HISTORY),
             // The member list is open unless `?members=0` closes it.
             members: web::query(r, "members").is_none_or(|v| v != "0"),
+            reply_to: web::query(r, "reply_to").filter(|v| !v.is_empty()),
         };
         if method == "GET" {
             return match parts.as_slice() {
                 [""] | ["channels"] if !api => page::server(&s, &c.actor, None, &view),
+                // The header's search box: every message of a visible channel that
+                // holds the query.
+                ["search"] if !api => page::search(
+                    &s,
+                    &c.actor,
+                    &web::query(r, "q").unwrap_or_default(),
+                    &view,
+                ),
                 ["channels"] => HttpResponse::json(
                     200,
                     &s.visible(&c.actor)

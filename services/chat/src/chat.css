@@ -61,6 +61,7 @@ body {
 .nav-row .mark { flex: 0 0 14px; width: 14px; color: #8b929b; text-align: center; }
 .nav-row.current .mark { color: #4f46e5; }
 .nav-row .label { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.nav-empty { margin: 2px 0 0 0; padding: 4px 8px; font-size: 12px; color: #8b929b; }
 .dm-new { display: flex; gap: 6px; margin: 6px 0 0 0; padding: 0 8px; }
 .dm-new input {
   flex: 1;
@@ -154,10 +155,13 @@ body {
   border-left: 3px solid #c9cdf5;
   font-size: 12px;
   color: #7a828c;
+  text-decoration: none;
 }
+.quote:hover { border-left-color: #4f46e5; color: #3d444d; }
 .quote-author { font-weight: 600; }
 .quote-text { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.given { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
 .reaction {
   display: inline-flex;
   align-items: center;
@@ -167,9 +171,12 @@ body {
   border: 1px solid #c9cdf5;
   border-radius: 11px;
   background: #eef0fe;
+  font-family: inherit;
   font-size: 12px;
   color: #3730a3;
+  cursor: pointer;
 }
+.reaction:hover { border-color: #4f46e5; background: #e0e1fb; }
 .reaction-count { font-weight: 600; }
 .react { display: flex; gap: 3px; margin: 0; }
 .react input {

@@ -1,5 +1,10 @@
 //! Shared wire helpers, without service domain semantics. `html` is the template
-//! layer for services that answer with `text/html`.
+//! layer for services that answer with `text/html`, and `audit` is the dead-control
+//! check a service's tests run over what that layer emitted.
+/// Dead-control auditing for a service's tests. Needs the engine, so it rides the
+/// same `validate` feature `html::validate_strict` does.
+#[cfg(any(test, feature = "validate"))]
+pub mod audit;
 pub mod html;
 use cw_protocol::{
     HttpRequest, HttpResponse, Page, PageAction, PageElement, PageTheme, Result, SimError, Style,

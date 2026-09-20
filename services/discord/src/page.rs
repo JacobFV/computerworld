@@ -4,12 +4,22 @@
 //! showing whoever is in them over the user panel, the open channel in the middle (a
 //! header, an inner scrolling transcript grouped by author under date dividers, replies
 //! drawn as Discord's reply line, reactions as pill chips, the composer at the bottom)
-//! and the member list grouped by role on the right. The look is `discord.css`; the
-//! whole rendering lives here, apart from the state and the routes.
+//! and the member list grouped by role on the right, plus the page the header's search
+//! box leads to. The look is `discord.css`; the whole rendering lives here, apart from
+//! the state and the routes.
+//!
+//! Everything drawn here that looks like a control is one. What Discord's client does
+//! with a script — the emoji picker, attach, gift, GIF and sticker, mute and deafen,
+//! add-a-server, threads, notifications, pins, the inbox — is not drawn at all rather
+//! than drawn dead, and the marks that are left (chevrons, hashes, locks, presence
+//! dots) carry no name that promises an action. `tests/controls.rs` crawls every page
+//! kind to keep it so.
 use crate::{time, DiscordState, Message, TextChannel};
 use cw_protocol::{HttpResponse, Result as SimResult};
 use cw_service_common as web;
-use cw_service_common::html::{self, a, button, div, el, form, span, text, text_input, Document, Html};
+use cw_service_common::html::{
+    self, a, button, div, el, form, hidden, span, text, text_input, Document, Html,
+};
 
 const CSS: &str = include_str!("discord.css");
 const BRAND: &str = "Discord";
@@ -21,12 +31,16 @@ pub struct View {
     pub tick: u64,
     /// The member list on the right, open unless `?members=0` closes it.
     pub members: bool,
+    /// `?reply_to=<message id>`: the composer answers that message, as Discord's
+    /// reply bar does once you have picked one.
+    pub reply_to: Option<String>,
 }
 impl Default for View {
     fn default() -> Self {
         Self {
             tick: 0,
             members: true,
+            reply_to: None,
         }
     }
 }
@@ -121,16 +135,9 @@ fn root_style(state: &DiscordState) -> String {
     .collect::<Vec<_>>()
     .join("; ")
 }
-/// A decorative control: a glyph with an accessible name and a tooltip.
-fn glyph(id: &str, class: &str, mark: &str, label: &str) -> Html {
-    span(class)
-        .id(id)
-        .attr("role", "img")
-        .attr("aria-label", label)
-        .attr("title", label)
-        .text(mark)
-}
-/// A decorative control drawn by the sheet from three strokes (`i.a`, `i.b`, `i.c`).
+/// A picture that says something: drawn by the sheet from three strokes (`i.a`, `i.b`,
+/// `i.c`), with an accessible name and a tooltip. It is never a control, so its name
+/// says what it *is* ("Private channel"), never what pressing it would do.
 fn icon(id: &str, class: &str, label: &str) -> Html {
     span(class)
         .id(id)
@@ -138,6 +145,11 @@ fn icon(id: &str, class: &str, label: &str) -> Html {
         .attr("aria-label", label)
         .attr("title", label)
         .children([el("i").class("a"), el("i").class("b"), el("i").class("c")])
+}
+/// Pure ornament: a chevron beside a heading, a hash beside a channel name. It has no
+/// accessible name because there is nothing to press and nothing to read.
+fn mark(id: &str, class: &str, glyph: &str) -> Html {
+    span(class).id(id).attr("aria-hidden", "true").text(glyph)
 }
 fn initials(name: &str) -> String {
     name.split(|c: char| c.is_whitespace() || c == '-' || c == '_' || c == '.')
@@ -221,8 +233,9 @@ fn segment(id: &str) -> String {
 
 // ---- the rail --------------------------------------------------------------------------
 
-/// The server rail: the home button, this server's icon with the pill that marks the
-/// open one, then the add-server and explore buttons.
+/// The server rail: the home button and this server's icon with the pill that marks
+/// the open one. Discord's add-server and explore tiles are not here: this world holds
+/// one server and there is nowhere for them to lead.
 fn rail(state: &DiscordState) -> Html {
     let name = server_name(state);
     el("nav").id("rail").class("rail").attr("aria-label", "Servers").children([
@@ -241,17 +254,16 @@ fn rail(state: &DiscordState) -> Html {
                 .attr("title", name.as_str())
                 .text(initials(&name)),
         ),
-        glyph("rail-add", "server action", "+", "Add a Server"),
-        glyph("rail-explore", "server action", "\u{2726}", "Explore Discoverable Servers"),
     ])
 }
 
 // ---- the sidebar -----------------------------------------------------------------------
 
-/// A category label: the collapse chevron and the name in small capitals.
+/// A category label: the chevron that marks it open and the name in small capitals.
+/// Nothing collapses a category here, so the chevron is only a mark.
 fn category(id: &str, label: &str) -> Html {
     div("category").id(id).children([
-        glyph(&format!("{id}-chevron"), "chevron", "\u{25BE}", "Collapse category"),
+        mark(&format!("{id}-chevron"), "chevron", "\u{25BE}"),
         span("category-name").id(format!("{id}-text")).text(label.to_uppercase()),
     ])
 }
@@ -325,8 +337,9 @@ fn sidebar(state: &DiscordState, actor: &str, open: Option<&str>) -> Html {
     }
     list
 }
-/// The user panel under the sidebar: the actor's face and name, their presence, and
-/// the mute, deafen and settings buttons.
+/// The user panel under the sidebar: the actor's face and name and their presence.
+/// Discord's mute, deafen and settings buttons want a client this world does not run,
+/// so they are not drawn.
 fn user_panel(state: &DiscordState, actor: &str) -> Html {
     let name = state.display(actor);
     div("user-panel").id("user-panel").children([
@@ -335,9 +348,6 @@ fn user_panel(state: &DiscordState, actor: &str) -> Html {
             span("me-name").id("me-name").text(name.as_str()),
             span("me-status").id("me-status").child(span("").id("me-status-text").text("Online")),
         ]),
-        icon("me-mic", "tool mic", "Mute"),
-        icon("me-headset", "tool headset", "Deafen"),
-        glyph("me-settings", "tool", "\u{2699}", "User Settings"),
     ])
 }
 
@@ -501,8 +511,7 @@ fn reactions(ctx: &Ctx, m: &Message) -> Option<Html> {
                     .class(if mine { "mine" } else { "" })
                     .attr("aria-pressed", if mine { "true" } else { "false" })
                     .text(format!("{} {}", emoji(name), who.len()))
-            })
-            .child(icon(&format!("{}-react-add", m.id), "reaction add smile", "Add Reaction")),
+            }),
     )
 }
 /// Discord's reply line over a message: the spine from the avatar column, the quoted
@@ -531,20 +540,52 @@ fn reply_line(ctx: &Ctx, m: &Message, quoted: &Message) -> Html {
         span("quote-text").id(format!("{id}-quote-text")).text(line),
     ])
 }
-/// The actions Discord floats over the message under the pointer: add reaction, reply,
-/// create thread, and more. Every message carries them; the sheet shows them on hover,
-/// and on the newest message always.
-fn toolbar(m: &Message) -> Html {
-    div("tools").id(format!("{}-tools", m.id)).children([
-        icon(&format!("{}-add-reaction", m.id), "tool smile", "Add Reaction"),
-        glyph(&format!("{}-reply", m.id), "tool", "\u{21A9}", "Reply"),
-        glyph(&format!("{}-thread", m.id), "tool", "#", "Create Thread"),
-        glyph(&format!("{}-more", m.id), "tool more", "\u{2022}\u{2022}\u{2022}", "More"),
-    ])
+/// The quick reactions Discord offers over the message under the pointer, and the
+/// reply control. Each quick reaction is a submit button of the message's own
+/// reactions form; reply opens the composer on this message, and closes it again
+/// while it is already open. The emoji picker and the thread button are not here:
+/// both want a client script, and this world runs none.
+///
+/// Every message carries the bar; the sheet shows it on hover, and on the newest
+/// message always.
+fn toolbar(ctx: &Ctx, m: &Message, replying: bool) -> Html {
+    let action = format!("{}/messages/{}/reactions", ctx.url(), segment(&m.id));
+    let quick = |name: &str| {
+        let label = format!("React with {}", emoji(name));
+        el("button")
+            .id(format!("{}-quick-{name}", m.id))
+            .attr("type", "submit")
+            .attr("name", "reaction")
+            .attr("value", name)
+            .class("tool quick")
+            .attr("title", label.as_str())
+            .attr("aria-label", label)
+            .text(emoji(name))
+    };
+    let (url, label) = match replying {
+        true => (ctx.url(), "Cancel reply"),
+        false => (
+            html::href(&ctx.url(), &[("reply_to", m.id.as_str())]),
+            "Reply",
+        ),
+    };
+    form(&format!("{}-tools", m.id), action, "post")
+        .class("tools")
+        .children([
+            quick("+1"),
+            quick("eyes"),
+            quick("tada"),
+            a(url)
+                .id(format!("{}-reply", m.id))
+                .class("tool")
+                .attr("title", label)
+                .attr("aria-label", label)
+                .text("\u{21A9}"),
+        ])
 }
 /// One message: the author's avatar, name and time on the first of a run by one
 /// author, the clock alone in the gutter on the rest; the reply line over a reply.
-fn message(ctx: &Ctx, m: &Message, first: bool, newest: bool) -> Html {
+fn message(ctx: &Ctx, m: &Message, first: bool, newest: bool, replying: bool) -> Html {
     let id = &m.id;
     let quoted = m
         .reply_to
@@ -581,7 +622,7 @@ fn message(ctx: &Ctx, m: &Message, first: bool, newest: bool) -> Html {
     };
     row.child(body(ctx, id, &m.text))
         .maybe(reactions(ctx, m))
-        .child(toolbar(m))
+        .child(toolbar(ctx, m, replying))
 }
 fn day_divider(index: u64, label: String) -> Html {
     div("day")
@@ -590,7 +631,7 @@ fn day_divider(index: u64, label: String) -> Html {
         .child(span("day-label").id(format!("day-{index}-label")).text(label))
 }
 /// The transcript: messages under date dividers, runs by one author grouped.
-fn transcript(ctx: &Ctx) -> Html {
+fn transcript(ctx: &Ctx, replying: Option<&str>) -> Html {
     let messages = &ctx.channel.messages;
     // The beginning of the channel, as Discord heads every channel's history.
     let mut out = div("transcript").id("transcript").child(
@@ -619,7 +660,13 @@ fn transcript(ctx: &Ctx) -> Html {
         let first = new_day
             || previous
                 .is_none_or(|p| p.author != m.author || m.time.saturating_sub(p.time) > GROUP_US);
-        out = out.child(message(ctx, m, first, n + 1 == messages.len()));
+        out = out.child(message(
+            ctx,
+            m,
+            first,
+            n + 1 == messages.len(),
+            replying == Some(m.id.as_str()),
+        ));
         previous = Some(m);
     }
     out
@@ -627,6 +674,33 @@ fn transcript(ctx: &Ctx) -> Html {
 
 // ---- the header, the composer and the member list ----------------------------------------
 
+/// The search box in the channel header: a real GET form on `/search`, with the
+/// magnifier as its submit button. `#search-text` labels the field.
+fn search_form(query: &str) -> Html {
+    form("search", "/search", "get").class("search").children([
+        el("label")
+            .id("search-text")
+            .class("search-label")
+            .attr("for", "search-q")
+            .text("Search"),
+        text_input("search-q", "q", query)
+            .attr("aria-label", "Search")
+            .attr("placeholder", "Search")
+            .attr("autocomplete", "off"),
+        el("button")
+            .id("search-go")
+            .attr("type", "submit")
+            .class("search-icon")
+            .attr("title", "Search")
+            .attr("aria-label", "Search"),
+    ])
+}
+/// The right end of the header: the member-list toggle, when a channel is open, and
+/// the search box. Discord's threads, notifications, pins, inbox and help buttons are
+/// not drawn: none of them has anywhere to go here.
+fn head_tools(members: Option<Html>, query: &str) -> Html {
+    div("head-tools").maybe(members).child(search_form(query))
+}
 /// The channel header: `#`, the name, the topic, and the toolbar with the search box.
 fn header(ctx: &Ctx, members_open: bool) -> Html {
     let members_url = if members_open {
@@ -651,11 +725,8 @@ fn header(ctx: &Ctx, members_open: bool) -> Html {
             .child(span("topic-rule").id("channel-topic-rule").attr("aria-hidden", "true"))
             .child(span("topic").id("channel-topic").text(emojify(&ctx.channel.topic)));
     }
-    head.child(
-        div("head-tools").children([
-            glyph("channel-threads", "tool threads", "#", "Threads"),
-            icon("channel-notifications", "tool bell", "Notification Settings"),
-            icon("channel-pins", "tool pin", "Pinned Messages"),
+    head.child(head_tools(
+        Some(
             a(members_url)
                 .id("channel-members")
                 .class("tool people")
@@ -663,38 +734,48 @@ fn header(ctx: &Ctx, members_open: bool) -> Html {
                 .attr("aria-label", members_label)
                 .attr("title", members_label)
                 .children([el("i").class("a"), el("i").class("b")]),
-            div("search").id("search").children([
-                span("search-text").id("search-text").text("Search"),
-                span("search-icon").id("search-icon").attr("aria-hidden", "true"),
-            ]),
-            icon("channel-inbox", "tool inbox", "Inbox"),
-            glyph("channel-help", "tool help", "?", "Help"),
-        ]),
-    )
+        ),
+        "",
+    ))
 }
-/// The composer at the bottom of the chat: the field with its attach button and the
-/// gift, GIF, sticker and emoji buttons.
-fn composer(ctx: &Ctx) -> Html {
+/// The composer at the bottom of the chat: the field and the send button, over the
+/// reply bar while the composer is answering a message. Discord's attach, gift, GIF,
+/// sticker and emoji buttons are not drawn: each opens a picker this world cannot run.
+fn composer(ctx: &Ctx, reply_to: Option<&Message>) -> Html {
     let label = format!("Message #{}", ctx.id);
-    div("composer").id("composer").child(
-        form("send", format!("{}/messages", ctx.url()), "post").class("field").children([
-            glyph("send-attach", "attach", "+", "Upload a File or Send Invites"),
-            text_input("send-text", "text", "")
-                .attr("aria-label", label.as_str())
-                .attr("placeholder", label.as_str())
-                .attr("autocomplete", "off"),
-            div("send-actions").id("send-actions").children([
-                icon("send-gift", "tool gift", "Send a gift"),
-                span("tool gif").id("send-gif").text("GIF"),
-                icon("send-sticker", "tool sticker", "Sticker"),
-                icon("send-emoji", "tool smile", "Emoji"),
-                button("send-submit", "\u{27A4}")
-                    .class("send")
-                    .attr("aria-label", "Send Message")
-                    .attr("title", "Send Message"),
-            ]),
-        ]),
-    )
+    div("composer")
+        .id("composer")
+        .maybe(reply_to.map(|parent| {
+            div("reply-bar").id("reply-bar").children([
+                span("reply-bar-text").id("reply-bar-text").text(format!(
+                    "Replying to {}",
+                    ctx.state.display(&parent.author)
+                )),
+                a(ctx.url())
+                    .id("reply-cancel")
+                    .class("reply-cancel")
+                    .attr("title", "Cancel reply")
+                    .attr("aria-label", "Cancel reply")
+                    .text("\u{2715}"),
+            ])
+        }))
+        .child(
+            form("send", format!("{}/messages", ctx.url()), "post")
+                .class("field")
+                .maybe(reply_to.map(|parent| hidden("reply_to", &parent.id)))
+                .children([
+                    text_input("send-text", "text", "")
+                        .attr("aria-label", label.as_str())
+                        .attr("placeholder", label.as_str())
+                        .attr("autocomplete", "off"),
+                    div("send-actions").id("send-actions").child(
+                        button("send-submit", "\u{27A4}")
+                            .class("send")
+                            .attr("aria-label", "Send Message")
+                            .attr("title", "Send Message"),
+                    ),
+                ]),
+        )
 }
 /// The member list: the hoisted roles' online members under the role's name, everyone
 /// else online under "Online", and everyone offline, dimmed, under "Offline".
@@ -789,14 +870,7 @@ pub fn server(
         Some(id) => format!("#{id} \u{b7} {name}"),
         None => name.clone(),
     };
-    let side = div("side").children([
-        el("header").id("sidebar-head").class("side-head").children([
-            span("server-name").id("server-name").text(name.as_str()),
-            glyph("server-menu", "chevron", "\u{2304}", "Server menu"),
-        ]),
-        sidebar(state, actor, id),
-        user_panel(state, actor),
-    ]);
+    let side = side(state, actor, id);
     let channel_header = match &ctx {
         Some(ctx) => header(ctx, members_open),
         None => el("p").id("empty").class("empty").text(if member {
@@ -805,21 +879,50 @@ pub fn server(
             "You are not in this server."
         }),
     };
+    // The composer answers a message only while `?reply_to=` names one in this channel.
+    let replying = ctx.as_ref().and_then(|ctx| {
+        view.reply_to
+            .as_deref()
+            .and_then(|r| ctx.channel.messages.iter().find(|m| m.id == r))
+    });
     let mut chat = div("chat").child(
         el("main")
             .id("main")
             .class("scroller")
-            .maybe(ctx.as_ref().map(transcript)),
+            .maybe(ctx.as_ref().map(|ctx| transcript(ctx, replying.map(|m| m.id.as_str())))),
     );
     if let Some(ctx) = &ctx {
-        chat = chat.child(composer(ctx));
+        chat = chat.child(composer(ctx, replying));
     }
     let mut shell = div("shell").id("shell").child(chat);
     if members_open {
         shell = shell.child(members(state, actor, now));
     }
+    document(state, title, side, channel_header, shell)
+}
+
+/// The sidebar column: the server name, the channels and the user panel.
+fn side(state: &DiscordState, actor: &str, open: Option<&str>) -> Html {
+    let name = server_name(state);
+    div("side").children([
+        el("header").id("sidebar-head").class("side-head").children([
+            span("server-name").id("server-name").text(name.as_str()),
+            mark("server-menu", "chevron", "\u{2304}"),
+        ]),
+        sidebar(state, actor, open),
+        user_panel(state, actor),
+    ])
+}
+/// The page every view shares: the rail, the sidebar, the header band and the shell.
+fn document(
+    state: &DiscordState,
+    title: String,
+    side: Html,
+    head: Html,
+    shell: Html,
+) -> SimResult<HttpResponse> {
     let content = div("content").children([
-        el("header").id("header").class("top").child(channel_header),
+        el("header").id("header").class("top").child(head),
         shell,
     ]);
     let mut doc = Document::new(title)
@@ -832,6 +935,81 @@ pub fn server(
         doc = doc.root_style(&root);
     }
     html::page(&doc)
+}
+/// What the header's search box finds: every message of a channel the actor can see
+/// whose text holds the query, newest first, each one a link into its channel.
+pub fn search(
+    state: &DiscordState,
+    actor: &str,
+    query: &str,
+    view: &View,
+) -> SimResult<HttpResponse> {
+    let now = now(state, view.tick);
+    let needle = query.trim().to_lowercase();
+    let mut hits: Vec<(&str, &Message)> = Vec::new();
+    if !needle.is_empty() {
+        for id in state.visible(actor) {
+            let Ok(channel) = state.channel(actor, id) else {
+                continue;
+            };
+            for m in &channel.messages {
+                if m.text.to_lowercase().contains(&needle) {
+                    hits.push((id, m));
+                }
+            }
+        }
+        hits.sort_by(|a, b| b.1.time.cmp(&a.1.time).then(a.1.id.cmp(&b.1.id)));
+        hits.truncate(50);
+    }
+    let summary = match (needle.is_empty(), hits.len()) {
+        (true, _) => "Type in the box above to search this server".to_owned(),
+        (false, 1) => format!("1 result for \u{201c}{}\u{201d}", query.trim()),
+        (false, n) => format!("{n} results for \u{201c}{}\u{201d}", query.trim()),
+    };
+    let head = div("channel-head").id("channel-head").children([
+        el("h1").id("search-title").class("channel-title").text("Search"),
+        span("topic-rule").attr("aria-hidden", "true"),
+        span("topic").id("search-summary").text(summary),
+        head_tools(None, query),
+    ]);
+    let mut results = div("results").id("search-results");
+    for (n, (channel, m)) in hits.iter().enumerate() {
+        let id = format!("hit-{n}");
+        results = results.child(
+            a(format!(
+                "/channels/{}/{}",
+                segment(&state.server.id),
+                segment(channel)
+            ))
+            .id(id.as_str())
+            .class("hit")
+            .children([
+                div("hit-head").children([
+                    span("hit-where").id(format!("{id}-where")).text(format!("#{channel}")),
+                    span("hit-author")
+                        .id(format!("{id}-author"))
+                        .text(state.display(&m.author)),
+                    span("hit-time")
+                        .id(format!("{id}-time"))
+                        .text(time::stamp(m.time, now)),
+                ]),
+                div("hit-text").id(format!("{id}-text")).text(emojify(&m.text)),
+            ]),
+        );
+    }
+    if hits.is_empty() && !needle.is_empty() {
+        results = results.child(
+            el("p")
+                .id("search-empty")
+                .class("empty")
+                .text(format!("No message here says \u{201c}{}\u{201d}.", query.trim())),
+        );
+    }
+    let shell = div("shell")
+        .id("shell")
+        .child(div("chat").child(el("main").id("main").class("scroller").child(results)));
+    let title = format!("Search \u{b7} {}", server_name(state));
+    document(state, title, side(state, actor, None), head, shell)
 }
 
 #[cfg(test)]

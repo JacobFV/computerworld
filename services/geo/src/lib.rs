@@ -473,6 +473,9 @@ const MAP_LIMIT: (u32, u32) = (960, 480);
 /// Micro-degrees of latitude a map centred on a place spans at zoom 0; each zoom level halves it.
 const MAP_SPAN_AT_ZOOM_0: i64 = 64_000;
 pub(crate) const MAP_ZOOM_DEFAULT: u32 = 3;
+/// The tightest frame a page may ask for: 1000 micro-degrees across, about a block. The
+/// `+` control on a place page stops here, so it never offers a step it cannot take.
+pub(crate) const MAP_ZOOM_MAX: u32 = 6;
 /// `GET /map.rgba?w=&h=&center=<place>&zoom=<n>&route=<from>|<to>|<mode>&sel=<place>`: the map
 /// as a page image. A route frames both ends; otherwise `center` frames one place at `zoom`;
 /// otherwise every place is in view.
@@ -509,7 +512,7 @@ fn map_response(s: &GeoState, r: &HttpRequest) -> Result<HttpResponse> {
             .unwrap_or(world)
             .padded(25, 6_000),
         (None, Some(place)) => {
-            let zoom = number("zoom").unwrap_or(MAP_ZOOM_DEFAULT).min(8);
+            let zoom = number("zoom").unwrap_or(MAP_ZOOM_DEFAULT).min(MAP_ZOOM_MAX);
             cw_map::Bbox::centred(place.lat, place.lon, MAP_SPAN_AT_ZOOM_0 >> zoom)
         }
         (None, None) => world.padded(10, 4_000),
@@ -581,6 +584,11 @@ impl Service for GeoService {
                 let from = web::query(r, "from").unwrap_or_default();
                 let to = web::query(r, "to").unwrap_or_default();
                 let mode = web::query(r, "mode").unwrap_or_else(|| "driving".into());
+                // The form's own action, submitted before both ends are named, is a person
+                // who has not finished asking — not an error. It answers with the form.
+                if from.trim().is_empty() || to.trim().is_empty() {
+                    return view::directions_prompt(&s, &c.actor, &from, &to, &mode);
+                }
                 return match s.directions(&from, &to, &mode) {
                     Ok(route) => {
                         web::save(state, &s)?;
@@ -593,7 +601,14 @@ impl Service for GeoService {
                 [""] | ["maps"] if s.maps() => view::maps_home(&s, &c.actor),
                 [""] => view::weather_home(&s, &c.actor),
                 ["map.rgba"] if s.maps() => map_response(&s, r),
-                ["maps", "place", id] => view::place_page(&s, &c.actor, id),
+                ["maps", "place", id] => view::place_page(
+                    &s,
+                    &c.actor,
+                    id,
+                    web::query(r, "zoom")
+                        .and_then(|v| v.parse().ok())
+                        .unwrap_or(MAP_ZOOM_DEFAULT),
+                ),
                 ["maps", "saved"] => view::saved_page(&s, &c.actor),
                 ["maps", "notes"] => view::notes_page(&s, &c.actor),
                 ["search"] => {
@@ -666,7 +681,7 @@ impl Service for GeoService {
         }
         let parts: Vec<&str> = next.trim_matches('/').split('/').collect();
         match parts.as_slice() {
-            ["maps", "place", id] => view::place_page(&s, &c.actor, id),
+            ["maps", "place", id] => view::place_page(&s, &c.actor, id, MAP_ZOOM_DEFAULT),
             ["weather", "today", "l", city] => view::weather_page(&s, &c.actor, city, false),
             _ => HttpResponse::json(200, &value),
         }
@@ -955,6 +970,39 @@ mod tests {
         );
         let mut weather = init(weather_seed());
         assert_eq!(get(&mut weather, "http://weather.com/map.rgba").status, 404);
+    }
+    /// The `+` and `−` on the map are links to this page at the next zoom, not decoration:
+    /// each step reframes the picture, and at either end of the range the control stops
+    /// being a link rather than offering a step that would redraw the same view.
+    #[test]
+    fn the_map_zoom_controls_step_the_level_and_stop_at_the_ends() {
+        let mut state = init(maps_seed());
+        let url = |zoom: &str| format!("http://maps.google.com/maps/place/northstar-hq{zoom}");
+        let mid = Dom::of(&get(&mut state, &url("")));
+        assert_eq!(mid.attr("zoom-in", "href"), "/maps/place/northstar-hq?zoom=4");
+        assert_eq!(mid.attr("zoom-out", "href"), "/maps/place/northstar-hq?zoom=2");
+        assert_eq!(mid.tag("zoom-in"), "a");
+        let deeper = Dom::of(&get(&mut state, &url("?zoom=4")));
+        assert_eq!(
+            deeper.attr("place-tile", "src"),
+            "/map.rgba?w=768&h=480&center=northstar-hq&zoom=4&sel=northstar-hq"
+        );
+        // At the ends the step that cannot be taken is plain furniture with no id at all.
+        let widest = Dom::of(&get(&mut state, &url("?zoom=0")));
+        assert_eq!(widest.attr("zoom-in", "href"), "/maps/place/northstar-hq?zoom=1");
+        assert!(!widest.has("zoom-out"), "zoom 0 cannot zoom out");
+        let tightest = Dom::of(&get(&mut state, &url(&format!("?zoom={MAP_ZOOM_MAX}"))));
+        assert!(!tightest.has("zoom-in"), "the tightest frame cannot zoom in");
+        assert_eq!(
+            tightest.attr("zoom-out", "href"),
+            format!("/maps/place/northstar-hq?zoom={}", MAP_ZOOM_MAX - 1)
+        );
+        // The pages framed by their own data offer no level to step, so they draw none.
+        for path in ["/", "/maps/saved", "/maps/notes", "/search?q=cafe"] {
+            let dom = Dom::of(&get(&mut state, &format!("http://maps.google.com{path}")));
+            assert!(!dom.has("zoom-in"), "{path}");
+            assert!(!dom.has("zoom-out"), "{path}");
+        }
     }
     #[test]
     fn directions_are_integer_only_and_cached_on_first_lookup() {

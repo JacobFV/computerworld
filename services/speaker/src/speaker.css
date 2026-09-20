@@ -273,9 +273,10 @@ button.stop:hover { background-color: rgba(255, 255, 255, .14); border-color: rg
   color: var(--faint);
 }
 .rows { margin-top: 6px; }
+/* A queue row is a readout: the speaker is told what to play, so there is nothing to
+   click here and nothing lights up under the pointer. */
 .row { display: flex; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(255, 255, 255, .07); }
 .row:last-child { border-bottom: none; }
-.row:hover { background-color: rgba(255, 255, 255, .04); }
 .num { display: block; flex: none; width: 18px; font-size: 13px; color: var(--faint); }
 .qnames { min-width: 0; flex: 1; }
 .qtitle { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

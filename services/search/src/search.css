@@ -21,11 +21,13 @@ button { font-family: arial, sans-serif; cursor: pointer; }
 header.top {
   height: 60px; padding: 6px; display: flex; justify-content: flex-end; align-items: center;
 }
-header.top a.txt { font-size: 13px; line-height: 24px; color: rgba(0,0,0,.87); padding-left: 15px; }
-header.top a.apps {
+header.top .txt { font-size: 13px; line-height: 24px; color: rgba(0,0,0,.87); padding-left: 15px; }
+header.top .txt.here { color: var(--muted); }
+/* The nine-dot grid is a picture of Google's app switcher, which this world has not got,
+   so it gets no hover and no pointer: nothing happens when it is clicked. */
+header.top .apps {
   width: 40px; height: 40px; margin-left: 15px; border-radius: 50%; display: grid; place-items: center;
 }
-header.top a.apps:hover { background: rgba(60,64,67,.08); text-decoration: none; }
 .apps .dots { display: grid; grid-template-columns: repeat(3, 4px); gap: 4px; }
 .apps .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); display: block; }
 header.top a.signin {
@@ -93,16 +95,24 @@ section.list li a { color: var(--link); }
 section.list .clear { margin-top: 6px; }
 section.list .clear button { border: 0; background: transparent; color: var(--accent); font-size: 12px; padding: 4px 0; }
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tiles a, .tiles .bang {
+.tiles a {
   display: block; background: var(--surface); border-radius: 10px; padding: 10px; font-size: 13px;
   color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* A bang is typed into the box, so this list is a legend, not a row of buttons. It used to
+   share the rule above with the trending tiles, which are links: the same tile, one of them
+   clickable and one not. It is plain text now, which is what it is. */
+.tiles .bang {
+  display: block; padding: 10px 0; font-size: 13px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ------------------------------------------------------------------ footer */
 footer.band { background: var(--band); color: #70757a; margin-top: 24px; }
 footer.band .country { font-size: 15px; padding: 15px 30px; border-bottom: 1px solid var(--rule); line-height: 18px; }
 footer.band .links { display: flex; justify-content: space-between; padding: 0 20px; flex-wrap: wrap; }
-footer.band .links a { color: #70757a; font-size: 14px; padding: 15px; line-height: 18px; display: inline-block; }
+footer.band .links a, footer.band .links .here { color: #70757a; font-size: 14px; padding: 15px; line-height: 18px; display: inline-block; }
+footer.band .links .here { color: #9aa0a6; }
 
 /* ------------------------------------------------------------ results header */
 header.bar { display: flex; align-items: center; padding: 20px 20px 0 20px; height: 66px; }
@@ -111,9 +121,9 @@ header.bar .logo { font-size: 30px; line-height: 40px; width: 150px; flex: none;
 header.bar .box { width: 692px; }
 header.bar .box input { font-size: 16px; }
 nav.tabs { display: flex; padding: 0 20px 0 170px; border-bottom: 1px solid #ebebeb; margin-top: 8px; gap: 4px; }
-nav.tabs a { font-size: 13px; color: var(--muted); padding: 0 12px; line-height: 40px; display: inline-block; border-bottom: 3px solid transparent; }
-nav.tabs a:hover { color: var(--ink); text-decoration: none; }
-nav.tabs a.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+nav.tabs .tab { font-size: 13px; color: var(--muted); padding: 0 12px; line-height: 40px; display: inline-block; border-bottom: 3px solid transparent; }
+nav.tabs a.tab:hover { color: var(--ink); text-decoration: none; }
+nav.tabs .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 
 /* ------------------------------------------------------------------ results */
 main.results { flex: 1; padding: 0 20px 0 170px; max-width: 822px; }
@@ -153,8 +163,8 @@ main.results { flex: 1; padding: 0 20px 0 170px; max-width: 822px; }
 .story .snip { display: block; font-size: 13px; line-height: 19px; color: var(--muted); margin-top: 2px; }
 
 nav.pages { display: flex; align-items: center; gap: 4px; margin: 20px 0 30px 0; font-size: 14px; }
-nav.pages a { color: var(--link); padding: 6px 8px; }
-nav.pages a.on { color: var(--ink); font-weight: 700; }
+nav.pages a, nav.pages .on { color: var(--link); padding: 6px 8px; }
+nav.pages .on { color: var(--ink); font-weight: 700; }
 nav.pages .word { color: var(--link); margin: 0 8px; }
 
 /* --------------------------------------------------------- jump, lucky, about */

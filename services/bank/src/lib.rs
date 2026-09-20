@@ -587,10 +587,10 @@ mod tests {
         assert_eq!(account.attr(node(&account, "filter-q"), "value"), Some("order"));
         assert_eq!(account.tag(node(&account, "filter-go")), Some("button"));
         assert_eq!(account.attr(node(&account, "cat-shopping"), "href"), Some("/accounts/cc-3310?category=Shopping"));
-        assert_eq!(account.text_content(node(&account, "count")), "1 transaction(s)");
+        assert_eq!(account.text_content(node(&account, "count")), "1 transaction");
         node(&account, "t-tx-1");
         let none = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310?q=nothing-matches"));
-        assert_eq!(none.text_content(node(&none, "count")), "0 transaction(s)");
+        assert_eq!(none.text_content(node(&none, "count")), "0 transactions");
         assert!(none.by_id("t-tx-1").is_empty());
 
         let tx = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310/transactions/tx-1"));
@@ -608,6 +608,17 @@ mod tests {
         assert_eq!(st.text_content(node(&st, "sum-out")), "Withdrawals -$429.99");
         assert_eq!(st.text_content(node(&st, "sum-close")), "Closing balance -$482.31");
         node(&st, "sums");
+        // The period control offers only the months this account has activity in, and the
+        // one being read says so instead of pretending there is somewhere else to go.
+        assert_eq!(st.text_content(node(&st, "lead")), "Statement — Rewards Card (...3310) — Mar 2026");
+        assert_eq!(st.attr(node(&st, "stmt-all"), "href"), Some("/statements/cc-3310/all"));
+        assert_eq!(st.text_content(node(&st, "stmt-2026-03")), "Mar 2026");
+        assert_eq!(st.attr(node(&st, "stmt-2026-03"), "aria-current"), Some("page"));
+        assert_eq!(st.attr(node(&st, "stmt-all"), "aria-current"), None);
+        assert!(st.by_id("stmt-2026-01").is_empty(), "a month with nothing in it is not offered");
+        let all = dom(&get(&mut state, "http://northwind.example/statements/cc-3310/all"));
+        assert_eq!(all.text_content(node(&all, "lead")), "Statement — Rewards Card (...3310) — all activity");
+        assert_eq!(all.attr(node(&all, "stmt-all"), "aria-current"), Some("page"));
 
         let pay = dom(&get(&mut state, "http://northwind.example/transfers"));
         assert_eq!(pay.text_content(node(&pay, "lead")), "Pay & transfer");
@@ -645,7 +656,7 @@ mod tests {
         );
         let doc = dom(&moved);
         assert_eq!(doc.text_content(node(&doc, "bal")), "Balance $7,874.55");
-        assert_eq!(doc.text_content(node(&doc, "count")), "1 transaction(s)");
+        assert_eq!(doc.text_content(node(&doc, "count")), "1 transaction");
         let added = post(
             &mut state,
             "http://northwind.example/api/payees",

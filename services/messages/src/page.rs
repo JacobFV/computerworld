@@ -278,7 +278,8 @@ pub fn thread(state: &MessagesState, actor: &str, id: &str) -> SimResult<HttpRes
     let composer = form("send", format!("/conversations/{id}/messages"), "post")
         .class("composer")
         .class(service)
-        .child(span("plus").attr("title", "Apps").text("+"))
+        // No app strip, no camera, no attachments: this world runs no page script, so
+        // the composer draws only what it can do — type the text and send it.
         .child(
             div("field")
                 .child(

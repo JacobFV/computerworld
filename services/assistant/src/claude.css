@@ -39,11 +39,6 @@ body { font-family: Inter, "Helvetica Neue", Arial, sans-serif; }
 .composer .card:focus-within { box-shadow: 0 4px 24px rgba(0,0,0,.09); }
 .composer input { height: 32px; }
 .composer .tools { margin-top: 18px; }
-.composer .plus { border: 1px solid var(--rule); border-radius: 9px; margin-left: -4px; }
-.composer .plus::before, .composer .plus::after { background: var(--muted); }
-.composer .plus::before { left: 8px; top: 14px; }
-.composer .plus::after { left: 14px; top: 8px; }
-.composer .plus:hover { background: var(--hover); }
 .composer .picker { margin-right: 6px; color: var(--ink); }
 .composer .send { border-radius: 9px; background: var(--accent); }
 .composer .send:hover { opacity: .9; }

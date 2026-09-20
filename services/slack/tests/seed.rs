@@ -176,7 +176,14 @@ fn the_workspace_is_laid_out_like_slack() {
         .collect();
     assert_eq!(main_children, ["channel-header", "messages", "composer"]);
     assert!(has_class(&p, "messages", "scroller"));
+    // The top bar's search box is a real GET form on /search, labelled and submittable.
     assert_eq!(text_of(&p, "search-text"), "Search Northstar");
+    assert_eq!(tag_of(&p, "search"), "form");
+    assert_eq!(attr_of(&p, "search", "action"), "/search");
+    assert_eq!(attr_of(&p, "search", "method"), "get");
+    assert_eq!(attr_of(&p, "search-text", "for"), "search-q");
+    assert_eq!(attr_of(&p, "search-q", "name"), "q");
+    assert_eq!(form_of(&p, "search-go"), p.by_id("search")[0]);
     // The composer: one POST form with the field and the send button.
     assert_eq!(tag_of(&p, "send"), "form");
     assert_eq!(attr_of(&p, "send", "action"), "/channels/eng/messages");
@@ -186,7 +193,9 @@ fn the_workspace_is_laid_out_like_slack() {
     assert_eq!(tag_of(&p, "send-submit"), "button");
     assert_eq!(attr_of(&p, "send-submit", "aria-label"), "Send message");
     assert_eq!(form_of(&p, "send-submit"), p.by_id("send")[0]);
-    assert!(has(&p, "send-bold") && has(&p, "send-hint"));
+    // The formatting strip, the attach, emoji and mention buttons and the
+    // "Shift + Enter" hint all described a composer this world cannot run: gone.
+    assert!(!has(&p, "send-bold") && !has(&p, "send-hint") && !has(&p, "send-attach"));
     // The header: name, topic, member count opening the member list, pins.
     assert_eq!(text_of(&p, "channel-title"), "# eng");
     assert_eq!(tag_of(&p, "channel-members"), "a");
@@ -202,7 +211,12 @@ fn the_workspace_is_laid_out_like_slack() {
     assert_eq!(attr_of(&p, "dm-alice|bob|carol", "href"), "/channels/alice|bob|carol");
     assert_eq!(attr_of(&p, "rail-home", "href"), "/");
     assert_eq!(attr_of(&p, "rail-dms", "href"), "/dms");
-    assert!(has(&p, "rail-activity") && has(&p, "rail-mark"));
+    assert!(has(&p, "rail-mark"));
+    assert_eq!(attr_of(&p, "rail-activity", "href"), "/activity");
+    // Later and More named nothing here, and the add-channel, add-apps, compose and
+    // workspace-menu rows had nowhere to go.
+    assert!(!has(&p, "rail-later") && !has(&p, "rail-more"));
+    assert!(!has(&p, "add-channel") && !has(&p, "add-apps") && !has(&p, "compose"));
     // Messages: date dividers, grouped runs, clock times, emoji, mentions and code.
     let days: Vec<String> = p
         .descendants(Dom::ROOT)
@@ -268,7 +282,9 @@ fn the_workspace_is_laid_out_like_slack() {
             attr_of(&p, &format!("{id}-pin"), "formaction"),
             format!("/channels/eng/messages/{id}/pin")
         );
-        assert!(has(&p, &format!("{id}-add-reaction")));
+        // The emoji picker and the overflow menu are gone; the quick reactions,
+        // the thread link and the pin are what is left, and all three act.
+        assert!(!has(&p, &format!("{id}-add-reaction")) && !has(&p, &format!("{id}-more")));
     }
     assert!(has_class(&p, "chat-15-row", "last") && !has_class(&p, "chat-14-row", "last"));
     // Bob is mentioned nowhere in #eng, but is in the release channel.
@@ -506,4 +522,53 @@ fn pins_status_and_group_dms() {
     );
     assert_eq!(status, 200);
     assert!(has_class(&page(&reacted), "chat-8-react-tada", "mine"));
+}
+
+/// The two pages the top bar and the rail lead to: what the search box finds, and the
+/// unread mentions the Activity tab counts.
+#[test]
+fn search_and_activity_answer_the_controls_that_lead_to_them() {
+    let mut state = seeded();
+    // The search box carries its query back into the field it was typed in.
+    let found = page(&get(&mut state, "bob", "/search?q=windows").1);
+    assert_eq!(attr_of(&found, "search-q", "value"), "windows");
+    assert!(text_of(&found, "search-summary").ends_with("for \u{201c}windows\u{201d}"));
+    // Every hit links to the conversation it is in, and says where it is from.
+    assert_eq!(text_of(&found, "hit-0-where"), "#eng");
+    assert_eq!(attr_of(&found, "hit-0", "href"), "/channels/eng");
+    assert!(text_of(&found, "hit-0-text").to_lowercase().contains("windows"));
+    // Nothing matching says so, in prose, rather than showing an empty list.
+    let none = page(&get(&mut state, "bob", "/search?q=zzzznothing").1);
+    assert_eq!(
+        text_of(&none, "search-empty"),
+        "No message here says \u{201c}zzzznothing\u{201d}."
+    );
+    assert!(!has(&none, "hit-0"));
+    // An empty query is the box itself, not a claim about results.
+    let empty = page(&get(&mut state, "bob", "/search").1);
+    assert_eq!(
+        text_of(&empty, "search-summary"),
+        "Type in the box above to search this workspace"
+    );
+    // Search only reaches the conversations the caller is in: admin is not in the
+    // private release channel, so what was said there is not among their hits.
+    let private = "Windows laptop for the install run";
+    assert!(get(&mut state, "alice", "/search?q=windows").1.contains(private));
+    assert!(!get(&mut state, "admin", "/search?q=windows").1.contains(private));
+    // Activity: alice's two unread mentions, counted the way the rail badges them,
+    // newest first; bob's single one reads as one, not "1 mentions".
+    let activity = page(&get(&mut state, "alice", "/activity").1);
+    assert_eq!(text_of(&activity, "activity-summary"), "2 mentions waiting for you");
+    assert_eq!(text_of(&activity, "rail-activity-count"), "2");
+    assert_eq!(text_of(&activity, "mention-0-where"), "#atlas-release");
+    assert_eq!(attr_of(&activity, "mention-0", "href"), "/channels/atlas-release");
+    assert!(has(&activity, "mention-1") && !has(&activity, "mention-2"));
+    assert_eq!(
+        text_of(&page(&get(&mut state, "bob", "/activity").1), "activity-summary"),
+        "1 mention waiting for you"
+    );
+    // Carol is mentioned nowhere, and the page says that rather than lying with a list.
+    let quiet = page(&get(&mut state, "carol", "/activity").1);
+    assert_eq!(text_of(&quiet, "activity-summary"), "Nothing new");
+    assert!(has(&quiet, "activity-empty") && !has(&quiet, "mention-0"));
 }

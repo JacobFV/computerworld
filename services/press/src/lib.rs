@@ -124,9 +124,9 @@ fn href(state: &Value, id: &str, layout: &str) -> String {
 }
 /// Every GET route. Reading never mutates, so this takes the state by reference.
 fn render(state: &Value, ctx: &ServiceContext, request: &HttpRequest) -> Result<HttpResponse> {
-    let chrome = view::Chrome::read(state, &ctx.actor)?;
-    let actor = ctx.actor.as_str();
     let path = web::path(request);
+    let chrome = view::Chrome::read(state, &ctx.actor, &path)?;
+    let actor = ctx.actor.as_str();
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     match parts.as_slice() {
         [""] if state.get("articles").is_none() => chrome.landing(),
@@ -556,7 +556,7 @@ mod tests {
         );
         assert_eq!(story.attr("article-tag-determinism", "href"), "/tag/determinism");
         assert_eq!(story.text("article-tag-determinism-text"), "#determinism");
-        assert_eq!(story.text("comments-heading"), "1 comments");
+        assert_eq!(story.text("comments-heading"), "1 comment");
         // Save, comment and like are POST forms with the fields the Page actions carried.
         assert_eq!(story.attr("article-save-form", "action"), "/articles/atlas-determinism/save");
         assert_eq!(story.fields("article-save-form"), [("return".to_owned(), "/2026/atlas-determinism".to_owned())]);

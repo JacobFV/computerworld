@@ -243,17 +243,6 @@ body {
   padding: 8px 16px 12px 16px;
   background: #ffffff;
 }
-.plus {
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #e9e9eb;
-  color: #6e6e73;
-  font-size: 22px;
-  line-height: 28px;
-  text-align: center;
-}
 .field {
   display: flex;
   flex: 1;

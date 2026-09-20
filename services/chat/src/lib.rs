@@ -207,27 +207,37 @@ fn message(conversation: &str, c: &Channel, m: &Message, grouped: bool) -> Html 
         .parent
         .as_deref()
         .and_then(|p| c.messages.iter().find(|other| other.id == p));
-    let react = form(
-        &format!("{}-react", m.id),
-        format!("/channels/{conversation}/messages/{}/reactions", m.id),
-        "post",
-    )
-    .class("react")
-    .child(
-        text_input(&format!("{}-react-reaction", m.id), "reaction", "")
-            .attr("aria-label", "Reaction")
-            .attr("placeholder", "React")
-            .attr("autocomplete", "off"),
-    )
-    .child(button(&format!("{}-react-submit", m.id), "+").attr("aria-label", "Add reaction").attr("title", "Add reaction"));
-    let reactions = div("reactions")
-        .each(&m.reactions, |(name, who)| {
-            span("reaction")
-                .attr("title", who.iter().cloned().collect::<Vec<_>>().join(", "))
-                .child(span("reaction-name").text(name.as_str()))
-                .child(span("reaction-count").text(who.len().to_string()))
-        })
-        .child(react);
+    let route = format!("/channels/{conversation}/messages/{}/reactions", m.id);
+    let react = form(&format!("{}-react", m.id), route.clone(), "post")
+        .class("react")
+        .child(
+            text_input(&format!("{}-react-reaction", m.id), "reaction", "")
+                .attr("aria-label", "Reaction")
+                .attr("placeholder", "React")
+                .attr("autocomplete", "off"),
+        )
+        .child(button(&format!("{}-react-submit", m.id), "+").attr("aria-label", "Add reaction").attr("title", "Add reaction"));
+    // A reaction already on the message is drawn as a pill beside the field that adds
+    // one, so it has to be a control too: pressing it joins that reaction, which is the
+    // POST the field beside it already makes.
+    let given = (!m.reactions.is_empty()).then(|| {
+        form(&format!("{}-reactions", m.id), route, "post")
+            .class("given")
+            .each(&m.reactions, |(name, who)| {
+                let label = format!("{name} · {}", who.iter().cloned().collect::<Vec<_>>().join(", "));
+                el("button")
+                    .id(format!("{}-reacted-{name}", m.id))
+                    .class("reaction")
+                    .attr("type", "submit")
+                    .attr("name", "reaction")
+                    .attr("value", name.as_str())
+                    .attr("title", label.as_str())
+                    .attr("aria-label", label.as_str())
+                    .child(span("reaction-name").text(name.as_str()))
+                    .child(span("reaction-count").text(who.len().to_string()))
+            })
+    });
+    let reactions = div("reactions").maybe(given).child(react);
     el("article")
         .id(m.id.as_str())
         .class("message")
@@ -245,8 +255,14 @@ fn message(conversation: &str, c: &Channel, m: &Message, grouped: bool) -> Html 
                         .child(span("author").text(m.author.as_str()))
                         .child(span("time").text(format!("tick {}", m.time))),
                 )
+                // The quote is the affordance a chat client gives for getting back to
+                // the message replied to, and the parent is always on this page.
                 .maybe(parent.map(|p| {
-                    div("quote")
+                    el("a")
+                        .id(format!("{}-parent", m.id))
+                        .class("quote")
+                        .attr("href", format!("#{}", p.id))
+                        .attr("title", format!("Go to {}'s message", p.author))
                         .child(span("quote-author").text(p.author.as_str()))
                         .child(span("quote-text").text(p.text.as_str()))
                 }))
@@ -272,16 +288,27 @@ fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResp
             .child(span("label").text(label))
     };
     let mut channels = el("nav").class("nav").attr("aria-label", "Channels").child(el("h2").class("nav-title").text("Channels"));
+    let mut joined = 0;
     for (id, c) in &s.channels {
         if c.members.contains(actor) {
             channels = channels.child(row(id, id, "#", &c.title));
+            joined += 1;
         }
     }
+    // A heading with nothing under it says the list is empty rather than looking broken.
+    if joined == 0 {
+        channels = channels.child(el("p").class("nav-empty").text("No channels here yet."));
+    }
     let mut dms = el("nav").class("nav").attr("aria-label", "Direct messages").child(el("h2").class("nav-title").text("Direct messages"));
+    let mut open_dms = 0;
     for (id, c) in &s.dms {
         if c.members.contains(actor) {
             dms = dms.child(row(&format!("dm-{id}"), id, "@", &c.title).attr("title", dm_title(c, actor)));
+            open_dms += 1;
         }
+    }
+    if open_dms == 0 {
+        dms = dms.child(el("p").class("nav-empty").text("No direct messages yet."));
     }
     // Opening a DM is the POST the API already had; the page gives it a field.
     dms = dms.child(

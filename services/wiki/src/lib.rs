@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 mod view;
-use view::{article_page, history_page, portal, results_page, section_page, talk_page};
+use view::{
+    article_page, category_page, history_page, portal, random_page, results_page, section_page,
+    talk_page,
+};
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct WikiState {
@@ -433,16 +436,23 @@ impl Service for WikiService {
             return match parts.as_slice() {
                 [""] if !api => portal(&s),
                 ["wiki", "Special:Random"] if !api => {
-                    let n = web::query(r, "n").and_then(|n| n.parse().ok()).unwrap_or(0);
+                    let n: u64 = web::query(r, "n").and_then(|n| n.parse().ok()).unwrap_or(0);
                     match s.random(&c.actor, n) {
-                        Some(article) => article_page(&s, &article.id),
+                        // The page a pick landed on carries the next step of the walk, so
+                        // pressing Random again reaches a different article rather than this
+                        // one over and over.
+                        Some(article) => random_page(&s, &article.id, n.wrapping_add(1)),
                         None => web::error(404, "no articles"),
                     }
                 }
                 ["wiki", "Special:History", title] if !api => history_page(&s, title),
-                ["wiki", title] if !api => match title.strip_prefix("Talk:") {
-                    Some(title) => talk_page(&s, title),
-                    None => match web::query(r, "section") {
+                ["wiki", title] if !api => match (
+                    title.strip_prefix("Talk:"),
+                    title.strip_prefix("Category:"),
+                ) {
+                    (Some(title), _) => talk_page(&s, title),
+                    (_, Some(name)) => category_page(&s, name),
+                    _ => match web::query(r, "section") {
                         Some(sid) => section_page(&s, title, &sid),
                         None => article_page(&s, title),
                     },

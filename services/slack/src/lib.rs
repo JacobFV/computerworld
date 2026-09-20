@@ -367,6 +367,11 @@ impl Service for SlackService {
             return match parts.as_slice() {
                 [""] => open(&s, None),
                 ["channels"] if !api => open(&s, None),
+                // The top bar's search box, and the rail's Activity tab.
+                ["search"] if !api => {
+                    page::search(&s, &c.actor, &web::query(r, "q").unwrap_or_default(), &view)
+                }
+                ["activity"] if !api => page::activity(&s, &c.actor, &view),
                 ["channels"] => HttpResponse::json(200, &listing(&s.channels)),
                 // Opening the DMs is opening the first of them, as Slack's DMs tab does.
                 ["dms"] if !api => {

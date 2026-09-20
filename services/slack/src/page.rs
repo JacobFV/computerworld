@@ -3,8 +3,15 @@
 //! of workspace tabs, the sidebar of channels and direct messages, the open conversation
 //! with its messages grouped by author under date dividers and scrolling on its own, a
 //! composer pinned under it, and, on the right, the thread or the member list the query
-//! string opens. The look is `slack.css`; this file is the markup, apart from the state
-//! and the routes.
+//! string opens. The same frame carries the two pages its own controls lead to: what
+//! the top bar's search box finds, and the Activity tab's unread mentions. The look is
+//! `slack.css`; this file is the markup, apart from the state and the routes.
+//!
+//! Everything drawn here that looks like a control is one. What Slack's client does
+//! with a script — the emoji picker, the formatting strip, attach, the workspace and
+//! channel menus, Later and More — is not drawn at all rather than drawn dead, and the
+//! marks that are left (carets, hashes, locks, presence dots) carry no name that
+//! promises an action. `tests/controls.rs` crawls every page kind to keep it so.
 use crate::{time, Channel, Message, SlackState};
 use cw_protocol::{HttpResponse, Result as SimResult};
 use cw_service_common as web;
@@ -100,13 +107,23 @@ fn avatar(id: &str, name: &str, size: &str) -> Html {
         .style(&format!("background: {}", web::avatar_tint(name)))
         .text(initials)
 }
-/// A symbol that is not a control: a glyph with its accessible name.
+/// A symbol that is not a control: a glyph with its accessible name. The name says
+/// what it *is* ("Private channel", "Pinned"), never what pressing it would do.
 fn glyph(id: &str, class: &str, label: &str, mark: &str) -> Html {
     span("ico")
         .class(class)
         .id(id)
         .attr("title", label)
         .attr("aria-label", label)
+        .text(mark)
+}
+/// Pure ornament: the caret beside a heading that is always open, the workspace mark.
+/// No accessible name, because there is nothing to press and nothing to read.
+fn ornament(id: &str, class: &str, mark: &str) -> Html {
+    span("ico")
+        .class(class)
+        .id(id)
+        .attr("aria-hidden", "true")
         .text(mark)
 }
 /// The other people in a DM key, from this actor's point of view.
@@ -165,50 +182,59 @@ fn plural(n: usize, one: &str, many: &str) -> String {
 
 // ---- the top bar and the rail --------------------------------------------------------
 
-fn topbar(state: &SlackState, actor: &str, workspace: &str) -> Html {
+/// The top bar's search box: a real GET form on `/search`, the magnifier its submit
+/// button and `#search-text` the label of its field. Slack's back, forward, history
+/// and help buttons are not drawn: none of them has anywhere to go here.
+fn search_form(workspace: &str, query: &str) -> Html {
+    let label = format!("Search {workspace}");
+    form("search", "/search", "get").class("search").children([
+        el("button")
+            .id("search-go")
+            .attr("type", "submit")
+            .class("lens")
+            .attr("title", label.as_str())
+            .attr("aria-label", label.as_str()),
+        el("label")
+            .id("search-text")
+            .class("search-text")
+            .attr("for", "search-q")
+            .text(label.as_str()),
+        text_input("search-q", "q", query)
+            .attr("aria-label", label.as_str())
+            .attr("placeholder", label)
+            .attr("autocomplete", "off"),
+    ])
+}
+fn topbar(state: &SlackState, actor: &str, workspace: &str, query: &str) -> Html {
     let status = state
         .members
         .get(actor)
         .map(|m| m.status.clone())
         .unwrap_or_default();
     el("header").id("topbar").class("topbar").children([
-        div("topbar-nav").children([
-            glyph("nav-back", "nav", "Back", "←"),
-            glyph("nav-forward", "nav", "Forward", "→"),
-            glyph("nav-history", "clock", "History", ""),
-        ]),
-        div("search").id("search").children([
-            glyph("search-icon", "lens", "Search", ""),
-            span("search-text")
-                .id("search-text")
-                .text(format!("Search {workspace}")),
-        ]),
+        div("topbar-nav"),
+        search_form(workspace, query),
         div("topbar-me").children([
-            glyph("help", "help", "Help", "?"),
             span("my-status").id("my-status").text(status),
             avatar("me-avatar", &state.display(actor), "s26"),
         ]),
     ])
 }
-/// The rail: the workspace tile, then Home, DMs, Activity, Later and More, each an icon
-/// over its label.
-fn rail(state: &SlackState, actor: &str, workspace: &str, home: bool, dms: bool) -> Html {
+/// The rail: the workspace tile, then Home, DMs and Activity, each an icon over its
+/// label. Slack's Later and More tabs are not drawn: neither names anything here.
+fn rail(state: &SlackState, actor: &str, workspace: &str, home: bool, dms: bool, activity: bool) -> Html {
     let mentions = state.mentions(actor).len();
-    let tab = |id: &str, icon: &str, label: &str, on: bool, url: Option<&str>| {
-        let face = span("tab-icon").class(icon);
-        let inner = [
-            face,
-            span("tab-label").id(format!("{id}-label")).text(label),
-        ];
-        let node = match url {
-            Some(url) => el("a").attr("href", url),
-            None => el("span"),
-        };
-        node.id(id)
+    let tab = |id: &str, icon: &str, label: &str, on: bool, url: &str| {
+        el("a")
+            .attr("href", url)
+            .id(id)
             .class("tab")
             .class(if on { "on" } else { "" })
             .attr("title", label)
-            .children(inner)
+            .children([
+                span("tab-icon").class(icon),
+                span("tab-label").id(format!("{id}-label")).text(label),
+            ])
     };
     let initial = workspace
         .chars()
@@ -217,25 +243,24 @@ fn rail(state: &SlackState, actor: &str, workspace: &str, home: bool, dms: bool)
         .unwrap_or_default();
     el("nav").id("rail").class("rail").children([
         span("rail-mark").id("rail-mark").text(initial),
-        tab("rail-home", "i-home", "Home", home, Some("/")),
-        tab("rail-dms", "i-dms", "DMs", dms, Some("/dms")),
-        tab("rail-activity", "i-bell", "Activity", false, None).when(mentions > 0, |t| {
+        tab("rail-home", "i-home", "Home", home, "/"),
+        tab("rail-dms", "i-dms", "DMs", dms, "/dms"),
+        tab("rail-activity", "i-bell", "Activity", activity, "/activity").when(mentions > 0, |t| {
             t.child(
                 span("count")
                     .id("rail-activity-count")
                     .text(mentions.to_string()),
             )
         }),
-        tab("rail-later", "i-later", "Later", false, None),
-        tab("rail-more", "i-more", "More", false, None),
     ])
 }
 
 // ---- the sidebar ---------------------------------------------------------------------
 
+/// A sidebar heading. Nothing collapses a section here, so its caret is only a mark.
 fn section(id: &str, label: &str) -> Html {
     div("section").id(id).children([
-        glyph(&format!("{id}-chevron"), "caret", "Collapse", "▾"),
+        ornament(&format!("{id}-chevron"), "caret", "▾"),
         span("section-text").id(format!("{id}-text")).text(label),
     ])
 }
@@ -300,10 +325,6 @@ fn sidebar(state: &SlackState, actor: &str, open: Option<&str>, now: u64, worksp
             },
         ));
     }
-    items.push(div("row add").id("add-channel").children([
-        glyph("add-channel-icon", "mark plus", "Add channels", "+"),
-        span("row-text").id("add-channel-text").text("Add channels"),
-    ]));
     items.push(section("dms-label", "Direct messages"));
     let mut listed = std::collections::BTreeSet::new();
     for (key, dm) in &state.dms {
@@ -364,17 +385,10 @@ fn sidebar(state: &SlackState, actor: &str, open: Option<&str>, now: u64, worksp
                 ),
         );
     }
-    items.push(section("apps-label", "Apps"));
-    items.push(div("row add").id("add-apps").children([
-        glyph("add-apps-icon", "mark plus", "Add apps", "+"),
-        span("row-text").id("add-apps-text").text("Add apps"),
-    ]));
     el("aside").id("sidebar").class("sidebar").children([
         div("sidebar-head").id("sidebar-head").children([
             span("workspace").id("workspace").text(workspace),
-            glyph("workspace-menu", "caret light", "Workspace menu", "▾"),
-            span("grow"),
-            glyph("compose", "compose", "New message", "✎"),
+            ornament("workspace-menu", "caret light", "▾"),
         ]),
         el("nav").id("sidebar-list").class("sidebar-list").children(items),
     ])
@@ -506,13 +520,7 @@ fn reactions(ctx: &Ctx, id: &str, m: &Message) -> Option<Html> {
                 .class(if who.contains(ctx.actor) { "mine" } else { "" })
                 .attr("name", "reaction")
                 .attr("value", name.as_str())
-            })
-            .child(glyph(
-                &format!("{id}-react-add"),
-                "chip add",
-                "Add reaction",
-                "☺+",
-            )),
+            }),
     )
 }
 /// The collapsed thread under a message: the repliers' faces, "N replies" and the age
@@ -543,8 +551,9 @@ fn thread_row(ctx: &Ctx, m: &Message, replies: &[&Message]) -> Html {
     }
     row
 }
-/// The actions Slack floats over the message under the pointer: quick reactions, add
-/// reaction, reply in thread, pin and more.
+/// The actions Slack floats over the message under the pointer: the quick reactions,
+/// reply in thread and pin. The emoji picker and the overflow menu are not here: both
+/// want a client script, and this world runs none.
 fn toolbar(ctx: &Ctx, m: &Message) -> Html {
     let base = format!("{}/messages/{}", ctx.url(), m.id);
     let quick = |name: &str| {
@@ -563,24 +572,21 @@ fn toolbar(ctx: &Ctx, m: &Message) -> Html {
             quick("white_check_mark"),
             quick("eyes"),
             quick("+1"),
-            glyph(
-                &format!("{}-add-reaction", m.id),
-                "tool",
-                "Add reaction",
-                "☺",
-            ),
             el("a")
                 .id(format!("{}-open-thread", m.id))
                 .class("tool bubble")
                 .attr("href", format!("{}?thread={}", ctx.url(), m.id))
                 .attr("title", "Reply in thread")
                 .attr("aria-label", "Reply in thread"),
+            // The `formmethod` is the form's own, spelled out: a reader that takes a
+            // bare `formaction` for a link would ask for this route with GET, which
+            // is not a route at all.
             button(&format!("{}-pin", m.id), "📌")
                 .class("tool")
                 .attr("formaction", format!("{base}/pin"))
+                .attr("formmethod", "post")
                 .attr("title", pin_label)
                 .attr("aria-label", pin_label),
-            glyph(&format!("{}-more", m.id), "tool", "More actions", "⋮"),
         ])
 }
 /// Where a message is drawn, which decides what surrounds its text.
@@ -682,9 +688,9 @@ fn transcript(ctx: &Ctx) -> Vec<Html> {
 
 // ---- the header, the composer and the panes ------------------------------------------
 
-/// The channel header: name and topic, the member count opening the member list, and
-/// the bar of pins, purpose and bookmarks under it.
-fn header(ctx: &Ctx) -> Html {
+/// The channel header: name and topic, the member count opening the member list (and
+/// closing it again while it is open), and the bar of pins and purpose under it.
+fn header(ctx: &Ctx, members_open: bool) -> Html {
     let heading = ctx.heading();
     let is_channel = ctx.state.channels.contains_key(ctx.id);
     let title = el("h1").id("channel-title").class("channel-title").text(heading);
@@ -692,7 +698,7 @@ fn header(ctx: &Ctx) -> Html {
     if is_channel {
         line = line
             .child(title)
-            .child(glyph("channel-menu", "caret dark", "Channel details", "▾"));
+            .child(ornament("channel-menu", "caret dark", "▾"));
     } else if let [one] = others(ctx.id, ctx.actor).as_slice() {
         line = line
             .child(avatar("channel-avatar", &ctx.state.display(one), "s24"))
@@ -718,12 +724,17 @@ fn header(ctx: &Ctx) -> Html {
                 .text(ctx.channel.topic.as_str()),
         );
     }
+    let (members_url, members_label) = match members_open {
+        true => (ctx.url(), "Close the member list"),
+        false => (format!("{}?members=1", ctx.url()), "View all members"),
+    };
     line = line.child(span("grow")).child(
         el("a")
             .id("channel-members")
             .class("channel-members")
-            .attr("href", format!("{}?members=1", ctx.url()))
-            .attr("title", "View all members")
+            .attr("href", members_url)
+            .attr("title", members_label)
+            .attr("aria-label", members_label)
             .children([
                 glyph("channel-members-icon", "person", "Members", ""),
                 span("")
@@ -753,10 +764,6 @@ fn header(ctx: &Ctx) -> Html {
                     .text(ctx.channel.purpose.as_str()),
             ]));
         }
-        bar = bar.child(span("bar-item").children([
-            glyph("add-bookmark-icon", "plus", "Add a bookmark", "+"),
-            span("").id("add-bookmark").text("Add a bookmark"),
-        ]));
         head = head.child(bar);
     }
     head
@@ -786,31 +793,20 @@ fn thread_composer(ctx: &Ctx, parent: &Message) -> Html {
             ]),
     )
 }
-/// The composer under the transcript: a bordered box with formatting tools over the
-/// field and the send button under it.
+/// The composer under the transcript: a bordered box with the field and the send
+/// button. Slack's formatting strip, attach, emoji and mention buttons are not drawn:
+/// every one of them wants a client script, and this world runs none.
 fn composer(ctx: &Ctx) -> Html {
-    let tool = |id: &str, class: &str, label: &str, mark: &str| glyph(id, class, label, mark);
     let heading = ctx.heading();
-    div("composer").id("composer").children([
+    div("composer").id("composer").child(
         form("send", format!("{}/messages", ctx.url()), "post")
             .class("composer-box")
             .children([
-                div("send-tools").id("send-tools").children([
-                    tool("send-bold", "fmt bold", "Bold", "B"),
-                    tool("send-italic", "fmt italic", "Italic", "I"),
-                    tool("send-strike", "fmt strike", "Strikethrough", "S"),
-                    tool("send-link", "fmt", "Link", "🔗"),
-                    tool("send-list", "fmt", "Bulleted list", "☰"),
-                    tool("send-code", "fmt mono", "Code", "</>"),
-                ]),
                 text_input("send-text", "text", "")
                     .attr("aria-label", format!("Message {heading}"))
                     .attr("placeholder", format!("Message {}", heading.replace("# ", "#")))
                     .attr("autocomplete", "off"),
                 div("send-actions").id("send-actions").children([
-                    tool("send-attach", "fmt round", "Attach", "+"),
-                    tool("send-emoji", "fmt", "Emoji", "☺"),
-                    tool("send-mention", "fmt", "Mention someone", "@"),
                     span("grow"),
                     button("send-submit", "➤")
                         .class("send")
@@ -818,11 +814,7 @@ fn composer(ctx: &Ctx) -> Html {
                         .attr("aria-label", "Send message"),
                 ]),
             ]),
-        div("send-hint").id("send-hint").children([
-            el("b").text("Shift + Enter"),
-            html::text(" to add a new line"),
-        ]),
-    ])
+    )
 }
 fn pane_head(id: &str, title: Html, close_id: &str, close_label: &str, url: String) -> Html {
     div("pane-head").id(id).children([
@@ -1034,7 +1026,7 @@ pub fn workspace(
     match &ctx {
         Some(ctx) => {
             let unread = state.unread(actor, ctx.id);
-            main = main.child(header(ctx)).child(
+            main = main.child(header(ctx, matches!(&pane, Pane::Members))).child(
                 div("scroller")
                     .id("messages")
                     .when(unread > 0, |list| list.child(unread_banner(ctx, unread)))
@@ -1062,18 +1054,206 @@ pub fn workspace(
             Pane::None => {}
         }
     }
-    let mut doc = Document::new(title).lang("en").stylesheet(CSS).body_class("slack");
-    if let Some(style) = root_style(state) {
-        doc = doc.root_style(&style);
+    Frame {
+        state,
+        actor,
+        workspace: &workspace_name,
+        query: "",
+        now,
+        open: id,
+        tab: if is_dm { Tab::Dms } else { Tab::Home },
     }
-    let doc = doc.body([
-        topbar(state, actor, &workspace_name),
-        div("app").id("app").children([
-            rail(state, actor, &workspace_name, !is_dm, is_dm),
-            panel,
+    .render(title, panel)
+}
+
+/// Which rail tab is lit.
+#[derive(Clone, Copy, PartialEq)]
+enum Tab {
+    Home,
+    Dms,
+    Activity,
+}
+/// What every page of the workspace shares: the top bar with its search box, the rail
+/// and the sidebar, around whatever fills the panel.
+struct Frame<'a> {
+    state: &'a SlackState,
+    actor: &'a str,
+    workspace: &'a str,
+    /// What the search box holds, on the page a search led to.
+    query: &'a str,
+    now: u64,
+    open: Option<&'a str>,
+    tab: Tab,
+}
+impl Frame<'_> {
+    /// `panel` is the whole panel (sidebar included) for the conversation view, which
+    /// hangs a pane off it; [`Frame::main`] builds the plain one.
+    fn render(&self, title: String, panel: Html) -> SimResult<HttpResponse> {
+        let mut doc = Document::new(title).lang("en").stylesheet(CSS).body_class("slack");
+        if let Some(style) = root_style(self.state) {
+            doc = doc.root_style(&style);
+        }
+        let doc = doc.body([
+            topbar(self.state, self.actor, self.workspace, self.query),
+            div("app").id("app").children([
+                rail(
+                    self.state,
+                    self.actor,
+                    self.workspace,
+                    self.tab == Tab::Home,
+                    self.tab == Tab::Dms,
+                    self.tab == Tab::Activity,
+                ),
+                panel,
+            ]),
+        ]);
+        html::page(&doc)
+    }
+    /// The sidebar and one main column.
+    fn main(&self, main: Html) -> Html {
+        div("panel").id("shell").children([
+            sidebar(self.state, self.actor, self.open, self.now, self.workspace),
+            main,
+        ])
+    }
+}
+/// The header of a page that is not a conversation: a heading and a line under it.
+fn plain_header(id: &str, title: &str, sub_id: &str, sub: String) -> Html {
+    el("header").id(id).class("channel-header").child(
+        div("channel-head").children([
+            el("h1").id(format!("{id}-title")).class("channel-title").text(title),
+            span("channel-topic").id(sub_id).text(sub),
         ]),
-    ]);
-    html::page(&doc)
+    )
+}
+/// One hit of a search or one unread mention: who said it, where and when, linking to
+/// the conversation it is in.
+fn hit(state: &SlackState, actor: &str, id: &str, at: &str, m: &Message, now: u64) -> Html {
+    let where_ = match state.channels.contains_key(at) {
+        true => format!("#{at}"),
+        false => partners(state, at, actor),
+    };
+    el("a")
+        .id(id)
+        .class("hit")
+        .attr("href", format!("/channels/{at}"))
+        .children([
+            div("hit-head").children([
+                span("hit-where").id(format!("{id}-where")).text(where_),
+                span("hit-author")
+                    .id(format!("{id}-author"))
+                    .text(state.display(&m.author)),
+                span("hit-time")
+                    .id(format!("{id}-time"))
+                    .text(time::ago(m.time, now)),
+            ]),
+            div("hit-text").id(format!("{id}-text")).text(emojify(&m.text)),
+        ])
+}
+/// What the top bar's search box finds: every message of a conversation the actor is
+/// in whose text holds the query, newest first.
+pub fn search(
+    state: &SlackState,
+    actor: &str,
+    query: &str,
+    view: &View,
+) -> SimResult<HttpResponse> {
+    let now = now(state, actor, view.tick);
+    let workspace = match state.workspace.is_empty() {
+        true => BRAND.to_owned(),
+        false => state.workspace.clone(),
+    };
+    let needle = query.trim().to_lowercase();
+    let mut hits: Vec<(&str, &Message)> = Vec::new();
+    if !needle.is_empty() {
+        for (at, conversation) in state.channels.iter().chain(&state.dms) {
+            if !conversation.members.contains(actor) {
+                continue;
+            }
+            for m in &conversation.messages {
+                if m.text.to_lowercase().contains(&needle) {
+                    hits.push((at.as_str(), m));
+                }
+            }
+        }
+        hits.sort_by(|a, b| b.1.time.cmp(&a.1.time).then(a.1.id.cmp(&b.1.id)));
+        hits.truncate(50);
+    }
+    let summary = match (needle.is_empty(), hits.len()) {
+        (true, _) => "Type in the box above to search this workspace".to_owned(),
+        (false, n) => format!("{} for “{}”", plural(n, "result", "results"), query.trim()),
+    };
+    let mut list = div("scroller").id("search-results");
+    for (n, (at, m)) in hits.iter().enumerate() {
+        list = list.child(hit(state, actor, &format!("hit-{n}"), at, m, now));
+    }
+    if hits.is_empty() && !needle.is_empty() {
+        list = list.child(
+            el("p")
+                .id("search-empty")
+                .class("empty")
+                .text(format!("No message here says “{}”.", query.trim())),
+        );
+    }
+    let main = el("main")
+        .id("main")
+        .class("main")
+        .child(plain_header("search-header", "Search", "search-summary", summary))
+        .child(list);
+    let frame = Frame {
+        state,
+        actor,
+        workspace: &workspace,
+        query,
+        now,
+        open: None,
+        tab: Tab::Home,
+    };
+    let panel = frame.main(main);
+    frame.render(format!("Search - {workspace} - {BRAND}"), panel)
+}
+/// The Activity tab: every @-mention of the actor they have not read yet, newest
+/// first, each one a link into its conversation.
+pub fn activity(state: &SlackState, actor: &str, view: &View) -> SimResult<HttpResponse> {
+    let now = now(state, actor, view.tick);
+    let workspace = match state.workspace.is_empty() {
+        true => BRAND.to_owned(),
+        false => state.workspace.clone(),
+    };
+    let mut mentions = state.mentions(actor);
+    mentions.sort_by(|a, b| b.1.time.cmp(&a.1.time).then(a.1.id.cmp(&b.1.id)));
+    let summary = match mentions.len() {
+        0 => "Nothing new".to_owned(),
+        n => format!("{} waiting for you", plural(n, "mention", "mentions")),
+    };
+    let mut list = div("scroller").id("activity-list");
+    for (n, (at, m)) in mentions.iter().enumerate() {
+        list = list.child(hit(state, actor, &format!("mention-{n}"), at, m, now));
+    }
+    if mentions.is_empty() {
+        list = list.child(
+            el("p")
+                .id("activity-empty")
+                .class("empty")
+                .text("Nobody has mentioned you since you last read your channels."),
+        );
+    }
+    let main = el("main")
+        .id("main")
+        .class("main")
+        .child(plain_header("activity-header", "Activity", "activity-summary", summary))
+        .child(list);
+    let frame = Frame {
+        state,
+        actor,
+        workspace: &workspace,
+        query: "",
+        now,
+        open: None,
+        tab: Tab::Activity,
+    };
+    let panel = frame.main(main);
+    frame.render(format!("Activity - {workspace} - {BRAND}"), panel)
 }
 
 #[cfg(test)]

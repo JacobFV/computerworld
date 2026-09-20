@@ -265,26 +265,38 @@ fn page_of(request: &HttpRequest) -> usize {
         .unwrap_or(1)
         .max(1)
 }
+/// The page being served, path and query, so a nav entry that names it is drawn as a label
+/// rather than as a link that only reloads.
+fn here(request: &HttpRequest) -> String {
+    match url::Url::parse(&request.url) {
+        Ok(parsed) => match parsed.query() {
+            Some(query) if !query.is_empty() => format!("{}?{query}", parsed.path()),
+            _ => parsed.path().to_owned(),
+        },
+        Err(_) => web::path(request),
+    }
+}
 fn search(state: &mut Value, ctx: &ServiceContext, request: &HttpRequest) -> Result<HttpResponse> {
     let (query, vertical) = asked(request)?;
     let page = page_of(request);
+    let here = here(request);
     if !verticals(state).contains(&vertical) {
         return web::error(400, format!("unknown vertical {vertical}"));
     }
     if query.is_empty() {
-        return view::home(state, &ctx.actor);
+        return view::home(state, &ctx.actor, &vertical, &here);
     }
     remember(state, &ctx.actor, &query);
     match bang(state, &query) {
-        Some(Bang::Jump { tag, title, url }) => view::jump(state, &query, &tag, &title, &url),
+        Some(Bang::Jump { tag, title, url }) => view::jump(state, &query, &tag, &title, &url, &here),
         Some(Bang::Unknown { tag, rest }) => {
             let hits = rank(state, &rest, &vertical);
             let note = format!("No !{tag} shortcut is configured; showing web results instead.");
-            view::results(state, &query, &vertical, &hits, page, Some(note))
+            view::results(state, &query, &vertical, &hits, page, Some(note), &here)
         }
         None => {
             let hits = rank(state, &query, &vertical);
-            view::results(state, &query, &vertical, &hits, page, None)
+            view::results(state, &query, &vertical, &hits, page, None, &here)
         }
     }
 }
@@ -351,13 +363,13 @@ impl Service for SearchService {
     ) -> Result<HttpResponse> {
         let method = request.method.to_ascii_uppercase();
         match (method.as_str(), web::path(request).as_str()) {
-            ("GET", "/") => view::home(state, &ctx.actor),
+            ("GET", "/") => view::home(state, &ctx.actor, VERTICALS[0], "/"),
             ("GET", "/about") => view::about(state),
             ("GET" | "POST", "/search") => search(state, ctx, request),
             ("GET", "/lucky") => {
                 let (query, vertical) = asked(request)?;
                 let top = rank(state, &query, &vertical).into_iter().next();
-                view::lucky(state, &query, top.as_ref())
+                view::lucky(state, &query, top.as_ref(), &here(request))
             }
             ("GET", "/api/search") => {
                 // Read-only on purpose: an agent polling the API must not rewrite someone's
@@ -382,7 +394,7 @@ impl Service for SearchService {
             // The page-facing twin of the API route: a button must land somewhere readable.
             ("POST", "/history/clear") => {
                 forget(state, &ctx.actor);
-                view::home(state, &ctx.actor)
+                view::home(state, &ctx.actor, VERTICALS[0], "/")
             }
             ("GET", _) => web::error(404, "route not found"),
             _ => web::error(405, "method not allowed"),
@@ -393,6 +405,7 @@ impl Service for SearchService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cw_service_common::audit;
     use cw_service_common::html::validate_strict;
     use cw_web::dom::Document as Dom;
     /// The real world and the three sites files this crate owns: a seeded result card is a claim
@@ -458,6 +471,20 @@ mod tests {
             .collect();
         start(state)
     }
+    /// The fourth skin ships no seed file, so the tests build one.
+    const PLAIN: &str = "plain";
+    fn plain() -> Value {
+        start(json!({
+            "brand": "Findr",
+            "tagline": "A plain index",
+            "trending": ["atlas"],
+            "bang_prefix": "!",
+            "bangs": {"gh": {"title": "GitHub", "template": "http://github.com/search?q={}"}},
+            "footer": [{"text": "Terms", "url": "http://findr.test/terms"}],
+            "header": [{"text": "Images", "url": "http://findr.test/images"}],
+            "documents": [hit("http://findr.test/atlas", "Atlas", "findr.test", "all", &["atlas"])],
+        }))
+    }
     fn hit(url: &str, title: &str, from: &str, vertical: &str, keywords: &[&str]) -> Value {
         json!({"url": url, "title": title, "site": from, "vertical": vertical,
                "snippet": "", "authority": 0, "keywords": keywords})
@@ -491,6 +518,10 @@ mod tests {
         let html = String::from_utf8(response.body).unwrap();
         validate_strict(&html).unwrap_or_else(|e| panic!("GET {url}: {e}"));
         cw_web::html::parse(&html)
+    }
+    /// The HTML of a page, for the auditor, which works on source rather than on a tree.
+    fn raw(state: &mut Value, actor: &str, url: &str) -> String {
+        String::from_utf8(call(state, actor, "GET", url).body).unwrap()
     }
     fn look(state: &mut Value, query: &str) -> Vec<String> {
         api(state, "alice", &format!("/api/search?q={}", enc(query)))["results"]
@@ -740,14 +771,17 @@ mod tests {
         let videos = api(&mut state, "alice", "/api/search?q=atlas&v=videos");
         assert_eq!(videos["results"][0]["url"], "http://youtube.com/watch");
         let page = get(&mut state, "alice", "/search?q=atlas");
-        for vertical in VERTICALS {
+        for vertical in VERTICALS.iter().filter(|v| **v != "all") {
             assert_eq!(
                 attr_of(&page, &format!("tab-{vertical}"), "href"),
                 format!("/search?q=atlas&v={vertical}"),
                 "no tab re-queries {vertical}"
             );
         }
+        // The tab you are in names where you are; a link back to this page would be dead.
         assert!(attr_of(&page, "tab-all", "class").contains("on"));
+        assert_eq!(attr_of(&page, "tab-all", "href"), "");
+        assert_eq!(attr_of(&page, "tab-all", "aria-current"), "page");
         // Each vertical has its own card shape, and the box keeps the vertical when re-queried.
         let news = get(&mut state, "alice", "/search?q=atlas&v=news");
         assert_eq!(attr_of(&news, "news-0", "href"), "http://theverge.com/atlas");
@@ -1040,7 +1074,115 @@ mod tests {
             assert!(has(&results, id), "results page lacks #{id}");
         }
         assert!(text_of(&results, "stats").starts_with("About "));
+        // A single hit reads as one result, not as "About 1 results".
+        let mut one = seeded("google-search", &[hit("http://a.test/1", "Solitaire", "a.test", "all", &[])]);
+        assert_eq!(text_of(&get(&mut one, "alice", "/search?q=solitaire"), "stats"), "1 result");
+        let mut two = seeded(
+            "google-search",
+            &[
+                hit("http://a.test/1", "Solitaire", "a.test", "all", &[]),
+                hit("http://a.test/2", "Solitaire deux", "a.test", "all", &[]),
+            ],
+        );
+        assert_eq!(text_of(&get(&mut two, "alice", "/search?q=solitaire"), "stats"), "About 2 results");
     }
+    /// No dead controls: every link, form and button on every page of every skin reaches a
+    /// route the engine answers, nothing is drawn as pressable that cannot act, and nothing
+    /// links back to the page it is on. This is the test that would have caught a header
+    /// icon that swallows a click.
+    #[test]
+    fn no_page_of_any_skin_offers_a_dead_control() {
+        for id in ["google-search", "bing-search", "ddg-search", PLAIN] {
+            let state = match id {
+                PLAIN => plain(),
+                id => engine(id),
+            };
+            let mut probe = state.clone();
+            let mut call = |method: &str, url: &str| {
+                // A POST is a real request, so it runs against a scratch copy and the crawl
+                // keeps reading the state it started from.
+                let mut target = match method {
+                    "GET" => probe.clone(),
+                    _ => state.clone(),
+                };
+                let response = call(&mut target, "alice", method, url);
+                if method == "GET" {
+                    probe = target;
+                }
+                let body = String::from_utf8(response.body).unwrap_or_default();
+                (response.status, body)
+            };
+            let faults = audit::Sweep::new(
+                &["/", "/about", "/search?q=atlas", "/search?q=atlas&v=images", "/lucky?q=atlas"],
+                &mut call,
+            )
+            .run();
+            assert!(faults.is_empty(), "{id}:\n{}", faults.join("\n"));
+        }
+    }
+
+    /// The lie the cascade cannot see: an inert element drawn in the same clothes as a real
+    /// control. `audit::page` reads `cursor` and `:hover`, so a tile that is pressable purely
+    /// by its background, radius and padding slips past it — which is exactly what the bang
+    /// list was, sharing one rule with the trending links beside it and clickable in neither
+    /// markup nor effect. `audit::clothes` compares the painted box against the page's own
+    /// controls, and exempts whatever says `aria-current`, which is how the tab you are in
+    /// and the page number you are on earn the right to look like their neighbours.
+    #[test]
+    fn nothing_inert_is_drawn_in_the_clothes_of_a_control() {
+        for id in ["google-search", "bing-search", "ddg-search", PLAIN] {
+            let mut state = match id {
+                PLAIN => plain(),
+                id => engine(id),
+            };
+            for url in [
+                "/",
+                "/about",
+                "/search?q=atlas",
+                "/search?q=atlas&v=images",
+                "/search?q=atlas&v=news",
+                "/search?v=images",
+                "/search?q=%21gh+atlas",
+                "/lucky?q=atlas",
+                "/lucky?q=nothing",
+            ] {
+                let faults = audit::clothes(&raw(&mut state, "alice", url));
+                assert!(faults.is_empty(), "{id} {url}:\n{}", faults.join("\n"));
+            }
+        }
+    }
+
+    /// The three decorations the header carries are pictures, not controls, and the one
+    /// header link Google seeds leads to a page that is not the one it was clicked from.
+    #[test]
+    fn the_header_decorations_are_pictures_and_the_images_link_leads_somewhere() {
+        let mut state = engine("google-search");
+        let home = get(&mut state, "alice", "/");
+        // The nine-dot grid is drawn, not offered: no href, no role, nothing to click.
+        assert!(has(&home, "head-apps"), "home page lost the app grid");
+        assert_eq!(attr_of(&home, "head-apps", "href"), "");
+        assert_eq!(attr_of(&home, "head-apps", "role"), "");
+        assert_eq!(attr_of(&home, "head-apps", "aria-hidden"), "true");
+        assert!(audit::page(&raw(&mut state, "alice", "/")).is_empty());
+        // Google's seeded Images entry goes to the images landing page, which is its own
+        // page: the box keeps the filter and the tab strip says where you are.
+        assert_eq!(attr_of(&home, "head-1", "href"), "/search?v=images");
+        let images = get(&mut state, "alice", "/search?v=images");
+        assert_eq!(title(&images), "Images - Google");
+        assert!(has(&images, "tabs") && has(&images, "tab-images"));
+        assert_eq!(attr_of(&images, "tab-images", "aria-current"), "page");
+        assert_eq!(attr_of(&images, "tab-all", "href"), "/search?q=&v=all");
+        assert!(images
+            .descendants(Dom::ROOT)
+            .any(|n| images.is(n, "input") && images.attr(n, "name") == Some("v") && images.attr(n, "value") == Some("images")));
+        // Standing on that page, the entry that names it is a label rather than a link.
+        assert_eq!(attr_of(&images, "head-1", "href"), "");
+        // And the same is true of the footer's About entry on the About page.
+        let about = get(&mut state, "alice", "/about");
+        assert_eq!(attr_of(&about, "foot-about", "href"), "");
+        assert_eq!(text_of(&about, "foot-about"), "About Google");
+    }
+
     /// Seed mistakes are build bugs and belong at load, where the message names the file.
     #[test]
     fn initialize_refuses_a_broken_seed() {

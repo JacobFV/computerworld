@@ -11,7 +11,10 @@
 //! `portal-random`, `tabs`, `tab-<n>`, `article-*`, `toc`, `toc-<n>`, `sec-<n>-*`,
 //! `ref-<n>`, `see-<n>`, `cat-<n>`, `infobox`, `info-*`, `section-*`, `edit`,
 //! `edit-body`, `edit-comment`, `edit-submit`, `talk-*`, `reply`, `reply-text`,
-//! `reply-submit`, `hist-*`, `rev-<n>*`, `results-*`, `hit-<n>*`, `foot`.
+//! `reply-submit`, `hist-*`, `rev-<n>*`, `results-*`, `hit-<n>*`, `foot`. `rev-<n>-comment`
+//! is a link to the section the revision changed, and plain text when that section has since
+//! been removed: there is nowhere for it to lead. `cat-<n>` is a link to `/wiki/Category:<name>`,
+//! the listing of everything filed under it, with `cat-title`, `cat-count` and `all-<n>` cards.
 use crate::{snippet, Article, WikiState, BRAND, TAGLINE};
 use cw_protocol::{HttpResponse, Result as SimResult};
 use cw_service_common as web;
@@ -168,12 +171,23 @@ fn category_links(s: &WikiState, category: &str, prefix: &str) -> Vec<Node> {
         })
         .collect()
 }
+/// Where the "Random" control points. A reader who pressed it and is now reading what it
+/// picked has to get a different article the next time, so the page a pick rendered carries
+/// the next step of the walk; everywhere else the plain route starts one.
+fn random_href(next: u64) -> String {
+    match next {
+        0 => "/wiki/Special:Random".to_owned(),
+        n => format!("/wiki/Special:Random?n={n}"),
+    }
+}
 /// Header, navigation, search box and footer: every page of a site wears them.
+/// `random_next` is the `n` the Random link carries; see [`random_href`].
 fn shell(
     s: &WikiState,
     title: &str,
     page_class: &str,
     tabs: Option<Vec<Tab>>,
+    random_next: u64,
     main: Vec<Node>,
 ) -> SimResult<HttpResponse> {
     let skin = s.skin_name();
@@ -202,14 +216,14 @@ fn shell(
                                 .attr("aria-label", format!("{brand} home"))
                                 .text(brand),
                         )
-                        .child(link("nav-home", "/", "Menu").class("menu"))
+                        .child(link("nav-home", "/", "Home").class("home"))
                         .child(search_form(s))
                         .child(
                             el("nav")
                                 .class("links")
                                 .maybe(top.map(|id| link("nav-top", article_url(&id), "Top rated")))
                                 .when(random, |n| {
-                                    n.child(link("nav-random", "/wiki/Special:Random", "Random title"))
+                                    n.child(link("nav-random", random_href(random_next), "Random title"))
                                 }),
                         ),
                 ),
@@ -249,7 +263,7 @@ fn shell(
             div("subnav")
                 .child(el("nav").class("site").children(category_links(s, "Site", "nav-site")).when(
                     random,
-                    |n| n.child(link("nav-random", "/wiki/Special:Random", "Random item")),
+                    |n| n.child(link("nav-random", random_href(random_next), "Random item")),
                 ))
                 .maybe(tabs.map(|t| tab_nav(&t))),
             el("main").id("content").class("content").children(main),
@@ -277,7 +291,7 @@ fn shell(
                                 .when(random, |ul| {
                                     ul.child(el("li").child(link(
                                         "nav-random",
-                                        "/wiki/Special:Random",
+                                        random_href(random_next),
                                         "Random article",
                                     )))
                                 }),
@@ -409,10 +423,10 @@ pub(crate) fn portal(s: &WikiState) -> SimResult<HttpResponse> {
         })
         .child(el("h1").id("welcome").text(welcome))
         .child(el("p").id("welcome-sub").text(match skin {
-            "vector" => format!(
-                "the free encyclopedia that anyone can edit. {} articles in English",
-                s.articles.len()
-            ),
+            "vector" => match s.articles.len() {
+                1 => "the free encyclopedia that anyone can edit. 1 article in English".to_owned(),
+                n => format!("the free encyclopedia that anyone can edit. {n} articles in English"),
+            },
             _ => tagline_of(s).to_owned(),
         }));
     let featured = featured.map(|article| {
@@ -464,7 +478,7 @@ pub(crate) fn portal(s: &WikiState) -> SimResult<HttpResponse> {
             .class("more")
             .child(link("portal-random", "/wiki/Special:Random", random_label).class("btn")),
     ];
-    shell(s, &format!("{brand} — {TAGLINE}"), "portal", None, main)
+    shell(s, &format!("{brand} — {TAGLINE}"), "portal", None, 0, main)
 }
 
 /// An infobox value with the names that are articles of this site linked.
@@ -580,6 +594,12 @@ fn see_also(s: &WikiState, article: &Article, heading: &str) -> Node {
             )
         }))
 }
+/// The path of a category listing. Spaces become underscores, the way a title does.
+fn category_url(name: &str) -> String {
+    format!("/wiki/Category:{}", name.replace(' ', "_"))
+}
+/// The categories an article is filed under. All three sites make a category somewhere a
+/// reader can go — a chip drawn as a chip has to be one — so each is a link to its listing.
 fn categories(article: &Article) -> Node {
     if article.categories.is_empty() {
         return empty();
@@ -588,7 +608,11 @@ fn categories(article: &Article) -> Node {
         .id("cats")
         .child(span("cats-label").id("cats-label").text("Categories:"))
         .each(article.categories.iter().enumerate(), |(i, category)| {
-            span("cat").id(format!("cat-{i}")).text(category.as_str())
+            el("a")
+                .id(format!("cat-{i}"))
+                .class("cat")
+                .attr("href", category_url(category))
+                .text(category.as_str())
         })
 }
 fn latest(article: &Article) -> Node {
@@ -629,6 +653,14 @@ fn cast(s: &WikiState, article: &Article) -> Node {
 
 /// The full article: lead, contents, sections, references, see also, categories.
 pub(crate) fn article_page(s: &WikiState, requested: &str) -> SimResult<HttpResponse> {
+    article_view(s, requested, 0)
+}
+/// The same article page, served at `Special:Random`, with the Random control wound on one
+/// step so pressing it again walks to the next article instead of serving this one twice.
+pub(crate) fn random_page(s: &WikiState, requested: &str, next: u64) -> SimResult<HttpResponse> {
+    article_view(s, requested, next)
+}
+fn article_view(s: &WikiState, requested: &str, random_next: u64) -> SimResult<HttpResponse> {
     let Some((id, from)) = s.canonical(requested) else {
         return missing();
     };
@@ -751,6 +783,7 @@ pub(crate) fn article_page(s: &WikiState, requested: &str) -> SimResult<HttpResp
         &format!("{} — {brand}", article.title),
         "article",
         Some(tabs(&id, "Article")),
+        random_next,
         main,
     )
 }
@@ -820,6 +853,7 @@ pub(crate) fn section_page(s: &WikiState, requested: &str, sid: &str) -> SimResu
         &format!("{}: {} — {}", article.title, section.heading, brand_of(s)),
         "section",
         Some(tabs(&id, "Article")),
+        0,
         vec![page],
     )
 }
@@ -869,6 +903,7 @@ pub(crate) fn talk_page(s: &WikiState, requested: &str) -> SimResult<HttpRespons
         &format!("Talk: {} — {}", article.title, brand_of(s)),
         "talk",
         Some(tabs(&id, "Talk")),
+        0,
         vec![page],
     )
 }
@@ -886,23 +921,33 @@ pub(crate) fn history_page(s: &WikiState, requested: &str) -> SimResult<HttpResp
                 .text(format!("Revision history of {}", article.title)),
         )
         .child(el("ul").class("history").each(article.revisions.iter().rev(), |revision| {
-            let target = revision
-                .section
-                .as_ref()
-                .map(|sid| format!("{}?section={sid}", article_url(&id)))
-                .unwrap_or_else(|| article_url(&id));
+            // Where the entry leads: the section it changed, the article itself for the
+            // creation, and nowhere at all when the section it named has since been removed —
+            // the entry above it is often the revert that removed it, and a link into a page
+            // that no longer has that section would be a lie, so it is plain text instead.
+            let target = match &revision.section {
+                None => Some(article_url(&id)),
+                Some(sid) if article.section(sid).is_some() => {
+                    Some(format!("{}?section={sid}", article_url(&id)))
+                }
+                Some(_) => None,
+            };
             let rev = revision.rev;
+            let comment = match target {
+                Some(target) => {
+                    link(&format!("rev-{rev}-comment"), target, revision.comment.as_str())
+                }
+                None => span("gone")
+                    .id(format!("rev-{rev}-comment"))
+                    .attr("title", "the section this touched is no longer in the article")
+                    .text(revision.comment.as_str()),
+            };
             el("li")
                 .id(format!("rev-{rev}"))
                 .child(span("rev-id").id(format!("rev-{rev}-id")).text(format!("rev {rev}")))
                 .child(span("tick").id(format!("rev-{rev}-tick")).text(format!("tick {}", revision.tick)))
                 .child(span("author").id(format!("rev-{rev}-author")).text(revision.author.as_str()))
-                .child(
-                    span("comment")
-                        .text("(")
-                        .child(link(&format!("rev-{rev}-comment"), target, revision.comment.as_str()))
-                        .text(")"),
-                )
+                .child(span("comment").text("(").child(comment).text(")"))
                 .child(
                     span(if current == Some(rev) { "mark current" } else { "mark" })
                         .id(format!("rev-{rev}-mark"))
@@ -917,6 +962,7 @@ pub(crate) fn history_page(s: &WikiState, requested: &str) -> SimResult<HttpResp
         &format!("Revision history of {} — {}", article.title, brand_of(s)),
         "history",
         Some(tabs(&id, "History")),
+        0,
         vec![page],
     )
 }
@@ -930,10 +976,11 @@ pub(crate) fn results_page(s: &WikiState, query: &str) -> SimResult<HttpResponse
     let page = div("inner plain")
         .child(el("h1").id("results-title").text(format!("Search results for {query}")))
         .child(
-            el("p")
-                .id("results-count")
-                .class("small")
-                .text(format!("{} article(s) matched.", hits.len())),
+            el("p").id("results-count").class("small").text(match hits.len() {
+                0 => "No article matched.".to_owned(),
+                1 => "1 article matched.".to_owned(),
+                n => format!("{n} articles matched."),
+            }),
         )
         .child(div("cards hits").each(hits.iter().enumerate(), |(i, hit)| {
             card(s, &format!("hit-{i}"), &s.articles[&hit.id], "snippet")
@@ -943,10 +990,45 @@ pub(crate) fn results_page(s: &WikiState, query: &str) -> SimResult<HttpResponse
                 el("p")
                     .id("results-empty")
                     .class("small")
-                    .text("No article matched. Try a different wording."),
+                    .text("Try a different wording, or a broader term."),
             )
         });
-    shell(s, &format!("{query} — search results"), "results", None, vec![page])
+    shell(s, &format!("{query} — search results"), "results", None, 0, vec![page])
+}
+/// Everything filed under one category, which is where the chips on an article lead. A
+/// category with no members is a 404, not an empty page: nothing on the site links to one.
+pub(crate) fn category_page(s: &WikiState, requested: &str) -> SimResult<HttpResponse> {
+    let name = requested.trim().replace('_', " ");
+    let members: Vec<&Article> = s
+        .articles
+        .values()
+        .filter(|a| a.categories.iter().any(|c| c.eq_ignore_ascii_case(&name)))
+        .collect();
+    if members.is_empty() {
+        return web::error(404, "no such category");
+    }
+    let noun = match s.skin_name() {
+        "imdb" => "title",
+        "archive" => "item",
+        _ => "page",
+    };
+    let page = div("inner plain")
+        .child(el("h1").id("cat-title").text(format!("Category: {name}")))
+        .child(el("p").id("cat-count").class("small").text(match members.len() {
+            1 => format!("1 {noun} in this category."),
+            n => format!("{n} {noun}s in this category."),
+        }))
+        .child(div("cards").each(members.iter().enumerate(), |(i, article)| {
+            card(s, &format!("all-{i}"), article, "summary")
+        }));
+    shell(
+        s,
+        &format!("Category: {name} — {}", brand_of(s)),
+        "category",
+        None,
+        0,
+        vec![page],
+    )
 }
 /// A red link in real life; here it is an honest 404 rather than a page pretending to be one.
 pub(crate) fn missing() -> SimResult<HttpResponse> {

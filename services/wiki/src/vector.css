@@ -220,6 +220,7 @@ ul.box-body li { padding: 2px 0; }
 .history .author { font-weight: 700; color: var(--accent); }
 .history .tick { color: var(--muted); }
 .history .comment { font-style: italic; }
+.history .gone { color: var(--muted); }
 .history .mark { font-size: 12px; color: var(--muted); }
 .history .mark.current { color: #14866d; font-weight: 700; }
 

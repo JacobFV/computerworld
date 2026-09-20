@@ -14,7 +14,14 @@
 //! `link-head`, `origin`, `back`, `sums`, `sum-in`, `sum-out`, `sum-close`, `own`,
 //! `xfer-card`, `xfer-head`, `xfer` (`xfer-from`, `xfer-to`, `xfer-amount`, `xfer-go`),
 //! `pay-card`, `pay-head`, `payees`, `pay` (`pay-account`, `pay-payee`, `pay-amount`,
-//! `pay-go`), `addpayee` (`addpayee-name`, `addpayee-hint`, `addpayee-go`), `foot`.
+//! `pay-go`), `addpayee` (`addpayee-name`, `addpayee-hint`, `addpayee-go`), `foot`, and
+//! the statement's `stmt-periods` (`stmt-all`, `stmt-<yyyy-mm>`).
+//!
+//! Every control here leads somewhere: the quick actions on the overview land on the form
+//! they name, the statement's period chips name only months this account has activity in,
+//! and a tab that leads back to the page it is on says so with `aria-current="page"`. The
+//! footer's Security / Privacy / Terms of use / Accessibility words are plain text with no
+//! pointer, no role and no id, because this world has no such pages to send anyone to.
 use crate::{money, slug, Account, BankState, Transaction};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common as web;
@@ -71,6 +78,11 @@ impl Chrome {
     /// The masthead: the mark, the two routes every page reaches, and who is signed in.
     fn header(&self, current: &str) -> Html {
         let on = |tab: &str| if tab == current { "tab on" } else { "tab" };
+        // The current tab still links to itself, the way every real tab strip does, and
+        // says so, so the agent is told where it is standing rather than sent in a circle.
+        let here = |tab: &'static str| move |n: Html| {
+            if tab == current { n.attr("aria-current", "page") } else { n }
+        };
         let (home, pay) = if self.paypal() {
             ("Home", "Send and Request")
         } else {
@@ -79,10 +91,12 @@ impl Chrome {
         let nav = el("nav")
             .class("tabs")
             .attr("aria-label", "Main")
-            .child(link("nav-home", "/", home).class(on("home")))
-            .child(link("nav-pay", "/transfers", pay).class(on("pay")))
+            .child(here("home")(link("nav-home", "/", home).class(on("home"))))
+            .child(here("pay")(link("nav-pay", "/transfers", pay).class(on("pay"))))
             .maybe(self.first_account.as_ref().map(|id| {
-                link("nav-activity", format!("/accounts/{id}"), "Activity").class(on("activity"))
+                here("activity")(
+                    link("nav-activity", format!("/accounts/{id}"), "Activity").class(on("activity")),
+                )
             }));
         let person = self.person();
         el("header").id("chrome").class("mast").child(
@@ -148,6 +162,23 @@ fn pretty_date(date: &str) -> String {
         }
     }
     date.to_owned()
+}
+/// `2026-03` -> `March 2026`; anything else is shown as it was asked for.
+fn pretty_month(period: &str) -> String {
+    match period.split_once('-') {
+        Some((y, m)) => match m.parse::<usize>() {
+            Ok(m) if (1..=12).contains(&m) => format!("{} {y}", MONTHS[m - 1]),
+            _ => period.to_owned(),
+        },
+        None => period.to_owned(),
+    }
+}
+/// What the heading calls the period it is showing.
+fn pretty_period(period: &str) -> String {
+    if period == "all" {
+        return "all activity".to_owned();
+    }
+    pretty_month(period)
 }
 fn when(t: &Transaction) -> Html {
     if t.date.is_empty() {
@@ -264,24 +295,26 @@ pub(crate) fn overview(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpRes
                 .child(span("cap").text("Total deposits"))
                 .child(span("sum").id("worth").text(money(total))),
         );
+    // Each quick action names a form on the transfer desk and lands on that form. The
+    // wallet has no way to request money from anyone in this world, so it does not offer
+    // one; its second action is the thing it can do, which is put a contact on file.
+    let (send, pay) = if p.paypal() {
+        (("Send", "/transfers#pay-card"), ("Add a contact", "/transfers#payee-card"))
+    } else {
+        (("Transfer money", "/transfers#xfer-card"), ("Pay a bill", "/transfers#pay-card"))
+    };
+    let round = |id: &str, class: &str, (text, href): (&str, &str)| {
+        el("a")
+            .id(id)
+            .class(class)
+            .attr("href", href)
+            .child(span("disc").attr("aria-hidden", "true").child(el("i")))
+            .child(span("t").text(text))
+    };
     let actions = div("quick")
         .id("quick")
-        .child(
-            el("a")
-                .id("quick-send")
-                .class("round send")
-                .attr("href", "/transfers")
-                .child(span("disc").attr("aria-hidden", "true").child(el("i")))
-                .child(span("t").text(if p.paypal() { "Send" } else { "Transfer money" })),
-        )
-        .child(
-            el("a")
-                .id("quick-pay")
-                .class("round pay")
-                .attr("href", "/transfers")
-                .child(span("disc").attr("aria-hidden", "true").child(el("i")))
-                .child(span("t").text(if p.paypal() { "Request" } else { "Pay a bill" })),
-        )
+        .child(round("quick-send", "round send", send))
+        .child(round("quick-pay", "round pay", pay))
         .each(accounts.iter().take(if p.paypal() { 0 } else { 3 }), |a| {
             el("a")
                 .id(format!("quick-stmt-{}", a.id))
@@ -381,8 +414,10 @@ pub(crate) fn account_page(
         None
     } else {
         Some(el("nav").id("cats").class("chips").attr("aria-label", "Categories").each(categories.iter(), |c| {
+            let on = c.eq_ignore_ascii_case(category);
             link(&format!("cat-{}", slug(c)), href(&format!("/accounts/{id}"), &[("category", c)]), c.as_str())
-                .class(if c.eq_ignore_ascii_case(category) { "chip on" } else { "chip" })
+                .class(if on { "chip on" } else { "chip" })
+                .when(on, |n| n.attr("aria-current", "page"))
         }))
     };
     let panel = el("section")
@@ -390,7 +425,10 @@ pub(crate) fn account_page(
         .child(
             div("panel-head")
                 .child(el("h2").text("Transactions"))
-                .child(el("p").id("count").class("count").text(format!("{} transaction(s)", rows.len()))),
+                .child(el("p").id("count").class("count").text(match rows.len() {
+                    1 => "1 transaction".to_owned(),
+                    n => format!("{n} transactions"),
+                })),
         )
         .child(filter)
         .maybe(cats)
@@ -472,12 +510,35 @@ pub(crate) fn statement(s: &BankState, p: &Chrome, actor: &str, id: &str, period
             .child(span("cap").text(format!("{name} ")))
             .child(span("v").text(money(cents)))
     };
+    // The periods on offer are the months this account actually has activity in, newest
+    // first, so the range control can never name a statement that would come back empty.
+    let mut months: Vec<String> = s
+        .activity(actor, id)
+        .iter()
+        .filter(|t| t.date.len() >= 7)
+        .map(|t| t.date[..7].to_owned())
+        .collect();
+    months.sort();
+    months.dedup();
+    months.reverse();
+    let tab = |value: &str, text: String| {
+        let on = value == period;
+        link(&format!("stmt-{value}"), format!("/statements/{id}/{value}"), text)
+            .class(if on { "chip on" } else { "chip" })
+            .when(on, |n| n.attr("aria-current", "page"))
+    };
+    let periods = el("nav")
+        .id("stmt-periods")
+        .class("chips")
+        .attr("aria-label", "Statement period")
+        .child(tab("all", "All activity".to_owned()))
+        .each(months.iter(), |m| tab(m, pretty_month(m)));
     let head = el("section")
         .class("summary")
         .child(
             div("title")
                 .child(link("crumb-account", format!("/accounts/{id}"), a.name.as_str()).class("crumb"))
-                .child(el("h1").id("lead").text(format!("Statement — {} — {period}", a.name))),
+                .child(el("h1").id("lead").text(format!("Statement — {} — {}", a.name, pretty_period(period)))),
         )
         .child(
             div("totals")
@@ -489,7 +550,11 @@ pub(crate) fn statement(s: &BankState, p: &Chrome, actor: &str, id: &str, period
     let panel = el("section")
         .class("panel")
         .child(div("panel-head").child(el("h2").text("Statement activity")))
-        .child(ledger(rows));
+        .child(periods)
+        .child(match rows.is_empty() {
+            true => el("p").id("stmt-none").class("none").text("Nothing was posted in this period."),
+            false => ledger(rows),
+        });
     p.document(&format!("Statement {period} — {}", s.brand), "page-statement", "activity", vec![head, panel])
 }
 
@@ -503,13 +568,21 @@ pub(crate) fn transfers(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpRe
     let accounts = s.owned(actor);
     let first = accounts.first().map(|a| a.id.clone()).unwrap_or_default();
     let second = accounts.get(1).map(|a| a.id.clone()).unwrap_or_default();
-    let own = el("ul").id("own").class("refs").each(accounts.iter(), |a| {
-        el("li")
-            .child(el("code").text(a.id.as_str()))
-            .child(span("what").text(format!(" {} ", a.name)))
-            .child(span("v").text(format!("({})", money(a.available_cents))))
-    });
-    let payees = el("ul").id("payees").class("refs").each(s.payees.values(), |x| {
+    let own = el("ul")
+        .id("own")
+        .class("refs")
+        .when(accounts.is_empty(), |n| {
+            n.child(el("li").text("No accounts are open in your name."))
+        })
+        .each(accounts.iter(), |a| {
+            el("li")
+                .child(el("code").text(a.id.as_str()))
+                .child(span("what").text(format!(" {} ", a.name)))
+                .child(span("v").text(format!("({})", money(a.available_cents))))
+        });
+    let payees = el("ul").id("payees").class("refs").when(s.payees.is_empty(), |n| {
+        n.child(el("li").text("Nobody is on file yet."))
+    }).each(s.payees.values(), |x| {
         el("li")
             .child(el("code").text(x.id.as_str()))
             .child(span("what").text(format!(" ({}) ", x.name)))

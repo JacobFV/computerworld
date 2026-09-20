@@ -193,7 +193,11 @@ impl Service for SpeakerService {
             }
             ("POST", "/api/volume") | ("POST", "/volume") => {
                 let body = web::body(request)?;
-                let level = web::number(&body, "level")?;
+                // A request that names no level is the caller's mistake, not the
+                // simulation's: answer it the way a bad level is answered.
+                let Ok(level) = web::number(&body, "level") else {
+                    return web::error(400, "volume is a level from 0 to 100");
+                };
                 if level > 100 {
                     return web::error(400, "volume is a level from 0 to 100");
                 }

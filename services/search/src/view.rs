@@ -9,6 +9,14 @@
 //! result is one link, with `hit-<n>-site`, `-title` and `-snippet` inside), `shot-<n>`,
 //! `reel-<n>`, `news-<n>`, `recent-<n>`, `recent-clear`, `trend-<n>`, `bang-<tag>`,
 //! `foot-about`, `foot-<n>`, `jump`, `lucky-go`, `about-home`, `fact-<id>`, `mark`.
+//!
+//! Nothing here is a control that cannot act. What a real engine wires to JavaScript and
+//! this world cannot — the microphone, the camera lens, Google's nine-dot app grid, the
+//! bang list — is drawn as a picture: a `span` with no `href`, no `role` and no pointer
+//! cursor, so neither a reader nor the semantic tree is invited to click it. What names
+//! the page you are already on — the tab you are in, the page number you are on, a seeded
+//! header or footer entry pointing here — keeps its id but loses its `href`, because a
+//! link whose only effect is to reload is a lie about where it goes.
 use crate::{documents, recent, Document, Hit, PAGE_SIZE, VERTICALS};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common as web;
@@ -30,9 +38,12 @@ pub(crate) struct Chrome {
     paper: String,
     link: String,
     content: u32,
+    /// The path and query of the page being rendered, so a nav entry pointing at where
+    /// you already are is drawn as a label instead of a link that goes nowhere.
+    here: String,
 }
 impl Chrome {
-    pub(crate) fn read(state: &Value) -> Result<Self> {
+    pub(crate) fn read(state: &Value, here: &str) -> Result<Self> {
         let theme = web::theme(state)?;
         let skin = web::variant(state, "skin", crate::SKINS)?;
         let or = |value: &Option<String>, fallback: &str| value.clone().unwrap_or_else(|| fallback.to_owned());
@@ -56,6 +67,7 @@ impl Chrome {
             paper: or(&theme.background, "#ffffff"),
             link,
             content: theme.content_width.unwrap_or(652).clamp(320, 1200),
+            here: here.to_owned(),
         })
     }
     /// The page shell: title, language, the one stylesheet, the palette and the skin.
@@ -126,11 +138,13 @@ impl Chrome {
     fn bar(&self, query: &str, vertical: &str) -> Node {
         el("header").id("head").class("bar").child(self.mark(false)).child(self.box_(query, vertical, false))
     }
-    /// Vertical tabs: real links that re-run the same query against a filtered index.
+    /// Vertical tabs: real links that re-run the same query against a filtered index. The
+    /// one you are in is the name of where you are, not a link back to it.
     fn tabs(&self, verticals: &[String], query: &str, current: &str) -> Node {
-        el("nav").id("tabs").class("tabs").each(verticals, |vertical| {
-            link(&format!("tab-{vertical}"), href("/search", &[("q", query), ("v", vertical)]), label(vertical))
-                .class(if vertical == current { "tab on" } else { "tab" })
+        el("nav").id("tabs").class("tabs").each(verticals, |vertical| match vertical == current {
+            true => span("tab on").id(format!("tab-{vertical}")).attr("aria-current", "page").text(label(vertical)),
+            false => link(&format!("tab-{vertical}"), href("/search", &[("q", query), ("v", vertical)]), label(vertical))
+                .class("tab"),
         })
     }
     /// The home page's top-right links, from the seed's `header` list, and its `cta`
@@ -151,18 +165,22 @@ impl Chrome {
         el("header")
             .id("top")
             .class("top")
-            .each(entries.iter().enumerate(), |(i, (t, u))| link(&format!("head-{i}"), u.as_str(), t.as_str()).class("txt"))
+            .each(entries.iter().enumerate(), |(i, (t, u))| self.nav(&format!("head-{i}"), u, t, "txt"))
+            // Google's nine-dot grid opens an app switcher. There is no such switcher here,
+            // so it is drawn the way the mic and the lens are: a picture, not a control.
             .when(self.skin == "google", |h| {
-                h.child(
-                    el("a")
-                        .id("head-apps")
-                        .class("apps")
-                        .attr("href", "/about")
-                        .attr("aria-label", format!("{} apps", self.brand))
-                        .child(span("dots").each(0..9, |_| el("i"))),
-                )
+                h.child(span("apps").id("head-apps").attr("aria-hidden", "true").child(span("dots").each(0..9, |_| el("i"))))
             })
             .maybe(cta.map(|(t, u)| link("head-cta", u, t).class("signin")))
+    }
+    /// A seeded nav entry: a link, unless it names the page being rendered, in which case
+    /// it is the name of where you are and clicking it would only reload.
+    fn nav(&self, id: &str, url: &str, text: &str, class: &str) -> Node {
+        if same_page(&self.here, url) {
+            span(class).id(id).class("here").text(text)
+        } else {
+            link(id, url, text).class(class)
+        }
     }
     /// Seeded outbound links plus the engine's own about page; nothing here is decorative.
     fn footer(&self, state: &Value) -> Node {
@@ -170,14 +188,14 @@ impl Chrome {
             c if c.is_empty() => "United States".to_owned(),
             c => c,
         };
-        let mut left = div("").child(link("foot-about", "/about", format!("About {}", self.brand)));
+        let mut left = div("").child(self.nav("foot-about", "/about", &format!("About {}", self.brand), ""));
         let mut right = div("");
         for (i, entry) in state.get("footer").and_then(Value::as_array).into_iter().flatten().enumerate() {
             let url = web::text(entry, "url");
             if url.is_empty() {
                 continue;
             }
-            let a = link(&format!("foot-{i}"), url, web::text(entry, "text"));
+            let a = self.nav(&format!("foot-{i}"), &url, &web::text(entry, "text"), "");
             if i % 2 == 0 {
                 left = left.child(a);
             } else {
@@ -189,6 +207,25 @@ impl Chrome {
             .class("band")
             .child(div("country").id("foot-country").text(country))
             .child(div("links").child(left).child(right))
+    }
+}
+/// Whether a seeded link names the page being rendered. Query order does not matter, so
+/// `/search?v=images` and `/search?v=images&` are the same place; a link to another host
+/// never is, however its path reads, so the base origin is part of the comparison.
+fn same_page(here: &str, url: &str) -> bool {
+    const BASE: &str = "http://engine.invalid/";
+    let parts = |s: &str| {
+        let parsed = url::Url::parse(BASE).ok()?.join(s).ok()?;
+        let mut pairs: Vec<(String, String)> = parsed
+            .query_pairs()
+            .map(|(k, v)| (k.into_owned(), v.into_owned()))
+            .collect();
+        pairs.sort();
+        Some((parsed.origin(), parsed.path().to_owned(), pairs))
+    };
+    match (parts(here), parts(url)) {
+        (Some(a), Some(b)) => a == b,
+        _ => here == url,
     }
 }
 fn label(vertical: &str) -> String {
@@ -227,8 +264,11 @@ fn verticals(state: &Value) -> Vec<String> {
     }
 }
 
-pub(crate) fn home(state: &Value, actor: &str) -> Result<HttpResponse> {
-    let chrome = Chrome::read(state)?;
+/// The landing page. `vertical` is `all` for `/`, and the vertical for `/search?v=images`
+/// with no query: the box then keeps the filter and the tab strip says which one you are in,
+/// so the header's Images link lands somewhere that is not the page it left.
+pub(crate) fn home(state: &Value, actor: &str, vertical: &str, here: &str) -> Result<HttpResponse> {
+    let chrome = Chrome::read(state, here)?;
     let tagline = web::text(state, "tagline");
     let history = recent(state, actor);
     let trending = web::strings(state, "trending");
@@ -243,7 +283,7 @@ pub(crate) fn home(state: &Value, actor: &str) -> Result<HttpResponse> {
         .class("hero")
         .child(chrome.mark(true))
         .when(!tagline.is_empty(), |m| m.child(el("p").id("tagline").class("tagline").text(tagline.as_str())))
-        .child(chrome.box_("", VERTICALS[0], true))
+        .child(chrome.box_("", vertical, true))
         .when(!history.is_empty(), |m| {
             m.child(
                 el("section")
@@ -283,7 +323,18 @@ pub(crate) fn home(state: &Value, actor: &str) -> Result<HttpResponse> {
                     })),
             )
         });
-    let doc = chrome.document(&chrome.brand, "home", vec![chrome.top(state), hero, chrome.footer(state)]);
+    let filtered = vertical != VERTICALS[0];
+    let title = match filtered {
+        true => format!("{} - {}", label(vertical), chrome.brand),
+        false => chrome.brand.clone(),
+    };
+    let mut body = vec![chrome.top(state)];
+    if filtered {
+        body.push(chrome.tabs(&verticals(state), "", vertical));
+    }
+    body.push(hero);
+    body.push(chrome.footer(state));
+    let doc = chrome.document(&title, "home", body);
     web::html::page(&doc)
 }
 
@@ -294,15 +345,22 @@ pub(crate) fn results(
     hits: &[Hit],
     page: usize,
     note: Option<String>,
+    here: &str,
 ) -> Result<HttpResponse> {
-    let chrome = Chrome::read(state)?;
+    let chrome = Chrome::read(state, here)?;
     let pages = hits.len().div_ceil(PAGE_SIZE).max(1);
     let page = page.clamp(1, pages);
     let shown = &hits[((page - 1) * PAGE_SIZE).min(hits.len())..(page * PAGE_SIZE).min(hits.len())];
+    // "About 1 results" is the sort of thing only a template writes; one result is one result.
+    let count = match hits.len() {
+        1 => "1 result".to_owned(),
+        n => format!("{n} results"),
+    };
     let stats = match chrome.skin.as_str() {
-        "google" => format!("About {} results", hits.len()),
-        "ddg" => format!("{} results for {query}", hits.len()),
-        _ => format!("{} results", hits.len()),
+        "google" if hits.len() == 1 => count.clone(),
+        "google" => format!("About {count}"),
+        "ddg" => format!("{count} for {query}"),
+        _ => count.clone(),
     };
     let offset = (page - 1) * PAGE_SIZE;
     let listing = match vertical {
@@ -328,7 +386,9 @@ pub(crate) fn results(
     );
     web::html::page(&doc)
 }
-/// Numbered page links with Previous and Next: `page-<n>`, `page-prev`, `page-next`.
+/// Numbered page links with Previous and Next: `page-<n>`, `page-prev`, `page-next`. The
+/// number you are already on is the label of where you are, not a link back to it, which is
+/// how every search engine draws it.
 fn pagination(query: &str, vertical: &str, page: usize, pages: usize) -> Node {
     let to = |n: usize| href("/search", &[("q", query), ("v", vertical), ("p", &n.to_string())]);
     el("nav")
@@ -336,8 +396,9 @@ fn pagination(query: &str, vertical: &str, page: usize, pages: usize) -> Node {
         .class("pages")
         .attr("aria-label", "Pages")
         .when(page > 1, |n| n.child(link("page-prev", to(page - 1), "Previous").class("word")))
-        .each(1..=pages, |n| {
-            link(&format!("page-{n}"), to(n), n.to_string()).class(if n == page { "on" } else { "" })
+        .each(1..=pages, |n| match n == page {
+            true => span("on").id(format!("page-{n}")).attr("aria-current", "page").text(n.to_string()),
+            false => link(&format!("page-{n}"), to(n), n.to_string()),
         })
         .when(page < pages, |n| n.child(link("page-next", to(page + 1), "Next").class("word")))
 }
@@ -396,8 +457,8 @@ fn story(i: usize, hit: &Hit) -> Node {
         )
 }
 /// A bang is a jump, so the page is the jump and nothing else.
-pub(crate) fn jump(state: &Value, query: &str, tag: &str, title: &str, url: &str) -> Result<HttpResponse> {
-    let chrome = Chrome::read(state)?;
+pub(crate) fn jump(state: &Value, query: &str, tag: &str, title: &str, url: &str, here: &str) -> Result<HttpResponse> {
+    let chrome = Chrome::read(state, here)?;
     let main = el("main")
         .class("results")
         .child(
@@ -416,8 +477,8 @@ pub(crate) fn jump(state: &Value, query: &str, tag: &str, title: &str, url: &str
     );
     web::html::page(&doc)
 }
-pub(crate) fn lucky(state: &Value, query: &str, top: Option<&Hit>) -> Result<HttpResponse> {
-    let chrome = Chrome::read(state)?;
+pub(crate) fn lucky(state: &Value, query: &str, top: Option<&Hit>, here: &str) -> Result<HttpResponse> {
+    let chrome = Chrome::read(state, here)?;
     let hero = el("main").class("hero short").child(chrome.mark(false));
     let hero = match top {
         Some(hit) => hero
@@ -430,7 +491,7 @@ pub(crate) fn lucky(state: &Value, query: &str, top: Option<&Hit>) -> Result<Htt
     web::html::page(&doc)
 }
 pub(crate) fn about(state: &Value) -> Result<HttpResponse> {
-    let chrome = Chrome::read(state)?;
+    let chrome = Chrome::read(state, "/about")?;
     let indexed = documents(state);
     let about = match web::text(state, "about") {
         a if a.is_empty() => format!(

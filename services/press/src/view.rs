@@ -26,6 +26,8 @@
 //! `front-topics` (with `front-topics-heading` and one `topic-<tag>` chip each), `list`,
 //! `list-stories`, `article`, `article-body`, `article-links-heading`, `comments`,
 //! `newsletter` and `foot` (with `foot-<section>`, `foot-archive`, `foot-saved`);
+//! `masthead-follow-form` and `subscribe` carry a hidden `return` of the page they are on,
+//! since both sit in the furniture of every page and neither may move the reader;
 //! `article-tag-<tag>-text` labels a chip. The `Page` dividers (`article-divider`,
 //! `newsletter-divider`, `front-rule-<id>`, `list-rule-<id>`) are gone: a rule is a
 //! border in the stylesheet, not an element an agent can address.
@@ -102,13 +104,16 @@ fn initials(name: &str) -> String {
 pub(crate) struct Chrome<'a> {
     state: &'a Value,
     actor: &'a str,
+    /// The path being rendered. The masthead Follow and the newsletter sit on every page,
+    /// so their `return` is wherever the reader pressed them, not the front page.
+    here: &'a str,
     layout: String,
     skin: String,
     brand: String,
     root: String,
 }
 impl<'a> Chrome<'a> {
-    pub(crate) fn read(state: &'a Value, actor: &'a str) -> Result<Self> {
+    pub(crate) fn read(state: &'a Value, actor: &'a str, here: &'a str) -> Result<Self> {
         let theme = web::theme(state)?;
         let layout = web::variant(state, "layout", LAYOUTS)?;
         let brand = match web::text(state, "brand") {
@@ -129,7 +134,7 @@ impl<'a> Chrome<'a> {
             or(&theme.background, "#ffffff"),
             theme.content_width.unwrap_or(900).clamp(320, 1400)
         );
-        Ok(Self { state, actor, layout, skin, brand, root })
+        Ok(Self { state, actor, here, layout, skin, brand, root })
     }
     fn document(&self, title: &str, page_class: &str, main: Node) -> Result<HttpResponse> {
         let doc = Document::new(title)
@@ -213,7 +218,7 @@ impl<'a> Chrome<'a> {
                                 if following { "Following" } else { "Follow" },
                                 following,
                                 "/follow",
-                                "/",
+                                self.here,
                             )),
                     ),
             )
@@ -282,6 +287,7 @@ impl<'a> Chrome<'a> {
             .child(el("p").class("lead").text(lead))
             .child(
                 form("subscribe", "/subscribe", "post")
+                    .child(hidden("return", self.here))
                     .child(
                         text_input("subscribe-email", "email", "")
                             .attr("aria-label", "Email address")
@@ -475,7 +481,11 @@ impl<'a> Chrome<'a> {
         let discussion = el("section")
             .id("comments")
             .class("comments")
-            .child(el("h2").id("comments-heading").text(format!("{} comments", comments.len())))
+            .child(el("h2").id("comments-heading").text(match comments.len() {
+                0 => "No comments yet".to_owned(),
+                1 => "1 comment".to_owned(),
+                n => format!("{n} comments"),
+            }))
             .child(
                 form("comment", format!("/articles/{id}/comments"), "post")
                     .child(

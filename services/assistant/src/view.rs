@@ -14,6 +14,11 @@
 //! `-cite-<k>`, `turn-controls`, `regenerate`, `rename` (the form), `rename-title`,
 //! `rename-submit` and `delete`. A button that posted with no inputs is now a
 //! one-button form around it: `suggestion-<n>-form`, `regenerate-form`, `delete-form`.
+//!
+//! Everything the page draws that looks pressable is one of those: the composer's model
+//! name and the product name in the top bar are readouts, drawn as plain text with no
+//! hover and no pointer, because this world has one model per site and no page script to
+//! open a menu with.
 use crate::{AssistantState, Message};
 use cw_protocol::{HttpResponse, Result as SimResult};
 use cw_service_common as web;
@@ -138,10 +143,12 @@ fn composer(s: &AssistantState, chrome: &Chrome, action: &str) -> Node {
                     .attr("autocomplete", "off"),
             )
             .child(
+                // No attach and no microphone: this world has neither, and a "+" that
+                // swallowed the click would be a lie. What is left is the model the
+                // reply will come from, as a readout, and the send button.
                 div("tools")
-                    .child(span("plus").attr("aria-hidden", "true"))
                     .child(span("grow"))
-                    .child(span("picker").attr("aria-hidden", "true").text(model(s)))
+                    .child(span("picker").text(model(s)))
                     .child(button("composer-submit", "").class("send").attr("aria-label", "Send message").child(span("arrow").child(el("i")))),
             ),
     )
@@ -163,7 +170,9 @@ pub(crate) fn home(s: &AssistantState, actor: &str) -> SimResult<HttpResponse> {
             }))
         });
     let main = vec![
-        el("header").class("topbar").child(span("product").id("top-product").text(s.brand.as_str()).child(span("caret"))),
+        // The product's name, not a menu: there is one model here, so there is nothing
+        // for a caret to open.
+        el("header").class("topbar").child(span("product").id("top-product").text(s.brand.as_str())),
         hero,
         if s.model_label.is_empty() {
             web::html::empty()

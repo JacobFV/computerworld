@@ -34,13 +34,16 @@ Seed:
 
 The page is HTML (`text/html`, built on `cw_service_common::html`, styled by
 `src/slack.css`) in Slack's desktop layout: the aubergine frame with the search box in
-its top bar, the rail of Home / DMs / Activity / Later / More, the sidebar of channels
+its top bar, the rail of Home, DMs and Activity, the sidebar of channels
 and DMs (unread in bold, the open one in blue), the conversation with messages grouped
 by author under date dividers, emoji short names as characters, mentions tinted, code
 in the monospace face, reactions as chips that react when pressed (the caller's own
 outlined in blue), threads collapsed to "N replies · Last reply 2h ago", a toolbar that
 floats over the message under the pointer (the last message keeps its own showing), and
-the composer under the transcript. It is an app shell: the body is a full-height flex
+the composer under the transcript. Every control on the page acts: what cannot —
+Slack's emoji picker, its formatting strip, the attach and apps buttons, Later and More
+— is not drawn rather than drawn dead, and `tests/controls.rs` crawls every page kind
+to keep it that way. It is an app shell: the body is a full-height flex
 column, and the sidebar list, the transcript (`#messages`) and the pane's list scroll on
 their own. `?thread=<message id>` opens that thread in a pane on the right with its own
 reply field; `?members=1` opens the member list there. A seeded `theme` overrides the
@@ -52,11 +55,14 @@ in a one-field POST form to `/dms`), `send` / `send-text` / `send-submit`,
 `reaction=<emoji>`), `<message>-pin` (`formaction` to the pin route),
 `<message>-open-thread` and `<message>-replies` (links to `?thread=`),
 `<parent>-reply` / `-reply-body` / `-reply-submit`, `read` / `read-submit`,
-`channel-members`, `thread-close`, `members-close`.
+`channel-members`, `thread-close`, `members-close`, `search` / `search-q` /
+`search-go` (the top bar's search form), `rail-activity` (the Activity tab).
 
 | Route | Behavior |
 | --- | --- |
 | GET `/`, `/channels/{id}`, `/dms/{id}`, `/archives/{id}` | The workspace: rail, sidebar with unread badges, the open conversation with its topic, threads, pins and reactions; `/` and `/dms` open the first channel or DM. `?thread=<id>` and `?members=1` open the right-hand pane |
+| GET `/search?q=` | What the top bar's search box finds: every message of a conversation the caller is in whose text holds the query, newest first |
+| GET `/activity` | The Activity tab: the caller's unread @-mentions, newest first |
 | GET `/api/channels`, `/api/dms` | Membership-filtered ids to titles |
 | GET `/api/channels/{id}` (`/messages`) | The conversation plus the caller's `unread` |
 | GET `/api/channels/{id}/pins` | The pinned messages |

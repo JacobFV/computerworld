@@ -33,6 +33,7 @@ Seed:
 | --- | --- |
 | GET `/`, `/channels/{server}`, `/channels/@me` | The server with no channel open |
 | GET `/channels/{server}/{channel}` | The channel: dark layout, server rail, categories on the left, messages grouped by author under date dividers, the composer pinned at the bottom, members by role on the right (`?members=0` closes the list). `/channels/{channel}` is the short form seeded prose and scenes use |
+| GET `/search?q=` | What the header's search box finds: every message of a channel the caller can see whose text holds the query, newest first |
 | GET `/api/server` | Roles, categories, voice occupancy, members, and the channels the caller can see |
 | GET `/api/channels` | The caller's visible text channels |
 | GET `/api/channels/{channel}` (`/messages`) | The channel's topic, roles and messages |
@@ -40,5 +41,13 @@ Seed:
 | POST `/api/channels/{channel}/messages/{message}/reactions` | `{reaction:"eyes"}`, toggling the caller's reaction |
 | POST `/api/voice/{channel}/join`, `/api/voice/{channel}/leave` | Move the caller into, or out of, a voice channel |
 
+`?reply_to=<message id>` on a channel opens the composer on that message: the reply bar
+names who is answered and the composer carries the `reply_to` the `POST` needs.
+
 Every route also accepts the `/{server}/` segment after `/channels`. Forms use the same
 paths without `/api`. Every successful POST emits `discord.mutated`.
+
+Every control on the page acts: what cannot — the emoji picker, the attach, gift, GIF
+and sticker buttons, mute and deafen, add-a-server and explore, the header's threads,
+notification, pin, inbox and help buttons — is not drawn rather than drawn dead, and
+`tests/controls.rs` crawls every page kind to keep it that way.

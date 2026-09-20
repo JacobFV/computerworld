@@ -67,8 +67,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .server:hover { border-radius: 16px; background: var(--accent); color: #ffffff; }
 .server.home { background: var(--accent); border-radius: 16px; }
 .server.open { background: var(--accent); color: #ffffff; border-radius: 16px; }
-.server.action { color: var(--green); font-size: 26px; font-weight: 400; line-height: 1; }
-.server.action:hover { background: var(--green); color: #ffffff; }
 .home-mark { position: relative; display: block; width: 28px; height: 20px; background: #ffffff; border-radius: 8px; }
 .home-mark i { position: absolute; top: 8px; width: 6px; height: 7px; border-radius: 3px; background: var(--accent); }
 .home-mark .a { left: 6px; }
@@ -110,9 +108,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 0 16px;
   border-bottom: 1px solid #1f2023;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-  cursor: pointer;
 }
-.side-head:hover { background: var(--hover); }
 .server-name {
   flex: 1 1 auto;
   min-width: 0;
@@ -132,9 +128,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   gap: 2px;
   padding: 16px 8px 4px 0;
   color: var(--muted);
-  cursor: pointer;
 }
-.category:hover, .category:hover .chevron { color: var(--text); }
 .category .chevron { width: 12px; text-align: center; font-size: 10px; color: var(--muted); }
 .category-name { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
 .channel {
@@ -167,7 +161,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .speaker .c { left: 14px; top: 6px; width: 2px; height: 8px; }
 .channel.current .speaker i, .channel:hover .speaker i { background: var(--text); }
 .occupant { display: flex; align-items: center; gap: 8px; height: 32px; margin: 1px 0; padding: 0 8px 0 36px; border-radius: 4px; }
-.occupant:hover { background: var(--hover); }
 .occupant-name { color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .avatar {
@@ -228,49 +221,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
   cursor: pointer;
 }
 .tool:hover { color: var(--text); }
-.user-panel .tool { width: 32px; height: 32px; border-radius: 4px; font-size: 19px; }
-.user-panel .tool:hover { background: var(--selected); }
 .tool i, .lock i { position: absolute; display: block; }
-.mic .a { left: 12px; top: 6px; width: 8px; height: 14px; border-radius: 4px; background: var(--icon); }
-.mic .b { left: 15px; top: 21px; width: 2px; height: 4px; background: var(--icon); }
-.mic .c { left: 11px; top: 25px; width: 10px; height: 2px; border-radius: 1px; background: var(--icon); }
-.headset .a { left: 7px; top: 6px; width: 18px; height: 18px; border: 2px solid var(--icon); border-radius: 9px; }
-.headset .b { left: 5px; top: 16px; width: 22px; height: 10px; background: var(--panel); }
-.headset .c { left: 7px; top: 16px; width: 18px; height: 8px; border-left: 5px solid var(--icon); border-right: 5px solid var(--icon); }
-.user-panel .tool:hover .b { background: var(--selected); }
-.threads { font-size: 20px; font-weight: 600; }
-.threads::after { content: ""; position: absolute; right: 0; bottom: 2px; width: 9px; height: 7px; border: 2px solid var(--surface); border-radius: 3px; background: var(--icon); }
-.bell .a { left: 5px; top: 3px; width: 14px; height: 15px; border-radius: 7px; background: var(--icon); }
-.bell .b { left: 3px; top: 15px; width: 18px; height: 3px; border-radius: 1px; background: var(--icon); }
-.bell .c { left: 10px; top: 19px; width: 4px; height: 3px; border-radius: 1px; background: var(--icon); }
-.pin .a { left: 7px; top: 3px; width: 10px; height: 3px; border-radius: 1px; background: var(--icon); }
-.pin .b { left: 8px; top: 5px; width: 8px; height: 8px; background: var(--icon); }
-.pin .c { left: 11px; top: 12px; width: 2px; height: 9px; background: var(--icon); }
-.pin::after { content: ""; position: absolute; left: 5px; top: 12px; width: 14px; height: 3px; border-radius: 1px; background: var(--icon); }
 .people .a { left: 8px; top: 3px; width: 8px; height: 8px; border-radius: 4px; background: var(--icon); }
 .people .b { left: 4px; top: 13px; width: 16px; height: 8px; border-radius: 4px; background: var(--icon); }
 .people.on .a, .people.on .b { background: #ffffff; }
 .people:hover .a, .people:hover .b { background: var(--text); }
-.inbox .a { left: 3px; top: 4px; width: 18px; height: 16px; border: 2px solid var(--icon); border-radius: 3px; }
-.inbox .b { left: 3px; top: 13px; width: 18px; height: 7px; border-radius: 2px; background: var(--icon); }
-.inbox .c { left: 9px; top: 13px; width: 6px; height: 3px; background: var(--surface); }
-.help { border-radius: 50%; width: 22px; height: 22px; background: var(--icon); color: var(--surface); font-size: 15px; font-weight: 700; }
-.help:hover { background: var(--text); color: var(--surface); }
 .lock { position: relative; flex: 0 0 14px; width: 14px; height: 16px; }
 .lock .a { left: 3px; top: 0; width: 8px; height: 12px; border: 2px solid var(--dim); border-radius: 4px; }
 .lock .b { left: 1px; top: 7px; width: 12px; height: 9px; border-radius: 2px; background: var(--dim); }
-.gift .a { left: 2px; top: 5px; width: 20px; height: 5px; border-radius: 1px; background: var(--icon); }
-.gift .b { left: 4px; top: 11px; width: 16px; height: 10px; border-radius: 1px; background: var(--icon); }
-.gift .c { left: 11px; top: 5px; width: 2px; height: 16px; background: var(--field); }
-.sticker .a { left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 5px; background: var(--icon); }
-.sticker .b { left: 14px; top: 14px; width: 8px; height: 8px; border-radius: 2px; background: var(--field); }
-.sticker .c { left: 15px; top: 15px; width: 5px; height: 5px; border-radius: 1px; background: var(--icon); }
-.smile .a { left: 2px; top: 2px; width: 20px; height: 20px; border: 2px solid var(--icon); border-radius: 10px; }
-.smile .b { left: 7px; top: 8px; width: 10px; height: 3px; border-left: 3px solid var(--icon); border-right: 3px solid var(--icon); }
-.smile .c { left: 8px; top: 14px; width: 8px; height: 2px; border-radius: 1px; background: var(--icon); }
-.tool:hover.smile .a { border-color: var(--text); }
-.gif { width: auto; height: 20px; padding: 0 4px; border-radius: 4px; background: var(--icon); color: var(--field); font-size: 11px; font-weight: 800; letter-spacing: 0.02em; }
-.gif:hover { background: var(--text); color: var(--field); }
 
 /* ---- the chat ---- */
 .content { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--surface); }
@@ -295,19 +253,35 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .topic { flex: 1 1 0; min-width: 0; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .head-tools { flex: 0 0 auto; display: flex; align-items: center; gap: 16px; margin-left: auto; padding-left: 8px; }
 .search {
+  position: relative;
   display: flex;
   align-items: center;
-  width: 144px;
+  width: 160px;
   height: 24px;
+  margin: 0;
   padding: 0 6px;
   border-radius: 4px;
   background: var(--rail);
-  cursor: text;
 }
-.search-text { flex: 1 1 auto; color: var(--muted); font-size: 14px; }
-.search-icon { position: relative; flex: 0 0 16px; width: 16px; height: 16px; }
+/* The field's label: read by an agent, clipped away from the picture. */
+.search-label { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; color: var(--rail); }
+#search-q { flex: 1 1 auto; min-width: 0; height: 20px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 14px; }
+#search-q::placeholder { color: var(--muted); }
+.search-icon { position: relative; flex: 0 0 16px; width: 16px; height: 16px; padding: 0; border: 0; background: transparent; }
 .search-icon::before { content: ""; position: absolute; left: 1px; top: 1px; width: 10px; height: 10px; border: 2px solid var(--muted); border-radius: 50%; }
 .search-icon::after { content: ""; position: absolute; left: 9px; top: 11px; width: 6px; height: 2px; background: var(--muted); transform: rotate(45deg); }
+.search-icon:hover::before { border-color: var(--text); }
+.search-icon:hover::after { background: var(--text); }
+
+/* ---- what the search box finds ---- */
+.results { padding: 8px 16px 20px 16px; }
+.hit { display: block; margin: 8px 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--sidebar); }
+.hit:hover { background: var(--hover); }
+.hit-head { display: flex; align-items: baseline; gap: 8px; }
+.hit-where { color: var(--link); font-size: 14px; font-weight: 600; }
+.hit-author { color: var(--ink); font-size: 14px; font-weight: 500; }
+.hit-time { color: var(--muted); font-size: 12px; }
+.hit-text { color: var(--text); font-size: 15px; line-height: 20px; overflow-wrap: break-word; }
 
 .shell { flex: 1 1 auto; min-height: 0; display: flex; }
 .chat { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
@@ -341,12 +315,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .day + .message.first { margin-top: 0; }
 .message:hover, .message.newest { background: #2e3035; }
 .gutter { position: absolute; left: 16px; }
-.face40 { top: 4px; width: 40px; height: 40px; cursor: pointer; }
-.clock { width: 56px; left: 0; top: 4px; text-align: right; color: var(--muted); font-size: 11px; line-height: 22px; visibility: hidden; }
-.message:hover .clock, .message.newest .clock { visibility: visible; }
+.face40 { top: 4px; width: 40px; height: 40px; }
+/* The clock of a grouped message is shown, not revealed by a pointer: what only a
+   hover can see, a reader of the page cannot. */
+.clock { width: 56px; left: 0; top: 4px; text-align: right; color: var(--muted); font-size: 11px; line-height: 22px; }
 .head { display: block; line-height: 22px; }
-.author { color: var(--ink); font-size: 16px; font-weight: 500; cursor: pointer; }
-.author:hover { text-decoration: underline; }
+.author { color: var(--ink); font-size: 16px; font-weight: 500; }
 .stamp { margin-left: 4px; color: var(--muted); font-size: 12px; font-weight: 500; }
 .text { color: var(--text); font-size: 16px; line-height: 22px; overflow-wrap: break-word; }
 .link { color: var(--link); }
@@ -358,8 +332,7 @@ code { padding: 2px 4px; border-radius: 4px; background: var(--rail); border: 1p
 .quote { position: relative; display: flex; align-items: center; gap: 4px; margin-bottom: 4px; font-size: 14px; line-height: 18px; min-width: 0; }
 .spine { position: absolute; left: -36px; top: 8px; width: 33px; height: 13px; border-left: 2px solid #4e5058; border-top: 2px solid #4e5058; border-top-left-radius: 6px; }
 .quote-author { flex: 0 0 auto; color: var(--ink); font-weight: 500; opacity: 0.64; }
-.quote-text { flex: 1 1 0; min-width: 0; color: var(--icon); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-.quote-text:hover { color: var(--ink); }
+.quote-text { flex: 1 1 0; min-width: 0; color: var(--icon); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .quote + .face40 { top: 26px; }
 
 .reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 4px 0 2px 0; }
@@ -380,12 +353,6 @@ code { padding: 2px 4px; border-radius: 4px; background: var(--rail); border: 1p
 }
 .reaction:hover { border-color: #5c5e66; background: var(--surface); }
 .reaction.mine { background: var(--tint); border-color: var(--accent); color: var(--tint-ink); }
-.reaction.add { position: relative; visibility: hidden; min-width: 32px; width: 32px; cursor: pointer; }
-.reaction.add i { position: absolute; display: block; }
-.reaction.add .a { left: 7px; top: 3px; width: 16px; height: 16px; border-width: 2px; border-radius: 8px; }
-.reaction.add .b { left: 11px; top: 8px; width: 8px; height: 2px; border-left-width: 2px; border-right-width: 2px; }
-.reaction.add .c { left: 12px; top: 13px; width: 6px; height: 2px; }
-.message:hover .reaction.add, .message.newest .reaction.add { visibility: visible; }
 
 .tools {
   position: absolute;
@@ -394,6 +361,7 @@ code { padding: 2px 4px; border-radius: 4px; background: var(--rail); border: 1p
   display: none;
   align-items: center;
   height: 32px;
+  margin: 0;
   padding: 0 2px;
   border: 1px solid #26272b;
   border-radius: 4px;
@@ -401,29 +369,28 @@ code { padding: 2px 4px; border-radius: 4px; background: var(--rail); border: 1p
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 .message:hover .tools, .message.newest .tools { display: flex; }
-.tools .tool { width: 30px; height: 28px; border-radius: 4px; font-size: 18px; }
+.tools .tool { width: 30px; height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; font-size: 18px; }
 .tools .tool:hover { background: var(--selected); }
-.tools .more { font-size: 9px; letter-spacing: 1px; }
+.tools .quick { font-size: 15px; }
 
 /* ---- the composer ---- */
 .composer { flex: 0 0 auto; padding: 0 16px 24px 16px; background: var(--surface); }
 .field { display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 0; padding: 0 12px 0 16px; border-radius: 8px; background: var(--field); }
-.attach {
-  display: inline-flex;
-  flex: 0 0 24px;
+.reply-bar {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--icon);
-  color: var(--field);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
+  gap: 8px;
+  height: 28px;
+  padding: 0 16px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
 }
-.attach:hover { background: var(--text); }
+.reply-bar-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reply-cancel { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
+.reply-cancel:hover { color: var(--ink); }
 #send-text {
   flex: 1 1 auto;
   min-width: 0;
@@ -444,10 +411,8 @@ code { padding: 2px 4px; border-radius: 4px; background: var(--rail); border: 1p
 /* ---- the member list ---- */
 .members { flex: 0 0 240px; width: 240px; min-height: 0; overflow-y: auto; padding: 0 8px 20px 8px; background: var(--sidebar); }
 .group { padding: 24px 8px 4px 8px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.member { display: flex; align-items: center; gap: 12px; height: 42px; margin: 1px 0; padding: 0 8px; border-radius: 4px; cursor: pointer; }
-.member:hover { background: var(--hover); }
-.member.away { opacity: 0.3; }
-.member.away:hover { opacity: 1; }
+.member { display: flex; align-items: center; gap: 12px; height: 42px; margin: 1px 0; padding: 0 8px; border-radius: 4px; }
+.member.away { opacity: 0.45; }
 .member-name { flex: 1 1 auto; min-width: 0; color: var(--muted); font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 @media (max-width: 900px) {
@@ -456,6 +421,5 @@ code { padding: 2px 4px; border-radius: 4px; background: var(--rail); border: 1p
 }
 @media (max-width: 640px) {
   .side { display: none; }
-  .head-tools .tool, .search { display: none; }
-  .head-tools .people { display: inline-flex; }
+  .search { display: none; }
 }
