@@ -1,0 +1,30 @@
+{
+  "capture": "capture.json",
+  "structure": {
+    "wanted": 18,
+    "found": 17,
+    "role_kept": 14,
+    "missing": [
+      {
+        "role": "img",
+        "name": "Google"
+      }
+    ],
+    "recall": 0.944,
+    "role_agreement": 0.824,
+    "interactive": {
+      "capture": 14,
+      "render": 15
+    }
+  },
+  "visual": [
+    {
+      "scroll": 0,
+      "aligned_to": 0,
+      "colour_similarity": 0.997,
+      "ssim": 0.936,
+      "cells": 2560
+    }
+  ],
+  "fidelity": 0.943
+}

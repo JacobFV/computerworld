@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Google</title>
+<style>
+  /* A self-contained mock of the google.com homepage at 1280x800. No external resources:
+     the logo is set as text in the four Google colours because the logo image is not ours,
+     and the icons are drawn with CSS. Measurements follow the live page's computed styles. */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: arial, sans-serif; color: #202124; background: #fff;
+    display: flex; flex-direction: column; min-height: 100vh;
+  }
+  a { text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* header: 60 px tall, items packed to the right edge */
+  header {
+    height: 60px; padding: 6px; display: flex; justify-content: flex-end; align-items: center;
+  }
+  header a.txt { font-size: 13px; line-height: 24px; color: rgba(0,0,0,.87); padding-left: 15px; }
+  header .apps {
+    width: 40px; height: 40px; margin-left: 15px; border-radius: 50%; display: grid; place-items: center;
+  }
+  header .apps:hover { background: rgba(60,64,67,.08); }
+  .apps .dots { display: grid; grid-template-columns: repeat(3, 4px); gap: 4px; }
+  .apps .dots i { width: 4px; height: 4px; border-radius: 50%; background: #5f6368; display: block; }
+  header .signin {
+    margin: 0 20px 0 8px; height: 34px; padding: 0 23px; border-radius: 4px; background: #1a73e8; color: #fff;
+    font-size: 14px; font-weight: 500; line-height: 34px; letter-spacing: .25px; border: 0;
+  }
+  header .signin:hover { background: #2b7de9; box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15); text-decoration: none; }
+
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .logo {
+    margin-top: 130px; height: 92px; line-height: 92px; font-size: 90px; letter-spacing: -5px;
+    font-weight: 400; user-select: none;
+  }
+  .logo .b { color: #4285f4; } .logo .r { color: #ea4335; } .logo .y { color: #fbbc05; } .logo .g { color: #34a853; }
+
+  .box {
+    margin-top: 28px; width: 584px; height: 46px; border: 1px solid #dfe1e5; border-radius: 24px;
+    display: flex; align-items: center; padding: 0 14px; background: #fff;
+  }
+  .box:hover, .box:focus-within { box-shadow: 0 1px 6px rgba(32,33,36,.28); border-color: rgba(223,225,229,0); }
+  .box input { flex: 1; border: 0; outline: 0; font: 16px arial, sans-serif; margin-left: 13px; height: 34px; color: #202124; background: transparent; }
+  .mag { width: 20px; height: 20px; position: relative; flex: none; }
+  .mag::before { content: ""; position: absolute; left: 1px; top: 1px; width: 11px; height: 11px; border: 2px solid #9aa0a6; border-radius: 50%; }
+  .mag::after { content: ""; position: absolute; left: 12px; top: 11px; width: 7px; height: 2px; background: #9aa0a6; transform: rotate(45deg); transform-origin: 0 50%; }
+  .mic { width: 24px; height: 24px; position: relative; flex: none; margin-left: 15px; }
+  .mic::before { content: ""; position: absolute; left: 8px; top: 2px; width: 8px; height: 13px; border-radius: 4px; background: #ea4335; }
+  .mic::after { content: ""; position: absolute; left: 5px; top: 8px; width: 12px; height: 10px; border: 2px solid #4285f4; border-top: 0; border-radius: 0 0 8px 8px; }
+  .mic i { position: absolute; left: 11px; top: 18px; width: 2px; height: 4px; background: #34a853; display: block; }
+  .lens { width: 24px; height: 24px; position: relative; flex: none; margin-left: 15px; }
+  .lens::before { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border: 3px solid #4285f4; border-right-color: #ea4335; border-bottom-color: #fbbc05; border-left-color: #34a853; border-radius: 50%; }
+  .lens::after { content: ""; position: absolute; left: 8px; top: 8px; width: 8px; height: 8px; background: #4285f4; border-radius: 50%; }
+
+  .buttons { margin-top: 29px; display: flex; gap: 8px; }
+  .buttons button {
+    height: 36px; padding: 0 16px; border-radius: 4px; border: 1px solid #f8f9fa; background: #f8f9fa;
+    color: #3c4043; font: 14px arial, sans-serif; cursor: pointer;
+  }
+  .buttons button:hover { border-color: #dadce0; box-shadow: 0 1px 1px rgba(0,0,0,.1); color: #202124; }
+
+  .offered { margin-top: 22px; font-size: 13px; color: #4d5156; line-height: 19px; }
+  .offered a { color: #1a0dab; }
+
+  footer { background: #f2f2f2; color: #70757a; }
+  footer .country { font-size: 15px; padding: 15px 30px; border-bottom: 1px solid #dadce0; line-height: 18px; }
+  footer .links { display: flex; justify-content: space-between; padding: 0 20px; }
+  footer .links a { color: #70757a; font-size: 14px; padding: 15px; line-height: 18px; display: inline-block; }
+</style>
+</head>
+<body>
+  <header>
+    <a class="txt" href="/gmail">Gmail</a>
+    <a class="txt" href="/images">Images</a>
+    <a class="apps" href="/apps" aria-label="Google apps"><span class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></a>
+    <a class="signin" href="/signin">Sign in</a>
+  </header>
+  <main>
+    <div class="logo" role="img" aria-label="Google"><span class="b">G</span><span class="r">o</span><span class="y">o</span><span class="b">g</span><span class="g">l</span><span class="r">e</span></div>
+    <form class="box" action="/search" method="get" role="search">
+      <span class="mag" aria-hidden="true"></span>
+      <input type="text" name="q" aria-label="Search" autocomplete="off">
+      <span class="mic" aria-label="Search by voice" role="img"><i></i></span>
+      <span class="lens" aria-label="Search by image" role="img"></span>
+    </form>
+    <div class="buttons">
+      <button type="submit" form="s">Google Search</button>
+      <button type="submit">I'm Feeling Lucky</button>
+    </div>
+    <div class="offered">Google offered in: <a href="/?hl=es">Español</a></div>
+  </main>
+  <footer>
+    <div class="country">United States</div>
+    <div class="links">
+      <div><a href="/about">About</a><a href="/ads">Advertising</a><a href="/business">Business</a><a href="/howsearchworks">How Search works</a></div>
+      <div><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/preferences">Settings</a></div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,140 @@
+{
+  "id": "google-home",
+  "kind": "static-site",
+  "node": "google-home",
+  "domains": ["google.com", "www.google.com"],
+  "port": 80,
+  "network_node": {"address": "203.0.113.250", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "initial_state": {
+    "pages": {
+      "/": {
+        "version": 1,
+        "title": "Google",
+        "lang": "en",
+        "theme": {"accent": "#1a73e8", "background": "#ffffff", "surface": "#ffffff", "ink": "#202124", "muted": "#5f6368"},
+        "elements": [
+          {
+            "kind": "row", "id": "header", "align": "center", "gap": 15,
+            "style": {"pin": "top", "height": 72, "justify": "end", "background": "#ffffff"},
+            "children": [
+              {"kind": "link", "id": "gmail", "text": "Gmail", "url": "/gmail", "style": {"size": 13, "color": "#202124", "padding": 0}},
+              {"kind": "link", "id": "images", "text": "Images", "url": "/images", "style": {"size": 13, "color": "#202124", "padding": 0}},
+              {"kind": "icon", "id": "apps", "name": "grid", "label": "Google apps", "style": {"size": 20, "padding": 10, "color": "#5f6368"}, "action": {"method": "GET", "url": "/apps"}},
+              {"kind": "button", "id": "signin", "text": "Sign in", "action": {"method": "GET", "url": "/signin"},
+               "style": {"size": 14, "weight": "medium", "color": "#ffffff", "background": "#1a73e8", "radius": 4, "padding": 23, "height": 34}},
+              {"kind": "styled", "id": "header-inset", "text": "", "style": {"width": 12, "size": 6}}
+            ]
+          },
+
+          {"kind": "spacer", "id": "above-logo", "height": 93},
+          {
+            "kind": "row", "id": "logo", "align": "start", "gap": 0,
+            "style": {"justify": "center", "height": 102},
+            "children": [
+              {"kind": "styled", "id": "logo-g1", "text": "G", "style": {"size": 78, "width": 54, "color": "#4285f4"}},
+              {"kind": "styled", "id": "logo-o1", "text": "o", "style": {"size": 78, "width": 42, "color": "#ea4335"}},
+              {"kind": "styled", "id": "logo-o2", "text": "o", "style": {"size": 78, "width": 42, "color": "#fbbc05"}},
+              {"kind": "styled", "id": "logo-g2", "text": "g", "style": {"size": 78, "width": 44, "color": "#4285f4"}},
+              {"kind": "styled", "id": "logo-l", "text": "l", "style": {"size": 78, "width": 17, "color": "#34a853"}},
+              {"kind": "styled", "id": "logo-e", "text": "e", "style": {"size": 78, "width": 42, "color": "#ea4335"}}
+            ]
+          },
+          {"kind": "spacer", "id": "below-logo", "height": 27},
+
+          {
+            "kind": "row", "id": "search-row", "align": "start", "gap": 0,
+            "style": {"justify": "center", "height": 46},
+            "children": [
+              {
+                "kind": "card", "id": "search-box",
+                "style": {"width": 584, "height": 46, "padding": 0, "radius": 23, "background": "#ffffff", "border": "#dfe1e5"},
+                "action": {"method": "GET", "url": "/search"},
+                "children": [
+                  {
+                    "kind": "row", "id": "search-inner", "align": "center", "gap": 0, "style": {"height": 46},
+                    "children": [
+                      {"kind": "styled", "id": "search-inset-l", "text": "", "style": {"width": 14, "size": 6}},
+                      {"kind": "icon", "id": "search-glass", "name": "search", "label": "Search", "style": {"size": 20, "color": "#9aa0a6"}},
+                      {"kind": "styled", "id": "search-gap", "text": "", "style": {"width": 13, "size": 6}},
+                      {"kind": "styled", "id": "search-field", "text": "", "style": {"size": 16, "flex": 1, "one_line": true}},
+                      {"kind": "icon", "id": "voice", "name": "mic", "label": "Search by voice", "style": {"size": 24, "color": "#ea4335"}},
+                      {"kind": "styled", "id": "search-gap-2", "text": "", "style": {"width": 15, "size": 6}},
+                      {"kind": "icon", "id": "lens", "name": "camera", "label": "Search by image", "style": {"size": 24, "color": "#4285f4"}},
+                      {"kind": "styled", "id": "search-inset-r", "text": "", "style": {"width": 14, "size": 6}}
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {"kind": "spacer", "id": "below-search", "height": 29},
+
+          {
+            "kind": "row", "id": "buttons", "align": "start", "gap": 8,
+            "style": {"justify": "center", "height": 36},
+            "children": [
+              {"kind": "button", "id": "google-search", "text": "Google Search", "action": {"method": "GET", "url": "/search"},
+               "style": {"size": 14, "weight": "regular", "color": "#3c4043", "background": "#f8f9fa", "border": "#f8f9fa", "radius": 4, "padding": 16, "height": 36}},
+              {"kind": "button", "id": "lucky", "text": "I'm Feeling Lucky", "action": {"method": "GET", "url": "/doodles"},
+               "style": {"size": 14, "weight": "regular", "color": "#3c4043", "background": "#f8f9fa", "border": "#f8f9fa", "radius": 4, "padding": 16, "height": 36}}
+            ]
+          },
+          {"kind": "spacer", "id": "below-buttons", "height": 22},
+
+          {
+            "kind": "row", "id": "offered", "align": "center", "gap": 0,
+            "style": {"justify": "center"},
+            "children": [
+              {"kind": "styled", "id": "offered-text", "text": "Google offered in:", "style": {"size": 13, "color": "#4d5156"}},
+              {"kind": "link", "id": "offered-es", "text": "Español", "url": "/?hl=es", "style": {"size": 13, "color": "#1a0dab", "padding": 0}}
+            ]
+          },
+
+          {
+            "kind": "row", "id": "footer", "align": "start", "gap": 0,
+            "style": {"pin": "bottom", "height": 97, "background": "#dadce0"},
+            "children": [
+              {
+                "kind": "group", "id": "footer-body",
+                "children": [
+                  {
+                    "kind": "row", "id": "footer-country", "align": "center", "gap": 0, "style": {"height": 48, "background": "#f2f2f2"},
+                    "children": [
+                      {"kind": "styled", "id": "country-inset", "text": "", "style": {"width": 30, "size": 6, "flex": 0}},
+                      {"kind": "styled", "id": "country", "text": "United States", "style": {"size": 15, "color": "#70757a", "flex": 1}}
+                    ]
+                  },
+                  {"kind": "spacer", "id": "footer-rule", "height": 1},
+                  {
+                    "kind": "row", "id": "footer-links", "align": "center", "gap": 0, "style": {"height": 48, "background": "#f2f2f2", "justify": "space-between"},
+                    "children": [
+                      {
+                        "kind": "row", "id": "footer-left", "align": "center", "gap": 0, "style": {"justify": "start"},
+                        "children": [
+                          {"kind": "styled", "id": "footer-inset-l", "text": "", "style": {"width": 20, "size": 6}},
+                          {"kind": "link", "id": "about", "text": "About", "url": "/about", "style": {"size": 14, "color": "#70757a", "padding": 15}},
+                          {"kind": "link", "id": "advertising", "text": "Advertising", "url": "/ads", "style": {"size": 14, "color": "#70757a", "padding": 15}},
+                          {"kind": "link", "id": "business", "text": "Business", "url": "/business", "style": {"size": 14, "color": "#70757a", "padding": 15}},
+                          {"kind": "link", "id": "how-search-works", "text": "How Search works", "url": "/howsearchworks", "style": {"size": 14, "color": "#70757a", "padding": 15}}
+                        ]
+                      },
+                      {
+                        "kind": "row", "id": "footer-right", "align": "center", "gap": 0, "style": {"justify": "start"},
+                        "children": [
+                          {"kind": "link", "id": "privacy", "text": "Privacy", "url": "/privacy", "style": {"size": 14, "color": "#70757a", "padding": 15}},
+                          {"kind": "link", "id": "terms", "text": "Terms", "url": "/terms", "style": {"size": 14, "color": "#70757a", "padding": 15}},
+                          {"kind": "link", "id": "settings", "text": "Settings", "url": "/preferences", "style": {"size": 14, "color": "#70757a", "padding": 15}},
+                          {"kind": "styled", "id": "footer-inset-r", "text": "", "style": {"width": 20, "size": 6}}
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

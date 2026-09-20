@@ -1,0 +1,473 @@
+{
+ "width": 1280,
+ "height": 800,
+ "scroll": 0,
+ "crop": {
+  "x": 69,
+  "y": 118,
+  "width": 1280,
+  "height": 800
+ },
+ "screen": {
+  "W": 1350,
+  "H": 919
+ },
+ "url": "http://google.com/",
+ "nodes": [
+  {
+   "id": "1152921504606847020",
+   "role": "text",
+   "label": "G",
+   "value": null,
+   "bounds": {
+    "height": 102,
+    "width": 54,
+    "x": 519,
+    "y": 181
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847021",
+   "role": "text",
+   "label": "o",
+   "value": null,
+   "bounds": {
+    "height": 102,
+    "width": 42,
+    "x": 573,
+    "y": 181
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847022",
+   "role": "text",
+   "label": "o",
+   "value": null,
+   "bounds": {
+    "height": 102,
+    "width": 42,
+    "x": 615,
+    "y": 181
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847023",
+   "role": "text",
+   "label": "g",
+   "value": null,
+   "bounds": {
+    "height": 102,
+    "width": 44,
+    "x": 657,
+    "y": 181
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847024",
+   "role": "text",
+   "label": "l",
+   "value": null,
+   "bounds": {
+    "height": 102,
+    "width": 17,
+    "x": 701,
+    "y": 181
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847025",
+   "role": "text",
+   "label": "e",
+   "value": null,
+   "bounds": {
+    "height": 102,
+    "width": 42,
+    "x": 718,
+    "y": 181
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847026",
+   "role": "link",
+   "label": "Search",
+   "value": null,
+   "bounds": {
+    "height": 46,
+    "width": 584,
+    "x": 348,
+    "y": 310
+   },
+   "interaction": "search-box"
+  },
+  {
+   "id": "1152921504606847027",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 14,
+    "x": 348,
+    "y": 326
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847028",
+   "role": "img",
+   "label": "Search",
+   "value": null,
+   "bounds": {
+    "height": 20,
+    "width": 20,
+    "x": 362,
+    "y": 320
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847030",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 13,
+    "x": 382,
+    "y": 326
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847031",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 21,
+    "width": 460,
+    "x": 395,
+    "y": 319
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847032",
+   "role": "img",
+   "label": "Search by voice",
+   "value": null,
+   "bounds": {
+    "height": 24,
+    "width": 24,
+    "x": 855,
+    "y": 318
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847034",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 15,
+    "x": 879,
+    "y": 326
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847035",
+   "role": "img",
+   "label": "Search by image",
+   "value": null,
+   "bounds": {
+    "height": 24,
+    "width": 24,
+    "x": 894,
+    "y": 318
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847037",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 14,
+    "x": 918,
+    "y": 326
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847038",
+   "role": "button",
+   "label": "Google Search",
+   "value": null,
+   "bounds": {
+    "height": 36,
+    "width": 135,
+    "x": 491,
+    "y": 385
+   },
+   "interaction": "google-search"
+  },
+  {
+   "id": "1152921504606847040",
+   "role": "button",
+   "label": "I'm Feeling Lucky",
+   "value": null,
+   "bounds": {
+    "height": 36,
+    "width": 155,
+    "x": 634,
+    "y": 385
+   },
+   "interaction": "lucky"
+  },
+  {
+   "id": "1152921504606847042",
+   "role": "text",
+   "label": "Google offered in:",
+   "value": null,
+   "bounds": {
+    "height": 17,
+    "width": 118,
+    "x": 555,
+    "y": 443
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847043",
+   "role": "link",
+   "label": "Español",
+   "value": null,
+   "bounds": {
+    "height": 17,
+    "width": 51,
+    "x": 673,
+    "y": 443
+   },
+   "interaction": "offered-es"
+  },
+  {
+   "id": "1152921504606847045",
+   "role": "link",
+   "label": "Gmail",
+   "value": null,
+   "bounds": {
+    "height": 17,
+    "width": 38,
+    "x": 981,
+    "y": 24
+   },
+   "interaction": "gmail"
+  },
+  {
+   "id": "1152921504606847046",
+   "role": "link",
+   "label": "Images",
+   "value": null,
+   "bounds": {
+    "height": 17,
+    "width": 48,
+    "x": 1034,
+    "y": 24
+   },
+   "interaction": "images"
+  },
+  {
+   "id": "1152921504606847047",
+   "role": "link",
+   "label": "Google apps",
+   "value": null,
+   "bounds": {
+    "height": 40,
+    "width": 40,
+    "x": 1097,
+    "y": 13
+   },
+   "interaction": "apps"
+  },
+  {
+   "id": "1152921504606847049",
+   "role": "button",
+   "label": "Sign in",
+   "value": null,
+   "bounds": {
+    "height": 34,
+    "width": 101,
+    "x": 1152,
+    "y": 13
+   },
+   "interaction": "signin"
+  },
+  {
+   "id": "1152921504606847051",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 12,
+    "x": 1268,
+    "y": 29
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847054",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 30,
+    "x": 0,
+    "y": 720
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847055",
+   "role": "text",
+   "label": "United States",
+   "value": null,
+   "bounds": {
+    "height": 20,
+    "width": 1250,
+    "x": 30,
+    "y": 714
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847057",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 20,
+    "x": 0,
+    "y": 772
+   },
+   "interaction": null
+  },
+  {
+   "id": "1152921504606847058",
+   "role": "link",
+   "label": "About",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 42,
+    "x": 35,
+    "y": 767
+   },
+   "interaction": "about"
+  },
+  {
+   "id": "1152921504606847059",
+   "role": "link",
+   "label": "Advertising",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 80,
+    "x": 107,
+    "y": 767
+   },
+   "interaction": "advertising"
+  },
+  {
+   "id": "1152921504606847060",
+   "role": "link",
+   "label": "Business",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 62,
+    "x": 217,
+    "y": 767
+   },
+   "interaction": "business"
+  },
+  {
+   "id": "1152921504606847061",
+   "role": "link",
+   "label": "How Search works",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 130,
+    "x": 309,
+    "y": 767
+   },
+   "interaction": "how-search-works"
+  },
+  {
+   "id": "1152921504606847062",
+   "role": "link",
+   "label": "Privacy",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 51,
+    "x": 1032,
+    "y": 767
+   },
+   "interaction": "privacy"
+  },
+  {
+   "id": "1152921504606847063",
+   "role": "link",
+   "label": "Terms",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 44,
+    "x": 1113,
+    "y": 767
+   },
+   "interaction": "terms"
+  },
+  {
+   "id": "1152921504606847064",
+   "role": "link",
+   "label": "Settings",
+   "value": null,
+   "bounds": {
+    "height": 19,
+    "width": 58,
+    "x": 1187,
+    "y": 767
+   },
+   "interaction": "settings"
+  },
+  {
+   "id": "1152921504606847065",
+   "role": "text",
+   "label": "",
+   "value": null,
+   "bounds": {
+    "height": 8,
+    "width": 20,
+    "x": 1260,
+    "y": 772
+   },
+   "interaction": null
+  }
+ ]
+}
