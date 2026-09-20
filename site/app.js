@@ -35,6 +35,53 @@ const captionWhere = document.getElementById('caption-where');
 // width is `m·H + c`, linear in the height it is given, and `c` is where the gutters live.
 // `cast.js` documents all of this for whoever writes the next scene.
 
+// The two things a tile carries besides its screen. `boot` is what covers the still while
+// the simulator is on its way down: the picture darkened, a spinner, and the download's
+// own percentage, and not a word more. `grow` is the control that gives one machine the
+// whole screen; it is marked `data-keep` so live.js keeps it when it swaps the still for
+// a canvas, and style.css shows it only once that machine is live.
+const icon = path => `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none"` +
+  ` stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+const ENTER = 'M6.5 2H2v4.5M9.5 2H14v4.5M6.5 14H2V9.5M9.5 14H14V9.5';
+const LEAVE = 'M6.5 2v4.5H2M9.5 2v4.5H14M6.5 14V9.5H2M9.5 14V9.5H14';
+const ARRIVE = 'M8 2.5v7.5M4.5 6.5 8 10l3.5-3.5M3 13.5h10';
+
+function overlay(label) {
+  const boot = document.createElement('div');
+  boot.className = 'boot';
+  const spinner = document.createElement('span');
+  spinner.className = 'spin';
+  spinner.setAttribute('aria-hidden', 'true');
+  const percent = document.createElement('p');
+  percent.className = 'pct';
+  percent.dataset.bootNote = '';
+  // Save-Data: the same overlay, carrying the one control that starts the download, and
+  // no paragraph explaining itself over the picture.
+  const get = document.createElement('button');
+  get.type = 'button';
+  get.className = 'get';
+  get.dataset.get = '';
+  get.setAttribute('aria-label', `Download the simulator and start ${label}`);
+  get.innerHTML = icon(ARRIVE);
+  boot.append(spinner, percent, get);
+  return boot;
+}
+
+function grower(tile, label) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'grow';
+  button.dataset.keep = '';
+  button.dataset.label = label;
+  button.setAttribute('aria-label', `Fullscreen — ${label}`);
+  button.innerHTML = icon(ENTER) + icon(LEAVE);
+  button.addEventListener('click', event => {
+    event.stopPropagation();                 // not a click on the slide behind it
+    if (tile.classList.contains('full')) shrink(); else fill(tile);
+  });
+  return button;
+}
+
 const leaf = unit => ({ unit, a: unit.aspect, u: unit.aspect, v: unit.aspect });
 /** A beside B, at one height. */
 const beside = (A, B) => ({ A, B, row: true, a: A.a + B.a, u: Math.min(A.u, B.u), v: Math.max(A.v, B.v) });
@@ -168,6 +215,10 @@ const slides = cast.map((scene, index) => {
     const phone = height > width;
     tile.className = phone ? 'tile phone' : 'tile';
     tile.style.aspectRatio = `${width} / ${height}`;
+    // The same shape as a number, for the one place a ratio will not do: a machine filling
+    // the screen is as large as the viewport allows AT ITS OWN SHAPE, which is a width and
+    // a height worked out from it rather than a box to fit into.
+    tile.style.setProperty('--ar', (width / height).toFixed(6));
     tile.dataset.machine = machine.id;
     tile.dataset.label = machine.label ?? scene.title;
     tile.inert = true;
@@ -183,10 +234,7 @@ const slides = cast.map((scene, index) => {
     // first and the rest follow behind them. Never `loading="lazy"` — a still fetched
     // when its slide arrives is a still the visitor watches arrive.
     still.dataset.src = `./media/scenes/${machine.id}.jpg`;
-    const note = document.createElement('p');
-    note.className = 'booting';
-    note.dataset.bootNote = '';
-    tile.append(still, note);
+    tile.append(still, overlay(tile.dataset.label), grower(tile, tile.dataset.label));
     return { el: tile, still, phone, at, aspect: width / height };
   });
   // Which machines are the same shape, so `choose` can insist they come out the same size.
@@ -329,8 +377,16 @@ function sweep(from) {
 // and short enough that a visitor who has settled still gets a machine while they look.
 const pictures = () => Promise.race([arriving, new Promise(done => setTimeout(done, 5000))]);
 
+// What the overlay is doing, said once for every tile at once, because there is one
+// download for the whole page: `ask` is a Save-Data browser waiting to be told to go,
+// `load` is the download itself, `work` is a world being built out of what came down, and
+// no mark at all is no overlay. style.css reads it off the document.
+const root = document.documentElement;
 const notes = () => [...document.querySelectorAll('[data-boot-note]')];
-const say = text => notes().forEach(n => { n.textContent = text; });
+const phase = (state, text = '') => {
+  if (state) root.dataset.boot = state; else delete root.dataset.boot;
+  notes().forEach(n => { n.textContent = text; });
+};
 
 // NOTHING WAITS ON A MACHINE. Every tile shows its pre-rendered still the moment the page
 // parses, and the slideshow turns on the same frame the key is pressed: none of what
@@ -340,20 +396,26 @@ const say = text => notes().forEach(n => { n.textContent = text; });
 // arrowing through twenty slides starts the one they stop on, not twenty worlds.
 let simulator = null;
 const download = () => (simulator ??= (async () => {
-  // A browser asking for Save-Data gets the stills and a way in, not a 10 MB download
-  // it did not ask for. Everyone else gets a running machine.
+  // A browser asking for Save-Data gets the stills and a way in, not a download it did
+  // not ask for. The way in is the overlay's own button. Everyone else gets a machine.
   if (navigator.connection?.saveData) {
-    say('Data saver is on. Tap to download the simulator (about 10 MB) and start the machines.');
-    await new Promise(resolve => notes().forEach(n => n.addEventListener('click', resolve, { once: true })));
+    phase('ask');
+    await new Promise(resolve =>
+      document.querySelectorAll('[data-get]').forEach(button => button.addEventListener('click', resolve, { once: true })));
   }
+  phase('load');
   const live = await import('./live.js');
-  return live.boot((text, machine) => {
-    if (!machine) return say(text);
-    const note = document.querySelector(`.tile[data-machine="${machine}"] [data-boot-note]`);
-    if (note) note.textContent = text;
+  // A whole percentage while the download can be counted, nothing but the spinner while
+  // it cannot, and the spinner alone again once the bytes are in and a world is being
+  // built out of them. No number is ever shown that is not the download's own.
+  return live.boot(report => {
+    if (report === false) phase('work');
+    else phase('load', typeof report === 'number' ? `Downloading ${report}%` : '');
   });
 })().catch(error => {
-  say('This browser could not start the simulator. The screens here are real renders of it.');
+  // The stills are real renders of the simulator, so a browser that cannot run it is left
+  // looking at them rather than at an apology written over them.
+  phase(null);
   console.error(error);
 }));
 
@@ -445,7 +507,111 @@ function arrange() {
   });
   track.style.height = `${slides[current].offsetHeight}px`;
 }
-new ResizeObserver(() => current >= 0 && arrange()).observe(stage);
+// ONE MACHINE, THE WHOLE SCREEN. Every live tile carries a control in its top right. It
+// asks the Fullscreen API for that tile; where the API is missing or says no — a sandboxed
+// frame, mostly — the tile is lifted into a fixed box of its own instead, which looks the
+// same from the outside. Either way the tile keeps its canvas and every listener on it, so
+// the machine takes the pointer and the keyboard full screen exactly as it did in the
+// strip, and style.css gives the canvas as much of the viewport as its own shape allows.
+let big = null;                       // { tile, host } while one machine has the screen
+
+// Nothing is re-measured while one machine has the whole screen: going fullscreen changes
+// the viewport, and the tile that went is out of the slide's flow while it is there, so
+// anything measured then would come off a composition with a hole in it. `settle` is the
+// one pass that puts it all back afterwards.
+new ResizeObserver(() => { if (!big && current >= 0) arrange(); }).observe(stage);
+
+function dress(tile, on) {
+  tile.classList.toggle('full', on);
+  const button = tile.querySelector('.grow');
+  if (button) button.setAttribute('aria-label', on ? 'Leave fullscreen' : `Fullscreen — ${button.dataset.label}`);
+}
+
+/** Put the strip back exactly as it was. Every number in it — the widths, the arc and the
+ * track's height — is measured, and nothing was measured while the screen was taken, so
+ * the cache is dropped and one silent pass puts it all back without a slide sliding. */
+function settle() {
+  fitted = '';
+  track.classList.add('still');
+  arrange();
+  requestAnimationFrame(() => requestAnimationFrame(() => track.classList.remove('still')));
+}
+
+/** The way in when the Fullscreen API is not on offer: the tile is moved into a fixed box
+ * over the page, and a hidden copy of it holds its place in the slide, so the composition
+ * behind is not re-cut and putting the machine back is one swap. A fixed box has to leave
+ * the slide to be fixed at all — a transformed ancestor would otherwise be its viewport,
+ * and the slides are turned on an arc. */
+function lift(tile) {
+  const gap = tile.cloneNode(false);
+  gap.style.visibility = 'hidden';
+  gap.classList.remove('live', 'full');
+  const host = document.createElement('div');
+  host.className = 'fs-host';
+  tile.replaceWith(gap);
+  host.append(tile);
+  document.body.append(host);
+  return { tile, gap, host };
+}
+
+function drop() {
+  const { tile, gap, host } = big;
+  gap.replaceWith(tile);
+  host.remove();
+  big = null;
+  dress(tile, false);
+  settle();
+  tile.querySelector('.grow')?.focus();
+}
+
+async function fill(tile) {
+  if (big) return;
+  if (document.fullscreenEnabled && tile.requestFullscreen) {
+    try {
+      await tile.requestFullscreen({ navigationUI: 'hide' });
+      return;                                    // `fullscreenchange` takes it from here
+    } catch (error) {
+      console.warn('fullscreen', error);         // a sandboxed frame, mostly
+    }
+  }
+  big = lift(tile);
+  dress(tile, true);
+  tile.querySelector('canvas')?.focus();
+}
+
+function shrink() {
+  if (!big) return;
+  if (big.host) drop();
+  else document.exitFullscreen?.().catch(() => {});
+}
+
+// The browser's own way out — Escape, a gesture, the window losing the screen — comes
+// through here, and puts the strip back the same way the control would have.
+document.addEventListener('fullscreenchange', () => {
+  const taken = document.fullscreenElement;
+  if (taken?.classList?.contains('tile')) {
+    big = { tile: taken, host: null };
+    dress(taken, true);
+    taken.querySelector('canvas')?.focus();
+  } else if (big && !big.host) {
+    const { tile } = big;
+    big = null;
+    dress(tile, false);
+    settle();
+    tile.querySelector('.grow')?.focus();
+  }
+});
+
+// Escape, caught before the machine can be typed at: a visitor pressing it means the
+// screen back, not an Escape key sent into the simulation. The browser leaves its own
+// fullscreen on Escape too, and asking it a second time is harmless — but asking is what
+// makes the key work in an engine that does not, and in the box that is not the API's.
+document.addEventListener('keydown', event => {
+  if (!big || event.key !== 'Escape') return;
+  event.stopPropagation();
+  event.preventDefault();
+  shrink();
+}, true);
 
 // The address bar is written a moment after the strip stops, not on every frame of a held
 // arrow key: a browser rate-limits replaceState, and a visitor turning past a scene did
@@ -459,12 +625,20 @@ const mark = () => {
 /** Bring one scene to the middle. Everything here is synchronous: the strip has turned and
  * the caption has changed by the time this returns, whatever the machines are doing. */
 function go(index, { quiet = false } = {}) {
+  // Not while one machine has the whole screen. The arrow keys belong to that machine
+  // then, and turning the strip under it would leave a visitor full screen on a machine
+  // that is no longer the one in the middle.
+  if (big) return;
   index = at(index);
   if (index === current) return;
   current = index;
   slides.forEach((slide, i) => {
     slide.classList.toggle('active', i === index);
-    slide.querySelectorAll('.tile').forEach(tile => (tile.inert = i !== index));
+    // Off the units, not off the slide's children: a slide has no children until `fit`
+    // has cut it up, and the first `go` happens before that — asking the DOM here left
+    // the opening slide's tiles inert, with nothing in them clickable, until the visitor
+    // turned away from it and back.
+    for (const unit of shapes[i].units) unit.el.inert = i !== index;
   });
   const scene = cast[index];
   captionTitle.textContent = scene.title;

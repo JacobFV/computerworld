@@ -1,7 +1,13 @@
 // Live machines on the page. One Wasm module, a world per scene, one session per machine
 // and a canvas each. Nothing is fetched after boot: every frame is rendered here, in this tab.
 import init, { World, installFont, fontPackStatus } from './pkg/computerworld.js';
-import definition from './world-definition.js';
+
+// The world the machines run in is no longer a static import. It is 7.7 MB, and a static
+// import is fetched before the first line of `boot` runs — which is exactly the wait the
+// overlay over the stills exists to account for. Both files are fetched below instead,
+// where their bytes can be counted as they land.
+const WASM = new URL('./pkg/computerworld_bg.wasm', import.meta.url);
+const WORLD = new URL('./world-definition.js', import.meta.url);
 
 const SEED = 2026;
 const actions = ['terminal.v1', 'browser.v1', 'keyboard.v1', 'pointer.v1', 'application.v1', 'filesystem.v1', 'http.v1'];
@@ -75,7 +81,7 @@ function wire(tile, env, machine, size, after) {
   canvas.className = 'live-canvas';
   canvas.tabIndex = 0;
   canvas.setAttribute('aria-label', `${tile.dataset.label}, running live`);
-  tile.replaceChildren(canvas);
+  show(tile, canvas);
 
   const draw = () => paint(env, canvas, size);
   const at = e => {
@@ -148,12 +154,63 @@ function wire(tile, env, machine, size, after) {
   return draw;
 }
 
+/** What a tile shows: its screen, and whatever controls app.js hung on it (the fullscreen
+ * button), which a swap of the screen must not throw away. */
+const show = (tile, screen) => tile.replaceChildren(screen, ...tile.querySelectorAll('[data-keep]'));
+
+/** How many bytes a reader will count out of a response, or `null` when that cannot be
+ * known. `Content-Length` counts the bytes on the wire; a compressed body is handed back
+ * decoded, so on a server that gzips these two files the header is not the number the
+ * reader is counting up to, and there is no honest denominator. An invented one would be
+ * a bar filling at a guessed rate, which is worse than no number at all — so `null`, and
+ * the overlay drops its percentage and shows the spinner alone. */
+function length(response) {
+  const given = Number(response.headers.get('content-length'));
+  return response.headers.get('content-encoding') || !(given > 0) ? null : given;
+}
+
+/** The whole of what a visitor waits for: the Wasm module and the world its machines run
+ * in, fetched together and counted as they arrive. `report(percent)` gets a whole number
+ * while the count is a real one, `null` while it is not, and `false` once the download is
+ * over. Returns the world definition, with the module instantiated.
+ *
+ * The font pack is not in here. It is fetched after this returns and is never waited on:
+ * layout is final without it and every running scene repaints as each file lands, so a
+ * visitor is looking at a machine long before the faces are all in. */
+async function arrive(report) {
+  const [wasm, world] = await Promise.all([fetch(WASM), fetch(WORLD)]);
+  if (!wasm.ok || !world.ok) throw new Error(`the simulator did not download: ${wasm.status}, ${world.status}`);
+  const sizes = [length(wasm), length(world)];
+  const total = sizes.includes(null) ? null : sizes[0] + sizes[1];
+  let done = 0, shown = -1;
+  const counting = () => new TransformStream({
+    transform(chunk, out) {
+      done += chunk.byteLength;
+      out.enqueue(chunk);
+      if (total === null) return;
+      const percent = Math.min(100, Math.floor(done * 100 / total));
+      if (percent !== shown) { shown = percent; report(percent); }
+    },
+  });
+  report(total === null ? null : 0);
+  // Both at once, and the module compiles as it arrives: `init` is handed a response
+  // rather than a buffer, so instantiation streams off the same bytes being counted.
+  const source = new Response(world.body.pipeThrough(counting())).text();
+  source.catch(() => {});        // if the module fails first, this must not go unhandled
+  await init({ module_or_path: new Response(wasm.body.pipeThrough(counting()), { headers: { 'content-type': 'application/wasm' } }) });
+  const text = await source;
+  report(false);
+  // `export default <JSON>;`, written by scripts/build-live-world.mjs. If it ever stops
+  // being plain JSON, the module itself still answers — out of the browser's cache.
+  try { return JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)); }
+  catch { return (await import(WORLD.href)).default; }
+}
+
 /** Download the simulator, then hand back a way to start one scene. Scenes come up when
  * the slideshow reaches them, so the first screen is live sooner.
- * `note(text, machine)` writes to one panel, or to all of them when no machine is named. */
-export async function boot(note) {
-  note('Downloading the simulator, about 10 MB…');
-  await init();
+ * `report` is the download talking, and nothing else is said over a still: see `arrive`. */
+export async function boot(report) {
+  const definition = await arrive(report);
   const running = new Map();   // scene id → { booting, stop }, least recently shown first
   const redraws = new Set();   // every running scene's repaint, for when a font lands
 
@@ -194,8 +251,8 @@ export async function boot(note) {
     const entry = { stop() {} };
     entry.booting = (async () => {
       const tiles = scene.machines.map(({ id }) => slide.querySelector(`[data-machine="${id}"]`));
-      scene.machines.forEach(({ id }, i) => note(`Starting ${tiles[i].dataset.label}…`, id));
-      // Let the browser paint that note before the opening actions block the thread.
+      // Let the browser paint the overlay's spinner before the opening actions, which
+      // build a world and hold the thread for a second or two, land on top of it.
       await new Promise(resolve => requestAnimationFrame(resolve));
       const world = new World(populate(definition, scene), SEED);
       const machines = scene.machines.map(({ id, size }, i) => {
@@ -219,7 +276,7 @@ export async function boot(note) {
       }
       redraw();
       redraws.add(redraw);
-      for (const m of machines) { m.tile.classList.add('live'); note('', m.id); }
+      for (const m of machines) m.tile.classList.add('live');
       entry.stop = () => {
         redraws.delete(redraw);
         for (const m of machines) {
@@ -228,7 +285,7 @@ export async function boot(note) {
           const picture = canvas.cloneNode();
           picture.removeAttribute('tabindex');
           picture.getContext('2d').drawImage(canvas, 0, 0);
-          m.tile.replaceChildren(picture);
+          show(m.tile, picture);
           m.tile.classList.remove('live');
           m.env.free?.();
         }
@@ -240,6 +297,5 @@ export async function boot(note) {
     return entry.booting;
   }
 
-  note('');
   return start;
 }

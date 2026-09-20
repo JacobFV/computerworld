@@ -2,7 +2,12 @@
 
 A single static page: no framework, no build step, no third-party requests. Every screen
 on it is a running machine — the simulator downloads when the page loads and each scene
-boots into it as the slideshow reaches it, with no button to press.
+boots into it as the slideshow reaches it, with no button to press. While it is coming
+down, each tile darkens its still and shows a spinner and the download's own percentage;
+where the bytes cannot honestly be counted — a host that gzips the module sends a
+`Content-Length` counting the bytes on the wire, and a reader is handed back the decoded
+ones — the number is dropped rather than guessed at, and the spinner stands alone.
+`live.js` is the only thing that knows; it reports out through the callback `boot` takes.
 `.github/workflows/pages.yml` deploys it: it builds the Wasm bundle into `site/pkg/`
 for `live.js` to import, and the documentation into `site/docs/`, where
 `scripts/build-docs.mjs` turns `docs/*.md` into pages with the guides in reading order
@@ -54,11 +59,14 @@ one, so a scene added to the cast appears in both.
 
 ```html
 <iframe src="https://jacobfv.github.io/computerworld/embed.html#github"
-        loading="lazy" title="ComputerWorld"
+        loading="lazy" title="ComputerWorld" allow="fullscreen"
         style="aspect-ratio: 16/10; width: 100%; border: 0"></iframe>
 ```
 
-`#<scene id>` picks the machine it opens on, as on the front page. The simulator is
+`#<scene id>` picks the machine it opens on, as on the front page. `allow="fullscreen"`
+is what lets a machine inside the frame take the whole screen; without it the control
+is still there and still works, but it can only fill the frame it was given, which on a
+16:10 embed is most of what fullscreen would have been anyway. The simulator is
 about 10 MB over the wire, so frame it lazily: a visitor who never scrolls to it
 should never pay for it. Everything below the stage in `app.js` asks for its elements
 before wiring itself up, which is what lets one script serve both pages — keep it

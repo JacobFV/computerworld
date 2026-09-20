@@ -142,21 +142,89 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
               0 var(--lift, 40px) calc(var(--lift, 40px) * 2.25) calc(var(--lift, 40px) * -.5) rgba(0, 0, 0, .8);
 }
 
-/* What a panel says while its machine is coming up, over the still it replaces. */
-.booting {
-  position: absolute; inset: auto 0 50% 0; margin: 0; padding: 0 .5rem; text-align: center;
-  color: var(--ink); font-family: var(--mono); font-size: .8rem; letter-spacing: .02em;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
-  overflow: hidden;
+/* WHILE THE SIMULATOR IS COMING DOWN. The still darkened, a spinner, and the download's
+   own percentage — nothing else. `data-boot` on the document says which of the four it is,
+   because there is one download for the whole page: `ask` is a Save-Data browser waiting
+   to be told to go and shows the one control that tells it; `load` is the download, and
+   the label is empty whenever the bytes cannot honestly be counted (see live.js), leaving
+   the spinner on its own; `work` is a world being built out of what came down. A machine
+   that is running has no overlay at all, and neither has a slide nobody is looking at. */
+.boot {
+  position: absolute; inset: 0; display: none; place-content: center; justify-items: center;
+  gap: .55rem; padding: .5rem; text-align: center;
+  background: rgba(8, 7, 6, .62);
 }
-/* In a team every tile is small, so its note is too, and it stays on one line rather than
-   stacking four words deep over a screen the size of a stamp. A tile too narrow to read
-   anything on says nothing at all and simply comes alive: app.js marks both, since it is
-   the one that knows how each tile came out. */
-.tile.small .booting { font-size: .62rem; padding: 0 .25rem; white-space: nowrap; text-overflow: ellipsis; }
-.tile.tight .booting { display: none; }
-.tile.live .booting, .slide:not(.active) .booting { display: none; }
-.booting:not(:empty) { cursor: pointer; }
+html[data-boot] .slide.active .tile:not(.live) > .boot { display: grid; }
+.spin {
+  width: 26px; aspect-ratio: 1; border-radius: 50%;
+  border: 2px solid rgba(236, 231, 221, .2); border-top-color: var(--accent);
+  animation: spin .85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(1turn); } }
+.pct {
+  margin: 0; color: var(--ink); font-family: var(--mono); font-size: .78rem;
+  letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
+}
+.pct:empty { display: none; }
+html[data-boot="ask"] .spin, html[data-boot="ask"] .pct { display: none; }
+.get {
+  display: none; place-items: center; width: 2.6rem; height: 2.6rem; padding: 0;
+  border: 1px solid var(--line-2); border-radius: 50%; background: rgba(12, 11, 10, .75);
+  color: var(--ink); cursor: pointer; transition: border-color .15s ease, color .15s ease;
+}
+html[data-boot="ask"] .get { display: grid; }
+.get:hover { border-color: var(--accent); color: var(--accent); }
+/* In a team every tile is small, and one the size of a stamp has room for the spinner and
+   nothing beside it. app.js marks both, since it is the one that knows how a tile came out. */
+.tile.small .spin { width: 18px; border-width: 1.5px; }
+.tile.small .pct { font-size: .62rem; }
+.tile.small .get { width: 2rem; height: 2rem; }
+.tile.tight .pct { display: none; }
+.tile.tight .spin { width: 13px; border-width: 1.5px; }
+.tile.tight .get { width: 1.5rem; height: 1.5rem; }
+
+/* ONE MACHINE, THE WHOLE SCREEN. The control sits in the tile's top right and is there
+   only while that machine is live — over a still there is nothing to be full screen with,
+   and `display: none` keeps it out of the tab order as well as out of the picture. */
+.grow {
+  position: absolute; top: .4rem; right: .4rem; z-index: 3;
+  display: none; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0;
+  border: 0; border-radius: 7px; background: rgba(8, 7, 6, .55); color: rgba(236, 231, 221, .8);
+  cursor: pointer; opacity: .55; transition: opacity .15s ease, color .15s ease, background .15s ease;
+}
+.tile.live > .grow { display: grid; }
+.tile:hover > .grow, .grow:hover, .grow:focus-visible { opacity: 1; }
+.grow:hover { background: rgba(8, 7, 6, .8); color: var(--accent); }
+.grow svg + svg, .tile.full > .grow svg:first-child { display: none; }
+.tile.full > .grow svg + svg { display: block; }
+/* A phone's corners are rounded far harder than a desktop's, so the control comes in off
+   them rather than sitting in the curve. */
+.tile.phone > .grow { top: .75rem; right: .75rem; }
+.tile.small > .grow { width: 1.5rem; height: 1.5rem; border-radius: 5px; top: .3rem; right: .3rem; }
+.tile.phone.small > .grow { top: .5rem; right: .5rem; }
+.tile.tight > .grow { width: 1.2rem; height: 1.2rem; border-radius: 4px; top: .2rem; right: .2rem; }
+.tile.small > .grow svg { width: 12px; height: 12px; }
+.tile.tight > .grow svg { width: 10px; height: 10px; }
+
+/* The tile that has the screen, whether the Fullscreen API put it in the top layer or
+   `.fs-host` is holding it instead. Both give the tile the whole viewport; the canvas then
+   takes as much of it as ITS OWN SHAPE allows, so the machine is never stretched and the
+   box the pointer is measured against is the box the picture is drawn in. app.js writes
+   `--ar`, the machine's width over its height. */
+.fs-host { position: fixed; inset: 0; z-index: 60; background: #000; display: grid; place-items: center; }
+.tile.full {
+  width: 100vw !important; height: 100vh !important; aspect-ratio: auto !important;
+  border-radius: 0 !important; box-shadow: none !important;
+  display: grid; place-items: center; background: #000;
+}
+.tile.full > canvas, .tile.full > img {
+  width: min(100vw, calc(100vh * var(--ar, 1.6)));
+  height: min(100vh, calc(100vw / var(--ar, 1.6)));
+}
+.tile.full::backdrop { background: #000; }
+.tile.full > .grow { width: 2.4rem; height: 2.4rem; top: .9rem; right: .9rem; }
+.tile.full > .grow svg { width: 17px; height: 17px; }
 
 /* What the machines on this slide are doing, and the two arrows. The caption is the
    indicator: it says where in the cast this is, so there is no strip of dots to read. */
@@ -169,18 +237,39 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
   color: var(--dim); font-size: 1rem; line-height: 1; transition: color .15s ease;
 }
 .pager > button:hover { color: var(--ink); }
+/* The caption is two things, and they are not the same kind of thing. The title is what
+   this slide IS, and it is the dominant element on the line: set in the page's own face,
+   a half again the size of anything beside it, in the full ink. The summary is the
+   technical detail under that name — the part designator, the file, the ticket, the
+   branch — so it stays in the machines' monospace, two thirds the title's size and a shade
+   dimmer, and reads as the caption's small print rather than as a second title. The count
+   is fainter still. */
 .caption {
   flex: 0 1 76rem; min-width: 0; margin: 0;
-  /* Two lines' worth kept back, so the page under the strip does not step up and down as
-     one caption runs a word longer than the last. */
-  min-height: 3.2em;
+  /* The room the longest caption in the cast needs at this width, kept back whatever is
+     on screen, so the page under the strip does not step up and down as one caption runs
+     a word longer than the last. Wide enough and that is a title's line and a summary's;
+     the ladder below is where the summary starts wrapping under it, measured over all
+     forty-four scenes rather than guessed at. */
+  min-height: 2.95rem;
   display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
-  column-gap: .75rem; text-align: center;
-  font-family: var(--mono); font-size: .75rem; line-height: 1.6; letter-spacing: .02em;
+  column-gap: .8rem; row-gap: .1rem; text-align: center;
+  font-family: var(--sans); line-height: 1.35;
 }
-.caption b { font-weight: 500; color: var(--ink); }
-#caption-summary { min-width: 0; color: var(--dim); }
-#caption-where { color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#caption-title {
+  font-size: clamp(1.02rem, 1.35vw, 1.2rem); font-weight: 600; letter-spacing: -.015em;
+  color: var(--ink);
+}
+#caption-summary {
+  min-width: 0; font-family: var(--mono); font-size: .72rem; line-height: 1.5;
+  letter-spacing: .01em; color: var(--dim);
+}
+#caption-where {
+  font-family: var(--mono); font-size: .68rem; letter-spacing: .04em; color: var(--faint);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* Where the summary no longer sits beside the title, and then where it wraps again. */
+@media (max-width: 919px) { .caption { min-height: 4.8rem; } }
 .stage noscript img { display: block; width: var(--w-desk); height: auto; margin: 0 auto; border-radius: var(--radius); }
 
 /* Install and snippet: one object, with the language as its tabs */
@@ -224,6 +313,9 @@ body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid 
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+  /* Nothing spins for a reader who asked for less motion, so the ring stays as a plain
+     mark that something is on its way and the percentage beside it is what moves. */
+  .spin { border-color: rgba(255, 180, 84, .38); }
   /* Flat again, to the pixel: no depth to the strip, and the plain transform back, so
      what is drawn is the straight row above and not a curve flattened to nothing. */
   .track { perspective: none; }
@@ -237,8 +329,15 @@ body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid 
      and the arrows sit at the top of them, beside its first line. */
   .pager { margin-top: -1.6rem; align-items: flex-start; padding-inline: .5rem; }
   .pager > button { padding: .1rem .5rem; }
-  .caption { min-height: 6.4em; font-size: .7rem; column-gap: .5rem; }
+  /* The title holds its size here — it is the thing being read — and the summary wraps
+     under it into the lines kept back for it. */
+  .caption { min-height: 6rem; column-gap: .55rem; }
+  #caption-summary { font-size: .68rem; }
   .gh span { display: none; }
   .codebox pre { padding-inline: 1rem; }
   .codebox code { font-size: .78rem; }
 }
+
+/* A title that wraps too, and then one that wraps twice. */
+@media (max-width: 479px) { .caption { min-height: 7rem; } }
+@media (max-width: 359px) { .caption { min-height: 8.4rem; } }
