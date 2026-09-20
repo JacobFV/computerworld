@@ -1,0 +1,49 @@
+/* arstechnica.com: the orange roundel in a black bar, a hero whose headline sits on
+   its picture, and a grey page of white cards. */
+.skin-ars { font-family: "Open Sans", Arial, sans-serif; background: #f0f1f2; color: #111111; }
+.skin-ars .masthead { background: #000000; border-bottom: 0; color: #ffffff; }
+.skin-ars .bar { max-width: 1200px; padding: 10px 24px; }
+.skin-ars .brand { color: #ffffff; gap: 0; font-size: 20px; }
+.skin-ars .wordmark { display: flex; align-items: center; gap: 8px; }
+.skin-ars .w0 { display: inline-block; width: 44px; height: 44px; line-height: 42px; border-radius: 50%; background: #ff4e00; color: #ffffff; text-align: center; font-size: 19px; font-weight: 700; text-transform: lowercase; letter-spacing: -0.03em; }
+.skin-ars .w1 { font-size: 19px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.12em; }
+.skin-ars .sections { justify-content: flex-end; gap: 4px 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #ffffff; }
+.skin-ars .sections a:hover { text-decoration: none; color: #ff4e00; }
+.skin-ars .tools { color: #ffffff; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.skin-ars .pill { color: #ffffff; border-color: #ff4e00; background: #ff4e00; border-radius: 3px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+.skin-ars .pill:hover { background: #d94200; }
+.skin-ars .pill.on { background: #000000; border-color: #ffffff; }
+.skin-ars main { max-width: 1200px; }
+.skin-ars .layout { grid-template-columns: minmax(0, 1fr) 300px; column-gap: 24px; row-gap: 20px; }
+.skin-ars .card.s2 { position: relative; height: 420px; overflow: hidden; border-radius: 4px; }
+.skin-ars .card.s2 .art { position: absolute; top: 0; left: 0; right: 0; bottom: 0; height: auto; margin: 0; border-radius: 0; }
+.skin-ars .card.s2 .text { position: absolute; left: 0; right: 0; bottom: 0; padding: 80px 28px 24px; background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.85)); color: #ffffff; }
+.skin-ars .card.s2 .title { font-size: 34px; line-height: 40px; color: #ffffff; }
+.skin-ars .card.s2 .dek, .skin-ars .card.s2 .byline, .skin-ars .card.s2 .kicker { color: #e0e0e0; }
+.skin-ars .card.s2 .section { color: #ff9a6b; }
+.skin-ars .grid { gap: 20px; }
+.skin-ars .grid .card { background: #ffffff; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.skin-ars .grid .card .art { border-radius: 0; height: 170px; margin: 0; }
+.skin-ars .grid .card .text { padding: 14px 16px 16px; }
+.skin-ars .card .title { font-size: 19px; line-height: 25px; }
+.skin-ars .card:hover .title { text-decoration: none; color: #ff4e00; }
+.skin-ars .card.s2:hover .title { color: #ffffff; text-decoration: underline; }
+.skin-ars .card .byline { text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
+.skin-ars .side { background: #ffffff; border-radius: 4px; padding: 18px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.skin-ars .side h2 { color: #ff4e00; font-size: 13px; }
+.skin-ars .ranked li { font-size: 14px; }
+.skin-ars .chip { border-radius: 3px; background: #f0f1f2; }
+.skin-ars .listing .card { background: #ffffff; padding: 16px; margin-bottom: 14px; border-top: 0; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.skin-ars .listing .card:first-child { padding-top: 16px; }
+.skin-ars .list-header { border-bottom-color: #ff4e00; }
+.skin-ars.page-article { background: #ffffff; }
+.skin-ars .story { max-width: 760px; }
+.skin-ars .story h1 { font-size: 40px; line-height: 48px; }
+.skin-ars .story .art .plate { height: 380px; }
+.skin-ars .body p { font-family: "Open Sans", Arial, sans-serif; font-size: 18px; line-height: 30px; }
+.skin-ars .comments { max-width: 760px; }
+.skin-ars .newsletter { background: #ffffff; border-top: 4px solid #ff4e00; border-radius: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.skin-ars.page-article .newsletter { background: #f0f1f2; box-shadow: none; }
+.skin-ars .foot { background: #000000; color: #a0a0a0; border-top: 0; }
+.skin-ars .foot .inner { max-width: 1200px; }
+.skin-ars .foot-brand, .skin-ars .foot-links a { color: #ffffff; }

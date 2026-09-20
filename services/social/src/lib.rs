@@ -2,17 +2,22 @@
 //! instagram.com and pinterest.com (`mode: photos`: every post is a picture with a caption).
 //! Handles are world-wide identities, so every account maps to an OS actor or to nobody.
 //!
+//! Pages are HTML (`view.rs`), one skin per product (`x.css`, `bsky.css`, `mastodon.css`,
+//! `facebook.css`, `instagram.css`, `linkedin.css`, `pinterest.css` over the shared `social.css`);
+//! the skin is the seed's optional `skin`, else inferred from the brand, else from the mode.
+//!
 //! One router renders every GET, and a successful form POST re-renders through the same router,
 //! so a control always lands the caller on a real page instead of a JSON blob. `/api/*` mirrors
 //! the mutating routes for agents that would rather read JSON.
-use cw_protocol::{
-    HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result as SimResult, SimError,
-};
+use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result as SimResult, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
+mod view;
+pub use view::{skin_of, SKINS};
+use view::View;
 pub struct SocialService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(SocialService)
@@ -37,6 +42,10 @@ pub const MAX_POST: usize = 500;
 #[serde(default)]
 pub struct SocialState {
     pub mode: String,
+    /// The look: one of [`SKINS`]. Optional; absent, the brand and then the mode decide, and
+    /// it stays out of the serialized state so a seed without it snapshots as it always did.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub skin: String,
     pub brand: String,
     pub tagline: String,
     /// The second timeline's name: "Explore" on X, "Local timeline" on a Mastodon instance.
@@ -352,757 +361,6 @@ impl SocialState {
         Ok(dm)
     }
 }
-/// Palette pulled once per render; a theme may fill none, some or all of it.
-struct Palette {
-    accent: String,
-    ink: String,
-    muted: String,
-    surface: String,
-    line: String,
-}
-impl Palette {
-    fn of(theme: &PageTheme) -> Self {
-        let muted = theme.muted.clone().unwrap_or_else(|| "#536471".into());
-        Self {
-            accent: theme.accent.clone().unwrap_or_else(|| "#1d9bf0".into()),
-            ink: theme.ink.clone().unwrap_or_else(|| "#0f1419".into()),
-            // A hairline drawn from the muted ink, so no theme needs a key for it. An already
-            // translucent muted colour is used as-is rather than grown past nine characters.
-            line: match muted.len() {
-                7 => format!("{muted}44"),
-                _ => muted.clone(),
-            },
-            muted,
-            surface: theme.surface.clone().unwrap_or_else(|| "#ffffff".into()),
-        }
-    }
-}
-const TINTS: [&str; 6] = [
-    "#1d9bf0", "#f91880", "#00ba7c", "#7856ff", "#ff7a00", "#e0245e",
-];
-/// Avatar colour is a pure FNV-1a over the handle: stable across runs, machines and snapshots,
-/// and no seeded stream is reachable from a render.
-fn tint(handle: &str) -> &'static str {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in handle.as_bytes() {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(0x100_0000_01b3);
-    }
-    TINTS[(h % TINTS.len() as u64) as usize]
-}
-fn initials(name: &str) -> String {
-    let letters: String = name
-        .split_whitespace()
-        .filter_map(|w| w.chars().next())
-        .take(2)
-        .collect();
-    if letters.is_empty() {
-        "?".into()
-    } else {
-        letters.to_uppercase()
-    }
-}
-/// Age in ticks, which is the only clock a service has.
-fn ago(now: u64, tick: u64) -> String {
-    match now.saturating_sub(tick) {
-        0 => "now".into(),
-        n => format!("{n}t"),
-    }
-}
-/// A control that mutates and comes back to `view`; the browser posts the field set verbatim.
-fn act(url: &str, view: &str) -> PageAction {
-    PageAction {
-        method: "POST".into(),
-        url: url.into(),
-        fields: BTreeMap::from([("view".into(), view.into())]),
-    }
-}
-fn pill(id: &str, label: &str, on: bool, url: &str, view: &str, p: &Palette) -> PageElement {
-    let style = web::style()
-        .size(12)
-        .medium()
-        .padding(6)
-        .radius(14)
-        .background(if on {
-            p.accent.clone()
-        } else {
-            p.surface.clone()
-        })
-        .border(p.line.clone());
-    let ink = if on { "#ffffff" } else { p.muted.as_str() };
-    web::card_action(
-        id,
-        style,
-        act(url, view),
-        vec![web::styled(
-            &format!("{id}-label"),
-            label,
-            web::style().size(12).medium().color(ink).align("center"),
-        )],
-    )
-}
-fn avatar(id: &str, a: Option<&Account>, handle: &str, size: u32) -> PageElement {
-    let name = a.map_or(handle, |a| a.name.as_str());
-    web::thumbnail(
-        id,
-        initials(name),
-        web::style()
-            .width(size)
-            .height(size)
-            .radius(size / 2)
-            .size(if size >= 44 { 15 } else { 12 })
-            .background(tint(handle)),
-    )
-}
-fn column(id: &str, gap: u32, children: Vec<PageElement>) -> PageElement {
-    web::grid(id, 1, gap, children)
-}
-fn display(s: &SocialState, handle: &str) -> String {
-    match s.accounts.get(handle) {
-        Some(a) if !a.domain.is_empty() => format!("@{}@{}", a.handle, a.domain),
-        _ => format!("@{handle}"),
-    }
-}
-fn nav(s: &SocialState, p: &Palette, actor: &str, here: &str) -> Vec<PageElement> {
-    let explore = if s.explore_title.is_empty() {
-        "Explore"
-    } else {
-        s.explore_title.as_str()
-    };
-    let inbox = if s.professional() {
-        "/messaging"
-    } else {
-        "/messages"
-    };
-    let mut items = vec![
-        ("nav-home", "Home", "/".to_owned()),
-        ("nav-explore", explore, "/explore".to_owned()),
-        ("nav-search", "Search", "/search".to_owned()),
-        ("nav-inbox", "Messages", inbox.to_owned()),
-    ];
-    if let Some(a) = s.account_of(actor) {
-        items.push(("nav-me", "Profile", format!("/{}", a.handle)));
-    }
-    let links: Vec<PageElement> = items
-        .into_iter()
-        .map(|(id, label, url)| {
-            let current = url == here;
-            web::card_action(
-                id,
-                web::style()
-                    .padding(8)
-                    .radius(16)
-                    .background(if current {
-                        p.accent.clone()
-                    } else {
-                        p.surface.clone()
-                    })
-                    .border(p.line.clone()),
-                web::visit(url),
-                vec![web::styled(
-                    &format!("{id}-text"),
-                    label,
-                    web::style()
-                        .size(13)
-                        .medium()
-                        .align("center")
-                        .color(if current { "#ffffff" } else { p.ink.as_str() }),
-                )],
-            )
-        })
-        .collect();
-    vec![
-        web::styled(
-            "brand",
-            &s.brand,
-            web::style().size(26).bold().color(p.accent.clone()),
-        ),
-        web::grid("nav", links.len().min(5) as u32, 8, links),
-        web::divider("nav-rule"),
-    ]
-}
-/// One timeline entry. The whole card opens the thread; the pills inside it are their own
-/// controls, so a like never costs a navigation.
-fn post_card(
-    s: &SocialState,
-    ctx: &ServiceContext,
-    p: &Palette,
-    id: &str,
-    here: &str,
-) -> PageElement {
-    let post = &s.posts[id];
-    let a = s.accounts.get(&post.author);
-    let liked = s.likes.get(id).is_some_and(|l| l.contains(&ctx.actor));
-    let boosted = s.reposts.get(id).is_some_and(|r| r.contains(&ctx.actor));
-    let mut head = vec![
-        web::styled(
-            &format!("{id}-name"),
-            a.map_or(post.author.clone(), |a| a.name.clone()),
-            web::style().size(15).bold().color(p.ink.clone()).width(160),
-        ),
-        web::styled(
-            &format!("{id}-handle"),
-            if s.professional() {
-                a.map_or(String::new(), |a| a.headline.clone())
-            } else {
-                format!(
-                    "{} · {}",
-                    display(s, &post.author),
-                    ago(ctx.tick, post.tick)
-                )
-            },
-            web::style().size(13).color(p.muted.clone()).one_line(),
-        ),
-    ];
-    if a.is_some_and(|a| a.verified) {
-        head.push(web::badge(
-            &format!("{id}-verified"),
-            "Verified",
-            web::style().size(10).width(64).background(p.accent.clone()),
-        ));
-    }
-    let mut body = vec![web::row(&format!("{id}-head"), 8, "center", head)];
-    if s.photos() {
-        // The picture itself: a tile in the author's tint, named after what it shows.
-        body.push(web::thumbnail(
-            &format!("{id}-photo"),
-            if post.image.is_empty() {
-                "Photo"
-            } else {
-                post.image.as_str()
-            },
-            web::style()
-                .height(180)
-                .radius(10)
-                .background(tint(&post.author))
-                .color("#ffffff")
-                .align("center"),
-        ));
-    }
-    body.push(web::styled(
-        &format!("{id}-text"),
-        &post.text,
-        web::style().size(15).color(p.ink.clone()),
-    ));
-    if let Some(q) = post.quoted.as_ref().filter(|q| s.posts.contains_key(*q)) {
-        let quoted = &s.posts[q];
-        body.push(web::card(
-            &format!("{id}-quote"),
-            web::style()
-                .padding(10)
-                .radius(12)
-                .background(p.surface.clone())
-                .border(p.line.clone()),
-            vec![
-                web::styled(
-                    &format!("{id}-quote-by"),
-                    display(s, &quoted.author),
-                    web::style().size(12).medium().color(p.muted.clone()),
-                ),
-                web::styled(
-                    &format!("{id}-quote-text"),
-                    &quoted.text,
-                    web::style().size(13).color(p.ink.clone()),
-                ),
-            ],
-        ));
-    }
-    body.push(web::row(
-        &format!("{id}-acts"),
-        8,
-        "center",
-        vec![
-            pill(
-                &format!("{id}-like"),
-                &format!(
-                    "{} {}",
-                    if liked { "Liked" } else { "Like" },
-                    s.likes_of(id)
-                ),
-                liked,
-                &format!("/posts/{id}/like"),
-                here,
-                p,
-            ),
-            pill(
-                &format!("{id}-repost"),
-                &format!(
-                    "{} {}",
-                    if boosted { "Reposted" } else { "Repost" },
-                    s.reposts_of(id)
-                ),
-                boosted,
-                &format!("/posts/{id}/repost"),
-                here,
-                p,
-            ),
-            web::link(
-                &format!("{id}-replies"),
-                format!("{} replies", s.replies_to(id).len()),
-                format!("/{}/status/{id}", post.author),
-            ),
-        ],
-    ));
-    web::card_action(
-        &format!("post-{id}"),
-        web::style()
-            .padding(14)
-            .radius(14)
-            .background(p.surface.clone())
-            .border(p.line.clone()),
-        web::visit(format!("/{}/status/{id}", post.author)),
-        vec![web::row(
-            &format!("{id}-row"),
-            12,
-            "start",
-            vec![
-                avatar(&format!("{id}-avatar"), a, &post.author, 44),
-                column(&format!("{id}-body"), 6, body),
-            ],
-        )],
-    )
-}
-fn feed(
-    s: &SocialState,
-    ctx: &ServiceContext,
-    p: &Palette,
-    title: &str,
-    ids: &[String],
-    here: &str,
-) -> Vec<PageElement> {
-    let mut e = vec![web::styled(
-        "feed-title",
-        title,
-        web::style().size(19).bold().color(p.ink.clone()),
-    )];
-    if ids.is_empty() {
-        e.push(web::styled(
-            "feed-empty",
-            "Nothing here yet.",
-            web::style().size(14).color(p.muted.clone()),
-        ));
-    }
-    let cards = ids.iter().map(|id| post_card(s, ctx, p, id, here));
-    if s.photos() {
-        // A photo feed is a wall of tiles, two across, rather than a single column.
-        e.push(web::grid("feed-grid", 2, 12, cards.collect()));
-    } else {
-        e.extend(cards);
-    }
-    e
-}
-fn timeline(s: &SocialState, ctx: &ServiceContext, home: bool) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let here = if home { "/" } else { "/explore" };
-    let (title, ids) = if home {
-        (
-            if s.professional() { "Feed" } else { "Home" },
-            s.home(&ctx.actor),
-        )
-    } else if s.explore_title.is_empty() {
-        ("Explore", s.explore())
-    } else {
-        (s.explore_title.as_str(), s.explore())
-    };
-    let mut e = nav(s, &p, &ctx.actor, here);
-    if s.account_of(&ctx.actor).is_some() {
-        e.push(web::card(
-            "compose-box",
-            web::style()
-                .padding(14)
-                .radius(14)
-                .background(p.surface.clone())
-                .border(p.line.clone()),
-            vec![
-                web::styled(
-                    "compose-title",
-                    if s.professional() {
-                        "Share an update"
-                    } else if s.photos() {
-                        "Share a photo"
-                    } else {
-                        "What is happening?"
-                    },
-                    web::style().size(14).medium().color(p.ink.clone()),
-                ),
-                web::form("compose", "/posts", &[("text", "Post", "")]),
-            ],
-        ));
-    }
-    e.extend(feed(s, ctx, &p, title, &ids, here));
-    web::themed_page(&format!("{} / {title}", s.brand), s.theme.clone(), e)
-}
-fn profile(s: &SocialState, ctx: &ServiceContext, handle: &str) -> SimResult<HttpResponse> {
-    let Some(a) = s.accounts.get(handle) else {
-        return web::error(404, "no such account");
-    };
-    let p = Palette::of(&s.theme);
-    let here = format!("/{handle}");
-    let following = s
-        .follows
-        .get(&ctx.actor)
-        .is_some_and(|f| f.contains(handle));
-    let connected = s
-        .connections
-        .get(&ctx.actor)
-        .is_some_and(|c| c.contains(handle));
-    let mine = s
-        .account_of(&ctx.actor)
-        .is_some_and(|m| m.handle == *handle);
-    let mut facts = vec![web::styled(
-        "bio",
-        &a.bio,
-        web::style().size(14).color(p.ink.clone()),
-    )];
-    if !a.headline.is_empty() {
-        facts.insert(
-            0,
-            web::styled(
-                "headline",
-                &a.headline,
-                web::style().size(15).medium().color(p.ink.clone()),
-            ),
-        );
-    }
-    let mut meta = vec![
-        web::badge(
-            "followers",
-            format!("{} followers", a.followers),
-            web::style().width(130).background(p.accent.clone()),
-        ),
-        web::badge(
-            "following-count",
-            format!("{} following", a.following),
-            web::style()
-                .width(130)
-                .background(p.surface.clone())
-                .color(p.muted.clone())
-                .border(p.line.clone()),
-        ),
-    ];
-    if !a.location.is_empty() {
-        meta.push(web::styled(
-            "location",
-            &a.location,
-            web::style().size(13).color(p.muted.clone()),
-        ));
-    }
-    facts.push(web::row("meta", 8, "center", meta));
-    if !a.site.is_empty() {
-        facts.push(web::link("site", &a.site, &a.site));
-    }
-    let mut actions = vec![];
-    if !mine {
-        actions.push(pill(
-            "follow",
-            if following { "Following" } else { "Follow" },
-            following,
-            &format!("/accounts/{handle}/follow"),
-            &here,
-            &p,
-        ));
-        if s.professional() {
-            actions.push(pill(
-                "connect",
-                if connected {
-                    "Invitation sent"
-                } else {
-                    "Connect"
-                },
-                connected,
-                &format!("/accounts/{handle}/connect"),
-                &here,
-                &p,
-            ));
-        }
-    }
-    if !actions.is_empty() {
-        facts.push(web::row("profile-acts", 8, "center", actions));
-    }
-    let mut e = nav(s, &p, &ctx.actor, &here);
-    e.push(web::card(
-        "profile",
-        web::style()
-            .padding(16)
-            .radius(14)
-            .background(p.surface.clone())
-            .border(p.line.clone()),
-        vec![web::row(
-            "profile-row",
-            14,
-            "start",
-            vec![
-                avatar("profile-avatar", Some(a), handle, 64),
-                column(
-                    "profile-body",
-                    8,
-                    [
-                        vec![
-                            web::styled(
-                                "name",
-                                &a.name,
-                                web::style().size(22).bold().color(p.ink.clone()),
-                            ),
-                            web::styled(
-                                "handle",
-                                display(s, handle),
-                                web::style().size(14).color(p.muted.clone()),
-                            ),
-                        ],
-                        facts,
-                    ]
-                    .concat(),
-                ),
-            ],
-        )],
-    ));
-    if !a.experience.is_empty() {
-        e.push(web::styled(
-            "exp-title",
-            "Experience",
-            web::style().size(17).bold().color(p.ink.clone()),
-        ));
-        for (i, r) in a.experience.iter().enumerate() {
-            e.push(web::card(
-                &format!("exp-{i}"),
-                web::style()
-                    .padding(12)
-                    .radius(12)
-                    .background(p.surface.clone())
-                    .border(p.line.clone()),
-                vec![web::row(
-                    &format!("exp-{i}-row"),
-                    12,
-                    "center",
-                    vec![
-                        web::thumbnail(
-                            &format!("exp-{i}-logo"),
-                            initials(&r.company),
-                            web::style()
-                                .width(40)
-                                .height(40)
-                                .radius(8)
-                                .size(12)
-                                .background(tint(&r.company)),
-                        ),
-                        column(
-                            &format!("exp-{i}-body"),
-                            4,
-                            vec![
-                                web::styled(
-                                    &format!("exp-{i}-title"),
-                                    format!("{} · {}", r.title, r.company),
-                                    web::style().size(14).medium().color(p.ink.clone()),
-                                ),
-                                web::styled(
-                                    &format!("exp-{i}-period"),
-                                    &r.period,
-                                    web::style().size(12).color(p.muted.clone()),
-                                ),
-                            ],
-                        ),
-                    ],
-                )],
-            ));
-        }
-    }
-    let ids = s.by_author(handle);
-    e.extend(feed(s, ctx, &p, "Posts", &ids, &here));
-    web::themed_page(
-        &format!("{} ({}) / {}", a.name, display(s, handle), s.brand),
-        s.theme.clone(),
-        e,
-    )
-}
-fn thread(
-    s: &SocialState,
-    ctx: &ServiceContext,
-    handle: &str,
-    id: &str,
-) -> SimResult<HttpResponse> {
-    let Some(post) = s.posts.get(id) else {
-        return web::error(404, "no such post");
-    };
-    if post.author != handle {
-        return web::error(404, "no such post");
-    }
-    let p = Palette::of(&s.theme);
-    let here = format!("/{handle}/status/{id}");
-    let mut e = nav(s, &p, &ctx.actor, &here);
-    // Walk up to the conversation root so a reply is never read out of context.
-    let mut chain = vec![];
-    let mut cursor = post.reply_to.clone();
-    while let Some(parent) = cursor {
-        let Some(up) = s.posts.get(&parent) else {
-            break;
-        };
-        chain.push(up.id.clone());
-        cursor = up.reply_to.clone();
-    }
-    chain.reverse();
-    for up in &chain {
-        e.push(post_card(s, ctx, &p, up, &here));
-    }
-    e.push(post_card(s, ctx, &p, id, &here));
-    e.push(web::card(
-        "reply-box",
-        web::style()
-            .padding(14)
-            .radius(14)
-            .background(p.surface.clone())
-            .border(p.line.clone()),
-        vec![web::form(
-            "reply",
-            &format!("/posts/{id}/replies"),
-            &[("text", "Reply", "")],
-        )],
-    ));
-    let replies = s.replies_to(id);
-    e.push(web::styled(
-        "replies-title",
-        format!("{} replies", replies.len()),
-        web::style().size(15).medium().color(p.muted.clone()),
-    ));
-    e.extend(replies.iter().map(|r| post_card(s, ctx, &p, r, &here)));
-    web::themed_page(
-        &format!(
-            "{} on {}",
-            s.accounts.get(handle).map_or(handle, |a| a.name.as_str()),
-            s.brand
-        ),
-        s.theme.clone(),
-        e,
-    )
-}
-fn search_page(s: &SocialState, ctx: &ServiceContext, q: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let mut e = nav(s, &p, &ctx.actor, "/search");
-    e.push(web::form("search", "/search", &[("q", "Search", q)]));
-    let ids = s.search(q);
-    let title = if q.trim().is_empty() {
-        "Search".to_owned()
-    } else {
-        format!("{} results for \"{q}\"", ids.len())
-    };
-    e.extend(feed(s, ctx, &p, &title, &ids, "/search"));
-    web::themed_page(&format!("{} / Search", s.brand), s.theme.clone(), e)
-}
-fn inbox_page(
-    s: &SocialState,
-    ctx: &ServiceContext,
-    root: &str,
-    open: Option<&str>,
-) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let mut e = nav(s, &p, &ctx.actor, root);
-    e.push(web::styled(
-        "inbox-title",
-        "Messages",
-        web::style().size(19).bold().color(p.ink.clone()),
-    ));
-    let threads = s.inbox(&ctx.actor);
-    if threads.is_empty() {
-        e.push(web::styled(
-            "inbox-empty",
-            "No conversations.",
-            web::style().size(14).color(p.muted.clone()),
-        ));
-    }
-    for c in &threads {
-        let last = c.messages.last();
-        e.push(web::card_action(
-            &format!("thread-{}", c.id),
-            web::style()
-                .padding(12)
-                .radius(12)
-                .background(p.surface.clone())
-                .border(p.line.clone()),
-            web::visit(format!("{root}/{}", c.id)),
-            vec![web::row(
-                &format!("thread-{}-row", c.id),
-                12,
-                "center",
-                vec![
-                    avatar(
-                        &format!("thread-{}-avatar", c.id),
-                        None,
-                        c.members.iter().next().map_or("", String::as_str),
-                        36,
-                    ),
-                    column(
-                        &format!("thread-{}-body", c.id),
-                        4,
-                        vec![
-                            web::styled(
-                                &format!("thread-{}-title", c.id),
-                                &c.title,
-                                web::style().size(14).medium().color(p.ink.clone()),
-                            ),
-                            web::styled(
-                                &format!("thread-{}-last", c.id),
-                                last.map_or(String::new(), |m| {
-                                    format!("{}: {}", display(s, &m.from), m.text)
-                                }),
-                                web::style().size(12).color(p.muted.clone()).one_line(),
-                            ),
-                        ],
-                    ),
-                ],
-            )],
-        ));
-    }
-    if let Some(id) = open {
-        let c = match s.conversation(&ctx.actor, id) {
-            Ok(c) => c,
-            Err(e) => return web::error(403, e),
-        };
-        e.push(web::divider("thread-rule"));
-        e.push(web::styled(
-            "open-title",
-            &c.title,
-            web::style().size(17).bold().color(p.ink.clone()),
-        ));
-        for m in &c.messages {
-            let own = s.account_of(&ctx.actor).is_some_and(|a| a.handle == m.from);
-            e.push(web::card(
-                &format!("dm-{}", m.id),
-                web::style()
-                    .padding(12)
-                    .radius(12)
-                    .background(if own {
-                        p.accent.clone()
-                    } else {
-                        p.surface.clone()
-                    })
-                    .border(p.line.clone()),
-                vec![
-                    web::styled(
-                        &format!("dm-{}-from", m.id),
-                        format!("{} · {}", display(s, &m.from), ago(ctx.tick, m.tick)),
-                        web::style().size(12).medium().color(if own {
-                            "#ffffff"
-                        } else {
-                            p.muted.as_str()
-                        }),
-                    ),
-                    web::styled(
-                        &format!("dm-{}-text", m.id),
-                        &m.text,
-                        web::style()
-                            .size(14)
-                            .color(if own { "#ffffff" } else { p.ink.as_str() }),
-                    ),
-                ],
-            ));
-        }
-        e.push(web::form(
-            "dm",
-            &format!("{root}/{id}/messages"),
-            &[("text", "Message", "")],
-        ));
-    }
-    web::themed_page(&format!("{} / Messages", s.brand), s.theme.clone(), e)
-}
 /// The one router: every GET and every re-render after a successful form POST goes through here.
 fn view(
     s: &SocialState,
@@ -1111,16 +369,17 @@ fn view(
     q: Option<&str>,
 ) -> SimResult<HttpResponse> {
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
+    let at = |page| View::new(s, ctx, path, page);
     match parts.as_slice() {
-        [""] => timeline(s, ctx, true),
-        ["explore"] | ["local"] => timeline(s, ctx, false),
-        ["search"] => search_page(s, ctx, q.unwrap_or_default()),
-        ["messages"] => inbox_page(s, ctx, "/messages", None),
-        ["messaging"] => inbox_page(s, ctx, "/messaging", None),
-        ["messages", id] => inbox_page(s, ctx, "/messages", Some(id)),
-        ["messaging", id] => inbox_page(s, ctx, "/messaging", Some(id)),
-        [handle] => profile(s, ctx, handle),
-        [handle, "status", id] => thread(s, ctx, handle, id),
+        [""] => at("home").timeline(true),
+        ["explore"] | ["local"] => View::new(s, ctx, "/explore", "explore").timeline(false),
+        ["search"] => at("search").search(q.unwrap_or_default()),
+        ["messages"] => at("inbox").inbox("/messages", None),
+        ["messaging"] => at("inbox").inbox("/messaging", None),
+        ["messages", id] => at("inbox").inbox("/messages", Some(id)),
+        ["messaging", id] => at("inbox").inbox("/messaging", Some(id)),
+        [handle] => at("profile").profile(handle),
+        [handle, "status", id] => at("thread").thread(handle, id),
         _ => web::error(404, "route not found"),
     }
 }
@@ -1133,6 +392,13 @@ impl Service for SocialService {
         let mode = web::variant(&gated, "mode", MODES)?;
         let mut s: SocialState = web::load(&gated)?;
         s.mode = mode;
+        if !s.skin.is_empty() && !SKINS.contains(&s.skin.as_str()) {
+            return Err(SimError::invalid(format!(
+                "unknown skin {}; expected one of {}",
+                s.skin,
+                SKINS.join(", ")
+            )));
+        }
         for (key, a) in &s.accounts {
             if a.handle != *key {
                 return Err(SimError::invalid(format!(
@@ -1332,8 +598,18 @@ mod tests {
         r.body = body.as_bytes().to_vec();
         SocialService.handle(state, &ctx(actor), &r).unwrap()
     }
-    /// Every page an agent can reach must survive `Page::validate`: unique ids, legal colours,
-    /// legal spans. A duplicate id would make a control ambiguous to click.
+    fn html(r: &HttpResponse) -> (String, cw_web::dom::Document) {
+        assert_eq!(r.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+        let body = String::from_utf8(r.body.clone()).unwrap();
+        web::html::validate_strict(&body).unwrap_or_else(|e| panic!("{e:?}"));
+        let doc = cw_web::html::parse(&body);
+        (body, doc)
+    }
+    fn one(doc: &cw_web::dom::Document, id: &str) -> cw_web::dom::NodeId {
+        *doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+    }
+    /// Every page an agent can reach must survive the strict validator: unique ids and only
+    /// HTML and CSS the engine renders. A duplicate id would make a control ambiguous to click.
     #[test]
     fn every_route_renders_a_valid_page() {
         let mut state = live();
@@ -1350,9 +626,141 @@ mod tests {
                 .handle(&mut state, &ctx("alice"), &HttpRequest::get(url))
                 .unwrap();
             assert_eq!(r.status, 200, "{url}");
-            let page: cw_protocol::Page = serde_json::from_slice(&r.body).unwrap();
-            page.validate().unwrap_or_else(|e| panic!("{url}: {e}"));
+            html(&r);
         }
+    }
+    /// The ids, forms and links the `Page` version exposed are the agent API; each is on the
+    /// element that plays the same role.
+    #[test]
+    fn the_ids_forms_and_links_an_agent_uses_are_where_they_were() {
+        let mut state = live();
+        let get = |state: &mut Value, url: &str| {
+            SocialService
+                .handle(state, &ctx("alice"), &HttpRequest::get(url))
+                .unwrap()
+        };
+        let (_, doc) = html(&get(&mut state, "http://x.com/"));
+        for (id, href) in [
+            ("brand", "/"),
+            ("nav-home", "/"),
+            ("nav-explore", "/explore"),
+            ("nav-search", "/search"),
+            ("nav-inbox", "/messages"),
+            ("nav-me", "/alicechen"),
+            ("post-p-1002", "/tweber/status/p-1002"),
+            ("p-1002-replies", "/tweber/status/p-1002"),
+            ("p-1002-name", "/tweber"),
+        ] {
+            let node = one(&doc, id);
+            assert!(doc.is(node, "a"), "{id} is a link");
+            assert_eq!(doc.attr(node, "href"), Some(href), "{id}");
+        }
+        assert_eq!(doc.text_content(one(&doc, "nav-home-text")), "Home");
+        assert_eq!(doc.text_content(one(&doc, "p-1002-text")), "Anyone at Northstar free?");
+        assert_eq!(doc.text_content(one(&doc, "p-1002-handle")), "@tweber · 5t");
+        assert!(doc.by_id("p-1001-verified").len() == 1 && doc.by_id("p-1002-verified").is_empty());
+        let compose = one(&doc, "compose");
+        assert_eq!(doc.attr(compose, "action"), Some("/posts"));
+        assert_eq!(doc.attr(compose, "method"), Some("post"));
+        assert_eq!(doc.attr(one(&doc, "compose-text"), "name"), Some("text"));
+        assert!(doc.is(one(&doc, "compose-submit"), "button"));
+        // Like and repost are one-button forms that carry the page to come back to.
+        for (id, action, label) in [
+            ("p-1002-like", "/posts/p-1002/like", "Like 12"),
+            ("p-1002-repost", "/posts/p-1002/repost", "Repost 0"),
+        ] {
+            let b = one(&doc, id);
+            assert!(doc.is(b, "button"));
+            assert_eq!(doc.attr(b, "aria-label"), Some(label));
+            assert_eq!(doc.text_content(one(&doc, &format!("{id}-label"))), label);
+            let f = one(&doc, &format!("{id}-form"));
+            assert_eq!(doc.attr(f, "action"), Some(action));
+            assert_eq!(doc.attr(f, "method"), Some("post"));
+            let view = doc
+                .descendants(f)
+                .find(|n| doc.attr(*n, "name") == Some("view"))
+                .unwrap();
+            assert_eq!(doc.attr(view, "value"), Some("/"));
+        }
+        let (_, doc) = html(&get(&mut state, "http://x.com/tweber"));
+        assert_eq!(doc.text_content(one(&doc, "name")), "Tom Weber");
+        assert_eq!(doc.text_content(one(&doc, "handle")), "@tweber");
+        assert_eq!(doc.text_content(one(&doc, "followers")), "40122 followers");
+        assert_eq!(doc.text_content(one(&doc, "follow-label")), "Following");
+        assert_eq!(doc.attr(one(&doc, "follow-form"), "action"), Some("/accounts/tweber/follow"));
+        let (_, doc) = html(&get(&mut state, "http://x.com/alicechen"));
+        assert!(doc.by_id("follow").is_empty(), "nobody follows themselves");
+        let (_, doc) = html(&get(&mut state, "http://x.com/alicechen/status/p-1001"));
+        assert_eq!(doc.attr(one(&doc, "reply"), "action"), Some("/posts/p-1001/replies"));
+        assert_eq!(doc.attr(one(&doc, "reply-text"), "name"), Some("text"));
+        assert!(doc.is(one(&doc, "reply-submit"), "button"));
+        assert_eq!(doc.text_content(one(&doc, "replies-title")), "0 replies");
+        let (_, doc) = html(&get(&mut state, "http://x.com/search?q=atlas"));
+        let search = one(&doc, "search");
+        assert_eq!(doc.attr(search, "action"), Some("/search"));
+        assert_eq!(doc.attr(search, "method"), Some("post"));
+        assert_eq!(doc.attr(one(&doc, "search-q"), "name"), Some("q"));
+        assert_eq!(doc.attr(one(&doc, "search-q"), "value"), Some("atlas"));
+        assert_eq!(doc.text_content(one(&doc, "feed-title")), "1 results for \"atlas\"");
+        let (_, doc) = html(&get(&mut state, "http://x.com/messages/c-1"));
+        assert_eq!(doc.attr(one(&doc, "thread-c-1"), "href"), Some("/messages/c-1"));
+        assert_eq!(doc.text_content(one(&doc, "open-title")), "Comment?");
+        assert_eq!(doc.text_content(one(&doc, "dm-dm-1-text")), "Got a minute?");
+        assert_eq!(doc.attr(one(&doc, "dm"), "action"), Some("/messages/c-1/messages"));
+        assert_eq!(doc.attr(one(&doc, "dm-text"), "name"), Some("text"));
+        assert!(doc.is(one(&doc, "dm-submit"), "button"));
+    }
+    /// A seed may name its skin; otherwise the brand, and then the mode, picks one. Every
+    /// skin renders every route through the strict validator.
+    #[test]
+    fn every_skin_renders_every_route_strictly() {
+        assert!(SocialService
+            .initialize(json!({"skin": "nonesuch"}), &ctx("alice"))
+            .is_err());
+        for (brand, mode, expect) in [
+            ("X", "microblog", "x"),
+            ("Bluesky", "microblog", "bsky"),
+            ("mastodon.social", "microblog", "mastodon"),
+            ("Facebook", "microblog", "facebook"),
+            ("Instagram", "photos", "instagram"),
+            ("LinkedIn", "professional", "linkedin"),
+            ("Pinterest", "photos", "pinterest"),
+            ("Somewhere", "photos", "instagram"),
+            ("Somewhere", "professional", "linkedin"),
+            ("Somewhere", "microblog", "x"),
+        ] {
+            let mut seed = seed();
+            seed["brand"] = json!(brand);
+            seed["mode"] = json!(mode);
+            seed["posts"]["p-1001"]["image"] = json!("A harbour at dusk");
+            seed["posts"]["p-1003"] = json!({"id": "p-1003", "author": "tweber", "text": "Quoting.",
+                                             "tick": 3, "quoted": "p-1001", "reply_to": "p-1002"});
+            let mut state = SocialService.initialize(seed, &ctx("alice")).unwrap();
+            let s: SocialState = web::load(&state).unwrap();
+            assert_eq!(skin_of(&s), expect, "{brand} in {mode}");
+            for path in ["/", "/explore", "/local", "/search?q=atlas", "/search", "/messages",
+                         "/messaging", "/messages/c-1", "/messaging/c-1",
+                         "/alicechen", "/tweber", "/tweber/status/p-1003"] {
+                for actor in ["alice", "carol"] {
+                    let r = SocialService
+                        .handle(&mut state, &ctx(actor), &HttpRequest::get(format!("http://site.example{path}")))
+                        .unwrap();
+                    if actor == "carol" && (path.starts_with("/messaging/") || path.starts_with("/messages/")) {
+                        assert_eq!(r.status, 403);
+                        continue;
+                    }
+                    assert_eq!(r.status, 200, "{brand} {path}");
+                    let (body, _) = html(&r);
+                    assert!(body.contains(&format!("skin-{expect} mode-{mode}")), "{brand} {path}");
+                }
+            }
+        }
+        let mut named = seed();
+        named["skin"] = json!("mastodon");
+        let state = SocialService.initialize(named, &ctx("alice")).unwrap();
+        assert_eq!(skin_of(&web::load::<SocialState>(&state).unwrap()), "mastodon");
+        assert_eq!(state["skin"], "mastodon");
+        assert!(live().get("skin").is_none(), "an unnamed skin stays out of the state");
     }
     #[test]
     fn seed_shape_and_references_are_gated_at_load() {
@@ -1387,7 +795,7 @@ mod tests {
         assert!(body.contains("Atlas 1.0 is out."), "own post is on home");
         assert!(body.contains("Anyone at Northstar free?"), "followed post");
         assert!(
-            body.contains("\"method\":\"POST\""),
+            body.contains("<form id=\"p-1002-like-form\" action=\"/posts/p-1002/like\" method=\"post\""),
             "like is a real control"
         );
     }

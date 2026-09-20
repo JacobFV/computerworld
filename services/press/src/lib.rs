@@ -4,10 +4,11 @@
 //! Reading is pure; everything a reader does — commenting, liking a comment, saving an article,
 //! following a topic or the publication itself, subscribing to the newsletter — is a POST that
 //! really mutates state and survives a snapshot round trip.
-use cw_protocol::{HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result};
+use cw_protocol::{HttpRequest, HttpResponse, Result};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde_json::{json, Value};
+mod view;
 pub struct PressService;
 pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(PressService)
@@ -17,20 +18,15 @@ const OBJECTS: &[&str] = &["theme", "articles", "saved", "follows"];
 const ARRAYS: &[&str] = &["sections", "subscribers"];
 /// `layout` is the documented discriminant; an unlisted value is a seed typo, not a fallback.
 const LAYOUTS: &[&str] = &["wire", "magazine", "blog"];
+/// `skin` picks the stylesheet: the publication a site stands in for. Optional; a seed without
+/// one gets the skin its brand names, and the plain sheet of its layout otherwise.
+const SKINS: &[&str] = &[
+    "plain", "blog", "nyt", "bbc", "cnn", "reuters", "verge", "ars", "gnews", "medium", "substack",
+];
 const BRAND: &str = "Press";
 const TAGLINE: &str = "Today's reporting.";
 /// The publication itself is a follow target alongside the topics, under a token no tag uses.
 const PUBLICATION: &str = "publication";
-/// Flat stand-in tints for art; a stable hash of the slug keeps a story the same colour forever.
-const TINTS: &[&str] = &[
-    "#dbe4f0", "#f0e2db", "#dcefe4", "#eee0ef", "#e6e6f2", "#f2ece0", "#dfeef2", "#eae4f2",
-];
-fn tint(seed: &str) -> &'static str {
-    let hash = seed
-        .bytes()
-        .fold(2166136261u32, |h, b| (h ^ b as u32).wrapping_mul(16777619));
-    TINTS[hash as usize % TINTS.len()]
-}
 fn num(v: &Value, key: &str) -> u64 {
     v.get(key).and_then(Value::as_u64).unwrap_or(0)
 }
@@ -86,62 +82,6 @@ fn toggle(state: &mut Value, map: &str, key: &str, value: &str) -> bool {
         }
     }
 }
-fn post(url: String, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: "POST".into(),
-        url,
-        fields: fields
-            .iter()
-            .map(|(k, v)| ((*k).into(), (*v).to_owned()))
-            .collect(),
-    }
-}
-fn ink(theme: &PageTheme) -> String {
-    theme.ink.clone().unwrap_or_else(|| "#08090a".into())
-}
-fn muted(theme: &PageTheme) -> String {
-    theme.muted.clone().unwrap_or_else(|| "#606468".into())
-}
-fn surface(theme: &PageTheme) -> String {
-    theme.surface.clone().unwrap_or_else(|| "#f5f5f7".into())
-}
-fn accent(theme: &PageTheme) -> String {
-    theme.accent.clone().unwrap_or_else(|| "#5200ff".into())
-}
-/// A pill that really submits; `on` is the engaged state, which is what makes a toggle legible.
-fn pill(id: &str, text: &str, on: bool, theme: &PageTheme, action: PageAction) -> PageElement {
-    web::card_action(
-        id,
-        web::style().padding(9).radius(16).background(if on {
-            accent(theme)
-        } else {
-            surface(theme)
-        }),
-        action,
-        vec![web::styled(
-            &format!("{id}-text"),
-            text,
-            web::style().size(13).medium().color(if on {
-                "#ffffff".to_owned()
-            } else {
-                ink(theme)
-            }),
-        )],
-    )
-}
-/// Art stand-in: a tinted block carrying its own headline, never claiming to be a photograph.
-fn art(id: &str, label: &str, height: u32) -> PageElement {
-    web::thumbnail(
-        id,
-        label,
-        web::style()
-            .height(height)
-            .radius(6)
-            .background(tint(id))
-            .color("#20242c")
-            .align("center"),
-    )
-}
 fn section_title(state: &Value, id: &str) -> String {
     state
         .get("sections")
@@ -156,54 +96,6 @@ fn sections(state: &Value) -> Vec<String> {
         .and_then(Value::as_array)
         .map(|list| list.iter().map(|s| web::text(s, "id")).collect())
         .unwrap_or_default()
-}
-/// The masthead: wordmark, section nav, reading list and the publication Follow control.
-fn masthead(state: &Value, actor: &str, theme: &PageTheme, layout: &str) -> PageElement {
-    let brand = match web::text(state, "brand").as_str() {
-        "" => BRAND.to_owned(),
-        s => s.to_owned(),
-    };
-    let following = has(state, "follows", actor, PUBLICATION);
-    let mut nav: Vec<PageElement> = vec![web::card_action(
-        "masthead-home",
-        web::style().width(if layout == "blog" { 220 } else { 260 }),
-        web::visit("/"),
-        vec![web::styled(
-            "masthead-brand",
-            brand,
-            web::style()
-                .size(if layout == "blog" { 22 } else { 26 })
-                .bold()
-                .color(if layout == "wire" {
-                    accent(theme)
-                } else {
-                    ink(theme)
-                }),
-        )],
-    )];
-    for id in sections(state) {
-        nav.push(web::link(
-            &format!("masthead-{id}"),
-            section_title(state, &id),
-            format!("/{id}"),
-        ));
-    }
-    nav.push(web::link("masthead-archive", "Archive", "/archive"));
-    nav.push(web::link("masthead-saved", "Reading list", "/saved"));
-    nav.push(pill(
-        "masthead-follow",
-        if following { "Following" } else { "Follow" },
-        following,
-        theme,
-        post("/follow".into(), &[("return", "/")]),
-    ));
-    web::styled_row(
-        "masthead",
-        14,
-        "center",
-        web::style().background(surface(theme)).padding(14),
-        nav,
-    )
 }
 /// "Tom Weber · Mar 4, 2026 · 7 min read", with the parts a seed left out simply absent.
 fn byline(state: &Value, id: &str) -> String {
@@ -230,484 +122,33 @@ fn href(state: &Value, id: &str, layout: &str) -> String {
         ),
     }
 }
-/// A headline card sized by `scale`: 0 is a dense wire line, 1 a grid card, 2 the hero.
-fn headline(state: &Value, id: &str, theme: &PageTheme, layout: &str, scale: u8) -> PageElement {
-    let a = article(state, id).cloned().unwrap_or(Value::Null);
-    let title = web::text(&a, "title");
-    let mut children = vec![];
-    if scale > 0 {
-        children.push(art(
-            &format!("card-{id}-art"),
-            &title,
-            if scale > 1 { 260 } else { 150 },
-        ));
-    }
-    children.push(web::styled_row(
-        &format!("card-{id}-kicker"),
-        8,
-        "center",
-        web::style(),
-        vec![
-            web::badge(
-                &format!("card-{id}-section"),
-                section_title(state, &web::text(&a, "section")).to_uppercase(),
-                web::style()
-                    .size(10)
-                    .medium()
-                    .color(accent(theme))
-                    .padding(4),
-            ),
-            web::styled(
-                &format!("card-{id}-date"),
-                web::text(&a, "date"),
-                web::style().size(11).color(muted(theme)),
-            ),
-        ],
-    ));
-    children.push(web::styled(
-        &format!("card-{id}-title"),
-        &title,
-        web::style()
-            .size(match scale {
-                0 => 15,
-                1 => 18,
-                _ => 30,
-            })
-            .bold()
-            .color(ink(theme)),
-    ));
-    if scale > 0 {
-        children.push(web::styled(
-            &format!("card-{id}-dek"),
-            web::text(&a, "dek"),
-            web::style().size(14).color(muted(theme)),
-        ));
-    }
-    children.push(web::styled(
-        &format!("card-{id}-byline"),
-        byline(state, id),
-        web::style().size(12).color(muted(theme)),
-    ));
-    web::card_action(
-        &format!("card-{id}"),
-        web::style().padding(if scale > 0 { 12 } else { 8 }),
-        web::visit(href(state, id, layout)),
-        children,
-    )
-}
-fn newsletter(theme: &PageTheme) -> Vec<PageElement> {
-    vec![
-        web::divider("newsletter-divider"),
-        web::styled(
-            "newsletter-heading",
-            "Get the newsletter",
-            web::style().size(16).bold().color(ink(theme)).padding(8),
-        ),
-        web::form("subscribe", "/subscribe", &[("email", "Email address", "")]),
-    ]
-}
-fn front(state: &Value, actor: &str, theme: &PageTheme, layout: &str) -> Result<HttpResponse> {
-    let all = recent(state, |_| true);
-    let mut elements = vec![masthead(state, actor, theme, layout)];
-    match layout {
-        // The wire: a dated stack, newest first, with the same five words of chrome all day.
-        "wire" => {
-            elements.push(web::styled(
-                "front-heading",
-                "Latest",
-                web::style().size(18).bold().color(ink(theme)).padding(12),
-            ));
-            let lines = all
-                .iter()
-                .map(|id| headline(state, id, theme, layout, 0))
-                .collect::<Vec<_>>();
-            let most_read = all
-                .iter()
-                .take(3)
-                .map(|id| {
-                    web::link(
-                        &format!("mostread-{id}"),
-                        web::text(article(state, id).unwrap_or(&Value::Null), "title"),
-                        href(state, id, layout),
-                    )
-                })
-                .collect::<Vec<_>>();
-            elements.push(web::styled_row(
-                "front-layout",
-                24,
-                "start",
-                web::style().padding(12),
-                vec![
-                    web::styled_row("front-lines", 2, "start", web::style().flex(3), lines),
-                    web::styled_row(
-                        "front-side",
-                        8,
-                        "start",
-                        web::style()
-                            .flex(1)
-                            .background(surface(theme))
-                            .padding(12)
-                            .radius(6),
-                        std::iter::once(web::styled(
-                            "front-side-heading",
-                            "Most read",
-                            web::style().size(14).bold().color(ink(theme)),
-                        ))
-                        .chain(most_read)
-                        .collect(),
-                    ),
-                ],
-            ));
-        }
-        // The magazine: one hero, then a two-up grid.
-        "magazine" => {
-            if let Some(hero) = all.first() {
-                elements.push(headline(state, hero, theme, layout, 2));
-            }
-            elements.push(web::grid(
-                "front-grid",
-                2,
-                20,
-                all.iter()
-                    .skip(1)
-                    .map(|id| headline(state, id, theme, layout, 1))
-                    .collect(),
-            ));
-        }
-        // The blog: a masthead line, then posts in reverse chronological order.
-        _ => {
-            elements.push(web::styled(
-                "front-tagline",
-                web::text(state, "tagline"),
-                web::style().size(15).color(muted(theme)).padding(12),
-            ));
-            for id in &all {
-                elements.push(headline(state, id, theme, layout, 1));
-                elements.push(web::divider(&format!("front-rule-{id}")));
-            }
-        }
-    }
-    elements.extend(newsletter(theme));
-    web::themed_page(&web::text(state, "brand"), theme.clone(), elements)
-}
-fn list_page(
-    state: &Value,
-    actor: &str,
-    theme: &PageTheme,
-    layout: &str,
-    title: &str,
-    entries: &[String],
-    follow: Option<&str>,
-) -> Result<HttpResponse> {
-    let mut elements = vec![
-        masthead(state, actor, theme, layout),
-        web::styled_row(
-            "list-header",
-            12,
-            "center",
-            web::style().padding(12),
-            std::iter::once(web::styled(
-                "list-title",
-                title,
-                web::style().size(24).bold().color(ink(theme)),
-            ))
-            .chain(follow.map(|tag| {
-                let on = has(state, "follows", actor, tag);
-                pill(
-                    "list-follow",
-                    if on { "Following" } else { "Follow topic" },
-                    on,
-                    theme,
-                    post(
-                        format!("/tags/{tag}/follow"),
-                        &[("return", &format!("/tag/{tag}"))],
-                    ),
-                )
-            }))
-            .collect(),
-        ),
-    ];
-    if entries.is_empty() {
-        elements.push(web::styled(
-            "list-empty",
-            "Nothing here yet.",
-            web::style().size(14).color(muted(theme)).padding(12),
-        ));
-    }
-    for id in entries {
-        elements.push(headline(state, id, theme, layout, 1));
-        elements.push(web::divider(&format!("list-rule-{id}")));
-    }
-    web::themed_page(title, theme.clone(), elements)
-}
-fn article_page(
-    state: &Value,
-    id: &str,
-    actor: &str,
-    theme: &PageTheme,
-    layout: &str,
-) -> Result<HttpResponse> {
-    let Some(a) = article(state, id).cloned() else {
-        return web::error(404, "article not found");
-    };
-    let back = href(state, id, layout);
-    let saved = has(state, "saved", actor, id);
-    let title = web::text(&a, "title");
-    let mut body = vec![
-        masthead(state, actor, theme, layout),
-        web::styled_row(
-            "article-kicker",
-            10,
-            "center",
-            web::style().padding(12),
-            vec![
-                web::link(
-                    "article-section",
-                    section_title(state, &web::text(&a, "section")),
-                    format!("/{}", web::text(&a, "section")),
-                ),
-                web::styled(
-                    "article-date",
-                    web::text(&a, "date"),
-                    web::style().size(12).color(muted(theme)),
-                ),
-            ],
-        ),
-        web::styled(
-            "article-title",
-            &title,
-            web::style().size(32).bold().color(ink(theme)),
-        ),
-        web::styled(
-            "article-dek",
-            web::text(&a, "dek"),
-            web::style().size(17).color(muted(theme)),
-        ),
-        web::styled_row(
-            "article-byline",
-            12,
-            "center",
-            web::style().padding(8),
-            vec![
-                web::thumbnail(
-                    "article-avatar",
-                    web::text(&a, "byline"),
-                    web::style()
-                        .width(40)
-                        .height(40)
-                        .radius(20)
-                        .background(tint(&web::text(&a, "byline")))
-                        .color("#20242c")
-                        .align("center"),
-                ),
-                web::styled(
-                    "article-credit",
-                    byline(state, id),
-                    web::style().size(13).color(muted(theme)).flex(3),
-                ),
-                pill(
-                    "article-save",
-                    if saved { "Saved" } else { "Save" },
-                    saved,
-                    theme,
-                    post(format!("/articles/{id}/save"), &[("return", &back)]),
-                ),
-            ],
-        ),
-        art("article-art", &title, 280),
-    ];
-    for (index, paragraph) in a
-        .get("body")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default()
-        .iter()
-        .enumerate()
-    {
-        let text = paragraph.as_str().unwrap_or_default();
-        body.push(web::styled(
-            &format!("article-p{index}"),
-            text,
-            web::style().size(16).color(ink(theme)),
-        ));
-        body.extend(web::links(&format!("article-p{index}"), text));
-    }
-    let related: Vec<PageElement> = a
-        .get("links")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default()
-        .iter()
-        .enumerate()
-        .map(|(i, l)| {
-            web::link(
-                &format!("article-ref-{i}"),
-                web::text(l, "label"),
-                web::text(l, "url"),
-            )
-        })
-        .collect();
-    if !related.is_empty() {
-        body.push(web::card(
-            "article-links",
-            web::style()
-                .background(surface(theme))
-                .padding(12)
-                .radius(6),
-            std::iter::once(web::styled(
-                "article-links-heading",
-                "Read more",
-                web::style().size(13).bold().color(ink(theme)),
-            ))
-            .chain(related)
-            .collect(),
-        ));
-    }
-    let tags: Vec<PageElement> = web::strings(&a, "tags")
-        .iter()
-        .map(|tag| {
-            web::card_action(
-                &format!("article-tag-{tag}"),
-                web::style()
-                    .padding(7)
-                    .radius(12)
-                    .background(surface(theme)),
-                web::visit(format!("/tag/{tag}")),
-                vec![web::styled(
-                    &format!("article-tag-{tag}-text"),
-                    format!("#{tag}"),
-                    web::style().size(12).color(ink(theme)),
-                )],
-            )
-        })
-        .collect();
-    body.push(web::styled_row(
-        "article-tags",
-        8,
-        "center",
-        web::style().padding(8),
-        tags,
-    ));
-    body.push(web::divider("article-divider"));
-    let comments = a
-        .get("comments")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    body.push(web::styled(
-        "comments-heading",
-        format!("{} comments", comments.len()),
-        web::style().size(16).bold().color(ink(theme)),
-    ));
-    body.push(web::form(
-        "comment",
-        &format!("/articles/{id}/comments"),
-        &[("text", "Join the discussion", "")],
-    ));
-    for comment in comments {
-        let cid = web::text(&comment, "id");
-        body.push(web::styled_row(
-            &format!("comment-{cid}"),
-            12,
-            "start",
-            web::style().padding(8),
-            vec![
-                web::styled_row(
-                    &format!("comment-{cid}-body"),
-                    4,
-                    "start",
-                    web::style().flex(4),
-                    vec![
-                        web::styled(
-                            &format!("comment-{cid}-author"),
-                            web::text(&comment, "author"),
-                            web::style().size(13).medium().color(ink(theme)),
-                        ),
-                        web::styled(
-                            &format!("comment-{cid}-text"),
-                            web::text(&comment, "text"),
-                            web::style().size(14).color(ink(theme)),
-                        ),
-                    ],
-                ),
-                pill(
-                    &format!("comment-{cid}-like"),
-                    &format!("▲ {}", num(&comment, "likes")),
-                    false,
-                    theme,
-                    post(
-                        format!("/articles/{id}/comments/{cid}/like"),
-                        &[("return", &back)],
-                    ),
-                ),
-            ],
-        ));
-    }
-    body.extend(newsletter(theme));
-    web::themed_page(&title, theme.clone(), body)
-}
-/// Brand splash; nothing on it reads as a control, so no action is promised that does not exist.
-fn landing(state: &Value) -> Result<HttpResponse> {
-    let pick = |key: &str, fallback: &str| match web::text(state, key) {
-        s if s.is_empty() => fallback.to_owned(),
-        s => s,
-    };
-    web::brand_page(
-        &pick("brand", BRAND),
-        &pick("tagline", TAGLINE),
-        web::theme(state)?,
-    )
-}
 /// Every GET route. Reading never mutates, so this takes the state by reference.
 fn render(state: &Value, ctx: &ServiceContext, request: &HttpRequest) -> Result<HttpResponse> {
-    let theme = web::theme(state)?;
-    let layout = web::variant(state, "layout", LAYOUTS)?;
+    let chrome = view::Chrome::read(state, &ctx.actor)?;
     let actor = ctx.actor.as_str();
     let path = web::path(request);
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     match parts.as_slice() {
-        [""] if state.get("articles").is_none() => landing(state),
-        [""] => front(state, actor, &theme, &layout),
-        ["archive"] => list_page(
-            state,
-            actor,
-            &theme,
-            &layout,
-            "Archive",
-            &recent(state, |_| true),
-            None,
-        ),
-        ["saved"] => list_page(
-            state,
-            actor,
-            &theme,
-            &layout,
+        [""] if state.get("articles").is_none() => chrome.landing(),
+        [""] => chrome.front(),
+        ["archive"] => chrome.list("Archive", &recent(state, |_| true), None),
+        ["saved"] => chrome.list(
             "Reading list",
             &recent(state, |a| has(state, "saved", actor, &web::text(a, "id"))),
             None,
         ),
-        ["tag", tag] => list_page(
-            state,
-            actor,
-            &theme,
-            &layout,
+        ["tag", tag] => chrome.list(
             &format!("#{tag}"),
             &recent(state, |a| web::strings(a, "tags").iter().any(|t| t == tag)),
             Some(tag),
         ),
-        ["posts", slug] => article_page(state, slug, actor, &theme, &layout),
-        [section] if sections(state).iter().any(|s| s == section) => list_page(
-            state,
-            actor,
-            &theme,
-            &layout,
+        ["posts", slug] => chrome.article(slug),
+        [section] if sections(state).iter().any(|s| s == section) => chrome.list(
             &section_title(state, section),
             &recent(state, |a| web::text(a, "section") == *section),
             None,
         ),
-        [slug] | [_, slug] if article(state, slug).is_some() => {
-            article_page(state, slug, actor, &theme, &layout)
-        }
+        [slug] | [_, slug] if article(state, slug).is_some() => chrome.article(slug),
         _ => web::error(404, "route not found"),
     }
 }
@@ -753,6 +194,7 @@ impl Service for PressService {
     fn initialize(&self, initial: Value, _: &ServiceContext) -> Result<Value> {
         let state = web::shape(initial, OBJECTS, ARRAYS)?;
         web::variant(&state, "layout", LAYOUTS)?;
+        web::variant(&state, "skin", SKINS)?;
         web::theme(&state)?;
         Ok(state)
     }
@@ -868,6 +310,8 @@ impl Service for PressService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cw_service_common::html::validate_strict;
+    use cw_web::dom::Document as Dom;
     fn ctx() -> ServiceContext {
         ServiceContext {
             actor: "alice".into(),
@@ -921,6 +365,49 @@ mod tests {
     fn text(response: &HttpResponse) -> String {
         String::from_utf8(response.body.clone()).unwrap()
     }
+    /// A parsed HTML page, validated strictly on the way in: every page any test fetches
+    /// has to be markup and CSS the engine renders, with unique ids.
+    struct Page(Dom);
+    fn page(state: &mut Value, url: &str) -> Page {
+        let response = get(state, url);
+        assert_eq!(response.status, 200, "{url}");
+        assert_eq!(response.header("content-type"), Some(cw_service_common::html::HTML_MEDIA_TYPE));
+        parsed(&response)
+    }
+    fn parsed(response: &HttpResponse) -> Page {
+        let html = text(response);
+        validate_strict(&html).unwrap_or_else(|e| panic!("strict validation: {e:?}"));
+        Page(cw_web::html::parse(&html))
+    }
+    impl Page {
+        fn has(&self, id: &str) -> bool {
+            !self.0.by_id(id).is_empty()
+        }
+        fn node(&self, id: &str) -> cw_web::dom::NodeId {
+            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+        }
+        fn text(&self, id: &str) -> String {
+            self.0.text_content(self.node(id))
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            self.0.attr(self.node(id), name).unwrap_or_else(|| panic!("#{id} has no {name}")).to_owned()
+        }
+        fn tag(&self, id: &str) -> String {
+            self.0.tag(self.node(id)).unwrap().to_owned()
+        }
+        /// The `name=value` pairs of the inputs inside a form, hidden ones included.
+        fn fields(&self, form: &str) -> Vec<(String, String)> {
+            let form = self.node(form);
+            self.0
+                .descendants(form)
+                .filter(|n| self.0.is(*n, "input"))
+                .map(|n| (self.0.attr(n, "name").unwrap_or("").to_owned(), self.0.attr(n, "value").unwrap_or("").to_owned()))
+                .collect()
+        }
+        fn body(&self) -> String {
+            self.0.text_content(self.0.body().unwrap())
+        }
+    }
     #[test]
     fn seed_shape_is_gated_at_load() {
         assert!(PressService.initialize(json!([]), &ctx()).is_err());
@@ -942,13 +429,93 @@ mod tests {
             ("blog", "front-tagline"),
         ] {
             let mut state = PressService.initialize(seed(layout), &ctx()).unwrap();
-            let page = text(&get(&mut state, "http://press.example/"));
-            assert!(page.contains(marker), "{layout} front page");
-            assert!(page.contains("Northstar's Atlas bets everything on determinism"));
-            assert!(
-                page.contains("newsletter-heading"),
-                "{layout} offers the newsletter"
+            let front = page(&mut state, "http://press.example/");
+            assert!(front.has(marker), "{layout} front page");
+            assert_eq!(front.text("card-atlas-determinism-title"), "Northstar's Atlas bets everything on determinism");
+            assert_eq!(front.tag("card-atlas-determinism"), "a");
+            assert_eq!(
+                front.attr("card-atlas-determinism", "href"),
+                if layout == "blog" { "/posts/atlas-determinism" } else { "/2026/atlas-determinism" }
             );
+            assert_eq!(front.text("card-atlas-determinism-section"), "Tech");
+            assert_eq!(front.text("masthead-brand"), "The Testpaper");
+            assert_eq!(front.attr("masthead-home", "href"), "/");
+            assert_eq!(front.attr("masthead-tech", "href"), "/tech");
+            assert_eq!(front.attr("masthead-archive", "href"), "/archive");
+            assert_eq!(front.attr("masthead-saved", "href"), "/saved");
+            // Follow is a one-button POST form that comes back to the front page.
+            assert_eq!(front.tag("masthead-follow"), "button");
+            assert_eq!(front.text("masthead-follow-text"), "Follow");
+            assert_eq!(front.attr("masthead-follow-form", "action"), "/follow");
+            assert_eq!(front.attr("masthead-follow-form", "method"), "post");
+            assert_eq!(front.fields("masthead-follow-form"), [("return".to_owned(), "/".to_owned())]);
+            // The newsletter form posts `email` to /subscribe.
+            assert_eq!(front.text("newsletter-heading"), "Get the newsletter");
+            assert_eq!(front.attr("subscribe", "action"), "/subscribe");
+            assert_eq!(front.attr("subscribe", "method"), "post");
+            assert_eq!(front.attr("subscribe-email", "name"), "email");
+            assert_eq!(front.attr("subscribe-email", "aria-label"), "Email address");
+            assert_eq!(front.tag("subscribe-submit"), "button");
+            if layout == "wire" {
+                assert_eq!(front.attr("mostread-atlas-determinism", "href"), "/2026/atlas-determinism");
+                assert_eq!(front.text("front-heading"), "Latest");
+            }
+        }
+    }
+    #[test]
+    fn every_skin_serves_every_page_as_strict_html() {
+        for skin in SKINS {
+            for layout in LAYOUTS {
+                let mut initial = seed(layout);
+                initial["skin"] = json!(skin);
+                let mut state = PressService.initialize(initial, &ctx()).unwrap();
+                for url in [
+                    "http://press.example/",
+                    "http://press.example/tech",
+                    "http://press.example/archive",
+                    "http://press.example/saved",
+                    "http://press.example/tag/northstar",
+                    "http://press.example/tag/nothing-tagged",
+                    "http://press.example/2026/atlas-determinism",
+                    "http://press.example/posts/monitor-roundup",
+                ] {
+                    let shown = page(&mut state, url);
+                    assert!(shown.has("masthead") && shown.has("subscribe"), "{skin} {layout} {url}");
+                    assert_eq!(
+                        shown.0.attr(shown.0.body().unwrap(), "class").unwrap().split(' ').next(),
+                        Some(format!("skin-{skin}").as_str())
+                    );
+                }
+            }
+        }
+        let mut bad = seed("wire");
+        bad["skin"] = json!("tabloid");
+        assert!(PressService.initialize(bad, &ctx()).is_err());
+        // Without a `skin` key the brand picks it, and a blog falls back to the blog sheet.
+        let mut named = seed("magazine");
+        named["brand"] = json!("The New York Times");
+        let mut state = PressService.initialize(named, &ctx()).unwrap();
+        let front = page(&mut state, "http://press.example/");
+        assert!(front.0.has_class(front.0.body().unwrap(), "skin-nyt"));
+        let mut state = PressService.initialize(seed("blog"), &ctx()).unwrap();
+        let front = page(&mut state, "http://press.example/");
+        assert!(front.0.has_class(front.0.body().unwrap(), "skin-blog"));
+        // A seed with no articles is the brand splash — on every skin, since the splash wears
+        // the same sheets and is the one page that has neither masthead nor newsletter.
+        for skin in SKINS {
+            for layout in LAYOUTS {
+                let mut state = PressService
+                    .initialize(json!({"layout": layout, "skin": skin, "brand": "Soon"}), &ctx())
+                    .unwrap();
+                let splash = page(&mut state, "http://press.example/");
+                assert_eq!(splash.text("brand"), "Soon", "{skin} {layout}");
+                assert_eq!(splash.text("tagline"), TAGLINE);
+                assert!(!splash.has("masthead"), "the splash promises no control it cannot honour");
+                assert_eq!(
+                    splash.0.attr(splash.0.body().unwrap(), "class").unwrap().split(' ').next(),
+                    Some(format!("skin-{skin}").as_str())
+                );
+            }
         }
     }
     #[test]
@@ -971,17 +538,42 @@ mod tests {
             get(&mut blog, "http://press.example/posts/atlas-determinism").status,
             200
         );
-        let page = text(&get(
-            &mut dated,
-            "http://press.example/2026/atlas-determinism",
-        ));
-        assert!(page.contains("Tom Weber · Mar 5, 2026 · 7 min read"));
-        assert!(page.contains("article-ref-0"), "the Read more box is real");
-        assert!(
-            page.contains("article-p1-link-4"),
-            "URLs in the prose become links"
+        let story = page(&mut dated, "http://press.example/2026/atlas-determinism");
+        assert_eq!(story.text("article-credit"), "Tom Weber · Mar 5, 2026 · 7 min read");
+        assert_eq!(story.text("article-title"), "Northstar's Atlas bets everything on determinism");
+        assert_eq!(story.attr("article-section", "href"), "/tech");
+        assert_eq!(story.text("article-date"), "Mar 5, 2026");
+        assert_eq!(story.text("article-avatar"), "TW");
+        assert_eq!(story.text("article-p0"), "Most simulation software will tell you it is reproducible.");
+        // The Read more box is real, and URLs in the prose are links in place.
+        assert_eq!(story.attr("article-ref-0", "href"), "http://github.com/northstar/atlas");
+        assert_eq!(story.text("article-ref-0"), "Atlas on GitHub");
+        assert_eq!(story.tag("article-p1-link-4"), "a");
+        assert_eq!(story.attr("article-p1-link-4", "href"), "http://github.com/northstar/atlas");
+        assert_eq!(
+            story.text("article-p1"),
+            "The repo is at http://github.com/northstar/atlas and it is worth reading."
         );
-        assert!(page.contains("1 comments"));
+        assert_eq!(story.attr("article-tag-determinism", "href"), "/tag/determinism");
+        assert_eq!(story.text("article-tag-determinism-text"), "#determinism");
+        assert_eq!(story.text("comments-heading"), "1 comments");
+        // Save, comment and like are POST forms with the fields the Page actions carried.
+        assert_eq!(story.attr("article-save-form", "action"), "/articles/atlas-determinism/save");
+        assert_eq!(story.fields("article-save-form"), [("return".to_owned(), "/2026/atlas-determinism".to_owned())]);
+        assert_eq!(story.text("article-save"), "Save");
+        assert_eq!(story.attr("comment", "action"), "/articles/atlas-determinism/comments");
+        assert_eq!(story.attr("comment", "method"), "post");
+        assert_eq!(story.fields("comment"), [("text".to_owned(), String::new())]);
+        assert_eq!(story.attr("comment-text", "aria-label"), "Join the discussion");
+        assert_eq!(story.tag("comment-submit"), "button");
+        assert_eq!(story.text("comment-c1-author"), "praman");
+        assert_eq!(story.text("comment-c1-text"), "Finally.");
+        assert_eq!(story.text("comment-c1-like"), "▲ 3");
+        assert_eq!(
+            story.attr("comment-c1-like-form", "action"),
+            "/articles/atlas-determinism/comments/c1/like"
+        );
+        assert_eq!(story.fields("comment-c1-like-form"), [("return".to_owned(), "/2026/atlas-determinism".to_owned())]);
     }
     #[test]
     fn commenting_appends_a_dense_id_and_refuses_an_empty_body() {
@@ -1059,7 +651,7 @@ mod tests {
     #[test]
     fn saving_is_a_per_actor_toggle_that_the_reading_list_reflects() {
         let mut state = PressService.initialize(seed("magazine"), &ctx()).unwrap();
-        assert!(text(&get(&mut state, "http://press.example/saved")).contains("list-empty"));
+        assert!(page(&mut state, "http://press.example/saved").has("list-empty"));
         let on = post(
             &mut state,
             "http://press.example/api/articles/atlas-determinism/save",
@@ -1067,10 +659,11 @@ mod tests {
         );
         assert_eq!(text(&on), r#"{"saved":true}"#);
         assert_eq!(state["saved"]["alice"], json!(["atlas-determinism"]));
-        let list = text(&get(&mut state, "http://press.example/saved"));
-        assert!(list.contains("Northstar's Atlas bets everything on determinism"));
+        let list = page(&mut state, "http://press.example/saved");
+        assert_eq!(list.text("list-title"), "Reading list");
+        assert!(list.has("card-atlas-determinism") && !list.has("list-empty"));
         assert!(
-            !list.contains("27-inch"),
+            !list.has("card-monitor-roundup"),
             "bob's reading list is not alice's"
         );
         post(
@@ -1102,12 +695,13 @@ mod tests {
             state["follows"]["alice"],
             json!(["determinism", "publication"])
         );
-        let tag = text(&get(&mut state, "http://press.example/tag/determinism"));
-        assert!(
-            tag.contains("Following"),
-            "the topic control shows its engaged state"
-        );
-        assert!(tag.contains("Northstar's Atlas"));
+        let tag = page(&mut state, "http://press.example/tag/determinism");
+        assert_eq!(tag.text("list-follow"), "Following", "the topic control shows its engaged state");
+        assert_eq!(tag.attr("list-follow-form", "action"), "/tags/determinism/follow");
+        assert_eq!(tag.fields("list-follow-form"), [("return".to_owned(), "/tag/determinism".to_owned())]);
+        assert_eq!(tag.text("masthead-follow"), "Following");
+        assert!(tag.has("card-atlas-determinism") && !tag.has("card-monitor-roundup"));
+        assert!(tag.body().contains("Northstar's Atlas"));
         post(&mut state, "http://press.example/api/follow", json!({}));
         assert_eq!(state["follows"]["alice"], json!(["determinism"]));
     }
@@ -1152,11 +746,17 @@ mod tests {
             json!({"return": "/2026/atlas-determinism"}),
         );
         assert_eq!(back.status, 200);
-        assert!(
-            text(&back).contains("article-title"),
-            "it re-renders the article"
-        );
-        assert!(text(&back).contains("Saved"));
+        let back = parsed(&back);
+        assert!(back.has("article-title"), "it re-renders the article");
+        assert_eq!(back.text("article-save"), "Saved");
+        // The browser posts forms urlencoded; the same route takes them.
+        let mut request = HttpRequest::get("http://press.example/articles/atlas-determinism/comments");
+        request.method = "POST".into();
+        request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        request.body = b"text=Read+it+twice.".to_vec();
+        let shown = parsed(&PressService.handle(&mut state, &ctx(), &request).unwrap());
+        assert_eq!(shown.text("comment-c2-text"), "Read it twice.");
+        assert_eq!(shown.text("comments-heading"), "2 comments");
     }
     #[test]
     fn reading_pages_is_pure_and_unknown_routes_are_refused() {

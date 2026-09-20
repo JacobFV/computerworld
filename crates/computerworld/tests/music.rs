@@ -447,6 +447,9 @@ fn spotify_on_the_web_keeps_playing_through_its_own_player_bar() {
         "navigate",
         json!({"url": "http://spotify.com/album/cold-reads"}),
     );
+    // In a window this short the actions row starts under the pinned player bar, as it
+    // does on the real site; scroll it clear before pressing Play.
+    reveal(&mut world, &actor, screen, "album-play");
     click(&mut world, &actor, screen, "album-play");
     click(&mut world, &actor, screen, "player-shuffle");
     click(&mut world, &actor, screen, "player-toggle");
@@ -494,7 +497,13 @@ fn ink_of(world: &World, actor: &str, (w, h): (u32, u32), words: &str) -> Option
 /// The page the browser shows, as JSON.
 fn page_text(world: &World, actor: &str) -> String {
     let session = world.interfaces().session(actor).unwrap();
-    serde_json::to_string(session.machines[MACHINE].browser.page().unwrap()).unwrap()
+    // A site served as HTML has no native `Page`; the browser projects its document into
+    // one, with the same ids and the live values, which is what an agent reads.
+    let page = session.machines[MACHINE]
+        .browser
+        .current_page()
+        .expect("the tab shows a page");
+    serde_json::to_string(&*page).unwrap()
 }
 /// A browser step that changes nothing but lets the world's step-end work (a page's
 /// refresh) run.
@@ -714,6 +723,9 @@ fn a_music_sites_player_bar_keeps_up_with_the_world_clock() {
         "navigate",
         json!({"url": "http://spotify.com/album/cold-reads"}),
     );
+    // In a window this short the actions row starts under the pinned player bar, as it
+    // does on the real site; scroll it clear before pressing Play.
+    reveal(&mut world, &actor, screen, "album-play");
     click(&mut world, &actor, screen, "album-play");
     let elapsed = |world: &World| -> u64 {
         let text = page_text(world, &actor);
@@ -870,13 +882,15 @@ fn shelves_scroll_sideways_by_wheel_bar_and_swipe() {
         "navigate",
         json!({"url": "http://spotify.com/"}),
     );
+    // The shelves are the `home-*` rails; a clipped title is a scroll box too, so name
+    // the one this is about rather than taking the first horizontal area on the page.
     let shelf_area = |world: &World| -> Option<cw_scene::ScrollArea> {
         world
             .scene(&actor, screen.0, screen.1)
             .unwrap()
             .scrolls
             .into_iter()
-            .find(|a| a.horizontal && a.max_offset() > 0)
+            .find(|a| a.horizontal && a.max_offset() > 0 && a.target.ends_with(":home-albums"))
     };
     let mut found = None;
     for y in (0..1600).step_by(200) {
@@ -893,12 +907,9 @@ fn shelves_scroll_sideways_by_wheel_bar_and_swipe() {
         }
     }
     let area = found.expect("a shelf on spotify.com scrolls sideways");
-    let row = area
-        .target
-        .rsplit(":content:pane:row:")
-        .next()
-        .unwrap()
-        .to_owned();
+    // `browser.v1 scroll` names the shelf by its element id, which is the tail of the
+    // scene target.
+    let row = area.target.rsplit(':').next().unwrap().to_owned();
     assert_eq!(area.offset, 0);
     // The wheel's sideways turn over it moves that shelf, not the page.
     let page_before = world.interfaces().session(&actor).unwrap().machines[MACHINE]
@@ -984,32 +995,45 @@ fn covers_and_icons_are_real_on_the_music_sites() {
             .unwrap()
             .label
     };
-    let thumbs = |world: &World, asset: &str| {
-        world
-            .scene(&actor, screen.0, screen.1)
-            .unwrap()
+    // The thumb is CSS-drawn now rather than a symbol asset: three boxes, outlined
+    // while the song is not liked and filled with the ink once it is. So "is the right
+    // thumb drawn" is "what shapes does the control hold", which must change with it.
+    let thumb = |world: &World| -> Vec<(cw_scene::Color, u32, u32)> {
+        let scene = world.scene(&actor, screen.0, screen.1).unwrap();
+        let control = scene
             .nodes
             .iter()
-            .any(|n| matches!(&n.primitive, Primitive::Symbol { asset: a, .. } if a == asset))
+            .find(|n| {
+                n.interaction
+                    .as_deref()
+                    .is_some_and(|i| i.ends_with("bar-like"))
+            })
+            .map(|n| n.transform.bounds(n.bounds))
+            .expect("the like control is painted");
+        scene
+            .nodes
+            .iter()
+            .filter(|n| {
+                let r = n.transform.bounds(n.bounds);
+                r.x >= control.x
+                    && r.y >= control.y
+                    && r.x + r.width as i32 <= control.x + control.width as i32
+                    && r.y + r.height as i32 <= control.y + control.height as i32
+            })
+            .filter_map(|n| match &n.primitive {
+                Primitive::Box { fill, .. } | Primitive::RoundedBox { fill, .. } => {
+                    Some((*fill, n.bounds.width, n.bounds.height))
+                }
+                _ => None,
+            })
+            .collect()
     };
     let was = liked(&mut world);
     assert_eq!(like_label(&world), if was { "Remove like" } else { "Like" });
-    assert!(thumbs(
-        &world,
-        if was {
-            "symbol/thumb-up-fill"
-        } else {
-            "symbol/thumb-up"
-        }
-    ));
+    let before = thumb(&world);
+    assert!(before.len() >= 3, "the thumb is drawn from boxes: {before:?}");
     click(&mut world, &actor, screen, "bar-like");
     assert_eq!(liked(&mut world), !was);
-    assert!(thumbs(
-        &world,
-        if was {
-            "symbol/thumb-up"
-        } else {
-            "symbol/thumb-up-fill"
-        }
-    ));
+    assert_eq!(like_label(&world), if was { "Like" } else { "Remove like" });
+    assert_ne!(thumb(&world), before, "and the thumb drawn flipped with it");
 }

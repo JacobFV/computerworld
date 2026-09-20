@@ -172,52 +172,198 @@ impl ChatState {
 use cw_protocol::{HttpRequest, HttpResponse, Result as SimResult};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
+use web::html::{self, button, div, el, form, span, text_input, Document, Html};
 use serde_json::{json, Value};
 pub struct ChatService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(ChatService)
 }
+const CSS: &str = include_str!("chat.css");
+fn initials(name: &str) -> String {
+    let letters: String = name
+        .split(|c: char| !c.is_alphanumeric())
+        .filter_map(|w| w.chars().next())
+        .take(2)
+        .collect::<String>()
+        .to_uppercase();
+    if letters.is_empty() {
+        "?".into()
+    } else {
+        letters
+    }
+}
+/// The other people in a DM, from this actor's point of view.
+fn dm_title(c: &Channel, actor: &str) -> String {
+    let others: Vec<&str> = c.members.iter().map(String::as_str).filter(|m| *m != actor).collect();
+    if others.is_empty() {
+        c.title.clone()
+    } else {
+        others.join(", ")
+    }
+}
+/// One message: who, when, the text, the reactions it has, and the field that adds one.
+fn message(conversation: &str, c: &Channel, m: &Message, grouped: bool) -> Html {
+    let parent = m
+        .parent
+        .as_deref()
+        .and_then(|p| c.messages.iter().find(|other| other.id == p));
+    let react = form(
+        &format!("{}-react", m.id),
+        format!("/channels/{conversation}/messages/{}/reactions", m.id),
+        "post",
+    )
+    .class("react")
+    .child(
+        text_input(&format!("{}-react-reaction", m.id), "reaction", "")
+            .attr("aria-label", "Reaction")
+            .attr("placeholder", "React")
+            .attr("autocomplete", "off"),
+    )
+    .child(button(&format!("{}-react-submit", m.id), "+").attr("aria-label", "Add reaction").attr("title", "Add reaction"));
+    let reactions = div("reactions")
+        .each(&m.reactions, |(name, who)| {
+            span("reaction")
+                .attr("title", who.iter().cloned().collect::<Vec<_>>().join(", "))
+                .child(span("reaction-name").text(name.as_str()))
+                .child(span("reaction-count").text(who.len().to_string()))
+        })
+        .child(react);
+    el("article")
+        .id(m.id.as_str())
+        .class("message")
+        .when(grouped, |n| n.class("grouped"))
+        .when(parent.is_some(), |n| n.class("reply"))
+        .child(
+            span("avatar")
+                .style(&format!("background-color: {}", web::avatar_tint(&m.author)))
+                .text(initials(&m.author)),
+        )
+        .child(
+            div("body")
+                .child(
+                    div("meta")
+                        .child(span("author").text(m.author.as_str()))
+                        .child(span("time").text(format!("tick {}", m.time))),
+                )
+                .maybe(parent.map(|p| {
+                    div("quote")
+                        .child(span("quote-author").text(p.author.as_str()))
+                        .child(span("quote-text").text(p.text.as_str()))
+                }))
+                .child(el("p").class("text").text(m.text.as_str()))
+                .child(reactions),
+        )
+}
 fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResponse> {
-    let mut e = vec![web::heading("title", "Chat")];
+    let open = match channel {
+        None => None,
+        Some(id) => match s.channel(actor, id) {
+            Err(e) => return web::error(403, e),
+            Ok(c) => Some((id, c)),
+        },
+    };
+    let row = |id: &str, key: &str, mark: &str, label: &str| {
+        el("a")
+            .id(id)
+            .class("nav-row")
+            .when(channel == Some(key), |n| n.class("current"))
+            .attr("href", format!("/channels/{key}"))
+            .child(span("mark").text(mark))
+            .child(span("label").text(label))
+    };
+    let mut channels = el("nav").class("nav").attr("aria-label", "Channels").child(el("h2").class("nav-title").text("Channels"));
     for (id, c) in &s.channels {
         if c.members.contains(actor) {
-            e.push(web::link(id, &c.title, format!("/channels/{id}")));
+            channels = channels.child(row(id, id, "#", &c.title));
         }
     }
+    let mut dms = el("nav").class("nav").attr("aria-label", "Direct messages").child(el("h2").class("nav-title").text("Direct messages"));
     for (id, c) in &s.dms {
         if c.members.contains(actor) {
-            e.push(web::link(
-                &format!("dm-{id}"),
-                &c.title,
-                format!("/channels/{id}"),
-            ));
+            dms = dms.child(row(&format!("dm-{id}"), id, "@", &c.title).attr("title", dm_title(c, actor)));
         }
     }
-    if let Some(id) = channel {
-        match s.channel(actor, id) {
-            Err(e) => return web::error(403, e),
-            Ok(c) => {
-                e.push(web::heading("channel", &c.title));
-                for m in &c.messages {
-                    e.push(web::paragraph(
-                        &m.id,
-                        format!("{}: {} {:?}", m.author, m.text, m.reactions),
-                    ));
-                    e.push(web::form(
-                        &format!("{}-react", m.id),
-                        &format!("/channels/{id}/messages/{}/reactions", m.id),
-                        &[("reaction", "Reaction", "")],
-                    ));
-                }
-                e.push(web::form(
-                    "send",
-                    &format!("/channels/{id}/messages"),
-                    &[("text", "Message", "")],
-                ));
+    // Opening a DM is the POST the API already had; the page gives it a field.
+    dms = dms.child(
+        form("dm", "/dms", "post")
+            .class("dm-new")
+            .child(
+                text_input("dm-to", "to", "")
+                    .attr("aria-label", "Direct message to")
+                    .attr("placeholder", "Message someone…")
+                    .attr("autocomplete", "off"),
+            )
+            .child(button("dm-submit", "Open")),
+    );
+    let sidebar = el("aside")
+        .class("sidebar")
+        .child(
+            div("brand")
+                .child(span("logo").text("C"))
+                .child(el("h1").id("title").text("Chat")),
+        )
+        .child(div("navs").child(channels).child(dms))
+        .child(
+            div("me")
+                .child(span("avatar small").style(&format!("background-color: {}", web::avatar_tint(actor))).text(initials(actor)))
+                .child(span("me-name").text(actor)),
+        );
+    let main = match open {
+        None => el("main").class("main blank").child(
+            div("welcome")
+                .child(el("p").class("welcome-title").text("Welcome to Chat"))
+                .child(el("p").class("welcome-text").text("Pick a channel on the left to start reading.")),
+        ),
+        Some((id, c)) => {
+            let is_dm = !s.channels.contains_key(id);
+            let mut list = div("messages");
+            if c.messages.is_empty() {
+                list = list.child(el("p").class("quiet").text("No messages yet. Say hello."));
             }
+            let mut previous: Option<&Message> = None;
+            for m in &c.messages {
+                let grouped = previous.is_some_and(|p| p.author == m.author) && m.parent.is_none();
+                list = list.child(message(id, c, m, grouped));
+                previous = Some(m);
+            }
+            let people = c.members.iter().cloned().collect::<Vec<_>>().join(", ");
+            el("main")
+                .class("main")
+                .child(
+                    el("header")
+                        .class("head")
+                        .child(span("head-mark").text(if is_dm { "@" } else { "#" }))
+                        .child(el("h2").id("channel").text(c.title.as_str()))
+                        .child(span("head-members").attr("title", people.as_str()).text(format!(
+                            "{} member{}",
+                            c.members.len(),
+                            if c.members.len() == 1 { "" } else { "s" }
+                        ))),
+                )
+                .child(list)
+                .child(
+                    form("send", format!("/channels/{id}/messages"), "post")
+                        .class("composer")
+                        .child(
+                            text_input("send-text", "text", "")
+                                .attr("aria-label", "Message")
+                                .attr("placeholder", format!("Message {}{}", if is_dm { "" } else { "#" }, c.title))
+                                .attr("autocomplete", "off"),
+                        )
+                        .child(button("send-submit", "Send")),
+                )
         }
-    }
-    web::page("Chat", e)
+    };
+    let title = match open {
+        Some((_, c)) => format!("{} · Chat", c.title),
+        None => "Chat".into(),
+    };
+    let doc = Document::new(title)
+        .lang("en")
+        .stylesheet(CSS)
+        .body_class("skin-plain")
+        .body([div("app").child(sidebar).child(main)]);
+    html::page(&doc)
 }
 impl Service for ChatService {
     fn kind(&self) -> &str {

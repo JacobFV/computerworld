@@ -1,0 +1,39 @@
+/* chatgpt.com: a near-black history band, a charcoal page, Inter throughout, the pill
+   composer with a white send disc, user turns in a grey bubble on the right and the
+   reply as plain text in a narrow column. */
+body { font-family: Inter, "Helvetica Neue", Arial, sans-serif; }
+.sidebar .logo { background: var(--ink); }
+/* The new-chat glyph is a pencil across a page: the square is the page, the bar the pencil. */
+.sidebar .new { position: relative; }
+.sidebar .new::before {
+  content: ""; width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 4px; display: block;
+}
+.sidebar .new::after {
+  content: ""; position: absolute; left: 14px; top: 15px; width: 14px; height: 2px;
+  border-radius: 1px; background: var(--ink); transform: rotate(-45deg);
+}
+.sidebar .chat.on { background: var(--hover); }
+.sidebar .account .avatar { background: var(--accent); color: #fff; }
+.topbar .product { font-size: 18px; font-weight: 500; padding: 6px 10px; border-radius: 10px; }
+.topbar .product:hover { background: var(--hover); }
+.topbar .caret { position: relative; display: inline-block; width: 7px; height: 7px; margin: 0 0 4px 10px; transform: rotate(45deg); }
+.topbar .caret::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 7px; height: 7px;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+}
+.greeting { font-size: 28px; line-height: 34px; margin-bottom: 28px; }
+.greeting .spark { display: none; }
+.composer .card { border-radius: 28px; padding: 14px 12px 10px 20px; box-shadow: 0 1px 8px rgba(0,0,0,.25); }
+.composer input { height: 30px; }
+.composer .tools { margin: 8px 0 0 -8px; }
+.composer .plus:hover { background: var(--hover); }
+.composer .picker { display: none; }
+.composer .send { border-radius: 50%; background: var(--ink); }
+.composer .send:hover { opacity: .85; }
+.composer .send { --glyph: var(--paper); }
+.suggestions button { border-radius: 999px; color: var(--muted); }
+.suggestions button:hover { color: var(--ink); }
+.msg .avatar { display: none; }
+.msg.user .bubble { border-radius: 22px; padding: 10px 18px; }
+.msg .text { font-size: 16px; line-height: 26px; }
+.dock .composer .card { box-shadow: none; }

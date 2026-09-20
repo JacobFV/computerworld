@@ -1,0 +1,103 @@
+/* Instagram: a white icon rail with the script wordmark, a 470px column of square pictures,
+   and the account with its suggestions to the right; a profile is a header over a 3-up grid. */
+body { font-family: Roboto, Arial, sans-serif; font-size: 14px; background-color: #ffffff; }
+.shell { justify-content: flex-start; min-height: 100vh; }
+.rail { position: sticky; top: 0; flex: 0 0 244px; box-sizing: border-box; height: 100vh; padding: 8px 12px 20px; border-right: 1px solid #dbdbdb; display: flex; flex-direction: column; }
+.brand { padding: 28px 12px 22px; }
+.wordmark { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-weight: 700; font-size: 26px; letter-spacing: -0.5px; }
+.nav { display: flex; flex-direction: column; }
+.nav-item { padding: 12px; margin: 2px 0; border-radius: 8px; font-size: 16px; }
+.nav-item:hover { background-color: #f2f2f2; }
+.nav-item.on { font-weight: 700; }
+.nav .ico { width: 24px; font-size: 24px; margin-right: 16px; }
+.rail .me-card { display: none; }
+
+.main { flex: 0 1 630px; box-sizing: border-box; margin-left: 32px; padding: 24px 80px 0; }
+.page-profile .main, .page-explore .main, .page-search .main, .page-inbox .main { flex: 0 1 935px; padding: 24px 0 0; }
+.stories { display: flex; padding: 4px 0 20px; overflow: hidden; }
+.story { display: block; width: 66px; margin-right: 14px; text-align: center; }
+.ring { display: block; width: 66px; height: 66px; box-sizing: border-box; padding: 3px; border-radius: 50%; background-image: linear-gradient(45deg, #f9ce34, #ee2a7b 50%, #6228d7); }
+.ring .avatar { display: block; width: 60px; height: 60px; line-height: 56px; border: 2px solid #ffffff; font-size: 18px; }
+.story-name { display: block; margin-top: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compose { padding: 10px 12px; margin-bottom: 20px; border: 1px solid #dbdbdb; border-radius: 8px; align-items: center; }
+.compose .avatar { width: 32px; height: 32px; line-height: 32px; font-size: 12px; }
+.compose-title { display: none; }
+.compose form { display: flex; align-items: center; }
+.compose form input { flex: 1 1 auto; font-size: 14px; }
+.compose-tools { display: none; }
+button.primary { border-radius: 8px; padding: 7px 16px; font-size: 14px; background-color: #0095f6; }
+.feed-title { display: none; }
+.page-search .feed-title { display: block; font-size: 16px; margin: 16px 0; }
+
+.post { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #dbdbdb; }
+.post-head { padding: 0 0 12px; }
+.post-head .avatar { width: 32px; height: 32px; line-height: 32px; font-size: 12px; }
+.name { font-weight: 700; font-size: 14px; }
+.handle { margin-left: 4px; }
+.verified { width: 13px; height: 13px; line-height: 13px; font-size: 9px; background-color: #0095f6; }
+.post-body { display: flex; flex-direction: column; }
+.photo { border-radius: 4px; border: 1px solid #efefef; }
+.photo-label { font-size: 14px; }
+.post-text { margin-top: 8px; line-height: 1.3; }
+.post-link { display: flex; flex-direction: column; }
+.post-body .acts { margin-top: 8px; }
+.acts .act { order: 2; margin-left: 16px; }
+.acts .pill-form { order: 3; margin-left: 16px; }
+.acts .pill-form:last-child { order: 1; margin-left: 0; }
+.pill, .act { color: var(--ink); font-size: 14px; font-weight: 700; }
+.pill .ico, .act .ico { font-size: 24px; }
+.acts .lbl { display: none; }
+.pill.on .ico-like { color: #ff3040; }
+
+/* A wall of square tiles: the picture, with the counts over its foot. */
+.page-explore .feed-grid, .page-profile .feed-grid, .page-search .feed-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+.page-explore .post, .page-profile .post, .page-search .post { position: relative; margin: 0; padding: 0; border: 0; }
+.page-explore .post-head, .page-profile .post-head, .page-search .post-head, .page-explore .post-text, .page-profile .post-text, .page-search .post-text, .page-explore .quote, .page-profile .quote, .page-search .quote { display: none; }
+.page-explore .photo, .page-profile .photo, .page-search .photo { border-radius: 0; border: 0; align-items: flex-start; }
+.page-explore .acts, .page-profile .acts, .page-search .acts { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 8px 10px; background-color: rgba(0, 0, 0, 0.45); }
+.page-explore .pill, .page-profile .pill, .page-search .pill, .page-explore .act, .page-profile .act, .page-search .act { color: #ffffff; }
+.page-explore .pill .ico, .page-profile .pill .ico, .page-search .pill .ico, .page-explore .act .ico, .page-profile .act .ico, .page-search .act .ico { font-size: 18px; }
+
+.side { flex: 0 0 320px; box-sizing: border-box; padding: 36px 0 0; margin-left: 32px; }
+.side .me-card { margin-bottom: 20px; }
+.side .me-card .avatar { width: 44px; height: 44px; line-height: 44px; }
+.panel-title { font-size: 14px; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+.person { padding: 6px 0; }
+.person .avatar { width: 44px; height: 44px; line-height: 44px; }
+.person-name, .me-name { font-size: 14px; }
+.person-handle, .me-handle { font-size: 13px; }
+.person-cue { color: #0095f6; font-weight: 700; font-size: 12px; }
+.side-foot { margin-top: 24px; font-size: 12px; color: #c7c7c7; }
+
+.banner { display: none; }
+.profile { position: relative; padding: 16px 0 36px 284px; min-height: 150px; border-bottom: 1px solid #dbdbdb; margin-bottom: 4px; }
+.profile-row { display: block; }
+.profile .avatar.huge { position: absolute; left: 70px; top: 16px; width: 150px; height: 150px; line-height: 150px; font-size: 48px; }
+.profile-acts { position: absolute; left: 520px; top: 14px; }
+.profile-name { font-size: 20px; font-weight: 400; line-height: 32px; }
+.profile-handle { color: var(--muted); }
+.profile-body { display: flex; flex-direction: column; }
+.counts { order: 2; margin: 14px 0; font-size: 16px; }
+.count { margin-right: 40px; color: var(--ink); }
+.profile-title { order: 1; }
+.profile-handle, .headline, .bio, .meta { order: 3; margin-top: 4px; }
+.bio { max-width: 520px; }
+.profile-acts .pill { padding: 7px 20px; border-radius: 8px; background-color: #0095f6; color: #ffffff; font-size: 14px; }
+.profile-acts .pill.on { background-color: #efefef; color: var(--ink); }
+
+.inbox { border: 1px solid #dbdbdb; border-radius: 4px; min-height: 700px; }
+.threads { border-right: 1px solid #dbdbdb; min-height: 700px; }
+.threads .feed-title { display: block; padding: 20px 16px; font-size: 16px; text-align: center; border-bottom: 1px solid #dbdbdb; }
+.thread:hover, .thread.on { background-color: #efefef; }
+.thread .avatar { width: 56px; height: 56px; line-height: 56px; }
+.convo-title { padding: 20px 16px; font-size: 16px; border-bottom: 1px solid #dbdbdb; }
+.dm { background-color: #efefef; border-radius: 22px; }
+.dm.own { background-color: #3797f0; }
+.dm-form input { border-color: #dbdbdb; }
+.search-form { height: 40px; padding: 0 6px 0 14px; border-radius: 8px; background-color: #efefef; }
+.search-form .ico { margin-right: 10px; color: var(--muted); }
+.crumb { margin-bottom: 12px; }
+.crumb-title { font-size: 16px; }
+.section-title { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
+.reply-box { border: 0; border-top: 1px solid #dbdbdb; border-radius: 0; padding: 12px 0; }
+.page-profile .side, .page-explore .side, .page-search .side, .page-inbox .side { display: none; }

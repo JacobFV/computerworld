@@ -1,0 +1,55 @@
+/* cnn.com: the red logo block in a black bar, a big centred lead headline, and
+   columns of image-led promos. */
+.skin-cnn { font-family: Arial, sans-serif; color: #0c0c0c; }
+.skin-cnn .masthead { background: #0c0c0c; border-bottom: 0; color: #ffffff; }
+.skin-cnn .bar { max-width: 1280px; padding: 0 24px 0 0; gap: 22px; }
+.skin-cnn .brand { background: #cc0000; color: #ffffff; padding: 0 12px; height: 56px; font-size: 24px; font-weight: 700; letter-spacing: -0.04em; }
+.skin-cnn .sections { gap: 0 20px; font-size: 15px; font-weight: 700; color: #ffffff; }
+.skin-cnn .sections a:hover { text-decoration: none; color: #cccccc; }
+.skin-cnn .tools { color: #ffffff; }
+.skin-cnn .pill { border-radius: 4px; }
+/* White only where the bar behind it is black; on a white page the pill keeps the base ink. */
+.skin-cnn .masthead .pill { color: #ffffff; border-color: #ffffff; }
+.skin-cnn .masthead .pill:hover { background: #333333; }
+.skin-cnn .story .pill:hover, .skin-cnn .comments .pill:hover { background: #f0f0f0; }
+.skin-cnn .pill.on { background: #cc0000; border-color: #cc0000; color: #ffffff; }
+.skin-cnn main { max-width: 1280px; }
+.skin-cnn .layout { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr) 250px; column-gap: 24px; }
+.skin-cnn .layout > .lead { grid-column: 1; grid-row: 1; }
+.skin-cnn .layout > .grid { grid-column: 2; grid-row: 1; }
+.skin-cnn .layout > .side { grid-column: 3; grid-row: 1; }
+.skin-cnn .card .text { display: flex; flex-direction: column; }
+.skin-cnn .card.s2 { display: flex; flex-direction: column; }
+.skin-cnn .card.s2 .text { order: 0; }
+.skin-cnn .card.s2 .art { order: 1; height: 270px; margin: 12px 0 0; }
+.skin-cnn .card.s2 .title { margin-bottom: 10px; font-weight: 700; font-size: 38px; line-height: 40px; text-align: center; letter-spacing: -0.02em; }
+.skin-cnn .card.s2 .dek { order: 3; text-align: center; font-size: 16px; color: #404040; }
+.skin-cnn .card .art { border-radius: 0; height: 140px; margin-bottom: 8px; }
+.skin-cnn .card .kicker, .skin-cnn .card .byline { display: none; }
+.skin-cnn .card .title { font-size: 16px; line-height: 20px; font-weight: 400; margin: 0; }
+.skin-cnn .card .dek { display: none; }
+.skin-cnn .card.s2 .dek { display: block; }
+.skin-cnn .card:hover .title { color: #404040; }
+.skin-cnn .grid { gap: 20px 16px; }
+.skin-cnn .grid .card { padding-bottom: 14px; border-bottom: 1px solid #e6e6e6; }
+.skin-cnn .side h2 { font-size: 18px; text-transform: none; letter-spacing: 0; padding-bottom: 6px; border-bottom: 4px solid #cc0000; display: inline-block; }
+.skin-cnn .ranked li { font-weight: 400; font-size: 15px; line-height: 19px; border-color: #e6e6e6; }
+.skin-cnn .chip { border-radius: 4px; }
+.skin-cnn .list-header { border-bottom: 0; }
+.skin-cnn .list-header h1 { font-size: 36px; padding-bottom: 4px; border-bottom: 5px solid #cc0000; }
+.skin-cnn .listing .card .kicker, .skin-cnn .listing .card .byline, .skin-cnn .listing .card .dek { display: block; }
+.skin-cnn .listing .card .title { font-size: 20px; line-height: 24px; font-weight: 700; margin-bottom: 6px; }
+.skin-cnn .story { max-width: 780px; }
+.skin-cnn .story h1 { font-size: 42px; line-height: 46px; letter-spacing: -0.02em; }
+.skin-cnn .story .kicker a { color: #cc0000; }
+.skin-cnn .story .art .plate { border-radius: 0; height: 420px; }
+.skin-cnn .body p { font-family: Arial, sans-serif; font-size: 18px; line-height: 30px; }
+.skin-cnn .body a { color: #0c0c0c; }
+.skin-cnn .comments { max-width: 780px; }
+.skin-cnn .newsletter { max-width: 780px; background: #0c0c0c; color: #ffffff; border-radius: 0; }
+.skin-cnn .newsletter .lead { color: #cccccc; }
+.skin-cnn #comment-submit, .skin-cnn #subscribe-submit { background: #cc0000; }
+.skin-cnn .foot { background: #0c0c0c; color: #b3b3b3; border-top: 0; }
+.skin-cnn .foot .inner { max-width: 1280px; }
+.skin-cnn .foot-brand { color: #ffffff; background: #cc0000; padding: 6px 8px; }
+.skin-cnn .foot-links a { color: #ffffff; }

@@ -88,11 +88,16 @@ fn hacker_news_is_read_voted_on_and_commented_on() {
     assert!(!has(&home, "t-9001-down"), "a link feed has no downvote");
     assert_eq!(by_id(&home, "search")["kind"], "form");
     assert_eq!(by_id(&home, "search-q")["kind"], "input");
-    assert!(says(&home, "147 points by"), "the subtext line is on the page");
+    // The subtext line: the score is addressed by its own id, because the projection breaks an
+    // inline element that carries an `id` out of the run around it, and the words beside it are
+    // their own text elements.
+    assert_eq!(by_id(&home, "t-9001-score")["text"], "147");
+    assert_eq!(by_id(&home, "t-9001-author")["text"], "tomw");
+    assert!(says(&home, "points by"), "the subtext line is on the page");
 
     // The arrow is a one-button form: the vote lands and the same list comes back.
     let voted = click(&mut world, &session, "t-9001-up");
-    assert!(says(&voted, "148 points by"), "the vote moved the score");
+    assert_eq!(by_id(&voted, "t-9001-score")["text"], "148", "the vote moved the score");
     assert!(has(&voted, "t-9002-up"), "we are still on the front page");
 
     // The comments link opens the item; the comment box posts and lands back on it.

@@ -6,14 +6,15 @@
 //! One router renders every GET, and a successful form POST re-renders through the same router,
 //! so a control always lands the caller on a real page instead of a JSON blob. `/api/*` mirrors
 //! the mutating routes for agents that would rather read JSON.
-use cw_protocol::{
-    HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result as SimResult, SimError,
-};
+use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result as SimResult, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
+mod view;
+pub use view::{PAGE_SIZE, SKINS};
+use view::View;
 pub struct ForumService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(ForumService)
@@ -37,6 +38,9 @@ pub const MAX_BODY: usize = 8000;
 #[serde(default)]
 pub struct ForumState {
     pub mode: String,
+    /// Which product the pages look like: one of [`SKINS`]. Absent, the brand decides
+    /// (`Hacker News`, `Yelp`), and failing that the mode.
+    pub skin: String,
     pub brand: String,
     pub tagline: String,
     /// What a top-level entry is called here: "post", "question", "story".
@@ -132,6 +136,25 @@ impl ForumState {
     }
     pub fn subreddits(&self) -> bool {
         self.mode == "subreddits"
+    }
+    /// The skin the pages render in: the seeded `skin`, else the brand's own, else the mode's.
+    pub fn skin(&self) -> &'static str {
+        let brand: String = self
+            .brand
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect::<String>()
+            .to_ascii_lowercase();
+        SKINS
+            .iter()
+            .find(|k| **k == self.skin)
+            .or_else(|| SKINS.iter().find(|k| **k == brand))
+            .copied()
+            .unwrap_or(match self.mode.as_str() {
+                "qa" => "stackoverflow",
+                "linkfeed" => "hackernews",
+                _ => "reddit",
+            })
     }
     fn item_word(&self) -> &str {
         match self.item_word.as_str() {
@@ -535,913 +558,6 @@ impl ForumState {
         Ok(json!({"board": board, "subscribed": on}))
     }
 }
-/// Palette pulled once per render; a theme may fill none, some or all of it.
-struct Palette {
-    accent: String,
-    ink: String,
-    muted: String,
-    surface: String,
-    line: String,
-}
-impl Palette {
-    fn of(theme: &PageTheme) -> Self {
-        let muted = theme.muted.clone().unwrap_or_else(|| "#6a737c".into());
-        Self {
-            accent: theme.accent.clone().unwrap_or_else(|| "#ff4500".into()),
-            ink: theme.ink.clone().unwrap_or_else(|| "#1a1a1b".into()),
-            // A hairline drawn from the muted ink, so no theme needs a key for it.
-            line: match muted.len() {
-                7 => format!("{muted}44"),
-                _ => muted.clone(),
-            },
-            muted,
-            surface: theme.surface.clone().unwrap_or_else(|| "#ffffff".into()),
-        }
-    }
-}
-const TINTS: [&str; 6] = [
-    "#ff4500", "#0079d3", "#46a35e", "#7856ff", "#f48024", "#d93a49",
-];
-/// Avatar colour is a pure FNV-1a over the handle: stable across runs, machines and snapshots,
-/// and no seeded stream is reachable from a render.
-fn tint(handle: &str) -> &'static str {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in handle.as_bytes() {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(0x100_0000_01b3);
-    }
-    TINTS[(h % TINTS.len() as u64) as usize]
-}
-fn initials(name: &str) -> String {
-    let letters: String = name
-        .split_whitespace()
-        .filter_map(|w| w.chars().next())
-        .take(2)
-        .collect();
-    if letters.is_empty() {
-        "?".into()
-    } else {
-        letters.to_uppercase()
-    }
-}
-/// Age in ticks, which is the only clock a service has.
-fn ago(now: u64, tick: u64) -> String {
-    match now.saturating_sub(tick) {
-        0 => "now".into(),
-        n => format!("{n}t ago"),
-    }
-}
-/// The host of an outbound link, which is the grey suffix on a link-feed title.
-fn host(url: &str) -> String {
-    url.split("://")
-        .nth(1)
-        .unwrap_or(url)
-        .split('/')
-        .next()
-        .unwrap_or("")
-        .trim_start_matches("www.")
-        .to_owned()
-}
-fn plural(n: usize, word: &str) -> String {
-    if n == 1 {
-        format!("{n} {word}")
-    } else {
-        format!("{n} {word}s")
-    }
-}
-/// A control that mutates and comes back to `view`; the browser posts the field set verbatim.
-fn act(url: &str, view: &str, extra: &[(&str, &str)]) -> PageAction {
-    let mut fields = BTreeMap::from([("view".to_owned(), view.to_owned())]);
-    fields.extend(
-        extra
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
-    );
-    PageAction {
-        method: "POST".into(),
-        url: url.into(),
-        fields,
-    }
-}
-fn pill(
-    id: &str,
-    label: &str,
-    on: bool,
-    url: &str,
-    view: &str,
-    extra: &[(&str, &str)],
-    p: &Palette,
-) -> PageElement {
-    web::card_action(
-        id,
-        web::style()
-            .padding(6)
-            .radius(6)
-            .background(if on {
-                p.accent.clone()
-            } else {
-                p.surface.clone()
-            })
-            .border(p.line.clone()),
-        act(url, view, extra),
-        vec![web::styled(
-            &format!("{id}-label"),
-            label,
-            web::style().size(12).medium().align("center").color(if on {
-                "#ffffff"
-            } else {
-                p.muted.as_str()
-            }),
-        )],
-    )
-}
-/// A form with typed fields plus fixed hidden values — the parent id, the board, the page to
-/// return to. `web::form` only carries typed fields, and a reply box needs both.
-fn form_with(
-    id: &str,
-    url: &str,
-    fields: &[(&str, &str, &str)],
-    fixed: &[(&str, &str)],
-) -> PageElement {
-    let action = PageAction {
-        method: "POST".into(),
-        url: url.into(),
-        fields: fields
-            .iter()
-            .map(|(key, _, _)| ((*key).to_owned(), format!("${id}-{key}")))
-            .chain(
-                fixed
-                    .iter()
-                    .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
-            )
-            .collect(),
-    };
-    PageElement::Form {
-        id: id.into(),
-        action: action.clone(),
-        children: fields
-            .iter()
-            .map(|(key, label, value)| PageElement::Input {
-                id: format!("{id}-{key}"),
-                label: (*label).into(),
-                value: (*value).into(),
-                placeholder: String::new(),
-            })
-            .chain(std::iter::once(PageElement::Button {
-                id: format!("{id}-submit"),
-                text: "Submit".into(),
-                action,
-                style: None,
-            }))
-            .collect(),
-    }
-}
-fn column(id: &str, gap: u32, children: Vec<PageElement>) -> PageElement {
-    web::grid(id, 1, gap, children)
-}
-fn who(s: &ForumState, handle: &str) -> String {
-    match s.mode.as_str() {
-        "subreddits" => format!("u/{handle}"),
-        _ => s
-            .members
-            .get(handle)
-            .map_or(handle.to_owned(), |m| m.name.clone()),
-    }
-}
-fn nav(s: &ForumState, p: &Palette, actor: &str, here: &str) -> Vec<PageElement> {
-    let mut items = vec![
-        ("nav-home", "Home".to_owned(), "/".to_owned()),
-        ("nav-new", "Newest".to_owned(), "/newest".to_owned()),
-        ("nav-search", "Search".to_owned(), "/search".to_owned()),
-        (
-            "nav-submit",
-            match s.mode.as_str() {
-                "qa" => "Ask".to_owned(),
-                "linkfeed" => "Submit".to_owned(),
-                _ => "New post".to_owned(),
-            },
-            "/submit".to_owned(),
-        ),
-    ];
-    if s.subreddits() {
-        items.insert(1, ("nav-boards", "Communities".to_owned(), "/r".to_owned()));
-    }
-    if let Some(m) = s.member_of(actor) {
-        items.push(("nav-me", "Profile".to_owned(), format!("/u/{}", m.handle)));
-    }
-    let links: Vec<PageElement> = items
-        .into_iter()
-        .map(|(id, label, url)| {
-            let current = url == here;
-            web::card_action(
-                id,
-                web::style()
-                    .padding(8)
-                    .radius(6)
-                    .background(if current {
-                        p.accent.clone()
-                    } else {
-                        p.surface.clone()
-                    })
-                    .border(p.line.clone()),
-                web::visit(url),
-                vec![web::styled(
-                    &format!("{id}-text"),
-                    label,
-                    web::style()
-                        .size(13)
-                        .medium()
-                        .align("center")
-                        .color(if current { "#ffffff" } else { p.ink.as_str() }),
-                )],
-            )
-        })
-        .collect();
-    vec![
-        web::row(
-            "masthead",
-            10,
-            "center",
-            vec![
-                web::styled(
-                    "brand",
-                    &s.brand,
-                    web::style().size(24).bold().color(p.accent.clone()),
-                ),
-                web::styled(
-                    "tagline",
-                    &s.tagline,
-                    web::style().size(13).color(p.muted.clone()).one_line(),
-                ),
-            ],
-        ),
-        web::grid("nav", links.len().min(6) as u32, 8, links),
-        web::divider("nav-rule"),
-    ]
-}
-/// The up/score/down column that sits to the left of a Reddit post and a Stack Overflow answer.
-/// A link feed has no downvote, so it gets one arrow and no empty slot pretending otherwise.
-fn votes(
-    s: &ForumState,
-    actor: &str,
-    p: &Palette,
-    id: &str,
-    kind: &str,
-    here: &str,
-) -> PageElement {
-    let mine = s.my_vote(actor, id);
-    let url = format!("/{kind}/{id}/vote");
-    let mut stack = vec![
-        pill(
-            &format!("{id}-up"),
-            "Up",
-            mine > 0,
-            &url,
-            here,
-            &[("dir", "1")],
-            p,
-        ),
-        web::styled(
-            &format!("{id}-score"),
-            s.score_of(id).to_string(),
-            web::style()
-                .size(15)
-                .bold()
-                .align("center")
-                .color(if mine != 0 {
-                    p.accent.clone()
-                } else {
-                    p.ink.clone()
-                }),
-        ),
-    ];
-    if !s.linkfeed() {
-        stack.push(pill(
-            &format!("{id}-down"),
-            "Down",
-            mine < 0,
-            &url,
-            here,
-            &[("dir", "-1")],
-            p,
-        ));
-    }
-    web::grid(&format!("{id}-votes"), 1, 4, stack)
-}
-/// One entry in a ranked list. The three modes put genuinely different furniture around the
-/// same thread: a vote column and a subreddit line, a stats block and tags, or a rank number
-/// and an outbound host.
-fn entry(
-    s: &ForumState,
-    ctx: &ServiceContext,
-    p: &Palette,
-    id: &str,
-    rank: usize,
-    here: &str,
-) -> PageElement {
-    let t = &s.threads[id];
-    let link = s.permalink(t);
-    let comments = s.conversation_size(t);
-    let title = web::styled(
-        &format!("{id}-title"),
-        &t.title,
-        web::style().size(17).medium().color(p.ink.clone()),
-    );
-    let card_style = web::style()
-        .padding(12)
-        .radius(8)
-        .background(p.surface.clone())
-        .border(p.line.clone());
-    if s.linkfeed() {
-        let head = match t.url.as_deref() {
-            Some(u) => web::row(
-                &format!("{id}-head"),
-                8,
-                "center",
-                vec![
-                    web::link(&format!("{id}-out"), &t.title, u),
-                    web::styled(
-                        &format!("{id}-host"),
-                        format!("({})", host(u)),
-                        web::style().size(12).color(p.muted.clone()).width(180),
-                    ),
-                ],
-            ),
-            None => title,
-        };
-        return web::card(
-            &format!("row-{id}"),
-            card_style,
-            vec![web::row(
-                &format!("{id}-row"),
-                10,
-                "start",
-                vec![
-                    web::styled(
-                        &format!("{id}-rank"),
-                        format!("{rank}."),
-                        web::style().size(15).color(p.muted.clone()).width(36),
-                    ),
-                    votes(s, &ctx.actor, p, id, "threads", here),
-                    column(
-                        &format!("{id}-body"),
-                        4,
-                        vec![
-                            head,
-                            web::row(
-                                &format!("{id}-meta"),
-                                8,
-                                "center",
-                                vec![
-                                    web::styled(
-                                        &format!("{id}-by"),
-                                        format!(
-                                            "{} points by {} {}",
-                                            s.score_of(id),
-                                            who(s, &t.author),
-                                            ago(ctx.tick, t.tick)
-                                        ),
-                                        web::style().size(12).color(p.muted.clone()),
-                                    ),
-                                    web::link(
-                                        &format!("{id}-comments"),
-                                        plural(comments, "comment"),
-                                        link,
-                                    ),
-                                ],
-                            ),
-                        ],
-                    ),
-                ],
-            )],
-        );
-    }
-    if s.qa() {
-        let stat = |sid: String, n: String, label: &str, strong: bool| {
-            web::card(
-                &sid,
-                web::style()
-                    .padding(6)
-                    .radius(6)
-                    .width(78)
-                    .background(if strong {
-                        p.accent.clone()
-                    } else {
-                        p.surface.clone()
-                    })
-                    .border(p.line.clone()),
-                vec![
-                    web::styled(
-                        &format!("{sid}-n"),
-                        n,
-                        web::style()
-                            .size(15)
-                            .bold()
-                            .align("center")
-                            .color(if strong { "#ffffff" } else { p.ink.as_str() }),
-                    ),
-                    web::styled(
-                        &format!("{sid}-l"),
-                        label,
-                        web::style().size(11).align("center").color(if strong {
-                            "#ffffff"
-                        } else {
-                            p.muted.as_str()
-                        }),
-                    ),
-                ],
-            )
-        };
-        let mut body = vec![
-            title,
-            web::styled(
-                &format!("{id}-excerpt"),
-                t.body.chars().take(160).collect::<String>(),
-                web::style().size(13).color(p.muted.clone()).one_line(),
-            ),
-        ];
-        let mut tail: Vec<PageElement> = t
-            .tags
-            .iter()
-            .enumerate()
-            .map(|(i, tag)| {
-                web::badge(
-                    &format!("{id}-tag-{i}"),
-                    tag,
-                    web::style()
-                        .size(11)
-                        .width(96)
-                        .background(p.surface.clone())
-                        .color(p.accent.clone())
-                        .border(p.line.clone()),
-                )
-            })
-            .collect();
-        tail.push(web::styled(
-            &format!("{id}-asked"),
-            format!("asked by {} {}", who(s, &t.author), ago(ctx.tick, t.tick)),
-            web::style().size(12).color(p.muted.clone()),
-        ));
-        body.push(web::row(&format!("{id}-tags"), 6, "center", tail));
-        return web::card_action(
-            &format!("row-{id}"),
-            card_style,
-            web::visit(link),
-            vec![web::row(
-                &format!("{id}-row"),
-                12,
-                "start",
-                vec![
-                    web::row(
-                        &format!("{id}-stats"),
-                        6,
-                        "start",
-                        vec![
-                            stat(
-                                format!("{id}-st-votes"),
-                                s.score_of(id).to_string(),
-                                "votes",
-                                false,
-                            ),
-                            stat(
-                                format!("{id}-st-answers"),
-                                t.replies.len().to_string(),
-                                "answers",
-                                t.accepted.is_some(),
-                            ),
-                            stat(
-                                format!("{id}-st-views"),
-                                t.views.to_string(),
-                                "views",
-                                false,
-                            ),
-                        ],
-                    ),
-                    column(&format!("{id}-body"), 6, body),
-                ],
-            )],
-        );
-    }
-    let board = s.boards.get(&t.board);
-    web::card(
-        &format!("row-{id}"),
-        card_style,
-        vec![web::row(
-            &format!("{id}-row"),
-            12,
-            "start",
-            vec![
-                votes(s, &ctx.actor, p, id, "threads", here),
-                web::thumbnail(
-                    &format!("{id}-icon"),
-                    initials(board.map_or(t.board.as_str(), |b| b.title.as_str())),
-                    web::style()
-                        .width(40)
-                        .height(40)
-                        .radius(20)
-                        .size(12)
-                        .background(tint(&t.board)),
-                ),
-                column(
-                    &format!("{id}-body"),
-                    6,
-                    vec![
-                        web::styled(
-                            &format!("{id}-sub"),
-                            format!(
-                                "r/{} · posted by {} {}",
-                                t.board,
-                                who(s, &t.author),
-                                ago(ctx.tick, t.tick)
-                            ),
-                            web::style().size(12).color(p.muted.clone()),
-                        ),
-                        web::card_action(
-                            &format!("{id}-open"),
-                            web::style().padding(2),
-                            web::visit(link),
-                            vec![title],
-                        ),
-                        web::row(
-                            &format!("{id}-meta"),
-                            8,
-                            "center",
-                            vec![
-                                web::badge(
-                                    &format!("{id}-count"),
-                                    plural(comments, "comment"),
-                                    web::style()
-                                        .size(11)
-                                        .width(120)
-                                        .background(p.surface.clone())
-                                        .color(p.muted.clone())
-                                        .border(p.line.clone()),
-                                ),
-                                web::link(
-                                    &format!("{id}-board"),
-                                    format!("r/{}", t.board),
-                                    format!("/r/{}", t.board),
-                                ),
-                            ],
-                        ),
-                    ],
-                ),
-            ],
-        )],
-    )
-}
-fn listing(
-    s: &ForumState,
-    ctx: &ServiceContext,
-    p: &Palette,
-    title: &str,
-    ids: &[String],
-    here: &str,
-) -> Vec<PageElement> {
-    let mut e = vec![web::styled(
-        "list-title",
-        title,
-        web::style().size(19).bold().color(p.ink.clone()),
-    )];
-    if ids.is_empty() {
-        e.push(web::styled(
-            "list-empty",
-            "Nothing here yet.",
-            web::style().size(14).color(p.muted.clone()),
-        ));
-    }
-    e.extend(
-        ids.iter()
-            .enumerate()
-            .map(|(i, id)| entry(s, ctx, p, id, i + 1, here)),
-    );
-    e
-}
-/// The subscribe rail. Every board on it is a real page and a real toggle.
-fn board_rail(s: &ForumState, actor: &str, p: &Palette, here: &str) -> Vec<PageElement> {
-    if !s.subreddits() || s.boards.is_empty() {
-        return vec![];
-    }
-    let subs = s.subscriptions.get(actor);
-    let cards: Vec<PageElement> = s
-        .boards
-        .values()
-        .map(|b| {
-            let on = subs.is_some_and(|x| x.contains(&b.id));
-            web::card(
-                &format!("board-{}", b.id),
-                web::style()
-                    .padding(10)
-                    .radius(8)
-                    .background(p.surface.clone())
-                    .border(p.line.clone()),
-                vec![web::row(
-                    &format!("board-{}-row", b.id),
-                    8,
-                    "center",
-                    vec![
-                        web::link(
-                            &format!("board-{}-link", b.id),
-                            format!("r/{}", b.id),
-                            format!("/r/{}", b.id),
-                        ),
-                        web::styled(
-                            &format!("board-{}-members", b.id),
-                            format!("{} members", b.members),
-                            web::style().size(11).color(p.muted.clone()).width(110),
-                        ),
-                        pill(
-                            &format!("board-{}-sub", b.id),
-                            if on { "Joined" } else { "Join" },
-                            on,
-                            &format!("/boards/{}/subscribe", b.id),
-                            here,
-                            &[],
-                            p,
-                        ),
-                    ],
-                )],
-            )
-        })
-        .collect();
-    vec![
-        web::divider("rail-rule"),
-        web::styled(
-            "rail-title",
-            "Your communities",
-            web::style().size(15).bold().color(p.ink.clone()),
-        ),
-        web::grid("rail", 1, 8, cards),
-    ]
-}
-fn front_page(s: &ForumState, ctx: &ServiceContext) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let ids = s.front(&ctx.actor, ctx.tick);
-    let title = match s.mode.as_str() {
-        "qa" => "Top questions",
-        "linkfeed" => "Top stories",
-        _ => "Popular posts",
-    };
-    let mut e = nav(s, &p, &ctx.actor, "/");
-    e.extend(listing(s, ctx, &p, title, &ids, "/"));
-    e.extend(board_rail(s, &ctx.actor, &p, "/"));
-    web::themed_page(&format!("{} / {title}", s.brand), s.theme.clone(), e)
-}
-fn simple_list(
-    s: &ForumState,
-    ctx: &ServiceContext,
-    title: &str,
-    ids: Vec<String>,
-    here: &str,
-) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let mut e = nav(s, &p, &ctx.actor, here);
-    e.extend(listing(s, ctx, &p, title, &ids, here));
-    web::themed_page(&format!("{} / {title}", s.brand), s.theme.clone(), e)
-}
-fn boards_page(s: &ForumState, ctx: &ServiceContext) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let mut e = nav(s, &p, &ctx.actor, "/r");
-    e.push(web::styled(
-        "list-title",
-        "Communities",
-        web::style().size(19).bold().color(p.ink.clone()),
-    ));
-    for b in s.boards.values() {
-        e.push(web::styled(
-            &format!("about-{}", b.id),
-            format!("r/{} — {}", b.id, b.description),
-            web::style().size(13).color(p.muted.clone()),
-        ));
-    }
-    e.extend(board_rail(s, &ctx.actor, &p, "/r"));
-    web::themed_page(&format!("{} / Communities", s.brand), s.theme.clone(), e)
-}
-fn board_page(s: &ForumState, ctx: &ServiceContext, board: &str) -> SimResult<HttpResponse> {
-    let Some(b) = s.boards.get(board) else {
-        return web::error(404, "no such board");
-    };
-    let p = Palette::of(&s.theme);
-    let here = format!("/r/{board}");
-    let on = s
-        .subscriptions
-        .get(&ctx.actor)
-        .is_some_and(|x| x.contains(board));
-    let mut e = nav(s, &p, &ctx.actor, &here);
-    e.push(web::card(
-        "board-head",
-        web::style()
-            .padding(14)
-            .radius(8)
-            .background(p.surface.clone())
-            .border(p.line.clone()),
-        vec![web::row(
-            "board-head-row",
-            12,
-            "center",
-            vec![
-                web::thumbnail(
-                    "board-head-icon",
-                    initials(&b.title),
-                    web::style()
-                        .width(48)
-                        .height(48)
-                        .radius(24)
-                        .size(14)
-                        .background(tint(board)),
-                ),
-                column(
-                    "board-head-body",
-                    4,
-                    vec![
-                        web::styled(
-                            "board-head-title",
-                            format!("r/{board}"),
-                            web::style().size(20).bold().color(p.ink.clone()),
-                        ),
-                        web::styled(
-                            "board-head-desc",
-                            &b.description,
-                            web::style().size(13).color(p.muted.clone()),
-                        ),
-                        web::badge(
-                            "board-head-members",
-                            format!("{} members", b.members),
-                            web::style()
-                                .size(11)
-                                .width(130)
-                                .background(p.accent.clone()),
-                        ),
-                    ],
-                ),
-                pill(
-                    "board-head-sub",
-                    if on { "Joined" } else { "Join" },
-                    on,
-                    &format!("/boards/{board}/subscribe"),
-                    &here,
-                    &[],
-                    &p,
-                ),
-            ],
-        )],
-    ));
-    let ids = s.in_board(board, ctx.tick);
-    e.extend(listing(s, ctx, &p, &b.title, &ids, &here));
-    web::themed_page(&format!("r/{board} / {}", s.brand), s.theme.clone(), e)
-}
-/// One reply, with everything under it. `depth` is the indent on a comment tree; Q&A answers are
-/// flat by construction, so the indent never fires there.
-fn reply_card(
-    s: &ForumState,
-    ctx: &ServiceContext,
-    p: &Palette,
-    t: &Thread,
-    rid: &str,
-    depth: u32,
-    here: &str,
-) -> Vec<PageElement> {
-    let Some(r) = t.replies.iter().find(|r| r.id == rid) else {
-        return vec![];
-    };
-    let accepted = t.accepted.as_deref() == Some(rid);
-    let mut head = vec![
-        web::thumbnail(
-            &format!("{rid}-avatar"),
-            initials(s.members.get(&r.author).map_or(&r.author, |m| &m.name)),
-            web::style()
-                .width(28)
-                .height(28)
-                .radius(14)
-                .size(11)
-                .background(tint(&r.author)),
-        ),
-        web::styled(
-            &format!("{rid}-by"),
-            format!("{} · {}", who(s, &r.author), ago(ctx.tick, r.tick)),
-            web::style()
-                .size(12)
-                .medium()
-                .color(p.muted.clone())
-                .width(240),
-        ),
-    ];
-    if let Some(m) = s.members.get(&r.author) {
-        if !m.flair.is_empty() {
-            head.push(web::badge(
-                &format!("{rid}-flair"),
-                &m.flair,
-                web::style()
-                    .size(10)
-                    .width(150)
-                    .background(p.surface.clone())
-                    .color(p.muted.clone())
-                    .border(p.line.clone()),
-            ));
-        }
-        if s.qa() && m.reputation > 0 {
-            head.push(web::badge(
-                &format!("{rid}-rep"),
-                format!("{} rep", m.reputation),
-                web::style()
-                    .size(10)
-                    .width(110)
-                    .background(p.accent.clone()),
-            ));
-        }
-    }
-    if accepted {
-        head.push(web::badge(
-            &format!("{rid}-accepted"),
-            "Accepted",
-            web::style().size(11).width(90).background("#2e7d32"),
-        ));
-    }
-    let mut body = vec![
-        web::row(&format!("{rid}-head"), 8, "center", head),
-        web::styled(
-            &format!("{rid}-body"),
-            &r.body,
-            web::style().size(14).color(p.ink.clone()),
-        ),
-    ];
-    body.extend(web::links(&format!("{rid}-src"), &r.body));
-    // Q&A: comments hang off the answer and the asker gets the accept control. Reddit and HN:
-    // a reply box hangs off every comment, which is what makes the tree a tree.
-    if s.qa() {
-        for c in &r.comments {
-            body.push(web::styled(
-                &format!("{}-text", c.id),
-                format!("{} — {}", c.body, who(s, &c.author)),
-                web::style().size(12).color(p.muted.clone()),
-            ));
-        }
-        let mut controls = vec![];
-        if s.member_of(&ctx.actor)
-            .is_some_and(|m| m.handle == t.author)
-        {
-            controls.push(pill(
-                &format!("{rid}-accept"),
-                if accepted { "Unaccept" } else { "Accept" },
-                accepted,
-                &format!("/threads/{}/accept", t.id),
-                here,
-                &[("reply", rid)],
-                p,
-            ));
-        }
-        controls.push(form_with(
-            &format!("{rid}-comment"),
-            &format!("/replies/{rid}/comments"),
-            &[("body", "Add a comment", "")],
-            &[("view", here)],
-        ));
-        body.push(web::row(&format!("{rid}-controls"), 8, "start", controls));
-    } else {
-        body.push(form_with(
-            &format!("{rid}-reply"),
-            &format!("/threads/{}/replies", t.id),
-            &[("body", "Reply", "")],
-            &[("parent", rid), ("view", here)],
-        ));
-    }
-    // A nested comment is indented by an empty fixed-width cell, which is the whole visual
-    // difference between a tree and a list.
-    let indent = (depth * 24).min(144);
-    let mut row = vec![votes(s, &ctx.actor, p, rid, "replies", here)];
-    if indent > 0 {
-        row.insert(
-            0,
-            web::styled(
-                &format!("{rid}-indent"),
-                "",
-                web::style().width(indent).size(12),
-            ),
-        );
-    }
-    row.push(column(&format!("{rid}-col"), 8, body));
-    let mut out = vec![web::card(
-        &format!("reply-{rid}"),
-        web::style()
-            .padding(12)
-            .radius(8)
-            .background(if accepted {
-                "#eef7ee".to_owned()
-            } else {
-                p.surface.clone()
-            })
-            .border(if accepted {
-                "#2e7d32".to_owned()
-            } else {
-                p.line.clone()
-            }),
-        vec![web::row(&format!("{rid}-row"), 10, "start", row)],
-    )];
-    for child in s.children(t, Some(rid)) {
-        out.extend(reply_card(s, ctx, p, t, &child, depth + 1, here));
-    }
-    out
-}
 impl ForumState {
     /// A thread by its stored id, or by the bare number a real question URL carries.
     fn thread_by_id(&self, id: &str) -> Option<&Thread> {
@@ -1450,304 +566,62 @@ impl ForumState {
             .or_else(|| self.threads.get(&format!("t-{id}")))
     }
 }
-fn thread_page(s: &ForumState, ctx: &ServiceContext, id: &str) -> SimResult<HttpResponse> {
-    let Some(t) = s.thread_by_id(id) else {
-        return web::error(404, "no such thread");
-    };
-    let p = Palette::of(&s.theme);
-    let here = s.permalink(t);
-    let mut e = nav(s, &p, &ctx.actor, &here);
-    let mut head = vec![web::styled(
-        "thread-title",
-        &t.title,
-        web::style().size(22).bold().color(p.ink.clone()),
-    )];
-    if let Some(u) = t.url.as_deref() {
-        head.push(web::link("thread-out", u, u));
-    }
-    head.push(web::styled(
-        "thread-by",
-        match s.mode.as_str() {
-            "subreddits" => format!(
-                "r/{} · posted by {} {}",
-                t.board,
-                who(s, &t.author),
-                ago(ctx.tick, t.tick)
-            ),
-            "qa" => format!(
-                "asked {} by {} · {} views",
-                ago(ctx.tick, t.tick),
-                who(s, &t.author),
-                t.views
-            ),
-            _ => format!(
-                "{} points by {} {}",
-                s.score_of(id),
-                who(s, &t.author),
-                ago(ctx.tick, t.tick)
-            ),
-        },
-        web::style().size(12).color(p.muted.clone()),
-    ));
-    if !t.body.is_empty() {
-        head.push(web::styled(
-            "thread-body",
-            &t.body,
-            web::style().size(15).color(p.ink.clone()),
-        ));
-        head.extend(web::links("thread-src", &t.body));
-    }
-    if !t.tags.is_empty() {
-        head.push(web::row(
-            "thread-tags",
-            6,
-            "center",
-            t.tags
-                .iter()
-                .enumerate()
-                .map(|(i, tag)| {
-                    web::card_action(
-                        &format!("thread-tag-{i}"),
-                        web::style()
-                            .padding(6)
-                            .radius(6)
-                            .background(p.surface.clone())
-                            .border(p.line.clone()),
-                        web::visit(format!("/questions/tagged/{tag}")),
-                        vec![web::styled(
-                            &format!("thread-tag-{i}-text"),
-                            tag,
-                            web::style().size(11).medium().color(p.accent.clone()),
-                        )],
-                    )
-                })
-                .collect(),
-        ));
-    }
-    e.push(web::card(
-        "thread",
-        web::style()
-            .padding(16)
-            .radius(8)
-            .background(p.surface.clone())
-            .border(p.line.clone()),
-        vec![web::row(
-            "thread-row",
-            12,
-            "start",
-            vec![
-                votes(s, &ctx.actor, &p, id, "threads", &here),
-                column("thread-col", 8, head),
-            ],
-        )],
-    ));
-    e.push(web::divider("thread-rule"));
-    let roots = s.children(t, None);
-    e.push(web::styled(
-        "replies-title",
-        plural(
-            if s.qa() {
-                t.replies.len()
-            } else {
-                s.conversation_size(t)
-            },
-            s.reply_word(),
-        ),
-        web::style().size(17).bold().color(p.ink.clone()),
-    ));
-    e.push(form_with(
-        "compose",
-        &format!("/threads/{id}/replies"),
-        &[(
-            "body",
-            match s.mode.as_str() {
-                "qa" => "Your answer",
-                _ => "Add a comment",
-            },
-            "",
-        )],
-        &[("view", &here)],
-    ));
-    for r in &roots {
-        e.extend(reply_card(s, ctx, &p, t, r, 0, &here));
-    }
-    web::themed_page(&format!("{} / {}", t.title, s.brand), s.theme.clone(), e)
-}
-fn submit_page(s: &ForumState, ctx: &ServiceContext) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let mut e = nav(s, &p, &ctx.actor, "/submit");
-    let title = match s.mode.as_str() {
-        "qa" => "Ask a question",
-        "linkfeed" => "Submit a link",
-        _ => "Create a post",
-    };
-    e.push(web::styled(
-        "submit-head",
-        title,
-        web::style().size(19).bold().color(p.ink.clone()),
-    ));
-    if s.member_of(&ctx.actor).is_none() {
-        e.push(web::styled(
-            "submit-anon",
-            "Sign in on this machine as a member of this site to post.",
-            web::style().size(14).color(p.muted.clone()),
-        ));
-        return web::themed_page(&format!("{} / {title}", s.brand), s.theme.clone(), e);
-    }
-    let mut fields: Vec<(&str, &str, &str)> = vec![("title", "Title", "")];
-    if s.subreddits() {
-        fields.push(("board", "Community", ""));
-    }
-    if s.linkfeed() {
-        fields.push(("url", "Link", ""));
-    }
-    if s.qa() {
-        fields.push(("tags", "Tags (comma separated)", ""));
-    }
-    fields.push((
-        "body",
-        match s.mode.as_str() {
-            "qa" => "What did you try?",
-            _ => "Text (optional)",
-        },
-        "",
-    ));
-    e.push(form_with("submit", "/threads", &fields, &[]));
-    if s.subreddits() {
-        e.extend(board_rail(s, &ctx.actor, &p, "/submit"));
-    }
-    web::themed_page(&format!("{} / {title}", s.brand), s.theme.clone(), e)
-}
-fn search_page(s: &ForumState, ctx: &ServiceContext, q: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let mut e = nav(s, &p, &ctx.actor, "/search");
-    e.push(web::form("search", "/search", &[("q", "Search", q)]));
-    let ids = s.search(q, ctx.tick);
-    let title = if q.trim().is_empty() {
-        "Search".to_owned()
-    } else {
-        format!("{} results for \"{q}\"", ids.len())
-    };
-    e.extend(listing(s, ctx, &p, &title, &ids, "/search"));
-    web::themed_page(&format!("{} / Search", s.brand), s.theme.clone(), e)
-}
-fn member_page(s: &ForumState, ctx: &ServiceContext, handle: &str) -> SimResult<HttpResponse> {
-    let Some(m) = s.members.get(handle) else {
-        return web::error(404, "no such member");
-    };
-    let p = Palette::of(&s.theme);
-    let here = format!("/u/{handle}");
-    let mut facts = vec![
-        web::styled(
-            "member-name",
-            &m.name,
-            web::style().size(22).bold().color(p.ink.clone()),
-        ),
-        web::styled(
-            "member-handle",
-            who(s, handle),
-            web::style().size(13).color(p.muted.clone()),
-        ),
-    ];
-    if !m.bio.is_empty() {
-        facts.push(web::styled(
-            "member-bio",
-            &m.bio,
-            web::style().size(14).color(p.ink.clone()),
-        ));
-    }
-    facts.push(web::row(
-        "member-meta",
-        8,
-        "center",
-        vec![
-            web::badge(
-                "member-rep",
-                format!("{} reputation", m.reputation),
-                web::style().width(150).background(p.accent.clone()),
-            ),
-            web::badge(
-                "member-posts",
-                plural(s.by_author(handle).len(), s.item_word()),
-                web::style()
-                    .width(130)
-                    .background(p.surface.clone())
-                    .color(p.muted.clone())
-                    .border(p.line.clone()),
-            ),
-        ],
-    ));
-    if !m.site.is_empty() {
-        facts.push(web::link("member-site", &m.site, &m.site));
-    }
-    let mut e = nav(s, &p, &ctx.actor, &here);
-    e.push(web::card(
-        "member",
-        web::style()
-            .padding(16)
-            .radius(8)
-            .background(p.surface.clone())
-            .border(p.line.clone()),
-        vec![web::row(
-            "member-row",
-            14,
-            "start",
-            vec![
-                web::thumbnail(
-                    "member-avatar",
-                    initials(&m.name),
-                    web::style()
-                        .width(56)
-                        .height(56)
-                        .radius(28)
-                        .size(16)
-                        .background(tint(handle)),
-                ),
-                column("member-body", 8, facts),
-            ],
-        )],
-    ));
-    let ids = s.by_author(handle);
-    e.extend(listing(s, ctx, &p, "Posts", &ids, &here));
-    web::themed_page(&format!("{} / {}", m.name, s.brand), s.theme.clone(), e)
+/// What a GET carries besides its path: the search text, the link-feed item id, the list page.
+#[derive(Clone, Copy, Default)]
+struct Params<'a> {
+    q: Option<&'a str>,
+    id: Option<&'a str>,
+    page: usize,
 }
 /// The one router: every GET and every re-render after a successful form POST goes through here.
-fn view(
-    s: &ForumState,
-    ctx: &ServiceContext,
-    path: &str,
-    q: Option<&str>,
-    id: Option<&str>,
-) -> SimResult<HttpResponse> {
+fn view(s: &ForumState, ctx: &ServiceContext, path: &str, params: Params<'_>) -> SimResult<HttpResponse> {
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
+    let page = params.page.max(1);
+    // The page a control comes back to is the page it is on, list page included.
+    let at = |base: &str| {
+        let here = if page > 1 {
+            web::html::href(base, &[("p", &page.to_string())])
+        } else {
+            base.to_owned()
+        };
+        View::new(s, ctx, base, &here)
+    };
+    let thread = |id: &str| match s.thread_by_id(id) {
+        Some(t) => {
+            let here = s.permalink(t);
+            View::new(s, ctx, &here, &here).thread(t)
+        }
+        None => web::error(404, "no such thread"),
+    };
     match parts.as_slice() {
-        [""] => front_page(s, ctx),
-        ["newest"] => simple_list(s, ctx, "Newest", s.newest(), "/newest"),
-        ["submit"] | ["ask"] => submit_page(s, ctx),
-        ["search"] => search_page(s, ctx, q.unwrap_or_default()),
-        ["r"] | ["boards"] => boards_page(s, ctx),
-        ["item"] => match id {
-            Some(id) => thread_page(s, ctx, id),
+        [""] => at("/").front(page),
+        ["newest"] => at("/newest").simple_list("Newest", s.newest(), page),
+        ["submit"] | ["ask"] => at("/submit").submit(),
+        ["search"] => at("/search").search(params.q.unwrap_or_default(), page),
+        ["r"] | ["boards"] => at("/r").boards(),
+        ["item"] => match params.id {
+            Some(id) => thread(id),
             None => web::error(404, "no item id"),
         },
-        ["questions"] => simple_list(
-            s,
-            ctx,
-            "All questions",
-            s.front(&ctx.actor, ctx.tick),
-            "/questions",
-        ),
-        ["questions", "tagged", tag] => simple_list(
-            s,
-            ctx,
-            &format!("Questions tagged [{tag}]"),
-            s.tagged(tag, ctx.tick),
-            &format!("/questions/tagged/{tag}"),
-        ),
-        ["questions", id] => thread_page(s, ctx, id),
-        ["u", handle] | ["users", handle] => member_page(s, ctx, handle),
-        ["r", board] => board_page(s, ctx, board),
-        ["r", _, "comments", id] => thread_page(s, ctx, id),
+        ["questions"] => {
+            at("/questions").simple_list("All questions", s.front(&ctx.actor, ctx.tick), page)
+        }
+        ["questions", "tagged", tag] => {
+            let tag = decode(tag);
+            let title = match s.skin() {
+                "craigslist" | "yelp" => tag.clone(),
+                _ => format!("Questions tagged [{tag}]"),
+            };
+            at(&format!("/questions/tagged/{}", parts[2])).simple_list(
+                &title,
+                s.tagged(&tag, ctx.tick),
+                page,
+            )
+        }
+        ["questions", id] => thread(id),
+        ["u", handle] | ["users", handle] => at(&format!("/u/{handle}")).member(handle, page),
+        ["r", board] => at(&format!("/r/{board}")).board(board, page),
+        ["r", _, "comments", id] => thread(id),
         _ => web::error(404, "route not found"),
     }
 }
@@ -1791,6 +665,8 @@ impl Service for ForumService {
     fn initialize(&self, initial: Value, _: &ServiceContext) -> SimResult<Value> {
         let gated = web::shape(initial, OBJECTS, ARRAYS)?;
         let mode = web::variant(&gated, "mode", MODES)?;
+        // An absent skin follows the brand; a misspelt one is a seed typo.
+        web::variant(&gated, "skin", SKINS)?;
         let mut s: ForumState = web::load(&gated)?;
         s.mode = mode;
         for (key, m) in &s.members {
@@ -1890,7 +766,17 @@ impl Service for ForumService {
             let q = web::query(r, "q");
             let item = web::query(r, "id");
             if !api {
-                return view(&s, ctx, &p, q.as_deref(), item.as_deref());
+                let page = web::query(r, "p").and_then(|p| p.parse().ok()).unwrap_or(1);
+                return view(
+                    &s,
+                    ctx,
+                    &p,
+                    Params {
+                        q: q.as_deref(),
+                        id: item.as_deref(),
+                        page,
+                    },
+                );
             }
             return match parts.as_slice() {
                 ["threads"] => HttpResponse::json(200, &s.front(&ctx.actor, ctx.tick)),
@@ -1916,10 +802,23 @@ impl Service for ForumService {
         if method != "POST" {
             return web::error(405, "method not allowed");
         }
-        let b = web::body(r)?;
+        let mut b = web::body(r)?;
+        // A textarea submits its line breaks as CRLF; the stored text keeps plain newlines.
+        if let Some(Value::String(text)) = b.get_mut("body") {
+            *text = text.replace("\r\n", "\n");
+        }
         // The search form is a POST that reads; nothing else on this site is.
         if !api && parts.as_slice() == ["search"] {
-            return view(&s, ctx, "/search", Some(&web::text(&b, "q")), None);
+            let q = web::text(&b, "q");
+            return view(
+                &s,
+                ctx,
+                "/search",
+                Params {
+                    q: Some(&q),
+                    ..Params::default()
+                },
+            );
         }
         let back = match web::text(&b, "view") {
             v if v.is_empty() => None,
@@ -2015,8 +914,11 @@ impl Service for ForumService {
             &s,
             ctx,
             &path,
-            rest.get("q").map(String::as_str),
-            rest.get("id").map(String::as_str),
+            Params {
+                q: rest.get("q").map(String::as_str),
+                id: rest.get("id").map(String::as_str),
+                page: rest.get("p").and_then(|p| p.parse().ok()).unwrap_or(1),
+            },
         )
     }
 }
@@ -2089,6 +991,54 @@ mod tests {
             "next_id": 4411
         })
     }
+    /// A parsed page, checked against the engine's strict pipeline on the way in.
+    struct Dom(cw_web::dom::Document);
+    impl Dom {
+        fn of(r: &HttpResponse) -> Dom {
+            assert_eq!(r.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+            let html = std::str::from_utf8(&r.body).unwrap();
+            web::html::validate_strict(html).unwrap_or_else(|e| panic!("{e:?}"));
+            Dom(cw_web::html::parse(html))
+        }
+        fn node(&self, id: &str) -> cw_web::dom::NodeId {
+            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+        }
+        fn has(&self, id: &str) -> bool {
+            !self.0.by_id(id).is_empty()
+        }
+        fn text(&self, id: &str) -> String {
+            cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+        }
+        fn tag(&self, id: &str) -> String {
+            self.0.tag(self.node(id)).unwrap_or_default().to_owned()
+        }
+        fn body(&self) -> String {
+            self.0.body().map(|b| self.0.text_content(b)).unwrap_or_default()
+        }
+        /// The hidden and typed fields of a form, by wire name.
+        fn fields(&self, form: &str) -> BTreeMap<String, String> {
+            let f = self.node(form);
+            assert_eq!(self.0.tag(f), Some("form"), "#{form}");
+            self.0
+                .descendants(f)
+                .filter(|n| self.0.is(*n, "input") || self.0.is(*n, "textarea"))
+                .filter_map(|n| Some((self.0.attr(n, "name")?.to_owned(), self.0.attr(n, "value").unwrap_or_default().to_owned())))
+                .collect()
+        }
+        /// The form a submit button belongs to: `(action, method)`.
+        fn form_of(&self, button: &str) -> (String, String) {
+            let b = self.node(button);
+            assert_eq!(self.0.tag(b), Some("button"), "#{button}");
+            let f = self.0.ancestors(b).find(|a| self.0.is(*a, "form")).unwrap_or_else(|| panic!("#{button} is outside a form"));
+            (
+                self.0.attr(f, "action").unwrap_or_default().to_owned(),
+                self.0.attr(f, "method").unwrap_or_default().to_owned(),
+            )
+        }
+    }
     fn live(seed: Value, actor: &str) -> Value {
         ForumService.initialize(seed, &ctx(actor, 0)).unwrap()
     }
@@ -2156,8 +1106,8 @@ mod tests {
             "next_id": 9002
         })
     }
-    /// Every page an agent can reach must survive `Page::validate`: unique ids, legal colours,
-    /// legal spans. A duplicate id would make a control ambiguous to click.
+    /// Every page an agent can reach must survive the strict validator: unique ids and only
+    /// HTML and CSS the engine renders. A duplicate id would make a control ambiguous to click.
     #[test]
     fn every_route_renders_a_valid_page() {
         for (seed, actor, urls) in [
@@ -2202,8 +1152,13 @@ mod tests {
             for url in urls {
                 let r = get(&mut state, actor, url);
                 assert_eq!(r.status, 200, "{url}");
-                let page: cw_protocol::Page = serde_json::from_slice(&r.body).unwrap();
-                page.validate().unwrap_or_else(|e| panic!("{url}: {e}"));
+                let page = Dom::of(&r);
+                for id in ["masthead", "nav", "nav-home", "nav-new", "nav-search", "nav-submit", "nav-me", "search", "search-q", "search-submit", "content"] {
+                    assert!(page.has(id), "{url}: no #{id}");
+                }
+                assert_eq!(page.attr("search", "action"), "/search", "{url}");
+                assert_eq!(page.attr("search", "method"), "post", "{url}");
+                assert_eq!(page.attr("search-q", "name"), "q", "{url}");
             }
             assert_eq!(get(&mut state, actor, "http://x/nope/nope").status, 404);
         }
@@ -2248,10 +1203,10 @@ mod tests {
         );
         assert_eq!(a, b);
         assert_eq!(before, state, "a render must not mutate state");
-        let body = String::from_utf8(a.body).unwrap();
-        assert!(body.contains("Accepted"), "the accepted answer is marked");
-        assert!(body.contains("Your test iterates a HashMap."));
-        assert!(body.contains("That was it."), "answer comments render");
+        let page = Dom::of(&a);
+        assert_eq!(page.text("r-9002-accepted"), "Accepted", "the accepted answer is marked");
+        assert_eq!(page.text("r-9002-body"), "Your test iterates a HashMap.");
+        assert!(page.text("c-1-text").starts_with("That was it."), "answer comments render");
     }
     #[test]
     fn voting_is_one_per_actor_and_toggles() {
@@ -2332,10 +1287,10 @@ mod tests {
             "http://stackoverflow.com/threads/t-4411/replies",
             "body=Use+a+BTreeMap&view=/questions/t-4411",
         );
-        let body = String::from_utf8(page.body).unwrap();
-        assert!(body.contains("Use a BTreeMap"));
+        let page = Dom::of(&page);
+        assert!(page.body().contains("Use a BTreeMap"));
         assert!(
-            body.contains("Why does my BFS"),
+            page.text("thread-title").starts_with("Why does my BFS"),
             "we are on the question page"
         );
         let s: ForumState = web::load(&state).unwrap();
@@ -2427,7 +1382,9 @@ mod tests {
             "http://reddit.com/boards/programming/subscribe",
             "view=/r/programming",
         );
-        assert!(String::from_utf8(page.body).unwrap().contains("Joined"));
+        let page = Dom::of(&page);
+        assert_eq!(page.text("board-head-sub"), "Joined");
+        assert_eq!(page.text("board-head-members"), "4100001 members");
         let s: ForumState = web::load(&state).unwrap();
         assert_eq!(s.boards["programming"].members, 4_100_001);
         assert_eq!(s.front("alice", 9).len(), 2);
@@ -2451,7 +1408,7 @@ mod tests {
             "body=Nested+here&parent=r-1&view=/r/programming/comments/t-5120",
         );
         assert_eq!(page.status, 200);
-        let body = String::from_utf8(page.body).unwrap();
+        let body = Dom::of(&page).body();
         assert!(body.contains("Nested here") && body.contains("Thanks!"));
         let s: ForumState = web::load(&state).unwrap();
         let t = &s.threads["t-5120"];
@@ -2480,9 +1437,9 @@ mod tests {
             "title=Determinism+notes&board=rust&body=Sorted+iteration",
         );
         assert_eq!(page.status, 200);
-        let body = String::from_utf8(page.body).unwrap();
-        assert!(
-            body.contains("Determinism notes"),
+        assert_eq!(
+            Dom::of(&page).text("thread-title"),
+            "Determinism notes",
             "we land on the new post"
         );
         let s: ForumState = web::load(&state).unwrap();
@@ -2518,12 +1475,10 @@ mod tests {
             "http://news.ycombinator.com/threads/t-9001/vote",
             "dir=1&view=/",
         );
-        let body = String::from_utf8(page.body).unwrap();
-        assert!(body.contains("148 points by tweber"));
-        assert!(
-            body.contains("theverge.com"),
-            "the outbound host is on the row"
-        );
+        let page = Dom::of(&page);
+        assert!(page.text("t-9001-by").starts_with("148 points by tweber"));
+        assert_eq!(page.text("t-9001-host"), "(theverge.com)", "the outbound host is on the row");
+        assert_eq!(page.attr("t-9001-out", "href"), "http://theverge.com/2026/atlas-determinism");
     }
     #[test]
     fn a_submitted_link_must_be_http() {
@@ -2565,9 +1520,10 @@ mod tests {
             "http://stackoverflow.com/search",
             "q=hashmap",
         );
-        assert!(String::from_utf8(page.body)
-            .unwrap()
-            .contains("1 results for \\\"hashmap\\\""));
+        let page = Dom::of(&page);
+        assert_eq!(page.text("list-title"), "1 results for \"hashmap\"");
+        assert_eq!(page.attr("search-q", "value"), "hashmap", "the box keeps the query");
+        assert_eq!(page.attr("row-t-4411", "href"), "/questions/t-4411");
     }
     #[test]
     fn state_survives_a_snapshot_round_trip() {
@@ -2637,5 +1593,190 @@ mod tests {
             serde_json::from_slice::<Value>(&r.body).unwrap()["url"],
             json!("/questions/t-4411")
         );
+    }
+    /// The ids, forms and links the `Page` version exposed are the agent API; each is on the
+    /// element that plays the same role, with the same action, method and field names.
+    #[test]
+    fn the_controls_keep_their_ids_routes_and_field_names() {
+        // A Q&A question page: vote arrows, accept, the comment box, the answer box, tags.
+        let mut state = live(qa_seed(), "bob");
+        let page = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/questions/t-4411"));
+        assert_eq!(page.form_of("t-4411-up"), ("/threads/t-4411/vote".into(), "post".into()));
+        assert_eq!(page.fields("t-4411-up-form")["dir"], "1");
+        assert_eq!(page.fields("t-4411-down-form")["dir"], "-1");
+        assert_eq!(page.fields("t-4411-up-form")["view"], "/questions/t-4411");
+        assert_eq!(page.text("t-4411-score"), "37");
+        assert_eq!(page.form_of("r-9003-up"), ("/replies/r-9003/vote".into(), "post".into()));
+        assert_eq!(page.form_of("r-9003-accept"), ("/threads/t-4411/accept".into(), "post".into()));
+        assert_eq!(page.fields("r-9003-accept-form")["reply"], "r-9003");
+        assert_eq!(page.text("r-9003-accept"), "Accept");
+        assert_eq!(page.text("r-9002-accept"), "Unaccept");
+        assert_eq!(page.attr("r-9002-comment", "action"), "/replies/r-9002/comments");
+        assert_eq!(page.attr("r-9002-comment-body", "name"), "body");
+        assert_eq!(page.tag("r-9002-comment-submit"), "button");
+        assert_eq!(page.attr("compose", "action"), "/threads/t-4411/replies");
+        assert_eq!(page.attr("compose", "method"), "post");
+        assert_eq!(page.tag("compose-body"), "textarea");
+        assert_eq!(page.attr("compose-body", "name"), "body");
+        assert_eq!(page.fields("compose")["view"], "/questions/t-4411");
+        assert_eq!(page.attr("thread-tag-0", "href"), "/questions/tagged/rust");
+        assert_eq!(page.text("r-9002-rep"), "58.4k");
+        // The link in the body keeps the id its word index gives it.
+        let link = (0..200).map(|i| format!("thread-src-link-{i}")).find(|id| page.has(id)).expect("the body link");
+        assert_eq!(page.attr(&link, "href"), "http://github.com/northstar/atlas/issues/14");
+        // Someone who did not ask gets no accept control.
+        let other = Dom::of(&get(&mut state, "alice", "http://stackoverflow.com/questions/t-4411"));
+        assert!(!other.has("r-9003-accept"));
+        // The list row is one link to the question, with its stats and tags beside it.
+        let home = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/"));
+        assert_eq!(home.tag("row-t-4411"), "a");
+        assert_eq!(home.attr("row-t-4411", "href"), "/questions/t-4411");
+        assert_eq!(home.text("t-4411-st-votes-n"), "37");
+        assert_eq!(home.text("t-4411-st-answers-n"), "2");
+        assert_eq!(home.text("t-4411-tag-0"), "rust");
+        assert_eq!(home.attr("nav-submit", "href"), "/submit");
+        assert_eq!(home.attr("nav-me", "href"), "/u/bmartinez");
+        // The ask form carries the mode's fields.
+        let ask = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/submit"));
+        assert_eq!(ask.attr("submit", "action"), "/threads");
+        for (id, name) in [("submit-title", "title"), ("submit-tags", "tags"), ("submit-body", "body")] {
+            assert_eq!(ask.attr(id, "name"), name);
+        }
+        assert!(!ask.has("submit-board") && !ask.has("submit-url"));
+        assert_eq!(ask.tag("submit-submit"), "button");
+        let anon = Dom::of(&get(&mut state, "carol", "http://stackoverflow.com/submit"));
+        assert!(anon.has("submit-anon") && !anon.has("submit"));
+
+        // Reddit: the join toggles, the open link, the board link, the reply box under a comment.
+        let mut state = live(reddit_seed(), "alice");
+        let home = Dom::of(&get(&mut state, "alice", "http://reddit.com/"));
+        assert_eq!(home.attr("t-5121-open", "href"), "/r/rust/comments/t-5121");
+        assert_eq!(home.attr("t-5121-board", "href"), "/r/rust");
+        assert_eq!(home.form_of("board-rust-sub"), ("/boards/rust/subscribe".into(), "post".into()));
+        assert_eq!(home.text("board-rust-sub"), "Joined");
+        assert_eq!(home.text("board-programming-sub"), "Join");
+        assert_eq!(home.attr("board-programming-link", "href"), "/r/programming");
+        assert_eq!(home.attr("nav-boards", "href"), "/r");
+        let post = Dom::of(&get(&mut state, "alice", "http://reddit.com/r/programming/comments/t-5120"));
+        assert_eq!(post.attr("r-1-reply", "action"), "/threads/t-5120/replies");
+        assert_eq!(post.fields("r-1-reply")["parent"], "r-1");
+        assert_eq!(post.fields("r-1-reply")["view"], "/r/programming/comments/t-5120");
+        assert_eq!(post.attr("r-1-reply-body", "name"), "body");
+        assert_eq!(post.text("r-1-flair"), "Northstar");
+        assert!(post.text("r-1-by").starts_with("u/alice_c"));
+        let ask = Dom::of(&get(&mut state, "alice", "http://reddit.com/submit"));
+        assert_eq!(ask.attr("submit-board", "name"), "board");
+
+        // Hacker News: one arrow, the outbound title, the comments link, the url field.
+        let mut state = live(hn_seed(), "bob");
+        let home = Dom::of(&get(&mut state, "bob", "http://news.ycombinator.com/"));
+        assert_eq!(home.text("t-9001-rank"), "1.");
+        assert!(home.has("t-9001-up") && !home.has("t-9001-down"));
+        assert_eq!(home.attr("t-9001-comments", "href"), "/item?id=t-9001");
+        assert_eq!(home.text("t-9001-comments"), "0 comments");
+        assert_eq!(home.tag("row-t-9001"), "tr");
+        let ask = Dom::of(&get(&mut state, "bob", "http://news.ycombinator.com/submit"));
+        assert_eq!(ask.attr("submit-url", "name"), "url");
+    }
+    /// The skin follows the seed, then the brand, then the mode; each has its own sheet.
+    #[test]
+    fn every_skin_renders_every_page_strictly() {
+        for skin in SKINS {
+            let mut seed = match *skin {
+                "hackernews" | "craigslist" => hn_seed(),
+                "stackoverflow" | "quora" => qa_seed(),
+                _ => reddit_seed(),
+            };
+            seed["skin"] = json!(skin);
+            let mut state = live(seed.clone(), "bob");
+            assert_eq!(web::load::<ForumState>(&state).unwrap().skin(), *skin);
+            let thread = match seed["mode"].as_str().unwrap() {
+                "qa" => "/questions/t-4411",
+                "linkfeed" => "/item?id=t-9001",
+                _ => "/r/programming/comments/t-5120",
+            };
+            for path in ["/", "/newest", "/search?q=a", "/submit", "/r", "/questions/tagged/rust", "/u/bobm", "/u/bmartinez", "/r/rust", thread] {
+                let r = get(&mut state, "bob", &format!("http://site.example{path}"));
+                if r.status == 200 {
+                    let page = Dom::of(&r);
+                    assert!(page.0.body().is_some_and(|b| page.0.attr(b, "class").is_some_and(|c| c.starts_with(&format!("skin-{skin} ")))), "{skin} {path}");
+                }
+            }
+            assert_eq!(get(&mut state, "bob", &format!("http://site.example{thread}")).status, 200);
+        }
+        let brand = |b: &str, mode: &str| ForumState { brand: b.into(), mode: mode.into(), ..ForumState::default() }.skin();
+        assert_eq!(brand("Hacker News", "linkfeed"), "hackernews");
+        assert_eq!(brand("craigslist", "linkfeed"), "craigslist");
+        assert_eq!(brand("Yelp", "subreddits"), "yelp");
+        assert_eq!(brand("Quora", "qa"), "quora");
+        assert_eq!(brand("Northstar Answers", "qa"), "stackoverflow");
+        assert_eq!(brand("", "subreddits"), "reddit");
+        assert!(ForumService.initialize(json!({"skin": "myspace"}), &ctx("bob", 0)).is_err());
+    }
+    /// Lists longer than a page are paged, and a vote on page two comes back to page two.
+    #[test]
+    fn long_lists_are_paged() {
+        let mut seed = hn_seed();
+        for i in 0..(PAGE_SIZE + 5) {
+            let id = format!("t-{}", 100 + i);
+            seed["threads"][&id] = json!({"id": id, "board": "", "author": "tweber", "title": format!("Story {i}"),
+                                          "url": "http://example.com/", "tick": 1, "score": 5, "replies": []});
+        }
+        let mut state = live(seed, "bob");
+        let first = Dom::of(&get(&mut state, "bob", "http://news.ycombinator.com/newest"));
+        assert_eq!(first.attr("page-next", "href"), "/newest?p=2");
+        assert_eq!(first.attr("page-2", "href"), "/newest?p=2");
+        assert!(!first.has("page-prev"));
+        let second = Dom::of(&get(&mut state, "bob", "http://news.ycombinator.com/newest?p=2"));
+        assert_eq!(second.attr("page-prev", "href"), "/newest");
+        let rows: Vec<String> = (0..PAGE_SIZE + 7).map(|i| format!("row-t-{}", 100 + i)).filter(|id| second.has(id)).collect();
+        assert_eq!(rows.len(), 7, "thirty of the thirty-seven are on page one: {rows:?}");
+        let id = rows
+            .iter()
+            .map(|r| r.trim_start_matches("row-").to_owned())
+            .find(|id| second.text(&format!("{id}-rank")) == format!("{}.", PAGE_SIZE + 1))
+            .expect("page two starts at the next rank");
+        assert_eq!(second.fields(&format!("{id}-up-form"))["view"], "/newest?p=2");
+        let back = Dom::of(&post(&mut state, "bob", &format!("http://news.ycombinator.com/threads/{id}/vote"), "dir=1&view=%2Fnewest%3Fp%3D2"));
+        assert_eq!(back.text(&format!("{id}-score")), "6");
+        assert!(back.has("page-prev"), "we are still on page two");
+    }
+    /// Q&A bodies carry code; a Yelp review leads with its stars; a Craigslist title splits.
+    #[test]
+    fn bodies_render_as_prose_code_and_ratings() {
+        let mut seed = qa_seed();
+        seed["threads"]["t-4411"]["body"] = json!("This fails:\n\nlet x = 1;\nfoo(x);\n\nWhy does `foo` fail? See http://example.com/a.");
+        let mut state = live(seed, "bob");
+        let page = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/questions/t-4411"));
+        let body = page.node("thread-body");
+        let tags: Vec<&str> = page.0.descendants(body).filter_map(|n| page.0.tag(n)).collect();
+        assert_eq!(tags, ["div", "p", "pre", "code", "p", "code", "a"]);
+        assert_eq!(page.attr("thread-src-link-12", "href"), "http://example.com/a");
+
+        let mut seed = reddit_seed();
+        seed["skin"] = json!("yelp");
+        seed["threads"]["t-5120"]["body"] = json!("Alder Kitchen\n1412 NW Alder St\nHours: Tue-Sun 17:00-22:00\nPrice: $$$   Rating: 4.5 stars (1 reviews)\n\nWood-fired.");
+        seed["threads"]["t-5120"]["replies"][0]["body"] = json!("****. 4/5. Tight room.");
+        let mut state = live(seed, "alice");
+        let page = Dom::of(&get(&mut state, "alice", "http://yelp.com/r/programming/comments/t-5120"));
+        assert_eq!(page.attr("thread-stars", "aria-label"), "4.5 star rating");
+        assert_eq!(page.attr("r-1-stars", "aria-label"), "4.0 star rating");
+        assert_eq!(page.text("r-1-body"), "Tight room.");
+        assert_eq!(page.text("biz-address"), "1412 NW Alder St");
+        assert_eq!(listing_parts_for_test("Oak table - $220 (Alder District)"), ("Oak table", "$220", "Alder District"));
+        assert_eq!(listing_parts_for_test("Free firewood"), ("Free firewood", "", ""));
+    }
+    #[test]
+    fn a_tag_page_lists_the_tagged_threads_in_every_mode() {
+        let mut seed = hn_seed();
+        seed["threads"]["t-9001"]["tags"] = json!(["for sale", "furniture"]);
+        let mut state = live(seed, "bob");
+        let page = Dom::of(&get(&mut state, "bob", "http://craigslist.org/questions/tagged/furniture"));
+        assert!(page.has("row-t-9001"), "{}", page.body());
+        let page = Dom::of(&get(&mut state, "bob", "http://craigslist.org/questions/tagged/for%20sale"));
+        assert!(page.has("row-t-9001"), "{}", page.body());
+    }
+    fn listing_parts_for_test(title: &str) -> (&str, &str, &str) {
+        view::listing_parts(title)
     }
 }

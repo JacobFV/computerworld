@@ -1,0 +1,53 @@
+/* bbc.com: the three blocks, a ruled section strip, and a dense promo grid of bold sans
+   headlines with the time and section under each. */
+.skin-bbc { font-family: Arial, sans-serif; color: #141414; }
+.skin-bbc .masthead { border-bottom: 1px solid #e6e8ea; }
+.skin-bbc .bar { flex-wrap: wrap; gap: 0 20px; max-width: 1280px; padding: 0 24px; }
+.skin-bbc .brand { padding: 14px 0; gap: 0; font-size: 20px; }
+.skin-bbc .wordmark { display: flex; align-items: center; gap: 3px; }
+.skin-bbc .w0 { display: flex; gap: 3px; }
+.skin-bbc .ch { display: inline-block; width: 30px; height: 30px; line-height: 30px; text-align: center; background: #141414; color: #ffffff; font-size: 20px; font-weight: 700; }
+.skin-bbc .w1 { margin-left: 8px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.skin-bbc .tools { order: 1; margin-left: auto; }
+.skin-bbc .sections { order: 2; flex: 0 0 100%; justify-content: center; gap: 0 22px; padding: 12px 0; border-top: 1px solid #e6e8ea; font-size: 14px; font-weight: 700; }
+.skin-bbc .sections a { padding-bottom: 2px; border-bottom: 3px solid transparent; }
+.skin-bbc .sections a:hover { text-decoration: none; border-bottom-color: #141414; }
+.skin-bbc .pill { border-radius: 0; border: 0; background: #141414; color: #ffffff; padding: 9px 16px; }
+.skin-bbc .pill:hover { background: #3a3c3e; }
+.skin-bbc .pill.on { background: #bb1919; }
+.skin-bbc main { max-width: 1280px; }
+.skin-bbc .heading { font-size: 14px; text-transform: uppercase; letter-spacing: 0.02em; padding-top: 10px; border-top: 2px solid #141414; margin-bottom: 16px; }
+.skin-bbc .layout { grid-template-columns: minmax(0, 1fr) 280px; column-gap: 24px; }
+.skin-bbc .lines { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 16px; align-items: start; }
+.skin-bbc .card.s0 { padding: 0; border: 0; }
+.skin-bbc .card .text { display: flex; flex-direction: column; }
+.skin-bbc .card .kicker { order: 5; margin: 8px 0 0; font-size: 12px; color: #545658; }
+.skin-bbc .card .section { color: #545658; font-weight: 400; text-transform: none; letter-spacing: 0; margin: 0; padding-right: 8px; border-right: 1px solid #b0b2b4; }
+.skin-bbc .card .date { padding-left: 4px; }
+.skin-bbc .card .byline { display: none; }
+.skin-bbc .card.s0 .title, .skin-bbc .card .title { font-size: 16px; line-height: 20px; font-weight: 700; margin-bottom: 0; }
+.skin-bbc .card.s0 .art { display: block; height: 118px; border-radius: 0; margin-bottom: 10px; }
+.skin-bbc .card.n0 { grid-column: 1 / span 2; grid-row: 1 / span 2; }
+.skin-bbc .card.n0 .art { height: 330px; }
+.skin-bbc .card.n0 .title { font-size: 28px; line-height: 32px; margin-bottom: 8px; }
+.skin-bbc .card.n0 .dek { display: block; font-size: 15px; line-height: 20px; color: #3a3c3e; margin: 0; }
+.skin-bbc .card.n5 .art, .skin-bbc .card.n6 .art, .skin-bbc .card.n7 .art, .skin-bbc .card.n8 .art, .skin-bbc .card.n9 .art { display: none; }
+.skin-bbc .card.n5, .skin-bbc .card.n6, .skin-bbc .card.n7, .skin-bbc .card.n8, .skin-bbc .card.n9 { padding-top: 12px; border-top: 1px solid #e6e8ea; }
+.skin-bbc .side h2 { font-size: 14px; letter-spacing: 0.02em; padding-top: 10px; border-top: 2px solid #141414; }
+.skin-bbc .ranked li { font-size: 15px; line-height: 19px; border-color: #e6e8ea; }
+.skin-bbc .chip { border-radius: 0; background: #f6f6f6; font-weight: 700; }
+.skin-bbc .listing .card .art { display: block; border-radius: 0; }
+.skin-bbc .listing .card .kicker { order: 0; margin: 0 0 4px; }
+.skin-bbc .listing .card .title { font-size: 20px; line-height: 24px; margin-bottom: 6px; }
+.skin-bbc .story h1 { font-size: 42px; line-height: 46px; letter-spacing: -0.01em; }
+.skin-bbc .story .kicker a { color: #141414; }
+.skin-bbc .story .art .plate { border-radius: 0; }
+.skin-bbc .body p { font-family: Georgia, serif; font-size: 18px; line-height: 28px; }
+.skin-bbc .body a { color: #141414; font-weight: 700; }
+.skin-bbc #comment-submit, .skin-bbc #subscribe-submit { background: #141414; border-radius: 0; }
+.skin-bbc input[type="text"] { border-radius: 0; }
+.skin-bbc .newsletter, .skin-bbc .readmore { border-radius: 0; background: #f6f6f6; }
+.skin-bbc .foot { background: #141414; color: #b0b2b4; border-top: 0; }
+.skin-bbc .foot .inner { max-width: 1280px; }
+.skin-bbc .foot-brand { color: #ffffff; }
+.skin-bbc .foot-links a { color: #ffffff; font-weight: 700; }

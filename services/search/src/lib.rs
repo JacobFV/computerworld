@@ -978,6 +978,40 @@ mod tests {
             assert_eq!(api(&mut state, "alice", "/api/search?q=atlas")["count"], 0);
         }
     }
+    /// The fourth skin ships no seed of its own, so nothing else would ever render it: a seed
+    /// that names no skin is `plain`, and `search.css` styles it, so it goes through the
+    /// validator with the rest. Every page of the skin, the bang jump included.
+    #[test]
+    fn the_default_skin_renders_every_page_strictly() {
+        let mut state = start(json!({
+            "brand": "Findr",
+            "tagline": "A plain index",
+            "trending": ["atlas"],
+            "bang_prefix": "!",
+            "bangs": {"gh": {"title": "GitHub", "template": "http://github.com/search?q={}"}},
+            "footer": [{"text": "Terms", "url": "http://findr.test/terms"}],
+            "documents": [hit("http://findr.test/atlas", "Atlas", "findr.test", "all", &["atlas"])],
+        }));
+        for url in [
+            "/",
+            "/about",
+            "/search?q=atlas",
+            "/search?q=atlas&v=images",
+            "/search?q=atlas&v=news",
+            "/search?q=atlas&v=videos",
+            "/search?q=%21gh+atlas",
+            "/lucky?q=atlas",
+            "/lucky?q=nothing",
+        ] {
+            let page = get(&mut state, "alice", url);
+            assert!(has(&page, "mark"), "{url} lost the wordmark");
+        }
+        // The home page keeps its history and the plain skin's own button labels.
+        let home = get(&mut state, "alice", "/");
+        assert_eq!(text_of(&home, "search-go"), "Search");
+        assert_eq!(text_of(&home, "search-lucky"), "First hit");
+        assert!(has(&home, "recent-0") && has(&home, "trend-0") && has(&home, "bang-gh"));
+    }
     /// The Google home page is the mock in `research/google-ceiling`: header links, the
     /// six-colour mark, the pill, the two buttons, the footer band, and the same ids the
     /// `Page` version had so an agent's script keeps working.

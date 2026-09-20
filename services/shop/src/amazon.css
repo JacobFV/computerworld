@@ -1,0 +1,88 @@
+/* amazon.com: the dark bar with the orange search button, the slate sub-nav, white
+   cards on a grey page, prices with superscript cents, the buy box on the right. */
+body.skin-amazon { background: #e3e6e6; font-family: Arial, sans-serif; }
+.skin-amazon .hdr { background: #131921; }
+.skin-amazon .hdr .bar { max-width: none; gap: 6px; height: 60px; padding: 0 12px; }
+.skin-amazon .logo { position: relative; padding: 6px 10px 12px 8px; border: 1px solid transparent; border-radius: 2px; font-size: 27px; line-height: 30px; letter-spacing: -1px; text-transform: lowercase; color: #fff; }
+.skin-amazon .logo::after { content: ""; position: absolute; left: 12px; right: 14px; bottom: 7px; height: 8px; border-bottom: 3px solid #ff9900; border-radius: 0 0 50% 50%; }
+.skin-amazon .logo:hover, .skin-amazon .nav:hover, .skin-amazon .deliver:hover { border-color: #fff; text-decoration: none; }
+.skin-amazon .deliver { position: relative; display: flex; flex-direction: column; padding: 8px 9px 8px 28px; border: 1px solid transparent; border-radius: 2px; line-height: 15px; white-space: nowrap; }
+.skin-amazon .deliver .pin { position: absolute; left: 9px; top: 22px; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+.skin-amazon .l1 { display: block; font-size: 12px; line-height: 14px; font-weight: 400; color: #ccc; }
+.skin-amazon .l2 { display: block; font-size: 14px; line-height: 15px; font-weight: 700; color: #fff; }
+.skin-amazon .search { height: 40px; margin: 0 6px; border-radius: 4px; overflow: hidden; }
+.skin-amazon .search:focus-within { box-shadow: 0 0 0 3px #f90; }
+.skin-amazon .search .scope { display: block; flex: none; height: 40px; padding: 0 22px 0 12px; position: relative; background: #e6e6e6; border-right: 1px solid #cdcdcd; color: #555; font-size: 12px; line-height: 40px; }
+.skin-amazon .search .scope::after { content: ""; position: absolute; right: 9px; top: 15px; width: 5px; height: 5px; border-right: 1px solid #555; border-bottom: 1px solid #555; transform: rotate(45deg); }
+.skin-amazon .search input[type="text"] { font-size: 15px; }
+.skin-amazon .search .go { position: relative; width: 45px; padding: 0; background: #febd69; border-radius: 0; font-size: 0; color: transparent; }
+.skin-amazon .search .go:hover { background: #f3a847; }
+.skin-amazon .search .go::before { content: ""; position: absolute; left: 13px; top: 10px; width: 13px; height: 13px; border: 2px solid #0f1111; border-radius: 50%; }
+.skin-amazon .search .go::after { content: ""; position: absolute; left: 26px; top: 23px; width: 9px; height: 3px; background: #0f1111; transform: rotate(45deg); transform-origin: 0 50%; }
+.skin-amazon .lang { display: flex; align-items: center; gap: 4px; padding: 18px 9px 8px; }
+.skin-amazon .lang .flag { width: 18px; height: 12px; background: linear-gradient(#b22234 0, #b22234 33%, #fff 33%, #fff 66%, #b22234 66%); box-shadow: inset 8px 0 0 #3c3b6e; }
+.skin-amazon .nav { flex-direction: column; align-items: flex-start; gap: 0; padding: 8px 9px; border: 1px solid transparent; border-radius: 2px; }
+.skin-amazon .nav .l1 { display: block; }
+.skin-amazon .nav.cart { position: relative; flex-direction: row; align-items: flex-end; height: 44px; padding: 0 9px 6px 48px; }
+.skin-amazon .cart .ico { display: block; position: absolute; left: 8px; top: 18px; width: 30px; height: 16px; border: 2px solid #fff; border-top: 0; border-radius: 0 0 8px 8px; transform: skewX(-8deg); }
+.skin-amazon .cart .ico::after { content: ""; position: absolute; left: 3px; bottom: -8px; width: 5px; height: 5px; border-radius: 50%; background: #fff; box-shadow: 15px 0 0 #fff; }
+.skin-amazon .cart .count { position: absolute; left: 14px; top: 0; min-width: 22px; height: 18px; padding: 0; background: transparent; color: #f08804; font-size: 16px; font-weight: 700; }
+.skin-amazon .cats { background: #232f3e; border: 0; }
+.skin-amazon .cats .inner { max-width: none; gap: 2px; padding: 0 10px; height: 39px; }
+.skin-amazon .cat { padding: 8px 9px; border: 1px solid transparent; border-radius: 2px; color: #fff; font-size: 14px; line-height: 20px; box-shadow: none; }
+.skin-amazon .cat:hover { border-color: #fff; color: #fff; }
+.skin-amazon .cat.on { box-shadow: none; }
+.skin-amazon .cat.all { font-weight: 700; }
+.skin-amazon .cat.all .ico { display: block; width: 16px; height: 12px; border-top: 2px solid #fff; border-bottom: 2px solid #fff; background: linear-gradient(transparent 3px, #fff 3px, #fff 5px, transparent 5px); }
+
+.skin-amazon .wrap { max-width: 1500px; padding: 0 20px 30px; }
+.skin-amazon.page-home .wrap { padding-top: 0; }
+.skin-amazon .banner { margin: 0 -20px; padding: 56px 60px 150px; border-radius: 0; background: linear-gradient(180deg, #8fd0e8 0, #c9e9f1 55%, #e3e6e6 100%); }
+.skin-amazon .banner h1 { font-size: 36px; line-height: 44px; font-weight: 700; color: #0f1111; }
+.skin-amazon .banner p { max-width: 520px; font-size: 15px; color: #37475a; }
+.skin-amazon.page-home .lead { position: relative; margin: -110px 0 0; padding: 18px 20px 6px; background: #fff; font-size: 21px; line-height: 28px; }
+.skin-amazon.page-home .grid { position: relative; padding: 8px 20px 20px; background: #fff; }
+.skin-amazon .lead { margin-top: 16px; font-size: 20px; }
+.skin-amazon .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.skin-amazon .card { border: 1px solid #e7e7e7; border-radius: 4px; }
+.skin-amazon .card:hover { box-shadow: none; border-color: #c7c7c7; }
+.skin-amazon .card .pic { height: 230px; align-items: center; justify-content: center; background: #f7f8f8; }
+.skin-amazon .pic .obj { display: block; width: 58%; height: 66%; border-radius: 10px; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 10px 18px rgba(15, 17, 17, 0.18); }
+.skin-amazon .pic.thumb .obj { width: 70%; height: 70%; border-radius: 4px; box-shadow: none; }
+.skin-amazon .pic.thumb, .skin-amazon .pic.main { align-items: center; justify-content: center; background: #f7f8f8; }
+/* The placeholder art stands in for a product photograph, and Amazon never captions
+   one: the title is already on the next line. */
+.skin-amazon .pic .pic-label { display: none; }
+.skin-amazon .card .info { gap: 3px; padding: 8px 10px 12px; }
+.skin-amazon .card .name { font-size: 16px; line-height: 22px; max-height: 66px; color: #0f1111; }
+.skin-amazon .card:hover .name { color: #c7511f; }
+.skin-amazon .rating .rv { color: #0f1111; }
+.skin-amazon .rating .ct { color: #007185; }
+.skin-amazon .tags { margin-top: 2px; }
+.skin-amazon .price { display: inline-flex; align-items: flex-start; font-weight: 400; color: #0f1111; }
+.skin-amazon .price .whole { font-size: 28px; line-height: 32px; }
+.skin-amazon .price sup { position: relative; top: 3px; font-size: 13px; line-height: 16px; vertical-align: baseline; }
+.skin-amazon .fast { padding: 0 6px 0 0; border: 0; color: #00a8e1; font-weight: 700; font-style: italic; font-size: 13px; }
+.skin-amazon .fast::before { content: "✓"; color: #f90; font-style: normal; margin-right: 1px; }
+.skin-amazon .soldout { background: transparent; padding: 0; color: #b12704; font-size: 13px; }
+
+.skin-amazon.page-detail .wrap, .skin-amazon.page-cart .wrap, .skin-amazon.page-orders .wrap, .skin-amazon.page-order .wrap, .skin-amazon.page-results .wrap, .skin-amazon.page-favorites .wrap { padding-top: 14px; }
+body.skin-amazon.page-detail, body.skin-amazon.page-orders, body.skin-amazon.page-order, body.skin-amazon.page-results, body.skin-amazon.page-favorites { background: #fff; }
+.skin-amazon .pic.main { height: 480px; border-radius: 0; background: #fff; }
+.skin-amazon .pic.main .obj { width: 72%; height: 78%; }
+.skin-amazon .price-row .price .whole { font-size: 28px; }
+.skin-amazon .buy-price .price .whole { font-size: 28px; }
+.skin-amazon button.primary { height: 32px; border-radius: 16px; background: #ffd814; color: #0f1111; font-weight: 400; font-size: 13px; }
+.skin-amazon button.primary:hover { background: #f7ca00; }
+.skin-amazon button.secondary { height: 30px; border-radius: 15px; border-color: #d5d9d9; font-size: 13px; box-shadow: 0 1px 2px rgba(15, 17, 17, 0.15); }
+.skin-amazon #checkout-go { height: 32px; }
+.skin-amazon .order-body .cta { background: #fff; }
+
+.skin-amazon .ftr { margin-top: 0; background: #232f3e; color: #fff; }
+.skin-amazon .ftr .top { display: block; padding: 15px 0; background: #37475a; color: #fff; font-size: 13px; text-align: center; }
+.skin-amazon .ftr .top:hover { background: #485769; }
+.skin-amazon .ftr .cols { justify-content: center; gap: 80px; padding: 40px 16px 30px; }
+.skin-amazon .ftr h3 { font-size: 16px; color: #fff; }
+.skin-amazon .ftr .fitem, .skin-amazon .ftr .col a { color: #ddd; font-size: 14px; }
+.skin-amazon .ftr .legal { max-width: none; padding: 24px 16px 30px; border-top: 1px solid #3a4553; background: #131a22; text-align: center; color: #999; }
+.skin-amazon .ftr .legal .brand { color: #fff; text-transform: lowercase; font-size: 20px; letter-spacing: -1px; margin-bottom: 6px; }

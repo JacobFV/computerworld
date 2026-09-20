@@ -1,0 +1,74 @@
+/* airbnb.com: the white header with the pill search and its round red button, the
+   icon category bar, rounded photo cards with a heart and the rating on the right. */
+body.skin-airbnb { font-family: Inter, Arial, sans-serif; font-size: 15px; color: #222; }
+.skin-airbnb .hdr { background: #fff; color: #222; border-bottom: 1px solid #ebebeb; }
+.skin-airbnb .hdr .bar { max-width: 1440px; height: 80px; gap: 24px; padding: 0 40px; }
+.skin-airbnb .logo { position: relative; flex: 1; padding-left: 34px; font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -1px; text-transform: lowercase; color: #ff385c; }
+.skin-airbnb .logo::before { content: ""; position: absolute; left: 4px; top: 5px; width: 18px; height: 18px; border: 3px solid #ff385c; border-radius: 0 50% 50% 50%; transform: rotate(45deg); }
+.skin-airbnb .search { flex: none; width: 400px; height: 48px; padding: 0 8px 0 0; border: 1px solid #ddd; border-radius: 24px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05); }
+.skin-airbnb .search:hover { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18); }
+.skin-airbnb .search .scope { display: block; flex: none; padding: 0 16px 0 24px; border-right: 1px solid #ddd; font-size: 14px; line-height: 24px; font-weight: 600; }
+.skin-airbnb .search input[type="text"] { height: 46px; padding: 0 12px 0 16px; font: 14px Inter, Arial, sans-serif; }
+.skin-airbnb .search .go { position: relative; width: 32px; height: 32px; padding: 0; border-radius: 50%; background: #ff385c; font-size: 0; color: transparent; }
+.skin-airbnb .search .go::before { content: ""; position: absolute; left: 9px; top: 8px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; }
+.skin-airbnb .search .go::after { content: ""; position: absolute; left: 19px; top: 19px; width: 6px; height: 2px; background: #fff; transform: rotate(45deg); transform-origin: 0 50%; }
+.skin-airbnb .right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.skin-airbnb .host { padding: 10px 12px; border-radius: 22px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.skin-airbnb .globe { width: 18px; height: 18px; margin: 0 10px 0 4px; border: 2px solid #222; border-radius: 50%; background: linear-gradient(90deg, transparent 6px, #222 6px, #222 8px, transparent 8px); }
+.skin-airbnb .nav { padding: 10px 12px; border-radius: 22px; font-size: 14px; font-weight: 600; }
+.skin-airbnb .nav:hover { background: #f7f7f7; text-decoration: none; }
+.skin-airbnb .nav.cart { padding: 8px 14px; border: 1px solid #ddd; }
+.skin-airbnb .nav.cart:hover { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18); background: #fff; }
+.skin-airbnb .cart .count { background: #ff385c; }
+.skin-airbnb .cats { position: sticky; top: 0; z-index: 2; border-bottom: 1px solid #ebebeb; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.skin-airbnb .cats .inner { max-width: 1440px; gap: 40px; padding: 12px 40px 0; }
+.skin-airbnb .cat { flex-direction: column; gap: 8px; padding: 4px 0 12px; font-size: 12px; line-height: 16px; font-weight: 600; color: #717171; }
+.skin-airbnb .cat .ico { display: block; width: 24px; height: 24px; border: 2px solid #717171; border-radius: 6px 6px 3px 3px; font-size: 0; color: transparent; }
+.skin-airbnb .cat:nth-child(2) .ico { border-radius: 50% 50% 3px 3px; }
+.skin-airbnb .cat:nth-child(3) .ico { border-radius: 50%; border-style: dashed; }
+.skin-airbnb .cat:nth-child(4) .ico { border-radius: 2px; border-top-width: 6px; }
+.skin-airbnb .cat:nth-child(5) .ico { border-radius: 50% 50% 50% 0; }
+.skin-airbnb .cat:nth-child(6) .ico { width: 20px; height: 20px; margin: 2px; transform: rotate(45deg); border-radius: 3px; }
+.skin-airbnb .cat:hover { color: #222; box-shadow: inset 0 -2px 0 #ddd; }
+.skin-airbnb .cat:hover .ico { border-color: #222; }
+.skin-airbnb .cat.on, .skin-airbnb .cat.all { color: #222; box-shadow: inset 0 -2px 0 #222; }
+.skin-airbnb .cat.all.off { color: #717171; box-shadow: none; }
+.skin-airbnb .cat.on .ico, .skin-airbnb .cat.all .ico { border-color: #222; }
+.skin-airbnb .cat.all.off .ico { border-color: #717171; }
+.skin-airbnb .wrap { max-width: 1440px; padding: 24px 40px 48px; }
+.skin-airbnb .lead { font-size: 22px; line-height: 26px; font-weight: 600; margin-bottom: 20px; }
+.skin-airbnb .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 36px 24px; }
+.skin-airbnb .card { position: relative; border: 0; border-radius: 0; overflow: visible; }
+.skin-airbnb .card:hover { box-shadow: none; }
+.skin-airbnb .card .pic { height: 300px; border-radius: 14px; }
+.skin-airbnb .pic-label { display: none; }
+.skin-airbnb .pic .fave { position: absolute; left: 12px; top: 12px; padding: 4px 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); color: #222; font-size: 13px; line-height: 18px; font-weight: 600; }
+.skin-airbnb .card .heart { display: block; position: absolute; right: 14px; top: 12px; font-size: 0; }
+.skin-airbnb .card .heart::before { content: "♡"; font-size: 28px; line-height: 28px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55); }
+.skin-airbnb .card .info { position: relative; gap: 1px; padding: 12px 0 0; }
+.skin-airbnb .card .name { max-height: 20px; padding-right: 64px; font-size: 15px; line-height: 20px; font-weight: 600; color: #222; white-space: nowrap; text-overflow: ellipsis; }
+.skin-airbnb .card:hover .name { color: #222; }
+.skin-airbnb .card .by { display: block; font-size: 15px; line-height: 20px; color: #717171; }
+.skin-airbnb .card .rating { position: absolute; right: 0; top: 12px; gap: 3px; font-size: 15px; line-height: 20px; color: #222; }
+.skin-airbnb .card .rating::before { content: "★"; font-size: 13px; }
+.skin-airbnb .card .rating .stars, .skin-airbnb .card .rating .ct { display: none; }
+.skin-airbnb .card .rating.none { font-size: 13px; color: #717171; }
+.skin-airbnb .card .rating.none::before { content: ""; }
+.skin-airbnb .tags { gap: 4px; margin-top: 4px; padding: 0; }
+.skin-airbnb .price { font-size: 15px; line-height: 20px; font-weight: 600; }
+.skin-airbnb .per { font-size: 15px; color: #222; }
+.skin-airbnb .detail h1 { font-size: 26px; line-height: 30px; font-weight: 600; }
+.skin-airbnb .detail .by { color: #222; font-size: 16px; font-weight: 600; margin-top: 8px; }
+.skin-airbnb .stars i { color: #222; }
+.skin-airbnb .pic.main { border-radius: 16px; }
+.skin-airbnb .pic.thumb { border: 0; border-radius: 8px; }
+.skin-airbnb .buybox { width: 340px; padding: 24px; border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
+.skin-airbnb .price-row .price, .skin-airbnb .buy-price .price { font-size: 22px; font-weight: 600; }
+.skin-airbnb .stock { font-size: 14px; color: #717171; }
+.skin-airbnb button.primary { height: 48px; border-radius: 8px; background: linear-gradient(90deg, #e61e4d, #d70466); font: 600 16px Inter, Arial, sans-serif; }
+.skin-airbnb button.secondary { height: 44px; border: 1px solid #222; border-radius: 8px; font: 600 14px Inter, Arial, sans-serif; }
+.skin-airbnb input[type="text"] { height: 44px; border-color: #b0b0b0; border-radius: 8px; }
+.skin-airbnb .ftr { background: #f7f7f7; border-top: 1px solid #ddd; }
+.skin-airbnb .ftr .cols, .skin-airbnb .ftr .legal { max-width: 1440px; padding-left: 40px; padding-right: 40px; }
+.skin-airbnb .ftr h3 { font-size: 14px; font-weight: 600; }
+.skin-airbnb .ftr .fitem, .skin-airbnb .ftr .col a { font-size: 14px; color: #222; }

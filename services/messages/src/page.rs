@@ -1,230 +1,182 @@
-//! The browser's view of Messages: a phone-shaped column, blue iMessage bubbles and
-//! green SMS bubbles, the delivery or read status under the last thing the actor sent.
+//! The browser's view of Messages, laid out the way Messages for Mac is: the list of
+//! conversations in a grey sidebar, the open conversation beside it with blue iMessage
+//! bubbles, green SMS bubbles and grey incoming ones, tapbacks on the bubble's corner,
+//! the delivery or read status under the last thing the actor sent, and the composer
+//! pinned under the transcript. The stylesheet is `messages.css`.
 use crate::{Conversation, Message, MessagesState, TAPBACKS};
-use cw_protocol::{HttpResponse, PageAction, PageElement, PageTheme, Result as SimResult};
+use cw_protocol::{HttpResponse, Result as SimResult};
 use cw_service_common as web;
+use web::html::{self, button, div, el, form, span, text_input, Document, Html};
 
-pub const IMESSAGE: &str = "#0b84fe";
-pub const SMS: &str = "#34c759";
-pub const INCOMING: &str = "#e9e9eb";
-pub const INK: &str = "#1d1d1f";
-pub const MUTED: &str = "#8e8e93";
-pub const SURFACE: &str = "#ffffff";
-pub const SCREEN: &str = "#f2f2f7";
-/// The width of a phone, which is what Messages is shaped like even on a desktop browser.
-pub const PHONE: u32 = 390;
+const CSS: &str = include_str!("messages.css");
 
-fn button(id: String, text: impl Into<String>, action: PageAction) -> PageElement {
-    PageElement::Button {
-        id,
-        text: text.into(),
-        action,
-        style: None,
+/// The glyph a tapback shows as on the bubble and in the picker.
+pub fn tapback_glyph(name: &str) -> &'static str {
+    match name {
+        "loved" => "♥",
+        "liked" => "👍",
+        "disliked" => "👎",
+        "laughed" => "HA",
+        "emphasized" => "!!",
+        "questioned" => "?",
+        _ => "·",
     }
 }
-fn theme() -> PageTheme {
-    PageTheme {
-        accent: Some(IMESSAGE.into()),
-        background: Some(SCREEN.into()),
-        surface: Some(SURFACE.into()),
-        ink: Some(INK.into()),
-        muted: Some(MUTED.into()),
-        content_width: Some(PHONE + 32),
-        font: None,
-    }
-}
-fn avatar(id: &str, name: &str) -> PageElement {
-    let initials: String = name
+fn initials(name: &str) -> String {
+    let letters: String = name
         .split_whitespace()
         .filter_map(|w| w.chars().next())
+        .filter(|c| c.is_alphanumeric())
         .take(2)
         .collect::<String>()
         .to_uppercase();
-    web::thumbnail(
-        id,
-        if initials.is_empty() { "?" } else { &initials },
-        web::style()
-            .width(40)
-            .height(40)
-            .radius(20)
-            .background("#a2a2a8")
-            .color("#ffffff")
-            .size(15)
-            .align("center"),
-    )
+    if letters.is_empty() {
+        "?".into()
+    } else {
+        letters
+    }
 }
-/// A phone-shaped column with the navigation bar on top.
-fn phone(title: &str, bar: Vec<PageElement>, body: Vec<PageElement>) -> SimResult<HttpResponse> {
-    let mut items = vec![web::styled_row(
-        "bar",
-        8,
-        "center",
-        web::style().padding(10).background(SURFACE),
-        bar,
-    )];
-    items.push(web::divider("bar-rule"));
-    items.extend(body);
-    web::themed_page(
-        title,
-        theme(),
-        vec![web::card(
-            "phone",
-            web::style()
-                .width(PHONE)
-                .background(SURFACE)
-                .radius(24)
-                .border("#d1d1d6")
-                .padding(0),
-            items,
-        )],
-    )
+fn avatar(id: &str, name: &str, class: &str) -> Html {
+    span("avatar").class(class).id(id).text(initials(name))
 }
 
-/// The conversation list: who, the latest text, and a blue dot where something is unread.
-pub fn inbox(state: &MessagesState, actor: &str) -> SimResult<HttpResponse> {
-    let me = state.handle_of(actor).unwrap_or_default().to_owned();
-    let mut body = vec![];
+/// The sidebar every page carries: the title, the new-conversation form and the list.
+/// `open` is the conversation shown beside it, if any.
+fn sidebar(state: &MessagesState, actor: &str, me: &str, open: Option<&str>) -> Html {
     let inbox = state.inbox(actor);
+    // The inbox page's bar is the sidebar's head; a thread's bar is over the transcript.
+    let (title_id, me_id) = if open.is_some() {
+        ("side-title", "side-me")
+    } else {
+        ("bar-title", "bar-me")
+    };
+    let head = div("side-head")
+        .when(open.is_none(), |n| n.id("bar"))
+        .child(el("h1").id(title_id).text("Messages"))
+        .child(span("me").id(me_id).text(if me.is_empty() {
+            String::new()
+        } else {
+            format!("{} · {me}", state.display(me))
+        }));
+    // A new conversation: to a number, an address or a contact; a comma makes a group.
+    let new = (!me.is_empty()).then(|| {
+        form("new", "/conversations", "post")
+            .class("new")
+            .child(
+                text_input("new-to", "to", "")
+                    .attr("aria-label", "To (number, address or name; comma for a group)")
+                    .attr("placeholder", "To: name, number or address"),
+            )
+            .child(
+                text_input("new-name", "name", "")
+                    .attr("aria-label", "Group name")
+                    .attr("placeholder", "Group name (optional)"),
+            )
+            .child(button("new-submit", "✎").attr("aria-label", "New message").attr("title", "New message"))
+    });
+    let mut list = el("nav").class("list").attr("aria-label", "Conversations");
     if inbox.is_empty() {
-        body.push(web::styled(
-            "empty",
-            if me.is_empty() {
-                "This device has no number or address."
-            } else {
-                "No messages yet."
-            },
-            web::style()
-                .size(15)
-                .color(MUTED)
-                .padding(16)
-                .align("center"),
-        ));
+        list = list.child(el("p").id("empty").class("empty").text(if me.is_empty() {
+            "This device has no number or address."
+        } else {
+            "No messages yet."
+        }));
     }
     for (id, c) in inbox {
-        let title = state.title(c, &me);
+        let title = state.title(c, me);
         let last = c.messages.last();
-        let unread = MessagesState::unread(c, &me);
-        let mut lead = vec![];
-        if unread > 0 {
-            lead.push(web::badge(
-                &format!("row-{id}-unread"),
-                "●",
-                web::style().color(IMESSAGE).size(10),
-            ));
-        }
-        lead.push(avatar(&format!("row-{id}-avatar"), &title));
-        let mut lines = vec![web::styled_row(
-            &format!("row-{id}-head"),
-            8,
-            "center",
-            web::style(),
-            vec![
-                web::styled(
-                    &format!("row-{id}-title"),
-                    &title,
-                    web::style().size(16).bold().color(INK).flex(1).one_line(),
-                ),
-                web::styled(
-                    &format!("row-{id}-time"),
-                    last.map(|m| format!("tick {}", m.time)).unwrap_or_default(),
-                    web::style().size(12).color(MUTED),
-                ),
-            ],
-        )];
-        lines.push(web::styled(
-            &format!("row-{id}-preview"),
-            last.map(|m| {
+        let unread = MessagesState::unread(c, me);
+        let preview = last
+            .map(|m| {
                 if c.participants.len() > 2 && m.from != me {
                     format!("{}: {}", state.display(&m.from), m.text)
                 } else {
                     m.text.clone()
                 }
             })
-            .unwrap_or_default(),
-            web::style().size(14).color(MUTED),
-        ));
-        lead.push(web::card(
-            &format!("row-{id}-text"),
-            web::style().flex(1),
-            lines,
-        ));
-        body.push(web::card_action(
-            &format!("row-{id}"),
-            web::style().padding(12),
-            web::visit(format!("/conversations/{id}")),
-            vec![web::styled_row(
-                &format!("row-{id}-line"),
-                10,
-                "center",
-                web::style(),
-                lead,
-            )],
-        ));
-        body.push(web::divider(&format!("row-{id}-rule")));
-    }
-    // A new conversation: to a number, an address or a contact; a comma makes a group.
-    if !me.is_empty() {
-        body.push(web::form(
-            "new",
-            "/conversations",
-            &[
-                ("to", "To (number, address or name; comma for a group)", ""),
-                ("name", "Group name", ""),
-            ],
-        ));
-    }
-    let bar = vec![
-        web::styled(
-            "bar-title",
-            "Messages",
-            web::style().size(17).bold().color(INK).flex(1),
-        ),
-        web::styled(
-            "bar-me",
-            if me.is_empty() {
-                String::new()
+            .unwrap_or_default();
+        let row = el("a")
+            .id(format!("row-{id}"))
+            .class("row")
+            .when(open == Some(id), |n| n.class("current"))
+            .when(unread > 0, |n| n.class("unread"))
+            .attr("href", format!("/conversations/{id}"))
+            .child(if unread > 0 {
+                span("dot").id(format!("row-{id}-unread")).attr("title", format!("{unread} unread")).text("●")
             } else {
-                format!("{} · {me}", state.display(&me))
-            },
-            web::style().size(12).color(MUTED),
-        ),
-    ];
-    phone("Messages", bar, body)
+                span("dot")
+            })
+            .child(avatar(&format!("row-{id}-avatar"), &title, if c.participants.len() > 2 { "group" } else { "" }))
+            .child(
+                span("row-text")
+                    .id(format!("row-{id}-text"))
+                    .child(
+                        span("row-head")
+                            .id(format!("row-{id}-head"))
+                            .child(span("row-title").id(format!("row-{id}-title")).text(title.as_str()))
+                            .child(
+                                span("row-time")
+                                    .id(format!("row-{id}-time"))
+                                    .text(last.map(|m| format!("tick {}", m.time)).unwrap_or_default()),
+                            ),
+                    )
+                    .child(span("row-preview").id(format!("row-{id}-preview")).text(preview)),
+            );
+        list = list.child(row);
+    }
+    el("aside").id("sidebar").class("sidebar").child(head).maybe(new).child(list)
 }
 
-fn tapback_chips(id: &str, conversation: &str, m: &Message, state: &MessagesState) -> PageElement {
-    let mut chips: Vec<PageElement> = m
-        .tapbacks
-        .iter()
-        .map(|(name, who)| {
-            let names: Vec<String> = who.iter().map(|h| state.display(h)).collect();
-            web::badge(
-                &format!("{id}-has-{name}"),
-                format!("{name} · {}", names.join(", ")),
-                web::style()
-                    .background(SURFACE)
-                    .border(MUTED)
-                    .color(INK)
-                    .radius(10)
-                    .padding(3)
-                    .size(11),
-            )
-        })
-        .collect();
-    for name in TAPBACKS {
-        chips.push(button(
-            format!("{id}-tapback-{name}"),
-            *name,
-            PageAction {
-                method: "POST".into(),
-                url: format!("/conversations/{conversation}/messages/{}/tapbacks", m.id),
-                fields: [("tapback".to_string(), (*name).to_string())]
-                    .into_iter()
-                    .collect(),
-            },
-        ));
-    }
-    web::styled_row(&format!("{id}-tapbacks"), 4, "center", web::style(), chips)
+fn document(title: &str, thread: bool, children: Vec<Html>) -> SimResult<HttpResponse> {
+    let doc = Document::new(title)
+        .lang("en")
+        .stylesheet(CSS)
+        .body_class(if thread { "app on-thread" } else { "app on-inbox" })
+        .body([div("phone").id("phone").children(children)]);
+    html::page(&doc)
+}
+
+/// The conversation list, with nothing open beside it.
+pub fn inbox(state: &MessagesState, actor: &str) -> SimResult<HttpResponse> {
+    let me = state.handle_of(actor).unwrap_or_default().to_owned();
+    let blank = el("main").class("pane blank").child(
+        el("p")
+            .id("no-conversation")
+            .class("blank-text")
+            .text("No Conversation Selected"),
+    );
+    document("Messages", false, vec![sidebar(state, actor, &me, None), blank])
+}
+
+/// The tapbacks a bubble carries, and the picker that gives or takes one back.
+fn tapbacks(id: &str, conversation: &str, m: &Message, state: &MessagesState, me: &str) -> (Html, Html) {
+    let given = div("tapbacks").each(&m.tapbacks, |(name, who)| {
+        let names: Vec<String> = who.iter().map(|h| state.display(h)).collect();
+        let label = format!("{name} · {}", names.join(", "));
+        span("tapback")
+            .id(format!("{id}-has-{name}"))
+            .class(name)
+            .when(who.contains(me), |n| n.class("mine"))
+            .attr("title", label.as_str())
+            .attr("aria-label", label.as_str())
+            .text(tapback_glyph(name))
+            .when(who.len() > 1, |n| n.child(span("n").text(who.len().to_string())))
+    });
+    let picker = form(
+        &format!("{id}-tapbacks"),
+        format!("/conversations/{conversation}/messages/{}/tapbacks", m.id),
+        "post",
+    )
+    .class("picker")
+    .each(TAPBACKS, |name| {
+        button(&format!("{id}-tapback-{name}"), tapback_glyph(name))
+            .class(name)
+            .attr("name", "tapback")
+            .attr("value", *name)
+            .attr("aria-label", *name)
+            .attr("title", *name)
+    });
+    (given, picker)
 }
 fn bubble(
     conversation: &str,
@@ -233,36 +185,31 @@ fn bubble(
     me: &str,
     group: bool,
     last_outgoing: bool,
-) -> Vec<PageElement> {
-    let id = m.id.clone();
+    tail: bool,
+) -> Html {
+    let id = m.id.as_str();
     let mine = m.from == me;
-    let (fill, ink) = match (mine, m.service.as_str()) {
-        (true, "sms") => (SMS, "#ffffff"),
-        (true, _) => (IMESSAGE, "#ffffff"),
-        (false, _) => (INCOMING, INK),
+    let tone = match (mine, m.service.as_str()) {
+        (true, "sms") => "sms",
+        (true, _) => "imessage",
+        (false, _) => "incoming",
     };
-    let mut stack = vec![];
+    let (given, picker) = tapbacks(id, conversation, m, state, me);
+    let mut stack = div("stack").id(format!("{id}-stack"));
     if !mine && group {
-        stack.push(web::styled(
-            &format!("{id}-from"),
-            state.display(&m.from),
-            web::style().size(11).color(MUTED),
-        ));
+        stack = stack.child(span("from").id(format!("{id}-from")).text(state.display(&m.from)));
     }
-    stack.push(web::card(
-        &format!("{id}-bubble"),
-        web::style()
-            .background(fill)
-            .radius(18)
-            .padding(10)
-            .width(260),
-        vec![web::styled(
-            &format!("{id}-text"),
-            &m.text,
-            web::style().size(15).color(ink),
-        )],
-    ));
-    stack.push(tapback_chips(&id, conversation, m, state));
+    stack = stack.child(
+        div("bubble-line").child(
+            div("bubble")
+                .id(format!("{id}-bubble"))
+                .class(tone)
+                .when(tail, |n| n.class("tail"))
+                .when(!m.tapbacks.is_empty(), |n| n.class("tapped"))
+                .child(span("text").id(format!("{id}-text")).text(m.text.as_str()))
+                .child(given),
+        ).child(picker),
+    );
     if mine && last_outgoing {
         let status = if m.service == "sms" {
             "Sent as Text Message".to_owned()
@@ -277,32 +224,23 @@ fn bubble(
         } else {
             "Delivered".to_owned()
         };
-        stack.push(web::styled(
-            &format!("{id}-status"),
-            status,
-            web::style().size(11).color(MUTED).align("right"),
-        ));
+        stack = stack.child(span("status").id(format!("{id}-status")).text(status));
     }
-    let column = web::card(&format!("{id}-stack"), web::style().flex(0), stack);
-    // An outgoing bubble sits on the right: an empty flex card takes the space before it.
-    let row = if mine {
-        vec![
-            web::card(&format!("{id}-push"), web::style().flex(1), vec![]),
-            column,
-        ]
-    } else {
-        vec![column]
-    };
-    vec![web::styled_row(
-        &format!("{id}-row"),
-        6,
-        if mine { "end" } else { "start" },
-        web::style().padding(4),
-        row,
-    )]
+    let mut row = div("msg")
+        .id(format!("{id}-row"))
+        .class(if mine { "out" } else { "in" })
+        .when(!tail, |n| n.class("run"));
+    if !mine && group {
+        row = row.child(if tail {
+            avatar(&format!("{id}-avatar"), &state.display(&m.from), "small")
+        } else {
+            span("avatar small ghost")
+        });
+    }
+    row.child(stack)
 }
 
-/// One conversation: the transcript as bubbles, then the composer.
+/// One conversation: the sidebar, the transcript as bubbles, then the composer.
 pub fn thread(state: &MessagesState, actor: &str, id: &str) -> SimResult<HttpResponse> {
     let (me, c): (String, &Conversation) = match state.conversation(actor, id) {
         Ok(found) => found,
@@ -311,125 +249,77 @@ pub fn thread(state: &MessagesState, actor: &str, id: &str) -> SimResult<HttpRes
     let title = state.title(c, &me);
     let group = c.participants.len() > 2;
     let service = state.service_for(&c.participants, &me);
-    let mut body = vec![];
+    let imessage = service == "imessage";
+    let mut transcript = div("transcript").id("transcript");
     if group {
         let names: Vec<String> = c
             .participants
             .iter()
             .map(|h| format!("{} ({h})", state.display(h)))
             .collect();
-        body.push(web::styled(
-            "members",
-            names.join(" · "),
-            web::style()
-                .size(12)
-                .color(MUTED)
-                .padding(8)
-                .align("center"),
-        ));
+        transcript = transcript.child(el("p").id("members").class("note").text(names.join(" · ")));
     }
-    body.push(web::styled(
-        "service",
-        if service == "imessage" {
-            "iMessage"
-        } else {
-            "Text Message · SMS"
-        },
-        web::style().size(11).color(MUTED).align("center"),
-    ));
-    let last_outgoing = c
-        .messages
-        .iter()
-        .rev()
-        .find(|m| m.from == me)
-        .map(|m| m.id.clone());
-    for m in &c.messages {
-        body.extend(bubble(
-            id,
-            state,
-            m,
-            &me,
-            group,
-            last_outgoing.as_deref() == Some(m.id.as_str()),
-        ));
+    transcript = transcript.child(
+        el("p")
+            .id("service")
+            .class("note")
+            .text(if imessage { "iMessage" } else { "Text Message · SMS" }),
+    );
+    let last_outgoing = c.messages.iter().rev().find(|m| m.from == me).map(|m| m.id.as_str());
+    for (n, m) in c.messages.iter().enumerate() {
+        // The last bubble of a run by one sender carries the tail.
+        let tail = c.messages.get(n + 1).is_none_or(|next| next.from != m.from);
+        transcript = transcript.child(bubble(id, state, m, &me, group, last_outgoing == Some(m.id.as_str()), tail));
     }
     if c.messages.is_empty() {
-        body.push(web::styled(
-            "empty",
-            "Say something.",
-            web::style()
-                .size(14)
-                .color(MUTED)
-                .align("center")
-                .padding(16),
-        ));
+        transcript = transcript.child(el("p").id("empty").class("note").text("Say something."));
     }
-    body.push(web::divider("composer-rule"));
-    body.push(web::form(
-        "send",
-        &format!("/conversations/{id}/messages"),
-        &[(
-            "text",
-            if service == "imessage" {
-                "iMessage"
-            } else {
-                "Text Message"
-            },
-            "",
-        )],
-    ));
+    let placeholder = if imessage { "iMessage" } else { "Text Message" };
+    let composer = form("send", format!("/conversations/{id}/messages"), "post")
+        .class("composer")
+        .class(service)
+        .child(span("plus").attr("title", "Apps").text("+"))
+        .child(
+            div("field")
+                .child(
+                    text_input("send-text", "text", "")
+                        .attr("aria-label", placeholder)
+                        .attr("placeholder", placeholder)
+                        .attr("autocomplete", "off"),
+                )
+                .child(button("send-submit", "↑").attr("aria-label", "Send").attr("title", "Send")),
+        );
     // Reading is a real route: the receipt the other side sees comes from here.
-    body.push(PageElement::Form {
-        id: "read".into(),
-        action: PageAction {
-            method: "POST".into(),
-            url: format!("/conversations/{id}/read"),
-            fields: Default::default(),
-        },
-        children: vec![button(
-            "read-submit".into(),
-            "Mark as read",
-            PageAction {
-                method: "POST".into(),
-                url: format!("/conversations/{id}/read"),
-                fields: Default::default(),
-            },
-        )],
-    });
-    let bar = vec![
-        web::card_action(
-            "back",
-            web::style().padding(4),
-            web::visit("/"),
-            vec![web::styled(
-                "back-text",
-                "‹ Messages",
-                web::style().size(15).color(IMESSAGE),
-            )],
-        ),
-        web::card(
-            "bar-title-stack",
-            web::style().flex(1),
-            vec![
-                avatar("bar-avatar", &title),
-                web::styled(
-                    "bar-title",
-                    &title,
-                    web::style().size(13).bold().color(INK).align("center"),
-                ),
-            ],
-        ),
-        web::styled(
-            "bar-service",
-            if service == "imessage" {
-                "iMessage"
-            } else {
-                "SMS"
-            },
-            web::style()
-                .size(11)
-                .color(if service == "imessage" { IMESSAGE } else { SMS }),
-        ),
-    ];
-    phone(&format!("{title} · Messages"), bar, body)
+    let unread = MessagesState::unread(c, &me);
+    let read = form("read", format!("/conversations/{id}/read"), "post")
+        .class("read")
+        .child(button("read-submit", "Mark as read").when(unread > 0, |n| n.class("pending")));
+    let bar = el("header")
+        .id("bar")
+        .class("bar")
+        .child(
+            el("a")
+                .id("back")
+                .class("back")
+                .attr("href", "/")
+                .child(span("chev").text("‹"))
+                .child(span("back-text").id("back-text").text("Messages")),
+        )
+        .child(
+            div("who")
+                .id("bar-title-stack")
+                .child(avatar("bar-avatar", &title, if group { "group" } else { "" }))
+                .child(span("name").id("bar-title").text(title.as_str())),
+        )
+        .child(
+            div("bar-end")
+                .child(span("service").class(service).id("bar-service").text(if imessage { "iMessage" } else { "SMS" }))
+                .child(read),
+        );
+    let pane = el("main").class("pane").child(bar).child(transcript).child(composer);
+    document(
+        &format!("{title} · Messages"),
+        true,
+        vec![sidebar(state, actor, &me, Some(id)), pane],
+    )
 }

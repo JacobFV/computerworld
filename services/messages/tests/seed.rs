@@ -1,6 +1,8 @@
 //! The shipped Messages seed and the texting contract the phones' Messages app drives:
 //! handles, conversations, receipts and tapbacks.
-use cw_protocol::{HttpRequest, Page};
+use cw_protocol::HttpRequest;
+use cw_service_common::html::validate_strict;
+use cw_web::dom::Document;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_messages::MessagesService;
 use serde_json::{json, Value};
@@ -47,6 +49,22 @@ fn seeded() -> Value {
         .initialize(site["initial_state"].clone(), &ctx("alice", 0))
         .unwrap()
 }
+fn dom(body: &str) -> Document {
+    validate_strict(body).unwrap_or_else(|e| panic!("{e:?}"));
+    cw_web::html::parse(body)
+}
+fn node(doc: &Document, id: &str) -> cw_web::dom::NodeId {
+    *doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+}
+fn text(doc: &Document, id: &str) -> String {
+    doc.text_content(node(doc, id)).trim().to_owned()
+}
+fn attr(doc: &Document, id: &str, name: &str) -> String {
+    doc.attr(node(doc, id), name).unwrap_or_default().to_owned()
+}
+fn class(doc: &Document, id: &str) -> String {
+    attr(doc, id, "class")
+}
 const AB: &str = "+14155550100|+14155550101";
 const CREW: &str = "+14155550100|+14155550101|+14155550102";
 
@@ -65,15 +83,13 @@ fn the_seed_renders_for_each_of_its_people() {
     ] {
         let (status, body) = get(&mut state, actor, path);
         assert_eq!(status, 200, "{actor} {path}");
-        serde_json::from_str::<Page>(&body)
-            .unwrap()
-            .validate()
-            .unwrap_or_else(|e| panic!("{actor} {path}: {e}"));
+        validate_strict(&body).unwrap_or_else(|e| panic!("{actor} {path}: {e:?}"));
     }
-    let thread = get(&mut state, "bob", &format!("/conversations/{AB}")).1;
+    let thread = dom(&get(&mut state, "bob", &format!("/conversations/{AB}")).1);
     // Bob's last text is delivered and not yet read; his bubbles are blue.
-    assert!(thread.contains("sms-7-status") && thread.contains("Delivered"));
-    assert!(thread.contains("#0b84fe"));
+    assert_eq!(text(&thread, "sms-7-status"), "Delivered");
+    assert!(class(&thread, "sms-7-bubble").contains("imessage"));
+    assert!(class(&thread, "sms-1-bubble").contains("imessage"));
     let alice = get(&mut state, "alice", &format!("/conversations/{AB}")).1;
     assert!(
         alice.contains("Read tick 33"),
@@ -85,7 +101,14 @@ fn the_seed_renders_for_each_of_its_people() {
         "/conversations/+14155550100|+14155550199",
     )
     .1;
-    assert!(sms.contains("#34c759") && sms.contains("Sent as Text Message"));
+    assert!(sms.contains("Sent as Text Message"));
+    let sms = dom(&sms);
+    let mine = sms
+        .descendants(Document::ROOT)
+        .find(|n| sms.attr(*n, "class").is_some_and(|c| c.split(' ').any(|c| c == "sms") && c.contains("bubble")))
+        .expect("a green bubble");
+    assert!(sms.attr(mine, "id").unwrap().ends_with("-bubble"));
+    assert_eq!(attr(&sms, "send-text", "placeholder"), "Text Message");
     // Carol is not in alice and bob's thread.
     assert_eq!(
         get(&mut state, "carol", &format!("/conversations/{AB}")).0,
@@ -256,7 +279,78 @@ fn conversations_open_once_by_handle_or_name_and_strangers_get_sms() {
     );
     assert_eq!(status, 200);
     assert!(page.contains("Ops"));
+    // A conversation with nothing in it yet is still a page the engine renders: the
+    // transcript says so rather than standing empty, and it validates like the rest.
+    let fresh = dom(&page);
+    assert_eq!(text(&fresh, "bar-title"), "Ops");
+    assert_eq!(text(&fresh, "empty"), "Say something.");
+    assert!(!fresh.by_id("members").is_empty(), "a group names its people");
     let restored: cw_service_messages::MessagesState =
         serde_json::from_value(state.clone()).unwrap();
     assert_eq!(serde_json::to_value(&restored).unwrap(), state);
+}
+
+/// The pages keep the ids, links and forms the Page version had.
+#[test]
+fn the_pages_keep_their_ids_links_and_forms() {
+    let mut state = seeded();
+    let inbox = dom(&get(&mut state, "alice", "/").1);
+    assert_eq!(text(&inbox, "bar-title"), "Messages");
+    assert_eq!(text(&inbox, "bar-me"), "Alice Chen · +14155550100");
+    assert_eq!(attr(&inbox, &format!("row-{AB}"), "href"), format!("/conversations/{AB}"));
+    assert_eq!(text(&inbox, &format!("row-{AB}-title")), "Bob Martinez");
+    assert_eq!(text(&inbox, &format!("row-{AB}-time")), "tick 44");
+    assert!(text(&inbox, &format!("row-{AB}-preview")).contains("spicy"));
+    assert!(!inbox.by_id(&format!("row-{AB}-unread")).is_empty());
+    assert!(!inbox.by_id(&format!("row-{AB}-avatar")).is_empty());
+    assert_eq!(attr(&inbox, "new", "action"), "/conversations");
+    assert_eq!(attr(&inbox, "new", "method"), "post");
+    assert_eq!(attr(&inbox, "new-to", "name"), "to");
+    assert_eq!(attr(&inbox, "new-name", "name"), "name");
+    assert_eq!(inbox.tag(node(&inbox, "new-submit")), Some("button"));
+    // A person with no handle sees why the list is empty, and no form.
+    let eve = dom(&get(&mut state, "eve", "/").1);
+    assert_eq!(text(&eve, "empty"), "This device has no number or address.");
+    assert!(eve.by_id("new").is_empty());
+
+    let thread = dom(&get(&mut state, "alice", &format!("/conversations/{AB}")).1);
+    assert_eq!(text(&thread, "bar-title"), "Bob Martinez");
+    assert_eq!(text(&thread, "bar-service"), "iMessage");
+    assert_eq!(text(&thread, "service"), "iMessage");
+    assert_eq!(attr(&thread, "back", "href"), "/");
+    assert_eq!(attr(&thread, "send", "action"), format!("/conversations/{AB}/messages"));
+    assert_eq!(attr(&thread, "send", "method"), "post");
+    assert_eq!(attr(&thread, "send-text", "name"), "text");
+    assert_eq!(attr(&thread, "send-text", "aria-label"), "iMessage");
+    assert_eq!(thread.tag(node(&thread, "send-submit")), Some("button"));
+    assert_eq!(attr(&thread, "read", "action"), format!("/conversations/{AB}/read"));
+    assert!(!thread.by_id("read-submit").is_empty());
+    assert!(class(&thread, "sms-1-row").contains("in") && class(&thread, "sms-2-row").contains("out"));
+    assert!(class(&thread, "sms-1-bubble").contains("incoming"));
+    assert_eq!(text(&thread, "sms-1-text"), "lunch?");
+    // Tapbacks: a picker per bubble, one named button per tapback, posting to the message.
+    assert_eq!(
+        attr(&thread, "sms-1-tapbacks", "action"),
+        format!("/conversations/{AB}/messages/sms-1/tapbacks")
+    );
+    for name in cw_service_messages::TAPBACKS {
+        let id = format!("sms-1-tapback-{name}");
+        assert_eq!(attr(&thread, &id, "name"), "tapback");
+        assert_eq!(attr(&thread, &id, "value"), *name);
+    }
+    // The sidebar rides along, with the open conversation marked.
+    assert!(class(&thread, &format!("row-{AB}")).contains("current"));
+    // A browser form post (urlencoded) gives a tapback and lands back on the thread.
+    let mut request = HttpRequest::get(format!("http://messages.internal/conversations/{AB}/messages/sms-1/tapbacks"));
+    request.method = "POST".into();
+    request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+    request.body = b"tapback=laughed".to_vec();
+    let r = MessagesService.handle(&mut state, &ctx("alice", 61), &request).unwrap();
+    assert_eq!(r.status, 200);
+    let after = dom(&String::from_utf8(r.body).unwrap());
+    assert_eq!(attr(&after, "sms-1-has-laughed", "title"), "laughed · Alice Chen");
+    // The group names its senders and lists its members.
+    let crew = dom(&get(&mut state, "carol", &format!("/conversations/{CREW}")).1);
+    assert!(!crew.by_id("members").is_empty());
+    assert!(crew.descendants(Document::ROOT).any(|n| crew.attr(n, "id").is_some_and(|id| id.ends_with("-from"))));
 }

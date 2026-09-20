@@ -4,6 +4,8 @@
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_chat::{ChatService, ChatState};
+use cw_service_common::html::validate_strict;
+use cw_web::dom::Document;
 use serde_json::{json, Value};
 
 fn ctx(actor: &str) -> ServiceContext {
@@ -50,11 +52,25 @@ fn seeded() -> Value {
         .unwrap()
 }
 
-/// chat.internal must serialise and render exactly as it always has.
+fn dom(body: &str) -> Document {
+    validate_strict(body).unwrap_or_else(|e| panic!("{e:?}"));
+    cw_web::html::parse(body)
+}
+fn node(doc: &Document, id: &str) -> cw_web::dom::NodeId {
+    *doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+}
+fn text(doc: &Document, id: &str) -> String {
+    doc.text_content(node(doc, id)).trim().to_owned()
+}
+fn attr(doc: &Document, id: &str, name: &str) -> String {
+    doc.attr(node(doc, id), name).unwrap_or_default().to_owned()
+}
+
+/// chat.internal must serialise exactly as it always has, and its pages keep the ids,
+/// links and forms the plain rendering had, now as HTML.
 #[test]
-fn plain_state_and_pages_are_byte_identical() {
+fn plain_state_is_byte_identical_and_pages_keep_their_ids() {
     const STATE: &str = r#"{"channels":{"general":{"members":["admin","alice","bob","carol"],"messages":[],"title":"General"}},"next_id":0}"#;
-    const HOME: &str = r#"{"version":1,"title":"Chat","elements":[{"kind":"heading","id":"title","text":"Chat","level":1},{"kind":"link","id":"general","text":"General","url":"/channels/general"}]}"#;
     let mut state = ChatService
         .initialize(
             json!({"next_id":0,"channels":{"general":{"title":"General",
@@ -63,10 +79,60 @@ fn plain_state_and_pages_are_byte_identical() {
         )
         .unwrap();
     assert_eq!(serde_json::to_string(&state).unwrap(), STATE);
-    assert_eq!(get(&mut state, "alice", "/").1, HOME);
-    let channel = get(&mut state, "alice", "/channels/general").1;
-    assert!(channel.contains(r#""id":"send""#) && !channel.contains("theme"));
-    assert!(!channel.contains("sidebar") && !channel.contains("rail"));
+    let home_body = get(&mut state, "alice", "/").1;
+    assert!(home_body.starts_with("<!DOCTYPE html>"));
+    let home = dom(&home_body);
+    assert_eq!(text(&home, "title"), "Chat");
+    assert_eq!(home.tag(node(&home, "title")), Some("h1"));
+    assert_eq!(attr(&home, "general", "href"), "/channels/general");
+    assert!(text(&home, "general").contains("General"));
+    assert!(home.by_id("send").is_empty() && home.by_id("channel").is_empty());
+    let channel = dom(&get(&mut state, "alice", "/channels/general").1);
+    assert_eq!(text(&channel, "channel"), "General");
+    assert_eq!(attr(&channel, "send", "action"), "/channels/general/messages");
+    assert_eq!(attr(&channel, "send", "method"), "post");
+    assert_eq!(attr(&channel, "send-text", "name"), "text");
+    assert_eq!(channel.tag(node(&channel, "send-submit")), Some("button"));
+    // Rendering changes nothing.
+    assert_eq!(serde_json::to_string(&state).unwrap(), STATE);
+}
+
+/// Messages, reactions, replies and DMs on the page, every page strictly valid.
+#[test]
+fn messages_reactions_and_dms_render_with_their_forms() {
+    let mut state = seeded();
+    let page = dom(&get(&mut state, "alice", "/channels/eng").1);
+    assert_eq!(attr(&page, "eng", "href"), "/channels/eng");
+    assert_eq!(attr(&page, "random", "href"), "/channels/random");
+    let first = text(&page, "chat-1");
+    assert!(first.contains("bob") && first.contains("BFS path test fails on Windows only."));
+    let second = text(&page, "chat-2");
+    assert!(second.contains("tada") && second.contains('1'));
+    assert_eq!(attr(&page, "chat-1-react", "action"), "/channels/eng/messages/chat-1/reactions");
+    assert_eq!(attr(&page, "chat-1-react", "method"), "post");
+    assert_eq!(attr(&page, "chat-1-react-reaction", "name"), "reaction");
+    assert_eq!(page.tag(node(&page, "chat-1-react-submit")), Some("button"));
+    // A browser form post reacts and lands back on the channel.
+    let mut request = HttpRequest::get("http://chat.internal/channels/eng/messages/chat-1/reactions");
+    request.method = "POST".into();
+    request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+    request.body = b"reaction=eyes".to_vec();
+    let r = ChatService.handle(&mut state, &ctx("carol"), &request).unwrap();
+    assert_eq!(r.status, 200);
+    let after = dom(&String::from_utf8(r.body).unwrap());
+    assert!(text(&after, "chat-1").contains("eyes"));
+    // A threaded reply quotes its parent.
+    let (status, replied) = post(&mut state, "carol", "/channels/eng/messages", json!({"text":"on it","parent":"chat-1"}));
+    assert_eq!(status, 200);
+    let replied = dom(&replied);
+    assert!(text(&replied, "chat-3").contains("BFS path test") && text(&replied, "chat-3").contains("on it"));
+    // DMs are listed under their key and opened from the sidebar's form.
+    assert_eq!(attr(&page, "dm", "action"), "/dms");
+    assert_eq!(attr(&page, "dm-to", "name"), "to");
+    let opened = dom(&post(&mut state, "alice", "/dms", json!({"to":"bob"})).1);
+    assert_eq!(attr(&opened, "dm-alice|bob", "href"), "/channels/alice|bob");
+    assert_eq!(text(&opened, "channel"), "alice and bob");
+    assert_eq!(attr(&opened, "send", "action"), "/channels/alice|bob/messages");
 }
 
 /// The branded skins moved out; naming one here is a seed error, not a fallback.

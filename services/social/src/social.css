@@ -1,0 +1,116 @@
+/* Structure every skin shares. Colours come from the seed's theme as custom properties on
+   <html> (--accent, --ink, --muted, --surface, --paper, --content); each skin's sheet sets
+   the look on top of this one. */
+html { background-color: var(--paper); }
+body { margin: 0; color: var(--ink); background-color: var(--paper); font-family: Arial, sans-serif; font-size: 15px; line-height: 1.35; }
+a { color: inherit; text-decoration: none; }
+h1, h2, p { margin: 0; }
+i.ico { font-style: normal; display: inline-block; text-align: center; font-family: "DejaVu Sans", sans-serif; }
+.ico-home::before { content: "\2302"; }
+.ico-explore::before { content: "#"; }
+i.ico-search { position: relative; width: 1em; height: 1em; vertical-align: middle; }
+.ico-search::before { content: ""; position: absolute; left: 6%; top: 6%; width: 50%; height: 50%; border: 0.11em solid currentColor; border-radius: 50%; }
+.ico-search::after { content: ""; position: absolute; left: 64%; top: 60%; width: 38%; height: 0.11em; background-color: currentColor; transform: rotate(45deg); transform-origin: 0 50%; }
+.ico-inbox::before { content: "\2709"; }
+i.ico-me { position: relative; width: 1em; height: 1em; vertical-align: middle; }
+.ico-me::before { content: ""; position: absolute; left: 30%; top: 6%; width: 40%; height: 40%; border-radius: 50%; background-color: currentColor; }
+.ico-me::after { content: ""; position: absolute; left: 10%; top: 54%; width: 80%; height: 40%; border-radius: 50% 50% 0 0; background-color: currentColor; }
+.ico-reply::before { content: "\21A9"; }
+.ico-repost::before { content: "\21C4"; }
+.ico-like::before { content: "\2661"; }
+.pill.on .ico-like::before { content: "\2665"; }
+.ico-photo::before { content: "\25A3"; }
+.ico-gif::before { content: "\25A4"; }
+.ico-poll::before { content: "\2630"; }
+.ico-place::before { content: "\25C9"; }
+.ico-link::before { content: "\2197"; }
+.ico-none { display: none; }
+
+.shell { display: flex; justify-content: center; align-items: flex-start; }
+.main { min-width: 0; }
+.brand { display: flex; align-items: center; }
+.nav-item { display: flex; align-items: center; }
+
+.avatar { display: inline-block; flex-shrink: 0; box-sizing: border-box; border-radius: 50%; color: #ffffff; font-weight: 700; text-align: center; width: 40px; height: 40px; line-height: 40px; font-size: 14px; }
+.avatar.small { width: 32px; height: 32px; line-height: 32px; font-size: 12px; }
+.avatar.big { width: 56px; height: 56px; line-height: 56px; font-size: 18px; }
+.avatar.huge { width: 120px; height: 120px; line-height: 120px; font-size: 40px; }
+
+.top-search, .search-form { display: flex; align-items: center; }
+.top-search input, .search-form input { flex: 1 1 auto; min-width: 0; border: 0; background-color: transparent; color: inherit; font-size: 15px; outline: none; }
+input { font-family: inherit; }
+button { font-family: inherit; cursor: pointer; }
+button.primary { border: 0; border-radius: 9999px; background-color: var(--accent); color: #ffffff; font-weight: 700; font-size: 15px; padding: 8px 16px; }
+
+.me-card, .person { display: flex; align-items: center; }
+.me-who, .person-who { display: block; min-width: 0; flex: 1 1 auto; margin-left: 10px; }
+.me-name, .person-name { display: block; font-weight: 700; }
+.me-handle, .person-handle { display: block; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel-title { font-size: 20px; font-weight: 800; }
+.trend { display: block; }
+.trend span { display: block; }
+.side-foot { color: var(--muted); font-size: 13px; }
+
+.tabs { display: flex; }
+.tab { flex: 1 1 0; text-align: center; }
+.compose { display: flex; align-items: flex-start; }
+.compose form { flex: 1 1 auto; min-width: 0; margin-left: 12px; }
+.compose input { display: block; box-sizing: border-box; width: 100%; border: 0; background-color: transparent; color: inherit; outline: none; }
+.compose-bar { display: flex; align-items: center; justify-content: space-between; }
+.reply-box .compose-bar { justify-content: flex-end; }
+
+.post-head { display: flex; align-items: center; }
+.who { min-width: 0; margin-left: 10px; }
+.name { font-weight: 700; }
+.name:hover { text-decoration: underline; }
+.handle { color: var(--muted); }
+.verified { display: inline-block; width: 16px; height: 16px; line-height: 16px; border-radius: 50%; background-color: var(--accent); color: #ffffff; font-size: 11px; font-weight: 700; text-align: center; margin: 0 4px; vertical-align: middle; }
+.post-link { display: block; }
+.post-text { display: block; white-space: pre-wrap; overflow-wrap: break-word; }
+.photo { display: flex; align-items: flex-end; box-sizing: border-box; width: 100%; aspect-ratio: 1 / 1; background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.35), rgba(0, 0, 0, 0.45)); overflow: hidden; }
+.photo-label { display: block; padding: 12px; color: #ffffff; font-size: 13px; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.quote { display: block; }
+.quote span { display: block; }
+.quote-by { color: var(--muted); font-weight: 700; font-size: 13px; }
+.acts { display: flex; align-items: center; }
+.pill-form { display: flex; margin: 0; }
+.pill, .act { display: inline-flex; align-items: center; border: 0; padding: 0; background-color: transparent; color: var(--muted); font-size: 13px; }
+.pill .ico, .act .ico { margin-right: 6px; font-size: 16px; }
+
+.banner { height: 200px; background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(0, 0, 0, 0.35)); }
+.profile-title { display: flex; align-items: center; }
+.profile-row { display: flex; align-items: flex-end; justify-content: space-between; }
+.profile-acts { display: flex; }
+.profile-acts .pill-form { margin-left: 8px; }
+.meta { display: flex; flex-wrap: wrap; color: var(--muted); }
+.meta-item { margin-right: 16px; }
+.meta-item .ico { margin-right: 4px; }
+#site { color: var(--accent); }
+.counts { display: flex; color: var(--muted); }
+.count { margin-right: 20px; white-space: nowrap; }
+.count b { color: var(--ink); }
+.exp { display: flex; align-items: center; }
+.exp-logo { display: inline-block; flex-shrink: 0; width: 48px; height: 48px; line-height: 48px; text-align: center; color: #ffffff; font-weight: 700; border-radius: 4px; margin-right: 12px; }
+.exp-period { color: var(--muted); font-size: 13px; }
+.empty { color: var(--muted); padding: 24px 16px; }
+
+.crumb { display: flex; align-items: center; }
+.crumb a { font-size: 20px; margin-right: 24px; }
+/* The inbox is a two-pane app view: both panes are the same height and the message
+   field sits on the floor of the conversation, the way every one of these sites
+   draws it, rather than floating under the last bubble. */
+.inbox { display: flex; align-items: stretch; min-height: 620px; }
+.threads { flex: 0 0 360px; min-width: 0; }
+.convo { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.thread { display: flex; align-items: center; padding: 14px 16px; }
+.thread-body { display: block; min-width: 0; margin-left: 12px; flex: 1 1 auto; }
+.thread-title { display: block; font-weight: 700; }
+.thread-last { display: block; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bubbles { display: flex; flex-direction: column; align-items: flex-start; padding: 16px; flex: 1 1 auto; }
+.dm { max-width: 75%; margin-bottom: 12px; padding: 10px 14px; border-radius: 18px; background-color: var(--surface); }
+.dm.own { align-self: flex-end; background-color: var(--accent); color: #ffffff; }
+.dm span { display: block; }
+.dm-from { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.dm.own .dm-from { color: rgba(255, 255, 255, 0.8); }
+.dm-form { display: flex; align-items: center; padding: 12px 16px; }
+.dm-form input { flex: 1 1 auto; min-width: 0; margin-right: 8px; padding: 10px 14px; border: 1px solid var(--muted); border-radius: 9999px; background-color: transparent; color: inherit; font-size: 15px; outline: none; }

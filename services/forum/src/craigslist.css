@@ -1,0 +1,97 @@
+/* craigslist.org: no chrome at all. A grey left column with the wordmark, the posting link,
+   the search box and the calendar; centred category columns under grey bars; dense blue links. */
+html { --accent: #551a8b; --ink: #000000; --muted: #666666; --surface: #f0f0f0; --paper: #ffffff; --link: #0000ee; --line: #cccccc; }
+body { font-family: "Bitstream Vera Sans", "Open Sans", Arial, Helvetica, sans-serif; font-size: 13px; line-height: 18px; color: var(--ink); background: var(--paper); }
+a { color: var(--link); }
+a:hover { text-decoration: underline; }
+.wrap { display: flex; align-items: flex-start; gap: 14px; max-width: 1100px; margin: 0 auto; padding: 10px; }
+.leftbar { width: 186px; flex: none; background: #eeeeee; border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.leftbar .logo { font-family: "Times New Roman", Times, serif; font-size: 28px; line-height: 40px; color: var(--accent); }
+.leftbar .logo:hover { text-decoration: none; }
+.post, .acct { font-size: 14px; }
+.search { display: flex; flex-direction: column; gap: 4px; width: 100%; margin: 6px 0; }
+.mag { display: none; }
+.search input { width: 100%; height: 24px; border: 1px solid #aaaaaa; border-radius: 3px; padding: 0 5px; font-size: 13px; background: #ffffff; font-family: Arial, sans-serif; }
+.search .go { align-self: center; border: 1px solid #aaaaaa; border-radius: 3px; background: #e4e4e4; font-size: 12px; padding: 1px 10px; font-family: Arial, sans-serif; color: #000000; }
+.cal { width: 100%; margin: 4px 0 8px 0; }
+.cal-title { display: block; color: var(--link); margin-bottom: 3px; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--line); background: #ffffff; font-size: 11px; line-height: 17px; }
+.days b { background: #dddddd; font-weight: 400; color: #333333; }
+.days i { font-style: normal; color: var(--link); border-top: 1px solid #eeeeee; }
+.leftbar .small { font-size: 12px; color: var(--link); line-height: 15px; }
+.leftbar a.on { color: var(--accent); font-weight: 700; }
+.content { flex: 1; min-width: 0; }
+
+/* the category columns */
+.cats { margin-bottom: 16px; }
+.city { font-family: Arial, sans-serif; font-size: 20px; font-weight: 400; line-height: 28px; text-align: center; background: #eeeeee; border: 1px solid var(--line); border-radius: 5px; margin-bottom: 10px; }
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; }
+.cat .h3 { background: #eeeeee; border: 1px solid var(--line); border-radius: 3px; text-align: center; font-size: 15px; font-weight: 700; line-height: 22px; margin-bottom: 4px; }
+.cat ul { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; padding: 0 4px; }
+.cat li { line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* results */
+.listhead h1 { font-size: 15px; font-weight: 700; line-height: 22px; background: #eeeeee; border: 1px solid var(--line); border-radius: 3px; padding: 0 8px; margin-bottom: 6px; flex: 1; }
+.empty { color: var(--muted); padding: 10px 4px; }
+.results { border-bottom: 1px solid #eeeeee; }
+.result { display: flex; align-items: baseline; gap: 6px; padding: 3px 4px; border-top: 1px solid #eeeeee; line-height: 20px; flex-wrap: wrap; }
+.result:hover { background: #fffbe0; }
+.result .votes { align-self: center; }
+.vote button { width: 14px; height: 14px; }
+.vote.up button::before { content: "\2606"; position: absolute; left: 0; top: -2px; width: 14px; height: 14px; line-height: 16px; font-size: 15px; color: #999999; text-align: center; font-family: Arial, sans-serif; }
+.vote.up button.on::before { content: "\2605"; color: #e6b800; }
+.rank { color: var(--muted); font-size: 11px; min-width: 20px; text-align: right; }
+.date { color: var(--muted); font-size: 12px; min-width: 50px; }
+.titlelink { font-size: 14px; }
+.host { color: var(--muted); font-size: 12px; }
+.price { background: #ffffff; font-weight: 700; color: #1a7a1a; font-size: 13px; }
+.hood { color: var(--muted); font-size: 12px; }
+.result .by { margin-left: auto; color: #999999; font-size: 11px; }
+.result .by a { color: #999999; }
+.result .replies { font-size: 11px; color: var(--muted); }
+.score.mine { color: #b38f00; font-weight: 700; }
+.pages { padding: 10px 4px; }
+.pages a { padding: 0 6px; border: 1px solid var(--line); border-radius: 3px; background: #eeeeee; }
+.pages a.on { background: #ffffff; color: #000000; font-weight: 700; }
+
+/* a posting */
+.thread { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 12px; }
+.thread .votes { padding: 8px 8px 0 0; }
+.thread .vote button { width: 20px; height: 20px; }
+.thread .vote.up button::before { width: 20px; height: 20px; font-size: 20px; line-height: 22px; }
+.tcol { display: flex; flex-direction: column; }
+.byline { order: 2; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+#thread-title { order: 1; font-size: 20px; font-weight: 400; line-height: 28px; }
+.thread .out { order: 2; }
+.text { order: 3; font-size: 15px; line-height: 22px; max-width: 720px; }
+.thread .tags { order: 4; }
+.tag { font-size: 12px; background: #eeeeee; border: 1px solid var(--line); border-radius: 3px; padding: 0 6px; line-height: 18px; }
+.compose { background: #eeeeee; border: 1px solid var(--line); border-radius: 5px; padding: 10px; margin-bottom: 14px; max-width: 640px; }
+.field label { font-weight: 700; margin-bottom: 4px; }
+.field { margin-bottom: 8px; }
+.field input, .field textarea { border: 1px solid #aaaaaa; border-radius: 3px; padding: 3px 5px; font-size: 13px; font-family: Arial, sans-serif; background: #ffffff; }
+.field input { height: 26px; }
+.field textarea { height: 90px; }
+.primary, form.inline button { border: 1px solid #aaaaaa; border-radius: 3px; background: #e4e4e4; color: #000000; font-size: 13px; padding: 2px 12px; font-family: Arial, sans-serif; }
+.primary:hover, form.inline button:hover { background: #d4d4d4; }
+#replies-title { font-size: 15px; font-weight: 700; background: #eeeeee; border: 1px solid var(--line); border-radius: 3px; padding: 0 8px; line-height: 22px; }
+.reply { padding: 8px 4px; border-bottom: 1px solid #eeeeee; }
+.children { margin-left: 24px; border-left: 1px dotted var(--line); padding-left: 10px; }
+.children .reply { border-bottom: 0; }
+.rrow { gap: 6px; }
+.rrow > .score { display: none; }
+.rhead { color: var(--muted); font-size: 12px; }
+.rhead .avatar { display: none; }
+.rcol .text { font-size: 13px; line-height: 18px; }
+.rcol .text p { margin-bottom: 4px; }
+form.inline { max-width: 420px; }
+form.inline input { height: 22px; border: 1px solid #aaaaaa; border-radius: 3px; padding: 0 5px; font-size: 12px; font-family: Arial, sans-serif; background: #ffffff; }
+form.inline button { font-size: 12px; padding: 0 8px; }
+.submitcard { max-width: 640px; background: #eeeeee; border: 1px solid var(--line); border-radius: 5px; padding: 12px; }
+.member { display: flex; gap: 12px; background: #eeeeee; border: 1px solid var(--line); border-radius: 5px; padding: 10px; margin-bottom: 12px; }
+.member .avatar { display: none; }
+#member-name { font-size: 18px; font-weight: 700; line-height: 24px; }
+.handle, .bio { color: var(--muted); }
+.badges { display: flex; gap: 12px; font-size: 12px; }
+.foot { text-align: center; color: var(--muted); font-size: 11px; padding: 14px 0 20px 0; border-top: 1px solid #eeeeee; margin-top: 10px; }
+.foot-brand { display: none; }

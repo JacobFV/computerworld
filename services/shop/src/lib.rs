@@ -1,12 +1,15 @@
-//! Commerce: amazon.com and etsy.com (`mode: retail`), ticketmaster.com (`mode: tickets`).
+//! Commerce: amazon.com, ebay.com, etsy.com, airbnb.com, booking.com, uber.com and doordash.com
+//! (`mode: retail`), ticketmaster.com (`mode: tickets`). Pages are HTML (`view.rs`); the look is a skin.
 //! Checkout is the one irreversible mutation in the world, so stock and orders are authoritative.
 //! Every amount is integer cents — a float total would not survive a replay bit for bit.
-use cw_protocol::{HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result};
+use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
+mod view;
+use view::View;
 pub struct ShopService;
 pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(ShopService)
@@ -22,6 +25,8 @@ const FIRST_ORDER: u64 = 1001;
 #[serde(default)]
 pub struct ShopState {
     pub mode: String,
+    /// Which product the pages look like (`amazon`, `ebay`, ...); absent, the brand decides.
+    pub skin: String,
     pub brand: String,
     pub tagline: String,
     pub currency: String,
@@ -431,802 +436,6 @@ impl ShopState {
         v
     }
 }
-/// Resolved palette: the seed theme with renderer-neutral fallbacks, so a partial theme still
-/// produces a page that reads correctly.
-struct Palette {
-    accent: String,
-    ink: String,
-    muted: String,
-    surface: String,
-}
-fn palette(t: &PageTheme) -> Palette {
-    Palette {
-        accent: t.accent.clone().unwrap_or_else(|| "#146eb4".into()),
-        ink: t.ink.clone().unwrap_or_else(|| "#0f1111".into()),
-        muted: t.muted.clone().unwrap_or_else(|| "#565959".into()),
-        surface: t.surface.clone().unwrap_or_else(|| "#eaeded".into()),
-    }
-}
-fn act(method: &str, url: &str, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: method.into(),
-        url: url.into(),
-        fields: fields
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-            .collect(),
-    }
-}
-fn input(id: &str, label: &str, value: &str) -> PageElement {
-    PageElement::Input {
-        id: id.into(),
-        label: label.into(),
-        value: value.into(),
-        placeholder: String::new(),
-    }
-}
-/// A form whose drawn controls are exactly the fields it submits.
-fn form_el(
-    id: &str,
-    action: PageAction,
-    mut children: Vec<PageElement>,
-    submit: &str,
-) -> PageElement {
-    children.push(PageElement::Button {
-        id: format!("{id}-go"),
-        text: submit.into(),
-        action: action.clone(),
-        style: None,
-    });
-    PageElement::Form {
-        id: id.into(),
-        action,
-        children,
-    }
-}
-fn price_badge(id: &str, cents: u64, p: &Palette) -> PageElement {
-    web::badge(
-        id,
-        money(cents),
-        web::style()
-            .bold()
-            .size(16)
-            .color("#ffffff")
-            .background(p.accent.clone())
-            .radius(4)
-            .padding(6),
-    )
-}
-fn thumb(id: &str, label: &str, height: u32, p: &Palette) -> PageElement {
-    web::thumbnail(
-        id,
-        label,
-        web::style()
-            .height(height)
-            .background(p.surface.clone())
-            .color(p.muted.clone())
-            .radius(6)
-            .align("center"),
-    )
-}
-/// Brand bar, catalogue search and the account routes — present on every page so the nav is real.
-fn chrome(s: &ShopState, p: &Palette, query: &str) -> Vec<PageElement> {
-    let search = form_el(
-        "hdr-search",
-        act("GET", "/s", &[("k", "$hdr-k")]),
-        vec![input("hdr-k", "Search the catalogue", query)],
-        "Search",
-    );
-    let (basket, basket_url) = if s.tickets() {
-        ("My tickets", "/my-tickets")
-    } else {
-        ("Cart", "/cart")
-    };
-    vec![
-        web::styled_row(
-            "chrome",
-            16,
-            "center",
-            web::style().background(p.ink.clone()).padding(12).radius(6),
-            vec![
-                web::styled(
-                    "wordmark",
-                    &s.brand,
-                    web::style().size(22).bold().color("#ffffff").width(200),
-                ),
-                search,
-                web::link("nav-basket", basket, basket_url),
-                web::link("nav-orders", "Orders", "/orders"),
-            ],
-        ),
-        web::spacer("chrome-gap", 12),
-    ]
-}
-fn footer(id: &str, p: &Palette) -> Vec<PageElement> {
-    vec![
-        web::spacer(&format!("{id}-gap"), 16),
-        web::divider(&format!("{id}-rule")),
-        web::styled(
-            id,
-            "Simulated storefront in a training world. No real order is ever placed and no real \
-             payment system is contacted.",
-            web::style().size(12).color(p.muted.clone()),
-        ),
-    ]
-}
-fn product_card(s: &ShopState, product: &Product, p: &Palette) -> PageElement {
-    let id = &product.id;
-    let url = if s.tickets() {
-        format!("/event/{id}")
-    } else {
-        format!("/dp/{id}")
-    };
-    let mut body = vec![
-        thumb(&format!("t-{id}"), &product.title, 120, p),
-        web::styled(
-            &format!("n-{id}"),
-            &product.title,
-            web::style().size(15).medium().color(p.ink.clone()),
-        ),
-    ];
-    if s.tickets() {
-        body.push(web::styled(
-            &format!("v-{id}"),
-            format!("{} · {}", product.venue_name, product.event_date),
-            web::style().size(13).color(p.muted.clone()),
-        ));
-    } else {
-        body.push(web::styled(
-            &format!("r-{id}"),
-            product.rating_line(),
-            web::style().size(13).color(p.muted.clone()),
-        ));
-    }
-    let mut tags = vec![price_badge(
-        &format!("pr-{id}"),
-        product.cheapest_cents(),
-        p,
-    )];
-    if product.fast_shipping {
-        tags.push(web::badge(
-            &format!("pf-{id}"),
-            "Two-day",
-            web::style()
-                .size(12)
-                .color(p.accent.clone())
-                .border(p.accent.clone())
-                .radius(4)
-                .padding(4),
-        ));
-    }
-    if !product.available() {
-        tags.push(web::badge(
-            &format!("so-{id}"),
-            "Sold out",
-            web::style()
-                .size(12)
-                .color("#8a1c1c")
-                .background("#fbe9e7")
-                .radius(4)
-                .padding(4),
-        ));
-    }
-    body.push(web::row(&format!("tags-{id}"), 8, "center", tags));
-    web::card_action(
-        &format!("p-{id}"),
-        web::style()
-            .background("#ffffff")
-            .border("#d5d9d9")
-            .radius(8)
-            .padding(12),
-        web::visit(url),
-        body,
-    )
-}
-fn home(s: &ShopState, p: &Palette) -> Result<HttpResponse> {
-    let mut e = chrome(s, p, "");
-    if !s.categories.is_empty() {
-        e.push(web::row(
-            "cats",
-            14,
-            "center",
-            s.categories
-                .iter()
-                .map(|c| web::link(&format!("cat-{}", c.id), &c.title, format!("/s?c={}", c.id)))
-                .collect(),
-        ));
-        e.push(web::spacer("cats-gap", 12));
-    }
-    e.push(web::styled(
-        "lead",
-        if s.tickets() {
-            "On sale now"
-        } else {
-            "Today's picks"
-        },
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    e.push(web::spacer("lead-gap", 10));
-    e.push(web::grid(
-        "deals",
-        3,
-        14,
-        s.products.values().map(|x| product_card(s, x, p)).collect(),
-    ));
-    e.extend(footer("foot", p));
-    web::themed_page(&s.brand, s.theme.clone(), e)
-}
-fn results(s: &ShopState, p: &Palette, query: &str, category: &str) -> Result<HttpResponse> {
-    let hits = s.search(query, category);
-    let title = match (query.is_empty(), category.is_empty()) {
-        (true, false) => format!("Browsing {category}"),
-        (true, true) => "Everything".to_owned(),
-        _ => format!("Results for \"{query}\""),
-    };
-    let mut e = chrome(s, p, query);
-    e.push(web::styled(
-        "lead",
-        format!("{title} — {} item(s)", hits.len()),
-        web::style().size(20).bold().color(p.ink.clone()),
-    ));
-    e.push(web::spacer("lead-gap", 10));
-    if hits.is_empty() {
-        e.push(web::styled(
-            "empty",
-            "Nothing matched. Try a broader word.",
-            web::style().color(p.muted.clone()),
-        ));
-    } else {
-        e.push(web::grid(
-            "hits",
-            3,
-            14,
-            hits.iter().map(|x| product_card(s, x, p)).collect(),
-        ));
-    }
-    e.extend(footer("foot", p));
-    web::themed_page(&format!("{} — {}", title, s.brand), s.theme.clone(), e)
-}
-fn detail(s: &ShopState, p: &Palette, actor: &str, id: &str) -> Result<HttpResponse> {
-    let Some(product) = s.products.get(id) else {
-        return web::error(404, "product not found");
-    };
-    let favorited = s
-        .favorites
-        .get(actor)
-        .is_some_and(|f| f.iter().any(|x| x == id));
-    let mut right = vec![
-        web::styled(
-            "title",
-            &product.title,
-            web::style().size(26).bold().color(p.ink.clone()),
-        ),
-        web::styled(
-            "rating",
-            product.rating_line(),
-            web::style().size(14).color(p.muted.clone()),
-        ),
-        web::row(
-            "price-row",
-            10,
-            "center",
-            vec![
-                price_badge("price", product.price_cents, p),
-                web::badge(
-                    "stock",
-                    if product.stock > 0 {
-                        format!("{} in stock", product.stock)
-                    } else {
-                        "Sold out".into()
-                    },
-                    web::style()
-                        .size(12)
-                        .color(if product.stock > 0 {
-                            p.muted.clone()
-                        } else {
-                            "#8a1c1c".into()
-                        })
-                        .radius(4)
-                        .padding(4),
-                ),
-            ],
-        ),
-    ];
-    for (i, b) in product.bullets.iter().enumerate() {
-        right.push(web::styled(
-            &format!("bul-{i}"),
-            format!("• {b}"),
-            web::style().size(14).color(p.ink.clone()),
-        ));
-    }
-    right.push(web::spacer("buy-gap", 8));
-    if product.stock > 0 {
-        right.push(form_el(
-            "add",
-            act("POST", "/api/cart", &[("product", id), ("qty", "$add-qty")]),
-            vec![input("add-qty", "Quantity", "1")],
-            "Add to cart",
-        ));
-    }
-    right.push(form_el(
-        "fav",
-        act("POST", &format!("/api/products/{id}/favorite"), &[]),
-        vec![],
-        if favorited {
-            "Remove favourite"
-        } else {
-            "Save to favourites"
-        },
-    ));
-    let mut e = chrome(s, p, "");
-    e.push(web::row(
-        "hero",
-        24,
-        "start",
-        vec![
-            web::card(
-                "gallery",
-                web::style()
-                    .background("#ffffff")
-                    .border("#d5d9d9")
-                    .radius(8)
-                    .padding(12)
-                    .width(360),
-                vec![
-                    thumb("shot", &product.title, 260, p),
-                    web::row(
-                        "strip",
-                        8,
-                        "center",
-                        (1..4)
-                            .map(|i| thumb(&format!("shot-{i}"), &format!("View {i}"), 56, p))
-                            .collect(),
-                    ),
-                ],
-            ),
-            web::card(
-                "buybox",
-                web::style()
-                    .background("#ffffff")
-                    .border("#d5d9d9")
-                    .radius(8)
-                    .padding(16),
-                right,
-            ),
-        ],
-    ));
-    e.push(web::spacer("desc-gap", 16));
-    e.push(web::styled(
-        "desc-head",
-        "About this item",
-        web::style().size(18).bold().color(p.ink.clone()),
-    ));
-    e.push(web::styled(
-        "desc",
-        &product.description,
-        web::style().size(14).color(p.ink.clone()),
-    ));
-    if !product.seller.is_empty() {
-        e.push(web::spacer("seller-gap", 12));
-        e.push(web::styled(
-            "seller",
-            format!("Sold by {}", product.seller),
-            web::style().size(14).color(p.muted.clone()),
-        ));
-        e.push(form_el(
-            "ask",
-            act(
-                "POST",
-                "/api/messages",
-                &[("product", id), ("text", "$ask-text")],
-            ),
-            vec![input("ask-text", "Message the seller", "")],
-            "Send message",
-        ));
-    }
-    e.push(web::spacer("rev-gap", 16));
-    e.push(web::styled(
-        "rev-head",
-        format!("{} review(s)", product.reviews.len()),
-        web::style().size(18).bold().color(p.ink.clone()),
-    ));
-    for r in &product.reviews {
-        e.push(web::card(
-            &format!("rev-{}", r.id),
-            web::style()
-                .background("#ffffff")
-                .border("#e3e6e6")
-                .radius(6)
-                .padding(10),
-            vec![
-                web::styled(
-                    &format!("rev-{}-t", r.id),
-                    format!("{}★ {}", r.stars, r.title),
-                    web::style().size(15).medium().color(p.ink.clone()),
-                ),
-                web::styled(
-                    &format!("rev-{}-b", r.id),
-                    &r.body,
-                    web::style().size(13).color(p.ink.clone()),
-                ),
-                web::styled(
-                    &format!("rev-{}-a", r.id),
-                    format!("{} · tick {}", r.author, r.tick),
-                    web::style().size(12).color(p.muted.clone()),
-                ),
-            ],
-        ));
-    }
-    e.push(form_el(
-        "write",
-        act(
-            "POST",
-            &format!("/api/products/{id}/reviews"),
-            &[
-                ("stars", "$write-stars"),
-                ("title", "$write-title"),
-                ("body", "$write-body"),
-            ],
-        ),
-        vec![
-            input("write-stars", "Stars (1-5)", "5"),
-            input("write-title", "Headline", ""),
-            input("write-body", "Your review", ""),
-        ],
-        "Post review",
-    ));
-    e.extend(footer("foot", p));
-    web::themed_page(
-        &format!("{} — {}", product.title, s.brand),
-        s.theme.clone(),
-        e,
-    )
-}
-fn event(s: &ShopState, p: &Palette, id: &str) -> Result<HttpResponse> {
-    let Some(product) = s.products.get(id) else {
-        return web::error(404, "event not found");
-    };
-    let mut e = chrome(s, p, "");
-    e.push(web::styled(
-        "title",
-        &product.title,
-        web::style().size(26).bold().color(p.ink.clone()),
-    ));
-    e.push(web::styled(
-        "when",
-        format!(
-            "{} · {} · tick {}",
-            product.event_date, product.venue_name, product.event_tick
-        ),
-        web::style().size(14).color(p.muted.clone()),
-    ));
-    e.push(thumb("stage", &product.venue_name, 160, p));
-    e.push(web::styled(
-        "desc",
-        &product.description,
-        web::style().size(14).color(p.ink.clone()),
-    ));
-    e.push(web::spacer("tier-gap", 14));
-    for t in &product.tiers {
-        let mut row = vec![
-            web::styled(
-                &format!("tier-{}-t", t.id),
-                &t.title,
-                web::style().size(16).medium().color(p.ink.clone()).flex(2),
-            ),
-            price_badge(&format!("tier-{}-p", t.id), t.price_cents, p),
-            web::badge(
-                &format!("tier-{}-r", t.id),
-                format!("{} left", t.remaining),
-                web::style().size(12).color(p.muted.clone()).padding(4),
-            ),
-        ];
-        if t.remaining > 0 {
-            row.push(form_el(
-                &format!("buy-{}", t.id),
-                act(
-                    "POST",
-                    "/api/checkout",
-                    &[
-                        ("event", id),
-                        ("tier", &t.id),
-                        ("qty", &format!("$buy-{}-qty", t.id)),
-                    ],
-                ),
-                vec![input(&format!("buy-{}-qty", t.id), "Tickets", "1")],
-                "Buy",
-            ));
-        }
-        e.push(web::card(
-            &format!("tier-{}", t.id),
-            web::style()
-                .background("#ffffff")
-                .border("#d5d9d9")
-                .radius(8)
-                .padding(12),
-            vec![web::row(&format!("tier-{}-row", t.id), 12, "center", row)],
-        ));
-    }
-    if !product.venue.is_empty() {
-        e.push(web::link(
-            "venue-map",
-            format!("Directions to {}", product.venue_name),
-            format!("http://maps.google.com/maps/place/{}", product.venue),
-        ));
-    }
-    e.extend(footer("foot", p));
-    web::themed_page(
-        &format!("{} — {}", product.title, s.brand),
-        s.theme.clone(),
-        e,
-    )
-}
-fn cart_page(s: &ShopState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let cart = s.cart(actor);
-    let mut e = chrome(s, p, "");
-    e.push(web::styled(
-        "lead",
-        "Shopping cart",
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    if cart.is_empty() {
-        e.push(web::styled(
-            "empty",
-            "Your cart is empty.",
-            web::style().color(p.muted.clone()),
-        ));
-    }
-    for (id, qty) in &cart {
-        let Some(product) = s.products.get(id) else {
-            continue;
-        };
-        e.push(web::card(
-            &format!("line-{id}"),
-            web::style()
-                .background("#ffffff")
-                .border("#d5d9d9")
-                .radius(8)
-                .padding(12),
-            vec![web::row(
-                &format!("line-{id}-row"),
-                14,
-                "center",
-                vec![
-                    thumb(&format!("line-{id}-t"), &product.title, 72, p),
-                    web::styled(
-                        &format!("line-{id}-n"),
-                        &product.title,
-                        web::style().size(15).medium().color(p.ink.clone()).flex(3),
-                    ),
-                    price_badge(&format!("line-{id}-p"), product.price_cents * qty, p),
-                    form_el(
-                        &format!("qty-{id}"),
-                        act(
-                            "POST",
-                            "/api/cart",
-                            &[("product", id), ("qty", &format!("$qty-{id}-n"))],
-                        ),
-                        vec![input(&format!("qty-{id}-n"), "Qty", &qty.to_string())],
-                        "Update",
-                    ),
-                    form_el(
-                        &format!("rm-{id}"),
-                        act("POST", "/api/cart", &[("product", id), ("qty", "0")]),
-                        vec![],
-                        "Remove",
-                    ),
-                ],
-            )],
-        ));
-    }
-    e.push(web::spacer("sum-gap", 12));
-    e.push(web::styled(
-        "subtotal",
-        format!("Subtotal: {}", money(s.cart_total(actor))),
-        web::style().size(20).bold().color(p.ink.clone()),
-    ));
-    if !cart.is_empty() {
-        e.push(form_el(
-            "checkout",
-            act("POST", "/api/checkout", &[]),
-            vec![],
-            "Place your order",
-        ));
-    }
-    e.extend(footer("foot", p));
-    web::themed_page(&format!("Cart — {}", s.brand), s.theme.clone(), e)
-}
-fn order_list(s: &ShopState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let orders = s.orders_of(actor);
-    let mut e = chrome(s, p, "");
-    e.push(web::styled(
-        "lead",
-        if s.tickets() {
-            "My tickets"
-        } else {
-            "Your orders"
-        },
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    if orders.is_empty() {
-        e.push(web::styled(
-            "empty",
-            "No orders yet.",
-            web::style().color(p.muted.clone()),
-        ));
-    }
-    for o in orders {
-        e.push(web::card_action(
-            &format!("o-{}", o.id),
-            web::style()
-                .background("#ffffff")
-                .border("#d5d9d9")
-                .radius(8)
-                .padding(12),
-            web::visit(format!("/orders/{}", o.id)),
-            vec![web::row(
-                &format!("o-{}-row", o.id),
-                14,
-                "center",
-                vec![
-                    web::styled(
-                        &format!("o-{}-id", o.id),
-                        format!("Order {}", o.id),
-                        web::style().size(15).bold().color(p.ink.clone()).width(160),
-                    ),
-                    web::styled(
-                        &format!("o-{}-t", o.id),
-                        o.items
-                            .iter()
-                            .map(|i| i.title.as_str())
-                            .collect::<Vec<_>>()
-                            .join(", "),
-                        web::style()
-                            .size(14)
-                            .color(p.ink.clone())
-                            .flex(3)
-                            .one_line(),
-                    ),
-                    web::badge(
-                        &format!("o-{}-s", o.id),
-                        &o.status,
-                        web::style().size(12).color(p.muted.clone()).padding(4),
-                    ),
-                    price_badge(&format!("o-{}-p", o.id), o.total_cents, p),
-                ],
-            )],
-        ));
-    }
-    e.extend(footer("foot", p));
-    web::themed_page(&format!("Orders — {}", s.brand), s.theme.clone(), e)
-}
-fn order_detail(s: &ShopState, p: &Palette, actor: &str, id: &str) -> Result<HttpResponse> {
-    let Some(o) = s.orders.get(id).filter(|o| o.buyer == actor) else {
-        return web::error(404, "order not found");
-    };
-    let mut e = chrome(s, p, "");
-    e.push(web::styled(
-        "lead",
-        format!("Order {}", o.id),
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    e.push(web::styled(
-        "meta",
-        format!(
-            "{} · confirmation {} · {}",
-            if o.date.is_empty() {
-                format!("tick {}", o.tick)
-            } else {
-                o.date.clone()
-            },
-            o.confirmation,
-            o.status
-        ),
-        web::style().size(14).color(p.muted.clone()),
-    ));
-    for (i, item) in o.items.iter().enumerate() {
-        e.push(web::card(
-            &format!("it-{i}"),
-            web::style()
-                .background("#ffffff")
-                .border("#d5d9d9")
-                .radius(8)
-                .padding(12),
-            vec![web::row(
-                &format!("it-{i}-row"),
-                14,
-                "center",
-                vec![
-                    web::styled(
-                        &format!("it-{i}-n"),
-                        &item.title,
-                        web::style().size(15).medium().color(p.ink.clone()).flex(3),
-                    ),
-                    web::styled(
-                        &format!("it-{i}-q"),
-                        format!("x{}", item.qty),
-                        web::style().size(14).color(p.muted.clone()).width(60),
-                    ),
-                    price_badge(&format!("it-{i}-p"), item.price_cents * item.qty, p),
-                ],
-            )],
-        ));
-    }
-    if !o.seats.is_empty() {
-        e.push(web::row(
-            "seats",
-            8,
-            "center",
-            o.seats
-                .iter()
-                .enumerate()
-                .map(|(i, seat)| {
-                    web::badge(
-                        &format!("seat-{i}"),
-                        format!("Seat {seat}"),
-                        web::style()
-                            .size(13)
-                            .bold()
-                            .color("#ffffff")
-                            .background(p.accent.clone())
-                            .radius(4)
-                            .padding(6),
-                    )
-                })
-                .collect(),
-        ));
-    }
-    e.push(web::divider("total-rule"));
-    e.push(web::styled(
-        "total",
-        format!("Order total: {}", money(o.total_cents)),
-        web::style().size(20).bold().color(p.ink.clone()),
-    ));
-    for (i, item) in o.items.iter().enumerate() {
-        if s.products.contains_key(&item.product) {
-            let url = if s.tickets() {
-                format!("/event/{}", item.product)
-            } else {
-                format!("/dp/{}", item.product)
-            };
-            e.push(web::link(
-                &format!("again-{i}"),
-                format!("View {}", item.title),
-                url,
-            ));
-        }
-    }
-    e.extend(footer("foot", p));
-    web::themed_page(&format!("Order {} — {}", o.id, s.brand), s.theme.clone(), e)
-}
-fn favorites(s: &ShopState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let list = s.favorites.get(actor).cloned().unwrap_or_default();
-    let mut e = chrome(s, p, "");
-    e.push(web::styled(
-        "lead",
-        "Favourites",
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    if list.is_empty() {
-        e.push(web::styled(
-            "empty",
-            "Nothing saved yet.",
-            web::style().color(p.muted.clone()),
-        ));
-    } else {
-        e.push(web::grid(
-            "favs",
-            3,
-            14,
-            list.iter()
-                .filter_map(|id| s.products.get(id))
-                .map(|x| product_card(s, x, p))
-                .collect(),
-        ));
-    }
-    e.extend(footer("foot", p));
-    web::themed_page(&format!("Favourites — {}", s.brand), s.theme.clone(), e)
-}
 impl Service for ShopService {
     fn kind(&self) -> &str {
         "shop"
@@ -1234,6 +443,9 @@ impl Service for ShopService {
     fn initialize(&self, initial: Value, _: &ServiceContext) -> Result<Value> {
         let gated = web::shape(initial, OBJECTS, ARRAYS)?;
         let mode = web::variant(&gated, "mode", MODES)?;
+        if gated.get("skin").is_some() {
+            web::variant(&gated, "skin", view::SKINS)?;
+        }
         web::theme(&gated)?;
         let mut s: ShopState = web::load(&gated)?;
         s.mode = mode;
@@ -1255,25 +467,23 @@ impl Service for ShopService {
         r: &HttpRequest,
     ) -> Result<HttpResponse> {
         let mut s: ShopState = web::load(state)?;
-        let p = palette(&s.theme);
         let path = web::path(r);
         let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
         let method = r.method.to_ascii_uppercase();
         if method == "GET" {
+            let view = View::new(&s, &c.actor);
             return match parts.as_slice() {
-                [""] => home(&s, &p),
-                ["s"] => results(
-                    &s,
-                    &p,
+                [""] => view.home(),
+                ["s"] => view.results(
                     &web::query(r, "k").unwrap_or_default(),
                     &web::query(r, "c").unwrap_or_default(),
                 ),
-                ["dp", id] => detail(&s, &p, &c.actor, id),
-                ["event", id] => event(&s, &p, id),
-                ["cart"] => cart_page(&s, &p, &c.actor),
-                ["orders"] | ["my-tickets"] => order_list(&s, &p, &c.actor),
-                ["orders", id] => order_detail(&s, &p, &c.actor, id),
-                ["favorites"] => favorites(&s, &p, &c.actor),
+                ["dp", id] => view.detail(id),
+                ["event", id] => view.event(id),
+                ["cart"] => view.cart(),
+                ["orders"] | ["my-tickets"] => view.orders(),
+                ["orders", id] => view.order(id),
+                ["favorites"] => view.favorites(),
                 ["api", "products"] => HttpResponse::json(200, &s.products),
                 ["api", "products", id] => web::domain(s.product(id).map(|x| json!(x))),
                 ["api", "orders"] => HttpResponse::json(200, &s.orders_of(&c.actor)),
@@ -1348,13 +558,13 @@ impl Service for ShopService {
         if !submitted {
             return HttpResponse::json(200, &value);
         }
-        let p = palette(&s.theme);
+        let view = View::new(&s, &c.actor);
         let parts: Vec<&str> = next.trim_matches('/').split('/').collect();
         match parts.as_slice() {
-            ["cart"] => cart_page(&s, &p, &c.actor),
-            ["favorites"] => favorites(&s, &p, &c.actor),
-            ["orders", id] => order_detail(&s, &p, &c.actor, id),
-            ["dp", id] => detail(&s, &p, &c.actor, id),
+            ["cart"] => view.cart(),
+            ["favorites"] => view.favorites(),
+            ["orders", id] => view.order(id),
+            ["dp", id] => view.detail(id),
             _ => HttpResponse::json(200, &value),
         }
     }
@@ -1404,8 +614,42 @@ mod tests {
             .handle(state, &ctx(), &HttpRequest::get(url))
             .unwrap()
     }
-    fn text(r: &HttpResponse) -> String {
-        String::from_utf8(r.body.clone()).unwrap()
+    /// A page response parsed as the browser would parse it, and checked strictly.
+    struct Dom(cw_web::dom::Document);
+    fn dom(r: &HttpResponse) -> Dom {
+        assert_eq!(r.header("content-type"), Some(cw_service_common::html::HTML_MEDIA_TYPE));
+        let html = String::from_utf8(r.body.clone()).unwrap();
+        cw_service_common::html::validate_strict(&html).unwrap_or_else(|e| panic!("{e}"));
+        Dom(cw_web::html::parse(&html))
+    }
+    impl Dom {
+        fn node(&self, id: &str) -> cw_web::dom::NodeId {
+            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+        }
+        fn has(&self, id: &str) -> bool {
+            !self.0.by_id(id).is_empty()
+        }
+        fn text(&self, id: &str) -> String {
+            cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+        }
+        fn tag(&self, id: &str) -> String {
+            self.0.tag(self.node(id)).unwrap_or_default().to_owned()
+        }
+        /// The `name=value` pairs a form would submit untouched, in document order.
+        fn fields(&self, form: &str) -> Vec<(String, String)> {
+            let root = self.node(form);
+            self.0
+                .descendants(root)
+                .filter(|n| self.0.is(*n, "input"))
+                .map(|n| (self.0.attr(n, "name").unwrap_or_default().to_owned(), self.0.attr(n, "value").unwrap_or_default().to_owned()))
+                .collect()
+        }
+    }
+    fn pairs(v: &[(&str, &str)]) -> Vec<(String, String)> {
+        v.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())).collect()
     }
     #[test]
     fn seed_shape_is_gated_at_load() {
@@ -1436,7 +680,11 @@ mod tests {
             assert_eq!(page, get(&mut state, url), "{url} must be pure");
         }
         assert_eq!(before, state, "rendering must not mutate seed state");
-        assert!(text(&get(&mut state, "http://amazon.com/s?k=monitor")).contains("Lumen"));
+        let hits = dom(&get(&mut state, "http://amazon.com/s?k=monitor"));
+        assert_eq!(hits.text("n-mon27"), "Lumen 27-inch 4K USB-C Monitor");
+        assert_eq!(hits.attr("p-mon27", "href"), "/dp/mon27");
+        assert!(!hits.has("p-cbl"), "the cable does not match \"monitor\"");
+        assert_eq!(hits.attr("hdr-k", "value"), "monitor");
         assert_eq!(get(&mut state, "http://amazon.com/dp/nope").status, 404);
         assert_eq!(get(&mut state, "http://amazon.com/nowhere").status, 404);
     }
@@ -1452,17 +700,26 @@ mod tests {
             .status,
             200
         );
-        assert!(text(&get(&mut state, "http://amazon.com/cart")).contains("429.99"));
+        let cart = dom(&get(&mut state, "http://amazon.com/cart"));
+        assert_eq!(cart.text("line-mon27-p"), "$429.99");
+        assert_eq!(cart.text("subtotal"), "Subtotal (1 item): $429.99");
+        assert_eq!(cart.fields("qty-mon27"), pairs(&[("product", "mon27"), ("qty", "1")]));
+        assert_eq!(cart.fields("rm-mon27"), pairs(&[("product", "mon27"), ("qty", "0")]));
+        assert_eq!((cart.attr("checkout", "action"), cart.attr("checkout", "method")), ("/api/checkout".into(), "post".into()));
         let placed = post(&mut state, "http://amazon.com/api/checkout", &[]);
         assert_eq!(placed.status, 200);
-        assert!(text(&placed).contains("Order 1001"));
+        assert_eq!(dom(&placed).text("lead"), "Order 1001");
         let s: ShopState = web::load(&state).unwrap();
         assert_eq!(s.orders["1001"].total_cents, 42999);
         assert_eq!(s.orders["1001"].buyer, "alice");
         assert_eq!(s.products["mon27"].stock, 1, "stock is decremented");
         assert!(s.carts.is_empty(), "checkout empties the cart");
-        assert!(text(&get(&mut state, "http://amazon.com/orders")).contains("Order 1001"));
-        assert!(text(&get(&mut state, "http://amazon.com/orders/1001")).contains("429.99"));
+        let orders = dom(&get(&mut state, "http://amazon.com/orders"));
+        assert_eq!(orders.text("o-1001-id"), "Order 1001");
+        assert_eq!(orders.attr("o-1001", "href"), "/orders/1001");
+        let order = dom(&get(&mut state, "http://amazon.com/orders/1001"));
+        assert_eq!(order.text("total"), "Order total: $429.99");
+        assert_eq!(order.attr("again-0", "href"), "/dp/mon27");
         // The confirmation is a pure function of buyer and id, so a replay reproduces it.
         assert_eq!(
             s.orders["1001"].confirmation,
@@ -1510,6 +767,22 @@ mod tests {
             400
         );
         assert_eq!(before, state, "a refused mutation leaves no trace");
+    }
+    /// A seed can hand an actor a cart line the catalogue can no longer fill (`set_cart`
+    /// refuses `qty > stock`, so only a seed can). The line says how many are left rather
+    /// than claiming "In stock" and letting the all-or-nothing checkout refuse the lot.
+    #[test]
+    fn a_cart_line_the_catalogue_cannot_fill_says_how_many_are_left() {
+        let mut seed = retail();
+        seed["carts"] = json!({"alice": {"mon27": 5}});
+        let mut state = ShopService.initialize(seed, &ctx()).unwrap();
+        let cart = dom(&get(&mut state, "http://amazon.com/cart"));
+        assert!(cart.text("line-mon27-row").contains("Only 2 left"), "{}", cart.text("line-mon27-row"));
+        assert_eq!(
+            post(&mut state, "http://amazon.com/api/checkout", &[]).status,
+            400,
+            "and checkout still refuses the whole cart"
+        );
     }
     #[test]
     fn reviews_favourites_and_seller_messages_mutate() {
@@ -1586,12 +859,15 @@ mod tests {
         assert_eq!(s.orders["TM-2210"].seats, vec!["A-14-7".to_owned()]);
         assert_eq!(s.orders["TM-2210"].total_cents, 24900);
         assert_eq!(s.products["devcon-2026"].tiers[0].remaining, 233);
-        assert!(text(&get(&mut state, "http://ticketmaster.com/my-tickets")).contains("TM-2210"));
-        assert!(text(&get(
-            &mut state,
-            "http://ticketmaster.com/event/devcon-2026"
-        ))
-        .contains("249.00"));
+        assert_eq!(dom(&bought).text("seat-0"), "Seat A-14-7");
+        assert_eq!(dom(&get(&mut state, "http://ticketmaster.com/my-tickets")).text("o-TM-2210-id"), "Order TM-2210");
+        let event = dom(&get(&mut state, "http://ticketmaster.com/event/devcon-2026"));
+        assert_eq!(event.text("tier-floor-p"), "$249.00");
+        assert_eq!(event.text("tier-floor-r"), "233 left");
+        assert_eq!(event.fields("buy-floor"), pairs(&[("event", "devcon-2026"), ("tier", "floor"), ("qty", "1")]));
+        assert_eq!((event.attr("buy-floor", "action"), event.attr("buy-floor", "method")), ("/api/checkout".into(), "post".into()));
+        assert_eq!(event.tag("buy-floor-go"), "button");
+        assert_eq!(event.attr("venue-map", "href"), "http://maps.google.com/maps/place/devcon-center");
         assert_eq!(
             post(
                 &mut state,
@@ -1601,6 +877,82 @@ mod tests {
             .status,
             400
         );
+    }
+    /// Every id the `Page` version exposed is on the element that plays the same role.
+    #[test]
+    fn the_agent_ids_forms_and_links_survive_the_move_to_html() {
+        let mut state = ShopService.initialize(retail(), &ctx()).unwrap();
+        let home = dom(&get(&mut state, "http://amazon.com/"));
+        for id in ["chrome", "wordmark", "hdr-search", "hdr-k", "hdr-search-go", "nav-basket", "nav-orders", "cats", "cat-electronics", "lead", "deals", "p-mon27", "t-mon27", "n-mon27", "r-mon27", "tags-mon27", "pr-mon27", "so-cbl", "foot"] {
+            assert!(home.has(id), "home lacks #{id}");
+        }
+        assert_eq!((home.attr("hdr-search", "action"), home.attr("hdr-search", "method")), ("/s".into(), "get".into()));
+        assert_eq!(home.attr("hdr-k", "name"), "k");
+        assert_eq!(home.attr("hdr-k", "aria-label"), "Search the catalogue");
+        assert_eq!(home.text("hdr-search-go"), "Search");
+        assert_eq!((home.attr("nav-basket", "href"), home.attr("nav-basket", "aria-label")), ("/cart".into(), "Cart".into()));
+        assert_eq!((home.attr("nav-orders", "href"), home.attr("nav-orders", "aria-label")), ("/orders".into(), "Orders".into()));
+        assert_eq!(home.attr("cat-electronics", "href"), "/s?c=electronics");
+        assert_eq!(home.text("pr-mon27"), "$429.99");
+        assert_eq!(home.tag("p-mon27"), "a");
+        let detail = dom(&get(&mut state, "http://amazon.com/dp/mon27"));
+        for id in ["hero", "gallery", "shot", "strip", "shot-1", "shot-3", "buybox", "title", "rating", "price-row", "price", "stock", "bul-0", "desc-head", "desc", "seller", "rev-head", "write-go", "ask-go", "fav-go", "add-go"] {
+            assert!(detail.has(id), "detail lacks #{id}");
+        }
+        assert_eq!(detail.text("price"), "$429.99");
+        assert_eq!(detail.text("rating"), "4.4 out of 5 · 41 reviews");
+        assert_eq!(detail.text("stock"), "2 in stock");
+        assert_eq!((detail.attr("add", "action"), detail.attr("add", "method")), ("/api/cart".into(), "post".into()));
+        assert_eq!(detail.fields("add"), pairs(&[("product", "mon27"), ("qty", "1")]));
+        assert_eq!(detail.attr("add-qty", "name"), "qty");
+        assert_eq!(detail.attr("fav", "action"), "/api/products/mon27/favorite");
+        assert!(detail.fields("fav").is_empty());
+        assert_eq!(detail.text("fav-go"), "Save to favourites");
+        assert_eq!(detail.attr("ask", "action"), "/api/messages");
+        assert_eq!(detail.fields("ask"), pairs(&[("product", "mon27"), ("text", "")]));
+        assert_eq!(detail.attr("write", "action"), "/api/products/mon27/reviews");
+        assert_eq!(detail.fields("write"), pairs(&[("stars", "5"), ("title", ""), ("body", "")]));
+        // A sold-out product offers no add form; a posted review appears with its ids.
+        let sold = dom(&get(&mut state, "http://amazon.com/dp/cbl"));
+        assert!(!sold.has("add") && sold.text("stock") == "Sold out");
+        let after = dom(&post(&mut state, "http://amazon.com/api/products/mon27/reviews", &[("stars", "4"), ("title", "Good <b>"), ("body", "Crisp & clear.")]));
+        assert_eq!(after.text("rev-rv1-t"), "4★ Good <b>", "seed text is escaped, never markup");
+        assert_eq!(after.text("rev-rv1-b"), "Crisp & clear.");
+        assert_eq!(after.text("rev-rv1-a"), "alice · tick 7");
+        let favs = dom(&post(&mut state, "http://amazon.com/api/products/mon27/favorite", &[]));
+        assert!(favs.has("favs") && favs.has("p-mon27"));
+        assert_eq!(dom(&get(&mut state, "http://amazon.com/dp/mon27")).text("fav-go"), "Remove favourite");
+    }
+    /// Every page of every skin is HTML the engine renders: strict CSS, unique ids.
+    #[test]
+    fn every_page_of_every_skin_passes_the_strict_validator() {
+        for skin in view::SKINS {
+            let mut seed = retail();
+            seed["skin"] = json!(skin);
+            seed["favorites"] = json!({"alice": ["mon27"]});
+            seed["carts"] = json!({"alice": {"mon27": 1}});
+            seed["products"]["mon27"]["fast_shipping"] = json!(true);
+            seed["products"]["mon27"]["reviews"] = json!([{"id": "rv-1", "author": "bob", "stars": 4, "title": "Fine", "body": "Works.", "tick": 2}]);
+            let mut state = ShopService.initialize(seed, &ctx()).unwrap();
+            for path in ["/", "/s?k=monitor", "/s?c=electronics", "/s?k=zzz", "/dp/mon27", "/dp/cbl", "/cart", "/orders", "/favorites"] {
+                let page = dom(&get(&mut state, &format!("http://shop.test{path}")));
+                assert_eq!(page.attr("hdr-search", "action"), "/s", "{skin} {path}");
+            }
+            let placed = dom(&post(&mut state, "http://shop.test/api/checkout", &[]));
+            assert_eq!(placed.text("lead"), "Order 1001", "{skin}");
+            dom(&get(&mut state, "http://shop.test/orders"));
+            dom(&get(&mut state, "http://shop.test/cart"));
+        }
+        // The brand picks the skin when the seed names none; an unknown skin is a seed typo.
+        let mut named = retail();
+        named["brand"] = json!("Booking.com");
+        let s: ShopState = web::load(&ShopService.initialize(named, &ctx()).unwrap()).unwrap();
+        assert_eq!(view::skin_of(&s), "booking");
+        let s: ShopState = web::load(&ShopService.initialize(retail(), &ctx()).unwrap()).unwrap();
+        assert_eq!(view::skin_of(&s), "plain");
+        let mut typo = retail();
+        typo["skin"] = json!("amazonn");
+        assert!(ShopService.initialize(typo, &ctx()).is_err());
     }
     #[test]
     fn other_peoples_orders_are_not_visible() {

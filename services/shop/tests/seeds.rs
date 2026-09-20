@@ -23,11 +23,30 @@ fn load(raw: &str) -> Value {
         .initialize(doc["initial_state"].clone(), &ctx("alice"))
         .expect("seed must load")
 }
+/// A page is checked the moment it is fetched: HTML the engine renders strictly, unique ids.
+fn checked(status: u16, body: &str) {
+    if status == 200 && body.starts_with("<!DOCTYPE html>") {
+        cw_service_common::html::validate_strict(body).unwrap_or_else(|e| panic!("{e}"));
+    }
+}
 fn get(state: &mut Value, actor: &str, url: &str) -> (u16, String) {
     let r = ShopService
         .handle(state, &ctx(actor), &HttpRequest::get(url))
         .unwrap();
-    (r.status, String::from_utf8(r.body).unwrap())
+    let body = String::from_utf8(r.body).unwrap();
+    checked(r.status, &body);
+    (r.status, body)
+}
+/// The collapsed text of `#id` in a page.
+fn text(body: &str, id: &str) -> String {
+    let doc = cw_web::html::parse(body);
+    let node = *doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+    cw_web::paint::semantics::collapse(&doc.text_content(node))
+}
+fn attr(body: &str, id: &str, name: &str) -> String {
+    let doc = cw_web::html::parse(body);
+    let node = *doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+    doc.attr(node, name).unwrap_or_default().to_owned()
 }
 fn post(state: &mut Value, actor: &str, url: &str, body: &[(&str, &str)]) -> (u16, String) {
     let mut r = HttpRequest::get(url);
@@ -41,7 +60,9 @@ fn post(state: &mut Value, actor: &str, url: &str, body: &[(&str, &str)]) -> (u1
         .finish()
         .into_bytes();
     let r = ShopService.handle(state, &ctx(actor), &r).unwrap();
-    (r.status, String::from_utf8(r.body).unwrap())
+    let body = String::from_utf8(r.body).unwrap();
+    checked(r.status, &body);
+    (r.status, body)
 }
 #[test]
 fn storyline_5_order_1001_is_the_order_the_bank_points_at() {
@@ -57,10 +78,10 @@ fn storyline_5_order_1001_is_the_order_the_bank_points_at() {
     );
     let (status, body) = get(&mut state, "alice", "http://amazon.com/orders/1001");
     assert_eq!(status, 200);
-    assert!(
-        body.contains("$429.99") && body.contains(&order.confirmation),
-        "{body}"
-    );
+    assert_eq!(text(&body, "total"), "Order total: $429.99");
+    assert_eq!(text(&body, "it-0-p"), "$429.99");
+    assert!(text(&body, "meta").contains(&order.confirmation), "{body}");
+    assert_eq!(attr(&body, "again-0", "href"), "/dp/b0monitor27");
     // The order is Alice's alone; anyone else gets a refusal, not someone else's receipt.
     assert_ne!(
         get(&mut state, "bob", "http://amazon.com/orders/1001").0,
@@ -98,7 +119,9 @@ fn every_retail_page_the_seeds_advertise_resolves_and_the_catalogue_is_searchabl
         "alice",
         "http://amazon.com/s?k=27%20inch%204k%20usb-c%20monitor",
     );
-    assert!(body.contains("Lumen 27-inch 4K USB-C Monitor"), "{body}");
+    assert_eq!(text(&body, "n-b0monitor27"), "Lumen 27-inch 4K USB-C Monitor");
+    assert_eq!(attr(&body, "p-b0monitor27", "href"), "/dp/b0monitor27");
+    assert_eq!(text(&body, "pr-b0monitor27"), "$429.99", "superscript cents still read as one price");
     let mut state = load(ETSY);
     for url in [
         "http://etsy.com/",
@@ -154,17 +177,19 @@ fn storyline_4_carol_holds_seat_a_14_7_and_the_next_seat_follows_from_it() {
         "http://ticketmaster.com/event/devcon-2026",
     );
     assert_eq!(status, 200);
-    assert!(body.contains("Cascade Convention Center"), "{body}");
+    assert!(text(&body, "when").contains("Cascade Convention Center"), "{body}");
+    assert_eq!(attr(&body, "venue-map", "href"), "http://maps.google.com/maps/place/devcon-center");
     let (status, body) = get(&mut state, "carol", "http://ticketmaster.com/my-tickets");
     assert_eq!(status, 200);
-    assert!(body.contains("Order TM-2210"), "{body}");
+    assert_eq!(text(&body, "o-TM-2210-id"), "Order TM-2210");
+    assert_eq!(attr(&body, "o-TM-2210", "href"), "/orders/TM-2210");
     let (status, body) = get(
         &mut state,
         "carol",
         "http://ticketmaster.com/orders/TM-2210",
     );
     assert_eq!(status, 200);
-    assert!(body.contains("A-14-7"), "{body}");
+    assert_eq!(text(&body, "seat-0"), "Seat A-14-7");
     // Seats are a pure function of what is left, so the next buyer gets exactly the next seat.
     let (status, _) = post(
         &mut state,
@@ -198,4 +223,66 @@ fn every_ticket_page_the_seed_advertises_resolves() {
         .0,
         200
     );
+}
+
+/// Every shipped storefront, every page kind, through the strict validator (in `get`),
+/// with the ids an agent drives the site by.
+#[test]
+fn every_shipped_storefront_serves_strict_html_with_the_agent_ids() {
+    for site in ["amazon", "ebay", "etsy", "airbnb", "booking", "uber", "doordash", "ticketmaster"] {
+        let path = format!("{}/../../worlds/company-2026/sites/{site}.json", env!("CARGO_MANIFEST_DIR"));
+        let mut state = load(&std::fs::read_to_string(path).unwrap());
+        let s: ShopState = serde_json::from_value(state.clone()).unwrap();
+        let host = format!("http://{site}.com");
+        let (status, home) = get(&mut state, "alice", &format!("{host}/"));
+        assert_eq!(status, 200, "{site}");
+        assert!(home.contains(&format!("class=\"skin-{site} ")), "{site} wears its own skin");
+        for id in ["chrome", "wordmark", "hdr-search", "hdr-k", "hdr-search-go", "nav-basket", "nav-orders", "cats", "lead", "deals", "foot"] {
+            assert!(!cw_web::html::parse(&home).by_id(id).is_empty(), "{site} home lacks #{id}");
+        }
+        assert_eq!(attr(&home, "hdr-search", "action"), "/s");
+        for c in &s.categories {
+            assert_eq!(attr(&home, &format!("cat-{}", c.id), "href"), format!("/s?c={}", c.id));
+            assert_eq!(get(&mut state, "alice", &format!("{host}/s?c={}", c.id)).0, 200);
+        }
+        for (id, product) in &s.products {
+            let page = if s.tickets() { "event" } else { "dp" };
+            assert_eq!(attr(&home, &format!("p-{id}"), "href"), format!("/{page}/{id}"), "{site}");
+            let (status, body) = get(&mut state, "alice", &format!("{host}/{page}/{id}"));
+            assert_eq!(status, 200, "{site} {id}");
+            assert_eq!(text(&body, "title"), product.title);
+        }
+        for actor in ["alice", "bob", "carol"] {
+            for page in ["cart", "orders", "favorites", "s?k=a"] {
+                assert_eq!(get(&mut state, actor, &format!("{host}/{page}")).0, 200, "{site} {page}");
+            }
+        }
+        for (id, order) in &s.orders {
+            let (status, body) = get(&mut state, &order.buyer, &format!("{host}/orders/{id}"));
+            assert_eq!(status, 200, "{site} order {id}");
+            assert_eq!(text(&body, "lead"), format!("Order {id}"));
+        }
+    }
+}
+
+/// A seeded cart line the catalogue cannot fill is a dead end: `set_cart` refuses
+/// `qty > stock`, so no agent could ever have produced such a line, and `/api/checkout`
+/// is all-or-nothing, so one bad line refuses the whole basket. Every shipped cart must
+/// therefore be one its own catalogue can still fill.
+#[test]
+fn every_seeded_cart_is_one_the_catalogue_can_still_fill() {
+    for site in ["amazon", "ebay", "etsy", "airbnb", "booking", "uber", "doordash", "ticketmaster"] {
+        let path = format!("{}/../../worlds/company-2026/sites/{site}.json", env!("CARGO_MANIFEST_DIR"));
+        let raw = std::fs::read_to_string(path).unwrap();
+        let s: ShopState = serde_json::from_value(load(&raw)).unwrap();
+        for (actor, cart) in &s.carts {
+            for (id, qty) in cart {
+                let stock = s.products[id].stock;
+                assert!(*qty <= stock, "{site}: {actor}'s cart holds {qty} of {id}, of which only {stock} remain");
+            }
+            let mut state = load(&raw);
+            let (status, _) = post(&mut state, actor, &format!("http://{site}.com/api/checkout"), &[]);
+            assert_eq!(status, 200, "{site}: {actor}'s seeded cart must be orderable as it stands");
+        }
+    }
 }

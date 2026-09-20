@@ -1,0 +1,191 @@
+/* PayPal: the wallet. A navy header with the double-P mark and white tabs, a pale
+   page, white cards with a 12px radius, the balance set very large, pill buttons, and
+   an activity list with a round merchant mark, the name over the date, and the amount
+   on the right. The palette comes in as custom properties on <html> (see view.rs). */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html {
+  --accent: #0070ba; --ink: #001c64; --muted: #5b6b7b; --surface: #f5f7fa; --paper: #ffffff;
+  --content: 1000px; --navy: #003087; --rule: #e6e9ee; --good: #118a4e;
+}
+body {
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 15px; line-height: 22px; color: var(--ink);
+  background: var(--surface); display: flex; flex-direction: column; min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3, p, ul { margin: 0; }
+ul { padding: 0; list-style-type: none; }
+.wrap { width: 100%; max-width: var(--content); margin: 0 auto; padding: 0 20px; }
+main.wrap { flex: 1; padding-bottom: 48px; }
+
+/* ------------------------------------------------------------------- header */
+header.mast { background: linear-gradient(90deg, #00247a 0%, var(--navy) 40%, #0046ad 100%); color: #fff; position: sticky; top: 0; z-index: 5; }
+header.mast .wrap { display: flex; align-items: center; height: 72px; gap: 32px; }
+.brand { display: flex; align-items: center; gap: 8px; flex: none; }
+.brand .glyph { width: 26px; height: 32px; position: relative; display: block; }
+.brand .glyph::before, .brand .glyph::after {
+  content: "P"; position: absolute; font: italic 800 30px/32px Inter, Arial, sans-serif; top: 0;
+}
+.brand .glyph::before { left: 0; color: #fff; }
+.brand .glyph::after { left: 6px; top: 4px; color: #4cb5ff; opacity: .85; }
+.brand .glyph i { display: none; }
+.brand .name { font-size: 22px; font-weight: 800; font-style: italic; letter-spacing: -.5px; color: #fff; }
+nav.tabs { display: flex; gap: 6px; flex: 1; }
+nav.tabs a { color: #fff; font-size: 15px; font-weight: 500; padding: 8px 16px; border-radius: 20px; }
+nav.tabs a:hover { text-decoration: none; background: rgba(255,255,255,.14); }
+nav.tabs a.on { background: rgba(255,255,255,.2); font-weight: 600; }
+.who { display: flex; align-items: center; gap: 12px; font-size: 14px; flex: none; }
+.who .avatar {
+  width: 36px; height: 36px; border-radius: 50%; background: #fff; color: var(--navy); display: block;
+  font-weight: 700; font-size: 15px; line-height: 36px; text-align: center;
+}
+
+/* ----------------------------------------------------------------- greeting */
+.hero { padding: 28px 0 20px 0; }
+.hero .greet { display: flex; flex-direction: column-reverse; }
+.hero h1 { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-top: 2px; }
+.hero .sub { font-size: 28px; line-height: 36px; font-weight: 600; color: var(--ink); }
+.worth { display: none; }
+
+.board { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 24px; align-items: start; }
+.col { min-width: 0; }
+
+/* -------------------------------------------------------------- balance card */
+.tiles { display: flex; flex-direction: column; gap: 16px; }
+.tile {
+  display: block; background: var(--paper); border-radius: 12px; padding: 22px 24px; color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0,28,100,.1), 0 0 0 1px rgba(0,28,100,.04);
+}
+.tile:hover { text-decoration: none; box-shadow: 0 6px 18px rgba(0,28,100,.16); }
+.tile .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.tile .n { font-size: 15px; line-height: 21px; font-weight: 600; color: var(--ink); }
+.tile .k { flex: none; font-size: 11px; font-weight: 700; color: var(--accent); background: #e5f1fb; border-radius: 10px; padding: 0 9px; line-height: 20px; text-transform: uppercase; letter-spacing: .4px; }
+.tile .figures { display: block; margin-top: 14px; }
+.tile .fig { display: block; }
+.tile .b { display: block; font-size: 40px; line-height: 48px; font-weight: 300; letter-spacing: -1px; color: var(--ink); }
+.tile .cap { display: none; }
+.tile .av { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.tile.kind-credit .b, .tile.kind-savings .b { font-size: 28px; line-height: 36px; }
+.chev { display: none; }
+.none { color: var(--muted); }
+
+/* ------------------------------------------------------------ send / request */
+.quick { display: flex; gap: 28px; margin-top: 24px; padding: 0 8px; }
+.round { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink); width: 72px; }
+.round:hover { text-decoration: none; color: var(--accent); }
+.round .disc { width: 56px; height: 56px; border-radius: 50%; background: var(--accent); position: relative; display: block; }
+.round:hover .disc { background: var(--navy); }
+.round .disc::before { content: ""; position: absolute; left: 27px; top: 17px; width: 2px; height: 22px; background: #fff; }
+/* The arrow head is a turned corner. The engine turns an element's descendants but not
+   its own box, so the corner is the ::before of the turned <i>. */
+.round .disc i { position: absolute; left: 22px; top: 18px; width: 12px; height: 12px; display: block; transform: rotate(45deg); }
+.round .disc i::before { content: ""; display: block; width: 12px; height: 12px; border-top: 2px solid #fff; border-left: 2px solid #fff; box-sizing: border-box; }
+.round.pay .disc i { top: 26px; transform: rotate(225deg); }
+
+/* ------------------------------------------------------------------- panels */
+.panel { background: var(--paper); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,28,100,.1), 0 0 0 1px rgba(0,28,100,.04); padding: 8px 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 24px 8px 24px; }
+.panel h2 { font-size: 18px; line-height: 26px; font-weight: 600; }
+.panel-head a { font-size: 14px; font-weight: 600; }
+.count { font-size: 13px; color: var(--muted); }
+
+/* ----------------------------------------------------------------- activity */
+.thead { display: none; }
+.tx {
+  display: grid; grid-template-columns: 40px auto minmax(0, 1fr) auto; column-gap: 12px; align-items: center;
+  padding: 12px 24px; color: var(--ink); border-top: 1px solid var(--rule);
+}
+.tx:hover { background: #f5f9fd; text-decoration: none; }
+.tx .ico {
+  grid-column: 1; grid-row: 1 / 3; width: 40px; height: 40px; border-radius: 50%; color: #fff;
+  font-weight: 700; font-size: 16px; line-height: 40px; text-align: center; display: block;
+}
+.tx .m { grid-column: 2 / 4; grid-row: 1; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx .d { grid-column: 2; grid-row: 2; font-size: 13px; line-height: 18px; color: var(--muted); white-space: nowrap; }
+.tx .c { grid-column: 3; grid-row: 2; font-size: 13px; line-height: 18px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx .c::before { content: "· "; }
+.tx .a { grid-column: 4; grid-row: 1 / 3; font-weight: 600; font-size: 15px; white-space: nowrap; text-align: right; }
+.tx .a.pos, .pos .v, .amount.pos { color: var(--good); }
+.tx .a.pos::before, .amount.pos::before { content: "+"; }
+.pend { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; color: #8a5a00; background: #fff1cc; border-radius: 9px; padding: 0 8px; line-height: 18px; text-transform: none; }
+
+/* ------------------------------------------------ account and statement head */
+.summary { padding: 28px 0 20px 0; }
+.crumb { font-size: 14px; font-weight: 600; }
+.crumb::before { content: "‹ "; }
+.summary h1 { font-size: 26px; line-height: 34px; font-weight: 600; margin-top: 4px; }
+.totals {
+  display: flex; align-items: flex-end; gap: 36px; margin-top: 18px; background: var(--paper); border-radius: 12px;
+  padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,28,100,.1), 0 0 0 1px rgba(0,28,100,.04);
+}
+.totals .fig .cap { display: block; font-size: 13px; color: var(--muted); }
+.totals .fig .v { display: block; font-size: 20px; line-height: 28px; font-weight: 600; }
+.totals .fig.big .v { font-size: 36px; line-height: 44px; font-weight: 300; letter-spacing: -1px; }
+.totals .btn.ghost { margin-left: auto; }
+.totals .btn + .btn { margin-left: -20px; }
+.btn {
+  display: inline-block; height: 44px; line-height: 40px; padding: 0 26px; border-radius: 22px; border: 2px solid var(--accent);
+  background: var(--accent); color: #fff; font: 600 15px Inter, Arial, sans-serif; cursor: pointer; white-space: nowrap;
+}
+a.btn { line-height: 40px; }
+.btn:hover { background: var(--navy); border-color: var(--navy); text-decoration: none; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.ghost:hover { background: #e5f1fb; border-color: var(--accent); }
+
+/* -------------------------------------------------------------------- forms */
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.field input {
+  height: 52px; border: 1px solid #929eab; border-radius: 8px; padding: 0 14px; font: 16px Inter, Arial, sans-serif;
+  color: var(--ink); background: var(--paper); width: 100%; outline: 0;
+}
+.field input:hover { border-color: var(--ink); }
+.field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,112,186,.25); }
+.filter { display: flex; align-items: flex-end; gap: 14px; padding: 4px 24px 16px 24px; }
+.filter .field { width: 200px; }
+.filter .field.grow { flex: 1; width: auto; }
+.filter .field input { height: 44px; border-radius: 22px; padding: 0 18px; font-size: 15px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 24px 16px 24px; }
+.chip { font-size: 13px; font-weight: 600; border: 1px solid #c6ced6; border-radius: 16px; padding: 4px 14px; color: var(--ink); background: var(--paper); }
+.chip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.formcard { padding: 24px; margin-bottom: 20px; }
+.formcard h2 { margin-bottom: 16px; }
+.formcard form { display: flex; flex-direction: column; gap: 14px; }
+.formcard form .btn { align-self: flex-start; margin-top: 4px; min-width: 160px; }
+.refcard { padding: 24px; }
+.refcard h2 { font-size: 16px; margin-bottom: 8px; }
+.refcard h2.second { margin-top: 20px; }
+.refs li { font-size: 13px; line-height: 19px; padding: 8px 0; border-bottom: 1px solid var(--rule); color: var(--muted); }
+.refs li:last-child { border-bottom: 0; }
+.refs code { font-family: "JetBrains Mono", "Courier New", monospace; font-size: 12px; color: var(--navy); background: #e5f1fb; border-radius: 4px; padding: 1px 6px; }
+.refs .v { color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------------ receipt */
+.receipt { background: var(--paper); border-radius: 12px; margin: 32px auto 0 auto; max-width: 600px; padding: 32px; box-shadow: 0 1px 3px rgba(0,28,100,.1), 0 0 0 1px rgba(0,28,100,.04); }
+.receipt-head { display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 1px solid var(--rule); padding-bottom: 22px; }
+.receipt .ico { width: 64px; height: 64px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 26px; line-height: 64px; text-align: center; display: block; margin-bottom: 12px; }
+.receipt h1 { font-size: 20px; line-height: 28px; font-weight: 600; }
+.receipt .amount { font-size: 40px; line-height: 48px; font-weight: 300; letter-spacing: -1px; margin-top: 4px; }
+.facts { padding: 8px 0; }
+.fact { display: flex; justify-content: space-between; gap: 20px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.fact .cap { color: var(--muted); }
+.fact .v { font-weight: 600; text-align: right; }
+.status { font-size: 12px; font-weight: 700; color: var(--good); background: #e2f5ea; border-radius: 10px; padding: 1px 10px; }
+.status.pending { color: #8a5a00; background: #fff1cc; }
+.origin { padding: 18px 0 4px 0; }
+.origin h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.origin a { overflow-wrap: anywhere; }
+.receipt > .btn { margin-top: 20px; }
+
+/* ------------------------------------------------------------------- footer */
+footer.foot { background: var(--paper); border-top: 1px solid var(--rule); color: var(--muted); padding: 22px 0; font-size: 12px; line-height: 18px; }
+footer.foot .cols { display: flex; gap: 24px; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+
+@media (max-width: 760px) {
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .who .hello { display: none; }
+  .totals, .filter { flex-wrap: wrap; gap: 14px; }
+}

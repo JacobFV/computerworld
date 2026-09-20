@@ -1,49 +1,18 @@
-//! The Slack workspace page, laid out the way Slack's desktop web client is in 2024:
-//! an aubergine frame holding a top bar with the search box, a narrow rail of
-//! workspace tabs, the sidebar of channels and direct messages, the open conversation
-//! with its messages grouped by author under date dividers, a composer pinned to the
-//! bottom, and, on the right, the thread or the member list the query string opens.
-//! The whole rendering lives here, apart from the state and the routes.
+//! The Slack workspace page, served as HTML and laid out the way Slack's desktop web
+//! client is: an aubergine frame holding a top bar with the search box, a narrow rail
+//! of workspace tabs, the sidebar of channels and direct messages, the open conversation
+//! with its messages grouped by author under date dividers and scrolling on its own, a
+//! composer pinned under it, and, on the right, the thread or the member list the query
+//! string opens. The look is `slack.css`; this file is the markup, apart from the state
+//! and the routes.
 use crate::{time, Channel, Message, SlackState};
-use cw_protocol::{HttpResponse, PageAction, PageElement, PageTheme, Result as SimResult};
+use cw_protocol::{HttpResponse, Result as SimResult};
 use cw_service_common as web;
+use web::html::{self, button, div, el, form, hidden, span, text_input, Document, Html};
 
-/// Slack's palette and vocabulary.
-pub struct Look {
-    /// The aubergine frame, top bar and rail.
-    pub frame: &'static str,
-    pub sidebar: &'static str,
-    pub sidebar_ink: &'static str,
-    /// The blue of the selected sidebar row.
-    pub selected: &'static str,
-    pub surface: &'static str,
-    pub ink: &'static str,
-    pub muted: &'static str,
-    pub accent: &'static str,
-    pub line: &'static str,
-    /// The tint behind a mention, and behind the actor's own reactions.
-    pub tint: &'static str,
-    /// The green of the send button and of presence.
-    pub green: &'static str,
-    /// The tint behind a message that mentions the actor.
-    pub highlight: &'static str,
-    pub brand: &'static str,
-}
-pub const SLACK: Look = Look {
-    frame: "#350d36",
-    sidebar: "#3f0e40",
-    sidebar_ink: "#cfc3cf",
-    selected: "#1164a3",
-    surface: "#ffffff",
-    ink: "#1d1c1d",
-    muted: "#616061",
-    accent: "#1264a3",
-    line: "#dddddd",
-    tint: "#e8f5fa",
-    green: "#007a5a",
-    highlight: "#fff8e1",
-    brand: "Slack",
-};
+const CSS: &str = include_str!("slack.css");
+const BRAND: &str = "Slack";
+
 /// What the query string opens beside the conversation, and when it is.
 #[derive(Clone, Debug, Default)]
 pub struct View {
@@ -54,21 +23,8 @@ pub struct View {
     /// `?members=1`: the conversation's member list in the right-hand pane.
     pub members: bool,
 }
-const RAIL: u32 = 64;
-const SIDEBAR: u32 = 260;
-/// The browser's page margin, which the aubergine frame fills.
-const MARGIN: u32 = 16;
-const PANE: u32 = 400;
-const AVATAR: u32 = 36;
 /// Messages by one author this close together share one header, as Slack groups them.
 const GROUP_US: u64 = 10 * time::MINUTE_US;
-/// Characters of message text per row, the wrap the page itself cannot do: a row lays
-/// its pieces out on one line, so a message is cut into rows this long at word
-/// boundaries. Sized for a 1280-wide window: the conversation alone, the conversation
-/// beside a pane, and the pane itself.
-const WIDE_CHARS: usize = 100;
-const NARROW_CHARS: usize = 56;
-const PANE_CHARS: usize = 42;
 
 /// Slack's short names for the emoji the seed and the quick reactions use.
 const EMOJI: &[(&str, &str)] = &[
@@ -127,52 +83,31 @@ pub fn emojify(text: &str) -> String {
     out
 }
 
-fn post(url: String, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: "POST".into(),
-        url,
-        fields: fields
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-            .collect(),
-    }
-}
-fn theme(state: &SlackState, look: &Look) -> PageTheme {
-    state.theme.clone().unwrap_or(PageTheme {
-        accent: Some(look.accent.into()),
-        // The page is the aubergine frame; every white surface names its own colour.
-        background: Some(look.frame.into()),
-        surface: Some(look.surface.into()),
-        ink: Some(look.ink.into()),
-        muted: Some(look.muted.into()),
-        content_width: Some(4096),
-        font: None,
-    })
-}
+
 /// A person's initials on a rounded square in their own colour, Slack's avatar shape.
-fn avatar(id: &str, name: &str, size: u32) -> PageElement {
-    let mut tile = web::avatar(id, name, size);
-    if let PageElement::Thumbnail { style, .. } = &mut tile {
-        style.radius = Some((size / 5).max(3));
-    }
-    tile
+/// `size` is one of the sheet's avatar sizes (`s20`, `s24`, `s26`, `s32`, `s36`).
+fn avatar(id: &str, name: &str, size: &str) -> Html {
+    let initials: String = name
+        .split(|c: char| c.is_whitespace() || c == '-' || c == '_' || c == '.')
+        .filter(|w| !w.is_empty())
+        .take(2)
+        .filter_map(|w| w.chars().next())
+        .flat_map(char::to_uppercase)
+        .collect();
+    span("avatar")
+        .class(size)
+        .id(id)
+        .style(&format!("background: {}", web::avatar_tint(name)))
+        .text(initials)
 }
-/// A block of the frame or the sidebar colour, `width` across, filling a pinned bar
-/// under the rail and the sidebar so the columns run the full height of the window.
-fn block(id: &str, width: u32, colour: &str, children: Vec<PageElement>) -> PageElement {
-    web::card(
-        id,
-        web::style()
-            .width(width)
-            .flex(0)
-            .padding(0)
-            .radius(0)
-            .background(colour),
-        children,
-    )
-}
-fn glyph(id: &str, name: &str, label: &str, size: u16, colour: &str) -> PageElement {
-    web::icon(id, name, label, web::style().size(size).color(colour))
+/// A symbol that is not a control: a glyph with its accessible name.
+fn glyph(id: &str, class: &str, label: &str, mark: &str) -> Html {
+    span("ico")
+        .class(class)
+        .id(id)
+        .attr("title", label)
+        .attr("aria-label", label)
+        .text(mark)
 }
 /// The other people in a DM key, from this actor's point of view.
 pub fn partners(state: &SlackState, key: &str, actor: &str) -> String {
@@ -203,15 +138,14 @@ fn active(state: &SlackState, who: &str, actor: &str, now: u64) -> bool {
             .filter(|m| m.author == who)
             .any(|m| now.saturating_sub(m.time) < 3 * time::HOUR_US)
 }
-fn presence(id: &str, on: bool, look: &Look) -> PageElement {
-    web::styled(
-        id,
-        if on { "●" } else { "○" },
-        web::style()
-            .size(9)
-            .one_line()
-            .color(if on { "#2bac76" } else { look.sidebar_ink }),
-    )
+/// The presence dot: filled green while active, a hollow ring while away.
+fn presence(id: &str, on: bool) -> Html {
+    let label = if on { "Active" } else { "Away" };
+    span("presence")
+        .class(if on { "on" } else { "" })
+        .id(id)
+        .attr("title", label)
+        .attr("aria-label", label)
 }
 /// Now on Slack's clock: the tick, or the newest message the actor can see if the seed
 /// runs ahead of the world.
@@ -225,150 +159,85 @@ fn now(state: &SlackState, actor: &str, tick: u64) -> u64 {
         .map(|m| m.time)
         .fold(tick, u64::max)
 }
+fn plural(n: usize, one: &str, many: &str) -> String {
+    format!("{n} {}", if n == 1 { one } else { many })
+}
 
 // ---- the top bar and the rail --------------------------------------------------------
 
-fn topbar(state: &SlackState, actor: &str, look: &Look) -> PageElement {
-    let name = if state.workspace.is_empty() {
-        look.brand.to_owned()
-    } else {
-        state.workspace.clone()
-    };
-    let search = web::card(
-        "search",
-        web::style()
-            .width(560)
-            .flex(0)
-            .padding(6)
-            .radius(6)
-            .background("#5c3a5d")
-            .border("#7b5c7c"),
-        vec![web::styled_row(
-            "search-line",
-            8,
-            "center",
-            web::style(),
-            vec![
-                glyph("search-icon", "search", "Search", 14, "#ffffff"),
-                web::styled(
-                    "search-text",
-                    format!("Search {name}"),
-                    web::style().size(13).color("#e8e0e8").one_line(),
-                ),
-            ],
-        )],
-    );
-    web::styled_row(
-        "topbar",
-        10,
-        "center",
-        web::style().padding(6).background(look.frame).pin("top"),
-        vec![
-            web::styled("topbar-lead", "", web::style().width(80)),
-            glyph("nav-back", "chevron-left", "Back", 16, look.sidebar_ink),
-            glyph(
-                "nav-forward",
-                "chevron-right",
-                "Forward",
-                16,
-                look.sidebar_ink,
-            ),
-            glyph("nav-history", "clock", "History", 16, look.sidebar_ink),
-            web::rest("topbar-left"),
-            search,
-            web::rest("topbar-right"),
-            glyph("help", "info", "Help", 16, look.sidebar_ink),
-            web::styled(
-                "my-status",
-                state
-                    .members
-                    .get(actor)
-                    .map(|m| m.status.clone())
-                    .unwrap_or_default(),
-                web::style().size(12).color(look.sidebar_ink).one_line(),
-            ),
-            avatar("me-avatar", &state.display(actor), 26),
-        ],
-    )
+fn topbar(state: &SlackState, actor: &str, workspace: &str) -> Html {
+    let status = state
+        .members
+        .get(actor)
+        .map(|m| m.status.clone())
+        .unwrap_or_default();
+    el("header").id("topbar").class("topbar").children([
+        div("topbar-nav").children([
+            glyph("nav-back", "nav", "Back", "←"),
+            glyph("nav-forward", "nav", "Forward", "→"),
+            glyph("nav-history", "clock", "History", ""),
+        ]),
+        div("search").id("search").children([
+            glyph("search-icon", "lens", "Search", ""),
+            span("search-text")
+                .id("search-text")
+                .text(format!("Search {workspace}")),
+        ]),
+        div("topbar-me").children([
+            glyph("help", "help", "Help", "?"),
+            span("my-status").id("my-status").text(status),
+            avatar("me-avatar", &state.display(actor), "s26"),
+        ]),
+    ])
 }
-/// The rail's tabs: Home, DMs, Activity, Later and More, each an icon over its label.
-fn rail(state: &SlackState, actor: &str, home: bool, dms: bool, look: &Look) -> PageElement {
+/// The rail: the workspace tile, then Home, DMs, Activity, Later and More, each an icon
+/// over its label.
+fn rail(state: &SlackState, actor: &str, workspace: &str, home: bool, dms: bool) -> Html {
     let mentions = state.mentions(actor).len();
-    let tab = |id: &str, icon: &str, label: &str, on: bool, url: Option<String>| {
-        let style = web::style()
-            .size(20)
-            .padding(6)
-            .radius(8)
-            .color("#ffffff")
-            .align("center")
-            .background(if on { "#5c3a5d" } else { look.frame });
-        let mark = match url {
-            Some(url) => web::icon_action(id, icon, label, style, web::visit(url)),
-            None => web::icon(id, icon, label, style),
+    let tab = |id: &str, icon: &str, label: &str, on: bool, url: Option<&str>| {
+        let face = span("tab-icon").class(icon);
+        let inner = [
+            face,
+            span("tab-label").id(format!("{id}-label")).text(label),
+        ];
+        let node = match url {
+            Some(url) => el("a").attr("href", url),
+            None => el("span"),
         };
-        let mut items = vec![mark];
-        if id == "rail-activity" && mentions > 0 {
-            items.push(web::badge(
-                "rail-activity-count",
-                mentions.to_string(),
-                web::style()
-                    .background("#cd2553")
-                    .color("#ffffff")
-                    .size(10)
-                    .padding(2)
-                    .align("center"),
-            ));
-        }
-        items.push(web::styled(
-            &format!("{id}-label"),
-            label,
-            web::style()
-                .size(10)
-                .color("#ffffff")
-                .align("center")
-                .one_line(),
-        ));
-        web::column(&format!("{id}-tab"), 2, web::style(), items)
+        node.id(id)
+            .class("tab")
+            .class(if on { "on" } else { "" })
+            .attr("title", label)
+            .children(inner)
     };
-    web::column(
-        "rail",
-        10,
-        web::style()
-            .width(RAIL)
-            .flex(0)
-            .padding(4)
-            .background(look.frame),
-        vec![
-            tab("rail-home", "home", "Home", home, Some("/".into())),
-            tab("rail-dms", "chat", "DMs", dms, Some("/dms".into())),
-            tab("rail-activity", "bell", "Activity", false, None),
-            tab("rail-later", "clock", "Later", false, None),
-            tab("rail-more", "more", "More", false, None),
-        ],
-    )
+    let initial = workspace
+        .chars()
+        .next()
+        .map(|c| c.to_uppercase().to_string())
+        .unwrap_or_default();
+    el("nav").id("rail").class("rail").children([
+        span("rail-mark").id("rail-mark").text(initial),
+        tab("rail-home", "i-home", "Home", home, Some("/")),
+        tab("rail-dms", "i-dms", "DMs", dms, Some("/dms")),
+        tab("rail-activity", "i-bell", "Activity", false, None).when(mentions > 0, |t| {
+            t.child(
+                span("count")
+                    .id("rail-activity-count")
+                    .text(mentions.to_string()),
+            )
+        }),
+        tab("rail-later", "i-later", "Later", false, None),
+        tab("rail-more", "i-more", "More", false, None),
+    ])
 }
 
 // ---- the sidebar ---------------------------------------------------------------------
 
-fn section(id: &str, label: &str, look: &Look) -> PageElement {
-    web::pills(
-        id,
-        4,
-        vec![
-            glyph(
-                &format!("{id}-chevron"),
-                "chevron-down",
-                "Collapse",
-                10,
-                look.sidebar_ink,
-            ),
-            web::styled(
-                &format!("{id}-text"),
-                label,
-                web::style().size(14).medium().color(look.sidebar_ink),
-            ),
-        ],
-    )
+fn section(id: &str, label: &str) -> Html {
+    div("section").id(id).children([
+        glyph(&format!("{id}-chevron"), "caret", "Collapse", "▾"),
+        span("section-text").id(format!("{id}-text")).text(label),
+    ])
 }
 /// How a sidebar row stands: open, unread, and the count on its badge (unread mentions
 /// for a channel, unread messages for a DM).
@@ -378,178 +247,92 @@ struct Standing {
     unread: bool,
     badge: usize,
 }
-/// One conversation in the sidebar: its mark, its name (bold while it is unread, with
-/// a count), the row highlighted while it is the open one.
-fn sidebar_row(
-    id: &str,
-    mark: PageElement,
-    text: String,
-    action: PageAction,
-    look: &Look,
-    standing: Standing,
-) -> PageElement {
-    let Standing {
-        current,
-        unread,
-        badge,
-    } = standing;
-    let mut children = vec![
-        mark,
-        web::styled(
-            &format!("{id}-text"),
-            text,
-            match (current, unread) {
-                (true, _) => web::style().size(15).color("#ffffff").one_line().flex(1),
-                (false, true) => web::style()
-                    .size(15)
-                    .bold()
-                    .color("#ffffff")
-                    .one_line()
-                    .flex(1),
-                (false, false) => web::style()
-                    .size(15)
-                    .color(look.sidebar_ink)
-                    .one_line()
-                    .flex(1),
-            },
-        ),
-    ];
-    if badge > 0 {
-        children.push(web::badge(
-            &format!("{id}-unread"),
-            badge.to_string(),
-            web::style()
-                .background("#cd2553")
-                .color("#ffffff")
-                .padding(2)
-                .size(11),
-        ));
+/// The inside of a sidebar row: its mark, its name (bold while unread) and its count.
+fn row_inner(id: &str, mark: Html, text: String, standing: Standing) -> Vec<Html> {
+    let mut children = vec![mark, span("row-text").id(format!("{id}-text")).text(text)];
+    if standing.badge > 0 {
+        children.push(
+            span("count")
+                .id(format!("{id}-unread"))
+                .text(standing.badge.to_string()),
+        );
     }
-    web::card_action(
-        id,
-        web::style().padding(4).radius(6).background(if current {
-            look.selected
-        } else {
-            look.sidebar
-        }),
-        action,
-        vec![web::styled_row(
-            &format!("{id}-line"),
-            8,
-            "center",
-            web::style(),
-            children,
-        )],
-    )
+    children
 }
-fn sidebar(
-    state: &SlackState,
-    actor: &str,
-    open: Option<&str>,
-    now: u64,
-    look: &Look,
-) -> PageElement {
-    let mut items = vec![section("channels-label", "Channels", look)];
+fn row_class(standing: Standing) -> &'static str {
+    match (standing.current, standing.unread) {
+        (true, _) => "row current",
+        (false, true) => "row unread",
+        (false, false) => "row",
+    }
+}
+/// One conversation in the sidebar, a link to it.
+fn sidebar_row(id: &str, mark: Html, text: String, url: String, standing: Standing) -> Html {
+    el("a")
+        .id(id)
+        .class(row_class(standing))
+        .attr("href", url)
+        .children(row_inner(id, mark, text, standing))
+}
+fn sidebar(state: &SlackState, actor: &str, open: Option<&str>, now: u64, workspace: &str) -> Html {
+    let mut items = vec![section("channels-label", "Channels")];
     let mentions = state.mentions(actor);
     for (id, channel) in &state.channels {
         if !channel.members.contains(actor) {
             continue;
         }
-        let current = open == Some(id.as_str());
-        let ink = if current { "#ffffff" } else { look.sidebar_ink };
         let mark = if channel.private {
-            glyph(
-                &format!("nav-{id}-lock"),
-                "lock",
-                "Private channel",
-                14,
-                ink,
-            )
+            glyph(&format!("nav-{id}-lock"), "mark lock", "Private channel", "")
         } else {
-            glyph(&format!("nav-{id}-hash"), "hash", "Channel", 14, ink)
+            glyph(&format!("nav-{id}-hash"), "mark", "Channel", "#")
         };
         items.push(sidebar_row(
             &format!("nav-{id}"),
             mark,
             id.clone(),
-            web::visit(format!("/channels/{id}")),
-            look,
+            format!("/channels/{id}"),
             // A channel is bold while it is unread and badged with its unread mentions;
             // a DM is badged with every unread message.
             Standing {
-                current,
+                current: open == Some(id.as_str()),
                 unread: state.unread(actor, id) > 0,
                 badge: mentions.iter().filter(|(at, _)| *at == id).count(),
             },
         ));
     }
-    items.push(web::pills(
-        "add-channel",
-        8,
-        vec![
-            glyph(
-                "add-channel-icon",
-                "plus",
-                "Add channels",
-                14,
-                look.sidebar_ink,
-            ),
-            web::styled(
-                "add-channel-text",
-                "Add channels",
-                web::style().size(14).color(look.sidebar_ink).one_line(),
-            ),
-        ],
-    ));
-    items.push(web::spacer("sidebar-gap", 6));
-    items.push(section("dms-label", "Direct messages", look));
+    items.push(div("row add").id("add-channel").children([
+        glyph("add-channel-icon", "mark plus", "Add channels", "+"),
+        span("row-text").id("add-channel-text").text("Add channels"),
+    ]));
+    items.push(section("dms-label", "Direct messages"));
     let mut listed = std::collections::BTreeSet::new();
     for (key, dm) in &state.dms {
         if !dm.members.contains(actor) {
             continue;
         }
         let people = others(key, actor);
-        let current = open == Some(key.as_str());
         let mark = match people.as_slice() {
             [one] => {
                 listed.insert((*one).to_owned());
-                web::styled_row(
-                    &format!("dm-{key}-mark"),
-                    3,
-                    "center",
-                    web::style(),
-                    vec![
-                        avatar(&format!("dm-{key}-avatar"), &state.display(one), 20),
-                        presence(
-                            &format!("dm-{key}-presence"),
-                            active(state, one, actor, now),
-                            look,
-                        ),
-                    ],
-                )
+                span("face").id(format!("dm-{key}-mark")).children([
+                    avatar(&format!("dm-{key}-avatar"), &state.display(one), "s20"),
+                    presence(
+                        &format!("dm-{key}-presence"),
+                        active(state, one, actor, now),
+                    ),
+                ])
             }
-            _ => web::thumbnail(
-                &format!("dm-{key}-avatar"),
-                people.len().to_string(),
-                web::style()
-                    .width(20)
-                    .height(20)
-                    .radius(4)
-                    .size(9)
-                    .background("#5c3a5d")
-                    .border(look.sidebar_ink)
-                    .color("#ffffff")
-                    .align("center"),
-            ),
+            _ => span("avatar s20 group")
+                .id(format!("dm-{key}-avatar"))
+                .text(people.len().to_string()),
         };
         items.push(sidebar_row(
             &format!("dm-{key}"),
             mark,
             partners(state, key, actor),
-            web::visit(format!("/channels/{key}")),
-            look,
+            format!("/channels/{key}"),
             Standing {
-                current,
+                current: open == Some(key.as_str()),
                 unread: state.unread(actor, key) > 0,
                 badge: state.unread(actor, key),
             },
@@ -563,53 +346,38 @@ fn sidebar(
         .map(str::to_owned)
         .collect();
     for who in rest {
-        let mark = web::styled_row(
-            &format!("start-{who}-mark"),
-            3,
-            "center",
-            web::style(),
-            vec![
-                avatar(&format!("start-{who}-avatar"), &state.display(&who), 20),
-                presence(
-                    &format!("start-{who}-presence"),
-                    active(state, &who, actor, now),
-                    look,
+        let id = format!("start-{who}");
+        let mark = span("face").id(format!("{id}-mark")).children([
+            avatar(&format!("{id}-avatar"), &state.display(&who), "s20"),
+            presence(&format!("{id}-presence"), active(state, &who, actor, now)),
+        ]);
+        items.push(
+            form(&format!("{id}-form"), "/dms", "post")
+                .class("start")
+                .child(hidden("to", &who))
+                .child(
+                    el("button")
+                        .id(id.as_str())
+                        .attr("type", "submit")
+                        .class("row")
+                        .children(row_inner(&id, mark, state.display(&who), Standing::default())),
                 ),
-            ],
         );
-        items.push(sidebar_row(
-            &format!("start-{who}"),
-            mark,
-            state.display(&who),
-            post("/dms".into(), &[("to", &who)]),
-            look,
-            Standing::default(),
-        ));
     }
-    items.push(web::spacer("sidebar-gap-2", 6));
-    items.push(section("apps-label", "Apps", look));
-    items.push(web::pills(
-        "add-apps",
-        8,
-        vec![
-            glyph("add-apps-icon", "plus", "Add apps", 14, look.sidebar_ink),
-            web::styled(
-                "add-apps-text",
-                "Add apps",
-                web::style().size(14).color(look.sidebar_ink).one_line(),
-            ),
-        ],
-    ));
-    web::column(
-        "sidebar",
-        0,
-        web::style()
-            .background(look.sidebar)
-            .padding(8)
-            .width(SIDEBAR)
-            .flex(0),
-        items,
-    )
+    items.push(section("apps-label", "Apps"));
+    items.push(div("row add").id("add-apps").children([
+        glyph("add-apps-icon", "mark plus", "Add apps", "+"),
+        span("row-text").id("add-apps-text").text("Add apps"),
+    ]));
+    el("aside").id("sidebar").class("sidebar").children([
+        div("sidebar-head").id("sidebar-head").children([
+            span("workspace").id("workspace").text(workspace),
+            glyph("workspace-menu", "caret light", "Workspace menu", "▾"),
+            span("grow"),
+            glyph("compose", "compose", "New message", "✎"),
+        ]),
+        el("nav").id("sidebar-list").class("sidebar-list").children(items),
+    ])
 }
 
 // ---- messages ------------------------------------------------------------------------
@@ -621,9 +389,6 @@ struct Ctx<'a> {
     channel: &'a Channel,
     actor: &'a str,
     now: u64,
-    look: &'a Look,
-    /// Characters of message text per row, see `WIDE_CHARS`.
-    budget: usize,
 }
 impl Ctx<'_> {
     fn heading(&self) -> String {
@@ -637,66 +402,54 @@ impl Ctx<'_> {
         format!("/channels/{}", self.id)
     }
 }
+/// A word and the punctuation that closes it, which stays plain text.
+fn trailing(w: &str) -> (&str, &str) {
+    let end = w.trim_end_matches(['.', ',', ';', ':', ')', ']', '!', '?']);
+    (end, &w[end.len()..])
+}
 /// A line of a message as Slack sets it: plain runs, mentions on their tint, links in
-/// blue and code in the monospace face, each at its own width.
-fn inline_line(id: &str, line: &str, mentions: &[&str], look: &Look) -> PageElement {
+/// blue and code in the monospace face. `piece` numbers the links and marks of the
+/// whole message so their ids (`<id>-p<n>`) stay unique across its lines.
+fn inline_line(id: &str, line: &str, mentions: &[&str], piece: &mut usize) -> Html {
     let words: Vec<&str> = line.split(' ').filter(|w| !w.is_empty()).collect();
-    let mut pieces = vec![];
-    let mut run: Vec<String> = vec![];
-    let flush = |run: &mut Vec<String>, pieces: &mut Vec<PageElement>| {
-        if !run.is_empty() {
-            pieces.push(web::styled(
-                &format!("{id}-p{}", pieces.len()),
-                emojify(&run.join(" ")),
-                web::style().size(15).color(look.ink).one_line(),
-            ));
-            run.clear();
+    let mut out = div("line");
+    let mut run = String::new();
+    fn flush(run: &mut String, out: Html) -> Html {
+        if run.is_empty() {
+            return out;
         }
-    };
-    /// A word and the punctuation that closes it, which stays plain text.
-    fn trailing(w: &str) -> (&str, &str) {
-        let end = w.trim_end_matches(['.', ',', ';', ':', ')', ']', '!', '?']);
-        (end, &w[end.len()..])
+        let text = emojify(run);
+        run.clear();
+        out.text(text)
     }
     let mut i = 0;
     while i < words.len() {
         let word = words[i];
+        if i > 0 {
+            run.push(' ');
+        }
         if word.starts_with("http://") || word.starts_with("https://") {
             let (url, tail) = trailing(word);
-            flush(&mut run, &mut pieces);
+            out = flush(&mut run, out);
             let shown = url
                 .trim_start_matches("http://")
                 .trim_start_matches("https://");
-            pieces.push(web::inline_link(
-                &format!("{id}-p{}", pieces.len()),
-                shown,
-                url,
-                15,
-                look.accent,
-            ));
-            if !tail.is_empty() {
-                run.push(tail.into());
-            }
+            out = out.child(html::link(&format!("{id}-p{piece}"), url, shown));
+            *piece += 1;
+            run.push_str(tail);
         } else if let Some(name) = word
             .strip_prefix('@')
             .filter(|name| mentions.iter().any(|m| name.starts_with(m)))
         {
             let (name, tail) = trailing(name);
-            flush(&mut run, &mut pieces);
-            pieces.push(web::styled(
-                &format!("{id}-p{}", pieces.len()),
-                format!("@{name}"),
-                web::style()
-                    .size(15)
-                    .color(look.accent)
-                    .background(look.tint)
-                    .radius(3)
-                    .padding(2)
-                    .one_line(),
-            ));
-            if !tail.is_empty() {
-                run.push(tail.into());
-            }
+            out = flush(&mut run, out);
+            out = out.child(
+                span("mention")
+                    .id(format!("{id}-p{piece}"))
+                    .text(format!("@{name}")),
+            );
+            *piece += 1;
+            run.push_str(tail);
         } else if word.starts_with('`') && word.len() > 1 {
             // A code span runs to the word that closes it.
             let mut end = i;
@@ -707,339 +460,192 @@ fn inline_line(id: &str, line: &str, mentions: &[&str], look: &Look) -> PageElem
             }
             let end = end.min(words.len() - 1);
             let code = words[i..=end].join(" ");
-            let code = code.trim_matches('`');
-            flush(&mut run, &mut pieces);
-            pieces.push(web::styled(
-                &format!("{id}-p{}", pieces.len()),
-                code,
-                web::style()
-                    .size(13)
-                    .mono()
-                    .color("#e01e5a")
-                    .background("#f8f8f8")
-                    .border("#e0e0e0")
-                    .radius(3)
-                    .padding(2)
-                    .one_line(),
-            ));
+            let (code, tail) = trailing(&code);
+            out = flush(&mut run, out);
+            out = out.child(
+                el("code")
+                    .id(format!("{id}-p{piece}"))
+                    .text(code.trim_matches('`')),
+            );
+            *piece += 1;
+            run.push_str(tail);
             i = end;
         } else {
-            run.push(word.into());
+            run.push_str(word);
         }
         i += 1;
     }
-    flush(&mut run, &mut pieces);
-    web::pills(id, 4, pieces)
+    flush(&mut run, out)
 }
-/// A line cut into rows of at most `budget` characters at word boundaries, a code span
-/// never split; a single word longer than the budget (a long URL) is a row of its own.
-fn chunks(line: &str, budget: usize) -> Vec<String> {
-    let words: Vec<&str> = line.split(' ').filter(|w| !w.is_empty()).collect();
-    let mut tokens: Vec<String> = vec![];
-    let mut i = 0;
-    while i < words.len() {
-        let mut token = words[i].to_owned();
-        if words[i].starts_with('`') && !(words[i].len() > 1 && words[i].ends_with('`')) {
-            while i + 1 < words.len() && !words[i].ends_with('`') {
-                i += 1;
-                token.push(' ');
-                token.push_str(words[i]);
-            }
-        }
-        tokens.push(token);
-        i += 1;
-    }
-    let mut rows: Vec<String> = vec![];
-    for token in tokens {
-        match rows.last_mut() {
-            Some(row) if row.chars().count() + 1 + token.chars().count() <= budget => {
-                row.push(' ');
-                row.push_str(&token);
-            }
-            _ => rows.push(token),
-        }
-    }
-    rows
-}
-/// A message's text: every line cut to the budget, each row set inline.
-fn body(id: &str, text: &str, mentions: &[&str], look: &Look, budget: usize) -> Vec<PageElement> {
-    let mut out = vec![];
+/// A message's text: one block per line, wrapped by the page.
+fn body(id: &str, text: &str, mentions: &[&str]) -> Html {
+    let id = format!("{id}-text");
+    let mut piece = 0;
+    let mut out = div("text").id(id.as_str());
     for line in text.lines().filter(|l| !l.trim().is_empty()) {
-        for row in chunks(line, budget) {
-            let row_id = if out.is_empty() {
-                format!("{id}-text")
-            } else {
-                format!("{id}-text-{}", out.len())
-            };
-            out.push(inline_line(&row_id, &row, mentions, look));
-        }
+        out = out.child(inline_line(&id, line, mentions, &mut piece));
     }
     out
 }
-fn reactions(ctx: &Ctx, m: &Message) -> Option<PageElement> {
+/// The reaction chips under a message: each reacts when pressed, the actor's own
+/// outlined in blue.
+fn reactions(ctx: &Ctx, id: &str, m: &Message) -> Option<Html> {
     if m.reactions.is_empty() {
         return None;
     }
-    let look = ctx.look;
-    let mut chips: Vec<PageElement> = m
-        .reactions
-        .iter()
-        .map(|(name, who)| {
-            let mine = who.contains(ctx.actor);
-            web::styled_button(
-                &format!("{}-react-{name}", m.id),
-                format!("{} {}", emoji(name), who.len()),
-                post(
-                    format!("{}/messages/{}/reactions", ctx.url(), m.id),
-                    &[("reaction", name)],
-                ),
-                web::style()
-                    .size(12)
-                    .padding(8)
-                    .radius(12)
-                    .background(if mine { look.tint } else { "#f2f2f2" })
-                    .border(if mine { look.accent } else { "#e0e0e0" })
-                    .color(if mine { look.accent } else { look.ink }),
-            )
-        })
-        .collect();
-    chips.push(web::icon(
-        &format!("{}-react-add", m.id),
-        "emoji",
-        "Add reaction",
-        web::style()
-            .size(14)
-            .padding(5)
-            .radius(12)
-            .background("#f2f2f2")
-            .color(look.muted),
-    ));
-    Some(web::pills(&format!("{}-reactions", m.id), 4, chips))
+    let action = format!("{}/messages/{}/reactions", ctx.url(), m.id);
+    Some(
+        form(&format!("{id}-reactions"), action, "post")
+            .class("reactions")
+            .each(&m.reactions, |(name, who)| {
+                button(
+                    &format!("{id}-react-{name}"),
+                    format!("{} {}", emoji(name), who.len()),
+                )
+                .class("chip")
+                .class(if who.contains(ctx.actor) { "mine" } else { "" })
+                .attr("name", "reaction")
+                .attr("value", name.as_str())
+            })
+            .child(glyph(
+                &format!("{id}-react-add"),
+                "chip add",
+                "Add reaction",
+                "☺+",
+            )),
+    )
 }
 /// The collapsed thread under a message: the repliers' faces, "N replies" and the age
 /// of the last, opening the thread pane.
-fn thread_row(ctx: &Ctx, m: &Message, replies: &[&Message]) -> PageElement {
-    let mut chips = vec![];
+fn thread_row(ctx: &Ctx, m: &Message, replies: &[&Message]) -> Html {
+    let mut row = div("thread-row").id(format!("{}-thread", m.id));
     let mut seen = std::collections::BTreeSet::new();
     for reply in replies {
         if seen.insert(reply.author.as_str()) && seen.len() <= 3 {
-            chips.push(avatar(
+            row = row.child(avatar(
                 &format!("{}-thread-avatar-{}", m.id, reply.author),
                 &ctx.state.display(&reply.author),
-                20,
+                "s24",
             ));
         }
     }
-    chips.push(web::styled_link(
+    row = row.child(html::link(
         &format!("{}-replies", m.id),
-        format!(
-            "{} {}",
-            replies.len(),
-            if replies.len() == 1 {
-                "reply"
-            } else {
-                "replies"
-            }
-        ),
         format!("{}?thread={}", ctx.url(), m.id),
-        web::style()
-            .size(13)
-            .bold()
-            .color(ctx.look.accent)
-            .one_line(),
+        plural(replies.len(), "reply", "replies"),
     ));
     if let Some(last) = replies.iter().map(|r| r.time).max() {
-        chips.push(web::styled(
-            &format!("{}-last-reply", m.id),
-            format!("Last reply {}", time::ago(last, ctx.now)),
-            web::style().size(12).color(ctx.look.muted).one_line(),
-        ));
+        row = row.child(
+            span("last-reply")
+                .id(format!("{}-last-reply", m.id))
+                .text(format!("Last reply {}", time::ago(last, ctx.now))),
+        );
     }
-    web::pills(&format!("{}-thread", m.id), 6, chips)
+    row
 }
 /// The actions Slack floats over the message under the pointer: quick reactions, add
 /// reaction, reply in thread, pin and more.
-fn toolbar(ctx: &Ctx, m: &Message) -> PageElement {
-    let look = ctx.look;
+fn toolbar(ctx: &Ctx, m: &Message) -> Html {
+    let base = format!("{}/messages/{}", ctx.url(), m.id);
     let quick = |name: &str| {
-        web::styled_button(
-            &format!("{}-quick-{name}", m.id),
-            emoji(name),
-            post(
-                format!("{}/messages/{}/reactions", ctx.url(), m.id),
-                &[("reaction", name)],
-            ),
-            web::style()
-                .size(14)
-                .padding(4)
-                .radius(4)
-                .background(look.surface)
-                .color(look.ink),
-        )
+        button(&format!("{}-quick-{name}", m.id), emoji(name))
+            .attr("name", "reaction")
+            .attr("value", name)
     };
-    let tool = web::style().size(16).padding(4).radius(4).color(look.muted);
-    web::styled_row(
-        &format!("{}-tools", m.id),
-        2,
-        "center",
-        web::style()
-            .padding(2)
-            .radius(6)
-            .background(look.surface)
-            .border(look.line),
-        vec![
+    let pin_label = if ctx.channel.pins.contains(&m.id) {
+        "Unpin from channel"
+    } else {
+        "Pin to channel"
+    };
+    form(&format!("{}-tools", m.id), format!("{base}/reactions"), "post")
+        .class("tools")
+        .children([
             quick("white_check_mark"),
             quick("eyes"),
             quick("+1"),
-            web::icon(
+            glyph(
                 &format!("{}-add-reaction", m.id),
-                "emoji",
+                "tool",
                 "Add reaction",
-                tool.clone(),
+                "☺",
             ),
-            web::icon_action(
-                &format!("{}-open-thread", m.id),
-                "thread",
-                "Reply in thread",
-                tool.clone(),
-                web::visit(format!("{}?thread={}", ctx.url(), m.id)),
-            ),
-            web::icon_action(
-                &format!("{}-pin", m.id),
-                "pin",
-                if ctx.channel.pins.contains(&m.id) {
-                    "Unpin from channel"
-                } else {
-                    "Pin to channel"
-                },
-                tool.clone(),
-                post(format!("{}/messages/{}/pin", ctx.url(), m.id), &[]),
-            ),
-            web::icon(&format!("{}-more", m.id), "more", "More actions", tool),
-        ],
-    )
+            el("a")
+                .id(format!("{}-open-thread", m.id))
+                .class("tool bubble")
+                .attr("href", format!("{}?thread={}", ctx.url(), m.id))
+                .attr("title", "Reply in thread")
+                .attr("aria-label", "Reply in thread"),
+            button(&format!("{}-pin", m.id), "📌")
+                .class("tool")
+                .attr("formaction", format!("{base}/pin"))
+                .attr("title", pin_label)
+                .attr("aria-label", pin_label),
+            glyph(&format!("{}-more", m.id), "tool", "More actions", "⋮"),
+        ])
 }
-/// One message: the author's avatar, name and time on the first of a run by one
-/// author, the time alone in the gutter on the rest.
-fn message(
-    ctx: &Ctx,
-    prefix: &str,
-    m: &Message,
+/// Where a message is drawn, which decides what surrounds its text.
+#[derive(Clone, Copy)]
+struct Placement {
+    /// The first of a run by one author: avatar, name and time; the rest carry the
+    /// time alone in the gutter.
     first: bool,
-    hovered: bool,
-    replies: &[&Message],
-) -> PageElement {
-    let look = ctx.look;
+    /// The last of the transcript keeps its toolbar showing; the others show theirs
+    /// under the pointer.
+    last: bool,
+    /// The transcript carries toolbars and thread rows; the thread pane does not.
+    transcript: bool,
+}
+fn message(ctx: &Ctx, prefix: &str, m: &Message, at: Placement, replies: &[&Message]) -> Html {
     let id = &format!("{prefix}{}", m.id);
-    let first = first || hovered;
     let stamp = time::civil(m.time).clock();
-    let mut inner = vec![];
-    if ctx.channel.pins.contains(id) {
-        inner.push(web::styled_row(
-            &format!("{id}-pinned"),
-            4,
-            "center",
-            web::style(),
-            vec![
-                glyph(&format!("{id}-pin-icon"), "pin", "Pinned", 11, look.muted),
-                web::styled(
-                    &format!("{id}-pinned-text"),
-                    "Pinned to this channel",
-                    web::style().size(11).color(look.muted).one_line(),
-                ),
-            ],
-        ));
-    }
-    if first {
-        let mut head = vec![
-            web::styled(
-                &format!("{id}-author"),
-                ctx.state.display(&m.author),
-                web::style().size(15).bold().color(look.ink).one_line(),
-            ),
-            web::styled(
-                &format!("{id}-time"),
-                stamp.clone(),
-                web::style().size(12).color(look.muted).one_line(),
-            ),
-            web::rest(&format!("{id}-head-rest")),
-        ];
-        if hovered {
-            head.push(toolbar(ctx, m));
-        }
-        inner.push(web::styled_row(
-            &format!("{id}-head"),
-            8,
-            "center",
-            web::style(),
-            head,
-        ));
-    }
     let mentions = m.mentions();
-    inner.extend(body(id, &m.text, &mentions, look, ctx.budget));
-    inner.extend(reactions(ctx, m));
-    if !replies.is_empty() {
-        inner.push(thread_row(ctx, m, replies));
+    let mut inner = div("msg-body").id(format!("{id}-body"));
+    if ctx.channel.pins.contains(&m.id) {
+        inner = inner.child(div("pinned").id(format!("{id}-pinned")).children([
+            glyph(&format!("{id}-pin-icon"), "pin", "Pinned", "📌"),
+            span("").id(format!("{id}-pinned-text")).text("Pinned to this channel"),
+        ]));
     }
-    let gutter = if first {
-        avatar(
+    if at.first {
+        inner = inner.child(div("msg-head").id(format!("{id}-head")).children([
+            span("author")
+                .id(format!("{id}-author"))
+                .text(ctx.state.display(&m.author)),
+            span("time").id(format!("{id}-time")).text(stamp.clone()),
+        ]));
+    }
+    inner = inner
+        .child(body(id, &m.text, &mentions))
+        .maybe(reactions(ctx, id, m));
+    if at.transcript && !replies.is_empty() {
+        inner = inner.child(thread_row(ctx, m, replies));
+    }
+    let gutter = if at.first {
+        div("gutter").child(avatar(
             &format!("{id}-avatar"),
             &ctx.state.display(&m.author),
-            AVATAR,
-        )
+            "s36",
+        ))
     } else {
-        web::styled(
-            &format!("{id}-time"),
-            stamp,
-            web::style()
-                .size(9)
-                .color(look.muted)
-                .width(AVATAR)
-                .one_line()
-                .align("center"),
-        )
+        div("gutter").child(span("time").id(format!("{id}-time")).text(stamp))
     };
-    let mut style = web::style().padding(4);
-    if mentions.contains(&ctx.actor) {
-        style = style.background(look.highlight);
-    }
-    web::styled_row(
-        &format!("{id}-row"),
-        10,
-        "start",
-        style,
-        vec![
-            gutter,
-            web::column(&format!("{id}-body"), 2, web::style().flex(1), inner),
-        ],
-    )
+    div("msg")
+        .id(format!("{id}-row"))
+        .class(if at.first { "first" } else { "" })
+        .class(if at.last { "last" } else { "" })
+        .class(if ctx.channel.pins.contains(&m.id) { "is-pinned" } else { "" })
+        .class(if mentions.contains(&ctx.actor) { "mentioned" } else { "" })
+        .child(gutter)
+        .child(inner)
+        .when(at.transcript, |row| row.child(toolbar(ctx, m)))
 }
-fn day_divider(index: u64, label: String, look: &Look) -> PageElement {
-    let rule = |id: String| PageElement::Divider {
-        id,
-        style: web::style().flex(1).color(look.line),
-    };
-    web::styled_row(
-        &format!("day-{index}"),
-        8,
-        "center",
-        web::style().padding(6),
-        vec![
-            rule(format!("day-{index}-left")),
-            web::chip(
-                &format!("day-{index}-label"),
-                label,
-                look.surface,
-                look.ink,
-                web::style().border(look.line).size(12).padding(8),
-            ),
-            rule(format!("day-{index}-right")),
-        ],
-    )
+fn day_divider(index: u64, label: String) -> Html {
+    div("day")
+        .id(format!("day-{index}"))
+        .child(span("day-label").id(format!("day-{index}-label")).text(label))
 }
-/// The transcript: top-level messages under date dividers, runs by one author grouped,
-/// the last message carrying the hover toolbar.
-fn transcript(ctx: &Ctx) -> Vec<PageElement> {
+/// The transcript: top-level messages under date dividers, runs by one author grouped.
+fn transcript(ctx: &Ctx) -> Vec<Html> {
     let tops: Vec<&Message> = ctx
         .channel
         .messages
@@ -1052,7 +658,7 @@ fn transcript(ctx: &Ctx) -> Vec<PageElement> {
         let day = time::civil(m.time).index;
         let new_day = previous.is_none_or(|p| time::civil(p.time).index != day);
         if new_day {
-            out.push(day_divider(day, time::day_label(m.time, ctx.now), ctx.look));
+            out.push(day_divider(day, time::day_label(m.time, ctx.now)));
         }
         let first = new_day
             || previous
@@ -1063,7 +669,12 @@ fn transcript(ctx: &Ctx) -> Vec<PageElement> {
             .iter()
             .filter(|r| r.parent.as_deref() == Some(m.id.as_str()))
             .collect();
-        out.push(message(ctx, "", m, first, n + 1 == tops.len(), &replies));
+        let at = Placement {
+            first,
+            last: n + 1 == tops.len(),
+            transcript: true,
+        };
+        out.push(message(ctx, "", m, at, &replies));
         previous = Some(m);
     }
     out
@@ -1071,503 +682,297 @@ fn transcript(ctx: &Ctx) -> Vec<PageElement> {
 
 // ---- the header, the composer and the panes ------------------------------------------
 
-/// The channel header: name and topic, the member count opening the member list.
-fn header(ctx: &Ctx) -> PageElement {
-    let look = ctx.look;
+/// The channel header: name and topic, the member count opening the member list, and
+/// the bar of pins, purpose and bookmarks under it.
+fn header(ctx: &Ctx) -> Html {
     let heading = ctx.heading();
     let is_channel = ctx.state.channels.contains_key(ctx.id);
-    let mut line = vec![];
+    let title = el("h1").id("channel-title").class("channel-title").text(heading);
+    let mut line = div("channel-head").id("channel-head");
     if is_channel {
-        line.push(web::styled(
-            "channel-title",
-            &heading,
-            web::style().size(18).bold().color(look.ink).one_line(),
-        ));
-        line.push(glyph(
-            "channel-menu",
-            "chevron-down",
-            "Channel details",
-            14,
-            look.muted,
-        ));
-    } else {
-        let people = others(ctx.id, ctx.actor);
-        if let [one] = people.as_slice() {
-            line.push(avatar("channel-avatar", &ctx.state.display(one), 24));
-            line.push(web::styled(
-                "channel-title",
-                &heading,
-                web::style().size(18).bold().color(look.ink).one_line(),
-            ));
-            line.push(presence(
+        line = line
+            .child(title)
+            .child(glyph("channel-menu", "caret dark", "Channel details", "▾"));
+    } else if let [one] = others(ctx.id, ctx.actor).as_slice() {
+        line = line
+            .child(avatar("channel-avatar", &ctx.state.display(one), "s24"))
+            .child(title)
+            .child(presence(
                 "channel-presence",
                 active(ctx.state, one, ctx.actor, ctx.now),
-                look,
             ));
-            if let Some(status) = ctx.state.members.get(*one).filter(|m| !m.status.is_empty()) {
-                line.push(web::styled(
-                    "channel-status",
-                    &status.status,
-                    web::style().size(13).color(look.muted).one_line(),
-                ));
-            }
-        } else {
-            line.push(web::styled(
-                "channel-title",
-                &heading,
-                web::style().size(18).bold().color(look.ink).one_line(),
-            ));
+        if let Some(member) = ctx.state.members.get(*one).filter(|m| !m.status.is_empty()) {
+            line = line.child(
+                span("channel-status")
+                    .id("channel-status")
+                    .text(member.status.as_str()),
+            );
         }
+    } else {
+        line = line.child(title);
     }
     if !ctx.channel.topic.is_empty() {
-        line.push(web::styled(
-            "channel-topic",
-            &ctx.channel.topic,
-            web::style().size(13).color(look.muted).one_line(),
-        ));
+        line = line.child(
+            span("channel-topic")
+                .id("channel-topic")
+                .text(ctx.channel.topic.as_str()),
+        );
     }
-    line.push(web::rest("channel-head-rest"));
-    line.push(web::card_action(
-        "channel-members",
-        web::style().border(look.line).radius(6).padding(4),
-        web::visit(format!("{}?members=1", ctx.url())),
-        vec![web::styled_row(
-            "channel-members-line",
-            4,
-            "center",
-            web::style(),
-            vec![
-                glyph("channel-members-icon", "person", "Members", 14, look.muted),
-                web::styled(
-                    "channel-members-count",
-                    ctx.channel.members.len().to_string(),
-                    web::style().size(13).color(look.muted).one_line(),
-                ),
-            ],
-        )],
-    ));
-    let mut rows = vec![web::styled_row(
-        "channel-head",
-        8,
-        "center",
-        web::style(),
-        line,
-    )];
+    line = line.child(span("grow")).child(
+        el("a")
+            .id("channel-members")
+            .class("channel-members")
+            .attr("href", format!("{}?members=1", ctx.url()))
+            .attr("title", "View all members")
+            .children([
+                glyph("channel-members-icon", "person", "Members", ""),
+                span("")
+                    .id("channel-members-count")
+                    .text(ctx.channel.members.len().to_string()),
+            ]),
+    );
+    let mut head = el("header")
+        .id("channel-header")
+        .class("channel-header")
+        .child(line);
     if !ctx.channel.pins.is_empty() || !ctx.channel.purpose.is_empty() {
-        let mut bar = vec![];
+        let mut bar = div("channel-bar").id("channel-bar");
         if !ctx.channel.pins.is_empty() {
-            bar.push(glyph("channel-pins-icon", "pin", "Pinned", 12, look.muted));
-            bar.push(web::styled(
-                "channel-pins",
-                format!("{} Pinned", ctx.channel.pins.len()),
-                web::style().size(12).color(look.muted).one_line(),
-            ));
+            bar = bar.child(span("bar-item").children([
+                glyph("channel-pins-icon", "pin", "Pinned", "📌"),
+                span("")
+                    .id("channel-pins")
+                    .text(format!("{} Pinned", ctx.channel.pins.len())),
+            ]));
         }
         if !ctx.channel.purpose.is_empty() {
-            bar.push(glyph(
-                "channel-purpose-icon",
-                "info",
-                "Purpose",
-                12,
-                look.muted,
-            ));
-            bar.push(web::styled(
-                "channel-purpose",
-                &ctx.channel.purpose,
-                web::style().size(12).color(look.muted).one_line(),
-            ));
+            bar = bar.child(span("bar-item").children([
+                glyph("channel-purpose-icon", "info", "Purpose", "i"),
+                span("")
+                    .id("channel-purpose")
+                    .text(ctx.channel.purpose.as_str()),
+            ]));
         }
-        bar.push(glyph(
-            "add-bookmark-icon",
-            "plus",
-            "Add a bookmark",
-            12,
-            look.muted,
-        ));
-        bar.push(web::styled(
-            "add-bookmark",
-            "Add a bookmark",
-            web::style().size(12).color(look.muted).one_line(),
-        ));
-        rows.push(web::pills("channel-bar", 6, bar));
+        bar = bar.child(span("bar-item").children([
+            glyph("add-bookmark-icon", "plus", "Add a bookmark", "+"),
+            span("").id("add-bookmark").text("Add a bookmark"),
+        ]));
+        head = head.child(bar);
     }
-    web::column("channel-header", 2, web::style().padding(0), rows)
+    head
 }
-/// What the right-hand pane holds, which decides the last column of the composer bar.
+/// What the right-hand pane holds.
 enum Pane<'a> {
     None,
     Thread(&'a Message),
     Members,
 }
 /// The thread's reply field, at the bottom of its pane and level with the composer.
-fn thread_composer(ctx: &Ctx, parent: &Message) -> PageElement {
-    let look = ctx.look;
+fn thread_composer(ctx: &Ctx, parent: &Message) -> Html {
     let id = &parent.id;
-    let action = post(
-        format!("{}/messages", ctx.url()),
-        &[("text", &format!("${id}-reply-body")), ("parent", id)],
-    );
-    web::card(
-        "thread-composer",
-        web::style()
-            .width(PANE)
-            .flex(0)
-            .padding(12)
-            .radius(0)
-            .background(look.surface),
-        vec![PageElement::Form {
-            id: format!("{id}-reply"),
-            action: action.clone(),
-            children: vec![
-                PageElement::Input {
-                    id: format!("{id}-reply-body"),
-                    label: "Reply in thread".into(),
-                    value: String::new(),
-                    placeholder: String::new(),
-                },
-                web::styled_button(
-                    &format!("{id}-reply-submit"),
-                    "Reply",
-                    action,
-                    web::style()
-                        .size(12)
-                        .padding(10)
-                        .radius(4)
-                        .background(look.green)
-                        .color("#ffffff"),
-                ),
-            ],
-        }],
+    div("composer").id("thread-composer").child(
+        form(&format!("{id}-reply"), format!("{}/messages", ctx.url()), "post")
+            .class("composer-box")
+            .children([
+                hidden("parent", id),
+                text_input(&format!("{id}-reply-body"), "text", "")
+                    .attr("aria-label", "Reply in thread")
+                    .attr("placeholder", "Reply…")
+                    .attr("autocomplete", "off"),
+                div("send-actions").children([
+                    span("grow"),
+                    button(&format!("{id}-reply-submit"), "Reply").class("send"),
+                ]),
+            ]),
     )
 }
-/// The composer pinned to the bottom: a bordered box with formatting tools over the
-/// field and the send button under it, the frame and sidebar colours running beneath,
-/// and the thread's reply field beside it while a thread is open.
-fn composer(ctx: &Ctx, pane: &Pane) -> PageElement {
-    let look = ctx.look;
-    let url = format!("{}/messages", ctx.url());
-    let action = post(url, &[("text", "$send-text")]);
-    let tool = |id: &str, icon: &str, label: &str| {
-        web::icon(
-            id,
-            icon,
-            label,
-            web::style().size(14).padding(3).color(look.muted),
-        )
-    };
-    let form = PageElement::Form {
-        id: "send".into(),
-        action: action.clone(),
-        children: vec![
-            web::pills(
-                "send-tools",
-                2,
-                vec![
-                    tool("send-bold", "bold", "Bold"),
-                    tool("send-italic", "italic", "Italic"),
-                    tool("send-strike", "minus", "Strikethrough"),
-                    tool("send-link", "link", "Link"),
-                    tool("send-list", "list-view", "Bulleted list"),
-                    tool("send-code", "code", "Code"),
-                ],
-            ),
-            PageElement::Input {
-                id: "send-text".into(),
-                label: format!("Message {}", ctx.heading()),
-                value: String::new(),
-                placeholder: String::new(),
-            },
-            web::styled_row(
-                "send-actions",
-                4,
-                "center",
-                web::style(),
-                vec![
-                    web::icon(
-                        "send-attach",
-                        "plus",
-                        "Attach",
-                        web::style()
-                            .size(14)
-                            .padding(4)
-                            .radius(11)
-                            .background("#f2f2f2")
-                            .color(look.muted),
-                    ),
-                    tool("send-emoji", "emoji", "Emoji"),
-                    tool("send-mention", "at", "Mention someone"),
-                    web::rest("send-actions-rest"),
-                    web::icon_action(
-                        "send-submit",
-                        "send",
-                        "Send message",
-                        web::style()
-                            .size(14)
-                            .padding(6)
-                            .radius(4)
-                            .background(look.green)
-                            .color("#ffffff"),
-                        action,
-                    ),
-                ],
-            ),
-        ],
-    };
-    let main = web::card(
-        "composer-main",
-        web::style()
-            .background(look.surface)
-            .padding(12)
-            .radius(0)
-            .flex(1),
-        vec![
-            form,
-            web::styled(
-                "send-hint",
-                "Shift + Enter to add a new line",
-                web::style().size(11).color(look.muted).align("right"),
-            ),
-        ],
-    );
-    let mut columns = vec![
-        block("composer-rail", MARGIN + RAIL, look.frame, vec![]),
-        block("composer-sidebar", SIDEBAR, look.sidebar, vec![]),
-        main,
-    ];
-    match pane {
-        Pane::None => {}
-        Pane::Thread(parent) => columns.push(thread_composer(ctx, parent)),
-        Pane::Members => columns.push(block("composer-pane", PANE, look.surface, vec![])),
-    }
-    columns.push(block("composer-edge", MARGIN, look.frame, vec![]));
-    web::styled_row(
-        "composer",
-        0,
-        "stretch",
-        web::style().pin("bottom").background(look.frame),
-        columns,
-    )
+/// The composer under the transcript: a bordered box with formatting tools over the
+/// field and the send button under it.
+fn composer(ctx: &Ctx) -> Html {
+    let tool = |id: &str, class: &str, label: &str, mark: &str| glyph(id, class, label, mark);
+    let heading = ctx.heading();
+    div("composer").id("composer").children([
+        form("send", format!("{}/messages", ctx.url()), "post")
+            .class("composer-box")
+            .children([
+                div("send-tools").id("send-tools").children([
+                    tool("send-bold", "fmt bold", "Bold", "B"),
+                    tool("send-italic", "fmt italic", "Italic", "I"),
+                    tool("send-strike", "fmt strike", "Strikethrough", "S"),
+                    tool("send-link", "fmt", "Link", "🔗"),
+                    tool("send-list", "fmt", "Bulleted list", "☰"),
+                    tool("send-code", "fmt mono", "Code", "</>"),
+                ]),
+                text_input("send-text", "text", "")
+                    .attr("aria-label", format!("Message {heading}"))
+                    .attr("placeholder", format!("Message {}", heading.replace("# ", "#")))
+                    .attr("autocomplete", "off"),
+                div("send-actions").id("send-actions").children([
+                    tool("send-attach", "fmt round", "Attach", "+"),
+                    tool("send-emoji", "fmt", "Emoji", "☺"),
+                    tool("send-mention", "fmt", "Mention someone", "@"),
+                    span("grow"),
+                    button("send-submit", "➤")
+                        .class("send")
+                        .attr("title", "Send message")
+                        .attr("aria-label", "Send message"),
+                ]),
+            ]),
+        div("send-hint").id("send-hint").children([
+            el("b").text("Shift + Enter"),
+            html::text(" to add a new line"),
+        ]),
+    ])
+}
+fn pane_head(id: &str, title: Html, close_id: &str, close_label: &str, url: String) -> Html {
+    div("pane-head").id(id).children([
+        title,
+        span("grow"),
+        el("a")
+            .id(close_id)
+            .class("close")
+            .attr("href", url)
+            .attr("title", close_label)
+            .attr("aria-label", close_label)
+            .text("✕"),
+    ])
 }
 /// The thread pane: the parent, its replies, and the reply field.
-fn thread_pane(ctx: &Ctx, parent: &Message) -> PageElement {
-    let ctx = &Ctx {
-        budget: PANE_CHARS,
-        ..*ctx
-    };
-    let look = ctx.look;
+fn thread_pane(ctx: &Ctx, parent: &Message) -> Html {
     let replies: Vec<&Message> = ctx
         .channel
         .messages
         .iter()
         .filter(|r| r.parent.as_deref() == Some(parent.id.as_str()))
         .collect();
-    let mut items = vec![
-        web::styled_row(
-            "thread-head",
-            8,
-            "center",
-            web::style(),
-            vec![
-                web::styled(
-                    "thread-title",
-                    "Thread",
-                    web::style().size(15).bold().color(look.ink).one_line(),
-                ),
-                web::styled(
-                    "thread-channel",
-                    ctx.heading(),
-                    web::style().size(13).color(look.muted).one_line(),
-                ),
-                web::rest("thread-head-rest"),
-                web::icon_action(
-                    "thread-close",
-                    "close",
-                    "Close thread",
-                    web::style().size(16).padding(4).color(look.muted),
-                    web::visit(ctx.url()),
-                ),
-            ],
-        ),
-        web::divider("thread-rule"),
-        // The parent is also in the transcript, so its ids are the pane's own here.
-        message(ctx, "thread-", parent, true, false, &[]),
-    ];
+    let pane = Placement {
+        first: true,
+        last: false,
+        transcript: false,
+    };
+    // The parent is also in the transcript, so its ids are the pane's own here.
+    let mut list = div("scroller")
+        .id("thread-messages")
+        .child(message(ctx, "thread-", parent, pane, &[]));
     if !replies.is_empty() {
-        items.push(web::styled_row(
-            "thread-count",
-            8,
-            "center",
-            web::style().padding(2),
-            vec![
-                web::styled(
-                    "thread-count-text",
-                    format!(
-                        "{} {}",
-                        replies.len(),
-                        if replies.len() == 1 {
-                            "reply"
-                        } else {
-                            "replies"
-                        }
-                    ),
-                    web::style().size(12).color(look.muted).one_line(),
-                ),
-                PageElement::Divider {
-                    id: "thread-count-rule".into(),
-                    style: web::style().flex(1).color(look.line),
-                },
-            ],
-        ));
+        list = list.child(
+            div("thread-count").id("thread-count").child(
+                span("")
+                    .id("thread-count-text")
+                    .text(plural(replies.len(), "reply", "replies")),
+            ),
+        );
     }
     let mut previous: Option<&Message> = None;
     for reply in &replies {
         let first = previous.is_none_or(|p| {
             p.author != reply.author || reply.time.saturating_sub(p.time) > GROUP_US
         });
-        items.push(message(ctx, "", reply, first, false, &[]));
+        list = list.child(message(ctx, "", reply, Placement { first, ..pane }, &[]));
         previous = Some(reply);
     }
-    web::column(
-        "thread-pane",
-        6,
-        web::style()
-            .width(PANE)
-            .flex(0)
-            .padding(12)
-            .background(look.surface)
-            .border(look.line),
-        items,
-    )
+    el("aside").id("thread-pane").class("pane").children([
+        pane_head(
+            "thread-head",
+            fragment_title("thread-title", "Thread", "thread-channel", &ctx.heading()),
+            "thread-close",
+            "Close thread",
+            ctx.url(),
+        ),
+        list,
+        thread_composer(ctx, parent),
+    ])
+}
+fn fragment_title(id: &str, title: &str, sub_id: &str, sub: &str) -> Html {
+    html::fragment([
+        span("pane-title").id(id).text(title),
+        span("pane-sub").id(sub_id).text(sub),
+    ])
 }
 /// The member list of the open conversation: face, name, title and status.
-fn members_pane(ctx: &Ctx) -> PageElement {
-    let look = ctx.look;
-    let mut items = vec![
-        web::styled_row(
-            "members-head",
-            8,
-            "center",
-            web::style(),
-            vec![
-                web::styled(
-                    "members-label",
-                    format!("Members · {}", ctx.channel.members.len()),
-                    web::style().size(15).bold().color(look.ink).one_line(),
-                ),
-                web::rest("members-head-rest"),
-                web::icon_action(
-                    "members-close",
-                    "close",
-                    "Close",
-                    web::style().size(16).padding(4).color(look.muted),
-                    web::visit(ctx.url()),
-                ),
-            ],
-        ),
-        web::divider("members-rule"),
-    ];
+fn members_pane(ctx: &Ctx) -> Html {
+    let mut list = div("scroller").id("members-list");
     for who in &ctx.channel.members {
         let member = ctx.state.members.get(who);
-        let mut lines = vec![web::styled_row(
-            &format!("member-{who}-name"),
-            6,
-            "center",
-            web::style(),
-            vec![
-                web::styled(
-                    &format!("member-{who}"),
-                    ctx.state.display(who),
-                    web::style().size(14).bold().color(look.ink).one_line(),
-                ),
+        let mut lines = div("member-lines").id(format!("member-{who}-lines")).child(
+            div("member-name").id(format!("member-{who}-name")).children([
+                span("author")
+                    .id(format!("member-{who}"))
+                    .text(ctx.state.display(who)),
                 presence(
                     &format!("member-{who}-presence"),
                     active(ctx.state, who, ctx.actor, ctx.now),
-                    look,
                 ),
-                web::rest(&format!("member-{who}-rest")),
-            ],
-        )];
+            ]),
+        );
         if let Some(m) = member {
             if !m.title.is_empty() {
-                lines.push(web::styled(
-                    &format!("member-{who}-title"),
-                    &m.title,
-                    web::style().size(12).color(look.muted).one_line(),
-                ));
+                lines = lines.child(
+                    div("member-title")
+                        .id(format!("member-{who}-title"))
+                        .text(m.title.as_str()),
+                );
             }
             if !m.status.is_empty() {
-                lines.push(web::styled(
-                    &format!("member-{who}-status"),
-                    &m.status,
-                    web::style().size(12).color(look.muted).one_line(),
-                ));
+                lines = lines.child(
+                    div("member-status")
+                        .id(format!("member-{who}-status"))
+                        .text(m.status.as_str()),
+                );
             }
         }
-        items.push(web::styled_row(
-            &format!("member-{who}-card"),
-            10,
-            "start",
-            web::style().padding(4),
-            vec![
-                avatar(&format!("member-{who}-avatar"), &ctx.state.display(who), 32),
-                web::column(
-                    &format!("member-{who}-lines"),
-                    1,
-                    web::style().flex(1),
-                    lines,
-                ),
-            ],
-        ));
+        list = list.child(div("member").id(format!("member-{who}-card")).children([
+            avatar(&format!("member-{who}-avatar"), &ctx.state.display(who), "s36"),
+            lines,
+        ]));
     }
-    web::column(
-        "members",
-        4,
-        web::style()
-            .width(PANE)
-            .flex(0)
-            .padding(12)
-            .background(look.surface)
-            .border(look.line),
-        items,
-    )
+    el("aside").id("members").class("pane").children([
+        pane_head(
+            "members-head",
+            span("pane-title")
+                .id("members-label")
+                .text(format!("Members · {}", ctx.channel.members.len())),
+            "members-close",
+            "Close",
+            ctx.url(),
+        ),
+        list,
+    ])
 }
 /// The banner over unread messages, with the one control that marks them read.
-fn unread_banner(ctx: &Ctx, unread: usize) -> PageElement {
-    let action = post(format!("{}/read", ctx.url()), &[]);
-    PageElement::Form {
-        id: "read".into(),
-        action: action.clone(),
-        children: vec![web::styled_row(
-            "read-line",
-            8,
-            "center",
-            web::style().padding(6).radius(6).background(ctx.look.tint),
-            vec![
-                web::styled(
-                    "read-count",
-                    format!("{unread} new message{}", if unread == 1 { "" } else { "s" }),
-                    web::style()
-                        .size(13)
-                        .bold()
-                        .color(ctx.look.accent)
-                        .one_line(),
-                ),
-                web::rest("read-rest"),
-                web::styled_button(
-                    "read-submit",
-                    "Mark as read",
-                    action,
-                    web::style()
-                        .size(12)
-                        .padding(8)
-                        .radius(4)
-                        .background(ctx.look.surface)
-                        .border(ctx.look.line)
-                        .color(ctx.look.ink),
-                ),
-            ],
-        )],
-    }
+fn unread_banner(ctx: &Ctx, unread: usize) -> Html {
+    form("read", format!("{}/read", ctx.url()), "post")
+        .class("unread-banner")
+        .children([
+            span("")
+                .id("read-count")
+                .text(plural(unread, "new message", "new messages")),
+            span("grow"),
+            button("read-submit", "Mark as read"),
+        ])
+}
+/// A seeded theme overrides the sheet's palette through custom properties on `<html>`.
+fn root_style(state: &SlackState) -> Option<String> {
+    let theme = state.theme.as_ref()?;
+    let pairs = [
+        ("--accent", &theme.accent),
+        ("--frame", &theme.background),
+        ("--surface", &theme.surface),
+        ("--ink", &theme.ink),
+        ("--muted", &theme.muted),
+    ];
+    let css: Vec<String> = pairs
+        .iter()
+        .filter_map(|(name, value)| {
+            let value = value.as_deref()?;
+            // Only a plain colour goes into the attribute.
+            value
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '#')
+                .then(|| format!("{name}: {value}"))
+        })
+        .collect();
+    (!css.is_empty()).then(|| css.join("; "))
 }
 
 /// The whole workspace: top bar, rail, sidebar, the open conversation, the composer,
@@ -1578,7 +983,6 @@ pub fn workspace(
     open: Option<&str>,
     view: &View,
 ) -> SimResult<HttpResponse> {
-    let look = &SLACK;
     let now = now(state, actor, view.tick);
     // The root opens the first channel the actor is in, as Slack lands on one.
     let open = open.or_else(|| {
@@ -1588,147 +992,31 @@ pub fn workspace(
             .find(|(_, c)| c.members.contains(actor))
             .map(|(id, _)| id.as_str())
     });
-    let (channel, id) = match open {
-        None => (None, None),
+    let ctx = match open {
+        None => None,
         Some(id) => match state.channel(actor, id) {
             Err(e) => return web::error(403, e),
-            Ok(channel) => (Some(channel), Some(id)),
+            Ok(channel) => Some(Ctx {
+                state,
+                id,
+                channel,
+                actor,
+                now,
+            }),
         },
     };
-    // A pane beside the conversation narrows it; the rows of text are cut to fit.
-    let beside = view.members
-        || view
-            .thread
-            .as_deref()
-            .is_some_and(|t| channel.is_some_and(|c| c.messages.iter().any(|m| m.id == t)));
-    let ctx = channel.map(|channel| Ctx {
-        state,
-        id: id.unwrap_or_default(),
-        channel,
-        actor,
-        now,
-        look,
-        budget: if beside { NARROW_CHARS } else { WIDE_CHARS },
-    });
+    let id = ctx.as_ref().map(|ctx| ctx.id);
     let is_dm = id.is_some_and(|id| state.dms.contains_key(id));
     let workspace_name = if state.workspace.is_empty() {
-        look.brand.to_owned()
+        BRAND.to_owned()
     } else {
         state.workspace.clone()
     };
     let title = match &ctx {
-        Some(ctx) if is_dm => format!("{} (DM) - {workspace_name} - {}", ctx.heading(), look.brand),
-        Some(ctx) => format!("#{} (Channel) - {workspace_name} - {}", ctx.id, look.brand),
-        None => format!("{workspace_name} - {}", look.brand),
+        Some(ctx) if is_dm => format!("{} (DM) - {workspace_name} - {BRAND}", ctx.heading()),
+        Some(ctx) => format!("#{} (Channel) - {workspace_name} - {BRAND}", ctx.id),
+        None => format!("{workspace_name} - {BRAND}"),
     };
-    // The header bar: the workspace tile over the rail, the workspace name over the
-    // sidebar, the channel header over the conversation.
-    let mark = web::thumbnail(
-        "rail-mark",
-        workspace_name
-            .chars()
-            .next()
-            .map(|c| c.to_uppercase().to_string())
-            .unwrap_or_default(),
-        web::style()
-            .width(36)
-            .height(36)
-            .radius(8)
-            .background("#ffffff")
-            .color(look.frame)
-            .size(16)
-            .align("center"),
-    );
-    let sidebar_head = web::styled_row(
-        "sidebar-head",
-        6,
-        "center",
-        web::style().padding(10),
-        vec![
-            web::styled(
-                "workspace",
-                &workspace_name,
-                web::style().size(16).bold().color("#ffffff").one_line(),
-            ),
-            glyph(
-                "workspace-menu",
-                "chevron-down",
-                "Workspace menu",
-                12,
-                "#ffffff",
-            ),
-            web::rest("sidebar-head-rest"),
-            web::icon(
-                "compose",
-                "compose",
-                "New message",
-                web::style()
-                    .size(14)
-                    .padding(6)
-                    .radius(13)
-                    .background("#ffffff")
-                    .color(look.frame),
-            ),
-        ],
-    );
-    let channel_header = match &ctx {
-        Some(ctx) => header(ctx),
-        None => web::styled(
-            "empty",
-            "Pick a channel or start a direct message.",
-            web::style().size(15).color(look.muted),
-        ),
-    };
-    let header_bar = web::styled_row(
-        "header",
-        0,
-        "stretch",
-        web::style().pin("top").background(look.frame),
-        vec![
-            block(
-                "header-rail",
-                MARGIN + RAIL,
-                look.frame,
-                vec![web::styled_row(
-                    "header-rail-line",
-                    0,
-                    "center",
-                    web::style().padding(6).justify("end"),
-                    vec![mark],
-                )],
-            ),
-            block("header-sidebar", SIDEBAR, look.sidebar, vec![sidebar_head]),
-            web::card(
-                "header-main",
-                web::style()
-                    .background(look.surface)
-                    .padding(12)
-                    .radius(0)
-                    .flex(1),
-                vec![channel_header],
-            ),
-            block("header-edge", MARGIN, look.frame, vec![]),
-        ],
-    );
-    // The conversation.
-    let mut main = vec![];
-    if let (Some(ctx), Some(id)) = (&ctx, id) {
-        let unread = state.unread(actor, id);
-        if unread > 0 {
-            main.push(unread_banner(ctx, unread));
-        }
-        main.extend(transcript(ctx));
-    }
-    let mut shell = vec![
-        rail(state, actor, !is_dm, is_dm, look),
-        sidebar(state, actor, id, now, look),
-        web::column(
-            "main",
-            4,
-            web::style().background(look.surface).padding(12).flex(1),
-            main,
-        ),
-    ];
     let pane = match &ctx {
         Some(ctx) => match view
             .thread
@@ -1741,22 +1029,51 @@ pub fn workspace(
         },
         None => Pane::None,
     };
+    // The conversation: its header, the transcript scrolling on its own, the composer.
+    let mut main = el("main").id("main").class("main");
+    match &ctx {
+        Some(ctx) => {
+            let unread = state.unread(actor, ctx.id);
+            main = main.child(header(ctx)).child(
+                div("scroller")
+                    .id("messages")
+                    .when(unread > 0, |list| list.child(unread_banner(ctx, unread)))
+                    .children(transcript(ctx)),
+            );
+            main = main.child(composer(ctx));
+        }
+        None => {
+            main = main.child(
+                el("p")
+                    .id("empty")
+                    .class("empty")
+                    .text("Pick a channel or start a direct message."),
+            );
+        }
+    }
+    let mut panel = div("panel").id("shell").children([
+        sidebar(state, actor, id, now, &workspace_name),
+        main,
+    ]);
     if let Some(ctx) = &ctx {
         match pane {
-            Pane::Thread(parent) => shell.push(thread_pane(ctx, parent)),
-            Pane::Members => shell.push(members_pane(ctx)),
+            Pane::Thread(parent) => panel = panel.child(thread_pane(ctx, parent)),
+            Pane::Members => panel = panel.child(members_pane(ctx)),
             Pane::None => {}
         }
     }
-    let mut elements = vec![
-        topbar(state, actor, look),
-        header_bar,
-        web::styled_row("shell", 0, "stretch", web::style(), shell),
-    ];
-    if let Some(ctx) = &ctx {
-        elements.push(composer(ctx, &pane));
+    let mut doc = Document::new(title).lang("en").stylesheet(CSS).body_class("slack");
+    if let Some(style) = root_style(state) {
+        doc = doc.root_style(&style);
     }
-    web::themed_page(&title, theme(state, look), elements)
+    let doc = doc.body([
+        topbar(state, actor, &workspace_name),
+        div("app").id("app").children([
+            rail(state, actor, &workspace_name, !is_dm, is_dm),
+            panel,
+        ]),
+    ]);
+    html::page(&doc)
 }
 
 #[cfg(test)]
@@ -1775,26 +1092,19 @@ mod tests {
     }
     #[test]
     fn lines_split_into_runs_links_mentions_and_code() {
-        let look = &SLACK;
-        let PageElement::Row { children, .. } = inline_line(
+        let mut piece = 0;
+        let line = inline_line(
             "m-text",
             "@bob see http://github.com/x/y/pull/1, then run `cargo test` :eyes:",
             &["bob"],
-            look,
-        ) else {
-            panic!()
-        };
-        // mention, "see", link, ", then run", code, emoji run, rest.
-        assert_eq!(children.len(), 7);
-        assert!(
-            matches!(&children[0], PageElement::Styled { text, style, .. } if text == "@bob" && style.background.is_some())
+            &mut piece,
         );
-        assert!(
-            matches!(&children[2], PageElement::Link { url, text, .. } if url == "http://github.com/x/y/pull/1" && text == "github.com/x/y/pull/1")
+        assert_eq!(piece, 3);
+        assert_eq!(
+            line.render(),
+            "<div class=\"line\"><span class=\"mention\" id=\"m-text-p0\">@bob</span> see \
+             <a id=\"m-text-p1\" href=\"http://github.com/x/y/pull/1\">github.com/x/y/pull/1</a>, then run \
+             <code id=\"m-text-p2\">cargo test</code> 👀</div>"
         );
-        assert!(
-            matches!(&children[4], PageElement::Styled { text, style, .. } if text == "cargo test" && style.mono == Some(true))
-        );
-        assert!(matches!(&children[5], PageElement::Styled { text, .. } if text == "👀"));
     }
 }

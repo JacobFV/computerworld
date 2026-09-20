@@ -1,10 +1,13 @@
-//! The six shipped publications, exercised the way a reader would meet them.
+//! The twelve shipped publications, exercised the way a reader would meet them: every page
+//! is HTML the engine renders strictly, and every control on it goes where the seed says.
 //!
 //! `include_str!` rather than a file read: the seed is a build input, so a drift between the world
 //! data and the crate that serves it fails to compile instead of failing at simulation time.
 use cw_protocol::{HttpRequest, HttpResponse};
 use cw_sdk::{Service, ServiceContext};
+use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_press::PressService;
+use cw_web::dom::Document as Dom;
 use serde_json::Value;
 const SITES: &[(&str, &str)] = &[
     (
@@ -30,6 +33,30 @@ const SITES: &[(&str, &str)] = &[
     (
         "northstar-eng",
         include_str!("../../../worlds/company-2026/sites/northstar-eng.json"),
+    ),
+    (
+        "nytimes",
+        include_str!("../../../worlds/company-2026/sites/nytimes.json"),
+    ),
+    (
+        "bbc",
+        include_str!("../../../worlds/company-2026/sites/bbc.json"),
+    ),
+    (
+        "cnn",
+        include_str!("../../../worlds/company-2026/sites/cnn.json"),
+    ),
+    (
+        "google-news",
+        include_str!("../../../worlds/company-2026/sites/google-news.json"),
+    ),
+    (
+        "medium",
+        include_str!("../../../worlds/company-2026/sites/medium.json"),
+    ),
+    (
+        "substack",
+        include_str!("../../../worlds/company-2026/sites/substack.json"),
     ),
 ];
 fn raw(id: &str) -> &'static str {
@@ -71,6 +98,24 @@ fn get(state: &mut Value, url: &str) -> HttpResponse {
         .handle(state, &ctx(), &HttpRequest::get(url))
         .expect("the service answers")
 }
+/// A 200 HTML page, run through the strict validator and parsed.
+fn page(state: &mut Value, url: &str) -> Dom {
+    let response = get(state, url);
+    assert_eq!(response.status, 200, "{url}");
+    assert_eq!(response.header("content-type"), Some(HTML_MEDIA_TYPE), "{url}");
+    let html = String::from_utf8(response.body).expect("utf-8");
+    validate_strict(&html).unwrap_or_else(|e| panic!("{url}: {e:?}"));
+    cw_web::html::parse(&html)
+}
+fn node(doc: &Dom, id: &str) -> cw_web::dom::NodeId {
+    *doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+}
+fn attr(doc: &Dom, id: &str, name: &str) -> String {
+    doc.attr(node(doc, id), name).unwrap_or_else(|| panic!("#{id} has no {name}")).to_owned()
+}
+fn doc_text(doc: &Dom, id: &str) -> String {
+    doc.text_content(node(doc, id))
+}
 fn ids(state: &Value) -> Vec<String> {
     state["articles"]
         .as_object()
@@ -84,21 +129,41 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
     for (name, source) in SITES {
         let (mut state, origin, entries) = site(source);
         let blog = state["layout"] == "blog";
-        assert_eq!(
-            get(&mut state, &format!("{origin}/")).status,
-            200,
-            "{name} front page"
-        );
-        assert_eq!(
-            get(&mut state, &format!("{origin}/archive")).status,
-            200,
-            "{name} archive"
-        );
-        assert_eq!(
-            get(&mut state, &format!("{origin}/saved")).status,
-            200,
-            "{name} reading list"
-        );
+        let front = page(&mut state, &format!("{origin}/"));
+        let skin = state["skin"].as_str().expect("every shipped publication names its skin");
+        assert!(front.has_class(front.body().unwrap(), &format!("skin-{skin}")), "{name} wears {skin}");
+        assert_eq!(doc_text(&front, "masthead-brand"), state["brand"].as_str().unwrap(), "{name} wordmark");
+        assert_eq!(attr(&front, "masthead-home", "href"), "/");
+        assert_eq!(attr(&front, "masthead-saved", "href"), "/saved");
+        assert_eq!(attr(&front, "masthead-follow-form", "action"), "/follow");
+        assert_eq!(attr(&front, "subscribe", "action"), "/subscribe");
+        assert_eq!(attr(&front, "subscribe-email", "name"), "email");
+        // Every story is a card on the front page, one link to the path the layout publishes.
+        for id in ids(&state) {
+            let expected = if blog {
+                format!("/posts/{id}")
+            } else {
+                format!("/{}/{id}", state["articles"][&id]["year"].as_str().unwrap_or("2026"))
+            };
+            assert_eq!(attr(&front, &format!("card-{id}"), "href"), expected, "{name} card {id}");
+            assert_eq!(
+                doc_text(&front, &format!("card-{id}-title")),
+                state["articles"][&id]["title"].as_str().unwrap()
+            );
+        }
+        // Every link on the front page that stays on the site resolves.
+        let hrefs: Vec<String> = front
+            .descendants(Dom::ROOT)
+            .filter(|n| front.is(*n, "a"))
+            .filter_map(|n| front.attr(n, "href").map(str::to_owned))
+            .filter(|h| h.starts_with('/'))
+            .collect();
+        assert!(hrefs.len() > 8, "{name} front page links");
+        for href in hrefs {
+            assert_eq!(get(&mut state, &format!("{origin}{href}")).status, 200, "{name}{href}");
+        }
+        page(&mut state, &format!("{origin}/archive"));
+        page(&mut state, &format!("{origin}/saved"));
         let sections: Vec<String> = state["sections"]
             .as_array()
             .unwrap()
@@ -106,11 +171,8 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
             .map(|s| s["id"].as_str().unwrap().to_owned())
             .collect();
         for id in &sections {
-            assert_eq!(
-                get(&mut state, &format!("{origin}/{id}")).status,
-                200,
-                "{name}/{id}"
-            );
+            let listing = page(&mut state, &format!("{origin}/{id}"));
+            assert_eq!(attr(&listing, &format!("masthead-{id}"), "href"), format!("/{id}"), "{name}/{id}");
         }
         for id in ids(&state) {
             let article = state["articles"][&id].clone();
@@ -119,11 +181,21 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
             } else {
                 format!("/{}/{id}", article["year"].as_str().unwrap_or("2026"))
             };
-            assert_eq!(
-                get(&mut state, &format!("{origin}{path}")).status,
-                200,
-                "{name}{path}"
-            );
+            let story = page(&mut state, &format!("{origin}{path}"));
+            assert_eq!(doc_text(&story, "article-title"), article["title"].as_str().unwrap());
+            assert_eq!(attr(&story, "comment", "action"), format!("/articles/{id}/comments"));
+            assert_eq!(attr(&story, "comment-text", "name"), "text");
+            assert_eq!(attr(&story, "article-save-form", "action"), format!("/articles/{id}/save"));
+            for (i, link) in article["links"].as_array().unwrap().iter().enumerate() {
+                assert_eq!(attr(&story, &format!("article-ref-{i}"), "href"), link["url"].as_str().unwrap());
+            }
+            for comment in article["comments"].as_array().unwrap() {
+                let cid = comment["id"].as_str().unwrap();
+                assert_eq!(
+                    attr(&story, &format!("comment-{cid}-like-form"), "action"),
+                    format!("/articles/{id}/comments/{cid}/like")
+                );
+            }
             // Every kicker, tag chip and Read more entry the article renders has to go somewhere.
             let section = article["section"].as_str().unwrap_or_default();
             assert!(
@@ -132,11 +204,10 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
             );
             for tag in article["tags"].as_array().unwrap() {
                 let tag = tag.as_str().unwrap();
-                assert_eq!(
-                    get(&mut state, &format!("{origin}/tag/{tag}")).status,
-                    200,
-                    "{name} tag {tag}"
-                );
+                assert_eq!(attr(&story, &format!("article-tag-{tag}"), "href"), format!("/tag/{tag}"));
+                let tagged = page(&mut state, &format!("{origin}/tag/{tag}"));
+                assert_eq!(attr(&tagged, "list-follow-form", "action"), format!("/tags/{tag}/follow"));
+                assert!(!tagged.by_id(&format!("card-{id}")).is_empty(), "{name} tag {tag} lists {id}");
             }
         }
         for url in &entries {
@@ -216,6 +287,20 @@ fn a_reader_can_comment_save_follow_and_subscribe_on_every_publication() {
             .unwrap()
             .iter()
             .any(|e| e == "carol.nakamura@gmail.com"));
+        // The same controls pressed in a browser: a urlencoded form post answers with the page
+        // the reader was on, as strict HTML, showing what changed.
+        let mut form = HttpRequest::get(format!("{origin}/articles/{id}/comments"));
+        form.method = "POST".into();
+        form.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        form.body = b"text=Posted+from+the+form.".to_vec();
+        let shown = PressService.handle(&mut state, &ctx(), &form).unwrap();
+        assert_eq!(shown.status, 200, "{name} form comment");
+        let html = String::from_utf8(shown.body).unwrap();
+        validate_strict(&html).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+        let shown = cw_web::html::parse(&html);
+        assert_eq!(doc_text(&shown, "comments-heading"), format!("{} comments", before + 2));
+        assert!(html.contains("Posted from the form."), "{name} shows the new comment");
+        assert_eq!(doc_text(&shown, "article-save"), "Saved", "{name} shows the saved state");
         // Everything that just happened has to survive a checkpoint.
         let bytes = serde_json::to_vec(&state).unwrap();
         assert_eq!(

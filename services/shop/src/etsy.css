@@ -1,0 +1,72 @@
+/* etsy.com: the orange serif wordmark, the long rounded search field with the round
+   orange button, category circles, borderless listing photos with hearts. */
+body.skin-etsy { font-family: "Source Sans 3", Arial, sans-serif; font-size: 15px; color: #222; }
+.skin-etsy .hdr { background: #fff; color: #222; border-bottom: 1px solid #e1e3df; }
+.skin-etsy .hdr .bar { max-width: 1400px; gap: 18px; padding: 12px 32px; }
+.skin-etsy .logo { font-family: "Source Serif 4", Georgia, serif; font-size: 36px; line-height: 44px; font-weight: 600; letter-spacing: -1px; color: #f1641e; }
+.skin-etsy .menu { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 24px; font-size: 14px; font-weight: 600; }
+.skin-etsy .menu:hover { background: #efefef; }
+.skin-etsy .burger { width: 16px; height: 12px; border-top: 2px solid #222; border-bottom: 2px solid #222; background: linear-gradient(transparent 3px, #222 3px, #222 5px, transparent 5px); }
+.skin-etsy .search { position: relative; height: 48px; border: 2px solid #222; border-radius: 26px; background: #fff; }
+.skin-etsy .search:focus-within { box-shadow: 0 0 0 3px rgba(34, 34, 34, 0.15); }
+.skin-etsy .search input[type="text"] { height: 44px; padding: 0 20px; font: 16px "Source Sans 3", Arial, sans-serif; }
+.skin-etsy .search .go { position: relative; width: 40px; height: 40px; margin-right: 2px; padding: 0; border-radius: 50%; background: #f1641e; font-size: 0; color: transparent; }
+.skin-etsy .search .go:hover { background: #d95a1b; }
+.skin-etsy .search .go::before { content: ""; position: absolute; left: 11px; top: 10px; width: 12px; height: 12px; border: 2px solid #fff; border-radius: 50%; }
+.skin-etsy .search .go::after { content: ""; position: absolute; left: 24px; top: 24px; width: 8px; height: 3px; background: #fff; transform: rotate(45deg); transform-origin: 0 50%; }
+.skin-etsy .nav { padding: 10px 12px; border-radius: 24px; font-size: 14px; font-weight: 600; }
+.skin-etsy .nav:hover { background: #efefef; text-decoration: none; }
+.skin-etsy #nav-favorites .ico { display: block; font-size: 0; }
+.skin-etsy #nav-favorites .ico::before { content: "♡"; font-size: 20px; line-height: 20px; }
+.skin-etsy .cart .ico { display: block; position: relative; width: 20px; height: 13px; border: 2px solid #222; border-top: 0; border-radius: 0 0 5px 5px; }
+.skin-etsy .cart .count { background: #f1641e; }
+.skin-etsy .cats { border: 0; }
+.skin-etsy .cats .inner { max-width: 1400px; justify-content: center; gap: 36px; padding: 0 32px; }
+.skin-etsy .cat { padding: 10px 0; font-size: 14px; }
+.skin-etsy .cat:hover { color: #222; text-decoration: underline; }
+.skin-etsy .cat.on { box-shadow: inset 0 -2px 0 #222; }
+.skin-etsy.page-home .cats { padding: 26px 0 6px; background: #fdebd2; }
+.skin-etsy.page-home .cat { flex-direction: column; gap: 10px; font-weight: 600; }
+.skin-etsy.page-home .cat .ico { display: block; width: 104px; height: 104px; border-radius: 50%; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 2px 6px rgba(34, 34, 34, 0.18); font-size: 0; color: transparent; }
+.skin-etsy.page-home .cat.all .ico { background: linear-gradient(135deg, #f7c59f, #f1641e); }
+.skin-etsy.page-home .cat:hover .ico { box-shadow: 0 4px 14px rgba(34, 34, 34, 0.3); }
+.skin-etsy .wrap { max-width: 1400px; padding: 0 32px 48px; }
+.skin-etsy .banner { margin: 0 -32px 28px; padding: 30px 32px 44px; border-radius: 0; background: #fdebd2; text-align: center; }
+.skin-etsy.page-home .hdr { border-bottom: 0; }
+.skin-etsy .banner h1 { font-family: "Source Serif 4", Georgia, serif; font-size: 40px; line-height: 48px; font-weight: 300; }
+.skin-etsy .banner p { color: #595959; }
+.skin-etsy.page-home .cats { order: 0; }
+.skin-etsy .lead { margin-top: 24px; font-family: "Source Serif 4", Georgia, serif; font-size: 28px; line-height: 36px; font-weight: 400; }
+.skin-etsy .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px 18px; }
+.skin-etsy .card { border: 0; border-radius: 0; overflow: visible; }
+.skin-etsy .card:hover { box-shadow: none; }
+.skin-etsy .card .pic { height: 250px; border-radius: 12px; }
+.skin-etsy .card:hover .pic { box-shadow: 0 4px 20px rgba(34, 34, 34, 0.25); }
+.skin-etsy .pic-label { display: none; }
+.skin-etsy .card .heart { display: block; position: absolute; right: 10px; top: 10px; width: 36px; height: 36px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(34, 34, 34, 0.3); }
+.skin-etsy .card .heart::before { content: "♡"; position: absolute; left: 0; right: 0; top: 7px; text-align: center; font-size: 20px; line-height: 22px; color: #222; }
+.skin-etsy .card .info { padding: 8px 2px 0; gap: 1px; }
+.skin-etsy .card .name { font-size: 14px; line-height: 20px; max-height: 20px; color: #595959; white-space: nowrap; text-overflow: ellipsis; }
+.skin-etsy .card:hover .name { color: #595959; }
+.skin-etsy .stars { font-size: 13px; }
+.skin-etsy .stars i { color: #222; }
+.skin-etsy .rating .rv { order: 0; color: #222; }
+.skin-etsy .card .by { display: block; order: 6; font-size: 12px; color: #595959; }
+.skin-etsy .price { font-size: 17px; font-weight: 700; color: #222; }
+.skin-etsy .fast { border: 0; padding: 2px 8px; border-radius: 12px; background: #d4e9d7; color: #1c4a21; font-weight: 600; }
+.skin-etsy .detail h1 { font-size: 22px; line-height: 30px; font-weight: 300; }
+.skin-etsy .detail .by { color: #222; font-weight: 600; font-size: 14px; }
+.skin-etsy .price-row .price, .skin-etsy .buy-price .price { font-size: 28px; font-weight: 700; }
+.skin-etsy .pic.main { border-radius: 12px; }
+.skin-etsy .buybox { width: 320px; border: 0; padding: 0 0 0 8px; }
+.skin-etsy button.primary { height: 48px; border-radius: 24px; background: #222; font: 700 16px "Source Sans 3", Arial, sans-serif; }
+.skin-etsy button.primary:hover { background: #000; transform: scale(1.015); }
+.skin-etsy button.secondary { height: 48px; border: 2px solid #222; border-radius: 24px; font: 700 16px "Source Sans 3", Arial, sans-serif; }
+.skin-etsy .seller button.secondary, .skin-etsy .write button.secondary { height: 38px; font-size: 14px; }
+.skin-etsy input[type="text"] { border-radius: 6px; height: 40px; }
+.skin-etsy .ftr { background: #2f466c; color: #fff; }
+.skin-etsy .ftr .cols { max-width: 1400px; padding: 36px 32px 24px; gap: 72px; }
+.skin-etsy .ftr h3 { color: #fff; }
+.skin-etsy .ftr .fitem, .skin-etsy .ftr .col a { color: #dbe3f0; }
+.skin-etsy .ftr .legal { max-width: none; padding: 16px 32px 28px; background: #232347; border: 0; color: #c8c8dc; }
+.skin-etsy .ftr .legal .brand { color: #fff; font-family: "Source Serif 4", Georgia, serif; }

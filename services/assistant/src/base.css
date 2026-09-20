@@ -1,0 +1,108 @@
+/* Structure both assistants share: a history sidebar beside a main column that holds a
+   top bar, the greeting or the thread, and the composer. The palette comes in as custom
+   properties on <html> (see view.rs); chatgpt.css and claude.css give the two looks. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html {
+  --accent: #10a37f; --paper: #212121; --surface: #2f2f2f; --ink: #ececec; --muted: #9b9b9b;
+  --side: #171717; --card: #2f2f2f; --rule: rgba(236,236,236,.14); --hover: rgba(236,236,236,.07);
+  --content: 760px; --glyph: #fff;
+}
+body { color: var(--ink); background: var(--paper); font-size: 15px; line-height: 1.5; }
+h1, p { margin: 0; }
+a { color: inherit; text-decoration: none; }
+button, input { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+form { margin: 0; }
+.grow { flex: 1; }
+
+.shell { display: flex; align-items: flex-start; min-height: 100vh; }
+.sidebar {
+  position: sticky; top: 0; flex: 0 0 260px; width: 260px; height: 100vh; padding: 10px 8px;
+  display: flex; flex-direction: column; background: var(--side); overflow: hidden;
+}
+.sidebar .brand { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px; margin-bottom: 6px; }
+.sidebar .logo {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--paper);
+  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+}
+.sidebar .name { font-weight: 600; }
+.sidebar .new { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 10px; font-size: 14px; }
+.sidebar .new:hover, .sidebar .chat:hover { background: var(--hover); }
+.sidebar .label { padding: 0 10px; margin: 18px 0 6px; font-size: 13px; color: var(--muted); }
+.sidebar .chats { flex: 1; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.sidebar .chat { display: block; height: 34px; line-height: 34px; padding: 0 10px; border-radius: 10px; font-size: 14px; }
+.sidebar .chat .title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar .empty { padding: 0 10px; font-size: 13px; color: var(--muted); flex: 1; }
+.sidebar .account { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 8px; border-top: 1px solid var(--rule); font-size: 14px; }
+.sidebar .account .avatar, .msg .avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;
+}
+
+.main { flex: 1; min-width: 0; min-height: 100vh; display: flex; flex-direction: column; }
+.topbar {
+  position: sticky; top: 0; z-index: 2; height: 52px; flex: 0 0 52px; padding: 0 16px;
+  display: flex; align-items: center; gap: 10px; background: var(--paper);
+}
+.topbar .title { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
+.topbar .badge { font-size: 12px; color: var(--muted); padding: 2px 8px; border-radius: 999px; background: var(--hover); white-space: nowrap; }
+.topbar form { display: flex; align-items: center; gap: 6px; }
+.topbar input {
+  width: 190px; height: 30px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 8px;
+  background: transparent; font-size: 13px; outline: none;
+}
+.topbar input:focus { border-color: var(--muted); }
+.topbar button {
+  height: 30px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 8px; background: transparent; font-size: 13px;
+}
+.topbar button:hover { background: var(--hover); }
+.topbar button.danger:hover { color: #e5484d; border-color: #e5484d; }
+
+.hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 24px 72px; }
+.greeting { text-align: center; font-weight: 400; }
+.composer { width: 100%; max-width: var(--content); }
+.composer .card { display: flex; flex-direction: column; background: var(--card); }
+.composer input { width: 100%; border: 0; outline: none; background: transparent; font-size: 16px; }
+.composer input::placeholder { color: var(--muted); }
+.composer .tools { display: flex; align-items: center; gap: 8px; }
+.composer .plus { position: relative; width: 32px; height: 32px; border-radius: 50%; }
+.composer .plus::before, .composer .plus::after { content: ""; position: absolute; background: var(--ink); border-radius: 1px; }
+.composer .plus::before { left: 9px; top: 15px; width: 14px; height: 2px; }
+.composer .plus::after { left: 15px; top: 9px; width: 2px; height: 14px; }
+.composer .picker { font-size: 13px; color: var(--muted); }
+.composer .send { position: relative; width: 34px; height: 34px; padding: 0; border: 0; flex: 0 0 34px; }
+/* An upward arrow: a stem, and a corner turned 45 degrees. The engine transforms an
+   element's descendants but not its own box, so the turned element is an empty <i> and
+   the corner is drawn by its ::before. */
+.composer .arrow { position: absolute; left: 0; top: 0; width: 34px; height: 34px; display: block; }
+.composer .arrow::before { content: ""; position: absolute; left: 16px; top: 10px; width: 2px; height: 15px; border-radius: 1px; background: var(--glyph); }
+.composer .arrow i { position: absolute; left: 12px; top: 10px; width: 10px; height: 10px; display: block; transform: rotate(45deg); }
+.composer .arrow i::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 10px; height: 10px;
+  border-left: 2px solid var(--glyph); border-top: 2px solid var(--glyph);
+}
+.suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: var(--content); margin-top: 20px; }
+.suggestions button { height: 36px; padding: 0 14px; font-size: 14px; background: transparent; border: 1px solid var(--rule); }
+.suggestions button:hover { background: var(--hover); }
+.fine { text-align: center; font-size: 12px; color: var(--muted); padding: 8px 16px 10px; }
+
+.thread { flex: 1; width: 100%; max-width: var(--content); margin: 0 auto; padding: 16px 24px 24px; }
+.msg { display: flex; margin-bottom: 22px; }
+.msg .text { white-space: pre-wrap; overflow-wrap: break-word; }
+.msg.user { justify-content: flex-end; }
+.msg.user .bubble { max-width: 75%; background: var(--surface); }
+.msg.assistant .bubble { flex: 1; min-width: 0; }
+.sources { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.sources .label { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 2px; }
+.sources .cite { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--rule); }
+.sources .cite:hover { background: var(--hover); }
+.controls { display: flex; margin-top: -8px; }
+.ghost { height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; color: var(--muted); }
+.ghost:hover { background: var(--hover); color: var(--ink); }
+.dock { position: sticky; bottom: 0; z-index: 2; background: var(--paper); padding: 0 24px; display: flex; flex-direction: column; align-items: center; }
+
+@media (max-width: 760px) {
+  .sidebar { display: none; }
+  .topbar .rename { display: none; }
+}

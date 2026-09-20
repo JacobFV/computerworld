@@ -2,12 +2,14 @@
 //! the ledger can never disagree with itself. Only `ctx.actor`'s own accounts are addressable.
 //!
 //! Simulated money only: no real institution, card number or payment network is involved.
-use cw_protocol::{HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result};
+use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
+mod view;
+use view::{account_page, overview, statement, transfers, tx_page, Chrome};
 pub struct BankService;
 pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(BankService)
@@ -17,11 +19,16 @@ const OBJECTS: &[&str] = &["theme", "accounts", "transactions", "payees"];
 const ARRAYS: &[&str] = &[];
 /// Kinds that carry a revolving limit; for everything else available funds are the balance.
 const CREDIT: &str = "credit";
+/// The looks the service draws. An absent `skin` follows the brand (see [`BankState::skin`]).
+const SKINS: &[&str] = &["", "northwind", "paypal"];
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct BankState {
     pub brand: String,
     pub tagline: String,
+    /// `northwind` (a retail bank) or `paypal` (a wallet); when a seed names none it follows
+    /// the brand, so the shipped seeds need no new key.
+    pub skin: String,
     pub theme: PageTheme,
     pub accounts: BTreeMap<String, Account>,
     pub transactions: BTreeMap<String, Transaction>,
@@ -62,14 +69,18 @@ pub struct Payee {
     pub name: String,
     pub account_hint: String,
 }
+/// `-$1,234.56`: grouped the way a statement prints it.
 fn money(cents: i64) -> String {
     let n = cents.unsigned_abs();
-    format!(
-        "{}${}.{:02}",
-        if cents < 0 { "-" } else { "" },
-        n / 100,
-        n % 100
-    )
+    let digits = (n / 100).to_string();
+    let mut whole = String::new();
+    for (i, d) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            whole.push(',');
+        }
+        whole.push(d);
+    }
+    format!("{}${whole}.{:02}", if cents < 0 { "-" } else { "" }, n % 100)
 }
 fn slug(name: &str) -> String {
     let s: String = name
@@ -96,6 +107,15 @@ impl Account {
     }
 }
 impl BankState {
+    /// The skin a page is drawn in: the seeded one, or the wallet look for a PayPal brand
+    /// and the retail bank for everything else.
+    pub fn skin(&self) -> &str {
+        match self.skin.as_str() {
+            "" if self.brand.to_ascii_lowercase().contains("paypal") => "paypal",
+            "" => "northwind",
+            named => named,
+        }
+    }
     pub fn account(&self, actor: &str, id: &str) -> std::result::Result<&Account, String> {
         match self.accounts.get(id) {
             Some(a) if a.owner == actor => Ok(a),
@@ -263,565 +283,6 @@ impl BankState {
         Ok(p)
     }
 }
-struct Palette {
-    accent: String,
-    ink: String,
-    muted: String,
-    surface: String,
-}
-fn palette(t: &PageTheme) -> Palette {
-    Palette {
-        accent: t.accent.clone().unwrap_or_else(|| "#117aca".into()),
-        ink: t.ink.clone().unwrap_or_else(|| "#1b1b1b".into()),
-        muted: t.muted.clone().unwrap_or_else(|| "#5a5a5a".into()),
-        surface: t.surface.clone().unwrap_or_else(|| "#f2f4f6".into()),
-    }
-}
-fn act(method: &str, url: &str, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: method.into(),
-        url: url.into(),
-        fields: fields
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-            .collect(),
-    }
-}
-fn input(id: &str, label: &str, value: &str) -> PageElement {
-    PageElement::Input {
-        id: id.into(),
-        label: label.into(),
-        value: value.into(),
-        placeholder: String::new(),
-    }
-}
-fn form_el(
-    id: &str,
-    action: PageAction,
-    mut children: Vec<PageElement>,
-    submit: &str,
-) -> PageElement {
-    children.push(PageElement::Button {
-        id: format!("{id}-go"),
-        text: submit.into(),
-        action: action.clone(),
-        style: None,
-    });
-    PageElement::Form {
-        id: id.into(),
-        action,
-        children,
-    }
-}
-fn chrome(s: &BankState, p: &Palette) -> Vec<PageElement> {
-    vec![
-        web::styled_row(
-            "chrome",
-            18,
-            "center",
-            web::style()
-                .background(p.accent.clone())
-                .padding(12)
-                .radius(6),
-            vec![
-                web::styled(
-                    "wordmark",
-                    &s.brand,
-                    web::style().size(22).bold().color("#ffffff").width(220),
-                ),
-                web::link("nav-home", "Accounts", "/"),
-                web::link("nav-pay", "Pay & transfer", "/transfers"),
-            ],
-        ),
-        web::spacer("chrome-gap", 14),
-    ]
-}
-fn footer(p: &Palette) -> Vec<PageElement> {
-    vec![
-        web::spacer("foot-gap", 18),
-        web::divider("foot-rule"),
-        web::styled(
-            "foot",
-            "Simulated bank in a training world. Balances, card numbers and payees are invented \
-             and no real payment network is contacted.",
-            web::style().size(12).color(p.muted.clone()),
-        ),
-    ]
-}
-fn amount_badge(id: &str, cents: i64, p: &Palette) -> PageElement {
-    web::badge(
-        id,
-        money(cents),
-        web::style()
-            .size(14)
-            .bold()
-            .color(if cents < 0 {
-                p.ink.clone()
-            } else {
-                "#0b6b3a".into()
-            })
-            .background(p.surface.clone())
-            .radius(4)
-            .padding(6),
-    )
-}
-fn tx_row(t: &Transaction, p: &Palette) -> PageElement {
-    web::card_action(
-        &format!("t-{}", t.id),
-        web::style()
-            .background("#ffffff")
-            .border("#dfe3e8")
-            .radius(6)
-            .padding(10),
-        web::visit(format!("/accounts/{}/transactions/{}", t.account, t.id)),
-        vec![web::row(
-            &format!("t-{}-row", t.id),
-            12,
-            "center",
-            vec![
-                web::styled(
-                    &format!("t-{}-m", t.id),
-                    &t.merchant,
-                    web::style().size(15).medium().color(p.ink.clone()).flex(3),
-                ),
-                web::badge(
-                    &format!("t-{}-c", t.id),
-                    if t.category.is_empty() {
-                        "Uncategorised"
-                    } else {
-                        &t.category
-                    },
-                    web::style()
-                        .size(12)
-                        .color(p.muted.clone())
-                        .border("#dfe3e8")
-                        .radius(4)
-                        .padding(4),
-                ),
-                web::styled(
-                    &format!("t-{}-d", t.id),
-                    if t.date.is_empty() {
-                        format!("tick {}", t.tick)
-                    } else {
-                        t.date.clone()
-                    },
-                    web::style().size(12).color(p.muted.clone()).width(120),
-                ),
-                amount_badge(&format!("t-{}-a", t.id), t.amount_cents, p),
-            ],
-        )],
-    )
-}
-fn overview(s: &BankState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let mut e = chrome(s, p);
-    let accounts = s.owned(actor);
-    e.push(web::styled(
-        "lead",
-        "Your accounts",
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    e.push(web::spacer("lead-gap", 10));
-    if accounts.is_empty() {
-        e.push(web::styled(
-            "none",
-            "No accounts are open in your name.",
-            web::style().color(p.muted.clone()),
-        ));
-    }
-    e.push(web::grid(
-        "accounts",
-        3,
-        14,
-        accounts
-            .iter()
-            .map(|a| {
-                web::card_action(
-                    &format!("a-{}", a.id),
-                    web::style()
-                        .background("#ffffff")
-                        .border("#dfe3e8")
-                        .radius(8)
-                        .padding(14),
-                    web::visit(format!("/accounts/{}", a.id)),
-                    vec![
-                        web::styled(
-                            &format!("a-{}-n", a.id),
-                            &a.name,
-                            web::style().size(15).medium().color(p.ink.clone()),
-                        ),
-                        web::styled(
-                            &format!("a-{}-b", a.id),
-                            money(a.balance_cents),
-                            web::style().size(26).bold().color(p.accent.clone()),
-                        ),
-                        web::styled(
-                            &format!("a-{}-av", a.id),
-                            format!(
-                                "{} {}",
-                                if a.credit() {
-                                    "Available credit"
-                                } else {
-                                    "Available"
-                                },
-                                money(a.available_cents)
-                            ),
-                            web::style().size(12).color(p.muted.clone()),
-                        ),
-                    ],
-                )
-            })
-            .collect(),
-    ));
-    e.push(web::spacer("act-gap", 18));
-    e.push(web::styled(
-        "act-head",
-        "Recent activity",
-        web::style().size(18).bold().color(p.ink.clone()),
-    ));
-    for t in s.activity(actor, "").into_iter().take(8) {
-        e.push(tx_row(t, p));
-    }
-    e.extend(footer(p));
-    web::themed_page(&s.brand, s.theme.clone(), e)
-}
-fn account_page(
-    s: &BankState,
-    p: &Palette,
-    actor: &str,
-    id: &str,
-    category: &str,
-    q: &str,
-) -> Result<HttpResponse> {
-    let a = match s.account(actor, id) {
-        Ok(a) => a.clone(),
-        Err(e) => return web::error(403, e),
-    };
-    let mut e = chrome(s, p);
-    e.push(web::styled(
-        "lead",
-        &a.name,
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    e.push(web::row(
-        "totals",
-        14,
-        "center",
-        vec![
-            web::styled(
-                "bal",
-                format!("Balance {}", money(a.balance_cents)),
-                web::style().size(18).bold().color(p.accent.clone()),
-            ),
-            web::styled(
-                "avail",
-                format!("Available {}", money(a.available_cents)),
-                web::style().size(14).color(p.muted.clone()),
-            ),
-            web::link("statement", "Statements", format!("/statements/{id}/all")),
-        ],
-    ));
-    e.push(web::spacer("filter-gap", 12));
-    e.push(form_el(
-        "filter",
-        act(
-            "GET",
-            &format!("/accounts/{id}"),
-            &[("category", "$filter-category"), ("q", "$filter-q")],
-        ),
-        vec![
-            input("filter-category", "Category", category),
-            input("filter-q", "Search merchant or memo", q),
-        ],
-        "Filter",
-    ));
-    if !s.categories(actor).is_empty() {
-        e.push(web::row(
-            "cats",
-            8,
-            "center",
-            s.categories(actor)
-                .iter()
-                .map(|c| {
-                    web::link(
-                        &format!("cat-{}", slug(c)),
-                        c,
-                        format!("/accounts/{id}?category={c}"),
-                    )
-                })
-                .collect(),
-        ));
-    }
-    e.push(web::spacer("list-gap", 12));
-    let rows: Vec<&Transaction> = s
-        .activity(actor, id)
-        .into_iter()
-        .filter(|t| BankState::matches(t, category, q))
-        .collect();
-    e.push(web::styled(
-        "count",
-        format!("{} transaction(s)", rows.len()),
-        web::style().size(13).color(p.muted.clone()),
-    ));
-    for t in rows {
-        e.push(tx_row(t, p));
-    }
-    e.extend(footer(p));
-    web::themed_page(&format!("{} — {}", a.name, s.brand), s.theme.clone(), e)
-}
-fn tx_page(s: &BankState, p: &Palette, actor: &str, id: &str, tx: &str) -> Result<HttpResponse> {
-    if s.account(actor, id).is_err() {
-        return web::error(403, "account unavailable");
-    }
-    let Some(t) = s.transactions.get(tx).filter(|t| t.account == id) else {
-        return web::error(404, "transaction not found");
-    };
-    let mut e = chrome(s, p);
-    e.push(web::styled(
-        "merchant",
-        &t.merchant,
-        web::style().size(26).bold().color(p.ink.clone()),
-    ));
-    e.push(web::styled(
-        "amount",
-        money(t.amount_cents),
-        web::style().size(32).bold().color(p.accent.clone()),
-    ));
-    e.push(web::card(
-        "facts",
-        web::style()
-            .background("#ffffff")
-            .border("#dfe3e8")
-            .radius(8)
-            .padding(14),
-        vec![
-            web::styled(
-                "fact-date",
-                format!(
-                    "Posted {}",
-                    if t.date.is_empty() {
-                        format!("at tick {}", t.tick)
-                    } else {
-                        t.date.clone()
-                    }
-                ),
-                web::style().size(14).color(p.ink.clone()),
-            ),
-            web::styled(
-                "fact-cat",
-                format!("Category {}", t.category),
-                web::style().size(14).color(p.ink.clone()),
-            ),
-            web::styled(
-                "fact-memo",
-                &t.memo,
-                web::style().size(14).color(p.muted.clone()),
-            ),
-            web::badge(
-                "fact-status",
-                if t.pending { "Pending" } else { "Posted" },
-                web::style()
-                    .size(12)
-                    .color(p.muted.clone())
-                    .border("#dfe3e8")
-                    .radius(4)
-                    .padding(4),
-            ),
-        ],
-    ));
-    if !t.link.is_empty() {
-        e.push(web::styled(
-            "link-head",
-            "Where this charge came from",
-            web::style().size(16).bold().color(p.ink.clone()),
-        ));
-        e.push(web::link("origin", &t.link, &t.link));
-    }
-    e.push(web::link(
-        "back",
-        "Back to the account",
-        format!("/accounts/{id}"),
-    ));
-    e.extend(footer(p));
-    web::themed_page(&format!("{} — {}", t.merchant, s.brand), s.theme.clone(), e)
-}
-fn statement(
-    s: &BankState,
-    p: &Palette,
-    actor: &str,
-    id: &str,
-    period: &str,
-) -> Result<HttpResponse> {
-    let a = match s.account(actor, id) {
-        Ok(a) => a.clone(),
-        Err(e) => return web::error(403, e),
-    };
-    let rows: Vec<&Transaction> = s
-        .activity(actor, id)
-        .into_iter()
-        .filter(|t| period == "all" || t.date.starts_with(period))
-        .collect();
-    let (mut credits, mut debits) = (0i64, 0i64);
-    for t in &rows {
-        if t.amount_cents < 0 {
-            debits += t.amount_cents;
-        } else {
-            credits += t.amount_cents;
-        }
-    }
-    let mut e = chrome(s, p);
-    e.push(web::styled(
-        "lead",
-        format!("Statement — {} — {period}", a.name),
-        web::style().size(22).bold().color(p.ink.clone()),
-    ));
-    e.push(web::row(
-        "sums",
-        18,
-        "center",
-        vec![
-            web::styled(
-                "sum-in",
-                format!("Deposits {}", money(credits)),
-                web::style().size(14).color("#0b6b3a"),
-            ),
-            web::styled(
-                "sum-out",
-                format!("Withdrawals {}", money(debits)),
-                web::style().size(14).color(p.ink.clone()),
-            ),
-            web::styled(
-                "sum-close",
-                format!("Closing balance {}", money(a.balance_cents)),
-                web::style().size(14).bold().color(p.accent.clone()),
-            ),
-        ],
-    ));
-    e.push(web::divider("sum-rule"));
-    for t in rows {
-        e.push(tx_row(t, p));
-    }
-    e.extend(footer(p));
-    web::themed_page(
-        &format!("Statement {period} — {}", s.brand),
-        s.theme.clone(),
-        e,
-    )
-}
-fn transfers(s: &BankState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let accounts = s.owned(actor);
-    let first = accounts.first().map(|a| a.id.clone()).unwrap_or_default();
-    let second = accounts.get(1).map(|a| a.id.clone()).unwrap_or_default();
-    let mut e = chrome(s, p);
-    e.push(web::styled(
-        "lead",
-        "Pay & transfer",
-        web::style().size(24).bold().color(p.ink.clone()),
-    ));
-    e.push(web::styled(
-        "own",
-        accounts
-            .iter()
-            .map(|a| format!("{} ({})", a.id, money(a.available_cents)))
-            .collect::<Vec<_>>()
-            .join(" · "),
-        web::style().size(13).color(p.muted.clone()),
-    ));
-    e.push(web::card(
-        "xfer-card",
-        web::style()
-            .background("#ffffff")
-            .border("#dfe3e8")
-            .radius(8)
-            .padding(14),
-        vec![
-            web::styled(
-                "xfer-head",
-                "Between your accounts",
-                web::style().size(16).bold().color(p.ink.clone()),
-            ),
-            form_el(
-                "xfer",
-                act(
-                    "POST",
-                    "/api/transfers",
-                    &[
-                        ("from", "$xfer-from"),
-                        ("to", "$xfer-to"),
-                        ("amount_cents", "$xfer-amount"),
-                    ],
-                ),
-                vec![
-                    input("xfer-from", "From account id", &first),
-                    input("xfer-to", "To account id", &second),
-                    input("xfer-amount", "Amount in cents", "2500"),
-                ],
-                "Transfer",
-            ),
-        ],
-    ));
-    e.push(web::spacer("pay-gap", 14));
-    e.push(web::card(
-        "pay-card",
-        web::style()
-            .background("#ffffff")
-            .border("#dfe3e8")
-            .radius(8)
-            .padding(14),
-        vec![
-            web::styled(
-                "pay-head",
-                "Pay a bill",
-                web::style().size(16).bold().color(p.ink.clone()),
-            ),
-            web::styled(
-                "payees",
-                s.payees
-                    .values()
-                    .map(|x| format!("{} ({})", x.id, x.name))
-                    .collect::<Vec<_>>()
-                    .join(" · "),
-                web::style().size(13).color(p.muted.clone()),
-            ),
-            form_el(
-                "pay",
-                act(
-                    "POST",
-                    "/api/payments",
-                    &[
-                        ("account", "$pay-account"),
-                        ("payee", "$pay-payee"),
-                        ("amount_cents", "$pay-amount"),
-                    ],
-                ),
-                vec![
-                    input("pay-account", "From account id", &first),
-                    input("pay-payee", "Payee id", ""),
-                    input("pay-amount", "Amount in cents", "0"),
-                ],
-                "Pay",
-            ),
-        ],
-    ));
-    e.push(web::spacer("payee-gap", 14));
-    e.push(form_el(
-        "addpayee",
-        act(
-            "POST",
-            "/api/payees",
-            &[
-                ("name", "$addpayee-name"),
-                ("account_hint", "$addpayee-hint"),
-            ],
-        ),
-        vec![
-            input("addpayee-name", "New payee name", ""),
-            input("addpayee-hint", "Account hint", ""),
-        ],
-        "Add payee",
-    ));
-    e.extend(footer(p));
-    web::themed_page(&format!("Transfers — {}", s.brand), s.theme.clone(), e)
-}
 impl Service for BankService {
     fn kind(&self) -> &str {
         "bank"
@@ -829,6 +290,7 @@ impl Service for BankService {
     fn initialize(&self, initial: Value, _: &ServiceContext) -> Result<Value> {
         let gated = web::shape(initial, OBJECTS, ARRAYS)?;
         web::theme(&gated)?;
+        web::variant(&gated, "skin", SKINS)?;
         let mut s: BankState = web::load(&gated)?;
         if s.brand.is_empty() {
             s.brand = "Bank".into();
@@ -849,7 +311,7 @@ impl Service for BankService {
         r: &HttpRequest,
     ) -> Result<HttpResponse> {
         let mut s: BankState = web::load(state)?;
-        let p = palette(&s.theme);
+        let p = Chrome::read(&s, &c.actor);
         let path = web::path(r);
         let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
         let method = r.method.to_ascii_uppercase();
@@ -940,6 +402,7 @@ impl Service for BankService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cw_service_common::html;
     fn ctx() -> ServiceContext {
         ServiceContext {
             actor: "alice".into(),
@@ -1008,30 +471,188 @@ mod tests {
         assert_eq!(s.accounts["cc-3310"].available_cents, 951_769);
         assert_eq!(s.accounts["chk-4417"].available_cents, 812_455);
     }
+    /// The response as a parsed document, after the strict validator has accepted it.
+    fn dom(r: &HttpResponse) -> cw_web::dom::Document {
+        assert_eq!(r.header("content-type"), Some(html::HTML_MEDIA_TYPE));
+        let body = text(r);
+        html::validate_strict(&body).unwrap_or_else(|e| panic!("strict validation: {e:?}"));
+        cw_web::html::parse(&body)
+    }
+    fn node(doc: &cw_web::dom::Document, id: &str) -> cw_web::dom::NodeId {
+        *doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+    }
+    fn paypal_seed() -> Value {
+        let mut seed = seed();
+        seed["brand"] = json!("PayPal");
+        seed["theme"] = json!({"accent": "#0070ba", "ink": "#001c64"});
+        seed
+    }
+    const PAGES: [&str; 8] = [
+        "/",
+        "/transfers",
+        "/accounts/chk-4417",
+        "/accounts/cc-3310?category=Shopping",
+        "/accounts/cc-3310?q=nothing-matches",
+        "/accounts/cc-3310/transactions/tx-1",
+        "/statements/cc-3310/2026-03",
+        "/statements/cc-3310/all",
+    ];
     #[test]
     fn pages_render_and_do_not_mutate() {
         let mut state = BankService.initialize(seed(), &ctx()).unwrap();
         let before = state.clone();
-        for url in [
-            "http://northwind.example/",
-            "http://northwind.example/transfers",
-            "http://northwind.example/accounts/chk-4417",
-            "http://northwind.example/accounts/cc-3310?category=Shopping",
-            "http://northwind.example/accounts/cc-3310/transactions/tx-1",
-            "http://northwind.example/statements/cc-3310/2026-03",
-        ] {
-            let page = get(&mut state, url);
+        for path in PAGES {
+            let url = format!("http://northwind.example{path}");
+            let page = get(&mut state, &url);
             assert_eq!(page.status, 200, "{url}");
-            assert_eq!(page, get(&mut state, url), "{url} must be pure");
+            assert_eq!(page, get(&mut state, &url), "{url} must be pure");
         }
         assert_eq!(before, state, "rendering must not mutate seed state");
-        assert!(text(&get(&mut state, "http://northwind.example/")).contains("8124.55"));
+        let home = dom(&get(&mut state, "http://northwind.example/"));
+        assert_eq!(home.text_content(node(&home, "a-chk-4417-b")), "$8,124.55");
         // Storyline 5: the charge points at the order that produced it.
-        assert!(text(&get(
+        let tx = dom(&get(
             &mut state,
-            "http://northwind.example/accounts/cc-3310/transactions/tx-1"
-        ))
-        .contains("http://amazon.com/orders/1001"));
+            "http://northwind.example/accounts/cc-3310/transactions/tx-1",
+        ));
+        assert_eq!(tx.attr(node(&tx, "origin"), "href"), Some("http://amazon.com/orders/1001"));
+        assert_eq!(tx.text_content(node(&tx, "amount")), "-$429.99");
+    }
+    #[test]
+    fn every_page_of_every_skin_passes_the_strict_validator() {
+        for (seed, host, skin) in [
+            (seed(), "northwind.example", "skin-northwind"),
+            (paypal_seed(), "paypal.com", "skin-paypal"),
+        ] {
+            let mut state = BankService.initialize(seed, &ctx()).unwrap();
+            for path in PAGES {
+                let page = get(&mut state, &format!("http://{host}{path}"));
+                assert_eq!(page.status, 200, "{host}{path}");
+                let doc = dom(&page);
+                let body = doc.descendants(cw_web::dom::Document::ROOT).find(|n| doc.is(*n, "body")).unwrap();
+                assert!(doc.attr(body, "class").unwrap().contains(skin), "{host}{path}");
+                for id in ["chrome", "wordmark", "nav-home", "nav-pay", "foot"] {
+                    node(&doc, id);
+                }
+            }
+            // Somebody with no accounts still gets a valid page.
+            let bob = ServiceContext { actor: "carol".into(), ..ctx() };
+            let empty = BankService
+                .handle(&mut state, &bob, &HttpRequest::get(format!("http://{host}/")))
+                .unwrap();
+            let doc = dom(&empty);
+            node(&doc, "none");
+        }
+        assert!(BankService.initialize(json!({"skin": "nonesuch"}), &ctx()).is_err());
+        let named = BankService.initialize(json!({"brand": "Any", "skin": "paypal"}), &ctx()).unwrap();
+        let s: BankState = web::load(&named).unwrap();
+        assert_eq!(s.skin(), "paypal");
+    }
+    #[test]
+    fn ids_links_and_forms_are_the_ones_the_page_version_had() {
+        let mut state = BankService.initialize(seed(), &ctx()).unwrap();
+        let home = dom(&get(&mut state, "http://northwind.example/"));
+        assert_eq!(home.attr(node(&home, "nav-home"), "href"), Some("/"));
+        assert_eq!(home.attr(node(&home, "nav-pay"), "href"), Some("/transfers"));
+        assert_eq!(home.text_content(node(&home, "wordmark")), "Testbank");
+        assert_eq!(home.text_content(node(&home, "lead")), "Your accounts");
+        assert_eq!(home.text_content(node(&home, "act-head")), "Recent activity");
+        let tile = node(&home, "a-cc-3310");
+        assert_eq!(home.tag(tile), Some("a"));
+        assert_eq!(home.attr(tile, "href"), Some("/accounts/cc-3310"));
+        assert_eq!(home.text_content(node(&home, "a-cc-3310-n")), "Rewards Card (...3310)");
+        assert_eq!(home.text_content(node(&home, "a-cc-3310-b")), "-$482.31");
+        assert_eq!(home.text_content(node(&home, "a-cc-3310-av")), "Available credit $9,517.69");
+        assert_eq!(home.text_content(node(&home, "a-chk-4417-av")), "Available $8,124.55");
+        let row = node(&home, "t-tx-1");
+        assert_eq!(home.tag(row), Some("a"));
+        assert_eq!(home.attr(row, "href"), Some("/accounts/cc-3310/transactions/tx-1"));
+        assert_eq!(home.text_content(node(&home, "t-tx-1-m")), "AMAZON.COM");
+        assert_eq!(home.text_content(node(&home, "t-tx-1-c")), "Shopping");
+        assert_eq!(home.text_content(node(&home, "t-tx-1-d")), "Mar 2, 2026");
+        assert_eq!(home.attr(node(&home, "t-tx-1-d"), "datetime"), Some("2026-03-02"));
+        assert_eq!(home.text_content(node(&home, "t-tx-1-a")), "-$429.99");
+
+        let account = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310?category=Shopping&q=order"));
+        assert_eq!(account.text_content(node(&account, "lead")), "Rewards Card (...3310)");
+        assert_eq!(account.text_content(node(&account, "bal")), "Balance -$482.31");
+        assert_eq!(account.text_content(node(&account, "avail")), "Available credit $9,517.69");
+        assert_eq!(account.attr(node(&account, "statement"), "href"), Some("/statements/cc-3310/all"));
+        let filter = node(&account, "filter");
+        assert_eq!(account.attr(filter, "action"), Some("/accounts/cc-3310"));
+        assert_eq!(account.attr(filter, "method"), Some("get"));
+        assert_eq!(account.attr(node(&account, "filter-category"), "name"), Some("category"));
+        assert_eq!(account.attr(node(&account, "filter-category"), "value"), Some("Shopping"));
+        assert_eq!(account.attr(node(&account, "filter-q"), "name"), Some("q"));
+        assert_eq!(account.attr(node(&account, "filter-q"), "value"), Some("order"));
+        assert_eq!(account.tag(node(&account, "filter-go")), Some("button"));
+        assert_eq!(account.attr(node(&account, "cat-shopping"), "href"), Some("/accounts/cc-3310?category=Shopping"));
+        assert_eq!(account.text_content(node(&account, "count")), "1 transaction(s)");
+        node(&account, "t-tx-1");
+        let none = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310?q=nothing-matches"));
+        assert_eq!(none.text_content(node(&none, "count")), "0 transaction(s)");
+        assert!(none.by_id("t-tx-1").is_empty());
+
+        let tx = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310/transactions/tx-1"));
+        assert_eq!(tx.text_content(node(&tx, "merchant")), "AMAZON.COM");
+        assert_eq!(tx.text_content(node(&tx, "fact-date")), "Posted Mar 2, 2026");
+        assert_eq!(tx.text_content(node(&tx, "fact-cat")), "Category Shopping");
+        assert_eq!(tx.text_content(node(&tx, "fact-memo")), "Order 1001");
+        assert_eq!(tx.text_content(node(&tx, "fact-status")), "Posted");
+        assert_eq!(tx.text_content(node(&tx, "link-head")), "Where this charge came from");
+        assert_eq!(tx.attr(node(&tx, "back"), "href"), Some("/accounts/cc-3310"));
+        node(&tx, "facts");
+
+        let st = dom(&get(&mut state, "http://northwind.example/statements/cc-3310/2026-03"));
+        assert_eq!(st.text_content(node(&st, "sum-in")), "Deposits $0.00");
+        assert_eq!(st.text_content(node(&st, "sum-out")), "Withdrawals -$429.99");
+        assert_eq!(st.text_content(node(&st, "sum-close")), "Closing balance -$482.31");
+        node(&st, "sums");
+
+        let pay = dom(&get(&mut state, "http://northwind.example/transfers"));
+        assert_eq!(pay.text_content(node(&pay, "lead")), "Pay & transfer");
+        for (form, action, fields, go) in [
+            ("xfer", "/api/transfers", vec![("xfer-from", "from", "cc-3310"), ("xfer-to", "to", "chk-4417"), ("xfer-amount", "amount_cents", "2500")], "xfer-go"),
+            ("pay", "/api/payments", vec![("pay-account", "account", "cc-3310"), ("pay-payee", "payee", ""), ("pay-amount", "amount_cents", "0")], "pay-go"),
+            ("addpayee", "/api/payees", vec![("addpayee-name", "name", ""), ("addpayee-hint", "account_hint", "")], "addpayee-go"),
+        ] {
+            let f = node(&pay, form);
+            assert_eq!(pay.attr(f, "action"), Some(action));
+            assert_eq!(pay.attr(f, "method"), Some("post"));
+            for (id, name, value) in fields {
+                let input = node(&pay, id);
+                assert_eq!(pay.attr(input, "name"), Some(name), "{id}");
+                assert_eq!(pay.attr(input, "value").unwrap_or(""), value, "{id}");
+                assert!(pay.ancestors(input).any(|a| a == f), "{id} is inside #{form}");
+            }
+            let button = node(&pay, go);
+            assert_eq!(pay.tag(button), Some("button"));
+            assert!(pay.ancestors(button).any(|a| a == f));
+        }
+        assert!(pay.text_content(node(&pay, "own")).contains("chk-4417"));
+        assert!(pay.text_content(node(&pay, "payees")).contains("city-power (Cascade City Power)"));
+        for id in ["xfer-card", "xfer-head", "pay-card", "pay-head"] {
+            node(&pay, id);
+        }
+    }
+    #[test]
+    fn a_submitted_form_answers_with_the_page_it_changed() {
+        let mut state = BankService.initialize(seed(), &ctx()).unwrap();
+        let moved = post(
+            &mut state,
+            "http://northwind.example/api/transfers",
+            &[("from", "chk-4417"), ("to", "sav-9902"), ("amount_cents", "25000")],
+        );
+        let doc = dom(&moved);
+        assert_eq!(doc.text_content(node(&doc, "bal")), "Balance $7,874.55");
+        assert_eq!(doc.text_content(node(&doc, "count")), "1 transaction(s)");
+        let added = post(
+            &mut state,
+            "http://northwind.example/api/payees",
+            &[("name", "Rainier Fibre"), ("account_hint", "...4402")],
+        );
+        let doc = dom(&added);
+        assert!(doc.text_content(node(&doc, "payees")).contains("rainier-fibre"));
     }
     #[test]
     fn only_the_actors_own_accounts_are_addressable() {

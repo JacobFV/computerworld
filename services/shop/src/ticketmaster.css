@@ -1,0 +1,64 @@
+/* ticketmaster.com: the blue bar with the italic wordmark, the dark hero with the wide
+   search, event rows with the date block on the left and See Tickets on the right. */
+body.skin-ticketmaster { font-family: "Open Sans", Arial, sans-serif; color: #121212; background: #fff; }
+.skin-ticketmaster .hdr { background: #1f262d; color: #fff; }
+.skin-ticketmaster .hdr .bar { max-width: none; gap: 4px; height: 60px; padding: 0 32px; background: #026cdf; }
+.skin-ticketmaster .logo { margin-right: 28px; font-size: 25px; line-height: 32px; font-weight: 800; font-style: italic; letter-spacing: -1px; text-transform: lowercase; color: #fff; }
+.skin-ticketmaster .bar .u, .skin-ticketmaster .nav { padding: 20px 12px; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; }
+.skin-ticketmaster .bar .u:hover, .skin-ticketmaster .nav:hover { box-shadow: inset 0 -4px 0 #fff; text-decoration: none; }
+.skin-ticketmaster .hero { padding: 64px 32px 72px; background: linear-gradient(115deg, #0a1a3c 0, #1b2f6e 45%, #5a2a82 100%); text-align: center; }
+.skin-ticketmaster .hero.slim { padding: 18px 32px; }
+.skin-ticketmaster .hero h1 { font-size: 44px; line-height: 54px; font-weight: 800; letter-spacing: -1px; text-transform: uppercase; }
+.skin-ticketmaster .hero .sub { margin: 8px 0 28px; font-size: 16px; color: #d6dcf0; }
+.skin-ticketmaster .search { max-width: 920px; height: 56px; margin: 0 auto; padding: 6px; border-radius: 4px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); text-align: left; }
+.skin-ticketmaster .search .scope { display: block; position: relative; flex: none; width: 220px; padding: 0 12px 0 36px; border-right: 1px solid #bfbfbf; color: #646464; font-size: 15px; line-height: 44px; }
+.skin-ticketmaster .search .scope::before { content: ""; position: absolute; left: 12px; top: 14px; width: 9px; height: 9px; border: 2px solid #026cdf; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+.skin-ticketmaster .search input[type="text"] { height: 44px; padding: 0 16px; font: 16px "Open Sans", Arial, sans-serif; }
+.skin-ticketmaster .search .go { height: 44px; padding: 0 28px; border-radius: 2px; background: #026cdf; font: 600 16px "Open Sans", Arial, sans-serif; }
+.skin-ticketmaster .search .go:hover { background: #0150a7; }
+.skin-ticketmaster .cats { border-bottom: 1px solid #d9d9d9; }
+.skin-ticketmaster .cats .inner { max-width: 1160px; gap: 28px; }
+.skin-ticketmaster .cat { padding: 16px 0; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.skin-ticketmaster .cat:hover { color: #026cdf; }
+.skin-ticketmaster .cat.on, .skin-ticketmaster .cat.all { box-shadow: inset 0 -4px 0 #026cdf; color: #026cdf; font-weight: 600; }
+.skin-ticketmaster .cat.all.off { box-shadow: none; color: #121212; }
+.skin-ticketmaster .wrap { max-width: 1160px; padding-top: 28px; }
+.skin-ticketmaster .lead { position: relative; padding-left: 14px; font-size: 22px; line-height: 30px; font-weight: 800; text-transform: uppercase; }
+.skin-ticketmaster .lead::before { content: ""; position: absolute; left: 0; top: 3px; width: 4px; height: 24px; background: #026cdf; }
+.skin-ticketmaster .grid { grid-template-columns: 1fr; gap: 0; border: 1px solid #d9d9d9; border-radius: 4px; }
+.skin-ticketmaster .card { flex-direction: row; align-items: center; gap: 20px; padding: 14px 20px; border: 0; border-bottom: 1px solid #ebebeb; border-radius: 0; }
+.skin-ticketmaster .card:hover { box-shadow: none; background: #f6f9fd; }
+.skin-ticketmaster .card .date { display: flex; flex-direction: column; align-items: center; flex: none; width: 56px; }
+.skin-ticketmaster .date .mon { font-size: 13px; line-height: 16px; font-weight: 700; letter-spacing: 1px; color: #904eba; }
+.skin-ticketmaster .date .day { font-size: 26px; line-height: 30px; font-weight: 800; }
+.skin-ticketmaster .date .year { font-size: 11px; line-height: 14px; color: #646464; }
+.skin-ticketmaster .card .pic { flex: none; width: 128px; height: 72px; border-radius: 4px; }
+.skin-ticketmaster .pic-label { display: none; }
+.skin-ticketmaster .pic.stage .pic-label { display: block; }
+.skin-ticketmaster .card .info { padding: 0; gap: 2px; }
+.skin-ticketmaster .card .name { font-size: 16px; line-height: 22px; font-weight: 700; max-height: 44px; }
+.skin-ticketmaster .card:hover .name { color: #026cdf; }
+.skin-ticketmaster .where { font-size: 14px; color: #646464; }
+.skin-ticketmaster .tags { margin-top: 2px; padding: 0; gap: 4px; }
+.skin-ticketmaster .price { font-size: 14px; font-weight: 700; }
+.skin-ticketmaster .card > .cta { display: block; position: relative; flex: none; padding: 10px 34px 10px 18px; border-radius: 2px; background: #026cdf; color: #fff; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; }
+.skin-ticketmaster .card > .cta::after { content: ""; position: absolute; right: 16px; top: 16px; width: 6px; height: 6px; border-right: 2px solid #fff; border-top: 2px solid #fff; transform: rotate(45deg); }
+.skin-ticketmaster .card:hover > .cta { background: #0150a7; }
+.skin-ticketmaster .event-hero { margin: -28px -16px 0; padding: 32px; border-radius: 0; background: linear-gradient(115deg, #0a1a3c 0, #1b2f6e 55%, #5a2a82 100%); color: #fff; }
+.skin-ticketmaster .event-info h1 { font-size: 32px; line-height: 40px; font-weight: 800; }
+.skin-ticketmaster .event-info p { color: #d6dcf0; }
+.skin-ticketmaster .tiers-head { text-transform: uppercase; font-weight: 800; font-size: 18px; }
+.skin-ticketmaster .tier { border-radius: 4px; border-left: 4px solid #026cdf; }
+.skin-ticketmaster .tier .price { font-size: 18px; font-weight: 700; }
+.skin-ticketmaster button.primary { height: 40px; border-radius: 2px; background: #026cdf; font: 600 15px "Open Sans", Arial, sans-serif; }
+.skin-ticketmaster button.primary:hover { background: #0150a7; }
+.skin-ticketmaster input[type="text"] { border-radius: 2px; height: 40px; }
+.skin-ticketmaster .order, .skin-ticketmaster .receipt, .skin-ticketmaster .buybox { border-radius: 4px; }
+.skin-ticketmaster .seat { border-radius: 2px; background: #026cdf; }
+.skin-ticketmaster .order-body .titles { color: #026cdf; }
+.skin-ticketmaster .ftr { background: #1f262d; color: #fff; }
+.skin-ticketmaster .ftr .cols, .skin-ticketmaster .ftr .legal { max-width: 1160px; }
+.skin-ticketmaster .ftr h3 { color: #fff; }
+.skin-ticketmaster .ftr .fitem, .skin-ticketmaster .ftr .col a { color: #c9d0da; }
+.skin-ticketmaster .ftr .legal { border-top: 1px solid #3a434d; color: #9aa4b1; }
+.skin-ticketmaster .ftr .legal .brand { color: #fff; font-style: italic; text-transform: lowercase; font-weight: 800; }

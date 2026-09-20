@@ -3,8 +3,10 @@
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_bank::{BankService, BankState};
+use cw_service_common::html::validate_strict;
 use serde_json::Value;
 const CHASE: &str = include_str!("../../../worlds/company-2026/sites/northwind.json");
+const PAYPAL: &str = include_str!("../../../worlds/company-2026/sites/paypal.json");
 const ORDER_1001: &str = "http://amazon.com/orders/1001";
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
@@ -16,7 +18,10 @@ fn ctx(actor: &str) -> ServiceContext {
     }
 }
 fn load() -> Value {
-    let doc: Value = serde_json::from_str(CHASE).expect("site file must be JSON");
+    load_site(CHASE)
+}
+fn load_site(raw: &str) -> Value {
+    let doc: Value = serde_json::from_str(raw).expect("site file must be JSON");
     assert_eq!(doc["kind"], "bank");
     BankService
         .initialize(doc["initial_state"].clone(), &ctx("alice"))
@@ -108,4 +113,47 @@ fn every_page_the_seed_advertises_resolves_for_its_owner_and_no_one_else() {
         !body.contains("4417"),
         "another actor's overview must not list Alice's accounts"
     );
+}
+
+/// Every page both shipped seeds advertise, through the engine's strict pipeline: the seed's
+/// own text, not a fixture's, is what the browser has to render.
+#[test]
+fn every_page_of_both_shipped_seeds_validates_strictly() {
+    for (raw, host, actors) in [
+        (CHASE, "northwind.example", ["alice"].as_slice()),
+        (PAYPAL, "paypal.com", ["alice", "bob", "carol"].as_slice()),
+    ] {
+        let mut state = load_site(raw);
+        let s: BankState = serde_json::from_value(state.clone()).unwrap();
+        for actor in actors {
+            let mut urls = vec![
+                format!("http://{host}/"),
+                format!("http://{host}/transfers"),
+            ];
+            let owned: Vec<&str> = s
+                .accounts
+                .values()
+                .filter(|a| a.owner == *actor)
+                .map(|a| a.id.as_str())
+                .collect();
+            assert!(!owned.is_empty(), "{actor} owns nothing on {host}");
+            for id in &owned {
+                urls.push(format!("http://{host}/accounts/{id}"));
+                urls.push(format!("http://{host}/accounts/{id}?q=nothing-matches"));
+                urls.push(format!("http://{host}/statements/{id}/all"));
+                urls.push(format!("http://{host}/statements/{id}/2026-03"));
+            }
+            for t in s.transactions.values().filter(|t| owned.contains(&t.account.as_str())) {
+                urls.push(format!("http://{host}/accounts/{}/transactions/{}", t.account, t.id));
+                if !t.category.is_empty() {
+                    urls.push(format!("http://{host}/accounts/{}?category={}", t.account, t.category));
+                }
+            }
+            for url in urls {
+                let (status, html) = get(&mut state, actor, &url);
+                assert_eq!(status, 200, "{url}");
+                validate_strict(&html).unwrap_or_else(|e| panic!("{url}: {e:?}"));
+            }
+        }
+    }
 }

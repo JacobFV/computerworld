@@ -1,0 +1,75 @@
+/* uber.com: black bar, white page, the big headline beside the two grey fields and
+   the black button, grey suggestion tiles with the picture on the right. */
+body.skin-uber { font-family: Inter, Arial, sans-serif; font-size: 16px; color: #000; }
+.skin-uber .hdr { background: #fff; color: #000; }
+.skin-uber .hdr .bar { max-width: none; gap: 6px; height: 64px; padding: 0 64px; background: #000; color: #fff; }
+.skin-uber .logo { margin-right: 22px; font-size: 24px; line-height: 32px; font-weight: 400; color: #fff; }
+.skin-uber .bar .u, .skin-uber .nav { padding: 8px 12px; border-radius: 18px; font-size: 14px; line-height: 20px; font-weight: 500; white-space: nowrap; }
+.skin-uber .bar .u:hover, .skin-uber .nav:hover { background: #333; text-decoration: none; }
+.skin-uber .nav.cart { background: #fff; color: #000; }
+.skin-uber .nav.cart:hover { background: #e2e2e2; }
+.skin-uber .cart .count { background: #000; }
+.skin-uber .hero { display: flex; align-items: center; gap: 72px; max-width: 1280px; margin: 0 auto; padding: 64px 64px 56px; }
+.skin-uber .hero.slim { padding: 24px 64px 8px; }
+.skin-uber .pitch { flex: 1; min-width: 0; }
+.skin-uber .hero h1 { font-size: 52px; line-height: 64px; font-weight: 700; letter-spacing: -1px; }
+.skin-uber .hero .sub { margin: 12px 0 28px; font-size: 16px; line-height: 24px; }
+.skin-uber .search { position: relative; flex-wrap: wrap; gap: 12px; height: auto; max-width: 420px; background: transparent; border-radius: 0; }
+.skin-uber .hero.slim .search { max-width: 640px; flex-wrap: nowrap; }
+.skin-uber .search .glass { display: block; position: absolute; left: 20px; top: 22px; width: 8px; height: 8px; background: #000; }
+.skin-uber .search input[type="text"] { flex: none; width: 100%; height: 52px; padding: 0 16px 0 48px; border-radius: 8px; background: #f3f3f3; font: 16px Inter, Arial, sans-serif; }
+.skin-uber .hero.slim .search input[type="text"] { flex: 1; width: auto; }
+.skin-uber .search input[type="text"]:focus { box-shadow: inset 0 0 0 2px #000; background: #fff; }
+.skin-uber .search .go { height: 52px; padding: 0 24px; border-radius: 8px; background: #000; font: 500 16px Inter, Arial, sans-serif; }
+.skin-uber .search .go:hover { background: #333; }
+.skin-uber .art { position: relative; flex: none; width: 520px; height: 420px; border-radius: 12px; overflow: hidden; background: linear-gradient(180deg, #ffd9a0 0, #f7b267 48%, #2f5d62 48%, #1e3d40 100%); }
+.skin-uber .art .sun { position: absolute; right: 70px; top: 60px; width: 88px; height: 88px; border-radius: 50%; background: #fff3d6; }
+.skin-uber .art .road { position: absolute; left: 0; right: 0; bottom: 56px; height: 70px; background: #1b1b1b; box-shadow: inset 0 33px 0 #1b1b1b, inset 0 37px 0 #f3f3f3, inset 0 70px 0 #1b1b1b; }
+.skin-uber .art .car { position: absolute; left: 130px; bottom: 96px; width: 200px; height: 44px; border-radius: 12px 16px 8px 8px; background: #000; box-shadow: 0 0 0 3px #1b1b1b; }
+.skin-uber .art .car::before { content: ""; position: absolute; left: 42px; top: -30px; width: 108px; height: 32px; box-sizing: border-box; border: 7px solid #000; border-bottom: 0; border-radius: 18px 22px 0 0; background: linear-gradient(90deg, #9ad1d4 0, #9ad1d4 46%, #000 46%, #000 54%, #9ad1d4 54%); }
+.skin-uber .art .car::after { content: ""; position: absolute; left: 24px; bottom: -14px; width: 32px; height: 32px; border-radius: 50%; background: #444; border: 6px solid #111; box-shadow: 116px 0 0 -6px #444, 116px 0 0 0 #111; box-sizing: border-box; }
+.skin-uber .cats { border-bottom: 1px solid #e2e2e2; }
+.skin-uber .cats .inner { max-width: 1280px; gap: 32px; padding: 0 64px; }
+.skin-uber .cat { padding: 14px 0; font-size: 16px; font-weight: 500; color: #5e5e5e; }
+.skin-uber .cat:hover { color: #000; }
+.skin-uber .cat.on, .skin-uber .cat.all { color: #000; box-shadow: inset 0 -3px 0 #000; font-weight: 500; }
+.skin-uber .cat.all.off { color: #5e5e5e; box-shadow: none; }
+.skin-uber .wrap { max-width: 1280px; padding: 36px 64px 64px; }
+.skin-uber .lead { margin-bottom: 24px; font-size: 36px; line-height: 44px; font-weight: 700; }
+.skin-uber .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.skin-uber .card { flex-direction: row-reverse; align-items: stretch; border: 0; border-radius: 12px; background: #f3f3f3; }
+.skin-uber .card:hover { box-shadow: none; background: #e8e8e8; }
+.skin-uber .card .pic { flex: none; width: 120px; height: auto; min-height: 150px; margin: 16px 16px 16px 0; border-radius: 8px; }
+.skin-uber .pic-label { display: none; }
+.skin-uber .card .info { padding: 16px; gap: 6px; }
+.skin-uber .card .name { font-size: 16px; line-height: 20px; font-weight: 600; max-height: 60px; }
+.skin-uber .card:hover .name { color: #000; }
+.skin-uber .card .blurb { display: block; font-size: 12px; line-height: 16px; color: #333; }
+.skin-uber .card .rating { font-size: 12px; }
+.skin-uber .card .rating .stars { display: none; }
+.skin-uber .card .rating .rv::after { content: " ★"; }
+.skin-uber .tags { gap: 6px; }
+.skin-uber .price { padding: 6px 12px; border-radius: 16px; background: #fff; font-size: 14px; line-height: 20px; font-weight: 500; }
+.skin-uber .fast { border: 0; padding: 0; color: #0e8345; font-weight: 500; }
+.skin-uber .pic.main { border-radius: 12px; }
+.skin-uber .buybox { width: 320px; border: 0; border-radius: 12px; background: #f3f3f3; }
+.skin-uber .price-row .price, .skin-uber .buy-price .price { padding: 0; background: transparent; font-size: 28px; line-height: 36px; font-weight: 700; }
+.skin-uber button.primary { height: 48px; border-radius: 8px; background: #000; font: 500 16px Inter, Arial, sans-serif; }
+.skin-uber button.primary:hover { background: #333; }
+.skin-uber button.secondary { height: 44px; border: 0; border-radius: 8px; background: #e2e2e2; font: 500 14px Inter, Arial, sans-serif; }
+.skin-uber .buybox button.secondary { background: #fff; }
+.skin-uber input[type="text"] { height: 44px; border: 0; border-radius: 8px; background: #f3f3f3; }
+.skin-uber .buybox input[type="text"] { background: #fff; }
+.skin-uber .lines, .skin-uber .summary { border: 0; border-radius: 12px; background: #f6f6f6; }
+.skin-uber .line-actions input[type="text"] { background: #fff; }
+.skin-uber .line .price, .skin-uber .item .price, .skin-uber .order .price, .skin-uber .tier .price { padding: 0; background: transparent; font-size: 16px; }
+.skin-uber .seat { background: #000; }
+.skin-uber .ftr { background: #000; color: #fff; }
+.skin-uber .ftr .cols, .skin-uber .ftr .legal { max-width: 1280px; padding-left: 64px; padding-right: 64px; }
+.skin-uber .ftr .cols { padding-top: 56px; gap: 96px; }
+.skin-uber .ftr h3 { font-size: 18px; font-weight: 500; color: #fff; margin-bottom: 10px; }
+.skin-uber .ftr .fitem, .skin-uber .ftr .col a { color: #fff; font-size: 14px; }
+.skin-uber .ftr .legal { border-top: 0; color: #afafaf; }
+.skin-uber .ftr .legal .brand { color: #fff; font-size: 24px; font-weight: 400; margin-bottom: 8px; }
+/* A delivery cart does not talk about warehouse stock; a shortfall (.outstock) still shows. */
+.skin-uber .line .instock { display: none; }

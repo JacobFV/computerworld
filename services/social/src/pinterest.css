@@ -1,0 +1,104 @@
+/* Pinterest: the red P, a wide grey pill of a search box, and a wall of rounded pins. The
+   engine has no multi-column layout, so the wall is five flex lanes dealt round-robin, and
+   the pins' heights vary by shape class. */
+body { font-family: Inter, Arial, sans-serif; font-size: 14px; background-color: #ffffff; }
+.topbar { position: sticky; top: 0; z-index: 5; height: 80px; background-color: #ffffff; }
+.topbar-in { display: flex; align-items: center; height: 80px; padding: 0 16px; }
+.brand { order: 1; width: 48px; height: 48px; justify-content: center; border-radius: 50%; }
+.brand:hover { background-color: #f1f1f1; }
+.logo::before { content: "p"; display: block; width: 26px; height: 26px; line-height: 22px; border-radius: 50%; background-color: var(--accent); color: #ffffff; font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 21px; text-align: center; }
+.wordmark { display: none; }
+.nav { order: 2; display: flex; align-items: center; }
+.nav-item { height: 48px; padding: 0 16px; border-radius: 9999px; font-size: 16px; font-weight: 600; box-sizing: border-box; }
+.nav-item.on { background-color: #111111; color: #ffffff; }
+.nav .ico { display: none; }
+#nav-search { display: none; }
+.top-search { order: 3; flex: 1 1 auto; height: 48px; box-sizing: border-box; margin: 0 12px; padding: 0 16px; border-radius: 9999px; background-color: #e9e9e9; color: var(--muted); }
+.top-search:hover { background-color: #e1e1e1; }
+.top-search .ico { margin-right: 10px; font-size: 16px; }
+.top-search input { font-size: 16px; }
+.topbar .avatar { order: 4; width: 32px; height: 32px; line-height: 32px; font-size: 12px; margin: 0 8px; }
+
+.shell { display: block; padding: 0 16px; }
+.main { width: 100%; }
+.feed-title { font-size: 20px; font-weight: 600; text-align: center; margin: 4px 0 16px; }
+.page-home .feed-title { display: none; }
+.compose { width: 600px; max-width: 100%; box-sizing: border-box; margin: 0 auto 20px; padding: 8px 8px 8px 12px; border-radius: 9999px; background-color: #f1f1f1; align-items: center; }
+.compose .avatar { width: 32px; height: 32px; line-height: 32px; font-size: 12px; }
+.compose-title { display: none; }
+.compose form { display: flex; align-items: center; }
+.compose form input { flex: 1 1 auto; font-size: 15px; }
+.compose-tools { display: none; }
+button.primary { padding: 10px 16px; font-size: 15px; font-weight: 600; }
+
+.feed-grid { display: flex; align-items: flex-start; justify-content: center; }
+.lane { flex: 1 1 0; min-width: 0; max-width: 252px; padding: 0 8px; box-sizing: border-box; }
+.post { margin-bottom: 20px; display: flex; flex-direction: column; }
+.post-body { order: 1; position: relative; }
+.post-head { order: 2; padding: 6px 4px 0; }
+.post-head .avatar { width: 24px; height: 24px; line-height: 24px; font-size: 9px; }
+.who { margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name { font-size: 12px; font-weight: 400; }
+.handle, .verified { display: none; }
+.photo { border-radius: 16px; }
+.photo.shape-0 { aspect-ratio: 2 / 3; }
+.photo.shape-1 { aspect-ratio: 3 / 4; }
+.photo.shape-2 { aspect-ratio: 1 / 1; }
+.photo.shape-3 { aspect-ratio: 4 / 5; }
+.post-link:hover .photo { opacity: 0.85; }
+.post-text { padding: 8px 4px 0; font-size: 14px; font-weight: 600; line-height: 1.3; max-height: 36px; overflow: hidden; }
+.quote { display: none; }
+.acts { position: absolute; left: 0; right: 0; top: 0; padding: 10px; justify-content: flex-end; }
+.acts .act { display: none; }
+.acts .pill-form { margin-left: 6px; }
+.pill { padding: 8px 12px; border-radius: 9999px; background-color: rgba(255, 255, 255, 0.92); color: #111111; font-size: 12px; font-weight: 700; }
+#main .acts .pill-form:nth-child(2) .pill { background-color: var(--accent); color: #ffffff; }
+.pill.on { background-color: #111111; color: #ffffff; }
+.pill .ico { font-size: 13px; margin-right: 4px; }
+.acts .lbl { display: none; }
+
+/* A pin opened: the picture beside its story, in one rounded card. */
+.page-thread .main { width: 1016px; max-width: 100%; margin: 0 auto; }
+.page-thread .post.focus { flex-direction: row; background-color: #ffffff; border-radius: 32px; box-shadow: 0 1px 20px rgba(0, 0, 0, 0.1); overflow: hidden; }
+.page-thread .post.focus .post-body { flex: 0 0 508px; order: 1; }
+.page-thread .post.focus .post-head { flex: 1 1 auto; order: 2; padding: 32px; align-items: flex-start; }
+.page-thread .post.focus .photo { border-radius: 0; }
+.page-thread .post.focus .post-text { max-height: none; font-weight: 400; font-size: 16px; padding: 16px; }
+.page-thread .post.focus .acts .act { display: inline-flex; }
+.page-thread .post.focus .post-head .avatar { width: 48px; height: 48px; line-height: 48px; font-size: 16px; }
+.page-thread .post.focus .name { font-size: 16px; font-weight: 600; line-height: 48px; }
+.page-thread .post { width: 252px; }
+.page-thread .post.focus { width: auto; }
+.reply-box { margin: 20px 0; padding: 8px 8px 8px 12px; border-radius: 9999px; background-color: #f1f1f1; align-items: center; }
+.reply-box form { display: flex; align-items: center; }
+.reply-box form input { flex: 1 1 auto; }
+.section-title { font-size: 20px; font-weight: 600; margin: 12px 0; }
+.crumb a { width: 48px; height: 48px; line-height: 48px; text-align: center; border-radius: 50%; }
+.crumb a:hover { background-color: #f1f1f1; }
+.crumb-title { display: none; }
+
+.profile { text-align: center; padding: 16px 0 24px; }
+.banner { display: none; }
+.profile-row { flex-direction: column; align-items: center; }
+.profile .avatar.huge { font-size: 44px; }
+.profile-body { order: 1; }
+.profile-name { font-size: 36px; font-weight: 600; margin-top: 8px; }
+.profile-handle { color: var(--muted); }
+.bio { max-width: 640px; margin: 8px auto 0; }
+.meta, .counts { justify-content: center; margin-top: 8px; }
+.count b { color: var(--ink); }
+.profile-acts { margin-top: 16px; }
+.profile { display: flex; flex-direction: column; }
+.profile-row { order: 0; }
+.profile-acts .pill { padding: 12px 16px; font-size: 16px; background-color: var(--accent); color: #ffffff; }
+.profile-acts .pill.on { background-color: #111111; }
+
+.page-inbox .main, .page-search .main { width: 1016px; max-width: 100%; margin: 0 auto; }
+.threads { border-right: 1px solid #e9e9e9; min-height: 600px; }
+.thread { border-radius: 16px; }
+.thread:hover, .thread.on { background-color: #f1f1f1; }
+.convo-title { padding: 14px 16px; font-size: 20px; }
+.dm { background-color: #f1f1f1; }
+.search-form { height: 48px; padding: 0 8px 0 16px; border-radius: 9999px; background-color: #e9e9e9; margin-bottom: 16px; }
+.search-form .ico { margin-right: 10px; color: var(--muted); }
+.profile-title { justify-content: center; }

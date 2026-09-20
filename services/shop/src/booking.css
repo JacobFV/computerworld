@@ -1,0 +1,77 @@
+/* booking.com: the navy header, the pill tabs, the yellow-framed search bar that hangs
+   over the header's edge, horizontal property cards with the review score badge. */
+body.skin-booking { font-family: Inter, Arial, sans-serif; color: #1a1a1a; }
+.skin-booking .hdr { background: #003b95; color: #fff; padding-bottom: 1px; }
+.skin-booking .hdr .bar { max-width: 1132px; gap: 8px; padding: 10px 16px; }
+.skin-booking .logo { font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
+.skin-booking .logo .tld { color: #fff; }
+.skin-booking .bar .cur { padding: 10px 12px; font-size: 16px; font-weight: 600; }
+.skin-booking .bar .flag { width: 24px; height: 24px; margin: 0 10px; border-radius: 50%; background: linear-gradient(#b22234 0, #b22234 34%, #fff 34%, #fff 66%, #b22234 66%); }
+.skin-booking .bar .help { width: 24px; height: 24px; margin: 0 10px; border: 2px solid #fff; border-radius: 50%; font-size: 14px; line-height: 20px; font-weight: 700; text-align: center; }
+.skin-booking .bar .list { padding: 10px 12px; font-size: 16px; font-weight: 600; white-space: nowrap; }
+.skin-booking .nav { height: 36px; padding: 0 12px; border-radius: 4px; background: #fff; color: #006ce4; font-size: 14px; font-weight: 600; }
+.skin-booking .nav:hover { background: #f0f6ff; text-decoration: none; }
+.skin-booking .cart .count { background: #006ce4; }
+.skin-booking .modes { display: flex; gap: 4px; max-width: 1132px; margin: 0 auto; padding: 4px 16px 0; }
+.skin-booking .mode { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid transparent; border-radius: 22px; font-size: 14px; line-height: 20px; white-space: nowrap; }
+.skin-booking .mode:hover { background: rgba(255, 255, 255, 0.1); }
+.skin-booking .mode.on { border-color: #fff; background: rgba(255, 255, 255, 0.1); }
+.skin-booking .bed { width: 18px; height: 9px; margin-top: 4px; border: 2px solid #fff; border-bottom-width: 4px; border-radius: 3px 3px 0 0; }
+.skin-booking .hero { max-width: 1132px; margin: 0 auto; padding: 56px 16px 36px; }
+.skin-booking .hero h1 { font-size: 48px; line-height: 62px; font-weight: 700; }
+.skin-booking .hero p { font-size: 24px; line-height: 32px; }
+.skin-booking .searchband { max-width: 1132px; margin: 28px auto -30px; padding: 0 16px; position: relative; z-index: 2; }
+.skin-booking.page-home .searchband { margin-top: 0; }
+.skin-booking .search { height: auto; gap: 4px; padding: 4px; border-radius: 8px; background: #ffb700; box-shadow: 0 2px 8px rgba(26, 26, 26, 0.16); }
+.skin-booking .search .glass { display: none; }
+.skin-booking .search input[type="text"] { order: 1; flex: 3; height: 52px; padding: 0 12px 0 16px; border-radius: 4px; background: #fff; font: 500 14px Inter, Arial, sans-serif; }
+.skin-booking .search input[type="text"]:focus { box-shadow: inset 0 0 0 2px #006ce4; }
+.skin-booking .search .field { order: 2; flex: 3; height: 52px; padding: 0 12px; border-radius: 4px; background: #fff; color: #1a1a1a; font-size: 14px; line-height: 52px; font-weight: 500; white-space: nowrap; overflow: hidden; }
+.skin-booking .search .go { order: 3; width: 110px; height: 52px; border-radius: 4px; background: #006ce4; font: 500 20px Inter, Arial, sans-serif; }
+.skin-booking .search .go:hover { background: #0057b8; }
+.skin-booking .cats { margin-top: 52px; border: 0; }
+.skin-booking .cats .inner { max-width: 1132px; gap: 8px; }
+.skin-booking .cat { padding: 8px 14px; border: 1px solid #868686; border-radius: 20px; font-size: 14px; color: #1a1a1a; }
+.skin-booking .cat:hover { background: #f2f2f2; color: #1a1a1a; }
+.skin-booking .cat.on, .skin-booking .cat.all { border-color: #006ce4; background: #f0f6ff; color: #006ce4; box-shadow: none; font-weight: 500; }
+.skin-booking .cat.all.off { border-color: #868686; background: #fff; color: #1a1a1a; }
+.skin-booking .wrap { max-width: 1132px; padding-top: 24px; }
+.skin-booking .lead { font-size: 24px; line-height: 32px; font-weight: 700; }
+.skin-booking .grid { grid-template-columns: 1fr; gap: 16px; }
+.skin-booking .card { flex-direction: row; gap: 16px; padding: 16px; border: 1px solid #c6c6c6; border-radius: 8px; overflow: visible; }
+.skin-booking .card:hover { box-shadow: 0 2px 8px rgba(26, 26, 26, 0.16); }
+.skin-booking .card .pic { flex: none; width: 240px; height: 200px; border-radius: 8px; }
+.skin-booking .pic-label { display: none; }
+.skin-booking .card .heart { display: block; position: absolute; right: 8px; top: 8px; width: 36px; height: 36px; border-radius: 50%; background: #fff; }
+.skin-booking .card .heart::before { content: "♡"; position: absolute; left: 0; right: 0; top: 7px; text-align: center; font-size: 20px; line-height: 22px; color: #1a1a1a; }
+.skin-booking .card .info { padding: 0; gap: 6px; }
+.skin-booking .card .name { max-height: 56px; font-size: 20px; line-height: 28px; font-weight: 700; color: #006ce4; }
+.skin-booking .card:hover .name { color: #1a1a1a; }
+.skin-booking .card .rating { display: none; }
+.skin-booking .card .blurb { display: block; font-size: 12px; line-height: 18px; color: #006ce4; text-decoration: underline; }
+.skin-booking .card .perk { display: block; margin-top: 8px; padding-left: 10px; border-left: 2px solid #c6c6c6; font-size: 12px; line-height: 18px; font-weight: 700; color: #595959; }
+.skin-booking .card .perk.free { color: #008234; border-left-color: #008234; }
+.skin-booking .card .side { display: flex; flex-direction: column; align-items: flex-end; flex: none; width: 210px; }
+.skin-booking .review { display: grid; grid-template-columns: auto 32px; gap: 0 8px; text-align: right; }
+.skin-booking .review .word { font-size: 16px; line-height: 20px; font-weight: 500; }
+.skin-booking .review .n { grid-column: 1; font-size: 12px; line-height: 16px; color: #595959; }
+.skin-booking .review .badge { grid-column: 2; grid-row: 1 / 3; width: 32px; height: 32px; border-radius: 6px 6px 6px 0; background: #003b95; color: #fff; font-size: 16px; line-height: 32px; font-weight: 500; text-align: center; }
+.skin-booking .side .nights { margin-top: auto; font-size: 12px; line-height: 18px; color: #595959; }
+.skin-booking .side .tags { margin-top: 0; padding: 0; gap: 4px; justify-content: flex-end; }
+.skin-booking .price { font-size: 20px; line-height: 28px; font-weight: 500; }
+.skin-booking .per { font-size: 12px; color: #595959; }
+.skin-booking .side .cta { position: relative; margin-top: 8px; padding: 8px 30px 8px 12px; border-radius: 4px; background: #006ce4; color: #fff; font-size: 14px; line-height: 20px; font-weight: 500; }
+.skin-booking .side .cta::after { content: ""; position: absolute; right: 14px; top: 14px; width: 6px; height: 6px; border-right: 2px solid #fff; border-top: 2px solid #fff; transform: rotate(45deg); }
+.skin-booking .card:hover .cta { background: #0057b8; }
+.skin-booking .detail h1 { font-size: 24px; font-weight: 700; }
+.skin-booking .pic.main { border-radius: 8px; }
+.skin-booking .buybox { width: 300px; border: 0; border-radius: 8px; background: #f0f6ff; }
+.skin-booking .price-row .price, .skin-booking .buy-price .price { font-size: 24px; font-weight: 700; }
+.skin-booking button.primary { height: 44px; border-radius: 4px; background: #006ce4; font: 500 16px Inter, Arial, sans-serif; }
+.skin-booking button.primary:hover { background: #0057b8; }
+.skin-booking button.secondary { height: 40px; border: 1px solid #006ce4; border-radius: 4px; color: #006ce4; font: 500 14px Inter, Arial, sans-serif; }
+.skin-booking .seat, .skin-booking .fast { border-radius: 4px; }
+.skin-booking .ftr { background: #fff; }
+.skin-booking .ftr::before { content: ""; display: block; height: 56px; background: #003b95; }
+.skin-booking .ftr .cols, .skin-booking .ftr .legal { max-width: 1132px; }
+.skin-booking .ftr .fitem, .skin-booking .ftr .col a { color: #006ce4; font-size: 14px; }

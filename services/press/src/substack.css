@@ -1,0 +1,52 @@
+/* substack.com: the orange bookmark, a centred reader column of posts grouped under the
+   publication they came from, and orange subscribe buttons. */
+.skin-substack { font-family: Inter, Arial, sans-serif; color: #1c1c1c; }
+.skin-substack .masthead { border-bottom: 1px solid #e6e6e6; }
+.skin-substack .bar { flex-wrap: wrap; gap: 0 24px; max-width: none; padding: 0 24px; }
+.skin-substack .brand { padding: 12px 0; gap: 10px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.skin-substack .logo { display: block; position: relative; overflow: hidden; width: 22px; height: 25px; background: linear-gradient(180deg, #ff6719 0, #ff6719 4px, #ffffff 4px, #ffffff 7px, #ff6719 7px, #ff6719 11px, #ffffff 11px, #ffffff 14px, #ff6719 14px); }
+.skin-substack .logo::after { content: ""; position: absolute; left: 3px; bottom: -8px; width: 16px; height: 16px; background: #ffffff; transform: scaleY(0.55) rotate(45deg); }
+.skin-substack .tools { order: 1; margin-left: auto; gap: 18px; font-size: 14px; color: #6e6e6e; }
+.skin-substack .sections { order: 2; flex: 0 0 100%; justify-content: center; gap: 0 26px; border-top: 1px solid #e6e6e6; font-size: 14px; font-weight: 500; color: #6e6e6e; }
+.skin-substack .sections a { padding: 12px 0 11px; border-bottom: 2px solid transparent; }
+.skin-substack .sections a:hover { text-decoration: none; color: #1c1c1c; border-bottom-color: #ff6719; }
+.skin-substack .pill { border: 0; border-radius: 8px; background: #ff6719; color: #ffffff; font-weight: 600; font-size: 14px; padding: 10px 16px; }
+.skin-substack .pill:hover { background: #e55a12; }
+.skin-substack .pill.on { background: #f0f0f0; color: #1c1c1c; }
+.skin-substack main { max-width: 1080px; }
+.skin-substack .tagline { text-align: center; font-family: "Source Serif 4", Georgia, serif; font-size: 20px; color: #6e6e6e; margin: 8px 0 28px; }
+.skin-substack .layout { grid-template-columns: minmax(0, 1fr) 300px; column-gap: 48px; }
+.skin-substack .posts .card, .skin-substack .listing .card { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 24px; padding: 22px 0; border-top: 1px solid #e6e6e6; }
+.skin-substack .card .art { flex: 0 0 180px; width: 180px; height: 120px; border-radius: 8px; margin: 0; }
+.skin-substack .card .text { flex: 1; min-width: 0; }
+.skin-substack .card .kicker { font-size: 12px; color: #6e6e6e; margin-bottom: 6px; }
+.skin-substack .card .section { color: #ff6719; font-weight: 600; letter-spacing: 0.06em; }
+.skin-substack .card .title { font-size: 21px; line-height: 27px; font-weight: 700; letter-spacing: -0.01em; }
+.skin-substack .card:hover .title { text-decoration: none; color: #ff6719; }
+.skin-substack .card .dek { font-size: 16px; line-height: 23px; color: #6e6e6e; margin-bottom: 8px; }
+.skin-substack .card .byline { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: #6e6e6e; }
+.skin-substack .side { background: #f8f6f3; border-radius: 12px; padding: 20px; }
+.skin-substack .side h2 { font-size: 13px; letter-spacing: 0.06em; color: #6e6e6e; }
+.skin-substack .ranked li { border-color: #e6e0d8; font-size: 15px; font-weight: 600; }
+.skin-substack .chip { background: #ffffff; border: 1px solid #e6e0d8; border-radius: 8px; }
+.skin-substack .list-header { border-bottom: 1px solid #e6e6e6; }
+.skin-substack .story { max-width: 728px; }
+.skin-substack .story .kicker a { color: #ff6719; }
+.skin-substack .story h1 { font-size: 40px; line-height: 46px; font-weight: 800; letter-spacing: -0.02em; }
+.skin-substack .story .dek { font-size: 20px; line-height: 28px; color: #6e6e6e; }
+.skin-substack .credit .who { font-size: 13px; letter-spacing: 0.03em; text-transform: uppercase; }
+.skin-substack .story .pill, .skin-substack .comments .pill { background: #ffffff; color: #1c1c1c; border: 1px solid #e6e6e6; border-radius: 999px; font-weight: 500; }
+.skin-substack .story .pill.on { background: #ff6719; border-color: #ff6719; color: #ffffff; }
+.skin-substack .story .art .plate { border-radius: 8px; }
+.skin-substack .body p { font-family: "Source Serif 4", Georgia, serif; font-size: 19px; line-height: 30px; color: #363737; }
+.skin-substack .body a { color: inherit; }
+.skin-substack .readmore { border-radius: 8px; }
+.skin-substack .comments { max-width: 728px; }
+.skin-substack input[type="text"] { border-radius: 8px 0 0 8px; border-color: #ff6719; height: 44px; }
+.skin-substack #comment, .skin-substack #subscribe { gap: 0; }
+.skin-substack #comment-submit, .skin-substack #subscribe-submit { height: 44px; border-radius: 0 8px 8px 0; background: #ff6719; font-weight: 600; }
+.skin-substack .newsletter { text-align: center; background: #f8f6f3; border-radius: 12px; padding: 32px 24px; }
+.skin-substack .newsletter h2 { font-size: 24px; font-weight: 800; }
+.skin-substack .newsletter form { margin: 0 auto; }
+.skin-substack .foot .inner { max-width: 1080px; }
+.skin-substack .posts .card:first-child, .skin-substack .listing .card:first-child { padding-top: 0; border-top: 0; }

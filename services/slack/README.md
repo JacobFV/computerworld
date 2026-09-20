@@ -32,14 +32,27 @@ Seed:
   clock times ("9:41 AM") and puts "Today", "Yesterday", a weekday or a date over each
   day, seen from the later of the world clock and the newest message.
 
-The page is Slack's 2024 desktop layout: the aubergine frame with the search box in its
-top bar, the rail of Home / DMs / Activity / Later / More, the sidebar of channels and
-DMs (unread in bold, the open one in blue), the conversation with messages grouped by
-author, emoji short names as characters, mentions tinted, code in the monospace face,
-reactions as chips that react when clicked (the caller's own outlined in blue), threads
-collapsed to "N replies · Last reply 2h ago", a hover toolbar on the last message, and
-the composer pinned to the bottom. `?thread=<message id>` opens that thread in a pane
-on the right with its own reply field; `?members=1` opens the member list there.
+The page is HTML (`text/html`, built on `cw_service_common::html`, styled by
+`src/slack.css`) in Slack's desktop layout: the aubergine frame with the search box in
+its top bar, the rail of Home / DMs / Activity / Later / More, the sidebar of channels
+and DMs (unread in bold, the open one in blue), the conversation with messages grouped
+by author under date dividers, emoji short names as characters, mentions tinted, code
+in the monospace face, reactions as chips that react when pressed (the caller's own
+outlined in blue), threads collapsed to "N replies · Last reply 2h ago", a toolbar that
+floats over the message under the pointer (the last message keeps its own showing), and
+the composer under the transcript. It is an app shell: the body is a full-height flex
+column, and the sidebar list, the transcript (`#messages`) and the pane's list scroll on
+their own. `?thread=<message id>` opens that thread in a pane on the right with its own
+reply field; `?members=1` opens the member list there. A seeded `theme` overrides the
+palette through custom properties on `<html>`.
+
+Ids are the agent API: `nav-<channel>`, `dm-<key>` (links), `start-<person>` (a button
+in a one-field POST form to `/dms`), `send` / `send-text` / `send-submit`,
+`<message>-react-<emoji>` and `<message>-quick-<emoji>` (buttons carrying
+`reaction=<emoji>`), `<message>-pin` (`formaction` to the pin route),
+`<message>-open-thread` and `<message>-replies` (links to `?thread=`),
+`<parent>-reply` / `-reply-body` / `-reply-submit`, `read` / `read-submit`,
+`channel-members`, `thread-close`, `members-close`.
 
 | Route | Behavior |
 | --- | --- |

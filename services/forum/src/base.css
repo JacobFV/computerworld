@@ -1,0 +1,40 @@
+/* Structure every forum skin shares: resets, the avatar disc, the vote column, the reply
+   tree, forms and the rating squares. Each skin's own sheet follows this one and owns
+   the look: fonts, colours, measurements, chrome. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+h1, h2, h3, p, ul, pre { margin: 0; }
+ul { padding: 0; list-style-type: none; }
+a { text-decoration: none; }
+button { cursor: pointer; }
+.avatar {
+  display: inline-block; width: 32px; height: 32px; border-radius: 50%; color: #fff; font-size: 12px;
+  font-weight: 700; line-height: 32px; text-align: center; flex: none; overflow: hidden; white-space: nowrap;
+}
+.avatar.sm { width: 20px; height: 20px; line-height: 20px; font-size: 9px; }
+.avatar.lg { width: 72px; height: 72px; line-height: 72px; font-size: 26px; }
+.avatar.xl { width: 96px; height: 96px; line-height: 96px; font-size: 34px; }
+.votes { display: flex; flex-direction: column; align-items: center; flex: none; }
+.vote { margin: 0; }
+.vote button { border: 0; background: transparent; padding: 0; display: block; position: relative; }
+.vote .label { display: none; }
+.trow, .rrow { display: flex; align-items: flex-start; }
+.tcol, .rcol { flex: 1; min-width: 0; }
+.text p { margin: 0 0 1em 0; overflow-wrap: break-word; }
+.text pre { overflow: auto; margin: 0 0 1em 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+form.inline { display: flex; gap: 6px; margin: 0; }
+form.inline input { flex: 1; min-width: 0; }
+form.join, form.accept { margin: 0; }
+.field label { display: block; }
+.field input, .field textarea { width: 100%; display: block; }
+.pages { display: flex; gap: 4px; align-items: center; }
+.listhead { display: flex; align-items: center; justify-content: space-between; }
+.stars { display: inline-flex; gap: 2px; vertical-align: middle; }
+.stars i { display: block; width: 20px; height: 20px; border-radius: 4px; background: #e2e2e6; position: relative; }
+.stars i.full { background: #f43939; }
+.stars i.half { background: linear-gradient(90deg, #f43939 50%, #e2e2e6 50%); }
+.stars i::before {
+  content: "\2605"; position: absolute; left: 0; top: 0; width: 20px; height: 20px; line-height: 20px;
+  text-align: center; color: #fff; font-size: 14px; font-style: normal; font-family: Arial, sans-serif;
+}

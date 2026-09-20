@@ -4,12 +4,13 @@
 //! Every coordinate is an integer micro-degree (47.606200 is `47_606_200`) and every distance,
 //! duration and temperature is derived from those integers alone. No float ever enters state, so
 //! a route computed on one replay is byte-identical to the same route on the next.
-use cw_protocol::{HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result};
+use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
+mod view;
 pub struct GeoService;
 pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(GeoService)
@@ -33,7 +34,7 @@ const METRES_PER_KILO_MICRODEG: i64 = 111;
 /// shorter than latitude degrees, and this is that correction without trigonometry.
 const LON_SCALE_PER_MIL: i64 = 674;
 /// Travel modes and their fixed speeds in metres per minute: urban driving, bus, bike, foot.
-const TRAVEL: &[(&str, i64, &str)] = &[
+pub(crate) const TRAVEL: &[(&str, i64, &str)] = &[
     ("driving", 400, "Drive"),
     ("transit", 250, "Transit"),
     ("cycling", 220, "Bike"),
@@ -45,6 +46,8 @@ pub struct GeoState {
     pub mode: String,
     pub brand: String,
     pub tagline: String,
+    /// The look: `gmaps`, `osm` or `weather`. Absent, the mode and the brand decide.
+    pub skin: String,
     /// Seed default, `imperial` or `metric`; a person's own choice lives in `unit_prefs`.
     pub units: String,
     pub theme: PageTheme,
@@ -141,7 +144,7 @@ pub struct Note {
     pub tick: u64,
 }
 /// `47_606_200` -> `47.606200`; the sign belongs to the whole number, not to the fraction.
-fn coord(v: i64) -> String {
+pub(crate) fn coord(v: i64) -> String {
     format!(
         "{}{}.{:06}",
         if v < 0 { "-" } else { "" },
@@ -149,7 +152,7 @@ fn coord(v: i64) -> String {
         v.abs() % 1_000_000
     )
 }
-fn stars(tenths: i64) -> String {
+pub(crate) fn stars(tenths: i64) -> String {
     format!("{}.{}", tenths / 10, tenths % 10)
 }
 /// Manhattan distance on the integer grid: city blocks, not crow flight, and no square roots.
@@ -176,7 +179,7 @@ fn speed_of(mode: &str) -> Option<i64> {
 fn minutes_for(metres: i64, speed: i64) -> i64 {
     ((metres + speed / 2) / speed).max(1)
 }
-fn distance_label(metres: i64, imperial: bool) -> String {
+pub(crate) fn distance_label(metres: i64, imperial: bool) -> String {
     if imperial {
         let tenths = (metres * 10 + 804) / 1_609;
         // Under a fifth of a mile a driver thinks in feet, not in a leading zero.
@@ -191,7 +194,7 @@ fn distance_label(metres: i64, imperial: bool) -> String {
         format!("{}.{} km", tenths / 10, tenths % 10)
     }
 }
-fn duration_label(minutes: i64) -> String {
+pub(crate) fn duration_label(minutes: i64) -> String {
     match (minutes / 60, minutes % 60) {
         (0, m) => format!("{m} min"),
         (h, 0) => format!("{h} hr"),
@@ -202,7 +205,7 @@ fn duration_label(minutes: i64) -> String {
 fn to_c(f: i64) -> i64 {
     (f - 32) * 5 / 9
 }
-fn temp(f: i64, imperial: bool) -> String {
+pub(crate) fn temp(f: i64, imperial: bool) -> String {
     if imperial {
         format!("{f}°")
     } else {
@@ -223,7 +226,7 @@ fn street(address: &str) -> String {
     }
 }
 /// Percent-encoding for a query value: place ids are slugs, but nothing here assumes so.
-fn encode(value: &str) -> String {
+pub(crate) fn encode(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     for b in value.bytes() {
         match b {
@@ -294,7 +297,7 @@ impl GeoState {
             })
             .collect()
     }
-    fn saved_of(&self, actor: &str) -> Vec<String> {
+    pub(crate) fn saved_of(&self, actor: &str) -> Vec<String> {
         self.saved.get(actor).cloned().unwrap_or_default()
     }
     /// Seed default unless this person has chosen otherwise.
@@ -305,24 +308,24 @@ impl GeoState {
             None => self.units.clone(),
         }
     }
-    fn imperial(&self, actor: &str) -> bool {
+    pub(crate) fn imperial(&self, actor: &str) -> bool {
         self.units_for(actor) != "metric"
     }
     /// The city a bare `/` shows: the person's first saved location, else the first seeded one.
-    fn default_city(&self, actor: &str) -> String {
+    pub(crate) fn default_city(&self, actor: &str) -> String {
         self.saved_of(actor)
             .into_iter()
             .find(|c| self.forecasts.contains_key(c))
             .or_else(|| self.forecasts.keys().next().cloned())
             .unwrap_or_default()
     }
-    fn alerts_for(&self, city: &str, actor: &str) -> Vec<&Alert> {
+    pub(crate) fn alerts_for(&self, city: &str, actor: &str) -> Vec<&Alert> {
         self.alerts
             .iter()
             .filter(|a| (city.is_empty() || a.city == city) && !a.acked.iter().any(|p| p == actor))
             .collect()
     }
-    fn notes_at(&self, place: &str) -> Vec<&Note> {
+    pub(crate) fn notes_at(&self, place: &str) -> Vec<&Note> {
         self.notes.iter().filter(|n| n.place == place).collect()
     }
     /// Toggle: the second save removes it, which is what every "Your places" star really does.
@@ -465,88 +468,11 @@ impl GeoState {
         Ok(alert.clone())
     }
 }
-/// Resolved palette: the seed theme with renderer-neutral fallbacks, so a partial theme still
-/// produces a page that reads correctly.
-struct Palette {
-    accent: String,
-    ink: String,
-    muted: String,
-    surface: String,
-}
-fn palette(t: &PageTheme) -> Palette {
-    Palette {
-        accent: t.accent.clone().unwrap_or_else(|| "#1a73e8".into()),
-        ink: t.ink.clone().unwrap_or_else(|| "#202124".into()),
-        muted: t.muted.clone().unwrap_or_else(|| "#5f6368".into()),
-        surface: t.surface.clone().unwrap_or_else(|| "#e8eaed".into()),
-    }
-}
-fn act(method: &str, url: &str, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: method.into(),
-        url: url.into(),
-        fields: fields
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-            .collect(),
-    }
-}
-fn input(id: &str, label: &str, value: &str) -> PageElement {
-    PageElement::Input {
-        id: id.into(),
-        label: label.into(),
-        value: value.into(),
-        placeholder: String::new(),
-    }
-}
-/// A form whose drawn controls are exactly the fields it submits.
-fn form_el(
-    id: &str,
-    action: PageAction,
-    mut children: Vec<PageElement>,
-    submit: &str,
-) -> PageElement {
-    children.push(PageElement::Button {
-        id: format!("{id}-go"),
-        text: submit.into(),
-        action: action.clone(),
-        style: None,
-    });
-    PageElement::Form {
-        id: id.into(),
-        action,
-        children,
-    }
-}
-fn chip(id: &str, text: impl Into<String>, p: &Palette) -> PageElement {
-    web::badge(
-        id,
-        text,
-        web::style()
-            .size(12)
-            .medium()
-            .color(p.accent.clone())
-            .background(p.surface.clone())
-            .radius(12)
-            .padding(6),
-    )
-}
 /// Widest and tallest map a page may ask for.
 const MAP_LIMIT: (u32, u32) = (960, 480);
 /// Micro-degrees of latitude a map centred on a place spans at zoom 0; each zoom level halves it.
 const MAP_SPAN_AT_ZOOM_0: i64 = 64_000;
-const MAP_ZOOM_DEFAULT: u32 = 3;
-/// The map on a page: a picture this site serves from `GET /map.rgba`, drawn by `cw_map` from
-/// the places alone, so the same streets appear here and in the native Maps app.
-fn map_image(id: &str, alt: &str, width: u32, height: u32, query: &str) -> PageElement {
-    web::image(
-        id,
-        format!("/map.rgba?w={width}&h={height}{query}"),
-        alt,
-        width,
-        height,
-    )
-}
+pub(crate) const MAP_ZOOM_DEFAULT: u32 = 3;
 /// `GET /map.rgba?w=&h=&center=<place>&zoom=<n>&route=<from>|<to>|<mode>&sel=<place>`: the map
 /// as a page image. A route frames both ends; otherwise `center` frames one place at `zoom`;
 /// otherwise every place is in view.
@@ -598,842 +524,6 @@ fn map_response(s: &GeoState, r: &HttpRequest) -> Result<HttpResponse> {
     };
     web::rgba_response(width, height, &cw_map::render(&scene))
 }
-/// A flat stand-in labelled with what it stands for: a weather icon, or a place card's corner.
-fn map_tile(id: &str, label: &str, height: u32, p: &Palette) -> PageElement {
-    web::thumbnail(
-        id,
-        label,
-        web::style()
-            .height(height)
-            .background(p.surface.clone())
-            .color(p.muted.clone())
-            .border(p.accent.clone())
-            .radius(8)
-            .align("center"),
-    )
-}
-/// Brand bar, the one search box and the account routes — on every page, so the nav is real.
-fn chrome(s: &GeoState, p: &Palette, actor: &str, query: &str) -> Vec<PageElement> {
-    let search = form_el(
-        "hdr-search",
-        act("GET", "/search", &[("q", "$hdr-q")]),
-        vec![input(
-            "hdr-q",
-            if s.maps() {
-                "Search places"
-            } else {
-                "Search a city"
-            },
-            query,
-        )],
-        "Search",
-    );
-    let mut nav = vec![web::link("nav-home", "Home", "/")];
-    if s.maps() {
-        nav.push(web::link("nav-saved", "Your places", "/maps/saved"));
-        nav.push(web::link("nav-notes", "Notes", "/maps/notes"));
-    } else {
-        let city = s.default_city(actor);
-        nav.push(web::link(
-            "nav-today",
-            "Today",
-            format!("/weather/today/l/{city}"),
-        ));
-        nav.push(web::link(
-            "nav-tenday",
-            "10 day",
-            format!("/weather/tenday/l/{city}"),
-        ));
-        nav.push(web::link("nav-saved", "Saved places", "/maps/saved"));
-    }
-    vec![
-        web::styled_row(
-            "chrome",
-            16,
-            "center",
-            web::style().background(p.ink.clone()).padding(12).radius(8),
-            std::iter::once(web::styled(
-                "wordmark",
-                &s.brand,
-                web::style().size(22).bold().color("#ffffff").width(190),
-            ))
-            .chain(std::iter::once(search))
-            .chain(nav)
-            .collect(),
-        ),
-        web::spacer("chrome-gap", 12),
-    ]
-}
-fn footer(id: &str, p: &Palette) -> Vec<PageElement> {
-    vec![
-        web::spacer(&format!("{id}-gap"), 16),
-        web::divider(&format!("{id}-rule")),
-        web::styled(
-            id,
-            "Simulated geography in a training world. Every address, coordinate and forecast here \
-             is invented, and no real mapping or weather service is contacted.",
-            web::style().size(12).color(p.muted.clone()),
-        ),
-    ]
-}
-fn place_card(id: &str, place: &Place, p: &Palette) -> PageElement {
-    let mut body = vec![
-        map_tile(
-            &format!("{id}-tile"),
-            &format!("{} · map", place.name),
-            88,
-            p,
-        ),
-        web::styled(
-            &format!("{id}-name"),
-            &place.name,
-            web::style().size(16).bold().color(p.ink.clone()),
-        ),
-        web::styled(
-            &format!("{id}-addr"),
-            &place.address,
-            web::style().size(13).color(p.muted.clone()),
-        ),
-    ];
-    let mut meta = vec![chip(&format!("{id}-kind"), &place.kind, p)];
-    if place.rating > 0 {
-        meta.push(web::badge(
-            &format!("{id}-rating"),
-            format!("{} ★", stars(place.rating)),
-            web::style()
-                .size(12)
-                .bold()
-                .color("#ffffff")
-                .background(p.accent.clone())
-                .radius(10)
-                .padding(6),
-        ));
-    }
-    body.push(web::row(&format!("{id}-meta"), 8, "center", meta));
-    web::card_action(
-        id,
-        web::style()
-            .background("#ffffff")
-            .border(p.surface.clone())
-            .radius(10)
-            .padding(12),
-        web::visit(format!("/maps/place/{}", place.id)),
-        body,
-    )
-}
-fn maps_home(s: &GeoState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let saved = s.saved_of(actor);
-    let featured: Vec<PageElement> = s
-        .places
-        .values()
-        .take(6)
-        .enumerate()
-        .map(|(i, place)| place_card(&format!("home-place-{i}"), place, p))
-        .collect();
-    let saved_cards: Vec<PageElement> = saved
-        .iter()
-        .filter_map(|id| s.places.get(id))
-        .enumerate()
-        .map(|(i, place)| place_card(&format!("home-saved-{i}"), place, p))
-        .collect();
-    let mut els = chrome(s, p, actor, "");
-    els.push(web::heading("title", &s.brand));
-    if !s.tagline.is_empty() {
-        els.push(web::styled(
-            "tagline",
-            &s.tagline,
-            web::style().size(14).color(p.muted.clone()),
-        ));
-    }
-    els.push(map_image(
-        "home-tile",
-        "Map of every place · pick one below",
-        720,
-        280,
-        "",
-    ));
-    els.push(web::spacer("home-gap", 16));
-    els.push(form_el(
-        "dir-form",
-        act(
-            "GET",
-            "/maps/dir",
-            &[
-                ("from", "$dir-from"),
-                ("to", "$dir-to"),
-                ("mode", "$dir-mode"),
-            ],
-        ),
-        vec![
-            input(
-                "dir-from",
-                "From (place id)",
-                saved.first().map_or("", String::as_str),
-            ),
-            input("dir-to", "To (place id)", ""),
-            input(
-                "dir-mode",
-                "Mode (driving, transit, cycling, walking)",
-                "driving",
-            ),
-        ],
-        "Directions",
-    ));
-    els.push(web::spacer("dir-gap", 16));
-    if saved_cards.is_empty() {
-        els.push(web::styled(
-            "saved-empty",
-            "Your places is empty. Open a place and save it.",
-            web::style().size(13).color(p.muted.clone()),
-        ));
-    } else {
-        els.push(web::heading("saved-title", "Your places"));
-        els.push(web::grid("saved-grid", 3, 12, saved_cards));
-    }
-    els.push(web::spacer("feat-gap", 16));
-    els.push(web::heading("feat-title", "Nearby"));
-    els.push(web::grid("feat-grid", 3, 12, featured));
-    els.extend(footer("foot", p));
-    web::themed_page(&s.brand, s.theme.clone(), els)
-}
-fn saved_page(s: &GeoState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let mut els = chrome(s, p, actor, "");
-    els.push(web::heading("title", "Your places"));
-    let ids = s.saved_of(actor);
-    if ids.is_empty() {
-        els.push(web::styled(
-            "empty",
-            "Nothing saved yet.",
-            web::style().size(14).color(p.muted.clone()),
-        ));
-    } else if s.maps() {
-        let cards: Vec<PageElement> = ids
-            .iter()
-            .filter_map(|id| s.places.get(id))
-            .enumerate()
-            .map(|(i, place)| place_card(&format!("saved-{i}"), place, p))
-            .collect();
-        els.push(web::grid("saved-grid", 3, 12, cards));
-    } else {
-        for (i, id) in ids.iter().enumerate() {
-            let Some(f) = s.forecasts.get(id) else {
-                continue;
-            };
-            els.push(web::card_action(
-                &format!("saved-{i}"),
-                web::style()
-                    .background("#ffffff")
-                    .border(p.surface.clone())
-                    .radius(10)
-                    .padding(12),
-                web::visit(format!("/weather/today/l/{}", f.id)),
-                vec![
-                    web::styled(
-                        &format!("saved-{i}-city"),
-                        &f.city,
-                        web::style().size(16).bold().color(p.ink.clone()),
-                    ),
-                    web::styled(
-                        &format!("saved-{i}-now"),
-                        format!("{} · {}", temp(f.now_f, s.imperial(actor)), f.cond),
-                        web::style().size(13).color(p.muted.clone()),
-                    ),
-                ],
-            ));
-        }
-    }
-    els.extend(footer("foot", p));
-    web::themed_page("Your places", s.theme.clone(), els)
-}
-fn place_page(s: &GeoState, p: &Palette, actor: &str, id: &str) -> Result<HttpResponse> {
-    let place = match s.place(id) {
-        Ok(v) => v,
-        Err(e) => return web::error(404, e),
-    };
-    let saved = s.saved_of(actor).iter().any(|x| x == id);
-    let mut els = chrome(s, p, actor, "");
-    els.push(map_image(
-        "place-tile",
-        &format!(
-            "{} · {}, {}",
-            place.name,
-            coord(place.lat),
-            coord(place.lon)
-        ),
-        720,
-        240,
-        &format!(
-            "&center={id}&zoom={MAP_ZOOM_DEFAULT}&sel={id}",
-            id = encode(&place.id)
-        ),
-    ));
-    els.push(web::spacer("place-gap", 12));
-    els.push(web::heading("place-name", &place.name));
-    let mut meta = vec![chip("place-kind", &place.kind, p)];
-    if place.rating > 0 {
-        meta.push(web::badge(
-            "place-rating",
-            format!("{} ★ · {} reviews", stars(place.rating), place.reviews),
-            web::style()
-                .size(12)
-                .bold()
-                .color("#ffffff")
-                .background(p.accent.clone())
-                .radius(10)
-                .padding(6),
-        ));
-    }
-    for (i, tag) in place.tags.iter().enumerate() {
-        meta.push(chip(&format!("place-tag-{i}"), tag, p));
-    }
-    els.push(web::row("place-meta", 8, "center", meta));
-    els.push(web::spacer("meta-gap", 12));
-    let mut facts = vec![
-        web::styled(
-            "place-addr",
-            &place.address,
-            web::style().size(14).color(p.ink.clone()),
-        ),
-        web::styled(
-            "place-coord",
-            format!("{}, {}", coord(place.lat), coord(place.lon)),
-            web::style().size(13).color(p.muted.clone()),
-        ),
-    ];
-    if !place.hours.is_empty() {
-        facts.push(web::styled(
-            "place-hours",
-            format!("Hours: {}", place.hours),
-            web::style().size(13).color(p.ink.clone()),
-        ));
-    }
-    if !place.phone.is_empty() {
-        facts.push(web::styled(
-            "place-phone",
-            format!("Phone: {}", place.phone),
-            web::style().size(13).color(p.ink.clone()),
-        ));
-    }
-    if !place.website.is_empty() {
-        facts.push(web::link("place-site", &place.website, &place.website));
-    }
-    if !place.summary.is_empty() {
-        facts.push(web::styled(
-            "place-summary",
-            &place.summary,
-            web::style().size(14).color(p.ink.clone()),
-        ));
-    }
-    els.push(web::card(
-        "place-card",
-        web::style()
-            .background("#ffffff")
-            .border(p.surface.clone())
-            .radius(10)
-            .padding(16),
-        facts,
-    ));
-    els.push(web::spacer("facts-gap", 12));
-    els.push(form_el(
-        "save-form",
-        act("POST", &format!("/api/places/{id}/save"), &[]),
-        vec![],
-        if saved {
-            "Remove from Your places"
-        } else {
-            "Save to Your places"
-        },
-    ));
-    els.push(web::spacer("save-gap", 12));
-    els.push(web::heading("dir-title", "Directions from here"));
-    els.push(form_el(
-        "place-dir",
-        act(
-            "GET",
-            "/maps/dir",
-            &[
-                ("from", "$place-dir-from"),
-                ("to", "$place-dir-to"),
-                ("mode", "$place-dir-mode"),
-            ],
-        ),
-        vec![
-            input("place-dir-from", "From (place id)", id),
-            input("place-dir-to", "To (place id)", ""),
-            input("place-dir-mode", "Mode", "driving"),
-        ],
-        "Get directions",
-    ));
-    els.push(web::spacer("note-gap", 16));
-    els.push(web::heading("note-title", "Notes"));
-    let notes = s.notes_at(id);
-    if notes.is_empty() {
-        els.push(web::styled(
-            "note-empty",
-            "No notes on this place.",
-            web::style().size(13).color(p.muted.clone()),
-        ));
-    }
-    for (i, n) in notes.iter().enumerate() {
-        els.push(web::card(
-            &format!("note-{i}"),
-            web::style()
-                .background(p.surface.clone())
-                .radius(8)
-                .padding(10),
-            vec![
-                web::styled(
-                    &format!("note-{i}-who"),
-                    format!("{} · tick {}", n.author, n.tick),
-                    web::style().size(12).color(p.muted.clone()),
-                ),
-                web::styled(
-                    &format!("note-{i}-text"),
-                    &n.text,
-                    web::style().size(14).color(p.ink.clone()),
-                ),
-            ],
-        ));
-    }
-    els.push(form_el(
-        "note-form",
-        act(
-            "POST",
-            "/api/notes",
-            &[("place", "$note-place"), ("text", "$note-text")],
-        ),
-        vec![
-            input("note-place", "Place", id),
-            input("note-text", "What is wrong here?", ""),
-        ],
-        "Add a note",
-    ));
-    els.extend(footer("foot", p));
-    web::themed_page(&place.name, s.theme.clone(), els)
-}
-fn notes_page(s: &GeoState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let mut els = chrome(s, p, actor, "");
-    els.push(web::heading("title", "Map notes"));
-    if s.notes.is_empty() {
-        els.push(web::styled(
-            "empty",
-            "No notes yet.",
-            web::style().size(14).color(p.muted.clone()),
-        ));
-    }
-    for (i, n) in s.notes.iter().enumerate() {
-        let name = s
-            .places
-            .get(&n.place)
-            .map_or(n.place.clone(), |x| x.name.clone());
-        els.push(web::card_action(
-            &format!("n-{i}"),
-            web::style()
-                .background("#ffffff")
-                .border(p.surface.clone())
-                .radius(10)
-                .padding(12),
-            web::visit(format!("/maps/place/{}", n.place)),
-            vec![
-                web::styled(
-                    &format!("n-{i}-where"),
-                    name,
-                    web::style().size(15).bold().color(p.ink.clone()),
-                ),
-                web::styled(
-                    &format!("n-{i}-text"),
-                    &n.text,
-                    web::style().size(14).color(p.ink.clone()),
-                ),
-                web::styled(
-                    &format!("n-{i}-meta"),
-                    format!(
-                        "{} · {}, {} · tick {}",
-                        n.author,
-                        coord(n.lat),
-                        coord(n.lon),
-                        n.tick
-                    ),
-                    web::style().size(12).color(p.muted.clone()),
-                ),
-            ],
-        ));
-    }
-    els.extend(footer("foot", p));
-    web::themed_page("Map notes", s.theme.clone(), els)
-}
-fn directions_page(s: &GeoState, p: &Palette, actor: &str, route: &Route) -> Result<HttpResponse> {
-    let imperial = s.imperial(actor);
-    let from = s.place(&route.from).cloned().unwrap_or_default();
-    let to = s.place(&route.to).cloned().unwrap_or_default();
-    let mut els = chrome(s, p, actor, "");
-    els.push(map_image(
-        "dir-tile",
-        &format!("{} → {}", from.name, to.name),
-        720,
-        280,
-        &format!(
-            "&route={}%7C{}%7C{}&sel={}",
-            encode(&route.from),
-            encode(&route.to),
-            encode(&route.mode),
-            encode(&route.to)
-        ),
-    ));
-    els.push(web::spacer("dir-gap", 12));
-    els.push(web::heading(
-        "dir-title",
-        format!("{} to {}", from.name, to.name),
-    ));
-    els.push(web::row(
-        "dir-summary",
-        12,
-        "center",
-        vec![
-            web::badge(
-                "dir-min",
-                duration_label(route.minutes),
-                web::style()
-                    .size(18)
-                    .bold()
-                    .color("#ffffff")
-                    .background(p.accent.clone())
-                    .radius(8)
-                    .padding(8),
-            ),
-            web::styled(
-                "dir-dist",
-                distance_label(route.metres, imperial),
-                web::style().size(16).medium().color(p.ink.clone()),
-            ),
-            chip("dir-mode", &route.mode, p),
-        ],
-    ));
-    els.push(web::spacer("sum-gap", 12));
-    let modes: Vec<PageElement> = TRAVEL
-        .iter()
-        .map(|(mode, _, label)| {
-            web::link(
-                &format!("mode-{mode}"),
-                *label,
-                format!("/maps/dir?from={}&to={}&mode={mode}", route.from, route.to),
-            )
-        })
-        .collect();
-    els.push(web::row("dir-modes", 12, "center", modes));
-    els.push(web::spacer("modes-gap", 12));
-    els.push(web::divider("dir-rule"));
-    for (i, step) in route.steps.iter().enumerate() {
-        els.push(web::row(
-            &format!("step-{i}"),
-            12,
-            "center",
-            vec![
-                web::badge(
-                    &format!("step-{i}-n"),
-                    format!("{}", i + 1),
-                    web::style()
-                        .size(12)
-                        .bold()
-                        .color("#ffffff")
-                        .background(p.muted.clone())
-                        .radius(10)
-                        .padding(6)
-                        .width(28)
-                        .align("center"),
-                ),
-                web::styled(
-                    &format!("step-{i}-text"),
-                    &step.text,
-                    web::style().size(14).color(p.ink.clone()),
-                ),
-            ],
-        ));
-        els.push(web::divider(&format!("step-{i}-rule")));
-    }
-    els.push(web::spacer("steps-gap", 12));
-    els.push(web::link(
-        "dir-to-place",
-        format!("Open {}", to.name),
-        format!("/maps/place/{}", to.id),
-    ));
-    els.extend(footer("foot", p));
-    web::themed_page(
-        &format!("{} to {}", from.name, to.name),
-        s.theme.clone(),
-        els,
-    )
-}
-fn search_page(s: &GeoState, p: &Palette, actor: &str, q: &str) -> Result<HttpResponse> {
-    let mut els = chrome(s, p, actor, q);
-    els.push(web::heading(
-        "title",
-        if q.is_empty() {
-            "Search".into()
-        } else {
-            format!("Results for “{q}”")
-        },
-    ));
-    if s.maps() {
-        let hits = s.find_places(q);
-        if hits.is_empty() {
-            els.push(web::styled(
-                "empty",
-                "No places matched.",
-                web::style().size(14).color(p.muted.clone()),
-            ));
-        }
-        let cards: Vec<PageElement> = hits
-            .iter()
-            .enumerate()
-            .map(|(i, place)| place_card(&format!("r-{i}"), place, p))
-            .collect();
-        els.push(web::grid("results", 3, 12, cards));
-    } else {
-        let hits = s.find_cities(q);
-        if hits.is_empty() {
-            els.push(web::styled(
-                "empty",
-                "No locations matched.",
-                web::style().size(14).color(p.muted.clone()),
-            ));
-        }
-        for (i, f) in hits.iter().enumerate() {
-            els.push(web::card_action(
-                &format!("r-{i}"),
-                web::style()
-                    .background("#ffffff")
-                    .border(p.surface.clone())
-                    .radius(10)
-                    .padding(12),
-                web::visit(format!("/weather/today/l/{}", f.id)),
-                vec![
-                    web::styled(
-                        &format!("r-{i}-city"),
-                        &f.city,
-                        web::style().size(16).bold().color(p.ink.clone()),
-                    ),
-                    web::styled(
-                        &format!("r-{i}-now"),
-                        format!("{} · {}", temp(f.now_f, s.imperial(actor)), f.cond),
-                        web::style().size(13).color(p.muted.clone()),
-                    ),
-                ],
-            ));
-        }
-    }
-    els.extend(footer("foot", p));
-    web::themed_page("Search", s.theme.clone(), els)
-}
-fn day_card(id: &str, d: &Day, imperial: bool, p: &Palette) -> PageElement {
-    web::card(
-        id,
-        web::style()
-            .background("#ffffff")
-            .border(p.surface.clone())
-            .radius(10)
-            .padding(12),
-        vec![
-            web::styled(
-                &format!("{id}-day"),
-                &d.day,
-                web::style().size(15).bold().color(p.ink.clone()),
-            ),
-            map_tile(&format!("{id}-icon"), &d.cond, 56, p),
-            web::row(
-                &format!("{id}-t"),
-                8,
-                "center",
-                vec![
-                    web::styled(
-                        &format!("{id}-hi"),
-                        temp(d.hi_f, imperial),
-                        web::style().size(18).bold().color(p.ink.clone()),
-                    ),
-                    web::styled(
-                        &format!("{id}-lo"),
-                        temp(d.lo_f, imperial),
-                        web::style().size(16).color(p.muted.clone()),
-                    ),
-                ],
-            ),
-            web::badge(
-                &format!("{id}-precip"),
-                format!("{}% rain", d.precip_pct),
-                web::style()
-                    .size(12)
-                    .medium()
-                    .color(p.accent.clone())
-                    .background(p.surface.clone())
-                    .radius(10)
-                    .padding(6),
-            ),
-        ],
-    )
-}
-fn units_form(actor_units: &str) -> PageElement {
-    form_el(
-        "units-form",
-        act("POST", "/api/units", &[("units", "$units-value")]),
-        vec![input(
-            "units-value",
-            "Units (f or c)",
-            if actor_units == "metric" { "c" } else { "f" },
-        )],
-        "Switch units",
-    )
-}
-fn weather_page(
-    s: &GeoState,
-    p: &Palette,
-    actor: &str,
-    city: &str,
-    ten: bool,
-) -> Result<HttpResponse> {
-    let f = match s.forecast(city) {
-        Ok(v) => v,
-        Err(e) => return web::error(404, e),
-    };
-    let imperial = s.imperial(actor);
-    let saved = s.saved_of(actor).iter().any(|x| x == city);
-    let mut els = chrome(s, p, actor, "");
-    for (i, a) in s.alerts_for(city, actor).iter().enumerate() {
-        els.push(web::card(
-            &format!("alert-{i}"),
-            web::style()
-                .background("#fdecea")
-                .border("#d93025")
-                .radius(8)
-                .padding(12),
-            vec![
-                web::row(
-                    &format!("alert-{i}-head"),
-                    8,
-                    "center",
-                    vec![
-                        web::badge(
-                            &format!("alert-{i}-sev"),
-                            &a.severity,
-                            web::style()
-                                .size(12)
-                                .bold()
-                                .color("#ffffff")
-                                .background("#d93025")
-                                .radius(10)
-                                .padding(6),
-                        ),
-                        web::styled(
-                            &format!("alert-{i}-title"),
-                            &a.title,
-                            web::style().size(15).bold().color("#1b1b1b"),
-                        ),
-                    ],
-                ),
-                web::styled(
-                    &format!("alert-{i}-body"),
-                    &a.body,
-                    web::style().size(13).color("#5a5a5a"),
-                ),
-                form_el(
-                    &format!("alert-{i}-ack"),
-                    act("POST", &format!("/api/alerts/{}/ack", a.id), &[]),
-                    vec![],
-                    "Got it",
-                ),
-            ],
-        ));
-        els.push(web::spacer(&format!("alert-{i}-gap"), 8));
-    }
-    els.push(web::heading("title", &f.city));
-    els.push(web::row(
-        "now",
-        16,
-        "center",
-        vec![
-            map_tile("now-icon", &f.cond, 96, p),
-            web::styled(
-                "now-temp",
-                temp(f.now_f, imperial),
-                web::style().size(44).bold().color(p.ink.clone()),
-            ),
-            web::styled(
-                "now-meta",
-                format!(
-                    "{} · {}% humidity · {} mph wind",
-                    f.cond, f.humidity_pct, f.wind_mph
-                ),
-                web::style().size(14).color(p.muted.clone()),
-            ),
-        ],
-    ));
-    els.push(web::spacer("now-gap", 16));
-    let days: Vec<&Day> = if ten {
-        f.days.iter().collect()
-    } else {
-        f.days.iter().take(1).collect()
-    };
-    els.push(web::heading(
-        "days-title",
-        if ten { "10 day forecast" } else { "Today" },
-    ));
-    els.push(web::grid(
-        "days",
-        if ten { 5 } else { 1 },
-        12,
-        days.iter()
-            .enumerate()
-            .map(|(i, d)| day_card(&format!("d-{i}"), d, imperial, p))
-            .collect(),
-    ));
-    els.push(web::spacer("days-gap", 16));
-    els.push(web::row(
-        "wx-nav",
-        12,
-        "center",
-        vec![
-            web::link("wx-today", "Today", format!("/weather/today/l/{city}")),
-            web::link("wx-ten", "10 day", format!("/weather/tenday/l/{city}")),
-        ],
-    ));
-    els.push(web::spacer("nav-gap", 12));
-    els.push(form_el(
-        "locations-form",
-        act("POST", "/api/locations", &[("city", "$loc-city")]),
-        vec![input("loc-city", "Save a location", city)],
-        if saved {
-            "Remove this location"
-        } else {
-            "Save this location"
-        },
-    ));
-    els.push(web::spacer("loc-gap", 12));
-    els.push(units_form(&s.units_for(actor)));
-    if let Some(place) = s.places.get(&f.place) {
-        els.push(web::spacer("place-gap", 12));
-        els.push(web::link(
-            "wx-place",
-            format!("{} on the map", place.name),
-            format!("/maps/place/{}", place.id),
-        ));
-    }
-    els.extend(footer("foot", p));
-    web::themed_page(&format!("{} weather", f.city), s.theme.clone(), els)
-}
-fn weather_home(s: &GeoState, p: &Palette, actor: &str) -> Result<HttpResponse> {
-    let city = s.default_city(actor);
-    if city.is_empty() {
-        let mut els = chrome(s, p, actor, "");
-        els.push(web::heading("title", &s.brand));
-        els.push(web::styled(
-            "empty",
-            "No locations are seeded.",
-            web::style().size(14).color(p.muted.clone()),
-        ));
-        els.extend(footer("foot", p));
-        return web::themed_page(&s.brand, s.theme.clone(), els);
-    }
-    weather_page(s, p, actor, &city, false)
-}
 impl Service for GeoService {
     fn kind(&self) -> &str {
         "geo"
@@ -1441,6 +531,7 @@ impl Service for GeoService {
     fn initialize(&self, initial: Value, _: &ServiceContext) -> Result<Value> {
         let gated = web::shape(initial, OBJECTS, ARRAYS)?;
         let mode = web::variant(&gated, "mode", MODES)?;
+        web::variant(&gated, "skin", view::SKINS)?;
         web::theme(&gated)?;
         let mut s: GeoState = web::load(&gated)?;
         s.mode = mode;
@@ -1480,7 +571,6 @@ impl Service for GeoService {
         r: &HttpRequest,
     ) -> Result<HttpResponse> {
         let mut s: GeoState = web::load(state)?;
-        let p = palette(&s.theme);
         let path = web::path(r);
         let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
         let method = r.method.to_ascii_uppercase();
@@ -1494,23 +584,23 @@ impl Service for GeoService {
                 return match s.directions(&from, &to, &mode) {
                     Ok(route) => {
                         web::save(state, &s)?;
-                        directions_page(&s, &p, &c.actor, &route)
+                        view::directions_page(&s, &c.actor, &route)
                     }
                     Err(e) => web::error(400, e),
                 };
             }
             return match parts.as_slice() {
-                [""] | ["maps"] if s.maps() => maps_home(&s, &p, &c.actor),
-                [""] => weather_home(&s, &p, &c.actor),
+                [""] | ["maps"] if s.maps() => view::maps_home(&s, &c.actor),
+                [""] => view::weather_home(&s, &c.actor),
                 ["map.rgba"] if s.maps() => map_response(&s, r),
-                ["maps", "place", id] => place_page(&s, &p, &c.actor, id),
-                ["maps", "saved"] => saved_page(&s, &p, &c.actor),
-                ["maps", "notes"] => notes_page(&s, &p, &c.actor),
+                ["maps", "place", id] => view::place_page(&s, &c.actor, id),
+                ["maps", "saved"] => view::saved_page(&s, &c.actor),
+                ["maps", "notes"] => view::notes_page(&s, &c.actor),
                 ["search"] => {
-                    search_page(&s, &p, &c.actor, &web::query(r, "q").unwrap_or_default())
+                    view::search_page(&s, &c.actor, &web::query(r, "q").unwrap_or_default())
                 }
-                ["weather", "today", "l", city] => weather_page(&s, &p, &c.actor, city, false),
-                ["weather", "tenday", "l", city] => weather_page(&s, &p, &c.actor, city, true),
+                ["weather", "today", "l", city] => view::weather_page(&s, &c.actor, city, false),
+                ["weather", "tenday", "l", city] => view::weather_page(&s, &c.actor, city, true),
                 ["api", "places"] => HttpResponse::json(200, &s.places),
                 ["api", "places", id] => web::domain(s.place(id).map(|x| json!(x))),
                 ["api", "forecasts"] => HttpResponse::json(200, &s.forecasts),
@@ -1576,8 +666,8 @@ impl Service for GeoService {
         }
         let parts: Vec<&str> = next.trim_matches('/').split('/').collect();
         match parts.as_slice() {
-            ["maps", "place", id] => place_page(&s, &p, &c.actor, id),
-            ["weather", "today", "l", city] => weather_page(&s, &p, &c.actor, city, false),
+            ["maps", "place", id] => view::place_page(&s, &c.actor, id),
+            ["weather", "today", "l", city] => view::weather_page(&s, &c.actor, city, false),
             _ => HttpResponse::json(200, &value),
         }
     }
@@ -1649,6 +739,52 @@ mod tests {
     fn body(r: &HttpResponse) -> String {
         String::from_utf8(r.body.clone()).unwrap()
     }
+    /// A page response, parsed: it must be HTML and pass the engine's strict validator.
+    struct Dom(cw_web::dom::Document);
+    impl Dom {
+        fn of(r: &HttpResponse) -> Dom {
+            assert_eq!(r.status, 200);
+            assert_eq!(
+                r.headers.get("content-type").map(String::as_str),
+                Some(web::html::HTML_MEDIA_TYPE)
+            );
+            let html = body(r);
+            web::html::validate_strict(&html).unwrap_or_else(|e| panic!("{e:?}"));
+            Dom(cw_web::html::parse(&html))
+        }
+        fn has(&self, id: &str) -> bool {
+            !self.0.by_id(id).is_empty()
+        }
+        fn node(&self, id: &str) -> cw_web::dom::NodeId {
+            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+        }
+        fn text(&self, id: &str) -> String {
+            self.0.text_content(self.node(id))
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+        }
+        fn tag(&self, id: &str) -> String {
+            self.0.tag(self.node(id)).unwrap_or_default().to_owned()
+        }
+        /// `<body class>`: the skin the sheet keys its variants on.
+        fn body_class(&self) -> String {
+            let d = &self.0;
+            d.descendants(cw_web::dom::Document::ROOT)
+                .find(|n| d.is(*n, "body"))
+                .and_then(|n| d.attr(n, "class"))
+                .unwrap_or_default()
+                .to_owned()
+        }
+        /// `(name, value)` of every named control inside a form, in document order.
+        fn fields(&self, form: &str) -> Vec<(String, String)> {
+            let d = &self.0;
+            d.descendants(self.node(form))
+                .filter(|n| d.is(*n, "input"))
+                .filter_map(|n| Some((d.attr(n, "name")?.to_owned(), d.attr(n, "value").unwrap_or_default().to_owned())))
+                .collect()
+        }
+    }
     fn has_float(v: &Value) -> bool {
         match v {
             Value::Number(n) => n.as_i64().is_none() && n.as_u64().is_none(),
@@ -1669,6 +805,7 @@ mod tests {
         assert!(GeoService
             .initialize(json!({"units": "furlongs"}), &ctx())
             .is_err());
+        assert!(GeoService.initialize(json!({"skin": "yahoo"}), &ctx()).is_err());
         assert!(GeoService.initialize(Value::Null, &ctx()).is_ok());
     }
     #[test]
@@ -1685,14 +822,75 @@ mod tests {
             let before = state.clone();
             let page = get(&mut state, url);
             assert_eq!(page.status, 200, "{url}");
+            let dom = Dom::of(&page);
+            // The chrome is on every page: the search form is a GET of `q`, the nav is real.
+            assert_eq!(dom.tag("hdr-search"), "form");
+            assert_eq!(dom.attr("hdr-search", "action"), "/search");
+            assert_eq!(dom.attr("hdr-search", "method"), "get");
+            assert_eq!(dom.attr("hdr-q", "name"), "q");
+            assert_eq!(dom.tag("hdr-search-go"), "button");
+            assert_eq!(dom.attr("nav-home", "href"), "/");
+            assert_eq!(dom.attr("nav-saved", "href"), "/maps/saved");
+            assert_eq!(dom.attr("nav-notes", "href"), "/maps/notes");
+            assert_eq!(dom.text("wordmark"), "Testmaps");
+            assert!(dom.has("chrome") && dom.has("foot"), "{url}");
             assert_eq!(page, get(&mut state, url), "{url} must be pure");
             assert_eq!(before, state, "{url} must not mutate state");
         }
-        assert!(body(&get(
-            &mut state,
-            "http://maps.google.com/search?q=convention"
-        ))
-        .contains("Cascade Convention Center"));
+        let results = Dom::of(&get(&mut state, "http://maps.google.com/search?q=convention"));
+        assert_eq!(results.attr("hdr-q", "value"), "convention");
+        assert_eq!(results.tag("r-0"), "a");
+        assert_eq!(results.attr("r-0", "href"), "/maps/place/devcon-center");
+        assert_eq!(results.text("r-0-name"), "Cascade Convention Center");
+        assert_eq!(results.text("r-0-addr"), "800 Pike St, Seattle WA");
+        assert_eq!(results.text("r-0-kind"), "venue");
+        assert_eq!(results.text("r-0-rating"), "4.3 ★");
+        assert!(results.has("r-0-tile") && !results.has("r-1"));
+        assert_eq!(Dom::of(&get(&mut state, "http://maps.google.com/search?q=zzz")).text("empty"), "No places matched.");
+        // The home page: the directions form is a GET of from, to and mode; cards are links.
+        let home = Dom::of(&get(&mut state, "http://maps.google.com/"));
+        assert_eq!(home.text("title"), "Testmaps");
+        assert_eq!(home.attr("dir-form", "action"), "/maps/dir");
+        assert_eq!(home.attr("dir-form", "method"), "get");
+        assert_eq!(
+            home.fields("dir-form"),
+            [("from", ""), ("to", ""), ("mode", "driving")].map(|(k, v)| (k.to_owned(), v.to_owned()))
+        );
+        for id in ["dir-from", "dir-to", "dir-mode"] {
+            assert_eq!(home.tag(id), "input", "{id}");
+        }
+        assert_eq!(home.text("dir-form-go"), "Directions");
+        assert_eq!(home.attr("home-place-0", "href"), "/maps/place/devcon-center");
+        assert!(home.has("saved-empty") && home.has("feat-title") && home.has("feat-grid"));
+        // The place page: facts, the save form, directions from here, and the note form.
+        let place = Dom::of(&get(&mut state, "http://maps.google.com/maps/place/northstar-hq"));
+        assert_eq!(place.text("place-name"), "Northstar HQ");
+        assert_eq!(place.text("place-rating"), "4.6 ★ · 128 reviews");
+        assert_eq!(place.text("place-kind"), "office");
+        assert_eq!(place.text("place-tag-0"), "office");
+        assert_eq!(place.text("place-addr"), "410 Bayfront Ave, Seattle WA");
+        assert_eq!(place.text("place-coord"), "47.572600, -122.348000");
+        assert_eq!(place.text("place-hours"), "Hours: Mon-Fri 8:00-18:00");
+        assert_eq!(place.text("place-phone"), "Phone: +1 206 555 0148");
+        assert_eq!(place.attr("place-site", "href"), "http://northstar.example/");
+        assert_eq!(place.text("place-summary"), "Bayfront campus.");
+        assert_eq!(place.attr("save-form", "action"), "/api/places/northstar-hq/save");
+        assert_eq!(place.attr("save-form", "method"), "post");
+        assert_eq!(place.text("save-form-go"), "Save to Your places");
+        assert_eq!(place.attr("place-dir", "action"), "/maps/dir");
+        assert_eq!(
+            place.fields("place-dir"),
+            [("from", "northstar-hq"), ("to", ""), ("mode", "driving")].map(|(k, v)| (k.to_owned(), v.to_owned()))
+        );
+        assert_eq!(place.text("place-dir-go"), "Get directions");
+        assert_eq!(place.attr("note-form", "action"), "/api/notes");
+        assert_eq!(place.attr("note-form", "method"), "post");
+        assert_eq!(
+            place.fields("note-form"),
+            [("place", "northstar-hq"), ("text", "")].map(|(k, v)| (k.to_owned(), v.to_owned()))
+        );
+        assert_eq!(place.text("note-form-go"), "Add a note");
+        assert_eq!(place.text("note-empty"), "No notes on this place.");
         assert_eq!(
             get(&mut state, "http://maps.google.com/maps/place/nope").status,
             404
@@ -1701,24 +899,32 @@ mod tests {
     #[test]
     fn pages_carry_a_served_map_and_the_map_endpoint_draws_it() {
         let mut state = init(maps_seed());
-        let home = body(&get(&mut state, "http://maps.google.com/"));
-        assert!(home.contains("/map.rgba?w=720&h=280"), "{home}");
-        let place = body(&get(
+        let home = Dom::of(&get(&mut state, "http://maps.google.com/"));
+        assert_eq!(home.tag("home-tile"), "img");
+        assert_eq!(home.attr("home-tile", "src"), "/map.rgba?w=768&h=480&center=devcon-center&zoom=0");
+        assert_eq!(home.attr("home-tile", "alt"), "Map of every place · pick one below");
+        let place = Dom::of(&get(
             &mut state,
             "http://maps.google.com/maps/place/northstar-hq",
         ));
-        assert!(
-            place.contains("/map.rgba?w=720&h=240&center=northstar-hq&zoom=3&sel=northstar-hq"),
-            "{place}"
+        assert_eq!(
+            place.attr("place-tile", "src"),
+            "/map.rgba?w=768&h=480&center=northstar-hq&zoom=3&sel=northstar-hq"
         );
-        let dir = body(&get(
+        let dir = Dom::of(&get(
             &mut state,
             "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=driving",
         ));
-        assert!(
-            dir.contains("/map.rgba?w=720&h=280&route=northstar-hq%7Cdevcon-center%7Cdriving"),
-            "{dir}"
+        assert_eq!(
+            dir.attr("dir-tile", "src"),
+            "/map.rgba?w=768&h=480&route=northstar-hq%7Cdevcon-center%7Cdriving&sel=devcon-center"
         );
+        assert_eq!(dir.attr("dir-tile", "alt"), "Northstar HQ → Cascade Convention Center");
+        // OpenStreetMap's pane beside the sidebar is 4:3.
+        let mut osm_seed = maps_seed();
+        osm_seed["skin"] = json!("osm");
+        let mut osm = init(osm_seed);
+        assert_eq!(Dom::of(&get(&mut osm, "http://openstreetmap.org/")).attr("home-tile", "src"), "/map.rgba?w=640&h=480&center=devcon-center&zoom=0");
         let url = "http://maps.google.com/map.rgba?w=96&h=64&route=northstar-hq%7Cdevcon-center%7Cdriving&sel=devcon-center";
         let before = state.clone();
         let picture = get(&mut state, url);
@@ -1761,10 +967,25 @@ mod tests {
         let route = &s.routes["northstar-hq|devcon-center|driving"];
         assert_eq!(route.metres, 5_428);
         assert_eq!(route.minutes, 14);
-        assert!(body(&page).contains("14 min"), "{}", body(&page));
-        assert!(body(&page).contains("3.4 mi"));
-        assert!(body(&page).contains("Head north on Bayfront Ave — 2.7 mi"));
-        assert!(body(&page).contains("Turn east onto Pike St — 0.7 mi"));
+        let dom = Dom::of(&page);
+        assert_eq!(dom.text("dir-title"), "Northstar HQ to Cascade Convention Center");
+        assert_eq!(dom.text("dir-min"), "14 min");
+        assert_eq!(dom.text("dir-dist"), "3.4 mi");
+        assert_eq!(dom.text("dir-mode"), "driving");
+        assert_eq!(dom.text("step-0-n"), "1");
+        assert_eq!(dom.text("step-1-text"), "Head north on Bayfront Ave — 2.7 mi");
+        assert_eq!(dom.text("step-2-text"), "Turn east onto Pike St — 0.7 mi");
+        assert!(dom.has("step-3") && !dom.has("step-4"));
+        for (mode, label) in [("driving", "Drive"), ("transit", "Transit"), ("cycling", "Bike"), ("walking", "Walk")] {
+            let id = format!("mode-{mode}");
+            assert_eq!(dom.text(&id), label);
+            assert_eq!(
+                dom.attr(&id, "href"),
+                format!("/maps/dir?from=northstar-hq&to=devcon-center&mode={mode}")
+            );
+        }
+        assert_eq!(dom.attr("dir-to-place", "href"), "/maps/place/devcon-center");
+        assert_eq!(dom.text("dir-to-place"), "Open Cascade Convention Center");
         // A cache hit is the identical value, so the second page is byte-identical.
         let cached = state.clone();
         assert_eq!(page, get(&mut state, url));
@@ -1808,7 +1029,15 @@ mod tests {
         );
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.saved["alice"], vec!["devcon-center".to_string()]);
-        assert!(body(&get(&mut state, "http://maps.google.com/maps/saved")).contains("Cascade"));
+        let saved = Dom::of(&get(&mut state, "http://maps.google.com/maps/saved"));
+        assert_eq!(saved.text("saved-0-name"), "Cascade Convention Center");
+        assert_eq!(saved.attr("saved-0", "href"), "/maps/place/devcon-center");
+        let home = Dom::of(&get(&mut state, "http://maps.google.com/"));
+        assert_eq!(home.text("saved-title"), "Your places");
+        assert_eq!(home.attr("home-saved-0", "href"), "/maps/place/devcon-center");
+        assert_eq!(home.attr("dir-from", "value"), "devcon-center");
+        let place = Dom::of(&get(&mut state, "http://maps.google.com/maps/place/devcon-center"));
+        assert_eq!(place.text("save-form-go"), "Remove from Your places");
         // Saving again is the "unsave" every star really performs.
         post(
             &mut state,
@@ -1825,7 +1054,15 @@ mod tests {
                 ("text", "Loading dock entrance is on 9th."),
             ],
         );
-        assert!(body(&page).contains("Loading dock entrance"));
+        let dom = Dom::of(&page);
+        assert_eq!(dom.text("place-name"), "Cascade Convention Center");
+        assert_eq!(dom.text("note-0-text"), "Loading dock entrance is on 9th.");
+        assert_eq!(dom.text("note-0-who"), "alice · tick 7");
+        let notes = Dom::of(&get(&mut state, "http://maps.google.com/maps/notes"));
+        assert_eq!(notes.attr("n-0", "href"), "/maps/place/devcon-center");
+        assert_eq!(notes.text("n-0-where"), "Cascade Convention Center");
+        assert_eq!(notes.text("n-0-text"), "Loading dock entrance is on 9th.");
+        assert_eq!(notes.text("n-0-meta"), "alice · 47.611400, -122.333000 · tick 7");
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.notes.len(), 1);
         assert_eq!(s.notes[0].author, "alice");
@@ -1855,12 +1092,47 @@ mod tests {
     #[test]
     fn weather_reads_a_forecast_switches_units_and_acks_an_alert() {
         let mut state = init(weather_seed());
-        let home = get(&mut state, "http://weather.com/");
-        assert!(body(&home).contains("Seattle, WA"));
-        assert!(body(&home).contains("61°"), "{}", body(&home));
-        assert!(body(&home).contains("Wind advisory"));
-        let ten = get(&mut state, "http://weather.com/weather/tenday/l/seattle");
-        assert!(body(&ten).contains("Tue"));
+        let home = Dom::of(&get(&mut state, "http://weather.com/"));
+        assert_eq!(home.text("title"), "Seattle, WA");
+        assert_eq!(home.text("wordmark"), "Testweather");
+        assert_eq!(home.text("now-temp"), "57°");
+        assert_eq!(home.text("now-meta"), "Rain · 84% humidity · 9 mph wind");
+        assert_eq!(home.attr("now-icon", "aria-label"), "Rain");
+        assert_eq!(home.text("d-0-hi"), "61°");
+        assert_eq!(home.text("d-0-lo"), "48°");
+        assert_eq!(home.text("d-0-precip"), "80% rain");
+        assert_eq!(home.text("days-title"), "Daily Forecast");
+        assert_eq!(home.text("alert-0-sev"), "Advisory");
+        assert_eq!(home.text("alert-0-title"), "Wind advisory");
+        assert_eq!(home.text("alert-0-body"), "Gusts to 40 mph.");
+        assert_eq!(home.attr("alert-0-ack", "action"), "/api/alerts/wx-1/ack");
+        assert_eq!(home.attr("alert-0-ack", "method"), "post");
+        assert_eq!(home.text("alert-0-ack-go"), "Got it");
+        assert_eq!(home.attr("nav-today", "href"), "/weather/today/l/seattle");
+        assert_eq!(home.attr("nav-tenday", "href"), "/weather/tenday/l/seattle");
+        assert_eq!(home.attr("nav-saved", "href"), "/maps/saved");
+        assert_eq!(home.attr("wx-today", "href"), "/weather/today/l/seattle");
+        assert_eq!(home.attr("wx-ten", "href"), "/weather/tenday/l/seattle");
+        assert_eq!(home.attr("locations-form", "action"), "/api/locations");
+        assert_eq!(home.attr("locations-form", "method"), "post");
+        assert_eq!(home.fields("locations-form"), [("city".to_owned(), "seattle".to_owned())]);
+        assert_eq!(home.text("locations-form-go"), "Save this location");
+        assert_eq!(home.attr("units-form", "action"), "/api/units");
+        assert_eq!(home.attr("units-form", "method"), "post");
+        assert_eq!(home.fields("units-form"), [("units".to_owned(), "f".to_owned())]);
+        assert_eq!(home.text("units-form-go"), "Switch units");
+        assert!(!home.has("wx-place"), "the test seed has no places");
+        assert_eq!(home.attr("hdr-search", "action"), "/search");
+        let ten = Dom::of(&get(&mut state, "http://weather.com/weather/tenday/l/seattle"));
+        assert_eq!(ten.text("days-title"), "10 day forecast");
+        assert_eq!(ten.text("d-1-day"), "Tue");
+        assert_eq!(ten.text("d-1-cond"), "Cloudy");
+        let found = Dom::of(&get(&mut state, "http://weather.com/search?q=seattle"));
+        assert_eq!(found.attr("r-0", "href"), "/weather/today/l/seattle");
+        assert_eq!(found.text("r-0-city"), "Seattle, WA");
+        assert_eq!(found.text("r-0-now"), "57° · Rain");
+        assert_eq!(Dom::of(&get(&mut state, "http://weather.com/search?q=zzz")).text("empty"), "No locations matched.");
+        assert_eq!(Dom::of(&get(&mut state, "http://weather.com/maps/saved")).text("empty"), "Nothing saved yet.");
         assert_eq!(
             get(&mut state, "http://weather.com/weather/today/l/nope").status,
             404
@@ -1873,11 +1145,9 @@ mod tests {
         );
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.unit_prefs["alice"], "metric");
-        assert!(body(&get(
-            &mut state,
-            "http://weather.com/weather/today/l/seattle"
-        ))
-        .contains("16°"));
+        let metric = Dom::of(&get(&mut state, "http://weather.com/weather/today/l/seattle"));
+        assert_eq!(metric.text("d-0-hi"), "16°");
+        assert_eq!(metric.attr("units-value", "value"), "c");
         assert_eq!(
             post(
                 &mut state,
@@ -1894,18 +1164,78 @@ mod tests {
         );
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.saved["alice"], vec!["seattle".to_string()]);
+        let saved = Dom::of(&get(&mut state, "http://weather.com/maps/saved"));
+        assert_eq!(saved.attr("saved-0", "href"), "/weather/today/l/seattle");
+        assert_eq!(saved.text("saved-0-city"), "Seattle, WA");
+        assert_eq!(
+            Dom::of(&get(&mut state, "http://weather.com/weather/today/l/seattle")).text("locations-form-go"),
+            "Remove this location"
+        );
         post(&mut state, "http://weather.com/api/alerts/wx-1/ack", &[]);
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.alerts[0].acked, vec!["alice".to_string()]);
-        assert!(!body(&get(
-            &mut state,
-            "http://weather.com/weather/today/l/seattle"
-        ))
-        .contains("Wind advisory"));
+        assert!(!Dom::of(&get(&mut state, "http://weather.com/weather/today/l/seattle")).has("alert-0"));
         assert_eq!(
             post(&mut state, "http://weather.com/api/alerts/nope/ack", &[]).status,
             400
         );
+    }
+    /// Every route of every skin, through the strict validator: an unknown property, a
+    /// repeated id or a selector the engine cannot match fails here rather than in a still.
+    #[test]
+    fn every_page_of_every_skin_passes_the_strict_validator() {
+        for skin in ["", "gmaps", "osm"] {
+            let mut seed = maps_seed();
+            seed["skin"] = json!(skin);
+            let mut state = init(seed);
+            post(
+                &mut state,
+                "http://maps.google.com/api/places/devcon-center/save",
+                &[],
+            );
+            post(
+                &mut state,
+                "http://maps.google.com/api/notes",
+                &[("place", "northstar-hq"), ("text", "Side door is locked.")],
+            );
+            let want = if skin.is_empty() { "gmaps" } else { skin };
+            for url in [
+                "http://maps.google.com/",
+                "http://maps.google.com/maps",
+                "http://maps.google.com/maps/saved",
+                "http://maps.google.com/maps/notes",
+                "http://maps.google.com/maps/place/northstar-hq",
+                "http://maps.google.com/maps/place/devcon-center",
+                "http://maps.google.com/search?q=convention",
+                "http://maps.google.com/search?q=zzz",
+                "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=driving",
+                "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=walking",
+            ] {
+                let dom = Dom::of(&get(&mut state, url));
+                assert!(dom.body_class().starts_with(&format!("skin-{want} ")), "{url}");
+                assert!(dom.has("chrome") && dom.has("hdr-search") && dom.has("foot"), "{url}");
+            }
+        }
+        let mut seed = weather_seed();
+        seed["skin"] = json!("weather");
+        let mut state = init(seed);
+        post(&mut state, "http://weather.com/api/locations", &[("city", "seattle")]);
+        for url in [
+            "http://weather.com/",
+            "http://weather.com/weather/today/l/seattle",
+            "http://weather.com/weather/tenday/l/seattle",
+            "http://weather.com/search?q=seattle",
+            "http://weather.com/search?q=zzz",
+            "http://weather.com/maps/saved",
+            "http://weather.com/maps/notes",
+        ] {
+            let dom = Dom::of(&get(&mut state, url));
+            assert!(dom.body_class().starts_with("skin-weather "), "{url}");
+            assert!(dom.has("chrome") && dom.has("hdr-search") && dom.has("foot"), "{url}");
+        }
+        // A weather instance with nothing seeded is still a page, not a blank.
+        let mut bare = init(json!({"mode": "weather", "brand": "Testweather"}));
+        assert_eq!(Dom::of(&get(&mut bare, "http://weather.com/")).text("empty"), "No locations are seeded.");
     }
     #[test]
     fn maps_routes_are_absent_in_weather_mode_and_the_reverse() {

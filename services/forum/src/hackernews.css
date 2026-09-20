@@ -1,0 +1,98 @@
+/* news.ycombinator.com: Verdana 10pt, the orange bar, a ranked table of titles with a
+   grey subtext line, and comments indented 40px a level. */
+html { --accent: #ff6600; --paper: #f6f6ef; --muted: #828282; --ink: #000000; }
+body { margin: 8px; font-family: Verdana, Geneva, sans-serif; font-size: 10pt; color: var(--muted); background: #ffffff; }
+a { color: #000000; }
+a:hover { text-decoration: underline; }
+.hnmain { width: 85%; min-width: 796px; margin: 0 auto; background: var(--paper); }
+.pagetop { background: var(--accent); display: flex; align-items: center; padding: 2px; color: #000000; line-height: 12pt; }
+.ylogo { width: 20px; height: 20px; border: 1px solid #ffffff; color: #ffffff; font-weight: 700; font-size: 13px; line-height: 18px; text-align: center; margin-right: 4px; flex: none; font-family: Arial, sans-serif; }
+.ylogo:hover { text-decoration: none; }
+.pagetop .links { flex: 1; }
+.pagetop .links a { color: #000000; }
+.pagetop .links a.on { color: #ffffff; }
+.hnname { margin-right: 10px; }
+.pagetop .links .hnname a.on { color: #000000; }
+.pagetop .sep { margin: 0 4px; color: #000000; }
+.pagetop .links > a { margin: 0; }
+.me { color: #000000; padding-right: 4px; white-space: nowrap; }
+.me .avatar { display: none; }
+.me-rep::before { content: " ("; }
+.me-rep::after { content: ")"; }
+.content { padding: 10px 0 0 0; }
+.listhead { display: none; }
+.page-search .listhead, .page-member .listhead, .page-submit .listhead, .page-list .listhead { display: block; padding: 0 0 8px 10px; }
+.listhead h1 { font-size: 10pt; font-weight: 400; color: var(--muted); }
+.empty { padding: 0 10px 10px 10px; }
+.itemlist { border-collapse: collapse; border-spacing: 0; }
+.itemlist td { padding: 0; }
+td.rank { text-align: right; vertical-align: top; color: var(--muted); padding-left: 6px; min-width: 28px; }
+td.votelinks { vertical-align: top; width: 18px; padding: 3px 4px 0 4px; }
+td.title { vertical-align: top; line-height: 12pt; }
+.titlelink { color: #000000; font-size: 10pt; }
+.titlelink:hover { text-decoration: none; }
+.host { font-size: 8pt; color: var(--muted); margin-left: 5px; }
+td.subtext { font-size: 7pt; color: var(--muted); line-height: 10pt; }
+td.subtext a { color: var(--muted); }
+tr.spacer td { height: 5px; }
+.score.mine { color: var(--accent); }
+.vote button { width: 10px; height: 10px; }
+.vote.up button::before { content: "\25B2"; display: block; width: 10px; height: 10px; font-family: Arial, sans-serif; font-size: 11px; line-height: 10px; color: #9a9a9a; text-align: center; }
+.vote.up button.on::before { color: var(--accent); }
+.pages { padding: 6px 0 10px 40px; font-size: 10pt; }
+.pages a { color: #000000; margin-right: 6px; }
+.pages a.on { color: var(--muted); }
+
+/* item page */
+.thread { padding: 0 10px 0 10px; }
+.thread .votes { padding: 4px 6px 0 6px; }
+.byline { font-size: 7pt; color: var(--muted); order: 2; line-height: 10pt; }
+.byline a { color: var(--muted); }
+.tcol { display: flex; flex-direction: column; }
+#thread-title { font-size: 10pt; font-weight: 400; color: #000000; order: 1; line-height: 12pt; }
+.thread .out { order: 1; font-size: 8pt; color: var(--muted); }
+.thread .text { order: 3; color: #000000; font-size: 9pt; margin-top: 8px; max-width: 900px; }
+.text a { text-decoration: underline; }
+.compose { padding: 10px 10px 10px 36px; }
+.compose label { display: none; }
+.compose textarea { width: 560px; height: 110px; font-family: monospace; font-size: 10pt; border: 1px solid #767676; background: #ffffff; padding: 2px; }
+.fields button, form.inline button { font-family: Verdana, Geneva, sans-serif; font-size: 10pt; margin-top: 10px; padding: 1px 6px; border: 1px solid #767676; border-radius: 3px; background: #efefef; color: #000000; }
+#replies-title { font-size: 8pt; font-weight: 400; color: var(--muted); padding: 0 0 6px 36px; }
+.replies { padding: 0 10px 10px 10px; }
+.reply { margin-top: 10px; }
+.children { margin-left: 40px; }
+.rrow .votes { padding: 3px 6px 0 6px; }
+.rrow > .score { display: none; }
+.rhead { font-size: 8pt; color: var(--muted); }
+.rhead a { color: var(--muted); }
+.rhead .avatar { display: none; }
+.flair { margin-left: 6px; font-size: 7pt; }
+.rcol .text { color: #000000; font-size: 9pt; margin-top: 4px; max-width: 1100px; }
+.rcol .text p { margin-bottom: 8px; }
+form.inline { max-width: 420px; align-items: center; }
+form.inline input { height: 18px; font-size: 8pt; border: 1px solid #c8c8c0; background: #ffffff; padding: 0 3px; font-family: Verdana, Geneva, sans-serif; }
+form.inline button { margin-top: 0; font-size: 7pt; border: 0; background: transparent; text-decoration: underline; color: #000000; padding: 0; }
+
+/* submit, profile */
+.submitcard { padding: 0 10px 10px 10px; }
+.field { display: flex; align-items: flex-start; margin-bottom: 6px; }
+.submitcard .field label { width: 50px; color: var(--muted); display: block; }
+.submitcard .field input { width: 440px; border: 1px solid #767676; background: #ffffff; font-family: monospace; font-size: 10pt; padding: 1px 2px; }
+.submitcard .field textarea { width: 440px; height: 80px; border: 1px solid #767676; background: #ffffff; font-family: monospace; font-size: 10pt; }
+.submitcard button { margin-left: 50px; }
+.hint { padding: 0 10px 14px 60px; font-size: 9pt; max-width: 600px; }
+.member { display: flex; gap: 12px; padding: 0 10px 14px 10px; }
+.member .avatar { display: none; }
+#member-name { font-size: 10pt; color: #000000; font-weight: 400; }
+.member p, .badges { font-size: 10pt; color: var(--muted); }
+.badge { margin-right: 10px; }
+
+/* footer */
+.foot { text-align: center; padding: 10px 0 16px 0; }
+.rule { height: 2px; background: var(--accent); margin-bottom: 10px; }
+.yclinks { font-size: 8pt; color: var(--muted); margin-bottom: 12px; }
+.search { display: flex; justify-content: center; align-items: center; gap: 4px; margin: 0; color: var(--muted); }
+.search::before { content: "Search:"; }
+.search .mag { display: none; }
+.search input { width: 170px; height: 20px; border: 1px solid #767676; background: #ffffff; font-size: 10pt; padding: 0 2px; }
+.search .go { font-family: Verdana, Geneva, sans-serif; font-size: 8pt; height: 20px; border: 1px solid #767676; border-radius: 3px; background: #efefef; color: #000000; padding: 0 6px; }

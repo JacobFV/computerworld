@@ -1,0 +1,41 @@
+/* The personal and company blogs: one narrow column in the author's own palette, a
+   serif reading face, a mono wordmark, dated posts and nothing else. */
+.skin-blog { font-family: "Source Sans 3", Arial, sans-serif; }
+.skin-blog .masthead { border-bottom: 0; }
+.skin-blog .bar { padding-top: 28px; padding-bottom: 16px; border-bottom: 1px solid var(--surface); gap: 20px; }
+.skin-blog .brand { gap: 10px; font-family: "JetBrains Mono", monospace; font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+.skin-blog .logo { display: block; width: 14px; height: 14px; border-radius: 3px; background: var(--accent); }
+.skin-blog .sections { justify-content: flex-end; font-size: 15px; color: var(--muted); }
+.skin-blog .sections a:hover { text-decoration: none; color: var(--accent); }
+.skin-blog .tools { color: var(--muted); font-size: 14px; }
+.skin-blog .pill { border-color: var(--accent); color: var(--accent); border-radius: 6px; font-weight: 600; }
+.skin-blog .pill.on { color: #ffffff; }
+.skin-blog .tagline { font-family: "Source Serif 4", Georgia, serif; font-size: 21px; line-height: 31px; color: var(--ink); max-width: 620px; margin: 12px 0 34px; }
+.skin-blog .layout { grid-template-columns: minmax(0, 1fr) 190px; column-gap: 48px; }
+.skin-blog .posts .card, .skin-blog .listing .card { display: block; padding: 0 0 30px; border-top: 0; }
+.skin-blog .card .art { display: none; }
+.skin-blog .card .kicker { font-family: "JetBrains Mono", monospace; font-size: 12px; margin-bottom: 6px; }
+.skin-blog .card .section { letter-spacing: 0; text-transform: lowercase; }
+.skin-blog .card .title { font-family: "Source Serif 4", Georgia, serif; font-size: 25px; line-height: 31px; font-weight: 700; }
+.skin-blog .card:hover .title { text-decoration: none; color: var(--accent); }
+.skin-blog .card .dek { font-size: 17px; line-height: 25px; }
+.skin-blog .card .byline { font-size: 13px; }
+.skin-blog .side { font-size: 14px; }
+.skin-blog .side h2 { font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: 0; text-transform: lowercase; color: var(--muted); }
+.skin-blog .ranked li { font-weight: 400; border-top: 0; padding: 0 0 10px; }
+.skin-blog .ranked a { color: var(--accent); }
+.skin-blog .chip { border-radius: 6px; font-family: "JetBrains Mono", monospace; font-size: 12px; padding: 6px 8px; }
+.skin-blog .list-header { border-bottom: 1px solid var(--surface); }
+.skin-blog .list-header h1 { font-family: "Source Serif 4", Georgia, serif; }
+.skin-blog .story, .skin-blog .comments, .skin-blog .newsletter { max-width: none; }
+.skin-blog .story .kicker { font-family: "JetBrains Mono", monospace; }
+.skin-blog .story .kicker a { letter-spacing: 0; text-transform: lowercase; }
+.skin-blog .story h1 { font-family: "Source Serif 4", Georgia, serif; font-size: 40px; line-height: 46px; }
+.skin-blog .story .dek { font-family: "Source Serif 4", Georgia, serif; font-style: italic; }
+.skin-blog .credit { border-color: var(--surface); }
+.skin-blog .story .art { display: none; }
+.skin-blog .body p { font-family: "Source Serif 4", Georgia, serif; font-size: 19px; line-height: 31px; }
+.skin-blog .comments { border-top-color: var(--surface); }
+.skin-blog .comment { border-top-color: var(--surface); }
+.skin-blog .newsletter { border-radius: 8px; }
+.skin-blog .foot { border-top-color: var(--surface); }

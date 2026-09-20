@@ -4,20 +4,23 @@
 //!
 //! Search is the same token scorer the `search` engines use, run over the local corpus only, so
 //! `!w` from DuckDuckGo lands on a results page that resolves rather than on a stub.
-use cw_protocol::{
-    HttpRequest, HttpResponse, PageElement, PageTheme, Result as SimResult, SimError, Style,
-};
+use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result as SimResult, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
+mod view;
+use view::{article_page, history_page, portal, results_page, section_page, talk_page};
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct WikiState {
     pub brand: String,
     pub tagline: String,
     pub theme: PageTheme,
+    /// One of [`SKINS`]; empty is read off the brand, so a seed written before skins keeps
+    /// the look of the site it stands in for.
+    pub skin: String,
     /// Portal headliner; empty falls back to the first article by id.
     pub featured: String,
     pub in_the_news: Vec<Reference>,
@@ -157,6 +160,17 @@ impl Article {
     }
 }
 impl WikiState {
+    /// The skin this instance wears: the seeded one, or the one its brand implies.
+    pub fn skin_name(&self) -> &'static str {
+        let brand = self.brand.to_ascii_lowercase();
+        match self.skin.as_str() {
+            "imdb" => "imdb",
+            "archive" => "archive",
+            "" if brand.contains("imdb") => "imdb",
+            "" if brand.contains("archive") => "archive",
+            _ => "vector",
+        }
+    }
     fn user(&self, actor: &str) -> String {
         self.accounts
             .get(actor)
@@ -306,639 +320,8 @@ pub fn register(registry: &mut Registry) -> SimResult<()> {
 }
 const BRAND: &str = "Wikipedia";
 const TAGLINE: &str = "The free encyclopedia";
-/// Hairlines are not in `PageTheme`; the encyclopedia's rule colour is part of its look.
-const RULE: &str = "#a2a9b1";
-struct Palette {
-    accent: String,
-    background: String,
-    surface: String,
-    ink: String,
-    muted: String,
-}
-impl Palette {
-    fn of(theme: &PageTheme) -> Self {
-        let pick = |v: &Option<String>, d: &str| v.clone().unwrap_or_else(|| d.to_owned());
-        Self {
-            accent: pick(&theme.accent, "#3366cc"),
-            background: pick(&theme.background, "#ffffff"),
-            surface: pick(&theme.surface, "#f8f9fa"),
-            ink: pick(&theme.ink, "#202122"),
-            muted: pick(&theme.muted, "#54595d"),
-        }
-    }
-    fn body(&self, id: &str, text: &str) -> PageElement {
-        web::styled(id, text, web::style().size(15).color(self.ink.clone()))
-    }
-    fn small(&self, id: &str, text: impl Into<String>) -> PageElement {
-        web::styled(id, text, web::style().size(12).color(self.muted.clone()))
-    }
-    fn title(&self, id: &str, text: &str, size: u16) -> PageElement {
-        web::styled(
-            id,
-            text,
-            web::style().size(size).bold().color(self.ink.clone()),
-        )
-    }
-    fn panel(&self) -> Style {
-        web::style()
-            .background(self.surface.clone())
-            .border(RULE)
-            .radius(2)
-            .padding(12)
-    }
-}
-fn article_url(id: &str) -> String {
-    format!("/wiki/{id}")
-}
-/// Masthead, search box and footer — every page of the encyclopedia wears them.
-fn chrome(s: &WikiState, title: &str, main: Vec<PageElement>) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let brand = match s.brand.as_str() {
-        "" => BRAND,
-        b => b,
-    };
-    let label = format!("Search {brand}");
-    let mut elements = vec![
-        web::styled_row(
-            "masthead",
-            12,
-            "center",
-            web::style().padding(12).background(p.surface.clone()),
-            vec![
-                web::thumbnail(
-                    "masthead-logo",
-                    "W",
-                    web::style()
-                        .width(44)
-                        .height(44)
-                        .radius(22)
-                        .background(p.background.clone())
-                        .border(RULE)
-                        .color(p.ink.clone())
-                        .size(20)
-                        .flex(0),
-                ),
-                web::card(
-                    "masthead-words",
-                    web::style().flex(1),
-                    vec![
-                        web::styled(
-                            "masthead-brand",
-                            brand,
-                            web::style().size(24).color(p.ink.clone()),
-                        ),
-                        p.small(
-                            "masthead-tagline",
-                            match s.tagline.as_str() {
-                                "" => TAGLINE,
-                                t => t,
-                            },
-                        ),
-                    ],
-                ),
-                web::card(
-                    "masthead-search",
-                    web::style().width(320).flex(0),
-                    vec![web::form("search", "/search", &[("q", label.as_str(), "")])],
-                ),
-            ],
-        ),
-        web::divider("masthead-rule"),
-    ];
-    elements.extend(main);
-    elements.push(web::divider("foot-rule"));
-    elements.push(web::styled(
-        "foot",
-        "A simulated encyclopedia. Text is available under a free licence.",
-        web::style().size(11).color(p.muted.clone()).align("center"),
-    ));
-    web::themed_page(title, s.theme.clone(), elements)
-}
-/// Portal: featured article, "In the news", and the whole (small) corpus, because a reader who
-/// cannot list the articles cannot tell an empty encyclopedia from a broken one.
-fn portal(s: &WikiState) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let featured = s
-        .article(&s.featured)
-        .or_else(|| s.articles.values().next());
-    let mut columns = vec![];
-    if let Some(article) = featured {
-        columns.push(web::card(
-            "featured",
-            p.panel(),
-            vec![
-                p.title("featured-label", "From today's featured article", 14),
-                web::divider("featured-rule"),
-                web::link(
-                    "featured-title",
-                    article.title.clone(),
-                    article_url(&article.id),
-                ),
-                p.body("featured-summary", &snippet(&article.summary)),
-            ],
-        ));
-    }
-    let mut news = vec![
-        p.title("news-label", "In the news", 14),
-        web::divider("news-rule"),
-    ];
-    for (i, item) in s.in_the_news.iter().enumerate() {
-        news.push(web::link(
-            &format!("news-{i}"),
-            item.label.clone(),
-            item.url.clone(),
-        ));
-    }
-    if s.in_the_news.is_empty() {
-        news.push(p.small("news-empty", "Nothing filed today."));
-    }
-    columns.push(web::card("news", p.panel(), news));
-    let mut main = vec![
-        web::spacer("portal-lead", 8),
-        web::grid("portal", 2, 16, columns),
-        web::spacer("portal-gap", 16),
-        p.title("all-label", "All articles", 16),
-        web::divider("all-rule"),
-    ];
-    main.push(web::grid(
-        "all",
-        2,
-        12,
-        s.articles
-            .values()
-            .enumerate()
-            .map(|(i, article)| {
-                web::card_action(
-                    &format!("all-{i}"),
-                    web::style().padding(8).radius(2),
-                    web::visit(article_url(&article.id)),
-                    vec![
-                        web::styled(
-                            &format!("all-{i}-title"),
-                            article.title.clone(),
-                            web::style().size(15).color(p.accent.clone()),
-                        ),
-                        p.small(&format!("all-{i}-summary"), snippet(&article.summary)),
-                    ],
-                )
-            })
-            .collect(),
-    ));
-    main.push(web::spacer("portal-tail", 8));
-    main.push(web::link(
-        "portal-random",
-        "Random article",
-        "/wiki/Special:Random",
-    ));
-    chrome(s, &format!("{} — {}", brand_of(s), TAGLINE), main)
-}
-fn brand_of(s: &WikiState) -> String {
-    match s.brand.as_str() {
-        "" => BRAND.to_owned(),
-        b => b.to_owned(),
-    }
-}
-/// Article, Talk, History — one row of real routes, the current one shown as a badge.
-fn tabs(p: &Palette, id: &str, current: &str) -> PageElement {
-    let mut children = vec![];
-    for (i, (name, url)) in [
-        ("Article", article_url(id)),
-        ("Talk", format!("/wiki/Talk:{id}")),
-        ("History", format!("/wiki/Special:History/{id}")),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        children.push(if name == current {
-            web::badge(
-                &format!("tab-{i}"),
-                name,
-                web::style()
-                    .size(12)
-                    .bold()
-                    .background(p.surface.clone())
-                    .border(RULE)
-                    .color(p.ink.clone())
-                    .radius(2)
-                    .padding(6)
-                    .flex(0),
-            )
-        } else {
-            web::link(&format!("tab-{i}"), name, url)
-        });
-    }
-    web::styled_row("tabs", 14, "center", web::style().flex(0), children)
-}
-fn infobox(p: &Palette, article: &Article) -> PageElement {
-    let mut rows = vec![
-        web::styled(
-            "info-title",
-            article.title.clone(),
-            web::style()
-                .size(14)
-                .bold()
-                .align("center")
-                .color(p.ink.clone()),
-        ),
-        web::thumbnail(
-            "info-image",
-            article.title.clone(),
-            web::style()
-                .height(120)
-                .background(p.background.clone())
-                .border(RULE)
-                .color(p.muted.clone())
-                .size(12),
-        ),
-    ];
-    for (i, (key, value)) in article.infobox.iter().enumerate() {
-        rows.push(web::row(
-            &format!("info-{i}"),
-            8,
-            "start",
-            vec![
-                web::styled(
-                    &format!("info-{i}-key"),
-                    key.clone(),
-                    web::style().size(12).bold().color(p.ink.clone()).flex(2),
-                ),
-                web::styled(
-                    &format!("info-{i}-value"),
-                    value.clone(),
-                    web::style().size(12).color(p.muted.clone()).flex(3),
-                ),
-            ],
-        ));
-    }
-    web::card("infobox", p.panel().width(280).flex(0), rows)
-}
-/// The full article: lead, contents, sections, references, see also, categories.
-fn article_page(s: &WikiState, requested: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let Some((id, from)) = s.canonical(requested) else {
-        return missing();
-    };
-    let article = &s.articles[&id];
-    let mut column = vec![p.title("article-title", &article.title, 28)];
-    if let Some(alias) = &from {
-        column.push(p.small(
-            "article-redirect",
-            format!("(Redirected from {})", alias.replace('_', " ")),
-        ));
-    }
-    column.push(web::divider("article-rule"));
-    column.push(p.body("article-summary", &article.summary));
-    if article.sections.len() > 1 {
-        let mut toc = vec![
-            p.title("toc-label", "Contents", 13),
-            web::divider("toc-rule"),
-        ];
-        for (i, section) in article.sections.iter().enumerate() {
-            toc.push(web::link(
-                &format!("toc-{i}"),
-                format!("{}. {}", i + 1, section.heading),
-                format!("{}?section={}", article_url(&id), section.id),
-            ));
-        }
-        column.push(web::card("toc", p.panel().width(280).flex(0), toc));
-    }
-    for (i, section) in article.sections.iter().enumerate() {
-        column.push(web::row(
-            &format!("sec-{i}-head"),
-            10,
-            "center",
-            vec![
-                p.title(&format!("sec-{i}-heading"), &section.heading, 20),
-                web::link(
-                    &format!("sec-{i}-edit"),
-                    "edit",
-                    format!("{}?section={}", article_url(&id), section.id),
-                ),
-            ],
-        ));
-        column.push(web::divider(&format!("sec-{i}-rule")));
-        column.push(p.body(&format!("sec-{i}-body"), &section.body));
-    }
-    if !article.references.is_empty() {
-        column.push(p.title("refs-label", "References", 20));
-        column.push(web::divider("refs-rule"));
-        for (i, reference) in article.references.iter().enumerate() {
-            column.push(web::link(
-                &format!("ref-{i}"),
-                format!("{}. {}", i + 1, reference.label),
-                reference.url.clone(),
-            ));
-        }
-    }
-    if !article.see_also.is_empty() {
-        column.push(p.title("see-label", "See also", 20));
-        column.push(web::divider("see-rule"));
-        for (i, target) in article.see_also.iter().enumerate() {
-            column.push(web::link(
-                &format!("see-{i}"),
-                target.replace('_', " "),
-                article_url(target),
-            ));
-        }
-    }
-    if !article.categories.is_empty() {
-        column.push(web::spacer("cats-gap", 12));
-        column.push(web::styled_row(
-            "cats",
-            8,
-            "center",
-            Style::default(),
-            std::iter::once(p.small("cats-label", "Categories:"))
-                .chain(article.categories.iter().enumerate().map(|(i, category)| {
-                    web::badge(
-                        &format!("cat-{i}"),
-                        category.clone(),
-                        web::style()
-                            .size(11)
-                            .background(p.surface.clone())
-                            .border(RULE)
-                            .color(p.accent.clone())
-                            .radius(2)
-                            .padding(4)
-                            .flex(0),
-                    )
-                }))
-                .collect(),
-        ));
-    }
-    if let Some(latest) = article.latest() {
-        column.push(p.small(
-            "article-latest",
-            format!(
-                "Revision {} · last edited by {} at tick {}",
-                latest.rev, latest.author, latest.tick
-            ),
-        ));
-    }
-    let main = vec![
-        tabs(&p, &id, "Article"),
-        web::spacer("article-lead", 8),
-        web::row(
-            "article-body",
-            20,
-            "start",
-            vec![
-                web::card("article-column", web::style().flex(1), column),
-                infobox(&p, article),
-            ],
-        ),
-    ];
-    chrome(s, &format!("{} — {}", article.title, brand_of(s)), main)
-}
-/// One section, with the form that rewrites it. Section editing is the mutation this site is for.
-fn section_page(s: &WikiState, requested: &str, sid: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let Some((id, _)) = s.canonical(requested) else {
-        return missing();
-    };
-    let article = &s.articles[&id];
-    let Some(section) = article.section(sid) else {
-        return web::error(404, "unknown section");
-    };
-    let mut main = vec![
-        tabs(&p, &id, "Article"),
-        web::spacer("section-lead", 8),
-        web::link(
-            "section-back",
-            format!("← {}", article.title),
-            article_url(&id),
-        ),
-        p.title("section-heading", &section.heading, 24),
-        web::divider("section-rule"),
-        p.body("section-body", &section.body),
-        web::spacer("section-gap", 12),
-        p.title("edit-label", "Edit this section", 16),
-        web::form(
-            "edit",
-            &format!("/articles/{id}/sections/{sid}"),
-            &[
-                ("body", "Section text", section.body.as_str()),
-                ("comment", "Edit summary", ""),
-            ],
-        ),
-    ];
-    let history: Vec<_> = article
-        .revisions
-        .iter()
-        .filter(|r| r.section.as_deref() == Some(sid))
-        .collect();
-    if !history.is_empty() {
-        main.push(p.title("section-hist-label", "Revisions to this section", 14));
-        for revision in history {
-            main.push(p.small(
-                &format!("section-rev-{}", revision.rev),
-                format!(
-                    "{} · {} · tick {} · {}",
-                    revision.rev, revision.author, revision.tick, revision.comment
-                ),
-            ));
-        }
-    }
-    chrome(
-        s,
-        &format!("{}: {} — {}", article.title, section.heading, brand_of(s)),
-        main,
-    )
-}
-fn talk_page(s: &WikiState, requested: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let Some((id, _)) = s.canonical(requested) else {
-        return missing();
-    };
-    let article = &s.articles[&id];
-    let mut main = vec![
-        tabs(&p, &id, "Talk"),
-        web::spacer("talk-lead", 8),
-        p.title("talk-title", &format!("Talk: {}", article.title), 26),
-        web::divider("talk-rule"),
-    ];
-    for (i, post) in article.talk.iter().enumerate() {
-        main.push(web::card(
-            &format!("talk-{i}"),
-            p.panel(),
-            vec![
-                web::row(
-                    &format!("talk-{i}-head"),
-                    8,
-                    "center",
-                    vec![
-                        web::thumbnail(
-                            &format!("talk-{i}-avatar"),
-                            post.author.chars().next().unwrap_or('?').to_string(),
-                            web::style()
-                                .width(24)
-                                .height(24)
-                                .radius(12)
-                                .background(p.accent.clone())
-                                .color(p.background.clone())
-                                .size(12)
-                                .flex(0),
-                        ),
-                        web::styled(
-                            &format!("talk-{i}-author"),
-                            post.author.clone(),
-                            web::style().size(13).bold().color(p.ink.clone()),
-                        ),
-                        web::badge(
-                            &format!("talk-{i}-tick"),
-                            format!("tick {}", post.tick),
-                            web::style()
-                                .size(11)
-                                .color(p.muted.clone())
-                                .border(RULE)
-                                .radius(2)
-                                .padding(4)
-                                .flex(0),
-                        ),
-                    ],
-                ),
-                p.body(&format!("talk-{i}-text"), &post.text),
-            ],
-        ));
-    }
-    if article.talk.is_empty() {
-        main.push(p.small("talk-empty", "No discussion on this article yet."));
-    }
-    main.push(web::spacer("talk-gap", 12));
-    main.push(web::form(
-        "reply",
-        &format!("/articles/{id}/talk"),
-        &[("text", "Add a topic", "")],
-    ));
-    chrome(
-        s,
-        &format!("Talk: {} — {}", article.title, brand_of(s)),
-        main,
-    )
-}
-fn history_page(s: &WikiState, requested: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let Some((id, _)) = s.canonical(requested) else {
-        return missing();
-    };
-    let article = &s.articles[&id];
-    let current = article.latest().map(|r| r.rev);
-    let mut main = vec![
-        tabs(&p, &id, "History"),
-        web::spacer("hist-lead", 8),
-        p.title(
-            "hist-title",
-            &format!("Revision history of {}", article.title),
-            26,
-        ),
-        web::divider("hist-rule"),
-    ];
-    for revision in article.revisions.iter().rev() {
-        let target = revision
-            .section
-            .as_ref()
-            .map(|sid| format!("{}?section={sid}", article_url(&id)))
-            .unwrap_or_else(|| article_url(&id));
-        main.push(web::row(
-            &format!("rev-{}", revision.rev),
-            10,
-            "center",
-            vec![
-                web::badge(
-                    &format!("rev-{}-id", revision.rev),
-                    format!("rev {}", revision.rev),
-                    web::style()
-                        .size(11)
-                        .background(p.surface.clone())
-                        .border(RULE)
-                        .color(p.ink.clone())
-                        .radius(2)
-                        .padding(4)
-                        .flex(0),
-                ),
-                web::styled(
-                    &format!("rev-{}-author", revision.rev),
-                    revision.author.clone(),
-                    web::style().size(13).bold().color(p.ink.clone()).flex(2),
-                ),
-                web::styled(
-                    &format!("rev-{}-tick", revision.rev),
-                    format!("tick {}", revision.tick),
-                    web::style().size(12).color(p.muted.clone()).flex(1),
-                ),
-                web::link(
-                    &format!("rev-{}-comment", revision.rev),
-                    revision.comment.clone(),
-                    target,
-                ),
-                web::badge(
-                    &format!("rev-{}-mark", revision.rev),
-                    if current == Some(revision.rev) {
-                        "current"
-                    } else {
-                        "superseded"
-                    },
-                    web::style()
-                        .size(11)
-                        .color(p.muted.clone())
-                        .radius(2)
-                        .padding(4)
-                        .flex(0),
-                ),
-            ],
-        ));
-    }
-    if article.revisions.is_empty() {
-        main.push(p.small("hist-empty", "No revisions recorded."));
-    }
-    chrome(
-        s,
-        &format!("Revision history of {} — {}", article.title, brand_of(s)),
-        main,
-    )
-}
-fn results_page(s: &WikiState, query: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    // An exact title hit is what a reader asked for; the results list is the consolation prize.
-    if let Some(article) = s.article(query) {
-        return article_page(s, &article.id);
-    }
-    let hits = s.search(query);
-    let mut main = vec![
-        p.title("results-title", &format!("Search results for {query}"), 24),
-        p.small(
-            "results-count",
-            format!("{} article(s) matched.", hits.len()),
-        ),
-        web::divider("results-rule"),
-    ];
-    for (i, hit) in hits.iter().enumerate() {
-        main.push(web::card_action(
-            &format!("hit-{i}"),
-            web::style().padding(8).radius(2),
-            web::visit(article_url(&hit.id)),
-            vec![
-                web::styled(
-                    &format!("hit-{i}-title"),
-                    hit.title.clone(),
-                    web::style().size(16).color(p.accent.clone()),
-                ),
-                p.small(&format!("hit-{i}-snippet"), hit.snippet.clone()),
-            ],
-        ));
-    }
-    if hits.is_empty() {
-        main.push(p.small(
-            "results-empty",
-            "No article matched. Try a different wording.",
-        ));
-    }
-    chrome(s, &format!("{query} — search results"), main)
-}
-/// A red link in real life; here it is an honest 404 rather than a page pretending to be one.
-fn missing() -> SimResult<HttpResponse> {
-    web::error(404, "article not found")
-}
+/// The looks one set of routes can wear: wikipedia.org, imdb.com, archive.org.
+pub const SKINS: &[&str] = &["vector", "imdb", "archive"];
 /// Where a successful mutation leaves the reader when the caller was a page form, not the API.
 enum View {
     Section(String, String),
@@ -959,6 +342,13 @@ impl Service for WikiService {
         }
         if s.tagline.is_empty() {
             s.tagline = TAGLINE.into();
+        }
+        if !s.skin.is_empty() && !SKINS.contains(&s.skin.as_str()) {
+            return Err(SimError::invalid(format!(
+                "unknown skin {}; expected one of {}",
+                s.skin,
+                SKINS.join(", ")
+            )));
         }
         let keys: Vec<String> = s.articles.keys().cloned().collect();
         for key in &keys {
@@ -1144,12 +534,42 @@ mod tests {
     fn seeded() -> WikiState {
         serde_json::from_value(raw()).unwrap()
     }
-    /// A page the browser would reject is not a page; ids must be unique and colours well formed.
-    fn rendered(response: &HttpResponse) -> cw_protocol::Page {
+    /// A parsed HTML page and the queries the tests make of it.
+    struct Html {
+        doc: cw_web::dom::Document,
+    }
+    impl Html {
+        fn node(&self, id: &str) -> cw_web::dom::NodeId {
+            *self.doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+        }
+        fn has(&self, id: &str) -> bool {
+            !self.doc.by_id(id).is_empty()
+        }
+        fn text(&self, id: &str) -> String {
+            self.doc.text_content(self.node(id))
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            self.doc.attr(self.node(id), name).unwrap_or_default().to_owned()
+        }
+        fn tag(&self, id: &str) -> String {
+            self.doc.tag(self.node(id)).unwrap_or_default().to_owned()
+        }
+        fn all_text(&self) -> String {
+            self.doc.text_content(cw_web::dom::Document::ROOT)
+        }
+        fn title(&self) -> String {
+            let root = cw_web::dom::Document::ROOT;
+            let node = self.doc.descendants(root).find(|n| self.doc.is(*n, "title")).unwrap();
+            self.doc.text_content(node)
+        }
+    }
+    /// A page the engine would refuse is not a page: HTML media type, strict CSS, unique ids.
+    fn rendered(response: &HttpResponse) -> Html {
         assert_eq!(response.status, 200);
-        let page: cw_protocol::Page = serde_json::from_slice(&response.body).unwrap();
-        page.validate().unwrap();
-        page
+        assert_eq!(response.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+        let html = std::str::from_utf8(&response.body).unwrap();
+        web::html::validate_strict(html).unwrap_or_else(|e| panic!("strict validation: {e:?}"));
+        Html { doc: cw_web::html::parse(html) }
     }
     fn get(state: &mut Value, url: &str) -> HttpResponse {
         WikiService
@@ -1201,9 +621,8 @@ mod tests {
                 &mut state,
                 &format!("http://wikipedia.org/wiki/{alias}"),
             ));
-            let body = serde_json::to_string(&page).unwrap();
-            assert!(body.contains(&s.articles[target].title));
-            assert!(body.contains("Redirected from"));
+            assert_eq!(page.text("article-title"), s.articles[target].title);
+            assert!(page.text("article-redirect").contains("Redirected from"));
         }
         assert_eq!(
             get(&mut state, "http://wikipedia.org/wiki/Nonexistent_thing").status,
@@ -1221,9 +640,8 @@ mod tests {
             &url,
             r#"{"body":"Rewritten by the test.","comment":"tighten wording"}"#,
         ));
-        assert!(serde_json::to_string(&page)
-            .unwrap()
-            .contains("Rewritten by the test."));
+        assert_eq!(page.text("section-body"), "Rewritten by the test.");
+        assert_eq!(page.text("edit-body"), "Rewritten by the test.");
         assert_ne!(before, state, "an edit must move real state");
         let s: WikiState = serde_json::from_value(state.clone()).unwrap();
         let article = &s.articles[ARTICLE];
@@ -1239,8 +657,12 @@ mod tests {
             &mut state,
             &format!("http://wikipedia.org/wiki/Special:History/{ARTICLE}"),
         ));
-        let body = serde_json::to_string(&history).unwrap();
-        assert!(body.contains("tighten wording") && body.contains("current"));
+        assert_eq!(history.text(&format!("rev-{next}-comment")), "tighten wording");
+        assert_eq!(history.text(&format!("rev-{next}-mark")), "current");
+        assert_eq!(
+            history.attr(&format!("rev-{next}-comment"), "href"),
+            format!("/wiki/{ARTICLE}?section=history")
+        );
         // Refusals: no such section, empty body, and a rewrite that changes nothing.
         assert_eq!(
             post(
@@ -1265,8 +687,9 @@ mod tests {
         let mut state = raw();
         let url = format!("http://wikipedia.org/articles/{ARTICLE}/talk");
         let page = rendered(&post(&mut state, &url, r#"{"text":"Sources, please."}"#));
-        let body = serde_json::to_string(&page).unwrap();
-        assert!(body.contains("Sources, please.") && body.contains("bmartinez"));
+        let last = seeded().articles[ARTICLE].talk.len();
+        assert_eq!(page.text(&format!("talk-{last}-text")), "Sources, please.");
+        assert_eq!(page.text(&format!("talk-{last}-author")), "bmartinez");
         assert_eq!(post(&mut state, &url, r#"{"text":" "}"#).status, 400);
         assert_eq!(
             post(
@@ -1382,8 +805,9 @@ mod tests {
     fn an_empty_encyclopedia_still_serves_a_themed_portal() {
         let mut state = WikiService.initialize(json!({}), &ctx()).unwrap();
         let page = rendered(&get(&mut state, "http://wikipedia.org/"));
-        assert!(page.theme.is_some());
-        assert_eq!(page.title, "Wikipedia — The free encyclopedia");
+        assert_eq!(page.title(), "Wikipedia — The free encyclopedia");
+        assert_eq!(page.text("news-empty"), "Nothing filed today.");
+        assert!(page.has("search") && !page.has("featured") && !page.has("nav-random"));
         assert_eq!(
             get(&mut state, "http://wikipedia.org/wiki/Anything").status,
             404
@@ -1424,5 +848,209 @@ mod tests {
             .initialize(json!({"articles": {"A": {"id": "B"}}}), &ctx())
             .is_err());
         assert!(WikiService.initialize(Value::Null, &ctx()).is_ok());
+    }
+    const SKINNED: [(&str, &str, &str); 3] = [
+        ("vector", "wikipedia.org", include_str!("../../../worlds/company-2026/sites/wikipedia.json")),
+        ("imdb", "imdb.com", include_str!("../../../worlds/company-2026/sites/imdb.json")),
+        ("archive", "archive.org", include_str!("../../../worlds/company-2026/sites/archive.json")),
+    ];
+    /// Every page of every site: strict HTML and CSS, in the skin its seed names.
+    #[test]
+    fn every_page_of_every_skin_validates_strictly() {
+        for (skin, host, seed) in SKINNED {
+            let site: Value = serde_json::from_str(seed).unwrap();
+            let mut state = WikiService.initialize(site["initial_state"].clone(), &ctx()).unwrap();
+            let s: WikiState = serde_json::from_value(state.clone()).unwrap();
+            assert_eq!(s.skin_name(), skin, "{host}");
+            let before = state.clone();
+            let mut urls = vec![
+                format!("http://{host}/"),
+                format!("http://{host}/search?q=the"),
+                format!("http://{host}/search?q=zzzznothing"),
+                format!("http://{host}/wiki/Special:Random"),
+            ];
+            for alias in s.redirects.keys() {
+                urls.push(format!("http://{host}/wiki/{alias}"));
+            }
+            for (id, article) in &s.articles {
+                urls.push(format!("http://{host}/wiki/{id}"));
+                urls.push(format!("http://{host}/wiki/Talk:{id}"));
+                urls.push(format!("http://{host}/wiki/Special:History/{id}"));
+                for section in &article.sections {
+                    urls.push(format!("http://{host}/wiki/{id}?section={}", section.id));
+                }
+            }
+            for url in urls {
+                let page = rendered(&get(&mut state, &url));
+                assert!(
+                    std::str::from_utf8(&get(&mut state, &url).body).unwrap().contains(&format!("skin-{skin}")),
+                    "{url}"
+                );
+                // The chrome every page wears: the search form posts `q` to /search.
+                assert_eq!(page.tag("search"), "form", "{url}");
+                assert_eq!(page.attr("search", "action"), "/search");
+                assert_eq!(page.attr("search", "method"), "post");
+                assert_eq!(page.attr("search-q", "name"), "q");
+                assert_eq!(page.tag("search-submit"), "button");
+                assert_eq!(page.attr("masthead-logo", "href"), "/");
+                assert!(page.has("masthead-brand") && page.has("masthead-tagline") && page.has("foot"));
+            }
+            for entry in site["search_entries"].as_array().unwrap() {
+                let url = entry["url"].as_str().unwrap();
+                assert_eq!(get(&mut state, url).status, 200, "indexed {url} does not resolve");
+            }
+            assert_eq!(before, state, "rendering must not mutate seed state");
+        }
+        assert!(WikiService.initialize(json!({"skin": "monobook"}), &ctx()).is_err());
+        let explicit = WikiService.initialize(json!({"skin": "imdb"}), &ctx()).unwrap();
+        let s: WikiState = serde_json::from_value(explicit).unwrap();
+        assert_eq!(s.skin_name(), "imdb");
+    }
+    /// The ids the `Page` version exposed are on the elements that play the same roles.
+    #[test]
+    fn ids_forms_and_links_are_the_agent_api() {
+        let mut state = raw();
+        let s = seeded();
+        let portal = rendered(&get(&mut state, "http://wikipedia.org/"));
+        assert_eq!(portal.text("featured-label"), "From today's featured article");
+        assert_eq!(portal.attr("featured-title", "href"), format!("/wiki/{ARTICLE}"));
+        assert!(portal.has("featured-summary") && portal.has("news-label") && portal.has("all-label"));
+        assert_eq!(portal.attr("news-0", "href"), s.in_the_news[0].url);
+        for (i, article) in s.articles.values().enumerate() {
+            assert_eq!(portal.tag(&format!("all-{i}")), "a");
+            assert_eq!(portal.attr(&format!("all-{i}"), "href"), format!("/wiki/{}", article.id));
+            assert_eq!(portal.text(&format!("all-{i}-title")), article.title);
+            assert!(portal.has(&format!("all-{i}-summary")));
+        }
+        assert_eq!(portal.attr("portal-random", "href"), "/wiki/Special:Random");
+
+        let article = &s.articles[ARTICLE];
+        let page = rendered(&get(&mut state, &format!("http://wikipedia.org/wiki/{ARTICLE}")));
+        assert_eq!(page.title(), format!("{} — Wikipedia", article.title));
+        assert_eq!(page.text("article-title"), article.title);
+        assert_eq!(page.text("article-summary"), article.summary);
+        for (i, (name, url)) in [
+            ("Article", format!("/wiki/{ARTICLE}")),
+            ("Talk", format!("/wiki/Talk:{ARTICLE}")),
+            ("History", format!("/wiki/Special:History/{ARTICLE}")),
+        ]
+        .iter()
+        .enumerate()
+        {
+            assert_eq!(page.text(&format!("tab-{i}")), *name);
+            assert_eq!(page.attr(&format!("tab-{i}"), "href"), *url);
+        }
+        assert_eq!(page.attr("tab-0", "aria-current"), "page");
+        assert_eq!(page.text("toc-label"), "Contents");
+        for (i, section) in article.sections.iter().enumerate() {
+            let target = format!("/wiki/{ARTICLE}?section={}", section.id);
+            assert_eq!(page.attr(&format!("toc-{i}"), "href"), target);
+            assert!(page.text(&format!("toc-{i}")).ends_with(&section.heading));
+            assert_eq!(page.text(&format!("sec-{i}-heading")), section.heading);
+            assert_eq!(page.text(&format!("sec-{i}-body")), section.body);
+            assert_eq!(page.attr(&format!("sec-{i}-edit"), "href"), target);
+            assert!(page.has(&format!("sec-{i}-head")));
+        }
+        for (i, reference) in article.references.iter().enumerate() {
+            assert_eq!(page.attr(&format!("ref-{i}"), "href"), reference.url);
+            assert_eq!(page.text(&format!("ref-{i}")), reference.label);
+        }
+        for (i, target) in article.see_also.iter().enumerate() {
+            assert_eq!(page.attr(&format!("see-{i}"), "href"), format!("/wiki/{target}"));
+        }
+        for (i, category) in article.categories.iter().enumerate() {
+            assert_eq!(page.text(&format!("cat-{i}")), *category);
+        }
+        assert_eq!(page.text("info-title"), article.title);
+        assert!(page.has("infobox") && page.has("info-image") && page.has("article-latest"));
+        assert!(page.has("article-body") && page.has("article-column"));
+        for (i, (key, value)) in article.infobox.iter().enumerate() {
+            assert_eq!(page.text(&format!("info-{i}-key")), *key);
+            assert_eq!(page.text(&format!("info-{i}-value")), *value);
+        }
+
+        let section = rendered(&get(
+            &mut state,
+            &format!("http://wikipedia.org/wiki/{ARTICLE}?section=history"),
+        ));
+        assert_eq!(section.attr("section-back", "href"), format!("/wiki/{ARTICLE}"));
+        assert!(section.has("section-heading") && section.has("edit-label"));
+        assert_eq!(section.tag("edit"), "form");
+        assert_eq!(section.attr("edit", "action"), format!("/articles/{ARTICLE}/sections/history"));
+        assert_eq!(section.attr("edit", "method"), "post");
+        assert_eq!(section.tag("edit-body"), "textarea");
+        assert_eq!(section.attr("edit-body", "name"), "body");
+        assert_eq!(section.text("edit-body"), article.section("history").unwrap().body);
+        assert_eq!(section.attr("edit-comment", "name"), "comment");
+        assert_eq!(section.tag("edit-submit"), "button");
+
+        let talk = rendered(&get(&mut state, &format!("http://wikipedia.org/wiki/Talk:{ARTICLE}")));
+        assert_eq!(talk.text("talk-title"), format!("Talk: {}", article.title));
+        for (i, post) in article.talk.iter().enumerate() {
+            assert_eq!(talk.text(&format!("talk-{i}-author")), post.author);
+            assert_eq!(talk.text(&format!("talk-{i}-text")), post.text);
+            assert_eq!(talk.text(&format!("talk-{i}-tick")), format!("tick {}", post.tick));
+            assert!(talk.has(&format!("talk-{i}")) && talk.has(&format!("talk-{i}-avatar")));
+        }
+        assert_eq!(talk.attr("reply", "action"), format!("/articles/{ARTICLE}/talk"));
+        assert_eq!(talk.attr("reply", "method"), "post");
+        assert_eq!(talk.attr("reply-text", "name"), "text");
+        assert_eq!(talk.tag("reply-submit"), "button");
+        assert_eq!(talk.attr("tab-1", "aria-current"), "page");
+
+        let history = rendered(&get(
+            &mut state,
+            &format!("http://wikipedia.org/wiki/Special:History/{ARTICLE}"),
+        ));
+        assert!(history.has("hist-title"));
+        for revision in &article.revisions {
+            let rev = revision.rev;
+            assert_eq!(history.text(&format!("rev-{rev}-id")), format!("rev {rev}"));
+            assert_eq!(history.text(&format!("rev-{rev}-author")), revision.author);
+            assert_eq!(history.text(&format!("rev-{rev}-comment")), revision.comment);
+            assert!(history.has(&format!("rev-{rev}")) && history.has(&format!("rev-{rev}-tick")));
+        }
+
+        let results = rendered(&get(&mut state, "http://wikipedia.org/search?q=simulation"));
+        assert_eq!(results.text("results-title"), "Search results for simulation");
+        let hits = s.search("simulation");
+        assert!(results.text("results-count").starts_with(&hits.len().to_string()));
+        for (i, hit) in hits.iter().enumerate() {
+            assert_eq!(results.attr(&format!("hit-{i}"), "href"), format!("/wiki/{}", hit.id));
+            assert_eq!(results.text(&format!("hit-{i}-title")), hit.title);
+            assert_eq!(results.text(&format!("hit-{i}-snippet")), hit.snippet);
+        }
+        let none = rendered(&get(&mut state, "http://wikipedia.org/search?q=zzzznothing"));
+        assert!(none.has("results-empty"));
+        // A form post from the browser arrives form-encoded and lands on the same page.
+        let mut request = HttpRequest::get("http://wikipedia.org/search");
+        request.method = "POST".into();
+        request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        request.body = b"q=simulation".to_vec();
+        let posted = WikiService.handle(&mut state, &ctx(), &request).unwrap();
+        assert_eq!(rendered(&posted).all_text(), results.all_text());
+    }
+    /// IMDb's title page: rating, credits linked to people, a cast grid; the Archive's item
+    /// page: the theatre and the collection navigation.
+    #[test]
+    fn the_imdb_and_archive_skins_add_their_own_furniture() {
+        let site: Value = serde_json::from_str(SKINNED[1].2).unwrap();
+        let mut state = WikiService.initialize(site["initial_state"].clone(), &ctx()).unwrap();
+        let page = rendered(&get(&mut state, "http://imdb.com/wiki/Northbound_Signal"));
+        assert!(page.text("rating").contains("8.1"));
+        assert_eq!(page.attr("cast-0", "href"), "/wiki/Tobias_Renard");
+        assert_eq!(page.attr("info-1-value-link-0", "href"), "/wiki/Ilse_Marchetti");
+        assert_eq!(page.text("info-1-value"), "Ilse Marchetti");
+        assert_eq!(page.attr("nav-top", "href"), "/wiki/Top_rated");
+        let home = rendered(&get(&mut state, "http://imdb.com/"));
+        assert_eq!(home.text("featured-label"), "Featured today");
+        assert_eq!(home.attr("nav-random", "href"), "/wiki/Special:Random");
+        let site: Value = serde_json::from_str(SKINNED[2].2).unwrap();
+        let mut state = WikiService.initialize(site["initial_state"].clone(), &ctx()).unwrap();
+        let item = rendered(&get(&mut state, "http://archive.org/wiki/Cavern_Runner_98"));
+        assert_eq!(item.text("info-image"), "Cavern Runner 98");
+        assert_eq!(item.attr("info-0-value-link-0", "href"), "/wiki/Software_Library");
+        assert_eq!(item.attr("nav-col-0", "href"), "/wiki/Live_Music_Archive");
+        assert_eq!(item.attr("nav-site-0", "href"), "/wiki/About");
     }
 }

@@ -1,0 +1,59 @@
+/* theverge.com: black paper, an oversized wordmark, a purple-to-mint accent, mono
+   kickers, and a numbered Most Popular rail. */
+.skin-verge { font-family: Poppins, Arial, sans-serif; background: #131313; color: #ffffff; }
+.skin-verge .masthead { background: #131313; border-bottom: 1px solid #313131; }
+.skin-verge .bar { max-width: 1240px; padding: 18px 24px; align-items: flex-end; }
+.skin-verge .brand { color: #ffffff; font-size: 64px; line-height: 60px; font-weight: 800; letter-spacing: -0.06em; }
+.skin-verge .sections { gap: 4px 20px; padding-bottom: 6px; font-family: "JetBrains Mono", monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; }
+.skin-verge .sections a:hover { text-decoration: none; color: #3cffd0; }
+.skin-verge .tools { padding-bottom: 4px; font-family: "JetBrains Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; }
+.skin-verge .pill { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #131313; background: #3cffd0; border-color: #3cffd0; border-radius: 2px; }
+.skin-verge .pill:hover { background: #ffffff; border-color: #ffffff; }
+.skin-verge .pill.on { background: #5200ff; border-color: #5200ff; color: #ffffff; }
+.skin-verge main { max-width: 1240px; }
+.skin-verge .layout { grid-template-columns: minmax(0, 1fr) 320px; column-gap: 40px; }
+.skin-verge .card { color: #ffffff; }
+.skin-verge .card .art { border-radius: 2px; }
+.skin-verge .card.s2 .art { height: 400px; }
+.skin-verge .card .kicker { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #949494; }
+.skin-verge .card .section { color: #3cffd0; font-weight: 400; }
+.skin-verge .card .title { font-size: 20px; line-height: 24px; font-weight: 700; letter-spacing: -0.01em; }
+.skin-verge .card.s2 .title { font-size: 44px; line-height: 46px; font-weight: 800; letter-spacing: -0.03em; }
+.skin-verge .card:hover .title { text-decoration: none; color: #3cffd0; }
+.skin-verge .card .dek { color: #c9c9c9; font-family: Georgia, serif; font-size: 15px; }
+.skin-verge .card.s2 .dek { font-size: 18px; }
+.skin-verge .card .byline { font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #949494; }
+.skin-verge .grid .card { padding-top: 16px; border-top: 1px solid #5200ff; }
+.skin-verge .side { background: linear-gradient(180deg, #5200ff, #3a0bb5); border-radius: 4px; padding: 22px 20px; }
+.skin-verge .side h2 { font-size: 22px; font-weight: 800; text-transform: none; letter-spacing: -0.02em; color: #3cffd0; }
+.skin-verge .ranked li { border-color: rgba(255, 255, 255, 0.25); font-size: 16px; line-height: 20px; }
+.skin-verge .ranked a:hover { text-decoration: none; color: #3cffd0; }
+.skin-verge .chip { background: #131313; color: #ffffff; border-radius: 2px; font-family: "JetBrains Mono", monospace; font-size: 11px; }
+.skin-verge .chip:hover { background: #3cffd0; color: #131313; }
+.skin-verge .list-header { border-bottom-color: #5200ff; }
+.skin-verge .list-header h1 { font-size: 44px; font-weight: 800; letter-spacing: -0.03em; }
+.skin-verge .empty { color: #949494; }
+.skin-verge .posts .card, .skin-verge .listing .card, .skin-verge .card.s0 { border-top-color: #313131; }
+.skin-verge.page-article { background: #ffffff; color: #131313; }
+.skin-verge.page-article main { color: #131313; }
+.skin-verge .story { max-width: 760px; }
+.skin-verge .story .kicker { font-family: "JetBrains Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
+.skin-verge .story .kicker a { color: #5200ff; font-weight: 400; }
+.skin-verge .story h1 { font-size: 48px; line-height: 50px; font-weight: 800; letter-spacing: -0.03em; }
+.skin-verge .story .dek { font-family: Georgia, serif; color: #424242; }
+.skin-verge .credit { border-color: #5200ff; }
+.skin-verge .credit .who { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #424242; }
+.skin-verge.page-article .story .pill, .skin-verge.page-article .comments .pill { background: #ffffff; color: #131313; border-color: #131313; }
+.skin-verge.page-article .story .pill.on { background: #5200ff; border-color: #5200ff; color: #ffffff; }
+.skin-verge .body p { font-family: Georgia, serif; font-size: 19px; line-height: 31px; }
+.skin-verge .body a { color: #131313; text-decoration-color: #5200ff; }
+.skin-verge.page-article .chip { background: #f5f5f7; color: #131313; }
+.skin-verge .readmore { background: #f5f5f7; color: #131313; border-radius: 2px; border-left: 4px solid #5200ff; }
+.skin-verge .newsletter { background: #5200ff; color: #ffffff; border-radius: 4px; }
+.skin-verge .newsletter .lead { color: #d9ccff; }
+.skin-verge #subscribe-submit { background: #3cffd0; color: #131313; border-radius: 2px; }
+.skin-verge #comment-submit { background: #5200ff; border-radius: 2px; }
+.skin-verge input[type="text"] { border-radius: 2px; }
+.skin-verge .foot { border-top-color: #313131; background: #131313; color: #949494; font-family: "JetBrains Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.skin-verge .foot .inner { max-width: 1240px; }
+.skin-verge .foot-brand { color: #ffffff; font-family: Poppins, Arial, sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.04em; text-transform: none; }

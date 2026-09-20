@@ -1,0 +1,374 @@
+/* Slack's desktop web client: the aubergine frame (top bar and rail), the sidebar, the
+   open conversation and the pane beside it. The palette is custom properties on <html>,
+   which a seeded theme overrides from page.rs. The page is an app shell: the body is a
+   full-height column and only the lists scroll. */
+* { box-sizing: border-box; }
+html {
+  --frame: #350d36; --sidebar: #3f0e40; --sidebar-ink: #cfc3cf; --selected: #1164a3;
+  --surface: #ffffff; --ink: #1d1c1d; --muted: #616061; --accent: #1264a3; --line: #dddddd;
+  --tint: #e8f5fa; --green: #007a5a; --highlight: #fef6dd; --badge: #cd2553;
+}
+html, body { margin: 0; height: 100%; }
+body {
+  height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+  font-family: Lato, Arial, sans-serif; font-size: 15px; line-height: 22px;
+  color: var(--ink); background: var(--frame);
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, p { margin: 0; }
+button { font-family: Lato, Arial, sans-serif; cursor: pointer; }
+.grow { flex: 1; }
+
+/* ---------------------------------------------------------------- avatars and marks */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  color: #ffffff; font-weight: 700; border-radius: 4px; line-height: 1; user-select: none;
+}
+.avatar.s20 { width: 20px; height: 20px; font-size: 9px; }
+.avatar.s24 { width: 24px; height: 24px; font-size: 10px; }
+.avatar.s26 { width: 26px; height: 26px; font-size: 11px; }
+.avatar.s36 { width: 36px; height: 36px; font-size: 14px; border-radius: 6px; }
+.avatar.group { background: #5c3a5d; border: 1px solid var(--sidebar-ink); }
+.presence {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--sidebar-ink);
+}
+.presence.on { background: #2bac76; border-color: #2bac76; }
+.count {
+  min-width: 18px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--badge);
+  color: #ffffff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+}
+.ico { display: inline-block; flex-shrink: 0; }
+.caret { width: 16px; font-size: 13px; text-align: center; color: var(--sidebar-ink); }
+.caret.light { color: #ffffff; }
+.caret.dark { color: var(--muted); }
+
+/* ---------------------------------------------------------------- the top bar */
+.topbar {
+  height: 40px; flex-shrink: 0; display: flex; align-items: center; padding: 0 12px 0 0;
+  background: var(--frame); color: var(--sidebar-ink);
+}
+.topbar-nav {
+  width: 330px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end;
+  gap: 14px; padding-right: 16px; font-size: 17px; color: #ffffff;
+}
+.topbar .nav { opacity: .8; }
+.clock {
+  width: 15px; height: 15px; border: 1.5px solid #ffffff; border-radius: 50%; position: relative; opacity: .8;
+}
+.clock::before { content: ""; position: absolute; left: 5px; top: 2px; width: 1.5px; height: 5px; background: #ffffff; }
+.clock::after { content: ""; position: absolute; left: 5px; top: 6px; width: 4px; height: 1.5px; background: #ffffff; }
+.search {
+  flex: 1; max-width: 720px; height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 8px;
+  border-radius: 6px; background: rgba(255,255,255,.22); color: #ffffff; font-size: 13px; line-height: 26px;
+}
+.search:hover { background: rgba(255,255,255,.3); }
+.lens { width: 14px; height: 14px; position: relative; }
+.lens::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 9px; height: 9px;
+  border: 1.5px solid #ffffff; border-radius: 50%;
+}
+.lens::after {
+  content: ""; position: absolute; left: 9px; top: 9px; width: 4px; height: 4px;
+  background: #ffffff; border-radius: 1.5px;
+}
+.topbar-me { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.help {
+  width: 18px; height: 18px; border: 1.5px solid #ffffff; border-radius: 50%; color: #ffffff;
+  font-size: 11px; font-weight: 700; line-height: 15px; text-align: center; opacity: .8;
+}
+.my-status { font-size: 12px; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- the frame */
+.app { flex: 1; min-height: 0; display: flex; padding: 0 4px 4px 0; }
+.rail {
+  width: 70px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding-top: 6px;
+}
+.rail-mark {
+  width: 36px; height: 36px; border-radius: 8px; background: #ffffff; color: var(--frame);
+  font-size: 18px; font-weight: 900; line-height: 36px; text-align: center; margin-bottom: 4px;
+}
+.tab {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: #ffffff; font-size: 11px; font-weight: 700; line-height: 13px;
+}
+a.tab:hover { text-decoration: none; }
+.tab-icon { width: 36px; height: 36px; border-radius: 8px; position: relative; display: block; }
+.tab.on .tab-icon, a.tab:hover .tab-icon { background: rgba(255,255,255,.25); }
+.tab .count { position: absolute; top: -5px; right: -4px; border: 2px solid var(--frame); height: 20px; }
+/* The tab pictures: a glyph for the house, boxes for the rest. */
+.i-home::before {
+  content: "⌂"; position: absolute; left: 0; top: 0; width: 36px; color: #ffffff;
+  font-size: 27px; line-height: 33px; text-align: center;
+}
+.i-dms::before {
+  content: ""; position: absolute; left: 8px; top: 9px; width: 20px; height: 15px;
+  border: 2px solid #ffffff; border-radius: 7px;
+}
+.i-dms::after {
+  content: ""; position: absolute; left: 12px; top: 22px; width: 5px; height: 5px;
+  background: #ffffff;
+}
+.i-bell::before {
+  content: ""; position: absolute; left: 11px; top: 8px; width: 14px; height: 16px;
+  border: 2px solid #ffffff; border-radius: 7px;
+}
+.i-bell::after {
+  content: ""; position: absolute; left: 8px; top: 22px; width: 20px; height: 5px;
+  background: #ffffff; border-radius: 2px; border: 1.5px solid var(--frame);
+}
+.i-later::before {
+  content: ""; position: absolute; left: 11px; top: 8px; width: 14px; height: 19px;
+  border: 2px solid #ffffff; border-radius: 3px;
+}
+.i-later::after {
+  content: ""; position: absolute; left: 15px; top: 20px; width: 6px; height: 6px;
+  background: var(--frame);
+}
+.i-more::before {
+  content: "···"; position: absolute; left: 0; top: 0; width: 36px; color: #ffffff;
+  font-size: 22px; font-weight: 900; line-height: 34px; text-align: center; letter-spacing: 1px;
+}
+.panel {
+  flex: 1; min-width: 0; display: flex; border-radius: 6px; overflow: hidden;
+  background: var(--surface);
+}
+
+/* ---------------------------------------------------------------- the sidebar */
+.sidebar {
+  width: 260px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;
+  background: var(--sidebar); color: var(--sidebar-ink);
+}
+.sidebar-head {
+  height: 49px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding: 0 12px 0 16px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.workspace { color: #ffffff; font-size: 18px; font-weight: 900; white-space: nowrap; }
+.compose {
+  width: 32px; height: 32px; border-radius: 16px; background: #ffffff; color: var(--sidebar);
+  font-size: 16px; line-height: 32px; text-align: center;
+}
+.sidebar-list { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px; }
+.section {
+  display: flex; align-items: center; height: 28px; padding: 0 8px; margin-top: 12px;
+  font-size: 15px; color: var(--sidebar-ink);
+}
+.section:first-child { margin-top: 0; }
+.row {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px 0 10px;
+  border-radius: 6px; color: var(--sidebar-ink); font-size: 15px; line-height: 28px;
+}
+a.row:hover, button.row:hover { background: rgba(255,255,255,.1); text-decoration: none; }
+.row.unread { color: #ffffff; font-weight: 900; }
+.row.current, a.row.current:hover { background: var(--selected); color: #ffffff; }
+.row-text { flex: 1; min-width: 0; white-space: nowrap; text-align: left; }
+.mark { width: 20px; text-align: center; font-size: 16px; opacity: .85; }
+.mark.plus { border-radius: 4px; background: rgba(255,255,255,.12); height: 20px; line-height: 19px; }
+/* A padlock: a body with a shackle over it. */
+.mark.lock { position: relative; height: 20px; }
+.mark.lock::before {
+  content: ""; position: absolute; left: 6px; top: 2px; width: 8px; height: 10px;
+  border: 1.5px solid var(--sidebar-ink); border-radius: 4px;
+}
+.mark.lock::after {
+  content: ""; position: absolute; left: 4px; top: 8px; width: 12px; height: 9px;
+  background: var(--sidebar-ink); border-radius: 2px;
+}
+.current .mark.lock::before { border-color: #ffffff; }
+.current .mark.lock::after { background: #ffffff; }
+.face { display: inline-flex; align-items: flex-end; flex-shrink: 0; }
+.face .presence { margin-left: -5px; margin-bottom: -2px; border-color: var(--sidebar); outline: 1.5px solid var(--sidebar); }
+.face .presence:not(.on) { background: var(--sidebar); border-color: var(--sidebar-ink); }
+form.start { margin: 0; }
+button.row { border: 0; background: transparent; text-align: left; }
+
+/* ---------------------------------------------------------------- the conversation */
+.main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--surface); }
+.empty { padding: 24px; color: var(--muted); }
+.channel-header { flex-shrink: 0; border-bottom: 1px solid var(--line); }
+.channel-head { height: 49px; display: flex; align-items: center; gap: 8px; padding: 0 16px 0 20px; }
+.channel-title { font-size: 18px; font-weight: 900; line-height: 24px; white-space: nowrap; }
+.channel-topic, .channel-status { font-size: 13px; color: var(--muted); white-space: nowrap; margin-left: 4px; }
+.channel-topic { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.channel-head .presence { border-color: var(--muted); }
+.channel-head .presence.on { border-color: #2bac76; }
+.channel-members {
+  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid var(--line);
+  border-radius: 6px; color: var(--muted); font-size: 13px; font-weight: 700;
+}
+.channel-members:hover { background: #f8f8f8; text-decoration: none; }
+/* A person: a head over shoulders. */
+.person { width: 14px; height: 14px; position: relative; }
+.person::before {
+  content: ""; position: absolute; left: 4px; top: 0; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted);
+}
+.person::after {
+  content: ""; position: absolute; left: 1px; top: 8px; width: 12px; height: 6px;
+  border-radius: 3px; background: var(--muted);
+}
+.channel-bar {
+  display: flex; align-items: center; gap: 16px; height: 36px; padding: 0 20px;
+  border-top: 1px solid #eeeeee; font-size: 13px; color: var(--muted);
+}
+.bar-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; min-width: 0; }
+.bar-item .ico { font-size: 12px; }
+.bar-item .pin, .pinned .pin { width: 16px; }
+
+.scroller { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 0 16px; }
+/* A short channel sits on the composer, the way Slack anchors a transcript to the
+   bottom; `margin-top: auto` on the first row rather than `justify-content` so a long
+   transcript still scrolls from its top. */
+#messages { display: flex; flex-direction: column; }
+#messages > *:first-child { margin-top: auto; }
+.unread-banner {
+  display: flex; align-items: center; margin: 4px 20px 8px; padding: 4px 6px 4px 14px; border-radius: 16px;
+  background: var(--accent); color: #ffffff; font-size: 13px; font-weight: 700;
+}
+.unread-banner button {
+  border: 0; border-radius: 12px; background: rgba(255,255,255,.18); color: #ffffff;
+  font-size: 13px; font-weight: 700; padding: 3px 12px;
+}
+.unread-banner button:hover { background: rgba(255,255,255,.3); }
+.day { position: relative; height: 40px; display: flex; align-items: center; justify-content: center; }
+.day::before { content: ""; position: absolute; left: 0; right: 0; top: 20px; height: 1px; background: var(--line); }
+.day-label {
+  position: relative; height: 28px; padding: 0 16px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface); font-size: 13px; font-weight: 700; line-height: 26px;
+}
+.msg { position: relative; display: flex; gap: 8px; padding: 2px 20px; }
+.msg.first { padding-top: 8px; }
+.msg:hover { background: #f8f8f8; }
+.msg.mentioned, .msg.is-pinned { background: var(--highlight); }
+.gutter { width: 36px; flex-shrink: 0; text-align: right; }
+.gutter .avatar { margin-top: 3px; }
+.gutter .time { display: none; font-size: 10px; line-height: 22px; white-space: nowrap; }
+.msg:hover .gutter .time { display: inline; }
+.msg-body { flex: 1; min-width: 0; }
+.msg-head { display: flex; align-items: baseline; gap: 8px; }
+.author { font-weight: 900; color: var(--ink); }
+.time { font-size: 12px; color: var(--muted); }
+.pinned { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); line-height: 18px; }
+.pinned .ico { font-size: 10px; }
+.text { overflow-wrap: break-word; }
+.mention { background: var(--tint); color: var(--accent); border-radius: 3px; padding: 0 2px 1px; }
+.mentioned .mention { background: #f8e5b0; }
+code {
+  font-family: "JetBrains Mono", "Courier New", monospace; font-size: 12px; color: #e01e5a;
+  background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 3px; padding: 2px 3px 1px;
+}
+.reactions { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+.chip {
+  height: 24px; padding: 0 8px; border: 1px solid #f2f2f2; border-radius: 12px; background: #f2f2f2;
+  color: var(--ink); font-size: 12px; line-height: 22px; white-space: nowrap;
+}
+button.chip:hover { border-color: #868686; background: #ffffff; }
+.chip.mine { background: var(--tint); border-color: var(--accent); color: var(--accent); }
+.chip.add { color: var(--muted); }
+.thread-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; height: 32px; font-size: 13px; }
+.thread-row a { font-weight: 700; }
+.last-reply { color: var(--muted); }
+/* The toolbar floats over the top right of the message under the pointer; the last
+   message keeps its own showing. */
+.tools {
+  display: none; position: absolute; top: -16px; right: 20px; margin: 0; padding: 2px; gap: 2px;
+  align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.msg:hover .tools, .msg.last .tools { display: flex; }
+/* Always showing, the last one sits beside its own header instead of over its neighbour. */
+.msg.last .tools { top: 2px; }
+.msg.last:hover .tools { top: -16px; }
+.tools button, .tools .tool {
+  width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; padding: 0;
+  font-size: 15px; line-height: 32px; text-align: center; color: var(--muted); display: block;
+}
+.tools button:hover, .tools a.tool:hover { background: #f2f2f2; text-decoration: none; }
+
+/* ---------------------------------------------------------------- the composer */
+.composer { flex-shrink: 0; padding: 0 20px 6px; }
+.composer-box {
+  margin: 0; border: 1px solid #b5b4b5; border-radius: 8px; background: var(--surface);
+  display: flex; flex-direction: column;
+}
+.composer-box:focus-within { border-color: #868686; box-shadow: 0 0 0 1px #d8d8d8; }
+.send-tools {
+  display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 6px; background: #f8f8f8;
+  border-radius: 7px;
+}
+.fmt {
+  width: 28px; height: 28px; border-radius: 4px; color: #868686; font-size: 14px; line-height: 28px;
+  text-align: center;
+}
+.fmt:hover { background: #eeeeee; }
+.fmt.bold { font-weight: 900; }
+.fmt.italic { font-style: italic; font-family: Georgia, serif; }
+.fmt.strike { text-decoration: line-through; }
+.fmt.mono { font-family: "JetBrains Mono", monospace; font-size: 11px; }
+.fmt.round { border-radius: 14px; background: #f2f2f2; font-size: 17px; }
+.composer-box input {
+  border: 0; outline: 0; background: transparent; width: 100%; height: 40px; padding: 0 12px;
+  font-family: Lato, Arial, sans-serif; font-size: 15px; color: var(--ink);
+}
+.send-actions { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 6px; }
+.send {
+  min-width: 36px; height: 28px; border: 0; border-radius: 4px; background: var(--green); color: #ffffff;
+  font-size: 13px; font-weight: 700; padding: 0 10px;
+}
+.send:hover { background: #148567; }
+.send-hint { height: 20px; font-size: 11px; line-height: 20px; color: var(--muted); text-align: right; }
+
+/* ---------------------------------------------------------------- the right-hand pane */
+.pane {
+  width: 400px; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column;
+  border-left: 1px solid var(--line); background: var(--surface);
+}
+.pane-head {
+  height: 49px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.pane-title { font-size: 18px; font-weight: 900; }
+.pane-sub { font-size: 13px; color: var(--muted); }
+.close {
+  width: 32px; height: 32px; border-radius: 6px; color: var(--muted); font-size: 15px; line-height: 32px;
+  text-align: center;
+}
+.close:hover { background: #f2f2f2; text-decoration: none; }
+.pane .msg { padding-left: 16px; padding-right: 16px; }
+.pane .composer { padding: 0 16px 16px; }
+.thread-count { display: flex; align-items: center; gap: 12px; margin: 8px 16px; font-size: 13px; color: var(--muted); }
+.thread-count::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.member { display: flex; gap: 10px; padding: 8px 16px; }
+.member:hover { background: #f8f8f8; }
+.member-lines { flex: 1; min-width: 0; }
+.member-name { display: flex; align-items: center; gap: 6px; }
+.member-name .presence { border-color: var(--muted); }
+.member-name .presence.on { border-color: #2bac76; }
+.member-title, .member-status { font-size: 13px; line-height: 18px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .topbar-nav { width: 120px; }
+  .sidebar { width: 200px; }
+  .pane { width: 300px; }
+}
+@media (max-width: 640px) {
+  .rail, .topbar-nav { display: none; }
+  .sidebar { width: 160px; }
+  .pane { display: none; }
+}
+
+/* Small drawn marks: the information ring and the thread bubble. */
+.info {
+  width: 13px; height: 13px; border: 1px solid var(--muted); border-radius: 50%; font-size: 9px;
+  font-weight: 700; line-height: 11px; text-align: center;
+}
+.tools .tool.bubble { position: relative; }
+.tool.bubble::before {
+  content: ""; position: absolute; left: 8px; top: 9px; width: 16px; height: 12px;
+  border: 1.5px solid var(--muted); border-radius: 5px;
+}
+.tool.bubble::after {
+  content: ""; position: absolute; left: 12px; top: 20px; width: 4px; height: 3px; background: var(--muted);
+}

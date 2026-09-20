@@ -4,9 +4,7 @@
 //! Two tables answer a prompt. `intents` are generic canned explanations; `facts` are claims about
 //! this world that carry a citation the agent can click and check. Facts outrank intents by a
 //! fixed margin, so "what is the Atlas release code" is answered from the world, not from patter.
-use cw_protocol::{
-    HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result as SimResult, Style,
-};
+use cw_protocol::{HttpRequest, HttpResponse, PageTheme, Result as SimResult};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
@@ -18,6 +16,8 @@ pub struct AssistantState {
     pub brand: String,
     pub tagline: String,
     pub model_label: String,
+    /// `chatgpt` or `claude`; empty means "decide from the brand".
+    pub skin: String,
     pub theme: PageTheme,
     pub greeting: String,
     pub suggestions: Vec<String>,
@@ -292,339 +292,11 @@ pub struct AssistantService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(AssistantService)
 }
-struct Palette {
-    accent: String,
-    background: String,
-    surface: String,
-    ink: String,
-    muted: String,
-}
-impl Palette {
-    fn of(theme: &PageTheme) -> Self {
-        let pick = |v: &Option<String>, d: &str| v.clone().unwrap_or_else(|| d.to_owned());
-        Self {
-            accent: pick(&theme.accent, "#10a37f"),
-            background: pick(&theme.background, "#212121"),
-            surface: pick(&theme.surface, "#2f2f2f"),
-            ink: pick(&theme.ink, "#ececec"),
-            muted: pick(&theme.muted, "#9b9b9b"),
-        }
-    }
-}
-/// A control that posts literal fields; `web` has no button helper and a Button is never inert.
-fn post(url: &str, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: "POST".into(),
-        url: url.into(),
-        fields: fields
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-            .collect(),
-    }
-}
-fn button(id: &str, text: impl Into<String>, action: PageAction) -> PageElement {
-    PageElement::Button {
-        id: id.into(),
-        text: text.into(),
-        action,
-        style: None,
-    }
-}
-fn bubble(p: &Palette, index: usize, message: &Message) -> PageElement {
-    let mine = message.role == "user";
-    let body = web::styled(
-        &format!("msg-{index}-text"),
-        &message.text,
-        web::style().size(15).color(p.ink.clone()),
-    );
-    let mut children = vec![body];
-    if !message.citations.is_empty() {
-        children.push(web::spacer(&format!("msg-{index}-gap"), 8));
-        children.push(web::styled(
-            &format!("msg-{index}-sources"),
-            "Sources",
-            web::style().size(12).bold().color(p.muted.clone()),
-        ));
-        for (n, citation) in message.citations.iter().enumerate() {
-            children.push(web::link(
-                &format!("msg-{index}-cite-{n}"),
-                format!("[{}] {}", n + 1, citation.label),
-                &citation.url,
-            ));
-        }
-    }
-    let card = web::card(
-        &format!("msg-{index}-card"),
-        web::style()
-            .background(if mine {
-                p.surface.clone()
-            } else {
-                p.background.clone()
-            })
-            .radius(18)
-            .padding(14)
-            .flex(if mine { 3 } else { 1 }),
-        children,
-    );
-    if mine {
-        return web::styled_row(
-            &format!("msg-{index}"),
-            12,
-            "start",
-            Style::default(),
-            vec![
-                web::card(&format!("msg-{index}-gutter"), web::style().flex(2), vec![]),
-                card,
-                web::thumbnail(
-                    &format!("msg-{index}-avatar"),
-                    "You",
-                    web::style()
-                        .width(32)
-                        .height(32)
-                        .radius(16)
-                        .background(p.surface.clone())
-                        .color(p.muted.clone())
-                        .flex(0),
-                ),
-            ],
-        );
-    }
-    web::row(
-        &format!("msg-{index}"),
-        12,
-        "start",
-        vec![
-            web::thumbnail(
-                &format!("msg-{index}-avatar"),
-                "AI",
-                web::style()
-                    .width(32)
-                    .height(32)
-                    .radius(16)
-                    .background(p.accent.clone())
-                    .color(p.background.clone())
-                    .flex(0),
-            ),
-            card,
-        ],
-    )
-}
-/// Sidebar + main column, the layout both products share.
-fn shell(
-    s: &AssistantState,
-    actor: &str,
-    active: Option<&str>,
-    main: Vec<PageElement>,
-) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let mut side = vec![
-        web::row(
-            "side-brand",
-            10,
-            "center",
-            vec![
-                web::thumbnail(
-                    "side-logo",
-                    s.brand.chars().next().unwrap_or('A').to_string(),
-                    web::style()
-                        .width(28)
-                        .height(28)
-                        .radius(14)
-                        .background(p.accent.clone())
-                        .color(p.background.clone())
-                        .flex(0),
-                ),
-                web::styled(
-                    "side-brand-name",
-                    &s.brand,
-                    web::style().size(15).bold().color(p.ink.clone()),
-                ),
-            ],
-        ),
-        web::spacer("side-gap", 12),
-        web::link("side-new", "+  New chat", "/"),
-        web::divider("side-rule"),
-        web::styled(
-            "side-label",
-            "Chats",
-            web::style().size(11).bold().color(p.muted.clone()),
-        ),
-    ];
-    for conversation in s.mine(actor) {
-        let current = active == Some(conversation.id.as_str());
-        side.push(web::card_action(
-            &format!("side-{}", conversation.id),
-            web::style()
-                .background(if current {
-                    p.surface.clone()
-                } else {
-                    p.background.clone()
-                })
-                .radius(8)
-                .padding(8),
-            web::visit(format!("/c/{}", conversation.id)),
-            vec![web::styled(
-                &format!("side-{}-title", conversation.id),
-                &conversation.title,
-                web::style()
-                    .size(13)
-                    .color(if current { &p.ink } else { &p.muted }.clone())
-                    .one_line(),
-            )],
-        ));
-    }
-    if s.mine(actor).next().is_none() {
-        side.push(web::styled(
-            "side-empty",
-            "No conversations yet.",
-            web::style().size(12).color(p.muted.clone()),
-        ));
-    }
-    web::themed_page(
-        &s.brand,
-        s.theme.clone(),
-        vec![web::row(
-            "shell",
-            0,
-            "stretch",
-            vec![
-                web::card(
-                    "sidebar",
-                    web::style()
-                        .width(260)
-                        .flex(0)
-                        .background(p.surface.clone())
-                        .padding(14),
-                    side,
-                ),
-                web::card("main", web::style().flex(1).padding(24), main),
-            ],
-        )],
-    )
-}
-fn home(s: &AssistantState, actor: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let greeting = match s.greeting.as_str() {
-        "" => "What can I help with?",
-        g => g,
-    };
-    let mut main = vec![
-        web::spacer("home-lead", 64),
-        web::styled(
-            "home-greeting",
-            greeting,
-            web::style()
-                .size(30)
-                .bold()
-                .color(p.ink.clone())
-                .align("center"),
-        ),
-        web::spacer("home-gap", 20),
-    ];
-    if !s.suggestions.is_empty() {
-        main.push(web::grid(
-            "suggestions",
-            2,
-            12,
-            s.suggestions
-                .iter()
-                .enumerate()
-                .map(|(i, text)| {
-                    button(
-                        &format!("suggestion-{i}"),
-                        text,
-                        post("/conversations", &[("message", text)]),
-                    )
-                })
-                .collect(),
-        ));
-        main.push(web::spacer("suggestions-gap", 20));
-    }
-    main.push(web::form(
-        "composer",
-        "/conversations",
-        &[("message", "Message", "")],
-    ));
-    if !s.model_label.is_empty() {
-        main.push(web::styled(
-            "home-model",
-            format!(
-                "{} · deterministic replies, citations you can check",
-                s.model_label
-            ),
-            web::style().size(12).color(p.muted.clone()).align("center"),
-        ));
-    }
-    shell(s, actor, None, main)
-}
-fn conversation(s: &AssistantState, actor: &str, id: &str) -> SimResult<HttpResponse> {
-    let p = Palette::of(&s.theme);
-    let c = match s.open(actor, id) {
-        Ok(c) => c,
-        Err(e) => return web::error(404, e),
-    };
-    let mut main = vec![
-        web::row(
-            "head",
-            10,
-            "center",
-            vec![
-                web::styled(
-                    "head-title",
-                    &c.title,
-                    web::style().size(20).bold().color(p.ink.clone()),
-                ),
-                web::badge(
-                    "head-model",
-                    if s.model_label.is_empty() {
-                        s.brand.clone()
-                    } else {
-                        s.model_label.clone()
-                    },
-                    web::style()
-                        .size(11)
-                        .background(p.surface.clone())
-                        .color(p.muted.clone())
-                        .radius(10)
-                        .padding(6)
-                        .flex(0),
-                ),
-            ],
-        ),
-        web::divider("head-rule"),
-    ];
-    for (index, message) in c.messages.iter().enumerate() {
-        main.push(bubble(&p, index, message));
-        main.push(web::spacer(&format!("msg-{index}-after"), 10));
-    }
-    main.push(web::row(
-        "turn-controls",
-        10,
-        "center",
-        vec![button(
-            "regenerate",
-            "Regenerate",
-            post(&format!("/conversations/{id}/regenerate"), &[]),
-        )],
-    ));
-    main.push(web::divider("compose-rule"));
-    main.push(web::form(
-        "composer",
-        &format!("/conversations/{id}/messages"),
-        &[("message", "Message", "")],
-    ));
-    main.push(web::form(
-        "rename",
-        &format!("/conversations/{id}/rename"),
-        &[("title", "Rename conversation", &c.title)],
-    ));
-    main.push(button(
-        "delete",
-        "Delete conversation",
-        post(&format!("/conversations/{id}/delete"), &[]),
-    ));
-    shell(s, actor, Some(id), main)
-}
+mod view;
+use view::{conversation, home};
+/// The two looks: ChatGPT's dark shell and Claude's warm paper. An absent `skin` is read
+/// from the brand, so a seed written before the key existed still gets its own look.
+pub const SKINS: &[&str] = &["chatgpt", "claude"];
 /// Documented seed keys, checked by container type before the typed load reports anything finer.
 const OBJECTS: &[&str] = &["theme", "conversations"];
 const ARRAYS: &[&str] = &["suggestions", "intents", "facts", "fallback"];
@@ -637,6 +309,13 @@ impl Service for AssistantService {
         let mut s: AssistantState = web::load(&gated)?;
         if s.brand.is_empty() {
             s.brand = "Assistant".into();
+        }
+        if !s.skin.is_empty() && !SKINS.contains(&s.skin.as_str()) {
+            return Err(cw_protocol::SimError::invalid(format!(
+                "unknown skin {}; expected one of {}",
+                s.skin,
+                SKINS.join(", ")
+            )));
         }
         for fact in &s.facts {
             // A fact the reader cannot check is just patter wearing a fact's clothes.
@@ -717,6 +396,7 @@ impl Service for AssistantService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cw_web::dom::Document as Dom;
     use serde_json::json;
     /// The two shipped seeds; the crate tests hold them to the same standard the plan sets.
     const OPENAI: &str = include_str!("../../../worlds/company-2026/sites/openai.json");
@@ -737,12 +417,34 @@ mod tests {
             .unwrap();
         serde_json::from_value(state).unwrap()
     }
-    /// A page the browser would reject is not a page; ids must be unique and colours well formed.
-    fn rendered(response: &HttpResponse) -> cw_protocol::Page {
+    /// A page the engine would refuse is not a page: every response runs through the strict
+    /// validator (known CSS only, unique ids) before a test reads it.
+    fn rendered(response: &HttpResponse) -> Dom {
         assert_eq!(response.status, 200);
-        let page: cw_protocol::Page = serde_json::from_slice(&response.body).unwrap();
-        page.validate().unwrap();
-        page
+        assert_eq!(response.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+        let html = std::str::from_utf8(&response.body).unwrap();
+        web::html::validate_strict(html).unwrap_or_else(|e| panic!("strict: {e:?}"));
+        cw_web::html::parse(html)
+    }
+    fn node(doc: &Dom, id: &str) -> cw_web::dom::NodeId {
+        *doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+    }
+    fn attr<'a>(doc: &'a Dom, id: &str, name: &str) -> &'a str {
+        doc.attr(node(doc, id), name).unwrap_or_else(|| panic!("#{id} has no {name}"))
+    }
+    fn text_of(doc: &Dom, id: &str) -> String {
+        doc.text_content(node(doc, id))
+    }
+    fn title(doc: &Dom) -> String {
+        let t = doc.descendants(Dom::ROOT).find(|n| doc.is(*n, "title")).expect("a title");
+        doc.text_content(t)
+    }
+    fn form_post(url: &str, body: &str) -> HttpRequest {
+        let mut r = HttpRequest::get(url);
+        r.method = "POST".into();
+        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        r.body = body.as_bytes().to_vec();
+        r
     }
     #[test]
     fn every_fact_citation_url_is_non_empty() {
@@ -910,7 +612,19 @@ mod tests {
         let before = state.clone();
         let home = HttpRequest::get("http://chatgpt.com/");
         let page = AssistantService.handle(&mut state, &ctx(), &home).unwrap();
-        assert_eq!(rendered(&page).title, "ChatGPT");
+        let doc = rendered(&page);
+        assert_eq!(title(&doc), "ChatGPT");
+        assert_eq!(attr(&doc, "composer", "action"), "/conversations");
+        assert_eq!(attr(&doc, "composer", "method"), "post");
+        assert_eq!(attr(&doc, "composer-message", "name"), "message");
+        assert_eq!(doc.tag(node(&doc, "composer-submit")), Some("button"));
+        assert_eq!(attr(&doc, "suggestion-1-form", "action"), "/conversations");
+        assert_eq!(text_of(&doc, "suggestion-1"), "What is the Atlas release code?");
+        assert_eq!(attr(&doc, "side-new", "href"), "/");
+        assert_eq!(attr(&doc, "side-conv-1", "href"), "/c/conv-1");
+        assert_eq!(text_of(&doc, "side-conv-1-title"), "Deterministic services");
+        assert_eq!(text_of(&doc, "home-greeting"), "What can I help with?");
+        assert!(text_of(&doc, "home-model").starts_with("GPT-5"));
         assert_eq!(
             page,
             AssistantService.handle(&mut state, &ctx(), &home).unwrap()
@@ -925,9 +639,43 @@ mod tests {
         let created: Value = serde_json::from_slice(&created.body).unwrap();
         let id = created["id"].as_str().unwrap().to_owned();
         let view = HttpRequest::get(format!("http://chatgpt.com/c/{id}"));
-        let page = rendered(&AssistantService.handle(&mut state, &ctx(), &view).unwrap());
-        let body = serde_json::to_string(&page).unwrap();
-        assert!(body.contains("ATLAS-2026") && body.contains("atlas-launch"));
+        let doc = rendered(&AssistantService.handle(&mut state, &ctx(), &view).unwrap());
+        assert_eq!(title(&doc), "What is the Atlas release code? - ChatGPT");
+        assert_eq!(text_of(&doc, "msg-0-text"), "What is the Atlas release code?");
+        assert!(text_of(&doc, "msg-1-text").contains("ATLAS-2026"));
+        assert_eq!(text_of(&doc, "msg-1-sources"), "Sources");
+        assert!(attr(&doc, "msg-1-cite-0", "href").contains("atlas-launch"));
+        assert_eq!(attr(&doc, "composer", "action"), format!("/conversations/{id}/messages"));
+        assert_eq!(attr(&doc, "regenerate-form", "action"), format!("/conversations/{id}/regenerate"));
+        assert_eq!(doc.tag(node(&doc, "regenerate")), Some("button"));
+        assert_eq!(attr(&doc, "rename", "action"), format!("/conversations/{id}/rename"));
+        assert_eq!(attr(&doc, "rename-title", "name"), "title");
+        assert_eq!(attr(&doc, "rename-title", "value"), "What is the Atlas release code?");
+        assert_eq!(attr(&doc, "delete-form", "action"), format!("/conversations/{id}/delete"));
+        assert!(attr(&doc, &format!("side-{id}"), "class").contains("on"));
+        for kept in ["shell", "sidebar", "main", "side-brand", "side-logo", "side-brand-name", "side-label", "head", "head-title", "head-model", "msg-0", "msg-0-card", "msg-0-avatar", "turn-controls", "rename-submit", "delete"] {
+            node(&doc, kept);
+        }
+        // The forms the page offers work as a browser submits them: urlencoded posts that
+        // answer with the conversation page, and a delete that lands back on the home page.
+        let sent = AssistantService
+            .handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/messages"), "message=who+owns+the+atlas+launch"))
+            .unwrap();
+        let doc = rendered(&sent);
+        assert_eq!(text_of(&doc, "msg-2-text"), "who owns the atlas launch");
+        assert!(text_of(&doc, "msg-3-text").contains("Carol"));
+        let renamed = AssistantService
+            .handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/rename"), "title=Release+code"))
+            .unwrap();
+        assert_eq!(text_of(&rendered(&renamed), "head-title"), "Release code");
+        rendered(&AssistantService.handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/regenerate"), "")).unwrap());
+        let gone = rendered(&AssistantService.handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/delete"), "")).unwrap());
+        assert!(gone.by_id(&format!("side-{id}")).is_empty());
+        node(&gone, "home-greeting");
+        let started = rendered(&AssistantService.handle(&mut state, &ctx(), &form_post("http://chatgpt.com/conversations", "message=Explain+git+rebase")).unwrap());
+        assert_eq!(text_of(&started, "msg-0-text"), "Explain git rebase");
+        let id = "conv-1".to_owned();
+        let view = HttpRequest::get(format!("http://chatgpt.com/c/{id}"));
         // Every seeded conversation renders too, which is where duplicate ids would surface.
         for source in [OPENAI, ANTHROPIC] {
             let seed: Value = serde_json::from_str(source).unwrap();
@@ -987,8 +735,11 @@ mod tests {
                 .handle(&mut state, &ctx(), &HttpRequest::get("http://chatgpt.com/"))
                 .unwrap(),
         );
-        assert!(page.theme.is_some());
-        assert_eq!(page.title, "Assistant");
+        assert_eq!(title(&page), "Assistant");
+        let root = page.descendants(Dom::ROOT).find(|n| page.is(*n, "html")).unwrap();
+        assert!(page.attr(root, "style").unwrap().contains("--accent: #10a37f"));
+        node(&page, "side-empty");
+        assert!(page.by_id("suggestions").is_empty() && page.by_id("home-model").is_empty());
     }
     #[test]
     fn seed_shape_is_gated_at_load() {

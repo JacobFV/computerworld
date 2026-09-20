@@ -1,0 +1,59 @@
+/* nytimes.com: the centred blackletter-like nameplate over a double rule, a front page of
+   serif headlines in ruled columns, and a narrow Georgia article column. */
+.skin-nyt { font-family: Georgia, "Times New Roman", serif; color: #121212; }
+.skin-nyt .masthead { position: relative; border-bottom: 0; }
+.skin-nyt .util { display: flex; gap: 10px; max-width: 1248px; margin: 0 auto; padding: 12px 24px 0; font-family: Arial, sans-serif; font-size: 11px; line-height: 14px; }
+.skin-nyt .today { font-weight: 700; }
+.skin-nyt .edition { color: #5a5a5a; }
+.skin-nyt .bar { flex-direction: column; gap: 12px; max-width: 1248px; padding: 2px 24px 0; }
+.skin-nyt .brand { font-family: "Playfair Display", Georgia, serif; font-size: 50px; line-height: 60px; font-weight: 900; letter-spacing: -0.02em; }
+.skin-nyt .sections { flex: none; align-self: stretch; justify-content: center; gap: 4px 26px; padding: 9px 0 8px; border-top: 1px solid #dfdfdf; border-bottom: 3px double #121212; font-family: Arial, sans-serif; font-size: 13px; }
+.skin-nyt .tools { position: absolute; top: 10px; right: 24px; font-family: Arial, sans-serif; font-size: 11px; }
+.skin-nyt .tools .saved { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; }
+.skin-nyt .pill { border: 0; border-radius: 3px; background: #567b95; color: #ffffff; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 12px; }
+.skin-nyt .pill:hover { background: #326891; }
+.skin-nyt .pill.on { background: #121212; }
+.skin-nyt main { max-width: 1248px; padding-top: 20px; }
+.skin-nyt .layout { grid-template-columns: minmax(0, 1fr) 320px; column-gap: 0; row-gap: 0; }
+.skin-nyt .lead { padding: 0 20px 18px 0; border-bottom: 1px solid #121212; }
+.skin-nyt .card.s2 { display: flex; gap: 20px; }
+.skin-nyt .card.s2 .text { flex: 0 0 34%; order: 0; }
+.skin-nyt .card.s2 .art { flex: 1; order: 1; height: 350px; margin: 0; border-radius: 0; }
+.skin-nyt .card .art { border-radius: 0; height: 150px; }
+.skin-nyt .card .title { font-family: Georgia, serif; font-size: 18px; line-height: 22px; }
+.skin-nyt .card.s2 .title { font-size: 30px; line-height: 34px; margin-bottom: 10px; }
+.skin-nyt .card:hover .title { text-decoration: none; color: #5a5a5a; }
+.skin-nyt .card .dek { font-family: Georgia, serif; font-size: 14px; line-height: 20px; color: #5a5a5a; }
+.skin-nyt .card.s2 .dek { font-size: 16px; line-height: 23px; }
+.skin-nyt .card .kicker { font-family: Arial, sans-serif; font-size: 10px; }
+.skin-nyt .card .section { color: #121212; letter-spacing: 0.08em; }
+.skin-nyt .card .byline { font-family: Arial, sans-serif; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: #727272; }
+.skin-nyt .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 18px 20px 0 0; }
+.skin-nyt .grid .card { padding: 0 16px 18px; margin-bottom: 18px; border-left: 1px solid #dfdfdf; border-bottom: 1px solid #dfdfdf; }
+.skin-nyt .grid .card:nth-child(3n + 1) { padding-left: 0; border-left: 0; }
+.skin-nyt .grid .card:nth-child(3n) { padding-right: 0; }
+.skin-nyt .side { border-left: 1px solid #dfdfdf; padding-left: 20px; }
+.skin-nyt .side h2 { font-family: Arial, sans-serif; font-size: 11px; letter-spacing: 0.1em; padding-bottom: 8px; border-bottom: 1px solid #121212; }
+.skin-nyt .ranked li { font-family: Georgia, serif; font-size: 16px; line-height: 20px; padding: 12px 0; border-color: #dfdfdf; }
+.skin-nyt .chip { font-family: Arial, sans-serif; font-size: 11px; border-radius: 3px; background: #f7f7f5; border: 1px solid #dfdfdf; }
+.skin-nyt .list-header { border-bottom: 3px double #121212; }
+.skin-nyt .list-header h1 { font-family: Georgia, serif; font-size: 36px; font-style: italic; }
+.skin-nyt .story { max-width: 640px; }
+.skin-nyt .story .kicker { font-family: Arial, sans-serif; font-size: 11px; }
+.skin-nyt .story .kicker a { color: #121212; letter-spacing: 0.08em; }
+.skin-nyt .story h1 { font-size: 40px; line-height: 46px; font-style: italic; }
+.skin-nyt .story .dek { font-size: 22px; line-height: 30px; color: #363636; }
+.skin-nyt .credit { border-top: 0; border-bottom: 0; padding: 0; }
+.skin-nyt .credit .who { font-family: Arial, sans-serif; font-size: 13px; font-weight: 700; color: #121212; }
+.skin-nyt .story .art .plate { border-radius: 0; height: 400px; }
+.skin-nyt .story figcaption { font-family: Arial, sans-serif; }
+.skin-nyt .body p { font-size: 20px; line-height: 30px; color: #363636; }
+.skin-nyt .body a { color: #326891; }
+.skin-nyt .readmore, .skin-nyt .newsletter { background: #f7f7f5; border-radius: 0; border-top: 2px solid #121212; font-family: Arial, sans-serif; }
+.skin-nyt .newsletter h2 { font-family: Georgia, serif; font-style: italic; }
+.skin-nyt .comments { max-width: 640px; font-family: Arial, sans-serif; }
+.skin-nyt #comment-submit, .skin-nyt #subscribe-submit { background: #121212; border-radius: 3px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+.skin-nyt .foot { border-top: 3px double #121212; margin-left: 24px; margin-right: 24px; font-family: Arial, sans-serif; font-size: 12px; }
+.skin-nyt .foot .inner { max-width: 1200px; padding-left: 0; padding-right: 0; }
+.skin-nyt .foot-brand { font-family: "Playfair Display", Georgia, serif; font-weight: 900; font-size: 20px; }
+.skin-nyt .pill, .skin-nyt .avatar, .skin-nyt input[type="text"] { font-family: Arial, sans-serif; }

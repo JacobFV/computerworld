@@ -1,9 +1,11 @@
 //! The shipped Slack seed and the workspace's behaviour: every channel renders, every
 //! search entry resolves, threads, pins, unread counts and mentions all hold, and the
 //! page is laid out the way Slack is.
-use cw_protocol::{HttpRequest, Page, PageElement};
+use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
+use cw_service_common::html::validate_strict;
 use cw_service_slack::SlackService;
+use cw_web::dom::Document as Dom;
 use serde_json::{json, Value};
 
 fn ctx(actor: &str) -> ServiceContext {
@@ -27,6 +29,9 @@ fn get(state: &mut Value, actor: &str, path: &str) -> (u16, String) {
             &HttpRequest::get(format!("http://slack.com{path}")),
         )
         .unwrap();
+    if r.status == 200 && !path.starts_with("/api/") {
+        assert_eq!(r.header("content-type"), Some("text/html; charset=utf-8"));
+    }
     (r.status, String::from_utf8(r.body).unwrap())
 }
 fn post(state: &mut Value, actor: &str, path: &str, body: Value) -> (u16, String) {
@@ -39,6 +44,21 @@ fn post(state: &mut Value, actor: &str, path: &str, body: Value) -> (u16, String
         .unwrap();
     (r.status, String::from_utf8(r.body).unwrap())
 }
+/// A POST the way the browser sends a form: url-encoded fields.
+fn post_form(state: &mut Value, actor: &str, path: &str, fields: &[(&str, &str)]) -> (u16, String) {
+    let mut r = HttpRequest::get(format!("http://slack.com{path}"));
+    r.method = "POST".into();
+    r.headers.insert(
+        "content-type".into(),
+        "application/x-www-form-urlencoded".into(),
+    );
+    r.body = cw_service_common::html::href("", fields)
+        .trim_start_matches('?')
+        .as_bytes()
+        .to_vec();
+    let r = SlackService.handle(state, &ctx(actor), &r).unwrap();
+    (r.status, String::from_utf8(r.body).unwrap())
+}
 fn seeded() -> Value {
     let site = site();
     assert_eq!(site["kind"], "slack");
@@ -47,32 +67,49 @@ fn seeded() -> Value {
         .initialize(site["initial_state"].clone(), &ctx("alice"))
         .unwrap()
 }
-fn page(body: &str) -> Page {
-    let page: Page = serde_json::from_str(body).unwrap();
-    page.validate().unwrap();
-    page
+/// The page parsed by the engine, after the strict validator has passed it.
+fn page(body: &str) -> Dom {
+    validate_strict(body).unwrap_or_else(|e| panic!("strict: {e:?}"));
+    cw_web::html::parse(body)
 }
-/// Every element of a page, depth first.
-fn elements(page: &Page) -> Vec<&PageElement> {
-    fn walk<'a>(items: &'a [PageElement], out: &mut Vec<&'a PageElement>) {
-        for e in items {
-            out.push(e);
-            match e {
-                PageElement::Group { children, .. }
-                | PageElement::Form { children, .. }
-                | PageElement::Row { children, .. }
-                | PageElement::Grid { children, .. }
-                | PageElement::Card { children, .. } => walk(children, out),
-                _ => {}
-            }
-        }
-    }
-    let mut out = vec![];
-    walk(&page.elements, &mut out);
-    out
+fn has(page: &Dom, id: &str) -> bool {
+    !page.by_id(id).is_empty()
 }
-fn find<'a>(page: &'a Page, id: &str) -> Option<&'a PageElement> {
-    elements(page).into_iter().find(|e| e.id() == id)
+fn text_of(page: &Dom, id: &str) -> String {
+    let node = *page.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+    page.text_content(node)
+}
+fn attr_of(page: &Dom, id: &str, name: &str) -> String {
+    let node = *page.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+    page.attr(node, name).unwrap_or_default().to_owned()
+}
+fn tag_of(page: &Dom, id: &str) -> String {
+    let node = *page.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+    page.tag(node).unwrap_or_default().to_owned()
+}
+fn has_class(page: &Dom, id: &str, class: &str) -> bool {
+    let node = *page.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+    page.has_class(node, class)
+}
+/// The form an element belongs to.
+fn form_of(page: &Dom, id: &str) -> cw_web::dom::NodeId {
+    let node = *page.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+    std::iter::once(node)
+        .chain(page.ancestors(node))
+        .find(|n| page.is(*n, "form"))
+        .unwrap_or_else(|| panic!("#{id} is in no form"))
+}
+/// The `name=value` of every hidden field of a form.
+fn hidden_fields(page: &Dom, form: cw_web::dom::NodeId) -> Vec<(String, String)> {
+    page.descendants(form)
+        .filter(|n| page.is(*n, "input") && page.attr(*n, "type") == Some("hidden"))
+        .map(|n| {
+            (
+                page.attr(n, "name").unwrap_or_default().to_owned(),
+                page.attr(n, "value").unwrap_or_default().to_owned(),
+            )
+        })
+        .collect()
 }
 
 #[test]
@@ -96,10 +133,7 @@ fn the_seed_renders_every_channel_and_search_entry() {
     ] {
         let (status, body) = get(&mut state, "alice", path);
         assert_eq!(status, 200, "{path}");
-        serde_json::from_str::<Page>(&body)
-            .unwrap()
-            .validate()
-            .unwrap_or_else(|e| panic!("{path}: {e}"));
+        validate_strict(&body).unwrap_or_else(|e| panic!("{path}: {e:?}"));
     }
     for entry in site["search_entries"].as_array().unwrap() {
         let url = entry["url"].as_str().unwrap();
@@ -126,102 +160,121 @@ fn the_workspace_is_laid_out_like_slack() {
     let mut state = seeded();
     let body = get(&mut state, "bob", "/channels/eng").1;
     let p = page(&body);
-    assert_eq!(p.title, "#eng (Channel) - Northstar - Slack");
-    // The top bar and the header are pinned to the top, the composer to the bottom.
-    let pins: Vec<(&str, Option<&str>)> = p
-        .elements
-        .iter()
-        .map(|e| match e {
-            PageElement::Row { id, style, .. } => (id.as_str(), style.pin.as_deref()),
-            _ => (e.id(), None),
-        })
+    let title = p.descendants(Dom::ROOT).find(|n| p.is(*n, "title")).unwrap();
+    assert_eq!(p.text_content(title), "#eng (Channel) - Northstar - Slack");
+    // An app shell: the top bar over the frame, the frame holding the rail and the
+    // panel, the panel the sidebar and the conversation, whose list scrolls alone
+    // between the header and the composer.
+    let body_children: Vec<String> = p
+        .element_children(p.body().unwrap())
+        .map(|n| p.attr(n, "id").unwrap_or_default().to_owned())
         .collect();
-    assert_eq!(
-        pins,
-        vec![
-            ("topbar", Some("top")),
-            ("header", Some("top")),
-            ("shell", None),
-            ("composer", Some("bottom")),
-        ]
-    );
-    assert!(body.contains("Search Northstar"));
-    let Some(PageElement::Input { label, .. }) = find(&p, "send-text") else {
-        panic!("composer field");
-    };
-    assert_eq!(label, "Message # eng");
-    assert!(
-        matches!(find(&p, "send-submit"), Some(PageElement::Icon { name, .. }) if name == "send")
-    );
-    assert!(find(&p, "send-bold").is_some() && find(&p, "send-hint").is_some());
+    assert_eq!(body_children, ["topbar", "app"]);
+    let main_children: Vec<String> = p
+        .element_children(p.by_id("main")[0])
+        .map(|n| p.attr(n, "id").unwrap_or_default().to_owned())
+        .collect();
+    assert_eq!(main_children, ["channel-header", "messages", "composer"]);
+    assert!(has_class(&p, "messages", "scroller"));
+    assert_eq!(text_of(&p, "search-text"), "Search Northstar");
+    // The composer: one POST form with the field and the send button.
+    assert_eq!(tag_of(&p, "send"), "form");
+    assert_eq!(attr_of(&p, "send", "action"), "/channels/eng/messages");
+    assert_eq!(attr_of(&p, "send", "method"), "post");
+    assert_eq!(attr_of(&p, "send-text", "name"), "text");
+    assert_eq!(attr_of(&p, "send-text", "aria-label"), "Message # eng");
+    assert_eq!(tag_of(&p, "send-submit"), "button");
+    assert_eq!(attr_of(&p, "send-submit", "aria-label"), "Send message");
+    assert_eq!(form_of(&p, "send-submit"), p.by_id("send")[0]);
+    assert!(has(&p, "send-bold") && has(&p, "send-hint"));
     // The header: name, topic, member count opening the member list, pins.
-    assert!(
-        matches!(find(&p, "channel-title"), Some(PageElement::Styled { text, .. }) if text == "# eng")
-    );
-    assert!(
-        matches!(find(&p, "channel-members"), Some(PageElement::Card { action: Some(a), .. }) if a.url == "/channels/eng?members=1")
-    );
-    assert!(
-        matches!(find(&p, "channel-pins"), Some(PageElement::Styled { text, .. }) if text == "2 Pinned")
-    );
-    assert!(find(&p, "chat-5-pinned").is_some() && find(&p, "channel-topic").is_some());
+    assert_eq!(text_of(&p, "channel-title"), "# eng");
+    assert_eq!(tag_of(&p, "channel-members"), "a");
+    assert_eq!(attr_of(&p, "channel-members", "href"), "/channels/eng?members=1");
+    assert_eq!(text_of(&p, "channel-members-count"), "4");
+    assert_eq!(text_of(&p, "channel-pins"), "2 Pinned");
+    assert!(has(&p, "chat-5-pinned") && has(&p, "channel-topic"));
     // The sidebar: hash and lock marks, the open channel, DM rows with presence.
-    assert!(find(&p, "nav-eng-hash").is_some() && find(&p, "nav-atlas-release-lock").is_some());
-    assert!(
-        matches!(find(&p, "nav-eng"), Some(PageElement::Card { style, .. }) if style.background.as_deref() == Some("#1164a3"))
-    );
-    assert!(
-        find(&p, "dm-alice|bob-presence").is_some() && find(&p, "dm-alice|bob|carol").is_some()
-    );
-    assert!(find(&p, "rail-home").is_some() && find(&p, "rail-activity").is_some());
+    assert!(has(&p, "nav-eng-hash") && has(&p, "nav-atlas-release-lock"));
+    assert_eq!(attr_of(&p, "nav-eng", "href"), "/channels/eng");
+    assert!(has_class(&p, "nav-eng", "current") && !has_class(&p, "nav-random", "current"));
+    assert!(has(&p, "dm-alice|bob-presence"));
+    assert_eq!(attr_of(&p, "dm-alice|bob|carol", "href"), "/channels/alice|bob|carol");
+    assert_eq!(attr_of(&p, "rail-home", "href"), "/");
+    assert_eq!(attr_of(&p, "rail-dms", "href"), "/dms");
+    assert!(has(&p, "rail-activity") && has(&p, "rail-mark"));
     // Messages: date dividers, grouped runs, clock times, emoji, mentions and code.
+    let days: Vec<String> = p
+        .descendants(Dom::ROOT)
+        .filter(|n| p.has_class(*n, "day-label"))
+        .map(|n| p.text_content(n))
+        .collect();
     for day in ["Today", "Yesterday", "Tuesday", "Monday"] {
-        assert!(body.contains(&format!("\"text\":\"{day}\"")), "{day}");
+        assert!(days.iter().any(|d| d == day), "{day} in {days:?}");
     }
-    assert!(find(&p, "chat-5-author").is_some() && find(&p, "chat-5-avatar").is_some());
-    assert!(find(&p, "chat-6-author").is_none() && find(&p, "chat-6-avatar").is_none());
-    assert!(
-        matches!(find(&p, "chat-12-time"), Some(PageElement::Styled { text, .. }) if text == "9:41 AM")
-    );
-    assert!(body.contains("✅") && !body.contains(":white_check_mark:"));
-    assert!(elements(&p).iter().any(|e| matches!(e, PageElement::Styled { text, style, .. } if text == "HashMap" && style.mono == Some(true))));
-    assert!(elements(&p).iter().any(|e| matches!(e, PageElement::Styled { text, style, .. } if text == "@admin" && style.background.is_some())));
-    assert!(elements(&p).iter().any(|e| matches!(e, PageElement::Link { id, url, .. } if id.starts_with("chat-12-text") && url == "http://github.com/northstar/atlas/pull/15")));
-    // Long lines are cut into rows at word boundaries, narrower beside a pane.
-    assert!(find(&p, "chat-2-text").is_some() && find(&p, "chat-2-text-1").is_none());
+    assert!(has(&p, "chat-5-author") && has(&p, "chat-5-avatar"));
+    assert!(!has(&p, "chat-6-author") && !has(&p, "chat-6-avatar"));
+    assert_eq!(text_of(&p, "chat-12-time"), "9:41 AM");
+    assert!(text_of(&p, "chat-6-text").ends_with("deterministic. ✅"));
+    let code: Vec<String> = p
+        .descendants(Dom::ROOT)
+        .filter(|n| p.is(*n, "code"))
+        .map(|n| p.text_content(n))
+        .collect();
+    assert!(code.iter().any(|c| c == "HashMap"), "{code:?}");
+    assert!(p
+        .descendants(Dom::ROOT)
+        .any(|n| p.has_class(n, "mention") && p.text_content(n) == "@admin"));
+    assert!(p.descendants(Dom::ROOT).any(|n| p.is(n, "a")
+        && p.attr(n, "id").is_some_and(|id| id.starts_with("chat-12-text"))
+        && p.attr(n, "href") == Some("http://github.com/northstar/atlas/pull/15")));
+    // A message is one block of text the page wraps, beside a pane or not.
+    assert!(has(&p, "chat-2-text") && !has(&p, "chat-2-text-1"));
+    assert!(text_of(&p, "chat-2-text").starts_with("That smells like hash-map iteration order."));
     let beside = page(&get(&mut state, "bob", "/channels/eng?thread=chat-1").1);
-    assert!(find(&beside, "chat-2-text-1").is_some() && find(&beside, "thread-pane").is_some());
+    assert!(has(&beside, "chat-2-text") && has(&beside, "thread-pane"));
     // Unread channels are bold; only mentions and DMs carry a count.
-    assert!(find(&p, "nav-eng-unread").is_none() && find(&p, "nav-atlas-release-unread").is_some());
-    assert!(
-        matches!(find(&p, "dm-alice|bob-unread"), Some(PageElement::Badge { text, .. }) if text == "4")
-    );
+    assert!(has_class(&p, "nav-eng", "current") && has_class(&p, "nav-random", "unread"));
+    assert!(!has(&p, "nav-eng-unread") && has(&p, "nav-atlas-release-unread"));
+    assert_eq!(text_of(&p, "dm-alice|bob-unread"), "4");
     // Reactions are chips that react; the actor's own are outlined in blue.
-    assert!(
-        matches!(find(&p, "chat-2-react-eyes"), Some(PageElement::Button { text, style: Some(s), action, .. }) if text == "👀 2" && s.border.as_deref() == Some("#1264a3") && action.url == "/channels/eng/messages/chat-2/reactions")
-    );
-    assert!(
-        matches!(find(&p, "chat-14-react-eyes"), Some(PageElement::Button { style: Some(s), .. }) if s.border.as_deref() == Some("#e0e0e0"))
-    );
-    // Threads collapse to a link row; the toolbar floats over the last message only.
-    assert!(
-        matches!(find(&p, "chat-1-replies"), Some(PageElement::Link { text, url, .. }) if text == "3 replies" && url == "/channels/eng?thread=chat-1")
-    );
-    assert!(
-        find(&p, "chat-1-thread-avatar-bob").is_some() && find(&p, "chat-1-last-reply").is_some()
-    );
-    assert!(find(&p, "chat-1-reply-body").is_none() && find(&p, "chat-3-text").is_none());
-    assert!(find(&p, "chat-15-quick-+1").is_some() && find(&p, "chat-15-open-thread").is_some());
-    assert!(find(&p, "chat-14-quick-+1").is_none() && find(&p, "chat-14-open-thread").is_none());
-    assert!(find(&p, "chat-15-pin").is_some() && find(&p, "chat-15-add-reaction").is_some());
+    assert_eq!(tag_of(&p, "chat-2-react-eyes"), "button");
+    assert_eq!(text_of(&p, "chat-2-react-eyes"), "👀 2");
+    assert!(has_class(&p, "chat-2-react-eyes", "mine"));
+    assert_eq!(attr_of(&p, "chat-2-react-eyes", "name"), "reaction");
+    assert_eq!(attr_of(&p, "chat-2-react-eyes", "value"), "eyes");
+    let chips = form_of(&p, "chat-2-react-eyes");
+    assert_eq!(p.attr(chips, "action"), Some("/channels/eng/messages/chat-2/reactions"));
+    assert_eq!(p.attr(chips, "method"), Some("post"));
+    assert!(!has_class(&p, "chat-14-react-eyes", "mine"));
+    // Threads collapse to a link row.
+    assert_eq!(text_of(&p, "chat-1-replies"), "3 replies");
+    assert_eq!(attr_of(&p, "chat-1-replies", "href"), "/channels/eng?thread=chat-1");
+    assert!(has(&p, "chat-1-thread-avatar-bob") && has(&p, "chat-1-last-reply"));
+    assert!(!has(&p, "chat-1-reply-body") && !has(&p, "chat-3-text"));
+    // Every message carries the toolbar the pointer brings up; the last one's shows.
+    for id in ["chat-14", "chat-15"] {
+        assert_eq!(attr_of(&p, &format!("{id}-quick-+1"), "value"), "+1");
+        let tools = form_of(&p, &format!("{id}-quick-+1"));
+        assert_eq!(
+            p.attr(tools, "action").unwrap(),
+            format!("/channels/eng/messages/{id}/reactions")
+        );
+        assert_eq!(
+            attr_of(&p, &format!("{id}-open-thread"), "href"),
+            format!("/channels/eng?thread={id}")
+        );
+        assert_eq!(
+            attr_of(&p, &format!("{id}-pin"), "formaction"),
+            format!("/channels/eng/messages/{id}/pin")
+        );
+        assert!(has(&p, &format!("{id}-add-reaction")));
+    }
+    assert!(has_class(&p, "chat-15-row", "last") && !has_class(&p, "chat-14-row", "last"));
     // Bob is mentioned nowhere in #eng, but is in the release channel.
-    assert!(
-        matches!(find(&p, "chat-15-row"), Some(PageElement::Row { style, .. }) if style.background.is_none())
-    );
+    assert!(!has_class(&p, "chat-15-row", "mentioned"));
     let release = page(&get(&mut state, "bob", "/channels/atlas-release").1);
-    assert!(
-        matches!(find(&release, "chat-35-row"), Some(PageElement::Row { style, .. }) if style.background.is_some())
-    );
+    assert!(has_class(&release, "chat-35-row", "mentioned"));
     // Slack permalinks in seeded prose are /archives/<channel>.
     assert_eq!(get(&mut state, "bob", "/archives/eng").1, body);
 }
@@ -230,36 +283,36 @@ fn the_workspace_is_laid_out_like_slack() {
 fn threads_open_in_a_pane_and_replies_land_back_in_it() {
     let mut state = seeded();
     let p = page(&get(&mut state, "carol", "/channels/eng?thread=chat-1").1);
-    assert!(find(&p, "thread-pane").is_some() && find(&p, "thread-close").is_some());
-    assert!(find(&p, "chat-3-text").is_some() && find(&p, "chat-17-text").is_some());
-    assert!(find(&p, "thread-chat-1-text").is_some() && find(&p, "chat-1-text").is_some());
-    assert!(
-        matches!(find(&p, "thread-count-text"), Some(PageElement::Styled { text, .. }) if text == "3 replies")
+    assert!(has(&p, "thread-pane"));
+    assert_eq!(attr_of(&p, "thread-close", "href"), "/channels/eng");
+    assert!(has(&p, "chat-3-text") && has(&p, "chat-17-text"));
+    assert!(has(&p, "thread-chat-1-text") && has(&p, "chat-1-text"));
+    assert_eq!(text_of(&p, "thread-count-text"), "3 replies");
+    assert_eq!(tag_of(&p, "chat-1-reply"), "form");
+    assert_eq!(attr_of(&p, "chat-1-reply", "action"), "/channels/eng/messages");
+    assert_eq!(attr_of(&p, "chat-1-reply", "method"), "post");
+    assert_eq!(
+        hidden_fields(&p, p.by_id("chat-1-reply")[0]),
+        [("parent".to_owned(), "chat-1".to_owned())]
     );
-    let Some(PageElement::Form { action, .. }) = find(&p, "chat-1-reply") else {
-        panic!("reply form");
-    };
-    assert_eq!(action.fields["parent"], "chat-1");
-    assert_eq!(action.fields["text"], "$chat-1-reply-body");
-    assert!(find(&p, "chat-1-reply-body").is_some());
+    assert_eq!(attr_of(&p, "chat-1-reply-body", "name"), "text");
+    assert_eq!(form_of(&p, "chat-1-reply-submit"), p.by_id("chat-1-reply")[0]);
     // An unknown thread is the plain conversation.
-    assert!(find(
+    assert!(!has(
         &page(&get(&mut state, "carol", "/channels/eng?thread=chat-999").1),
         "thread-pane"
-    )
-    .is_none());
-    let (status, threaded) = post(
+    ));
+    // The reply arrives the way the browser submits the form.
+    let (status, threaded) = post_form(
         &mut state,
         "carol",
         "/channels/eng/messages",
-        json!({"text":"Accepted answer is the hash order.","parent":"chat-1"}),
+        &[("parent", "chat-1"), ("text", "Accepted answer is the hash order.")],
     );
     assert_eq!(status, 200);
     let p = page(&threaded);
-    assert!(find(&p, "thread-pane").is_some() && threaded.contains("Accepted answer"));
-    assert!(
-        matches!(find(&p, "chat-1-replies"), Some(PageElement::Link { text, .. }) if text == "4 replies")
-    );
+    assert!(has(&p, "thread-pane") && threaded.contains("Accepted answer"));
+    assert_eq!(text_of(&p, "chat-1-replies"), "4 replies");
     let before = state.clone();
     assert_eq!(
         post(
@@ -280,29 +333,33 @@ fn threads_open_in_a_pane_and_replies_land_back_in_it() {
 fn the_member_list_and_the_dm_view() {
     let mut state = seeded();
     let members = get(&mut state, "alice", "/channels/eng?members=1").1;
-    assert!(members.contains("Software Engineer") && members.contains("member-carol-status"));
-    assert!(find(&page(&members), "members-close").is_some());
+    let p = page(&members);
+    assert_eq!(text_of(&p, "member-alice-title"), "Software Engineer");
+    assert!(has(&p, "member-carol-status"));
+    assert_eq!(text_of(&p, "members-label"), "Members · 4");
+    assert_eq!(attr_of(&p, "members-close", "href"), "/channels/eng");
     assert!(!get(&mut state, "alice", "/channels/eng")
         .1
         .contains("member-carol-status"));
     let dm = get(&mut state, "alice", "/channels/alice|bob").1;
     let p = page(&dm);
-    assert_eq!(p.title, "bob (DM) - Northstar - Slack");
-    assert!(find(&p, "channel-presence").is_some() && find(&p, "channel-avatar").is_some());
-    assert!(
-        matches!(find(&p, "channel-status"), Some(PageElement::Styled { text, .. }) if text.contains("Windows CI"))
-    );
-    assert!(find(&p, "chat-40-author").is_some() && find(&p, "chat-41-author").is_some());
+    let title = p.descendants(Dom::ROOT).find(|n| p.is(*n, "title")).unwrap();
+    assert_eq!(p.text_content(title), "bob (DM) - Northstar - Slack");
+    assert!(has(&p, "channel-presence") && has(&p, "channel-avatar"));
+    assert!(text_of(&p, "channel-status").contains("Windows CI"));
+    assert!(has(&p, "chat-40-author") && has(&p, "chat-41-author"));
     assert!(dm.contains("🎉"));
     // A sent message is stamped on Slack's clock and lands in the conversation.
-    let (status, sent) = post(
+    let (status, sent) = post_form(
         &mut state,
         "alice",
         "/channels/alice|bob/messages",
-        json!({"text":"see you at standup"}),
+        &[("text", "see you at standup")],
     );
     assert_eq!(status, 200);
-    assert!(sent.contains("see you at standup"));
+    assert!(page(&sent)
+        .descendants(Dom::ROOT)
+        .any(|n| page(&sent).has_class(n, "text") && page(&sent).text_content(n) == "see you at standup"));
     let last = state["dms"]["alice|bob"]["messages"]
         .as_array()
         .unwrap()
@@ -310,6 +367,16 @@ fn the_member_list_and_the_dm_view() {
         .unwrap()
         .clone();
     assert_eq!(last["time"], 60 + cw_service_slack::HISTORY);
+    // Text is escaped on its way into the page.
+    post_form(
+        &mut state,
+        "alice",
+        "/channels/alice|bob/messages",
+        &[("text", "<script>alert(1)</script> & co")],
+    );
+    let escaped = get(&mut state, "bob", "/channels/alice|bob").1;
+    assert!(escaped.contains("&lt;script&gt;alert(1)&lt;/script&gt; &amp; co"));
+    page(&escaped);
 }
 
 #[test]
@@ -319,21 +386,20 @@ fn unread_counts_and_mentions_are_per_person() {
     let unread: Value = serde_json::from_str(&get(&mut state, "bob", "/api/unread").1).unwrap();
     assert_eq!(unread["eng"], 17);
     let banner = page(&get(&mut state, "bob", "/channels/eng").1);
-    assert!(
-        matches!(find(&banner, "read-count"), Some(PageElement::Styled { text, .. }) if text == "17 new messages")
-    );
-    assert!(find(&banner, "read-submit").is_some());
-    assert_eq!(
-        post(&mut state, "bob", "/api/channels/eng/read", json!({})).0,
-        200
-    );
+    assert_eq!(text_of(&banner, "read-count"), "17 new messages");
+    assert_eq!(attr_of(&banner, "read", "action"), "/channels/eng/read");
+    assert_eq!(attr_of(&banner, "read", "method"), "post");
+    assert_eq!(form_of(&banner, "read-submit"), banner.by_id("read")[0]);
+    // The button's form posts no fields and lands back on the channel, read.
+    let (status, read) = post_form(&mut state, "bob", "/channels/eng/read", &[]);
+    assert_eq!(status, 200);
+    assert!(!has(&page(&read), "read-submit"));
     let unread: Value = serde_json::from_str(&get(&mut state, "bob", "/api/unread").1).unwrap();
     assert!(unread.get("eng").is_none());
-    assert!(find(
+    assert!(!has(
         &page(&get(&mut state, "bob", "/channels/eng").1),
         "read-submit"
-    )
-    .is_none());
+    ));
     let (status, sent) = post(
         &mut state,
         "alice",
@@ -348,12 +414,8 @@ fn unread_counts_and_mentions_are_per_person() {
     assert_eq!(mentions.as_array().unwrap().len(), 2);
     assert_eq!(mentions[1]["channel"], "eng");
     let sidebar = get(&mut state, "bob", "/").1;
-    assert!(
-        matches!(find(&page(&sidebar), "nav-eng-unread"), Some(PageElement::Badge { text, .. }) if text == "1")
-    );
-    assert!(
-        matches!(find(&page(&sidebar), "rail-activity-count"), Some(PageElement::Badge { text, .. }) if text == "2")
-    );
+    assert_eq!(text_of(&page(&sidebar), "nav-eng-unread"), "1");
+    assert_eq!(text_of(&page(&sidebar), "rail-activity-count"), "2");
     // Carol was not mentioned and has her own count.
     let mentions: Value =
         serde_json::from_str(&get(&mut state, "carol", "/api/mentions").1).unwrap();
@@ -387,7 +449,14 @@ fn pins_status_and_group_dms() {
         .0,
         200
     );
-    assert!(get(&mut state, "alice", "/").1.contains("🍜 lunch"));
+    assert_eq!(
+        text_of(&page(&get(&mut state, "alice", "/").1), "my-status"),
+        "🍜 lunch"
+    );
+    // The browser posts the status to `/status` and lands on a page of its own.
+    let (status, landed) = post_form(&mut state, "alice", "/status", &[("status", "🚀 shipping")]);
+    assert_eq!(status, 200);
+    assert_eq!(text_of(&page(&landed), "my-status"), "🚀 shipping");
     let (status, body) = post(
         &mut state,
         "alice",
@@ -407,7 +476,34 @@ fn pins_status_and_group_dms() {
         .1
         .contains("alice, carol"));
     // A DM with someone new is one click in the sidebar, and lands on the conversation.
-    let (status, opened) = post(&mut state, "admin", "/dms", json!({"to":"bob"}));
+    let home = page(&get(&mut state, "admin", "/").1);
+    assert_eq!(tag_of(&home, "start-bob"), "button");
+    let start = form_of(&home, "start-bob");
+    assert_eq!(home.attr(start, "action"), Some("/dms"));
+    assert_eq!(home.attr(start, "method"), Some("post"));
+    assert_eq!(hidden_fields(&home, start), [("to".to_owned(), "bob".to_owned())]);
+    let (status, opened) = post_form(&mut state, "admin", "/dms", &[("to", "bob")]);
     assert_eq!(status, 200);
-    assert_eq!(page(&opened).title, "bob (DM) - Northstar - Slack");
+    let opened = page(&opened);
+    let title = opened
+        .descendants(Dom::ROOT)
+        .find(|n| opened.is(*n, "title"))
+        .unwrap();
+    assert_eq!(opened.text_content(title), "bob (DM) - Northstar - Slack");
+    // Pinning from the toolbar and reacting from a chip are form posts too.
+    let (status, pinned) = post_form(&mut state, "alice", "/channels/eng/messages/chat-8/pin", &[]);
+    assert_eq!(status, 200);
+    assert!(has(&page(&pinned), "chat-8-pinned"));
+    assert!(state["channels"]["eng"]["pins"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("chat-8")));
+    let (status, reacted) = post_form(
+        &mut state,
+        "alice",
+        "/channels/eng/messages/chat-8/reactions",
+        &[("reaction", "tada")],
+    );
+    assert_eq!(status, 200);
+    assert!(has_class(&page(&reacted), "chat-8-react-tada", "mine"));
 }

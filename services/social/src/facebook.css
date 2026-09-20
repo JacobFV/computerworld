@@ -1,0 +1,93 @@
+/* Facebook: a white bar with the round blue f, a pill search and the tab icons; a grey page
+   with shortcuts on the left, white feed cards in the middle, contacts on the right. */
+body { font-family: Arial, Helvetica, sans-serif; background-color: #f0f2f5; }
+.topbar { position: sticky; top: 0; z-index: 5; height: 56px; background-color: #ffffff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
+.topbar-in { display: flex; align-items: center; height: 56px; padding: 0 16px; }
+.logo::before { content: "f"; display: block; width: 40px; height: 40px; line-height: 48px; border-radius: 50%; background-color: var(--accent); color: #ffffff; font-size: 40px; font-weight: 700; text-align: center; overflow: hidden; }
+.wordmark { display: none; }
+.top-search { width: 240px; height: 40px; box-sizing: border-box; margin-left: 8px; padding: 0 12px; border-radius: 9999px; background-color: #f0f2f5; color: var(--muted); }
+.top-search .ico { margin-right: 8px; font-size: 16px; }
+.nav { display: flex; flex: 1 1 auto; justify-content: center; height: 56px; margin-right: 200px; }
+.nav-item { width: 112px; justify-content: center; color: var(--muted); box-sizing: border-box; border-radius: 8px; }
+.nav-item:hover { background-color: #f0f2f5; }
+.nav-item.on { color: var(--accent); border-radius: 0; box-shadow: inset 0 -3px 0 var(--accent); }
+.nav .ico { font-size: 26px; }
+.nav-text { display: none; }
+.topbar .avatar { margin-left: auto; width: 40px; height: 40px; line-height: 40px; }
+
+.shell { justify-content: space-between; padding-top: 16px; }
+.left { position: sticky; top: 72px; flex: 0 0 300px; box-sizing: border-box; padding: 0 8px; }
+.left .me-card, .shortcut, .left .person { display: flex; align-items: center; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 15px; }
+.left .me-card:hover, .shortcut:hover, .person:hover { background-color: #e4e6e9; }
+.left .me-handle, .left .person-handle, .side .person-handle { display: none; }
+.left .avatar, .side .avatar { width: 36px; height: 36px; line-height: 36px; font-size: 13px; }
+.shortcut .ico { width: 36px; height: 36px; line-height: 36px; border-radius: 50%; background-color: #e4e6eb; color: var(--accent); font-size: 20px; margin-right: 12px; }
+.left-title { margin: 12px 8px 4px; padding-top: 12px; border-top: 1px solid #ced0d4; font-size: 17px; color: var(--muted); font-weight: 600; }
+.person-name { font-weight: 600; }
+
+.main { flex: 0 1 680px; padding: 0 32px; box-sizing: border-box; }
+.feed-title { font-size: 17px; color: var(--muted); margin: 0 0 10px; }
+.page-home .feed-title { display: none; }
+.section-title { font-size: 17px; margin: 16px 0 10px; }
+.compose, .post, .profile, .experience, .search-form, .threads, .convo { background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); margin-bottom: 16px; }
+.compose { padding: 12px 16px; }
+.compose-title { display: none; }
+.compose input { height: 40px; padding: 0 14px; border-radius: 9999px; background-color: #f0f2f5; font-size: 17px; }
+.compose-bar { margin-top: 12px; padding-top: 8px; border-top: 1px solid #ced0d4; }
+.compose-tools { color: #45bd62; font-size: 22px; }
+.compose-tools .ico { margin-right: 24px; }
+button.primary { border-radius: 6px; padding: 8px 20px; }
+
+.post { padding: 12px 0 4px; }
+.post-head { padding: 0 16px; }
+.name { font-size: 15px; font-weight: 600; }
+.handle { display: block; font-size: 13px; }
+.verified { width: 14px; height: 14px; line-height: 14px; font-size: 10px; }
+.post-text { padding: 10px 16px 12px; line-height: 1.34; }
+.photo { aspect-ratio: 4 / 3; }
+.quote { margin: 0 16px 12px; padding: 12px; border: 1px solid #ced0d4; border-radius: 8px; }
+.acts { margin: 0 16px; border-top: 1px solid #ced0d4; padding: 4px 0; }
+.acts .pill-form, .acts .act { flex: 1 1 0; }
+.acts .act { order: 2; }
+.acts .pill-form { order: 3; }
+.acts .pill-form:last-child { order: 1; }
+.pill, .act { width: 100%; box-sizing: border-box; justify-content: center; padding: 8px 0; border-radius: 4px; font-size: 15px; font-weight: 600; }
+.pill:hover, .act:hover { background-color: #f0f2f5; }
+.pill.on { color: var(--accent); }
+.pill .ico, .act .ico { font-size: 18px; }
+.act .n { margin-right: 4px; }
+
+.side { position: sticky; top: 72px; flex: 0 0 300px; box-sizing: border-box; padding: 0 8px; }
+.panel-title { font-size: 17px; color: var(--muted); font-weight: 600; padding: 4px 8px 8px; }
+.side .person { padding: 8px; border-radius: 8px; }
+.side .person .avatar { box-shadow: 0 0 0 2px #f0f2f5, 0 0 0 0 #31a24c; }
+
+.banner { height: 250px; border-radius: 8px 8px 0 0; }
+.profile-row { padding: 0 24px; margin-top: -40px; }
+.profile .avatar.huge { width: 168px; height: 168px; line-height: 160px; border: 4px solid #ffffff; font-size: 56px; }
+.profile-body { padding: 10px 24px 18px; }
+.profile-name { font-size: 32px; font-weight: 700; }
+.profile-handle { color: var(--muted); }
+.headline, .bio, .meta, .counts { margin-top: 10px; }
+.profile-acts { padding-bottom: 16px; }
+.profile-acts .pill { width: auto; padding: 9px 16px; border-radius: 6px; background-color: var(--accent); color: #ffffff; }
+.profile-acts .pill.on { background-color: #e4e6eb; color: var(--ink); }
+.experience { padding: 8px 16px; }
+.experience .exp { padding: 10px 0; }
+.experience .section-title { margin-top: 8px; }
+
+.page-inbox .main { flex: 1 1 auto; }
+.inbox { gap: 16px; }
+.threads { padding: 8px; box-sizing: border-box; }
+.threads .feed-title { display: block; font-size: 24px; color: var(--ink); font-weight: 700; padding: 8px; }
+.thread { border-radius: 8px; padding: 10px 8px; }
+.thread:hover, .thread.on { background-color: #f0f2f5; }
+.thread.on { background-color: #e7f3ff; }
+.convo-title { padding: 14px 16px; font-size: 17px; border-bottom: 1px solid #ced0d4; }
+.dm { background-color: #f0f2f5; }
+.dm-form { border-top: 1px solid #ced0d4; }
+.dm-form input { border: 0; background-color: #f0f2f5; }
+.search-form { height: 48px; padding: 0 8px 0 16px; }
+.search-form .ico { margin-right: 10px; color: var(--muted); }
+.crumb { margin-bottom: 10px; color: var(--muted); }
+.crumb-title { font-size: 17px; }

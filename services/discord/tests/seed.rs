@@ -1,6 +1,8 @@
 //! The shipped Discord seed and the server's behaviour: categories, roles, voice and the
 //! short channel URLs the scenes and seeded prose use.
-use cw_protocol::{HttpRequest, Page, PageElement};
+use cw_protocol::HttpRequest;
+use cw_service_common::html::validate_strict;
+use cw_web::dom::{Document, NodeId};
 use cw_sdk::{Service, ServiceContext};
 use cw_service_discord::DiscordService;
 use serde_json::{json, Value};
@@ -39,39 +41,62 @@ fn post(state: &mut Value, actor: &str, path: &str, body: Value) -> (u16, String
         .unwrap();
     (r.status, String::from_utf8(r.body).unwrap())
 }
+/// A page fetched, checked by the strict validator and parsed.
+struct Page {
+    doc: Document,
+    html: String,
+}
+fn parsed(path: &str, html: String) -> Page {
+    assert!(html.starts_with("<!DOCTYPE html>"), "{path}: not HTML");
+    validate_strict(&html).unwrap_or_else(|e| panic!("{path}: {e:?}"));
+    Page {
+        doc: cw_web::html::parse(&html),
+        html,
+    }
+}
 fn page(state: &mut Value, actor: &str, path: &str) -> Page {
     let (status, body) = get(state, actor, path);
     assert_eq!(status, 200, "{path}");
-    let page: Page = serde_json::from_str(&body).unwrap();
-    page.validate().unwrap_or_else(|e| panic!("{path}: {e}"));
-    page
+    parsed(path, body)
 }
-/// Every element on the page, containers walked.
-fn elements(page: &Page) -> Vec<&PageElement> {
-    fn walk<'a>(items: &'a [PageElement], out: &mut Vec<&'a PageElement>) {
-        for e in items {
-            out.push(e);
-            match e {
-                PageElement::Group { children, .. }
-                | PageElement::Form { children, .. }
-                | PageElement::Row { children, .. }
-                | PageElement::Grid { children, .. }
-                | PageElement::Card { children, .. } => walk(children, out),
-                _ => {}
-            }
-        }
+impl Page {
+    fn find(&self, id: &str) -> Option<NodeId> {
+        self.doc.by_id(id).first().copied()
     }
-    let mut out = vec![];
-    walk(&page.elements, &mut out);
-    out
-}
-fn find<'a>(page: &'a Page, id: &str) -> Option<&'a PageElement> {
-    elements(page).into_iter().find(|e| e.id() == id)
-}
-fn text(page: &Page, id: &str) -> String {
-    match find(page, id) {
-        Some(PageElement::Styled { text, .. } | PageElement::Button { text, .. }) => text.clone(),
-        other => panic!("{id}: {other:?}"),
+    fn has(&self, id: &str) -> bool {
+        self.find(id).is_some()
+    }
+    fn node(&self, id: &str) -> NodeId {
+        self.find(id).unwrap_or_else(|| panic!("no #{id}"))
+    }
+    fn text(&self, id: &str) -> String {
+        self.doc.text_content(self.node(id))
+    }
+    fn attr(&self, id: &str, name: &str) -> Option<&str> {
+        self.doc.attr(self.node(id), name)
+    }
+    fn class(&self, id: &str, class: &str) -> bool {
+        self.doc.has_class(self.node(id), class)
+    }
+    fn title(&self) -> String {
+        let title = self
+            .doc
+            .descendants(Document::ROOT)
+            .find(|n| self.doc.is(*n, "title"))
+            .expect("title");
+        self.doc.text_content(title)
+    }
+    /// The form an element belongs to: its action and method.
+    fn form_of(&self, id: &str) -> (String, String) {
+        let node = self.node(id);
+        let form = std::iter::once(node)
+            .chain(self.doc.ancestors(node))
+            .find(|n| self.doc.is(*n, "form"))
+            .unwrap_or_else(|| panic!("#{id} is in no form"));
+        (
+            self.doc.attr(form, "action").unwrap_or_default().to_owned(),
+            self.doc.attr(form, "method").unwrap_or_default().to_owned(),
+        )
     }
 }
 fn seeded() -> Value {
@@ -96,19 +121,34 @@ fn the_seed_renders_its_server_and_every_search_entry() {
         "/channels/showcase",
         "/channels/@me",
     ] {
-        let (status, body) = get(&mut state, "alice", path);
-        assert_eq!(status, 200, "{path}");
-        serde_json::from_str::<Page>(&body)
-            .unwrap()
-            .validate()
-            .unwrap_or_else(|e| panic!("{path}: {e}"));
+        page(&mut state, "alice", path);
     }
+    // Every channel of the seed, with the member list open and closed, and as someone
+    // who cannot see the moderators' channel.
+    let channels: Vec<String> = state["server"]["channels"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect();
+    for id in &channels {
+        page(&mut state, "alice", &format!("/channels/atlas/{id}"));
+        page(&mut state, "alice", &format!("/channels/atlas/{id}?members=0"));
+    }
+    page(&mut state, "bob", "/");
+    page(&mut state, "eve", "/");
     for entry in site["search_entries"].as_array().unwrap() {
         let url = entry["url"].as_str().unwrap();
         let r = DiscordService
             .handle(&mut state, &ctx("alice"), &HttpRequest::get(url))
             .unwrap();
         assert_eq!(r.status, 200, "search entry {url}");
+        assert_eq!(
+            r.header("content-type"),
+            Some("text/html; charset=utf-8"),
+            "{url}"
+        );
+        parsed(url, String::from_utf8(r.body).unwrap());
     }
     // The short and the full URL are one page.
     assert_eq!(
@@ -118,6 +158,7 @@ fn the_seed_renders_its_server_and_every_search_entry() {
     let page = get(&mut state, "alice", "/channels/atlas/atlas-help").1;
     assert!(page.contains("INFORMATION") && page.contains("SUPPORT") && page.contains("COMMUNITY"));
     assert!(page.contains("#5865f2") && page.contains("chat-33-react-eyes"));
+    assert!(page.contains("class=\"discord\""));
     assert!(page.contains("voice-Lounge") && page.contains("voice-Lounge-praman"));
 }
 
@@ -125,78 +166,132 @@ fn the_seed_renders_its_server_and_every_search_entry() {
 fn the_channel_looks_like_discord() {
     let mut state = seeded();
     let p = page(&mut state, "alice", "/channels/atlas/atlas-help");
+    assert_eq!(p.title(), "#atlas-help · Atlas Community");
+    // The shell: rail, sidebar, header, the inner scrolling transcript, composer, members.
+    for id in ["app", "rail", "sidebar", "header", "shell", "main", "composer", "members"] {
+        assert!(p.has(id), "{id}");
+    }
+    assert_eq!(p.attr("rail-home", "href"), Some("/channels/@me"));
+    assert_eq!(p.attr("rail-server", "href"), Some("/channels/atlas"));
+    assert_eq!(p.text("rail-server"), "AC");
+    assert!(p.has("rail-add") && p.has("rail-explore") && p.has("rail-rule"));
+    assert_eq!(p.text("server-name"), "Atlas Community");
     // The header: hash, name, topic and the toolbar with its search box.
-    assert_eq!(text(&p, "channel-title"), "atlas-help");
-    assert!(find(&p, "channel-hash").is_some() && find(&p, "search-text").is_some());
-    assert!(
-        matches!(find(&p, "header"), Some(PageElement::Row { style, .. }) if style.pin.as_deref() == Some("top"))
-    );
+    assert_eq!(p.text("channel-title"), "atlas-help");
+    assert!(p.has("channel-hash") && p.has("search-text") && p.has("channel-topic"));
+    assert!(p.has("channel-threads") && p.has("channel-pins") && p.has("channel-inbox"));
+    assert!(!p.has("channel-private"));
     // Messages are stamped from the civil clock and grouped under date dividers.
-    assert_eq!(text(&p, "day-5-label"), "September 15, 2026");
-    assert_eq!(text(&p, "day-7-label"), "September 17, 2026");
-    assert_eq!(text(&p, "chat-33-time"), "09/15/2026 3:12 PM");
-    assert_eq!(text(&p, "chat-45-time"), "Today at 8:31 AM");
-    assert!(find(&p, "chat-45-avatar").is_some() && find(&p, "chat-45-author").is_some());
-    // The last message carries the hover toolbar; the others do not.
-    assert!(find(&p, "chat-45-tools").is_some() && find(&p, "chat-44-tools").is_none());
+    assert_eq!(p.text("day-5-label"), "September 15, 2026");
+    assert_eq!(p.text("day-7-label"), "September 17, 2026");
+    assert_eq!(p.text("chat-33-time"), "09/15/2026 3:12 PM");
+    assert_eq!(p.text("chat-45-time"), "Today at 8:31 AM");
+    assert!(p.has("chat-45-avatar") && p.has("chat-45-author"));
+    // Every message carries the hover toolbar; the sheet shows it under the pointer,
+    // and on the newest message always.
+    assert!(p.has("chat-45-tools") && p.has("chat-44-tools") && p.has("chat-45-reply"));
+    assert!(p.class("chat-45-row", "newest") && !p.class("chat-44-row", "newest"));
     // A reply shows Discord's reply line: the quoted author's face, name and text.
-    assert_eq!(text(&p, "chat-34-quote-author"), "mkowalski");
-    assert!(find(&p, "chat-34-quote-avatar").is_some());
-    assert!(text(&p, "chat-34-quote-text").starts_with("My replay diverges"));
-    assert!(
-        matches!(find(&p, "chat-34-author"), Some(PageElement::Styled { style, .. }) if style.color.as_deref() == Some("#3ba55d"))
+    assert_eq!(p.text("chat-34-quote-author"), "mkowalski");
+    assert!(p.has("chat-34-quote-avatar") && p.has("chat-34-quote-spine"));
+    assert!(p.text("chat-34-quote-text").starts_with("My replay diverges"));
+    // Names take their highest role's colour.
+    assert_eq!(p.attr("chat-34-author", "style"), Some("color: #3ba55d"));
+    // Reactions are pill chips with the emoji itself, each a submit button of the
+    // message's reactions form; the actor's own is outlined blurple.
+    assert_eq!(p.text("chat-34-react-+1"), "👍 2");
+    assert!(p.class("chat-34-react-+1", "mine"));
+    assert_eq!(p.attr("chat-34-react-+1", "name"), Some("reaction"));
+    assert_eq!(p.attr("chat-34-react-+1", "value"), Some("+1"));
+    assert_eq!(
+        p.form_of("chat-34-react-+1"),
+        (
+            "/channels/atlas/atlas-help/messages/chat-34/reactions".to_owned(),
+            "post".to_owned()
+        )
     );
-    // Reactions are pill chips with the emoji itself; the actor's own is outlined blurple.
-    assert!(
-        matches!(find(&p, "chat-34-react-+1"), Some(PageElement::Button { text, style: Some(s), action, .. }) if text == "👍 2" && s.border.as_deref() == Some("#5865f2") && action.url == "/channels/atlas/atlas-help/messages/chat-34/reactions")
+    assert_eq!(p.attr("chat-34-reactions", "action"), Some("/channels/atlas/atlas-help/messages/chat-34/reactions"));
+    assert_eq!(p.text("chat-33-react-eyes"), "👀 1");
+    assert!(!p.class("chat-33-react-eyes", "mine") && p.has("chat-33-react-add"));
+    // Emoji short names in text are the characters they name; text wraps on the page,
+    // so a message is one `-text` block whatever its length; no reply form per message.
+    assert!(p.text("chat-45-text").contains("📌"));
+    assert!(p.has("chat-45-text-p0") && !p.has("chat-45-text-1"));
+    assert!(!p.html.contains(":pushpin:") && !p.html.contains("chat-45-reply-text"));
+    // The composer posts `text` to the channel; the user panel sits under the sidebar.
+    assert_eq!(
+        p.form_of("send-text"),
+        ("/channels/atlas/atlas-help/messages".to_owned(), "post".to_owned())
     );
-    assert!(
-        matches!(find(&p, "chat-33-react-eyes"), Some(PageElement::Button { text, style: Some(s), .. }) if text == "👀 1" && s.border.as_deref() == Some("#2b2d31"))
-    );
-    // Emoji short names in text are the characters they name; no reply form per message.
-    assert!(text(&p, "chat-45-text-1-p0").contains("📌"));
-    let body = serde_json::to_string(&p).unwrap();
-    assert!(!body.contains(":pushpin:") && !body.contains("chat-45-reply-text"));
-    // The composer is pinned to the bottom with the user panel under the sidebar.
-    assert!(
-        matches!(find(&p, "composer"), Some(PageElement::Row { style, .. }) if style.pin.as_deref() == Some("bottom"))
-    );
-    assert!(
-        matches!(find(&p, "send-text"), Some(PageElement::Input { label, .. }) if label == "Message #atlas-help")
-    );
-    assert_eq!(text(&p, "me-name"), "alice.chen");
-    assert!(find(&p, "me-mic").is_some() && find(&p, "me-settings").is_some());
+    assert_eq!(p.attr("send", "action"), Some("/channels/atlas/atlas-help/messages"));
+    assert_eq!(p.attr("send-text", "name"), Some("text"));
+    assert_eq!(p.attr("send-text", "aria-label"), Some("Message #atlas-help"));
+    assert_eq!(p.doc.tag(p.node("send-submit")), Some("button"));
+    assert_eq!(p.form_of("send-submit").0, "/channels/atlas/atlas-help/messages");
+    assert!(p.has("send-attach") && p.has("send-gif") && p.has("send-emoji"));
+    assert_eq!(p.text("me-name"), "alice.chen");
+    assert!(p.has("me-mic") && p.has("me-settings") && p.has("me-avatar"));
+    assert!(p.class("me-presence", "on"));
     // The member list: hoisted roles, then online and offline, with presence.
-    assert_eq!(text(&p, "group-Admin"), "ADMIN — 1");
-    assert_eq!(text(&p, "group-Mod"), "MOD — 2");
-    assert_eq!(text(&p, "group-online"), "ONLINE — 2");
-    assert_eq!(text(&p, "group-offline"), "OFFLINE — 2");
-    assert!(find(&p, "group-Member").is_none());
-    assert_eq!(text(&p, "member-carol-presence"), "○");
-    assert_eq!(text(&p, "member-bob-presence"), "●");
-    // The sidebar: the open channel highlighted, voice occupants with faces.
-    assert!(
-        matches!(find(&p, "nav-atlas-help"), Some(PageElement::Card { style, .. }) if style.background.as_deref() == Some("#404249"))
-    );
-    assert!(
-        matches!(find(&p, "nav-general"), Some(PageElement::Card { style, .. }) if style.background.as_deref() == Some("#2b2d31"))
-    );
-    assert!(find(&p, "voice-Lounge-jlee-avatar").is_some());
+    assert_eq!(p.text("group-Admin"), "ADMIN — 1");
+    assert_eq!(p.text("group-Mod"), "MOD — 2");
+    assert_eq!(p.text("group-online"), "ONLINE — 2");
+    assert_eq!(p.text("group-offline"), "OFFLINE — 2");
+    assert!(!p.has("group-Member"));
+    assert!(p.class("member-carol-presence", "off") && p.class("member-carol", "away"));
+    assert!(p.class("member-bob-presence", "on") && p.has("member-bob-avatar"));
+    assert_eq!(p.attr("member-admin-name", "style"), Some("color: #f23f43"));
+    assert_eq!(p.attr("member-carol-name", "style"), None);
+    // The sidebar: categories, the open channel highlighted, voice occupants with faces.
+    assert_eq!(p.text("category-1-text"), "SUPPORT");
+    assert!(p.class("nav-atlas-help", "current") && !p.class("nav-general", "current"));
+    assert_eq!(p.attr("nav-general", "href"), Some("/channels/atlas/general"));
+    assert!(p.has("nav-general-hash") && p.has("nav-mod-log"));
+    assert!(p.has("voice-Lounge-jlee-avatar") && p.has("voice-Lounge-icon"));
+    assert_eq!(p.text("voice-Lounge-praman-name"), "priya");
+    // A voice channel is a one-button form: joining, or leaving while inside.
+    assert_eq!(p.doc.tag(p.node("voice-Lounge")), Some("button"));
+    assert_eq!(p.form_of("voice-Lounge"), ("/voice/Lounge/join".to_owned(), "post".to_owned()));
+    assert_eq!(p.form_of("voice-Office Hours").0, "/voice/Office%20Hours/join");
     // `?members=0` closes the member list and the header button reopens it.
-    let closed = page(&mut state, "alice", "/channels/atlas/atlas-help?members=0");
-    assert!(find(&closed, "members").is_none() && find(&closed, "composer-members").is_none());
-    assert!(
-        matches!(find(&closed, "channel-members"), Some(PageElement::Icon { action: Some(a), .. }) if a.url == "/channels/atlas/atlas-help")
+    assert_eq!(
+        p.attr("channel-members", "href"),
+        Some("/channels/atlas/atlas-help?members=0")
     );
+    let closed = page(&mut state, "alice", "/channels/atlas/atlas-help?members=0");
+    assert!(!closed.has("members") && closed.has("composer"));
+    assert_eq!(closed.attr("channel-members", "href"), Some("/channels/atlas/atlas-help"));
+    // A role-gated channel shows its lock in the header.
+    assert!(page(&mut state, "alice", "/channels/atlas/mod-log").has("channel-private"));
     // priya's second message two minutes on shares her header: no face, no name.
     let general = page(&mut state, "alice", "/channels/atlas/general");
+    assert!(general.has("chat-58-avatar") && general.has("chat-58-author"));
+    assert!(!general.has("chat-57-avatar") && !general.has("chat-57-author"));
+    assert!(general.has("chat-57-time"));
+    assert!(general.text("chat-57-text-p0").ends_with("🙏"));
+    // Channel mentions in text are links to the channel; URLs are links out.
+    let welcome = page(&mut state, "alice", "/channels/atlas/welcome");
+    let links: Vec<(String, String)> = welcome
+        .doc
+        .descendants(Document::ROOT)
+        .filter(|n| welcome.doc.is(*n, "a"))
+        .filter(|n| welcome.doc.attr(*n, "id").is_some_and(|id| id.contains("-text-p")))
+        .map(|n| {
+            (
+                welcome.doc.text_content(n),
+                welcome.doc.attr(n, "href").unwrap_or_default().to_owned(),
+            )
+        })
+        .collect();
     assert!(
-        find(&general, "chat-58-avatar").is_some() && find(&general, "chat-58-author").is_some()
+        links.iter().any(|(text, href)| text.starts_with('#') && href.starts_with("/channels/atlas/")),
+        "{links:?}"
     );
-    assert!(
-        find(&general, "chat-57-avatar").is_none() && find(&general, "chat-57-author").is_none()
-    );
-    assert!(text(&general, "chat-57-text-p0").ends_with("🙏"));
+    // The root is the server with no channel open.
+    let home = page(&mut state, "alice", "/");
+    assert_eq!(home.title(), "Atlas Community");
+    assert_eq!(home.text("empty"), "Pick a channel.");
+    assert!(!home.has("composer") && home.has("members") && home.has("nav-welcome"));
     // Clicking a reaction chip toggles the actor's own reaction.
     let (status, after) = post(
         &mut state,
@@ -205,10 +300,36 @@ fn the_channel_looks_like_discord() {
         json!({"reaction":"eyes"}),
     );
     assert_eq!(status, 200);
-    let after: Page = serde_json::from_str(&after).unwrap();
-    assert!(
-        matches!(find(&after, "chat-33-react-eyes"), Some(PageElement::Button { text, style: Some(s), .. }) if text == "👀 2" && s.border.as_deref() == Some("#5865f2"))
+    let after = parsed("reaction", after);
+    assert_eq!(after.text("chat-33-react-eyes"), "👀 2");
+    assert!(after.class("chat-33-react-eyes", "mine"));
+}
+
+/// The browser posts forms url-encoded; the composer and the voice rows work that way.
+#[test]
+fn browser_forms_post_urlencoded() {
+    let mut state = seeded();
+    let mut request = HttpRequest::get("http://discord.com/channels/atlas/general/messages");
+    request.method = "POST".into();
+    request.headers.insert(
+        "content-type".into(),
+        "application/x-www-form-urlencoded".into(),
     );
+    request.body = b"text=hello+from+the+form+%3Cb%3E".to_vec();
+    let r = DiscordService
+        .handle(&mut state, &ctx("bob"), &request)
+        .unwrap();
+    assert_eq!(r.status, 200);
+    let p = parsed("send", String::from_utf8(r.body).unwrap());
+    assert_eq!(p.title(), "#general · Atlas Community");
+    assert!(p.html.contains("hello from the form &lt;b&gt;"));
+    let mut join = HttpRequest::get("http://discord.com/voice/Office%20Hours/join");
+    join.method = "POST".into();
+    let r = DiscordService.handle(&mut state, &ctx("bob"), &join).unwrap();
+    assert_eq!(r.status, 200);
+    let p = parsed("join", String::from_utf8(r.body).unwrap());
+    assert!(p.has("voice-Office Hours-bob") && p.class("voice-Office Hours", "current"));
+    assert_eq!(p.form_of("voice-Office Hours").0, "/voice/Office%20Hours/leave");
 }
 
 #[test]
@@ -288,7 +409,10 @@ fn replies_reactions_and_voice_are_real_routes() {
         post(&mut state, "eve", "/api/voice/Lounge/join", json!({})).0,
         403
     );
-    let (status, page) = post(&mut state, "bob", "/voice/Lounge/leave", json!({}));
+    let (status, body) = post(&mut state, "bob", "/voice/Lounge/leave", json!({}));
     assert_eq!(status, 200);
-    assert!(!page.contains("voice-Lounge-bob"));
+    assert!(!body.contains("voice-Lounge-bob"));
+    // The page a leave lands on is a real page too.
+    let left = parsed("/voice/Lounge/leave", body);
+    assert!(!left.has("voice-Lounge-bob") && left.has("voice-Lounge"));
 }

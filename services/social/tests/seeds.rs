@@ -1,11 +1,21 @@
 //! The three seeded feeds, loaded from the files the world is built from. A seed that no longer
 //! initialises, or a `search_entries` URL that does not resolve to a page, is a broken site — the
 //! search engines index those URLs and an agent will click them.
-use cw_protocol::{HttpRequest, Page};
+use cw_protocol::HttpRequest;
+use cw_service_common::html::validate_strict;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_social::{SocialService, SocialState};
 use serde_json::Value;
 const ACTORS: [&str; 4] = ["alice", "bob", "carol", "admin"];
+const SITES: [&str; 7] = [
+    "x-social",
+    "bsky",
+    "mastodon",
+    "facebook",
+    "instagram",
+    "linkedin",
+    "pinterest",
+];
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),
@@ -35,7 +45,7 @@ fn load(name: &str) -> (Value, Value) {
 /// so "somebody" is the point: private pages stay private and still exist.
 #[test]
 fn every_indexed_url_resolves_for_at_least_one_actor() {
-    for name in ["x-social", "mastodon", "linkedin"] {
+    for name in SITES {
         let (file, state) = load(name);
         let entries = file["search_entries"].as_array().unwrap();
         assert!(entries.len() >= 8, "{name}: index the site properly");
@@ -48,8 +58,8 @@ fn every_indexed_url_resolves_for_at_least_one_actor() {
                     .handle(&mut state, &ctx(actor), &HttpRequest::get(url))
                     .unwrap();
                 if r.status == 200 {
-                    let page: Page = serde_json::from_slice(&r.body).unwrap();
-                    page.validate().unwrap_or_else(|e| panic!("{url}: {e}"));
+                    let body = String::from_utf8(r.body).unwrap();
+                    validate_strict(&body).unwrap_or_else(|e| panic!("{url}: {e:?}"));
                     reached = true;
                 }
             }
@@ -153,4 +163,40 @@ fn the_seeded_world_survives_being_used() {
         .values()
         .any(|p| p.text == "Replying from the seeded world"));
     assert_eq!(s.likes_of("p-1107"), 412, "seeded crowd is untouched");
+}
+/// Each seeded site wears the skin of the product it stands in for, and every page of it
+/// (timelines, search, every profile, every thread, every conversation) passes the strict
+/// validator for every actor: unique ids and only HTML and CSS the engine renders.
+#[test]
+fn every_page_of_every_seeded_site_is_strictly_valid_html() {
+    let skins = ["x", "bsky", "mastodon", "facebook", "instagram", "linkedin", "pinterest"];
+    for (name, skin) in SITES.iter().zip(skins) {
+        let (file, state) = load(name);
+        let s: SocialState = serde_json::from_value(state.clone()).unwrap();
+        assert_eq!(cw_service_social::skin_of(&s), skin, "{name}");
+        let domain = file["domains"][0].as_str().unwrap();
+        let mut paths: Vec<String> = ["/", "/explore", "/local", "/search", "/search?q=a", "/messages", "/messaging"]
+            .iter()
+            .map(|p| (*p).to_owned())
+            .collect();
+        paths.extend(s.accounts.keys().map(|h| format!("/{h}")));
+        paths.extend(s.posts.values().map(|p| format!("/{}/status/{}", p.author, p.id)));
+        for actor in ACTORS {
+            let mut state = state.clone();
+            let mut paths = paths.clone();
+            let root = if s.professional() { "messaging" } else { "messages" };
+            paths.extend(s.inbox(actor).iter().map(|c| format!("/{root}/{}", c.id)));
+            for path in &paths {
+                let url = format!("http://{domain}{path}");
+                let r = SocialService
+                    .handle(&mut state, &ctx(actor), &HttpRequest::get(&url))
+                    .unwrap();
+                assert_eq!(r.status, 200, "{url} for {actor}");
+                assert_eq!(r.header("content-type"), Some("text/html; charset=utf-8"));
+                let body = String::from_utf8(r.body).unwrap();
+                validate_strict(&body).unwrap_or_else(|e| panic!("{url} for {actor}: {e:?}"));
+                assert!(body.contains(&format!("class=\"skin-{skin} ")), "{url}");
+            }
+        }
+    }
 }

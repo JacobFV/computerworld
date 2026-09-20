@@ -1,11 +1,19 @@
-//! The three seeded discussion sites, loaded from the files the world is built from. A seed that
+//! The six seeded discussion sites, loaded from the files the world is built from. A seed that
 //! no longer initialises, or a `search_entries` URL that does not resolve to a page, is a broken
 //! site — the search engines index those URLs and an agent will click them.
-use cw_protocol::{HttpRequest, Page};
+use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_forum::{ForumService, ForumState};
 use serde_json::Value;
 const ACTORS: [&str; 4] = ["alice", "bob", "carol", "admin"];
+const SITES: [&str; 6] = [
+    "reddit",
+    "stackoverflow",
+    "hackernews",
+    "quora",
+    "yelp",
+    "craigslist",
+];
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),
@@ -36,7 +44,7 @@ fn state_of(name: &str) -> ForumState {
 }
 #[test]
 fn every_indexed_url_resolves_for_at_least_one_actor() {
-    for name in ["reddit", "stackoverflow", "hackernews"] {
+    for name in SITES {
         let (file, state) = load(name);
         let entries = file["search_entries"].as_array().unwrap();
         assert!(entries.len() >= 8, "{name}: index the site properly");
@@ -49,8 +57,17 @@ fn every_indexed_url_resolves_for_at_least_one_actor() {
                     .handle(&mut state, &ctx(actor), &HttpRequest::get(url))
                     .unwrap();
                 if r.status == 200 {
-                    let page: Page = serde_json::from_slice(&r.body).unwrap();
-                    page.validate().unwrap_or_else(|e| panic!("{url}: {e}"));
+                    let html = String::from_utf8(r.body).unwrap();
+                    cw_service_common::html::validate_strict(&html)
+                        .unwrap_or_else(|e| panic!("{url}: {e:?}"));
+                    let page = cw_web::html::parse(&html);
+                    let skin = format!("skin-{name} ");
+                    assert!(
+                        page.body()
+                            .and_then(|b| page.attr(b, "class"))
+                            .is_some_and(|c| c.starts_with(&skin)),
+                        "{url}: not in the {name} skin"
+                    );
                     reached = true;
                 }
             }
@@ -66,6 +83,9 @@ fn every_thread_is_reachable_at_its_permalink() {
         ("reddit", "http://reddit.com"),
         ("stackoverflow", "http://stackoverflow.com"),
         ("hackernews", "http://news.ycombinator.com"),
+        ("quora", "http://quora.com"),
+        ("yelp", "http://yelp.com"),
+        ("craigslist", "http://craigslist.org"),
     ] {
         let s = state_of(name);
         let mut state = load(name).1;
@@ -75,11 +95,25 @@ fn every_thread_is_reachable_at_its_permalink() {
                 .handle(&mut state, &ctx("bob"), &HttpRequest::get(&url))
                 .unwrap();
             assert_eq!(r.status, 200, "{url}");
-            let body = String::from_utf8(r.body).unwrap();
-            assert!(
-                body.contains(&t.title.replace('"', "\\\"")),
+            let html = String::from_utf8(r.body).unwrap();
+            cw_service_common::html::validate_strict(&html)
+                .unwrap_or_else(|e| panic!("{url}: {e:?}"));
+            let page = cw_web::html::parse(&html);
+            let title = page
+                .by_id("thread-title")
+                .first()
+                .map(|n| page.text_content(*n));
+            assert_eq!(
+                title.as_deref(),
+                Some(t.title.as_str()),
                 "{url}: the page does not carry its own title"
             );
+            // Every reply is on the page with its vote control and its reply or comment box.
+            for r in &t.replies {
+                for id in [format!("reply-{}", r.id), format!("{}-up", r.id), format!("{}-body", r.id)] {
+                    assert!(!page.by_id(&id).is_empty(), "{url}: no #{id}");
+                }
+            }
         }
     }
 }
@@ -236,4 +270,166 @@ fn the_seeded_world_survives_being_used() {
         .find(|r| r.body == "Commenting on the seeded world")
         .unwrap();
     assert_eq!(new.parent.as_deref(), Some("r-6020"));
+}
+
+/// Every route of every seeded skin, rendered from the real seed and pushed through the engine's
+/// strict validator. The unit tests do this with hand-built seeds; this is the content the world
+/// actually ships, where a long body, an empty board or an odd tag is what breaks a page.
+#[test]
+fn every_route_of_every_seeded_skin_validates() {
+    for name in SITES {
+        let (file, base) = load(name);
+        let host = format!("http://{}", file["domains"][0].as_str().unwrap());
+        let s = state_of(name);
+        let thread = s.threads.values().next().expect("a seeded thread");
+        let tag = s
+            .threads
+            .values()
+            .flat_map(|t| t.tags.iter())
+            .next()
+            .cloned()
+            .unwrap_or_else(|| "rust".into());
+        let member = s.members.keys().next().expect("a seeded member").clone();
+        let board = s.boards.keys().next().cloned().unwrap_or_default();
+        let mut paths = vec![
+            "/".to_owned(),
+            "/?p=2".to_owned(),
+            "/newest".to_owned(),
+            "/submit".to_owned(),
+            "/ask".to_owned(),
+            "/search".to_owned(),
+            "/search?q=a".to_owned(),
+            "/search?q=%C3%A9".to_owned(),
+            "/r".to_owned(),
+            "/boards".to_owned(),
+            "/questions".to_owned(),
+            format!("/questions/tagged/{}", tag.replace(' ', "%20")),
+            format!("/u/{member}"),
+            format!("/users/{member}"),
+            s.permalink(thread),
+        ];
+        if !board.is_empty() {
+            paths.push(format!("/r/{board}"));
+        }
+        for path in &paths {
+            let mut rendered = 0;
+            for actor in ACTORS {
+                let mut state = base.clone();
+                let r = ForumService
+                    .handle(&mut state, &ctx(actor), &HttpRequest::get(format!("{host}{path}")))
+                    .unwrap();
+                if r.status != 200 {
+                    continue;
+                }
+                rendered += 1;
+                assert_eq!(
+                    r.header("content-type"),
+                    Some(cw_service_common::html::HTML_MEDIA_TYPE),
+                    "{name} {path}: not HTML"
+                );
+                let html = String::from_utf8(r.body).unwrap();
+                cw_service_common::html::validate_strict(&html)
+                    .unwrap_or_else(|e| panic!("{name} {path} as {actor}: {e:?}"));
+                let page = cw_web::html::parse(&html);
+                assert!(
+                    page.body()
+                        .and_then(|b| page.attr(b, "class"))
+                        .is_some_and(|c| c.starts_with(&format!("skin-{name} "))),
+                    "{name} {path}: not in the {name} skin"
+                );
+            }
+            assert!(rendered > 0, "{name} {path}: renders for nobody");
+        }
+    }
+}
+
+/// Every control that mutates re-renders through the router, so the page a form lands on has to
+/// validate too — on the real seeds, in every skin.
+#[test]
+fn every_form_lands_on_a_valid_page() {
+    for name in SITES {
+        let (file, base) = load(name);
+        let host = format!("http://{}", file["domains"][0].as_str().unwrap());
+        let s = state_of(name);
+        // An actor with an account here, so the mutating routes are not refused for want of one.
+        let actor = ACTORS
+            .iter()
+            .find(|a| s.member_of(a).is_some())
+            .unwrap_or_else(|| panic!("{name}: no seeded actor"));
+        let thread = s
+            .threads
+            .values()
+            .find(|t| !t.replies.is_empty())
+            .expect("a seeded thread with replies");
+        let reply = &thread.replies[0];
+        let view = s.permalink(thread);
+        let board = s.boards.keys().next().cloned().unwrap_or_default();
+        let mut posts = vec![
+            (
+                format!("/threads/{}/vote", thread.id),
+                format!("dir=1&view={}", encode(&view)),
+            ),
+            (
+                format!("/threads/{}/replies", thread.id),
+                format!("body=A+reply+from+the+test&view={}", encode(&view)),
+            ),
+            (
+                format!("/replies/{}/comments", reply.id),
+                format!("body=A+comment+from+the+test&view={}", encode(&view)),
+            ),
+            (
+                format!("/replies/{}/vote", reply.id),
+                format!("dir=1&view={}", encode(&view)),
+            ),
+            (
+                "/threads".to_owned(),
+                format!(
+                    "board={board}&title=A+title+from+the+test&body=A+body&url=http%3A%2F%2Fexample.com%2F&tags=testing&view={}",
+                    encode(&view)
+                ),
+            ),
+            ("/search".to_owned(), "q=a".to_owned()),
+        ];
+        if !board.is_empty() {
+            posts.push((
+                format!("/boards/{board}/subscribe"),
+                format!("view={}", encode("/r")),
+            ));
+        }
+        if s.qa() && thread.author == s.member_of(actor).unwrap().handle {
+            posts.push((
+                format!("/threads/{}/accept", thread.id),
+                format!("reply={}&view={}", reply.id, encode(&view)),
+            ));
+        }
+        for (path, body) in posts {
+            let mut state = base.clone();
+            let mut r = HttpRequest::get(format!("{host}{path}"));
+            r.method = "POST".into();
+            r.headers.insert(
+                "content-type".into(),
+                "application/x-www-form-urlencoded".into(),
+            );
+            r.body = body.into_bytes();
+            let response = ForumService.handle(&mut state, &ctx(actor), &r).unwrap();
+            assert_eq!(response.status, 200, "{name} POST {path}");
+            assert_eq!(
+                response.header("content-type"),
+                Some(cw_service_common::html::HTML_MEDIA_TYPE),
+                "{name} POST {path}: not HTML"
+            );
+            let html = String::from_utf8(response.body).unwrap();
+            cw_service_common::html::validate_strict(&html)
+                .unwrap_or_else(|e| panic!("{name} POST {path}: {e:?}"));
+        }
+    }
+}
+/// The `view=` round trip is a URL inside a form field, so the test has to send it encoded.
+fn encode(path: &str) -> String {
+    path.chars()
+        .map(|c| match c {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.' | '~' | '/' => c.to_string(),
+            c => format!("%{:02X}", c as u32),
+        })
+        .collect()
 }
