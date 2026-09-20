@@ -121,7 +121,7 @@ impl Rect {
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Color(pub u8, pub u8, pub u8, pub u8);
 impl Color {
     pub const WHITE: Self = Self(255, 255, 255, 255);

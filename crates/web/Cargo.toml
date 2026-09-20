@@ -1,0 +1,14 @@
+[package]
+name = "cw-web"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A deterministic HTML, CSS and DOM engine for the simulated browser: parse, cascade, lay out in fixed point, paint to a scene."
+
+[dependencies]
+cw-scene = { path = "../scene" }
+cw-protocol = { path = "../protocol" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
