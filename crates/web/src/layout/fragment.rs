@@ -5,6 +5,19 @@
 
 use crate::dom::NodeId;
 use crate::geom::{Au, Edges, Rect};
+use crate::style::BorderSide;
+
+/// Borders resolved by the collapsing border model (§17.6.2) for a table cell or the
+/// table grid box. Paint draws these full widths centred on the fragment's border-box
+/// edges instead of the style's own borders; the fragment's `border` edges hold the
+/// half widths that layout reserved inside the box.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CollapsedBorders {
+    pub top: BorderSide,
+    pub right: BorderSide,
+    pub bottom: BorderSide,
+    pub left: BorderSide,
+}
 
 /// Which style a fragment paints with: the element's own, or one of its pseudo-elements.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -128,6 +141,8 @@ pub struct Fragment {
     /// The fragment's overflow rect (union of descendants), relative to its own
     /// origin, for `overflow: visible` painting and scroll extents.
     pub overflow: Rect,
+    /// Set on table cells and the table grid box under `border-collapse: collapse`.
+    pub collapsed_borders: Option<Box<CollapsedBorders>>,
 }
 
 impl Fragment {
@@ -141,6 +156,7 @@ impl Fragment {
             is_float: false,
             is_positioned: false,
             overflow: Rect::new(Au::ZERO, Au::ZERO, rect.size.width, rect.size.height),
+            collapsed_borders: None,
         }
     }
     pub fn source(&self) -> Option<StyleSource> {
