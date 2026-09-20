@@ -1,0 +1,32 @@
+/* Tables. */
+table { display: table; box-sizing: border-box; border-spacing: 2px; border-collapse: separate; text-indent: initial; }
+caption { display: table-caption; text-align: center; }
+colgroup, colgroup[hidden] { display: table-column-group; }
+col, col[hidden] { display: table-column; }
+thead, thead[hidden] { display: table-header-group; }
+tbody, tbody[hidden] { display: table-row-group; }
+tfoot, tfoot[hidden] { display: table-footer-group; }
+tr, tr[hidden] { display: table-row; }
+td, th { display: table-cell; padding: 1px; vertical-align: inherit; }
+th { font-weight: bold; text-align: center; }
+td, th, tr, tbody, thead, tfoot { vertical-align: middle; }
+:is(table, thead, tbody, tfoot, tr) > form { display: none !important; }
+table[rules=none i], table[rules=groups i], table[rules=rows i], table[rules=cols i], table[rules=all i] { border-style: hidden; border-collapse: collapse; }
+table[border] { border-style: outset; }
+table[frame=void i] { border-style: hidden; }
+table[frame=above i] { border-style: outset hidden hidden hidden; }
+table[frame=below i] { border-style: hidden hidden outset hidden; }
+table[frame=hsides i] { border-style: outset hidden outset hidden; }
+table[frame=lhs i] { border-style: hidden hidden hidden outset; }
+table[frame=rhs i] { border-style: hidden outset hidden hidden; }
+table[frame=vsides i] { border-style: hidden outset; }
+table[frame=box i], table[frame=border i] { border-style: outset; }
+table[border] > tr > :is(td, th), table[border] > :is(thead, tbody, tfoot) > tr > :is(td, th) { border-width: 1px; border-style: inset; }
+table[rules=none i] > tr > :is(td, th), table[rules=none i] > :is(thead, tbody, tfoot) > tr > :is(td, th),
+table[rules=groups i] > tr > :is(td, th), table[rules=groups i] > :is(thead, tbody, tfoot) > tr > :is(td, th),
+table[rules=rows i] > tr > :is(td, th), table[rules=rows i] > :is(thead, tbody, tfoot) > tr > :is(td, th) { border-width: 1px; border-style: none; }
+table[rules=cols i] > tr > :is(td, th), table[rules=cols i] > :is(thead, tbody, tfoot) > tr > :is(td, th) { border-width: 1px; border-style: none solid; }
+table[rules=all i] > tr > :is(td, th), table[rules=all i] > :is(thead, tbody, tfoot) > tr > :is(td, th) { border-width: 1px; border-style: solid; }
+table[rules=groups i] > colgroup { border-left-width: 1px; border-left-style: solid; border-right-width: 1px; border-right-style: solid; }
+table[rules=groups i] > :is(thead, tbody, tfoot) { border-top-width: 1px; border-top-style: solid; border-bottom-width: 1px; border-bottom-style: solid; }
+table[rules=rows i] > tr, table[rules=rows i] > :is(thead, tbody, tfoot) > tr { border-top-width: 1px; border-top-style: solid; border-bottom-width: 1px; border-bottom-style: solid; }

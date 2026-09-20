@@ -1,0 +1,23 @@
+/* Form controls, in the classic look the engine draws itself. */
+input, select, button, textarea { display: inline-block; letter-spacing: initial; word-spacing: initial; line-height: initial; text-transform: initial; text-indent: initial; text-shadow: none; appearance: auto; font-family: sans-serif; font-size: 13.3333px; color: FieldText; background-color: Field; }
+input, select, textarea { text-align: initial; }
+input, textarea { padding: 1px 2px; border: 2px inset #767676; border-radius: 2px; }
+input:not([type=image i], [type=range i], [type=checkbox i], [type=radio i]) { overflow: clip !important; overflow-clip-margin: 0 !important; }
+textarea { white-space: pre-wrap; overflow-wrap: break-word; resize: both; overflow: auto; padding: 2px; vertical-align: text-bottom; }
+input[type=checkbox i], input[type=radio i] { margin: 3px 3px 0 5px; padding: initial; border: initial; background-color: initial; width: 13px; height: 13px; box-sizing: border-box; }
+input[type=radio i] { border-radius: 50%; }
+button, input[type=button i], input[type=submit i], input[type=reset i], input[type=file i]::file-selector-button { display: inline-block; padding: 1px 6px; border: 2px outset #767676; border-radius: 3px; background-color: #efefef; color: black; text-align: center; cursor: default; box-sizing: border-box; white-space: pre; }
+button { padding: 1px 6px; }
+input[type=image i] { padding: 0; border: 0; background: none; }
+input[type=range i] { appearance: auto; width: 129px; height: 21px; padding: 0; border: 0; background: none; }
+input[type=color i] { width: 50px; height: 27px; padding: 1px 2px; }
+input[type=file i] { padding: 0; border: 0; background: none; }
+select { padding: 0 2px; border: 1px solid #767676; border-radius: 2px; background-color: white; color: black; box-sizing: border-box; cursor: default; white-space: pre; }
+select[multiple], select[size]:not([size="1"]) { overflow: auto; }
+option, optgroup { display: none; }
+input::placeholder, textarea::placeholder { color: #757575; }
+input:disabled, select:disabled, button:disabled, textarea:disabled, optgroup:disabled, option:disabled, fieldset:disabled { color: GrayText; cursor: default; }
+button:disabled, input[type=button i]:disabled, input[type=submit i]:disabled, input[type=reset i]:disabled { background-color: rgba(239, 239, 239, 0.3); border-color: rgba(118, 118, 118, 0.3); }
+label { cursor: default; }
+meter { appearance: auto; display: inline-block; width: 5em; height: 1em; vertical-align: -0.2em; }
+progress { appearance: auto; display: inline-block; width: 10em; height: 1em; vertical-align: -0.2em; background-color: #e6e6e6; border-radius: 2px; }

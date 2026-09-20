@@ -1,0 +1,5 @@
+/* Elements that render nothing, per the HTML Rendering section. */
+[hidden], area, base, basefont, datalist, head, link, meta, noembed, noframes,
+param, rp, script, style, template, title { display: none; }
+input[type=hidden i] { display: none !important; }
+embed[hidden] { display: inline; height: 0; width: 0; }

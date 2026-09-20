@@ -263,6 +263,23 @@ pub struct TextDecoration {
     pub line_through: bool,
     /// `None` means `currentColor`.
     pub color: Option<Color>,
+    pub style: TextDecorationStyle,
+}
+
+impl TextDecoration {
+    pub fn any_line(&self) -> bool {
+        self.underline || self.overline || self.line_through
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TextDecorationStyle {
+    #[default]
+    Solid,
+    Double,
+    Dotted,
+    Dashed,
+    Wavy,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -705,6 +722,145 @@ pub enum ContentItem {
     Url(String),
 }
 
+/// `transition-timing-function` / `animation-timing-function`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum TimingFunction {
+    #[default]
+    Ease,
+    Linear,
+    EaseIn,
+    EaseOut,
+    EaseInOut,
+    StepStart,
+    StepEnd,
+    /// Control points in 1/1000.
+    CubicBezier(i32, i32, i32, i32),
+    /// Steps and whether the jump is at the start.
+    Steps(u32, bool),
+}
+
+/// The `transition-*` longhands as coordinated lists (CSS Transitions §2). `items()`
+/// pairs them up the way the spec does, repeating shorter lists.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TransitionList {
+    /// `all`, `none` or a property name per item.
+    pub property: Vec<String>,
+    /// Milliseconds.
+    pub duration: Vec<i32>,
+    pub timing: Vec<TimingFunction>,
+    pub delay: Vec<i32>,
+}
+
+impl Default for TransitionList {
+    fn default() -> Self {
+        TransitionList { property: vec!["all".into()], duration: vec![0], timing: vec![TimingFunction::Ease], delay: vec![0] }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Transition {
+    pub property: String,
+    pub duration_ms: i32,
+    pub timing: TimingFunction,
+    pub delay_ms: i32,
+}
+
+impl TransitionList {
+    pub fn items(&self) -> Vec<Transition> {
+        let n = self.property.len();
+        (0..n)
+            .map(|i| Transition {
+                property: self.property[i].clone(),
+                duration_ms: self.duration[i % self.duration.len().max(1)],
+                timing: self.timing[i % self.timing.len().max(1)],
+                delay_ms: self.delay[i % self.delay.len().max(1)],
+            })
+            .filter(|t| t.property != "none")
+            .collect()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum AnimationDirection {
+    #[default]
+    Normal,
+    Reverse,
+    Alternate,
+    AlternateReverse,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum AnimationFillMode {
+    #[default]
+    None,
+    Forwards,
+    Backwards,
+    Both,
+}
+
+/// The `animation-*` longhands as coordinated lists.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AnimationList {
+    /// `none` or a `@keyframes` name per item.
+    pub name: Vec<String>,
+    pub duration: Vec<i32>,
+    pub timing: Vec<TimingFunction>,
+    pub delay: Vec<i32>,
+    /// In 1/1000; `None` is `infinite`.
+    pub iteration_count: Vec<Option<i32>>,
+    pub direction: Vec<AnimationDirection>,
+    pub fill_mode: Vec<AnimationFillMode>,
+    /// `true` when running.
+    pub play_state: Vec<bool>,
+}
+
+impl Default for AnimationList {
+    fn default() -> Self {
+        AnimationList {
+            name: vec!["none".into()],
+            duration: vec![0],
+            timing: vec![TimingFunction::Ease],
+            delay: vec![0],
+            iteration_count: vec![Some(1000)],
+            direction: vec![AnimationDirection::Normal],
+            fill_mode: vec![AnimationFillMode::None],
+            play_state: vec![true],
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Animation {
+    pub name: String,
+    pub duration_ms: i32,
+    pub timing: TimingFunction,
+    pub delay_ms: i32,
+    pub iteration_count: Option<i32>,
+    pub direction: AnimationDirection,
+    pub fill_mode: AnimationFillMode,
+    pub running: bool,
+}
+
+impl AnimationList {
+    pub fn items(&self) -> Vec<Animation> {
+        let n = self.name.len();
+        let at = |i: usize, len: usize| i % len.max(1);
+        (0..n)
+            .map(|i| Animation {
+                name: self.name[i].clone(),
+                duration_ms: self.duration[at(i, self.duration.len())],
+                timing: self.timing[at(i, self.timing.len())],
+                delay_ms: self.delay[at(i, self.delay.len())],
+                iteration_count: self.iteration_count[at(i, self.iteration_count.len())],
+                direction: self.direction[at(i, self.direction.len())],
+                fill_mode: self.fill_mode[at(i, self.fill_mode.len())],
+                running: self.play_state[at(i, self.play_state.len())],
+            })
+            .filter(|a| a.name != "none")
+            .collect()
+    }
+}
+
 /// The font in computed form.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Font {
@@ -770,12 +926,19 @@ pub struct ComputedStyle {
 
     // Text and fonts (inherited)
     pub font: Font,
+    /// When `font-size` is an absolute-size keyword, its index (0 = xx-small), so the
+    /// monospace scale quirk can rescale it when the family changes. Inherited.
+    pub font_size_keyword: Option<u8>,
     pub color: Color,
     pub line_height: LineHeight,
     pub text_align: TextAlign,
     pub text_indent: LengthPercentage,
     pub text_transform: TextTransform,
     pub text_decoration: TextDecoration,
+    /// The decorations to draw on this element's text: its own plus those propagated
+    /// from ancestors (CSS 2.1 §16.3.1: not into floats, absolutes or atomic inlines).
+    /// Paint reads this; `text_decoration` is the element's own computed value.
+    pub text_decoration_effective: TextDecoration,
     pub text_overflow: TextOverflow,
     pub white_space: WhiteSpace,
     pub word_break: WordBreak,
@@ -846,6 +1009,14 @@ pub struct ComputedStyle {
     pub quotes: Vec<(String, String)>,
     pub counter_reset: Vec<(String, i32)>,
     pub counter_increment: Vec<(String, i32)>,
+
+    // Custom properties (inherited): the declared value tokens after `var()`
+    // substitution, keyed by the full name including `--`.
+    pub custom: std::collections::BTreeMap<String, Vec<crate::css::token::ComponentValue>>,
+
+    // Transitions and animations (parsed in M1; M2 runs them on the world clock).
+    pub transitions: TransitionList,
+    pub animations: AnimationList,
 }
 
 impl ComputedStyle {
@@ -882,12 +1053,14 @@ impl ComputedStyle {
                 small_caps: false,
                 lang: cw_scene::Lang::Auto,
             },
+            font_size_keyword: Some(3),
             color: Color(0, 0, 0, 255),
             line_height: LineHeight::Normal,
             text_align: TextAlign::Start,
             text_indent: LengthPercentage::ZERO,
             text_transform: TextTransform::None,
             text_decoration: TextDecoration::default(),
+            text_decoration_effective: TextDecoration::default(),
             text_overflow: TextOverflow::Clip,
             white_space: WhiteSpace::Normal,
             word_break: WordBreak::Normal,
@@ -945,6 +1118,9 @@ impl ComputedStyle {
             quotes: vec![("\u{201C}".into(), "\u{201D}".into()), ("\u{2018}".into(), "\u{2019}".into())],
             counter_reset: Vec::new(),
             counter_increment: Vec::new(),
+            custom: std::collections::BTreeMap::new(),
+            transitions: TransitionList::default(),
+            animations: AnimationList::default(),
         }
     }
 
@@ -954,6 +1130,7 @@ impl ComputedStyle {
         s.direction = parent.direction;
         s.visibility = parent.visibility;
         s.font = parent.font.clone();
+        s.font_size_keyword = parent.font_size_keyword;
         s.color = parent.color;
         s.line_height = parent.line_height;
         s.text_align = parent.text_align;
@@ -976,6 +1153,7 @@ impl ComputedStyle {
         s.pointer_events = parent.pointer_events;
         s.user_select = parent.user_select;
         s.quotes = parent.quotes.clone();
+        s.custom = parent.custom.clone();
         s
     }
 
@@ -1025,18 +1203,63 @@ impl Corners<(LengthPercentage, LengthPercentage)> {
     }
 }
 
+/// One `@keyframes` rule's frames: selectors (`from`, `to`, percentages) and their
+/// declarations, in source order.
+pub type Keyframes = Vec<(Vec<crate::css::KeyframeSelector>, Vec<crate::css::Declaration>)>;
+
 /// Computed styles for a document, keyed by node id; pseudo-elements keyed separately.
+/// Text nodes share their parent's style. Also carries what the cascade collected for
+/// other modules: `@font-face` rules, `@keyframes`, what was unsupported, and the
+/// viewport the styles were computed for.
 #[derive(Clone, Debug, Default)]
 pub struct StyleSet {
-    styles: Vec<Option<std::rc::Rc<ComputedStyle>>>,
-    before: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
-    after: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
-    marker: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
+    pub(crate) styles: Vec<Option<std::rc::Rc<ComputedStyle>>>,
+    pub(crate) before: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
+    pub(crate) after: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
+    pub(crate) marker: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
+    /// `@font-face` rules from every sheet, in order, for the fonts module.
+    pub font_faces: Vec<crate::style::cascade::FontFace>,
+    /// `@keyframes` by name (the last declaration of a name wins).
+    pub keyframes: std::collections::BTreeMap<String, Keyframes>,
+    /// What lenient mode dropped: unknown properties, invalid values, unsupported
+    /// selectors and at-rules, deduplicated.
+    pub unsupported: Vec<crate::Unsupported>,
+    /// The viewport (from the `Media`) the styles were computed against.
+    pub viewport: crate::Viewport,
+    /// Elements whose `color` is the document text colour under the quirks-mode table
+    /// rule, kept so an incremental restyle reproduces the full cascade.
+    pub(crate) quirk_table_color: std::collections::BTreeSet<crate::dom::NodeId>,
+    /// The root element's computed font size; zero until a cascade ran.
+    pub(crate) root_font_size_au: Au,
 }
 
 impl StyleSet {
     pub fn new() -> Self {
         Self::default()
+    }
+    /// The root element's computed font size (what `rem` resolves against), or the
+    /// UA default when there is no styled root.
+    pub fn root_font_size(&self) -> Au {
+        if self.root_font_size_au.is_zero() {
+            Au::from_px_i32(16)
+        } else {
+            self.root_font_size_au
+        }
+    }
+    pub fn viewport(&self) -> crate::Viewport {
+        self.viewport
+    }
+    /// Number of node slots (styled or not).
+    pub fn len(&self) -> usize {
+        self.styles.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.styles.iter().all(|s| s.is_none())
+    }
+    pub fn record_unsupported(&mut self, u: crate::Unsupported) {
+        if !self.unsupported.contains(&u) {
+            self.unsupported.push(u);
+        }
     }
     pub fn set(&mut self, id: crate::dom::NodeId, style: std::rc::Rc<ComputedStyle>) {
         if self.styles.len() <= id.index() {

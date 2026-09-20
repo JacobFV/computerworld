@@ -1,0 +1,48 @@
+/* The root and flow content. */
+html, body { display: block; }
+body { margin: 8px; }
+address, blockquote, center, dialog, div, figure, figcaption, footer, form, header,
+hr, legend, listing, main, p, plaintext, pre, search, xmp, article, aside,
+h1, h2, h3, h4, h5, h6, hgroup, nav, section, details, summary, fieldset,
+dd, dl, dt, menu, ol, ul, dir, optgroup { display: block; }
+blockquote, figure { margin: 1em 40px; }
+p, dl, listing, plaintext, pre, xmp { margin-top: 1em; margin-bottom: 1em; }
+menu, ol, ul, dir { margin-top: 1em; margin-bottom: 1em; padding-left: 40px; }
+address { font-style: italic; }
+listing, plaintext, pre, xmp { font-family: monospace; white-space: pre; }
+dd { margin-left: 40px; }
+dir, dl, menu, ol, ul { list-style-type: disc; }
+ol { list-style-type: decimal; }
+li { display: list-item; }
+:is(dir, dl, menu, ol, ul) :is(dir, dl, menu, ul) { list-style-type: circle; margin-top: 0; margin-bottom: 0; }
+:is(dir, dl, menu, ol, ul) :is(dir, dl, menu, ol, ul) :is(dir, dl, menu, ul) { list-style-type: square; }
+center { text-align: center; }
+hr { color: gray; border-style: inset; border-width: 1px; margin: 0.5em auto; overflow: hidden; }
+fieldset { margin-left: 2px; margin-right: 2px; border: groove 2px ThreeDFace; padding: 0.35em 0.75em 0.625em; min-width: min-content; }
+legend { padding-left: 2px; padding-right: 2px; }
+details { display: block; }
+summary { display: block; cursor: default; }
+details > summary:first-of-type { display: list-item; counter-increment: list-item 0; list-style: disclosure-closed inside; }
+details[open] > summary:first-of-type { list-style-type: disclosure-open; }
+dialog:not([open]) { display: none; }
+dialog { position: absolute; left: 0; right: 0; width: fit-content; height: fit-content; margin: auto; border: solid; padding: 1em; background-color: white; color: black; }
+h1 { font-size: 2.00em; font-weight: bold; margin-top: 0.67em; margin-bottom: 0.67em; }
+h2 { font-size: 1.50em; font-weight: bold; margin-top: 0.83em; margin-bottom: 0.83em; }
+h3 { font-size: 1.17em; font-weight: bold; margin-top: 1.00em; margin-bottom: 1.00em; }
+h4 { font-size: 1.00em; font-weight: bold; margin-top: 1.33em; margin-bottom: 1.33em; }
+h5 { font-size: 0.83em; font-weight: bold; margin-top: 1.67em; margin-bottom: 1.67em; }
+h6 { font-size: 0.67em; font-weight: bold; margin-top: 2.33em; margin-bottom: 2.33em; }
+:is(article, aside, nav, section) h1 { font-size: 1.50em; margin-top: 0.83em; margin-bottom: 0.83em; }
+:is(article, aside, nav, section) :is(article, aside, nav, section) h1 { font-size: 1.17em; margin-top: 1.00em; margin-bottom: 1.00em; }
+:is(article, aside, nav, section) :is(article, aside, nav, section) :is(article, aside, nav, section) h1 { font-size: 1.00em; margin-top: 1.33em; margin-bottom: 1.33em; }
+:is(article, aside, nav, section) :is(article, aside, nav, section) :is(article, aside, nav, section) :is(article, aside, nav, section) h1 { font-size: 0.83em; margin-top: 1.67em; margin-bottom: 1.67em; }
+:is(article, aside, nav, section) :is(article, aside, nav, section) :is(article, aside, nav, section) :is(article, aside, nav, section) :is(article, aside, nav, section) h1 { font-size: 0.67em; margin-top: 2.33em; margin-bottom: 2.33em; }
+marquee { display: inline-block; text-align: initial; overflow: hidden !important; }
+br { display: inline; }
+wbr { display: inline; }
+iframe { border: 2px inset; }
+video { object-fit: contain; }
+img, video, canvas, iframe, embed, object, audio, svg { display: inline; }
+audio:not([controls]) { display: none !important; }
+ruby { display: ruby; }
+rt { display: ruby-text; }

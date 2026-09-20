@@ -1,0 +1,28 @@
+/* Phrasing content. */
+cite, dfn, em, i, var { font-style: italic; }
+b, strong { font-weight: bolder; }
+code, kbd, samp, tt { font-family: monospace; }
+big { font-size: larger; }
+small { font-size: smaller; }
+sub { vertical-align: sub; }
+sup { vertical-align: super; }
+sub, sup { line-height: normal; font-size: smaller; }
+ruby > rt { font-size: 50%; }
+:link { color: #0000EE; }
+:visited { color: #551A8B; }
+:link, :visited { text-decoration: underline; cursor: pointer; }
+:focus-visible { outline: auto 1px -webkit-focus-ring-color; }
+mark { background: yellow; color: black; }
+abbr[title], acronym[title] { text-decoration: dotted underline; }
+ins, u { text-decoration: underline; }
+del, s, strike { text-decoration: line-through; }
+q::before { content: open-quote; }
+q::after { content: close-quote; }
+nobr { white-space: nowrap; }
+nobr wbr { white-space: normal; }
+br::before { content: "\A"; white-space: pre; }
+bdi, output { unicode-bidi: isolate; }
+bdo { unicode-bidi: isolate-override; }
+[dir=ltr i] { direction: ltr; }
+[dir=rtl i] { direction: rtl; }
+input, textarea, select, button, meter, progress { text-indent: initial; }
