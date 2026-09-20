@@ -30,6 +30,12 @@ main { width: 100%; }
 }
 .from:hover { color: var(--ink); }
 
+/* style.css hands a narrow window to the machine on the reasoning that a
+   phone is tall and the page scrolls. A frame is neither: it is short and
+   it does not scroll, so the height cap has to survive down here too. */
 @media (max-width: 720px) {
-  .stage { --w-desk: 88vw; --h-phone: min(640px, 150vw, 100vh - 8.5rem); }
+  .stage {
+    --w-desk: min(88vw, (100vh - 7rem) * 1.6);
+    --h-phone: min(640px, 150vw, 100vh - 8.5rem);
+  }
 }
