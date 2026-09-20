@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>octoshell/fixpoint: A deterministic fixed-point layout kernel</title>
+<style>
+  /* A self-contained GitHub-style repository page. Inline CSS only, no images (icons
+     and avatars are coloured boxes and circles), no script, synthetic content. */
+  :root {
+    --color-canvas-default: #ffffff;
+    --color-canvas-subtle: #f6f8fa;
+    --color-canvas-inset: #f6f8fa;
+    --color-border-default: #d0d7de;
+    --color-border-muted: #d8dee4;
+    --color-fg-default: #1f2328;
+    --color-fg-muted: #656d76;
+    --color-fg-subtle: #6e7781;
+    --color-accent-fg: #0969da;
+    --color-accent-subtle: #ddf4ff;
+    --color-success-fg: #1a7f37;
+    --color-success-emphasis: #1f883d;
+    --color-attention-fg: #9a6700;
+    --color-danger-fg: #cf222e;
+    --color-header-bg: #24292f;
+    --color-header-fg: #cdd5de;
+    --color-btn-bg: #f6f8fa;
+    --color-btn-border: rgba(31, 35, 40, 0.15);
+    --color-btn-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+    --color-neutral-muted: rgba(175, 184, 193, 0.2);
+    --header-height: 64px;
+    --content-max: 1280px;
+    --gutter: 32px;
+    --sidebar-width: 296px;
+    --radius: 6px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "JetBrains Mono", "Courier New", monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  /* icon boxes: sized spans, so they must not be plain inlines */
+  .glass, .kbd, .bell, .repo-icon, .ico, .tab-ico, .m-ico, .gear, .edit, .tag-ico, .swatch, .flogo, .dot, .caret, .label, .counter, .latest, .topic { display: inline-block; vertical-align: middle; }
+  html { font-size: 14px; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-fg-default);
+    background: var(--color-canvas-default);
+  }
+  a { color: var(--color-accent-fg); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1, h2, h3, h4, p, ul, ol, table { margin: 0; }
+  ul, ol { padding: 0; list-style: none; }
+
+  /* ---- top nav ---- */
+  .site-header {
+    background: var(--color-header-bg);
+    color: var(--color-header-fg);
+    height: var(--header-height);
+    padding: 0 var(--gutter);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .site-header .logo {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #fff; flex: none;
+    position: relative;
+  }
+  .site-header .logo::after {
+    content: ""; position: absolute; left: 9px; top: 8px; width: 14px; height: 16px;
+    background: var(--color-header-bg); border-radius: 7px 7px 4px 4px;
+  }
+  .site-search {
+    display: flex; align-items: center; gap: 8px;
+    width: 272px; height: 32px; padding: 0 12px;
+    border: 1px solid #57606a; border-radius: var(--radius);
+    color: var(--color-header-fg); font-size: 14px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .site-search .glass {
+    width: 14px; height: 14px; border: 2px solid var(--color-header-fg); border-radius: 50%;
+    position: relative; flex: none;
+  }
+  .site-search .glass::after {
+    content: ""; position: absolute; width: 2px; height: 6px; background: var(--color-header-fg);
+    right: -4px; bottom: -5px; transform: rotate(-45deg);
+  }
+  .site-search .kbd {
+    margin-left: auto; padding: 0 6px; line-height: 18px; font-size: 11px;
+    border: 1px solid #57606a; border-radius: 4px; color: #8c959f;
+  }
+  .site-nav { display: flex; gap: 16px; }
+  .site-nav a { color: #fff; font-weight: 600; font-size: 14px; }
+  .site-header .right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .site-header .right .btn { color: #fff; border-color: #57606a; background: transparent; }
+  .bell { width: 16px; height: 16px; border: 2px solid #fff; border-radius: 8px 8px 2px 2px; position: relative; }
+  .bell::after { content: ""; position: absolute; width: 8px; height: 8px; background: #1f6feb; border-radius: 50%; top: -5px; right: -5px; }
+  .avatar { border-radius: 50%; background: linear-gradient(135deg, #f78166, #6e40c9); flex: none; display: inline-block; }
+  .avatar.me { width: 32px; height: 32px; }
+
+  /* ---- repo header ---- */
+  .repohead {
+    background: var(--color-canvas-subtle);
+    border-bottom: 1px solid var(--color-border-default);
+    padding-top: 16px;
+  }
+  .container { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--gutter); }
+  .repohead .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .repo-icon {
+    width: 16px; height: 16px; border: 2px solid var(--color-fg-muted); border-radius: 2px;
+    position: relative; flex: none;
+  }
+  .repo-icon::before { content: ""; position: absolute; left: 2px; right: 2px; top: 2px; height: 2px; background: var(--color-fg-muted); }
+  .repohead h1 { font-size: 20px; font-weight: 400; display: flex; align-items: center; gap: 6px; }
+  .repohead h1 strong { font-weight: 600; }
+  .repohead h1 .sep { color: var(--color-fg-muted); }
+  .label {
+    display: inline-block; padding: 0 7px; line-height: 18px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--color-border-default); border-radius: 2em; color: var(--color-fg-muted);
+  }
+  .repohead .actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 12px;
+    font-size: 14px; font-weight: 500; line-height: 20px;
+    color: var(--color-fg-default);
+    background: var(--color-btn-bg);
+    border: 1px solid var(--color-btn-border);
+    border-radius: var(--radius);
+    box-shadow: var(--color-btn-shadow);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .btn:hover { background: #f3f4f6; border-color: rgba(31, 35, 40, 0.15); }
+  .btn.primary { color: #fff; background: var(--color-success-emphasis); border-color: rgba(31, 35, 40, 0.15); }
+  .btn.primary:hover { background: #1a7f37; }
+  .btn .counter {
+    padding: 0 6px; min-width: 20px; line-height: 18px; font-size: 12px; font-weight: 500;
+    border-radius: 2em; background: var(--color-neutral-muted); text-align: center;
+  }
+  .btn .caret {
+    width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 4px solid currentColor; margin-left: 2px;
+  }
+  .ico { width: 16px; height: 16px; flex: none; border-radius: 3px; }
+  .ico.eye { background: var(--color-fg-muted); border-radius: 50%; }
+  .ico.fork { background: transparent; border: 2px solid var(--color-fg-muted); border-radius: 50%; }
+  .ico.star { background: #e3b341; border-radius: 3px; transform: rotate(45deg); width: 12px; height: 12px; margin: 2px; }
+
+  .tabs { display: flex; margin-top: 16px; gap: 8px; }
+  .tabs a {
+    position: relative; display: flex; align-items: center; gap: 8px;
+    padding: 8px 8px 12px; color: var(--color-fg-default); line-height: 30px;
+  }
+  .tabs a:hover { text-decoration: none; }
+  .tabs a::before {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    background: transparent; border-radius: 6px;
+  }
+  .tabs a:hover::before { background: var(--color-border-default); }
+  .tabs a.selected { font-weight: 600; }
+  .tabs a.selected::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    background: #fd8c73; border-radius: 6px;
+  }
+  .tabs .counter {
+    padding: 0 6px; min-width: 20px; line-height: 18px; font-size: 12px; font-weight: 500;
+    border-radius: 2em; background: var(--color-neutral-muted); color: var(--color-fg-default);
+  }
+  .tabs .tab-ico { width: 16px; height: 16px; border-radius: 3px; background: var(--color-fg-muted); opacity: .6; }
+
+  /* ---- sticky file-navigation sub-header ---- */
+  .file-nav {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--color-canvas-default);
+    padding: 16px 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .file-nav .branch .dot { width: 12px; height: 12px; border: 2px solid var(--color-fg-muted); border-radius: 50%; }
+  .file-nav .meta { display: flex; gap: 16px; margin-left: 8px; }
+  .file-nav .meta a { color: var(--color-fg-muted); display: inline-flex; align-items: center; gap: 4px; }
+  .file-nav .meta a strong { color: var(--color-fg-default); font-weight: 600; }
+  .file-nav .meta .m-ico { width: 14px; height: 14px; border-radius: 3px; background: var(--color-fg-muted); opacity: .5; }
+  .file-nav .spacer { flex: 1; }
+
+  /* ---- main grid ---- */
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+    gap: 24px;
+    padding-bottom: 48px;
+  }
+  @media (max-width: 1011px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .site-search { display: none; }
+    .repohead .actions .counter { display: none; }
+  }
+
+  /* commit bar + file table */
+  .files {
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .commit-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px;
+    background: var(--color-canvas-subtle);
+    border-bottom: 1px solid var(--color-border-default);
+  }
+  .commit-bar .avatar { width: 20px; height: 20px; }
+  .commit-bar .author { font-weight: 600; color: var(--color-fg-default); }
+  .commit-bar .msg { color: var(--color-fg-default); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .commit-bar .hash { font-family: var(--font-mono); font-size: 12px; color: var(--color-fg-muted); }
+  .commit-bar .time { color: var(--color-fg-muted); white-space: nowrap; }
+  .commit-bar .count { margin-left: auto; color: var(--color-fg-muted); white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+  .commit-bar .count strong { color: var(--color-fg-default); font-weight: 600; }
+  .commit-bar .count .m-ico { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--color-fg-muted); }
+  .file-table { width: 100%; border-collapse: collapse; }
+  .file-table tr { border-top: 1px solid var(--color-border-muted); }
+  .file-table tr:first-child { border-top: 0; }
+  .file-table tr:hover { background: var(--color-canvas-subtle); }
+  .file-table td { padding: 8px 16px; line-height: 20px; vertical-align: middle; }
+  .file-table td.icon { width: 16px; padding-right: 0; }
+  .file-table td.name { width: 30%; white-space: nowrap; }
+  .file-table td.name a { color: var(--color-fg-default); }
+  .file-table td.message { color: var(--color-fg-muted); max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-table td.message a { color: var(--color-fg-muted); }
+  .file-table td.age { color: var(--color-fg-muted); text-align: right; white-space: nowrap; width: 100px; }
+  .f-ico { display: block; width: 16px; height: 16px; border-radius: 2px; }
+  .f-ico.dir { background: #54aeff; border-radius: 2px 2px 3px 3px; }
+  .f-ico.file { background: transparent; border: 1.5px solid var(--color-fg-muted); border-radius: 2px; height: 16px; width: 13px; margin: 0 1px; }
+
+  /* README */
+  .readme {
+    margin-top: 16px;
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius);
+  }
+  .readme .head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--color-border-default);
+    font-size: 14px;
+    position: sticky; top: 64px; background: var(--color-canvas-default);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .readme .head .m-ico { width: 16px; height: 16px; border: 2px solid var(--color-fg-muted); border-radius: 2px; }
+  .readme .head .edit { margin-left: auto; width: 16px; height: 16px; background: var(--color-fg-muted); border-radius: 2px; opacity: .5; }
+  .markdown-body { padding: 32px; font-size: 16px; line-height: 1.5; }
+  .markdown-body h1 {
+    font-size: 2em; font-weight: 600; padding-bottom: .3em; margin-bottom: 16px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .markdown-body h2 {
+    font-size: 1.5em; font-weight: 600; padding-bottom: .3em; margin: 24px 0 16px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .markdown-body h3 { font-size: 1.25em; font-weight: 600; margin: 24px 0 16px; }
+  .markdown-body p { margin-bottom: 16px; }
+  .markdown-body code {
+    font-family: var(--font-mono); font-size: 85%;
+    padding: .2em .4em; border-radius: 6px; background: var(--color-neutral-muted);
+  }
+  .markdown-body pre {
+    margin: 0 0 16px; padding: 16px; overflow: auto;
+    font-family: var(--font-mono); font-size: 85%; line-height: 1.45;
+    background: var(--color-canvas-subtle); border-radius: 6px;
+  }
+  .markdown-body pre code { padding: 0; background: transparent; font-size: 100%; }
+  .markdown-body ul { list-style: disc; padding-left: 2em; margin-bottom: 16px; }
+  .markdown-body li { margin-top: .25em; }
+  .markdown-body table { border-collapse: collapse; margin-bottom: 16px; display: block; width: max-content; max-width: 100%; overflow: auto; }
+  .markdown-body th, .markdown-body td { padding: 6px 13px; border: 1px solid var(--color-border-default); }
+  .markdown-body th { font-weight: 600; }
+  .markdown-body tr:nth-child(2n) { background: var(--color-canvas-subtle); }
+  .markdown-body .badges { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; height: 20px; font-size: 11px; font-weight: 600; line-height: 20px;
+    border-radius: 3px; overflow: hidden; font-family: var(--font-sans);
+  }
+  .badge span { padding: 0 6px; }
+  .badge .k { background: #555; color: #fff; }
+  .badge .v { background: #4c1; color: #fff; }
+  .badge .v.blue { background: #007ec6; }
+  .badge .v.orange { background: #fe7d37; }
+
+  /* ---- sidebar ---- */
+  .sidebar { display: flex; flex-direction: column; gap: 0; }
+  .sidebar section { padding: 16px 0; border-bottom: 1px solid var(--color-border-muted); }
+  .sidebar section:first-child { padding-top: 0; }
+  .sidebar section:last-child { border-bottom: 0; }
+  .sidebar h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .sidebar h2 .counter {
+    padding: 0 6px; min-width: 20px; line-height: 18px; font-size: 12px; font-weight: 500;
+    border-radius: 2em; background: var(--color-neutral-muted); color: var(--color-fg-default);
+  }
+  .sidebar h2 .gear { margin-left: auto; width: 16px; height: 16px; border: 2px solid var(--color-fg-muted); border-radius: 50%; }
+  .about p { margin-bottom: 16px; }
+  .about .link { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600; }
+  .about .link .m-ico { width: 16px; height: 16px; background: var(--color-fg-muted); border-radius: 50%; opacity: .5; }
+  .topics { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; }
+  .topic {
+    display: inline-block; padding: 0 10px; line-height: 22px; font-size: 12px; font-weight: 500;
+    color: var(--color-accent-fg); background: var(--color-accent-subtle); border-radius: 2em;
+    white-space: nowrap;
+  }
+  .topic:hover { color: #fff; background: var(--color-accent-fg); text-decoration: none; }
+  .about .stats { display: flex; flex-direction: column; gap: 8px; color: var(--color-fg-muted); }
+  .about .stats a { color: var(--color-fg-muted); display: flex; align-items: center; gap: 8px; }
+  .about .stats a:hover { color: var(--color-accent-fg); text-decoration: none; }
+  .about .stats .m-ico { width: 16px; height: 16px; background: var(--color-fg-muted); border-radius: 3px; opacity: .5; }
+  .release { display: flex; gap: 8px; }
+  .release .tag-ico { width: 16px; height: 16px; background: var(--color-success-fg); border-radius: 3px 3px 8px 3px; margin-top: 3px; flex: none; }
+  .release .name { font-weight: 600; color: var(--color-fg-default); display: flex; gap: 8px; align-items: center; }
+  .release .latest {
+    padding: 0 7px; line-height: 18px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--color-success-fg); color: var(--color-success-fg); border-radius: 2em;
+  }
+  .release .when { color: var(--color-fg-muted); font-size: 12px; }
+  .release-more { display: block; margin-top: 12px; font-size: 12px; }
+  .packages p, .empty { color: var(--color-fg-muted); }
+  .contributors { display: flex; flex-wrap: wrap; gap: 4px; }
+  .contributors .avatar { width: 32px; height: 32px; }
+  .contributors .avatar:nth-child(2n) { background: linear-gradient(135deg, #2da44e, #0969da); }
+  .contributors .avatar:nth-child(3n) { background: linear-gradient(135deg, #bf3989, #e16f24); }
+  .contributors .more { align-self: center; margin-left: 8px; font-size: 12px; }
+  .lang-bar { display: flex; height: 8px; border-radius: 6px; overflow: hidden; gap: 2px; margin-bottom: 8px; }
+  .lang-bar span { display: block; height: 100%; }
+  .lang-list { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .lang-list li { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+  .lang-list .swatch { width: 8px; height: 8px; border-radius: 50%; }
+  .lang-list .pct { color: var(--color-fg-muted); }
+  .c-rust { background: #dea584; }
+  .c-ts { background: #3178c6; }
+  .c-python { background: #3572a5; }
+  .c-shell { background: #89e051; }
+  .c-other { background: #ededed; }
+
+  footer.site-footer {
+    max-width: var(--content-max); margin: 0 auto; padding: 40px var(--gutter);
+    border-top: 1px solid var(--color-border-muted);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+    font-size: 12px; color: var(--color-fg-muted);
+  }
+  footer.site-footer .copy { display: flex; align-items: center; gap: 8px; }
+  footer.site-footer .flogo { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-fg-muted); }
+  footer.site-footer ul { display: flex; gap: 16px; flex-wrap: wrap; margin-left: auto; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <a class="logo" href="/" aria-label="Homepage"></a>
+  <div class="site-search" role="search">
+    <span class="glass" aria-hidden="true"></span>
+    <span>Type <b>/</b> to search</span>
+    <span class="kbd">/</span>
+  </div>
+  <nav class="site-nav">
+    <a href="/pulls">Pull requests</a>
+    <a href="/issues">Issues</a>
+    <a href="/marketplace">Marketplace</a>
+    <a href="/explore">Explore</a>
+  </nav>
+  <div class="right">
+    <span class="bell" aria-label="Notifications"></span>
+    <a class="btn" href="/new">+ <span class="caret"></span></a>
+    <span class="avatar me" aria-label="Signed in as mira-k"></span>
+  </div>
+</header>
+
+<div class="repohead">
+  <div class="container">
+    <div class="title-row">
+      <span class="repo-icon" aria-hidden="true"></span>
+      <h1><a href="/octoshell">octoshell</a><span class="sep">/</span><strong><a href="/octoshell/fixpoint">fixpoint</a></strong></h1>
+      <span class="label">Public</span>
+      <div class="actions">
+        <a class="btn" href="/octoshell/fixpoint/watchers"><span class="ico eye"></span>Watch <span class="counter">214</span><span class="caret"></span></a>
+        <a class="btn" href="/octoshell/fixpoint/forks"><span class="ico fork"></span>Fork <span class="counter">1.2k</span><span class="caret"></span></a>
+        <a class="btn" href="/octoshell/fixpoint/stargazers"><span class="ico star"></span>Star <span class="counter">8.7k</span><span class="caret"></span></a>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Repository">
+      <a class="selected" href="/octoshell/fixpoint"><span class="tab-ico"></span>Code</a>
+      <a href="/octoshell/fixpoint/issues"><span class="tab-ico"></span>Issues <span class="counter">37</span></a>
+      <a href="/octoshell/fixpoint/pulls"><span class="tab-ico"></span>Pull requests <span class="counter">9</span></a>
+      <a href="/octoshell/fixpoint/discussions"><span class="tab-ico"></span>Discussions</a>
+      <a href="/octoshell/fixpoint/actions"><span class="tab-ico"></span>Actions</a>
+      <a href="/octoshell/fixpoint/projects"><span class="tab-ico"></span>Projects <span class="counter">2</span></a>
+      <a href="/octoshell/fixpoint/wiki"><span class="tab-ico"></span>Wiki</a>
+      <a href="/octoshell/fixpoint/security"><span class="tab-ico"></span>Security</a>
+      <a href="/octoshell/fixpoint/pulse"><span class="tab-ico"></span>Insights</a>
+    </nav>
+  </div>
+</div>
+
+<main class="container">
+  <div class="file-nav">
+    <a class="btn branch" href="/octoshell/fixpoint/branches"><span class="dot"></span>main<span class="caret"></span></a>
+    <div class="meta">
+      <a href="/octoshell/fixpoint/branches"><span class="m-ico"></span><strong>14</strong> branches</a>
+      <a href="/octoshell/fixpoint/tags"><span class="m-ico"></span><strong>27</strong> tags</a>
+    </div>
+    <span class="spacer"></span>
+    <a class="btn" href="/octoshell/fixpoint/find/main">Go to file</a>
+    <a class="btn" href="/octoshell/fixpoint/new/main">Add file<span class="caret"></span></a>
+    <a class="btn primary" href="#clone">Code<span class="caret"></span></a>
+  </div>
+
+  <div class="layout">
+    <div class="content">
+      <div class="files">
+        <div class="commit-bar">
+          <span class="avatar" aria-hidden="true"></span>
+          <a class="author" href="/mira-k">mira-k</a>
+          <a class="msg" href="/octoshell/fixpoint/commit/9f3c2e1">layout: collapse margins through empty blocks with clearance (#412)</a>
+          <a class="hash" href="/octoshell/fixpoint/commit/9f3c2e1">9f3c2e1</a>
+          <span class="time">3 hours ago</span>
+          <a class="count" href="/octoshell/fixpoint/commits/main"><span class="m-ico"></span><strong>1,834</strong> commits</a>
+        </div>
+        <table class="file-table">
+          <tbody>
+            <tr>
+              <td class="icon"><span class="f-ico dir"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/tree/main/.github/workflows">.github/workflows</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a1">ci: run reftests on three platforms</a></td>
+              <td class="age">2 days ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico dir"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/tree/main/benches">benches</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a2">bench: add the 10k-node table case</a></td>
+              <td class="age">last week</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico dir"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/tree/main/docs">docs</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a3">docs: describe the fragment tree</a></td>
+              <td class="age">3 weeks ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico dir"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/tree/main/src">src</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/9f3c2e1">layout: collapse margins through empty blocks with clearance (#412)</a></td>
+              <td class="age">3 hours ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico dir"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/tree/main/tests">tests</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a5">tests: reftests for float clearance</a></td>
+              <td class="age">yesterday</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico file"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/blob/main/.gitignore">.gitignore</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a6">ignore the parity output directory</a></td>
+              <td class="age">2 months ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico file"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/blob/main/CHANGELOG.md">CHANGELOG.md</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a7">release 0.9.2</a></td>
+              <td class="age">5 days ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico file"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/blob/main/Cargo.toml">Cargo.toml</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a8">bump to 0.9.2</a></td>
+              <td class="age">5 days ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico file"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/blob/main/LICENSE">LICENSE</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/a9">initial commit</a></td>
+              <td class="age">2 years ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico file"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/blob/main/README.md">README.md</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/b1">readme: document the stability guarantees</a></td>
+              <td class="age">2 weeks ago</td>
+            </tr>
+            <tr>
+              <td class="icon"><span class="f-ico file"></span></td>
+              <td class="name"><a href="/octoshell/fixpoint/blob/main/rust-toolchain.toml">rust-toolchain.toml</a></td>
+              <td class="message"><a href="/octoshell/fixpoint/commit/b2">toolchain: stable 1.81</a></td>
+              <td class="age">last month</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="readme" id="readme">
+        <div class="head"><span class="m-ico"></span><span>README.md</span><span class="edit"></span></div>
+        <article class="markdown-body">
+          <h1>fixpoint</h1>
+          <div class="badges">
+            <span class="badge"><span class="k">build</span><span class="v">passing</span></span>
+            <span class="badge"><span class="k">crates.io</span><span class="v blue">v0.9.2</span></span>
+            <span class="badge"><span class="k">docs</span><span class="v blue">latest</span></span>
+            <span class="badge"><span class="k">coverage</span><span class="v orange">87%</span></span>
+          </div>
+          <p>A deterministic fixed-point layout kernel. Every length is a <code>i32</code> in 1/64 px, every arithmetic step rounds the same way on every platform, and the output of a layout is a function of its input alone: no floats, no host fonts, no wall clock.</p>
+          <h2>Installation</h2>
+          <p>Add the crate to your <code>Cargo.toml</code>:</p>
+          <pre><code>[dependencies]
+fixpoint = "0.9"
+
+[features]
+default = ["flex", "grid"]</code></pre>
+          <h2>Quick start</h2>
+          <pre><code>use fixpoint::{Au, Box, Constraints, layout};
+
+let root = Box::block().width(Au::px(640)).children(vec![
+    Box::inline_text("hello"),
+    Box::block().height(Au::px(24)),
+]);
+let tree = layout(&amp;root, Constraints::viewport(640, 480));
+assert_eq!(tree.root().size().height, Au::px(43));</code></pre>
+          <h2>Features</h2>
+          <ul>
+            <li><strong>Fixed point everywhere.</strong> Widths, heights, offsets and text advances are all quantised to 1/64 px before they enter the tree.</li>
+            <li><strong>Block, inline, table, flex and grid</strong> formatting contexts, with the CSS 2.1 margin collapsing rules and clearance.</li>
+            <li><strong>Deterministic text shaping</strong> through the bundled faces; glyph advances are read from the font tables and never from a rasteriser.</li>
+            <li><strong>Reftest driven.</strong> The <code>tests/ref</code> corpus pairs each feature with a reference document that must paint to the same pixels.</li>
+          </ul>
+          <h2>Stability</h2>
+          <p>The public API follows semantic versioning. The layout result for a given input is part of that contract: a patch release never changes a single pixel of an existing fixture, and a minor release may only change pixels for documents that use a newly supported property.</p>
+          <table>
+            <thead>
+              <tr><th>Module</th><th>Status</th><th>Spec</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>block</code></td><td>stable</td><td>CSS 2.1 §9, §10</td></tr>
+              <tr><td><code>inline</code></td><td>stable</td><td>CSS 2.1 §9.4.2, CSS Inline 3</td></tr>
+              <tr><td><code>table</code></td><td>stable</td><td>CSS 2.1 §17</td></tr>
+              <tr><td><code>flex</code></td><td>beta</td><td>CSS Flexbox 1</td></tr>
+              <tr><td><code>grid</code></td><td>beta</td><td>CSS Grid 1</td></tr>
+            </tbody>
+          </table>
+          <h3>Contributing</h3>
+          <p>Open an issue before a large change. Every pull request needs a reftest pair under <code>tests/ref</code> and must keep the parity numbers in <code>target-parity/report.md</code> from going down.</p>
+          <h3>License</h3>
+          <p>Dual-licensed under MIT and Apache 2.0, at your option.</p>
+        </article>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <section class="about">
+        <h2>About <span class="gear" aria-hidden="true"></span></h2>
+        <p>A deterministic fixed-point layout kernel: block, inline, table, flex and grid in 1/64 px, identical on every platform.</p>
+        <a class="link" href="/docs"><span class="m-ico"></span>fixpoint.octoshell.dev</a>
+        <div class="topics">
+          <a class="topic" href="/topics/rust">rust</a>
+          <a class="topic" href="/topics/layout">layout</a>
+          <a class="topic" href="/topics/css">css</a>
+          <a class="topic" href="/topics/deterministic">deterministic</a>
+          <a class="topic" href="/topics/fixed-point">fixed-point</a>
+          <a class="topic" href="/topics/flexbox">flexbox</a>
+          <a class="topic" href="/topics/grid">grid</a>
+          <a class="topic" href="/topics/browser-engine">browser-engine</a>
+        </div>
+        <div class="stats">
+          <a href="/octoshell/fixpoint/blob/main/README.md"><span class="m-ico"></span>Readme</a>
+          <a href="/octoshell/fixpoint/blob/main/LICENSE"><span class="m-ico"></span>MIT license</a>
+          <a href="/octoshell/fixpoint/activity"><span class="m-ico"></span>Activity</a>
+          <a href="/octoshell/fixpoint/stargazers"><span class="m-ico"></span><strong>8.7k</strong> stars</a>
+          <a href="/octoshell/fixpoint/watchers"><span class="m-ico"></span><strong>214</strong> watching</a>
+          <a href="/octoshell/fixpoint/forks"><span class="m-ico"></span><strong>1.2k</strong> forks</a>
+        </div>
+      </section>
+
+      <section class="releases">
+        <h2>Releases <span class="counter">27</span></h2>
+        <div class="release">
+          <span class="tag-ico" aria-hidden="true"></span>
+          <div>
+            <div class="name">v0.9.2 <span class="latest">Latest</span></div>
+            <div class="when">5 days ago</div>
+          </div>
+        </div>
+        <a class="release-more" href="/octoshell/fixpoint/releases">+ 26 releases</a>
+      </section>
+
+      <section class="packages">
+        <h2>Packages</h2>
+        <p>No packages published</p>
+      </section>
+
+      <section>
+        <h2>Contributors <span class="counter">42</span></h2>
+        <div class="contributors">
+          <span class="avatar"></span><span class="avatar"></span><span class="avatar"></span>
+          <span class="avatar"></span><span class="avatar"></span><span class="avatar"></span>
+          <span class="avatar"></span><span class="avatar"></span><span class="avatar"></span>
+          <span class="avatar"></span><span class="avatar"></span>
+          <a class="more" href="/octoshell/fixpoint/graphs/contributors">+ 31 contributors</a>
+        </div>
+      </section>
+
+      <section class="languages">
+        <h2>Languages</h2>
+        <div class="lang-bar" aria-hidden="true">
+          <span class="c-rust" style="width: 78.4%"></span>
+          <span class="c-ts" style="width: 11.9%"></span>
+          <span class="c-python" style="width: 6.2%"></span>
+          <span class="c-shell" style="width: 2.5%"></span>
+          <span class="c-other" style="width: 1%"></span>
+        </div>
+        <ul class="lang-list">
+          <li><span class="swatch c-rust"></span><strong>Rust</strong><span class="pct">78.4%</span></li>
+          <li><span class="swatch c-ts"></span><strong>TypeScript</strong><span class="pct">11.9%</span></li>
+          <li><span class="swatch c-python"></span><strong>Python</strong><span class="pct">6.2%</span></li>
+          <li><span class="swatch c-shell"></span><strong>Shell</strong><span class="pct">2.5%</span></li>
+          <li><span class="swatch c-other"></span><strong>Other</strong><span class="pct">1.0%</span></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="copy"><span class="flogo" aria-hidden="true"></span><span>&copy; 2024 Octoshell, Inc.</span></div>
+  <ul>
+    <li><a href="/terms">Terms</a></li>
+    <li><a href="/privacy">Privacy</a></li>
+    <li><a href="/security">Security</a></li>
+    <li><a href="/status">Status</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/contact">Contact</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+    <li><a href="/api">API</a></li>
+    <li><a href="/about">About</a></li>
+  </ul>
+</footer>
+</body>
+</html>

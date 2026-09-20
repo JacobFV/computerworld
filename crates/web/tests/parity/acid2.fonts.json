@@ -1,0 +1,22 @@
+[
+ {
+  "family": "sans-serif",
+  "first": "html>body>div:nth-child(1)>h1:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 20
+   }
+  ]
+ },
+ {
+  "family": "serif",
+  "first": "html>body>div:nth-child(3)>div:nth-child(10)>div:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Serif",
+    "glyphs": 1
+   }
+  ]
+ }
+]

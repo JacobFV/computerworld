@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>#eng-platform | Lumen Labs | Chatter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* A Slack-style app shell: a fixed-height flex column, a rail, a sidebar, a main
+     column with a sticky channel header and an inner scroll container, a composer
+     pinned at the bottom, and a details panel. Everything inline; no images, no script;
+     the workspace, people and messages are invented. */
+  :root {
+    --rail-bg: #19171d;
+    --sidebar-bg: #3f0e40;
+    --sidebar-hover: #350d36;
+    --sidebar-active: #1164a3;
+    --sidebar-text: rgba(255, 255, 255, 0.7);
+    --sidebar-text-strong: #fff;
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --top-bg: #350d36;
+    --canvas: #fff;
+    --panel: #f8f8f8;
+    --ink: #1d1c1d;
+    --ink-muted: #616061;
+    --ink-faint: #868686;
+    --line: #dddddd;
+    --line-soft: #eeeeee;
+    --link: #1264a3;
+    --accent: #007a5a;
+    --badge: #cd2553;
+    --presence: #2bac76;
+    --code-bg: #f8f8f8;
+    --code-ink: #e01e5a;
+    --rail-w: 70px;
+    --sidebar-w: 260px;
+    --details-w: 300px;
+    --topbar-h: 40px;
+    --header-h: 49px;
+    --gutter: 20px;
+    --radius: 6px;
+    --font: Lato, "Slack-Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.46668;
+    color: var(--ink);
+    background: var(--canvas);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--code-bg); color: var(--code-ink); border: 1px solid var(--line); border-radius: 3px; padding: 1px 3px; }
+
+  /* ---- top bar ---- */
+  .topbar {
+    height: var(--topbar-h);
+    flex: none;
+    background: var(--top-bg);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+    color: var(--sidebar-text-strong);
+    position: relative;
+    z-index: 3;
+  }
+  .topbar .history { display: flex; gap: 4px; margin-left: var(--rail-w); }
+  .topbar .history button {
+    width: 28px; height: 28px; border-radius: 4px; color: var(--sidebar-text);
+    font-size: 14px; line-height: 28px; text-align: center;
+  }
+  .topbar .history button:hover { background: rgba(255, 255, 255, 0.1); }
+  .topbar .history button.disabled { opacity: 0.4; }
+  .topbar .search {
+    flex: 1;
+    max-width: 732px;
+    margin: 0 auto;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-size: 13px;
+    color: var(--sidebar-text-strong);
+    position: relative;
+  }
+  .topbar .search .hint { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .search .glass { width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; position: relative; flex: none; }
+  .topbar .search .glass::after { content: ""; position: absolute; right: -6px; bottom: -4px; width: 6px; height: 2px; background: #fff; transform: rotate(45deg); }
+  .topbar .help { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); font-size: 13px; font-weight: 700; line-height: 24px; text-align: center; }
+  .topbar .me {
+    width: 26px; height: 26px; border-radius: 4px; background: #e8912d; position: relative; margin-left: 4px;
+    color: #fff; font-weight: 700; font-size: 12px; line-height: 26px; text-align: center;
+  }
+  .topbar .me::after {
+    content: ""; position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--presence); border: 2px solid var(--top-bg);
+  }
+
+  /* ---- the shell row ---- */
+  .shell { flex: 1; min-height: 0; display: flex; }
+
+  /* ---- workspace rail ---- */
+  .rail {
+    width: var(--rail-w);
+    flex: none;
+    background: var(--rail-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 6px;
+    color: var(--sidebar-text);
+  }
+  .rail .workspace {
+    width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #e3a4f0, #7c3aed);
+    color: #fff; font-weight: 900; font-size: 18px; line-height: 36px; text-align: center; margin-bottom: 10px;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+  }
+  .rail .item { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 4px 0; }
+  .rail .item .ico {
+    width: 36px; height: 36px; border-radius: 8px; background: rgba(255, 255, 255, 0.08);
+    position: relative;
+  }
+  .rail .item .ico::before { content: ""; position: absolute; left: 10px; top: 10px; width: 16px; height: 16px; border: 2px solid currentColor; border-radius: 3px; }
+  .rail .item.active .ico { background: rgba(255, 255, 255, 0.25); color: #fff; }
+  .rail .item:hover .ico { background: rgba(255, 255, 255, 0.18); }
+  .rail .item .label { font-size: 11px; font-weight: 700; color: var(--sidebar-text); }
+  .rail .item.active .label { color: #fff; }
+  .rail .item .count {
+    position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; border-radius: 999px;
+    background: var(--badge); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; padding: 0 4px; text-align: center;
+  }
+  .rail .spacer { flex: 1; }
+  .rail .add { width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); color: #fff; font-size: 22px; line-height: 34px; text-align: center; }
+
+  /* ---- sidebar ---- */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex: none;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 1px solid var(--sidebar-border);
+  }
+  .sidebar .head {
+    height: var(--header-h);
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--sidebar-border);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+  }
+  .sidebar .head .name { color: #fff; font-weight: 900; font-size: 18px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar .head .name::after { content: ""; display: inline-block; width: 6px; height: 6px; border-right: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(45deg); margin: 0 0 3px 8px; }
+  .sidebar .head .compose {
+    width: 34px; height: 34px; border-radius: 50%; background: #fff; color: var(--sidebar-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); position: relative; flex: none;
+  }
+  .sidebar .head .compose::before { content: ""; position: absolute; left: 9px; top: 9px; width: 12px; height: 12px; border: 2px solid var(--sidebar-bg); border-radius: 2px; }
+  .sidebar .head .compose::after { content: ""; position: absolute; left: 17px; top: 6px; width: 2px; height: 10px; background: var(--sidebar-bg); transform: rotate(45deg); }
+  .sidebar .scroll { flex: 1; overflow: auto; padding: 12px 0 20px; }
+  .sidebar .quick { padding: 0 0 12px; }
+  .sidebar .quick li a, .sidebar .list li a {
+    display: flex; align-items: center; height: 28px; padding: 0 16px 0 24px; color: var(--sidebar-text);
+    border-radius: 0; gap: 8px; white-space: nowrap; overflow: hidden;
+  }
+  .sidebar .quick li a:hover, .sidebar .list li a:hover { background: var(--sidebar-hover); text-decoration: none; }
+  .sidebar li.active a { background: var(--sidebar-active); color: #fff; }
+  .sidebar li.unread a { color: #fff; font-weight: 900; }
+  .sidebar .glyph { width: 16px; flex: none; text-align: center; font-size: 14px; opacity: 0.85; }
+  .sidebar .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar .badge {
+    margin-left: auto; min-width: 20px; height: 18px; border-radius: 999px; background: var(--badge); color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; padding: 0 6px; flex: none;
+  }
+  .sidebar .section { margin-top: 8px; }
+  .sidebar .section > .title {
+    display: flex; align-items: center; height: 28px; padding: 0 16px 0 12px; color: var(--sidebar-text); font-size: 15px;
+  }
+  .sidebar .section > .title .caret { width: 6px; height: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin: -3px 12px 0 2px; flex: none; }
+  .sidebar .section > .title .txt { flex: 1; }
+  .sidebar .section > .title .plus { width: 20px; height: 20px; border-radius: 4px; text-align: center; line-height: 20px; font-size: 16px; opacity: 0; }
+  .sidebar .section:hover > .title .plus { opacity: 1; background: rgba(255, 255, 255, 0.1); }
+  .sidebar .dm { position: relative; }
+  .sidebar .dm .glyph { position: relative; width: 20px; height: 20px; border-radius: 4px; background: #5b4b8a; }
+  .sidebar .dm .glyph::before {
+    content: ""; position: absolute; right: -3px; bottom: -3px; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--presence); border: 2px solid var(--sidebar-bg);
+  }
+  .sidebar .dm.away .glyph::before { background: transparent; border-color: var(--sidebar-text); box-sizing: border-box; width: 9px; height: 9px; }
+  .sidebar .dm .glyph.g1 { background: #d4a373; } .sidebar .dm .glyph.g2 { background: #4f8fc9; } .sidebar .dm .glyph.g3 { background: #7fb069; } .sidebar .dm .glyph.g4 { background: #c95d63; }
+  .sidebar .invite a { color: var(--sidebar-text); font-size: 14px; }
+  .sidebar .invite .glyph { border: 1px solid var(--sidebar-text); border-radius: 4px; width: 20px; height: 20px; line-height: 18px; }
+
+  /* ---- main column ---- */
+  .main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--canvas);
+  }
+  .channel-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    height: var(--header-h);
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--gutter) 0 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--canvas);
+    gap: 8px;
+  }
+  .channel-header .name { font-weight: 900; font-size: 18px; white-space: nowrap; display: flex; align-items: center; gap: 2px; padding: 4px 8px; border-radius: 6px; margin-left: -8px; }
+  .channel-header .name:hover { background: var(--panel); }
+  .channel-header .name .hash { color: var(--ink-muted); font-weight: 400; font-size: 16px; }
+  .channel-header .name .caret { width: 6px; height: 6px; border-right: 2px solid var(--ink-muted); border-bottom: 2px solid var(--ink-muted); transform: rotate(45deg); margin: -3px 0 0 6px; }
+  .channel-header .star { width: 20px; height: 20px; color: var(--ink-faint); font-size: 16px; line-height: 20px; text-align: center; }
+  .channel-header .members { font-size: 13px; color: var(--ink-muted); display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+  .channel-header .members:hover { background: var(--panel); }
+  .channel-header .members .pip { width: 12px; height: 12px; border-radius: 3px; background: #b5b5b5; border: 1px solid #fff; margin-left: -6px; }
+  .channel-header .members .pip:first-child { margin-left: 0; }
+  .channel-header .divider { width: 1px; height: 16px; background: var(--line); }
+  .channel-header .topic { font-size: 13px; color: var(--ink-muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .channel-header .actions { display: flex; gap: 4px; margin-left: auto; flex: none; }
+  .channel-header .actions button { width: 28px; height: 28px; border-radius: 4px; border: 1px solid transparent; color: var(--ink-muted); font-size: 13px; }
+  .channel-header .actions button:hover { background: var(--panel); border-color: var(--line); }
+  .channel-header .actions .call { width: auto; padding: 0 8px; border-color: var(--line); font-weight: 700; color: var(--ink); }
+
+  .messages {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 8px 0 16px;
+    display: flex;
+    flex-direction: column;
+  }
+  .messages .intro { padding: 16px var(--gutter) 24px; border-bottom: 1px solid var(--line-soft); margin-bottom: 8px; }
+  .messages .intro .big { width: 48px; height: 48px; border-radius: 8px; background: var(--sidebar-bg); color: #fff; font-size: 28px; font-weight: 900; line-height: 48px; text-align: center; margin-bottom: 12px; }
+  .messages .intro h2 { margin: 0 0 6px; font-size: 22px; font-weight: 900; }
+  .messages .intro p { margin: 0; color: var(--ink-muted); font-size: 15px; max-width: 640px; }
+
+  .day {
+    position: relative;
+    text-align: center;
+    margin: 12px 0 4px;
+    height: 28px;
+  }
+  .day::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line); z-index: 0; }
+  .day span {
+    position: relative; z-index: 1; display: inline-block; height: 28px; line-height: 26px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: 24px; background: var(--canvas); font-size: 13px; font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  .day span::after { content: ""; display: inline-block; width: 5px; height: 5px; border-right: 1.5px solid var(--ink-muted); border-bottom: 1.5px solid var(--ink-muted); transform: rotate(45deg); margin: 0 0 3px 6px; }
+
+  .msg {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    padding: 8px var(--gutter);
+  }
+  .msg:hover { background: var(--panel); }
+  .msg .avatar {
+    width: 36px; height: 36px; border-radius: 6px; flex: none; margin-top: 2px;
+    color: #fff; font-weight: 900; font-size: 16px; line-height: 36px; text-align: center;
+  }
+  .msg .body { flex: 1; min-width: 0; }
+  .msg .meta { display: flex; align-items: baseline; gap: 6px; line-height: 1.2; margin-bottom: 2px; }
+  .msg .meta .author { font-weight: 900; }
+  .msg .meta .author:hover { text-decoration: underline; cursor: pointer; }
+  .msg .meta .time { font-size: 12px; color: var(--ink-muted); }
+  .msg .meta .tag { font-size: 10px; font-weight: 700; color: var(--ink-muted); background: var(--line-soft); border-radius: 2px; padding: 1px 4px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .msg .text { margin: 0; word-wrap: break-word; }
+  .msg .text .mention { color: var(--link); background: rgba(29, 155, 209, 0.1); border-radius: 3px; padding: 0 2px; }
+  .msg.grouped { padding-top: 2px; padding-bottom: 2px; }
+  .msg.grouped .gutter { width: 36px; flex: none; font-size: 10px; color: var(--ink-faint); text-align: right; line-height: 22px; visibility: hidden; }
+  .msg.grouped:hover .gutter { visibility: visible; }
+  .msg .hover-bar {
+    position: absolute; right: var(--gutter); top: -12px; display: none; gap: 2px;
+    background: var(--canvas); border: 1px solid var(--line); border-radius: 6px; padding: 2px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+  .msg:hover .hover-bar { display: flex; }
+  .msg .hover-bar button { width: 26px; height: 26px; border-radius: 4px; font-size: 12px; color: var(--ink-muted); }
+  .msg .hover-bar button:hover { background: var(--panel); }
+
+  .reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .reactions .chip {
+    display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--panel); font-size: 12px; font-weight: 700; color: var(--ink-muted);
+  }
+  .reactions .chip .em { width: 14px; height: 14px; border-radius: 50%; background: #f4c542; }
+  .reactions .chip .em.heart { background: #e8626f; border-radius: 3px; transform: rotate(45deg); width: 11px; height: 11px; }
+  .reactions .chip .em.eyes { background: #6ea8ff; }
+  .reactions .chip.mine { border-color: var(--link); background: rgba(29, 155, 209, 0.1); color: var(--link); }
+  .reactions .add { width: 28px; height: 24px; border-radius: 12px; border: 1px dashed var(--line); color: var(--ink-faint); font-size: 12px; }
+
+  .quote { margin: 4px 0; padding: 2px 0 2px 12px; border-left: 4px solid var(--line); color: var(--ink-muted); }
+  .quote p { margin: 0; }
+
+  .attachment {
+    margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; max-width: 420px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+  .attachment .thumb { height: 120px; background: linear-gradient(120deg, #2b2d42 0%, #4c5c96 60%, #8d99ae 100%); position: relative; }
+  .attachment .thumb::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 16px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.35); }
+  .attachment .file { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+  .attachment .file .icon { width: 32px; height: 32px; border-radius: 4px; background: #e01e5a; color: #fff; font-size: 9px; font-weight: 900; line-height: 32px; text-align: center; flex: none; }
+  .attachment .file .fname { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .attachment .file .fmeta { font-size: 12px; color: var(--ink-muted); }
+  .attachment .file .dl { margin-left: auto; width: 28px; height: 28px; border-radius: 4px; border: 1px solid var(--line); color: var(--ink-muted); font-size: 12px; flex: none; }
+
+  .code-block {
+    margin: 6px 0 0; padding: 8px 10px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px;
+    font-family: var(--mono); font-size: 12px; line-height: 1.5; white-space: pre; overflow-x: auto; color: var(--ink);
+  }
+
+  .thread-link { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; padding: 4px 6px; margin-left: -6px; border-radius: 6px; border: 1px solid transparent; max-width: 480px; }
+  .thread-link:hover { background: var(--canvas); border-color: var(--line); }
+  .thread-link .faces { display: flex; }
+  .thread-link .faces i { display: block; width: 20px; height: 20px; border-radius: 4px; margin-right: 4px; }
+  .thread-link .replies { font-weight: 700; color: var(--link); }
+  .thread-link .last { color: var(--ink-muted); }
+
+  .composer { flex: none; padding: 0 var(--gutter) 20px; }
+  .composer .box {
+    border: 1px solid #8d8d8d; border-radius: 8px; box-shadow: 0 0 0 0 transparent; background: var(--canvas);
+  }
+  .composer .box:focus-within { box-shadow: 0 0 0 4px rgba(29, 155, 209, 0.3); border-color: var(--ink); }
+  .composer .toolbar { display: flex; gap: 2px; padding: 6px 6px 0; align-items: center; }
+  .composer .toolbar button { width: 26px; height: 26px; border-radius: 4px; color: var(--ink-muted); font-size: 12px; font-weight: 900; }
+  .composer .toolbar button:hover { background: var(--panel); color: var(--ink); }
+  .composer .toolbar .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+  .composer .input { padding: 8px 12px; min-height: 44px; font-size: 15px; color: var(--ink-faint); }
+  .composer .foot { display: flex; align-items: center; gap: 2px; padding: 0 6px 6px; }
+  .composer .foot button { width: 26px; height: 26px; border-radius: 4px; color: var(--ink-muted); font-size: 12px; }
+  .composer .foot .plus { border: 1px solid var(--line); border-radius: 50%; font-size: 16px; line-height: 24px; }
+  .composer .foot .send {
+    margin-left: auto; width: auto; height: 28px; padding: 0 10px; border-radius: 4px; background: var(--accent); color: #fff; font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .composer .foot .send .arrow { width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 8px solid #fff; }
+  .composer .foot .send .drop { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.4); margin: 0 -2px 0 2px; }
+  .composer .hint { font-size: 12px; color: var(--ink-faint); margin: 6px 0 0; text-align: right; }
+  .composer .hint b { font-weight: 700; }
+
+  /* ---- details panel ---- */
+  .details {
+    width: var(--details-w);
+    flex: none;
+    border-left: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--canvas);
+  }
+  .details .head { height: var(--header-h); flex: none; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--line); font-weight: 900; font-size: 15px; gap: 6px; }
+  .details .head .close { margin-left: auto; width: 28px; height: 28px; border-radius: 4px; color: var(--ink-muted); font-size: 16px; }
+  .details .scroll { flex: 1; overflow: auto; }
+  .details .tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 16px; }
+  .details .tabs button { padding: 10px 0; margin-right: 16px; font-size: 13px; font-weight: 700; color: var(--ink-muted); position: relative; }
+  .details .tabs button.active { color: var(--ink); }
+  .details .tabs button.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--sidebar-active); }
+  .details section { padding: 12px 16px; border-bottom: 1px solid var(--line-soft); }
+  .details section h3 { margin: 0 0 4px; font-size: 13px; font-weight: 700; display: flex; align-items: center; }
+  .details section h3 .edit { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--link); }
+  .details section p { margin: 0; font-size: 13px; color: var(--ink-muted); }
+  .details section p.mono { font-family: var(--mono); font-size: 12px; }
+  .details .members li { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+  .details .members li .av { width: 24px; height: 24px; border-radius: 4px; position: relative; flex: none; }
+  .details .members li .av::before { content: ""; position: absolute; right: -2px; bottom: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--presence); border: 2px solid #fff; }
+  .details .members li.away .av::before { background: #fff; border-color: var(--ink-faint); }
+  .details .members li .who { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .details .members li .role { font-size: 11px; color: var(--ink-faint); }
+  .details .pinned { display: flex; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
+  .details .pinned .pin { width: 12px; height: 12px; border-radius: 50%; background: #e8a33d; flex: none; margin-top: 3px; }
+  .details .pinned .pin-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* avatar palette */
+  .c-1 { background: #3f6ad8; } .c-2 { background: #d4a373; } .c-3 { background: #7fb069; } .c-4 { background: #c95d63; }
+  .c-5 { background: #8e6cc0; } .c-6 { background: #2a9d8f; } .c-7 { background: #e76f51; } .c-8 { background: #4f8fc9; }
+
+  @media (max-width: 1100px) {
+    .details { display: none; }
+  }
+  @media (max-width: 900px) {
+    :root { --rail-w: 0px; --sidebar-w: 220px; }
+    .rail { display: none; }
+    .topbar .history { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="history">
+      <button class="disabled" aria-label="Back">&lsaquo;</button>
+      <button aria-label="Forward">&rsaquo;</button>
+      <button aria-label="History">&#9719;</button>
+    </div>
+    <div class="search" role="search">
+      <span class="hint">Search Lumen Labs</span>
+      <span class="glass" aria-hidden="true"></span>
+    </div>
+    <button class="help" aria-label="Help">?</button>
+    <div class="me" aria-label="Priya Raman">PR</div>
+  </header>
+
+  <div class="shell">
+    <nav class="rail" aria-label="Workspaces">
+      <div class="workspace" title="Lumen Labs">L</div>
+      <a class="item active" href="#home"><span class="ico"></span><span class="label">Home</span></a>
+      <a class="item" href="#dms"><span class="ico" style="position: relative;"><span class="count">3</span></span><span class="label">DMs</span></a>
+      <a class="item" href="#activity"><span class="ico" style="position: relative;"><span class="count">12</span></span><span class="label">Activity</span></a>
+      <a class="item" href="#later"><span class="ico"></span><span class="label">Later</span></a>
+      <a class="item" href="#more"><span class="ico"></span><span class="label">More</span></a>
+      <div class="spacer"></div>
+      <button class="add" aria-label="Create">+</button>
+    </nav>
+
+    <aside class="sidebar">
+      <div class="head">
+        <div class="name">Lumen Labs</div>
+        <button class="compose" aria-label="New message"></button>
+      </div>
+      <div class="scroll">
+        <ul class="quick">
+          <li><a href="#threads"><span class="glyph">&#9776;</span><span class="txt">Threads</span></a></li>
+          <li class="unread"><a href="#mentions"><span class="glyph">@</span><span class="txt">Mentions &amp; reactions</span><span class="badge">4</span></a></li>
+          <li><a href="#drafts"><span class="glyph">&#9998;</span><span class="txt">Drafts &amp; sent</span></a></li>
+          <li><a href="#saved"><span class="glyph">&#9873;</span><span class="txt">Saved items</span></a></li>
+        </ul>
+
+        <div class="section">
+          <div class="title"><span class="caret"></span><span class="txt">Starred</span><button class="plus" aria-label="Add">+</button></div>
+          <ul class="list">
+            <li><a href="#c/eng-platform"><span class="glyph">#</span><span class="txt">eng-platform</span></a></li>
+            <li class="unread"><a href="#c/incidents"><span class="glyph">#</span><span class="txt">incidents</span><span class="badge">2</span></a></li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <div class="title"><span class="caret"></span><span class="txt">Channels</span><button class="plus" aria-label="Add">+</button></div>
+          <ul class="list">
+            <li><a href="#c/announcements"><span class="glyph">#</span><span class="txt">announcements</span></a></li>
+            <li><a href="#c/design-system"><span class="glyph">#</span><span class="txt">design-system</span></a></li>
+            <li class="active"><a href="#c/eng-platform"><span class="glyph">#</span><span class="txt">eng-platform</span></a></li>
+            <li class="unread"><a href="#c/eng-frontend"><span class="glyph">#</span><span class="txt">eng-frontend</span><span class="badge">9</span></a></li>
+            <li><a href="#c/eng-infra"><span class="glyph">#</span><span class="txt">eng-infra</span></a></li>
+            <li><a href="#c/hiring"><span class="glyph">&#128274;</span><span class="txt">hiring-backend-2026</span></a></li>
+            <li class="unread"><a href="#c/random"><span class="glyph">#</span><span class="txt">random</span></a></li>
+            <li><a href="#c/release-train"><span class="glyph">#</span><span class="txt">release-train-very-long-channel-name</span></a></li>
+            <li><a href="#c/add"><span class="glyph">+</span><span class="txt">Add channels</span></a></li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <div class="title"><span class="caret"></span><span class="txt">Direct messages</span><button class="plus" aria-label="Add">+</button></div>
+          <ul class="list">
+            <li class="dm"><a href="#dm/priya"><span class="glyph g1"></span><span class="txt">Priya Raman (you)</span></a></li>
+            <li class="dm unread"><a href="#dm/tomas"><span class="glyph g2"></span><span class="txt">Tomas Lindqvist</span><span class="badge">1</span></a></li>
+            <li class="dm away"><a href="#dm/aiko"><span class="glyph g3"></span><span class="txt">Aiko Tanaka</span></a></li>
+            <li class="dm"><a href="#dm/marcus"><span class="glyph g4"></span><span class="txt">Marcus Oyelaran</span></a></li>
+            <li class="dm away"><a href="#dm/group"><span class="glyph"></span><span class="txt">Aiko, Marcus, Tomas</span></a></li>
+            <li class="invite"><a href="#invite"><span class="glyph">+</span><span class="txt">Invite people</span></a></li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <div class="title"><span class="caret"></span><span class="txt">Apps</span><button class="plus" aria-label="Add">+</button></div>
+          <ul class="list">
+            <li><a href="#app/pager"><span class="glyph">&#9679;</span><span class="txt">Pager</span></a></li>
+            <li><a href="#app/ci"><span class="glyph">&#9679;</span><span class="txt">Build Bot</span></a></li>
+            <li><a href="#app/add"><span class="glyph">+</span><span class="txt">Add apps</span></a></li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="channel-header">
+        <button class="name"><span class="hash">#</span>eng-platform<span class="caret"></span></button>
+        <button class="star" aria-label="Star channel">&#9734;</button>
+        <button class="members"><span class="pip"></span><span class="pip"></span><span class="pip"></span>&nbsp;48</button>
+        <span class="divider"></span>
+        <div class="topic">Platform team: build system, CI, the deploy pipeline and the shared libraries. On-call rota is pinned. Please keep incident chatter in #incidents.</div>
+        <div class="actions">
+          <button class="call">&#9742; Huddle</button>
+          <button aria-label="Details">&#8942;</button>
+        </div>
+      </div>
+
+      <div class="messages">
+        <div class="intro">
+          <div class="big">#</div>
+          <h2>This is the very beginning of the #eng-platform channel</h2>
+          <p>This channel is for everything platform: the build system, CI, the deploy pipeline and shared libraries. Threads are encouraged; incidents belong in #incidents.</p>
+        </div>
+
+        <div class="day"><span>Tuesday, 15 September</span></div>
+
+        <div class="msg">
+          <div class="avatar c-1">TL</div>
+          <div class="body">
+            <div class="meta"><span class="author">Tomas Lindqvist</span><span class="time">9:14 AM</span></div>
+            <p class="text">Morning all. The nightly build went green again after the cache fix. Full run is down to <code>11m 42s</code> from 19 minutes, so the sharding change paid off.</p>
+            <div class="reactions">
+              <span class="chip mine"><span class="em"></span>7</span>
+              <span class="chip"><span class="em eyes"></span>2</span>
+              <button class="add">+</button>
+            </div>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg grouped">
+          <div class="gutter">9:15</div>
+          <div class="body">
+            <p class="text">Heads up that the <code>cw-web</code> crate now takes the longest of any crate in the workspace. I opened <a href="#pr/4821">a PR</a> to split the layout tests into their own target.</p>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar c-2">AT</div>
+          <div class="body">
+            <div class="meta"><span class="author">Aiko Tanaka</span><span class="time">9:31 AM</span></div>
+            <p class="text">Nice. Does that change the <code>CARGO_BUILD_JOBS</code> defaults on the runners, or is it purely the test target split?</p>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar c-1">TL</div>
+          <div class="body">
+            <div class="meta"><span class="author">Tomas Lindqvist</span><span class="time">9:33 AM</span></div>
+            <p class="text">Purely the split. Runner config is untouched; the jobs default stays at four so we do not starve the parity runs.</p>
+            <div class="thread-link">
+              <span class="faces"><i class="c-2"></i><i class="c-4"></i></span>
+              <span class="replies">3 replies</span>
+              <span class="last">Last reply today at 10:02 AM</span>
+            </div>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar c-4">MO</div>
+          <div class="body">
+            <div class="meta"><span class="author">Marcus Oyelaran</span><span class="time">10:08 AM</span></div>
+            <p class="text">Quoting the on-call note from last week so it does not get lost:</p>
+            <blockquote class="quote">
+              <p>Deploys to the staging cluster are paused Thursday 14:00 to 16:00 UTC while the ingress is migrated. Anything queued in that window ships afterwards in order.</p>
+            </blockquote>
+            <p class="text">If your release train is affected, ping <span class="mention">@platform-oncall</span>.</p>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg grouped">
+          <div class="gutter">10:09</div>
+          <div class="body">
+            <p class="text">Also pinned it to the channel.</p>
+            <div class="reactions">
+              <span class="chip"><span class="em heart"></span>3</span>
+              <button class="add">+</button>
+            </div>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar c-6">BB</div>
+          <div class="body">
+            <div class="meta"><span class="author">Build Bot</span><span class="tag">App</span><span class="time">10:41 AM</span></div>
+            <p class="text">Pipeline <b>release-train #2291</b> finished with 1 warning.</p>
+            <pre class="code-block">warning: unused import: `std::fmt::Write`
+  --> crates/web/src/paint/mod.rs:12:5
+   = note: `#[warn(unused_imports)]` on by default</pre>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar c-5">PR</div>
+          <div class="body">
+            <div class="meta"><span class="author">Priya Raman</span><span class="time">11:02 AM</span></div>
+            <p class="text">Slides from the platform review for anyone who missed it. The interesting part is page 9, the layout budget per fixture.</p>
+            <div class="attachment">
+              <div class="thumb"></div>
+              <div class="file">
+                <span class="icon">PDF</span>
+                <span>
+                  <div class="fname">platform-review-q3.pdf</div>
+                  <div class="fmeta">PDF &middot; 2.4 MB</div>
+                </span>
+                <button class="dl" aria-label="Download">&#8681;</button>
+              </div>
+            </div>
+            <div class="reactions">
+              <span class="chip"><span class="em"></span>4</span>
+              <span class="chip mine"><span class="em eyes"></span>1</span>
+              <button class="add">+</button>
+            </div>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="day"><span>Today</span></div>
+
+        <div class="msg">
+          <div class="avatar c-2">AT</div>
+          <div class="body">
+            <div class="meta"><span class="author">Aiko Tanaka</span><span class="time">8:47 AM</span></div>
+            <p class="text">Reminder: the <code>font-pack</code> bump lands today. If you see a shaping diff in the parity reports, that is expected until the thresholds are regenerated.</p>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg grouped">
+          <div class="gutter">8:48</div>
+          <div class="body">
+            <p class="text">The Ahem mapping in the WPT runner is unaffected; it still points at JetBrains Mono.</p>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar c-7">DK</div>
+          <div class="body">
+            <div class="meta"><span class="author">Dana Kowalczyk</span><span class="time">9:12 AM</span></div>
+            <p class="text">Can someone with deploy rights restart the <code>parity-worker-3</code> box? It has been stuck on the amazon-grid fixture for forty minutes. <span class="mention">@Tomas Lindqvist</span></p>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+
+        <div class="msg">
+          <div class="avatar c-1">TL</div>
+          <div class="body">
+            <div class="meta"><span class="author">Tomas Lindqvist</span><span class="time">9:13 AM</span></div>
+            <p class="text">On it. Restarted; it picked the job back up at the slack-shell fixture.</p>
+            <div class="reactions">
+              <span class="chip mine"><span class="em"></span>2</span>
+              <button class="add">+</button>
+            </div>
+          </div>
+          <div class="hover-bar"><button>&#9786;</button><button>&#8617;</button><button>&#8942;</button></div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="box">
+          <div class="toolbar">
+            <button aria-label="Bold">B</button>
+            <button aria-label="Italic"><i>I</i></button>
+            <button aria-label="Strikethrough"><s>S</s></button>
+            <span class="sep"></span>
+            <button aria-label="Link">&#128279;</button>
+            <button aria-label="Ordered list">1.</button>
+            <button aria-label="Bulleted list">&bull;</button>
+            <span class="sep"></span>
+            <button aria-label="Code">&lt;&gt;</button>
+            <button aria-label="Code block">{ }</button>
+          </div>
+          <div class="input" role="textbox" aria-label="Message #eng-platform">Message #eng-platform</div>
+          <div class="foot">
+            <button class="plus" aria-label="Attach">+</button>
+            <button aria-label="Formatting">Aa</button>
+            <button aria-label="Emoji">&#9786;</button>
+            <button aria-label="Mention">@</button>
+            <button aria-label="Record">&#9673;</button>
+            <button class="send" aria-label="Send"><span class="arrow"></span><span class="drop"></span>&#9662;</button>
+          </div>
+        </div>
+        <p class="hint"><b>Shift + Return</b> to add a new line</p>
+      </div>
+    </main>
+
+    <aside class="details">
+      <div class="head">Details<button class="close" aria-label="Close">&times;</button></div>
+      <div class="scroll">
+        <div class="tabs">
+          <button class="active">About</button>
+          <button>Members 48</button>
+          <button>Integrations</button>
+          <button>Settings</button>
+        </div>
+        <section>
+          <h3>Topic<span class="edit">Edit</span></h3>
+          <p>Platform team: build system, CI, the deploy pipeline and the shared libraries.</p>
+        </section>
+        <section>
+          <h3>Description<span class="edit">Edit</span></h3>
+          <p>Questions about the build, releases and shared crates. Use threads; keep incidents in #incidents.</p>
+        </section>
+        <section>
+          <h3>Created by</h3>
+          <p>Priya Raman on 3 February 2024</p>
+        </section>
+        <section>
+          <h3>Pinned</h3>
+          <div class="pinned">
+            <span class="pin"></span>
+            <div class="pin-body"><b>Marcus Oyelaran:</b> Deploys to the staging cluster are paused Thursday 14:00 to 16:00 UTC while the ingress is migrated.</div>
+          </div>
+        </section>
+        <section>
+          <h3>Members</h3>
+          <ul class="members">
+            <li><span class="av c-5"></span><span class="who">Priya Raman</span><span class="role">owner</span></li>
+            <li><span class="av c-1"></span><span class="who">Tomas Lindqvist</span><span class="role">admin</span></li>
+            <li class="away"><span class="av c-2"></span><span class="who">Aiko Tanaka</span></li>
+            <li><span class="av c-4"></span><span class="who">Marcus Oyelaran</span></li>
+            <li class="away"><span class="av c-7"></span><span class="who">Dana Kowalczyk</span></li>
+            <li><span class="av c-8"></span><span class="who">Yusuf El-Sayed with a very long display name</span></li>
+          </ul>
+        </section>
+        <section>
+          <h3>Channel ID</h3>
+          <p class="mono">C04LM3NP7Q</p>
+        </section>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

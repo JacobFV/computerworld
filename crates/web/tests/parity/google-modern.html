@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google</title>
+<style>
+  /* The google.com homepage as a 2020s front end writes it: a flex column that fills the
+     viewport, a header packed to the right, the logo set as text in the four brand colours,
+     a pill search box with icons drawn in CSS, and a full-bleed footer band. Self-contained:
+     no images, no script, no external requests. */
+  :root {
+    --g-blue: #4285f4;
+    --g-red: #ea4335;
+    --g-yellow: #fbbc05;
+    --g-green: #34a853;
+    --ink: #202124;
+    --ink-soft: #3c4043;
+    --ink-muted: #5f6368;
+    --ink-footer: #70757a;
+    --link: #1a0dab;
+    --accent: #1a73e8;
+    --hairline: #dfe1e5;
+    --hairline-strong: #dadce0;
+    --surface: #fff;
+    --surface-soft: #f8f9fa;
+    --surface-footer: #f2f2f2;
+    --header-h: 60px;
+    --search-w: 584px;
+    --search-h: 46px;
+    --gutter: 20px;
+    --font-ui: arial, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  html { height: 100%; }
+  body {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; cursor: pointer; }
+
+  /* Header: 60px, everything packed to the right edge. */
+  .header {
+    height: var(--header-h);
+    padding: 6px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  .header__link {
+    font-size: 13px;
+    line-height: 24px;
+    color: rgba(0, 0, 0, .87);
+    padding-left: 15px;
+  }
+  .header__apps {
+    width: 40px;
+    height: 40px;
+    margin-left: 15px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  .header__apps:hover { background: rgba(60, 64, 67, .08); }
+  .dots {
+    display: grid;
+    grid-template-columns: repeat(3, 4px);
+    grid-auto-rows: 4px;
+    gap: 4px;
+  }
+  .dots i {
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--ink-muted);
+  }
+  .btn-primary {
+    margin: 0 var(--gutter) 0 8px;
+    height: 34px;
+    padding: 0 23px;
+    border: 0;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 34px;
+    letter-spacing: .25px;
+    display: inline-block;
+  }
+  .btn-primary:hover {
+    background: #2b7de9;
+    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .3), 0 1px 3px 1px rgba(60, 64, 67, .15);
+    text-decoration: none;
+  }
+
+  /* Main: the logo, the search pill and the buttons, centred and pushed down. */
+  .main {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 40px;
+  }
+  .logo {
+    margin-top: calc(var(--header-h) * 2 + 10px);
+    height: 92px;
+    line-height: 92px;
+    font-size: 90px;
+    letter-spacing: -5px;
+    font-weight: 400;
+    user-select: none;
+  }
+  .logo .b { color: var(--g-blue); }
+  .logo .r { color: var(--g-red); }
+  .logo .y { color: var(--g-yellow); }
+  .logo .g { color: var(--g-green); }
+
+  .search {
+    margin-top: 28px;
+    width: var(--search-w);
+    max-width: calc(100% - 2 * var(--gutter));
+    height: var(--search-h);
+    border: 1px solid var(--hairline);
+    border-radius: calc(var(--search-h) / 2 + 1px);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    position: relative;
+  }
+  .search:hover,
+  .search:focus-within {
+    box-shadow: 0 1px 6px rgba(32, 33, 36, .28);
+    border-color: rgba(223, 225, 229, 0);
+  }
+  .search__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 34px;
+    margin-left: 13px;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font: 16px var(--font-ui);
+    color: var(--ink);
+  }
+  .icon {
+    flex: 0 0 auto;
+    position: relative;
+    display: block;
+  }
+  .icon--search { width: 20px; height: 20px; }
+  .icon--search::before {
+    content: "";
+    position: absolute;
+    left: 1px; top: 1px;
+    width: 11px; height: 11px;
+    border: 2px solid #9aa0a6;
+    border-radius: 50%;
+  }
+  .icon--search::after {
+    content: "";
+    position: absolute;
+    left: 12px; top: 11px;
+    width: 7px; height: 2px;
+    background: #9aa0a6;
+    transform: rotate(45deg);
+    transform-origin: 0 50%;
+  }
+  .icon--mic { width: 24px; height: 24px; margin-left: 15px; }
+  .icon--mic::before {
+    content: "";
+    position: absolute;
+    left: 8px; top: 2px;
+    width: 8px; height: 13px;
+    border-radius: 4px;
+    background: var(--g-red);
+  }
+  .icon--mic::after {
+    content: "";
+    position: absolute;
+    left: 5px; top: 8px;
+    width: 12px; height: 10px;
+    border: 2px solid var(--g-blue);
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+  }
+  .icon--mic i {
+    position: absolute;
+    left: 11px; top: 18px;
+    width: 2px; height: 4px;
+    background: var(--g-green);
+    display: block;
+  }
+  .icon--lens { width: 24px; height: 24px; margin-left: 15px; }
+  .icon--lens::before {
+    content: "";
+    position: absolute;
+    left: 2px; top: 2px;
+    width: 16px; height: 16px;
+    border: 3px solid var(--g-blue);
+    border-right-color: var(--g-red);
+    border-bottom-color: var(--g-yellow);
+    border-left-color: var(--g-green);
+    border-radius: 50%;
+  }
+  .icon--lens::after {
+    content: "";
+    position: absolute;
+    left: 8px; top: 8px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--g-blue);
+  }
+
+  .actions {
+    margin-top: 29px;
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid var(--surface-soft);
+    border-radius: 4px;
+    background: var(--surface-soft);
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 34px;
+  }
+  .btn:hover {
+    border-color: var(--hairline-strong);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    color: var(--ink);
+  }
+
+  .offered {
+    margin-top: 22px;
+    font-size: 13px;
+    line-height: 19px;
+    color: #4d5156;
+  }
+  .offered a { color: var(--link); }
+
+  /* Footer: a full-bleed grey band with the country line and two link rows. */
+  .footer {
+    background: var(--surface-footer);
+    color: var(--ink-footer);
+    flex-shrink: 0;
+  }
+  .footer__country {
+    font-size: 15px;
+    line-height: 18px;
+    padding: 15px 30px;
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+  .footer__rows {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 var(--gutter);
+  }
+  .footer__group { display: flex; }
+  .footer__rows a {
+    display: inline-block;
+    padding: 15px;
+    font-size: 14px;
+    line-height: 18px;
+    color: var(--ink-footer);
+  }
+
+  @media (max-width: 720px) {
+    .header { padding: 6px 4px; }
+    .header__link { padding-left: 10px; }
+    .logo { font-size: 64px; height: 66px; line-height: 66px; margin-top: 80px; }
+    .actions { flex-direction: column; align-items: stretch; }
+    .footer__rows { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+  <header class="header">
+    <a class="header__link" href="/gmail">Gmail</a>
+    <a class="header__link" href="/images">Images</a>
+    <a class="header__apps" href="/apps" aria-label="Google apps">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    </a>
+    <a class="btn-primary" href="/signin">Sign in</a>
+  </header>
+
+  <main class="main">
+    <div class="logo" role="img" aria-label="Google"><span class="b">G</span><span class="r">o</span><span class="y">o</span><span class="b">g</span><span class="g">l</span><span class="r">e</span></div>
+
+    <form class="search" action="/search" method="get" role="search">
+      <span class="icon icon--search" aria-hidden="true"></span>
+      <input class="search__input" type="text" name="q" aria-label="Search" autocomplete="off">
+      <span class="icon icon--mic" role="img" aria-label="Search by voice"><i></i></span>
+      <span class="icon icon--lens" role="img" aria-label="Search by image"></span>
+    </form>
+
+    <div class="actions">
+      <button class="btn" type="submit">Google Search</button>
+      <button class="btn" type="submit">I'm Feeling Lucky</button>
+    </div>
+
+    <p class="offered">Google offered in: <a href="/?hl=es">Español</a> <a href="/?hl=fr">Français</a></p>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__country">United States</div>
+    <div class="footer__rows">
+      <div class="footer__group">
+        <a href="/about">About</a>
+        <a href="/ads">Advertising</a>
+        <a href="/business">Business</a>
+        <a href="/howsearchworks">How Search works</a>
+      </div>
+      <div class="footer__group">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/preferences">Settings</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

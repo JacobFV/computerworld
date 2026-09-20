@@ -21,12 +21,14 @@ would otherwise blur.
 | `crates/web/target-parity/<name>.report.md` | Pass count, mismatches by property, worst offenders with expected and got |
 | `crates/web/target-parity/<name>.compare.png` | Chromium, the engine and their difference side by side (from `compare.mjs`) |
 | `crates/web/tests/ref/<name>.html`, `<name>-ref.html` | Reftest pairs: two documents that must paint to the same scene |
+| `crates/web/tests/wpt/` | The web-platform-tests reftest corpus (sparse, pinned; `manifest.json`, `expectations.json`, `README.md`, `LICENSE.md`), produced by `crates/web/tools/fetch-wpt.py` |
+| `crates/web/target-parity/wpt-report.md` | Pass counts per WPT directory and the outcome of every pair (written by `crates/web/tests/wpt.rs`) |
 
 Scripts: `dump.mjs` (Chromium side), `compare.mjs` (reports and pictures), `common.mjs`
 (the property list and comparison rules, shared by both). The Rust side is
-`crates/web/tests/parity.rs`, `crates/web/tests/reftest.rs` and their shared
-`crates/web/tests/support/mod.rs`, which holds the same rules in Rust so `cargo test`
-needs no Node.
+`crates/web/tests/parity.rs`, `crates/web/tests/reftest.rs`, `crates/web/tests/wpt.rs`
+and their shared `crates/web/tests/support/mod.rs`, which holds the same rules in Rust
+so `cargo test` needs no Node.
 
 ## The dump
 
@@ -89,6 +91,7 @@ export CHROME_BIN=/usr/bin/google-chrome
    cargo test -p cw-web --test parity --test reftest            # format checks only
    cargo test -p cw-web --features pipeline --test parity        # engine vs Chromium
    cargo test -p cw-web --features pipeline --test reftest       # reftest pairs
+   cargo test -p cw-web --features pipeline --test wpt           # web-platform-tests reftests
    ```
 
    The `pipeline` feature compiles the calls into `html::parse`, `css::parse_stylesheet`
@@ -127,6 +130,22 @@ margin collapsing, auto-margin centring, floats against a table, inline padding,
 boxes, shorthands, font-size units, size attributes, colour syntaxes, cascade order and
 the tree builder's implied elements.
 
+## Web Platform Tests
+
+`crates/web/tests/wpt/` is a sparse, pinned copy of web-platform-tests (commit and
+tarball SHA-256 in `crates/web/tools/fetch-wpt.py`; `python3 crates/web/tools/fetch-wpt.py`
+regenerates it, `--check` verifies the manifest). It holds reftests only, whole leaf
+directories in the plan's order under a budget of about 1,500 pairs, excluding tests that
+need script, SVG, vertical writing modes, `reftest-wait`, print media, nested documents
+or real web fonts; `crates/web/tests/wpt/README.md` lists the directories, the pairs per
+directory and the exclusion counts. The runner `crates/web/tests/wpt.rs` renders each
+pair at 800×600 (the WPT default), resolving `<link rel=stylesheet>` and `@import` from
+the tree and mapping `font-family: Ahem` to the bundled JetBrains Mono on both sides,
+compares the rasters (`rel=match` must be identical, `rel=mismatch` must differ), writes
+`target-parity/wpt-report.md` grouped by directory, and fails only when a directory's pass
+count drops below `crates/web/tests/wpt/expectations.json` (0 everywhere to start; raise an
+entry to just under the achieved count once it holds).
+
 ## The fixtures
 
 | Fixture | What it exercises |
@@ -137,3 +156,9 @@ the tree builder's implied elements.
 | `hn-front` | Hacker News: the orange header table, the ranked story table with subtext rows and spacer rows, the footer links and search form |
 | `acid1` | The W3C CSS1 test suite's `test5526c.htm` (Acid1), verbatim with the W3C licence notice, and its reference rendering `acid1-reference.gif` |
 | `tables` | A torture page: colspan and rowspan, separate and collapsed borders, fixed layout, percentage widths, empty cells, nested tables, vertical alignment, presentational attributes, captions, thead and tfoot |
+| `google-modern` | The current Google home page: full-viewport flex column, header packed right with a grid-of-dots icon, logo as coloured text, pill search box with pseudo-element icons and a shadow, two buttons, full-bleed grey footer with two `space-between` link rows; custom properties, `calc()`, a media query |
+| `github-repo` | A repository page: dark top nav, repo header with pill counters, a tab row with an `::after` underline, a `position: sticky` sub-header, a `minmax(0, 1fr) 296px` grid with the latest-commit bar, the file table, the README in a bordered box (headings, `<pre><code>` in JetBrains Mono, lists, a table) and an About column (chips with `flex-wrap`, avatar circles, a stacked percentage bar) |
+| `stripe-marketing` | A marketing page: a hero on a skewed `linear-gradient` band, `clamp()` fluid type, pill CTA buttons with shadows, a flex bar chart, a three-column feature grid with gradient-circle icons, a pricing grid with an absolutely positioned badge and `::before` check marks, a Georgia testimonial, a logo row in six families, a dark footer with a `2fr repeat(4, 1fr)` grid |
+| `amazon-grid` | A search results page: dark flex header with a growing search bar and an absolutely positioned cart badge, a nav strip, a 240px filter sidebar (star rows, checkboxes, a price form), a `repeat(auto-fill, minmax(220px, 1fr))` grid of twelve cards (`aspect-ratio` thumbnails, line-clamped titles, `<sup>` cents, chips, corner ribbons, `margin-top: auto` buttons), pagination, a footer |
+| `slack-shell` | An app shell: `100vh` flex column with `overflow: hidden`, a top bar, a rail, a purple sidebar with sections and unread pill badges, a main column with a `position: sticky` channel header, a `flex: 1; overflow: auto` message list with grouped messages, a blockquote, an attachment card and code in JetBrains Mono, a composer pinned at the bottom, and a right details panel that also scrolls |
+| `acid2` | The Second Acid Test from web-platform-tests' `acid/acid2/` (WPT licence), with its subresources under `parity/acid2/` and a README on the `data:` URI, `<object>` fallback and HTTP 404 parts that need the integration; also a reftest pair against the pixel-for-pixel reference |

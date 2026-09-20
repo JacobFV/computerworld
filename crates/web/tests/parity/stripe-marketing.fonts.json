@@ -1,0 +1,77 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "Inter, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+  "first": "html>body>nav:nth-child(1)>div:nth-child(1)>div:nth-child(2)>a:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 8
+   }
+  ]
+ },
+ {
+  "family": "Poppins, Montserrat, Inter, sans-serif",
+  "first": "html>body>nav:nth-child(1)>div:nth-child(1)>a:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 10
+   }
+  ]
+ },
+ {
+  "family": "\"JetBrains Mono\", \"Courier New\", monospace",
+  "first": "html>body>header:nth-child(2)>div:nth-child(1)>aside:nth-child(2)>div:nth-child(2)>div:nth-child(4)",
+  "chromium": [
+   {
+    "family": "Liberation Mono",
+    "glyphs": 138
+   }
+  ]
+ },
+ {
+  "family": "Georgia, \"Times New Roman\", serif",
+  "first": "html>body>section:nth-child(3)>div:nth-child(1)>div:nth-child(2)>span:nth-child(2)",
+  "chromium": [
+   {
+    "family": "Liberation Serif",
+    "glyphs": 7
+   }
+  ]
+ },
+ {
+  "family": "Montserrat, sans-serif",
+  "first": "html>body>section:nth-child(3)>div:nth-child(1)>div:nth-child(2)>span:nth-child(4)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 8
+   }
+  ]
+ },
+ {
+  "family": "Lato, sans-serif",
+  "first": "html>body>section:nth-child(3)>div:nth-child(1)>div:nth-child(2)>span:nth-child(5)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 7
+   }
+  ]
+ },
+ {
+  "family": "\"Open Sans\", sans-serif",
+  "first": "html>body>section:nth-child(3)>div:nth-child(1)>div:nth-child(2)>span:nth-child(6)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 12
+   }
+  ]
+ }
+]

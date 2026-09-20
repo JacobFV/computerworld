@@ -1,0 +1,17 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "arial, sans-serif",
+  "first": "html>body>header:nth-child(1)>a:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 5
+   }
+  ]
+ }
+]

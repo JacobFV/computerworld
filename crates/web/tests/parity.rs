@@ -131,13 +131,32 @@ parity_fixture!(parity_docs_page, "docs-page");
 parity_fixture!(parity_hn_front, "hn-front");
 parity_fixture!(parity_acid1, "acid1");
 parity_fixture!(parity_tables, "tables");
+parity_fixture!(parity_google_modern, "google-modern");
+parity_fixture!(parity_github_repo, "github-repo");
+parity_fixture!(parity_stripe_marketing, "stripe-marketing");
+parity_fixture!(parity_amazon_grid, "amazon-grid");
+parity_fixture!(parity_slack_shell, "slack-shell");
+parity_fixture!(parity_acid2, "acid2");
 
 #[test]
 #[cfg_attr(not(feature = "pipeline"), ignore = "needs the html, css and style modules (`--features pipeline`)")]
 fn every_fixture_has_a_parity_test() {
     // The macro list above must name every fixture on disk, or a new fixture would be
     // dumped but never gated.
-    let listed = ["google-1998", "wikipedia-article", "docs-page", "hn-front", "acid1", "tables"];
+    let listed = [
+        "google-1998",
+        "wikipedia-article",
+        "docs-page",
+        "hn-front",
+        "acid1",
+        "tables",
+        "google-modern",
+        "github-repo",
+        "stripe-marketing",
+        "amazon-grid",
+        "slack-shell",
+        "acid2",
+    ];
     for name in fixtures() {
         assert!(listed.contains(&name.as_str()), "add a parity_fixture! entry for {name}");
     }
