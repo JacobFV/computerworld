@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>React 17</title>
+<script src="/vendor/react-17.0.2.production.min.js"></script>
+<script src="/vendor/react-dom-17.0.2.production.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+const h = React.createElement;
+window.trace = [];
+class Clock extends React.Component {
+  constructor(p) { super(p); this.state = { ticks: 0 }; }
+  componentDidMount() { trace.push('mount'); this.timer = setInterval(() => this.setState((s) => ({ ticks: s.ticks + 1 })), 100); }
+  componentDidUpdate(_, prev) { if (prev.ticks !== this.state.ticks) trace.push('tick' + this.state.ticks); }
+  componentWillUnmount() { trace.push('unmount'); clearInterval(this.timer); }
+  render() { return h('span', { id: 'ticks' }, 'ticks: ', this.state.ticks); }
+}
+function Todo() {
+  const [items, setItems] = React.useState([{ id: 1, text: 'one', done: false }]);
+  const [draft, setDraft] = React.useState('');
+  const [showClock, setShowClock] = React.useState(true);
+  const input = React.useRef(null);
+  React.useEffect(() => { trace.push('items:' + items.length); }, [items.length]);
+  const add = (e) => { e.preventDefault(); if (!draft) return; setItems(items.concat({ id: items.length + 1, text: draft, done: false })); setDraft(''); input.current.focus(); };
+  return h('div', { id: 'todo' },
+    h('form', { id: 'add-form', onSubmit: add },
+      h('input', { id: 'draft', ref: input, value: draft, onChange: (e) => setDraft(e.target.value), placeholder: 'todo' }),
+      h('button', { id: 'add', type: 'submit', disabled: !draft }, 'Add')),
+    h('ul', { id: 'items' }, items.map((it) => h('li', { key: it.id, id: 'item-' + it.id, className: it.done ? 'done' : '', style: { textDecoration: it.done ? 'line-through' : 'none' },
+      onClick: () => setItems(items.map((x) => (x.id === it.id ? Object.assign({}, x, { done: !x.done }) : x))) }, it.text))),
+    h('p', { id: 'left' }, items.filter((i) => !i.done).length + ' left'),
+    h('button', { id: 'toggle-clock', onClick: () => setShowClock(!showClock) }, 'clock'),
+    showClock ? h(Clock) : null);
+}
+// The legacy root renders synchronously.
+ReactDOM.render(h(Todo), document.getElementById('root'), () => trace.push('rendered'));
+window.syncChildren = document.getElementById('root').childNodes.length;
+</script>
+</body>
+</html>

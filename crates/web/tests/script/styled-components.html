@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>styled-components 6</title>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+<script src="/vendor/styled-components-6.1.13.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+const h = React.createElement;
+const { useState, createContext, useContext } = React;
+// window.styled is the UMD global from styled-components-6.1.13.min.js
+const styled = window.styled;
+const { css, keyframes, createGlobalStyle, ThemeProvider, useTheme } = styled;
+
+window.trace = [];
+const log = (s) => window.trace.push(s);
+
+// ---- a keyframes animation, applied via a styled component
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+// ---- a global style (injected once, mounted at the top of the tree)
+const GlobalStyle = createGlobalStyle`
+  html { box-sizing: border-box; }
+  body { margin: 0; font: 16px/20px sans-serif; background-color: rgb(255, 255, 240); }
+`;
+
+// ---- styled.div with an interpolated function of props: prop change swaps the class
+const Box = styled.div`
+  width: 120px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: ${(props) => (props.$active ? 'rgb(0, 128, 0)' : 'rgb(128, 0, 0)')};
+  color: rgb(255, 255, 255);
+  animation: ${spin} 2s linear infinite;
+`;
+
+// ---- css helper composed into a styled.button; background also depends on a click-driven prop
+const raisedShadow = css`
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+`;
+const Button = styled.button`
+  padding: 6px 12px;
+  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  color: rgb(255, 255, 255);
+  background-color: ${(props) => props.$bg};
+  ${(props) => (props.$raised ? raisedShadow : '')}
+`;
+
+// ---- theming: ThemeProvider + useTheme, read inside a styled component via props.theme
+const theme = { fg: 'rgb(20, 20, 20)', accent: 'rgb(0, 96, 200)' };
+const Themed = styled.p`
+  color: ${(props) => props.theme.fg};
+  border-left: 4px solid ${(props) => props.theme.accent};
+  padding-left: 8px;
+`;
+function ThemeReadout() {
+  const t = useTheme();
+  return h('span', { id: 'theme-readout' }, t.fg + '/' + t.accent);
+}
+
+// ---- styled(Component) extension and .attrs
+const BaseLabel = ({ className, id, children }) => h('label', { className: className, id: id }, children);
+const ExtendedLabel = styled(BaseLabel)`
+  font-weight: bold;
+  text-transform: uppercase;
+`;
+const AttrsInput = styled.input.attrs((props) => ({
+  type: 'text',
+  'data-attrs': 'yes',
+  placeholder: props.$placeholder || 'default',
+}))`
+  border: 1px solid rgb(0, 0, 0);
+  padding: 4px;
+`;
+
+function App() {
+  const [active, setActive] = useState(false);
+  const [bg, setBg] = useState('rgb(0, 0, 200)');
+  const [clicks, setClicks] = useState(0);
+
+  return h(React.Fragment, null,
+    h(GlobalStyle),
+    h(Box, { id: 'box', $active: active }),
+    h('button', { id: 'toggle-box', onClick: () => setActive((v) => !v) }, 'toggle box'),
+    h(Button, {
+      id: 'color-button',
+      $bg: bg,
+      $raised: clicks % 2 === 1,
+      onClick: () => {
+        setClicks((c) => c + 1);
+        setBg((prev) => (prev === 'rgb(0, 0, 200)' ? 'rgb(200, 0, 120)' : 'rgb(0, 0, 200)'));
+        log('click:' + (clicks + 1));
+      },
+    }, 'click me ' + clicks),
+    h(ThemeProvider, { theme: theme },
+      h(Themed, { id: 'themed' }, 'themed text'),
+      h(ThemeReadout)),
+    h(ExtendedLabel, { id: 'ext-label' }, 'extended label'),
+    h(AttrsInput, { id: 'attrs-input', $placeholder: 'via attrs' }),
+    h('span', { id: 'box-class' }, ''));
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(h(App));
+
+// expose the generated classNames for the Rust harness after the initial commit
+window.afterMount = function () {
+  return {
+    boxClass: document.getElementById('box').className,
+    buttonClass: document.getElementById('color-button').className,
+    themedClass: document.getElementById('themed').className,
+    extLabelClass: document.getElementById('ext-label').className,
+    attrsInputClass: document.getElementById('attrs-input').className,
+  };
+};
+</script>
+</body>
+</html>

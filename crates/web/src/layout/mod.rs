@@ -96,6 +96,11 @@ pub struct LayoutCache {
     /// place of the box's own `height` (`None` means "as if auto"). Set and removed
     /// around the item's layout.
     pub forced_height: BTreeMap<BoxId, Option<Au>>,
+    /// The host draws scrollbars over the content (or not at all) instead of taking
+    /// 15 px from the scroll container: overlay scrollbars, or a headless Chromium
+    /// (Playwright launches it with `--hide-scrollbars`, which is what the parity
+    /// dumps were taken with). A host setting, so it survives `invalidate_all`.
+    pub overlay_scrollbars: bool,
 }
 
 impl LayoutCache {

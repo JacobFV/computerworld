@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Vue 3</title>
+<style>
+  body { margin: 0; font: 16px/20px sans-serif; }
+  .fade-enter-active, .fade-leave-active { transition: opacity 300ms ease; }
+  .fade-enter-from, .fade-leave-to { opacity: 0; }
+  .done { text-decoration: line-through; }
+  .badge { display: inline-block; padding: 2px 6px; background-color: rgb(0, 0, 255); color: rgb(255, 255, 255); }
+</style>
+<script src="/vendor/vue-3.4.38.global.prod.js"></script>
+</head>
+<body>
+<div id="app">
+  <h1 id="title">{{ title }} ({{ remaining }} left)</h1>
+  <form id="add-form" @submit.prevent="add">
+    <input id="draft" v-model.trim="draft" placeholder="What needs doing?" @keydown.esc="draft = ''">
+    <button id="add" :disabled="!draft">Add</button>
+  </form>
+  <ul id="todos">
+    <todo-item v-for="(t, i) in todos" :key="t.id" :todo="t" :index="i" @toggle="toggle(t)" @remove="remove(t)">
+      <template #badge="{ done }"><span class="badge" v-if="done">done</span></template>
+    </todo-item>
+  </ul>
+  <button id="reverse" @click="todos.reverse()">reverse</button>
+  <p id="empty" v-if="todos.length === 0">Nothing to do</p>
+  <p id="some" v-else-if="todos.length < 3">A few things</p>
+  <p id="many" v-else>Many things</p>
+
+  <label><input id="agree" type="checkbox" v-model="agree"> agree</label>
+  <select id="color" v-model="color"><option>red</option><option>green</option><option value="blue">Blue</option></select>
+  <input id="r-a" type="radio" value="a" v-model="picked"><input id="r-b" type="radio" value="b" v-model="picked">
+  <textarea id="notes" v-model.lazy="notes"></textarea>
+  <input id="age" type="text" v-model.number="age">
+  <input id="multi-a" type="checkbox" value="a" v-model="multi"><input id="multi-b" type="checkbox" value="b" v-model="multi">
+  <output id="form-out">{{ agree }}|{{ color }}|{{ picked }}|{{ notes }}|{{ typeof age }}:{{ age }}|{{ multi.join('+') }}</output>
+
+  <div id="shown" v-show="agree" :style="{ color: color, fontSize: size + 'px' }" :class="['box', { active: agree }]">shown when agreed</div>
+
+  <button id="toggle-fade" @click="visible = !visible">fade</button>
+  <transition name="fade" @after-enter="log('after-enter')" @after-leave="log('after-leave')">
+    <p id="fading" v-if="visible">I fade</p>
+  </transition>
+
+  <button id="open-modal" @click="modal = !modal">modal</button>
+  <teleport to="#modals"><div id="modal" v-if="modal">Teleported: {{ title }}</div></teleport>
+
+  <render-counter id="rc" :step="2"></render-counter>
+  <themed-label></themed-label>
+  <p id="watch-log">{{ watchLog.join(',') }}</p>
+  <p id="html" v-html="rawHtml"></p>
+  <button id="tick" @click="bump">tick</button>
+</div>
+<div id="modals"></div>
+<script>
+'use strict';
+const { createApp, ref, reactive, computed, watch, watchEffect, nextTick, h, provide, inject, onMounted, onUpdated, onUnmounted, defineComponent } = Vue;
+window.trace = [];
+
+const TodoItem = {
+  props: { todo: { type: Object, required: true }, index: Number },
+  emits: ['toggle', 'remove'],
+  template: `<li :id="'todo-' + todo.id" :class="{ done: todo.done }" :data-index="index">
+    <span class="text" @click="$emit('toggle')">{{ todo.text }}</span>
+    <slot name="badge" :done="todo.done"></slot>
+    <button class="rm" :id="'rm-' + todo.id" @click.stop="$emit('remove')">x</button></li>`,
+  mounted() { trace.push('item-mounted:' + this.todo.id); },
+  unmounted() { trace.push('item-unmounted:' + this.todo.id); },
+};
+
+// A component written with a render function and the composition API.
+const RenderCounter = defineComponent({
+  props: { step: { type: Number, default: 1 } },
+  setup(props, { attrs }) {
+    const n = ref(0);
+    const double = computed(() => n.value * 2);
+    onMounted(() => trace.push('rc-mounted'));
+    onUpdated(() => trace.push('rc-updated:' + n.value));
+    return () => h('button', { id: 'rc-btn', class: { big: n.value > 2 }, onClick: () => { n.value += props.step; } }, [n.value + ' / ' + double.value]);
+  },
+});
+
+const ThemedLabel = { setup() { const theme = inject('theme'); const missing = inject('missing', 'fallback'); return () => h('span', { id: 'themed' }, theme.value + ':' + missing); } };
+
+const app = createApp({
+  components: { TodoItem, RenderCounter, ThemedLabel },
+  setup() {
+    const state = reactive({ todos: [{ id: 1, text: 'write', done: false }, { id: 2, text: 'test', done: true }], draft: '', nextId: 3 });
+    const title = ref('Todos');
+    const agree = ref(false), color = ref('red'), picked = ref('a'), notes = ref(''), age = ref(1), multi = ref([]), size = ref(14);
+    const visible = ref(true), modal = ref(false), watchLog = ref([]), rawHtml = ref('<b id="vb">raw</b>');
+    const remaining = computed(() => state.todos.filter((t) => !t.done).length);
+    const theme = ref('dark');
+    provide('theme', theme);
+    watch(remaining, (now, before) => { watchLog.value.push(before + '>' + now); });
+    watch(() => state.todos.length, (n) => trace.push('len:' + n), { flush: 'post' });
+    watchEffect(() => { document.title = title.value + ' ' + remaining.value; });
+    function add() { if (!state.draft) return; state.todos.push({ id: state.nextId++, text: state.draft, done: false }); state.draft = ''; }
+    function toggle(t) { t.done = !t.done; }
+    function remove(t) { state.todos.splice(state.todos.indexOf(t), 1); }
+    async function bump() {
+      size.value++; size.value++;
+      window.beforeTick = document.getElementById('shown').style.fontSize;
+      await nextTick();
+      window.afterTick = document.getElementById('shown').style.fontSize;
+      theme.value = 'light';
+    }
+    onMounted(() => trace.push('app-mounted'));
+    const out = { title, agree, color, picked, notes, age, multi, size, visible, modal, watchLog, rawHtml, remaining, add, toggle, remove, bump, log: (s) => trace.push(s) };
+    // reactive() fields exposed as refs.
+    return Object.assign(out, Vue.toRefs(state));
+  },
+});
+app.config.errorHandler = (e) => { console.error('vue error', e); };
+window.vm = app.mount('#app');
+</script>
+</body>
+</html>

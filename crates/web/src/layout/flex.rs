@@ -17,7 +17,9 @@
 //! Out of scope, documented here: `writing-mode` other than horizontal (the main axis
 //! of `row` is horizontal; `direction: rtl` reverses it), `visibility: collapse`
 //! items (laid out as `hidden`, no strut), the transferred-size suggestion of §4.5 for
-//! aspect-ratio items, and percentage `min-height`/`max-height` of a column container
+//! aspect-ratio items (their `aspect-ratio` height comes from `block::ratio_height`
+//! when the item is laid out, which covers a column item of definite width), and
+//! percentage `min-height`/`max-height` of a column container
 //! whose own height is indefinite (they are ignored there, lengths apply).
 
 use std::rc::Rc;
@@ -159,7 +161,7 @@ fn mul_div(a: Au, num: i128, den: i128) -> Au {
 fn length_size(v: Sizing, edges: Au, bs: BoxSizing) -> Option<Au> {
     let l = match v {
         Sizing::Set(LengthPercentage::Length(l)) => l,
-        Sizing::Set(LengthPercentage::Calc(l, 0)) => l,
+        Sizing::Set(v) if !v.has_percent() => v.resolve(Au::ZERO),
         _ => return None,
     };
     Some(match bs {
@@ -991,8 +993,13 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         let (x, y) = if row { (main_phys + it.margin.left, cross_phys + it.margin.top) } else { (cross_phys + it.margin.left, main_phys + it.margin.top) };
         let off = block::relative_offset(&it.style, cb);
         it.frag_y = y + off.y;
+        // The container's baselines are read after the fragments have moved out, so
+        // an item without a baseline synthesises its own (the border box's bottom
+        // edge) while its fragment still says how tall it is.
+        it.baseline = Some(it.baseline_or_synth());
         if let Some(mut f) = it.fragment.take() {
             f.rect.origin = Point { x: x + off.x, y: y + off.y };
+            f.used_margin = Some(it.margin);
             let mut abs = std::mem::take(&mut it.abs);
             block::translate_requests(&mut abs, f.rect.origin.x, f.rect.origin.y);
             out.abs.extend(abs);
@@ -1063,7 +1070,7 @@ pub fn content_min_max(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
     let gap = match if row { s.column_gap } else { s.row_gap } {
         LengthPercentage::Length(l) => l,
         LengthPercentage::Calc(l, _) => l,
-        LengthPercentage::Percent(_) => Au::ZERO,
+        v => v.resolve(Au::ZERO),
     };
     let mut mn = Au::ZERO;
     let mut mx = Au::ZERO;

@@ -1662,7 +1662,7 @@ impl<'c, 'a> Grid<'c, 'a> {
             let b = &self.ctx.tree[it.id];
             let BoxKind::Replaced(rb) = &b.kind else { continue };
             let s = &b.style;
-            let pct = |z: Sizing| matches!(z, Sizing::Set(LengthPercentage::Percent(_) | LengthPercentage::Calc(..)));
+            let pct = |z: Sizing| matches!(z, Sizing::Set(v) if v.has_percent());
             if !(pct(s.height) || pct(s.min_height) || pct(s.max_height)) {
                 continue;
             }
@@ -1765,6 +1765,21 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         } + ms.margin.top;
         let off = block::relative_offset(is, &Cb { width: area_w, height: Some(area_h) });
         frag.rect.origin = Point { x: x0 + x + off.x, y: y0 + y + off.y };
+        // Used margins: an `auto` side takes the free space of its area.
+        let mut used = ms.margin;
+        if ms.auto[0] {
+            used.left = x;
+        }
+        if ms.auto[1] {
+            used.right = (area_w - w - x).max(Au::ZERO);
+        }
+        if ms.auto[2] {
+            used.top = y;
+        }
+        if ms.auto[3] {
+            used.bottom = (area_h - h - y).max(Au::ZERO);
+        }
+        frag.used_margin = Some(used);
         frag.is_float = false;
         frag.establishes_stacking_context |= is.establishes_stacking_context(true);
         block::translate_requests(&mut abs, frag.rect.origin.x, frag.rect.origin.y);

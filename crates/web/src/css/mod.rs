@@ -17,8 +17,8 @@ pub mod selector;
 pub mod token;
 pub mod tokenizer;
 
-pub use matching::{matches, matches_compound, matches_list, AttributeFormState, FormState, IndexEntry, MatchContext, SelectorDeps, SelectorIndex, VisitedPolicy};
-pub use media::{ColorScheme, DisplayMode, HoverCapability, Media, MediaCondition, MediaQuery, MediaQueryList, MediaType, PointerCapability, SupportsCondition};
+pub use matching::{matches, matches_compound, matches_list, AncestorKeys, AttributeFormState, FormState, IndexEntry, MatchContext, SelectorDeps, SelectorIndex, VisitedPolicy};
+pub use media::{ColorScheme, DisplayMode, FontEnvironment, HoverCapability, Media, MediaCondition, MediaQuery, MediaQueryList, MediaType, PointerCapability, SupportsCondition};
 pub use parser::{parse_declaration_block, parse_stylesheet, KeyframeSelector, Origin, Rule, StyleRuleRef, Stylesheet};
 pub use selector::{parse_selector_list, AttrCase, AttrOp, Combinator, ComplexSelector, CompoundSelector, PseudoClass, PseudoElement, RelativeSelector, SelectorError, SelectorList, SimpleSelector, Specificity};
 pub use token::*;

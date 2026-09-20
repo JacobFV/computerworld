@@ -489,10 +489,34 @@ impl<'h> Vm<'h> {
             return Ok(false);
         };
         if !same {
-            if let Kind::Array(_) = r.borrow().kind {
-                // Index writes to a different receiver array.
+            // A proxy receiver (`Reflect.set(target, key, value, proxy)` from a `set`
+            // trap): its [[DefineOwnProperty]] runs the `defineProperty` trap or
+            // forwards to its target.
+            let mut rr = r.clone();
+            loop {
+                let next = match &rr.borrow().kind {
+                    Kind::Proxy { target, handler } => Some((target.clone(), handler.clone())),
+                    _ => None,
+                };
+                let Some((t, h)) = next else { break };
+                let trap = self.get_str(&Value::Obj(h.clone()), "defineProperty")?;
+                if trap.is_callable() {
+                    let desc = self.new_object();
+                    desc.set_prop("value", v, ALL);
+                    if self.get_own(&t, &key)?.is_none() {
+                        for k in ["writable", "enumerable", "configurable"] {
+                            desc.set_prop(k, Value::Bool(true), ALL);
+                        }
+                    }
+                    let ok = self.call(&trap, Value::Obj(h), vec![Value::Obj(t), key.to_value(), Value::Obj(desc)])?;
+                    return Ok(ok.truthy());
+                }
+                rr = t;
             }
-            return self.create_data_property(r, key, v);
+            if rr.ptr_eq(o) {
+                return self.set_on(o, key, v, &Value::Obj(o.clone()));
+            }
+            return self.create_data_property(&rr, key, v);
         }
         let mut d = r.borrow_mut();
         if let Some(p) = d.props.get_mut(&key) {

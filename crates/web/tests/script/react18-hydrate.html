@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Hydration</title>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+</head>
+<body>
+<!-- The markup below is exactly what ReactDOMServer.renderToString(HydrateApp, name=World)
+     emits for the component in this page (React 18.3.1): text boundaries as empty comments,
+     the resolved Suspense boundary between $ and /$ comments, useId as :R3:. -->
+<div id="root"><main id="app"><h1 id="greeting">Hello, <!-- -->World<!-- -->!</h1><div id="counter" class="counter" data-mounted="no"><button id="inc">Clicked <!-- -->0<!-- --> times</button><span id="parity" style="color:green;font-weight:700">even</span></div><section id="search"><label for=":R3:">Filter</label><input id=":R3:" data-role="filter" type="text" value=""/><ul id="results"><li>apple</li><li>banana</li><li>cherry</li></ul><p id="summary">3<!-- --> of <!-- -->3<!-- --> shown</p></section><!--$--><aside id="details"><em>inside suspense</em> &amp; &quot;quoted&quot; &lt;text&gt;</aside><!--/$--><input id="agree" type="checkbox" readonly="" checked=""/><footer>static</footer></main></div>
+<script>
+// Shared by the page and by the markup generator: the hydrated application.
+(function (global) {
+  const React = global.React;
+  const h = React.createElement;
+  const { useState, useEffect, useId, Suspense } = React;
+  function Greeting({ name }) {
+    return h('h1', { id: 'greeting' }, 'Hello, ', name, '!');
+  }
+  function Counter() {
+    const [n, setN] = useState(0);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    return h('div', { id: 'counter', className: 'counter', 'data-mounted': mounted ? 'yes' : 'no' },
+      h('button', { id: 'inc', onClick: () => setN(n + 1) }, 'Clicked ', n, ' times'),
+      h('span', { id: 'parity', style: { color: n % 2 ? 'red' : 'green', fontWeight: 700 } }, n % 2 ? 'odd' : 'even'));
+  }
+  function Search() {
+    const [q, setQ] = useState('');
+    const id = useId();
+    const items = ['apple', 'banana', 'cherry'].filter((i) => i.includes(q));
+    return h('section', { id: 'search' },
+      h('label', { htmlFor: id }, 'Filter'),
+      h('input', { id, 'data-role': 'filter', type: 'text', value: q, onChange: (e) => setQ(e.target.value) }),
+      h('ul', { id: 'results' }, items.map((i) => h('li', { key: i }, i))),
+      h('p', { id: 'summary' }, items.length, ' of ', 3, ' shown'));
+  }
+  function Details() {
+    return h('aside', { id: 'details' }, h('em', null, 'inside suspense'), ' & "quoted" <text>');
+  }
+  function App({ name }) {
+    return h('main', { id: 'app' },
+      h(Greeting, { name }),
+      h(Counter),
+      h(Search),
+      h(Suspense, { fallback: h('p', null, 'loading') }, h(Details)),
+      h('input', { id: 'agree', type: 'checkbox', defaultChecked: true, readOnly: true }),
+      h('footer', null, 'static'));
+  }
+  global.HydrateApp = App;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+window.serverNodes = { h1: document.getElementById('greeting'), inc: document.getElementById('inc'), li: document.querySelector('#results li'), aside: document.getElementById('details'), input: document.querySelector('[data-role=filter]') };
+window.serverHTML = document.getElementById('root').innerHTML;
+window.recoverable = [];
+window.root = ReactDOM.hydrateRoot(document.getElementById('root'), React.createElement(HydrateApp, { name: 'World' }), {
+  onRecoverableError(e) { window.recoverable.push(String(e && e.message)); },
+});
+</script>
+</body>
+</html>

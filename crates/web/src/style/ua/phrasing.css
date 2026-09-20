@@ -6,7 +6,7 @@ big { font-size: larger; }
 small { font-size: smaller; }
 sub { vertical-align: sub; }
 sup { vertical-align: super; }
-sub, sup { line-height: normal; font-size: smaller; }
+sub, sup { font-size: smaller; }
 ruby > rt { font-size: 50%; }
 :link { color: #0000EE; }
 :visited { color: #551A8B; }

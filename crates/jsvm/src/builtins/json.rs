@@ -536,7 +536,7 @@ fn ser_value(
             }
             ser.stack.push((o.clone(), key.to_string()));
             let inner = format!("{indent}{}", ser.gap);
-            let r = if o.is_array() {
+            let r = if o.is_array_or_proxy() {
                 let n = vm.length_of(&v)?;
                 let mut parts = vec![];
                 for i in 0..n {

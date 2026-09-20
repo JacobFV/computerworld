@@ -6,17 +6,32 @@
 //   PLAYWRIGHT_MODULE=/usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright/index.mjs \
 //   CHROME_BIN=/usr/bin/google-chrome \
 //     node scripts/web-parity/dump.mjs crates/web/tests/parity/google-1998.html \
-//       [--width 1280] [--height 800] [--dpr 1] [--out <name>.chromium.json] [--full]
+//       [--width 1280] [--height 800] [--dpr 1] [--out <name>.chromium.json] [--full] \
+//       [--props extra-a,extra-b] [--state states.json]
 //
 // Writes <name>.chromium.json, <name>.chromium.png (the viewport, or the whole page with
 // --full) and <name>.fonts.json (each distinct `font-family` list the page asked for and
 // the platform face Chromium actually shaped it with, so a parity report can say which
 // stand-in the engine chose against which real face). Node order is document order;
 // nothing in the output depends on timing.
-import {writeFile} from 'node:fs/promises';
-import {basename, dirname, join, resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+//
+// --props is a comma-separated list of extra computed properties (including custom
+// properties, e.g. `--tw-shadow`) appended to the shared PROPERTIES for this dump only;
+// they show up in the output's `properties` array alongside the shared ones, so a reader
+// can see exactly what was asked for. --state points at a JSON file of
+// `[{"selector": "...", "action": "hover" | "focus"}, ...]`, each applied through
+// Playwright before collecting, so :hover/:focus(-visible) variants are captured.
+import {readFile, writeFile} from 'node:fs/promises';
+import {basename, dirname, extname, join, resolve} from 'node:path';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {PROPERTIES} from './common.mjs';
+
+// The same third-party bundles the Rust harness serves at https://example.test/vendor/*
+// (see crates/web/tests/vendor/), so a fixture loaded from a file: URL that links
+// `/vendor/whatever` (root-relative, exactly as the Rust test expects it) gets the real
+// file instead of a filesystem 404.
+const vendorDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'crates', 'web', 'tests', 'vendor');
+const VENDOR_MIME = {'.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json'};
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -26,7 +41,7 @@ const flag = (name, fallback) => {
 const positional = args.filter((a, i) => !a.startsWith('--') && !(args[i - 1]?.startsWith('--') && args[i - 1] !== '--full'));
 const [fixture] = positional;
 if (!fixture) {
-  console.error('usage: dump.mjs <fixture.html> [--width 1280] [--height 800] [--dpr 1] [--out file.json] [--full]');
+  console.error('usage: dump.mjs <fixture.html> [--width 1280] [--height 800] [--dpr 1] [--out file.json] [--full] [--props a,b] [--state states.json]');
   process.exit(2);
 }
 const width = Number(flag('--width', 1280));
@@ -36,6 +51,12 @@ const full = args.includes('--full');
 const stem = basename(fixture).replace(/\.html?$/, '');
 const out = resolve(flag('--out', join(dirname(resolve(fixture)), `${stem}.chromium.json`)));
 const outStem = out.replace(/\.json$/, '');
+// Extra properties are appended (deduped, shared ones win their original slot) so
+// existing fixtures that pass no --props get exactly PROPERTIES, unchanged.
+const extraProps = (flag('--props', '') || '').split(',').map(p => p.trim()).filter(Boolean);
+const properties = extraProps.length ? [...PROPERTIES, ...extraProps.filter(p => !PROPERTIES.includes(p))] : PROPERTIES;
+const statePath = flag('--state', null);
+const states = statePath ? JSON.parse(await readFile(resolve(statePath), 'utf8')) : [];
 
 
 // Runs inside the page. Everything it returns is plain JSON.
@@ -94,9 +115,30 @@ try {
   const context = await browser.newContext({viewport: {width, height}, deviceScaleFactor: dpr, reducedMotion: 'reduce'});
   const page = await context.newPage();
   const url = pathToFileURL(resolve(fixture)).href;
+  // web-platform-tests' server answers `?pipe=status(N)` with that HTTP status (Acid2's
+  // `<object data="acid2/404.html?pipe=status(404)">` must fail to load and fall back). A
+  // file: URL has no status, so Chromium would load the document; answer for the server.
+  await page.route(u => /[?&]pipe=status\((\d{3})\)/.test(u.search), route => {
+    const status = Number(/pipe=status\((\d{3})\)/.exec(new URL(route.request().url()).search)[1]);
+    return status >= 400 ? route.abort('failed') : route.continue();
+  });
+  await page.route(u => u.pathname.startsWith('/vendor/'), async route => {
+    const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^\/vendor\//, ''));
+    try {
+      const body = await readFile(join(vendorDir, rel));
+      await route.fulfill({status: 200, contentType: VENDOR_MIME[extname(rel)] ?? 'application/octet-stream', body});
+    } catch {
+      await route.fulfill({status: 404, body: 'not found'});
+    }
+  });
   await page.goto(url, {waitUntil: 'load'});
   await page.evaluate(() => document.fonts.ready);
-  const dump = await page.evaluate(collect, PROPERTIES);
+  for (const {selector, action} of states) {
+    if (action === 'hover') await page.hover(selector);
+    else if (action === 'focus') await page.focus(selector);
+    else throw new Error(`--state: unknown action "${action}" for ${selector}`);
+  }
+  const dump = await page.evaluate(collect, properties);
 
   // Which platform faces Chromium really used, per distinct family list, through CDP.
   const fonts = [];
@@ -126,7 +168,7 @@ try {
     engine: 'chromium',
     version: browser.version(),
     viewport: {width, height, dpr},
-    properties: PROPERTIES,
+    properties,
     ...dump,
   };
   await writeFile(out, JSON.stringify(result, null, 1) + '\n');

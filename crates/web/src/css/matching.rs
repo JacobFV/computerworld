@@ -539,6 +539,8 @@ fn matches_pseudo(doc: &Document, el: NodeId, pc: &PseudoClass, ctx: &MatchConte
             None => doc.document_element() == Some(el),
         },
         PseudoClass::Defined => !is_html(doc, el) || !doc.tag(el).unwrap_or("").contains('-'),
+        // There are no shadow trees here, so nothing is a shadow host.
+        PseudoClass::Host => false,
     }
 }
 
@@ -604,6 +606,142 @@ fn has_matches(doc: &Document, anchor: NodeId, rel: &RelativeSelector, ctx: &Mat
 pub struct IndexEntry<T> {
     pub selector: ComplexSelector,
     pub data: T,
+    /// Bloom bits every ancestor set of a matching element must contain (see
+    /// [`ancestor_requirements`]); zero when the selector requires no ancestor.
+    ancestors: u64,
+}
+
+/// One bloom bit for a name. The filter is an OR of these over an element's
+/// ancestors; a selector whose required bits are not all present cannot match, which
+/// is what keeps a utility sheet's `.space-x-4 > :not([hidden]) ~ :not([hidden])`
+/// from walking every previous sibling of every element on the page.
+fn bloom_bit(kind: u8, name: &str) -> u64 {
+    // FNV-1a over the name, seeded by the kind.
+    let mut h: u64 = 0xcbf29ce484222325 ^ (kind as u64);
+    for b in name.as_bytes() {
+        h ^= b.to_ascii_lowercase() as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    1u64 << (h % 64)
+}
+
+/// The bloom bits of one element's own id, classes and type name.
+fn element_bits(doc: &Document, element: NodeId) -> u64 {
+    let mut bits = 0;
+    if let Some(t) = doc.tag(element) {
+        bits |= bloom_bit(0, t);
+    }
+    if let Some(id) = doc.attr(element, "id") {
+        bits |= bloom_bit(1, id);
+    }
+    for c in doc.classes(element) {
+        bits |= bloom_bit(2, c);
+    }
+    bits
+}
+
+/// What an element's ancestors offer a selector index: a bloom filter of all their
+/// names, and the class names themselves, so an entry keyed on a required ancestor
+/// class is only ever looked at for elements that really have such an ancestor.
+///
+/// A cascade that walks the tree builds each element's keys from its parent's with
+/// [`AncestorKeys::under`] instead of rebuilding them from the root.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AncestorKeys {
+    bloom: u64,
+    /// Sorted and deduplicated; shared with the parent's keys when the parent added
+    /// no class of its own, which most elements do not.
+    classes: std::rc::Rc<Vec<String>>,
+}
+
+impl AncestorKeys {
+    /// The keys of `element`'s ancestors, walked from the element upwards.
+    pub fn of(doc: &Document, element: NodeId) -> AncestorKeys {
+        let mut bloom = 0;
+        let mut classes: Vec<String> = Vec::new();
+        for n in doc.ancestors(element).filter(|n| doc.is_element(*n)) {
+            bloom |= element_bits(doc, n);
+            classes.extend(doc.classes(n).map(str::to_owned));
+        }
+        classes.sort_unstable();
+        classes.dedup();
+        AncestorKeys { bloom, classes: std::rc::Rc::new(classes) }
+    }
+    /// The keys of a child of `parent`, given `parent`'s own ancestor keys.
+    pub fn under(&self, doc: &Document, parent: NodeId) -> AncestorKeys {
+        let bloom = self.bloom | element_bits(doc, parent);
+        if doc.classes(parent).all(|c| self.classes.binary_search_by(|x| x.as_str().cmp(c)).is_ok()) {
+            return AncestorKeys { bloom, classes: self.classes.clone() };
+        }
+        let mut classes = (*self.classes).clone();
+        classes.extend(doc.classes(parent).map(str::to_owned));
+        classes.sort_unstable();
+        classes.dedup();
+        AncestorKeys { bloom, classes: std::rc::Rc::new(classes) }
+    }
+    pub fn bloom(&self) -> u64 {
+        self.bloom
+    }
+}
+
+/// The classes an element's ancestors must carry for `selector` to match, most
+/// specific first. Same reasoning as [`ancestor_requirements`].
+fn required_ancestor_classes(selector: &ComplexSelector) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut up = false;
+    for i in (0..selector.combinators.len()).rev() {
+        match selector.combinators[i] {
+            Combinator::NextSibling | Combinator::SubsequentSibling => {
+                if up {
+                    break;
+                }
+            }
+            Combinator::Descendant | Combinator::Child => up = true,
+        }
+        if up {
+            out.extend(selector.compounds[i].classes().map(str::to_owned));
+        }
+    }
+    out
+}
+
+/// The bloom bits an element's ancestors must carry for `selector` to match.
+///
+/// Reading right to left from the subject: a sibling combinator leads to an element
+/// with the *same* parent, so whatever is left of it still constrains the subject's
+/// ancestors — but only until the walk has gone up. Once a descendant or child
+/// combinator has been crossed, a sibling combinator to its left leads to a sibling
+/// *of an ancestor*, which is not an ancestor, and nothing further left may be
+/// required. Only compounds reached after at least one upward step are ancestors.
+fn ancestor_requirements(selector: &ComplexSelector) -> u64 {
+    let mut bits = 0u64;
+    let mut up = false;
+    for i in (0..selector.combinators.len()).rev() {
+        match selector.combinators[i] {
+            Combinator::NextSibling | Combinator::SubsequentSibling => {
+                if up {
+                    break;
+                }
+            }
+            Combinator::Descendant | Combinator::Child => up = true,
+        }
+        if !up {
+            continue;
+        }
+        let c = &selector.compounds[i];
+        if let Some(t) = c.type_name() {
+            if t != "*" {
+                bits |= bloom_bit(0, t);
+            }
+        }
+        if let Some(id) = c.id() {
+            bits |= bloom_bit(1, id);
+        }
+        for class in c.classes() {
+            bits |= bloom_bit(2, class);
+        }
+    }
+    bits
 }
 
 /// Rules bucketed by their rightmost compound's id, first class, type name, or none,
@@ -614,12 +752,16 @@ pub struct SelectorIndex<T> {
     ids: BTreeMap<String, Vec<usize>>,
     classes: BTreeMap<String, Vec<usize>>,
     tags: BTreeMap<String, Vec<usize>>,
+    /// Entries whose rightmost compound has no key but that require an ancestor
+    /// class, bucketed by it: a utility sheet's `.space-x-4 > :not([hidden]) ~
+    /// :not([hidden])` would otherwise be a candidate for every element on the page.
+    ancestor_classes: BTreeMap<String, Vec<usize>>,
     other: Vec<usize>,
 }
 
 impl<T> Default for SelectorIndex<T> {
     fn default() -> Self {
-        SelectorIndex { entries: Vec::new(), ids: BTreeMap::new(), classes: BTreeMap::new(), tags: BTreeMap::new(), other: Vec::new() }
+        SelectorIndex { entries: Vec::new(), ids: BTreeMap::new(), classes: BTreeMap::new(), tags: BTreeMap::new(), ancestor_classes: BTreeMap::new(), other: Vec::new() }
     }
 }
 
@@ -646,15 +788,22 @@ impl<T> SelectorIndex<T> {
             self.classes.entry(c.to_owned()).or_default().push(i);
         } else if let Some(t) = right.type_name() {
             self.tags.entry(t.to_ascii_lowercase()).or_default().push(i);
+        } else if let Some(c) = required_ancestor_classes(&selector).into_iter().next() {
+            self.ancestor_classes.entry(c).or_default().push(i);
         } else {
             self.other.push(i);
         }
-        self.entries.push(IndexEntry { selector, data });
+        let ancestors = ancestor_requirements(&selector);
+        self.entries.push(IndexEntry { selector, data, ancestors });
         i
     }
     /// Every entry whose bucket the element falls in, in insertion order. Matching is
     /// still required; pseudo-elements are not filtered.
     pub fn candidates<'a>(&'a self, doc: &Document, element: NodeId) -> impl Iterator<Item = &'a IndexEntry<T>> + 'a {
+        self.candidates_with(doc, element, &AncestorKeys::of(doc, element))
+    }
+    /// `candidates`, with the element's ancestor keys already built.
+    pub fn candidates_with<'a>(&'a self, doc: &Document, element: NodeId, keys: &AncestorKeys) -> impl Iterator<Item = &'a IndexEntry<T>> + 'a {
         let mut idx: Vec<usize> = Vec::new();
         if let Some(id) = doc.attr(element, "id") {
             if let Some(v) = self.ids.get(id) {
@@ -671,6 +820,13 @@ impl<T> SelectorIndex<T> {
                 idx.extend(v);
             }
         }
+        if !self.ancestor_classes.is_empty() {
+            for c in keys.classes.iter() {
+                if let Some(v) = self.ancestor_classes.get(c.as_str()) {
+                    idx.extend(v);
+                }
+            }
+        }
         idx.extend(&self.other);
         idx.sort_unstable();
         idx.dedup();
@@ -678,7 +834,13 @@ impl<T> SelectorIndex<T> {
     }
     /// The candidates that match, in insertion order.
     pub fn matching<'a>(&'a self, doc: &Document, element: NodeId, ctx: &MatchContext) -> Vec<&'a IndexEntry<T>> {
-        self.candidates(doc, element).filter(|e| matches(doc, element, &e.selector, ctx)).collect()
+        self.matching_with(doc, element, ctx, &AncestorKeys::of(doc, element))
+    }
+    /// `matching`, with the element's ancestor keys already built (a cascade walking
+    /// the tree carries them down instead of rebuilding them per node).
+    pub fn matching_with<'a>(&'a self, doc: &Document, element: NodeId, ctx: &MatchContext, keys: &AncestorKeys) -> Vec<&'a IndexEntry<T>> {
+        let bloom = keys.bloom;
+        self.candidates_with(doc, element, keys).filter(|e| e.ancestors & bloom == e.ancestors && matches(doc, element, &e.selector, ctx)).collect()
     }
 }
 
@@ -813,7 +975,7 @@ fn simple_deps(s: &SimpleSelector) -> SelectorDeps {
                 PseudoClass::Dir(_) => {
                     d.attributes.insert("dir".into());
                 }
-                PseudoClass::Defined => {}
+                PseudoClass::Defined | PseudoClass::Host => {}
             }
         }
     }

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>React 18</title>
+<style>
+  body { margin: 0; font: 16px/20px sans-serif; }
+  .box { width: 120px; height: 24px; }
+  .on { background-color: rgb(0, 128, 0); }
+  .off { background-color: rgb(128, 0, 0); }
+</style>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<div id="portal-target"></div>
+<script>
+'use strict';
+const h = React.createElement;
+const { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useReducer, useContext, useId,
+  useTransition, useDeferredValue, useSyncExternalStore, forwardRef, lazy, Suspense, createContext, memo, Fragment } = React;
+
+window.trace = [];
+const log = (s) => window.trace.push(s);
+
+// ---- an external store for useSyncExternalStore
+const store = {
+  value: 0, subs: new Set(),
+  subscribe(fn) { store.subs.add(fn); return () => store.subs.delete(fn); },
+  get() { return store.value; },
+  set(v) { store.value = v; store.subs.forEach((f) => f()); },
+};
+window.store = store;
+
+const Theme = createContext('light');
+
+function Counter() {
+  const [n, setN] = useState(0);
+  const [state, send] = useReducer((s, a) => (a.type === 'add' ? { total: s.total + a.by } : s), { total: 10 });
+  const renders = useRef(0);
+  renders.current++;
+  const double = useMemo(() => n * 2, [n]);
+  const inc = useCallback(() => setN((v) => v + 1), []);
+  const theme = useContext(Theme);
+  const uid = useId();
+  useLayoutEffect(() => { log('layout:' + n + ':' + document.getElementById('count').textContent); return () => log('layout-cleanup:' + n); }, [n]);
+  useEffect(() => { log('effect:' + n); document.title = 'n=' + n; return () => log('cleanup:' + n); }, [n]);
+  return h('section', { id: 'counter' },
+    h('h1', { id: 'count' }, 'Count: ', n),
+    h('p', { id: 'derived' }, 'double=' + double + ' total=' + state.total + ' theme=' + theme),
+    h('label', { id: 'lbl', htmlFor: uid }, 'id'),
+    h('input', { id: uid, 'data-useid': '1', readOnly: true, value: 'x' }),
+    h('button', { id: 'inc', onClick: inc }, '+'),
+    h('button', { id: 'add5', onClick: () => send({ type: 'add', by: 5 }) }, 'add5'),
+    h('button', { id: 'batch', onClick: () => { setN((v) => v + 1); setN((v) => v + 1); send({ type: 'add', by: 1 }); } }, 'batch'),
+    h('span', { id: 'renders' }, String(renders.current)));
+}
+
+function KeyedList() {
+  const [items, setItems] = useState([{ k: 'a', t: 'Alpha' }, { k: 'b', t: 'Beta' }, { k: 'c', t: 'Gamma' }]);
+  return h('div', null,
+    h('ul', { id: 'list' }, items.map((it) => h('li', { key: it.k, 'data-k': it.k }, it.t))),
+    h('button', { id: 'reverse', onClick: () => setItems((l) => l.slice().reverse()) }, 'reverse'),
+    h('button', { id: 'prepend', onClick: () => setItems((l) => [{ k: 'z', t: 'Zeta' }].concat(l)) }, 'prepend'),
+    h('button', { id: 'drop', onClick: () => setItems((l) => l.filter((i) => i.k !== 'b')) }, 'drop'));
+}
+
+function Form() {
+  const [name, setName] = useState('');
+  const [agree, setAgree] = useState(false);
+  const [color, setColor] = useState('red');
+  const [notes, setNotes] = useState('n:');
+  const [radio, setRadio] = useState('one');
+  const [keys, setKeys] = useState('');
+  return h('form', { id: 'form', onSubmit: (e) => { e.preventDefault(); log('submit:' + name); } },
+    // The handler upper-cases: the DOM value must follow React's state, not the keystrokes.
+    h('input', { id: 'name', type: 'text', value: name, onChange: (e) => setName(e.target.value.toUpperCase()),
+      onKeyDown: (e) => setKeys((k) => k + e.key), onFocus: () => log('focus:name'), onBlur: () => log('blur:name') }),
+    h('input', { id: 'agree', type: 'checkbox', checked: agree, onChange: (e) => setAgree(e.target.checked) }),
+    h('select', { id: 'color', value: color, onChange: (e) => setColor(e.target.value) },
+      h('option', { value: 'red' }, 'Red'), h('option', { value: 'green' }, 'Green'), h('option', { value: 'blue' }, 'Blue')),
+    h('textarea', { id: 'notes', value: notes, onChange: (e) => setNotes(e.target.value) }),
+    h('input', { id: 'r1', type: 'radio', name: 'r', value: 'one', checked: radio === 'one', onChange: () => setRadio('one') }),
+    h('input', { id: 'r2', type: 'radio', name: 'r', value: 'two', checked: radio === 'two', onChange: () => setRadio('two') }),
+    h('input', { id: 'locked', type: 'text', value: 'fixed', onChange: () => {} }),
+    h('button', { id: 'submit', type: 'submit' }, 'go'),
+    h('output', { id: 'form-out' }, [name, agree, color, notes, radio, keys].join('|')));
+}
+
+function Delegation() {
+  const [seq, setSeq] = useState('');
+  const add = (s) => setSeq((v) => v + s);
+  return h('div', { id: 'outer', onClick: () => add('O'), onClickCapture: () => add('c') },
+    h('div', { id: 'middle', onClick: (e) => { add('M'); } },
+      h('button', { id: 'inner-stop', onClick: (e) => { add('S'); e.stopPropagation(); } }, 'stop'),
+      h('button', { id: 'inner-go', onClick: (e) => { add('G' + (e.nativeEvent instanceof MouseEvent ? 'n' : '?') + e.currentTarget.id.length); } }, 'go')),
+    h('div', { id: 'hover', onMouseEnter: () => add('E'), onMouseLeave: () => add('L'), style: { width: 50, height: 20 } }, 'hover'),
+    h('span', { id: 'seq' }, seq));
+}
+
+function Modal() {
+  const [open, setOpen] = useState(false);
+  const [clicks, setClicks] = useState(0);
+  return h('div', { id: 'modal-host', onClick: () => setClicks((c) => c + 1) },
+    h('button', { id: 'open', onClick: () => setOpen((o) => !o) }, 'toggle'),
+    h('span', { id: 'bubbled' }, String(clicks)),
+    open && ReactDOM.createPortal(h('div', { id: 'dialog', role: 'dialog' }, h('button', { id: 'in-portal' }, 'inside')), document.getElementById('portal-target')));
+}
+
+const LazyPanel = lazy(() => new Promise((resolve) => setTimeout(() => resolve({ default: () => h('div', { id: 'lazy' }, 'lazy loaded') }), 30)));
+
+class Boundary extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { log('caught:' + err.message + ':' + (typeof info.componentStack)); }
+  render() { return this.state.err ? h('p', { id: 'fallback' }, 'Error: ' + this.state.err.message) : this.props.children; }
+}
+function Bomb() {
+  const [armed, setArmed] = useState(false);
+  if (armed) throw new Error('boom');
+  return h('button', { id: 'bomb', onClick: () => setArmed(true) }, 'explode');
+}
+
+const Fancy = forwardRef((props, ref) => h('input', { id: 'fancy', ref, defaultValue: props.initial }));
+function Refs() {
+  const ref = useRef(null);
+  const [info, setInfo] = useState('');
+  const cbNodes = useRef([]);
+  return h('div', null,
+    h(Fancy, { ref, initial: 'start' }),
+    h('em', { ref: (n) => { cbNodes.current.push(n ? n.tagName : 'null'); } }, 'cb'),
+    h('button', { id: 'use-ref', onClick: () => { ref.current.focus(); setInfo(ref.current.tagName + ':' + ref.current.value + ':' + (document.activeElement === ref.current) + ':' + cbNodes.current.join()); } }, 'ref'),
+    h('span', { id: 'ref-info' }, info));
+}
+
+function Styled() {
+  const [on, setOn] = useState(false);
+  return h('div', null,
+    h('div', { id: 'box', className: 'box ' + (on ? 'on' : 'off'), style: { marginLeft: on ? 12 : 4, opacity: 0.5, '--accent': 'blue', borderTopWidth: 2, borderTopStyle: 'solid', zIndex: 3 } }),
+    h('button', { id: 'toggle-style', onClick: () => setOn((v) => !v) }, 'style'),
+    h('div', { id: 'raw', dangerouslySetInnerHTML: { __html: '<b id="bold">bold</b> &amp; <i>it</i>' } }),
+    h('svg', { id: 'svg', width: 40, height: 40, viewBox: '0 0 40 40' },
+      h('circle', { id: 'circle', cx: 20, cy: 20, r: on ? 15 : 10, fill: 'red', strokeWidth: 2, className: 'dot' }),
+      h('use', { id: 'use', xlinkHref: '#circle' })));
+}
+
+function Concurrent() {
+  const [q, setQ] = useState('a');
+  const [list, setList] = useState('a');
+  const [pending, start] = useTransition();
+  const deferred = useDeferredValue(q);
+  const ext = useSyncExternalStore(store.subscribe, store.get);
+  const seen = useRef([]);
+  seen.current.push(pending ? 'P' : 'p');
+  return h('div', null,
+    h('button', { id: 'transition', onClick: () => { setQ((v) => v + 'b'); start(() => setList((v) => v + 'b')); } }, 'transition'),
+    h('span', { id: 'conc' }, q + '/' + list + '/' + deferred + '/' + ext),
+    h('span', { id: 'pending-seen' }, seen.current.join('')),
+    h('button', { id: 'flush', onClick: () => {
+      // flushSync commits before returning, so the DOM is readable inline.
+      ReactDOM.flushSync(() => setQ('sync'));
+      window.flushed = document.getElementById('conc').textContent;
+    } }, 'flush'));
+}
+
+// Effects relative to paint: layout effects run in the commit, passive effects in a
+// later scheduler task (MessageChannel), after a frame could paint.
+function Timing() {
+  const [v, setV] = useState(0);
+  useLayoutEffect(() => { log('T-layout:' + v); if (v === 0) { queueMicrotask(() => log('T-micro')); requestAnimationFrame(() => log('T-raf0')); } });
+  useEffect(() => { log('T-passive:' + v); });
+  return h('button', { id: 'timing', onClick: () => {
+    setV((x) => x + 1);
+    Promise.resolve().then(() => log('T-microtask'));
+    requestAnimationFrame(() => log('T-raf'));
+    setTimeout(() => log('T-timeout'), 0);
+  } }, 'timing ' + v);
+}
+
+function App() {
+  const [theme, setTheme] = useState('light');
+  return h(Theme.Provider, { value: theme },
+    h(Counter), h(KeyedList), h(Form), h(Delegation), h(Modal),
+    h(Suspense, { fallback: h('div', { id: 'loading' }, 'loading...') }, h(LazyPanel)),
+    h(Boundary, null, h(Bomb)),
+    h(Refs), h(Styled), h(Concurrent), h(Timing),
+    h('button', { id: 'theme', onClick: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')) }, 'theme'));
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(h(App));
+window.syncAfterRender = document.getElementById('root').childNodes.length;
+</script>
+</body>
+</html>

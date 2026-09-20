@@ -1,8 +1,13 @@
 //! Borders, outlines, shadows and corner radii.
 //!
 //! Every side has its own width, style and colour. `solid` is a box strip per side
-//! (mitred corners come out as overlapping strips, top and bottom spanning the full
-//! width); `double` is two strips of a third each; `dashed` and `dotted` are runs
+//! while every side that paints is the same colour, since the strips then overlap
+//! invisibly (top and bottom span the full width); as soon as two differ — a frame
+//! in two colours, one transparent side, or the zero-sized box with three borders
+//! that draws a CSS caret — each side is the quadrilateral between its outer edge
+//! and the mitre diagonals to its neighbours. A side with no neighbour to mitre
+//! against stays a box, whose edges are hard where a path's are antialiased.
+//! `double` is two strips of a third each; `dashed` and `dotted` are runs
 //! of boxes along the side (dash `3w` with gap `w`; dots `w` square with gap `w`);
 //! `groove`, `ridge`, `inset` and `outset` are two-tone solids (the light half at
 //! 40% towards white, the dark half at 40% towards black, swapped between the
@@ -16,9 +21,11 @@
 //!
 //! `outline` is drawn outside the border box, pushed out by `outline-offset`, and
 //! does not affect layout. Outer `box-shadow` is a `Shadow` primitive (its bounds
-//! include the blur padding, as the scene requires); an inset shadow is four shadow
-//! strips just outside the padding box, clipped to it, which darkens the edges the
-//! way a real inset shadow does without a dedicated primitive.
+//! include the blur padding, as the scene requires). An inset shadow with no blur
+//! and no offset is the ring between the box and the box pulled in by the spread,
+//! which follows the corner radii exactly — one rounded box with a border that wide
+//! (`inset 0 0 0 4px` inside a round avatar); any other inset shadow is four blurred
+//! strips just outside the inner rect, clipped to the box and to its radii.
 
 use cw_scene::{Color, Primitive, Rect as SRect};
 
@@ -143,6 +150,26 @@ fn side_strip(rect: SRect, widths: [u32; 4], side: Side) -> SRect {
     }
 }
 
+/// One side as the quadrilateral between its outer edge and the mitre diagonals to
+/// the two adjacent sides, clockwise. Widths are clamped to the box so opposite
+/// sides never cross. With both neighbours zero-width this is the plain strip; with
+/// a zero-sized content box and three borders it is the triangle that CSS carets and
+/// arrows are drawn with.
+fn mitre_quad(rect: SRect, widths: [u32; 4], side: Side) -> Vec<(i32, i32)> {
+    let [t, r, b, l] = widths;
+    let (t, b) = (t.min(rect.height), b.min(rect.height.saturating_sub(t.min(rect.height))));
+    let (l, r) = (l.min(rect.width), r.min(rect.width.saturating_sub(l.min(rect.width))));
+    let (x0, y0, x1, y1) = (rect.x, rect.y, rect.right(), rect.bottom());
+    let (li, ri) = (x0 + l as i32, x1 - r as i32);
+    let (ti, bi) = (y0 + t as i32, y1 - b as i32);
+    match side {
+        Side::Top => vec![(x0, y0), (x1, y0), (ri, ti), (li, ti)],
+        Side::Right => vec![(x1, y0), (x1, y1), (ri, bi), (ri, ti)],
+        Side::Bottom => vec![(x1, y1), (x0, y1), (li, bi), (ri, bi)],
+        Side::Left => vec![(x0, y1), (x0, y0), (li, ti), (li, bi)],
+    }
+}
+
 fn box_node(fill: Color) -> Primitive {
     Primitive::Box { fill, border: None, border_width: 0 }
 }
@@ -172,8 +199,30 @@ pub(crate) fn paint_borders(p: &mut Painter, key: (NodeId, u32), state: &State, 
         }
     }
     let rounded = any_radius(&radii);
+    // Whether the corners have to be mitred. Sides that all paint in one colour
+    // overlap invisibly, so the strips below are exact and cheaper; as soon as two
+    // sides differ — a frame in two colours, one transparent side, or the zero-sized
+    // box with three borders that draws a CSS triangle — each side is the trapezoid
+    // between its own outer edge and the diagonals to its neighbours.
+    let drawn: Vec<(Side, BorderSide, u32)> = sides.iter().copied().filter(|(_, bs, w)| *w > 0 && bs.style.is_visible()).collect();
+    let mitred = !rounded
+        && drawn.len() > 1
+        && drawn.iter().all(|(_, bs, _)| bs.style == BorderStyle::Solid)
+        && drawn.iter().any(|(_, bs, _)| bs.color != drawn[0].1.color);
     for (side, bs, w) in sides {
         if w == 0 || !bs.style.is_visible() || bs.color.3 == 0 {
+            continue;
+        }
+        // Only a side with a neighbour to mitre against is a quadrilateral; on its
+        // own it is still the plain strip, which is drawn as a box so its edges stay
+        // hard (a path's do not: the rasteriser antialiases them).
+        let has_neighbour = match side {
+            Side::Top | Side::Bottom => widths[3] > 0 || widths[1] > 0,
+            Side::Left | Side::Right => widths[0] > 0 || widths[2] > 0,
+        };
+        if mitred && has_neighbour {
+            let id = p.id(key, side.part());
+            p.emit_path(state, id, rect, mitre_quad(rect, widths, side), Some(bs.color), None, 0, true);
             continue;
         }
         if rounded && matches!(bs.style, BorderStyle::Solid | BorderStyle::Double | BorderStyle::Groove | BorderStyle::Ridge | BorderStyle::Inset | BorderStyle::Outset) {
@@ -340,7 +389,7 @@ fn paint_rounded_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: 
         _ => bs.color,
     };
     let id = p.id(key, side.part());
-    p.emit(state, id, rect, Primitive::Path { points: pts, fill: None, stroke: Some(color), stroke_width: w.min(u16::MAX as u32) as u16, closed: false });
+    p.emit_path(state, id, rect, pts, None, Some(color), w.min(u16::MAX as u32) as u16, false);
 }
 
 /// `outline` around the border box, offset outwards by `outline-offset`.
@@ -419,9 +468,22 @@ pub(crate) fn paint_box_shadows(p: &mut Painter, key: (NodeId, u32), state: &Sta
             let id = p.id(key, part);
             p.emit(state, id, bounds, Primitive::Shadow { color: sh.color, radius: (radius as i64 + spread as i64).max(0) as u32, blur });
         } else {
-            // Four strips just outside the padding box, shifted by the offset and
-            // pulled in by the spread, clipped to the box.
-            let clipped = state.clipped(rect);
+            // An inset shadow darkens the ring between the box and the box moved by
+            // the offset and pulled in by the spread. Unblurred and unoffset, that
+            // ring follows the corner radii exactly — `inset 0 0 0 Npx` is how a
+            // ring inside a round avatar is drawn — so it is one rounded box with an
+            // N-px border. Otherwise it is four blurred strips just outside the
+            // inner rect, clipped to the box and to its radii.
+            let mut clipped = state.clipped(rect);
+            if clipped.rounded_clip.is_none() && radius > 0 {
+                clipped.rounded_clip = Some(cw_scene::RoundedClip { rect, radius });
+            }
+            if blur == 0 && dx == 0 && dy == 0 && spread > 0 {
+                let part = p.next_part(key);
+                let id = p.id(key, part);
+                p.emit(state, id, rect, Primitive::RoundedBox { fill: Color::TRANSPARENT, border: Some(sh.color), border_width: spread as u32, radius });
+                continue;
+            }
             let t = (blur.max(1) + spread.max(0) as u32).max(1);
             let strips = [
                 SRect::new(rect.x - t as i32 + dx, rect.y - t as i32 + dy, rect.width + 2 * t, t),

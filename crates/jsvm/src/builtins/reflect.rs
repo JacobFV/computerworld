@@ -151,7 +151,23 @@ fn proxy_revocable(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         callee: a.callee.clone(),
     };
     let p = proxy_ctor(vm, &mut a2)?;
-    let revoke = vm.native_fn("", 0, |_vm, _a| Ok(Value::Undefined));
+    // Revoking swaps in a handler whose every trap throws.
+    let revoke = vm.native_fn("", 0, |vm, a| {
+        let Some(Value::Obj(p)) = a.callee.own_value("%proxy") else { return Ok(Value::Undefined) };
+        let dead = vm.new_object();
+        for trap in ["get", "set", "has", "deleteProperty", "ownKeys", "getOwnPropertyDescriptor", "defineProperty", "apply", "construct", "getPrototypeOf", "setPrototypeOf"] {
+            let f = vm.native_fn(trap, 0, |vm, a| {
+                let name = match a.callee.own_value("name") { Some(Value::Str(s)) => s.to_string(), _ => String::new() };
+                Err(vm.type_error(format!("Cannot perform '{name}' on a proxy that has been revoked")))
+            });
+            dead.set_prop(trap, Value::Obj(f), ALL);
+        }
+        if let Kind::Proxy { handler, .. } = &mut p.borrow_mut().kind {
+            *handler = dead;
+        }
+        Ok(Value::Undefined)
+    });
+    revoke.set_hidden("%proxy", p.clone());
     let o = new_obj_from(vm, vec![("proxy", p), ("revoke", Value::Obj(revoke))]);
     Ok(Value::Obj(o))
 }

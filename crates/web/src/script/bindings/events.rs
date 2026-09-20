@@ -377,6 +377,32 @@ fn click_at(realm: &mut Realm, target: NodeId, x: i32, y: i32, button: u8, m: Mo
     }
 }
 
+/// A click that is an activation only: the `click` event and the activation
+/// behaviour, with no pointer events and no focus change. This is what implicit
+/// form submission does to the default button (HTML "fire a click event"), so the
+/// caret stays in the field the user pressed Enter in, as in Chromium.
+fn activation_click(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultAction {
+    if realm.inner.borrow().is_disabled(target) {
+        return DefaultAction::None;
+    }
+    let tv = wrap(realm, Some(target));
+    let mv = mods_value(realm, m);
+    let (x, y) = {
+        let mut i = realm.inner.borrow_mut();
+        let rects = i.rects_of(target);
+        let (sx, sy) = i.window_scroll();
+        match rects.first() {
+            Some(r) => ((r.origin.x - sx + r.size.width.scale(1, 2)).to_px_round(), (r.origin.y - sy + r.size.height.scale(1, 2)).to_px_round()),
+            None => (0, 0),
+        }
+    };
+    let prevented = hook_bool(realm, "click", vec![tv, Value::Num(x as f64), Value::Num(y as f64), mv, Value::Num(0.0)]);
+    if prevented {
+        return DefaultAction::Prevented;
+    }
+    activate(realm, target, m)
+}
+
 /// The key sequence: keydown, keypress, beforeinput, edit, input, keyup.
 fn key_press(realm: &mut Realm, key: &str, code: &str, m: Modifiers, repeat: bool, down: bool, up: bool) -> DefaultAction {
     let target = {
@@ -467,7 +493,7 @@ fn key_default(realm: &mut Realm, target: NodeId, key: &str, m: Modifiers, tv: &
                     i.form_elements(form).into_iter().find(|e| (i.doc.is(*e, "button") && !matches!(i.doc.attr(*e, "type").map(|t| t.to_ascii_lowercase()).as_deref(), Some("button" | "reset"))) || (i.doc.is(*e, "input") && matches!(i.doc.attr(*e, "type").map(|t| t.to_ascii_lowercase()).as_deref(), Some("submit" | "image"))))
                 };
                 match submitter {
-                    Some(s) => return click_node(realm, s, m, 1),
+                    Some(s) => return activation_click(realm, s, m),
                     None => return submit_form(realm, form, None),
                 }
             }

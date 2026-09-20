@@ -38,10 +38,17 @@ class Element extends Node {
     define(this, '%shadow', root);
     return root;
   }
-  getAttributeNS(ns, name) { return this.getAttribute(name); }
+  // Attributes are stored by qualified name; a namespaced lookup by local name
+  // finds the conventional prefix of the namespace (`xlink:href`, `xml:lang`).
+  _nsAttr(ns, local) {
+    local = String(local);
+    const prefix = ns === 'http://www.w3.org/1999/xlink' ? 'xlink:' : ns === 'http://www.w3.org/XML/1998/namespace' ? 'xml:' : ns === 'http://www.w3.org/2000/xmlns/' ? 'xmlns:' : '';
+    return prefix && !local.includes(':') && this.hasAttribute(prefix + local) ? prefix + local : local;
+  }
+  getAttributeNS(ns, name) { return this.getAttribute(this._nsAttr(ns, name)); }
   setAttributeNS(ns, name, value) { this.setAttribute(name, value); }
-  removeAttributeNS(ns, name) { this.removeAttribute(name); }
-  hasAttributeNS(ns, name) { return this.hasAttribute(name); }
+  removeAttributeNS(ns, name) { this.removeAttribute(this._nsAttr(ns, name)); }
+  hasAttributeNS(ns, name) { return this.hasAttribute(this._nsAttr(ns, name)); }
   getAttributeNode(name) { return this.hasAttribute(name) ? C.attrNode(this, String(name).toLowerCase()) : null; }
   getAttributeNodeNS(ns, name) { return this.getAttributeNode(name); }
   setAttributeNode(attr) { return this.attributes.setNamedItem(attr); }

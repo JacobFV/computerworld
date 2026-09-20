@@ -367,6 +367,9 @@ pub enum Input {
     AfterLayout,
     AnimationFrame,
     Eval(String),
+    /// The browser told the realm the intrinsic sizes of pictures it fetched
+    /// (`src` as written, width, height), which layout (and so script) can see.
+    ImageSizes(Vec<(String, u32, u32)>),
 }
 
 /// A realm's serialisable state: its page and every input and host answer since it
@@ -377,6 +380,11 @@ pub struct RealmState {
     pub url: String,
     pub inputs: Vec<Input>,
     pub journal: Vec<JournalEntry>,
+    /// VM steps each entry-point call (and each `<script>`) may spend before it is
+    /// interrupted with a `TimeoutError`; 0 keeps the VM's own lifetime budget.
+    /// Part of the state so a restore replays under the same limit.
+    #[serde(default)]
+    pub step_budget: u64,
 }
 
 /// One document's script environment. See the module documentation.
@@ -401,6 +409,7 @@ impl Realm {
     pub fn restore(state: &RealmState, host: Box<dyn ScriptHostDocument>) -> Realm {
         let inputs = state.inputs.clone();
         let mut realm = Self::build(&state.html, &state.url, host, Journal::replay(state.journal.clone()), Vec::new());
+        realm.state.step_budget = state.step_budget;
         for input in inputs {
             match input {
                 Input::RunDocument => realm.run_document(),
@@ -415,6 +424,7 @@ impl Realm {
                 Input::Eval(src) => {
                     let _ = realm.eval(&src);
                 }
+                Input::ImageSizes(sizes) => realm.set_image_sizes(sizes),
             }
         }
         realm.inner.borrow_mut().journal.replaying = false;
@@ -433,7 +443,7 @@ impl Realm {
         let any: Rc<dyn std::any::Any> = inner.clone();
         vm.embedder = Some(any);
         bindings::install(&mut vm);
-        let mut realm = Realm { vm, _bridge: bridge, inner, state: RealmState { html: html.to_owned(), url: url.to_owned(), inputs, journal: Vec::new() } };
+        let mut realm = Realm { vm, _bridge: bridge, inner, state: RealmState { html: html.to_owned(), url: url.to_owned(), inputs, journal: Vec::new(), step_budget: 0 } };
         realm.run_prelude();
         realm
     }
@@ -458,6 +468,49 @@ impl Realm {
             }
             Ctl::Exit(c) => format!("exit {c}"),
         }
+    }
+
+    /// Limits every later entry-point call (and each `<script>` of the document) to
+    /// `steps` VM steps; a script that never yields is interrupted with a
+    /// `TimeoutError` reported to the console, and the realm stays usable. 0 removes
+    /// the per-call limit.
+    pub fn set_step_budget(&mut self, steps: u64) {
+        self.state.step_budget = steps;
+    }
+
+    /// Re-arms the VM's step limit for one entry-point call.
+    fn arm(&mut self) {
+        if self.state.step_budget > 0 {
+            self.vm.budget = self.vm.steps.saturating_add(self.state.step_budget);
+        }
+    }
+
+    /// Tells layout the intrinsic sizes of pictures the browser fetched, keyed by
+    /// the `src` as written. Recorded as an input, so a restore sees the same layout.
+    pub fn set_image_sizes(&mut self, sizes: Vec<(String, u32, u32)>) {
+        self.state.inputs.push(Input::ImageSizes(sizes.clone()));
+        let mut inner = self.inner.borrow_mut();
+        for (src, w, h) in sizes {
+            inner.images.0.insert(src, (w, h));
+        }
+        inner.touch();
+    }
+
+    /// The world-clock time (microseconds) the earliest pending timer is due at.
+    pub fn next_timer_micros(&self) -> Option<i64> {
+        let start = self.vm.start_micros;
+        self.vm.timers.iter().map(|t| if t.immediate { 0.0 } else { t.when }).fold(None, |m: Option<f64>, w| Some(m.map_or(w, |m| m.min(w)))).map(|ms| start + (ms * 1000.0) as i64)
+    }
+
+    /// Whether the page has `requestAnimationFrame` callbacks waiting for a frame.
+    pub fn wants_animation_frame(&self) -> bool {
+        self.inner.borrow().has_raf
+    }
+
+    /// The realm's same-document history: `(index, length)` (`pushState` entries).
+    pub fn history_position(&self) -> (usize, usize) {
+        let i = self.inner.borrow();
+        (i.history_index, i.history.len())
     }
 
     /// The document (parsed once `run_document` ran).
@@ -545,6 +598,7 @@ impl Realm {
     /// fires `DOMContentLoaded` and `load`.
     pub fn run_document(&mut self) {
         self.state.inputs.push(Input::RunDocument);
+        self.arm();
         let html = self.state.html.clone();
         let placeholder = Document::new();
         let start_doc = std::mem::replace(&mut self.inner.borrow_mut().doc, placeholder);
@@ -630,6 +684,7 @@ impl Realm {
         if already {
             return;
         }
+        self.arm();
         let is_js = ty.is_empty() || matches!(ty.as_str(), "text/javascript" | "application/javascript" | "text/ecmascript" | "application/ecmascript" | "module" | "text/jscript" | "text/x-javascript" | "text/babel");
         if !is_js || nomodule || ty == "text/babel" {
             return;
@@ -685,6 +740,7 @@ impl Realm {
     /// Evaluates a classic script in the realm's global scope.
     pub fn eval(&mut self, source: &str) -> Result<String, String> {
         self.state.inputs.push(Input::Eval(source.to_owned()));
+        self.arm();
         let r = self.vm.eval_source_with(source, "eval", false, true);
         let out = match r {
             Ok(v) => match &v {
@@ -810,6 +866,7 @@ impl Realm {
     /// run once per 16ms of advancement). Returns true when work ran.
     pub fn run_until_idle(&mut self, advance_ms: u32) -> bool {
         self.state.inputs.push(Input::RunUntilIdle { advance_ms });
+        self.arm();
         self.sync_clock();
         let mut ran = false;
         let deadline = self.vm.clock() + advance_ms as f64;
@@ -896,6 +953,10 @@ impl Realm {
                 fired = true;
                 ran = true;
             }
+            if self.pump_animations() {
+                fired = true;
+                ran = true;
+            }
             if !fired {
                 break;
             }
@@ -903,10 +964,48 @@ impl Realm {
         ran
     }
 
+    /// Turns the transitions and animations the last style flush started into DOM
+    /// events on the world clock: `transitionrun`/`transitionstart`/`transitionend`
+    /// and `animationstart`/`animationend`, each scheduled with the realm's timers so
+    /// it lands `transition-delay` and `transition-duration` later. The engine does
+    /// not interpolate; the property jumps to its new value and the end event arrives
+    /// when the declared time is up, which is what `<transition>` in Vue and
+    /// `svelte/transition` wait for.
+    fn pump_animations(&mut self) -> bool {
+        {
+            let mut i = self.inner.borrow_mut();
+            if i.doc.document_element().is_some() {
+                i.ensure_styles();
+            }
+        }
+        let starts = std::mem::take(&mut self.inner.borrow_mut().pending_animations);
+        if starts.is_empty() {
+            return false;
+        }
+        for a in starts {
+            let target = self.wrap(a.node);
+            let hook = if a.is_animation { "cssAnimation" } else { "cssTransition" };
+            self.call_hook(
+                hook,
+                vec![
+                    target,
+                    Value::str(&a.name),
+                    Value::Num(a.delay_ms as f64),
+                    Value::Num(a.duration_ms as f64),
+                    a.iterations.map(Value::Num).unwrap_or(Value::Null),
+                    Value::Bool(a.cancelled),
+                ],
+            );
+        }
+        self.drain_microtasks();
+        true
+    }
+
     /// Runs the `requestAnimationFrame` callbacks for one painted frame, then drains
     /// microtasks. The browser calls this once per frame it paints.
     pub fn animation_frame(&mut self) {
         self.state.inputs.push(Input::AnimationFrame);
+        self.arm();
         self.sync_clock();
         self.animation_frame_inner();
         self.flush_console();
@@ -922,6 +1021,7 @@ impl Realm {
     /// current layout. The browser calls this after it laid out and painted.
     pub fn after_layout(&mut self) {
         self.state.inputs.push(Input::AfterLayout);
+        self.arm();
         {
             let mut i = self.inner.borrow_mut();
             i.ensure_layout();
@@ -935,9 +1035,11 @@ impl Realm {
     /// Dispatches a browser action as DOM events and reports the default action.
     pub fn dispatch(&mut self, event: UiEvent) -> DefaultAction {
         self.state.inputs.push(Input::Dispatch(event.clone()));
+        self.arm();
         self.sync_clock();
         let action = bindings::events::dispatch(self, event);
         self.drain_microtasks();
+        self.pump_animations();
         self.flush_console();
         self.inner.borrow_mut().host.request_relayout();
         action

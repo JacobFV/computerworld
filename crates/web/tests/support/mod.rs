@@ -9,7 +9,7 @@ use cw_web::geom::{Au, Edges, Point, Rect};
 use cw_web::layout::{Fragment, FragmentKind, FragmentTree, StyleSource};
 use cw_web::style::{
     BoxSizing, ComputedStyle, Display, Float, LengthPercentage, LengthPercentageAuto, LineHeight, Overflow, Position, Sizing, StyleSet,
-    TextAlign, VerticalAlign, WhiteSpace, ZIndex,
+    TextAlign, TransformOp, VerticalAlign, WhiteSpace, ZIndex,
 };
 use cw_web::Viewport;
 use serde::{Deserialize, Serialize};
@@ -112,31 +112,104 @@ pub struct Rendered {
 }
 
 /// Parses, cascades, lays out and paints `html` at `viewport`. Author stylesheets are
-/// the document's `<style>` elements, in order; the user-agent sheet is the cascade's.
+/// the document's `<style>` elements and its non-alternate `<link rel=stylesheet>`
+/// elements with `data:` hrefs, in order; the user-agent sheet is the cascade's.
+/// Images are the document's `data:` URLs (`cw_web::paint::ImageMap::from_document`).
 #[cfg(feature = "pipeline")]
 pub fn run(html: &str, viewport: Viewport) -> Rendered {
+    run_at(html, viewport, None)
+}
+
+/// `run`, navigated to `#fragment` when one is given: the document is scrolled so
+/// the element with that id sits at the top of the viewport (clamped to the
+/// scrollable range, as a browser's fragment navigation is), which is how a test
+/// like Acid2 says it is to be viewed.
+#[cfg(feature = "pipeline")]
+pub fn run_at(html: &str, viewport: Viewport, fragment: Option<&str>) -> Rendered {
     use cw_web::css::{parse_stylesheet, MatchContext, Media, Origin};
+    use cw_web::layout::{layout_with, LayoutCache, LayoutOptions, ScrollState};
+    use cw_web::paint::{ImageMap, PaintContext};
     use cw_web::Strictness;
     let doc = cw_web::html::parse(html);
     let mut sheets = Vec::new();
     for node in doc.descendants(Document::ROOT) {
-        if doc.is(node, "style") {
-            match parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Lenient) {
+        let css = if doc.is(node, "style") {
+            Some(doc.text_content(node))
+        } else if doc.is(node, "link") {
+            linked_data_stylesheet(&doc, node)
+        } else {
+            None
+        };
+        if let Some(css) = css {
+            match parse_stylesheet(&css, Origin::Author, Strictness::Lenient) {
                 Ok(sheet) => sheets.push(sheet),
                 Err(e) => panic!("stylesheet: {e}"),
             }
         }
     }
-    let media = Media::with_size(viewport.width as i32, viewport.height as i32);
+    // Chromium's dumps were made on a stock Linux desktop (see each fixture's
+    // fonts.json): the engine resolves families as that machine does.
+    let media = Media { fonts: cw_web::css::FontEnvironment::LinuxBaseline, ..Media::with_size(viewport.width as i32, viewport.height as i32) };
     let styles = cw_web::style::cascade(&doc, &sheets, &media, &MatchContext::new(), Strictness::Lenient).unwrap_or_else(|e| panic!("cascade: {e}"));
-    let tree = cw_web::layout::layout(&doc, &styles, viewport);
-    let scene = cw_web::paint::paint(&doc, &styles, &tree, viewport, &cw_web::paint::PaintContext::default());
+    let images = ImageMap::from_document(&doc, &styles);
+    let mut scroll = ScrollState::new();
+    // Chromium's dumps come from a headless run, which hides scrollbars.
+    let mut cache = LayoutCache { overlay_scrollbars: true, ..LayoutCache::default() };
+    let mut tree = layout_with(&doc, &styles, viewport, LayoutOptions { images: &images, scroll: &scroll }, &mut cache);
+    let mut offset = Point::default();
+    if let Some(id) = fragment {
+        let target = doc.by_id(id).first().copied().unwrap_or_else(|| panic!("no element with id `{id}` to navigate to"));
+        let ix = index_fragments(&doc, &styles, &tree);
+        let y = ix.boxes.get(&target).and_then(|b| b.rect).map(|r| r.origin.y).unwrap_or_else(|| panic!("`#{id}` generates no box"));
+        scroll.insert(Document::ROOT, (Au::ZERO, y));
+        // Lay out again with the offset known, so sticky boxes and the clamp to the
+        // scrollable range apply; the root fragment then carries the used offset.
+        tree = layout_with(&doc, &styles, viewport, LayoutOptions { images: &images, scroll: &scroll }, &mut cache);
+        if let FragmentKind::Box { scroll: Some(info), .. } = &tree.root.kind {
+            offset = Point { x: info.scroll_x, y: info.scroll_y };
+        }
+    }
+    let mut ctx = PaintContext::new(&images);
+    ctx.scroll = offset;
+    let scene = cw_web::paint::paint(&doc, &styles, &tree, viewport, &ctx);
     Rendered { doc, styles, tree, scene }
+}
+
+/// The text of a `<link rel=stylesheet href="data:text/css,...">`: `rel` must name
+/// `stylesheet` and not `alternate` (an alternate sheet is off until the user picks
+/// it; Acid2's `rel="appendix stylesheet"` is a persistent one), and only `data:`
+/// URLs are readable without a network.
+#[cfg(feature = "pipeline")]
+pub fn linked_data_stylesheet(doc: &Document, link: NodeId) -> Option<String> {
+    let rel = doc.attr(link, "rel").unwrap_or("");
+    let mut is_sheet = false;
+    for word in rel.split_ascii_whitespace() {
+        if word.eq_ignore_ascii_case("alternate") {
+            return None;
+        }
+        if word.eq_ignore_ascii_case("stylesheet") {
+            is_sheet = true;
+        }
+    }
+    if !is_sheet {
+        return None;
+    }
+    let href = doc.attr(link, "href")?;
+    let (mime, bytes) = cw_web::paint::data_url::decode(href)?;
+    if mime != "text/css" {
+        return None;
+    }
+    String::from_utf8(bytes).ok()
 }
 
 #[cfg(not(feature = "pipeline"))]
 pub fn run(_html: &str, _viewport: Viewport) -> Rendered {
     panic!("the engine pipeline is not wired up yet: run with `--features pipeline` once html::parse, css::parse_stylesheet and style::cascade exist")
+}
+
+#[cfg(not(feature = "pipeline"))]
+pub fn run_at(html: &str, viewport: Viewport, _fragment: Option<&str>) -> Rendered {
+    run(html, viewport)
 }
 
 // ---------------------------------------------------------------------------------
@@ -239,20 +312,98 @@ pub struct BoxInfo {
     border: Edges,
     /// The parent fragment's content box, for resolving auto margins and percentages.
     container: Option<Rect>,
+    /// The used margins layout recorded for the box, `auto` resolved.
+    used_margin: Option<Edges>,
+    /// What `getBoundingClientRect` reports when the box or an ancestor is
+    /// transformed: the bounds of the transformed border box. `None` when no
+    /// transform applies and `rect` is the client rect.
+    client: Option<DumpRect>,
+    /// The box is replaced content (an image, a control): `width` and `height` apply
+    /// to it even when it is `display: inline`.
+    replaced: bool,
 }
 
 struct FragIndex {
     boxes: BTreeMap<NodeId, BoxInfo>,
-    texts: BTreeMap<NodeId, Vec<Rect>>,
+    /// Each text run's rect, with its transformed bounds when a transform applies.
+    texts: BTreeMap<NodeId, Vec<(Rect, Option<DumpRect>)>>,
 }
 
-fn index_fragments(doc: &Document, tree: &FragmentTree) -> FragIndex {
+/// A 2D affine map `[a b c d e f]`: x' = a x + c y + e, y' = b x + d y + f, in CSS px.
+/// The dump measures the way `getBoundingClientRect` does, so this is plain `f64`
+/// arithmetic on finished layout, outside the engine.
+type Affine = [f64; 6];
+
+const IDENTITY: Affine = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+
+/// `outer ∘ inner`: `inner` applies first.
+fn affine_mul(o: &Affine, i: &Affine) -> Affine {
+    [
+        o[0] * i[0] + o[2] * i[1],
+        o[1] * i[0] + o[3] * i[1],
+        o[0] * i[2] + o[2] * i[3],
+        o[1] * i[2] + o[3] * i[3],
+        o[0] * i[4] + o[2] * i[5] + o[4],
+        o[1] * i[4] + o[3] * i[5] + o[5],
+    ]
+}
+
+/// The matrix of an element's `transform` about its `transform-origin`, for a border
+/// box at `abs` (page coordinates).
+fn element_affine(s: &ComputedStyle, abs: Rect) -> Affine {
+    let (w, h) = (abs.size.width, abs.size.height);
+    let mut m = IDENTITY;
+    for op in &s.transform {
+        let t: Affine = match *op {
+            TransformOp::Translate(x, y) => [1.0, 0.0, 0.0, 1.0, q64(x.resolve(w)), q64(y.resolve(h))],
+            TransformOp::Scale(sx, sy) => [sx as f64 / 1000.0, 0.0, 0.0, sy as f64 / 1000.0, 0.0, 0.0],
+            TransformOp::Rotate(cdeg) => {
+                let (sin, cos) = (cdeg as f64 / 100.0).to_radians().sin_cos();
+                [cos, sin, -sin, cos, 0.0, 0.0]
+            }
+            TransformOp::SkewX(cdeg) => [1.0, 0.0, (cdeg as f64 / 100.0).to_radians().tan(), 1.0, 0.0, 0.0],
+            TransformOp::SkewY(cdeg) => [1.0, (cdeg as f64 / 100.0).to_radians().tan(), 0.0, 1.0, 0.0, 0.0],
+        };
+        m = affine_mul(&m, &t);
+    }
+    let ox = q64(abs.origin.x) + q64(s.transform_origin.0.resolve(w));
+    let oy = q64(abs.origin.y) + q64(s.transform_origin.1.resolve(h));
+    affine_mul(&affine_mul(&[1.0, 0.0, 0.0, 1.0, ox, oy], &m), &[1.0, 0.0, 0.0, 1.0, -ox, -oy])
+}
+
+/// The axis-aligned bounds of a rect's four corners under `m`.
+fn affine_bounds(m: &Affine, r: Rect) -> DumpRect {
+    let (x0, y0) = (q64(r.origin.x), q64(r.origin.y));
+    let (x1, y1) = (x0 + q64(r.size.width), y0 + q64(r.size.height));
+    let pts = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)].map(|(x, y)| (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]));
+    let min_x = pts.iter().map(|p| p.0).fold(f64::INFINITY, f64::min);
+    let max_x = pts.iter().map(|p| p.0).fold(f64::NEG_INFINITY, f64::max);
+    let min_y = pts.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
+    let max_y = pts.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
+    // `dump.mjs` rounds to 1/64 px.
+    let r64 = |v: f64| (v * 64.0).round() / 64.0;
+    DumpRect { x: r64(min_x), y: r64(min_y), width: r64(max_x - min_x), height: r64(max_y - min_y) }
+}
+
+fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> FragIndex {
     let mut ix = FragIndex { boxes: BTreeMap::new(), texts: BTreeMap::new() };
-    fn visit(doc: &Document, f: &Fragment, origin: Point, container: Option<Rect>, ix: &mut FragIndex) {
+    fn visit(doc: &Document, styles: &StyleSet, f: &Fragment, origin: Point, container: Option<Rect>, m: Option<Affine>, ix: &mut FragIndex) {
         let abs = f.rect.translate(origin.x, origin.y);
         let mut inner = container;
+        let mut m = m;
         match &f.kind {
             FragmentKind::Box { source, padding, border, .. } | FragmentKind::InlineBox { source, padding, border, .. } => {
+                // A transformed element maps itself and its subtree; pseudo-elements'
+                // transforms only move boxes the dump does not report.
+                if let StyleSource::Element(n) = source {
+                    if let Some(s) = styles.get(*n).filter(|s| !s.transform.is_empty()) {
+                        let own = element_affine(s, abs);
+                        m = Some(match m {
+                            Some(outer) => affine_mul(&outer, &own),
+                            None => own,
+                        });
+                    }
+                }
                 // Pseudo-element boxes (markers, ::before, ::after) are not part of
                 // the element's own rect, as `getBoundingClientRect` reports it. A
                 // table element's box in Chromium is the wrapper, captions included,
@@ -268,7 +419,16 @@ fn index_fragments(doc: &Document, tree: &FragmentTree) -> FragIndex {
                         Some(r) => r.union(abs),
                         None => abs,
                     });
+                    if let Some(m) = &m {
+                        let b = affine_bounds(m, abs);
+                        e.client = Some(match e.client {
+                            Some(c) => union_rect(c, b),
+                            None => b,
+                        });
+                    }
                     if e.container.is_none() {
+                        e.used_margin = f.used_margin;
+                        e.replaced = matches!(&f.kind, FragmentKind::Box { replaced: Some(_), .. });
                         e.padding = *padding;
                         e.border = *border;
                         e.container = container;
@@ -277,16 +437,41 @@ fn index_fragments(doc: &Document, tree: &FragmentTree) -> FragIndex {
                 let content = border.inset(padding.inset(abs));
                 inner = Some(content);
             }
+            FragmentKind::Text { node: Some(n), ellipsis: true, text, source, range, .. } => {
+                // `Range.getClientRects` over text cut by `text-overflow: ellipsis`
+                // gives two rects in Chromium: the whole text as if it were not cut
+                // (it is laid out, then hidden), and the part that stays visible,
+                // without the ellipsis glyph, which belongs to no text node.
+                // The uncut rect covers the run's own text, which is the whole node
+                // on a `nowrap` line but only the clamped line on a
+                // `-webkit-line-clamp` box; the run keeps its pre-truncation range.
+                let font = styles.get(source.node()).map(|s| (s.font.clone(), s.letter_spacing, s.word_spacing));
+                let mut rects = vec![abs];
+                if let Some((font, ls, ws)) = font {
+                    let data = doc.text(*n).unwrap_or("");
+                    let data = data.get(range.0..range.1).unwrap_or(data);
+                    let mut whole = data.split_whitespace().collect::<Vec<_>>().join(" ");
+                    if text.starts_with(' ') {
+                        whole.insert(0, ' ');
+                    }
+                    let full = cw_web::layout::text::measure(&font, &whole, ls, ws);
+                    let kept = abs.size.width - cw_web::layout::text::advance(&font, '\u{2026}');
+                    rects = vec![Rect::new(abs.origin.x, abs.origin.y, full, abs.size.height), Rect::new(abs.origin.x, abs.origin.y, kept, abs.size.height)];
+                }
+                for r in rects {
+                    ix.texts.entry(*n).or_default().push((r, m.as_ref().map(|m| affine_bounds(m, r))));
+                }
+            }
             FragmentKind::Text { node: Some(n), .. } => {
-                ix.texts.entry(*n).or_default().push(abs);
+                ix.texts.entry(*n).or_default().push((abs, m.as_ref().map(|m| affine_bounds(m, abs))));
             }
             _ => {}
         }
         for c in &f.children {
-            visit(doc, c, abs.origin, inner, ix);
+            visit(doc, styles, c, abs.origin, inner, m, ix);
         }
     }
-    visit(doc, &tree.root, Point::default(), None, &mut ix);
+    visit(doc, styles, &tree.root, Point::default(), None, None, &mut ix);
     ix
 }
 
@@ -337,6 +522,10 @@ fn lp_str(v: LengthPercentage, base: Option<Au>) -> String {
             Some(b) => px(l + b.percent_of(p)),
             None => format!("calc({} + {}%)", px(l), p as f64 / 100.0),
         },
+        LengthPercentage::Clamp { .. } => match base {
+            Some(b) => px(v.resolve(b)),
+            None => cw_web::style::serialize::lp(v),
+        },
     }
 }
 
@@ -380,7 +569,7 @@ pub fn computed_strings(style: &ComputedStyle, info: &BoxInfo) -> BTreeMap<Strin
         .into(),
     );
     let cb_width = info.container.map(|c| c.size.width);
-    let inline_nonreplaced = matches!(style.display, Display::Inline);
+    let inline_nonreplaced = matches!(style.display, Display::Inline) && !info.replaced;
     match info.rect {
         Some(r) if !inline_nonreplaced => {
             let (w, h) = match style.box_sizing {
@@ -394,8 +583,11 @@ pub fn computed_strings(style: &ComputedStyle, info: &BoxInfo) -> BTreeMap<Strin
             put("height", px(h));
         }
         Some(_) => {
-            put("width", "auto".into());
-            put("height", "auto".into());
+            // `width` and `height` do not apply to a non-replaced inline box, so
+            // `getComputedStyle` gives their computed values (Acid2 sets them on an
+            // `<object>` that falls back to being inline).
+            put("width", sizing_str(style.width));
+            put("height", sizing_str(style.height));
         }
         None => {
             put("width", sizing_str(style.width));
@@ -405,6 +597,12 @@ pub fn computed_strings(style: &ComputedStyle, info: &BoxInfo) -> BTreeMap<Strin
     let margin = |v: LengthPercentageAuto, side: usize| -> String {
         match v {
             LengthPercentageAuto::Set(l) => lp_str(l, cb_width),
+            // What layout resolved the `auto` to (flex and grid items absorb free
+            // space; a block centres), else where the box landed in its container.
+            LengthPercentageAuto::Auto if info.used_margin.is_some() && !inline_nonreplaced => {
+                let m = info.used_margin.unwrap();
+                px([m.top, m.right, m.bottom, m.left][side])
+            }
             LengthPercentageAuto::Auto => match (info.rect, info.container) {
                 (Some(r), Some(c)) if !inline_nonreplaced && side % 2 == 1 => {
                     // Horizontal auto margins resolve from where the box landed.
@@ -514,31 +712,117 @@ fn union_rect(a: DumpRect, b: DumpRect) -> DumpRect {
     DumpRect { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }
 }
 
+/// Used `auto` margins of a flex item along the main axis. `computed_strings` derives
+/// an auto margin from the distance to the container's edge, which is right for a
+/// block in a block container; in a flex container the neighbours and the gaps take
+/// their share first, and what is left between the item and its neighbour's margin
+/// edge is the auto margin (`getComputedStyle` reports that used value: 0 when a
+/// `flex: 1` sibling took the free space).
+fn flex_auto_margins(doc: &Document, styles: &StyleSet, ix: &FragIndex, node: NodeId, computed: &mut BTreeMap<String, String>) {
+    use cw_web::style::FlexDirection;
+    let (Some(style), Some(parent)) = (styles.get(node), doc.parent(node)) else { return };
+    let Some(ps) = styles.get(parent) else { return };
+    if !matches!(ps.display, Display::Flex | Display::InlineFlex) || matches!(style.position, Position::Absolute | Position::Fixed) {
+        return;
+    }
+    let row = matches!(ps.flex_direction, FlexDirection::Row | FlexDirection::RowReverse);
+    let reversed = matches!(ps.flex_direction, FlexDirection::RowReverse | FlexDirection::ColumnReverse);
+    let Some(info) = ix.boxes.get(&node) else { return };
+    // Layout records a flex item's used margins on its fragment (`Fragment::used_margin`),
+    // anonymous text items and all; the reconstruction below from the element
+    // siblings' rects is only for a fragment without the record.
+    if info.used_margin.is_some() {
+        return;
+    }
+    let (Some(r), Some(c)) = (info.rect, info.container) else { return };
+    let cw = c.size.width;
+    let gap = if row { ps.column_gap.resolve(cw) } else { ps.row_gap.resolve(cw) };
+    // In-flow element items with boxes, in document order (`order` is not modelled).
+    let items: Vec<(NodeId, Rect)> = doc
+        .element_children(parent)
+        .filter(|&n| styles.get(n).is_some_and(|s| !matches!(s.position, Position::Absolute | Position::Fixed)))
+        .filter_map(|n| ix.boxes.get(&n).and_then(|b| b.rect).map(|r| (n, r)))
+        .collect();
+    let Some(at) = items.iter().position(|(n, _)| *n == node) else { return };
+    let start = |r: Rect| if row { r.origin.x } else { r.origin.y };
+    let end = |r: Rect| if row { r.right() } else { r.bottom() };
+    let cross_overlap = |a: Rect, b: Rect| if row { a.origin.y < b.bottom() && b.origin.y < a.bottom() || a.size.height.is_zero() || b.size.height.is_zero() } else { true };
+    let margin_of = |n: NodeId, before: bool| -> Option<Au> {
+        let s = styles.get(n)?;
+        let m = match (row, before) {
+            (true, true) => s.margin.left,
+            (true, false) => s.margin.right,
+            (false, true) => s.margin.top,
+            (false, false) => s.margin.bottom,
+        };
+        match m {
+            LengthPercentageAuto::Set(l) => Some(l.resolve(cw)),
+            LengthPercentageAuto::Auto => None,
+        }
+    };
+    // `before` is the side towards the main-start edge in physical coordinates.
+    for before in [true, false] {
+        if margin_of(node, before).is_some() {
+            continue;
+        }
+        let step: isize = if before { -1 } else { 1 };
+        let neighbour = items.get((at as isize + step) as usize).filter(|_| at as isize + step >= 0).filter(|(_, nr)| cross_overlap(r, *nr));
+        let space = match neighbour {
+            Some((n, nr)) => {
+                let (between, theirs) = if before { (start(r) - end(*nr), margin_of(*n, false)) } else { (start(*nr) - end(r), margin_of(*n, true)) };
+                match theirs {
+                    Some(m) => between - gap - m,
+                    // Two auto margins facing each other share the space equally.
+                    None => (between - gap) / 2,
+                }
+            }
+            None => {
+                if before {
+                    start(r) - start(c)
+                } else {
+                    end(c) - end(r)
+                }
+            }
+        };
+        let _ = reversed;
+        let name = match (row, before) {
+            (true, true) => "margin-left",
+            (true, false) => "margin-right",
+            (false, true) => "margin-top",
+            (false, false) => "margin-bottom",
+        };
+        computed.insert(name.into(), px(space.max(Au::ZERO)));
+    }
+}
+
 /// The engine's dump of a rendered document, in the shape `dump.mjs` writes. Paths
 /// follow the same scheme: `html`, `html>body`, then `tag:nth-child(n)` per element
 /// (counting element siblings), `#text:nth(i)` per non-blank text child. `<head>` and
 /// its subtree are skipped, as they are in Chromium's dump.
 pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
-    let ix = index_fragments(&r.doc, &r.tree);
+    let ix = index_fragments(&r.doc, &r.styles, &r.tree);
     let mut nodes = Vec::new();
-    let mut families: Vec<String> = Vec::new();
-    fn walk(doc: &Document, styles: &StyleSet, ix: &FragIndex, node: NodeId, path: String, out: &mut Vec<DumpNode>, fams: &mut Vec<String>) {
+    let mut families: Vec<(String, String)> = Vec::new();
+    fn walk(doc: &Document, styles: &StyleSet, ix: &FragIndex, node: NodeId, path: String, out: &mut Vec<DumpNode>, fams: &mut Vec<(String, String)>) {
         let tag = doc.tag(node).unwrap_or("").to_owned();
         let info = ix.boxes.get(&node).copied().unwrap_or_default();
-        let computed = match styles.get(node) {
+        let mut computed = match styles.get(node) {
             Some(s) => computed_strings(s, &info),
             None => BTreeMap::new(),
         };
+        flex_auto_margins(doc, styles, ix, node, &mut computed);
         if let Some(f) = computed.get("font-family") {
-            if !fams.contains(f) {
-                fams.push(f.clone());
+            if !fams.iter().any(|(family, _)| family == f) {
+                // The face the cascade resolved the list to, on the device `run_at` set.
+                let face = styles.get(node).map(|s| s.font.typeface.family_name().to_owned()).unwrap_or_default();
+                fams.push((f.clone(), face));
             }
         }
         out.push(DumpNode::Element {
             path: path.clone(),
             tag: tag.clone(),
             id: doc.attr(node, "id").unwrap_or("").to_owned(),
-            rect: info.rect.map(dump_rect).unwrap_or_default(),
+            rect: info.client.or(info.rect.map(dump_rect)).unwrap_or_default(),
             computed,
         });
         let my_index = out.len() - 1;
@@ -581,7 +865,7 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
                     if t.trim().is_empty() {
                         continue;
                     }
-                    let rects = ix.texts.get(&child).map(|v| v.iter().map(|r| dump_rect(*r)).collect()).unwrap_or_default();
+                    let rects = ix.texts.get(&child).map(|v| v.iter().map(|(r, client)| client.unwrap_or_else(|| dump_rect(*r))).collect()).unwrap_or_default();
                     out.push(DumpNode::Text { path: format!("{path}>#text:nth({text_index})"), parent: path.clone(), text: t.clone(), rects });
                     text_index += 1;
                 }
@@ -594,7 +878,7 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
     }
     let fonts = families
         .into_iter()
-        .map(|family| FontPick { engine: cw_scene::fonts::resolve_family(&family).family_name().to_owned(), family })
+        .map(|(family, engine)| FontPick { engine, family })
         .collect();
     Dump {
         fixture: fixture.to_owned(),

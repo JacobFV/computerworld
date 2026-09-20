@@ -1,0 +1,50 @@
+--- exit: 0
+--- stdout
+tracker 42 42 function function false true
+untracked 42 proto
+data 1 {"value":1,"writable":true,"enumerable":false,"configurable":true}
+Function H:hello anonymous 1
+Function2 5 object
+Function3 42 true
+ctor kinds AsyncFunction GeneratorFunction 1,2
+Function syntax true
+decl rebinds {"a":1,"b":2} function bound assign
+decl sloppy 2 number
+decl strict 3 number
+decl block 4
+expr self function true
+proxy set:a get:b get:a has:a del:list keys 6
+proxy array true 3 2,4,6 [1,2,3] true
+revoked true
+reflect 1,b,a,Symbol(Symbol.iterator) true true 3 true true
+proxy map 2 1
+weak true 1 true false [object WeakRef] function
+class derived x 1 s T true constructor,kind
+subclass 6 true 3 true E2: m
+tagged "color: red;\\n  width: 10px; content: \"é\\n\";" true true 3 a\n1b
+tagged member Kx true
+gen [{"value":1,"done":false},{"value":42,"done":false},{"value":"cleanup","done":false},{"value":"early","done":true},{"done":true}]
+yield* 1,NaN,cleanup,done
+iter closed
+destructure 1 2,3 3 1,4,9 3
+entries 1,a 3 2
+named groups 2024 05 3 05/2024 {"c":"a"}
+lookbehind 42 17 a-B_C
+sticky true 6 false 0 y a,a
+regex misc a[B|a|c]c 1@1,22@3 true ababc $ true 0,1
+unicode props abcé true true false a1 true false 1.-. true true true true
+vue regex foo-bar-baz fooBarBaz true (item, i)~items
+intl 1,234,567.891 $12.50 1,234.5 Jan 1, 1970 one other a,b,C string
+misc function function object false true 1,2,3 --ab Symbol(react.element) x symbol 1,2,3 true x true 31 12 1.1000 -1 -1 true 128512 true label-ok
+spread 5 {"b":2,"c":3} {"b":2,"c":3,"d":["h","i"]} 3 dflt 1 undefined undefined 1024 6
+1 2 true outer number undefined
+15 11,12
+16 20 30
+>hi1
+3
+true
+async iteration v0,v1,v2,p1,p2,closed
+ordering a0,then1,qm,a1,then2,a2,timeout
+combinators ["rejected","fulfilled"] 2 3
+aggregate true 1
+--- stderr

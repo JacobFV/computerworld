@@ -450,11 +450,19 @@ pub struct CalcValue {
     pub has_len: bool,
     pub has_pct: bool,
     pub has_num: bool,
+    /// Bounds from a `min()`, `max()` or `clamp()` that mixed lengths and
+    /// percentages: (length, percentage) pairs the value is clamped below and above
+    /// by once the percentage base is known.
+    pub lo: Option<(i128, i128)>,
+    pub hi: Option<(i128, i128)>,
 }
 
 impl CalcValue {
     fn zero() -> CalcValue {
-        CalcValue { micro_px: 0, micro_pct: 0, micro_num: 0, has_len: false, has_pct: false, has_num: false }
+        CalcValue { micro_px: 0, micro_pct: 0, micro_num: 0, has_len: false, has_pct: false, has_num: false, lo: None, hi: None }
+    }
+    fn bounded(&self) -> bool {
+        self.lo.is_some() || self.hi.is_some()
     }
     pub fn is_number(&self) -> bool {
         self.has_num && !self.has_len && !self.has_pct
@@ -466,6 +474,14 @@ impl CalcValue {
         if (a.has_num || b.has_num) && (a.has_len || a.has_pct || b.has_len || b.has_pct) {
             return None;
         }
+        // A bounded value shifts its bounds by an unbounded addend; two bounded values
+        // cannot be summed into one clamp.
+        let (bounded, other) = match (a.bounded(), b.bounded()) {
+            (true, true) => return None,
+            (true, false) => (a, b),
+            _ => (b, a),
+        };
+        let shift = |bound: Option<(i128, i128)>| bound.map(|(l, p)| (l + other.micro_px, p + other.micro_pct));
         Some(CalcValue {
             micro_px: a.micro_px + b.micro_px,
             micro_pct: a.micro_pct + b.micro_pct,
@@ -473,17 +489,24 @@ impl CalcValue {
             has_len: a.has_len || b.has_len,
             has_pct: a.has_pct || b.has_pct,
             has_num: a.has_num || b.has_num,
+            lo: shift(bounded.lo),
+            hi: shift(bounded.hi),
         })
     }
     fn neg(a: CalcValue) -> CalcValue {
-        CalcValue { micro_px: -a.micro_px, micro_pct: -a.micro_pct, micro_num: -a.micro_num, ..a }
+        let flip = |b: Option<(i128, i128)>| b.map(|(l, p)| (-l, -p));
+        CalcValue { micro_px: -a.micro_px, micro_pct: -a.micro_pct, micro_num: -a.micro_num, lo: flip(a.hi), hi: flip(a.lo), ..a }
     }
     fn mul(a: CalcValue, b: CalcValue) -> Option<CalcValue> {
         if a.is_number() {
+            let scale = |bound: Option<(i128, i128)>| bound.map(|(l, p)| (round_div(l * a.micro_num, 1_000_000), round_div(p * a.micro_num, 1_000_000)));
+            let (lo, hi) = if a.micro_num < 0 { (scale(b.hi), scale(b.lo)) } else { (scale(b.lo), scale(b.hi)) };
             Some(CalcValue {
                 micro_px: round_div(b.micro_px * a.micro_num, 1_000_000),
                 micro_pct: round_div(b.micro_pct * a.micro_num, 1_000_000),
                 micro_num: round_div(b.micro_num * a.micro_num, 1_000_000),
+                lo,
+                hi,
                 ..b
             })
         } else if b.is_number() {
@@ -496,12 +519,50 @@ impl CalcValue {
         if !b.is_number() || b.micro_num == 0 {
             return None;
         }
+        let scale = |bound: Option<(i128, i128)>| bound.map(|(l, p)| (round_div(l * 1_000_000, b.micro_num), round_div(p * 1_000_000, b.micro_num)));
+        let (lo, hi) = if b.micro_num < 0 { (scale(a.hi), scale(a.lo)) } else { (scale(a.lo), scale(a.hi)) };
         Some(CalcValue {
             micro_px: round_div(a.micro_px * 1_000_000, b.micro_num),
             micro_pct: round_div(a.micro_pct * 1_000_000, b.micro_num),
             micro_num: round_div(a.micro_num * 1_000_000, b.micro_num),
+            lo,
+            hi,
             ..a
         })
+    }
+    /// Folds `min()`/`max()` operands that mix lengths and percentages: pure lengths
+    /// and pure percentages collapse among themselves, and what remains (at most
+    /// two operands) becomes a bounded value that compares once the base is known.
+    fn fold_min_max(items: &[CalcValue], is_min: bool) -> Option<CalcValue> {
+        if items.iter().any(|v| v.has_num || v.bounded()) {
+            return None;
+        }
+        let mut rest: Vec<CalcValue> = Vec::new();
+        for &v in items {
+            match rest.iter_mut().find(|r| CalcValue::same_kind(r, &v) && r.key().is_some()) {
+                Some(r) => {
+                    let (kr, kv) = (r.key().unwrap(), v.key().unwrap());
+                    if (is_min && kv < kr) || (!is_min && kv > kr) {
+                        *r = v;
+                    }
+                }
+                None => rest.push(v),
+            }
+        }
+        match rest.as_slice() {
+            [one] => Some(*one),
+            [a, b] => {
+                let bound = Some((b.micro_px, b.micro_pct));
+                Some(CalcValue {
+                    has_len: a.has_len || b.has_len,
+                    has_pct: a.has_pct || b.has_pct,
+                    lo: if is_min { None } else { bound },
+                    hi: if is_min { bound } else { None },
+                    ..*a
+                })
+            }
+            _ => None,
+        }
     }
     /// Comparable only when both are pure numbers, pure lengths or pure percentages.
     fn key(&self) -> Option<i128> {
@@ -525,6 +586,10 @@ impl CalcValue {
         }
         let pct = clamp_i32(round_div(self.micro_pct, 10_000));
         let len = micro_px_to_au(self.micro_px);
+        if self.bounded() {
+            let part = |(l, p): (i128, i128)| (micro_px_to_au(l), clamp_i32(round_div(p, 10_000)));
+            return Some(LengthPercentage::Clamp { lo: self.lo.map(part), v: (len, pct), hi: self.hi.map(part) });
+        }
         Some(match (self.has_len, self.has_pct) {
             (_, false) => LengthPercentage::Length(len),
             (false, true) => LengthPercentage::Percent(pct),
@@ -557,16 +622,17 @@ impl CalcNode {
             CalcNode::Div(a, b) => CalcValue::div(a.eval(ctx)?, b.eval(ctx)?)?,
             CalcNode::Min(items) | CalcNode::Max(items) => {
                 let is_min = matches!(self, CalcNode::Min(_));
-                let mut best = items[0].eval(ctx)?;
+                let values = items.iter().map(|i| i.eval(ctx)).collect::<Option<Vec<_>>>()?;
+                let same = values.iter().all(|v| CalcValue::same_kind(&values[0], v) && !v.bounded());
+                if !same || values[0].key().is_none() {
+                    return CalcValue::fold_min_max(&values, is_min);
+                }
+                let mut best = values[0];
                 let mut best_key = best.key()?;
-                for i in &items[1..] {
-                    let v = i.eval(ctx)?;
-                    if !CalcValue::same_kind(&best, &v) {
-                        return None;
-                    }
+                for v in &values[1..] {
                     let k = v.key()?;
                     if (is_min && k < best_key) || (!is_min && k > best_key) {
-                        best = v;
+                        best = *v;
                         best_key = k;
                     }
                 }
@@ -574,8 +640,19 @@ impl CalcNode {
             }
             CalcNode::Clamp(lo, mid, hi) => {
                 let (lo, mid, hi) = (lo.eval(ctx)?, mid.eval(ctx)?, hi.eval(ctx)?);
-                if !CalcValue::same_kind(&lo, &mid) || !CalcValue::same_kind(&mid, &hi) {
-                    return None;
+                let same = CalcValue::same_kind(&lo, &mid) && CalcValue::same_kind(&mid, &hi) && !lo.bounded() && !mid.bounded() && !hi.bounded();
+                if !same || mid.key().is_none() {
+                    // max(lo, min(mid, hi)) with the comparison deferred to the base.
+                    if [lo, mid, hi].iter().any(|v| v.has_num || v.bounded()) {
+                        return None;
+                    }
+                    return Some(CalcValue {
+                        has_len: lo.has_len || mid.has_len || hi.has_len,
+                        has_pct: lo.has_pct || mid.has_pct || hi.has_pct,
+                        lo: Some((lo.micro_px, lo.micro_pct)),
+                        hi: Some((hi.micro_px, hi.micro_pct)),
+                        ..mid
+                    });
                 }
                 let (kl, km, kh) = (lo.key()?, mid.key()?, hi.key()?);
                 // max(lo, min(mid, hi))
@@ -2084,8 +2161,30 @@ mod tests {
         assert_eq!(lp("calc()"), None);
         assert_eq!(lp("calc(2)"), None);
         assert_eq!(lp("clamp(1px, 2px)"), None);
-        // Mixed length/percentage comparison cannot resolve at computed-value time.
-        assert_eq!(lp("min(10px, 50%)"), None);
+        // Mixed length/percentage comparisons wait for the percentage base.
+        let px = Au::from_px_i32;
+        assert_eq!(lp("min(10px, 50%)"), Some(LengthPercentage::Clamp { lo: None, v: (px(10), 0), hi: Some((px(0), 5000)) }));
+        assert_eq!(lp("min(10px, 50%)").unwrap().resolve(px(100)), px(10));
+        assert_eq!(lp("min(10px, 50%)").unwrap().resolve(px(10)), px(5));
+        assert_eq!(lp("max(10px, 50%)").unwrap().resolve(px(10)), px(10));
+        assert_eq!(lp("max(10px, 50%)").unwrap().resolve(px(100)), px(50));
+        // The stripe container: min(1080px, calc(100% - 2 * 32px)).
+        let w = lp("min(1080px, calc(100% - 2 * 32px))").unwrap();
+        assert_eq!(w, LengthPercentage::Clamp { lo: None, v: (px(1080), 0), hi: Some((px(-64), 10000)) });
+        assert_eq!(w.resolve(px(1280)), px(1080));
+        assert_eq!(w.resolve(px(800)), px(736));
+        // Pure lengths fold among themselves before the deferred comparison.
+        assert_eq!(lp("min(10px, 5px, 50%)").unwrap().resolve(px(100)), px(5));
+        // clamp(): the lower bound wins.
+        let c = lp("clamp(20px, 50%, 100px)").unwrap();
+        assert_eq!(c.resolve(px(10)), px(20));
+        assert_eq!(c.resolve(px(100)), px(50));
+        assert_eq!(c.resolve(px(1000)), px(100));
+        // Arithmetic around a deferred comparison shifts and scales its bounds.
+        let m = lp("calc(min(10px, 50%) * 2 + 1px)").unwrap();
+        assert_eq!(m.resolve(px(100)), px(21));
+        assert_eq!(m.resolve(px(10)), px(11));
+        assert_eq!(lp("calc(min(10px, 50%) + max(1px, 1%))"), None);
     }
 
     #[test]

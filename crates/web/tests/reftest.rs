@@ -41,6 +41,24 @@ fn every_test_has_a_reference() {
     }
 }
 
+/// Pairs that are compared after a fragment navigation: `(pair, fragment)`. Acid2 is
+/// written to be viewed at `#top` (the face sits 100em below an intro box and the
+/// scalp, the eyes' backgrounds and the chin's are fixed to the viewport), and its
+/// pixel reference is compared the same way, as WPT's `acid/acid2/reftest.html` does.
+const NAVIGATE: &[(&str, &str)] = &[("acid2", "top")];
+
+/// Pairs allowed a few differing pixels, each with its reason: `(pair, pixels, why)`.
+/// Everything else must be identical.
+const TOLERANCE: &[(&str, usize, &str)] = &[];
+
+fn fragment_of(name: &str) -> Option<&'static str> {
+    NAVIGATE.iter().find(|(n, _)| *n == name).map(|(_, f)| *f)
+}
+
+fn tolerance_of(name: &str) -> usize {
+    TOLERANCE.iter().find(|(n, ..)| *n == name).map(|(_, px, _)| *px).unwrap_or(0)
+}
+
 struct Outcome {
     name: String,
     digest_test: u64,
@@ -59,8 +77,8 @@ fn run_pairs() -> Vec<Outcome> {
     for name in pairs() {
         let test = std::fs::read_to_string(ref_dir().join(format!("{name}.html"))).unwrap();
         let reference = std::fs::read_to_string(ref_dir().join(format!("{name}-ref.html"))).unwrap();
-        let a = run(&test, vp);
-        let b = run(&reference, vp);
+        let a = run_at(&test, vp, fragment_of(&name));
+        let b = run_at(&reference, vp, fragment_of(&name));
         let (da, db) = (content_digest(&a.scene), content_digest(&b.scene));
         let (fa, fb) = (rasterise(&a.scene), rasterise(&b.scene));
         let differing_pixels = fa.rgba.chunks(4).zip(fb.rgba.chunks(4)).filter(|(x, y)| x != y).count() + fa.rgba.len().abs_diff(fb.rgba.len()) / 4;
@@ -82,7 +100,7 @@ fn run_pairs() -> Vec<Outcome> {
 fn reftests_paint_identical_pixels() {
     let failures: Vec<String> = run_pairs()
         .into_iter()
-        .filter(|o| o.differing_pixels > 0)
+        .filter(|o| o.differing_pixels > tolerance_of(&o.name))
         .map(|o| format!("{}: {} pixels differ (see target-parity/ref-{}.test.png and .ref.png)", o.name, o.differing_pixels, o.name))
         .collect();
     assert!(failures.is_empty(), "reftest failures:\n{}", failures.join("\n"));
@@ -92,7 +110,9 @@ fn reftests_paint_identical_pixels() {
 /// node order: a table paints every cell's background before any cell's text
 /// (CSS 2.1 Appendix E, steps 4 and 7 of the table's stacking), while floats paint
 /// each box with its own text, so the scene comparison for them is the pixel one.
-const DIFFERENT_DECOMPOSITION: &[&str] = &["float-vs-table"];
+/// Acid2 builds the face from floats, tables, fixed boxes and generated content and
+/// its reference from fourteen plain lines, so only the pixels can agree.
+const DIFFERENT_DECOMPOSITION: &[&str] = &["float-vs-table", "acid2"];
 
 /// The strict form: identical scene digests (`Scene::stamp`, node ids and the
 /// accessibility regions erased, see `support::content_digest`). A pair that passes
@@ -104,7 +124,7 @@ const DIFFERENT_DECOMPOSITION: &[&str] = &["float-vs-table"];
 fn reftests_paint_identical_scenes() {
     let failures: Vec<String> = run_pairs()
         .into_iter()
-        .filter(|o| if DIFFERENT_DECOMPOSITION.contains(&o.name.as_str()) { o.differing_pixels > 0 } else { o.digest_test != o.digest_ref })
+        .filter(|o| if DIFFERENT_DECOMPOSITION.contains(&o.name.as_str()) { o.differing_pixels > tolerance_of(&o.name) } else { o.digest_test != o.digest_ref })
         .map(|o| {
             format!(
                 "{}: test {:016x} != ref {:016x} ({} vs {} scene nodes; {} pixels differ)",

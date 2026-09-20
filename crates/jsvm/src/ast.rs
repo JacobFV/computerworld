@@ -360,6 +360,8 @@ pub enum StmtKind {
         is_await: bool,
     },
     While(Expr, Box<Stmt>),
+    /// `with (object) body` (sloppy mode only).
+    With(Expr, Box<Stmt>),
     DoWhile(Box<Stmt>, Expr),
     Break(Option<Name>),
     Continue(Option<Name>),

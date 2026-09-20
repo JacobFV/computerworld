@@ -1142,15 +1142,15 @@ mod tests {
         let e = parse_stylesheet("@foo {}", Origin::Author, Strictness::Strict).unwrap_err();
         assert_eq!(e.kind, UnsupportedKind::AtRule);
         assert_eq!(e.name, "@foo");
-        let e = parse_stylesheet("a:host {}", Origin::Author, Strictness::Strict).unwrap_err();
+        let e = parse_stylesheet("a:host-context(x) {}", Origin::Author, Strictness::Strict).unwrap_err();
         assert_eq!(e.kind, UnsupportedKind::Selector);
         let e = parse_stylesheet("p::first-line { x: 1 }", Origin::Author, Strictness::Strict).unwrap_err();
         assert_eq!(e.name, "::first-line");
         assert!(parse_stylesheet("a { color: red } @media print { b {} }", Origin::UserAgent, Strictness::Strict).is_ok());
-        let s = sheet("a:host {} b || c {} p::first-line { x: 1 } d {}");
+        let s = sheet("a:host-context(x) {} b || c {} p::first-line { x: 1 } d {}");
         assert_eq!(s.rules.len(), 2);
         assert_eq!(s.unsupported.len(), 3);
-        assert_eq!(s.unsupported[0].name, "a:host");
+        assert_eq!(s.unsupported[0].name, "a:host-context(x)");
     }
 
     #[test]

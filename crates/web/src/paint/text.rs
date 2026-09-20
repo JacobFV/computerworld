@@ -1,14 +1,23 @@
 //! Text runs, decorations, selection and shadows.
 //!
 //! A run becomes one `UiText`/`UiTextBold` node in the run's typeface, size, slant
-//! and language. The renderer places a UI text node's first baseline `size` pixels
-//! below the node's top (see `cw_render`), so the node's top is the fragment's
-//! baseline minus the font size in pixels; its height is the renderer's line height
+//! and language. A scene's size is a whole number of pixels, so a face at a
+//! fractional size is drawn at the nearest one unless that would make the run wider
+//! than layout measured it, when it is drawn a pixel smaller ([`draw_size`]):
+//! otherwise the accumulated rounding walks the glyphs over the space before the
+//! next inline box and welds the words together.
+//!
+//! The renderer places a UI text node's first baseline `size` pixels below the
+//! node's top (see `cw_render`), so the node's top is the fragment's baseline minus
+//! the font size in pixels; its height is the renderer's line height
 //! (`size + (size + 3) / 4`) and its width the measured advance plus slack so it
 //! never wraps.
 //!
 //! `letter-spacing` has no scene parameter, so a spaced run is painted one node per
-//! character, each advanced by `metrics::advance` plus the spacing.
+//! character, each advanced by `metrics::advance` plus the spacing. That also turns
+//! pair kerning off for the run, as CSS requires of a non-zero `letter-spacing`: an
+//! unspaced run is one node, which the renderer kerns (`metrics::kern`) exactly as
+//! layout measured it; single-character nodes have no pairs.
 //!
 //! Decorations: underline `1px` below the baseline, line-through at `0.35em` above
 //! it, overline at the ascent (`1em`), all `max(1, size / 16)` thick, in the
@@ -39,9 +48,31 @@ pub(crate) fn line_height_px(size: u16) -> u32 {
     size as u32 + (size as u32).div_ceil(4)
 }
 
-/// Width of `text` in `font`, whole pixels rounded up.
+/// The whole-pixel size the renderer draws a run at. A scene's text size is an
+/// integer, so a 14.67 px face is drawn at 15 px while layout measured it at 14.67:
+/// a third of a pixel per em that adds up across a line until the glyphs run past
+/// the position layout gave the next box and swallow the space before it. When the
+/// rounded size would overrun what layout measured, the run is drawn a pixel
+/// smaller, which never does; a size that is already whole, or short enough that
+/// the rounding does not show, is drawn as it is.
+pub(crate) fn draw_size(font: &Font, text: &str) -> u16 {
+    let size = font.size_px();
+    if size <= 1 || font.size == crate::geom::Au::from_px_i32(i32::from(size)) {
+        return size;
+    }
+    let measured = i64::from(crate::layout::text::measure(font, text, crate::geom::Au::ZERO, crate::geom::Au::ZERO).0);
+    let drawn = i64::from(cw_scene::metrics::text_width(font.typeface, font.scene_style(), text, size)) * 64;
+    // `text_width` rounds up to a whole pixel, so one pixel of slack is not overrun.
+    if drawn > measured + 64 {
+        size - 1
+    } else {
+        size
+    }
+}
+
+/// Width of `text` in `font`, whole pixels rounded up, at the size it is drawn at.
 pub(crate) fn width_px(font: &Font, text: &str) -> u32 {
-    cw_scene::metrics::text_width(font.typeface, font.scene_style(), text, font.size_px())
+    cw_scene::metrics::text_width(font.typeface, font.scene_style(), text, draw_size(font, text))
 }
 
 /// The bounds a text node needs so the renderer draws its baseline at `baseline`.
@@ -52,7 +83,7 @@ pub(crate) fn text_bounds(x: i32, baseline: i32, width: u32, size: u16) -> SRect
 /// Emits one text node with its baseline at `baseline`; returns the node index.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_text(p: &mut Painter, state: &State, id: u64, x: i32, baseline: i32, text: &str, font: &Font, color: Color) -> usize {
-    let size = font.size_px();
+    let size = draw_size(font, text);
     let w = width_px(font, text);
     let bounds = text_bounds(x, baseline, w, size);
     p.emit(state, id, bounds, Primitive::ui_text_face(text, color, size, font.scene_style(), font.typeface))
@@ -92,7 +123,13 @@ fn selection_in(p: &Painter, node: NodeId, len: usize) -> Option<(usize, usize)>
 fn offset_px(font: &Font, text: &str, at: usize) -> i32 {
     let size = font.size_px();
     let style = font.scene_style();
-    let sum: i64 = text[..at.min(text.len())].chars().map(|c| cw_scene::metrics::advance(font.typeface, style, c, size)).sum();
+    // The kerned pen position, as the renderer places the run's glyphs.
+    let mut prev = None;
+    let mut sum = 0i64;
+    for c in text[..at.min(text.len())].chars() {
+        sum += prev.map_or(0, |p| cw_scene::metrics::kern(font.typeface, style, p, c, size)) + cw_scene::metrics::advance(font.typeface, style, c, size);
+        prev = Some(c);
+    }
     ((sum + 32) / 64) as i32
 }
 
@@ -108,13 +145,13 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
     let rect = abs_rect(state, f);
     let srect = super::snap(rect);
     let font = &style.font;
-    let size = font.size_px();
     let x = px(rect.origin.x);
     let baseline_px = px(rect.origin.y + *baseline);
     let mut shown = text.clone();
     if *ellipsis && !shown.ends_with('\u{2026}') {
         shown.push('\u{2026}');
     }
+    let size = draw_size(font, &shown);
     let width = width_px(font, &shown);
     let bounds = text_bounds(x, baseline_px, width, size);
     p.record_hit(state, source.node(), srect, 0, matches!(style.pointer_events, crate::style::computed::PointerEvents::None));
@@ -203,7 +240,7 @@ fn draw_spaced(p: &mut Painter, state: &State, key: (NodeId, u32), id: u64, x: i
     if spacing.is_zero() {
         return Some(draw_text(p, state, id, x, baseline, text, font, color));
     }
-    let size = font.size_px();
+    let size = draw_size(font, text);
     let style = font.scene_style();
     let sp = px(spacing);
     let mut pen: i64 = (x as i64) * 64;

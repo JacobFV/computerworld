@@ -254,6 +254,23 @@ forgotten.
    container reserves nothing, as Chromium's overlay bars do. This one reads as "a blank strip" at
    thumbnail size — measure the pixels before re-opening it.
 
+# Behaviour change worth knowing about
+
+**The Page projector now breaks an id-bearing inline element out of the text run around it.**
+`Projector::walk`/`flush_as` in `crates/browser/src/web_document.rs` splits
+`<span id=a><span id=b>147</span> points by <a id=c>tomw</a> 31t ago</span>` into four projected
+elements: `b` = "147", an anonymous `text:N` = "points by", the link `c`, and `a` carrying only the
+trailing residue. Each id became individually addressable, which is the point of the change and a
+win for agents; the cost is that connective words end up in anonymous fragments, so **no single
+element's text spans them**.
+
+Any browser-level test that asserts a multi-word phrase straddling an id'd child will fail. It
+took out `forum_sites::hacker_news_is_read_voted_on_and_commented_on`
+(`assert!(says(&home, "147 points by"))`), which was rewritten to address `t-9001-score` and
+`t-9001-author` by id instead — the stronger assertion, and how docs/html-migration.md says agents
+should read a page. Expect the same in other suites; fix them the same way rather than folding the
+connective words back into the id'd span.
+
 # Reported but not reproducible
 
 - **Hairline seam where a rounded corner meets a straight edge.** Reported by the geo/wiki/bank

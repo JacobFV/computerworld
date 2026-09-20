@@ -18,13 +18,18 @@
 
 pub mod background;
 pub mod border;
+pub mod data_url;
 pub mod display_list;
 pub mod hit;
+pub mod images;
+pub mod png;
 pub mod replaced;
 pub mod semantics;
 pub mod text;
 pub mod trig;
 
+#[cfg(test)]
+mod pipeline_tests;
 #[cfg(test)]
 mod tests;
 
@@ -160,6 +165,12 @@ pub fn paint_fragments(styles: &StyleSet, tree: &FragmentTree, viewport: Viewpor
     p.finish()
 }
 
+/// The classic scrollbar an inner scroll container draws in the gutter it reserved:
+/// Chromium's own light track and thumb, so a pane that reserves 15 px shows a bar
+/// there instead of a blank strip.
+pub(crate) const SCROLLBAR_TRACK: Color = Color(241, 241, 241, 255);
+pub(crate) const SCROLLBAR_THUMB: Color = Color(193, 193, 193, 255);
+
 // Scene node ids: `base + node << 28 | ordinal << 16 | part`.
 const ORDINAL_BITS: u32 = 12;
 const PART_BITS: u32 = 16;
@@ -273,6 +284,10 @@ pub(crate) struct Painter<'a> {
     /// Sequential part numbers handed out per fragment (`ordinal key`) for pieces
     /// whose count depends on content (dashes, tiles, glyphs).
     parts: HashMap<(NodeId, u32), u32>,
+    /// Document (pre-order) index of every DOM node, and of the last node of its
+    /// subtree: stacking layers paint in tree order of the *elements*, which the
+    /// fragment tree loses for boxes hoisted to their containing block.
+    doc_order: HashMap<NodeId, (u32, u32)>,
 }
 
 /// Part numbers of the fixed pieces of a fragment; content-dependent pieces are
@@ -316,12 +331,34 @@ impl<'a> Painter<'a> {
             semantics: semantics::Tables::default(),
             canvas_source: None,
             parts: HashMap::new(),
+            doc_order: HashMap::new(),
         };
         p.assign_ordinals();
         if let Some(doc) = doc {
             p.semantics = semantics::Tables::build(doc);
+            for (i, n) in doc.descendants(Document::ROOT).enumerate() {
+                p.doc_order.insert(n, (i as u32, i as u32));
+                for a in doc.ancestors(n) {
+                    if let Some(e) = p.doc_order.get_mut(&a) {
+                        e.1 = i as u32;
+                    }
+                }
+            }
         }
         p
+    }
+
+    /// Where a fragment's element sits in document order: `(index, rank)`, with
+    /// `::before` just inside the element's start and `::after` after its last
+    /// descendant. `None` without a document or for anonymous fragments' lack of one.
+    pub fn tree_order(&self, f: &Fragment) -> Option<(u32, u8)> {
+        let src = f.source()?;
+        let (start, end) = *self.doc_order.get(&src.node())?;
+        Some(match src {
+            StyleSource::Before(_) | StyleSource::Marker(_) => (start, 1),
+            StyleSource::After(_) => (end, 2),
+            _ => (start, 0),
+        })
     }
 
     fn assign_ordinals(&mut self) {
@@ -386,6 +423,15 @@ impl<'a> Painter<'a> {
         }
         self.nodes.push(n);
         self.nodes.len() - 1
+    }
+
+    /// Adds a `Path` node from points in scene coordinates. The scene's path points
+    /// are relative to the node's bounds, which is easy to get wrong: emitting
+    /// absolute points draws the path displaced by the box's own origin.
+    #[allow(clippy::too_many_arguments)]
+    pub fn emit_path(&mut self, state: &State, id: u64, bounds: SRect, points: Vec<(i32, i32)>, fill: Option<Color>, stroke: Option<Color>, stroke_width: u16, closed: bool) -> usize {
+        let points = points.into_iter().map(|(x, y)| (x - bounds.x, y - bounds.y)).collect();
+        self.emit(state, id, bounds, Primitive::Path { points, fill, stroke, stroke_width, closed })
     }
 
     pub fn record_hit(&mut self, state: &State, node: NodeId, bounds: SRect, radius: u32, pointer_none: bool) {

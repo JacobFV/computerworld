@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>emotion 11</title>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+<script src="/vendor/emotion-css-11.13.4.umd.min.js"></script>
+<script src="/vendor/emotion-react-11.13.3.umd.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+const h = React.createElement;
+const { useState } = React;
+// window.emotion is @emotion/css's UMD global; window.emotionReact is @emotion/react's.
+const { css, cx, injectGlobal, keyframes } = window.emotion;
+const { Global, ThemeProvider, useTheme } = window.emotionReact;
+
+window.trace = [];
+const log = (s) => window.trace.push(s);
+
+// ---- a global style, injected once via injectGlobal (imperative, @emotion/css)
+injectGlobal`
+  html { box-sizing: border-box; }
+`;
+
+// ---- a keyframes animation applied through a plain className built with css()
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+const spinnerClass = css`
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgb(0, 0, 0);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ${spin} 1.2s linear infinite;
+`;
+
+// ---- a base class plus a dynamic-per-prop class, combined with cx()
+const boxBase = css`
+  width: 120px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(255, 255, 255);
+`;
+function boxColorClass(active) {
+  return css`
+    background-color: ${active ? 'rgb(0, 128, 0)' : 'rgb(128, 0, 0)'};
+  `;
+}
+
+// ---- a button whose background changes on click: a fresh css() call each render
+// produces a new hashed class, which is what actually flips the computed style.
+function colorForClicks(n) {
+  return n % 2 === 0 ? 'rgb(0, 0, 200)' : 'rgb(200, 0, 120)';
+}
+function buttonClass(bg, raised) {
+  return cx(
+    css`
+      padding: 6px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      color: rgb(255, 255, 255);
+      background-color: ${bg};
+    `,
+    raised && css`box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);`
+  );
+}
+
+// ---- theming: ThemeProvider + useTheme (from @emotion/react); the "css prop" is not
+// usable here because it needs the JSX pragma / babel transform, which this ES5-style
+// fixture (React.createElement, no build step) does not have. Use className={css(...)}
+// driven off the theme value from useTheme() instead.
+const theme = { fg: '#141414', accent: '#0060c8' };
+function Themed() {
+  const t = useTheme();
+  const themedClass = css`
+    color: ${t.fg};
+    border-left: 4px solid ${t.accent};
+    padding-left: 8px;
+  `;
+  return h('p', { id: 'themed', className: themedClass }, 'themed text');
+}
+function ThemeReadout() {
+  const t = useTheme();
+  return h('span', { id: 'theme-readout' }, t.fg + '/' + t.accent);
+}
+
+function App() {
+  const [active, setActive] = useState(false);
+  const [clicks, setClicks] = useState(0);
+
+  return h(React.Fragment, null,
+    h(Global, { styles: { body: { margin: 0, font: '16px/20px sans-serif', backgroundColor: 'rgb(255, 255, 240)' } } }),
+    h('div', { id: 'box', className: cx(boxBase, boxColorClass(active)) }),
+    h('button', { id: 'toggle-box', onClick: () => setActive((v) => !v) }, 'toggle box'),
+    h('div', { id: 'spinner', className: spinnerClass }),
+    h('button', {
+      id: 'color-button',
+      className: buttonClass(colorForClicks(clicks), clicks % 2 === 1),
+      onClick: () => { setClicks((c) => c + 1); log('click:' + (clicks + 1)); },
+    }, 'click me ' + clicks),
+    h(ThemeProvider, { theme: theme },
+      h(Themed),
+      h(ThemeReadout)),
+    h('span', { id: 'box-class' }, ''));
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(h(App));
+
+// expose the generated classNames for the Rust harness after the initial commit
+window.afterMount = function () {
+  return {
+    boxClass: document.getElementById('box').className,
+    spinnerClass: document.getElementById('spinner').className,
+    buttonClass: document.getElementById('color-button').className,
+    themedClass: document.getElementById('themed').className,
+  };
+};
+</script>
+</body>
+</html>

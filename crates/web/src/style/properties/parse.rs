@@ -1350,6 +1350,45 @@ pub fn object_fit(p: &mut Parser) -> Option<Specified> {
     keyword(p, &[("fill", ObjectFit::Fill), ("contain", ObjectFit::Contain), ("cover", ObjectFit::Cover), ("none", ObjectFit::None), ("scale-down", ObjectFit::ScaleDown)]).map(Specified::ObjectFit)
 }
 
+/// `-webkit-line-clamp: none | <integer [1,∞]>`.
+pub fn line_clamp(p: &mut Parser) -> Option<Specified> {
+    if p.try_parse(|p| p.expect_ident_matching("none")).is_some() {
+        return Some(Specified::LineClamp(None));
+    }
+    let n = parse_integer_spec(p)?;
+    (n >= 1).then_some(Specified::LineClamp(Some(n as u32)))
+}
+
+/// `-webkit-box-orient`: only whether the legacy box is vertical matters here.
+pub fn box_orient(p: &mut Parser) -> Option<Specified> {
+    keyword(p, &[("horizontal", false), ("inline-axis", false), ("vertical", true), ("block-axis", true)]).map(Specified::BoxOrientVertical)
+}
+
+/// `aspect-ratio: auto || <ratio>`, with `<ratio> = <number [0,∞]> [ / <number [0,∞]> ]?`.
+pub fn aspect_ratio(p: &mut Parser) -> Option<Specified> {
+    let mut auto = false;
+    let mut ratio: Option<(i64, i64)> = None;
+    let mut seen_ratio = false;
+    for _ in 0..2 {
+        if !auto && p.try_parse(|p| p.expect_ident_matching("auto")).is_some() {
+            auto = true;
+        } else if !seen_ratio {
+            let Some(w) = parse_number_spec(p) else { break };
+            let h = match p.try_parse(|p| p.expect_delim('/')) {
+                Some(()) => parse_number_spec(p)?.micro,
+                None => 1_000_000,
+            };
+            if w.micro < 0 || h < 0 {
+                return None;
+            }
+            seen_ratio = true;
+            // A degenerate ratio behaves as `auto`.
+            ratio = (w.micro > 0 && h > 0).then_some((w.micro, h));
+        }
+    }
+    (auto || seen_ratio).then_some(Specified::AspectRatio(AspectRatio { auto, ratio }))
+}
+
 pub fn content(p: &mut Parser) -> Option<Specified> {
     if p.expect_ident_matching("normal").is_some() {
         return Some(Specified::Content(ContentSpec::Normal));

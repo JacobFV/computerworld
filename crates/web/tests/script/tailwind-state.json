@@ -1,0 +1,4 @@
+[
+  {"selector": "#tw-group", "action": "hover"},
+  {"selector": "#tw-focus-btn", "action": "focus"}
+]

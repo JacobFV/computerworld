@@ -8,6 +8,7 @@ mod dom;
 mod elements;
 mod events;
 mod fixtures;
+mod frameworks;
 mod more;
 mod window;
 

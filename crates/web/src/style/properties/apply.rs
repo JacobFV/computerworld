@@ -155,11 +155,11 @@ macro_rules! color_prop {
 
 // --- Fonts -----------------------------------------------------------------------
 
-pub fn font_family(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
+pub fn font_family(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
     let Specified::FontFamily(list) = v else { return false };
     let was_mono = is_monospace_family(&s.font.family);
     s.font.family = fonts::serialize_family_list(list);
-    s.font.typeface = fonts::resolve_family(list);
+    s.font.typeface = fonts::resolve_family_in(list, c.fonts);
     let now_mono = is_monospace_family(&s.font.family);
     if was_mono != now_mono {
         if let Some(i) = s.font_size_keyword {
@@ -817,6 +817,9 @@ simple!(pointer_events, PointerEvents, |s, x| s.pointer_events = x);
 simple!(user_select, UserSelect, |s, x| s.user_select = x);
 simple!(appearance, Appearance, |s, x| s.appearance = x);
 simple!(object_fit, ObjectFit, |s, x| s.object_fit = x);
+simple!(aspect_ratio, AspectRatio, |s, x| s.aspect_ratio = x);
+simple!(line_clamp, LineClamp, |s, x| s.line_clamp = x);
+simple!(box_orient, BoxOrientVertical, |s, x| s.box_orient_vertical = x);
 
 pub fn content(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
     let Specified::Content(spec) = v else { return false };

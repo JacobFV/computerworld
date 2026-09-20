@@ -1,8 +1,17 @@
 //! Scroll containers and the root: `overflow` clipping, content sizes, scrollbar
-//! reservation (15 px for `scroll`, and for `auto` when the content overflows; one
-//! extra pass), scroll offsets from the caller's `ScrollState`, the viewport as the
-//! root scroll container with `overflow` propagated from `<body>`, and the
+//! reservation (15 px for `scroll`, and for `auto` when the content overflows; the
+//! decision is re-made until it settles, since reserving one bar can take the other
+//! away), scroll offsets from the caller's `ScrollState`, the viewport as the root
+//! scroll container with `overflow` propagated from `<body>`, and the
 //! `position: sticky` post-pass.
+//!
+//! The scrollable area runs from `ScrollInfo::origin_*` to the far edge of the
+//! content. The origin is zero for a box whose content only overflows the end edge;
+//! a reversed flex container packs from the end, so its earlier items sit above (or
+//! left of) the padding box and the origin is negative. The caller's offset is
+//! measured from the start of that area, as `scrollTop` is, and `scroll_*` is what
+//! the painter subtracts — zero being where layout put the content, which for a
+//! reversed column is the end, the position such a list opens at.
 
 use crate::dom::Document;
 use crate::geom::{Au, Point, Rect, Size};
@@ -14,6 +23,25 @@ use crate::style::{ComputedStyle, LengthPercentageAuto, Overflow, Position};
 
 /// Scrollbar thickness in CSS px.
 pub const BAR: Au = Au(15 * 64);
+
+/// `reserved_bars` on this host: nothing when its scrollbars are overlaid
+/// (`LayoutCache::overlay_scrollbars`).
+pub fn reserved_bars_in(ctx: &LayoutContext, s: &ComputedStyle) -> (Au, Au) {
+    if ctx.cache.borrow().overlay_scrollbars {
+        (Au::ZERO, Au::ZERO)
+    } else {
+        reserved_bars(s)
+    }
+}
+
+/// `auto_bars` on this host: overlaid scrollbars never take space.
+pub fn auto_bars_in(ctx: &LayoutContext, s: &ComputedStyle, content: Size, visible: Size, bar_x: Au, bar_y: Au) -> (Au, Au) {
+    if ctx.cache.borrow().overlay_scrollbars {
+        (Au::ZERO, Au::ZERO)
+    } else {
+        auto_bars(s, content, visible, bar_x, bar_y)
+    }
+}
 
 /// Space reserved before layout: `(horizontal bar height, vertical bar width)`.
 pub fn reserved_bars(s: &ComputedStyle) -> (Au, Au) {
@@ -39,15 +67,20 @@ pub fn auto_bars(s: &ComputedStyle, content: Size, visible: Size, bar_x: Au, bar
 }
 
 /// The scrollable size of content fragments positioned in content-box coordinates.
+/// Content that runs off the start edge counts too: a `column-reverse` flex
+/// container fills from the bottom, so its earlier items sit above the content box
+/// and the area to scroll is taller than the last item's bottom edge.
 pub fn content_size(fragments: &[Fragment], w: Au, h: Au) -> Size {
-    let mut right = w;
-    let mut bottom = h;
+    let (mut right, mut bottom) = (w, h);
+    let (mut left, mut top) = (Au::ZERO, Au::ZERO);
     for f in fragments {
         let o = f.overflow.translate(f.rect.origin.x, f.rect.origin.y);
         right = right.max(o.right());
         bottom = bottom.max(o.bottom());
+        left = left.min(o.origin.x);
+        top = top.min(o.origin.y);
     }
-    Size { width: right, height: bottom }
+    Size { width: right - left, height: bottom - top }
 }
 
 /// Fills `ScrollInfo` on a scroll container's fragment.
@@ -67,6 +100,11 @@ pub fn attach_scroll_info(ctx: &LayoutContext, id: BoxId, frag: &mut Fragment, c
     let pad_h = h + padding.vertical();
     let mut right = pad_w;
     let mut bottom = pad_h;
+    // How far the content runs off the start edges, as a non-positive offset. A
+    // reversed flex container packs from the end, so its earlier items sit above (or
+    // left of) the padding box; that part of the scrollable overflow region is as
+    // reachable as the part past the end edge.
+    let (mut origin_x, mut origin_y) = (Au::ZERO, Au::ZERO);
     for c in &frag.children {
         if c.is_positioned && c.establishes_stacking_context && matches!(ctx.style_of_source(c.source()), Some(s) if s.position == Position::Fixed) {
             continue;
@@ -74,14 +112,24 @@ pub fn attach_scroll_info(ctx: &LayoutContext, id: BoxId, frag: &mut Fragment, c
         let o = c.overflow.translate(c.rect.origin.x - cx, c.rect.origin.y - cy);
         right = right.max(o.right() + padding.right);
         bottom = bottom.max(o.bottom() + padding.bottom);
+        origin_x = origin_x.min(o.origin.x - padding.left);
+        origin_y = origin_y.min(o.origin.y - padding.top);
     }
+    let (content_w, content_h) = (right - origin_x, bottom - origin_y);
     let visible_w = (pad_w - reserve_v).max(Au::ZERO);
     let visible_h = (pad_h - reserve_h).max(Au::ZERO);
-    let (sx, sy) = b.node.and_then(|n| ctx.scroll.get(&n).copied()).unwrap_or((Au::ZERO, Au::ZERO));
-    let sx = sx.clamp(Au::ZERO, (right - visible_w).max(Au::ZERO));
-    let sy = sy.clamp(Au::ZERO, (bottom - visible_h).max(Au::ZERO));
+    // The caller's offset is measured from the start of the scrollable area, the way
+    // `scrollTop` is, so it is shifted by `origin` to give the offset the painter
+    // subtracts; with none recorded the box stays where layout put it, which for a
+    // reversed column is at the end — what Chromium shows when such a list opens.
+    let max_x = (content_w - visible_w).max(Au::ZERO);
+    let max_y = (content_h - visible_h).max(Au::ZERO);
+    let (sx, sy) = match b.node.and_then(|n| ctx.scroll.get(&n).copied()) {
+        Some((x, y)) => (x.clamp(Au::ZERO, max_x) + origin_x, y.clamp(Au::ZERO, max_y) + origin_y),
+        None => (Au::ZERO, Au::ZERO),
+    };
     if let FragmentKind::Box { scroll, .. } = &mut frag.kind {
-        *scroll = Some(ScrollInfo { content_width: right, content_height: bottom, scroll_x: sx, scroll_y: sy, shows_x_bar: !reserve_h.is_zero(), shows_y_bar: !reserve_v.is_zero() });
+        *scroll = Some(ScrollInfo { content_width: content_w, content_height: content_h, scroll_x: sx, scroll_y: sy, origin_x, origin_y, shows_x_bar: !reserve_h.is_zero(), shows_y_bar: !reserve_v.is_zero() });
     }
 }
 
@@ -157,15 +205,18 @@ pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
             content.height = content.height.max(o.bottom());
         }
     }
-    let scrollable = !matches!(oy, Overflow::Hidden | Overflow::Clip);
+    // `overflow: hidden` on the viewport stops the user scrolling it, not the
+    // program: a fragment navigation (`#top`) or `scrollTo` still moves it, so the
+    // caller's offset applies, clamped to the scrollable range; only `clip` pins it.
+    let scrollable = !matches!(oy, Overflow::Clip);
     let (sx, sy) = ctx.scroll.get(&Document::ROOT).copied().unwrap_or((Au::ZERO, Au::ZERO));
-    let sx = if matches!(ox, Overflow::Hidden | Overflow::Clip) { Au::ZERO } else { sx.clamp(Au::ZERO, (content.width - vw).max(Au::ZERO)) };
+    let sx = if matches!(ox, Overflow::Clip) { Au::ZERO } else { sx.clamp(Au::ZERO, (content.width - vw).max(Au::ZERO)) };
     let sy = if scrollable { sy.clamp(Au::ZERO, (content.height - vh).max(Au::ZERO)) } else { Au::ZERO };
     // Overlay bars are drawn over the content when the axis can scroll.
     let shows_x_bar = ox == Overflow::Scroll || ox == Overflow::Auto && content.width > vw;
     let shows_y_bar = oy == Overflow::Scroll || oy == Overflow::Auto && content.height > vh;
     if let FragmentKind::Box { scroll, .. } = &mut root.kind {
-        *scroll = Some(ScrollInfo { content_width: content.width, content_height: content.height, scroll_x: sx, scroll_y: sy, shows_x_bar, shows_y_bar });
+        *scroll = Some(ScrollInfo { content_width: content.width, content_height: content.height, scroll_x: sx, scroll_y: sy, origin_x: Au::ZERO, origin_y: Au::ZERO, shows_x_bar, shows_y_bar });
     }
     root.overflow = Rect::new(Au::ZERO, Au::ZERO, content.width, content.height);
     apply_sticky(ctx, &mut root);

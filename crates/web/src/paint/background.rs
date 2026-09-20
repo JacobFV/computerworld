@@ -114,7 +114,7 @@ pub(crate) fn paint_background(p: &mut Painter, key: (NodeId, u32), state: &Stat
                 }
                 _ => {
                     let pts = border::rounded_polygon(area, radii);
-                    p.emit(state, id, area, Primitive::Path { points: pts, fill: Some(fill), stroke: None, stroke_width: 0, closed: true });
+                    p.emit_path(state, id, area, pts, Some(fill), None, 0, true);
                 }
             }
         }
@@ -220,6 +220,7 @@ fn resolve_position(v: crate::style::computed::LengthPercentage, area: i64, size
         crate::style::computed::LengthPercentage::Length(l) => px(l) as i64,
         crate::style::computed::LengthPercentage::Percent(pc) => ((area - size) * pc as i64 + 5000) / 10_000,
         crate::style::computed::LengthPercentage::Calc(l, pc) => px(l) as i64 + ((area - size) * pc as i64 + 5000) / 10_000,
+        v @ crate::style::computed::LengthPercentage::Clamp { .. } => px(v.resolve(crate::geom::Au::from_px_i32((area - size) as i32))) as i64,
     }
 }
 
@@ -296,6 +297,13 @@ fn resolve_stops(stops: &[GradientStop], line_len_au: Au) -> Vec<(i64, Color)> {
             crate::style::computed::LengthPercentage::Calc(l, pc) => {
                 let a = if line_len_au.0 == 0 { 0 } else { l.0 as i64 * 65_536 / line_len_au.0 as i64 };
                 a + pc as i64 * 65_536 / 10_000
+            }
+            v @ crate::style::computed::LengthPercentage::Clamp { .. } => {
+                if line_len_au.0 == 0 {
+                    0
+                } else {
+                    v.resolve(line_len_au).0 as i64 * 65_536 / line_len_au.0 as i64
+                }
             }
         }
     };

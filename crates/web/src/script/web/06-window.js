@@ -747,6 +747,66 @@ hooks.programmaticSubmit = (form, submitter, fireEvent) => {
   if (method === 'dialog') { const d = form.closest('dialog'); if (d) d.close(submitter && submitter.value !== undefined ? submitter.value : ''); return; }
   W.submitForm(form, submitter, action, method, enctype);
 };
+// CSS transitions and animations. The style layer reports each one a style change
+// started; the events land on the world clock through the realm's own timers, so a
+// page that waits for `transitionend` (Vue's `<transition>`) or `animationend`
+// (`svelte/transition`) proceeds exactly `delay + duration` later. Running one per
+// (element, property) matches CSS Transitions §3: a new transition for a property
+// replaces the one in flight, which is cancelled.
+const runningAnimations = new WeakMap();
+const animationKey = (kind, name) => kind + ':' + name;
+const cancelAnimation = (el, key, cancelEvent) => {
+  const running = runningAnimations.get(el);
+  const cur = running && running.get(key);
+  if (!cur) return;
+  for (const t of cur.timers) clearTimeout(t);
+  running.delete(key);
+  if (cancelEvent) fire(el, cancelEvent(cur));
+};
+const startAnimation = (el, key, timers, delay) => {
+  let running = runningAnimations.get(el);
+  if (!running) runningAnimations.set(el, (running = new Map()));
+  running.set(key, { timers, started: performance.now(), delay });
+};
+hooks.cssTransition = (el, property, delayMs, durationMs) => {
+  const key = animationKey('t', property);
+  const elapsed = (cur) => Math.max(0, (performance.now() - cur.started - cur.delay) / 1000);
+  cancelAnimation(el, key, (cur) => new C.TransitionEvent('transitioncancel', { bubbles: true, composed: true, propertyName: property, elapsedTime: elapsed(cur) }));
+  const init = { bubbles: true, composed: true, propertyName: property, elapsedTime: 0 };
+  const timers = [
+    setTimeout(() => fire(el, new C.TransitionEvent('transitionstart', init)), delayMs),
+    setTimeout(() => {
+      const running = runningAnimations.get(el);
+      if (running) running.delete(key);
+      fire(el, new C.TransitionEvent('transitionend', { ...init, elapsedTime: durationMs / 1000 }));
+    }, delayMs + durationMs),
+  ];
+  startAnimation(el, key, timers, delayMs);
+  fire(el, new C.TransitionEvent('transitionrun', init));
+};
+hooks.cssAnimation = (el, name, delayMs, durationMs, iterations, cancelled) => {
+  const key = animationKey('a', name);
+  cancelAnimation(el, key, (cur) => new C.AnimationEvent('animationcancel', { bubbles: true, composed: true, animationName: name, elapsedTime: Math.max(0, (performance.now() - cur.started - cur.delay) / 1000) }));
+  if (cancelled) return;
+  const init = { bubbles: true, composed: true, animationName: name, elapsedTime: 0 };
+  const timers = [setTimeout(() => fire(el, new C.AnimationEvent('animationstart', init)), delayMs)];
+  // `animation-iteration-count: infinite` never ends, and fires no iteration events
+  // here; a finite count fires one `animationiteration` per completed iteration but
+  // the last, then `animationend`.
+  if (iterations !== null) {
+    const whole = Math.floor(iterations);
+    for (let i = 1; i < whole; i++) {
+      timers.push(setTimeout(() => fire(el, new C.AnimationEvent('animationiteration', { ...init, elapsedTime: (durationMs * i) / 1000 })), delayMs + durationMs * i));
+    }
+    const total = durationMs * iterations;
+    timers.push(setTimeout(() => {
+      const running = runningAnimations.get(el);
+      if (running) running.delete(key);
+      fire(el, new C.AnimationEvent('animationend', { ...init, elapsedTime: total / 1000 }));
+    }, delayMs + total));
+  }
+  startAnimation(el, key, timers, delayMs);
+};
 hooks.scriptError = (el) => { fireSimple(el, 'error', false, false); };
 hooks.radioList = (items) => new C.RadioNodeList(items);
 hooks.scriptLoad = (el) => { if (el.hasAttribute('src')) fireSimple(el, 'load', false, false); };
@@ -796,7 +856,7 @@ defineGlobal('visualViewport', { get width() { return W.viewport()[0]; }, get he
 Object.defineProperty(globalThis, 'origin', { get() { return location.origin; }, configurable: true });
 for (const [k, g] of Object.entries({ innerWidth: () => W.viewport()[0], innerHeight: () => W.viewport()[1], outerWidth: () => W.viewport()[0], outerHeight: () => W.viewport()[1] + 85, devicePixelRatio: () => W.viewport()[2], screenX: () => 0, screenY: () => 0, screenLeft: () => 0, screenTop: () => 0, scrollX: () => W.scrollOf(null)[0], scrollY: () => W.scrollOf(null)[1], pageXOffset: () => W.scrollOf(null)[0], pageYOffset: () => W.scrollOf(null)[1] })) Object.defineProperty(globalThis, k, { get: g, set(v) { define(globalThis, k, v); }, configurable: true, enumerable: true });
 const globals = {
-  alert, confirm, prompt, print() {}, open() { return null; }, close() {}, stop() {}, focus() {}, blur() {}, find() { return false; },
+  alert, confirm, prompt, print() {}, open(url) { if (url !== undefined && url !== null && String(url) !== '' && String(url) !== 'about:blank') W.navigate('cw-new-tab:' + W.resolveUrl(String(url), document.baseURI)); return null; }, close() {}, stop() {}, focus() {}, blur() {}, find() { return false; },
   scrollTo(x, y) { scrollWindow(x, y, false); }, scroll(x, y) { scrollWindow(x, y, false); }, scrollBy(x, y) { scrollWindow(x, y, true); },
   getComputedStyle: C.getComputedStyle, matchMedia: C.matchMedia, getSelection: () => C.selection,
   requestAnimationFrame, cancelAnimationFrame, requestIdleCallback, cancelIdleCallback, setTimeout, setInterval, clearTimeout, clearInterval: clearTimeout,

@@ -96,6 +96,9 @@ pub enum Specified {
     UserSelect(UserSelect),
     Appearance(Appearance),
     ObjectFit(ObjectFit),
+    AspectRatio(AspectRatio),
+    LineClamp(Option<u32>),
+    BoxOrientVertical(bool),
     Content(ContentSpec),
     Quotes(Option<Vec<(String, String)>>),
     Counters(Vec<(String, i32)>),
@@ -244,6 +247,8 @@ pub struct ComputeCtx<'a> {
     /// Relative units against the parent's font, for `font-size` itself.
     pub parent_lengths: LengthContext,
     pub quirks: bool,
+    /// The device's installed fonts, for `font-family`.
+    pub fonts: crate::css::FontEnvironment,
 }
 
 /// One longhand's row in the table.
@@ -414,6 +419,9 @@ longhands! {
     UserSelect, "user-select", true, 2, p::user_select, a::user_select, |d, s| d.user_select = s.user_select;
     Appearance, "appearance", false, 2, p::appearance, a::appearance, |d, s| d.appearance = s.appearance;
     ObjectFit, "object-fit", false, 2, p::object_fit, a::object_fit, |d, s| d.object_fit = s.object_fit;
+    AspectRatio, "aspect-ratio", false, 2, p::aspect_ratio, a::aspect_ratio, |d, s| d.aspect_ratio = s.aspect_ratio;
+    LineClamp, "line-clamp", false, 2, p::line_clamp, a::line_clamp, |d, s| d.line_clamp = s.line_clamp;
+    BoxOrient, "-webkit-box-orient", false, 2, p::box_orient, a::box_orient, |d, s| d.box_orient_vertical = s.box_orient_vertical;
     Content, "content", false, 2, p::content, a::content, |d, s| d.content = s.content.clone();
     Quotes, "quotes", true, 2, p::quotes, a::quotes, |d, s| d.quotes = s.quotes.clone();
     CounterReset, "counter-reset", false, 2, p::counter_reset, a::counter_reset, |d, s| d.counter_reset = s.counter_reset.clone();
@@ -464,7 +472,8 @@ pub fn normalize_property_name(name: &str) -> String {
         "grid-row-gap" => "row-gap",
         "grid-column-gap" => "column-gap",
         "grid-gap" => "gap",
-        "box-align" | "box-pack" | "box-orient" | "box-flex" => return lower,
+        "box-orient" => "-webkit-box-orient",
+        "box-align" | "box-pack" | "box-flex" => return lower,
         "font-smoothing" | "osx-font-smoothing" | "tap-highlight-color" | "text-size-adjust" | "overflow-scrolling" => return lower,
         s => s,
     }

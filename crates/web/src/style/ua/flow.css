@@ -43,6 +43,7 @@ wbr { display: inline; }
 iframe { border: 2px inset; }
 video { object-fit: contain; }
 img, video, canvas, iframe, embed, object, audio, svg { display: inline; }
+img, video, canvas, iframe, embed, object { overflow: clip; }
 audio:not([controls]) { display: none !important; }
 ruby { display: ruby; }
 rt { display: ruby-text; }

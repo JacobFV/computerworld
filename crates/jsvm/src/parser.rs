@@ -773,7 +773,12 @@ impl<'a> Parser<'a> {
                             self.err_here("Strict mode code may not include a with statement")
                         );
                     }
-                    return Err(self.err_here("with statements are not supported"));
+                    self.advance();
+                    self.expect("(")?;
+                    let object = self.expression(false)?;
+                    self.expect(")")?;
+                    let body = self.sub_statement()?;
+                    StmtKind::With(object, Box::new(body))
                 }
                 "function" => {
                     // Function declaration in statement position (sloppy mode).

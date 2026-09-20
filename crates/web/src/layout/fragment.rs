@@ -118,8 +118,17 @@ pub enum ControlKind {
 pub struct ScrollInfo {
     pub content_width: Au,
     pub content_height: Au,
+    /// The offset the painter subtracts from the contents. It is zero when the box
+    /// sits as laid out, which is not the start of the scrollable area for a box
+    /// whose content runs off the start edge (see `origin_x`/`origin_y`).
     pub scroll_x: Au,
     pub scroll_y: Au,
+    /// Where the scrollable area starts, relative to the padding box: zero unless
+    /// the content overflows the start edge, as a reversed flex container's does.
+    /// `scroll_* - origin_*` is the offset from the start, which is what `scrollTop`
+    /// and `scrollLeft` measure.
+    pub origin_x: Au,
+    pub origin_y: Au,
     pub shows_x_bar: bool,
     pub shows_y_bar: bool,
 }
@@ -143,6 +152,14 @@ pub struct Fragment {
     pub overflow: Rect,
     /// Set on table cells and the table grid box under `border-collapse: collapse`.
     pub collapsed_borders: Option<Box<CollapsedBorders>>,
+    /// The box's used margins, `auto` resolved, when the layout mode that placed it
+    /// records them (block boxes, flex items, grid items): what `getComputedStyle`
+    /// reports for `margin-*` on a rendered box.
+    pub used_margin: Option<crate::geom::Edges>,
+    /// Laid out but not rendered: the lines after a `-webkit-line-clamp`. The
+    /// fragment keeps its geometry (a `Range` still reports its rects, as in Blink)
+    /// but takes no part in painting, hit testing or scrollable overflow.
+    pub hidden_for_paint: bool,
 }
 
 impl Fragment {
@@ -157,6 +174,8 @@ impl Fragment {
             is_positioned: false,
             overflow: Rect::new(Au::ZERO, Au::ZERO, rect.size.width, rect.size.height),
             collapsed_borders: None,
+            used_margin: None,
+            hidden_for_paint: false,
         }
     }
     pub fn source(&self) -> Option<StyleSource> {
@@ -189,12 +208,20 @@ pub struct FragmentTree {
 impl FragmentTree {
     /// Every fragment whose absolute rect contains the point, innermost last.
     pub fn hit(&self, x: Au, y: Au) -> Vec<(&Fragment, Rect)> {
-        let mut out = Vec::new();
-        self.root.walk(crate::geom::Point::default(), &mut |f, r| {
-            if r.contains(x, y) {
-                out.push((f, r));
+        fn visit<'a>(f: &'a Fragment, origin: crate::geom::Point, x: Au, y: Au, out: &mut Vec<(&'a Fragment, Rect)>) {
+            if f.hidden_for_paint {
+                return;
             }
-        });
+            let abs = f.rect.translate(origin.x, origin.y);
+            if abs.contains(x, y) {
+                out.push((f, abs));
+            }
+            for c in &f.children {
+                visit(c, abs.origin, x, y, out);
+            }
+        }
+        let mut out = Vec::new();
+        visit(&self.root, crate::geom::Point::default(), x, y, &mut out);
         out
     }
     /// Absolute border-box rects of every fragment of the element, in order.

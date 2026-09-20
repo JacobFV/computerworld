@@ -109,22 +109,80 @@ pub fn advance(font: &Font, c: char) -> Au {
     }
     let style = font.scene_style();
     let base = if c == '\t' { ' ' } else { c };
-    let fine = metrics::tabulated_advance(font.typeface, style, base, REF_SIZE).unwrap_or(i64::from(REF_SIZE) * 64 * 3 / 5);
+    let fine = match metrics::tabulated_advance(font.typeface, style, base, REF_SIZE) {
+        Some(f) => f,
+        None => fallback_advance(font.typeface, style, base),
+    };
     let den = i64::from(REF_SIZE) * 64;
     let one = (fine * font.size.0 as i64 + den / 2).div_euclid(den);
     let a = if c == '\t' { one * 4 } else { one };
     Au(a.clamp(0, Au::MAX.0 as i64) as i32)
 }
 
-/// Width of a string, applying `letter-spacing` after every character and
-/// `word-spacing` after every space.
+/// The advance of a character no metrics table covers, at [`REF_SIZE`], measured the
+/// way the renderer draws it: through the complex-text path, which picks the fallback
+/// face (an emoji face is far wider than the 0.6 em the tables assume). Layout used
+/// the 0.6 em guess, so a flex item holding an emoji measured narrower than it
+/// painted and its siblings overlapped it. Memoised: only characters outside the
+/// tables reach here.
+fn fallback_advance(typeface: Typeface, style: cw_scene::Style, c: char) -> i64 {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    thread_local! {
+        static CACHE: RefCell<HashMap<(Typeface, cw_scene::Style, char), i64>> = RefCell::new(HashMap::new());
+    }
+    CACHE.with(|cache| {
+        if let Some(v) = cache.borrow().get(&(typeface, style, c)) {
+            return *v;
+        }
+        let mut buf = [0u8; 4];
+        // `text_width` rounds up to whole pixels; at REF_SIZE that is a part in 4096.
+        let v = i64::from(metrics::text_width(typeface, style, c.encode_utf8(&mut buf), REF_SIZE)) * 64;
+        let v = if v == 0 { i64::from(REF_SIZE) * 64 * 3 / 5 } else { v };
+        cache.borrow_mut().insert((typeface, style, c), v);
+        v
+    })
+}
+
+/// Pair kerning between two adjacent characters in `Au`, at the font's exact
+/// (fractional) size: the face's `kern` adjustment in font units
+/// (`cw_scene::metrics::kern_units`) scaled and rounded to 1/64 px like `advance`.
+/// Zero for unkerned pairs and for the faces that do not kern (the platform and
+/// DejaVu faces, the monospace ones). It applies whatever `letter-spacing` is: see
+/// `kern_spaced`.
+pub fn kern(font: &Font, left: char, right: char) -> Au {
+    let Some((units, upem)) = metrics::kern_units(font.typeface, font.scene_style(), left, right) else {
+        return Au::ZERO;
+    };
+    let den = i64::from(upem);
+    Au((i64::from(units) * font.size.0 as i64 + den / 2).div_euclid(den) as i32)
+}
+
+/// Kerning between an optional previous character and `c` under `letter_spacing`,
+/// which does not turn kerning off: Blink keeps the `kern` feature and adds the
+/// spacing on top of the kerned advance, so a spaced run is exactly
+/// `letter-spacing` per character wider than the same run unspaced (measured
+/// against Chromium: `AVATAR WAVY Ty.` at 20px Arial is 166.328px, and 241.328px
+/// at `letter-spacing: 5px`, which is 15 x 5px more with the kerning kept).
+/// The spacing is kept in the signature for the callers that pass it through.
+pub fn kern_spaced(font: &Font, prev: Option<char>, c: char, _letter_spacing: Au) -> Au {
+    match prev {
+        Some(p) => kern(font, p, c),
+        None => Au::ZERO,
+    }
+}
+
+/// Width of a string, applying pair kerning between characters, `letter-spacing`
+/// after every character and `word-spacing` after every space.
 pub fn measure(font: &Font, text: &str, letter_spacing: Au, word_spacing: Au) -> Au {
     let mut w = Au::ZERO;
+    let mut prev = None;
     for c in text.chars() {
-        w += advance(font, c) + letter_spacing;
+        w += kern_spaced(font, prev, c, letter_spacing) + advance(font, c) + letter_spacing;
         if c == ' ' {
             w += word_spacing;
         }
+        prev = Some(c);
     }
     w
 }
@@ -444,6 +502,32 @@ mod tests {
         assert_eq!(m.descent, Au::from_px_i32(4));
         assert_eq!(m.normal_line_height(), Au::from_px_i32(19));
         assert_eq!(advance(&s.font, 'a'), Au(metrics::advance(Typeface::DejaVu, false, 'a', 16) as i32));
+        assert_eq!(kern(&s.font, 'T', 'a'), Au::ZERO, "DejaVu is laid out unkerned");
         assert_eq!(measure(&s.font, "a b", Au(1), Au(2)), advance(&s.font, 'a') + advance(&s.font, ' ') + advance(&s.font, 'b') + Au(3) + Au(2));
+    }
+    #[test]
+    fn kerning_matches_chromium_and_letter_spacing_disables_it() {
+        let mut font = ComputedStyle::initial().font;
+        font.typeface = Typeface::Arimo;
+        font.size = Au::from_px_i32(13);
+        let sum = |font: &Font, t: &str| t.chars().fold(Au::ZERO, |w, c| w + advance(font, c));
+        // Chromium: "Talk" in 13 px Liberation Sans is 23.118 px (24.559 unkerned).
+        let talk = measure(&font, "Talk", Au::ZERO, Au::ZERO);
+        assert!((talk.0 - (23.118f64 * 64.0).round() as i32).abs() <= 1, "{talk:?}");
+        assert!((sum(&font, "Talk").0 - (24.559f64 * 64.0).round() as i32).abs() <= 1);
+        assert_eq!(talk, sum(&font, "Talk") + kern(&font, 'T', 'a'));
+        // The same quantisation as the scene metrics at a whole size.
+        assert_eq!(kern(&font, 'T', 'a').0 as i64, metrics::kern(Typeface::Arimo, false, 'T', 'a', 13));
+        // A fractional size kerns at that size: -227 units at 12.5 px is -88.7/64 px.
+        font.size = Au::from_f64_px(12.5);
+        assert_eq!(kern(&font, 'T', 'a'), Au(-89));
+        // letter-spacing adds to the kerned advance; it does not turn kerning off.
+        font.size = Au::from_px_i32(13);
+        let spaced = measure(&font, "Talk", Au(64), Au::ZERO);
+        assert_eq!(spaced, measure(&font, "Talk", Au::ZERO, Au::ZERO) + Au(64 * 4));
+        assert!(spaced < sum(&font, "Talk") + Au(64 * 4), "the T-a pair still kerns");
+        assert_eq!(kern_spaced(&font, Some('T'), 'a', Au(64)), kern(&font, 'T', 'a'));
+        assert_eq!(kern_spaced(&font, Some('T'), 'a', Au::ZERO), kern(&font, 'T', 'a'));
+        assert_eq!(kern_spaced(&font, None, 'a', Au::ZERO), Au::ZERO);
     }
 }

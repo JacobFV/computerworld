@@ -270,6 +270,13 @@ pub fn to_prop(vm: &mut Vm, desc: &Value, existing: Option<Prop>) -> JsResult<Pr
             flags,
         });
     }
+    // A generic descriptor (no value, writable, get or set) over an accessor keeps
+    // the accessor: only the enumerable/configurable attributes change.
+    if !has_value && !has_writable {
+        if let Some(Prop { slot: Slot::Accessor(g, s), .. }) = &existing {
+            return Ok(Prop { slot: Slot::Accessor(g.clone(), s.clone()), flags: flags & !WRITABLE });
+        }
+    }
     let mut value = match existing.map(|p| p.slot) {
         Some(Slot::Data(v)) => v,
         _ => Value::Undefined,

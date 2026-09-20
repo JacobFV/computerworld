@@ -175,10 +175,18 @@ impl LayoutBox {
         self.style.is_out_of_flow()
     }
     pub fn is_float(&self) -> bool {
-        self.style.is_floating()
+        !self.is_text() && self.style.is_floating()
+    }
+    /// A text box borrows its parent element's computed style, but the text itself
+    /// is never out of flow: `position` and `float` belong to the element, whose own
+    /// box already carries them. Without this an absolutely positioned flex
+    /// container treated its text as an absolutely positioned child, laying the
+    /// element's box out a second time inside itself.
+    fn is_text(&self) -> bool {
+        matches!(self.kind, BoxKind::Text(_))
     }
     pub fn is_abs(&self) -> bool {
-        matches!(self.style.position, Position::Absolute | Position::Fixed)
+        !self.is_text() && matches!(self.style.position, Position::Absolute | Position::Fixed)
     }
     pub fn is_atomic_inline(&self) -> bool {
         self.level == Level::Inline && matches!(self.kind, BoxKind::InlineBlock | BoxKind::Replaced(_) | BoxKind::TableWrapper)
@@ -1021,7 +1029,21 @@ impl<'a> Builder<'a> {
                 let rows = attr_u32(doc, node, "rows", 2).clamp(1, 10_000) as i32;
                 Some(ReplacedBox { replaced: Replaced::Control(ControlKind::TextArea), intrinsic: Some(Size { width: ch * cols, height: lh * rows }), attr_width: None, attr_height: None })
             }
-            "iframe" | "canvas" | "video" | "object" | "embed" | "svg" | "frame" => {
+            "object" | "embed" => {
+                // An `<object>` whose `data` is an image the host decoded renders it
+                // (HTML §4.8.7, the image case); one whose data cannot be loaded (an
+                // unknown type, a failed fetch, a document the engine does not nest)
+                // renders its fallback content instead, as an ordinary non-replaced
+                // element of its `display`. `<embed>` has no fallback content, so an
+                // unloaded one stays a placeholder.
+                let src = doc.attr(node, if tag == "object" { "data" } else { "src" }).unwrap_or("").trim().to_owned();
+                match self.images.size(&src) {
+                    Some((w, h)) => Some(ReplacedBox { replaced: Replaced::Image { src, alt: String::new() }, intrinsic: px(w, h), attr_width: attr_w, attr_height: attr_h }),
+                    None if tag == "object" => None,
+                    None => Some(ReplacedBox { replaced: Replaced::Placeholder(tag.to_owned()), intrinsic: px(300, 150), attr_width: attr_w, attr_height: attr_h }),
+                }
+            }
+            "iframe" | "canvas" | "video" | "svg" | "frame" => {
                 Some(ReplacedBox { replaced: Replaced::Placeholder(tag.to_owned()), intrinsic: px(300, 150), attr_width: attr_w, attr_height: attr_h })
             }
             "audio" => {

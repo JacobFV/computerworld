@@ -48,6 +48,17 @@ pub(crate) fn paint(p: &mut Painter, f: &Fragment, state: &State) {
         Replaced::Image { src, alt } => paint_image(p, key, state, &style, content, src, alt),
         Replaced::Control(kind) => paint_control(p, key, state, &style, node, *kind, content, snap(rect).y, disabled, *baseline),
         Replaced::Placeholder(tag) => {
+            // A `<canvas>` the page drew on: the session hands its raster to the image
+            // cache under `canvas:<node>`, and it fills the content box.
+            if tag.as_str() == "canvas" {
+                let name = format!("canvas:{}", node.0);
+                if p.ctx.images.image(&name).is_some() {
+                    let mut fill = style.clone();
+                    fill.object_fit = ObjectFit::Fill;
+                    paint_image(p, key, state, &fill, content, &name, "");
+                    return;
+                }
+            }
             let r = snap(content);
             if r.width == 0 || r.height == 0 {
                 return;
@@ -238,7 +249,7 @@ fn paint_control(p: &mut Painter, key: (NodeId, u32), state: &State, style: &Com
                 } else {
                     let (x, y, s) = (bx, by, d as i32);
                     let pts = vec![(x + s * 3 / 13, y + s * 7 / 13), (x + s * 6 / 13, y + s * 10 / 13), (x + s * 11 / 13, y + s * 3 / 13)];
-                    p.emit(state, id, b, Primitive::Path { points: pts, fill: None, stroke: Some(mark), stroke_width: 2, closed: false });
+                    p.emit_path(state, id, b, pts, None, Some(mark), 2, false);
                 }
             }
         }
@@ -282,7 +293,7 @@ fn paint_control(p: &mut Painter, key: (NodeId, u32), state: &State, style: &Com
             let cy = r.y + r.height as i32 / 2;
             let id = p.id(key, parts::CONTENT_GLYPH);
             let pts = vec![(cx - 4, cy - 2), (cx, cy + 2), (cx + 4, cy - 2)];
-            p.emit(state, id, r, Primitive::Path { points: pts, fill: None, stroke: Some(ink), stroke_width: 2, closed: false });
+            p.emit_path(state, id, r, pts, None, Some(ink), 2, false);
         }
         ControlKind::Range => {
             let (min, max, val) = range_values(doc, node, &value);

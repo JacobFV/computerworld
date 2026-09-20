@@ -26,6 +26,7 @@ fn length_of(v: Sizing) -> Option<Au> {
     match v {
         Sizing::Set(LengthPercentage::Length(l)) => Some(l),
         Sizing::Set(LengthPercentage::Calc(l, _)) => Some(l),
+        Sizing::Set(v) if !v.has_percent() => Some(v.resolve(Au::ZERO)),
         _ => None,
     }
 }
@@ -149,7 +150,7 @@ fn compute(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
                 mn = mn.max(bb);
                 mx = mx.max(bb);
             }
-            let (bar_x, bar_y) = crate::layout::scroll::reserved_bars(s);
+            let (bar_x, bar_y) = crate::layout::scroll::reserved_bars_in(ctx, s);
             let _ = bar_x;
             (mn + bar_y, mx + bar_y)
         }

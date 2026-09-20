@@ -74,6 +74,15 @@ pub fn lp(v: LengthPercentage) -> String {
                 format!("calc({} + {})", percent(p), px(l))
             }
         }
+        LengthPercentage::Clamp { lo, v, hi } => {
+            let part = |(l, p): (Au, i32)| lp(if p == 0 { LengthPercentage::Length(l) } else { LengthPercentage::Calc(l, p) });
+            match (lo, hi) {
+                (Some(lo), Some(hi)) => format!("clamp({}, {}, {})", part(lo), part(v), part(hi)),
+                (Some(lo), None) => format!("max({}, {})", part(lo), part(v)),
+                (None, Some(hi)) => format!("min({}, {})", part(v), part(hi)),
+                (None, None) => part(v),
+            }
+        }
     }
 }
 
@@ -95,18 +104,28 @@ pub fn sizing(v: Sizing) -> String {
     }
 }
 
-/// Chromium's colour form: `rgb(r, g, b)` when opaque, else `rgba(r, g, b, a)` with
-/// the alpha as a decimal of up to three digits (0.5, 0.25, 0.502).
+/// Chromium's colour form: `rgb(r, g, b)` when opaque, else `rgba(r, g, b, a)`.
 pub fn color(c: Color) -> String {
     if c.3 == 255 {
         format!("rgb({}, {}, {})", c.0, c.1, c.2)
     } else if c.3 == 0 {
         "rgba(0, 0, 0, 0)".into()
     } else {
-        // Alpha rounded to three decimals as Chromium serialises it.
-        let a = (c.3 as u64 * 1000 + 127) / 255;
-        format!("rgba({}, {}, {}, {})", c.0, c.1, c.2, milli_to_string(a as i64, 1000))
+        format!("rgba({}, {}, {}, {})", c.0, c.1, c.2, alpha(c.3))
     }
+}
+
+/// An 8-bit alpha as CSSOM serialises it: the shortest decimal that rounds back to
+/// the same byte. `rgb(0 0 0 / 0.1)` stores 26, and 26/255 is 0.10196…, but the
+/// shortest string that still stores 26 is `0.1`, which is what a browser prints.
+fn alpha(a: u8) -> String {
+    for den in [10i64, 100, 1000] {
+        let v = (a as i64 * den + 127) / 255;
+        if (v * 255 + den / 2) / den == a as i64 {
+            return milli_to_string(v, den);
+        }
+    }
+    milli_to_string((a as i64 * 1000 + 127) / 255, 1000)
 }
 
 fn border_style(s: BorderStyle) -> &'static str {
@@ -393,12 +412,66 @@ fn shadow_common(x: Au, y: Au, blur: Au, spread: Option<Au>, c: Color, inset: bo
     s
 }
 
+/// A number in a `matrix()`, the way a browser prints one: at most six decimals,
+/// trailing zeros trimmed, no `-0`.
+fn matrix_number(v: f64) -> String {
+    let r = (v * 1e6).round() / 1e6;
+    let r = if r == 0.0 { 0.0 } else { r };
+    let mut s = format!("{r:.6}");
+    if s.contains('.') {
+        while s.ends_with('0') {
+            s.pop();
+        }
+        if s.ends_with('.') {
+            s.pop();
+        }
+    }
+    s
+}
+
 fn transform(ops: &[TransformOp]) -> String {
     if ops.is_empty() {
         return "none".into();
     }
-    // Chromium reports the resolved matrix; transforms here stay as functions since
-    // rotate needs no transcendental evaluation for the string form.
+    // CSSOM §"resolved values": `transform` resolves to the composed matrix. A
+    // percentage in `translate()` resolves against the border box, which the style
+    // layer has not laid out, so such a list keeps its function form.
+    let px_of = |v: LengthPercentage| match v {
+        LengthPercentage::Length(l) => Some(l.to_f64_px()),
+        _ => None,
+    };
+    // (a c e / b d f / 0 0 1), multiplied left to right as the functions apply.
+    let mut m = [1.0f64, 0.0, 0.0, 1.0, 0.0, 0.0];
+    let mut composable = true;
+    for op in ops {
+        let n = match *op {
+            TransformOp::Translate(x, y) => match (px_of(x), px_of(y)) {
+                (Some(x), Some(y)) => [1.0, 0.0, 0.0, 1.0, x, y],
+                _ => {
+                    composable = false;
+                    break;
+                }
+            },
+            TransformOp::Scale(x, y) => [x as f64 / 1000.0, 0.0, 0.0, y as f64 / 1000.0, 0.0, 0.0],
+            TransformOp::Rotate(a) => {
+                let r = (a as f64 / 100.0).to_radians();
+                [r.cos(), r.sin(), -r.sin(), r.cos(), 0.0, 0.0]
+            }
+            TransformOp::SkewX(a) => [1.0, 0.0, (a as f64 / 100.0).to_radians().tan(), 1.0, 0.0, 0.0],
+            TransformOp::SkewY(a) => [1.0, (a as f64 / 100.0).to_radians().tan(), 0.0, 1.0, 0.0, 0.0],
+        };
+        m = [
+            m[0] * n[0] + m[2] * n[1],
+            m[1] * n[0] + m[3] * n[1],
+            m[0] * n[2] + m[2] * n[3],
+            m[1] * n[2] + m[3] * n[3],
+            m[0] * n[4] + m[2] * n[5] + m[4],
+            m[1] * n[4] + m[3] * n[5] + m[5],
+        ];
+    }
+    if composable {
+        return format!("matrix({})", m.iter().map(|v| matrix_number(*v)).collect::<Vec<_>>().join(", "));
+    }
     ops.iter()
         .map(|op| match op {
             TransformOp::Translate(x, y) => format!("translate({}, {})", lp(*x), lp(*y)),
@@ -817,6 +890,19 @@ impl ComputedStyle {
                 Appearance::None => "none",
             }
             .into(),
+            L::LineClamp => s.line_clamp.map(|n| n.to_string()).unwrap_or_else(|| "none".into()),
+            L::BoxOrient => if s.box_orient_vertical { "vertical" } else { "horizontal" }.into(),
+            L::AspectRatio => {
+                let num = |micro: i64| {
+                    let t = format!("{}.{:06}", micro / 1_000_000, micro % 1_000_000);
+                    t.trim_end_matches('0').trim_end_matches('.').to_owned()
+                };
+                match (s.aspect_ratio.auto, s.aspect_ratio.ratio) {
+                    (_, None) => "auto".into(),
+                    (false, Some((w, h))) => format!("{} / {}", num(w), num(h)),
+                    (true, Some((w, h))) => format!("auto {} / {}", num(w), num(h)),
+                }
+            }
             L::ObjectFit => match s.object_fit {
                 ObjectFit::Fill => "fill",
                 ObjectFit::Contain => "contain",
@@ -891,7 +977,14 @@ mod tests {
         assert_eq!(percent(5000), "50%");
         assert_eq!(percent(1250), "12.5%");
         assert_eq!(color(Color(1, 2, 3, 255)), "rgb(1, 2, 3)");
-        assert_eq!(color(Color(1, 2, 3, 128)), "rgba(1, 2, 3, 0.502)");
+        // The shortest decimal that stores the same byte, as CSSOM serialises alpha.
+        assert_eq!(color(Color(1, 2, 3, 128)), "rgba(1, 2, 3, 0.5)");
+        assert_eq!(color(Color(1, 2, 3, 26)), "rgba(1, 2, 3, 0.1)");
+        assert_eq!(color(Color(1, 2, 3, 102)), "rgba(1, 2, 3, 0.4)");
+        assert_eq!(color(Color(1, 2, 3, 64)), "rgba(1, 2, 3, 0.25)");
+        assert_eq!(color(Color(1, 2, 3, 1)), "rgba(1, 2, 3, 0.004)");
+        assert_eq!(matrix_number(0.949999999), "0.95");
+        assert_eq!(matrix_number(-0.0), "0");
         assert_eq!(color(Color(1, 2, 3, 0)), "rgba(0, 0, 0, 0)");
         assert_eq!(lp(LengthPercentage::Calc(Au::from_px_i32(-20), 10000)), "calc(100% - 20px)");
     }

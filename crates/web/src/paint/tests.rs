@@ -629,13 +629,19 @@ fn transforms_compose_about_the_origin() {
     moved.children = vec![boxf(4, rect(0, 0, 10, 10))];
     root.children = vec![moved, boxf(3, rect(100, 100, 40, 40))];
     let scene = paint_no_doc(&styles, &tree(root));
-    // The box's own background is painted by its parent's state; its children carry
-    // the transform.
+    // A transform moves the element's own background and its children alike.
+    let moved_bg = scene.nodes.iter().find(|n| decode(n.id) == (2, 0, parts::BACKGROUND)).unwrap();
+    assert_eq!((moved_bg.transform.tx, moved_bg.transform.ty), (10, -5));
+    assert_eq!((moved_bg.transform.a, moved_bg.transform.d), (1024, 1024));
+    assert_eq!(moved_bg.transform.point(20, 20), (30, 15));
+    // The child composes its own scale (about its centre, (25, 25)) inside that.
     let child = scene.nodes.iter().find(|n| decode(n.id) == (4, 0, parts::BACKGROUND)).unwrap();
-    assert_eq!((child.transform.tx, child.transform.ty), (10, -5));
-    assert_eq!((child.transform.a, child.transform.d), (1024, 1024));
-    let (x, y) = child.transform.point(20, 20);
-    assert_eq!((x, y), (30, 15));
+    assert_eq!((child.transform.a, child.transform.d), (2048, 2048));
+    assert_eq!(child.transform.point(25, 25), (35, 20), "the centre only translates");
+    assert_eq!(child.transform.point(20, 20), (25, 10), "a corner moves out from the centre, then translates");
+    // The rotated box's own background rotates about its origin (its top-left here).
+    let turned = scene.nodes.iter().find(|n| decode(n.id) == (3, 0, parts::BACKGROUND)).unwrap();
+    assert_eq!(turned.transform.point(140, 100), (100, 140));
     // Rotation about (100, 100): the point (140, 100) maps to (100, 140).
     let rot = display_list::transform_matrix(&[TransformOp::Rotate(9000)], crate::geom::Size { width: au(40), height: au(40) }, (100, 100));
     assert_eq!(rot.point(140, 100), (100, 140));
@@ -662,7 +668,7 @@ fn scroll_areas_are_registered_for_the_root_and_scroll_containers() {
     let mut root = boxf(html.0, rect(0, 0, 200, 200));
     let mut b = boxf(body.0, rect(0, 0, 200, 600));
     let mut list = Fragment::new(
-        FragmentKind::Box { source: StyleSource::Element(div), padding: Edges::ZERO, border: Edges::uniform(au(1)), replaced: None, scroll: Some(ScrollInfo { content_width: au(90), content_height: au(400), scroll_x: Au::ZERO, scroll_y: au(30), shows_x_bar: false, shows_y_bar: true }), baseline: None },
+        FragmentKind::Box { source: StyleSource::Element(div), padding: Edges::ZERO, border: Edges::uniform(au(1)), replaced: None, scroll: Some(ScrollInfo { content_width: au(90), content_height: au(400), scroll_x: Au::ZERO, scroll_y: au(30), origin_x: Au::ZERO, origin_y: Au::ZERO, shows_x_bar: false, shows_y_bar: true }), baseline: None },
         rect(10, 10, 100, 100),
     );
     list.children = vec![boxf(item.0, rect(0, 0, 90, 400))];
@@ -992,4 +998,91 @@ fn golden_composite_digest() {
     assert_eq!(scene.digest, GOLDEN_DIGEST, "scene digest changed: {}", serde_json::to_string(&scene.nodes.iter().map(|n| (n.id, n.bounds, n.z)).collect::<Vec<_>>()).unwrap());
 }
 
-const GOLDEN_DIGEST: u64 = 11_739_951_028_339_345_953;
+// Changed when the rotated box's own background started to carry its transform and
+// the checkbox tick's path points became relative to its bounds (both were bugs).
+const GOLDEN_DIGEST: u64 = 11_624_232_690_043_090_657;
+
+#[test]
+fn the_root_scroll_offset_is_applied_once() {
+    // Layout records the document's scroll offset on the root fragment and the host
+    // passes the same offset in `PaintContext::scroll`; the page must move by it
+    // once, not twice (it used to: a page scrolled 100px was painted 200px up).
+    let mut styles = StyleSet::new();
+    set(&mut styles, 1, |s| s.background_color = RED);
+    let mut root = Fragment::new(
+        FragmentKind::Box {
+            source: StyleSource::Anonymous(Document::ROOT),
+            padding: Edges::ZERO,
+            border: Edges::ZERO,
+            replaced: None,
+            scroll: Some(ScrollInfo { content_width: au(200), content_height: au(1000), scroll_x: Au::ZERO, scroll_y: au(100), origin_x: Au::ZERO, origin_y: Au::ZERO, shows_x_bar: false, shows_y_bar: false }),
+            baseline: None,
+        },
+        rect(0, 0, 200, 200),
+    );
+    root.establishes_stacking_context = true;
+    root.children = vec![boxf(1, rect(0, 150, 50, 20))];
+    let t = FragmentTree { root, content_width: au(200), content_height: au(1000), viewport_width: au(200), viewport_height: au(200) };
+    let mut ctx = PaintContext::default();
+    ctx.scroll = crate::geom::Point { x: Au::ZERO, y: au(100) };
+    let scene = paint_fragments(&styles, &t, viewport(200, 200), &ctx);
+    let bg = scene.nodes.iter().find(|n| decode(n.id).0 == 1 && decode(n.id).2 == parts::BACKGROUND).expect("background");
+    assert_eq!(bg.bounds.y, 50, "150px down the page, scrolled by 100px");
+}
+
+#[test]
+fn a_positioned_box_with_z_auto_hands_its_positioned_children_to_the_enclosing_context() {
+    // root(1) > P(2, positioned, z auto) > A(3, positioned) and N(4, z -1); then
+    // Q(5, positioned) after P. Without a document the layers keep fragment order:
+    // N paints first (layer 2 of the root context, not of P), then P, A, Q.
+    let mut styles = StyleSet::new();
+    for n in 1..=5 {
+        set(&mut styles, n, |s| s.background_color = RED);
+    }
+    let mut root = boxf(1, rect(0, 0, 100, 100));
+    let mut p = boxf(2, rect(0, 0, 50, 50));
+    p.is_positioned = true;
+    let mut a = boxf(3, rect(0, 0, 10, 10));
+    a.is_positioned = true;
+    let mut n = boxf(4, rect(0, 0, 10, 10));
+    n.is_positioned = true;
+    n.establishes_stacking_context = true;
+    n.z_index = -1;
+    p.children = vec![a, n];
+    let mut q = boxf(5, rect(0, 0, 10, 10));
+    q.is_positioned = true;
+    root.children = vec![p, q];
+    let scene = paint_no_doc(&styles, &tree(root));
+    assert_eq!(backgrounds(&scene), vec![1, 4, 2, 3, 5]);
+}
+
+#[test]
+fn path_points_are_relative_to_the_node_bounds() {
+    // The scene's `Path` points are offsets from the node's bounds. A ring with four
+    // differently coloured sides (one stroke per side) and a rounded background with
+    // unequal radii used to be emitted in absolute coordinates, which drew them
+    // displaced by the box's own origin: off the box entirely for any box not at 0,0.
+    let mut styles = StyleSet::new();
+    set(&mut styles, 1, |_| {});
+    set(&mut styles, 2, |s| {
+        let c = |r, g, b| BorderSide { width: au(3), style: BorderStyle::Solid, color: Color(r, g, b, 255) };
+        s.border = Sides { top: c(66, 133, 244), right: c(234, 67, 53), bottom: c(251, 188, 5), left: c(52, 168, 83) };
+        let half = (LengthPercentage::Percent(5000), LengthPercentage::Percent(5000));
+        s.border_radius = Corners { top_left: half, top_right: half, bottom_right: half, bottom_left: half };
+    });
+    set(&mut styles, 3, |s| {
+        s.background_color = BLUE;
+        let r = |n| (LengthPercentage::Length(au(n)), LengthPercentage::Length(au(n)));
+        s.border_radius = Corners { top_left: r(0), top_right: r(0), bottom_right: r(8), bottom_left: r(8) };
+    });
+    let mut root = boxf(1, rect(0, 0, 400, 300));
+    root.children = vec![bordered(2, rect(100, 50, 22, 22), Edges::uniform(au(3))), boxf(3, rect(200, 150, 40, 20))];
+    let scene = paint_no_doc(&styles, &tree(root));
+    let paths: Vec<_> = scene.nodes.iter().filter(|n| matches!(n.primitive, Primitive::Path { .. })).collect();
+    assert_eq!(paths.len(), 5, "four border sides and one background");
+    for n in paths {
+        let Primitive::Path { points, .. } = &n.primitive else { unreachable!() };
+        let (w, h) = (n.bounds.width as i32, n.bounds.height as i32);
+        assert!(points.iter().all(|&(x, y)| (0..=w).contains(&x) && (0..=h).contains(&y)), "points lie inside the {w}x{h} bounds at {:?}: {points:?}", n.bounds);
+    }
+}

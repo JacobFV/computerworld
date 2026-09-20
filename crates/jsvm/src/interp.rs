@@ -1295,6 +1295,28 @@ impl<'h> Vm<'h> {
                     let r = self.op_in(&key, &obj)?;
                     self.push(Value::Bool(r));
                 }
+                Op::WithHas(c) => {
+                    let obj = self.pop();
+                    let key = Key::Str(self.kstr(c));
+                    let mut found = false;
+                    if let Value::Obj(o) = &obj {
+                        if self.has_property(o, &key)? {
+                            found = true;
+                            let unscopables = self.get(&obj, &Key::Sym(self.syms.unscopables.clone()))?;
+                            if let Value::Obj(_) = &unscopables {
+                                if self.get(&unscopables, &key)?.truthy() {
+                                    found = false;
+                                }
+                            }
+                        }
+                    }
+                    self.push(Value::Bool(found));
+                }
+                Op::ToObject => {
+                    let v = self.pop();
+                    let o = self.to_object(&v)?;
+                    self.push(Value::Obj(o));
+                }
                 Op::InstanceOf => {
                     let t = self.pop();
                     let v = self.pop();

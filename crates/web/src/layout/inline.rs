@@ -118,6 +118,18 @@ impl Collector<'_, '_> {
         self.content.units.push(u);
     }
 
+    /// Adds the kerning between the previous text unit's last character and the next
+    /// unit's first to that previous unit: a GPOS pair adjusts the first glyph's
+    /// advance, so it is the following text that moves.
+    fn kern_previous(&mut self, joint: Au) {
+        if joint.is_zero() {
+            return;
+        }
+        if let Some(u) = self.content.units.iter_mut().rev().find(|u| matches!(u.kind, UnitKind::Word | UnitKind::Space { .. })) {
+            u.width += joint;
+        }
+    }
+
     fn walk(&mut self, id: BoxId) {
         let kids: Vec<BoxId> = self.ctx.tree.children(id).to_vec();
         for k in kids {
@@ -221,6 +233,10 @@ impl Collector<'_, '_> {
         let wsp = s.word_spacing;
         let space_w = text::advance(font, ' ') + ls + wsp;
         let tab_w = (text::advance(font, ' ') + ls) * s.tab_size.max(1) as i32;
+        // Kerning carries over from the previous unit when it is set in the same font,
+        // whichever element it belongs to: Blink shapes a line's text in one run per
+        // font, so `| <a>API</a>` kerns the space against the `A`.
+        let same_font = |c: &Self| c.last_owner.is_some_and(|o| c.ctx.tree[o].style.font == s.font);
         let mut i = 0;
         while i < chars.len() {
             let pc = chars[i];
@@ -229,6 +245,9 @@ impl Collector<'_, '_> {
                     let collapsible = pc.kind == CharKind::Space;
                     let hang = ws == WhiteSpace::PreWrap && !collapsible;
                     let bb = ws == WhiteSpace::BreakSpaces && matches!(self.last_content, Some(UnitKind::Space { .. }));
+                    // Kerning runs through the spaces of a text run, as the shaper's does.
+                    let joint = text::kern_spaced(font, self.last_char.filter(|_| matches!(self.last_content, Some(UnitKind::Word)) && same_font(self)), ' ', ls);
+                    self.kern_previous(joint);
                     self.push(Unit { kind: UnitKind::Space { collapsible, hang }, owner, text: " ".into(), range: (pc.src, pc.src + 1), width: space_w, break_before: bb, face: 0 });
                     self.last_content = Some(UnitKind::Space { collapsible, hang });
                     self.last_char = Some(' ');
@@ -268,6 +287,11 @@ impl Collector<'_, '_> {
                     let mut word = String::new();
                     let mut width = Au::ZERO;
                     let mut prev = None;
+                    // The character the next one kerns against: the previous unit's
+                    // last character when it is set in the same font.
+                    let carried = self.last_char.filter(|_| matches!(self.last_content, Some(UnitKind::Word | UnitKind::Space { .. })) && same_font(self));
+                    self.kern_previous(text::kern_spaced(font, carried, pc.ch, ls));
+                    let mut kern_prev = None;
                     while i < chars.len() {
                         let c = chars[i];
                         if c.kind != CharKind::Other {
@@ -284,7 +308,8 @@ impl Collector<'_, '_> {
                             }
                         }
                         word.push(c.ch);
-                        width += text::advance(font, c.ch) + ls;
+                        width += text::kern_spaced(font, kern_prev, c.ch, ls) + text::advance(font, c.ch) + ls;
+                        kern_prev = Some(c.ch);
                         end_src = c.src + c.ch.len_utf8();
                         prev = Some(c.ch);
                         i += 1;
@@ -761,7 +786,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
         let mut cut = 0;
         let mut cut_bytes = 0;
         for (k, c) in chars.iter().enumerate() {
-            let a = text::advance(&s.font, *c) + s.letter_spacing;
+            let a = text::kern_spaced(&s.font, k.checked_sub(1).map(|p| chars[p]), *c, s.letter_spacing) + text::advance(&s.font, *c) + s.letter_spacing;
             if k > 0 && w + a > room {
                 break;
             }
@@ -773,7 +798,8 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
             return false;
         }
         let rest_text: String = chars[cut..].iter().collect();
-        let rest_w = u.width - w;
+        // Measured afresh: the pair kerned across the cut no longer is.
+        let rest_w = text::measure(&s.font, &rest_text, s.letter_spacing, s.word_spacing);
         let (rs, re) = u.range;
         let mid = (rs + cut_bytes).min(re);
         let rest = Unit { kind: UnitKind::Word, owner: u.owner, text: rest_text, range: (mid, re), width: rest_w, break_before: true, face: u.face };
@@ -1240,13 +1266,17 @@ fn baseline_shift(va: VerticalAlign, cstyle: &ComputedStyle, cm: &Metrics, pstyl
 }
 
 /// Cuts the text fragments of a line at `edge` (content-box x) and appends `…`.
-fn apply_ellipsis(ctx: &LayoutContext, line: &mut Fragment, edge: Au, cs: &ComputedStyle) {
+pub(crate) fn apply_ellipsis(ctx: &LayoutContext, line: &mut Fragment, edge: Au, cs: &ComputedStyle) {
     let line_x = line.rect.origin.x;
     let mut done = false;
     ellipsize_children(ctx, &mut line.children, edge - line_x, cs, &mut done);
 }
 
 fn ellipsize_children(ctx: &LayoutContext, kids: &mut Vec<Fragment>, edge: Au, cs: &ComputedStyle, done: &mut bool) {
+    // The cut is at `edge` less the ellipsis, which Blink measures in the block's
+    // font (`LineTruncator`): a run that ends inside that margin is cut too, so that
+    // what stays plus the ellipsis fits the box.
+    let cut = edge - text::advance(&cs.font, '\u{2026}');
     let mut keep = kids.len();
     for (i, k) in kids.iter_mut().enumerate() {
         if *done {
@@ -1255,7 +1285,7 @@ fn ellipsize_children(ctx: &LayoutContext, kids: &mut Vec<Fragment>, edge: Au, c
         }
         let left = k.rect.origin.x;
         let right = k.rect.right();
-        if right <= edge {
+        if right <= cut {
             continue;
         }
         match &mut k.kind {
@@ -1272,7 +1302,7 @@ fn ellipsize_children(ctx: &LayoutContext, kids: &mut Vec<Fragment>, edge: Au, c
                 let mut w = Au::ZERO;
                 let mut out = String::new();
                 for c in text.chars() {
-                    let a = text::advance(&s.font, c) + s.letter_spacing;
+                    let a = text::kern_spaced(&s.font, out.chars().last(), c, s.letter_spacing) + text::advance(&s.font, c) + s.letter_spacing;
                     if w + a > room {
                         break;
                     }
@@ -1321,6 +1351,9 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
     let mut min = Au::ZERO;
     let mut max = Au::ZERO;
     let mut run = Au::ZERO; // current unbreakable run
+    // Collapsible spaces at the end of `run` under `nowrap`: they hang at a line's
+    // end, so they are not part of the run's width unless a word follows.
+    let mut run_trailing = Au::ZERO;
     let mut line = indent; // current max-content line
     let mut line_trailing = Au::ZERO;
     let mut float_sum = Au::ZERO;
@@ -1329,8 +1362,9 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
     for u in &content.units {
         match u.kind {
             UnitKind::Newline | UnitKind::Br(_) => {
-                min = min.max(run);
+                min = min.max(run - run_trailing);
                 run = Au::ZERO;
+                run_trailing = Au::ZERO;
                 max = max.max(line - line_trailing);
                 line = Au::ZERO;
                 line_trailing = Au::ZERO;
@@ -1344,17 +1378,20 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
                 line += u.width;
                 line_trailing += u.width;
                 if u.break_before {
-                    min = min.max(run);
+                    min = min.max(run - run_trailing);
                     run = Au::ZERO;
+                    run_trailing = Au::ZERO;
                 }
                 pending_spaces += u.width;
                 let owner_ws = ctx.style(u.owner).white_space;
                 if owner_ws.wraps() {
-                    min = min.max(run);
+                    min = min.max(run - run_trailing);
                     run = Au::ZERO;
+                    run_trailing = Au::ZERO;
                     pending_spaces = Au::ZERO;
                 } else {
                     run += u.width;
+                    run_trailing += u.width;
                 }
             }
             UnitKind::Float(id) => {
@@ -1372,18 +1409,21 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
                         let (mn, _) = crate::layout::intrinsic::min_max(ctx, a.id);
                         // Min-content uses the atomic's min-content width.
                         if u.break_before {
-                            min = min.max(run);
+                            min = min.max(run - run_trailing);
                             run = Au::ZERO;
+                            run_trailing = Au::ZERO;
                         }
                         run += mn + a.margin.horizontal();
-                        min = min.max(run);
+                        min = min.max(run - run_trailing);
                         run = Au::ZERO;
+                        run_trailing = Au::ZERO;
                         u.width
                     }
                     _ => {
                         if u.break_before {
-                            min = min.max(run);
+                            min = min.max(run - run_trailing);
                             run = Au::ZERO;
+                            run_trailing = Au::ZERO;
                         }
                         run += u.width;
                         u.width
@@ -1391,11 +1431,12 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
                 };
                 line += w;
                 line_trailing = Au::ZERO;
+                run_trailing = Au::ZERO;
                 let _ = pending_spaces;
             }
         }
     }
-    min = min.max(run);
+    min = min.max(run - run_trailing);
     max = max.max(line - line_trailing);
     (min.max(Au::ZERO), (max + float_sum).max(min))
 }

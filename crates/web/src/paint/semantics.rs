@@ -15,6 +15,10 @@
 //! `alt`, `title`, and finally the element's own text content, trimmed and
 //! whitespace-collapsed, capped at 200 characters.
 //!
+//! An element with an `id` also gets an entry, with `generic` for a role when the
+//! tag gives none: the id is how an agent addresses the element, so it has to be
+//! reachable through the tree and not only through the DOM.
+//!
 //! Interaction ids follow the existing browser's scheme, where a control's
 //! interaction string is the element's own id (`Browser::click(id)`, `fill(id)` and
 //! `submit(id)` look the element up by it and the session keys typed values by it).
@@ -358,7 +362,11 @@ pub(crate) fn element(p: &Painter, node: NodeId) -> Option<(Semantic, Option<Str
     }
     let role = role_of(doc, node);
     let interactive = is_interactive(doc, node);
-    if role.is_none() && !interactive {
+    // An `id` is an address the author put there for something to use: an agent
+    // told to read `#sheet-A2` or `#title` has to find it in the tree, so an
+    // element carrying one gets an entry of its own even when its role is generic.
+    let addressed = doc.attr(node, "id").is_some_and(|v| !v.trim().is_empty());
+    if role.is_none() && !interactive && !addressed {
         return None;
     }
     let focused = p.ctx.focused == Some(node);
@@ -369,7 +377,7 @@ pub(crate) fn element(p: &Painter, node: NodeId) -> Option<(Semantic, Option<Str
         disabled: is_disabled(doc, node),
         focusable: is_focusable(doc, node),
     };
-    let interaction = interactive.then(|| interaction_id(doc, node));
+    let interaction = (interactive || addressed).then(|| interaction_id(doc, node));
     Some((sem, interaction, state_of(doc, node, focused)))
 }
 

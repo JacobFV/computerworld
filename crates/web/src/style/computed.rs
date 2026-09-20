@@ -19,6 +19,10 @@ pub enum LengthPercentage {
     Percent(i32),
     /// `calc(length + percentage)`: both parts.
     Calc(Au, i32),
+    /// `min()`, `max()` or `clamp()` whose operands mix lengths and percentages, so the
+    /// comparison waits for the percentage base: `v` (length, percent) clamped below
+    /// by `lo` and above by `hi`; the lower bound wins, as in `clamp()`.
+    Clamp { lo: Option<(Au, i32)>, v: (Au, i32), hi: Option<(Au, i32)> },
 }
 
 impl LengthPercentage {
@@ -29,6 +33,26 @@ impl LengthPercentage {
             LengthPercentage::Length(l) => l,
             LengthPercentage::Percent(p) => base.percent_of(p),
             LengthPercentage::Calc(l, p) => l + base.percent_of(p),
+            LengthPercentage::Clamp { lo, v, hi } => {
+                let part = |(l, p): (Au, i32)| l + base.percent_of(p);
+                let mut r = part(v);
+                if let Some(hi) = hi {
+                    r = r.min(part(hi));
+                }
+                if let Some(lo) = lo {
+                    r = r.max(part(lo));
+                }
+                r
+            }
+        }
+    }
+    /// True when a percentage takes part, so the value needs a base.
+    pub fn has_percent(self) -> bool {
+        match self {
+            LengthPercentage::Length(_) => false,
+            LengthPercentage::Percent(_) => true,
+            LengthPercentage::Calc(_, p) => p != 0,
+            LengthPercentage::Clamp { lo, v, hi } => v.1 != 0 || lo.is_some_and(|b| b.1 != 0) || hi.is_some_and(|b| b.1 != 0),
         }
     }
     /// Resolves when a base exists, else `None` for percentages (auto behaviour).
@@ -36,6 +60,7 @@ impl LengthPercentage {
         match (self, base) {
             (LengthPercentage::Length(l), _) => Some(l),
             (_, Some(b)) => Some(self.resolve(b)),
+            (v, None) if !v.has_percent() => Some(v.resolve(Au::ZERO)),
             (_, None) => None,
         }
     }
@@ -696,6 +721,29 @@ pub enum Appearance {
     None,
 }
 
+/// `aspect-ratio`: `auto || <ratio>`. The ratio is width over height, both positive,
+/// in millionths (the css `Number` scale); a degenerate ratio (a zero side) computes
+/// to no ratio, as the specification says it behaves as `auto`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct AspectRatio {
+    /// `auto` was given: a replaced element prefers its natural ratio.
+    pub auto: bool,
+    pub ratio: Option<(i64, i64)>,
+}
+
+impl AspectRatio {
+    /// The height that goes with a width, both of the box `box-sizing` names.
+    pub fn height_for(self, width: Au) -> Option<Au> {
+        let (w, h) = self.ratio?;
+        Some(Au((width.0 as i128 * h as i128 / w as i128).clamp(0, Au::MAX.0 as i128) as i32))
+    }
+    /// The width that goes with a height.
+    pub fn width_for(self, height: Au) -> Option<Au> {
+        let (w, h) = self.ratio?;
+        Some(Au((height.0 as i128 * w as i128 / h as i128).clamp(0, Au::MAX.0 as i128) as i32))
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ObjectFit {
     #[default]
@@ -1007,6 +1055,11 @@ pub struct ComputedStyle {
     pub user_select: UserSelect,
     pub appearance: Appearance,
     pub object_fit: ObjectFit,
+    pub aspect_ratio: AspectRatio,
+    /// `-webkit-line-clamp`: the number of lines a legacy vertical box shows.
+    pub line_clamp: Option<u32>,
+    /// `-webkit-box-orient: vertical`.
+    pub box_orient_vertical: bool,
     pub content: Content,
     /// `quotes` pairs.
     pub quotes: Vec<(String, String)>,
@@ -1117,6 +1170,9 @@ impl ComputedStyle {
             user_select: UserSelect::Auto,
             appearance: Appearance::Auto,
             object_fit: ObjectFit::Fill,
+            aspect_ratio: AspectRatio::default(),
+            line_clamp: None,
+            box_orient_vertical: false,
             content: Content::Normal,
             quotes: vec![("\u{201C}".into(), "\u{201D}".into()), ("\u{2018}".into(), "\u{2019}".into())],
             counter_reset: Vec::new(),

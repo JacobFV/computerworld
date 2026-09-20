@@ -363,8 +363,44 @@ pub fn block_horizontal(s: &ComputedStyle, cbw: Au, width: Option<Au>, edges_h: 
 /// `avail` is the width available to the border box plus margins (the containing
 /// block width, or the interval next to floats for BFC roots).
 pub fn block_width(ctx: &LayoutContext, id: BoxId, cbw: Au, avail: Au, edges_h: Au) -> (Au, Au, Au) {
+    block_width_in(ctx, id, &Cb { width: cbw, height: None }, avail, edges_h)
+}
+
+/// The content-box height `aspect-ratio` gives a non-replaced box of content width
+/// `w`. The ratio relates the sides of the box `box-sizing` names.
+pub fn ratio_height(s: &ComputedStyle, w: Au, edges_h: Au, edges_v: Au) -> Option<Au> {
+    match s.box_sizing {
+        BoxSizing::ContentBox => s.aspect_ratio.height_for(w),
+        BoxSizing::BorderBox => s.aspect_ratio.height_for(w + edges_h).map(|h| (h - edges_v).max(Au::ZERO)),
+    }
+}
+
+/// The content-box width `aspect-ratio` gives a box whose `height` is definite and
+/// whose `width` is `auto`.
+pub fn ratio_width(s: &ComputedStyle, cb_height: Option<Au>, edges_h: Au) -> Option<Au> {
+    if s.width != Sizing::Auto || s.aspect_ratio.ratio.is_none() {
+        return None;
+    }
+    let ev = s.used_border_widths().vertical() + vertical_padding_lengths(s);
+    let h = resolve_height(s, cb_height, ev)?;
+    match s.box_sizing {
+        BoxSizing::ContentBox => s.aspect_ratio.width_for(h),
+        BoxSizing::BorderBox => s.aspect_ratio.width_for(h + ev).map(|w| (w - edges_h).max(Au::ZERO)),
+    }
+}
+
+/// Vertical padding when it does not depend on the containing block's width.
+fn vertical_padding_lengths(s: &ComputedStyle) -> Au {
+    s.padding.top.maybe_resolve(None).unwrap_or(Au::ZERO) + s.padding.bottom.maybe_resolve(None).unwrap_or(Au::ZERO)
+}
+
+/// `block_width` with the containing block's height known, so a definite `height`
+/// and an `aspect-ratio` can give the width.
+pub fn block_width_in(ctx: &LayoutContext, id: BoxId, cb: &Cb, avail: Au, edges_h: Au) -> (Au, Au, Au) {
+    let cbw = cb.width;
     let s = ctx.style(id);
     let specified = match s.width {
+        Sizing::Auto if ratio_width(s, cb.height, edges_h).is_some() => ratio_width(s, cb.height, edges_h),
         Sizing::Set(lp) => Some(match s.box_sizing {
             BoxSizing::ContentBox => lp.resolve(cbw),
             BoxSizing::BorderBox => (lp.resolve(cbw) - edges_h).max(Au::ZERO),
@@ -386,6 +422,67 @@ pub fn block_width(ctx: &LayoutContext, id: BoxId, cbw: Au, avail: Au, edges_h: 
     } else {
         (w, ml, mr)
     }
+}
+
+/// `-webkit-line-clamp: n` on a vertical legacy box: when the box's own lines number
+/// more than `n`, the `n`th ends in an ellipsis (appended where it fits the line,
+/// else replacing the text that does not), the content ends at that line, and what
+/// follows stays laid out but is hidden for paint, as in Blink.
+fn clamp_lines(ctx: &LayoutContext, s: &ComputedStyle, contents: &mut ContentsResult, content_w: Au, n: usize) {
+    let lines: Vec<usize> = contents.fragments.iter().enumerate().filter(|(_, f)| matches!(f.kind, FragmentKind::Line)).map(|(i, _)| i).collect();
+    if n == 0 || lines.len() <= n {
+        return;
+    }
+    let at = lines[n - 1];
+    let line = &mut contents.fragments[at];
+    let content_right = line.children.iter().map(|c| c.rect.right()).fold(Au::ZERO, Au::max);
+    let ell = text::advance(&s.font, '\u{2026}');
+    if line.rect.origin.x + content_right + ell <= content_w {
+        append_ellipsis(ctx, &mut line.children, s);
+    } else {
+        // Truncate as `text-overflow: ellipsis` does, against the content edge: what
+        // stays plus the ellipsis fits the box, which is where Blink cuts.
+        inline::apply_ellipsis(ctx, line, content_w, s);
+    }
+    compute_overflow(line, false);
+    contents.height = line.rect.bottom();
+    for hidden in &mut contents.fragments[at + 1..] {
+        hidden.hidden_for_paint = true;
+    }
+    contents.pending_bottom = MarginSet::default();
+}
+
+/// Appends an ellipsis after the last text run of a line (depth first), as a
+/// generated run of its own in that run's style, so the text keeps its rect (a
+/// `Range` over the text does not cover the ellipsis); false when the line has no text.
+fn append_ellipsis(ctx: &LayoutContext, kids: &mut Vec<Fragment>, cs: &ComputedStyle) -> bool {
+    for i in (0..kids.len()).rev() {
+        let made = match &kids[i].kind {
+            FragmentKind::Text { source, baseline, .. } => {
+                let st = match source {
+                    StyleSource::Before(n) => ctx.styles.before(*n),
+                    StyleSource::After(n) => ctx.styles.after(*n),
+                    StyleSource::Marker(n) => ctx.styles.marker(*n),
+                    src => ctx.styles.get(src.node()),
+                }
+                .unwrap_or(cs);
+                let r = kids[i].rect;
+                let kind = FragmentKind::Text { source: *source, text: "\u{2026}".into(), node: None, range: (0, 0), baseline: *baseline, ellipsis: true };
+                Some(Fragment::new(kind, Rect::new(r.right(), r.origin.y, text::advance(&st.font, '\u{2026}'), r.size.height)))
+            }
+            _ => None,
+        };
+        if let Some(f) = made {
+            kids.insert(i + 1, f);
+            return true;
+        }
+        if matches!(kids[i].kind, FragmentKind::InlineBox { .. }) && append_ellipsis(ctx, &mut kids[i].children, cs) {
+            let right = kids[i].children.iter().map(|c| c.rect.right()).fold(Au::ZERO, Au::max);
+            kids[i].rect.size.width = kids[i].rect.size.width.max(right);
+            return true;
+        }
+    }
+    false
 }
 
 /// Shrink-to-fit width (§10.3.5) of a box's border box: floats, absolutes with auto
@@ -498,7 +595,7 @@ pub fn compute_overflow(f: &mut Fragment, clips: bool) {
         return;
     }
     let mut r = own;
-    for c in &f.children {
+    for c in f.children.iter().filter(|c| !c.hidden_for_paint) {
         let co = c.overflow.translate(c.rect.origin.x, c.rect.origin.y);
         r = r.union(co);
     }
@@ -559,6 +656,39 @@ fn inline_is_empty(ctx: &LayoutContext, id: BoxId) -> bool {
     }
 }
 
+/// Every margin of a block that collapses through (`is_empty_block`): its own top and
+/// bottom margins and, since nothing separates them, those of its in-flow descendants,
+/// which are all empty blocks themselves (§8.3.1). Acid2's `.empty div` carries a
+/// `-6em` bottom margin this way into the set that decides the smile's clearance.
+pub fn empty_block_margins(ctx: &LayoutContext, id: BoxId, cbw: Au) -> MarginSet {
+    empty_block_margins_with(ctx, id, cbw, true)
+}
+
+/// `empty_block_margins`, optionally without the block's own bottom margin: the set
+/// that decides where the block itself sits.
+pub fn empty_block_margins_with(ctx: &LayoutContext, id: BoxId, cbw: Au, own_bottom: bool) -> MarginSet {
+    let b = &ctx.tree[id];
+    let s = &b.style;
+    let mut set = MarginSet::of(margin_or_zero(s.margin.top, cbw));
+    if own_bottom {
+        set.add(margin_or_zero(s.margin.bottom, cbw));
+    }
+    if !b.inline_children && b.children.iter().any(|&c| !ctx.tree[c].is_out_of_flow()) {
+        let inner_w = {
+            let p = padding_edges(s, cbw);
+            let bw = s.used_border_widths();
+            let (w, _, _) = block_width(ctx, id, cbw, cbw, p.horizontal() + bw.horizontal());
+            w
+        };
+        for &c in &b.children {
+            if !ctx.tree[c].is_out_of_flow() {
+                set = set.union(empty_block_margins(ctx, c, inner_w));
+            }
+        }
+    }
+    set
+}
+
 /// The margins that collapse with a box's top margin from inside it: its own top
 /// margin, and, while it has no top border or padding and is not a BFC root, its
 /// leading empty children's margins and the first non-empty child's chain.
@@ -589,8 +719,7 @@ pub fn top_margin_chain(ctx: &LayoutContext, id: BoxId, cbw: Au, bfc: &Bfc, y_hi
             return set;
         }
         if is_empty_block(ctx, c) {
-            set.add(margin_or_zero(cb.style.margin.top, inner_w));
-            set.add(margin_or_zero(cb.style.margin.bottom, inner_w));
+            set = set.union(empty_block_margins(ctx, c, inner_w));
             continue;
         }
         return set.union(top_margin_chain(ctx, c, inner_w, bfc, y_hint));
@@ -650,10 +779,14 @@ pub fn layout_block_children(ctx: &LayoutContext, parent: BoxId, cb: &Cb, bfc: &
         }
         if !chain_cut && is_empty_block(ctx, c) {
             let mt = margin_or_zero(cbx.style.margin.top, cb.width);
-            let mb = margin_or_zero(cbx.style.margin.bottom, cb.width);
-            let yc = y + if at_top { Au::ZERO } else { pending.union(MarginSet::of(mt)).collapse() };
-            pending.add(mt);
-            pending.add(mb);
+            // Everything inside a block that collapses through is adjoining too
+            // (§8.3.1): its descendants' margins join the same set. The block itself
+            // sits where the set collapses to before its own bottom margin joins (the
+            // "as though it had a bottom border" position; Blink agrees, and Acid2's
+            // `.empty` lands 3px below the forehead through its child's -6em).
+            let yc = y + if at_top { Au::ZERO } else { pending.union(empty_block_margins_with(ctx, c, cb.width, false)).collapse() };
+            let _ = mt;
+            pending = pending.union(empty_block_margins(ctx, c, cb.width));
             let mut r = layout_block_level(ctx, c, cb, bfc, origin, yc);
             r.fragment.rect.origin.y = yc + relative_offset(&cbx.style, cb).y;
             translate_requests(&mut r.abs, r.fragment.rect.origin.x, r.fragment.rect.origin.y);
@@ -804,7 +937,7 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
                 loop {
                     let (l, r) = bfc.available(cb_origin.y + y, cb_left, cb_right);
                     let avail = r - l;
-                    let (ww, mml, mmr) = block_width(ctx, id, cb.width, avail, eh);
+                    let (ww, mml, mmr) = block_width_in(ctx, id, cb, avail, eh);
                     let needs = ww + eh + mml.max(Au::ZERO);
                     if needs <= avail || avail >= cb.width || tries > 64 {
                         w = ww;
@@ -826,7 +959,7 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
                     }
                 }
             } else {
-                let r = block_width(ctx, id, cb.width, cb.width, eh);
+                let r = block_width_in(ctx, id, cb, cb.width, eh);
                 w = r.0;
                 ml = r.1;
                 mr = r.2;
@@ -839,13 +972,19 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
         Some(forced) => forced,
         None => resolve_height(s, cb.height, ev),
     };
+    // `aspect-ratio` with `height: auto`: the width gives the height, which is
+    // definite for percentage children. Content taller than it grows the box (the
+    // automatic minimum size) unless the box is a scroll container.
+    let ratio_h = if own_height.is_none() && s.height == Sizing::Auto { ratio_height(s, w, eh, ev) } else { None };
+    let ratio_grows = ratio_h.is_some() && !b.is_scroll_container() && s.min_height == Sizing::Auto;
+    let own_height = if ratio_grows { None } else { own_height.or(ratio_h) };
     let quirky_root = ctx.quirks && b.node.is_some_and(|n| ctx.doc.is(n, "html") || ctx.doc.is(n, "body"));
-    let child_cb_height = own_height.or(if quirky_root { Some(ctx.viewport.height) } else { None });
+    let child_cb_height = own_height.or(ratio_h).or(if quirky_root { Some(ctx.viewport.height) } else { None });
     let top_adjoining = !is_bfc_root && bw.top.is_zero() && p.top.is_zero() && b.marker.is_none();
-    let bottom_adjoining = !is_bfc_root && bw.bottom.is_zero() && p.bottom.is_zero() && s.height == Sizing::Auto && min_height_is_zero(s);
+    let bottom_adjoining = !is_bfc_root && bw.bottom.is_zero() && p.bottom.is_zero() && s.height == Sizing::Auto && ratio_h.is_none() && min_height_is_zero(s);
 
     // Scrollbars reserve space; `auto` is decided after a first layout.
-    let (bar_x, bar_y) = scroll::reserved_bars(s);
+    let (bar_x, bar_y) = scroll::reserved_bars_in(ctx, s);
     let mut reserve_v = bar_y;
     let mut reserve_h = bar_x;
     let mut attempts = 0;
@@ -858,14 +997,19 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
             Some(inner) => layout_contents(ctx, id, &inner_cb, inner, Point::default(), false, false),
             None => layout_contents(ctx, id, &inner_cb, bfc, content_origin, top_adjoining, bottom_adjoining),
         };
-        if attempts == 0 && b.is_scroll_container() {
+        // Reserving a bar narrows the content, which can take the other bar away
+        // again, so the decision is re-made until it settles (three passes at most).
+        if attempts < 3 && b.is_scroll_container() {
             let mut ch = contents.height;
             if let Some(inner) = &inner_bfc {
                 ch = ch.max(inner.float_bottom());
             }
             let h_now = own_height.map(|h| clamp_height(s, h, cb.height, ev)).unwrap_or(clamp_height(s, ch, cb.height, ev));
             let content_size = scroll::content_size(&contents.fragments, content_w, ch);
-            let (nx, ny) = scroll::auto_bars(s, content_size, Size { width: content_w, height: h_now }, bar_x, bar_y);
+            // The visible size is the scrollport before any bar is taken out of it —
+            // `w`, not the already narrowed `content_w`, or a second pass would
+            // subtract the same gutter twice and keep asking for another bar.
+            let (nx, ny) = scroll::auto_bars_in(ctx, s, content_size, Size { width: w, height: h_now }, bar_x, bar_y);
             if nx != reserve_h || ny != reserve_v {
                 reserve_h = nx;
                 reserve_v = ny;
@@ -875,6 +1019,10 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
         }
         break (contents, inner_bfc, content_w);
     };
+    let mut contents = contents;
+    if let Some(n) = s.line_clamp.filter(|_| s.box_orient_vertical && !matches!(s.display, crate::style::Display::Flex | crate::style::Display::InlineFlex)) {
+        clamp_lines(ctx, s, &mut contents, content_w, n as usize);
+    }
     let mut content_h = contents.height;
     if let Some(inner) = &inner_bfc {
         content_h = content_h.max(inner.float_bottom());
@@ -887,7 +1035,7 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
     }
     let mut h = match own_height {
         Some(h) => h,
-        None => content_h + reserve_h,
+        None => (content_h + reserve_h).max(ratio_h.unwrap_or(Au::ZERO)),
     };
     if quirky_root && own_height.is_none() {
         // Quirks mode: `<html>` and `<body>` with `height: auto` stretch to the
@@ -908,14 +1056,19 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
     let frag_w = w + eh;
     let frag_h = h + ev;
     let rect = Rect::new(x, y, frag_w, frag_h);
-    let baseline = contents.first_baseline.map(|bl| bl + bw.top + p.top);
-    let last_baseline = contents.last_baseline.map(|bl| bl + bw.top + p.top);
+    // A `<button>`'s contents sit in an anonymous box that is centred vertically in
+    // the button's content box (HTML rendering §15.5.4, as every browser does): with
+    // an explicit `height` taller than the label, the label is in the middle, not at
+    // the top. Content that overflows stays at the top.
+    let button_shift = if b.control == Some(crate::layout::fragment::ControlKind::Button) && h > content_h { (h - content_h) / 2 } else { Au::ZERO };
+    let baseline = contents.first_baseline.map(|bl| bl + bw.top + p.top + button_shift);
+    let last_baseline = contents.last_baseline.map(|bl| bl + bw.top + p.top + button_shift);
     let mut frag = Fragment::new(
         FragmentKind::Box { source: b.source, padding: p, border: bw, replaced: b.control.map(Replaced::Control), scroll: None, baseline },
         rect,
     );
     let cx = bw.left + p.left;
-    let cy = bw.top + p.top;
+    let cy = bw.top + p.top + button_shift;
     let mut abs = contents.abs;
     translate_requests(&mut abs, cx, cy);
     for mut c in contents.fragments {
@@ -935,6 +1088,11 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
     scroll::attach_scroll_info(ctx, id, &mut frag, content_w, h, reserve_h, reserve_v);
     let empty_box = contents.empty && own_height.is_none_or(|h| h <= Au::ZERO) && ev.is_zero() && b.marker.is_none() && !is_bfc_root && min_height_is_zero(s);
     let bottom_margins = if empty_box { MarginSet::of(mt).union(MarginSet::of(mb)).union(contents.pending_bottom) } else { bottom_margins };
+    // A forced width (flex and grid items, cells, floats, absolutes) means the
+    // caller owns the horizontal margins and records them itself.
+    if forced_width.is_none() {
+        frag.used_margin = Some(Edges { top: mt, right: mr, bottom: mb, left: ml });
+    }
     BlockResult { fragment: frag, margin: Edges { top: mt, right: mr, bottom: mb, left: ml }, bottom_margins, abs: unresolved, first_baseline: baseline, last_baseline }
 }
 

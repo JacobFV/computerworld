@@ -191,7 +191,92 @@ pub struct Inner {
     pub referrer: String,
     pub cookie_cache: Option<String>,
     pub dom_mutations_since_styles: usize,
+    /// Per-element transition and animation bookkeeping: the computed style the last
+    /// style flush left and the transitioned values read off it.
+    anim_state: BTreeMap<NodeId, AnimState>,
+    /// Transitions and animations the last style flush started; the realm turns each
+    /// into DOM events on the world clock (see `Realm::pump_animations`).
+    pub pending_animations: Vec<AnimationStart>,
 }
+
+/// What the previous style flush left on an element that can transition or animate.
+struct AnimState {
+    style: std::rc::Rc<style::ComputedStyle>,
+    /// The serialized value of each transitioned property, in `transition-property`
+    /// order, so the next flush can tell which of them changed.
+    values: Vec<(String, String)>,
+    /// The `animation-name`s that were running.
+    names: Vec<String>,
+}
+
+/// A transition or animation a style change started.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnimationStart {
+    pub node: NodeId,
+    /// The transitioned property, or the `@keyframes` name for an animation.
+    pub name: String,
+    pub is_animation: bool,
+    pub delay_ms: i32,
+    pub duration_ms: i32,
+    /// `None` is `infinite`; the end event never fires.
+    pub iterations: Option<f64>,
+    /// An animation whose name left `animation-name`: it is cancelled, not started.
+    pub cancelled: bool,
+}
+
+/// What `transition-property: all` covers: the properties frameworks actually
+/// transition. (The full animatable set would cost a serialization per property per
+/// element on every style flush for no gain.)
+const TRANSITION_ALL: &[&str] = &[
+    "opacity",
+    "color",
+    "background-color",
+    "border-top-color",
+    "border-right-color",
+    "border-bottom-color",
+    "border-left-color",
+    "outline-color",
+    "width",
+    "height",
+    "min-width",
+    "min-height",
+    "max-width",
+    "max-height",
+    "top",
+    "right",
+    "bottom",
+    "left",
+    "margin-top",
+    "margin-right",
+    "margin-bottom",
+    "margin-left",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
+    "border-top-width",
+    "border-right-width",
+    "border-bottom-width",
+    "border-left-width",
+    "border-top-left-radius",
+    "border-top-right-radius",
+    "border-bottom-right-radius",
+    "border-bottom-left-radius",
+    "font-size",
+    "font-weight",
+    "letter-spacing",
+    "line-height",
+    "transform",
+    "box-shadow",
+    "visibility",
+    "fill",
+    "stroke",
+    "flex-basis",
+    "flex-grow",
+    "flex-shrink",
+    "gap",
+    "z-index",
+];
 
 impl Inner {
     pub fn new(host: Box<dyn ScriptHostDocument>, journal: Journal, url: &str) -> Inner {
@@ -248,6 +333,8 @@ impl Inner {
             referrer: String::new(),
             cookie_cache: None,
             dom_mutations_since_styles: 0,
+            anim_state: BTreeMap::new(),
+            pending_animations: Vec::new(),
         };
         inner.doc.url = url.to_owned();
         inner.viewport = inner.host_viewport();
@@ -579,6 +666,102 @@ impl Inner {
         }
         self.styles_generation = self.generation;
         self.inline_cache.clear();
+        self.detect_animations();
+    }
+
+    /// Compares each element's transitioned properties and `animation-name` with what
+    /// the previous style flush left, and records the transitions and animations the
+    /// change started. CSS Transitions §3: a transition starts when a transitionable
+    /// property's computed value changes while `transition-duration` is non-zero; an
+    /// element seen for the first time transitions nothing.
+    fn detect_animations(&mut self) {
+        let mut fresh: BTreeMap<NodeId, AnimState> = BTreeMap::new();
+        let mut props: Vec<(String, String)> = Vec::new();
+        for idx in 0..self.styles.styles.len() {
+            let Some(style) = self.styles.styles[idx].clone() else { continue };
+            let transitions = style.transitions.duration.iter().any(|d| *d > 0);
+            let animations = style.animations.name.iter().any(|n| n != "none");
+            let node = NodeId(idx as u32);
+            if !transitions && !animations {
+                if let Some(p) = self.anim_state.remove(&node) {
+                    for gone in p.names {
+                        self.pending_animations.push(AnimationStart { node, name: gone, is_animation: true, delay_ms: 0, duration_ms: 0, iterations: None, cancelled: true });
+                    }
+                }
+                continue;
+            }
+            // Text nodes inherit a computed style; only elements transition.
+            if !self.doc.is_element(node) {
+                continue;
+            }
+            let prev = self.anim_state.get(&node);
+            // The cascade shares one `Rc` per unchanged element, so an untouched
+            // element costs a pointer comparison.
+            if let Some(p) = prev {
+                if std::rc::Rc::ptr_eq(&p.style, &style) {
+                    let keep = self.anim_state.remove(&node).unwrap();
+                    fresh.insert(node, keep);
+                    continue;
+                }
+            }
+            props.clear();
+            if transitions {
+                for t in style.transitions.items() {
+                    if t.duration_ms <= 0 {
+                        continue;
+                    }
+                    let names: &[&str] = if t.property == "all" { TRANSITION_ALL } else { &[t.property.as_str()] };
+                    for name in names {
+                        if props.iter().any(|(p, _)| p == name) {
+                            continue;
+                        }
+                        let Some(value) = style.serialize(name) else { continue };
+                        if let Some(old) = prev.and_then(|p| p.values.iter().find(|(p, _)| p == name)) {
+                            if old.1 != value {
+                                                self.pending_animations.push(AnimationStart {
+                                    node,
+                                    name: (*name).to_owned(),
+                                    is_animation: false,
+                                    delay_ms: t.delay_ms,
+                                    duration_ms: t.duration_ms,
+                                    iterations: Some(1.0),
+                                    cancelled: false,
+                                });
+                            }
+                        }
+                        props.push(((*name).to_owned(), value));
+                    }
+                }
+            }
+            let mut names: Vec<String> = Vec::new();
+            if animations {
+                for a in style.animations.items() {
+                    if a.name == "none" || names.contains(&a.name) {
+                        continue;
+                    }
+                    if !prev.map(|p| p.names.contains(&a.name)).unwrap_or(false) && a.duration_ms > 0 {
+                        self.pending_animations.push(AnimationStart {
+                            node,
+                            name: a.name.clone(),
+                            is_animation: true,
+                            delay_ms: a.delay_ms,
+                            duration_ms: a.duration_ms,
+                            iterations: a.iteration_count.map(|c| c as f64 / 1000.0),
+                            cancelled: false,
+                        });
+                    }
+                    names.push(a.name.clone());
+                }
+            }
+            // An animation whose name is gone stops: CSS Animations §4 cancels it.
+            if let Some(p) = prev {
+                for gone in p.names.iter().filter(|n| !names.contains(n)) {
+                    self.pending_animations.push(AnimationStart { node, name: gone.clone(), is_animation: true, delay_ms: 0, duration_ms: 0, iterations: None, cancelled: true });
+                }
+            }
+            fresh.insert(node, AnimState { style, values: std::mem::take(&mut props), names });
+        }
+        self.anim_state = fresh;
     }
 
     /// Flushes style and layout.

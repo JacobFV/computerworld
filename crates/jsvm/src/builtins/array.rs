@@ -36,7 +36,7 @@ fn array_ctor(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 fn is_array(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     Ok(Value::Bool(
-        matches!(a.arg(0), Value::Obj(o) if o.is_array()),
+        matches!(a.arg(0), Value::Obj(o) if o.is_array_or_proxy()),
     ))
 }
 
@@ -530,7 +530,7 @@ fn concat(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             Value::Obj(o) => {
                 let s = vm.get(&item, &Key::Sym(vm.syms.is_concat_spreadable.clone()))?;
                 if s.is_undefined() {
-                    o.is_array()
+                    o.is_array_or_proxy()
                 } else {
                     s.truthy()
                 }
@@ -1037,6 +1037,13 @@ pub fn install(vm: &mut Vm) {
     vm.intr.array_ctor = ctor.clone();
     vm.set_global("Array", Value::Obj(ctor.clone()));
     vm.method(&ctor, "isArray", 1, is_array);
+    // Array.prototype[Symbol.unscopables]: a null-prototype object naming the
+    // methods a `with (array)` must not see.
+    let unscopables = vm.obj_with(None, Kind::Ordinary);
+    for name in ["at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values"] {
+        unscopables.set_prop(name, Value::Bool(true), ALL);
+    }
+    proto.set_sym(&vm.syms.unscopables.clone(), Value::Obj(unscopables), CONFIGURABLE);
     vm.method(&ctor, "from", 1, from);
     vm.method(&ctor, "of", 0, of);
     let sp = vm.native_fn("get [Symbol.species]", 0, species_getter);

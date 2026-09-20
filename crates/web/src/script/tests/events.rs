@@ -100,6 +100,32 @@ fn form_submission_default_action_and_prevent() {
 }
 
 #[test]
+fn implicit_submission_clicks_the_default_button_without_moving_focus() {
+    // HTML's implicit submission fires a click event at the default button; it is
+    // not a pointer interaction, so the caret stays in the field and no blur runs
+    // before the submit (Chromium behaves the same).
+    let mut r = run(
+        "<form id=f><input id=t type=text><button id=b type=button>no</button><button id=s>Go</button></form>",
+        "window.log=[]; for (const t of ['pointerdown','mousedown','pointerup','mouseup','click','focus','blur']) for (const id of ['t','s']) document.getElementById(id).addEventListener(t, e=>log.push(t+':'+e.target.id+':'+e.detail)); document.getElementById('f').addEventListener('submit', e=>{ log.push('submit:'+(e.submitter&&e.submitter.id)); e.preventDefault(); });",
+    );
+    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "t")) });
+    r.eval("log.length = 0").unwrap();
+    assert_eq!(r.dispatch(UiEvent::Key { key: "Enter".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false }), DefaultAction::Prevented);
+    assert_eq!(r.eval("log.join()").unwrap(), "click:s:0,submit:s");
+    assert_eq!(r.focused(), Some(id_of(&r, "t")));
+    // A real click on the same button does move focus and fires pointer events.
+    r.eval("log.length = 0").unwrap();
+    click_id(&mut r, "s");
+    assert_eq!(r.eval("log.join()").unwrap(), "pointerdown:s:1,mousedown:s:1,blur:t:0,focus:s:0,pointerup:s:1,mouseup:s:1,click:s:1,submit:s");
+    assert_eq!(r.focused(), Some(id_of(&r, "s")));
+    // A prevented click on the default button blocks the implicit submission.
+    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "t")) });
+    r.eval("log.length = 0; document.getElementById('s').addEventListener('click', e => e.preventDefault());").unwrap();
+    assert_eq!(r.dispatch(UiEvent::Key { key: "Enter".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false }), DefaultAction::Prevented);
+    assert_eq!(r.eval("log.join()").unwrap(), "click:s:0");
+}
+
+#[test]
 fn form_validation_blocks_submission() {
     let mut r = run("<form id=f><input id=i required><button id=b></button></form>", "window.inv=0; document.getElementById('i').addEventListener('invalid', ()=>inv++); document.getElementById('f').addEventListener('submit', ()=>{ window.submitted=true; });");
     assert_eq!(click_id(&mut r, "b"), DefaultAction::Prevented);
@@ -190,7 +216,9 @@ fn scroll_and_wheel_events() {
     assert_eq!(r.eval("window.scrollY").unwrap(), "50");
     // Clamped to the scrollable range.
     r.dispatch(UiEvent::Scroll { node: Some(id_of(&r, "box")), x: 0, y: 9999 });
-    assert_eq!(r.eval("box.scrollTop + ',' + (box.scrollHeight - box.clientHeight)").unwrap(), "465,465");
+    // 500px of content in a 50px box: no horizontal bar is needed, so the whole
+    // 50px is the scrollport and 450px of content is below it.
+    assert_eq!(r.eval("box.scrollTop + ',' + (box.scrollHeight - box.clientHeight)").unwrap(), "450,450");
 }
 
 #[test]
@@ -247,4 +275,100 @@ fn pointer_halves_and_active_state() {
 fn error_in_task_reaches_console() {
     let r = run("", "setTimeout(()=>{ null.x; }, 0);");
     assert!(errors(&r).contains("Cannot read properties of null (reading 'x')"), "{}", errors(&r));
+}
+
+// ------------------------------------------------- CSS transitions and animations
+
+/// A realm whose head holds `css`, for the transition and animation tests.
+fn styled(css: &str, body: &str, script: &str) -> Realm {
+    let html = format!("<!DOCTYPE html><html><head><style>{css}</style></head><body>{body}<script>{script}</script></body></html>");
+    let mut r = Realm::new(&html, "https://example.test/page.html", Box::new(crate::script::MemoryHost::new()));
+    r.run_document();
+    // The load's own style flush: an element transitions only from a value a previous
+    // flush saw, so without this the first change after load would start nothing.
+    r.run_until_idle(0);
+    r
+}
+
+#[test]
+fn css_transition_fires_run_start_and_end_on_the_world_clock() {
+    let mut r = styled(
+        "#t { opacity: 1; color: rgb(0,0,0); transition: opacity 300ms ease 50ms, color 1s; } #t.off { opacity: 0.25; color: rgb(0,128,0); }",
+        "<div id=t>t</div>",
+        "window.log=[]; for (const e of ['transitionrun','transitionstart','transitionend','transitioncancel']) document.getElementById('t').addEventListener(e, ev => log.push(Math.round(ev.timeStamp) + ' ' + ev.type + ':' + ev.propertyName + ':' + ev.elapsedTime + ':' + ev.bubbles)); window.start = 0;",
+    );
+    // Nothing transitions while no property changed.
+    r.run_until_idle(500);
+    assert_eq!(r.eval("log.join('|')").unwrap(), "");
+    r.eval("start = performance.now(); t.classList.add('off')").unwrap();
+    r.run_until_idle(10);
+    // `transitionrun` is synchronous with the style change; a delayed
+    // `transitionstart` waits (`color` has none, `opacity` has 50 ms of it).
+    assert_eq!(r.eval("log.length").unwrap(), "3");
+    r.run_until_idle(2000);
+    let log = r.eval("log.map(l => l.replace(/^\\d+ /, '')).join('|')").unwrap();
+    assert_eq!(log, "transitionrun:opacity:0:true|transitionrun:color:0:true|transitionstart:color:0:true|transitionstart:opacity:0:true|transitionend:opacity:0.3:true|transitionend:color:1:true");
+    // The times are the declared delay and delay + duration, on the world clock.
+    let times = r.eval("log.map(l => Math.round((+l.split(' ')[0] - start) / 10) * 10).join()").unwrap();
+    assert_eq!(times, "0,0,0,50,350,1000");
+    assert_eq!(r.eval("getComputedStyle(t).opacity").unwrap(), "0.25");
+    assert!(errors(&r).is_empty(), "{}", errors(&r));
+}
+
+#[test]
+fn css_transition_needs_a_previous_value_a_duration_and_a_real_change() {
+    let mut r = styled(
+        "#a { transition: opacity 100ms; } #b { transition: opacity 0s; } #b.off, #a.off { opacity: 0; } .fresh { opacity: 0; transition: opacity 100ms; }",
+        "<div id=a>a</div><div id=b>b</div>",
+        "window.log=[]; document.addEventListener('transitionrun', e => log.push(e.target.id + ':' + e.propertyName), true);",
+    );
+    r.run_until_idle(50);
+    // An element that appears mid-flight transitions nothing: it has no previous value.
+    r.eval("const n = document.createElement('div'); n.id = 'c'; n.className = 'fresh'; document.body.appendChild(n); getComputedStyle(n).opacity").unwrap();
+    r.run_until_idle(300);
+    assert_eq!(r.eval("log.join()").unwrap(), "");
+    // A zero duration transitions nothing either; writing the value it already has is
+    // not a change.
+    r.eval("b.classList.add('off'); a.style.opacity = '1';").unwrap();
+    r.run_until_idle(300);
+    assert_eq!(r.eval("log.join()").unwrap(), "");
+    r.eval("a.style.opacity = '0.5'").unwrap();
+    r.run_until_idle(300);
+    assert_eq!(r.eval("log.join()").unwrap(), "a:opacity");
+}
+
+#[test]
+fn a_second_change_cancels_the_transition_in_flight() {
+    let mut r = styled(
+        "#t { opacity: 1; transition: opacity 400ms; }",
+        "<div id=t>t</div>",
+        "window.log=[]; for (const e of ['transitionend','transitioncancel']) t.addEventListener(e, ev => log.push(ev.type + ':' + Math.round(ev.elapsedTime * 20) / 20));",
+    );
+    r.eval("t.style.opacity = '0'; setTimeout(() => { t.style.opacity = '0.5'; }, 100);").unwrap();
+    r.run_until_idle(1000);
+    assert_eq!(r.eval("log.join()").unwrap(), "transitioncancel:0.1,transitionend:0.4");
+}
+
+#[test]
+fn css_animation_fires_start_iteration_and_end() {
+    let mut r = styled(
+        "@keyframes spin { from { opacity: 1 } to { opacity: 0 } } #a.go { animation: spin 200ms linear 20ms 2; } #b.go { animation: spin 100ms infinite; }",
+        "<div id=a>a</div><div id=b>b</div>",
+        "window.log=[]; for (const e of ['animationstart','animationiteration','animationend','animationcancel']) document.addEventListener(e, ev => log.push(ev.target.id + ':' + ev.type + ':' + ev.animationName + ':' + Math.round(ev.elapsedTime * 100) / 100), true);",
+    );
+    r.run_until_idle(50);
+    r.eval("a.classList.add('go'); b.classList.add('go');").unwrap();
+    r.run_until_idle(2000);
+    // `infinite` starts and never ends; the finite one iterates once, then ends.
+    assert_eq!(r.eval("log.join('|')").unwrap(), "b:animationstart:spin:0|a:animationstart:spin:0|a:animationiteration:spin:0.2|a:animationend:spin:0.4");
+    // A runtime `@keyframes` inserted through the CSSOM animates the same way.
+    r.eval("const s = document.createElement('style'); document.head.appendChild(s); s.sheet.insertRule('@keyframes fade { from { opacity: 1 } to { opacity: 0 } }', 0); s.sheet.insertRule('#a.fade { animation: fade 50ms linear both }', 1); log.length = 0; a.className = 'fade';").unwrap();
+    r.run_until_idle(500);
+    // (`spin` had already ended, so dropping its name cancels nothing.)
+    assert_eq!(r.eval("log.join('|')").unwrap(), "a:animationstart:fade:0|a:animationend:fade:0.05");
+    // Taking the name off an animation still running does cancel it.
+    r.eval("log.length = 0; b.className = ''").unwrap();
+    r.run_until_idle(50);
+    assert_eq!(r.eval("log.map(l => l.split(':').slice(0, 3).join(':')).join('|')").unwrap(), "b:animationcancel:spin");
+    assert!(errors(&r).is_empty(), "{}", errors(&r));
 }

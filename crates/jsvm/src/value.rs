@@ -476,6 +476,14 @@ impl Obj {
     pub fn is_array(&self) -> bool {
         matches!(self.borrow().kind, Kind::Array(_))
     }
+    /// `IsArray`: an array, or a proxy whose target is one.
+    pub fn is_array_or_proxy(&self) -> bool {
+        match &self.borrow().kind {
+            Kind::Array(_) => true,
+            Kind::Proxy { target, .. } => target.is_array_or_proxy(),
+            _ => false,
+        }
+    }
     pub fn proto(&self) -> Option<Obj> {
         self.borrow().proto.clone()
     }

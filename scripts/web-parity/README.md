@@ -21,6 +21,8 @@ would otherwise blur.
 | `crates/web/target-parity/<name>.report.md` | Pass count, mismatches by property, worst offenders with expected and got |
 | `crates/web/target-parity/<name>.compare.png` | Chromium, the engine and their difference side by side (from `compare.mjs`) |
 | `crates/web/tests/ref/<name>.html`, `<name>-ref.html` | Reftest pairs: two documents that must paint to the same scene |
+| `crates/web/tests/modern_layout.rs` | Regression tests for the engine bugs the modern fixtures exposed: small documents through the whole pipeline, rects and computed values asserted by element id |
+| `crates/web/src/paint/pipeline_tests.rs` | Regression tests for the engine bugs the migrated services exposed: the smallest page that showed each one, through the whole pipeline, asserted on the scene or on the raster |
 | `crates/web/tests/wpt/` | The web-platform-tests reftest corpus (sparse, pinned; `manifest.json`, `expectations.json`, `README.md`, `LICENSE.md`), produced by `crates/web/tools/fetch-wpt.py` |
 | `crates/web/target-parity/wpt-report.md` | Pass counts per WPT directory and the outcome of every pair (written by `crates/web/tests/wpt.rs`) |
 
@@ -61,6 +63,17 @@ box; the engine's dump does the same from its fragment tree.
 - `font-family` is reported, never compared. The report's font table shows what Chromium
   shaped each family list with (through CDP `CSS.getPlatformFontsForNode`) and which
   bundled face the engine resolved it to (`cw_scene::fonts::resolve_family`).
+- The engine runs with `Media::fonts = FontEnvironment::LinuxBaseline`: the dumps were
+  made on a stock Linux desktop where only the Liberation and DejaVu families exist
+  (each fixture's `fonts.json` shows it: `Inter`, `Poppins`, `Roboto`, `Georgia` and
+  `JetBrains Mono` all fell through to Liberation Sans, Serif or Mono), so a family the
+  engine bundles but that machine lacks falls through to the list's generic here too.
+  The world's browser keeps the default, `Bundled`.
+- Rects are client rects: an element under a `transform` (its own or an ancestor's)
+  reports the bounds of its transformed border box, as `getBoundingClientRect` and
+  `Range.getClientRects` do; computed `width` and `height` stay untransformed.
+- An `auto` margin reports the used value layout recorded on the fragment
+  (`Fragment::used_margin`: block centring, the free space a flex or grid item absorbed).
 - A node passes when it has no mismatch. The fixture's pass rate is passing nodes over
   Chromium's node count (elements and text nodes). The Rust test fails when it is below
   the fixture's threshold.
@@ -117,7 +130,29 @@ export CHROME_BIN=/usr/bin/google-chrome
    Thresholds start at 0 for every fixture; the integration step raises them as the
    modules land.
 
+## The environment both sides share
+
+- **Scrollbars.** Playwright launches headless Chromium with `--hide-scrollbars`, so a
+  scroll container in the dump gives none of its width to a scrollbar. The harness lays
+  out with `LayoutCache::overlay_scrollbars` for the same reason; the engine's default
+  (what the browser shell uses) reserves 15 px like a desktop Chromium.
+- **Fonts.** The cascade resolves families as a stock Linux desktop does
+  (`FontEnvironment::LinuxBaseline`), which is the machine the dumps were taken on.
+- **`data:` URLs.** The harness decodes every `data:` image a page names
+  (`cw_web::paint::ImageMap::from_document`) and reads `data:` stylesheets from
+  non-alternate `<link rel=stylesheet>` elements. There is no other fetching: fixtures
+  are self-contained.
+- **HTTP statuses.** A `file:` URL has none, so `dump.mjs` answers a request carrying
+  web-platform-tests' `?pipe=status(N)` the way the WPT server would: 4xx and 5xx fail
+  the load (Acid2's `<object>` fallback depends on a 404).
+
 ## Reftests
+
+A pair listed in `NAVIGATE` in `tests/reftest.rs` is compared after a fragment navigation
+(both documents scrolled to the named id, as Acid2 asks to be viewed at `#top`); a pair
+listed in `TOLERANCE` may differ by the stated number of pixels for the stated reason
+(none does today). `tests/pending/` holds pairs the engine does not pass yet.
+
 
 `crates/web/tests/ref/<name>.html` and `<name>-ref.html` are two documents that must
 paint identically: the runner parses, cascades, lays out and paints both at 1280×800
@@ -161,4 +196,4 @@ entry to just under the achieved count once it holds).
 | `stripe-marketing` | A marketing page: a hero on a skewed `linear-gradient` band, `clamp()` fluid type, pill CTA buttons with shadows, a flex bar chart, a three-column feature grid with gradient-circle icons, a pricing grid with an absolutely positioned badge and `::before` check marks, a Georgia testimonial, a logo row in six families, a dark footer with a `2fr repeat(4, 1fr)` grid |
 | `amazon-grid` | A search results page: dark flex header with a growing search bar and an absolutely positioned cart badge, a nav strip, a 240px filter sidebar (star rows, checkboxes, a price form), a `repeat(auto-fill, minmax(220px, 1fr))` grid of twelve cards (`aspect-ratio` thumbnails, line-clamped titles, `<sup>` cents, chips, corner ribbons, `margin-top: auto` buttons), pagination, a footer |
 | `slack-shell` | An app shell: `100vh` flex column with `overflow: hidden`, a top bar, a rail, a purple sidebar with sections and unread pill badges, a main column with a `position: sticky` channel header, a `flex: 1; overflow: auto` message list with grouped messages, a blockquote, an attachment card and code in JetBrains Mono, a composer pinned at the bottom, and a right details panel that also scrolls |
-| `acid2` | The Second Acid Test from web-platform-tests' `acid/acid2/` (WPT licence), with its subresources under `parity/acid2/` and a README on the `data:` URI, `<object>` fallback and HTTP 404 parts that need the integration; also a reftest pair against the pixel-for-pixel reference |
+| `acid2` | The Second Acid Test from web-platform-tests' `acid/acid2/` (WPT licence), with its subresources under `parity/acid2/` and a README on how it is viewed and where its `data:` images, `<object>` fallback, painting order and negative clearance are implemented; also the reftest pair `ref/acid2` against the pixel-for-pixel reference, compared at `#top` |

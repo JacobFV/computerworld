@@ -1058,9 +1058,9 @@
    "tag": "object",
    "id": "",
    "rect": {
-    "x": 138,
-    "y": 2721,
-    "width": 90,
+    "x": 97,
+    "y": 2715,
+    "width": 131,
     "height": 14
    },
    "computed": {
@@ -1102,10 +1102,10 @@
    "tag": "object",
    "id": "",
    "rect": {
-    "x": 138,
-    "y": 2710,
-    "width": 90,
-    "height": 30
+    "x": 97,
+    "y": 2715,
+    "width": 131,
+    "height": 14
    },
    "computed": {
     "display": "inline",
@@ -1146,17 +1146,17 @@
    "tag": "object",
    "id": "",
    "rect": {
-    "x": 0,
-    "y": 0,
-    "width": 0,
-    "height": 0
+    "x": 97,
+    "y": 2710,
+    "width": 131,
+    "height": 24
    },
    "computed": {
     "display": "inline",
     "position": "static",
     "float": "none",
-    "width": "auto",
-    "height": "auto",
+    "width": "96px",
+    "height": "24px",
     "margin-top": "0px",
     "margin-right": "0px",
     "margin-bottom": "0px",

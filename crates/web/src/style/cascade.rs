@@ -16,7 +16,7 @@ use super::properties::*;
 use super::shorthands;
 use super::ua;
 use super::values::*;
-use crate::css::{self, ComponentValue, Declaration, MatchContext, Media, Origin, PseudoElement, Rule, SelectorDeps, SelectorIndex, Specificity, Stylesheet, Token};
+use crate::css::{self, AncestorKeys, ComponentValue, Declaration, MatchContext, Media, Origin, PseudoElement, Rule, SelectorDeps, SelectorIndex, Specificity, Stylesheet, Token};
 use crate::dom::{Document, Mutation, NodeId, NodeKind, QuirksMode};
 use crate::geom::Au;
 use crate::{Strictness, Unsupported, UnsupportedKind, Viewport};
@@ -154,6 +154,7 @@ struct Engine<'a> {
     font_faces: Vec<FontFace>,
     keyframes: BTreeMap<String, Keyframes>,
     viewport: (Au, Au),
+    fonts: crate::css::FontEnvironment,
     body_text_color: Color,
     /// Parsed `style=""` attributes, cached per element per pass.
     inline_cache: std::cell::RefCell<BTreeMap<NodeId, Rc<ParsedBlock>>>,
@@ -177,6 +178,7 @@ impl<'a> Engine<'a> {
             font_faces: Vec::new(),
             keyframes: BTreeMap::new(),
             viewport: (Au::from_px_i32(media.width_px), Au::from_px_i32(media.height_px)),
+            fonts: media.fonts,
             body_text_color: Color::BLACK,
             inline_cache: std::cell::RefCell::new(BTreeMap::new()),
         };
@@ -322,10 +324,10 @@ impl<'a> Engine<'a> {
 
     /// Cascade candidates for an element (or, with `pseudo`, for one of its
     /// pseudo-elements, which take no hints and no inline style).
-    fn winners(&self, node: NodeId, pseudo: Option<&SelectorIndex<RuleData>>, unsupported: &mut Vec<Unsupported>) -> Result<Winners, Unsupported> {
+    fn winners(&self, node: NodeId, pseudo: Option<&SelectorIndex<RuleData>>, keys: &AncestorKeys, unsupported: &mut Vec<Unsupported>) -> Result<Winners, Unsupported> {
         let index = pseudo.unwrap_or(&self.elements);
         let mut cands: Vec<Candidate> = Vec::new();
-        for entry in index.matching(self.doc, node, self.ctx) {
+        for entry in index.matching_with(self.doc, node, self.ctx, keys) {
             let r = &entry.data;
             for (decl, important) in &r.block.decls {
                 let level = match (r.origin, important) {
@@ -439,11 +441,20 @@ impl<'a> Engine<'a> {
         s.custom = resolve_custom(&w.custom, &parent.custom);
         let is_root = root_font_size.is_none();
         let root_fs = root_font_size.unwrap_or(parent.font.size);
+        // `ch` and `ex` come from the font's own metrics: the advance of `0` and the
+        // x-height, not half an em.
+        let lengths_for = |font: &Font, root_fs: Au| {
+            let mut l = LengthContext::for_font_size(font.size, root_fs, self.viewport);
+            l.ch = crate::layout::text::ch_unit(font);
+            l.ex = crate::layout::text::font_metrics(font).x_height;
+            l
+        };
         let mut ctx = ComputeCtx {
             parent,
-            lengths: LengthContext::for_font_size(parent.font.size, root_fs, self.viewport),
-            parent_lengths: LengthContext::for_font_size(parent.font.size, root_fs, self.viewport),
+            lengths: lengths_for(&parent.font, root_fs),
+            parent_lengths: lengths_for(&parent.font, root_fs),
             quirks: self.quirks,
+            fonts: self.fonts,
         };
         let apply_phase = |s: &mut ComputedStyle, ctx: &ComputeCtx, phase: u8| {
             for def in LONGHANDS.iter().filter(|d| d.phase == phase) {
@@ -459,7 +470,7 @@ impl<'a> Engine<'a> {
             }
         }
         let root_fs = if is_root { s.font.size } else { root_fs };
-        ctx.lengths = LengthContext::for_font_size(s.font.size, root_fs, self.viewport);
+        ctx.lengths = lengths_for(&s.font, root_fs);
         apply_phase(&mut s, &ctx, 1);
         let lh = s.line_height_au(s.font.size.scale(12, 10));
         ctx.lengths.line_height = lh;
@@ -472,6 +483,22 @@ impl<'a> Engine<'a> {
     }
 
     fn fixups(&self, node: NodeId, s: &mut ComputedStyle, w: &Winners, parent: &ComputedStyle, is_root: bool, is_pseudo: bool) {
+        // The initial value of every colour but `color` is `currentcolor`: undeclared,
+        // they compute to this element's own colour, not to black.
+        let undeclared = |id: LonghandId| w.longhands[id as usize].is_none();
+        for (id, side) in [
+            (LonghandId::BorderTopColor, &mut s.border.top),
+            (LonghandId::BorderRightColor, &mut s.border.right),
+            (LonghandId::BorderBottomColor, &mut s.border.bottom),
+            (LonghandId::BorderLeftColor, &mut s.border.left),
+        ] {
+            if undeclared(id) {
+                side.color = s.color;
+            }
+        }
+        if undeclared(LonghandId::OutlineColor) {
+            s.outline.color = s.color;
+        }
         // Computed border and outline widths are zero when the style draws nothing.
         for side in [&mut s.border.top, &mut s.border.right, &mut s.border.bottom, &mut s.border.left] {
             if !side.style.is_visible() {
@@ -496,6 +523,18 @@ impl<'a> Engine<'a> {
                     _ => {}
                 }
             }
+        }
+        // A legacy `-webkit-box` that is vertical and line-clamped is not a flex
+        // container in Blink: it lays out as a block that clamps its lines, and its
+        // display computes to `flow-root` (`inline-block` for the inline form).
+        // `-webkit-box` parses to `flex`, so a modern flex container carrying both
+        // legacy properties is read the same way; line-clamp has no effect on one.
+        if s.line_clamp.is_some() && s.box_orient_vertical {
+            s.display = match s.display {
+                Display::Flex => Display::FlowRoot,
+                Display::InlineFlex => Display::InlineBlock,
+                d => d,
+            };
         }
         // Blockification: the root, floats, absolutes and flex/grid items.
         let parent_is_flex_or_grid = matches!(parent.display, Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid) && !is_pseudo || (is_pseudo && matches!(parent.display, Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid));
@@ -547,7 +586,8 @@ impl<'a> Engine<'a> {
             None => Rc::new(ComputedStyle::initial()),
         };
         let root_fs = if Some(root) == self.doc.document_element() { None } else { Some(set.root_font_size()) };
-        self.style_node(set, root, parent_style, root_fs, unsupported)
+        let keys = AncestorKeys::of(self.doc, root);
+        self.style_node(set, root, parent_style, root_fs, &keys, unsupported)
     }
 
     fn styled_parent(&self, set: &StyleSet, node: NodeId) -> Option<Rc<ComputedStyle>> {
@@ -558,7 +598,7 @@ impl<'a> Engine<'a> {
         set.get_rc(p).cloned()
     }
 
-    fn style_node(&self, set: &mut StyleSet, node: NodeId, parent: Rc<ComputedStyle>, root_font_size: Option<Au>, unsupported: &mut Vec<Unsupported>) -> Result<(), Unsupported> {
+    fn style_node(&self, set: &mut StyleSet, node: NodeId, parent: Rc<ComputedStyle>, root_font_size: Option<Au>, keys: &AncestorKeys, unsupported: &mut Vec<Unsupported>) -> Result<(), Unsupported> {
         match self.doc.kind(node) {
             NodeKind::Text(_) => {
                 set.set(node, parent);
@@ -567,7 +607,7 @@ impl<'a> Engine<'a> {
             NodeKind::Element { .. } => {}
             _ => return Ok(()),
         }
-        let w = self.winners(node, None, unsupported)?;
+        let w = self.winners(node, None, keys, unsupported)?;
         let style = self.compute(node, &w, &parent, root_font_size, false);
         let is_root = root_font_size.is_none();
         let root_fs = if is_root { style.font.size } else { root_font_size.unwrap() };
@@ -587,7 +627,7 @@ impl<'a> Engine<'a> {
                 if index.is_empty() {
                     continue;
                 }
-                let pw = self.winners(node, Some(index), unsupported)?;
+                let pw = self.winners(node, Some(index), keys, unsupported)?;
                 if pw.longhands[LonghandId::Content as usize].is_none() {
                     continue;
                 }
@@ -601,7 +641,7 @@ impl<'a> Engine<'a> {
                 }
             }
             if matches!(style.display, Display::ListItem) {
-                let mw = self.winners(node, Some(&self.marker), unsupported)?;
+                let mw = self.winners(node, Some(&self.marker), keys, unsupported)?;
                 let mut ms = self.compute(node, &mw, &style, Some(root_fs), true);
                 ms.display = Display::Inline;
                 if mw.longhands[LonghandId::WhiteSpace as usize].is_none() {
@@ -614,8 +654,12 @@ impl<'a> Engine<'a> {
             }
         }
         let children: Vec<NodeId> = self.doc.children(node).collect();
+        if children.is_empty() {
+            return Ok(());
+        }
+        let child_keys = keys.under(self.doc, node);
         for c in children {
-            self.style_node(set, c, style.clone(), Some(root_fs), unsupported)?;
+            self.style_node(set, c, style.clone(), Some(root_fs), &child_keys, unsupported)?;
         }
         Ok(())
     }
@@ -1213,6 +1257,7 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         font_faces: Vec::new(),
         keyframes: BTreeMap::new(),
         viewport: (Au::from_px_i32(1280), Au::from_px_i32(800)),
+        fonts: crate::css::FontEnvironment::Bundled,
         body_text_color: Color::BLACK,
         inline_cache: std::cell::RefCell::new(BTreeMap::new()),
     };
@@ -1422,6 +1467,47 @@ mod tests {
     }
 
     #[test]
+    fn ch_and_ex_come_from_the_font() {
+        // Arimo's `0` is 1139/2048 em and its x-height 1082/2048 em, not half an em;
+        // a monospace face's `0` is its cell.
+        let css = "#a { font: 100px Arial; width: 10ch; height: 10ex } #m { font: 100px 'Courier New'; width: 10ch } #s { font: 100px Arial; font-size: 2ch }";
+        let (doc, set) = styled(r#"<div id="a"></div><div id="m"></div><div style="font: 50px Arial"><div id="s"></div></div>"#, css);
+        let px = |id: &str, prop: &str| ser(&doc, &set, id, prop).trim_end_matches("px").parse::<f64>().unwrap();
+        assert!((px("a", "width") - 556.0).abs() < 1.0, "10ch in Arimo at 100px: {}", px("a", "width"));
+        assert!((px("a", "height") - 528.0).abs() < 2.0, "10ex in Arimo at 100px: {}", px("a", "height"));
+        assert!((px("m", "width") - 600.0).abs() < 1.0, "10ch in Cousine at 100px: {}", px("m", "width"));
+        // `font-size: 2ch` measures the parent's font (50px Arimo).
+        assert!((px("s", "font-size") - 55.6).abs() < 0.5, "2ch of the parent: {}", px("s", "font-size"));
+    }
+
+    #[test]
+    fn the_device_decides_which_families_are_installed() {
+        let doc = crate::html::parse(r#"<p id="p" style="font-family: Inter, sans-serif">x</p>"#);
+        let world = cascade(&doc, &[], &Media::default(), &MatchContext::new(), Strictness::Lenient).unwrap();
+        assert_eq!(world.get(by_id(&doc, "p")).unwrap().font.typeface, cw_scene::Typeface::Inter);
+        let linux = Media { fonts: crate::css::FontEnvironment::LinuxBaseline, ..Media::default() };
+        let linux = cascade(&doc, &[], &linux, &MatchContext::new(), Strictness::Lenient).unwrap();
+        assert_eq!(linux.get(by_id(&doc, "p")).unwrap().font.typeface, cw_scene::Typeface::Arimo);
+    }
+
+    #[test]
+    fn aspect_ratio_and_line_clamp_compute() {
+        let css = "#a { aspect-ratio: 16 / 9 } #b { aspect-ratio: 1 } #c { aspect-ratio: auto 1.5 } #d { aspect-ratio: 0 / 1 } #e { aspect-ratio: -1 } \
+                   #t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2 } #u { display: -webkit-box } #v { display: flex; -webkit-line-clamp: 3 }";
+        let (doc, set) = styled(r#"<p id="a"></p><p id="b"></p><p id="c"></p><p id="d"></p><p id="e"></p><p id="t"></p><p id="u"></p><p id="v"></p>"#, css);
+        assert_eq!(ser(&doc, &set, "a", "aspect-ratio"), "16 / 9");
+        assert_eq!(ser(&doc, &set, "b", "aspect-ratio"), "1 / 1");
+        assert_eq!(ser(&doc, &set, "c", "aspect-ratio"), "auto 1.5 / 1");
+        assert_eq!(ser(&doc, &set, "d", "aspect-ratio"), "auto");
+        assert_eq!(ser(&doc, &set, "e", "aspect-ratio"), "auto");
+        // Blink computes a vertical, line-clamped legacy box to `flow-root`.
+        assert_eq!(ser(&doc, &set, "t", "display"), "flow-root");
+        assert_eq!(ser(&doc, &set, "t", "-webkit-line-clamp"), "2");
+        assert_eq!(ser(&doc, &set, "u", "display"), "flex");
+        assert_eq!(ser(&doc, &set, "v", "display"), "flex");
+    }
+
+    #[test]
     fn media_query_gating() {
         let css = "@media (max-width: 600px) { p { color: red } } @media (min-width: 601px) { p { color: blue } }";
         let doc = crate::html::parse(r#"<p id="p">x</p>"#);
@@ -1615,8 +1701,12 @@ mod tests {
         assert_eq!(ser(&d, &s, "a", "background-repeat"), "no-repeat, repeat");
         assert_eq!(ser(&d, &s, "a", "background-size"), "cover, auto");
         assert_eq!(ser(&d, &s, "a", "background-position-x"), "50%, 0%");
-        assert_eq!(ser(&d, &s, "a", "box-shadow"), "rgba(0, 0, 0, 0.502) 0px 1px 2px 0px, rgb(255, 0, 0) 0px 0px 0px 1px inset");
+        assert_eq!(ser(&d, &s, "a", "box-shadow"), "rgba(0, 0, 0, 0.5) 0px 1px 2px 0px, rgb(255, 0, 0) 0px 0px 0px 1px inset");
+        // A percentage translate keeps the function list (the box is not laid out);
+        // lengths-only lists resolve to the composed matrix, as Chromium reports.
         assert_eq!(ser(&d, &s, "a", "transform"), "translate(10px, 20%) rotate(45deg)");
+        let (d2, s2) = styled(r#"<p id="b" style="transform: translateX(1rem) rotate(0deg) skewX(0deg) skewY(0deg) scale(0.95, 1) scale(1, 0.95)">x</p>"#, "");
+        assert_eq!(ser(&d2, &s2, "b", "transform"), "matrix(0.95, 0, 0, 0.95, 16, 0)");
         assert_eq!(ser(&d, &s, "a", "grid-template-columns"), "[a] 1fr repeat(auto-fill, minmax(100px, 1fr)) [b]");
         assert_eq!(ser(&d, &s, "a", "grid-row-start"), "1");
         assert_eq!(ser(&d, &s, "a", "grid-column-start"), "2");

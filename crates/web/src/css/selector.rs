@@ -114,6 +114,8 @@ pub enum PseudoClass {
     Dir(Direction),
     Scope,
     Defined,
+    /// `:host`: matches only a shadow host, so never here.
+    Host,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -601,6 +603,10 @@ fn parse_pseudo_class_ident(lname: &str, name: &str) -> Result<PseudoClass, Sele
         "default" => PseudoClass::Default,
         "scope" => PseudoClass::Scope,
         "defined" => PseudoClass::Defined,
+        // A shadow host. Valid CSS that never matches in a document tree, but the
+        // selector must parse: Tailwind's preflight is `html, :host { … }`, and an
+        // invalid selector in a list drops the whole rule.
+        "host" => PseudoClass::Host,
         _ => return Err(err(SelectorErrorKind::UnsupportedPseudoClass, format!(":{name}"))),
     })
 }
@@ -1150,6 +1156,7 @@ impl fmt::Display for PseudoClass {
             PseudoClass::Dir(Direction::Rtl) => f.write_str(":dir(rtl)"),
             PseudoClass::Scope => f.write_str(":scope"),
             PseudoClass::Defined => f.write_str(":defined"),
+            PseudoClass::Host => f.write_str(":host"),
         }
     }
 }
@@ -1232,7 +1239,9 @@ mod tests {
         assert!(!PseudoElement::FirstLetter.supported());
         assert_eq!(parse_selector_list("::before:hover").unwrap_err().kind, SelectorErrorKind::Syntax);
         assert_eq!(parse_selector_list("a::foo").unwrap_err().kind, SelectorErrorKind::UnsupportedPseudoElement);
-        assert_eq!(parse_selector_list("a:host").unwrap_err().kind, SelectorErrorKind::UnsupportedPseudoClass);
+        // `:host` parses (and never matches); `:host()` does not.
+        assert_eq!(parse_selector_list("html, :host").unwrap().to_string(), "html, :host");
+        assert_eq!(parse_selector_list("a:host-context(x)").unwrap_err().kind, SelectorErrorKind::UnsupportedPseudoClass);
         assert_eq!(parse_selector_list(":has(:has(a))").unwrap_err().kind, SelectorErrorKind::NestedHas);
         assert_eq!(parse_selector_list(":has(:not(:has(a)))").unwrap_err().kind, SelectorErrorKind::NestedHas);
         // Forgiving lists drop a nested :has() instead of failing.
@@ -1240,13 +1249,13 @@ mod tests {
         assert_eq!(parse_selector_list(":not(::before)").unwrap_err().kind, SelectorErrorKind::Syntax);
         assert_eq!(parse_selector_list("#0a").unwrap_err().kind, SelectorErrorKind::Syntax);
         // Forgiving lists drop what they cannot parse.
-        match &parse(":is(a, :host, b)").0[0].compounds[0].simple[0] {
+        match &parse(":is(a, :host-context(x), b)").0[0].compounds[0].simple[0] {
             SimpleSelector::PseudoClass(PseudoClass::Is(l)) => assert_eq!(l.0.len(), 2),
             o => panic!("{o:?}"),
         }
         assert!(matches!(parse(":lang(en, \"fr-*\")").0[0].compounds[0].simple[0], SimpleSelector::PseudoClass(PseudoClass::Lang(ref r)) if r == &["en", "fr-*"]));
         assert!(matches!(parse(":dir(RTL)").0[0].compounds[0].simple[0], SimpleSelector::PseudoClass(PseudoClass::Dir(Direction::Rtl))));
-        for name in ["root", "empty", "first-child", "last-child", "only-child", "first-of-type", "last-of-type", "only-of-type", "hover", "active", "focus", "focus-visible", "focus-within", "visited", "link", "any-link", "target", "checked", "disabled", "enabled", "required", "optional", "read-only", "read-write", "placeholder-shown", "indeterminate", "default", "scope", "defined"] {
+        for name in ["root", "empty", "first-child", "last-child", "only-child", "first-of-type", "last-of-type", "only-of-type", "hover", "active", "focus", "focus-visible", "focus-within", "visited", "link", "any-link", "target", "checked", "disabled", "enabled", "required", "optional", "read-only", "read-write", "placeholder-shown", "indeterminate", "default", "scope", "defined", "host"] {
             parse(&format!(":{name}"));
         }
     }

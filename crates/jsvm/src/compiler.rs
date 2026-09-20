@@ -32,6 +32,9 @@ struct Binding {
 #[derive(Default)]
 struct Scope {
     binds: Vec<Binding>,
+    /// The hidden binding holding the object of a `with` statement whose body
+    /// this scope is.
+    with_name: Option<Name>,
 }
 
 impl Scope {
@@ -166,6 +169,9 @@ pub struct Compiler<'a> {
     /// function declarations become properties of the global object, shared with
     /// every other script of the page (no TDZ for the lexical ones).
     pub global_scope: bool,
+    /// Whether any `with` statement was compiled (name lookups stay static otherwise).
+    any_with: bool,
+    with_count: u32,
 }
 
 type CResult<T> = Result<T, SyntaxErr>;
@@ -270,6 +276,8 @@ impl<'a> Compiler<'a> {
             funcs: vec![],
             exports: vec![],
             completion: false,
+            any_with: false,
+            with_count: 0,
             pat_ctx: None,
             global_scope: false,
         }
@@ -471,7 +479,60 @@ impl<'a> Compiler<'a> {
         self.resolve_in(fi, name)
     }
 
+    /// The `with` statements between a reference to `name` and the scope that
+    /// declares it (innermost first), as the hidden bindings holding their objects:
+    /// each is consulted at run time before the static binding.
+    fn with_chain(&self, name: &str) -> Vec<Name> {
+        let mut chain = Vec::new();
+        if !self.any_with || name == "this" || name == "new.target" || name.starts_with('%') || name.starts_with('#') {
+            return chain;
+        }
+        for f in self.funcs.iter().rev() {
+            for s in f.scopes.iter().rev() {
+                if s.find(name).is_some() {
+                    return chain;
+                }
+                if let Some(w) = &s.with_name {
+                    chain.push(w.clone());
+                }
+            }
+            if (!f.is_arrow() && name == "arguments" && f.kind != FuncKind::ClassInit) || f.self_name.as_deref() == Some(name) {
+                return chain;
+            }
+        }
+        chain
+    }
+
+    /// Emits the run-time `with` lookups for `name`: for each object in the chain
+    /// that has the name, `found` runs with that object on the stack; otherwise
+    /// `fallback` runs. Both must leave the same stack shape.
+    fn emit_with_lookup(&mut self, chain: &[Name], name: &str, pos: Pos, found: &dyn Fn(&mut Self, u32), fallback: &dyn Fn(&mut Self)) {
+        let c = self.str_const(name);
+        let end = self.new_label();
+        for w in chain {
+            let next = self.new_label();
+            self.load_name(w, pos);
+            self.emit_at(Op::WithHas(c), pos);
+            self.emit_jump(Op::JumpIfFalse(next));
+            self.load_name(w, pos);
+            found(self, c);
+            self.emit_jump(Op::Jump(end));
+            self.bind(next);
+        }
+        fallback(self);
+        self.bind(end);
+    }
+
     fn load_name(&mut self, name: &str, pos: Pos) {
+        let chain = self.with_chain(name);
+        if !chain.is_empty() {
+            self.emit_with_lookup(&chain, name, pos, &|c, k| { c.emit_at(Op::GetProp(k), pos); }, &|c| c.load_name_static(name, pos));
+            return;
+        }
+        self.load_name_static(name, pos)
+    }
+
+    fn load_name_static(&mut self, name: &str, pos: Pos) {
         match self.resolve(name) {
             Res::Local(s, _) => {
                 self.emit_at(Op::Load(s), pos);
@@ -499,6 +560,16 @@ impl<'a> Compiler<'a> {
 
     /// Stores TOS into a name (consumes it). `init` for declarations.
     fn store_name(&mut self, name: &str, pos: Pos, init: bool) {
+        let chain = if init { Vec::new() } else { self.with_chain(name) };
+        if !chain.is_empty() {
+            // [value] -> [] : obj.name = value through the binding object.
+            self.emit_with_lookup(&chain, name, pos, &|c, k| { c.emit(Op::Swap); c.emit_at(Op::SetProp(k), pos); c.emit(Op::Pop); }, &|c| c.store_name_static(name, pos, false));
+            return;
+        }
+        self.store_name_static(name, pos, init)
+    }
+
+    fn store_name_static(&mut self, name: &str, pos: Pos, init: bool) {
         match self.resolve(name) {
             Res::Local(s, kind) => {
                 if !init && kind == BKind::Const {
@@ -570,7 +641,7 @@ impl<'a> Compiler<'a> {
                 }
                 self.collect_vars_stmt(body, out, strict, false);
             }
-            StmtKind::While(_, b) | StmtKind::DoWhile(b, _) | StmtKind::Labeled(_, b) => {
+            StmtKind::While(_, b) | StmtKind::DoWhile(b, _) | StmtKind::Labeled(_, b) | StmtKind::With(_, b) => {
                 self.collect_vars_stmt(b, out, strict, false)
             }
             StmtKind::Block(b) => self.collect_vars(b, out, strict, false),
@@ -670,7 +741,7 @@ impl<'a> Compiler<'a> {
             for f in &funcs {
                 let name = f.name.clone().unwrap();
                 self.hoist_global(&name);
-                let idx = self.compile_function(f, Some(name.as_ref()))?;
+                let idx = self.compile_function_decl(f, name.as_ref())?;
                 self.emit(Op::Closure(idx));
                 let c = self.str_const(&name);
                 self.emit(Op::StoreGlobal(c));
@@ -692,7 +763,7 @@ impl<'a> Compiler<'a> {
         }
         for (f, slot) in funcs.into_iter().zip(slots) {
             let name = f.name.clone().unwrap();
-            let idx = self.compile_function(f, Some(name.as_ref()))?;
+            let idx = self.compile_function_decl(f, name.as_ref())?;
             self.emit(Op::Closure(idx));
             if !fn_top && !self.f().strict {
                 // Annex B var binding.
@@ -868,7 +939,19 @@ impl<'a> Compiler<'a> {
     // ------------------------------------------------------------ functions
     /// Compiles a function; returns its index in the current code's table.
     fn compile_function(&mut self, f: &Func, name: Option<&str>) -> CResult<u32> {
-        let code = self.compile_function_code(f, name, false)?;
+        let code = self.compile_function_code(f, name, false, true)?;
+        let fs = self.f();
+        fs.codes.push(code);
+        Ok((fs.codes.len() - 1) as u32)
+    }
+
+    /// A function *declaration*. Only a named function *expression* gets the
+    /// immutable self-binding in its own scope (ES2024 §15.2.5); a declaration's
+    /// name is an ordinary binding of the enclosing scope, so `function f() { f = 1 }`
+    /// reassigns it (silently when sloppy, `TypeError` when strict) instead of
+    /// writing to a constant.
+    fn compile_function_decl(&mut self, f: &Func, name: &str) -> CResult<u32> {
+        let code = self.compile_function_code(f, Some(name), false, false)?;
         let fs = self.f();
         fs.codes.push(code);
         Ok((fs.codes.len() - 1) as u32)
@@ -879,12 +962,13 @@ impl<'a> Compiler<'a> {
         f: &Func,
         name: Option<&str>,
         run_fields: bool,
+        self_binding: bool,
     ) -> CResult<Rc<Code>> {
         let mut fs = FState::new(f.kind, f.strict);
         fs.is_async = f.is_async;
         fs.is_generator = f.is_generator;
         fs.run_fields = run_fields;
-        if f.kind == FuncKind::Normal {
+        if f.kind == FuncKind::Normal && self_binding {
             fs.self_name = f.name.clone();
         }
         let fname = f.name.as_deref().or(name).unwrap_or("");
@@ -1094,6 +1178,23 @@ impl<'a> Compiler<'a> {
                 self.emit_at(Op::Throw, s.pos);
             }
             StmtKind::While(test, body) => self.compile_while(test, body, vec![])?,
+            StmtKind::With(object, body) => {
+                self.compile_expr(object)?;
+                self.emit_at(Op::ToObject, object.pos);
+                self.any_with = true;
+                self.with_count += 1;
+                let hidden: Name = Rc::from(format!("%with{}", self.with_count));
+                self.push_scope();
+                let slot = self.declare(&hidden, BKind::Hidden, s.pos)?;
+                self.emit(Op::Init(slot));
+                // The body's scope is separate so the hidden binding is found
+                // before the `with` marker when walking outwards.
+                self.push_scope();
+                self.f().scopes.last_mut().unwrap().with_name = Some(hidden);
+                self.compile_stmt(body)?;
+                self.pop_scope();
+                self.pop_scope();
+            }
             StmtKind::DoWhile(body, test) => self.compile_do_while(body, test, vec![])?,
             StmtKind::For {
                 init,
@@ -1719,7 +1820,7 @@ impl<'a> Compiler<'a> {
             if let StmtKind::Func(f) = &s.kind {
                 let name = f.name.clone().unwrap();
                 let slot = self.declare(&name, BKind::Let, f.pos)?;
-                let idx = self.compile_function(f, Some(&name))?;
+                let idx = self.compile_function_decl(f, &name)?;
                 self.emit(Op::Closure(idx));
                 self.emit(Op::Init(slot));
             }
@@ -2297,6 +2398,14 @@ impl<'a> Compiler<'a> {
                 }
                 Ok(true)
             }
+            ExprKind::Ident(n) if !self.with_chain(n).is_empty() => {
+                // A function found on a `with` object is called with it as `this`.
+                let chain = self.with_chain(n);
+                let pos = callee.pos;
+                let name = n.clone();
+                self.emit_with_lookup(&chain, n, pos, &|c, k| { c.emit_at(Op::GetPropKeep(k), pos); }, &|c| { c.emit(Op::Undef); c.load_name_static(&name, pos); });
+                Ok(true)
+            }
             _ => {
                 self.compile_expr(callee)?;
                 Ok(false)
@@ -2371,8 +2480,13 @@ impl<'a> Compiler<'a> {
             UnOp::Typeof => {
                 if let ExprKind::Ident(n) = &arg.kind {
                     if let Res::Global = self.resolve(n) {
+                        let chain = self.with_chain(n);
                         let c = self.str_const(n);
-                        self.emit_at(Op::TypeofGlobal(c), pos);
+                        if chain.is_empty() {
+                            self.emit_at(Op::TypeofGlobal(c), pos);
+                        } else {
+                            self.emit_with_lookup(&chain, n, pos, &|s, k| { s.emit_at(Op::GetProp(k), pos); s.emit_at(Op::Typeof, pos); }, &|s| { s.emit_at(Op::TypeofGlobal(c), pos); });
+                        }
                         return Ok(());
                     }
                 }
@@ -2876,7 +2990,7 @@ impl<'a> Compiler<'a> {
                 &default_ctor
             }
         };
-        let code = self.compile_function_code(ctor, Some(&display), has_instance)?;
+        let code = self.compile_function_code(ctor, Some(&display), has_instance, true)?;
         let code = {
             // Rename to the display name (class expressions get inferred names).
             let mut code = Rc::try_unwrap(code).ok().expect("fresh code");

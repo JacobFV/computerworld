@@ -57,11 +57,27 @@ pub struct Media {
     pub reduced_motion: bool,
     pub media_type: MediaType,
     pub display_mode: DisplayMode,
+    /// Which font families count as installed on the device.
+    pub fonts: FontEnvironment,
+}
+
+/// The fonts installed on the device a page renders on, which decides where a
+/// `font-family` list lands when it names a face the device does not have.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum FontEnvironment {
+    /// Every bundled face is installed (the world's browser).
+    #[default]
+    Bundled,
+    /// A stock Linux desktop, the machine the Chromium parity dumps were made on:
+    /// only the Liberation and DejaVu families and fontconfig's metric aliases for
+    /// them (Arial, Helvetica, Times New Roman, Courier New); every other family
+    /// falls through to the list's generic.
+    LinuxBaseline,
 }
 
 impl Default for Media {
     fn default() -> Self {
-        Media { width_px: 1280, height_px: 800, dppx: Number::from_i64(1), color_scheme: ColorScheme::Light, hover: HoverCapability::Hover, pointer: PointerCapability::Fine, reduced_motion: false, media_type: MediaType::Screen, display_mode: DisplayMode::Browser }
+        Media { width_px: 1280, height_px: 800, dppx: Number::from_i64(1), color_scheme: ColorScheme::Light, hover: HoverCapability::Hover, pointer: PointerCapability::Fine, reduced_motion: false, media_type: MediaType::Screen, display_mode: DisplayMode::Browser, fonts: FontEnvironment::Bundled }
     }
 }
 
@@ -997,7 +1013,9 @@ mod tests {
         assert_eq!(ev("display: grid"), None);
         assert_eq!(ev("selector(a:hover)"), Some(true));
         assert_eq!(ev("selector(a::first-line)"), Some(false));
-        assert_eq!(ev("selector(a:host)"), Some(false));
+        // `:host` is a valid selector (it just never matches a document tree).
+        assert_eq!(ev("selector(a:host)"), Some(true));
+        assert_eq!(ev("selector(a:host-context(x))"), Some(false));
         assert_eq!(ev("selector(:has(> a))"), Some(true));
         assert_eq!(ev("not selector(a || b)"), Some(true));
         assert_eq!(ev("font-tech(color-COLRv1)"), Some(false));

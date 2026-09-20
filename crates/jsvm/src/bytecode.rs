@@ -104,6 +104,11 @@ pub enum Op {
     Le,
     Ge,
     In,
+    /// `with` lookup: obj -> bool, whether the binding object has the name
+    /// (constant) and its `Symbol.unscopables` does not block it.
+    WithHas(u32),
+    /// value -> object (`ToObject`, the `with` statement's binding object).
+    ToObject,
     InstanceOf,
     Neg,
     Plus,
