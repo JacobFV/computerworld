@@ -181,12 +181,14 @@ dependencies = [
  "cw-sheet",
  "cw-sql",
  "cw-video",
+ "cw-web",
  "jpeg-decoder",
  "png",
  "proptest",
  "serde",
  "serde_json",
  "sha2",
+ "url",
 ]
 
 [[package]]
@@ -610,6 +612,7 @@ dependencies = [
  "png",
  "serde",
  "serde_json",
+ "url",
 ]
 
 [[package]]
@@ -772,6 +775,7 @@ dependencies = [
  "png",
  "serde",
  "serde_json",
+ "url",
 ]
 
 [[package]]
