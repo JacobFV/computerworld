@@ -23,7 +23,7 @@ jobs:
         run: |
           node scripts/build-docs.mjs --check
           cargo doc --no-deps -p computerworld --lib
-  bindings-and-browser:
+  bindings:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,20 +47,11 @@ jobs:
         run: |
           node examples/javascript/computer-interaction.mjs --output target/javascript-demo
           python examples/python/computer_interaction.py --output target/python-demo --compare target/javascript-demo
-      - run: node examples/browser/build.mjs
-      - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
-      - run: node scripts/test-browser.mjs
-      - run: node scripts/test-desktops.mjs
-      - run: node scripts/test-desktop-overhaul.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: binding-and-browser-evidence
+          name: binding-evidence
           path: |
             target/binding-checks/
             target/javascript-demo/
             target/python-demo/
-            artifacts/overhaul-verification.json
-            artifacts/browser-demo.png
-            artifacts/browser-verification.json

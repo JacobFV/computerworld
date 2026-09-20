@@ -1,7 +1,7 @@
 // Live machines on the page. One Wasm module, a world per scene, one session per machine
 // and a canvas each. Nothing is fetched after boot: every frame is rendered here, in this tab.
-import init, { World, installFont, fontPackStatus } from './demo/pkg/web/computerworld.js';
-import definition from './demo/examples/browser/world-definition.js';
+import init, { World, installFont, fontPackStatus } from './pkg/computerworld.js';
+import definition from './world-definition.js';
 
 const SEED = 2026;
 const actions = ['terminal.v1', 'browser.v1', 'keyboard.v1', 'pointer.v1', 'application.v1', 'filesystem.v1', 'http.v1'];
@@ -166,7 +166,7 @@ export async function boot(note) {
     const first = new Set(['noto-emoji.ttf', 'noto-color-emoji.ttf', 'noto-sans-sc.ttf', 'noto-sans-kr.ttf']);
     const fetchFonts = files => Promise.all(files.map(async f => {
       try {
-        const r = await fetch(new URL(`./demo/pkg/web/${f.path}`, import.meta.url));
+        const r = await fetch(new URL(`./pkg/${f.path}`, import.meta.url));
         if (r.ok) { installFont(new Uint8Array(await r.arrayBuffer())); redraws.forEach(redraw => redraw()); }
       } catch (error) { console.warn('font pack', f.file, error); }
     }));

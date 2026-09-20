@@ -3,17 +3,18 @@
 A single static page: no framework, no build step, no third-party requests. Every screen
 on it is a running machine — the simulator downloads when the page loads and each scene
 boots into it as the slideshow reaches it, with no button to press.
-`.github/workflows/pages.yml` deploys it, builds the Wasm bundle and the world
-definition into `site/demo/` for the page to import, and builds the documentation into
-`site/docs/`: `scripts/build-docs.mjs` turns `docs/*.md` into pages with the guides in
-reading order (the order is in the script), and `cargo doc` supplies the Rust reference
-under `site/docs/api/rust/`. Both directories are generated and git-ignored.
+`.github/workflows/pages.yml` deploys it: it builds the Wasm bundle into `site/pkg/`
+for `live.js` to import, and the documentation into `site/docs/`, where
+`scripts/build-docs.mjs` turns `docs/*.md` into pages with the guides in reading order
+(the order is in the script) and `cargo doc` supplies the Rust reference under
+`site/docs/api/rust/`. Both directories are generated and git-ignored.
+`world-definition.js` — the world the machines run in — is generated too, but checked in:
+`scripts/build-live-world.mjs` writes it from `worlds/company-2026/world.json`, and
+`scripts/build-content.sh` runs that alongside the other generators.
 
 ```sh
 # Preview (the machines need the Wasm bundle built once)
-bash scripts/build-wasm.sh && node examples/browser/build.mjs
-mkdir -p site/demo/examples site/demo/pkg
-cp -r examples/browser site/demo/examples/browser && cp -r pkg/web site/demo/pkg/web
+bash scripts/build-wasm.sh && cp -r pkg/web site/pkg
 node scripts/build-docs.mjs
 cargo doc --no-deps -p computerworld --lib && cp -r target/doc site/docs/api/rust
 node scripts/serve-site.mjs 8000
@@ -40,7 +41,7 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/usr/bin/google-chrom
 
 `site/media/scenes/<machine>.jpg` is what a machine shows until it is running, and all it
 shows to a browser that cannot run the simulator. The script makes them by booting the
-page itself, so a still is always a frame the machine really draws. `site/demo/` is
+page itself, so a still is always a frame the machine really draws. `site/pkg/` is
 generated and git-ignored.
 
 ## The slideshow in someone else's page

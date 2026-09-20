@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### The project
+
+- **The world console is gone.** `examples/browser/` — the multi-device console page, its
+  owner-only trace and observation inspector and the `window.computerworldDemo` handle —
+  has been removed, along with the `site/demo/` copy of it, the `browser-demo` release
+  archive and the three Playwright suites that drove it (`scripts/test-browser.mjs`,
+  `test-desktops.mjs`, `test-desktop-overhaul.mjs`). The project site's home page already
+  shows live machines, and an owner console is not part of the product. The world those
+  machines run in is still generated: `scripts/build-live-world.mjs` (formerly
+  `examples/browser/build.mjs`) now writes `site/world-definition.js`, and the Wasm bundle
+  the page imports is assembled at `site/pkg/`. The engine half of the browser suite —
+  every machine in that world runs a command, every declared service answers a page, and
+  nothing outside the world is reachable — is now
+  `crates/computerworld/tests/site_world.rs`.
+
 ### Rendering
 
 - **Web faces.** The renderer bundles thirteen more families in regular, bold, italic

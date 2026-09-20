@@ -11,10 +11,12 @@ use cw_protocol::{
 #[cfg(test)]
 use cw_scene::Primitive;
 use cw_scene::{AxNode, Scene};
+mod omnibox;
 mod page_scene;
 mod script_driver;
 pub mod scripted;
 pub mod web_document;
+pub use omnibox::{omnibox, search_url, Typed, DEFAULT_SEARCH_ENGINE};
 pub use scripted::{ConsoleEntry, PendingNav};
 pub use web_document::{Inputs, Outcome, SheetSource, WebDocument};
 use serde::{Deserialize, Serialize};
@@ -417,6 +419,15 @@ pub struct BrowserState {
     pub viewport: Option<(u32, u32)>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub next_tab_id: u64,
+    /// Where the omnibox sends what turned out not to be an address (`navigate`).
+    /// `%s` stands for the query, urlencoded; a template with no `%s` has the query
+    /// appended. A world without a google.com points this at the engine it has, from
+    /// its definition or at construction (`with_search_engine`).
+    #[serde(
+        default = "default_search_engine",
+        skip_serializing_if = "is_default_search_engine"
+    )]
+    pub search_engine: String,
     /// Show every HTML document through a realm, script or not (tests compare the
     /// two paths).
     #[serde(skip)]
@@ -427,6 +438,14 @@ pub struct BrowserState {
     /// Navigations a document queued while it loaded, performed once it is committed.
     #[serde(skip)]
     load_navs: Vec<PendingNav>,
+}
+fn default_search_engine() -> String {
+    DEFAULT_SEARCH_ENGINE.to_owned()
+}
+/// A browser left on the default engine writes nothing, so a snapshot taken before
+/// the omnibox existed round-trips byte for byte.
+fn is_default_search_engine(engine: &str) -> bool {
+    engine == DEFAULT_SEARCH_ENGINE
 }
 /// The zoom levels a browser steps through, in percent.
 pub const ZOOM_LEVELS: [u16; 11] = [50, 75, 85, 100, 115, 125, 150, 175, 200, 250, 300];
@@ -445,6 +464,7 @@ impl Default for BrowserState {
             entropy_scope: String::new(),
             viewport: None,
             next_tab_id: 0,
+            search_engine: DEFAULT_SEARCH_ENGINE.to_owned(),
             always_script: false,
             nav_depth: 0,
             load_navs: Vec::new(),
@@ -611,7 +631,54 @@ impl BrowserState {
         }
         Ok(parsed)
     }
-    pub fn navigate<F>(&mut self, url: &str, transport: &mut F) -> Result<()>
+    /// A constructor for a world whose search engine is not google.com.
+    pub fn with_search_engine(engine: impl Into<String>) -> Self {
+        Self {
+            search_engine: engine.into(),
+            ..Self::default()
+        }
+    }
+    /// Point the omnibox at another engine; an empty template means the default.
+    pub fn set_search_engine(&mut self, engine: &str) {
+        let engine = if engine.trim().is_empty() {
+            DEFAULT_SEARCH_ENGINE
+        } else {
+            engine
+        };
+        if self.search_engine != engine {
+            self.search_engine = engine.to_owned();
+        }
+    }
+    /// Go where a line of typed text leads, the way an address bar does: an explicit
+    /// scheme as it stands, a host-shaped line as `https://` plus that line, and
+    /// anything else — or a host that does not resolve — as a search on
+    /// `search_engine`. See [`omnibox`] for the rules in order.
+    ///
+    /// A caller that already has a URL and wants to hear about a bad one should use
+    /// [`BrowserState::navigate_url`].
+    pub fn navigate<F>(&mut self, text: &str, transport: &mut F) -> Result<()>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        match omnibox(text, &self.search_engine) {
+            Typed::Url(url) | Typed::Search(url) => self.navigate_url(&url, transport),
+            Typed::Host { url, search } => {
+                // The name is only a guess until the world's DNS confirms it; when it
+                // does not, what was typed was a query all along. Chrome does the same,
+                // and the tab never flashes an error page on the way.
+                let target = self.resolve(&url)?;
+                let request = HttpRequest::get(target.as_str());
+                match self.request_with(request, transport, false, false, false) {
+                    Err(error) if error.code == "dns" => self.navigate_url(&search, transport),
+                    other => other,
+                }
+            }
+        }
+    }
+    /// Go to `url`, which is a URL: absolute, or relative to the page on show. A URL
+    /// that is not one, or whose host does not resolve, is an error — nothing is
+    /// searched for. Typed text belongs in [`BrowserState::navigate`].
+    pub fn navigate_url<F>(&mut self, url: &str, transport: &mut F) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
@@ -689,7 +756,7 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
-        self.request_with(request, transport, replace, replace)
+        self.request_with(request, transport, replace, replace, true)
     }
     /// Whether the page on show wants attention at `now`: a refresh that is due, or one
     /// not yet stamped. Read-only, so a caller can skip taking the state mutably.
@@ -742,7 +809,7 @@ impl BrowserState {
         };
         let mut request = HttpRequest::get(url);
         request.headers.insert(REFRESH_HEADER.into(), "1".into());
-        let result = self.request_with(request, transport, true, false);
+        let result = self.request_with(request, transport, true, false, true);
         let position = self.tab().position;
         let tab = self.tab_mut();
         for (id, value) in fields {
@@ -781,12 +848,16 @@ impl BrowserState {
             })
             .unwrap_or_default()
     }
+    /// `name_error_page` is false only for the omnibox's first try at a host it is
+    /// not sure of: a name that does not resolve must leave no trace, because what was
+    /// typed becomes a search instead.
     fn request_with<F>(
         &mut self,
         mut request: HttpRequest,
         transport: &mut F,
         replace: bool,
         fresh_images: bool,
+        name_error_page: bool,
     ) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
@@ -811,8 +882,10 @@ impl BrowserState {
                     // A host that cannot be reached still gives the tab a page, the
                     // way Chrome's "This site can't be reached" does; the action
                     // itself still fails, so the actor learns the request never landed.
-                    if let Some(page) = unreachable_page(&url, &error) {
-                        self.show(url.to_string(), page, 0, replace);
+                    if name_error_page || error.code != "dns" {
+                        if let Some(page) = unreachable_page(&url, &error) {
+                            self.show(url.to_string(), page, 0, replace);
+                        }
                     }
                     return Err(error);
                 }
@@ -1817,6 +1890,116 @@ mod tests {
             },
         ];
         p
+    }
+    /// A transport that answers only the hosts it was given, and says `dns` to the
+    /// rest, exactly as the simulated network does for a name nobody registered.
+    fn world_of<'a>(hosts: &'a [&'a str]) -> impl FnMut(HttpRequest) -> Result<HttpResponse> + 'a {
+        move |r: HttpRequest| {
+            let url = Url::parse(&r.url).unwrap();
+            let host = url.host_str().unwrap_or_default().to_owned();
+            if hosts.contains(&host.as_str()) {
+                let mut page = Page::new(format!("{host}{}", url.path()));
+                page.elements = vec![PageElement::Text {
+                    id: "body".into(),
+                    text: r.url.clone(),
+                }];
+                HttpResponse::page(&page)
+            } else {
+                Err(SimError::new("dns", format!("no such host {host}")))
+            }
+        }
+    }
+    #[test]
+    fn typing_a_host_without_a_scheme_goes_to_https() {
+        let mut b = BrowserState::default();
+        let mut http = world_of(&["github.com", "intranet.internal", "10.0.1.10", "localhost"]);
+        for (typed, landed) in [
+            ("github.com", "https://github.com/"),
+            ("github.com/northstar/atlas", "https://github.com/northstar/atlas"),
+            ("intranet.internal", "https://intranet.internal/"),
+            ("10.0.1.10", "https://10.0.1.10/"),
+            // A single label is a host when, and only when, the world resolves it.
+            ("localhost", "https://localhost/"),
+        ] {
+            b.navigate(typed, &mut http).unwrap();
+            assert_eq!(b.url(), Some(landed), "typed {typed}");
+        }
+    }
+    #[test]
+    fn typing_something_that_is_not_an_address_searches_for_it() {
+        let mut b = BrowserState::default();
+        let mut http = world_of(&["google.com", "github.com", "intranet"]);
+        for (typed, landed) in [
+            (
+                "deterministic simulation",
+                "https://google.com/search?q=deterministic+simulation",
+            ),
+            (
+                "what is a \"world\"? c++ & rust!",
+                "https://google.com/search?q=what+is+a+%22world%22%3F+c%2B%2B+%26+rust%21",
+            ),
+            // `foo.bar` is host-shaped, so it is tried; it does not resolve, so the
+            // tab lands on the search instead of an error page.
+            ("foo.bar", "https://google.com/search?q=foo.bar"),
+            // A bare word that does not resolve, and one that does.
+            ("unregistered", "https://google.com/search?q=unregistered"),
+            ("intranet", "https://intranet/"),
+            // A leading `?` searches for a host that would otherwise have been visited.
+            ("?github.com", "https://google.com/search?q=github.com"),
+        ] {
+            b.navigate(typed, &mut http).unwrap();
+            assert_eq!(b.url(), Some(landed), "typed {typed}");
+        }
+    }
+    #[test]
+    fn a_name_that_does_not_resolve_leaves_no_error_page_behind() {
+        let mut b = BrowserState::default();
+        let mut http = world_of(&["google.com", "start.test"]);
+        b.navigate("http://start.test/", &mut http).unwrap();
+        b.navigate("nowhere.test", &mut http).unwrap();
+        assert_eq!(b.url(), Some("https://google.com/search?q=nowhere.test"));
+        // One step back is the page we started on: the failed guess never happened.
+        b.back(&mut http).unwrap();
+        assert_eq!(b.url(), Some("http://start.test/"));
+    }
+    #[test]
+    fn a_url_with_a_scheme_is_never_quietly_searched_for() {
+        let mut b = BrowserState::default();
+        let mut http = world_of(&["google.com"]);
+        // A programmatic caller hears about a host that is not there...
+        assert_eq!(
+            b.navigate("https://nowhere.test/", &mut http)
+                .unwrap_err()
+                .code,
+            "dns"
+        );
+        // ...and about a URL the browser will not serve.
+        assert!(b.navigate("file:///etc/passwd", &mut |_| panic!()).is_err());
+        // `navigate_url` never searches, even for text that would have been a query.
+        let mut fresh = BrowserState::default();
+        assert!(fresh
+            .navigate_url("not a url at all", &mut |_| panic!())
+            .is_err());
+        assert!(fresh.navigate_url("github.com", &mut |_| panic!()).is_err());
+    }
+    #[test]
+    fn the_search_engine_is_configurable_and_is_kept_in_the_state() {
+        let mut b = BrowserState::with_search_engine("https://duckduckgo.com/?q=%s");
+        let mut http = world_of(&["duckduckgo.com"]);
+        b.navigate("hash order rust", &mut http).unwrap();
+        assert_eq!(b.url(), Some("https://duckduckgo.com/?q=hash+order+rust"));
+        // It survives a snapshot.
+        let json = serde_json::to_value(&b).unwrap();
+        assert_eq!(json["search_engine"], "https://duckduckgo.com/?q=%s");
+        let restored: BrowserState = serde_json::from_value(json).unwrap();
+        assert_eq!(restored.search_engine, b.search_engine);
+        // A browser on the default engine writes nothing, so a snapshot taken before
+        // the omnibox existed round-trips byte for byte.
+        let plain = BrowserState::default();
+        let json = serde_json::to_value(&plain).unwrap();
+        assert!(json.get("search_engine").is_none(), "{json}");
+        let restored: BrowserState = serde_json::from_value(json).unwrap();
+        assert_eq!(restored.search_engine, DEFAULT_SEARCH_ENGINE);
     }
     #[test]
     fn an_unreachable_host_shows_an_error_page_and_the_action_still_fails() {

@@ -32,6 +32,9 @@ sha2.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 cw-network = { path = "../network" }
+# `internet_links` reads the HTML the migrated sites now serve, to follow their links.
+cw-web = { path = "../web" }
+url.workspace = true
 cw-cad = { path = "../cad" }
 cw-applications = { path = "../applications" }
 cw-raster = { path = "../raster" }

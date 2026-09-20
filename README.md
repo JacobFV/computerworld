@@ -131,7 +131,6 @@ cargo test --workspace
 
 bash scripts/test-all.sh                     # native tests, boundary checks, lint, Wasm build
 bash scripts/smoke-bindings.sh               # Node and Python agree on checkpoints and hashes
-node scripts/test-browser.mjs                # real Chromium, episode networking blocked
 ```
 
 Python from source (`pip install .`, Rust required) and the Wasm build

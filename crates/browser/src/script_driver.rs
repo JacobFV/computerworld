@@ -313,11 +313,11 @@ impl BrowserState {
             PendingNav::Navigate { url, new_tab } => {
                 if new_tab {
                     self.new_tab();
-                    self.navigate(&url, transport)
+                    self.navigate_url(&url, transport)
                 } else if self.url() == Some(url.as_str()) {
                     self.reload(transport)
                 } else {
-                    self.navigate(&url, transport)
+                    self.navigate_url(&url, transport)
                 }
             }
             PendingNav::Submit { action, method, enctype, data } => match self.resolve(&action) {

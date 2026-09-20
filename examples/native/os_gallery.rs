@@ -17,7 +17,7 @@ impl Gallery {
     fn new(theme: &str, out: &str) -> Self {
         let mut definition = reference_world();
         definition.metadata["desktop_themes"] = json!({MACHINE: format!("virtual-{theme}")});
-        // Native applications, as in the browser demo world: `url` is the service each
+        // Native applications, as in the live site world: `url` is the service each
         // one talks to, not a page the browser is sent to.
         definition.metadata["desktop_apps"] = json!([
             {"id":"mail","label":"Mail","kind":"native","url":"http://mail.internal/","icon":"mail"},

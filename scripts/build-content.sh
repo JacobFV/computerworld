@@ -6,4 +6,4 @@ cd "$(dirname "$0")/.."
 node scripts/build-world.mjs
 node scripts/build-home.mjs
 node scripts/build-search-index.mjs
-node examples/browser/build.mjs
+node scripts/build-live-world.mjs

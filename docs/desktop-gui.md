@@ -45,6 +45,17 @@ order determine which window receives input. Browser windows keep independent
 navigation state. Window geometry, focus, panels and pointer capture are included
 in session snapshots.
 
+A browser window's address bar is an omnibox, and its placeholder ("Search or enter
+address") is the truth: clicking `shell:address`, typing and pressing Enter resolves
+what was typed the way Chrome does. `github.com` goes to `https://github.com/`,
+`localhost:8080` and `10.0.1.10` to their hosts, `?github.com` and
+`deterministic simulation` to the default search engine, and a scheme-less name the
+world's DNS does not know quietly becomes a search rather than an error page. The
+rules in full, and how a world names a different search engine
+(`metadata.search_engine`), are in [action families](action-families.md#the-omnibox);
+the same resolution serves the agent-facing `browser.v1 navigate`, so both entry
+points behave identically.
+
 Nineteen window kinds are launchable. Four are built into `DesktopState::launch`:
 `terminal` (output and input), `files`/`file_manager` (tabbed filesystem navigation
 with click-to-select and double-click-to-open), `editor`/`text_editor` (saved from its menus),
@@ -398,12 +409,17 @@ HTML/JavaScript are not implemented. Rendering detail does not imply those featu
 
 ## Verification
 
-- `scripts/test-desktop-overhaul.mjs`: actual Chromium pointer drag/resize, stacking,
-  window controls, mobile gestures, service launchers and screenshots.
-- `scripts/test-desktops.mjs`: profile interaction, transformed browser clicks,
-  keyboard input, snapshots and offline operation.
+- `crates/applications/src/lib.rs` unit tests: pointer window dragging and capture,
+  every resize edge, per-window maximize/restore, snap tear-off, minimize and
+  most-recently-used focus.
 - `crates/computerworld/tests/desktop.rs` and `desktop_extensions.rs`: shell behavior,
-  actor/install isolation and configured service apps.
+  five distinct and reproducible profile shells, the address bar and transformed page
+  hit targets, actor/install isolation and configured service apps.
+- `crates/computerworld/tests/phone_navigation.rs`: the iOS home indicator and home
+  screen pages, the App Library, and Android's back/home/recents buttons, each driven
+  by pointer events aimed at what the scene paints.
+- `crates/computerworld/tests/native_apps.rs`: a native application opens in its own
+  window and never in the browser, and survives a snapshot round trip.
 - `crates/render/tests/wasm-gui.cjs`: native/Wasm raster parity.
 - `scripts/smoke-desktop-pixels.cjs` plus `examples/python/desktop_pixels.py`: portable
   Node/Python desktop checkpoints and RGBA comparisons.

@@ -48,7 +48,7 @@ optimized copy is; the file on disk is untouched.
 
 ## The sample media
 
-Each machine's media folder is seeded (by `examples/browser/build.mjs`) with five files
+Each machine's media folder is seeded (by `scripts/build-live-world.mjs`) with five files
 the engine generates deterministically in `cw_video::samples` and checks in under
 `worlds/company-2026/files`: `Countdown.apng` (a 3 s film-leader countdown), `Color
 Bars.apng` (2 s of 75% bars with a moving marker), `Sunset.apng` (3 s), `Countdown

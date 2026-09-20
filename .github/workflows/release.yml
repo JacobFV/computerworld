@@ -114,7 +114,6 @@ jobs:
       - name: Clear release outputs restored from the cache
         run: rm -rf target/release-assets target/release-unpacked target/release-node-evidence
       - run: bash scripts/build-wasm.sh
-      - run: node examples/browser/build.mjs
       - run: python scripts/package-release.py
       - name: Pack the npm package, install it in an empty project and run a machine from it
         run: python scripts/package-npm.py
@@ -124,26 +123,13 @@ jobs:
           tar -xzf target/release-assets/*-wasm-node.tar.gz -C target/release-unpacked
           node -e "const fs=require('fs'); const path=require('path'); const dir=fs.readdirSync('target/release-unpacked').find(p=>p.endsWith('-wasm-node')); const root=path.resolve('target/release-unpacked',dir); const pkg=require(path.join(root,'package.json')); const wasm=require(path.join(root,'computerworld.js')); require('assert').strictEqual(wasm.engineVersion(),pkg.version); console.log('Wasm engine version:',wasm.engineVersion());"
           node target/release-unpacked/*/examples/javascript/computer-interaction.mjs --output target/release-node-evidence
-      - run: npm install --no-save playwright
-      - run: npx playwright install --with-deps chromium
-      - name: Execute the archived standalone browser demo offline
-        run: |
-          python -c "from pathlib import Path; import zipfile; zipfile.ZipFile(next(Path('target/release-assets').glob('*-browser-demo.zip'))).extractall('target/release-unpacked')"
-          DEMO_ROOT=$(find target/release-unpacked -maxdepth 1 -type d -name '*-browser-demo')
-          mkdir -p "$DEMO_ROOT/scripts"
-          cp scripts/test-browser.mjs "$DEMO_ROOT/scripts/test-browser.mjs"
-          node "$DEMO_ROOT/scripts/test-browser.mjs"
-      - run: node scripts/test-desktops.mjs
-      - run: node scripts/test-desktop-overhaul.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: wasm-and-browser-release-assets
+          name: wasm-release-assets
           path: target/release-assets/*
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: wasm-browser-release-evidence
-          path: |
-            target/release-node-evidence/*.json
-            artifacts/*verification.json
+          name: wasm-release-evidence
+          path: target/release-node-evidence/*.json

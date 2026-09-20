@@ -288,7 +288,7 @@ CBDT bitmap build would be 10.7 MB), Noto Sans SC bold (3,518,020 / 2,219,356) a
 bold (2,365,908 / 872,952). The locale faces hold only glyphs drawn differently from
 Noto Sans SC within each locale's common set: 2,573 for Traditional Chinese (624,023
 gzip), 1,772 for Japanese (355,927) and 2,832 for Korean hanja (608,669), each again in
-bold. None of it is fetched unless a page draws those glyphs; the browser demo waits
+bold. None of it is fetched unless a page draws those glyphs; the project site waits
 at boot only for regular SC and KR and the two emoji faces (6.4 MB gzip, of which the
 colour emoji are 2.8 MB) and fetches the rest behind them.
 

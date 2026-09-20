@@ -35,7 +35,7 @@ createServer(async (request, response) => {
     response.end(bytes);
   } catch {
     response.writeHead(404, {'content-type': 'text/plain'});
-    response.end('Not found. Build the machines first: bash scripts/build-wasm.sh && node examples/browser/build.mjs\n');
+    response.end('Not found. Build the machines first: bash scripts/build-wasm.sh && node scripts/build-live-world.mjs\n');
   }
 }).listen(port, '127.0.0.1', () => {
   console.log(`site → http://localhost:${port}/`);

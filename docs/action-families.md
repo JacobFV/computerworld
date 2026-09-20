@@ -104,7 +104,7 @@ window keeps its own history and tabs.
 
 | Op | Payload | Notes |
 |---|---|---|
-| `navigate` | `{"url": string}` | Performs a real simulated HTTP fetch |
+| `navigate` | `{"url": string}` | What a person types in the address bar, not strictly a URL: resolved through the omnibox below, then fetched over the simulated network |
 | `back` / `forward` / `reload` | `{}` | History moves re-fetch |
 | `fill` | `{"id": string, "value": string}` | Sets a form field and focuses it |
 | `submit` | `{"id": string}` | Submits the named form |
@@ -113,6 +113,34 @@ window keeps its own history and tabs.
 | `new_tab` | `{}` | |
 | `switch_tab` / `close_tab` | `{"tab": u64}` | Index |
 | `scroll` | `{"y": i64}`, or `{"row": string, "x": i64}` for a shelf that scrolls sideways | Clamped to `0..=i32::MAX` |
+
+#### The omnibox
+
+`navigate`, and Enter in a focused address bar, take a line of typed text and read it
+the way Chrome's omnibox does, in this order:
+
+1. A leading `?` forces a search: `?github.com` searches for `github.com`.
+2. An explicit scheme is honoured as typed. `https://github.com/northstar/atlas` is
+   fetched as it stands, and `file:///etc/passwd` is refused with an error rather
+   than quietly searched for — a programmatic caller that passes a bad URL hears
+   about it.
+3. Text shaped like a host becomes `https://` plus that text: `github.com`,
+   `github.com/northstar/atlas`, `intranet.internal`, `10.0.1.10`, `localhost:8080`,
+   `mail.google.com/threads/3`. Host-shaped means a dotted name whose last label is
+   shaped like a TLD, an IP literal, a name with an explicit port, or a single label
+   that the world's DNS resolves — so `intranet` works where `intranet` is a real
+   name. `foo.bar` is host-shaped; `foo bar` is not, and neither is `3.14`, `v1.2` or
+   `alice@northwind.example`.
+4. Anything else is a search on the default engine:
+   `https://google.com/search?q=<urlencoded>`.
+5. A host-shaped line whose name does not resolve becomes a search after all, so a
+   mistyped query never lands on an error page. A name that resolves but refuses the
+   connection still shows the error page, because that host really is there.
+
+The default engine is a per-browser template (`%s` stands for the urlencoded query);
+a world states its own in `metadata.search_engine`, so a world with no google.com
+points at the engine it has. It is part of the browser's serialised state and is
+written only when it is not the default, so older snapshots load unchanged.
 
 Any other op is `invalid`. Note the cross-family gate: `application.v1 launch` of
 kind `browser`, `keyboard.v1 key` of `Enter` in a focused address bar, and pointer

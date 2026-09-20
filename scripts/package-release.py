@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package already-built Wasm bindings and the standalone browser demo."""
+"""Package the already-built Wasm bindings for release."""
 import argparse
 import json
 from pathlib import Path
@@ -7,7 +7,6 @@ import shutil
 import subprocess
 import tarfile
 import tomllib
-import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
@@ -73,18 +72,5 @@ World handles are privileged; give acting agents only configured environment han
     with tarfile.open(out / f'{name}.tar.gz', 'w:gz') as archive:
         archive.add(package, arcname=name)
 
-name = f'computerworld-{version}-browser-demo'
-demo = staging / name
-(demo / 'examples').mkdir(parents=True)
-shutil.copytree(ROOT / 'examples/browser', demo / 'examples/browser', ignore=shutil.ignore_patterns('.openai'))
-shutil.copytree(ROOT / 'pkg/web', demo / 'pkg/web')
-shutil.copy(ROOT / 'LICENSE', demo / 'LICENSE')
-(demo / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-(demo / 'index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=examples/browser/"><a href="examples/browser/">Open Computerworld</a>\n', encoding='utf-8')
-(demo / 'README.md').write_text(f'# Computerworld {version} browser demo\n\nRun `python -m http.server 8000` in this directory and open http://localhost:8000/.\nThe HTTP server serves static files only. Simulation runs entirely in your browser via Rust/Wasm.\nNo Node installation, simulation backend, API key, or real outbound network access is required.\nSource commit: `{commit}`. See pkg/web/notices/ for third-party licenses.\n', encoding='utf-8')
-with zipfile.ZipFile(out / f'{name}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-    for file in sorted(demo.rglob('*')):
-        if file.is_file():
-            archive.write(file, file.relative_to(staging))
 (out / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
 print(json.dumps(dict(output=str(out), **manifest), indent=2))

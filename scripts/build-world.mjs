@@ -28,7 +28,7 @@ const BUILD_ONLY = ['search_entries', 'authority_overrides', 'network_node'];
 // name by hand, so a new site resolves without depending on the runtime's auto-add.
 /// What each reference computer is, which decides what its shell shows (a laptop and a
 /// phone report a battery; a desktop computer and a server have none). Declared here so
-/// the world and every build from it (the browser demo adds its phones) say the same.
+/// the world and every build from it (the live site world adds its phones) say the same.
 export const DEVICE_PRESENTATIONS = {
   'alice-mac': 'desktop',
   'bob-windows': 'desktop',

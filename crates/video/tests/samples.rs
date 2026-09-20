@@ -2,7 +2,7 @@
 //! hand: every file under `worlds/company-2026/files` named by `cw_video::samples::files`
 //! must be exactly what the generators write. Regenerate them with
 //! `CW_UPDATE_SAMPLES=1 cargo test -p cw-video --test samples`, then run
-//! `node examples/browser/build.mjs` to seed them.
+//! `node scripts/build-live-world.mjs` to seed them.
 use cw_video::{samples, Media, MediaKind};
 use std::path::PathBuf;
 

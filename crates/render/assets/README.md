@@ -181,7 +181,7 @@ installed its glyphs draw as boxes at their final positions; after, every render
 drops its cached text and repaints fully on its next frame. With the pack installed,
 Wasm renders exactly the native pixels: `scripts/smoke-node.cjs` checks the
 multi-script frame of `tests/scripts-scene.json` against the hash
-`multi_script_scene_is_pinned` pins natively. The browser demo fetches the everyday
+`multi_script_scene_is_pinned` pins natively. The project site fetches the everyday
 files (regular SC and KR, both emoji faces) during boot, alongside the first paint, and
 the bold, locale and extra-script files right behind them.
 

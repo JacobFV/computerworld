@@ -10,8 +10,9 @@ Start with [Python installation](python.md) or [JavaScript installation](wasm.md
 The executable examples are [Python](../examples/python/computer_interaction.py)
 and [Node JavaScript](../examples/javascript/computer-interaction.mjs). They show
 computer input, scene inspection, rendering and checkpoints using ordinary library
-calls. The [interactive world console](../examples/browser/README.md) uses the same
-runtime for its monitors and input.
+calls. The [project site](https://jacobfv.github.io/computerworld/) runs the same
+runtime in the page: every screen on it is a live machine taking pointer and keyboard
+input, driven through these APIs and nothing else.
 
 ```sh
 node examples/javascript/computer-interaction.mjs --output target/javascript-demo

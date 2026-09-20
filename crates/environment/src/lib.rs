@@ -1926,10 +1926,24 @@ impl Environment {
     /// What page scripts on `machine` read from the world before a browser acts: the
     /// clock, the seeded entropy their streams are named under
     /// (`computer/<machine>/browser/tab/<id>/page-script`), and the viewport.
+    /// The search engine the world's browsers send omnibox queries to: whatever its
+    /// definition states in `metadata.search_engine` (a template, `%s` for the query),
+    /// or google.com. A world with no google.com names the engine it does have.
+    pub(crate) fn world_search_engine(&self) -> String {
+        self.runtime
+            .definition()
+            .metadata
+            .get("search_engine")
+            .and_then(Value::as_str)
+            .filter(|engine| !engine.trim().is_empty())
+            .unwrap_or(cw_browser::DEFAULT_SEARCH_ENGINE)
+            .to_owned()
+    }
     fn prime_browsers(&mut self, id: &str, machine: &str) {
         let now = self.runtime.tick();
         let seed = self.runtime.seed();
         let viewport = self.browser_viewport(id, machine, None);
+        let engine = self.world_search_engine();
         let scope = format!("computer/{machine}/browser");
         let Some(m) = Arc::make_mut(&mut self.sessions)
             .get_mut(id)
@@ -1940,6 +1954,7 @@ impl Environment {
         for browser in std::iter::once(&mut m.browser).chain(m.browser_windows.values_mut()) {
             browser.set_clock(now);
             browser.set_entropy(seed, &scope);
+            browser.set_search_engine(&engine);
         }
         if let Some((w, h)) = viewport {
             m.browser.set_viewport(w, h);
@@ -2352,6 +2367,7 @@ impl Environment {
         }
         let themed = self.desktop_theme(id, &a.machine).is_some();
         self.prime_browsers(id, &a.machine);
+        let engine = self.world_search_engine();
         let runtime = &mut self.runtime;
         let machine = Arc::make_mut(&mut self.sessions)
             .get_mut(id)
@@ -2390,6 +2406,7 @@ impl Environment {
                 .unwrap_or_default();
             machine.active_browser_window = machine.desktop.focused;
         }
+        machine.browser.set_search_engine(&engine);
         machine.active_app = None;
         machine.custom_page = None;
         let mut http = |r| runtime.http(&a.machine, actor, r);

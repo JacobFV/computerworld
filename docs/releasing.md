@@ -13,8 +13,8 @@ a prerelease suffix are marked prerelease on GitHub and go to npm under the `nex
 2. Run **publish** from the Actions tab (or
    `gh workflow run publish.yml -f source_commit=<40-character sha>`). It:
    - builds and verifies the candidates with `release.yml` (wheels on three platforms
-     installed into clean environments; the Wasm bundles, the npm package installed into
-     an empty project, the offline browser demo and the desktop suites);
+     installed into clean environments; the Wasm bundles and the npm package installed
+     into an empty project);
    - requires all four builds to report the same state and pixel hashes;
    - refuses a version that is already tagged, then tags the commit and creates the
      GitHub release with `SHA256SUMS`;
@@ -86,18 +86,14 @@ release workflow/logs; the following list describes requirements, not past resul
 
 ## Verification commands
 
-From the tagged source checkout with Rust, Python, Node, `maturin`, the locked
-`wasm-bindgen-cli`, and Playwright/Chromium installed:
+From the tagged source checkout with Rust, Python, Node, `maturin` and the locked
+`wasm-bindgen-cli` installed:
 
 ```sh
 bash scripts/test-all.sh
 bash scripts/smoke-bindings.sh
 node examples/javascript/computer-interaction.mjs --output target/javascript-demo
 python examples/python/computer_interaction.py --output target/python-demo --compare target/javascript-demo
-node examples/browser/build.mjs
-node scripts/test-browser.mjs
-node scripts/test-desktops.mjs
-node scripts/test-desktop-overhaul.mjs
 ```
 
 Wheel and Wasm artifact checks must also run against the packaged outputs; source

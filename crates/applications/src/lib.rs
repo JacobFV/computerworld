@@ -129,6 +129,9 @@ pub enum AppEffect {
         window: u64,
         command: String,
     },
+    /// What the address bar holds, which is what a person typed rather than strictly a
+    /// URL: the browser reads it through its omnibox (`cw_browser::omnibox`), so a bare
+    /// host, a host and a path, or a search phrase all land somewhere sensible.
     Navigate {
         window: u64,
         url: String,

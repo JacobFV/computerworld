@@ -6,7 +6,7 @@ on:
       - 'site/**'
       - 'docs/**'
       - 'scripts/build-docs.mjs'
-      - 'examples/browser/**'
+      - 'scripts/build-live-world.mjs'
       - 'crates/**'
       - 'services/**'
       - 'worlds/**'
@@ -40,20 +40,16 @@ jobs:
           BINDGEN_VERSION=$(python -c 'import tomllib; d=tomllib.load(open("Cargo.lock","rb")); print(next(p["version"] for p in d["package"] if p["name"] == "wasm-bindgen"))')
           cargo install wasm-bindgen-cli --version "$BINDGEN_VERSION" --locked
       - run: bash scripts/build-wasm.sh
-      - run: node examples/browser/build.mjs
-      # The demo keeps the layout it is released with, so its relative imports resolve.
       - name: Build the documentation
         run: |
           node scripts/build-docs.mjs
           cargo doc --no-deps -p computerworld --lib
           mkdir -p site/docs/api
           cp -r target/doc site/docs/api/rust
+      # site/live.js imports the bundle from site/pkg/ and the world from
+      # site/world-definition.js, which scripts/build-content.sh keeps generated.
       - name: Assemble the site
-        run: |
-          mkdir -p site/demo/examples site/demo/pkg
-          cp -r examples/browser site/demo/examples/browser
-          cp -r pkg/web site/demo/pkg/web
-          cp LICENSE site/demo/LICENSE
+        run: cp -r pkg/web site/pkg
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

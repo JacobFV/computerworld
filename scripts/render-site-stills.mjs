@@ -8,7 +8,7 @@
  *   PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/usr/bin/google-chrome \
  *     node scripts/render-site-stills.mjs [scene-id ...]
  *
- * The machines need the Wasm bundle in site/demo/ (see site/README.md).
+ * The machines need the Wasm bundle in site/pkg/ (see site/README.md).
  */
 import {spawn} from 'node:child_process';
 import {mkdir, writeFile} from 'node:fs/promises';

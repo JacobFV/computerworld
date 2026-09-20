@@ -36,7 +36,6 @@ and verify the accompanying `SHA256SUMS`. Choose:
 
 - `computerworld-0.1.2-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
 - `computerworld-0.1.2-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
-- `computerworld-0.1.2-browser-demo.zip`: complete static interactive console.
 
 Each archive has a top-level directory matching its filename without the archive
 extension. Runtime bundles include `worlds/`, example code, `release.json` with
@@ -64,11 +63,9 @@ console.log(engineVersion()); // 0.1.2
 const world = new World(definition, 7);
 ```
 
-Serve these files through a static HTTP server rather than opening `file://`.
-For the complete console, unzip the browser-demo archive, enter its top-level
-directory, run `python -m http.server 8000`, and open `http://localhost:8000/`.
-The server serves static assets only. After bootstrap the simulated episode needs
-no network backend. APIs and checkpoint formats may change between alpha releases;
+Serve these files through a static HTTP server rather than opening `file://`. The
+server serves static assets only. After bootstrap the simulated episode needs no
+network backend. APIs and checkpoint formats may change between alpha releases;
 do not mix wrapper/Wasm files from different versions.
 
 ## Build and run from source
@@ -131,7 +128,7 @@ after bootstrap, synthetic DNS/HTTP, applications, rendering and checkpoints nee
 no external requests. A static file server supplies correct JavaScript/Wasm MIME
 types; it runs no simulation backend.
 
-## Computer input and browser demo
+## Computer input in a page
 
 [Programmatic computer use](programmatic-computer-use.md) describes keyboard,
 pointer drag/resize, app/window focus, scene transforms and Canvas output. The
@@ -139,17 +136,16 @@ pointer drag/resize, app/window focus, scene transforms and Canvas output. The
 same APIs without a browser. API errors throw; failed individual actions are
 reported in `outcomes` even when `step` itself returns normally.
 
-For the interactive multi-device console:
+The [project site](https://jacobfv.github.io/computerworld/) is the same module in a
+page: each screen is a `<canvas>` that forwards coordinates and keyboard events to
+Rust and paints the frame Rust returns (`site/live.js`, about two hundred lines). It
+does not implement an alternate desktop state machine. Run it locally with
 
 ```sh
-node examples/browser/build.mjs
-python3 -m http.server 8000
-# Open http://localhost:8000/examples/browser/
+bash scripts/build-wasm.sh && cp -r pkg/web site/pkg
+node scripts/serve-site.mjs 8000
 ```
 
-The [world console](../examples/browser/README.md) shows desktops, phone screens,
-headless consoles and actual network links. Its canvas forwards coordinates and
-keyboard events to Rust; it does not implement an alternate desktop state machine.
 Do not install a host-fetch adapter just to make synthetic domains work. A real
 HTML/browser compatibility bridge is optional and separate.
 
