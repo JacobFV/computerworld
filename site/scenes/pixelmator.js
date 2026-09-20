@@ -1,5 +1,6 @@
 export default {
   id: 'pixelmator', title: 'Designing a poster in Pixelmator Pro on macOS',
+  summary: 'An 800 × 600 poster · NORTHSTAR at 72 pt over "LAUNCH NIGHT · OCTOBER 9", a radial night sky',
   machines: [{ id: 'mac-pixelmator', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     const ui = target => pc.step('application.v1', 'shell', { target: `window:0:content:pixelmator:${target}` });

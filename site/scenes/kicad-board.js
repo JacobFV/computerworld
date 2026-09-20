@@ -1,5 +1,6 @@
 export default {
   id: 'kicad-board', title: 'Routing a 555 blinker board in KiCad on Ubuntu',
+  summary: 'blinker.kicad_pcb · a 43 × 23 mm Edge.Cuts outline, routed on F.Cu, reset on B.Cu, GND pour',
   machines: [{ id: 'ubuntu-kicad', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     const ui = (w, target) => pc.step('application.v1', 'shell', { target: `window:${w}:content:kicad:${target}` });

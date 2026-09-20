@@ -1,5 +1,6 @@
 export default {
   id: 'freecad-part', title: 'A Part Design body in FreeCAD on macOS',
+  summary: 'An 80 × 50 plate padded 10 mm under a ⌀28 boss padded 26, bored ⌀16, four ⌀7 holes',
   machines: [{ id: 'mac-freecad', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     const ui = target => pc.step('application.v1', 'shell', { target: `window:0:content:freecad:${target}` });

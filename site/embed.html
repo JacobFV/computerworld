@@ -7,6 +7,7 @@
 <meta name="description" content="The ComputerWorld slideshow on its own: machines running in the page, for embedding in a frame.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0c0b0a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0b0a'/%3E%3Cpath d='M9 20l4-8 3 5 2-3 5 6z' fill='%23ffb454'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./style.css">
 <link rel="stylesheet" href="./embed.css">
 </head>
@@ -21,7 +22,7 @@
   <div class="track" id="track"></div>
   <nav class="pager" aria-label="Machines">
     <button id="prev" aria-label="Previous machine">&larr;</button>
-    <div class="ticks" id="ticks" role="tablist"></div>
+    <p class="caption" id="caption" aria-live="polite"><b id="caption-title"></b><span id="caption-summary"></span><span id="caption-where"></span></p>
     <button id="next" aria-label="Next machine">&rarr;</button>
   </nav>
   <noscript><img src="./media/scenes/mac-freecad.jpg" width="960" height="600" alt="FreeCAD on macOS inside the simulation, with a bored mounting plate in the 3D view"></noscript>

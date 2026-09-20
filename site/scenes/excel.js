@@ -1,5 +1,6 @@
 export default {
   id: 'excel', title: 'A budget in Excel on Windows 11',
+  summary: 'Budget.xlsx · column G "Share" = E2/$E$8 filled to G8, a percentage with data bars G2:G7',
   machines: [{ id: 'windows-excel', like: 'bob-windows', size: [1280, 800] }],
   open(pc) {
     const sheet = command => pc.step('application.v1', 'shell', { target: `window:0:content:sheet:${command}` });

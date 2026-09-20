@@ -1,5 +1,6 @@
 export default {
   id: 'tableplus', title: 'Browsing an inventory database in TablePlus on macOS',
+  summary: 'Inventory.db twice · orders by quantity, products by stock, the lowest cell picked',
   machines: [{ id: 'mac-tableplus', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     const drag = (x0, y0, x1, y1) => [['down', x0, y0], ['move', x1, y1], ['up', x1, y1]]

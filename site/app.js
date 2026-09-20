@@ -3,88 +3,166 @@ import { cast, opening } from './cast.js';
 
 const stage = document.getElementById('stage');
 const track = document.getElementById('track');
-const ticks = document.getElementById('ticks');
+const captionTitle = document.getElementById('caption-title');
+const captionSummary = document.getElementById('caption-summary');
+const captionWhere = document.getElementById('caption-where');
 
-// How a slide holds more than one machine. The scene's lead machine stands at the slide's
-// full height; the rest are grouped into rows stacked beside it that come to exactly the
-// same height, so however many machines a scene has, its slide is one rectangle the same
-// size as everybody else's, and the desktops in it are the big tiles with the phones
-// smaller alongside. `BUDGET` is how wide that rectangle may be, measured in its own
-// height: a group takes the fewest rows that keep it inside that, so two machines stand
-// side by side, three desktops become one and a column of two, and a seven-machine team
-// becomes one large screen and three short rows. `cast.js` documents the `layout` hint a
-// scene can pass instead. Nothing is stretched: a tile keeps its machine's aspect ratio
-// and every row shares one height.
-const MAX_ROWS = 3;
-const BUDGET = 2.45;
+// EQUAL SHARE. No machine on a slide leads and none is anybody's thumbnail, and the
+// picture they make together has no holes in it. A slide is cut in two, each half is cut
+// in two, and so on down to the machines — beside each other or one above the other, never
+// reordered — so every cut divides a rectangle into two rectangles that fill it exactly.
+// There is no dead space anywhere in the composition by construction: a phone never gets a
+// row of its own with margin either side, because a "row" is only ever the whole of the
+// box it was given.
+//
+// Which of those cuts to take is the one judgement here, and it is made on the machines
+// that come off worst. Two machines of the same shape always come out the same size — every
+// desktop on a slide is one tile and every phone is another — and among the cuts that hold
+// to that, the one that MAKES THE SMALLEST SCREEN ON THE SLIDE AS LARGE AS IT CAN BE wins.
+// Raising the floor is what an equal share means when the shapes are mixed and no cut can
+// make a phone and a desktop the same size without leaving a hole; where they are not
+// mixed it is equal area exactly, because then every tile is the floor. Four desktops and
+// a phone come out as a 2 x 2 block with the phone standing beside it at the block's full
+// height; three desktops and four phones as a row of each, both rows the same width; a Mac
+// and an iPhone side by side, both floor to ceiling; three desktops as three equal tiles.
+//
+// The shapes are enumerated once, at load, because they are all aspect ratio. A node's
+// shape `a` is its width over its height: `a = aA + aB` for two side by side (they share a
+// height) and `1/a = 1/aA + 1/aB` for two stacked (they share a width). `u` and `v` carry
+// the smallest and the largest tile as a fraction of the node's own height squared, which
+// is enough to tell two arrangements apart; the sizes that decide between them are
+// measured properly, with the gutters, since those come out of the machines. A node's
+// width is `m·H + c`, linear in the height it is given, and `c` is where the gutters live.
+// `cast.js` documents all of this for whoever writes the next scene.
 
-const width = row => row.reduce((total, unit) => total + unit.aspect, 0);
+const leaf = unit => ({ unit, a: unit.aspect, u: unit.aspect, v: unit.aspect });
+/** A beside B, at one height. */
+const beside = (A, B) => ({ A, B, row: true, a: A.a + B.a, u: Math.min(A.u, B.u), v: Math.max(A.v, B.v) });
+/** A above B, at one width. Each half's height is the shared width over its own shape, so
+ * its tiles scale by (a/aA)² against the node's. */
+const over = (A, B) => {
+  const a = 1 / (1 / A.a + 1 / B.a);
+  const k = a * a;
+  return {
+    A, B, row: false, a,
+    u: k * Math.min(A.u / (A.a * A.a), B.u / (B.a * B.a)),
+    v: k * Math.max(A.v / (A.a * A.a), B.v / (B.a * B.a)),
+  };
+};
 
-/** Cut `units` into `count` rows, in order, so the widest row is as narrow as it can be.
- * Ties go to the fuller row first, which puts the ragged row at the bottom. */
-function split(units, count) {
-  if (count === 1) return [units];
-  let best = null;
-  const consider = rows => {
-    const widest = Math.max(...rows.map(width));
-    const first = width(rows[0]);
-    if (!best || widest < best.widest - 1e-9 || (widest < best.widest + 1e-9 && first > best.first)) {
-      best = { rows, widest, first };
+/** Every way of cutting `units` in two and two again, without reordering them. Two cuts
+ * that come out the same shape with the same worst tile are the same arrangement as far
+ * as anything downstream is concerned, so only one of them is kept. */
+function arrangements(units) {
+  const done = new Map();
+  const walk = (from, to) => {
+    const at = `${from}:${to}`;
+    if (done.has(at)) return done.get(at);
+    let out;
+    if (to - from === 1) out = [leaf(units[from])];
+    else {
+      const seen = new Map();
+      for (let cut = from + 1; cut < to; cut++)
+        for (const A of walk(from, cut))
+          for (const B of walk(cut, to))
+            for (const node of [beside(A, B), over(A, B)]) {
+              const key = `${node.a.toFixed(5)}|${node.u.toFixed(7)}|${node.v.toFixed(7)}`;
+              if (!seen.has(key)) seen.set(key, node);
+            }
+      out = [...seen.values()];
     }
+    done.set(at, out);
+    return out;
   };
-  const walk = (from, left, rows) => {
-    if (left === 1) return consider([...rows, units.slice(from)]);
-    for (let to = from + 1; to <= units.length - left + 1; to++) walk(to, left - 1, [...rows, units.slice(from, to)]);
-  };
-  walk(0, count, []);
-  return best.rows;
+  return walk(0, units.length);
 }
 
-/** Which machine leads a slide, and how the others are grouped behind it. */
-function plan(scene, units) {
-  const hint = scene.layout ?? 'auto';
-  if (units.length === 1) return { hero: units[0], rows: [] };
-  if (hint === 'row') return { hero: units[0], rows: [units.slice(1)] };
-  // The lead is the first machine listed, or the first desktop when the slide mixes
-  // shapes: a phone listed first should not be the one carrying the composition.
-  const mixed = units.some(unit => unit.phone) && units.some(unit => !unit.phone);
-  const lead = mixed ? units.findIndex(unit => !unit.phone) : 0;
-  const hero = units[lead];
-  const rest = units.filter((unit, index) => index !== lead);
-  if (hint === 'stack') {
-    return { hero, rows: [rest.filter(u => !u.phone), rest.filter(u => u.phone)].filter(row => row.length) };
-  }
-  if (Array.isArray(hint)) {
-    const rows = [];
-    let at = 0;
-    for (const size of hint) {
-      const row = rest.slice(at, at + size);
-      at += row.length;
-      if (row.length) rows.push(row);
+/** How wide a node comes out at height H: `m·H + c`, gutters and all. */
+function measure(node, gut) {
+  if (node.gut !== gut) {
+    if (node.unit) { node.m = node.a; node.c = 0; }
+    else {
+      const A = measure(node.A, gut), B = measure(node.B, gut);
+      if (node.row) { node.m = A.m + B.m; node.c = A.c + B.c + gut; }
+      else {
+        const inv = 1 / A.m + 1 / B.m;
+        node.m = 1 / inv;
+        node.c = (A.c / A.m + B.c / B.m - gut) / inv;
+      }
     }
-    if (at < rest.length) rows.push(rest.slice(at));
-    return { hero, rows };
+    node.gut = gut;
   }
-  let best = null;
-  for (let count = 1; count <= Math.min(MAX_ROWS, rest.length); count++) {
-    const rows = split(rest, count);
-    const spread = hero.aspect + Math.max(...rows.map(width)) / count;
-    if (spread <= BUDGET) return { hero, rows };
-    if (!best || spread < best.spread) best = { hero, rows, spread };
-  }
-  return best;
+  return node;
 }
+
+/** Give every tile under `node` its height; the widths follow from the aspect ratios. */
+function place(node, height, gut, put) {
+  if (node.unit) return put(node.unit, height);
+  if (node.row) { place(node.A, height, gut, put); place(node.B, height, gut, put); return; }
+  const width = measure(node, gut).m * height + measure(node, gut).c;
+  for (const half of [node.A, node.B]) {
+    const { m, c } = measure(half, gut);
+    place(half, (width - c) / m, gut, put);
+  }
+}
+
+
+/** The arrangement to draw in the room there is now.
+ *
+ * Two machines of the same shape are drawn at the same size, full stop: every desktop on
+ * a slide is one tile and every phone is another, so nothing on a slide is a thumbnail of
+ * the machine beside it. Among the arrangements that hold to that, take the one that makes
+ * THE SMALLEST SCREEN ON THE SLIDE AS LARGE AS IT CAN BE. Raising the floor is what an
+ * equal share means when the shapes are mixed and no cut can make a phone and a desktop
+ * the same size without leaving a hole; where the shapes are not mixed it is equal area
+ * exactly, because every tile is then the floor. The sizes are measured rather than
+ * estimated from the aspect ratios alone: the gutters come out of the machines, and a cut
+ * six ways loses more of them than one cut twice. */
+function choose(shape, room, cap, gut) {
+  const areas = shape.areas;
+  let best = null, ragged = null;
+  for (const node of shape.tried) {
+    const { m, c } = measure(node, gut);
+    // Half a pixel back, so a rounded-up tile at the right-hand edge still clears it.
+    const height = Math.min(cap, (room - c - 0.5) / m);
+    if (!(height > 0)) continue;
+    place(node, height, gut, (unit, tall) => { areas[unit.at] = tall * tall * unit.aspect; });
+    let least = Infinity;
+    for (const area of areas) if (area < least) least = area;
+    const even = shape.kinds.every(kind => {
+      let low = Infinity, high = 0;
+      for (const at of kind) { if (areas[at] < low) low = areas[at]; if (areas[at] > high) high = areas[at]; }
+      return high <= low * 1.02;
+    });
+    if (even) { if (!best || least > best.least) best = { node, height, least }; }
+    else if (!ragged || least > ragged.least) ragged = { node, height, least };
+  }
+  return best ?? ragged;
+}
+
+/** The elements for an arrangement, and a name for it so `fit` can tell when it changed. */
+const frame = node => {
+  if (node.unit) return node.unit.el;
+  const box = document.createElement('div');
+  box.className = node.row ? 'row' : 'col';
+  box.append(frame(node.A), frame(node.B));
+  return box;
+};
+const name = node => node.unit ? '.' : `${node.row ? 'h' : 'v'}(${name(node.A)}${name(node.B)})`;
 
 // One slide per scene, one tile per machine in it, each holding the still its machine
-// replaces once it is running.
-const plans = [];
-const slides = cast.map(scene => {
+// replaces once it is running. How a slide is cut up depends on how much room there is,
+// so that is settled in `fit` rather than here; all that is worked out now is every cut
+// it could take.
+const shapes = [];
+const slides = cast.map((scene, index) => {
   const slide = document.createElement('article');
   slide.className = 'slide';
   slide.id = `scene-${scene.id}`;   // not the bare id: the browser would scroll the strip to it
-  slide.setAttribute('role', 'tabpanel');
-  slide.setAttribute('aria-label', scene.title);
-  const units = scene.machines.map(machine => {
+  slide.setAttribute('role', 'group');
+  slide.setAttribute('aria-roledescription', 'slide');
+  slide.setAttribute('aria-label', `${index + 1} of ${cast.length}: ${scene.title}`);
+  const units = scene.machines.map((machine, at) => {
     const [width, height] = machine.size;
     const tile = document.createElement('div');
     const phone = height > width;
@@ -96,44 +174,33 @@ const slides = cast.map(scene => {
     const still = document.createElement('img');
     still.width = width;
     still.height = height;
-    still.loading = 'lazy';
+    still.decoding = 'async';
     still.alt = machine.label ?? scene.title;
     // A machine whose still has not been rendered yet keeps its shape and shows an empty
     // screen, not a broken image, so a scene can land before its pictures do.
     still.addEventListener('error', () => tile.classList.add('blank'), { once: true });
-    still.src = `./media/scenes/${machine.id}.jpg`;
+    // Asked for by `warm`, not here: the ones the visitor can reach with one keypress go
+    // first and the rest follow behind them. Never `loading="lazy"` — a still fetched
+    // when its slide arrives is a still the visitor watches arrive.
+    still.dataset.src = `./media/scenes/${machine.id}.jpg`;
     const note = document.createElement('p');
     note.className = 'booting';
     note.dataset.bootNote = '';
     tile.append(still, note);
-    return { el: tile, phone, aspect: width / height };
+    return { el: tile, still, phone, at, aspect: width / height };
   });
-  const shape = plan(scene, units);
-  plans.push(shape);
-  slide.append(shape.hero.el);
-  if (shape.rows.length) {
-    const rail = document.createElement('div');
-    rail.className = 'rail';
-    for (const row of shape.rows) {
-      const line = document.createElement('div');
-      line.className = 'row';
-      line.append(...row.map(unit => unit.el));
-      rail.append(line);
-    }
-    slide.append(rail);
-  }
+  // Which machines are the same shape, so `choose` can insist they come out the same size.
+  const kinds = new Map();
+  units.forEach((unit, at) => {
+    const kind = unit.aspect.toFixed(3);
+    kinds.set(kind, [...(kinds.get(kind) ?? []), at]);
+  });
+  shapes.push({
+    slide, units, tried: arrangements(units), key: '',
+    kinds: [...kinds.values()], areas: new Float64Array(units.length),
+  });
   track.append(slide);
   return slide;
-});
-const tabs = cast.map((scene, index) => {
-  const tab = document.createElement('button');
-  tab.setAttribute('role', 'tab');
-  tab.setAttribute('aria-controls', `scene-${scene.id}`);
-  tab.setAttribute('aria-label', scene.title);
-  tab.title = scene.title;
-  tab.addEventListener('click', () => go(index));
-  ticks.append(tab);
-  return tab;
 });
 
 // The room a slide has to live in stays in style.css, where the media queries and
@@ -144,52 +211,135 @@ const probePhone = document.createElement('div');
 probePhone.style.cssText = 'position:absolute;top:0;left:0;visibility:hidden;pointer-events:none;width:var(--gut);height:var(--h-phone)';
 stage.append(probe, probePhone);
 
-/** Size every slide's tiles for the room there is now: the lead machine as tall as the
- * slide, the rows beside it sharing that height between them, and the whole group inside
- * `--w-group`. A tile's width follows from its aspect ratio, and its corners are rounded
- * in proportion, so a phone shrinks to a phone rather than to a rounded stamp. */
+let fitted = '';
+
+/** Size every slide's tiles for the room there is now: pick the arrangement, hand the
+ * whole slide its height, and let the cuts divide it. A tile's width follows from its own
+ * aspect ratio and its corners are rounded in proportion, so a phone shrinks to a phone
+ * rather than to a rounded stamp. The frame is rebuilt only when the room has changed
+ * which arrangement wins. */
 function fit() {
   const room = probe.offsetWidth;
   const gut = probePhone.offsetWidth;
-  const caps = { desk: probe.offsetHeight, phone: probePhone.offsetHeight };
-  const spread = (shape, height) => {
-    if (!shape.rows.length) return shape.hero.aspect * height;
-    const each = (height - (shape.rows.length - 1) * gut) / shape.rows.length;
-    const rail = Math.max(...shape.rows.map(row => width(row) * each + (row.length - 1) * gut));
-    return shape.hero.aspect * height + gut + rail;
-  };
-  const put = (unit, height) => {
-    unit.el.style.height = `${height.toFixed(1)}px`;
-    const radius = unit.phone ? Math.max(4, height * 0.05) : Math.max(3, Math.min(10, height * 0.015));
-    unit.el.style.borderRadius = `${radius.toFixed(1)}px`;
-    // Too narrow for a sentence over it: style.css takes the boot note away there.
-    unit.el.classList.toggle('tight', height * unit.aspect < 150);
-  };
-  for (const shape of plans) {
-    const cap = caps[shape.hero.phone ? 'phone' : 'desk'];
-    let height = cap;
-    if (spread(shape, cap) > room) {
-      // The spread grows with the height, so the tallest that still fits is one search away.
-      let low = 0, high = cap;
-      for (let step = 0; step < 24; step++) {
-        const middle = (low + high) / 2;
-        if (spread(shape, middle) > room) high = middle; else low = middle;
-      }
-      height = low;
+  // How tall a slide may stand. On a narrow window style.css gives a portrait tile more
+  // height than a landscape one, and that is the taller of the two: a slide is one
+  // picture, so it gets the room the tallest thing on the page is allowed, whether it
+  // spends it on a phone or on desktops stacked up the screen.
+  const cap = Math.max(probe.offsetHeight, probePhone.offsetHeight);
+  // Nothing below depends on anything but these three, so a slideshow being turned does
+  // not re-solve forty-four compositions on every keypress.
+  const measured = `${room}|${cap}|${gut}`;
+  if (measured === fitted) return;
+  fitted = measured;
+  for (const shape of shapes) {
+    const chosen = choose(shape, room, cap, gut);
+    const key = name(chosen.node);
+    if (key !== shape.key) {
+      shape.key = key;
+      shape.slide.replaceChildren(frame(chosen.node));
     }
-    put(shape.hero, height);
-    if (!shape.rows.length) continue;
-    const each = (height - (shape.rows.length - 1) * gut) / shape.rows.length;
-    for (const row of shape.rows) for (const unit of row) put(unit, each);
+    place(chosen.node, chosen.height, gut, (unit, height) => {
+      unit.el.style.height = `${height.toFixed(1)}px`;
+      const radius = unit.phone ? Math.max(4, height * 0.05) : Math.max(3, Math.min(10, height * 0.015));
+      unit.el.style.borderRadius = `${radius.toFixed(1)}px`;
+      // The shadow is cast by the tile, so it is the tile's size, not the slide's.
+      unit.el.style.setProperty('--lift', `${Math.max(9, Math.min(40, height * 0.06)).toFixed(1)}px`);
+      // A small screen gets a small note, and one too narrow for a sentence over it gets
+      // none: style.css does both, off these two marks.
+      unit.el.classList.toggle('small', height < 280);
+      unit.el.classList.toggle('tight', height * unit.aspect < 150);
+    });
   }
 }
+
+// The cast is a ring, so every index into it is taken the short way round.
+const at = index => (index % cast.length + cast.length) % cast.length;
+
+// NOTHING IS FETCHED WHEN ITS SLIDE ARRIVES. All sixty-eight stills are 3.7 MB together
+// and the largest is 104 KB, so the whole cast is asked for within a second or two of the
+// page opening: the slide in the middle and the ones a keypress away first, at the head of
+// the queue and decoded before they are needed, then the rest of the ring outward from
+// there while the browser is idle. Turning the strip then costs a transform and nothing
+// else. A browser asking for Save-Data is the exception — it gets the slide it is on and
+// its neighbours, and nothing it did not ask for.
+const thrifty = !!navigator.connection?.saveData;
+const REACH = thrifty ? 1 : 2;
+
+/** Fetch and decode the stills on one slide, at the head of the browser's queue. */
+function warm(index) {
+  const waiting = [];
+  for (const { still } of shapes[index].units) {
+    if (!still.src) { still.fetchPriority = 'high'; still.src = still.dataset.src; }
+    else if (still.fetchPriority !== 'high') still.fetchPriority = 'high';
+    if (!still.ready) waiting.push(still.decode().then(() => { still.ready = true; }, () => {}));
+  }
+  return waiting.length ? Promise.all(waiting) : Promise.resolve();
+}
+
+/** The slide in the middle and the ones either side of it, now. */
+const warmNear = index => {
+  const near = [];
+  for (let step = -REACH; step <= REACH; step++) near.push(warm(at(index + step)));
+  return Promise.all(near);
+};
+
+/** Ask for the rest of the ring, outward from `from`, a few slides at a time while the
+ * browser is idle. A few at a time rather than all at once: a request already issued
+ * cannot be moved up the queue, so leaving most of them unissued is what lets `warm` put
+ * the slide a visitor has just turned to at the front of it. */
+const WAVE = 3;
+let arriving = Promise.resolve();
+function sweep(from) {
+  if (thrifty) return;
+  const order = [];
+  const seen = new Set();
+  for (let step = 0; step <= REACH; step++) { seen.add(at(from + step)); seen.add(at(from - step)); }
+  for (let step = REACH + 1; step <= cast.length; step++)
+    for (const side of [from + step, from - step]) {
+      const index = at(side);
+      if (seen.has(index)) continue;
+      seen.add(index);
+      order.push(index);
+    }
+  let next = 0;
+  arriving = new Promise(allIn => {
+    const coming = [];
+    const some = () => {
+      for (let k = 0; k < WAVE && next < order.length; k++)
+        for (const { still } of shapes[order[next++]].units) {
+          if (still.src) continue;
+          still.fetchPriority = 'low';
+          still.src = still.dataset.src;
+          coming.push(new Promise(done => {
+            still.addEventListener('load', done, { once: true });
+            still.addEventListener('error', done, { once: true });
+          }));
+        }
+      if (next < order.length) idle().then(some);
+      else Promise.all(coming).then(allIn);
+    };
+    some();
+  });
+}
+
+// The pictures get the browser to themselves until they are all in — or five seconds,
+// whichever comes first. Instantiating the simulator means parsing a 7.7 MB world and a
+// 10 MB module, which holds the main thread long enough to be seen as a stutter in a
+// thumbnail arriving; five seconds is long enough to have the whole cast on a decent line
+// and short enough that a visitor who has settled still gets a machine while they look.
+const pictures = () => Promise.race([arriving, new Promise(done => setTimeout(done, 5000))]);
 
 const notes = () => [...document.querySelectorAll('[data-boot-note]')];
 const say = text => notes().forEach(n => { n.textContent = text; });
 
-// The simulator downloads as soon as the page loads; machines come up as the slideshow
-// reaches them, so the first screen is running before the rest cost anything.
-const ready = (async () => {
+// NOTHING WAITS ON A MACHINE. Every tile shows its pre-rendered still the moment the page
+// parses, and the slideshow turns on the same frame the key is pressed: none of what
+// follows is on the path of a click, an arrow or a `#link`. The simulator is a 10 MB
+// download and a Wasm module to instantiate, so it is not even asked for until the browser
+// is idle, and a scene is started only once the strip has stood still for a moment —
+// arrowing through twenty slides starts the one they stop on, not twenty worlds.
+let simulator = null;
+const download = () => (simulator ??= (async () => {
   // A browser asking for Save-Data gets the stills and a way in, not a 10 MB download
   // it did not ask for. Everyone else gets a running machine.
   if (navigator.connection?.saveData) {
@@ -205,7 +355,47 @@ const ready = (async () => {
 })().catch(error => {
   say('This browser could not start the simulator. The screens here are real renders of it.');
   console.error(error);
-});
+}));
+
+const idle = () => new Promise(resolve =>
+  window.requestIdleCallback ? requestIdleCallback(resolve, { timeout: 600 }) : setTimeout(resolve, 200));
+
+// How long the strip has to stand still before the machine under the visitor is worth
+// starting. Shorter than a second thought, longer than a key repeat.
+const SETTLE = 260;
+let armed = 0;
+let era = 0;
+
+/** Ask for the scene at `index` to come up, and abandon whatever was coming up for the
+ * last one. Returns at once; it is never awaited. */
+function wake(index) {
+  clearTimeout(armed);
+  era++;                                   // every boot chain in flight gives up at its next await
+  armed = setTimeout(() => come(index, era), SETTLE);
+}
+
+async function come(index, mine) {
+  // The pictures come first. A world being built holds the main thread for seconds at a
+  // time, and a visitor looking at a still they can see is better served than one looking
+  // at a gap while a machine they have not asked for boots behind it.
+  await warmNear(index);
+  await pictures();
+  if (era !== mine || current !== index) return;
+  const start = await download();
+  if (!start || era !== mine || current !== index) return;
+  await start(cast[index], slides[index]);
+  // Then its neighbours, while nothing else is happening, so the machines at the edges of
+  // the strip are already running when they are reached. Only while nothing else is
+  // happening, though: a hand still on the arrow key is not nothing.
+  for (const near of [index + 1, index - 1]) {
+    await idle();
+    if (era !== mine || current !== index || performance.now() - moved < 900) return;
+    await start(cast[at(near)], slides[at(near)]);
+  }
+}
+
+// When the strip last turned, so that a boot never lands on top of someone still moving.
+let moved = 0;
 
 let current = -1;
 
@@ -231,7 +421,6 @@ function arrange() {
   // half as wide again as one laptop. Every number below comes off the measured widths,
   // so the gutter between neighbours is the same wherever the strip is standing.
   const span = slides.map(slide => slide.offsetWidth);
-  const at = index => (index % count + count) % count;
   // What one place out is worth in pixels here, so the same arc comes out of a phone's
   // narrow strip as out of a wide window. Machines differ in width, so take the middle
   // one and the average of the two beside it.
@@ -258,31 +447,35 @@ function arrange() {
 }
 new ResizeObserver(() => current >= 0 && arrange()).observe(stage);
 
-/** Bring one scene to the middle and boot it, then its neighbours while nothing else is
- * happening, so the machines at the edges are already running when they are reached. */
-async function go(index, { quiet = false } = {}) {
-  index = (index + cast.length) % cast.length;
+// The address bar is written a moment after the strip stops, not on every frame of a held
+// arrow key: a browser rate-limits replaceState, and a visitor turning past a scene did
+// not mean to link to it.
+let writing = 0;
+const mark = () => {
+  clearTimeout(writing);
+  writing = setTimeout(() => history.replaceState(null, '', `#${cast[current].id}`), 250);
+};
+
+/** Bring one scene to the middle. Everything here is synchronous: the strip has turned and
+ * the caption has changed by the time this returns, whatever the machines are doing. */
+function go(index, { quiet = false } = {}) {
+  index = at(index);
   if (index === current) return;
   current = index;
   slides.forEach((slide, i) => {
     slide.classList.toggle('active', i === index);
     slide.querySelectorAll('.tile').forEach(tile => (tile.inert = i !== index));
   });
-  tabs.forEach((tab, i) => {
-    tab.setAttribute('aria-selected', String(i === index));
-    tab.tabIndex = i === index ? 0 : -1;
-  });
+  const scene = cast[index];
+  captionTitle.textContent = scene.title;
+  captionSummary.textContent = scene.summary ?? '';
+  captionWhere.textContent = `${index + 1} / ${cast.length}`;
   arrange();
-  if (!quiet) history.replaceState(null, '', `#${cast[index].id}`);
-  const start = await ready;
-  if (!start) return;
-  await start(cast[index], slides[index]);
-  for (const near of [index + 1, index - 1]) {
-    await new Promise(resolve => (window.requestIdleCallback ?? setTimeout)(resolve, { timeout: 600 }));
-    if (current !== index) return;
-    const i = (near + cast.length) % cast.length;
-    await start(cast[i], slides[i]);
-  }
+  moved = performance.now();
+  // Nothing below is awaited: both hand out work and return.
+  warmNear(index);
+  if (!quiet) mark();
+  wake(index);
 }
 
 slides.forEach((slide, index) => slide.addEventListener('click', () => go(index)));
@@ -294,7 +487,6 @@ document.addEventListener('keydown', event => {
   if (!step || event.target.closest?.('canvas, input, textarea')) return;
   event.preventDefault();
   go(current + step);
-  if (ticks.contains(document.activeElement)) tabs[current].focus();
 });
 
 // A link to `#slack` opens on that machine — including on a page that is already open,
@@ -309,10 +501,17 @@ window.addEventListener('hashchange', () => {
 // With nothing named, the cast's opening scene does, which is in the middle of the strip
 // rather than at its end.
 const named = cast.findIndex(scene => `#${scene.id}` === location.hash);
-const first = named >= 0 ? named : cast.findIndex(scene => scene.id === opening);
+const first = Math.max(named >= 0 ? named : cast.findIndex(scene => scene.id === opening), 0);
 track.classList.add('still');
-go(Math.max(first, 0), { quiet: true });
+go(first, { quiet: true });
 requestAnimationFrame(() => requestAnimationFrame(() => track.classList.remove('still')));
+// In order: the stills a keypress away, then the rest of the cast in the background, and
+// only once those are asked for, the 10 MB the machines need. A visitor who turns the
+// strip in the meantime is served by `wake`, which waits for the same pictures first.
+warmNear(first).then(() => {
+  sweep(first);                                  // every still asked for, before the 10 MB
+  return pictures();
+}).then(() => idle()).then(() => download());
 
 /** Copy some text and say so through `report`, which takes the word and then nothing. */
 async function copy(text, report) {

@@ -1,5 +1,6 @@
 export default {
   id: 'calc', title: 'A quarterly forecast in LibreOffice Calc on Ubuntu',
+  summary: 'Atlas FY 2027, sheet Forecast · 1,240 customers at +12 % a quarter, margin row, line chart',
   machines: [{ id: 'ubuntu-calc', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     const sheet = command => pc.step('application.v1', 'shell', { target: `window:0:content:sheet:${command}` });

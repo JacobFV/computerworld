@@ -12,10 +12,11 @@ main { width: 100%; }
 .stage {
   /* The frame is the whole page here, so a machine may have all of it
      bar what sits under it — where index.html has to leave 21rem for the
-     type above and the snippet below. That is the pager (2rem, after the
-     3.6rem it pulls back up through the track's 5.5rem shadow margin)
-     and the link under that, so: 7rem, which leaves a little air too. */
-  --w-desk: min(1080px, 90vw, (100vh - 7rem) * 1.6);
+     type above and the snippet below. That is the pager, which is now a
+     two-line caption (about 4rem, after the 2.6rem it pulls back up
+     through the track's 5.5rem shadow margin) and the link under that,
+     so: 9rem, which leaves a little air too. */
+  --w-desk: min(1080px, 90vw, (100vh - 9rem) * 1.6);
   padding-top: 0;
 }
 
@@ -35,7 +36,7 @@ main { width: 100%; }
    it does not scroll, so the height cap has to survive down here too. */
 @media (max-width: 720px) {
   .stage {
-    --w-desk: min(88vw, (100vh - 7rem) * 1.6);
-    --h-phone: min(640px, 150vw, 100vh - 8.5rem);
+    --w-desk: min(88vw, (100vh - 11rem) * 1.6);
+    --h-phone: min(640px, 150vw, 100vh - 12rem);
   }
 }

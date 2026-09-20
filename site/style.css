@@ -81,7 +81,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 }
 .slide {
   position: absolute; left: 50%; top: 50%;
-  display: flex; align-items: center; gap: var(--gut);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--gut);
   opacity: .28; cursor: pointer;
   transform: translate(calc(-50% + var(--x, 0px)), -50%) scale(.94);
   transition: opacity .55s ease, transform .55s cubic-bezier(.22, .8, .24, 1);
@@ -110,16 +110,14 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
                rotateY(var(--rot, 0deg));
   }
 }
-/* The lead machine sits first, and whatever else the scene has stands in rows beside it
-   that together come to the same height — one composition, one gutter throughout. The
-   heights and the corner radii are written by app.js, which knows how many machines are
-   in the slide and how much room there is; the sizes here are what one machine on its
+/* Equal share: a slide is one rectangle cut in two, and each half cut in two again, down
+   to the machines — `.row` for a cut side by side, `.col` for one above the other — so the
+   halves fill what they were given and the composition has no holes in it. app.js writes
+   the heights, the corner radii and the shadow depth, since it is the one that knows how
+   the slide was cut and how much room there is; the sizes here are what one machine on its
    own gets, and what a slide falls back to before the first measurement. */
-.slide .rail { display: flex; flex-direction: column; justify-content: center; gap: var(--gut); }
-/* Every row starts against the lead machine, so the gutter between it and the group is
-   the same one that runs between the tiles, and the group has one straight edge down its
-   middle rather than three rows floating at three different distances. */
-.slide .row { display: flex; align-items: center; justify-content: flex-start; gap: var(--gut); }
+.slide .row, .slide .col { display: flex; align-items: center; justify-content: center; gap: var(--gut); }
+.slide .col { flex-direction: column; }
 .tile {
   position: relative; flex: none; height: var(--h-desk); aspect-ratio: 1280 / 800;
   border-radius: var(--radius); overflow: hidden; background: #000;
@@ -130,18 +128,18 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 /* A machine whose still has not been rendered yet: an empty screen, not a broken image. */
 .tile.blank { background: repeating-linear-gradient(-45deg, #131211 0 10px, #0f0e0e 10px 20px); }
 .tile.blank img { display: none; }
+/* One shadow rule for every tile, lifted by its own size: app.js writes `--lift` from the
+   height it gave the tile, so seven machines on one slide do not each drop the shadow of a
+   laptop, and one machine on its own still does. */
 .slide.active .tile {
-  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px rgba(255, 255, 255, .03), 0 40px 90px -20px rgba(0, 0, 0, .8);
-}
-/* The machines beside the lead are smaller, and cast a shadow to match. */
-.slide.active .rail .tile {
-  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px rgba(255, 255, 255, .03), 0 18px 40px -12px rgba(0, 0, 0, .75);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px rgba(255, 255, 255, .03),
+              0 var(--lift, 40px) calc(var(--lift, 40px) * 2.25) calc(var(--lift, 40px) * -.5) rgba(0, 0, 0, .8);
 }
 .tile img, .tile canvas { width: 100%; height: 100%; display: block; }
-.tile:not(.live) img { filter: saturate(.6) brightness(.6); }
 .live-canvas { outline: none; touch-action: none; cursor: default; }
 .slide.active .tile:has(.live-canvas:focus-visible) {
-  box-shadow: 0 0 0 1px var(--accent), 0 40px 90px -20px rgba(0, 0, 0, .8);
+  box-shadow: 0 0 0 1px var(--accent),
+              0 var(--lift, 40px) calc(var(--lift, 40px) * 2.25) calc(var(--lift, 40px) * -.5) rgba(0, 0, 0, .8);
 }
 
 /* What a panel says while its machine is coming up, over the still it replaces. */
@@ -151,35 +149,38 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
   text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
   overflow: hidden;
 }
-/* In a team the machines beside the lead are small, so their note is too, and it stays on
-   one line rather than stacking four words deep over a screen the size of a stamp. A tile
-   too narrow to read anything on says nothing at all and simply comes alive: app.js marks
-   those, since it is the one that knows how wide each tile came out. */
-.rail .booting { font-size: .62rem; padding: 0 .25rem; white-space: nowrap; text-overflow: ellipsis; }
+/* In a team every tile is small, so its note is too, and it stays on one line rather than
+   stacking four words deep over a screen the size of a stamp. A tile too narrow to read
+   anything on says nothing at all and simply comes alive: app.js marks both, since it is
+   the one that knows how each tile came out. */
+.tile.small .booting { font-size: .62rem; padding: 0 .25rem; white-space: nowrap; text-overflow: ellipsis; }
 .tile.tight .booting { display: none; }
 .tile.live .booting, .slide:not(.active) .booting { display: none; }
 .booting:not(:empty) { cursor: pointer; }
 
-/* One tick per machine, and the two arrows */
+/* What the machines on this slide are doing, and the two arrows. The caption is the
+   indicator: it says where in the cast this is, so there is no strip of dots to read. */
 .pager {
-  display: flex; align-items: center; justify-content: center; gap: .6rem;
-  margin-top: -3.6rem; padding: 0 1rem; position: relative;
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  margin-top: -2.6rem; padding: 0 1rem; position: relative;
 }
 .pager > button {
   flex: none; padding: .5rem .7rem; border: 0; background: none; cursor: pointer;
   color: var(--dim); font-size: 1rem; line-height: 1; transition: color .15s ease;
 }
 .pager > button:hover { color: var(--ink); }
-.ticks { display: flex; justify-content: center; flex: 0 1 46rem; min-width: 0; }
-.ticks button {
-  flex: 1 1 0; min-width: 0; max-width: 18px; height: 1.6rem; padding: 0 1px; border: 0; background: none; cursor: pointer;
+.caption {
+  flex: 0 1 76rem; min-width: 0; margin: 0;
+  /* Two lines' worth kept back, so the page under the strip does not step up and down as
+     one caption runs a word longer than the last. */
+  min-height: 3.2em;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
+  column-gap: .75rem; text-align: center;
+  font-family: var(--mono); font-size: .75rem; line-height: 1.6; letter-spacing: .02em;
 }
-.ticks button::before {
-  content: ""; display: block; height: 2px; border-radius: 1px; background: var(--line-2);
-  transition: background .2s ease, height .2s ease;
-}
-.ticks button:hover::before { background: var(--dim); }
-.ticks button[aria-selected="true"]::before { background: var(--ink); }
+.caption b { font-weight: 500; color: var(--ink); }
+#caption-summary { min-width: 0; color: var(--dim); }
+#caption-where { color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stage noscript img { display: block; width: var(--w-desk); height: auto; margin: 0 auto; border-radius: var(--radius); }
 
 /* Install and snippet: one object, with the language as its tabs */
@@ -232,6 +233,11 @@ body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid 
 @media (max-width: 720px) {
   .stage { --w-desk: 82vw; --h-phone: min(640px, 150vw, 100vh - 12rem); }
   .track { margin-bottom: 4.5rem; }
+  /* The caption wraps here rather than being cut, so it is given the lines to wrap into
+     and the arrows sit at the top of them, beside its first line. */
+  .pager { margin-top: -1.6rem; align-items: flex-start; padding-inline: .5rem; }
+  .pager > button { padding: .1rem .5rem; }
+  .caption { min-height: 6.4em; font-size: .7rem; column-gap: .5rem; }
   .gh span { display: none; }
   .codebox pre { padding-inline: 1rem; }
   .codebox code { font-size: .78rem; }

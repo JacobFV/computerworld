@@ -1,5 +1,6 @@
 export default {
   id: 'slack', title: 'Slack in Edge on Windows',
+  summary: 'northstar.slack.com #eng, thread chat-1 · the flaky-test reply half typed in the pane',
   machines: [{ id: 'windows-slack', like: 'bob-windows', size: [1280, 800] }],
   open(pc) {
     // #eng with the flaky-test thread open in the right-hand pane, a reply half typed.

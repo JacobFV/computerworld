@@ -4,8 +4,8 @@
 //
 //   export default {
 //     id: 'swe-team',                       // the URL fragment: `#swe-team` opens on it
-//     title: 'Shipping a fix together',     // the tab's label, and a tile's alt text
-//     layout: 'auto',                       // optional, see below
+//     title: 'Shipping a fix together',     // the caption's name for it, and a tile's alt text
+//     summary: 'atlas#14 → pull/15 on sort-refs: src/bfs.rs takes a BTreeMap',
 //     machines: [
 //       { id: 'swe-mac', like: 'alice-mac', size: [1280, 800], label: "Alice's Mac" },
 //       { id: 'swe-phone', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
@@ -19,27 +19,53 @@
 // makes a desktop tile, portrait a phone tile. Up to seven machines read well on one
 // slide; past that they are thumbnails.
 //
-// HOW A SLIDE IS LAID OUT (site/app.js, `plan` and `fit`)
+// `summary` is the line under the stage, beside the title: one dense technical sentence
+// naming what the machines are actually doing — the project, the part designator, the
+// file, the ticket, the branch — written from `open()` rather than from the title. Keep
+// it to about a hundred characters so it stays on one line in a 1280-wide window; it
+// wraps on a phone.
 //
-// One machine leads and fills the slide's height; the rest are stacked beside it in rows
-// that together come to the same height, so the group reads as one picture and every
-// slide sits in the same box. The lead is the first machine listed, or the first desktop
-// when the slide mixes desktops and phones — so list the machine the scene is about
-// first. The number of rows is chosen from the tiles' shapes alone: as few as fit the
-// width. Nothing is stretched; a phone stays 390x844 and a desktop 1280x800.
+// HOW A SLIDE IS LAID OUT — EQUAL SHARE (site/app.js, `choose` and `fit`)
 //
-// `layout` overrides that when a scene knows better:
-//   'auto'  (the default)  the lead, and the rest in as few rows as fit
-//   'row'   every machine in one row, in the order listed, at one height
-//   'stack' the lead, then the other desktops in one row and the phones in another
-//   [2, 3]  explicit rows beside the lead: two machines, then three, in the order listed
+// No machine on a slide leads, none is anybody's thumbnail, and the picture they make
+// together has no holes in it. A slide is one rectangle cut in two — side by side or one
+// above the other, never reordered — each half cut in two again, and so on down to the
+// machines, so every cut fills what it was given exactly. A phone never gets a row of its
+// own with margin either side, because a "row" here is only ever the whole of its box.
+//
+// Which cut to take is decided on the machines that come off worst. Two machines of the
+// same shape always come out the same size — every desktop on a slide is one tile and
+// every phone is another — and among the cuts that hold to that, the one that makes the
+// SMALLEST screen on the slide as LARGE as it can be wins. Raising the floor is what an
+// equal share means once the shapes are mixed: a phone and a desktop cannot be given the
+// same area and still tile a rectangle, so the fair thing is to make the worst-off machine
+// as big as possible. Where the shapes are not mixed it is equal area exactly, since then
+// every tile is the floor.
+//
+// What that comes to, for the slides in this cast, in a wide window:
+//   four desktops and a phone  a 2 x 2 block, the phone beside it at the block's height
+//   three desktops, four phones  a row of each, both rows the same width
+//   two desktops, two phones   the desktops in a column, the phones beside them
+//   a Mac and an iPhone        side by side, both floor to ceiling
+//   three desktops             three equal tiles in a row
+//   two phones                 side by side, as before
+// Nothing is stretched: a phone stays 390x844 and a desktop 1280x800. It is all re-cut
+// when the window changes, so a team that reads as one wide picture on a laptop reads as
+// a block on a phone.
+//
+// So: list the machines in the order they should be read, left to right and top to bottom.
+// That order is the only say a scene has in it; the sizes are not a scene's business.
 //
 // STILLS
 //
 // Each machine's still is site/media/scenes/<machine id>.jpg, rendered from the real
 // thing by `node scripts/render-site-stills.mjs [scene-id ...]`. A machine whose still
 // has not been rendered yet shows an empty screen rather than a broken image, so a new
-// scene can land before its pictures do.
+// scene can land before its pictures do. The stills are all asked for within a second or
+// two of the page opening — the slide in the middle and the ones a keypress away first,
+// decoded before they are needed — and each tile keeps its still, undimmed, until its own
+// machine is genuinely running behind it. Nothing in the slideshow waits for a boot: it
+// turns on the frame the key is pressed.
 //
 // Each scene (site/scenes/) has computers of its own and an `open()`: the actions that
 // take them from a fresh boot to something mid-work. Openings run in the visitor's tab,

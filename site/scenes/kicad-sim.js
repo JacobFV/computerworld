@@ -1,5 +1,6 @@
 export default {
   id: 'kicad-sim', title: 'Simulating a 555 oscillator in KiCad on Windows',
+  summary: 'oscillator.kicad_sch · transient, 50 µs steps to 80 ms, V(out) and V(cap) under a cursor',
   machines: [{ id: 'windows-kicad', like: 'bob-windows', size: [1280, 800] }],
   open(pc) {
     const ui = (w, target) => pc.step('application.v1', 'shell', { target: `window:${w}:content:kicad:${target}` });

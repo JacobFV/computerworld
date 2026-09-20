@@ -1,5 +1,6 @@
 export default {
   id: 'phones-maps-weather', title: 'Maps on an iPhone, Weather on a Pixel',
+  summary: 'A transit route from Northstar HQ to the DevCon Center, and Seattle’s forecast beside it',
   machines: [
     { id: 'iphone-maps', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-weather', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

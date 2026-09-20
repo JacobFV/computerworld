@@ -1,5 +1,6 @@
 export default {
   id: 'imovie', title: 'A short film coming together in iMovie on macOS',
+  summary: 'Three clips over a music bed · cross dissolve, "Golden hour, Pier 14" at 80, Ken Burns',
   machines: [{ id: 'mac-imovie', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     const ui = target => pc.step('application.v1', 'shell', { target: `window:0:content:video:${target}` });

@@ -1,5 +1,6 @@
 export default {
   id: 'linear', title: 'Linear in Firefox on Ubuntu',
+  summary: 'linear.app/projects/OPS · "Dry-run the rollback before launch day" filed, back on the board',
   machines: [{ id: 'ubuntu-linear', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     pc.visit('http://linear.app/projects/OPS');

@@ -4,6 +4,7 @@
 // it once more in Sketchbook on his Pixel.
 export default {
   id: 'art-studio', title: 'The same house drawn on four machines',
+  summary: 'One house: Paint 960 × 540, Pixelmator 800 × 600 in shapes, Markup on Sunset.png, Sketchbook 360 × 640',
   machines: [
     { id: 'windows-art', like: 'bob-windows', size: [1280, 800], label: "Bob's PC, drawing in Paint" },
     { id: 'mac-art', like: 'alice-mac', size: [1280, 800], label: "Alice's Mac, in Pixelmator Pro" },

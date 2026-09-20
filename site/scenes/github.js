@@ -1,5 +1,6 @@
 export default {
   id: 'github', title: 'A GitHub pull request in Safari on macOS',
+  summary: 'github.com/northstar/atlas/pull/15 · the sort-refs pull request that closes issue 14',
   machines: [{ id: 'mac-github', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     pc.visit('http://github.com/northstar/atlas/pull/15');

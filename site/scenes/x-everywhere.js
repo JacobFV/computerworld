@@ -8,6 +8,7 @@
 // which is what a phone really does with a site like it.
 export default {
   id: 'x-everywhere', title: 'The same X account on a Mac and an iPhone',
+  summary: 'x.com · 1/3 and 2/3 posted, 3/ still in the reply box; the phone timeline already has 1/3',
   machines: [
     { id: 'mac-x-thread', like: 'alice-mac', size: [1280, 800], label: "Alice's Mac, writing a thread on X" },
     { id: 'iphone-x-thread', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone, the same timeline" },

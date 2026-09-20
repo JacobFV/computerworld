@@ -1,5 +1,6 @@
 export default {
   id: 'docs', title: 'Writing the Atlas launch plan in Pages on macOS',
+  summary: 'Pages · the Atlas 1.0 launch plan for Tuesday the 22nd, typed to the proofreading ask',
   machines: [{ id: 'mac-docs', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     pc.launch('docs');

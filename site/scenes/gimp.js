@@ -1,5 +1,6 @@
 export default {
   id: 'gimp', title: 'Painting a sunset in GIMP on Ubuntu',
+  summary: 'A 640 × 480 sunset · sky and water gradients, a lassoed hill line filled 241a3a, glints over',
   machines: [{ id: 'ubuntu-gimp', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     const ui = target => pc.step('application.v1', 'shell', { target: `window:0:content:gimp:${target}` });

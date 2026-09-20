@@ -1,5 +1,6 @@
 export default {
   id: 'discord', title: 'Discord in Safari on macOS',
+  summary: 'discord.com/channels/atlas-help · the eyes reaction on chat-33, transcript at its newest',
   machines: [{ id: 'mac-discord', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     pc.visit('http://discord.com/channels/atlas-help');

@@ -7,6 +7,7 @@ const say = (phone, text) => { refresh(phone); phone.click('messages:compose'); 
 
 export default {
   id: 'texting', title: 'Two phones in one conversation: type on either',
+  summary: 'One SMS thread on both handsets · six messages about slide 7 of the Q3 deck; type into either',
   machines: [
     { id: 'iphone-texting', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-texting', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

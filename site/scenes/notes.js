@@ -1,5 +1,6 @@
 export default {
   id: 'notes', title: 'Notes to self before a launch, in Notes on Ubuntu',
+  summary: '~/Notes/atlas-launch.txt · the release-day order, "5. stay in #incidents" just added',
   machines: [{ id: 'ubuntu-notes', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     // Notes are text files in ~/Notes, so a few older ones are simply written there.

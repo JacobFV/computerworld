@@ -16,6 +16,7 @@ const say = (pc, text) => {
 
 export default {
   id: 'hardware-team', title: 'Five machines on one board',
+  summary: 'sensor-node rev B · R3 330 Ω → 1 kΩ in the schematic and the BOM, DRC clean, lid outline 70 × 45 mm',
   machines: [
     { id: 'hardware-board', like: 'carol-ubuntu', size: [1280, 800], label: 'The lab bench · the sensor-node board, DRC after the change' },
     { id: 'hardware-schematic', like: 'bob-windows', size: [1280, 800], label: "Bob's PC · the same project's schematic, R3 → 1 kΩ" },

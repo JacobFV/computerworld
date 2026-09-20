@@ -1,5 +1,6 @@
 export default {
   id: 'sqlite', title: 'Querying an inventory in DB Browser for SQLite on Ubuntu',
+  summary: 'Inventory.db · a three-table join, weeks_left = stock × 13 / units sold, lowest first',
   machines: [{ id: 'ubuntu-sqlite', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     pc.launch('database', '/home/carol/Documents/Inventory.db');
