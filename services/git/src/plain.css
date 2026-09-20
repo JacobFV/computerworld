@@ -17,7 +17,9 @@ h2 { font-size: 15px; margin: 24px 0 8px; padding-bottom: 4px; border-bottom: 1p
 table.list { width: 100%; border-collapse: collapse; }
 table.list th { text-align: left; font-size: 12px; color: #555555; background: #f6f6f0; border-bottom: 1px solid #d9d8d1; padding: 6px 10px; }
 table.list td { padding: 6px 10px; border-bottom: 1px solid #eeeeee; vertical-align: top; }
-table.list tbody tr:hover { background: #f8f8f4; }
+/* Only the repository list: every one of its rows opens a repository. The refs table
+   is a reading table, so a row that lights up under the pointer would be a lie. */
+table.list:not(.refs) tbody tr:hover { background: #f8f8f4; }
 table.list .num { text-align: right; width: 90px; }
 table.list .name { white-space: nowrap; }
 .file { border: 1px solid #d9d8d1; margin: 0 0 16px; }

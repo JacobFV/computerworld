@@ -60,6 +60,10 @@ fn sweep(state: &Value, actor: &str, seeds: &[&str], limit: usize) -> Vec<String
     let mut caller = |method: &str, path: &str| call(state, actor, method, path);
     cw_service_common::audit::Sweep::new(seeds, &mut caller)
         .allow_self(SELF_LINKS)
+        // On: the mini-month's day cells are the one place this service dresses an inert
+        // element like its controls, and the day on screen now says so with `aria-current`
+        // rather than by being drawn as a day you could have clicked.
+        .clothes(true)
         .limit(limit)
         .run()
         .into_iter()
@@ -193,7 +197,10 @@ fn every_link_form_and_button_on_every_page_kind_reaches_a_route_that_answers() 
     for (state, actor, path) in page_kinds() {
         let (status, body) = call(&state, actor, "GET", path);
         assert_eq!(status, 200, "[{actor}] GET {path}");
-        for fault in cw_service_common::audit::page(&body) {
+        for fault in cw_service_common::audit::page(&body)
+            .into_iter()
+            .chain(cw_service_common::audit::clothes(&body))
+        {
             faults.push(format!("[{actor}] {path}: {fault}"));
         }
         let doc = cw_web::html::parse(&body);

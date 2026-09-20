@@ -78,7 +78,9 @@ form.one { display: block; margin: 0; }
 .files th a:hover { color: var(--ink); text-decoration: underline; }
 .files th.sorted { color: var(--ink); }
 .files td { padding: 16px 12px; border-bottom: 1px solid #eeebe6; color: #52443c; font-size: 13px; vertical-align: middle; }
-.files tbody tr:hover td { background: #f7f5f2; }
+/* The whole row lights up, not each cell: a cell with nothing in it that lights up on
+   its own reads as a thing to press, and the row holds the link it is highlighting. */
+.files tbody tr:hover { background: #f7f5f2; }
 .c-access { width: 190px; }
 .c-when { width: 150px; }
 .c-size { width: 170px; }
@@ -115,7 +117,9 @@ form.one { display: block; margin: 0; }
 
 /* Panels and the file page */
 .panels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; margin: 40px 0 0 0; }
-.card { padding: 16px 20px 20px 20px; border: 1px solid #e6e2dc; border-radius: 10px; background: #ffffff; }
+/* A panel of text, drawn on the sidebar's tint rather than in the white bordered box
+   a file tile wears: these are read, tiles are opened. */
+.card { padding: 16px 20px 20px 20px; border-radius: 10px; background: var(--surface); }
 .card h2 { margin: 0 0 8px 0; color: var(--ink); font-size: 15px; font-weight: 600; line-height: 22px; }
 .field { margin: 10px 0 0 0; }
 .field label { display: block; margin: 0 0 4px 0; color: var(--muted); font-size: 12px; line-height: 16px; }

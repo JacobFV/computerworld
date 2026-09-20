@@ -80,7 +80,20 @@ fn crawl(label: &str, host: &str, state: &mut Value) -> BTreeSet<Form> {
         }
         let response = get(state, host, &path);
         assert_eq!(response.status, 200, "{label}: GET {path}");
-        let page = support::Page::parse(&format!("{label} {path}"), String::from_utf8(response.body).unwrap());
+        let html = String::from_utf8(response.body).unwrap();
+        // The shared audit over the same page, alongside the checks below: a control with
+        // nowhere to go, an `onclick` in a world with no script, a role or a tabindex on
+        // something inert, a field with no name or label, a fragment that is not here —
+        // and, from the engine's own cascade, an inert element with a pointer cursor, a
+        // hover state, or the painted box this page's own controls wear.
+        if let Some(fault) = cw_service_common::audit::page(&html)
+            .into_iter()
+            .chain(cw_service_common::audit::clothes(&html))
+            .next()
+        {
+            panic!("{label} {path}: {fault}");
+        }
+        let page = support::Page::parse(&format!("{label} {path}"), html);
         pages += 1;
         let doc = &page.doc;
         for node in doc.descendants(Document::ROOT) {

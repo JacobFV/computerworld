@@ -123,6 +123,8 @@ a.arrow:hover { background: var(--surface); }
 a.mini-day:hover { background: var(--surface); }
 .mini-day.off { color: #bdc1c6; }
 .mini-day.week { background: #e8f0fe; color: var(--accent); }
+/* The day on screen: a marker, not a link, and drawn so you can see the difference. */
+.mini-day.on { background: #d2e3fc; color: var(--accent); font-weight: 500; }
 .mini-day.today, a.mini-day.today:hover { background: var(--accent); color: #ffffff; }
 .calendars { margin-top: 24px; }
 .calendars-title { font-weight: 500; padding: 0 0 8px 6px; }

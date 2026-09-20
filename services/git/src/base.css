@@ -111,7 +111,8 @@ pre, code, .mono, .sha, .ref, .sha-btn, .diff-path { font-family: var(--mono); }
 .btn-group .btn:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
 .star-group .btn, .watch-group .btn { border-radius: var(--radius) 0 0 var(--radius); }
 .star-group .star-count, .watch-group .star-count { border-radius: 0 var(--radius) var(--radius) 0; margin-left: -1px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--btn-line); border-radius: var(--radius); background: var(--btn-bg); color: var(--muted); font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap; }
+/* A read-out beside the buttons, deliberately without their box: nothing forks here. */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 6px; color: var(--muted); font-size: 14px; line-height: 20px; white-space: nowrap; }
 .pulse .about-line { padding: 10px 16px; border-top: 1px solid var(--line-soft); }
 .pulse .about-line:first-child { border-top: 0; }
 .counter { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--counter); color: var(--ink); font-size: 12px; font-weight: 500; line-height: 18px; text-align: center; }
@@ -152,6 +153,7 @@ pre, code, .mono, .sha, .ref, .sha-btn, .diff-path { font-family: var(--mono); }
 .crumb:hover { background: var(--hover); text-decoration: none; }
 .crumb.last { font-weight: 600; }
 .crumb-text { color: var(--ink); padding: 2px 6px; font-weight: 600; }
+.search-go { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .site-search { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); margin: 0; }
 .site-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 14px; padding: 0; }
 
@@ -406,7 +408,9 @@ a.latest-message:hover { color: var(--accent); }
 .event-badge.done .ic, .event-badge.merged .ic, .event-badge.open .ic, .event-badge.closed .ic { color: #ffffff; }
 .event-text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .review { position: relative; }
-.review-body { margin: 0 0 16px 56px; padding: 16px; }
+/* Tinted, not paper: a quoted review is text to read, and the box you type into is
+   drawn in paper with the same border. */
+.review-body { margin: 0 0 16px 56px; padding: 16px; background: var(--surface); }
 .thread-side { width: 296px; flex: none; font-size: 12px; }
 .side-section { padding: 0 0 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line-soft); }
 .side-section.last { border-bottom: 0; }

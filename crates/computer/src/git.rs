@@ -772,6 +772,10 @@ fn remote_url(url: &str) -> Result<String, String> {
         .strip_prefix("api/git/repos/")
         .or_else(|| path.strip_prefix("repos/"))
         .unwrap_or(path);
+    // `github.com/<owner>/<name>` is the clone URL those sites print, and the one the
+    // world's own guides tell people to use. The API keys repositories by name and treats
+    // the owner as the namespace it is shown under, so the last segment is the repository.
+    let repo = repo.rsplit('/').next().unwrap_or(repo);
     Ok(format!("{scheme}://{host}/api/git/repos/{repo}"))
 }
 fn fetch(host: &mut dyn ShellHost, url: &str) -> Result<Repository, String> {
@@ -891,5 +895,27 @@ mod security_tests {
             assert!(!safe_tree_path(path), "{path}");
         }
         assert!(safe_tree_path("src/main.rs"));
+    }
+    /// Every shape of clone URL the world publishes reaches the one API route that
+    /// serves a repository, including the `<owner>/<name>` form the sites print.
+    #[test]
+    fn the_clone_urls_the_sites_publish_all_resolve_to_the_api_route() {
+        for url in [
+            "http://github.com/northstar/atlas",
+            "http://github.com/northstar/atlas.git",
+            "http://github.com/northstar/atlas/",
+            "http://github.com/repos/atlas",
+            "http://git.internal/repos/atlas",
+            "http://git.internal/api/git/repos/atlas",
+        ] {
+            let host = url.split('/').nth(2).unwrap();
+            assert_eq!(
+                remote_url(url).unwrap(),
+                format!("http://{host}/api/git/repos/atlas"),
+                "{url}"
+            );
+        }
+        assert!(remote_url("git@github.com:northstar/atlas").is_err());
+        assert!(remote_url("http://github.com").is_err());
     }
 }

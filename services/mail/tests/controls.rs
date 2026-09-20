@@ -165,6 +165,18 @@ impl<'a> Crawl<'a> {
         assert_eq!(response.status, 200, "{}: {url}", self.name);
         let html = String::from_utf8(response.body).expect("utf-8");
         validate_strict(&html).unwrap_or_else(|e| panic!("{} {url}: {e:?}", self.name));
+        // The shared audit over the same page: a control with nowhere to go, an `onclick`
+        // in a world with no script, a role or a tabindex on something inert, a field with
+        // no name or label, a fragment that is not here — and, from the engine's own
+        // cascade, an inert element with a pointer, a hover, or the painted box this
+        // page's controls wear.
+        if let Some(fault) = cw_service_common::audit::page(&html)
+            .into_iter()
+            .chain(cw_service_common::audit::clothes(&html))
+            .next()
+        {
+            panic!("{} {url}: {fault}", self.name);
+        }
         let doc = cw_web::html::parse(&html);
         self.pages += 1;
         let text = doc.body().map(|b| doc.text_content(b)).unwrap_or_default();

@@ -151,7 +151,17 @@ fn home(s: &DocsState, actor: &str, kind: Option<DocType>) -> Vec<Html> {
             .child(el("h2").id("create-heading").text("Start a new file"))
             .child(
                 div("start-row")
-                    .child(div("blank").attr("aria-hidden", "true").child(span("plus").child(el("i")).child(el("b"))))
+                    // The template card is drawn like the file tiles above it, so it acts
+                    // like one: it opens the form beside it, which is what starting a
+                    // blank document means here.
+                    .child(
+                        el("a")
+                            .id("blank")
+                            .class("blank")
+                            .attr("href", "#create-title")
+                            .attr("aria-label", "Blank document")
+                            .child(span("plus").child(el("i")).child(el("b"))),
+                    )
                     .child(
                         form("create", "/documents", "post")
                             .child(field("create", "title", "Title", ""))

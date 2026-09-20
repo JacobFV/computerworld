@@ -314,6 +314,18 @@ fn crawl(site: &Site, seeds: &[&str]) -> usize {
         let html = response.header("content-type") == Some(HTML_MEDIA_TYPE);
         let controls = if html {
             validate_strict(&body).unwrap_or_else(|e| panic!("{label}: {e:?}"));
+            // The shared audit over the same page: a control with nowhere to go, an
+            // `onclick` in a world with no script, a role or a tabindex on something
+            // inert, a field with no name or label, a fragment that is not here — and,
+            // from the engine's own cascade, an inert element with a pointer cursor, a
+            // hover state, or the painted box this page's own controls wear.
+            if let Some(fault) = cw_service_common::audit::page(&body)
+                .into_iter()
+                .chain(cw_service_common::audit::clothes(&body))
+                .next()
+            {
+                panic!("{label} {path}: {fault}");
+            }
             controls_of_html(&cw_web::html::parse(&body), &site.host)
         } else {
             controls_of_page(&serde_json::from_slice(&response.body).unwrap())

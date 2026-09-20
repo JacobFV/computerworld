@@ -31,6 +31,11 @@ pub struct Control {
     pub method: String,
     /// The `href`, `action` or `formaction` it would request, as written on the page.
     pub target: String,
+    /// For something submitted with `GET`, the form's own fields already encoded, the way
+    /// a browser appends them. A form's action is only half the request it makes: a search
+    /// box whose `/search` answers but whose `/search?q=…` does not is still a dead
+    /// control, and probing the bare action would never find out.
+    pub query: String,
     /// The accessible name: `aria-label`, else the text inside, else `title`.
     pub label: String,
 }
@@ -58,6 +63,41 @@ fn ancestor_form(doc: &Dom, node: NodeId) -> Option<NodeId> {
     doc.ancestors(node).find(|a| doc.is(*a, "form"))
 }
 
+/// A form's fields as a browser would submit them: every named input, textarea and
+/// select with the value the page rendered into it.
+fn encoded_fields(doc: &Dom, form: NodeId) -> String {
+    let mut pairs: Vec<(String, String)> = Vec::new();
+    for node in doc.descendants(form) {
+        if !doc.is_element(node) {
+            continue;
+        }
+        let Some(name) = doc.attr(node, "name").filter(|n| !n.is_empty()) else {
+            continue;
+        };
+        let value = match doc.tag(node) {
+            Some("input") => match input_kind(doc, node).as_str() {
+                // A box nobody ticked sends nothing, and a submit's own pair is the
+                // button's business, not the form's.
+                "checkbox" | "radio" if !doc.has_attr(node, "checked") => continue,
+                "submit" | "image" | "reset" | "button" => continue,
+                _ => doc.attr(node, "value").unwrap_or("").to_owned(),
+            },
+            Some("textarea") => doc.text_content(node),
+            Some("select") => doc
+                .descendants(node)
+                .find(|o| doc.is(*o, "option") && doc.has_attr(*o, "selected"))
+                .or_else(|| doc.descendants(node).find(|o| doc.is(*o, "option")))
+                .map(|o| doc.attr(o, "value").map(str::to_owned).unwrap_or_else(|| doc.text_content(o)))
+                .unwrap_or_default(),
+            _ => continue,
+        };
+        pairs.push((name.to_owned(), value));
+    }
+    url::form_urlencoded::Serializer::new(String::new())
+        .extend_pairs(pairs.iter().map(|(k, v)| (k.as_str(), v.as_str())))
+        .finish()
+}
+
 fn input_kind(doc: &Dom, node: NodeId) -> String {
     doc.attr(node, "type").unwrap_or("text").to_ascii_lowercase()
 }
@@ -83,9 +123,13 @@ pub fn controls(doc: &Dom) -> Vec<Control> {
         if !interactive {
             continue;
         }
+        let mut form_for_fields = None;
         let (method, target) = match tag.as_str() {
             "a" | "area" => ("GET".to_owned(), doc.attr(node, "href").unwrap_or_default().to_owned()),
-            "form" => (method_of(doc, node), doc.attr(node, "action").unwrap_or_default().to_owned()),
+            "form" => {
+                form_for_fields = Some(node);
+                (method_of(doc, node), doc.attr(node, "action").unwrap_or_default().to_owned())
+            }
             "button" | "input" => {
                 let submits = tag == "button"
                     && !matches!(doc.attr(node, "type"), Some("button") | Some("reset"))
@@ -103,10 +147,13 @@ pub fn controls(doc: &Dom) -> Vec<Control> {
                         (method, action.to_owned())
                     }
                     (true, None) => match ancestor_form(doc, node) {
-                        Some(form) => (
-                            method_of(doc, form),
-                            doc.attr(form, "action").unwrap_or_default().to_owned(),
-                        ),
+                        Some(form) => {
+                            form_for_fields = Some(form);
+                            (
+                                method_of(doc, form),
+                                doc.attr(form, "action").unwrap_or_default().to_owned(),
+                            )
+                        }
                         None => (String::new(), String::new()),
                     },
                     (false, _) => (String::new(), String::new()),
@@ -114,11 +161,16 @@ pub fn controls(doc: &Dom) -> Vec<Control> {
             }
             _ => (String::new(), String::new()),
         };
+        let query = match (method.as_str(), form_for_fields) {
+            ("GET", Some(form)) => encoded_fields(doc, form),
+            _ => String::new(),
+        };
         out.push(Control {
             id: doc.attr(node, "id").unwrap_or_default().to_owned(),
             tag,
             method,
             target,
+            query,
             label: label_of(doc, node),
         });
     }
@@ -517,6 +569,13 @@ impl<'a> Sweep<'a> {
                 let Some(target) = resolve(&path, &control.target) else {
                     continue;
                 };
+                // A GET form is requested as the browser would send it: the action with
+                // its own fields on the end. `/search` answering says nothing about
+                // `/search?q=…`, which is the request the box actually makes.
+                let target = match control.query.is_empty() {
+                    true => target,
+                    false => format!("{target}{}{}", if target.contains('?') { '&' } else { '?' }, control.query),
+                };
                 if self.skip.contains(&target) {
                     continue;
                 }
@@ -702,6 +761,46 @@ mod tests {
         let mut call = |_method: &str, path: &str| pages(path);
         let allowed = Sweep::new(&["/"], &mut call).allow_self(&["self"]).skip(&["/ghost"]).run();
         assert_eq!(allowed, Vec::<String>::new());
+    }
+
+    /// A search box is only as alive as the request it actually makes: the action may
+    /// answer while the action plus its fields does not, which is what a dead in-product
+    /// search looks like from the outside.
+    #[test]
+    fn a_get_form_is_submitted_with_its_fields_not_just_its_action() {
+        let page = wrap(
+            r#"<form id="find" action="/search" method="get">
+                 <input id="q" name="q" value="atlas" aria-label="Query">
+                 <input type="hidden" name="scope" value="all">
+                 <button id="go">Search</button>
+               </form>"#,
+        );
+        let found = controls(&cw_web::html::parse(&page));
+        let form = found.iter().find(|c| c.id == "find").expect("the form");
+        assert_eq!(form.query, "q=atlas&scope=all");
+        // The button submits the same request its form does.
+        assert_eq!(found.iter().find(|c| c.id == "go").expect("the button").query, "q=atlas&scope=all");
+        // And the sweep asks for that, not for the bare action.
+        let mut asked: Vec<String> = Vec::new();
+        let mut call = |_method: &str, path: &str| {
+            asked.push(path.to_owned());
+            match path {
+                "/" => (200, page.clone()),
+                "/search" => (200, wrap("<p>type something</p>")),
+                _ => (404, String::new()),
+            }
+        };
+        let faults = Sweep::new(&["/"], &mut call).run();
+        // Reported once for the form and once for the button that sends it: both are
+        // controls an agent can reach for, and both are dead.
+        assert_eq!(
+            faults,
+            [
+                "/: #find sends GET /search?q=atlas&scope=all, which answers 404",
+                "/: #go sends GET /search?q=atlas&scope=all, which answers 404",
+            ]
+        );
+        assert!(asked.iter().any(|p| p == "/search?q=atlas&scope=all"), "{asked:?}");
     }
 
     #[test]

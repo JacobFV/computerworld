@@ -132,6 +132,18 @@ fn form_fields(doc: &Document, form: NodeId) -> Vec<(String, String)> {
 /// Every control an HTML page draws, and a check that each one is wired to something.
 fn controls_of_html(what: &str, html: &str) -> Vec<Control> {
     validate_strict(html).unwrap_or_else(|e| panic!("{what}: {e:?}"));
+    // The shared audit over the same page: a control with nowhere to go, an `onclick` in
+    // a world with no script, a role or a tabindex on something inert, a field with no
+    // name or label, a fragment that is not here — and, from the engine's own cascade, an
+    // inert element with a pointer cursor, a hover state, or the painted box this page's
+    // own controls wear.
+    if let Some(fault) = cw_service_common::audit::page(html)
+        .into_iter()
+        .chain(cw_service_common::audit::clothes(html))
+        .next()
+    {
+        panic!("{what}: {fault}");
+    }
     let doc = cw_web::html::parse(html);
     let id_of = |n: NodeId| doc.attr(n, "id").unwrap_or("").to_owned();
     let owning_form = |n: NodeId| doc.ancestors(n).find(|a| doc.is(*a, "form"));
@@ -284,7 +296,12 @@ fn every_control_of_every_page_of_every_skin_is_answered_by_a_route_this_crate_s
             pages += 1;
             for c in controls {
                 if !c.target.starts_with('/') {
-                    // An outbound link written in someone's prose; another world serves it.
+                    // A fragment stays on this page; `audit::page` has already checked
+                    // that the id it names is really here. Anything else leaving the site
+                    // is an outbound link written in someone's prose.
+                    if c.target.starts_with('#') {
+                        continue;
+                    }
                     assert!(c.target.starts_with("http://") || c.target.starts_with("https://"), "{what}: {} {:?} points at {:?}", c.tag, c.id, c.target);
                     continue;
                 }

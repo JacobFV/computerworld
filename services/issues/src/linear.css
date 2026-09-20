@@ -125,8 +125,10 @@ a.tr:hover { background: var(--surface); }
 .row .title, .card .title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .row .title:hover, .card .title:hover { color: var(--accent); }
 .row .moves { display: none; gap: 4px; }
+/* Hovering a row reveals the move buttons, which are real and post. It no longer hides
+   the label chips beside them: a chip that changes under the pointer reads as something
+   you could press, and these are labels. */
 .row:hover .moves { display: inline-flex; }
-.row:hover .pills { display: none; }
 .who { display: inline-flex; align-items: center; gap: 6px; width: 84px; flex: none; color: var(--muted); font-size: 12px; }
 .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px; background: var(--paper); align-items: start; }
 .column { border-radius: 8px; background: var(--surface); padding: 0 6px 6px; min-height: 120px; }

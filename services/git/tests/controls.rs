@@ -9,6 +9,7 @@
 mod support;
 use cw_protocol::{HttpRequest, HttpResponse};
 use cw_sdk::{Service, ServiceContext};
+use cw_service_common::audit;
 use cw_service_git::GitService;
 use cw_web::dom::{Document, NodeId};
 use serde_json::{json, Value};
@@ -147,57 +148,6 @@ fn submitted(target: &str, fields: &[(String, String)]) -> String {
     format!("{}{}{query}", target, if target.contains('?') { "&" } else { "?" })
 }
 
-/// The classes this page's own stylesheet paints as pressable: anything given a pointer
-/// cursor, and anything with a hover state. `(tag, class)` of the last compound of each
-/// such selector, which is the element the rule lands on.
-fn pressable_classes(html: &str) -> Vec<(Option<String>, String)> {
-    let mut out = vec![];
-    let sheet = html.split("<style>").nth(1).unwrap_or("").split("</style>").next().unwrap_or("");
-    for rule in sheet.split('}') {
-        let Some((selectors, body)) = rule.split_once('{') else { continue };
-        let pressable = body.contains("cursor: pointer") || selectors.contains(":hover");
-        if !pressable {
-            continue;
-        }
-        for selector in selectors.split(',') {
-            let last = selector.trim().rsplit(char::is_whitespace).next().unwrap_or("").trim();
-            let last = last.split("::").next().unwrap_or(last);
-            let (before, _) = last.split_once(":hover").unwrap_or((last, ""));
-            let Some((tag, classes)) = before.split_once('.') else { continue };
-            let class = classes.split('.').next().unwrap_or("").to_owned();
-            if class.is_empty() {
-                continue;
-            }
-            out.push((if tag.is_empty() { None } else { Some(tag.to_owned()) }, class));
-        }
-    }
-    out
-}
-/// Nothing may be painted as pressable unless it is, holds, or sits inside a control. A
-/// `<span class="btn">` is the shape this catches: it lights up under the pointer and
-/// swallows the click, and the semantic tree never mentions it at all.
-fn nothing_is_dressed_as_a_control(page: &Page, here: &str, dead: &mut Vec<String>) {
-    let doc = &page.doc;
-    let control = |n: NodeId| matches!(doc.tag(n), Some("a" | "button" | "input" | "select" | "textarea" | "label"));
-    for (tag, class) in pressable_classes(&page.html) {
-        for node in doc.descendants(Document::ROOT) {
-            if tag.as_deref().is_some_and(|t| doc.tag(node) != Some(t)) {
-                continue;
-            }
-            if !doc.attr(node, "class").is_some_and(|c| c.split_ascii_whitespace().any(|k| k == class)) {
-                continue;
-            }
-            let reaches = control(node)
-                || doc.descendants(node).any(control)
-                || doc.ancestors(node).any(control);
-            if !reaches {
-                let id = doc.attr(node, "id").unwrap_or("");
-                dead.push(format!("{here}: <{} id={id:?} class={class:?}> is painted pressable but is no control", doc.tag(node).unwrap_or("?")));
-            }
-        }
-    }
-}
-
 /// Walks a whole site: every page reachable from its entry points, every control on every
 /// page followed. POSTs run against a copy of the state, so a star toggled or a branch
 /// deleted while probing cannot change what the rest of the walk sees.
@@ -219,8 +169,16 @@ fn walk(site: &str, mut state: Value, roots: &[&str]) {
             continue;
         }
         pages += 1;
+        // The shared audit does the per-page half: a control with nowhere to go, an
+        // `onclick` in a world with no script, a bogus `role`, a field with no name or
+        // label, a fragment that is not on the page, an inert element with a pointer
+        // cursor or a hover state, and — `clothes` — one drawn in the same painted box as
+        // this page's own controls. This file keeps the crawl, because it submits each
+        // form's own fields and so reaches pages a bare walk of the actions does not.
+        for fault in audit::page(&body).into_iter().chain(audit::clothes(&body)) {
+            dead.push(format!("{url}: {fault}"));
+        }
         let page = Page::parse(&format!("{site} {url}"), body);
-        nothing_is_dressed_as_a_control(&page, &url, &mut dead);
         for control in controls(&page, &url, &mut dead) {
             if !control.target.starts_with('/') {
                 continue;

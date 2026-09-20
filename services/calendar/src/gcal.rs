@@ -269,8 +269,11 @@ impl View<'_> {
                         "mini-day"
                     };
                     // The day already on screen is a marker; every other one opens its week.
+                    // It says so with `aria-current`, which the agent reads and the sheet
+                    // draws as a ring, so a day that cannot be clicked does not sit in the
+                    // grid looking exactly like the six beside it that can.
                     match day == self.focus {
-                        true => span(class).id(id).text(n.to_string()),
+                        true => span(&format!("{class} on")).id(id).attr("aria-current", "date").text(n.to_string()),
                         false => link(&id, self.at(day, None), n.to_string()).class(class),
                     }
                 }
@@ -427,12 +430,15 @@ impl View<'_> {
                 continue;
             };
             let current = d == self.today;
+            // Today's number is drawn in the filled circle the month view's day links
+            // wear, so it says what it is: the date you are on, not a day to open. There
+            // is no day view here for it to lead to.
             heads = heads.child(
                 div(if current { "head today" } else { "head" })
                     .id(format!("day-{d}-head"))
                     .attr("aria-label", heading(d))
                     .child(span("dow").text(WEEKDAYS[weekday as usize]))
-                    .child(span("num").text(number.to_string())),
+                    .child(span("num").when(current, |n| n.attr("aria-current", "date")).text(number.to_string())),
             );
             allday = allday.child(div("allday-cell").each(long, |e| self.bar(d, e)));
             let mut col = div(if current { "col today" } else { "col" }).id(format!("day-{d}")).each(0..hours, |_| div("hour"));

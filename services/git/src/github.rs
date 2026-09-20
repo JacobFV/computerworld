@@ -374,7 +374,10 @@ fn prose(id: &str, body: &str) -> Html {
 fn search_box(look: Look, query: &str) -> Html {
     form("search", "/search", "get")
         .class("site-search")
-        .child(ic("search-icon", "search"))
+        // The magnifier is the button that sends the box, not a picture of one: with no
+        // page script there is nothing else to submit it, and the semantic tree needs a
+        // control an agent can press.
+        .child(button("search-go", "").class("search-go").attr("aria-label", "Search").child(ic("search-icon", "search")))
         .child(
             text_input("search-q", "q", query)
                 .attr(
@@ -648,8 +651,8 @@ fn repo_frame(cx: &Cx, repository: &Repository, name: &str, active: Tab, body: V
                     span("chip")
                         .id("fork")
                         .child(ic("fork-icon", "fork"))
-                        .child(sp("fork-label", "", "Forks"))
-                        .child(counter("fork-count", repository.forks.to_string())),
+                        .child(sp("fork-count", "", repository.forks.to_string()))
+                        .child(sp("fork-label", "", format!(" fork{}", plural(repository.forks as usize)))),
                 )
                 .child(
                     form("star-form", format!("/{path}/star"), "post")
@@ -994,7 +997,7 @@ fn search_page(cx: &Cx, query: &str) -> Result<HttpResponse> {
                         .child(div("topics").each(repository.topics.iter().enumerate(), |(i, t)| {
                             let id = format!("hit-topic-{name}-{i}");
                             if t.eq_ignore_ascii_case(query) {
-                                sp(&id, "topic active", t.as_str())
+                                sp(&id, "topic active", t.as_str()).attr("aria-current", "page")
                             } else {
                                 a(&id, "topic", html::href("/search", &[("q", t)]), t.as_str())
                             }
@@ -1456,7 +1459,10 @@ fn about(cx: &Cx, repository: &Repository, name: &str, tip: &Commit) -> Html {
         )
         .child(
             div("about-section")
-                .child(el("h3").id("contributors-title").text("Contributors ").child(span("counter").text(authors.len().to_string())))
+                // A count beside a heading, not a badge on a button: in the GitLab sheet
+                // the counter bubble is painted exactly like a button, and this one is
+                // attached to nothing that can be pressed.
+                .child(el("h3").id("contributors-title").text("Contributors ").child(sp("contributors-count", "muted", authors.len().to_string())))
                 .child(
                     div("faces")
                         .id("contributors")
@@ -1622,7 +1628,7 @@ fn blob_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, file: &
     // the real thing; neither exists here. Raw stays, and really serves the bytes.
     let head = div("box-head blob-head")
         .id("blob-head")
-        .child(sp("blob-code-tab", "seg active", "Code"))
+        .child(sp("blob-code-tab", "strong small", "Code"))
         .child(sp("blob-stats", "muted small", format!("{} lines ({loc} loc) · {} Bytes", lines.len(), content.len())))
         .child(span("grow"))
         .child(a("raw", "btn btn-sm", format!("/{path}/raw/{branch}/{file}"), "Raw"));
