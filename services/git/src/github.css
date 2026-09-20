@@ -1,0 +1,36 @@
+/* github.com, 2024-2025: Primer's light palette, the grey header band that carries the
+   repository's underlined tab strip, bordered 6px boxes. Arial stands in for the system
+   face, JetBrains Mono for the code face. */
+html {
+  --font: Arial, Helvetica, sans-serif; --mono: "JetBrains Mono", "Courier New", monospace;
+  --ink: #1f2328; --muted: #59636e; --accent: #0969da; --paper: #ffffff; --surface: #f6f8fa;
+  --line: #d0d7de; --line-soft: #d8dee4; --hover: rgba(208,215,222,.32); --radius: 6px;
+  --btn-bg: #f6f8fa; --btn-hover: #eff2f5; --btn-line: rgba(31,35,40,.15);
+  --primary: #1f883d; --primary-hover: #1c8139; --primary-line: rgba(31,35,40,.15);
+  --green: #1a7f37; --red: #cf222e; --purple: #8250df; --folder: #54aeff; --tab-line: #fd8c73;
+  --counter: rgba(175,184,193,.2); --ref-bg: #ddf4ff; --code-bg: rgba(175,184,193,.2); --badge: #eaeef2;
+  --seg: #eaeef2; --seg-line: #d0d7de;
+  --add: #dafbe1; --add-num: #aceebb; --del: #ffebe9; --del-num: #ffcecb; --hunk: #ddf4ff; --hunk-num: #b6e3ff;
+}
+.state.st-open { background: #1f883d; }
+
+/* The header band: global bar above, the repository's tabs below, one grey surface. */
+.site-header { background: var(--surface); border-bottom: 1px solid var(--line); }
+.site-header .bar { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 16px; }
+.bar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.bar-right { display: flex; align-items: center; gap: 8px; }
+.burger { display: inline-flex; flex-direction: column; justify-content: center; gap: 3px; width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); }
+.burger i { display: block; height: 1.5px; border-radius: 1px; background: var(--muted); }
+.mark { position: relative; display: block; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--ink); }
+.mark:hover { text-decoration: none; }
+.mark .face { position: absolute; left: 7px; top: 10px; width: 18px; height: 14px; border-radius: 9px 9px 8px 8px; background: #ffffff; }
+.mark .ear { position: absolute; top: 8px; width: 7px; height: 7px; border-radius: 1px; background: #ffffff; transform: rotate(45deg); }
+.mark .ear.l { left: 8px; }
+.mark .ear.r { left: 17px; }
+.site-search { width: 320px; color: var(--muted); }
+.tool { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); font-size: 16px; }
+.repo-tabs { border-bottom: 0; margin: 0; padding: 0 16px; }
+.site-header .tab-item.active::after { bottom: 0; }
+
+.site-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 1280px; margin: 0 auto; padding: 40px 32px; color: var(--muted); font-size: 12px; }
+.foot-item { color: var(--accent); }

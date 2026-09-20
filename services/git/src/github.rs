@@ -1,47 +1,77 @@
-//! GitHub-skinned routes and pages: owner paths, code, commits, diffs, issues, pull
-//! requests, stars and gists, laid out the way github.com laid them out in 2024-2025.
-//! The plain skin never reaches this module, which is why `/repos/*` stays byte-identical.
+//! The owner-namespaced surface as HTML: owner paths, code, commits, diffs, issues, pull
+//! requests, stars and gists. One set of routes and one markup wears two looks. `github`
+//! (and `plain`, which always borrowed it for these paths) is github.com as it looked in
+//! 2024-2025: the grey header band with the underlined tab strip, bordered 6px boxes, the
+//! About column. `gitlab` is gitlab.com: the left sidebar, the project header, blue confirm
+//! buttons and "merge requests". The sheets are `base.css` (structure shared by both),
+//! `github.css` and `gitlab.css`, next to this file.
+//!
+//! Element ids are the agent API and are the ones the `Page` version used: `mark`,
+//! `crumb-<n>`, `tab-<name>-link`, `star`, `stargazers`, `watch-label`, `fork-label`,
+//! `branch-name`, `branches`, `tags`, `history`, `latest-*`, `file-<n>`, `entry-message-<n>`,
+//! `readme-*`, `about-*-link`, `commits-<n>-title|sha|author`, `diff-file-<n>-path`,
+//! `thread-<n>`, `list-open`, `list-closed`, `new`, `comment` (form), `comment-body`,
+//! `comment-submit`, `close`, `reopen`, `merge`, `approve`, `ready`, `new-issue-*`,
+//! `new-pull-*`, `ptab-*-link`, `side-*`, `gist-<id>`, `hit-link-<name>`, `repo-<owner>-<name>`.
 use crate::{
     branch_tip, branches, commits_between, default_branch, diff_trees, language_color,
     language_stats, last_commit_per_path, list_tree, log, merge_base, short, Commit, DiffLine,
     FileDiff, GitState, Repository, Thread,
 };
-use cw_protocol::{HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result, Style};
+use cw_protocol::{HttpRequest, HttpResponse, Result};
 use cw_sdk::ServiceContext;
 use cw_service_common as web;
+use cw_service_common::html::{
+    self, button, div, el, empty, form, hidden, label, link, span, text_input,
+    Document, Html,
+};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
-const ACCENT: &str = "#0969da";
-const INK: &str = "#1f2328";
-const MUTED: &str = "#59636e";
-const SURFACE: &str = "#f6f8fa";
-const LINE: &str = "#d0d7de";
-const GREEN: &str = "#1f883d";
-const PURPLE: &str = "#8250df";
-const RED: &str = "#cf222e";
-const ORANGE: &str = "#fd8c73";
-const CHROME: &str = "#24292f";
-const CHROME_LINE: &str = "#57606a";
-const FOLDER: &str = "#54aeff";
-const ADD_BG: &str = "#dafbe1";
-const DEL_BG: &str = "#ffebe9";
-const HUNK_BG: &str = "#ddf4ff";
-const CLEAR: &str = "#00000000";
-/// Width of the About column and the issue sidebar.
-const SIDE: u32 = 296;
+const BASE_CSS: &str = include_str!("base.css");
+const GITHUB_CSS: &str = include_str!("github.css");
+const GITLAB_CSS: &str = include_str!("gitlab.css");
 
-/// The page palette; a seed may override it, as every skinned service allows.
-fn theme(state: &GitState) -> PageTheme {
-    state.theme.clone().unwrap_or(PageTheme {
-        accent: Some(ACCENT.into()),
-        background: Some("#ffffff".into()),
-        surface: Some(SURFACE.into()),
-        ink: Some(INK.into()),
-        muted: Some(MUTED.into()),
-        content_width: Some(1280),
-        font: None,
-    })
+/// Which product the pages stand in for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Look {
+    Github,
+    Gitlab,
+}
+impl Look {
+    fn of(state: &GitState) -> Look {
+        if state.skin.as_str() == "gitlab" {
+            Look::Gitlab
+        } else {
+            Look::Github
+        }
+    }
+    fn brand(self) -> &'static str {
+        match self {
+            Look::Github => "GitHub",
+            Look::Gitlab => "GitLab",
+        }
+    }
+    /// "Pull requests" on GitHub, "Merge requests" on GitLab.
+    fn pulls(self) -> &'static str {
+        match self {
+            Look::Github => "Pull requests",
+            Look::Gitlab => "Merge requests",
+        }
+    }
+    fn pull(self) -> &'static str {
+        match self {
+            Look::Github => "pull request",
+            Look::Gitlab => "merge request",
+        }
+    }
+}
+/// What every page needs: the site, its look, who is asking and when.
+struct Cx<'a> {
+    state: &'a GitState,
+    look: Look,
+    actor: &'a str,
+    now: u64,
 }
 
 // ---- Time. A tick is an hour; tick 0 is Saturday 1 August 2026, and "now" is the ----
@@ -129,136 +159,6 @@ fn latest_tick(state: &GitState) -> u64 {
         .unwrap_or(0)
 }
 
-// ---- Small presentational pieces. ----
-
-fn style() -> Style {
-    web::style()
-}
-fn text(id: &str, s: impl Into<String>, size: u16, color: &str) -> PageElement {
-    web::styled(id, s, style().size(size).color(color))
-}
-fn bold(id: &str, s: impl Into<String>, size: u16, color: &str) -> PageElement {
-    web::styled(id, s, style().size(size).color(color).bold())
-}
-fn muted(id: &str, s: impl Into<String>) -> PageElement {
-    text(id, s, 12, MUTED)
-}
-fn mono(id: &str, s: impl Into<String>, size: u16, color: &str) -> PageElement {
-    web::styled(id, s, style().size(size).color(color).mono())
-}
-fn ic(id: &str, name: &str, size: u16, color: &str) -> PageElement {
-    web::icon(id, name, name, style().size(size).color(color))
-}
-/// A row of children at their own widths, left to right.
-fn chips(id: &str, gap: u32, style: Style, children: Vec<PageElement>) -> PageElement {
-    web::styled_row(id, gap, "center", style.justify("start"), children)
-}
-/// `left` chips at the left edge and `right` chips at the right edge.
-fn between(id: &str, style: Style, left: Vec<PageElement>, right: Vec<PageElement>) -> PageElement {
-    web::styled_row(
-        id,
-        8,
-        "center",
-        style.justify("space-between"),
-        vec![
-            chips(&format!("{id}-l"), 8, web::style(), left),
-            chips(&format!("{id}-r"), 8, web::style(), right),
-        ],
-    )
-}
-fn column(id: &str, gap: u32, style: Style, children: Vec<PageElement>) -> PageElement {
-    web::column(id, gap, style, children)
-}
-/// GitHub's secondary button: grey fill, hairline border, 6px corners.
-fn button_style() -> Style {
-    style()
-        .background(SURFACE)
-        .border(LINE)
-        .radius(6)
-        .padding(6)
-        .size(12)
-        .medium()
-        .color(INK)
-}
-fn grey_link(id: &str, s: &str, url: impl Into<String>) -> PageElement {
-    web::styled_link(id, s, url, button_style())
-}
-fn green_link(id: &str, s: &str, url: impl Into<String>) -> PageElement {
-    web::styled_link(
-        id,
-        s,
-        url,
-        button_style()
-            .background(GREEN)
-            .border(GREEN)
-            .color("#ffffff"),
-    )
-}
-fn post(url: String, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: "POST".into(),
-        url,
-        fields: fields
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect(),
-    }
-}
-fn grey_button(id: &str, s: &str, action: PageAction) -> PageElement {
-    web::styled_button(id, s, action, button_style().padding(10))
-}
-fn green_button(id: &str, s: &str, action: PageAction) -> PageElement {
-    web::styled_button(
-        id,
-        s,
-        action,
-        button_style()
-            .padding(10)
-            .background(GREEN)
-            .border(GREEN)
-            .color("#ffffff"),
-    )
-}
-/// A bordered chip made of an icon, a label and (optionally) a count: Watch 12, Fork 37.
-fn icon_chip(id: &str, icon: &str, label: &str, count: Option<String>, url: &str) -> PageElement {
-    let mut children = vec![
-        ic(&format!("{id}-icon"), icon, 16, MUTED),
-        web::inline_link(&format!("{id}-label"), label, url, 12, INK),
-    ];
-    if let Some(count) = count {
-        children.push(counter(&format!("{id}-count"), count));
-    }
-    chips(
-        id,
-        6,
-        style()
-            .background(SURFACE)
-            .border(LINE)
-            .radius(6)
-            .padding(5),
-        children,
-    )
-}
-/// The grey number bubble after a tab or a chip label.
-fn counter(id: &str, s: String) -> PageElement {
-    web::chip(id, s, "#e7ebef", INK, style().size(11).padding(5).medium())
-}
-/// A branch name the way GitHub sets it in prose: blue mono on a pale-blue chip.
-fn ref_chip(id: &str, name: &str, url: &str) -> PageElement {
-    web::styled_link(
-        id,
-        name,
-        url,
-        style()
-            .size(12)
-            .mono()
-            .color(ACCENT)
-            .background(HUNK_BG)
-            .radius(6)
-            .padding(3)
-            .one_line(),
-    )
-}
 /// Colour of a label chip: GitHub's defaults for the well-known names, a stable tint
 /// from the name for the rest.
 fn label_colours(name: &str) -> (&'static str, &'static str) {
@@ -287,11 +187,72 @@ fn label_colours(name: &str) -> (&'static str, &'static str) {
         }
     }
 }
-fn label_chip(id: &str, name: &str) -> PageElement {
-    let (fill, ink) = label_colours(name);
-    web::chip(id, name, fill, ink, style().size(11).padding(6).medium())
+// ---- Small presentational pieces. ----
+
+/// `node` with `id`, unless the id is empty.
+fn idn(node: Html, id: &str) -> Html {
+    if id.is_empty() {
+        node
+    } else {
+        node.id(id)
+    }
 }
-fn labels(prefix: &str, thread: &Thread) -> Vec<PageElement> {
+/// `<span id class>text</span>`.
+fn sp(id: &str, class: &str, s: impl Into<String>) -> Html {
+    idn(span(class), id).text(s)
+}
+/// A CSS-drawn or glyph icon; the sheet draws it from the `ic-<name>` class.
+fn ic(id: &str, name: &str) -> Html {
+    idn(span("ic"), id)
+        .class(&format!("ic-{name}"))
+        .attr("data-icon", name)
+        .attr("aria-hidden", "true")
+}
+/// A round avatar tinted from the name, showing its initials.
+fn avatar(id: &str, name: &str, size: u32) -> Html {
+    let initials: String = name
+        .split(|c: char| c.is_whitespace() || c == '-' || c == '_' || c == '.')
+        .filter(|w| !w.is_empty())
+        .take(2)
+        .filter_map(|w| w.chars().next())
+        .flat_map(char::to_uppercase)
+        .collect();
+    idn(span("avatar"), id)
+        .class(&format!("s{size}"))
+        .attr("title", name)
+        .style(&format!("background: {}", web::avatar_tint(name)))
+        .text(initials)
+}
+/// A link styled by class.
+fn a(id: &str, class: &str, url: impl Into<String>, s: impl Into<String>) -> Html {
+    link(id, url, s).class(class)
+}
+fn btn_link(id: &str, s: &str, url: impl Into<String>) -> Html {
+    a(id, "btn", url, s)
+}
+fn primary_link(id: &str, s: &str, url: impl Into<String>) -> Html {
+    a(id, "btn btn-primary", url, s)
+}
+/// A button that posts fixed fields: a one-button form, `<id>-form` around `<id>`.
+fn post_button(id: &str, class: &str, s: &str, url: String, fields: &[(&str, &str)]) -> Html {
+    form(&format!("{id}-form"), url, "post")
+        .class("inline-form")
+        .each(fields.iter(), |(k, v)| hidden(k, v))
+        .child(button(id, s).class(class))
+}
+/// The grey number bubble after a tab or a chip label.
+fn counter(id: &str, s: impl Into<String>) -> Html {
+    sp(id, "counter", s)
+}
+/// A branch name the way it is set in prose: blue mono on a pale-blue chip.
+fn ref_chip(id: &str, name: &str, url: &str) -> Html {
+    a(id, "ref", url, name)
+}
+fn label_chip(id: &str, name: &str) -> Html {
+    let (fill, ink) = label_colours(name);
+    sp(id, "label", name).style(&format!("background: {fill}; color: {ink}"))
+}
+fn labels(prefix: &str, thread: &Thread) -> Vec<Html> {
     thread
         .labels
         .iter()
@@ -299,37 +260,30 @@ fn labels(prefix: &str, thread: &Thread) -> Vec<PageElement> {
         .map(|(i, l)| label_chip(&format!("{prefix}-label-{i}"), l))
         .collect()
 }
+/// `(word, css class, icon)` of a thread's state.
+fn state_of(thread: &Thread, pull: bool) -> (&'static str, &'static str, &'static str) {
+    match (thread.state.as_str(), pull, thread.draft) {
+        ("merged", ..) => ("Merged", "st-merged", "merge"),
+        ("closed", true, _) => ("Closed", "st-closed", "pull-request"),
+        ("closed", false, _) => ("Closed", "st-done", "issue-closed"),
+        (_, true, true) => ("Draft", "st-draft", "pull-request"),
+        (_, true, false) => ("Open", "st-open", "pull-request"),
+        _ => ("Open", "st-open", "issue-open"),
+    }
+}
 /// The state badge on a thread page: icon and word on a solid pill.
-fn state_pill(id: &str, thread: &Thread, pull: bool) -> PageElement {
-    let (text, colour, icon) = match (thread.state.as_str(), pull, thread.draft) {
-        ("merged", ..) => ("Merged", PURPLE, "merge"),
-        ("closed", true, _) => ("Closed", RED, "pull-request"),
-        ("closed", false, _) => ("Closed", PURPLE, "issue-closed"),
-        (_, true, true) => ("Draft", MUTED, "pull-request"),
-        (_, true, false) => ("Open", GREEN, "pull-request"),
-        _ => ("Open", GREEN, "issue-open"),
-    };
-    chips(
-        id,
-        4,
-        style().background(colour).radius(20).padding(6),
-        vec![
-            ic(&format!("{id}-icon"), icon, 16, "#ffffff"),
-            bold(&format!("{id}-text"), text, 14, "#ffffff"),
-        ],
-    )
+fn state_pill(id: &str, thread: &Thread, pull: bool) -> Html {
+    let (word, class, icon) = state_of(thread, pull);
+    span("state")
+        .id(id)
+        .class(class)
+        .child(ic(&format!("{id}-icon"), icon))
+        .child(sp(&format!("{id}-text"), "", word))
 }
 /// The small state icon in a list row.
-fn state_icon(id: &str, thread: &Thread, pull: bool) -> PageElement {
-    let (icon, colour) = match (thread.state.as_str(), pull, thread.draft) {
-        ("merged", ..) => ("merge", PURPLE),
-        ("closed", true, _) => ("pull-request", RED),
-        ("closed", false, _) => ("issue-closed", PURPLE),
-        (_, true, true) => ("pull-request", MUTED),
-        (_, true, false) => ("pull-request", GREEN),
-        _ => ("issue-open", GREEN),
-    };
-    ic(id, icon, 16, colour)
+fn state_icon(id: &str, thread: &Thread, pull: bool) -> Html {
+    let (word, class, icon) = state_of(thread, pull);
+    ic(id, icon).class(class).attr("title", word)
 }
 fn slug(repository: &Repository, name: &str) -> String {
     format!("{}/{name}", repository.owner)
@@ -337,100 +291,225 @@ fn slug(repository: &Repository, name: &str) -> String {
 fn open_count(threads: &BTreeMap<u64, Thread>) -> usize {
     threads.values().filter(|t| t.state == "open").count()
 }
-/// Links the text mentions, as elements after it, so a URL in an issue is clickable.
-fn with_links(prefix: &str, body: &str, size: u16) -> Vec<PageElement> {
-    let mut out = vec![text(prefix, body, size, INK)];
-    let links = web::links(prefix, body);
-    if !links.is_empty() {
-        out.push(chips(&format!("{prefix}-links"), 8, style(), links));
+fn plural(n: usize) -> &'static str {
+    if n == 1 {
+        ""
+    } else {
+        "s"
     }
+}
+/// Text with its `http(s)` URLs as links (`<prefix>-link-<word index>`, the ids the Page
+/// version gave them) and `` `code` `` spans as `<code>`. Whitespace is kept as written.
+fn inline(prefix: &str, body: &str, code_spans: bool) -> Vec<Html> {
+    let mut out = vec![];
+    let mut plain = String::new();
+    let mut word_index = 0usize;
+    let mut rest = body;
+    let flush = |plain: &mut String, out: &mut Vec<Html>| {
+        if plain.is_empty() {
+            return;
+        }
+        let s = std::mem::take(plain);
+        if !code_spans || !s.contains('`') {
+            out.push(Html::from(s));
+            return;
+        }
+        for (i, piece) in s.split('`').enumerate() {
+            if piece.is_empty() {
+                continue;
+            }
+            out.push(if i % 2 == 1 {
+                el("code").text(piece)
+            } else {
+                Html::from(piece)
+            });
+        }
+    };
+    while !rest.is_empty() {
+        let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+        if end == 0 {
+            let ws = rest.find(|c: char| !c.is_whitespace()).unwrap_or(rest.len());
+            plain.push_str(&rest[..ws]);
+            rest = &rest[ws..];
+            continue;
+        }
+        let word = &rest[..end];
+        rest = &rest[end..];
+        let url = word.trim_end_matches(['.', ',', ';', ')', ']']);
+        let is_link = url::Url::parse(url)
+            .ok()
+            .is_some_and(|u| matches!(u.scheme(), "http" | "https"));
+        if is_link {
+            flush(&mut plain, &mut out);
+            out.push(link(&format!("{prefix}-link-{word_index}"), url, url));
+            plain.push_str(&word[url.len()..]);
+        } else {
+            plain.push_str(word);
+        }
+        word_index += 1;
+    }
+    flush(&mut plain, &mut out);
     out
 }
+/// A body of prose as written: paragraphs kept, URLs clickable.
+fn prose(id: &str, body: &str) -> Html {
+    div("prose").id(id).children(inline(id, body, false))
+}
 
-// ---- The global header: dark bar, mark, breadcrumb, search, the right-side icons. ----
+// ---- The shell: GitHub's grey header band with the tab strip, or GitLab's sidebar. ----
 
-fn header(trail: &[(&str, String)], actor: &str) -> PageElement {
-    let mut left = vec![web::icon_action(
-        "mark",
-        "code",
-        "GitHub",
-        style()
-            .size(18)
-            .padding(7)
-            .radius(16)
-            .background("#ffffff")
-            .color(CHROME),
-        web::visit("/"),
-    )];
-    for (i, (label, url)) in trail.iter().enumerate() {
+fn search_box(look: Look) -> Html {
+    form("search", "/search", "get")
+        .class("site-search")
+        .child(ic("search-icon", "search"))
+        .child(
+            text_input("search-q", "q", "")
+                .attr(
+                    "placeholder",
+                    match look {
+                        Look::Github => "Type / to search",
+                        Look::Gitlab => "Search or go to…",
+                    },
+                )
+                .attr("aria-label", "Search"),
+        )
+}
+fn crumbs(trail: &[(&str, String)]) -> Html {
+    let mut nav = el("nav").class("crumbs").attr("aria-label", "Breadcrumb");
+    for (i, (text, url)) in trail.iter().enumerate() {
         if i > 0 {
-            left.push(text(&format!("crumb-sep-{i}"), "/", 14, CHROME_LINE));
+            nav = nav.child(sp(&format!("crumb-sep-{i}"), "sep", "/"));
         }
         let last = i + 1 == trail.len();
-        left.push(web::styled_link(
+        nav = nav.child(a(
             &format!("crumb-{i}"),
-            *label,
+            if last { "crumb last" } else { "crumb" },
             url.clone(),
-            style()
-                .size(14)
-                .color("#ffffff")
-                .one_line()
-                .weight(if last { "bold" } else { "regular" }),
+            *text,
         ));
     }
-    let search = chips(
-        "search",
-        8,
-        style().border(CHROME_LINE).radius(6).padding(6).width(320),
-        vec![
-            ic("search-icon", "search", 14, "#8b949e"),
-            text("search-hint", "Type / to search", 13, "#8b949e"),
-        ],
-    );
-    let square = |id: &str, name: &str| {
-        web::icon(
-            id,
-            name,
-            name,
-            style()
-                .size(16)
-                .color("#ffffff")
-                .padding(6)
-                .border(CHROME_LINE)
-                .radius(6),
-        )
+    nav
+}
+/// The whole page around `main`: `nav` is the repository's tab strip, if there is one.
+fn shell(cx: &Cx, trail: &[(&str, String)], nav: Option<Html>, main: Vec<Html>) -> Vec<Html> {
+    let tools = |class: &str| {
+        div(class)
+            .id("chrome-right")
+            .child(sp("nav-plus", "tool", "+").attr("title", "Create new"))
+            .child(span("tool").id("nav-issues").attr("title", "Issues").child(ic("", "issue-open")))
+            .child(span("tool").id("nav-pulls").attr("title", cx.look.pulls()).child(ic("", "pull-request")))
+            .child(span("tool").id("nav-inbox").attr("title", "Notifications").child(ic("", "inbox")))
+            .child(avatar("nav-avatar", cx.actor, 32))
     };
-    let right = vec![
-        square("nav-plus", "plus"),
-        square("nav-issues", "issue-open"),
-        square("nav-pulls", "pull-request"),
-        square("nav-inbox", "inbox"),
-        web::avatar("nav-avatar", actor, 30),
-    ];
-    web::styled_row(
-        "chrome",
-        16,
-        "center",
-        style()
-            .background(CHROME)
-            .padding(12)
-            .justify("space-between")
-            .pin("top"),
-        vec![
-            chips("chrome-left", 8, style(), left),
-            search,
-            chips("chrome-right", 8, style(), right),
+    match cx.look {
+        Look::Github => vec![
+            el("header")
+                .id("chrome")
+                .class("site-header")
+                .child(
+                    div("bar")
+                        .child(
+                            div("bar-left")
+                                .id("chrome-left")
+                                .child(span("burger").child(el("i")).child(el("i")).child(el("i")))
+                                .child(
+                                    el("a")
+                                        .id("mark")
+                                        .class("mark")
+                                        .attr("href", "/")
+                                        .attr("aria-label", "GitHub")
+                                        .child(el("i").class("ear l"))
+                                        .child(el("i").class("ear r"))
+                                        .child(el("i").class("face")),
+                                )
+                                .child(if trail.is_empty() {
+                                    sp("crumb-home", "crumb last", "Dashboard")
+                                } else {
+                                    crumbs(trail)
+                                }),
+                        )
+                        .child(search_box(cx.look))
+                        .child(tools("bar-right")),
+                )
+                .maybe(nav),
+            el("main").class("container").children(main),
+            el("footer")
+                .class("site-footer")
+                .child(sp("foot-copy", "", "© 2026 GitHub, Inc."))
+                .each(["Terms", "Privacy", "Security", "Status", "Docs", "Contact"], |t| sp("", "foot-item", t)),
         ],
-    )
-}
-trait StyleExt {
-    fn weight(self, w: &str) -> Style;
-}
-impl StyleExt for Style {
-    fn weight(mut self, w: &str) -> Style {
-        self.weight = Some(w.into());
-        self
+        Look::Gitlab => vec![div("layout")
+            .child(
+                el("aside")
+                    .id("chrome")
+                    .class("sidebar")
+                    .child(
+                        div("side-top")
+                            .id("chrome-left")
+                            .child(
+                                el("a")
+                                    .id("mark")
+                                    .class("mark")
+                                    .attr("href", "/")
+                                    .attr("aria-label", "GitLab")
+                                    .child(el("i").class("ear l"))
+                                    .child(el("i").class("ear r"))
+                                    .child(el("i").class("face")),
+                            )
+                            .child(tools("side-tools")),
+                    )
+                    .child(search_box(cx.look))
+                    .child(match nav {
+                        Some(nav) => nav,
+                        None => el("nav")
+                            .class("side-nav")
+                            .child(sp("", "side-title", "Your work"))
+                            .child(a("side-projects", "side-item active", "/", "Projects"))
+                            .when(!cx.state.gists.is_empty(), |n| n.child(a("side-snippets", "side-item", "/gists", "Snippets"))),
+                    })
+                    .child(sp("", "side-help", "Help")),
+            )
+            .child(
+                div("page")
+                    .child(div("topbar").child(if trail.is_empty() {
+                        el("nav").class("crumbs").child(sp("crumb-home", "crumb last", "Your work / Projects"))
+                    } else {
+                        crumbs(trail)
+                    }))
+                    .child(el("main").class("container").children(main)),
+            )],
     }
+}
+fn finish(cx: &Cx, title: &str, body: Vec<Html>) -> Result<HttpResponse> {
+    let mut doc = Document::new(title)
+        .lang("en")
+        .stylesheet(BASE_CSS)
+        .stylesheet(match cx.look {
+            Look::Github => GITHUB_CSS,
+            Look::Gitlab => GITLAB_CSS,
+        })
+        .body_class(match cx.look {
+            Look::Github => "skin-github",
+            Look::Gitlab => "skin-gitlab",
+        })
+        .body(body);
+    // A seed may override the palette, as every skinned service allows.
+    if let Some(theme) = &cx.state.theme {
+        let vars: Vec<String> = [
+            ("--accent", &theme.accent),
+            ("--paper", &theme.background),
+            ("--surface", &theme.surface),
+            ("--ink", &theme.ink),
+            ("--muted", &theme.muted),
+        ]
+        .iter()
+        .filter_map(|(k, v)| v.as_ref().map(|v| format!("{k}: {v}")))
+        .collect();
+        if !vars.is_empty() {
+            doc = doc.root_style(&vars.join("; "));
+        }
+    }
+    html::page(&doc)
 }
 
 // ---- The repository frame: title row, action chips, and the tab strip. ----
@@ -442,244 +521,164 @@ enum Tab {
     Pulls,
     Other,
 }
-fn tab(
-    id: &str,
-    icon: &str,
-    label: &str,
-    count: Option<usize>,
-    url: String,
-    active: bool,
-) -> PageElement {
-    let mut row = vec![
-        ic(&format!("{id}-icon"), icon, 16, MUTED),
-        web::styled_link(
-            &format!("{id}-link"),
-            label,
-            url,
-            style().size(14).color(INK).one_line().weight(if active {
-                "medium"
-            } else {
-                "regular"
-            }),
-        ),
-    ];
-    if let Some(n) = count {
-        row.push(counter(&format!("{id}-count"), n.to_string()));
+/// One tab: `<li id>` around `<a id="<id>-link">` with its icon, label and count.
+fn tab(id: &str, icon: &str, text: &str, count: Option<usize>, url: String, active: bool) -> Html {
+    let mut link = el("a")
+        .id(format!("{id}-link"))
+        .class("tab")
+        .attr("href", url)
+        .child(ic(&format!("{id}-icon"), icon))
+        .child(span("tab-label").text(text));
+    if active {
+        link = link.class("active").attr("aria-current", "page");
     }
-    column(
-        id,
-        6,
-        style(),
-        vec![
-            chips(&format!("{id}-row"), 6, style().padding(4), row),
-            web::thumbnail(
-                &format!("{id}-bar"),
-                "",
-                style()
-                    .height(2)
-                    .background(if active { ORANGE } else { CLEAR }),
-            ),
-        ],
-    )
+    if let Some(n) = count {
+        link = link.child(Html::from(" ")).child(counter(&format!("{id}-count"), n.to_string()));
+    }
+    el("li").id(id).class(if active { "tab-item active" } else { "tab-item" }).child(link)
 }
-fn repo_frame(
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    active: Tab,
-    body: Vec<PageElement>,
-) -> Vec<PageElement> {
+fn tabs(id: &str, class: &str, items: Vec<Html>) -> Html {
+    el("nav").class(class).child(el("ul").id(id).children(items))
+}
+fn repo_frame(cx: &Cx, repository: &Repository, name: &str, active: Tab, body: Vec<Html>) -> Vec<Html> {
     let path = slug(repository, name);
-    let starred = repository.stars.contains(actor);
-    let mut elements = vec![
-        header(
-            &[
-                (repository.owner.as_str(), format!("/{}", repository.owner)),
-                (name, format!("/{path}")),
-            ],
-            actor,
+    let starred = repository.stars.contains(cx.actor);
+    let gitlab = cx.look == Look::Gitlab;
+    let t = |id: &str, icon: &str, text: &str, count: Option<usize>, route: &str, on: bool| {
+        tab(id, icon, text, count, format!("/{path}{route}"), on)
+    };
+    let mut items = vec![
+        t("tab-code", "code", "Code", None, "", active == Tab::Code),
+        t("tab-issues", "issue-open", "Issues", Some(open_count(&repository.issues)), "/issues", active == Tab::Issues),
+        t(
+            "tab-pulls",
+            "pull-request",
+            cx.look.pulls(),
+            Some(open_count(&repository.pull_requests)),
+            "/pulls",
+            active == Tab::Pulls,
         ),
-        web::spacer("repo-lead", 8),
-        between(
-            "repo-head",
-            style(),
-            vec![
-                ic("repo-icon", "book", 16, MUTED),
-                web::inline_link(
-                    "repo-owner",
-                    &repository.owner,
-                    format!("/{}", repository.owner),
-                    20,
-                    ACCENT,
-                ),
-                text("repo-sep", "/", 20, MUTED),
-                web::styled_link(
-                    "repo-name",
-                    name,
-                    format!("/{path}"),
-                    style().size(20).bold().color(ACCENT).one_line(),
-                ),
-                web::chip(
-                    "repo-visibility",
-                    "Public",
-                    "#ffffff",
-                    MUTED,
-                    style().size(11).padding(5).border(LINE).medium(),
-                ),
-            ],
-            vec![
-                icon_chip(
-                    "watch",
-                    "eye",
-                    "Watch",
-                    Some((repository.stars.len() * 2 + 3).to_string()),
-                    &format!("/{path}/stargazers"),
-                ),
-                icon_chip(
-                    "fork",
-                    "fork",
-                    "Fork",
-                    Some(repository.forks.to_string()),
-                    &format!("/{path}/branches"),
-                ),
-                web::styled_button(
-                    "star",
-                    if starred { "Starred" } else { "Star" },
-                    post(format!("/{path}/star"), &[]),
-                    button_style().padding(6),
-                ),
-                web::styled_link(
-                    "stargazers",
-                    repository.stars.len().to_string(),
-                    format!("/{path}/stargazers"),
-                    style()
-                        .size(11)
-                        .medium()
-                        .color(INK)
-                        .background("#e7ebef")
-                        .radius(10)
-                        .padding(5),
-                ),
-            ],
-        ),
-        chips(
-            "repo-tabs",
-            12,
-            style(),
-            vec![
-                tab(
-                    "tab-code",
-                    "code",
-                    "Code",
-                    None,
-                    format!("/{path}"),
-                    active == Tab::Code,
-                ),
-                tab(
-                    "tab-issues",
-                    "issue-open",
-                    "Issues",
-                    Some(open_count(&repository.issues)),
-                    format!("/{path}/issues"),
-                    active == Tab::Issues,
-                ),
-                tab(
-                    "tab-pulls",
-                    "pull-request",
-                    "Pull requests",
-                    Some(open_count(&repository.pull_requests)),
-                    format!("/{path}/pulls"),
-                    active == Tab::Pulls,
-                ),
-                tab(
-                    "tab-actions",
-                    "play",
-                    "Actions",
-                    None,
-                    format!("/{path}/actions"),
-                    false,
-                ),
-                tab(
-                    "tab-projects",
-                    "grid",
-                    "Projects",
-                    None,
-                    format!("/{path}/projects"),
-                    false,
-                ),
-                tab(
-                    "tab-wiki",
-                    "book",
-                    "Wiki",
-                    None,
-                    format!("/{path}/wiki"),
-                    false,
-                ),
-                tab(
-                    "tab-security",
-                    "shield",
-                    "Security",
-                    None,
-                    format!("/{path}/security"),
-                    false,
-                ),
-                tab(
-                    "tab-insights",
-                    "signal",
-                    "Insights",
-                    None,
-                    format!("/{path}/pulse"),
-                    false,
-                ),
-                tab(
-                    "tab-settings",
-                    "gear",
-                    "Settings",
-                    None,
-                    format!("/{path}/settings"),
-                    false,
-                ),
-            ],
-        ),
-        web::divider("tabs-rule"),
-        web::spacer("tabs-gap", 8),
+        t("tab-actions", "play", if gitlab { "Build" } else { "Actions" }, None, "/actions", false),
+        t("tab-projects", "grid", if gitlab { "Plan" } else { "Projects" }, None, "/projects", false),
+        t("tab-wiki", "book", "Wiki", None, "/wiki", false),
+        t("tab-security", "shield", if gitlab { "Secure" } else { "Security" }, None, "/security", false),
+        t("tab-insights", "signal", if gitlab { "Analyze" } else { "Insights" }, None, "/pulse", false),
+        t("tab-settings", "gear", "Settings", None, "/settings", false),
     ];
-    elements.extend(body);
-    elements
+    let nav = if gitlab {
+        // The sidebar names the project above its sections.
+        items.insert(
+            0,
+            el("li").class("side-context").child(avatar("side-project-avatar", name, 24).class("square")).child(sp("side-project", "", name)),
+        );
+        tabs("repo-tabs", "side-nav", items)
+    } else {
+        tabs("repo-tabs", "tabs repo-tabs", items)
+    };
+    let head = div("repo-head")
+        .id("repo-head")
+        .child(
+            div("repo-title")
+                .child(if gitlab { avatar("repo-icon", name, 48).class("square") } else { avatar("repo-icon", &repository.owner, 24).class("square") })
+                .child(a("repo-owner", "repo-owner", format!("/{}", repository.owner), &repository.owner))
+                .child(sp("repo-sep", "sep", "/"))
+                .child(a("repo-name", "repo-name", format!("/{path}"), name))
+                .child(sp("repo-visibility", "pill", "Public")),
+        )
+        .child(
+            div("repo-actions")
+                .child(
+                    el("a")
+                        .id("watch")
+                        .class("btn btn-sm")
+                        .attr("href", format!("/{path}/stargazers"))
+                        .child(ic("watch-icon", if gitlab { "bell" } else { "eye" }))
+                        .child(sp("watch-label", "", if gitlab { "Notifications" } else { "Watch" }))
+                        .child(counter("watch-count", (repository.stars.len() * 2 + 3).to_string())),
+                )
+                .child(
+                    el("a")
+                        .id("fork")
+                        .class("btn btn-sm")
+                        .attr("href", format!("/{path}/branches"))
+                        .child(ic("fork-icon", "fork"))
+                        .child(sp("fork-label", "", if gitlab { "Forks" } else { "Fork" }))
+                        .child(counter("fork-count", repository.forks.to_string())),
+                )
+                .child(
+                    form("star-form", format!("/{path}/star"), "post")
+                        .class("inline-form star-group")
+                        .child(
+                            el("button")
+                                .id("star")
+                                .attr("type", "submit")
+                                .class(if starred { "btn btn-sm starred" } else { "btn btn-sm" })
+                                .child(ic("star-icon", if starred { "star-fill" } else { "star" }))
+                                .child(Html::from(if starred { "Starred" } else { "Star" })),
+                        )
+                        .child(a("stargazers", "btn btn-sm star-count", format!("/{path}/stargazers"), repository.stars.len().to_string())),
+                ),
+        );
+    let mut main = vec![head];
+    main.extend(body);
+    shell(
+        cx,
+        &[(repository.owner.as_str(), format!("/{}", repository.owner)), (name, format!("/{path}"))],
+        Some(nav),
+        main,
+    )
 }
 
 // ---- Markdown, as much of it as a README needs. ----
 
-fn markdown(prefix: &str, source: &str) -> Vec<PageElement> {
+fn markdown(prefix: &str, source: &str) -> Vec<Html> {
     let mut out = vec![];
     let mut paragraph: Vec<String> = vec![];
     let mut code: Option<Vec<String>> = None;
+    // A four-space (or tab) indented block, the other way a README writes a shell transcript.
+    let mut indented: Option<Vec<String>> = None;
+    let mut list: Option<(bool, Vec<Html>)> = None;
     let mut n = 0usize;
+    // Every block draws an id from one counter, in the order the Page version did.
     let mut next = |kind: &str| {
         n += 1;
         format!("{prefix}-{kind}-{n}")
     };
-    let flush = |paragraph: &mut Vec<String>, out: &mut Vec<PageElement>, id: String| {
+    fn flush(paragraph: &mut Vec<String>, out: &mut Vec<Html>, id: String) {
         if !paragraph.is_empty() {
-            let body = paragraph.join(" ").replace('`', "");
-            out.extend(with_links(&id, &body, 14));
+            let body = paragraph.join(" ");
+            out.push(el("p").id(id.clone()).children(inline(&id, &body, true)));
             paragraph.clear();
         }
-    };
+    }
+    fn close(list: &mut Option<(bool, Vec<Html>)>, out: &mut Vec<Html>) {
+        if let Some((ordered, items)) = list.take() {
+            out.push(el(if ordered { "ol" } else { "ul" }).children(items));
+        }
+    }
+    /// One level of code indentation off the front of a line.
+    fn dedent(line: &str) -> String {
+        line.strip_prefix("    ").or_else(|| line.strip_prefix('\t')).unwrap_or(line).to_owned()
+    }
     for line in source.lines() {
+        if let Some(block) = indented.as_mut() {
+            if line.trim().is_empty() {
+                block.push(String::new());
+                continue;
+            }
+            if line.starts_with("    ") || line.starts_with('\t') {
+                block.push(dedent(line));
+                continue;
+            }
+            let mut block = indented.take().expect("in an indented block");
+            while block.last().is_some_and(|l| l.is_empty()) {
+                block.pop();
+            }
+            out.push(el("pre").id(next("code")).class("code").child(el("code").text(block.join("\n"))));
+        }
         if let Some(block) = code.as_mut() {
             if line.trim_start().starts_with("```") {
-                out.push(web::styled(
-                    &next("code"),
-                    block.join("\n"),
-                    style()
-                        .size(12)
-                        .mono()
-                        .color(INK)
-                        .background(SURFACE)
-                        .radius(6)
-                        .padding(12),
-                ));
+                out.push(el("pre").id(next("code")).class("code").child(el("code").text(block.join("\n"))));
                 code = None;
             } else {
                 block.push(line.to_owned());
@@ -688,372 +687,278 @@ fn markdown(prefix: &str, source: &str) -> Vec<PageElement> {
         }
         if line.trim_start().starts_with("```") {
             flush(&mut paragraph, &mut out, next("p"));
+            close(&mut list, &mut out);
             code = Some(vec![]);
             continue;
         }
         let trimmed = line.trim();
         if trimmed.is_empty() {
             flush(&mut paragraph, &mut out, next("p"));
+            close(&mut list, &mut out);
+            continue;
+        }
+        // An indented block only opens where a paragraph or a list is not already running,
+        // so a wrapped list item keeps belonging to its item.
+        if (line.starts_with("    ") || line.starts_with('\t')) && paragraph.is_empty() && list.is_none() {
+            indented = Some(vec![dedent(line)]);
             continue;
         }
         if let Some(rest) = trimmed.strip_prefix('#') {
             flush(&mut paragraph, &mut out, next("p"));
+            close(&mut list, &mut out);
             let level = 1 + rest.chars().take_while(|c| *c == '#').count();
             let title = rest.trim_start_matches('#').trim().replace('`', "");
-            let size = match level {
-                1 => 26,
-                2 => 20,
-                _ => 16,
-            };
-            out.push(bold(&next("h"), title, size, INK));
+            out.push(el(&format!("h{}", level.min(6))).id(next("h")).text(title));
             if level <= 2 {
-                out.push(web::divider(&next("hr")));
+                // The rule under a first or second level heading is the heading's border
+                // now; the counter still moves, so later ids stay where they were.
+                let _ = next("hr");
             }
             continue;
         }
         let item = trimmed
             .strip_prefix("- ")
             .or_else(|| trimmed.strip_prefix("* "))
-            .map(|s| ("•".to_owned(), s))
+            .map(|s| (false, s))
             .or_else(|| {
                 let (num, rest) = trimmed.split_once(". ")?;
-                num.parse::<u32>().ok().map(|_| (format!("{num}."), rest))
+                num.parse::<u32>().ok().map(|_| (true, rest))
             });
-        if let Some((marker, body)) = item {
+        if let Some((ordered, body)) = item {
             flush(&mut paragraph, &mut out, next("p"));
+            if list.as_ref().is_some_and(|(o, _)| *o != ordered) {
+                close(&mut list, &mut out);
+            }
             let id = next("li");
-            let body = body.replace('`', "");
-            let mut row = vec![
-                web::styled(
-                    &format!("{id}-dot"),
-                    marker,
-                    style().size(14).color(INK).width(24).align("right"),
-                ),
-                web::styled(
-                    &format!("{id}-text"),
-                    body.split(" http").next().unwrap_or(&body).trim_end(),
-                    style().size(14).color(INK).flex(1),
-                ),
-            ];
-            row.extend(web::links(&id, &body));
-            out.push(web::styled_row(&id, 6, "start", style(), row));
+            let node = el("li").id(id.clone()).children(inline(&id, body, true));
+            list.get_or_insert_with(|| (ordered, vec![])).1.push(node);
             continue;
         }
         if let Some(rest) = trimmed.strip_prefix("> ") {
             flush(&mut paragraph, &mut out, next("p"));
-            out.push(web::styled(
-                &next("quote"),
-                rest.replace('`', ""),
-                style().size(14).color(MUTED).italic().padding(8),
-            ));
+            close(&mut list, &mut out);
+            let id = next("quote");
+            out.push(el("blockquote").id(id.clone()).children(inline(&id, rest, true)));
             continue;
         }
+        close(&mut list, &mut out);
         paragraph.push(trimmed.to_owned());
     }
     if let Some(block) = code.take() {
-        out.push(mono(&next("code"), block.join("\n"), 12, INK));
+        out.push(el("pre").id(next("code")).class("code").child(el("code").text(block.join("\n"))));
+    }
+    if let Some(mut block) = indented.take() {
+        while block.last().is_some_and(|l| l.is_empty()) {
+            block.pop();
+        }
+        out.push(el("pre").id(next("code")).class("code").child(el("code").text(block.join("\n"))));
     }
     flush(&mut paragraph, &mut out, next("p"));
+    close(&mut list, &mut out);
     out
 }
 
-// ---- Diffs. Runs of one kind collapse into one block, so a hunk reads as a hunk. ----
+// ---- Diffs: one bordered file box each, two number gutters, red and green rows. ----
 
-fn diff_block(prefix: &str, file: &FileDiff, url: &str) -> PageElement {
-    let mut rows = vec![between(
-        &format!("{prefix}-head"),
-        style().background(SURFACE).padding(8),
-        vec![
-            ic(&format!("{prefix}-chev"), "chevron-down", 14, MUTED),
-            web::styled_link(
-                &format!("{prefix}-path"),
-                &file.path,
-                url.to_owned(),
-                style().size(12).mono().bold().color(INK).one_line(),
-            ),
-            web::styled(
-                &format!("{prefix}-status"),
-                &file.status,
-                style().size(11).color(MUTED),
-            ),
-        ],
-        vec![
-            bold(
-                &format!("{prefix}-adds"),
-                format!("+{}", file.additions),
-                12,
-                GREEN,
-            ),
-            bold(
-                &format!("{prefix}-dels"),
-                format!("-{}", file.deletions),
-                12,
-                RED,
-            ),
-        ],
-    )];
+fn diff_block(prefix: &str, file: &FileDiff, url: &str) -> Html {
+    // Five squares, split between green and red the way the change is.
+    let total = (file.additions + file.deletions).max(1);
+    let green = (file.additions * 5 + total / 2) / total;
+    let green = match (file.additions, file.deletions) {
+        (_, 0) => 5,
+        (0, _) => 0,
+        _ => green.clamp(1, 4),
+    };
+    let red = if file.deletions == 0 { 0 } else { 5 - green };
+    let mut squares = span("diffstat").attr("aria-hidden", "true");
+    for i in 0..5 {
+        squares = squares.child(el("i").class(if i < green { "a" } else if i < green + red { "d" } else { "n" }));
+    }
+    let head = div("box-head diff-head")
+        .id(format!("{prefix}-head"))
+        .child(ic(&format!("{prefix}-chev"), "chevron-down"))
+        .child(a(&format!("{prefix}-path"), "diff-path", url.to_owned(), &file.path))
+        .child(sp(&format!("{prefix}-status"), "muted small", &file.status))
+        .child(span("grow"))
+        .child(sp(&format!("{prefix}-adds"), "adds", format!("+{}", file.additions)))
+        .child(sp(&format!("{prefix}-dels"), "dels", format!("-{}", file.deletions)))
+        .child(squares);
+    let mut body = div("diff-body");
     let mut n = 0usize;
     for hunk in &file.hunks {
         n += 1;
-        rows.push(web::styled(
-            &format!("{prefix}-hunk-{n}"),
-            hunk.header(),
-            style()
-                .size(12)
-                .mono()
-                .color(MUTED)
-                .background(HUNK_BG)
-                .padding(6),
-        ));
+        body = body.child(
+            div("dl hunk")
+                .id(format!("{prefix}-hunk-{n}"))
+                .child(span("ln"))
+                .child(span("ln"))
+                .child(span("lc").text(hunk.header())),
+        );
         let (mut old, mut new) = (hunk.old_start, hunk.new_start);
-        let mut run: Vec<String> = vec![];
+        let mut run: Vec<Html> = vec![];
         let mut kind: Option<&'static str> = None;
-        let flush = |run: &mut Vec<String>,
-                     kind: Option<&str>,
-                     rows: &mut Vec<PageElement>,
-                     n: &mut usize| {
+        let close = |run: &mut Vec<Html>, kind: Option<&'static str>, body: &mut Html, n: &mut usize| {
             if run.is_empty() {
                 return;
             }
             *n += 1;
-            let (fill, ink) = match kind {
-                Some("add") => (Some(ADD_BG), INK),
-                Some("del") => (Some(DEL_BG), INK),
-                _ => (None, INK),
-            };
-            let mut s = style().size(12).mono().color(ink).padding(4);
-            if let Some(fill) = fill {
-                s = s.background(fill);
-            }
-            rows.push(web::styled(
-                &format!("{prefix}-lines-{n}"),
-                run.join("\n"),
-                s,
-            ));
-            run.clear();
+            let rows = std::mem::take(run);
+            let block = div("run").class(kind.unwrap_or("ctx")).id(format!("{prefix}-lines-{n}")).children(rows);
+            *body = std::mem::replace(body, empty()).child(block);
         };
         for line in &hunk.lines {
-            let (this, shown) = match line {
+            let (this, a, b, sign, s) = match line {
                 DiffLine::Context(s) => {
-                    let t = format!("{old:>4} {new:>4}   {s}");
+                    let r = ("ctx", old.to_string(), new.to_string(), " ", s);
                     old += 1;
                     new += 1;
-                    ("ctx", t)
+                    r
                 }
                 DiffLine::Add(s) => {
-                    let t = format!("     {new:>4} + {s}");
+                    let r = ("add", String::new(), new.to_string(), "+", s);
                     new += 1;
-                    ("add", t)
+                    r
                 }
                 DiffLine::Remove(s) => {
-                    let t = format!("{old:>4}      - {s}");
+                    let r = ("del", old.to_string(), String::new(), "-", s);
                     old += 1;
-                    ("del", t)
+                    r
                 }
             };
             if kind != Some(this) {
-                flush(&mut run, kind, &mut rows, &mut n);
+                close(&mut run, kind, &mut body, &mut n);
                 kind = Some(this);
             }
-            run.push(shown);
+            run.push(
+                div("dl")
+                    .child(span("ln").text(a))
+                    .child(span("ln").text(b))
+                    .child(span("lc").child(span("sign").text(sign)).child(Html::from(s.as_str()))),
+            );
         }
-        flush(&mut run, kind, &mut rows, &mut n);
+        close(&mut run, kind, &mut body, &mut n);
     }
-    web::card(prefix, style().border(LINE).radius(6).padding(0), rows)
+    div("box diff-file").id(prefix).child(head).child(body)
 }
-fn diff_section(prefix: &str, files: &[FileDiff], path: &str, branch: &str) -> Vec<PageElement> {
-    let (adds, dels) = files
-        .iter()
-        .fold((0, 0), |(a, d), f| (a + f.additions, d + f.deletions));
-    let mut out = vec![text(
-        &format!("{prefix}-summary"),
-        format!(
-            "Showing {} changed file{} with {adds} addition{} and {dels} deletion{}.",
-            files.len(),
-            if files.len() == 1 { "" } else { "s" },
-            if adds == 1 { "" } else { "s" },
-            if dels == 1 { "" } else { "s" },
-        ),
-        14,
-        INK,
-    )];
+fn diff_section(prefix: &str, files: &[FileDiff], path: &str, branch: &str) -> Vec<Html> {
+    let (adds, dels) = files.iter().fold((0, 0), |(a, d), f| (a + f.additions, d + f.deletions));
+    let mut out = vec![el("p").id(format!("{prefix}-summary")).class("diff-summary").text(format!(
+        "Showing {} changed file{} with {adds} addition{} and {dels} deletion{}.",
+        files.len(),
+        plural(files.len()),
+        plural(adds),
+        plural(dels),
+    ))];
     for (i, file) in files.iter().enumerate() {
-        out.push(diff_block(
-            &format!("{prefix}-file-{i}"),
-            file,
-            &format!("/{path}/blob/{branch}/{}", file.path),
-        ));
+        out.push(diff_block(&format!("{prefix}-file-{i}"), file, &format!("/{path}/blob/{branch}/{}", file.path)));
     }
     out
 }
 
 // ---- Pages. ----
 
-fn home(state: &GitState, actor: &str, now: u64) -> Result<HttpResponse> {
-    let mut side = vec![bold("side-title", "Top repositories", 14, INK)];
+fn home(cx: &Cx) -> Result<HttpResponse> {
+    let mut side = el("aside").id("home-side").class("home-side").child(
+        div("side-head").child(el("h2").id("side-title").text("Top repositories")).child(sp("", "btn btn-primary btn-sm", "New")),
+    );
     let mut feed = vec![];
-    for (name, repository) in &state.repositories {
+    for (name, repository) in &cx.state.repositories {
         if repository.owner.is_empty() {
             continue;
         }
         let path = slug(repository, name);
-        side.push(chips(
-            &format!("side-{name}"),
-            8,
-            style(),
-            vec![
-                web::avatar(&format!("side-avatar-{name}"), &repository.owner, 16),
-                web::inline_link(
-                    &format!("side-link-{name}"),
-                    &path,
-                    format!("/{path}"),
-                    13,
-                    INK,
-                ),
-            ],
-        ));
+        side = side.child(
+            div("side-repo")
+                .id(format!("side-{name}"))
+                .child(avatar(&format!("side-avatar-{name}"), &repository.owner, 16).class("square"))
+                .child(a(&format!("side-link-{name}"), "", format!("/{path}"), &path)),
+        );
         let tip = branch_tip(repository, &default_branch(repository));
-        let mut meta = vec![
-            counter(
-                &format!("repo-stars-{name}"),
-                format!("{} stars", repository.stars.len()),
-            ),
-            counter(
-                &format!("repo-issues-{name}"),
-                format!("{} open issues", open_count(&repository.issues)),
-            ),
-        ];
-        if let Some((_, commit)) = tip {
-            meta.push(muted(
-                &format!("repo-updated-{name}"),
-                format!("Updated {}", ago(now, commit.tick)),
-            ));
+        let mut meta = div("meta").id(format!("repo-meta-{name}"));
+        if let Some((language, ..)) = tip.as_ref().and_then(|(_, c)| language_stats(&c.files).into_iter().next()) {
+            meta = meta.child(
+                span("lang")
+                    .child(el("i").class("dot").style(&format!("background: {}", language_color(&language))))
+                    .child(Html::from(language)),
+            );
         }
-        feed.push(web::card_action(
-            &format!("repo-{}-{name}", repository.owner),
-            style()
-                .background("#ffffff")
-                .border(LINE)
-                .radius(6)
-                .padding(16),
-            web::visit(format!("/{path}")),
-            vec![
-                chips(
-                    &format!("repo-title-{name}"),
-                    8,
-                    style(),
-                    vec![
-                        web::avatar(&format!("repo-avatar-{name}"), &repository.owner, 20),
-                        bold(&format!("repo-name-{name}"), &path, 15, ACCENT),
-                    ],
-                ),
-                text(
-                    &format!("repo-desc-{name}"),
-                    &repository.description,
-                    13,
-                    MUTED,
-                ),
-                chips(&format!("repo-meta-{name}"), 8, style(), meta),
-            ],
-        ));
+        meta = meta
+            .child(span("meta-item").child(ic("", "star")).child(sp(&format!("repo-stars-{name}"), "", format!("{} stars", repository.stars.len()))))
+            .child(
+                span("meta-item")
+                    .child(ic("", "issue-open"))
+                    .child(sp(&format!("repo-issues-{name}"), "", format!("{} open issues", open_count(&repository.issues)))),
+            );
+        if let Some((_, commit)) = tip {
+            meta = meta.child(sp(&format!("repo-updated-{name}"), "", format!("Updated {}", ago(cx.now, commit.tick))));
+        }
+        feed.push(
+            el("a")
+                .id(format!("repo-{}-{name}", repository.owner))
+                .class("repo-card")
+                .attr("href", format!("/{path}"))
+                .child(
+                    div("repo-card-title")
+                        .id(format!("repo-title-{name}"))
+                        .child(avatar(&format!("repo-avatar-{name}"), &repository.owner, 20).class("square"))
+                        .child(sp(&format!("repo-name-{name}"), "name", &path))
+                        .child(span("pill").text("Public")),
+                )
+                .child(sp(&format!("repo-desc-{name}"), "desc", &repository.description))
+                .child(meta),
+        );
     }
-    if !state.gists.is_empty() {
-        side.push(web::divider("side-rule"));
-        side.push(web::inline_link(
+    if !cx.state.gists.is_empty() {
+        side = side.child(a(
             "gists",
-            "Browse gists",
+            "side-more",
             "/gists",
-            13,
-            ACCENT,
+            if cx.look == Look::Gitlab { "Browse snippets" } else { "Browse gists" },
         ));
     }
-    let elements = vec![
-        header(&[], actor),
-        web::spacer("home-lead", 16),
-        web::styled_row(
-            "home",
-            24,
-            "start",
-            style(),
-            vec![
-                column("home-side", 10, style().width(SIDE), side),
-                column(
-                    "home-main",
-                    12,
-                    style().flex(1),
-                    vec![
-                        bold("home-title", "Home", 22, INK),
-                        muted(
-                            "home-sub",
-                            "Repositories, issues and pull requests on this instance.",
-                        ),
-                        web::grid("repos", 2, 16, feed),
-                    ],
-                ),
-            ],
-        ),
-    ];
-    web::themed_page("GitHub", theme(state), elements)
+    let main = div("home-main")
+        .id("home-main")
+        .child(el("h1").id("home-title").text(if cx.look == Look::Gitlab { "Projects" } else { "Home" }))
+        .child(el("p").id("home-sub").class("muted").text("Repositories, issues and pull requests on this instance."))
+        .child(div("repo-grid").id("repos").children(feed));
+    let body = shell(cx, &[], None, vec![div("home").id("home").child(side).child(main)]);
+    finish(cx, cx.look.brand(), body)
 }
 
-fn search_page(state: &GitState, actor: &str, query: &str) -> Result<HttpResponse> {
+fn search_page(cx: &Cx, query: &str) -> Result<HttpResponse> {
     let q = query.to_ascii_lowercase();
     let mut rows = vec![];
-    for (name, repository) in &state.repositories {
+    for (name, repository) in &cx.state.repositories {
         if repository.owner.is_empty() {
             continue;
         }
         let path = slug(repository, name);
-        let hay = format!(
-            "{path} {} {}",
-            repository.description,
-            repository.topics.join(" ")
-        )
-        .to_ascii_lowercase();
+        let hay = format!("{path} {} {}", repository.description, repository.topics.join(" ")).to_ascii_lowercase();
         if !q.split_whitespace().all(|w| hay.contains(w)) {
             continue;
         }
-        rows.push(web::card(
-            &format!("hit-{name}"),
-            style().border(LINE).radius(6).padding(12),
-            vec![
-                web::inline_link(
-                    &format!("hit-link-{name}"),
-                    &path,
-                    format!("/{path}"),
-                    15,
-                    ACCENT,
+        rows.push(
+            div("hit")
+                .id(format!("hit-{name}"))
+                .child(avatar("", &repository.owner, 20).class("square"))
+                .child(
+                    div("hit-text")
+                        .child(a(&format!("hit-link-{name}"), "hit-link", format!("/{path}"), &path))
+                        .child(el("p").id(format!("hit-desc-{name}")).class("muted").text(&repository.description))
+                        .child(div("topics").each(repository.topics.iter(), |t| span("topic").text(t))),
                 ),
-                text(
-                    &format!("hit-desc-{name}"),
-                    &repository.description,
-                    13,
-                    MUTED,
-                ),
-            ],
-        ));
+        );
     }
     let count = rows.len();
-    let mut elements = vec![
-        header(&[], actor),
-        web::spacer("search-lead", 16),
-        bold(
-            "search-title",
-            format!("{count} repository results"),
-            20,
-            INK,
-        ),
+    let main = vec![
+        el("h1").id("search-title").class("page-title").text(format!("{count} repository results")),
+        div("box hits").children(rows),
     ];
-    elements.extend(rows);
-    web::themed_page(&format!("{query} · Search"), theme(state), elements)
+    finish(cx, &format!("{query} · Search"), shell(cx, &[], None, main))
 }
 
-fn owner_page(state: &GitState, owner: &str, actor: &str, now: u64) -> Result<HttpResponse> {
-    let owned: Vec<_> = state
-        .repositories
-        .iter()
-        .filter(|(_, r)| r.owner == owner)
-        .collect();
+fn owner_page(cx: &Cx, owner: &str) -> Result<HttpResponse> {
+    let owned: Vec<_> = cx.state.repositories.iter().filter(|(_, r)| r.owner == owner).collect();
     if owned.is_empty() {
         return web::error(404, "owner not found");
     }
@@ -1063,75 +968,37 @@ fn owner_page(state: &GitState, owner: &str, actor: &str, now: u64) -> Result<Ht
     for (name, repository) in &owned {
         followers.extend(repository.stars.iter().cloned());
         let branch = default_branch(repository);
-        let mut meta = vec![];
+        let mut meta = div("meta").id(format!("owned-meta-{name}"));
         if let Some((id, tip)) = branch_tip(repository, &branch) {
             commits.extend(log(repository, &id).iter().map(|(_, c)| c.tick));
             if let Some((language, ..)) = language_stats(&tip.files).first() {
-                meta.push(web::thumbnail(
-                    &format!("owned-dot-{name}"),
-                    "",
-                    style()
-                        .width(10)
-                        .height(10)
-                        .radius(5)
-                        .background(language_color(language)),
-                ));
-                meta.push(muted(&format!("owned-lang-{name}"), language));
+                meta = meta.child(
+                    span("lang")
+                        .child(el("i").id(format!("owned-dot-{name}")).class("dot").style(&format!("background: {}", language_color(language))))
+                        .child(sp(&format!("owned-lang-{name}"), "", language)),
+                );
             }
         }
-        meta.push(ic(&format!("owned-star-icon-{name}"), "star", 14, MUTED));
-        meta.push(muted(
-            &format!("owned-stars-{name}"),
-            repository.stars.len().to_string(),
-        ));
-        meta.push(ic(&format!("owned-fork-icon-{name}"), "fork", 14, MUTED));
-        meta.push(muted(
-            &format!("owned-forks-{name}"),
-            repository.forks.to_string(),
-        ));
-        cards.push(web::card(
-            &format!("owned-{name}"),
-            style()
-                .background("#ffffff")
-                .border(LINE)
-                .radius(6)
-                .padding(16),
-            vec![
-                chips(
-                    &format!("owned-head-{name}"),
-                    8,
-                    style(),
-                    vec![
-                        ic(&format!("owned-icon-{name}"), "book", 16, MUTED),
-                        web::inline_link(
-                            &format!("owned-name-{name}"),
-                            *name,
-                            format!("/{owner}/{name}"),
-                            14,
-                            ACCENT,
-                        ),
-                        web::chip(
-                            &format!("owned-vis-{name}"),
-                            "Public",
-                            "#ffffff",
-                            MUTED,
-                            style().size(11).padding(5).border(LINE),
-                        ),
-                    ],
-                ),
-                text(
-                    &format!("owned-desc-{name}"),
-                    &repository.description,
-                    12,
-                    MUTED,
-                ),
-                chips(&format!("owned-meta-{name}"), 6, style(), meta),
-            ],
-        ));
+        meta = meta
+            .child(span("meta-item").child(ic(&format!("owned-star-icon-{name}"), "star")).child(sp(&format!("owned-stars-{name}"), "", repository.stars.len().to_string())))
+            .child(span("meta-item").child(ic(&format!("owned-fork-icon-{name}"), "fork")).child(sp(&format!("owned-forks-{name}"), "", repository.forks.to_string())));
+        cards.push(
+            div("pin")
+                .id(format!("owned-{name}"))
+                .child(
+                    div("pin-head")
+                        .id(format!("owned-head-{name}"))
+                        .child(ic(&format!("owned-icon-{name}"), "book"))
+                        .child(a(&format!("owned-name-{name}"), "pin-name", format!("/{owner}/{name}"), name.as_str()))
+                        .child(sp(&format!("owned-vis-{name}"), "pill", "Public")),
+                )
+                .child(el("p").id(format!("owned-desc-{name}")).class("pin-desc").text(&repository.description))
+                .child(meta),
+        );
     }
-    // Twenty weeks of squares, Sunday to Saturday down each column, newest at the right.
+    // Twenty-six weeks of squares, Sunday to Saturday down each column, newest at the right.
     const WEEKS: u64 = 26;
-    let today = now / 24;
+    let today = cx.now / 24;
     let today_weekday = (EPOCH_WEEKDAY + today) % 7;
     let mut counts = vec![[0u32; 7]; WEEKS as usize];
     for tick in &commits {
@@ -1141,679 +1008,320 @@ fn owner_page(state: &GitState, owner: &str, actor: &str, now: u64) -> Result<Ht
         }
         let weekday = (EPOCH_WEEKDAY + day) % 7;
         // Weeks between the Sunday that starts this week and the one that starts today's.
-        let weeks_back =
-            ((today as i64 - today_weekday as i64) - (day as i64 - weekday as i64)) / 7;
+        let weeks_back = ((today as i64 - today_weekday as i64) - (day as i64 - weekday as i64)) / 7;
         if (0..WEEKS as i64).contains(&weeks_back) {
             counts[(WEEKS as i64 - 1 - weeks_back) as usize][weekday as usize] += 1;
         }
     }
-    let mut graph_rows = vec![];
-    for weekday in 0..7 {
-        let cells = counts
-            .iter()
-            .enumerate()
-            .map(|(week, column)| {
-                let fill = match column[weekday] {
-                    0 => "#ebedf0",
-                    1 => "#9be9a8",
-                    2 => "#40c463",
-                    3 => "#30a14e",
-                    _ => "#216e39",
-                };
-                web::thumbnail(
-                    &format!("cell-{week}-{weekday}"),
-                    "",
-                    style().width(11).height(11).radius(2).background(fill),
-                )
-            })
-            .collect();
-        graph_rows.push(chips(&format!("graph-row-{weekday}"), 3, style(), cells));
+    let mut cells = div("cells");
+    for (week, column) in counts.iter().enumerate() {
+        for (weekday, count) in column.iter().enumerate() {
+            cells = cells.child(
+                el("i")
+                    .id(format!("cell-{week}-{weekday}"))
+                    .class(&format!("cell l{}", (*count).min(4)))
+                    .attr("title", format!("{count} contributions")),
+            );
+        }
     }
     let is_org = owned.len() > 1;
-    let profile = vec![
-        web::avatar("owner-avatar", owner, 260),
-        bold("owner-name", owner, 24, INK),
-        text(
-            "owner-login",
-            if is_org { "Organization" } else { "User" },
-            16,
-            MUTED,
-        ),
-        grey_link("follow", "Follow", format!("/{owner}")),
-        chips(
-            "owner-followers",
-            6,
-            style(),
-            vec![
-                ic("owner-followers-icon", "person", 14, MUTED),
-                bold(
-                    "owner-followers-count",
-                    followers.len().to_string(),
-                    12,
-                    INK,
-                ),
-                muted("owner-followers-label", "followers ·"),
-                bold("owner-following-count", "12", 12, INK),
-                muted("owner-following-label", "following"),
-            ],
-        ),
-        chips(
-            "owner-location",
-            6,
-            style(),
-            vec![
-                ic("owner-location-icon", "location", 14, MUTED),
-                muted("owner-location-text", "Lisbon, Portugal"),
-            ],
-        ),
-        chips(
-            "owner-site",
-            6,
-            style(),
-            vec![
-                ic("owner-site-icon", "link", 14, MUTED),
-                web::inline_link(
-                    "owner-site-link",
-                    format!("{owner}.example"),
-                    format!("http://{owner}.example/"),
-                    12,
-                    INK,
-                ),
-            ],
-        ),
-    ];
-    let main = vec![
-        chips(
+    let profile = el("aside")
+        .id("owner-profile")
+        .class("profile")
+        .child(avatar("owner-avatar", owner, 260).when(is_org, |n| n.class("square")))
+        .child(el("h1").id("owner-name").text(owner))
+        .child(el("p").id("owner-login").class("login").text(if is_org { "Organization" } else { "User" }))
+        .child(btn_link("follow", "Follow", format!("/{owner}")).class("block"))
+        .child(
+            el("p")
+                .id("owner-followers")
+                .class("profile-line")
+                .child(ic("owner-followers-icon", "person"))
+                .child(sp("owner-followers-count", "strong", followers.len().to_string()))
+                .child(sp("owner-followers-label", "", " followers · "))
+                .child(sp("owner-following-count", "strong", "12"))
+                .child(sp("owner-following-label", "", " following")),
+        )
+        .child(el("p").id("owner-location").class("profile-line").child(ic("owner-location-icon", "location")).child(sp("owner-location-text", "", "Lisbon, Portugal")))
+        .child(
+            el("p")
+                .id("owner-site")
+                .class("profile-line")
+                .child(ic("owner-site-icon", "link"))
+                .child(a("owner-site-link", "", format!("http://{owner}.example/"), format!("{owner}.example"))),
+        );
+    let o = |id: &str, icon: &str, text: &str, count: Option<usize>, on: bool| tab(id, icon, text, count, format!("/{owner}"), on);
+    let main = div("profile-main")
+        .id("owner-main")
+        .child(tabs(
             "owner-tabs",
-            12,
-            style(),
+            "tabs",
             vec![
-                tab(
-                    "otab-overview",
-                    "book",
-                    "Overview",
-                    None,
-                    format!("/{owner}"),
-                    true,
-                ),
-                tab(
-                    "otab-repos",
-                    "archive",
-                    "Repositories",
-                    Some(owned.len()),
-                    format!("/{owner}"),
-                    false,
-                ),
-                tab(
-                    "otab-projects",
-                    "grid",
-                    "Projects",
-                    None,
-                    format!("/{owner}"),
-                    false,
-                ),
-                tab(
-                    "otab-packages",
-                    "archive",
-                    "Packages",
-                    None,
-                    format!("/{owner}"),
-                    false,
-                ),
-                tab(
-                    "otab-stars",
-                    "star",
-                    "Stars",
-                    None,
-                    format!("/{owner}"),
-                    false,
-                ),
+                o("otab-overview", "book", "Overview", None, true),
+                o("otab-repos", "archive", "Repositories", Some(owned.len()), false),
+                o("otab-projects", "grid", "Projects", None, false),
+                o("otab-packages", "archive", "Packages", None, false),
+                o("otab-stars", "star", "Stars", None, false),
             ],
-        ),
-        web::divider("owner-tabs-rule"),
-        bold("pinned-title", "Popular repositories", 16, INK),
-        web::grid("owned", 2, 16, cards),
-        bold(
-            "contrib-title",
-            format!("{} contributions in the last year", commits.len()),
-            16,
-            INK,
-        ),
-        web::card(
-            "graph",
-            style().border(LINE).radius(6).padding(12),
-            graph_rows,
-        ),
-        chips(
-            "graph-legend",
-            4,
-            style(),
-            vec![
-                muted("legend-less", "Less"),
-                web::thumbnail(
-                    "legend-0",
-                    "",
-                    style().width(11).height(11).radius(2).background("#ebedf0"),
+        ))
+        .child(el("h2").id("pinned-title").class("section-title").text("Popular repositories"))
+        .child(div("pins").id("owned").children(cards))
+        .child(el("h2").id("contrib-title").class("section-title").text(format!("{} contributions in the last year", commits.len())))
+        .child(
+            div("box graph")
+                .id("graph")
+                .child(cells)
+                .child(
+                    div("legend")
+                        .id("graph-legend")
+                        .child(sp("legend-less", "", "Less"))
+                        .each(0..5, |l| el("i").id(format!("legend-{l}")).class(&format!("cell l{l}")))
+                        .child(sp("legend-more", "", "More")),
                 ),
-                web::thumbnail(
-                    "legend-1",
-                    "",
-                    style().width(11).height(11).radius(2).background("#9be9a8"),
-                ),
-                web::thumbnail(
-                    "legend-2",
-                    "",
-                    style().width(11).height(11).radius(2).background("#40c463"),
-                ),
-                web::thumbnail(
-                    "legend-3",
-                    "",
-                    style().width(11).height(11).radius(2).background("#30a14e"),
-                ),
-                web::thumbnail(
-                    "legend-4",
-                    "",
-                    style().width(11).height(11).radius(2).background("#216e39"),
-                ),
-                muted("legend-more", "More"),
-            ],
-        ),
-    ];
-    web::themed_page(
-        &format!("{owner} · GitHub"),
-        theme(state),
-        vec![
-            header(&[(owner, format!("/{owner}"))], actor),
-            web::spacer("owner-lead", 16),
-            web::styled_row(
-                "owner",
-                24,
-                "start",
-                style(),
-                vec![
-                    column("owner-profile", 10, style().width(SIDE), profile),
-                    column("owner-main", 14, style().flex(1), main),
-                ],
-            ),
-        ],
-    )
+        );
+    let body = shell(cx, &[(owner, format!("/{owner}"))], None, vec![div("owner").id("owner").child(profile).child(main)]);
+    finish(cx, &format!("{owner} · {}", cx.look.brand()), body)
 }
 
 /// The file table for `prefix` of `branch`, with the latest-commit bar above it.
-fn file_table(
-    repository: &Repository,
-    name: &str,
-    branch: &str,
-    tip_id: &str,
-    tip: &Commit,
-    prefix: &str,
-    now: u64,
-) -> PageElement {
+fn file_table(cx: &Cx, repository: &Repository, name: &str, branch: &str, tip_id: &str, tip: &Commit, prefix: &str) -> Html {
     let path = slug(repository, name);
     let last = last_commit_per_path(repository, tip_id);
     let history = log(repository, tip_id);
-    let mut rows = vec![between(
-        "latest",
-        style().background(SURFACE).padding(10),
-        vec![
-            web::avatar("latest-avatar", &tip.author, 20),
-            web::inline_link(
-                "latest-author",
-                &tip.author,
-                format!("/{}", tip.author),
-                13,
-                INK,
-            ),
-            web::styled(
+    let mut table = div("box files").id("files").child(
+        div("box-head latest")
+            .id("latest")
+            .child(avatar("latest-avatar", &tip.author, 20))
+            .child(a("latest-author", "strong-link", format!("/{}", tip.author), &tip.author))
+            .child(a(
                 "latest-message",
-                tip.message.lines().next().unwrap_or(""),
-                style().size(13).color(MUTED).one_line().width(360),
-            ),
-        ],
-        vec![
-            web::styled_link(
-                "latest-sha",
-                short(tip_id),
+                "latest-message",
                 format!("/{path}/commit/{tip_id}"),
-                style().size(12).mono().color(MUTED).one_line(),
+                tip.message.lines().next().unwrap_or(""),
+            ))
+            .child(span("grow"))
+            .child(a("latest-sha", "sha", format!("/{path}/commit/{tip_id}"), short(tip_id)))
+            .child(sp("latest-when", "muted", format!("· {}", ago(cx.now, tip.tick))))
+            .child(
+                el("a")
+                    .id("history")
+                    .class("history")
+                    .attr("href", format!("/{path}/commits/{branch}"))
+                    .child(ic("history-icon", "clock"))
+                    .child(Html::from(format!("{} Commits", history.len()))),
             ),
-            muted("latest-when", format!("· {}", ago(now, tip.tick))),
-            ic("history-icon", "clock", 16, MUTED),
-            web::inline_link(
-                "history",
-                format!("{} Commits", history.len()),
-                format!("/{path}/commits/{branch}"),
-                12,
-                MUTED,
-            ),
-        ],
-    )];
+    );
     if !prefix.is_empty() {
         let parent = prefix.rsplit_once('/').map_or("", |(p, _)| p);
-        rows.push(web::divider("entry-rule-up"));
-        rows.push(chips(
-            "entry-up",
-            8,
-            style().padding(8),
-            vec![
-                ic("entry-up-icon", "folder", 16, FOLDER),
-                web::inline_link(
+        table = table.child(
+            div("entry").id("entry-up").child(
+                div("entry-name").child(ic("entry-up-icon", "folder")).child(a(
                     "entry-up-link",
+                    "entry-link",
+                    if parent.is_empty() { format!("/{path}") } else { format!("/{path}/tree/{branch}/{parent}") },
                     "..",
-                    if parent.is_empty() {
-                        format!("/{path}")
-                    } else {
-                        format!("/{path}/tree/{branch}/{parent}")
-                    },
-                    13,
-                    INK,
-                ),
-            ],
-        ));
+                )),
+            ),
+        );
     }
     for (i, entry) in list_tree(&tip.files, prefix).iter().enumerate() {
         // A folder's last commit is the newest commit to anything beneath it.
         let touched = last
             .iter()
-            .filter(|(p, _)| {
-                if entry.dir {
-                    p.starts_with(&format!("{}/", entry.path))
-                } else {
-                    **p == entry.path
-                }
-            })
+            .filter(|(p, _)| if entry.dir { p.starts_with(&format!("{}/", entry.path)) } else { **p == entry.path })
             .map(|(_, (id, c))| (c.tick, id.clone(), c.message.clone()))
             .max();
-        let url = if entry.dir {
-            format!("/{path}/tree/{branch}/{}", entry.path)
-        } else {
-            format!("/{path}/blob/{branch}/{}", entry.path)
-        };
-        let mut row = vec![
-            ic(
-                &format!("entry-icon-{i}"),
-                if entry.dir { "folder" } else { "file" },
-                16,
-                if entry.dir { FOLDER } else { MUTED },
-            ),
-            web::styled_link(
-                &format!("file-{i}"),
-                &entry.name,
-                url,
-                style().size(13).color(INK).one_line().width(220),
-            ),
-        ];
-        match touched {
-            Some((tick, id, message)) => {
-                row.push(web::styled_link(
+        let url = if entry.dir { format!("/{path}/tree/{branch}/{}", entry.path) } else { format!("/{path}/blob/{branch}/{}", entry.path) };
+        let mut row = div("entry").id(format!("entry-{i}")).child(
+            div("entry-name")
+                .child(ic(&format!("entry-icon-{i}"), if entry.dir { "folder" } else { "file" }))
+                .child(a(&format!("file-{i}"), "entry-link", url, &entry.name)),
+        );
+        if let Some((tick, id, message)) = touched {
+            row = row
+                .child(div("entry-message").child(a(
                     &format!("entry-message-{i}"),
-                    message.lines().next().unwrap_or(""),
+                    "",
                     format!("/{path}/commit/{id}"),
-                    style().size(12).color(MUTED).one_line().flex(1),
-                ));
-                row.push(web::styled(
-                    &format!("entry-when-{i}"),
-                    ago(now, tick),
-                    style()
-                        .size(12)
-                        .color(MUTED)
-                        .one_line()
-                        .width(110)
-                        .align("right"),
-                ));
-            }
-            None => row.push(web::styled("", "", style().flex(1))),
+                    message.lines().next().unwrap_or(""),
+                )))
+                .child(sp(&format!("entry-when-{i}"), "entry-when", ago(cx.now, tick)));
         }
-        rows.push(web::divider(&format!("entry-rule-{i}")));
-        rows.push(web::styled_row(
-            &format!("entry-{i}"),
-            8,
-            "center",
-            style().padding(8),
-            row,
-        ));
+        table = table.child(row);
     }
-    web::card("files", style().border(LINE).radius(6).padding(0), rows)
+    table
 }
-fn branch_bar(repository: &Repository, name: &str, branch: &str, count_tags: usize) -> PageElement {
-    let path = slug(repository, name);
-    between(
-        "branch-bar",
-        style(),
-        vec![
-            chips(
-                "branch-select",
-                6,
-                style()
-                    .background(SURFACE)
-                    .border(LINE)
-                    .radius(6)
-                    .padding(6),
-                vec![
-                    ic("branch-icon", "branch", 16, MUTED),
-                    web::inline_link("branch-name", branch, format!("/{path}/branches"), 13, INK),
-                    ic("branch-chevron", "chevron-down", 12, MUTED),
-                ],
-            ),
-            ic("branches-icon", "branch", 16, MUTED),
-            web::inline_link(
-                "branches",
-                format!("{} Branches", branches(repository).len()),
-                format!("/{path}/branches"),
-                12,
-                MUTED,
-            ),
-            ic("tags-icon", "tag", 16, MUTED),
-            web::inline_link(
-                "tags",
-                format!("{count_tags} Tags"),
-                format!("/{path}/branches"),
-                12,
-                MUTED,
-            ),
-        ],
-        vec![
-            grey_link("go-to-file", "Go to file", format!("/{path}/tree/{branch}")),
-            web::styled_link(
-                "add-file",
-                "+",
-                format!("/{path}/tree/{branch}"),
-                button_style(),
-            ),
-            green_link("code", "<> Code", format!("/{path}/tree/{branch}")),
-        ],
-    )
+fn branch_select(path: &str, branch: &str) -> Html {
+    el("a")
+        .id("branch-select")
+        .class("btn branch-select")
+        .attr("href", format!("/{path}/branches"))
+        .child(ic("branch-icon", "branch"))
+        .child(sp("branch-name", "", branch))
+        .child(ic("branch-chevron", "chevron-down"))
 }
-fn about(repository: &Repository, name: &str, tip: &Commit) -> PageElement {
+fn branch_bar(cx: &Cx, repository: &Repository, name: &str, branch: &str, count_tags: usize) -> Html {
     let path = slug(repository, name);
-    let mut items = vec![
-        bold("about-title", "About", 16, INK),
-        text("repo-description", &repository.description, 14, INK),
-    ];
-    if !repository.topics.is_empty() {
-        items.push(chips(
-            "repo-topics",
-            6,
-            style(),
-            repository
-                .topics
-                .iter()
-                .enumerate()
-                .map(|(i, t)| {
-                    web::chip(
-                        &format!("topic-{i}"),
-                        t,
-                        HUNK_BG,
-                        ACCENT,
-                        style().size(12).padding(6).medium(),
-                    )
-                })
-                .collect(),
-        ));
-    }
-    let line = |id: &str, icon: &str, label: String, url: String| {
-        chips(
-            id,
-            8,
-            style(),
-            vec![
-                ic(&format!("{id}-icon"), icon, 16, MUTED),
-                web::inline_link(&format!("{id}-link"), label, url, 13, MUTED),
-            ],
+    div("branch-bar")
+        .id("branch-bar")
+        .child(branch_select(&path, branch))
+        .child(
+            el("a")
+                .id("branches")
+                .class("quiet")
+                .attr("href", format!("/{path}/branches"))
+                .child(ic("branches-icon", "branch"))
+                .child(Html::from({ let n = branches(repository).len(); format!("{n} {}", if n == 1 { "Branch" } else { "Branches" }) })),
         )
-    };
-    items.push(line(
-        "about-readme",
-        "book",
-        "Readme".into(),
-        format!("/{path}"),
-    ));
-    if tip.files.keys().any(|f| f.eq_ignore_ascii_case("LICENSE")) {
-        items.push(line(
-            "about-license",
-            "shield",
-            "MIT license".into(),
-            format!("/{path}/blob/main/LICENSE"),
-        ));
+        .child(
+            el("a")
+                .id("tags")
+                .class("quiet")
+                .attr("href", format!("/{path}/branches"))
+                .child(ic("tags-icon", "tag"))
+                .child(Html::from(format!("{count_tags} Tag{}", plural(count_tags)))),
+        )
+        .child(span("grow"))
+        .child(btn_link("go-to-file", if cx.look == Look::Gitlab { "Find file" } else { "Go to file" }, format!("/{path}/tree/{branch}")))
+        .child(btn_link("add-file", "+", format!("/{path}/tree/{branch}")).attr("aria-label", "Add file"))
+        .child(
+            el("a")
+                .id("code")
+                .class("btn btn-primary")
+                .attr("href", format!("/{path}/tree/{branch}"))
+                .child(ic("", "code"))
+                .child(Html::from("Code"))
+                .child(ic("", "chevron-down")),
+        )
+}
+fn about(cx: &Cx, repository: &Repository, name: &str, tip: &Commit) -> Html {
+    let path = slug(repository, name);
+    let mut side = el("aside").id("about").class("about").child(
+        el("h2").id("about-title").text(if cx.look == Look::Gitlab { "Project information" } else { "About" }),
+    );
+    side = side.child(el("p").id("repo-description").class("about-desc").text(&repository.description));
+    if !repository.topics.is_empty() {
+        side = side.child(
+            div("topics")
+                .id("repo-topics")
+                .each(repository.topics.iter().enumerate(), |(i, t)| sp(&format!("topic-{i}"), "topic", t)),
+        );
     }
-    items.push(line(
-        "about-activity",
-        "signal",
-        "Activity".into(),
-        format!("/{path}/commits/main"),
-    ));
-    items.push(line(
-        "about-stars",
-        "star",
-        format!("{} stars", repository.stars.len()),
-        format!("/{path}/stargazers"),
-    ));
-    items.push(line(
-        "about-watching",
-        "eye",
-        format!("{} watching", repository.stars.len() * 2 + 3),
-        format!("/{path}/stargazers"),
-    ));
-    items.push(line(
-        "about-forks",
-        "fork",
-        format!("{} forks", repository.forks),
-        format!("/{path}/branches"),
-    ));
-    items.push(web::divider("about-rule-1"));
-    items.push(bold("releases-title", "Releases", 14, INK));
-    items.push(muted("releases-none", "No releases published"));
-    items.push(web::divider("about-rule-2"));
-    let mut authors: Vec<&str> = repository
-        .objects
-        .values()
-        .map(|c| c.author.as_str())
-        .collect();
+    let line = |id: &str, icon: &str, text: String, url: String| {
+        div("about-line").id(id).child(ic(&format!("{id}-icon"), icon)).child(a(&format!("{id}-link"), "", url, text))
+    };
+    side = side.child(line("about-readme", "book", "Readme".into(), format!("/{path}")));
+    if tip.files.keys().any(|f| f.eq_ignore_ascii_case("LICENSE")) {
+        side = side.child(line("about-license", "law", "MIT license".into(), format!("/{path}/blob/main/LICENSE")));
+    }
+    side = side
+        .child(line("about-activity", "signal", "Activity".into(), format!("/{path}/commits/main")))
+        .child(line("about-stars", "star", format!("{} stars", repository.stars.len()), format!("/{path}/stargazers")))
+        .child(line("about-watching", "eye", format!("{} watching", repository.stars.len() * 2 + 3), format!("/{path}/stargazers")))
+        .child(line("about-forks", "fork", format!("{} forks", repository.forks), format!("/{path}/branches")));
+    let mut authors: Vec<&str> = repository.objects.values().map(|c| c.author.as_str()).collect();
     authors.sort_unstable();
     authors.dedup();
-    items.push(bold(
-        "contributors-title",
-        format!("Contributors {}", authors.len()),
-        14,
-        INK,
-    ));
-    items.push(chips(
-        "contributors",
-        4,
-        style(),
-        authors
-            .iter()
-            .take(8)
-            .map(|a| web::avatar(&format!("contributor-{a}"), a, 32))
-            .collect(),
-    ));
-    items.push(web::divider("about-rule-3"));
-    items.push(bold("languages-title", "Languages", 14, INK));
+    side = side
+        .child(
+            div("about-section")
+                .child(el("h3").id("releases-title").text("Releases"))
+                .child(el("p").id("releases-none").class("muted small").text("No releases published")),
+        )
+        .child(
+            div("about-section")
+                .child(el("h3").id("contributors-title").text("Contributors ").child(span("counter").text(authors.len().to_string())))
+                .child(
+                    div("faces")
+                        .id("contributors")
+                        .each(authors.iter().take(8), |who| avatar(&format!("contributor-{who}"), who, 32)),
+                ),
+        );
     let stats = language_stats(&tip.files);
+    let mut languages = div("about-section").child(el("h3").id("languages-title").text("Languages"));
     if stats.is_empty() {
-        items.push(muted("languages-none", "No languages detected"));
+        languages = languages.child(el("p").id("languages-none").class("muted small").text("No languages detected"));
     } else {
-        let usable = SIDE - 2 * (stats.len() as u32 - 1);
-        items.push(chips(
-            "language-bar",
-            2,
-            style(),
-            stats
-                .iter()
-                .enumerate()
-                .map(|(i, (language, _, share))| {
-                    web::thumbnail(
-                        &format!("language-bar-{i}"),
-                        "",
-                        style()
-                            .width((usable * share / 1000).max(4))
-                            .height(8)
-                            .radius(2)
-                            .background(language_color(language)),
-                    )
-                })
-                .collect(),
-        ));
-        items.push(chips(
-            "language-list",
-            12,
-            style(),
-            stats
-                .iter()
-                .enumerate()
-                .map(|(i, (language, _, share))| {
-                    chips(
-                        &format!("language-{i}"),
-                        4,
-                        style(),
-                        vec![
-                            web::thumbnail(
-                                &format!("language-dot-{i}"),
-                                "",
-                                style()
-                                    .width(10)
-                                    .height(10)
-                                    .radius(5)
-                                    .background(language_color(language)),
-                            ),
-                            bold(&format!("language-name-{i}"), language, 12, INK),
-                            muted(
-                                &format!("language-share-{i}"),
-                                format!("{}.{}%", share / 10, share % 10),
-                            ),
-                        ],
-                    )
-                })
-                .collect(),
-        ));
+        languages = languages
+            .child(div("language-bar").id("language-bar").each(stats.iter().enumerate(), |(i, (language, _, share))| {
+                el("i")
+                    .id(format!("language-bar-{i}"))
+                    .style(&format!("background: {}; flex-grow: {}", language_color(language), (*share).max(8)))
+            }))
+            .child(el("ul").id("language-list").class("language-list").each(stats.iter().enumerate(), |(i, (language, _, share))| {
+                el("li")
+                    .id(format!("language-{i}"))
+                    .child(el("i").id(format!("language-dot-{i}")).class("dot").style(&format!("background: {}", language_color(language))))
+                    .child(sp(&format!("language-name-{i}"), "strong", language))
+                    .child(sp(&format!("language-share-{i}"), "muted", format!("{}.{}%", share / 10, share % 10)))
+            }));
     }
-    column("about", 10, style().width(SIDE), items)
+    side.child(languages)
 }
-fn readme_card(tip: &Commit, prefix: &str) -> Option<PageElement> {
-    let (file, readme) = tip.files.iter().find(|(f, _)| {
+fn readme_card(tip: &Commit, prefix: &str) -> Option<Html> {
+    let (_, readme) = tip.files.iter().find(|(f, _)| {
         let dir = f.rsplit_once('/').map_or("", |(d, _)| d);
-        dir == prefix
-            && f.rsplit('/')
-                .next()
-                .unwrap_or(f)
-                .eq_ignore_ascii_case("README.md")
+        dir == prefix && f.rsplit('/').next().unwrap_or(f).eq_ignore_ascii_case("README.md")
     })?;
-    let _ = file;
-    let mut children = vec![
-        chips(
-            "readme-head",
-            8,
-            style().padding(10),
-            vec![
-                ic("readme-icon", "list-view", 16, MUTED),
-                bold("readme-title", "README", 13, INK),
-                ic("license-icon", "shield", 16, MUTED),
-                muted("license-title", "MIT license"),
-            ],
-        ),
-        web::divider("readme-rule"),
-    ];
-    children.push(column(
-        "readme-body",
-        8,
-        style().padding(24),
-        markdown("readme", readme),
-    ));
-    Some(web::card(
-        "readme",
-        style().border(LINE).radius(6).padding(0),
-        children,
-    ))
+    let licensed = tip.files.keys().any(|f| f.eq_ignore_ascii_case("LICENSE"));
+    Some(
+        div("box readme")
+            .id("readme")
+            .child(
+                div("readme-head")
+                    .id("readme-head")
+                    .child(span("readme-tab active").child(ic("readme-icon", "book")).child(sp("readme-title", "", "README")))
+                    .when(licensed, |n| n.child(span("readme-tab").child(ic("license-icon", "law")).child(sp("license-title", "", "MIT license")))),
+            )
+            .child(el("article").id("readme-body").class("markdown").children(markdown("readme", readme))),
+    )
 }
-fn code_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    branch: &str,
-    prefix: &str,
-    now: u64,
-) -> Result<HttpResponse> {
+/// `name / dir / file` above a tree or a blob; the last part is where you are.
+fn path_crumbs(id: &str, path: &str, name: &str, branch: &str, target: &str) -> Html {
+    let mut crumbs = div("path-crumbs").id(id).child(a("crumb-root", "root", format!("/{path}"), name));
+    let parts: Vec<&str> = target.split('/').collect();
+    let mut so_far = String::new();
+    for (i, part) in parts.iter().enumerate() {
+        if !so_far.is_empty() {
+            so_far.push('/');
+        }
+        so_far.push_str(part);
+        crumbs = crumbs.child(sp(&format!("crumb-slash-{i}"), "sep", "/"));
+        crumbs = crumbs.child(if i + 1 == parts.len() && id == "blob-crumbs" {
+            sp(&format!("crumb-part-{i}"), "here", *part)
+        } else {
+            a(
+                &format!("crumb-part-{i}"),
+                if i + 1 == parts.len() { "here" } else { "" },
+                format!("/{path}/tree/{branch}/{so_far}"),
+                *part,
+            )
+        });
+    }
+    crumbs
+}
+fn code_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, prefix: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let Some((tip_id, tip)) = branch_tip(repository, branch) else {
         return web::error(404, "branch not found");
     };
-    if !prefix.is_empty()
-        && !tip
-            .files
-            .keys()
-            .any(|f| f.starts_with(&format!("{prefix}/")))
-    {
+    if !prefix.is_empty() && !tip.files.keys().any(|f| f.starts_with(&format!("{prefix}/"))) {
         return web::error(404, "path not found");
     }
-    let mut left = vec![branch_bar(repository, name, branch, 0)];
+    let mut left = div("code-main").id("code-main").child(branch_bar(cx, repository, name, branch, 0));
     if !prefix.is_empty() {
-        let mut crumbs = vec![web::inline_link(
-            "crumb-root",
-            name,
-            format!("/{path}"),
-            16,
-            ACCENT,
-        )];
-        let mut so_far = String::new();
-        for (i, part) in prefix.split('/').enumerate() {
-            if !so_far.is_empty() {
-                so_far.push('/');
-            }
-            so_far.push_str(part);
-            crumbs.push(text(&format!("crumb-slash-{i}"), "/", 16, MUTED));
-            crumbs.push(web::inline_link(
-                &format!("crumb-part-{i}"),
-                part,
-                format!("/{path}/tree/{branch}/{so_far}"),
-                16,
-                if i + 1 == prefix.split('/').count() {
-                    INK
-                } else {
-                    ACCENT
-                },
-            ));
-        }
-        left.push(chips("tree-crumbs", 4, style(), crumbs));
+        left = left.child(path_crumbs("tree-crumbs", &path, name, branch, prefix));
     }
-    left.push(file_table(
-        repository, name, branch, &tip_id, tip, prefix, now,
-    ));
-    if let Some(card) = readme_card(tip, prefix) {
-        left.push(card);
-    }
-    let mut columns = vec![column("code-main", 16, style().flex(1), left)];
+    left = left.child(file_table(cx, repository, name, branch, &tip_id, tip, prefix)).maybe(readme_card(tip, prefix));
+    let mut columns = div("code-columns").id("code-columns").child(left);
     if prefix.is_empty() {
-        columns.push(about(repository, name, tip));
+        columns = columns.child(about(cx, repository, name, tip));
     }
-    let body = vec![web::styled_row(
-        "code-columns",
-        24,
-        "start",
-        style(),
-        columns,
-    )];
-    let title = if prefix.is_empty() {
-        format!("{path}: {}", repository.description)
-    } else {
-        format!("{path}/{prefix} at {branch}")
-    };
-    web::themed_page(
-        &format!("{title} · GitHub"),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Code, body),
-    )
+    let title = if prefix.is_empty() { format!("{path}: {}", repository.description) } else { format!("{path}/{prefix} at {branch}") };
+    finish(cx, &format!("{title} · {}", cx.look.brand()), repo_frame(cx, repository, name, Tab::Code, vec![columns]))
 }
 
-fn blob_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    branch: &str,
-    file: &str,
-    now: u64,
-) -> Result<HttpResponse> {
+fn blob_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, file: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let Some((tip_id, tip)) = branch_tip(repository, branch) else {
         return web::error(404, "branch not found");
@@ -1825,229 +1333,99 @@ fn blob_page(
     let loc = lines.iter().filter(|l| !l.trim().is_empty()).count();
     let numbers: Vec<String> = (1..=lines.len()).map(|n| n.to_string()).collect();
     let last = last_commit_per_path(repository, &tip_id);
-    let mut crumbs = vec![web::inline_link(
-        "crumb-root",
-        name,
-        format!("/{path}"),
-        16,
-        ACCENT,
-    )];
-    let parts: Vec<&str> = file.split('/').collect();
-    let mut so_far = String::new();
-    for (i, part) in parts.iter().enumerate() {
-        if !so_far.is_empty() {
-            so_far.push('/');
-        }
-        so_far.push_str(part);
-        crumbs.push(text(&format!("crumb-slash-{i}"), "/", 16, MUTED));
-        if i + 1 == parts.len() {
-            crumbs.push(bold(&format!("crumb-part-{i}"), *part, 16, INK));
-        } else {
-            crumbs.push(web::inline_link(
-                &format!("crumb-part-{i}"),
-                *part,
-                format!("/{path}/tree/{branch}/{so_far}"),
-                16,
-                ACCENT,
-            ));
-        }
-    }
-    let mut body = vec![
-        branch_bar(repository, name, branch, 0),
-        chips("blob-crumbs", 4, style(), crumbs),
-    ];
+    let mut body = vec![branch_bar(cx, repository, name, branch, 0), path_crumbs("blob-crumbs", &path, name, branch, file)];
     if let Some((id, commit)) = last.get(file) {
-        body.push(between(
-            "blob-latest",
-            style()
-                .background(SURFACE)
-                .border(LINE)
-                .radius(6)
-                .padding(10),
-            vec![
-                web::avatar("blob-latest-avatar", &commit.author, 20),
-                web::inline_link(
-                    "blob-latest-author",
-                    &commit.author,
-                    format!("/{}", commit.author),
-                    13,
-                    INK,
-                ),
-                web::styled(
-                    "blob-latest-message",
-                    commit.message.lines().next().unwrap_or(""),
-                    style().size(13).color(MUTED).one_line().width(420),
-                ),
-            ],
-            vec![
-                web::styled_link(
-                    "blob-latest-sha",
-                    short(id),
-                    format!("/{path}/commit/{id}"),
-                    style().size(12).mono().color(MUTED).one_line(),
-                ),
-                muted("blob-latest-when", format!("· {}", ago(now, commit.tick))),
-                ic("blob-history-icon", "clock", 16, MUTED),
-                web::inline_link(
-                    "blob-history",
-                    "History",
-                    format!("/{path}/commits/{branch}"),
-                    12,
-                    MUTED,
-                ),
-            ],
-        ));
+        body.push(
+            div("box latest-box").id("blob-latest").child(
+                div("latest")
+                    .child(avatar("blob-latest-avatar", &commit.author, 20))
+                    .child(a("blob-latest-author", "strong-link", format!("/{}", commit.author), &commit.author))
+                    .child(sp("blob-latest-message", "latest-message", commit.message.lines().next().unwrap_or("")))
+                    .child(span("grow"))
+                    .child(a("blob-latest-sha", "sha", format!("/{path}/commit/{id}"), short(id)))
+                    .child(sp("blob-latest-when", "muted", format!("· {}", ago(cx.now, commit.tick))))
+                    .child(
+                        el("a")
+                            .id("blob-history")
+                            .class("history")
+                            .attr("href", format!("/{path}/commits/{branch}"))
+                            .child(ic("blob-history-icon", "clock"))
+                            .child(Html::from("History")),
+                    ),
+            ),
+        );
     }
-    let header_row = between(
-        "blob-head",
-        style().background(SURFACE).padding(8),
-        vec![
-            web::styled_link(
-                "blob-code-tab",
-                "Code",
-                format!("/{path}/blob/{branch}/{file}"),
-                button_style().background("#ffffff"),
-            ),
-            web::styled_link(
-                "blame",
-                "Blame",
-                format!("/{path}/blob/{branch}/{file}"),
-                button_style().background(SURFACE).border(SURFACE),
-            ),
-            muted(
-                "blob-stats",
-                format!(
-                    "{} lines ({loc} loc) · {} Bytes",
-                    lines.len(),
-                    content.len()
-                ),
-            ),
-        ],
-        vec![
-            grey_link("raw", "Raw", format!("/{path}/raw/{branch}/{file}")),
-            web::icon("copy", "copy", "Copy raw file", button_style().size(16)),
-            web::icon("download", "download", "Download", button_style().size(16)),
-            web::icon("edit", "pencil", "Edit file", button_style().size(16)),
-            web::icon("more", "more", "More options", button_style().size(16)),
-        ],
-    );
-    let code = web::styled_row(
-        "blob-body",
-        12,
-        "start",
-        style().padding(8),
-        vec![
-            web::styled(
-                "line-numbers",
-                numbers.join("\n"),
-                style()
-                    .size(12)
-                    .mono()
-                    .color(MUTED)
-                    .width(40)
-                    .align("right"),
-            ),
-            web::styled(
-                "blob-text",
-                content.trim_end_matches('\n'),
-                style().size(12).mono().color(INK).flex(1),
-            ),
-        ],
-    );
-    body.push(web::card(
-        "blob",
-        style().border(LINE).radius(6).padding(0),
-        vec![header_row, web::divider("blob-rule"), code],
-    ));
-    web::themed_page(
-        &format!("{path}/{file} at {branch} · GitHub"),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Code, body),
-    )
+    let tool = |id: &str, icon: &str, title: &str| span("btn btn-sm icon-btn").id(id).attr("title", title).child(ic("", icon));
+    let head = div("box-head blob-head")
+        .id("blob-head")
+        .child(
+            span("segmented")
+                .child(a("blob-code-tab", "seg active", format!("/{path}/blob/{branch}/{file}"), "Code"))
+                .child(a("blame", "seg", format!("/{path}/blob/{branch}/{file}"), "Blame")),
+        )
+        .child(sp("blob-stats", "muted small", format!("{} lines ({loc} loc) · {} Bytes", lines.len(), content.len())))
+        .child(span("grow"))
+        .child(a("raw", "btn btn-sm", format!("/{path}/raw/{branch}/{file}"), "Raw"))
+        .child(tool("copy", "copy", "Copy raw file"))
+        .child(tool("download", "download", "Download"))
+        .child(tool("edit", "pencil", "Edit file"))
+        .child(tool("more", "more", "More options"));
+    let code = div("blob-body")
+        .id("blob-body")
+        .child(el("pre").id("line-numbers").class("line-numbers").attr("aria-hidden", "true").text(numbers.join("\n")))
+        .child(el("pre").id("blob-text").class("blob-text").text(content.trim_end_matches('\n')));
+    body.push(div("box blob").id("blob").child(head).child(code));
+    finish(cx, &format!("{path}/{file} at {branch} · {}", cx.look.brand()), repo_frame(cx, repository, name, Tab::Code, body))
 }
 
 /// One commit as a row of a history list.
-fn commit_row(prefix: &str, path: &str, id: &str, commit: &Commit, now: u64) -> PageElement {
+fn commit_row(cx: &Cx, prefix: &str, path: &str, id: &str, commit: &Commit) -> Html {
     let title = commit.message.lines().next().unwrap_or("").to_owned();
-    web::styled_row(
-        prefix,
-        12,
-        "center",
-        style().padding(12).justify("space-between"),
-        vec![
-            column(
-                &format!("{prefix}-main"),
-                4,
-                style(),
-                vec![
-                    web::inline_link(
-                        &format!("{prefix}-title"),
-                        title,
-                        format!("/{path}/commit/{id}"),
-                        14,
-                        INK,
-                    ),
-                    chips(
-                        &format!("{prefix}-meta"),
-                        6,
-                        style(),
-                        vec![
-                            web::avatar(&format!("{prefix}-avatar"), &commit.author, 20),
-                            web::inline_link(
-                                &format!("{prefix}-author"),
-                                &commit.author,
-                                format!("/{}", commit.author),
-                                12,
-                                INK,
-                            ),
-                            muted(
-                                &format!("{prefix}-when"),
-                                format!("committed {}", ago(now, commit.tick)),
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            chips(
-                &format!("{prefix}-side"),
-                6,
-                style(),
-                vec![
-                    web::styled_link(
-                        &format!("{prefix}-sha"),
-                        short(id),
-                        format!("/{path}/commit/{id}"),
-                        button_style().mono().weight("regular"),
-                    ),
-                    web::icon(
-                        &format!("{prefix}-browse"),
-                        "code",
-                        "Browse the repository at this point in the history",
-                        button_style().size(14),
-                    ),
-                ],
-            ),
-        ],
-    )
+    div("commit-row")
+        .id(prefix)
+        .child(
+            div("commit-main")
+                .id(format!("{prefix}-main"))
+                .child(a(&format!("{prefix}-title"), "commit-title", format!("/{path}/commit/{id}"), title))
+                .child(
+                    div("commit-meta")
+                        .id(format!("{prefix}-meta"))
+                        .child(avatar(&format!("{prefix}-avatar"), &commit.author, 20))
+                        .child(a(&format!("{prefix}-author"), "strong-link", format!("/{}", commit.author), &commit.author))
+                        .child(sp(&format!("{prefix}-when"), "muted", format!("committed {}", ago(cx.now, commit.tick)))),
+                ),
+        )
+        .child(
+            div("commit-side")
+                .id(format!("{prefix}-side"))
+                .child(a(&format!("{prefix}-sha"), "sha-btn", format!("/{path}/commit/{id}"), short(id)))
+                .child(
+                    span("icon-btn quiet-btn")
+                        .id(format!("{prefix}-copy"))
+                        .attr("title", "Copy full SHA")
+                        .child(ic("", "copy")),
+                )
+                .child(
+                    el("a")
+                        .id(format!("{prefix}-browse"))
+                        .class("icon-btn quiet-btn")
+                        .attr("href", format!("/{path}/commit/{id}"))
+                        .attr("title", "Browse the repository at this point in the history")
+                        .attr("aria-label", "Browse the repository at this point in the history")
+                        .child(ic("", "code")),
+                ),
+        )
 }
 /// Commits grouped by day, the way the history page reads.
-fn commit_groups(
-    prefix: &str,
-    path: &str,
-    history: &[(String, &Commit)],
-    now: u64,
-) -> Vec<PageElement> {
-    let mut out = vec![];
+fn commit_groups(cx: &Cx, prefix: &str, path: &str, history: &[(String, &Commit)]) -> Html {
+    let mut out = div("timeline-commits");
     let mut day: Option<u64> = None;
-    let mut rows: Vec<PageElement> = vec![];
+    let mut rows: Vec<Html> = vec![];
     let mut group = 0usize;
-    let close = |rows: &mut Vec<PageElement>, out: &mut Vec<PageElement>, group: usize| {
+    let close = |rows: &mut Vec<Html>, out: &mut Html, group: usize| {
         if !rows.is_empty() {
-            out.push(web::card(
-                &format!("{prefix}-group-{group}"),
-                style().border(LINE).radius(6).padding(0),
-                std::mem::take(rows),
-            ));
+            let boxed = div("box commit-group").id(format!("{prefix}-group-{group}")).children(std::mem::take(rows));
+            *out = std::mem::replace(out, empty()).child(boxed);
         }
     };
     for (i, (id, commit)) in history.iter().enumerate() {
@@ -2056,980 +1434,530 @@ fn commit_groups(
             close(&mut rows, &mut out, group);
             group += 1;
             day = Some(this);
-            out.push(chips(
-                &format!("{prefix}-day-{group}"),
-                6,
-                style(),
-                vec![
-                    ic(&format!("{prefix}-day-icon-{group}"), "commit", 16, MUTED),
-                    muted(
-                        &format!("{prefix}-day-label-{group}"),
-                        format!("Commits on {}", date(commit.tick)),
-                    ),
-                ],
-            ));
-        } else {
-            rows.push(web::divider(&format!("{prefix}-rule-{i}")));
+            out = out.child(
+                div("commit-day")
+                    .id(format!("{prefix}-day-{group}"))
+                    .child(ic(&format!("{prefix}-day-icon-{group}"), "commit"))
+                    .child(sp(&format!("{prefix}-day-label-{group}"), "", format!("Commits on {}", date(commit.tick)))),
+            );
         }
-        rows.push(commit_row(&format!("{prefix}-{i}"), path, id, commit, now));
+        rows.push(commit_row(cx, &format!("{prefix}-{i}"), path, id, commit));
     }
     close(&mut rows, &mut out, group);
     out
 }
-fn commits_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    branch: &str,
-    now: u64,
-) -> Result<HttpResponse> {
+fn commits_page(cx: &Cx, repository: &Repository, name: &str, branch: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let Some((tip_id, _)) = branch_tip(repository, branch) else {
         return web::error(404, "branch not found");
     };
     let history = log(repository, &tip_id);
-    let mut body = vec![
-        bold("commits-title", "Commits", 20, INK),
-        between(
-            "commits-bar",
-            style(),
-            vec![chips(
-                "branch-select",
-                6,
-                style()
-                    .background(SURFACE)
-                    .border(LINE)
-                    .radius(6)
-                    .padding(6),
-                vec![
-                    ic("branch-icon", "branch", 16, MUTED),
-                    web::inline_link("branch-name", branch, format!("/{path}/branches"), 13, INK),
-                    ic("branch-chevron", "chevron-down", 12, MUTED),
-                ],
-            )],
-            vec![
-                grey_link(
-                    "filter-user",
-                    "All users ▾",
-                    format!("/{path}/commits/{branch}"),
-                ),
-                grey_link(
-                    "filter-time",
-                    "All time ▾",
-                    format!("/{path}/commits/{branch}"),
-                ),
-            ],
-        ),
+    let body = vec![
+        el("h1").id("commits-title").class("page-title ruled").text("Commits"),
+        div("branch-bar")
+            .id("commits-bar")
+            .child(branch_select(&path, branch))
+            .child(span("grow"))
+            .child(btn_link("filter-user", "All users ▾", format!("/{path}/commits/{branch}")))
+            .child(btn_link("filter-time", "All time ▾", format!("/{path}/commits/{branch}"))),
+        commit_groups(cx, "commits", &path, &history),
     ];
-    body.extend(commit_groups("commits", &path, &history, now));
-    web::themed_page(
-        &format!("Commits · {path}"),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Code, body),
-    )
+    finish(cx, &format!("Commits · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
 }
-fn commit_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    id: &str,
-    now: u64,
-) -> Result<HttpResponse> {
+fn commit_page(cx: &Cx, repository: &Repository, name: &str, id: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let Some(commit) = repository.objects.get(id) else {
         return web::error(404, "commit not found");
     };
-    let empty = BTreeMap::new();
-    let parent = commit
-        .parents
-        .first()
-        .and_then(|p| repository.objects.get(p))
-        .map_or(&empty, |p| &p.files);
+    let none = BTreeMap::new();
+    let parent = commit.parents.first().and_then(|p| repository.objects.get(p)).map_or(&none, |p| &p.files);
     let files = diff_trees(parent, &commit.files);
     let on: Vec<String> = branches(repository)
         .into_iter()
-        .filter(|b| {
-            branch_tip(repository, b)
-                .is_some_and(|(tip, _)| log(repository, &tip).iter().any(|(c, _)| c == id))
-        })
+        .filter(|b| branch_tip(repository, b).is_some_and(|(tip, _)| log(repository, &tip).iter().any(|(c, _)| c == id)))
         .collect();
     let mut lines = commit.message.lines();
     let title = lines.next().unwrap_or("").to_owned();
     let rest: Vec<&str> = lines.filter(|l| !l.trim().is_empty()).collect();
-    let mut head = vec![bold("commit-title", title, 20, INK)];
+    let home_branch = on.first().map_or("main", |b| b.as_str());
+    let mut head = div("commit-head-main").id("commit-head-main").child(el("h1").id("commit-title").text(title));
     if !rest.is_empty() {
-        head.push(text("commit-body", rest.join("\n"), 13, INK));
+        head = head.child(el("pre").id("commit-body").class("commit-body").text(rest.join("\n")));
     }
-    let mut branch_chips: Vec<PageElement> = on
-        .iter()
-        .enumerate()
-        .map(|(i, b)| {
-            chips(
-                &format!("commit-branch-{i}"),
-                4,
-                style(),
-                vec![
-                    ic(&format!("commit-branch-icon-{i}"), "branch", 14, MUTED),
-                    web::inline_link(
-                        &format!("commit-branch-link-{i}"),
-                        b,
-                        format!("/{path}/tree/{b}"),
-                        12,
-                        MUTED,
-                    ),
-                ],
-            )
-        })
-        .collect();
-    if branch_chips.is_empty() {
-        branch_chips.push(muted("commit-branch-none", "not on any branch"));
+    let mut on_branches = div("commit-branches").id("commit-branches");
+    for (i, b) in on.iter().enumerate() {
+        on_branches = on_branches.child(
+            span("commit-branch")
+                .id(format!("commit-branch-{i}"))
+                .child(ic(&format!("commit-branch-icon-{i}"), "branch"))
+                .child(a(&format!("commit-branch-link-{i}"), "", format!("/{path}/tree/{b}"), b)),
+        );
     }
-    head.push(chips("commit-branches", 8, style(), branch_chips));
-    let mut parents = vec![muted(
+    if on.is_empty() {
+        on_branches = on_branches.child(sp("commit-branch-none", "muted", "not on any branch"));
+    }
+    head = head.child(on_branches);
+    let mut parents = span("commit-parents").child(sp(
         "commit-parents-label",
-        format!(
-            "{} parent{}",
-            commit.parents.len(),
-            if commit.parents.len() == 1 { "" } else { "s" }
-        ),
-    )];
-    for (i, p) in commit.parents.iter().enumerate() {
-        parents.push(web::styled_link(
-            &format!("commit-parent-{i}"),
-            short(p),
-            format!("/{path}/commit/{p}"),
-            style().size(12).mono().color(ACCENT).one_line(),
-        ));
-    }
-    parents.push(muted("commit-sha-label", "commit"));
-    parents.push(mono("commit-sha", id, 12, MUTED));
-    let meta = between(
-        "commit-meta",
-        style().background(SURFACE).padding(12),
-        vec![
-            web::avatar("commit-avatar", &commit.author, 20),
-            web::inline_link(
-                "commit-author",
-                &commit.author,
-                format!("/{}", commit.author),
-                13,
-                INK,
-            ),
-            muted(
-                "commit-when",
-                format!(
-                    "committed on {} · {}",
-                    date(commit.tick),
-                    ago(now, commit.tick)
-                ),
-            ),
-        ],
-        parents,
-    );
-    let mut body = vec![web::card(
-        "commit-card",
-        style().border(LINE).radius(6).padding(0),
-        vec![
-            between(
-                "commit-head",
-                style().padding(16),
-                vec![column("commit-head-main", 6, style(), head)],
-                vec![grey_link(
-                    "browse-files",
-                    "Browse files",
-                    format!("/{path}/tree/{}", on.first().map_or("main", |b| b.as_str())),
-                )],
-            ),
-            web::divider("commit-rule"),
-            meta,
-        ],
-    )];
-    body.extend(diff_section(
-        "diff",
-        &files,
-        &path,
-        on.first().map_or("main", |b| b.as_str()),
+        "muted",
+        format!("{} parent{} ", commit.parents.len(), plural(commit.parents.len())),
     ));
-    web::themed_page(
-        &format!(
-            "{} · {path}@{}",
-            commit.message.lines().next().unwrap_or(""),
-            short(id)
-        ),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Code, body),
+    for (i, p) in commit.parents.iter().enumerate() {
+        parents = parents.child(a(&format!("commit-parent-{i}"), "sha", format!("/{path}/commit/{p}"), short(p))).child(Html::from(" "));
+    }
+    parents = parents.child(sp("commit-sha-label", "muted", "commit ")).child(sp("commit-sha", "sha", id));
+    let card = div("box commit-card")
+        .id("commit-card")
+        .child(
+            div("commit-head")
+                .id("commit-head")
+                .child(head)
+                .child(btn_link("browse-files", "Browse files", format!("/{path}/tree/{home_branch}"))),
+        )
+        .child(
+            div("commit-meta-bar")
+                .id("commit-meta")
+                .child(avatar("commit-avatar", &commit.author, 20))
+                .child(a("commit-author", "strong-link", format!("/{}", commit.author), &commit.author))
+                .child(sp("commit-when", "muted", format!("committed on {} · {}", date(commit.tick), ago(cx.now, commit.tick))))
+                .child(span("grow"))
+                .child(parents),
+        );
+    let mut body = vec![card];
+    body.extend(diff_section("diff", &files, &path, home_branch));
+    finish(
+        cx,
+        &format!("{} · {path}@{}", commit.message.lines().next().unwrap_or(""), short(id)),
+        repo_frame(cx, repository, name, Tab::Code, body),
     )
 }
-fn branches_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    now: u64,
-) -> Result<HttpResponse> {
+fn branches_page(cx: &Cx, repository: &Repository, name: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let default = default_branch(repository);
     let main_tip = branch_tip(repository, &default).map(|(id, _)| id);
-    let mut rows = vec![between(
-        "branches-head",
-        style().background(SURFACE).padding(10),
-        vec![bold("branches-head-label", "Branch", 12, MUTED)],
-        vec![
-            muted("branches-head-updated", "Updated"),
-            muted("branches-head-check", "Check status"),
-            muted("branches-head-behind", "Behind | Ahead"),
-            muted("branches-head-pr", "Pull request"),
-        ],
-    )];
+    let mut list = div("box branches").id("branches-list").child(
+        div("box-head branch-row head")
+            .id("branches-head")
+            .child(sp("branches-head-label", "branch-cell name", "Branch"))
+            .child(sp("branches-head-updated", "branch-cell updated", "Updated"))
+            .child(sp("branches-head-check", "branch-cell check", "Check status"))
+            .child(sp("branches-head-behind", "branch-cell behind", "Behind | Ahead"))
+            .child(sp("branches-head-pr", "branch-cell pr", cx.look.pulls().trim_end_matches('s'))),
+    );
     for (i, branch) in branches(repository).iter().enumerate() {
         let Some((tip, commit)) = branch_tip(repository, branch) else {
             continue;
         };
-        let mut left = vec![
-            ic(&format!("branch-icon-{i}"), "branch", 16, MUTED),
-            web::styled_link(
-                &format!("branch-{i}"),
-                branch,
-                format!("/{path}/tree/{branch}"),
-                style().size(13).mono().color(ACCENT).one_line(),
-            ),
-        ];
+        let mut name_cell = span("branch-cell name")
+            .child(ic(&format!("branch-icon-{i}"), "branch"))
+            .child(a(&format!("branch-{i}"), "ref", format!("/{path}/tree/{branch}"), branch));
         if *branch == default {
-            left.push(web::chip(
-                &format!("branch-default-{i}"),
-                "Default",
-                "#ffffff",
-                MUTED,
-                style().size(11).padding(5).border(LINE),
-            ));
+            name_cell = name_cell.child(sp(&format!("branch-default-{i}"), "pill", "Default"));
         }
-        left.push(muted(
-            &format!("branch-updated-{i}"),
-            format!("Updated {} by {}", ago(now, commit.tick), commit.author),
-        ));
-        let mut right = vec![];
+        let mut behind_cell = span("branch-cell behind");
         if let Some(main_tip) = &main_tip {
             if *branch != default {
                 let ahead = commits_between(repository, main_tip, &tip).len();
                 let behind = commits_between(repository, &tip, main_tip).len();
-                right.push(muted(
-                    &format!("branch-ahead-{i}"),
-                    format!("{behind} behind · {ahead} ahead"),
-                ));
+                behind_cell = behind_cell.child(sp(&format!("branch-ahead-{i}"), "muted", format!("{behind} behind · {ahead} ahead")));
             }
         }
-        if let Some(pull) = repository
-            .pull_requests
-            .values()
-            .find(|p| p.head == format!("refs/heads/{branch}"))
-        {
-            right.push(state_icon(&format!("branch-pr-icon-{i}"), pull, true));
-            right.push(web::inline_link(
-                &format!("branch-pr-{i}"),
-                format!("#{}", pull.number),
-                format!("/{path}/pull/{}", pull.number),
-                12,
-                ACCENT,
-            ));
+        let mut pr_cell = span("branch-cell pr");
+        if let Some(pull) = repository.pull_requests.values().find(|p| p.head == format!("refs/heads/{branch}")) {
+            pr_cell = pr_cell
+                .child(state_icon(&format!("branch-pr-icon-{i}"), pull, true))
+                .child(a(&format!("branch-pr-{i}"), "", format!("/{path}/pull/{}", pull.number), format!("#{}", pull.number)));
         } else if *branch != default {
-            right.push(grey_link(
+            pr_cell = pr_cell.child(a(
                 &format!("branch-new-pr-{i}"),
-                "New pull request",
+                "btn btn-sm",
                 format!("/{path}/compare"),
+                format!("New {}", cx.look.pull()),
             ));
         }
-        rows.push(web::divider(&format!("branch-rule-{i}")));
-        rows.push(between(
-            &format!("branch-row-{i}"),
-            style().padding(10),
-            left,
-            right,
-        ));
+        list = list.child(
+            div("branch-row")
+                .id(format!("branch-row-{i}"))
+                .child(name_cell)
+                .child(
+                    span("branch-cell updated")
+                        .child(avatar("", &commit.author, 16))
+                        .child(sp(&format!("branch-updated-{i}"), "muted", format!("Updated {} by {}", ago(cx.now, commit.tick), commit.author))),
+                )
+                .child(span("branch-cell check").child(ic("", "check").class("st-open")))
+                .child(behind_cell)
+                .child(pr_cell),
+        );
     }
     let body = vec![
-        bold("branches-title", "Branches", 20, INK),
-        chips(
+        el("h1").id("branches-title").class("page-title").text("Branches"),
+        tabs(
             "branches-tabs",
-            12,
-            style(),
+            "tabs",
             ["Overview", "Yours", "Active", "Stale", "All"]
                 .iter()
                 .enumerate()
-                .map(|(i, label)| {
-                    tab(
-                        &format!("btab-{i}"),
-                        "branch",
-                        label,
-                        None,
-                        format!("/{path}/branches"),
-                        i == 0,
-                    )
-                })
+                .map(|(i, text)| tab(&format!("btab-{i}"), "branch", text, None, format!("/{path}/branches"), i == 0))
                 .collect(),
         ),
-        web::divider("branches-tabs-rule"),
-        web::card(
-            "branches-list",
-            style().border(LINE).radius(6).padding(0),
-            rows,
-        ),
+        list,
     ];
-    web::themed_page(
-        &format!("Branches · {path}"),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Code, body),
-    )
+    finish(cx, &format!("Branches · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
 }
 
-fn stargazers_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-) -> Result<HttpResponse> {
+fn stargazers_page(cx: &Cx, repository: &Repository, name: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
-    let cards = repository
-        .stars
-        .iter()
-        .enumerate()
-        .map(|(i, who)| {
-            web::card(
-                &format!("stargazer-{i}"),
-                style().border(LINE).radius(6).padding(12),
-                vec![chips(
-                    &format!("stargazer-row-{i}"),
-                    10,
-                    style(),
-                    vec![
-                        web::avatar(&format!("stargazer-avatar-{i}"), who, 48),
-                        column(
-                            &format!("stargazer-text-{i}"),
-                            2,
-                            style(),
-                            vec![
-                                web::inline_link(
-                                    &format!("stargazer-name-{i}"),
-                                    who,
-                                    format!("/{who}"),
-                                    15,
-                                    ACCENT,
-                                ),
-                                muted(&format!("stargazer-login-{i}"), format!("@{who}")),
-                            ],
-                        ),
-                    ],
-                )],
+    let cards = repository.stars.iter().enumerate().map(|(i, who)| {
+        div("stargazer")
+            .id(format!("stargazer-{i}"))
+            .child(avatar(&format!("stargazer-avatar-{i}"), who, 48))
+            .child(
+                div("stargazer-text")
+                    .id(format!("stargazer-text-{i}"))
+                    .child(a(&format!("stargazer-name-{i}"), "stargazer-name", format!("/{who}"), who))
+                    .child(sp(&format!("stargazer-login-{i}"), "muted small", format!("@{who}"))),
             )
-        })
-        .collect();
+    });
     let body = vec![
-        bold("stars-title", "Stargazers", 20, INK),
-        muted(
-            "stars-count",
-            format!("{} people starred {path}", repository.stars.len()),
-        ),
-        web::grid("stargazer-grid", 3, 12, cards),
+        el("h1").id("stars-title").class("page-title ruled").text("Stargazers"),
+        el("p").id("stars-count").class("muted").text(format!("{} people starred {path}", repository.stars.len())),
+        div("stargazers").id("stargazer-grid").children(cards),
     ];
-    web::themed_page(
-        &format!("Stargazers · {path}"),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Code, body),
-    )
+    finish(cx, &format!("Stargazers · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
 }
 
-fn list_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    pulls: bool,
-    filter: &str,
-    now: u64,
-) -> Result<HttpResponse> {
+fn list_page(cx: &Cx, repository: &Repository, name: &str, pulls: bool, filter: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
-    let threads = if pulls {
-        &repository.pull_requests
-    } else {
-        &repository.issues
-    };
-    let (title, route, kind) = if pulls {
-        ("Pull requests", "pull", "pr")
-    } else {
-        ("Issues", "issues", "issue")
-    };
+    let threads = if pulls { &repository.pull_requests } else { &repository.issues };
+    let (title, route, kind) = if pulls { (cx.look.pulls(), "pull", "pr") } else { ("Issues", "issues", "issue") };
     let list_route = if pulls { "pulls" } else { "issues" };
     let closed = filter == "closed";
     let open = open_count(threads);
     let shut = threads.len() - open;
-    let mut rows = vec![between(
-        "list-head",
-        style().background(SURFACE).padding(10),
-        vec![
-            ic(
-                "list-open-icon",
-                if pulls { "pull-request" } else { "issue-open" },
-                16,
-                if closed { MUTED } else { INK },
-            ),
-            web::styled_link(
-                "list-open",
-                format!("{open} Open"),
-                format!("/{path}/{list_route}"),
-                style()
-                    .size(13)
-                    .color(if closed { MUTED } else { INK })
-                    .weight(if closed { "regular" } else { "bold" })
-                    .one_line(),
-            ),
-            ic(
-                "list-closed-icon",
-                "check",
-                16,
-                if closed { INK } else { MUTED },
-            ),
-            web::styled_link(
-                "list-closed",
-                format!("{shut} Closed"),
-                format!("/{path}/{list_route}?state=closed"),
-                style()
-                    .size(13)
-                    .color(if closed { INK } else { MUTED })
-                    .weight(if closed { "bold" } else { "regular" })
-                    .one_line(),
-            ),
-        ],
-        [
-            "Author",
-            "Labels",
-            "Projects",
-            "Milestones",
-            "Assignees",
-            "Sort",
-        ]
-        .iter()
-        .map(|f| {
-            chips(
-                &format!("filter-{}", f.to_ascii_lowercase()),
-                3,
-                style(),
-                vec![
-                    muted(&format!("filter-{}-label", f.to_ascii_lowercase()), *f),
-                    ic(
-                        &format!("filter-{}-chevron", f.to_ascii_lowercase()),
-                        "chevron-down",
-                        12,
-                        MUTED,
-                    ),
-                ],
-            )
-        })
-        .collect(),
-    )];
-    let mut shown: Vec<&Thread> = threads
-        .values()
-        .filter(|t| (t.state == "open") != closed)
-        .collect();
+    let toggle = |id: &str, icon: &str, text: String, url: String, on: bool| {
+        el("a")
+            .id(id)
+            .class(if on { "list-toggle active" } else { "list-toggle" })
+            .attr("href", url)
+            .child(ic(&format!("{id}-icon"), icon))
+            .child(Html::from(text))
+    };
+    let mut head = div("box-head list-head")
+        .id("list-head")
+        .child(toggle(
+            "list-open",
+            if pulls { "pull-request" } else { "issue-open" },
+            format!("{open} Open"),
+            format!("/{path}/{list_route}"),
+            !closed,
+        ))
+        .child(toggle("list-closed", "check", format!("{shut} Closed"), format!("/{path}/{list_route}?state=closed"), closed))
+        .child(span("grow"));
+    for f in ["Author", "Labels", "Projects", "Milestones", "Assignees", "Sort"] {
+        let key = f.to_ascii_lowercase();
+        head = head.child(
+            span("list-filter")
+                .id(format!("filter-{key}"))
+                .child(sp(&format!("filter-{key}-label"), "", f))
+                .child(ic(&format!("filter-{key}-chevron"), "chevron-down")),
+        );
+    }
+    let mut list = div("box threads").id("threads").child(head);
+    let mut shown: Vec<&Thread> = threads.values().filter(|t| (t.state == "open") != closed).collect();
     shown.sort_by_key(|t| std::cmp::Reverse(t.number));
     if shown.is_empty() {
-        rows.push(web::divider("empty-rule"));
-        rows.push(web::styled(
-            "empty",
-            "No results matched your search.",
-            style().size(14).color(MUTED).padding(24).align("center"),
-        ));
+        list = list.child(
+            div("blank")
+                .id("empty")
+                .child(ic("", if pulls { "pull-request" } else { "issue-open" }))
+                .child(el("h3").text("No results matched your search."))
+                .child(el("p").class("muted").text("You could search all of the site or try an advanced search.")),
+        );
     }
     for thread in shown {
         let n = thread.number;
-        let mut title_row = vec![web::inline_link(
-            &format!("thread-{n}"),
-            &thread.title,
-            format!("/{path}/{route}/{n}"),
-            16,
-            INK,
-        )];
-        title_row.extend(labels(&format!("thread-{n}"), thread));
         let status = match thread.state.as_str() {
-            "merged" => format!("by {} was merged {}", thread.author, ago(now, thread.tick)),
-            "closed" => format!("by {} was closed {}", thread.author, ago(now, thread.tick)),
-            _ => format!("opened {} by {}", ago(now, thread.tick), thread.author),
+            "merged" => format!("by {} was merged {}", thread.author, ago(cx.now, thread.tick)),
+            "closed" => format!("by {} was closed {}", thread.author, ago(cx.now, thread.tick)),
+            _ => format!("opened {} by {}", ago(cx.now, thread.tick), thread.author),
         };
-        let mut meta = vec![muted(&format!("meta-{n}"), format!("#{n} {status}"))];
+        let mut meta = div("row-meta").id(format!("row-meta-{n}")).child(sp(&format!("meta-{n}"), "", format!("#{n} {status}")));
         if pulls && thread.draft {
-            meta.push(muted(&format!("meta-draft-{n}"), "· Draft"));
+            meta = meta.child(sp(&format!("meta-draft-{n}"), "", " · Draft"));
         }
         if !thread.reviews.is_empty() {
             let approved = thread.reviews.iter().any(|r| r.decision == "approve");
-            meta.push(ic(
-                &format!("meta-review-icon-{n}"),
-                if approved { "check" } else { "x-circle" },
-                12,
-                if approved { GREEN } else { RED },
-            ));
-            meta.push(muted(
-                &format!("meta-review-{n}"),
-                if approved {
-                    "Approved"
-                } else {
-                    "Changes requested"
-                },
-            ));
+            meta = meta
+                .child(Html::from(" · "))
+                .child(ic(&format!("meta-review-icon-{n}"), if approved { "check" } else { "x-circle" }).class(if approved { "st-open" } else { "st-closed" }))
+                .child(sp(&format!("meta-review-{n}"), "", if approved { " Approved" } else { " Changes requested" }));
         }
-        let mut right = vec![];
+        let mut side = div("row-side").id(format!("row-side-{n}"));
         if !thread.assignee.is_empty() {
-            right.push(web::avatar(&format!("assignee-{n}"), &thread.assignee, 20));
+            side = side.child(avatar(&format!("assignee-{n}"), &thread.assignee, 20));
         }
         if !thread.comments.is_empty() {
-            right.push(ic(&format!("comments-icon-{n}"), "comment", 16, MUTED));
-            right.push(muted(
-                &format!("comments-{n}"),
-                thread.comments.len().to_string(),
-            ));
+            side = side.child(
+                span("row-comments")
+                    .child(ic(&format!("comments-icon-{n}"), "comment"))
+                    .child(sp(&format!("comments-{n}"), "", thread.comments.len().to_string())),
+            );
         }
-        rows.push(web::divider(&format!("rule-{n}")));
-        rows.push(web::styled_row(
-            &format!("row-{n}"),
-            10,
-            "start",
-            style().padding(10),
-            vec![
-                web::styled(&format!("row-pad-{n}"), "", style().width(2)),
-                state_icon(&format!("state-{n}"), thread, pulls),
-                column(
-                    &format!("row-main-{n}"),
-                    4,
-                    style().flex(1),
-                    vec![
-                        chips(&format!("row-title-{n}"), 6, style(), title_row),
-                        chips(&format!("row-meta-{n}"), 6, style(), meta),
-                    ],
-                ),
-                chips(
-                    &format!("row-side-{n}"),
-                    6,
-                    style().width(120).justify("end"),
-                    right,
-                ),
-            ],
-        ));
+        list = list.child(
+            div("thread-row")
+                .id(format!("row-{n}"))
+                .child(state_icon(&format!("state-{n}"), thread, pulls))
+                .child(
+                    div("row-main")
+                        .id(format!("row-main-{n}"))
+                        .child(
+                            div("row-title")
+                                .id(format!("row-title-{n}"))
+                                .child(a(&format!("thread-{n}"), "thread-link", format!("/{path}/{route}/{n}"), &thread.title))
+                                .children(labels(&format!("thread-{n}"), thread)),
+                        )
+                        .child(meta),
+                )
+                .child(side),
+        );
     }
     let body = vec![
-        between(
-            "list-bar",
-            style(),
-            vec![chips(
-                "list-search",
-                8,
-                style()
-                    .border(LINE)
-                    .radius(6)
-                    .padding(6)
-                    .width(520)
-                    .background(SURFACE),
-                vec![
-                    ic("list-search-icon", "search", 14, MUTED),
-                    text(
-                        "list-search-hint",
-                        format!("is:{kind} is:{}", if closed { "closed" } else { "open" }),
-                        13,
-                        MUTED,
-                    ),
-                ],
-            )],
-            vec![
-                grey_link("labels-link", "Labels", format!("/{path}/{list_route}")),
-                grey_link(
-                    "milestones-link",
-                    "Milestones",
-                    format!("/{path}/{list_route}"),
-                ),
-                green_link(
-                    "new",
-                    if pulls {
-                        "New pull request"
-                    } else {
-                        "New issue"
-                    },
-                    if pulls {
-                        format!("/{path}/compare")
-                    } else {
-                        format!("/{path}/issues/new")
-                    },
-                ),
-            ],
-        ),
-        web::card("threads", style().border(LINE).radius(6).padding(0), rows),
+        div("list-bar")
+            .id("list-bar")
+            .child(
+                div("list-search")
+                    .id("list-search")
+                    .child(ic("list-search-icon", "search"))
+                    .child(sp("list-search-hint", "", format!("is:{kind} is:{}", if closed { "closed" } else { "open" }))),
+            )
+            .child(
+                span("btn-group")
+                    .child(a("labels-link", "btn", format!("/{path}/{list_route}"), "Labels"))
+                    .child(a("milestones-link", "btn", format!("/{path}/{list_route}"), "Milestones")),
+            )
+            .child(primary_link(
+                "new",
+                &if pulls { format!("New {}", cx.look.pull()) } else { "New issue".to_owned() },
+                if pulls { format!("/{path}/compare") } else { format!("/{path}/issues/new") },
+            )),
+        list,
     ];
-    web::themed_page(
+    finish(
+        cx,
         &format!("{title} · {path}"),
-        theme(state),
-        repo_frame(
-            repository,
-            name,
-            actor,
-            if pulls { Tab::Pulls } else { Tab::Issues },
-            body,
-        ),
+        repo_frame(cx, repository, name, if pulls { Tab::Pulls } else { Tab::Issues }, body),
     )
 }
-fn new_thread_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    pulls: bool,
-) -> Result<HttpResponse> {
+fn new_thread_page(cx: &Cx, repository: &Repository, name: &str, pulls: bool) -> Result<HttpResponse> {
     let path = slug(repository, name);
-    let form = if pulls {
-        web::form(
-            "new-pull",
-            &format!("/{path}/pulls"),
-            &[
-                ("title", "Title", ""),
-                ("head", "Compare branch (refs/heads/...)", "refs/heads/"),
-                ("base", "Base branch", "refs/heads/main"),
-            ],
-        )
-    } else {
-        web::form(
-            "new-issue",
-            &format!("/{path}/issues"),
-            &[
-                ("title", "Add a title", ""),
-                ("body", "Add a description", ""),
-            ],
-        )
+    let field = |form_id: &str, key: &str, text: &str, value: &str, long: bool| {
+        let id = format!("{form_id}-{key}");
+        div("field").child(label(&id, text)).child(if long {
+            el("textarea").id(id).attr("name", key).attr("rows", "8").attr("placeholder", "Type your description here…").text(value)
+        } else {
+            text_input(&id, key, value)
+        })
     };
-    let body = vec![
-        bold(
-            "new-title",
-            if pulls {
-                "Open a pull request"
-            } else {
-                "Create new issue"
-            },
-            20,
-            INK,
-        ),
-        web::card(
-            "new-card",
-            style().border(LINE).radius(6).padding(16),
-            vec![form],
-        ),
-    ];
-    web::themed_page(
-        &format!(
-            "{} · {path}",
-            if pulls {
-                "Comparing changes"
-            } else {
-                "New Issue"
-            }
-        ),
-        theme(state),
-        repo_frame(
-            repository,
-            name,
-            actor,
-            if pulls { Tab::Pulls } else { Tab::Issues },
-            body,
-        ),
+    let form = if pulls {
+        form("new-pull", format!("/{path}/pulls"), "post")
+            .class("new-form")
+            .child(field("new-pull", "title", "Title", "", false))
+            .child(field("new-pull", "head", "Compare branch (refs/heads/...)", "refs/heads/", false))
+            .child(field("new-pull", "base", "Base branch", "refs/heads/main", false))
+            .child(div("form-actions").child(button("new-pull-submit", format!("Create {}", cx.look.pull())).class("btn btn-primary")))
+    } else {
+        form("new-issue", format!("/{path}/issues"), "post")
+            .class("new-form")
+            .child(field("new-issue", "title", "Add a title", "", false))
+            .child(field("new-issue", "body", "Add a description", "", true))
+            .child(div("form-actions").child(button("new-issue-submit", "Create").class("btn btn-primary")))
+    };
+    let heading = if pulls { format!("Open a {}", cx.look.pull()) } else { "Create new issue".to_owned() };
+    let body = vec![div("new-thread")
+        .child(avatar("new-avatar", cx.actor, 40))
+        .child(div("new-main").child(el("h1").id("new-title").class("page-title").text(heading)).child(div("box new-card").id("new-card").child(form)))];
+    finish(
+        cx,
+        &format!("{} · {path}", if pulls { "Comparing changes" } else { "New Issue" }),
+        repo_frame(cx, repository, name, if pulls { Tab::Pulls } else { Tab::Issues }, body),
     )
 }
 
-/// A comment card: the author strip on grey, the body beneath.
-fn comment_card(
-    prefix: &str,
-    author: &str,
-    verb: &str,
-    body: &str,
-    badge: Option<&str>,
-) -> PageElement {
-    let mut strip = vec![
-        web::avatar(&format!("{prefix}-avatar"), author, 24),
-        web::inline_link(
-            &format!("{prefix}-author"),
-            author,
-            format!("/{author}"),
-            13,
-            INK,
-        ),
-        muted(&format!("{prefix}-when"), verb),
-    ];
+/// A timeline comment: the avatar in the gutter, the author strip on grey, the body beneath.
+fn comment_card(prefix: &str, author: &str, verb: &str, body: &str, badge: Option<&str>) -> Html {
+    let mut strip = div("comment-head")
+        .id(format!("{prefix}-strip"))
+        .child(a(&format!("{prefix}-author"), "strong-link", format!("/{author}"), author))
+        .child(sp(&format!("{prefix}-when"), "muted", verb))
+        .child(span("grow"));
     if let Some(badge) = badge {
-        strip.push(web::chip(
-            &format!("{prefix}-badge"),
-            badge,
-            "#ffffff",
-            MUTED,
-            style().size(10).padding(4).border(LINE),
-        ));
+        strip = strip.child(sp(&format!("{prefix}-badge"), "pill", badge));
     }
-    let mut children = vec![
-        chips(
-            &format!("{prefix}-strip"),
-            8,
-            style().background(SURFACE).padding(10),
-            strip,
-        ),
-        web::divider(&format!("{prefix}-rule")),
-    ];
-    let shown = if body.trim().is_empty() {
-        "No description provided.".to_owned()
-    } else {
-        body.to_owned()
-    };
-    children.push(column(
-        &format!("{prefix}-body"),
-        6,
-        style().padding(14),
-        with_links(&format!("{prefix}-text"), &shown, 14),
-    ));
-    web::card(prefix, style().border(LINE).radius(6).padding(0), children)
+    strip = strip.child(ic("", "more"));
+    let shown = if body.trim().is_empty() { "No description provided." } else { body };
+    div("timeline-item")
+        .child(avatar(&format!("{prefix}-avatar"), author, 40).class("gutter"))
+        .child(
+            div("box comment")
+                .id(prefix)
+                .child(strip)
+                .child(div("comment-body").id(format!("{prefix}-body")).child(prose(&format!("{prefix}-text"), shown))),
+        )
+}
+/// A one-line timeline event with its round badge.
+fn event(id: &str, icon: &str, class: &str, children: Vec<Html>) -> Html {
+    div("timeline-event").id(id).child(span("event-badge").class(class).child(ic(&format!("{id}-icon"), icon))).child(div("event-text").children(children))
 }
 /// The sidebar of a thread page.
-fn thread_sidebar(
-    prefix: &str,
-    repository: &Repository,
-    name: &str,
-    thread: &Thread,
-    pulls: bool,
-) -> PageElement {
+fn thread_sidebar(cx: &Cx, prefix: &str, repository: &Repository, name: &str, thread: &Thread, pulls: bool) -> Html {
     let path = slug(repository, name);
-    let mut items = vec![];
-    let section =
-        |items: &mut Vec<PageElement>, id: &str, title: &str, content: Vec<PageElement>| {
-            items.push(chips(
-                &format!("{prefix}-{id}-head"),
-                4,
-                style(),
-                vec![
-                    bold(&format!("{prefix}-{id}-title"), title, 12, MUTED),
-                    ic(&format!("{prefix}-{id}-gear"), "gear", 12, MUTED),
-                ],
-            ));
-            items.extend(content);
-            items.push(web::divider(&format!("{prefix}-{id}-rule")));
-        };
+    let section = |id: &str, title: &str, content: Vec<Html>| {
+        div("side-section")
+            .child(
+                div("side-section-head")
+                    .id(format!("{prefix}-{id}-head"))
+                    .child(sp(&format!("{prefix}-{id}-title"), "", title))
+                    .child(ic(&format!("{prefix}-{id}-gear"), "gear")),
+            )
+            .children(content)
+    };
+    let mut side = el("aside").id(format!("{prefix}-sidebar")).class("thread-side");
     if pulls {
         let mut reviewers = vec![];
         for (i, review) in thread.reviews.iter().enumerate() {
-            let (icon, colour) = match review.decision.as_str() {
-                "approve" => ("check", GREEN),
-                "request_changes" => ("x-circle", RED),
-                _ => ("comment", MUTED),
+            let (icon, class) = match review.decision.as_str() {
+                "approve" => ("check", "st-open"),
+                "request_changes" => ("x-circle", "st-closed"),
+                _ => ("comment", "st-draft"),
             };
-            reviewers.push(chips(
-                &format!("{prefix}-reviewer-{i}"),
-                6,
-                style(),
-                vec![
-                    web::avatar(&format!("{prefix}-reviewer-avatar-{i}"), &review.author, 20),
-                    text(
-                        &format!("{prefix}-reviewer-name-{i}"),
-                        &review.author,
-                        12,
-                        INK,
-                    ),
-                    ic(&format!("{prefix}-reviewer-icon-{i}"), icon, 14, colour),
-                ],
-            ));
+            reviewers.push(
+                div("side-person")
+                    .id(format!("{prefix}-reviewer-{i}"))
+                    .child(avatar(&format!("{prefix}-reviewer-avatar-{i}"), &review.author, 20))
+                    .child(sp(&format!("{prefix}-reviewer-name-{i}"), "strong", &review.author))
+                    .child(span("grow"))
+                    .child(ic(&format!("{prefix}-reviewer-icon-{i}"), icon).class(class)),
+            );
         }
         if reviewers.is_empty() {
-            reviewers.push(muted(&format!("{prefix}-reviewers-none"), "No reviews"));
+            reviewers.push(sp(&format!("{prefix}-reviewers-none"), "side-none", "No reviews"));
         }
-        section(&mut items, "reviewers", "Reviewers", reviewers);
+        side = side.child(section("reviewers", "Reviewers", reviewers));
     }
     let assignees = if thread.assignee.is_empty() {
-        vec![muted(&format!("{prefix}-assignee-none"), "No one assigned")]
+        vec![sp(&format!("{prefix}-assignee-none"), "side-none", "No one assigned")]
     } else {
-        vec![chips(
-            &format!("{prefix}-assignee"),
-            6,
-            style(),
-            vec![
-                web::avatar(&format!("{prefix}-assignee-avatar"), &thread.assignee, 20),
-                web::inline_link(
-                    &format!("{prefix}-assignee-name"),
-                    &thread.assignee,
-                    format!("/{}", thread.assignee),
-                    12,
-                    INK,
-                ),
-            ],
-        )]
+        vec![div("side-person")
+            .id(format!("{prefix}-assignee"))
+            .child(avatar(&format!("{prefix}-assignee-avatar"), &thread.assignee, 20))
+            .child(a(&format!("{prefix}-assignee-name"), "strong-link", format!("/{}", thread.assignee), &thread.assignee))]
     };
-    section(&mut items, "assignees", "Assignees", assignees);
+    side = side.child(section("assignees", "Assignees", assignees));
     let label_chips = if thread.labels.is_empty() {
-        vec![muted(&format!("{prefix}-labels-none"), "None yet")]
+        vec![sp(&format!("{prefix}-labels-none"), "side-none", "None yet")]
     } else {
-        vec![chips(
-            &format!("{prefix}-labels"),
-            4,
-            style(),
-            labels(&format!("{prefix}-side"), thread),
-        )]
+        vec![div("side-labels").id(format!("{prefix}-labels")).children(labels(&format!("{prefix}-side"), thread))]
     };
-    section(&mut items, "labels", "Labels", label_chips);
-    section(
-        &mut items,
-        "projects",
-        "Projects",
-        vec![muted(&format!("{prefix}-projects-none"), "None yet")],
-    );
-    section(
-        &mut items,
-        "milestone",
-        "Milestone",
-        vec![muted(&format!("{prefix}-milestone-none"), "No milestone")],
-    );
+    side = side
+        .child(section("labels", "Labels", label_chips))
+        .child(section("projects", "Projects", vec![sp(&format!("{prefix}-projects-none"), "side-none", "None yet")]))
+        .child(section("milestone", "Milestone", vec![sp(&format!("{prefix}-milestone-none"), "side-none", "No milestone")]));
     // Development: the pull request that closes this issue, or the issues this pull closes.
     let mut development = vec![];
-    if pulls {
-        for (i, issue) in repository.issues.values().enumerate() {
-            if thread.body.contains(&format!("#{}", issue.number)) {
-                development.push(chips(
-                    &format!("{prefix}-dev-{i}"),
-                    6,
-                    style(),
-                    vec![
-                        state_icon(&format!("{prefix}-dev-icon-{i}"), issue, false),
-                        web::inline_link(
-                            &format!("{prefix}-dev-link-{i}"),
-                            format!("#{} {}", issue.number, issue.title),
-                            format!("/{path}/issues/{}", issue.number),
-                            12,
-                            INK,
-                        ),
-                    ],
-                ));
-            }
-        }
-    } else {
-        for (i, pull) in repository.pull_requests.values().enumerate() {
-            if pull.body.contains(&format!("#{}", thread.number)) {
-                development.push(chips(
-                    &format!("{prefix}-dev-{i}"),
-                    6,
-                    style(),
-                    vec![
-                        state_icon(&format!("{prefix}-dev-icon-{i}"), pull, true),
-                        web::inline_link(
-                            &format!("{prefix}-dev-link-{i}"),
-                            format!("#{} {}", pull.number, pull.title),
-                            format!("/{path}/pull/{}", pull.number),
-                            12,
-                            INK,
-                        ),
-                    ],
-                ));
-            }
+    let others = if pulls { &repository.issues } else { &repository.pull_requests };
+    for (i, other) in others.values().enumerate() {
+        let linked = if pulls { thread.body.contains(&format!("#{}", other.number)) } else { other.body.contains(&format!("#{}", thread.number)) };
+        if linked {
+            development.push(
+                div("side-dev")
+                    .id(format!("{prefix}-dev-{i}"))
+                    .child(state_icon(&format!("{prefix}-dev-icon-{i}"), other, !pulls))
+                    .child(a(
+                        &format!("{prefix}-dev-link-{i}"),
+                        "strong-link",
+                        format!("/{path}/{}/{}", if pulls { "issues" } else { "pull" }, other.number),
+                        format!("#{} {}", other.number, other.title),
+                    )),
+            );
         }
     }
     if development.is_empty() {
-        development.push(muted(
+        development.push(sp(
             &format!("{prefix}-dev-none"),
+            "side-none",
             if pulls {
-                "Successfully merging this pull request may close these issues."
+                format!("Successfully merging this {} may close these issues.", cx.look.pull())
             } else {
-                "No branches or pull requests"
+                format!("No branches or {}s", cx.look.pull())
             },
         ));
     }
-    section(&mut items, "development", "Development", development);
+    side = side.child(section("development", "Development", development));
     let mut people: Vec<&str> = std::iter::once(thread.author.as_str())
         .chain(thread.comments.iter().map(|c| c.author.as_str()))
         .chain(thread.reviews.iter().map(|r| r.author.as_str()))
         .collect();
     people.sort_unstable();
     people.dedup();
-    items.push(bold(
-        &format!("{prefix}-participants-title"),
-        format!("{} participants", people.len()),
-        12,
-        MUTED,
-    ));
-    items.push(chips(
-        &format!("{prefix}-participants"),
-        4,
-        style(),
-        people
-            .iter()
-            .map(|p| web::avatar(&format!("{prefix}-participant-{p}"), p, 26))
-            .collect(),
-    ));
-    column(&format!("{prefix}-sidebar"), 10, style().width(256), items)
-}
-/// The comment box at the foot of every thread, with the state buttons beside it.
-fn composer(base: &str, thread: &Thread, pulls: bool, actor: &str) -> PageElement {
-    let comment = post(format!("{base}/comments"), &[("body", "$comment-body")]);
-    let mut buttons = vec![];
-    match thread.state.as_str() {
-        "open" => buttons.push(grey_button(
-            "close",
-            if pulls {
-                "Close pull request"
-            } else {
-                "Close issue"
-            },
-            post(format!("{base}/state"), &[("state", "closed")]),
-        )),
-        "closed" => buttons.push(grey_button(
-            "reopen",
-            if pulls {
-                "Reopen pull request"
-            } else {
-                "Reopen issue"
-            },
-            post(format!("{base}/state"), &[("state", "open")]),
-        )),
-        _ => (),
-    }
-    buttons.push(green_button("comment-submit", "Comment", comment.clone()));
-    web::styled_row(
-        "composer",
-        12,
-        "start",
-        style(),
-        vec![
-            web::avatar("composer-avatar", actor, 40),
-            web::card(
-                "composer-card",
-                style().border(LINE).radius(6).padding(12).flex(1),
-                vec![PageElement::Form {
-                    id: "comment".into(),
-                    action: comment,
-                    children: vec![
-                        PageElement::Input {
-                            id: "comment-body".into(),
-                            label: "Comment".into(),
-                            value: String::new(),
-                            placeholder: "Add your comment here...".into(),
-                        },
-                        web::styled_row(
-                            "composer-buttons",
-                            8,
-                            "center",
-                            style().justify("end"),
-                            buttons,
-                        ),
-                    ],
-                }],
-            ),
-        ],
+    side.child(
+        div("side-section last")
+            .child(div("side-section-head").child(sp(&format!("{prefix}-participants-title"), "", format!("{} participant{}", people.len(), plural(people.len())))))
+            .child(div("faces").id(format!("{prefix}-participants")).each(people.iter(), |p| avatar(&format!("{prefix}-participant-{p}"), p, 26))),
     )
 }
-fn thread_head(
-    repository: &Repository,
-    name: &str,
-    thread: &Thread,
-    pulls: bool,
-    now: u64,
-) -> Vec<PageElement> {
+/// The comment box at the foot of every thread, with the state buttons beside it.
+fn composer(cx: &Cx, base: &str, thread: &Thread, pulls: bool) -> Html {
+    let what = if pulls { cx.look.pull() } else { "issue" };
+    let mut buttons = div("form-actions").id("composer-buttons");
+    // Closing and reopening post the state to their own route from inside the comment form.
+    match thread.state.as_str() {
+        "open" => {
+            buttons = buttons.child(
+                button("close", format!("Close {what}"))
+                    .class("btn")
+                    .attr("name", "state")
+                    .attr("value", "closed")
+                    .attr("formaction", format!("{base}/state")),
+            )
+        }
+        "closed" => {
+            buttons = buttons.child(
+                button("reopen", format!("Reopen {what}"))
+                    .class("btn")
+                    .attr("name", "state")
+                    .attr("value", "open")
+                    .attr("formaction", format!("{base}/state")),
+            )
+        }
+        _ => (),
+    }
+    buttons = buttons.child(button("comment-submit", "Comment").class("btn btn-primary"));
+    div("timeline-item composer")
+        .id("composer")
+        .child(avatar("composer-avatar", cx.actor, 40).class("gutter"))
+        .child(
+            div("composer-main")
+                .child(el("h3").class("composer-title").text("Add a comment"))
+                .child(
+                    form("comment", format!("{base}/comments"), "post")
+                        .class("box composer-card")
+                        .child(div("composer-tabs").child(span("composer-tab active").text("Write")).child(span("composer-tab").text("Preview")))
+                        .child(
+                            el("textarea")
+                                .id("comment-body")
+                                .attr("name", "body")
+                                .attr("rows", "5")
+                                .attr("aria-label", "Comment")
+                                .attr("placeholder", "Add your comment here..."),
+                        )
+                        .child(buttons),
+                ),
+        )
+}
+fn thread_head(cx: &Cx, repository: &Repository, name: &str, thread: &Thread, pulls: bool) -> Vec<Html> {
     let path = slug(repository, name);
     let n = thread.number;
-    let mut meta = vec![state_pill("state", thread, pulls)];
+    let mut meta = div("thread-meta").id("thread-head").child(state_pill("state", thread, pulls));
     if pulls {
         let head = thread.head.trim_start_matches("refs/heads/");
         let base = thread.base.trim_start_matches("refs/heads/");
@@ -3038,436 +1966,254 @@ fn thread_head(
             _ => 0,
         };
         let verb = match thread.state.as_str() {
-            "merged" => format!(
-                "{} merged {count} commit{} into",
-                thread.merged_by,
-                if count == 1 { "" } else { "s" }
-            ),
-            _ => format!(
-                "{} wants to merge {count} commit{} into",
-                thread.author,
-                if count == 1 { "" } else { "s" }
-            ),
+            "merged" => format!("{} merged {count} commit{} into", thread.merged_by, plural(count)),
+            _ => format!("{} wants to merge {count} commit{} into", thread.author, plural(count)),
         };
-        meta.push(text("thread-verb", verb, 14, MUTED));
-        meta.push(ref_chip(
-            "thread-base",
-            base,
-            &format!("/{path}/tree/{base}"),
-        ));
-        meta.push(text("thread-from", "from", 14, MUTED));
-        meta.push(ref_chip(
-            "thread-head-ref",
-            head,
-            &format!("/{path}/tree/{head}"),
-        ));
+        meta = meta
+            .child(sp("thread-verb", "muted", verb))
+            .child(ref_chip("thread-base", base, &format!("/{path}/tree/{base}")))
+            .child(sp("thread-from", "muted", "from"))
+            .child(ref_chip("thread-head-ref", head, &format!("/{path}/tree/{head}")));
     } else {
-        meta.push(text(
+        meta = meta.child(sp(
             "thread-meta",
+            "muted",
             format!(
                 "{} opened this issue {} · {} comment{}",
                 thread.author,
-                ago(now, thread.tick),
+                ago(cx.now, thread.tick),
                 thread.comments.len(),
-                if thread.comments.len() == 1 { "" } else { "s" }
+                plural(thread.comments.len())
             ),
-            14,
-            MUTED,
         ));
     }
     vec![
-        between(
-            "thread-title-row",
-            style(),
-            vec![
-                web::styled(
-                    "thread-title",
-                    &thread.title,
-                    style().size(26).color(INK).bold().width(760),
-                ),
-                text("thread-number", format!("#{n}"), 26, MUTED),
-            ],
-            vec![
-                grey_link(
-                    "edit",
-                    "Edit",
-                    format!("/{path}/{}/{n}", if pulls { "pull" } else { "issues" }),
-                ),
-                green_link(
-                    "new-from-thread",
-                    if pulls {
-                        "New pull request"
-                    } else {
-                        "New issue"
-                    },
-                    if pulls {
-                        format!("/{path}/compare")
-                    } else {
-                        format!("/{path}/issues/new")
-                    },
-                ),
-            ],
-        ),
-        chips("thread-head", 8, style(), meta),
-        web::divider("thread-head-rule"),
+        div("thread-title-row")
+            .id("thread-title-row")
+            .child(el("h1").child(sp("thread-title", "", &thread.title)).child(Html::from(" ")).child(sp("thread-number", "number", format!("#{n}"))))
+            .child(
+                div("thread-actions")
+                    .child(btn_link("edit", "Edit", format!("/{path}/{}/{n}", if pulls { "pull" } else { "issues" })))
+                    .child(primary_link(
+                        "new-from-thread",
+                        &if pulls { format!("New {}", cx.look.pull()) } else { "New issue".to_owned() },
+                        if pulls { format!("/{path}/compare") } else { format!("/{path}/issues/new") },
+                    )),
+            ),
+        meta,
     ]
 }
-fn issue_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    thread: &Thread,
-    now: u64,
-) -> Result<HttpResponse> {
+fn issue_page(cx: &Cx, repository: &Repository, name: &str, thread: &Thread) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let n = thread.number;
     let base = format!("/{path}/issues/{n}");
-    let mut timeline = vec![comment_card(
+    let mut timeline = div("timeline").id("timeline").child(comment_card(
         "thread-body",
         &thread.author,
-        &format!("opened {}", ago(now, thread.tick)),
+        &format!("opened {}", ago(cx.now, thread.tick)),
         &thread.body,
         Some("Author"),
-    )];
+    ));
     for (i, comment) in thread.comments.iter().enumerate() {
-        timeline.push(comment_card(
+        timeline = timeline.child(comment_card(
             &format!("comment-{i}"),
             &comment.author,
-            &format!("commented {}", ago(now, comment.tick)),
+            &format!("commented {}", ago(cx.now, comment.tick)),
             &comment.body,
             (comment.author == thread.author).then_some("Author"),
         ));
     }
     if thread.state == "closed" {
         let last = thread.comments.last().map_or(thread.tick, |c| c.tick);
-        timeline.push(chips(
+        let who = if thread.assignee.is_empty() { &thread.author } else { &thread.assignee };
+        timeline = timeline.child(event(
             "closed-event",
-            8,
-            style().padding(4),
-            vec![
-                ic("closed-event-icon", "issue-closed", 16, PURPLE),
-                text(
-                    "closed-event-text",
-                    format!(
-                        "{} closed this as completed {}",
-                        if thread.assignee.is_empty() {
-                            &thread.author
-                        } else {
-                            &thread.assignee
-                        },
-                        ago(now, last)
-                    ),
-                    13,
-                    MUTED,
-                ),
-            ],
+            "issue-closed",
+            "done",
+            vec![sp("closed-event-text", "", format!("{who} closed this as completed {}", ago(cx.now, last)))],
         ));
     }
-    timeline.push(web::divider("timeline-rule"));
-    timeline.push(composer(&base, thread, false, actor));
-    let mut body = thread_head(repository, name, thread, false, now);
-    body.push(web::styled_row(
-        "thread",
-        24,
-        "start",
-        style(),
-        vec![
-            column("timeline", 12, style().flex(1), timeline),
-            thread_sidebar("side", repository, name, thread, false),
-        ],
-    ));
-    web::themed_page(
-        &format!("{} · Issue #{n} · {path}", thread.title),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Issues, body),
-    )
+    timeline = timeline.child(composer(cx, &base, thread, false));
+    let mut body = thread_head(cx, repository, name, thread, false);
+    body.push(div("thread").id("thread").child(timeline).child(thread_sidebar(cx, "side", repository, name, thread, false)));
+    finish(cx, &format!("{} · Issue #{n} · {path}", thread.title), repo_frame(cx, repository, name, Tab::Issues, body))
 }
 /// The green (open), grey (draft), purple (merged) or red (closed) box at the foot of a
 /// pull request's conversation.
-fn merge_box(base: &str, thread: &Thread) -> PageElement {
-    let approvals = thread
-        .reviews
-        .iter()
-        .filter(|r| r.decision == "approve")
-        .count();
-    let changes = thread
-        .reviews
-        .iter()
-        .filter(|r| r.decision == "request_changes")
-        .count();
+fn merge_box(cx: &Cx, base: &str, thread: &Thread) -> Html {
+    let approvals = thread.reviews.iter().filter(|r| r.decision == "approve").count();
+    let changes = thread.reviews.iter().filter(|r| r.decision == "request_changes").count();
     let head = thread.head.trim_start_matches("refs/heads/");
-    let status = |id: &str, icon: &str, colour: &str, title: &str, detail: &str| {
-        web::styled_row(
-            id,
-            12,
-            "start",
-            style().padding(14),
-            vec![
-                web::icon(
-                    &format!("{id}-icon"),
-                    icon,
-                    icon,
-                    style()
-                        .size(18)
-                        .color("#ffffff")
-                        .background(colour)
-                        .radius(16)
-                        .padding(7),
-                ),
-                column(
-                    &format!("{id}-text"),
-                    2,
-                    style().flex(1),
-                    vec![
-                        bold(&format!("{id}-title"), title, 14, INK),
-                        muted(&format!("{id}-detail"), detail),
-                    ],
-                ),
-            ],
-        )
+    let what = cx.look.pull();
+    let status = |id: &str, icon: &str, class: &str, title: &str, detail: &str| {
+        div("merge-status")
+            .id(id)
+            .child(span("status-badge").class(class).child(ic(&format!("{id}-icon"), icon)))
+            .child(
+                div("merge-status-text")
+                    .id(format!("{id}-text"))
+                    .child(el("h3").id(format!("{id}-title")).text(title))
+                    .child(el("p").id(format!("{id}-detail")).class("muted").text(detail)),
+            )
     };
-    let rows = match (thread.state.as_str(), thread.draft) {
-        ("merged", _) => vec![
-            status(
-                "merged-status",
-                "merge",
-                PURPLE,
-                "Pull request successfully merged and closed",
-                &format!("You're all set — the {head} branch can be safely deleted."),
-            ),
-            web::divider("merge-rule-1"),
-            chips(
-                "merge-actions",
-                8,
-                style().padding(12),
-                vec![grey_link(
-                    "delete-branch",
-                    "Delete branch",
-                    base.to_string(),
-                )],
-            ),
-        ],
-        ("closed", _) => vec![
-            status(
-                "closed-status",
-                "pull-request",
-                RED,
-                "Closed with unmerged commits",
-                &format!(
-                    "This pull request is closed, but the {head} branch has unmerged changes."
+    let actions = |children: Vec<Html>| div("merge-actions").id("merge-actions").children(children);
+    let (class, badge_icon, rows) = match (thread.state.as_str(), thread.draft) {
+        ("merged", _) => (
+            "merged",
+            "merge",
+            vec![
+                status(
+                    "merged-status",
+                    "merge",
+                    "merged",
+                    &format!("{} successfully merged and closed", capitalise(what)),
+                    &format!("You're all set — the {head} branch can be safely deleted."),
                 ),
-            ),
-            web::divider("merge-rule-1"),
-            chips(
-                "merge-actions",
-                8,
-                style().padding(12),
-                vec![grey_button(
-                    "reopen",
-                    "Reopen pull request",
-                    post(format!("{base}/state"), &[("state", "open")]),
-                )],
-            ),
-        ],
-        (_, true) => vec![
-            status(
-                "draft-status",
-                "pull-request",
-                MUTED,
-                "This pull request is still a work in progress",
-                "Draft pull requests cannot be merged.",
-            ),
-            web::divider("merge-rule-1"),
-            chips(
-                "merge-actions",
-                8,
-                style().padding(12),
-                vec![grey_button(
+                actions(vec![btn_link("delete-branch", "Delete branch", base.to_string())]),
+            ],
+        ),
+        ("closed", _) => (
+            "closed",
+            "pull-request",
+            vec![
+                status(
+                    "closed-status",
+                    "pull-request",
+                    "closed",
+                    "Closed with unmerged commits",
+                    &format!("This {what} is closed, but the {head} branch has unmerged changes."),
+                ),
+                // The composer below carries `reopen`; this one is the merge box's own.
+                actions(vec![post_button("merge-reopen", "btn", &format!("Reopen {what}"), format!("{base}/state"), &[("state", "open")])]),
+            ],
+        ),
+        (_, true) => (
+            "draft",
+            "pull-request",
+            vec![
+                status(
+                    "draft-status",
+                    "pull-request",
+                    "draft",
+                    &format!("This {what} is still a work in progress"),
+                    &format!("Draft {what}s cannot be merged."),
+                ),
+                actions(vec![post_button(
                     "ready",
+                    "btn",
                     "Ready for review",
-                    post(
-                        format!("{base}/reviews"),
-                        &[("decision", "comment"), ("body", "Ready for review")],
-                    ),
-                )],
-            ),
-        ],
+                    format!("{base}/reviews"),
+                    &[("decision", "comment"), ("body", "Ready for review")],
+                )]),
+            ],
+        ),
         _ => {
-            let (icon, colour, title, detail) = if changes > 0 && approvals == 0 {
-                (
-                    "x-circle",
-                    RED,
-                    "Changes requested".to_owned(),
-                    format!(
-                        "{changes} review{} requesting changes",
-                        if changes == 1 { "" } else { "s" }
-                    ),
-                )
+            let (icon, tone, title, detail) = if changes > 0 && approvals == 0 {
+                ("x-circle", "closed", "Changes requested".to_owned(), format!("{changes} review{} requesting changes", plural(changes)))
             } else if approvals > 0 {
                 (
                     "check",
-                    GREEN,
+                    "open",
                     "Changes approved".to_owned(),
-                    format!(
-                        "{approvals} approving review{} by reviewers with write access.",
-                        if approvals == 1 { "" } else { "s" }
-                    ),
+                    format!("{approvals} approving review{} by reviewers with write access.", plural(approvals)),
                 )
             } else {
                 (
                     "eye",
-                    MUTED,
+                    "draft",
                     "Review required".to_owned(),
-                    "At least 1 approving review is required by reviewers with write access."
-                        .to_owned(),
+                    "At least 1 approving review is required by reviewers with write access.".to_owned(),
                 )
             };
-            vec![
-                status("review-status", icon, colour, &title, &detail),
-                web::divider("merge-rule-1"),
-                status(
-                    "conflict-status",
-                    "check",
-                    GREEN,
-                    "This branch has no conflicts with the base branch",
-                    "Merging can be performed automatically.",
-                ),
-                web::divider("merge-rule-2"),
-                chips(
-                    "merge-actions",
-                    8,
-                    style().padding(12),
-                    vec![
-                        green_button(
-                            "merge",
-                            "Merge pull request",
-                            post(format!("{base}/merge"), &[]),
-                        ),
-                        web::styled_button(
-                            "merge-options",
-                            "▾",
-                            post(format!("{base}/merge"), &[]),
-                            button_style()
-                                .padding(10)
-                                .background(GREEN)
-                                .border(GREEN)
-                                .color("#ffffff"),
-                        ),
-                        muted(
-                            "merge-hint",
-                            "You can also merge this with the command line.",
-                        ),
-                    ],
-                ),
-            ]
+            (
+                "open",
+                "merge",
+                vec![
+                    status("review-status", icon, tone, &title, &detail),
+                    status(
+                        "conflict-status",
+                        "check",
+                        "open",
+                        "This branch has no conflicts with the base branch",
+                        "Merging can be performed automatically.",
+                    ),
+                    actions(vec![
+                        form("merge-form", format!("{base}/merge"), "post")
+                            .class("inline-form btn-group")
+                            .child(button("merge", format!("Merge {what}")).class("btn btn-primary"))
+                            .child(button("merge-options", "▾").class("btn btn-primary").attr("aria-label", "Select merge method")),
+                        sp("merge-hint", "muted small", "You can also merge this with the command line."),
+                    ]),
+                ],
+            )
         }
     };
-    web::card("merge-box", style().border(LINE).radius(6).padding(0), rows)
+    div("timeline-item merge")
+        .child(span("merge-badge gutter").class(class).child(ic("", badge_icon)))
+        .child(div("box merge-box").id("merge-box").class(class).children(rows))
 }
-fn pull_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    thread: &Thread,
-    view: &str,
-    now: u64,
-) -> Result<HttpResponse> {
+fn capitalise(s: &str) -> String {
+    let mut chars = s.chars();
+    chars.next().map(|c| c.to_uppercase().chain(chars).collect()).unwrap_or_default()
+}
+fn pull_page(cx: &Cx, repository: &Repository, name: &str, thread: &Thread, view: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let n = thread.number;
     let base = format!("/{path}/pull/{n}");
     let head_name = thread.head.trim_start_matches("refs/heads/");
     let base_name = thread.base.trim_start_matches("refs/heads/");
-    let tips = (
-        branch_tip(repository, base_name),
-        branch_tip(repository, head_name),
-    );
+    let tips = (branch_tip(repository, base_name), branch_tip(repository, head_name));
     let (commits, files) = match &tips {
         (Some((b, _)), Some((h, head))) => {
             let commits = commits_between(repository, b, h);
-            let start = merge_base(repository, b, h)
-                .and_then(|m| repository.objects.get(&m))
-                .map(|c| c.files.clone())
-                .unwrap_or_default();
+            let start = merge_base(repository, b, h).and_then(|m| repository.objects.get(&m)).map(|c| c.files.clone()).unwrap_or_default();
             (commits, diff_trees(&start, &head.files))
         }
         _ => (vec![], vec![]),
     };
-    let mut body = thread_head(repository, name, thread, true, now);
-    body.push(chips(
-        "pull-tabs",
-        12,
-        style(),
-        vec![
-            tab(
-                "ptab-conversation",
-                "comment",
-                "Conversation",
-                Some(thread.comments.len() + thread.reviews.len()),
-                base.clone(),
-                view == "conversation",
-            ),
-            tab(
-                "ptab-commits",
-                "commit",
-                "Commits",
-                Some(commits.len()),
-                format!("{base}/commits"),
-                view == "commits",
-            ),
-            tab(
-                "ptab-checks",
-                "check",
-                "Checks",
-                Some(0),
-                base.clone(),
-                false,
-            ),
-            tab(
-                "ptab-files",
-                "file",
-                "Files changed",
-                Some(files.len()),
-                format!("{base}/files"),
-                view == "files",
-            ),
-        ],
-    ));
-    body.push(web::divider("pull-tabs-rule"));
+    let (adds, dels) = files.iter().fold((0, 0), |(a, d), f| (a + f.additions, d + f.deletions));
+    let mut body = thread_head(cx, repository, name, thread, true);
+    body.push(
+        tabs(
+            "pull-tabs",
+            "tabs pull-tabs",
+            vec![
+                tab("ptab-conversation", "comment", "Conversation", Some(thread.comments.len() + thread.reviews.len()), base.clone(), view == "conversation"),
+                tab("ptab-commits", "commit", "Commits", Some(commits.len()), format!("{base}/commits"), view == "commits"),
+                tab("ptab-checks", "check", "Checks", Some(0), base.clone(), false),
+                tab("ptab-files", "file", "Files changed", Some(files.len()), format!("{base}/files"), view == "files"),
+            ],
+        )
+        .child(span("pull-stat").child(sp("pull-adds", "adds", format!("+{adds}"))).child(Html::from(" ")).child(sp("pull-dels", "dels", format!("−{dels}")))),
+    );
     match view {
-        "commits" => body.extend(commit_groups("pull-commits", &path, &commits, now)),
+        "commits" => body.push(commit_groups(cx, "pull-commits", &path, &commits)),
         "files" => {
-            body.push(between(
-                "files-bar",
-                style(),
-                vec![muted("files-hint", "Changes from all commits")],
-                vec![web::styled_button(
-                    "approve",
-                    "Review changes ▾",
-                    post(
+            body.push(
+                div("branch-bar")
+                    .id("files-bar")
+                    .child(sp("files-hint", "muted", "Changes from all commits"))
+                    .child(span("grow"))
+                    .child(post_button(
+                        "approve",
+                        "btn btn-primary",
+                        "Review changes ▾",
                         format!("{base}/reviews"),
                         &[("decision", "approve"), ("body", "Looks good.")],
-                    ),
-                    button_style()
-                        .padding(10)
-                        .background(GREEN)
-                        .border(GREEN)
-                        .color("#ffffff"),
-                )],
-            ));
+                    )),
+            );
             body.extend(diff_section("diff", &files, &path, head_name));
         }
         _ => {
-            let mut timeline = vec![comment_card(
+            let mut timeline = div("timeline").id("timeline").child(comment_card(
                 "thread-body",
                 &thread.author,
-                &format!("commented {}", ago(now, thread.tick)),
+                &format!("commented {}", ago(cx.now, thread.tick)),
                 &thread.body,
                 Some("Author"),
-            )];
+            ));
             // Comments and reviews interleave by time, as one conversation.
-            let mut events: Vec<(u64, usize, PageElement)> = vec![];
+            let mut events: Vec<(u64, usize, Html)> = vec![];
             for (i, comment) in thread.comments.iter().enumerate() {
                 events.push((
                     comment.tick,
@@ -3475,261 +2221,142 @@ fn pull_page(
                     comment_card(
                         &format!("comment-{i}"),
                         &comment.author,
-                        &format!("commented {}", ago(now, comment.tick)),
+                        &format!("commented {}", ago(cx.now, comment.tick)),
                         &comment.body,
                         (comment.author == thread.author).then_some("Author"),
                     ),
                 ));
             }
             for (i, review) in thread.reviews.iter().enumerate() {
-                let (icon, colour, verb) = match review.decision.as_str() {
-                    "approve" => ("check", GREEN, "approved these changes"),
-                    "request_changes" => ("x-circle", RED, "requested changes"),
-                    _ => ("comment", MUTED, "reviewed"),
+                let (icon, tone, verb) = match review.decision.as_str() {
+                    "approve" => ("check", "open", "approved these changes"),
+                    "request_changes" => ("x-circle", "closed", "requested changes"),
+                    _ => ("eye", "draft", "reviewed"),
                 };
-                let mut children = vec![chips(
-                    &format!("review-{i}-head"),
-                    8,
-                    style().padding(4),
-                    vec![
-                        ic(&format!("review-state-{i}"), icon, 16, colour),
-                        web::avatar(&format!("review-avatar-{i}"), &review.author, 20),
-                        web::inline_link(
-                            &format!("review-author-{i}"),
-                            &review.author,
-                            format!("/{}", review.author),
-                            13,
-                            INK,
+                let mut node = div("review").id(format!("review-{i}")).child(
+                    div("timeline-event")
+                        .id(format!("review-{i}-head"))
+                        .child(span("event-badge").class(tone).child(ic(&format!("review-state-{i}"), icon).attr("data-tone", tone)))
+                        .child(
+                            div("event-text")
+                                .child(avatar(&format!("review-avatar-{i}"), &review.author, 20))
+                                .child(a(&format!("review-author-{i}"), "strong-link", format!("/{}", review.author), &review.author))
+                                .child(sp(&format!("review-verb-{i}"), "muted", format!(" {verb} {}", ago(cx.now, review.tick)))),
                         ),
-                        muted(
-                            &format!("review-verb-{i}"),
-                            format!("{verb} {}", ago(now, review.tick)),
-                        ),
-                    ],
-                )];
+                );
                 if !review.body.trim().is_empty() {
-                    children.push(web::card(
-                        &format!("review-body-{i}"),
-                        style().border(LINE).radius(6).padding(12),
-                        with_links(&format!("review-text-{i}"), &review.body, 14),
-                    ));
+                    node = node.child(div("box review-body").id(format!("review-body-{i}")).child(prose(&format!("review-text-{i}"), &review.body)));
                 }
-                events.push((
-                    review.tick,
-                    100 + i,
-                    column(&format!("review-{i}"), 6, style(), children),
-                ));
+                events.push((review.tick, 100 + i, node));
             }
             events.sort_by_key(|(tick, order, _)| (*tick, *order));
-            timeline.extend(events.into_iter().map(|(_, _, e)| e));
+            timeline = timeline.children(events.into_iter().map(|(_, _, e)| e));
             if thread.state == "merged" {
-                timeline.push(chips(
+                timeline = timeline.child(event(
                     "merged-event",
-                    8,
-                    style().padding(4),
-                    vec![
-                        ic("merged-event-icon", "merge", 16, PURPLE),
-                        text(
-                            "merged-event-text",
-                            format!(
-                                "{} merged commit into {base_name} {}",
-                                thread.merged_by,
-                                ago(now, thread.tick)
-                            ),
-                            13,
-                            MUTED,
-                        ),
-                    ],
+                    "merge",
+                    "merged",
+                    vec![sp("merged-event-text", "", format!("{} merged commit into {base_name} {}", thread.merged_by, ago(cx.now, thread.tick)))],
                 ));
             }
-            timeline.push(merge_box(&base, thread));
-            timeline.push(web::divider("timeline-rule"));
-            timeline.push(composer(&base, thread, true, actor));
-            body.push(web::styled_row(
-                "thread",
-                24,
-                "start",
-                style(),
-                vec![
-                    column("timeline", 12, style().flex(1), timeline),
-                    thread_sidebar("side", repository, name, thread, true),
-                ],
-            ));
+            timeline = timeline.child(merge_box(cx, &base, thread)).child(composer(cx, &base, thread, true));
+            body.push(div("thread").id("thread").child(timeline).child(thread_sidebar(cx, "side", repository, name, thread, true)));
         }
     }
-    web::themed_page(
-        &format!(
-            "{} by {} · Pull Request #{n} · {path}",
-            thread.title, thread.author
-        ),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Pulls, body),
+    finish(
+        cx,
+        &format!("{} by {} · {} #{n} · {path}", thread.title, thread.author, if cx.look == Look::Gitlab { "Merge Request" } else { "Pull Request" }),
+        repo_frame(cx, repository, name, Tab::Pulls, body),
     )
 }
 /// The tabs that have no data behind them: Actions, Projects, Wiki, Security, Insights, Settings.
-fn stub_page(
-    state: &GitState,
-    repository: &Repository,
-    name: &str,
-    actor: &str,
-    which: &str,
-) -> Result<HttpResponse> {
-    let (title, blurb) = match which {
-        "actions" => ("Get started with GitHub Actions", "Build, test, and deploy your code. Make code reviews, branch management, and issue triaging work the way you want."),
-        "projects" => ("Welcome to the all-new projects", "Built like a spreadsheet, project tables give you a live canvas to filter, sort, and group issues and pull requests."),
-        "wiki" => ("Welcome to the wiki!", "Wikis provide a place in your repository to lay out the roadmap of your project, show the current status, and document software better, together."),
-        "security" => ("Security overview", "Security policy, advisories and Dependabot alerts for this repository."),
-        "pulse" => ("Pulse", "Activity over the last month: merged pull requests, closed issues and new commits."),
-        _ => ("Settings", "General settings for this repository."),
+fn stub_page(cx: &Cx, repository: &Repository, name: &str, which: &str) -> Result<HttpResponse> {
+    let (title, blurb, icon) = match which {
+        "actions" => ("Get started with GitHub Actions", "Build, test, and deploy your code. Make code reviews, branch management, and issue triaging work the way you want.", "play"),
+        "projects" => ("Welcome to the all-new projects", "Built like a spreadsheet, project tables give you a live canvas to filter, sort, and group issues and pull requests.", "grid"),
+        "wiki" => ("Welcome to the wiki!", "Wikis provide a place in your repository to lay out the roadmap of your project, show the current status, and document software better, together.", "book"),
+        "security" => ("Security overview", "Security policy, advisories and Dependabot alerts for this repository.", "shield"),
+        "pulse" => ("Pulse", "Activity over the last month: merged pull requests, closed issues and new commits.", "signal"),
+        _ => ("Settings", "General settings for this repository.", "gear"),
     };
-    let body = vec![web::card(
-        "stub",
-        style().border(LINE).radius(6).padding(32),
-        vec![
-            web::styled(
-                "stub-title",
-                title,
-                style().size(22).bold().color(INK).align("center"),
-            ),
-            web::styled(
-                "stub-blurb",
-                blurb,
-                style().size(14).color(MUTED).align("center"),
-            ),
-        ],
-    )];
-    web::themed_page(
-        &format!("{title} · {}", slug(repository, name)),
-        theme(state),
-        repo_frame(repository, name, actor, Tab::Other, body),
-    )
+    let title = if cx.look == Look::Gitlab { title.replace("GitHub Actions", "GitLab CI/CD") } else { title.to_owned() };
+    let body = vec![div("box blank stub")
+        .id("stub")
+        .child(ic("stub-icon", icon))
+        .child(el("h2").id("stub-title").text(title.as_str()))
+        .child(el("p").id("stub-blurb").class("muted").text(blurb))];
+    finish(cx, &format!("{title} · {}", slug(repository, name)), repo_frame(cx, repository, name, Tab::Other, body))
 }
 
-fn gist_index(state: &GitState, actor: &str, now: u64) -> Result<HttpResponse> {
-    let mut rows = vec![];
-    for (id, gist) in &state.gists {
+fn gist_index(cx: &Cx) -> Result<HttpResponse> {
+    let mut main = vec![el("h1").id("gists-title").class("page-title ruled").text(if cx.look == Look::Gitlab { "Explore snippets" } else { "Discover gists" })];
+    for (id, gist) in &cx.state.gists {
         let file = gist.files.keys().next().cloned().unwrap_or_default();
-        rows.push(web::card(
-            &format!("gist-row-{id}"),
-            style().border(LINE).radius(6).padding(12),
-            vec![
-                chips(
-                    &format!("gist-head-{id}"),
-                    6,
-                    style(),
-                    vec![
-                        web::avatar(&format!("gist-avatar-{id}"), &gist.owner, 24),
-                        web::inline_link(
-                            &format!("gist-owner-{id}"),
-                            &gist.owner,
-                            format!("/{}", gist.owner),
-                            14,
-                            ACCENT,
+        let preview: String = gist.files.values().next().map(|c| c.lines().take(6).collect::<Vec<_>>().join("\n")).unwrap_or_default();
+        main.push(
+            div("gist-row")
+                .id(format!("gist-row-{id}"))
+                .child(
+                    div("gist-head")
+                        .id(format!("gist-head-{id}"))
+                        .child(avatar(&format!("gist-avatar-{id}"), &gist.owner, 32))
+                        .child(
+                            div("gist-title")
+                                .child(a(&format!("gist-owner-{id}"), "", format!("/{}", gist.owner), &gist.owner))
+                                .child(sp(&format!("gist-slash-{id}"), "sep", " / "))
+                                .child(a(&format!("gist-{id}"), "strong-accent", format!("/gist/{id}"), &file))
+                                .child(el("p").id(format!("gist-when-{id}")).class("muted small").text(format!("Created {}", ago(cx.now, gist.tick))))
+                                .child(el("p").id(format!("gist-desc-{id}")).class("small").text(&gist.description)),
                         ),
-                        text(&format!("gist-slash-{id}"), "/", 14, MUTED),
-                        web::styled_link(
-                            &format!("gist-{id}"),
-                            &file,
-                            format!("/gist/{id}"),
-                            style().size(14).bold().color(ACCENT).one_line(),
-                        ),
-                    ],
-                ),
-                muted(
-                    &format!("gist-when-{id}"),
-                    format!("Created {}", ago(now, gist.tick)),
-                ),
-                text(&format!("gist-desc-{id}"), &gist.description, 13, INK),
-            ],
-        ));
+                )
+                .child(div("box gist-preview").child(el("pre").class("blob-text").text(preview))),
+        );
     }
-    let mut elements = vec![
-        header(&[("gists", "/gists".into())], actor),
-        web::spacer("gists-lead", 16),
-        bold("gists-title", "Discover gists", 20, INK),
-    ];
-    elements.extend(rows);
-    web::themed_page("Discover gists · GitHub", theme(state), elements)
+    finish(cx, &format!("Discover gists · {}", cx.look.brand()), shell(cx, &[("gists", "/gists".into())], None, main))
 }
 
-fn gist_page(state: &GitState, id: &str, actor: &str, now: u64) -> Result<HttpResponse> {
-    let Some(gist) = state.gists.get(id) else {
+fn gist_page(cx: &Cx, id: &str) -> Result<HttpResponse> {
+    let Some(gist) = cx.state.gists.get(id) else {
         return web::error(404, "gist not found");
     };
-    let mut elements = vec![
-        header(
-            &[("gists", "/gists".into()), (id, format!("/gist/{id}"))],
-            actor,
-        ),
-        web::spacer("gist-lead", 16),
-        chips(
-            "gist-head",
-            8,
-            style(),
-            vec![
-                web::avatar("gist-avatar", &gist.owner, 32),
-                web::inline_link(
-                    "gist-owner",
-                    &gist.owner,
-                    format!("/{}", gist.owner),
-                    18,
-                    ACCENT,
-                ),
-                text("gist-slash", "/", 18, MUTED),
-                bold("gist-id", id, 18, ACCENT),
-            ],
-        ),
-        muted("gist-when", format!("Created {}", ago(now, gist.tick))),
-        text("gist-description", &gist.description, 14, INK),
+    let mut main = vec![
+        div("gist-head")
+            .id("gist-head")
+            .child(avatar("gist-avatar", &gist.owner, 32))
+            .child(
+                div("gist-title")
+                    .child(a("gist-owner", "", format!("/{}", gist.owner), &gist.owner))
+                    .child(sp("gist-slash", "sep", " / "))
+                    .child(sp("gist-id", "strong-accent", id))
+                    .child(el("p").id("gist-when").class("muted small").text(format!("Created {}", ago(cx.now, gist.tick)))),
+            ),
+        el("p").id("gist-description").class("gist-description").text(&gist.description),
     ];
     for (i, (file, content)) in gist.files.iter().enumerate() {
-        let numbers: Vec<String> = (1..=content.lines().count())
-            .map(|n| n.to_string())
-            .collect();
-        elements.push(web::card(
-            &format!("gist-file-{i}"),
-            style().border(LINE).radius(6).padding(0),
-            vec![
-                chips(
-                    &format!("gist-file-head-{i}"),
-                    6,
-                    style().background(SURFACE).padding(10),
-                    vec![
-                        ic(&format!("gist-file-icon-{i}"), "file", 14, MUTED),
-                        bold(&format!("gist-file-name-{i}"), file, 13, ACCENT),
-                    ],
+        let numbers: Vec<String> = (1..=content.lines().count()).map(|n| n.to_string()).collect();
+        main.push(
+            div("box blob")
+                .id(format!("gist-file-{i}"))
+                .child(
+                    div("box-head blob-head")
+                        .id(format!("gist-file-head-{i}"))
+                        .child(ic(&format!("gist-file-icon-{i}"), "file"))
+                        .child(sp(&format!("gist-file-name-{i}"), "strong-accent mono", file))
+                        .child(span("grow"))
+                        .child(span("btn btn-sm").text("Raw")),
+                )
+                .child(
+                    div("blob-body")
+                        .id(format!("gist-file-body-{i}"))
+                        .child(el("pre").id(format!("gist-file-numbers-{i}")).class("line-numbers").attr("aria-hidden", "true").text(numbers.join("\n")))
+                        .child(el("pre").id(format!("gist-file-text-{i}")).class("blob-text").text(content.trim_end_matches('\n'))),
                 ),
-                web::divider(&format!("gist-file-rule-{i}")),
-                web::styled_row(
-                    &format!("gist-file-body-{i}"),
-                    12,
-                    "start",
-                    style().padding(8),
-                    vec![
-                        web::styled(
-                            &format!("gist-file-numbers-{i}"),
-                            numbers.join("\n"),
-                            style()
-                                .size(12)
-                                .mono()
-                                .color(MUTED)
-                                .width(32)
-                                .align("right"),
-                        ),
-                        web::styled(
-                            &format!("gist-file-text-{i}"),
-                            content.trim_end_matches('\n'),
-                            style().size(12).mono().color(INK).flex(1),
-                        ),
-                    ],
-                ),
-            ],
-        ));
+        );
     }
-    web::themed_page(
+    finish(
+        cx,
         &format!("{} · gist", gist.description),
-        theme(state),
-        elements,
+        shell(cx, &[("gists", "/gists".into()), (id, format!("/gist/{id}"))], None, main),
     )
 }
 
@@ -3749,22 +2376,27 @@ pub fn handle(
     let method = req.method.to_ascii_uppercase();
     let actor = ctx.actor.as_str();
     if method == "GET" {
-        let now = now(&s, ctx);
+        let cx = Cx {
+            state: &s,
+            look: Look::of(&s),
+            actor,
+            now: now(&s, ctx),
+        };
         let repo = |owner: &str, name: &str| repository(&s, owner, name);
         let missing = || web::error(404, "repository not found");
         return match parts.as_slice() {
-            [] => home(&s, actor, now),
-            ["search"] => search_page(&s, actor, &web::query(req, "q").unwrap_or_default()),
-            ["gists"] => gist_index(&s, actor, now),
-            ["gist", id] => gist_page(&s, id, actor, now),
-            [owner] => owner_page(&s, owner, actor, now),
+            [] => home(&cx),
+            ["search"] => search_page(&cx, &web::query(req, "q").unwrap_or_default()),
+            ["gists"] => gist_index(&cx),
+            ["gist", id] => gist_page(&cx, id),
+            [owner] => owner_page(&cx, owner),
             [owner, name] => match repo(owner, name) {
                 Some(r) if api => HttpResponse::json(200, &json!(r)),
-                Some(r) => code_page(&s, r, name, actor, &default_branch(r), "", now),
+                Some(r) => code_page(&cx, r, name, &default_branch(r), ""),
                 None => missing(),
             },
             [owner, name, "tree", branch, rest @ ..] => match repo(owner, name) {
-                Some(r) => code_page(&s, r, name, actor, branch, &rest.join("/"), now),
+                Some(r) => code_page(&cx, r, name, branch, &rest.join("/")),
                 None => missing(),
             },
             [owner, name, "blob" | "raw", rest @ ..] if !rest.is_empty() => match repo(owner, name)
@@ -3779,43 +2411,43 @@ pub fn handle(
                     } else {
                         (default_branch(r), rest.join("/"))
                     };
-                    blob_page(&s, r, name, actor, &branch, &file, now)
+                    blob_page(&cx, r, name, &branch, &file)
                 }
                 None => missing(),
             },
             [owner, name, "commits"] => match repo(owner, name) {
-                Some(r) => commits_page(&s, r, name, actor, &default_branch(r), now),
+                Some(r) => commits_page(&cx, r, name, &default_branch(r)),
                 None => missing(),
             },
             [owner, name, "commits", branch] => match repo(owner, name) {
-                Some(r) => commits_page(&s, r, name, actor, branch, now),
+                Some(r) => commits_page(&cx, r, name, branch),
                 None => missing(),
             },
             [owner, name, "commit", sha] => match repo(owner, name) {
                 Some(r) => {
                     let full = r.objects.keys().find(|k| k.starts_with(sha)).cloned();
                     match full {
-                        Some(id) => commit_page(&s, r, name, actor, &id, now),
+                        Some(id) => commit_page(&cx, r, name, &id),
                         None => web::error(404, "commit not found"),
                     }
                 }
                 None => missing(),
             },
             [owner, name, "branches"] => match repo(owner, name) {
-                Some(r) => branches_page(&s, r, name, actor, now),
+                Some(r) => branches_page(&cx, r, name),
                 None => missing(),
             },
             [owner, name, "stargazers"] => match repo(owner, name) {
                 Some(r) if api => HttpResponse::json(200, &json!(r.stars)),
-                Some(r) => stargazers_page(&s, r, name, actor),
+                Some(r) => stargazers_page(&cx, r, name),
                 None => missing(),
             },
             [owner, name, "issues", "new"] => match repo(owner, name) {
-                Some(r) => new_thread_page(&s, r, name, actor, false),
+                Some(r) => new_thread_page(&cx, r, name, false),
                 None => missing(),
             },
             [owner, name, "compare"] => match repo(owner, name) {
-                Some(r) => new_thread_page(&s, r, name, actor, true),
+                Some(r) => new_thread_page(&cx, r, name, true),
                 None => missing(),
             },
             [owner, name, kind @ ("issues" | "pulls")] => match repo(owner, name) {
@@ -3827,15 +2459,7 @@ pub fn handle(
                         &r.issues
                     }),
                 ),
-                Some(r) => list_page(
-                    &s,
-                    r,
-                    name,
-                    actor,
-                    *kind == "pulls",
-                    &web::query(req, "state").unwrap_or_default(),
-                    now,
-                ),
+                Some(r) => list_page(&cx, r, name, *kind == "pulls", &web::query(req, "state").unwrap_or_default()),
                 None => missing(),
             },
             [owner, name, kind @ ("issues" | "pull"), number, view @ ..] if view.len() <= 1 => {
@@ -3847,10 +2471,10 @@ pub fn handle(
                         Some(t)
                             if pulls && ["conversation", "commits", "files"].contains(&view) =>
                         {
-                            pull_page(&s, r, name, actor, t, view, now)
+                            pull_page(&cx, r, name, t, view)
                         }
                         Some(t) if !pulls && view == "conversation" => {
-                            issue_page(&s, r, name, actor, t, now)
+                            issue_page(&cx, r, name, t)
                         }
                         Some(_) => web::error(404, "route not found"),
                         None => web::error(404, "thread not found"),
@@ -3861,7 +2485,7 @@ pub fn handle(
             }
             [owner, name, which @ ("actions" | "projects" | "wiki" | "security" | "pulse" | "settings")] => {
                 match repo(owner, name) {
-                    Some(r) => stub_page(&s, r, name, actor, which),
+                    Some(r) => stub_page(&cx, r, name, which),
                     None => missing(),
                 }
             }
@@ -3960,6 +2584,8 @@ fn repository<'a>(state: &'a GitState, owner: &str, name: &str) -> Option<&'a Re
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cw_service_common::html::fragment;
+    use cw_web::dom::Document as Dom;
     #[test]
     fn ticks_read_as_dates_and_ages() {
         assert_eq!(date(0), "Aug 1, 2026");
@@ -3975,15 +2601,46 @@ mod tests {
         assert_eq!(ago(3000, 300), "3 months ago");
     }
     #[test]
-    fn markdown_makes_headings_lists_and_code() {
+    fn markdown_makes_headings_lists_code_and_inline_links() {
         let out = markdown("md", "# Title\n\nSome `prose` here.\n\n- one http://a.example/\n- two\n\n```\nlet x = 1;\n```\n");
-        let kinds: Vec<String> = out.iter().map(|e| e.id().to_owned()).collect();
-        assert!(kinds[0].starts_with("md-h-"));
-        assert!(out.iter().any(|e| matches!(e, PageElement::Styled { text, style, .. } if text == "let x = 1;" && style.mono == Some(true))));
-        assert!(out
-            .iter()
-            .any(|e| matches!(e, PageElement::Styled { text, .. } if text == "Some prose here.")));
-        assert!(out.iter().any(|e| matches!(e, PageElement::Row { children, .. } if children.iter().any(|c| matches!(c, PageElement::Link { url, .. } if url == "http://a.example/")))));
+        let html = fragment(out).render();
+        let doc = cw_web::html::parse(&html);
+        let h1 = doc.descendants(Dom::ROOT).find(|n| doc.is(*n, "h1")).unwrap();
+        assert!(doc.attr(h1, "id").unwrap().starts_with("md-h-"));
+        assert_eq!(doc.text_content(h1), "Title");
+        let p = doc.descendants(Dom::ROOT).find(|n| doc.is(*n, "p")).unwrap();
+        assert_eq!(doc.text_content(p), "Some prose here.");
+        assert!(html.contains("<code>prose</code>"));
+        let pre = doc.descendants(Dom::ROOT).find(|n| doc.is(*n, "pre")).unwrap();
+        assert_eq!(doc.text_content(pre), "let x = 1;");
+        // The list is one <ul>; the URL in its first item is a link with the Page version's id.
+        let items: Vec<_> = doc.descendants(Dom::ROOT).filter(|n| doc.is(*n, "li")).collect();
+        assert_eq!(items.len(), 2);
+        let link = doc.descendants(items[0]).find(|n| doc.is(*n, "a")).unwrap();
+        assert_eq!(doc.attr(link, "href"), Some("http://a.example/"));
+        assert_eq!(doc.attr(link, "id"), Some(format!("{}-link-1", doc.attr(items[0], "id").unwrap()).as_str()));
+    }
+    #[test]
+    fn markdown_reads_a_four_space_block_as_code_but_not_a_wrapped_list_item() {
+        let out = markdown("md", "Intro:\n\n    one --flag\n    two\n\nAfter.\n\n- item that\n    wraps on\n- second\n");
+        let html = fragment(out).render();
+        let doc = cw_web::html::parse(&html);
+        let pre: Vec<_> = doc.descendants(Dom::ROOT).filter(|n| doc.is(*n, "pre")).collect();
+        assert_eq!(pre.len(), 1, "{html}");
+        assert_eq!(doc.text_content(pre[0]), "one --flag\ntwo");
+        // The indented continuation of a list item is not a code block (this renderer puts
+        // it in a paragraph of its own; it never turns the rest of a list into code).
+        let items: Vec<_> = doc.descendants(Dom::ROOT).filter(|n| doc.is(*n, "li")).collect();
+        assert_eq!(items.len(), 2);
+        assert!(html.contains("wraps on") && !doc.text_content(pre[0]).contains("wraps"));
+    }
+    #[test]
+    fn inline_keeps_whitespace_and_trailing_punctuation_outside_the_link() {
+        let html = fragment(inline("t", "See http://a.example/x, then\n\nhttp://b.example/.", false)).render();
+        assert_eq!(
+            html,
+            "See <a id=\"t-link-1\" href=\"http://a.example/x\">http://a.example/x</a>, then\n\n<a id=\"t-link-3\" href=\"http://b.example/\">http://b.example/</a>."
+        );
     }
     #[test]
     fn label_colours_are_githubs_for_known_names_and_stable_otherwise() {

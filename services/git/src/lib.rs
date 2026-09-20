@@ -148,8 +148,9 @@ pub struct Gist {
     #[serde(default)]
     pub tick: u64,
 }
-/// Skins this instance may wear; GitHub gets a branded layout, `plain` is git.internal.
-pub const SKINS: &[&str] = &["plain", "github"];
+/// Skins this instance may wear: `github` and `gitlab` are the branded layouts, `plain` is
+/// git.internal (a gitweb-like index at `/`; its owner paths borrow the GitHub look).
+pub const SKINS: &[&str] = &["plain", "github", "gitlab"];
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GitState {
     /// Presentation only. `plain` is the original rendering and is omitted from serialised
@@ -431,10 +432,11 @@ impl Repository {
     }
 }
 
-use cw_protocol::{HttpRequest, HttpResponse, Page, PageElement, SimError};
+use cw_protocol::{HttpRequest, HttpResponse, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 pub mod github;
+mod plain;
 
 // ---- History, diffs and tree helpers: everything a page derives from commits. ----
 
@@ -1079,8 +1081,9 @@ impl Service for GitService {
         let path = url.path().trim_matches('/');
         let parts: Vec<_> = path.split('/').collect();
         let api = parts.starts_with(&["api", "git", "repos"]);
-        // `/repos/*`, `/api/git/repos/*` and the plain landing page stay on the original code
-        // path, byte for byte. Everything else is the owner-namespaced GitHub surface.
+        // `/repos/*`, `/api/git/repos/*` and the plain landing page are the original surface
+        // (the API byte for byte; the two pages as plain HTML, see `plain.rs`). Everything
+        // else is the owner-namespaced surface in `github.rs`.
         let legacy = api
             || parts.first() == Some(&"repos")
             || (path.is_empty() && state["skin"].as_str().unwrap_or("plain") == "plain");
@@ -1103,16 +1106,7 @@ impl Service for GitService {
             if api {
                 return HttpResponse::json(200, &visible);
             }
-            let mut page = Page::new("Git repositories");
-            for name in visible {
-                page.elements.push(PageElement::Link {
-                    id: format!("repo-{name}"),
-                    text: name.clone(),
-                    url: format!("/repos/{name}"),
-                    style: None,
-                });
-            }
-            return HttpResponse::page(&page);
+            return plain::index(repos, &visible);
         }
         let (repo_name, op) = if api && parts.len() >= 4 {
             (parts[3], parts.get(4).copied().unwrap_or(""))
@@ -1136,34 +1130,7 @@ impl Service for GitService {
             ("GET", "") => {
                 HttpResponse::json(200, &json!({"refs":repo["refs"],"objects":repo["objects"]}))
             }
-            ("GET", "page") => {
-                let mut page = Page::new(format!("Repository {repo_name}"));
-                page.elements.push(PageElement::Heading {
-                    id: "repo-title".into(),
-                    text: repo_name.into(),
-                    level: 1,
-                });
-                if let Some(refs) = repo["refs"].as_object() {
-                    for (name, id) in refs {
-                        page.elements.push(PageElement::Text {
-                            id: format!("ref-{name}"),
-                            text: format!("{name} {}", id.as_str().unwrap_or("")),
-                        });
-                        if let Some(files) = id
-                            .as_str()
-                            .and_then(|id| repo["objects"][id]["files"].as_object())
-                        {
-                            for (name, content) in files {
-                                page.elements.push(PageElement::Text {
-                                    id: format!("file-{name}"),
-                                    text: format!("{name}\n{}", content.as_str().unwrap_or("")),
-                                });
-                            }
-                        }
-                    }
-                }
-                HttpResponse::page(&page)
-            }
+            ("GET", "page") => plain::repository(repo_name, repo),
             ("POST", "push") => {
                 let push: Push = match serde_json::from_slice(&req.body) {
                     Ok(p) => p,

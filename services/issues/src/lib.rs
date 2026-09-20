@@ -197,10 +197,11 @@ impl Project {
     }
 }
 
-use cw_protocol::{HttpRequest, HttpResponse, Page};
+use cw_protocol::{HttpRequest, HttpResponse};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as wire;
 pub mod linear;
+mod plain;
 pub struct IssuesService;
 /// One issue rendered the way this instance is skinned.
 fn render_issue(
@@ -213,7 +214,7 @@ fn render_issue(
     if skinned {
         linear::issue(look, key, item, nav)
     } else {
-        issue_page(key, item)
+        plain::issue(key, item)
     }
 }
 pub fn register(registry: &mut Registry) -> cw_protocol::Result<()> {
@@ -245,6 +246,7 @@ impl Service for IssuesService {
             theme: serde_json::from_value(state.get("theme").cloned().unwrap_or(Value::Null))?,
         };
         let assignee = wire::query(req, "assignee");
+        let view = linear::View::parse(wire::query(req, "view").as_deref());
         let nav: Vec<(String, String)> = state["projects"]
             .as_object()
             .map(|m| {
@@ -280,19 +282,11 @@ impl Service for IssuesService {
                     .collect();
                 return linear::home(&look, &teams);
             }
-            return wire::page(
-                "Projects",
-                visible
-                    .iter()
-                    .map(|v| {
-                        wire::link(
-                            &format!("project-{}", v["id"].as_str().unwrap()),
-                            v["name"].as_str().unwrap_or("Project"),
-                            format!("/projects/{}", v["id"].as_str().unwrap()),
-                        )
-                    })
-                    .collect(),
-            );
+            let listed: Vec<(String, String)> = visible
+                .iter()
+                .filter_map(|v| Some((v["id"].as_str()?.to_owned(), v["name"].as_str().unwrap_or("Project").to_owned())))
+                .collect();
+            return plain::projects(&listed);
         }
         if p.first() != Some(&"projects") || p.len() < 2 || p.len() > 5 {
             return wire::error(404, "route not found");
@@ -310,32 +304,10 @@ impl Service for IssuesService {
             }
             if skinned {
                 let typed: Project = serde_json::from_value(project.clone())?;
-                return linear::board(&look, key, &typed, &nav, assignee.as_deref());
+                return linear::board(&look, key, &typed, &nav, assignee.as_deref(), view);
             }
-            let mut page = Page::new(format!("Project {key}"));
-            page.elements.push(wire::heading(
-                "project",
-                project["name"].as_str().unwrap_or(key),
-            ));
-            if let Some(issues) = project["issues"].as_object() {
-                for (id, item) in issues {
-                    page.elements.push(wire::link(
-                        &format!("issue-{id}"),
-                        format!(
-                            "{key}-{id}: {} [{}]",
-                            item["title"].as_str().unwrap_or(""),
-                            item["status"].as_str().unwrap_or("")
-                        ),
-                        format!("/projects/{key}/issues/{id}"),
-                    ));
-                }
-            }
-            page.elements.push(wire::form(
-                "new-issue",
-                &format!("/projects/{key}/issues"),
-                &[("title", "Title", ""), ("body", "Description", "")],
-            ));
-            return HttpResponse::page(&page);
+            let typed: Project = serde_json::from_value(project.clone())?;
+            return plain::project(key, &typed);
         }
         if p.get(2) != Some(&"issues") {
             return wire::error(404, "route not found");
@@ -394,6 +366,9 @@ impl Service for IssuesService {
         };
         // A board move says so, and lands back on the board it was made on.
         let to_board = skinned && wire::text(&input, "view") == "board";
+        // `layout` names the view the move was made on (list, board or cycle), so the
+        // landing page is the one the button was pressed on.
+        let layout = linear::View::parse(input.get("layout").and_then(Value::as_str));
         let mut typed: Project = serde_json::from_value(project.clone())?;
         match typed.mutate(id, &ctx.actor, ctx.tick, operation, input) {
             Ok(()) => {
@@ -401,7 +376,7 @@ impl Service for IssuesService {
                 if api {
                     HttpResponse::json(200, &typed.issues[&id])
                 } else if to_board {
-                    linear::board(&look, key, &typed, &nav, assignee.as_deref())
+                    linear::board(&look, key, &typed, &nav, assignee.as_deref(), layout)
                 } else {
                     render_issue(skinned, &look, &nav, key, &typed.issues[&id])
                 }
@@ -418,51 +393,6 @@ fn access(v: &Value, field: &str, actor: &str) -> bool {
             && v["writers"]
                 .as_array()
                 .is_some_and(|a| a.iter().any(|x| x.as_str() == Some(actor))))
-}
-fn issue_page(project: &str, issue: &Issue) -> cw_protocol::Result<HttpResponse> {
-    let base = format!("/projects/{project}/issues/{}", issue.id);
-    let mut elements = vec![
-        wire::link("back", "Project", format!("/projects/{project}")),
-        wire::heading("title", format!("{project}-{} {}", issue.id, issue.title)),
-        wire::paragraph(
-            "status",
-            format!("Status: {} · Assigned: {}", issue.status, issue.assignee),
-        ),
-        wire::paragraph("body", &issue.body),
-    ];
-    for (i, c) in issue.comments.iter().enumerate() {
-        elements.push(wire::paragraph(
-            &format!("comment-{i}"),
-            format!("{}: {}", c.author, c.body),
-        ));
-    }
-    for (i, r) in issue.reviews.iter().enumerate() {
-        elements.push(wire::paragraph(
-            &format!("review-{i}"),
-            format!("{}: {} {}", r.author, r.decision, r.body),
-        ));
-    }
-    elements.push(wire::form(
-        "comment",
-        &format!("{base}/comments"),
-        &[("body", "Comment", "")],
-    ));
-    elements.push(wire::form(
-        "update",
-        &base,
-        &[
-            ("status", "Status", &issue.status),
-            ("assignee", "Assignee", &issue.assignee),
-        ],
-    ));
-    if issue.kind == "pull_request" {
-        elements.push(wire::form(
-            "review",
-            &format!("{base}/reviews"),
-            &[("decision", "Decision", "approve"), ("body", "Review", "")],
-        ));
-    }
-    wire::page(&issue.title, elements)
 }
 #[cfg(test)]
 mod tests {
@@ -631,120 +561,164 @@ mod http_tests {
 #[cfg(test)]
 mod linear_tests {
     use super::*;
+    use cw_service_common::html::validate_strict;
+    use cw_web::dom::Document as Dom;
     fn ctx(actor: &str) -> ServiceContext {
-        ServiceContext {
-            actor: actor.into(),
-            source: format!("machine-{actor}"),
-            tick: 11,
-            seed: 3,
-            instance: "linear".into(),
-        }
+        ServiceContext { actor: actor.into(), source: format!("machine-{actor}"), tick: 11, seed: 3, instance: "linear".into() }
     }
     fn req(method: &str, path: &str, body: Value) -> HttpRequest {
-        HttpRequest {
-            method: method.into(),
-            url: format!("http://linear.app{path}"),
-            headers: BTreeMap::new(),
-            body: serde_json::to_vec(&body).unwrap(),
-        }
+        HttpRequest { method: method.into(), url: format!("http://linear.app{path}"), headers: BTreeMap::new(), body: serde_json::to_vec(&body).unwrap() }
     }
     fn seed(skin: &str) -> Value {
         json!({"skin":skin,"workspace":"Northstar","projects":{"OPS":{"name":"Operations",
             "writers":["alice","carol"],"issues":{"1":{"id":1,"title":"Confirm Atlas launch checklist",
             "body":"Read the release code.","status":"open","author":"carol","assignee":"alice",
-            "labels":["release"],"comments":[],"reviews":[],"kind":"issue"}}}}})
+            "labels":["release","p1"],"comments":[],"reviews":[],"kind":"issue"}}}}})
     }
-    fn text(state: &mut Value, actor: &str, path: &str) -> String {
-        String::from_utf8(
-            IssuesService
-                .handle(state, &ctx(actor), &req("GET", path, Value::Null))
-                .unwrap()
-                .body,
-        )
-        .unwrap()
+    /// A fetched page, validated strictly and parsed.
+    struct Html(Dom);
+    impl Html {
+        fn of(response: HttpResponse) -> Html {
+            assert_eq!(response.header("content-type"), Some("text/html; charset=utf-8"));
+            let html = String::from_utf8(response.body).unwrap();
+            validate_strict(&html).unwrap_or_else(|e| panic!("{e:?}"));
+            Html(cw_web::html::parse(&html))
+        }
+        fn get(state: &mut Value, actor: &str, path: &str) -> Html {
+            let response = IssuesService.handle(state, &ctx(actor), &req("GET", path, Value::Null)).unwrap();
+            assert_eq!(response.status, 200, "{path}");
+            Html::of(response)
+        }
+        fn has(&self, id: &str) -> bool {
+            !self.0.by_id(id).is_empty()
+        }
+        fn text(&self, id: &str) -> String {
+            let node = *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+            self.0.text_content(node).split_whitespace().collect::<Vec<_>>().join(" ")
+        }
+        fn attr(&self, id: &str, name: &str) -> String {
+            let node = *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
+            self.0.attr(node, name).unwrap_or_else(|| panic!("#{id} has no {name}")).to_owned()
+        }
+        /// Whether `inner` is a descendant of `outer`.
+        fn within(&self, inner: &str, outer: &str) -> bool {
+            let (inner, outer) = (self.0.by_id(inner)[0], self.0.by_id(outer)[0]);
+            self.0.ancestors(inner).any(|a| a == outer)
+        }
     }
-    /// The whole point of the skin flag: plain state serialises exactly as it always did.
+    /// The whole point of the skin flag: plain state serialises exactly as it always did,
+    /// and the plain pages are the plain tracker, as HTML, with the ids they always had.
     #[test]
-    fn plain_state_and_pages_are_unchanged() {
+    fn plain_state_is_unchanged_and_its_pages_are_plain_html() {
         let mut plain = json!({"projects":{"OPS":{"name":"Operations","issues":{}}}});
         plain = IssuesService.initialize(plain, &ctx("alice")).unwrap();
-        assert_eq!(
-            plain,
-            json!({"projects":{"OPS":{"name":"Operations","issues":{},"readers":[],"writers":[]}}})
-        );
-        assert!(!text(&mut plain, "alice", "/").contains("Your teams"));
+        assert_eq!(plain, json!({"projects":{"OPS":{"name":"Operations","issues":{},"readers":[],"writers":[]}}}));
+        let home = Html::get(&mut plain, "alice", "/");
+        assert_eq!(home.attr("project-OPS", "href"), "/projects/OPS");
+        assert_eq!(home.text("project-OPS"), "Operations");
+        assert!(!home.has("rail") && !home.has("workspace"));
+        let project = Html::get(&mut plain, "alice", "/projects/OPS");
+        assert_eq!(project.text("project"), "Operations");
+        assert_eq!((project.attr("new-issue", "action"), project.attr("new-issue", "method")), ("/projects/OPS/issues".to_owned(), "post".to_owned()));
+        assert_eq!((project.attr("new-issue-title", "name"), project.attr("new-issue-body", "name")), ("title".to_owned(), "body".to_owned()));
+        assert_eq!(project.text("new-issue-submit"), "Submit");
+        // The form's post, as a browser sends it, opens the issue and lands on its page.
+        let mut create = req("POST", "/projects/OPS/issues", Value::Null);
+        create.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        create.body = b"title=Repair+DNS&body=Check+the+resolver".to_vec();
+        let issue = Html::of(IssuesService.handle(&mut plain, &ctx("alice"), &create).unwrap());
+        assert_eq!(issue.text("title"), "OPS-1 Repair DNS");
+        assert_eq!(issue.text("status"), "Status: open · Assigned:");
+        assert_eq!(issue.text("body"), "Check the resolver");
+        assert_eq!(issue.attr("back", "href"), "/projects/OPS");
+        assert_eq!(issue.attr("comment", "action"), "/projects/OPS/issues/1/comments");
+        assert_eq!(issue.attr("comment-body", "name"), "body");
+        assert_eq!(issue.attr("update", "action"), "/projects/OPS/issues/1");
+        assert_eq!((issue.attr("update-status", "value"), issue.attr("update-assignee", "name")), ("open".to_owned(), "assignee".to_owned()));
+        assert!(!issue.has("review"));
+        assert_eq!(Html::get(&mut plain, "alice", "/projects/OPS").attr("issue-1", "href"), "/projects/OPS/issues/1");
     }
     #[test]
-    fn board_shows_columns_and_a_move_really_moves() {
-        let mut state = IssuesService
-            .initialize(seed("linear"), &ctx("alice"))
-            .unwrap();
-        let board = text(&mut state, "alice", "/projects/OPS");
-        for column in ["Todo", "In Progress", "Blocked", "Done"] {
-            assert!(board.contains(column), "missing column {column}");
+    fn list_and_board_show_the_status_groups_and_a_move_really_moves() {
+        let mut state = IssuesService.initialize(seed("linear"), &ctx("alice")).unwrap();
+        for path in ["/projects/OPS", "/projects/OPS?view=board", "/projects/OPS?view=cycle"] {
+            let page = Html::get(&mut state, "alice", path);
+            for (status, name) in linear::COLUMNS {
+                assert!(page.text(&format!("col-head-{status}")).starts_with(name), "{path}: {status}");
+            }
+            assert!(page.text("workspace").contains("Northstar"));
+            assert_eq!(page.text("card-1-label-0"), "release");
+            assert!(page.within("card-1", "col-open"), "{path}");
+            assert_eq!(page.attr("card-open-1", "href"), "/projects/OPS/issues/1");
+            assert_eq!(page.attr("card-priority-1", "title"), "High");
+            // The move is a real form: status and the landing view, posted to the issue.
+            assert_eq!(page.attr("move-1-in_progress-form", "action"), "/projects/OPS/issues/1");
+            assert!(page.within("move-1-in_progress", "move-1-in_progress-form"));
+            assert!(!page.has("move-1-closed"));
         }
-        assert!(board.contains("Northstar") && board.contains("release"));
+        let home = Html::get(&mut state, "alice", "/");
+        assert_eq!(home.attr("team-OPS", "href"), "/projects/OPS");
+        assert_eq!(home.text("team-open-OPS"), "1 unfinished");
+        assert_eq!(home.attr("nav-OPS", "href"), "/projects/OPS");
         let moved = IssuesService
-            .handle(
-                &mut state,
-                &ctx("alice"),
-                &req(
-                    "POST",
-                    "/projects/OPS/issues/1",
-                    json!({"status":"in_progress","view":"board"}),
-                ),
-            )
+            .handle(&mut state, &ctx("alice"), &req("POST", "/projects/OPS/issues/1", json!({"status":"in_progress","view":"board"})))
             .unwrap();
         assert_eq!(moved.status, 200);
-        // Landing back on the board is what makes the move feel like a drag.
-        assert!(String::from_utf8(moved.body)
-            .unwrap()
-            .contains("col-in_progress"));
-        assert_eq!(
-            state["projects"]["OPS"]["issues"]["1"]["status"],
-            "in_progress"
-        );
+        // Landing back on the team's issues is what makes the move feel like a drag.
+        let landed = Html::of(moved);
+        assert!(landed.within("card-1", "col-in_progress"));
+        assert_eq!(state["projects"]["OPS"]["issues"]["1"]["status"], "in_progress");
+        // From the board, the form says so, and the landing page is the board again.
+        let mut form = req("POST", "/projects/OPS/issues/1", Value::Null);
+        form.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        form.body = b"status=blocked&view=board&layout=board".to_vec();
+        let landed = Html::of(IssuesService.handle(&mut state, &ctx("alice"), &form).unwrap());
+        assert!(landed.within("card-1", "col-blocked"));
+        assert_eq!(landed.attr("board", "class"), "board");
         let restored: IssueState = serde_json::from_value(state.clone()).unwrap();
         assert_eq!(serde_json::to_value(&restored).unwrap(), state);
     }
     #[test]
     fn assignee_filter_and_write_refusal() {
-        let mut state = IssuesService
-            .initialize(seed("linear"), &ctx("alice"))
-            .unwrap();
-        assert!(text(&mut state, "alice", "/projects/OPS?assignee=alice").contains("card-1"));
-        assert!(!text(&mut state, "alice", "/projects/OPS?assignee=bob").contains("card-1"));
+        let mut state = IssuesService.initialize(seed("linear"), &ctx("alice")).unwrap();
+        let mine = Html::get(&mut state, "alice", "/projects/OPS?assignee=alice");
+        assert!(mine.has("card-1"));
+        assert_eq!(mine.attr("filter-alice", "href"), "/projects/OPS?assignee=alice");
+        assert_eq!(mine.attr("filter-all", "href"), "/projects/OPS");
+        assert_eq!(mine.attr("view-board", "href"), "/projects/OPS?assignee=alice&view=board");
+        assert!(!Html::get(&mut state, "alice", "/projects/OPS?assignee=bob").has("card-1"));
         assert_eq!(
-            IssuesService
-                .handle(
-                    &mut state,
-                    &ctx("bob"),
-                    &req("POST", "/projects/OPS/issues/1", json!({"status":"closed"}))
-                )
-                .unwrap()
-                .status,
+            IssuesService.handle(&mut state, &ctx("bob"), &req("POST", "/projects/OPS/issues/1", json!({"status":"closed"}))).unwrap().status,
             403
         );
         assert_eq!(state["projects"]["OPS"]["issues"]["1"]["status"], "open");
     }
     #[test]
     fn issue_page_carries_comments_and_status_moves() {
-        let mut state = IssuesService
-            .initialize(seed("linear"), &ctx("carol"))
-            .unwrap();
+        let mut state = IssuesService.initialize(seed("linear"), &ctx("carol")).unwrap();
         IssuesService
-            .handle(
-                &mut state,
-                &ctx("carol"),
-                &req(
-                    "POST",
-                    "/projects/OPS/issues/1/comments",
-                    json!({"body":"checklist is in the doc"}),
-                ),
-            )
+            .handle(&mut state, &ctx("carol"), &req("POST", "/projects/OPS/issues/1/comments", json!({"body":"checklist is in the doc http://docs.google.com/d/launch."})))
             .unwrap();
-        let page = text(&mut state, "carol", "/projects/OPS/issues/1");
-        assert!(page.contains("checklist is in the doc"));
-        assert!(page.contains("status-closed") && page.contains("OPS-1"));
+        let page = Html::get(&mut state, "carol", "/projects/OPS/issues/1");
+        assert_eq!(page.text("issue-key"), "OPS-1");
+        assert_eq!(page.text("issue-title"), "Confirm Atlas launch checklist");
+        assert_eq!(page.text("body"), "Read the release code.");
+        assert_eq!(page.text("issue-state"), "Todo");
+        assert_eq!(page.text("issue-assignee"), "carol · assigned to alice");
+        assert_eq!(page.text("comment-body-0"), "checklist is in the doc http://docs.google.com/d/launch.");
+        assert_eq!(page.attr("comment-body-0-link-5", "href"), "http://docs.google.com/d/launch");
+        assert_eq!(page.text("comment-author-0"), "carol");
+        assert_eq!(page.attr("back", "href"), "/projects/OPS");
+        // Every other status is one button away, each its own form posting `status`.
+        for status in ["in_progress", "blocked", "closed"] {
+            assert_eq!(page.attr(&format!("status-{status}-form"), "action"), "/projects/OPS/issues/1");
+            assert!(page.within(&format!("status-{status}"), &format!("status-{status}-form")));
+        }
+        assert!(!page.has("status-open"));
+        assert_eq!(page.text("status-closed"), "Move to Done");
+        assert_eq!((page.attr("comment", "action"), page.attr("comment-body", "name")), ("/projects/OPS/issues/1/comments".to_owned(), "body".to_owned()));
+        assert!(page.within("comment-submit", "comment"));
+        assert_eq!((page.attr("update", "action"), page.attr("update-assignee", "value")), ("/projects/OPS/issues/1".to_owned(), "alice".to_owned()));
+        assert!(!page.has("review"));
     }
 }

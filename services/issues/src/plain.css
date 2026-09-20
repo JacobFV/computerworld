@@ -1,0 +1,36 @@
+/* issues.internal: a bare tracker in the manner of Trac. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #222222; background: #ffffff; }
+a { color: #bb0000; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.mono { font-family: "JetBrains Mono", "Courier New", monospace; font-size: 12px; }
+.muted { color: #777777; }
+.masthead { display: flex; align-items: baseline; gap: 8px; padding: 10px 24px; background: #f7f7f0; border-bottom: 2px solid #bb0000; }
+.masthead .brand { font-size: 20px; font-weight: 700; color: #222222; }
+.masthead .sep { color: #999999; }
+main { max-width: 900px; margin: 0 auto; padding: 16px 24px 40px; }
+h1 { font-size: 22px; margin: 8px 0 12px; }
+h2 { font-size: 15px; margin: 0 0 8px; }
+.list { padding-left: 20px; }
+.list li { margin: 4px 0; }
+table.issues { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+table.issues th { text-align: left; font-size: 12px; background: #f7f7f0; border-bottom: 1px solid #d7d7d7; padding: 6px 8px; }
+table.issues td { padding: 6px 8px; border-bottom: 1px solid #eeeeee; vertical-align: top; }
+table.issues tbody tr:hover { background: #fbfbf5; }
+.status { display: inline-block; padding: 0 6px; border-radius: 3px; background: #eeeeee; font-size: 12px; }
+.status.s-open { background: #e4f1d8; }
+.status.s-in_progress { background: #fff2c2; }
+.status.s-blocked { background: #f8d7d7; }
+.status.s-closed { background: #dddddd; color: #555555; }
+.back { font-size: 12px; }
+.meta { color: #555555; margin: 0 0 12px; }
+.body { margin: 0 0 16px; padding: 12px; border: 1px solid #d7d7d7; background: #fffff8; white-space: pre-wrap; }
+.note { margin: 0 0 8px; padding: 8px 12px; border-left: 3px solid #d7d7d7; background: #fafafa; white-space: pre-wrap; }
+.note.review { border-left-color: #bb0000; }
+.panel { margin: 20px 0 0; padding: 12px; border: 1px solid #d7d7d7; background: #f7f7f0; }
+.field { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.field label { width: 100px; font-weight: 700; font-size: 12px; }
+.field input { flex: 1; height: 28px; padding: 0 6px; border: 1px solid #bbbbbb; font-size: 14px; font-family: Arial, sans-serif; }
+button { height: 28px; padding: 0 12px; border: 1px solid #999999; border-radius: 3px; background: #eeeeee; font-size: 13px; font-family: Arial, sans-serif; cursor: pointer; }
+button:hover { background: #e2e2e2; }

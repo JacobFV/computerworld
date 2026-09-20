@@ -1,0 +1,26 @@
+/* git.internal: a plain repository index in the manner of gitweb and cgit. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #222222; background: #ffffff; }
+a { color: #0000cc; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.mono, pre { font-family: "JetBrains Mono", "Courier New", monospace; font-size: 12px; }
+.muted { color: #666666; }
+.masthead { display: flex; align-items: baseline; gap: 8px; padding: 10px 24px; background: #edece6; border-bottom: 1px solid #d9d8d1; }
+.masthead .brand { font-size: 20px; font-weight: 700; color: #222222; }
+.masthead .sep { color: #999999; }
+.masthead .here { font-size: 16px; font-weight: 700; }
+.masthead .tagline { margin-left: auto; color: #777777; font-size: 12px; }
+main { max-width: 960px; margin: 0 auto; padding: 16px 24px 32px; }
+h1 { font-size: 22px; margin: 8px 0 16px; }
+h2 { font-size: 15px; margin: 24px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #d9d8d1; }
+table.list { width: 100%; border-collapse: collapse; }
+table.list th { text-align: left; font-size: 12px; color: #555555; background: #f6f6f0; border-bottom: 1px solid #d9d8d1; padding: 6px 10px; }
+table.list td { padding: 6px 10px; border-bottom: 1px solid #eeeeee; vertical-align: top; }
+table.list tbody tr:hover { background: #f8f8f4; }
+table.list .num { text-align: right; width: 90px; }
+table.list .name { white-space: nowrap; }
+.file { border: 1px solid #d9d8d1; margin: 0 0 16px; }
+.file-name { background: #f6f6f0; border-bottom: 1px solid #d9d8d1; padding: 6px 10px; font-weight: 700; }
+.file pre { margin: 0; padding: 0 12px 10px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+footer { max-width: 960px; margin: 0 auto; padding: 12px 24px 32px; color: #777777; font-size: 12px; border-top: 1px solid #eeeeee; }

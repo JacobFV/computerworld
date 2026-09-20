@@ -1,0 +1,92 @@
+/* gitlab.com: Pajamas' light palette, the left sidebar that carries the project's
+   sections, blue confirm buttons, soft state badges, 4px corners. Inter stands in for
+   GitLab Sans, JetBrains Mono for GitLab Mono (which is drawn from it). */
+html {
+  --font: Inter, Arial, sans-serif; --mono: "JetBrains Mono", "Courier New", monospace;
+  --ink: #3a383f; --muted: #626168; --accent: #1f75cb; --paper: #ffffff; --surface: #fbfafd;
+  --line: #dcdcde; --line-soft: #ececef; --hover: #ececef; --radius: 4px;
+  --btn-bg: #ffffff; --btn-hover: #ececef; --btn-line: #bfbfc3;
+  --primary: #1f75cb; --primary-hover: #1068bf; --primary-line: #1068bf;
+  --green: #108548; --red: #dd2b0e; --purple: #1f75cb; --folder: #a2a0a8; --tab-line: #1f75cb;
+  --counter: #ececef; --ref-bg: #e9f3fc; --code-bg: #ececef; --badge: #ececef;
+  --seg: #ececef; --seg-line: #bfbfc3;
+  --add: #ecfdf0; --add-num: #ddfbe6; --del: #fbe9eb; --del-num: #f9d7dc; --hunk: #fbfafd; --hunk-num: #f0f0f2;
+}
+body { background: var(--paper); }
+/* Soft badges rather than solid pills. */
+.state { height: 24px; padding: 0 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.state.st-open { background: #c3e6cd; color: #24663b; }
+.state.st-closed { background: #fdd4cd; color: #ae1800; }
+.state.st-done, .state.st-merged { background: #cbe2f9; color: #0b5cad; }
+.state.st-draft { background: #dcdcde; color: #3a383f; }
+.state.st-open .ic { color: #24663b; }
+.state.st-closed .ic { color: #ae1800; }
+.state.st-done .ic, .state.st-merged .ic { color: #0b5cad; }
+.state.st-draft .ic { color: #3a383f; }
+.label { border-radius: 12px; }
+.topic { background: #ececef; color: var(--ink); border-radius: 12px; }
+.counter { border-radius: 12px; font-weight: 600; }
+.ic-folder::before { border-radius: 1px 1px 0 0; }
+
+.layout { display: flex; align-items: stretch; min-height: 100vh; }
+.sidebar { position: sticky; top: 0; width: 256px; flex: none; height: 100vh; padding: 12px 8px; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.side-top { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+.side-tools { display: flex; align-items: center; gap: 2px; }
+.tool { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius); color: var(--muted); font-size: 16px; }
+.side-tools .avatar { width: 24px; height: 24px; font-size: 10px; margin-left: 4px; }
+/* The tanuki, as near as CSS triangles get: two ears over an arrowhead that comes to a
+   point at the bottom, the middle of it in the darker red. */
+.mark { position: relative; display: block; width: 26px; height: 26px; flex: none; }
+.mark:hover { text-decoration: none; }
+.mark .ear { position: absolute; top: 1px; width: 0; height: 0; border-style: solid; border-width: 0 5px 11px 5px; border-color: transparent transparent #fc6d26 transparent; }
+.mark .ear.l { left: 1px; }
+.mark .ear.r { left: 15px; }
+.mark .face { position: absolute; left: 0; top: 8px; width: 0; height: 0; border-style: solid; border-width: 17px 13px 0 13px; border-color: #fc6d26 transparent transparent transparent; }
+.mark::after { content: ""; position: absolute; left: 6px; top: 8px; width: 0; height: 0; border-style: solid; border-width: 17px 7px 0 7px; border-color: #e24329 transparent transparent transparent; }
+.site-search { height: 32px; background: var(--paper); border-color: var(--line); color: var(--muted); }
+.site-search input { font-size: 13px; }
+.side-nav { display: block; border: 0; margin: 0; flex: 1; }
+.side-nav ul { display: flex; flex-direction: column; gap: 1px; list-style-type: none; }
+.side-title { display: block; padding: 8px 12px 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.side-context { display: flex; align-items: center; gap: 8px; padding: 8px 8px 12px; font-weight: 600; font-size: 14px; }
+.side-item, .side-nav .tab { display: flex; align-items: center; gap: 12px; height: 32px; padding: 0 12px; border-radius: var(--radius); color: var(--ink); font-size: 14px; font-weight: 400; }
+.side-item:hover, .side-nav .tab:hover { background: var(--hover); text-decoration: none; }
+.side-item.active, .side-nav .tab.active { background: #dcdcde; font-weight: 600; }
+.side-nav .tab-item { padding: 0; }
+.side-nav .tab-item.active::after { left: 0; right: auto; top: 6px; bottom: 6px; width: 3px; height: auto; border-radius: 3px; background: var(--accent); }
+.side-nav .tab .tab-label { flex: 1; }
+.side-help { display: block; padding: 8px 12px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 13px; }
+.page { flex: 1; min-width: 0; }
+.topbar { display: flex; align-items: center; height: 48px; padding: 0 24px; border-bottom: 1px solid var(--line-soft); }
+.crumbs { font-size: 13px; }
+.crumb { color: var(--muted); padding: 2px 4px; }
+.crumb.last { color: var(--ink); }
+.container { max-width: 1296px; padding: 20px 24px 40px; }
+
+/* Project header: a square letter avatar and the name in the display weight. */
+.repo-head { border-bottom: 0; padding-bottom: 4px; }
+.repo-title { font-size: 22px; gap: 12px; }
+.repo-title .repo-owner, .repo-title #repo-sep { display: none; }
+.repo-title .repo-name { font-weight: 700; }
+.repo-title .avatar { border-radius: 8px; box-shadow: none; }
+.btn { font-weight: 400; font-size: 14px; }
+.btn.btn-sm { height: 32px; padding: 0 12px; font-size: 14px; }
+.box-head { background: var(--surface); }
+.tabs { border-bottom-color: var(--line-soft); }
+.tab { border-radius: 0; color: var(--muted); }
+.tab.active { color: var(--ink); }
+.entry { height: 44px; }
+.entry-link { color: var(--ink); }
+.markdown { font-size: 14px; padding: 24px; }
+.markdown h1 { font-size: 28px; }
+.markdown h2 { font-size: 22px; }
+.about h2 { font-size: 14px; color: var(--ink); }
+.about-desc { font-size: 14px; }
+.thread-title-row h1 { font-size: 28px; font-weight: 700; }
+.thread-title-row .number { font-weight: 400; }
+.thread-link { font-weight: 600; font-size: 14px; }
+.comment-head { background: var(--paper); border-bottom: 0; padding-top: 8px; }
+.comment-body { padding-top: 4px; }
+.merge-box.open, .merge-box.merged, .merge-box.closed { border-color: var(--line); }
+.merge-badge { border-radius: 50%; }
+.profile h1 { font-size: 20px; }

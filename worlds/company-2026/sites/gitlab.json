@@ -16,7 +16,7 @@
     }
   },
   "initial_state": {
-    "skin": "plain",
+    "skin": "gitlab",
     "repositories": {
       "atlas-mirror": {
         "owner": "northstar",
