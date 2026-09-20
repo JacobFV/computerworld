@@ -6,7 +6,7 @@
 use cw_scene::Scene;
 use cw_web::dom::{Document, NodeId, NodeKind};
 use cw_web::geom::{Au, Edges, Point, Rect};
-use cw_web::layout::{Fragment, FragmentKind, FragmentTree};
+use cw_web::layout::{Fragment, FragmentKind, FragmentTree, StyleSource};
 use cw_web::style::{
     BoxSizing, ComputedStyle, Display, Float, LengthPercentage, LengthPercentageAuto, LineHeight, Overflow, Position, Sizing, StyleSet,
     TextAlign, VerticalAlign, WhiteSpace, ZIndex,
@@ -246,14 +246,23 @@ struct FragIndex {
     texts: BTreeMap<NodeId, Vec<Rect>>,
 }
 
-fn index_fragments(tree: &FragmentTree) -> FragIndex {
+fn index_fragments(doc: &Document, tree: &FragmentTree) -> FragIndex {
     let mut ix = FragIndex { boxes: BTreeMap::new(), texts: BTreeMap::new() };
-    fn visit(f: &Fragment, origin: Point, container: Option<Rect>, ix: &mut FragIndex) {
+    fn visit(doc: &Document, f: &Fragment, origin: Point, container: Option<Rect>, ix: &mut FragIndex) {
         let abs = f.rect.translate(origin.x, origin.y);
         let mut inner = container;
         match &f.kind {
             FragmentKind::Box { source, padding, border, .. } | FragmentKind::InlineBox { source, padding, border, .. } => {
-                if !source.is_anonymous() {
+                // Pseudo-element boxes (markers, ::before, ::after) are not part of
+                // the element's own rect, as `getBoundingClientRect` reports it. A
+                // table element's box in Chromium is the wrapper, captions included,
+                // so its anonymous wrapper fragment counts as the element's.
+                let counts = match source {
+                    StyleSource::Element(_) => true,
+                    StyleSource::Anonymous(n) => doc.is(*n, "table"),
+                    _ => false,
+                };
+                if counts {
                     let e = ix.boxes.entry(source.node()).or_default();
                     e.rect = Some(match e.rect {
                         Some(r) => r.union(abs),
@@ -274,10 +283,10 @@ fn index_fragments(tree: &FragmentTree) -> FragIndex {
             _ => {}
         }
         for c in &f.children {
-            visit(c, abs.origin, inner, ix);
+            visit(doc, c, abs.origin, inner, ix);
         }
     }
-    visit(&tree.root, Point::default(), None, &mut ix);
+    visit(doc, &tree.root, Point::default(), None, &mut ix);
     ix
 }
 
@@ -429,7 +438,7 @@ pub fn computed_strings(style: &ComputedStyle, info: &BoxInfo) -> BTreeMap<Strin
         "line-height",
         match style.line_height {
             LineHeight::Normal => "normal".into(),
-            LineHeight::Number(n) => px(style.font.size.scale(n, 1000)),
+            LineHeight::Number(_) => px(style.line_height_au(Au::ZERO)),
             LineHeight::Length(l) => px(l),
         },
     );
@@ -444,6 +453,7 @@ pub fn computed_strings(style: &ComputedStyle, info: &BoxInfo) -> BTreeMap<Strin
             TextAlign::Right => "right",
             TextAlign::Center => "center",
             TextAlign::Justify => "justify",
+            TextAlign::WebkitCenter => "-webkit-center",
         }
         .into(),
     );
@@ -493,12 +503,23 @@ pub fn computed_strings(style: &ComputedStyle, info: &BoxInfo) -> BTreeMap<Strin
     m
 }
 
+fn union_rect(a: DumpRect, b: DumpRect) -> DumpRect {
+    if a.width <= 0.0 && a.height <= 0.0 {
+        return b;
+    }
+    let x0 = a.x.min(b.x);
+    let y0 = a.y.min(b.y);
+    let x1 = (a.x + a.width).max(b.x + b.width);
+    let y1 = (a.y + a.height).max(b.y + b.height);
+    DumpRect { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }
+}
+
 /// The engine's dump of a rendered document, in the shape `dump.mjs` writes. Paths
 /// follow the same scheme: `html`, `html>body`, then `tag:nth-child(n)` per element
 /// (counting element siblings), `#text:nth(i)` per non-blank text child. `<head>` and
 /// its subtree are skipped, as they are in Chromium's dump.
 pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
-    let ix = index_fragments(&r.tree);
+    let ix = index_fragments(&r.doc, &r.tree);
     let mut nodes = Vec::new();
     let mut families: Vec<String> = Vec::new();
     fn walk(doc: &Document, styles: &StyleSet, ix: &FragIndex, node: NodeId, path: String, out: &mut Vec<DumpNode>, fams: &mut Vec<String>) {
@@ -520,8 +541,10 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
             rect: info.rect.map(dump_rect).unwrap_or_default(),
             computed,
         });
+        let my_index = out.len() - 1;
         let mut n = 0;
         let mut text_index = 0;
+        let inline_parent = matches!(styles.get(node).map(|s| s.display), Some(Display::Inline));
         for child in doc.children(node) {
             match doc.kind(child) {
                 NodeKind::Element { tag: ct, .. } => {
@@ -530,7 +553,29 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
                         continue;
                     }
                     let seg = if ct == "body" && tag == "html" { "body".to_owned() } else { format!("{ct}:nth-child({n})") };
+                    let child_index = out.len();
                     walk(doc, styles, ix, child, format!("{path}>{seg}"), out, fams);
+                    // Block-in-inline: Blink keeps the block children of an inline
+                    // element inside its fragments (an anonymous block-in-inline
+                    // box), so the inline's client rect covers them; the engine lays
+                    // them out as siblings of the split inline pieces, so union them
+                    // here.
+                    if inline_parent {
+                        if let Some(cs) = styles.get(child) {
+                            let in_flow_block = !cs.display.is_inline_level() && !cs.display.is_none() && cs.float == Float::None && !matches!(cs.position, Position::Absolute | Position::Fixed);
+                            if in_flow_block {
+                                let child_rect = match &out[child_index] {
+                                    DumpNode::Element { rect, .. } => *rect,
+                                    _ => DumpRect::default(),
+                                };
+                                if child_rect.width > 0.0 || child_rect.height > 0.0 {
+                                    if let DumpNode::Element { rect, .. } = &mut out[my_index] {
+                                        *rect = union_rect(*rect, child_rect);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 NodeKind::Text(t) => {
                     if t.trim().is_empty() {
@@ -794,11 +839,22 @@ pub fn rasterise(scene: &Scene) -> cw_render::Frame {
 
 /// The digest of a scene with node ids erased, so two documents that paint the same
 /// content with different DOM node ids compare equal. Reftests compare these.
+/// Accessibility regions (`Primitive::Region`: an `<hr>`'s "separator", a table's
+/// "table" and "cell" roles, a `<pre>`'s "code") paint nothing and follow the
+/// element's tag, so a test and its reference written with different elements
+/// legitimately differ in them; they are dropped before hashing.
+/// The paint ordinal `z` is renumbered after the regions go, and scroll areas
+/// drop their `target`, which names the element's DOM path.
 pub fn content_digest(scene: &Scene) -> u64 {
     let mut s = scene.clone();
-    for n in &mut s.nodes {
+    s.nodes.retain(|n| !matches!(n.primitive, cw_scene::Primitive::Region));
+    for (i, n) in s.nodes.iter_mut().enumerate() {
         n.id = 0;
         n.revision = 0;
+        n.z = i as i32;
+    }
+    for a in &mut s.scrolls {
+        a.target = String::new();
     }
     s.revision = 0;
     s.stamp();

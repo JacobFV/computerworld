@@ -499,21 +499,28 @@ fn column_constraints(ctx: &LayoutContext, st: &Structure, cell_borders: &[Edges
     cols
 }
 
-/// Adds `extra` to the columns in `range`, proportionally to their max widths
-/// (evenly when all are zero); `to_min` also raises the min widths.
+/// Adds `extra` to the columns in `range`: to the max widths proportionally to the
+/// max widths (evenly when all are zero); with `to_min`, to the min widths
+/// proportionally to each column's slack (max minus min), so a column whose min is
+/// its max (a `nowrap` cell) keeps it and the columns that can absorb the spanning
+/// cell's minimum do, as Chromium's auto layout does; when no column has slack,
+/// proportionally to the max widths.
 fn distribute(cols: &mut [ColInfo], range: std::ops::Range<usize>, extra: Au, to_min: bool) {
     let idx: Vec<usize> = range.collect();
     if idx.is_empty() {
         return;
     }
-    let total: Au = idx.iter().map(|&c| cols[c].max).fold(Au::ZERO, |a, b| a + b);
+    let slack = |c: usize| (cols[c].max - cols[c].min).max(Au::ZERO);
+    let total_slack: Au = idx.iter().map(|&c| slack(c)).fold(Au::ZERO, |a, b| a + b);
+    let weight = |cols: &[ColInfo], c: usize| if to_min && total_slack > Au::ZERO { (cols[c].max - cols[c].min).max(Au::ZERO) } else { cols[c].max };
+    let total: Au = idx.iter().map(|&c| weight(cols, c)).fold(Au::ZERO, |a, b| a + b);
     let mut given = Au::ZERO;
     let n = idx.len();
     for (k, &c) in idx.iter().enumerate() {
         let share = if k + 1 == n {
             extra - given
         } else if total > Au::ZERO {
-            extra.scale(cols[c].max.0, total.0)
+            extra.scale(weight(cols, c).0, total.0)
         } else {
             extra / n as i32
         };
@@ -577,6 +584,10 @@ pub fn grid_intrinsic_widths(ctx: &LayoutContext, grid: BoxId) -> (Au, Au) {
     let sum_max: Au = prep.cols.iter().map(|c| c.max).fold(Au::ZERO, |a, b| a + b);
     let (mut mn, mut mx) = (sum_min + extra, sum_max + extra);
     if let Sizing::Set(LengthPercentage::Length(w)) = s.width {
+        if s.table_layout == TableLayout::Fixed {
+            // Fixed layout: the specified width, whatever the cells hold.
+            return (w.max(extra), w.max(extra));
+        }
         mn = mn.max(w);
         mx = mn;
     }
@@ -610,6 +621,12 @@ fn used_table_width(ctx: &LayoutContext, grid: BoxId, cb: &Cb, avail: Au) -> Au 
     let s = ctx.style(grid);
     let (mn, mx) = intrinsic::min_max(ctx, grid);
     match s.width {
+        // §17.5.2.1: with the fixed algorithm the table is exactly as wide as
+        // specified; the cells' contents do not widen it (they overflow instead).
+        Sizing::Set(lp) if s.table_layout == TableLayout::Fixed => {
+            let edges = block::padding_edges(s, cb.width).horizontal() + s.used_border_widths().horizontal();
+            lp.resolve(cb.width).max(edges)
+        }
         Sizing::Set(lp) => lp.resolve(cb.width).max(mn),
         Sizing::MinContent => mn,
         Sizing::MaxContent => mx,
@@ -977,11 +994,14 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
         let end = r;
         let gy = row_y[start];
         let gh = row_y[end] - vs - gy;
-        let mut gf = Fragment::new(FragmentKind::Box { source: ctx.tree[g].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(cx, cy + gy, content_w, gh.max(Au::ZERO)));
+        // Row groups and rows span the columns and the spacing between them, not
+        // the spacing outside the first and last column (Blink's section geometry).
+        let rows_w = (content_w - hs * 2).max(Au::ZERO);
+        let mut gf = Fragment::new(FragmentKind::Box { source: ctx.tree[g].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(cx + hs, cy + gy, rows_w, gh.max(Au::ZERO)));
         for rr in start..end {
             let row = &st.rows[rr];
             let ry = row_y[rr] - gy;
-            let mut rf = Fragment::new(FragmentKind::Box { source: ctx.tree[row.id].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(Au::ZERO, ry, content_w, row_h[rr]));
+            let mut rf = Fragment::new(FragmentKind::Box { source: ctx.tree[row.id].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(Au::ZERO, ry, rows_w, row_h[rr]));
             for slot in cells.iter_mut() {
                 let Some(cl) = slot else { continue };
                 let cell = st.cells[cl.idx];
@@ -1010,7 +1030,7 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
                     }
                     block::translate_requests(&mut cl.abs, Au::ZERO, shift);
                 }
-                cl.fragment.rect = Rect::new(x0, Au::ZERO, cl.fragment.rect.size.width, h);
+                cl.fragment.rect = Rect::new(x0 - hs, Au::ZERO, cl.fragment.rect.size.width, h);
                 if let FragmentKind::Box { baseline, .. } = &mut cl.fragment.kind {
                     *baseline = cl.baseline.map(|b| b + shift);
                 }

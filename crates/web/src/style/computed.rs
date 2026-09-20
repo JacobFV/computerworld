@@ -245,6 +245,9 @@ pub enum TextAlign {
     Right,
     Center,
     Justify,
+    /// `-webkit-center`: centres the lines and also the block-level children whose
+    /// margins are not `auto` (what `<center>` and `align=center` mean in HTML).
+    WebkitCenter,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -1187,7 +1190,9 @@ impl ComputedStyle {
     pub fn line_height_au(&self, normal: Au) -> Au {
         match self.line_height {
             LineHeight::Normal => normal,
-            LineHeight::Number(n) => self.font.size.scale(n, 1000),
+            // A number multiplies the font size; the product is truncated to 1/64 px
+            // (Blink's `LayoutUnit(float)`), so `1.6` on 14 px is 22.390625, not 22.40625.
+            LineHeight::Number(n) => Au((self.font.size.0 as i64 * n as i64).div_euclid(1000) as i32),
             LineHeight::Length(l) => l,
         }
     }

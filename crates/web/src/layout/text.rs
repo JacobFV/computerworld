@@ -30,47 +30,89 @@ impl FontMetrics {
     }
 }
 
+/// Vertical metrics of one bundled face in font units: `(upem, ascent, descent,
+/// line gap, x-height)`, taken from the TTFs in `crates/render/assets/fonts` with
+/// fontTools. Chromium on Linux reads `hhea` unless the face sets `USE_TYPO_METRICS`
+/// (OS/2 fsSelection bit 7), in which case the OS/2 typo metrics apply; every bundled
+/// face that sets the bit has identical hhea and typo values, so one table serves.
+/// Descent is stored positive.
+fn face_units(t: Typeface) -> (i32, i32, i32, i32, i32) {
+    match t {
+        Typeface::DejaVu | Typeface::Mono => (2048, 1901, 483, 0, 1120),
+        Typeface::Inter => (2048, 1984, 494, 0, 1118),
+        Typeface::OpenSans => (2048, 2189, 600, 0, 1096),
+        Typeface::Ubuntu => (1000, 940, 260, 0, 518),
+        Typeface::Roboto => (2048, 1900, 500, 0, 1082),
+        Typeface::Arimo => (2048, 1854, 434, 67, 1082),
+        Typeface::Tinos => (2048, 1825, 443, 87, 940),
+        Typeface::Cousine => (2048, 1705, 615, 0, 1082),
+        Typeface::Gelasio => (2048, 1900, 700, 0, 986),
+        Typeface::Carlito => (2048, 1950, 550, 0, 978),
+        Typeface::Caladea => (1000, 900, 250, 0, 467),
+        Typeface::Lato => (2000, 1974, 426, 0, 1013),
+        Typeface::SourceSans => (1000, 1024, 400, 0, 486),
+        Typeface::SourceSerif => (1000, 1036, 335, 0, 475),
+        Typeface::Poppins => (1000, 1050, 350, 100, 548),
+        Typeface::Montserrat => (1000, 968, 251, 0, 525),
+        Typeface::Playfair => (1000, 1082, 251, 0, 514),
+        Typeface::JetBrainsMono => (1000, 1020, 300, 0, 550),
+    }
+}
+
+/// `units` of the em at `size`, rounded to a whole pixel half up, the way Blink
+/// rounds Skia's float ascent, descent and leading (`SkScalarRoundToScalar`) before
+/// it adds them into the line spacing.
+fn round_px(size: Au, units: i32, upem: i32) -> Au {
+    let num = size.0 as i64 * units as i64;
+    let den = upem as i64 * Au::PER_PX as i64;
+    Au::from_px_i32((2 * num + den).div_euclid(2 * den) as i32)
+}
+
 /// The one place layout asks for ascent, descent and line gap. `cw_scene::metrics`
-/// exposes advances only, so the vertical metrics come from a per-face table (per
-/// mille of the em) taken from the bundled font files; the monospace face reports the
-/// terminal cell height as its normal line height so code lines match the grid.
+/// exposes advances only, so the vertical metrics come from `face_units`. Each of
+/// the three is rounded to whole pixels first, as Blink does, so `line-height:
+/// normal` is `round(ascent) + round(descent) + round(lineGap)` and a 14 px Arial
+/// line has a 16 px content area. The monospace terminal face reports the terminal
+/// cell height as its normal line height so code lines match the grid.
 pub fn font_metrics(font: &Font) -> FontMetrics {
-    // hhea ascender/descender per mille of the em, from the bundled files.
-    let (asc, desc): (i32, i32) = match font.typeface {
-        Typeface::DejaVu | Typeface::Mono => (928, 236),
-        Typeface::Inter => (969, 242),
-        Typeface::OpenSans => (1069, 293),
-        Typeface::Ubuntu => (932, 189),
-        Typeface::Roboto => (928, 244),
-        Typeface::Arimo => (905, 212),
-        Typeface::Tinos => (891, 216),
-        Typeface::Cousine => (833, 300),
-        Typeface::Gelasio => (930, 250),
-        Typeface::Carlito => (952, 269),
-        Typeface::Caladea => (940, 275),
-        Typeface::Lato => (987, 213),
-        Typeface::SourceSans => (984, 273),
-        Typeface::SourceSerif => (918, 335),
-        Typeface::Poppins => (1050, 350),
-        Typeface::Montserrat => (968, 251),
-        Typeface::Playfair => (1082, 251),
-        Typeface::JetBrainsMono => (1020, 300),
-    };
+    let (upem, asc, desc, gap, xh) = face_units(font.typeface);
     let size = font.size;
-    let ascent = size.scale(asc, 1000);
-    let descent = size.scale(desc, 1000);
-    let line_gap = if font.typeface == Typeface::Mono || font.typeface.is_monospace() && false {
+    let ascent = round_px(size, asc, upem);
+    let descent = round_px(size, desc, upem);
+    let line_gap = if font.typeface == Typeface::Mono {
         let cell = cw_scene::text_cell(font.size_px()).1 as i32;
         (Au::from_px_i32(cell) - ascent - descent).max(Au::ZERO)
     } else {
-        Au::ZERO
+        round_px(size, gap, upem)
     };
-    FontMetrics { ascent, descent, line_gap, x_height: size.scale(1, 2) }
+    FontMetrics { ascent, descent, line_gap, x_height: size.scale(xh, upem) }
 }
 
-/// Advance of one character in `Au` (1/64 px), without letter spacing.
+/// The leading above the baseline of an inline box whose line height is `lh` and
+/// content area `content`: half the leading, floored to a whole pixel (Blink's
+/// `FontHeight::AddLeading`); the other half, with the remainder, goes below.
+pub fn half_leading(lh: Au, content: Au) -> Au {
+    Au::from_px_i32(Au((lh - content).0 / 2).to_px_floor())
+}
+
+/// The reference size advances are tabulated at: large enough that a glyph's advance
+/// in 1/64 px at this size carries the font units to better than a part in a million.
+const REF_SIZE: u16 = 4096;
+
+/// Advance of one character in `Au` (1/64 px), without letter spacing, at the font's
+/// exact (fractional) size: the tabulated advance is read at `REF_SIZE` and scaled,
+/// so a 12.5 px face measures at 12.5 px, as Chromium's shaper does, not at 13.
 pub fn advance(font: &Font, c: char) -> Au {
-    let a = metrics::advance(font.typeface, font.scene_style(), c, font.size_px());
+    if font.typeface == Typeface::Mono {
+        let a = metrics::advance(font.typeface, font.scene_style(), c, font.size_px());
+        return Au(a.clamp(0, Au::MAX.0 as i64) as i32);
+    }
+    let style = font.scene_style();
+    let base = if c == '\t' { ' ' } else { c };
+    let fine = metrics::tabulated_advance(font.typeface, style, base, REF_SIZE).unwrap_or(i64::from(REF_SIZE) * 64 * 3 / 5);
+    let den = i64::from(REF_SIZE) * 64;
+    let one = (fine * font.size.0 as i64 + den / 2).div_euclid(den);
+    let a = if c == '\t' { one * 4 } else { one };
     Au(a.clamp(0, Au::MAX.0 as i64) as i32)
 }
 
@@ -397,7 +439,10 @@ mod tests {
         let s = ComputedStyle::initial();
         let m = font_metrics(&s.font);
         assert!(m.ascent > Au::ZERO && m.descent > Au::ZERO);
-        assert_eq!(m.normal_line_height(), Au::from_px_i32(16).scale(1164, 1000));
+        // DejaVu Sans at 16 px: ascent 14.85 -> 15, descent 3.77 -> 4, no line gap.
+        assert_eq!(m.ascent, Au::from_px_i32(15));
+        assert_eq!(m.descent, Au::from_px_i32(4));
+        assert_eq!(m.normal_line_height(), Au::from_px_i32(19));
         assert_eq!(advance(&s.font, 'a'), Au(metrics::advance(Typeface::DejaVu, false, 'a', 16) as i32));
         assert_eq!(measure(&s.font, "a b", Au(1), Au(2)), advance(&s.font, 'a') + advance(&s.font, ' ') + advance(&s.font, 'b') + Au(3) + Au(2));
     }

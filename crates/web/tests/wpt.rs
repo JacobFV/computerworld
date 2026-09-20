@@ -13,7 +13,7 @@
 //! raised by the integration step as the engine improves.
 //!
 //! Like the parity and reftest runners, the pipeline calls compile only with
-//! `--features pipeline`; without it only the manifest, the expectations and the file
+//! `--features pipeline,wpt` (the full corpus takes about half an hour); without it only the manifest, the expectations and the file
 //! layout are checked.
 
 mod support;
@@ -379,7 +379,7 @@ fn report(commit: &str, dirs: &[DirOutcome], expectations: &BTreeMap<String, usi
 }
 
 #[test]
-#[cfg_attr(not(feature = "pipeline"), ignore = "needs the html, css and style modules (`--features pipeline`)")]
+#[cfg_attr(not(feature = "wpt"), ignore = "the full WPT run takes about half an hour (`--features pipeline,wpt`)")]
 fn wpt_reftests_meet_expectations() {
     #[cfg(feature = "pipeline")]
     {

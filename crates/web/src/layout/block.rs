@@ -12,7 +12,7 @@ use crate::geom::{Au, Edges, Point, Rect, Size};
 use crate::layout::boxes::{BoxId, BoxKind, Dim, Level, ReplacedBox};
 use crate::layout::fragment::{Fragment, FragmentKind, Replaced, StyleSource};
 use crate::layout::{inline, intrinsic, scroll, table, text, LayoutContext};
-use crate::style::{BoxSizing, Clear, ComputedStyle, Direction, Float, LengthPercentage, LengthPercentageAuto, Position, Sizing, ZIndex};
+use crate::style::{BoxSizing, Clear, ComputedStyle, Direction, Float, LengthPercentage, LengthPercentageAuto, Position, Sizing, TextAlign, ZIndex};
 
 /// The containing block a box is laid out in: its content width, and its height when
 /// definite (percentage heights resolve against it; otherwise they are `auto`).
@@ -137,6 +137,13 @@ impl Bfc {
     /// Places a float's margin box (§9.5.1 rules 1–9) no higher than `ceiling` inside
     /// the containing block interval `[left, right]`, returning its top-left.
     pub fn place(&mut self, side: Float, size: Size, ceiling: Au, left: Au, right: Au) -> Point {
+        self.place_from(side, size, ceiling, ceiling, left, right)
+    }
+    /// As `place`, with the flow position given apart from the ceiling: a float with
+    /// `clear` has a ceiling below the floats it clears, but the in-flow content that
+    /// follows it is still laid out from `flow_y`, beside those floats, so only floats
+    /// that end above `flow_y` may be dropped from lookups.
+    pub fn place_from(&mut self, side: Float, size: Size, ceiling: Au, flow_y: Au, left: Au, right: Au) -> Point {
         let mut y = ceiling.max(self.last_top());
         loop {
             let (l, r) = self.available_band(y, size.height, left, right);
@@ -152,7 +159,7 @@ impl Bfc {
                 };
                 let rect = Rect::new(x, y, size.width, size.height);
                 self.floats.push(PlacedFloat { rect, side });
-                self.prune(y);
+                self.prune(flow_y.min(y));
                 return Point { x, y };
             }
             match self.next_change_band(y, size.height) {
@@ -667,6 +674,7 @@ pub fn layout_block_children(ctx: &LayoutContext, parent: BoxId, cb: &Cb, bfc: &
         let _ = clearance;
         at_top = false;
         let mut r = layout_block_level(ctx, c, cb, bfc, origin, yc);
+        r.fragment.rect.origin.x += webkit_center_shift(ctx, parent, c, cb, &r);
         let frag_y = r.fragment.rect.origin.y;
         y = frag_y + r.fragment.rect.size.height;
         pending = r.bottom_margins;
@@ -701,10 +709,41 @@ pub fn layout_block_children(ctx: &LayoutContext, parent: BoxId, cb: &Cb, bfc: &
     out
 }
 
+/// `text-align: -webkit-center` on a block container (what `<center>` and
+/// `align=center` compute to) also centres its in-flow block-level children whose
+/// horizontal margins are not `auto`, as Blink does: the child's margin box is moved
+/// to the middle of the containing block when it is narrower than it.
+fn webkit_center_shift(ctx: &LayoutContext, parent: BoxId, child: BoxId, cb: &Cb, r: &BlockResult) -> Au {
+    if ctx.style(parent).text_align != TextAlign::WebkitCenter {
+        return Au::ZERO;
+    }
+    let cs = &ctx.tree[child].style;
+    if cs.margin.left == LengthPercentageAuto::Auto || cs.margin.right == LengthPercentageAuto::Auto {
+        return Au::ZERO;
+    }
+    // The specified margins: the used right margin has already absorbed the free
+    // space (§10.3.3's over-constrained rule), which is exactly what moves here.
+    let ml = margin_or_zero(cs.margin.left, cb.width);
+    let mr = margin_or_zero(cs.margin.right, cb.width);
+    let margin_box = ml + r.fragment.rect.size.width + mr;
+    let free = cb.width - margin_box;
+    if free > Au::ZERO {
+        free / 2
+    } else {
+        Au::ZERO
+    }
+}
+
 /// Lays out the contents of any block container: block children or inline content.
 #[allow(clippy::too_many_arguments)]
 pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, origin: Point, top_adjoining: bool, bottom_adjoining: bool) -> ContentsResult {
     let b = &ctx.tree[id];
+    if crate::layout::flex::is_flex_container(b) {
+        return crate::layout::flex::layout_contents(ctx, id, cb);
+    }
+    if crate::layout::grid::is_grid_container(&b.style) {
+        return crate::layout::grid::layout_contents(ctx, id, cb);
+    }
     if b.inline_children {
         let r = inline::layout_inline_content(ctx, id, cb, bfc, origin);
         ContentsResult {
@@ -796,7 +835,10 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
         }
     }
     let (mt, mb) = vertical_margins(s, cb.width);
-    let own_height = resolve_height(s, cb.height, ev);
+    let own_height = match crate::layout::flex::forced_height(ctx, id) {
+        Some(forced) => forced,
+        None => resolve_height(s, cb.height, ev),
+    };
     let quirky_root = ctx.quirks && b.node.is_some_and(|n| ctx.doc.is(n, "html") || ctx.doc.is(n, "body"));
     let child_cb_height = own_height.or(if quirky_root { Some(ctx.viewport.height) } else { None });
     let top_adjoining = !is_bfc_root && bw.top.is_zero() && p.top.is_zero() && b.marker.is_none();
@@ -847,6 +889,21 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
         Some(h) => h,
         None => content_h + reserve_h,
     };
+    if quirky_root && own_height.is_none() {
+        // Quirks mode: `<html>` and `<body>` with `height: auto` stretch to the
+        // viewport (Blink's `StretchesToViewport`), less their own margins and
+        // edges and, for the body, the root's margins and edges.
+        let mut stretched = ctx.viewport.height - mt - mb - ev;
+        if !b.is_root {
+            if let Some(root) = ctx.tree.root {
+                let rs = ctx.style(root);
+                let (rmt, rmb) = vertical_margins(rs, ctx.viewport.width);
+                let rp = padding_edges(rs, ctx.viewport.width);
+                stretched -= rmt + rmb + rp.vertical() + rs.used_border_widths().vertical();
+            }
+        }
+        h = h.max(stretched);
+    }
     h = clamp_height(s, h, cb.height, ev);
     let frag_w = w + eh;
     let frag_h = h + ev;
@@ -907,7 +964,7 @@ pub fn replaced_fragment(ctx: &LayoutContext, id: BoxId, rb: &ReplacedBox, size:
         Replaced::Control(crate::layout::fragment::ControlKind::TextInput | crate::layout::fragment::ControlKind::Password | crate::layout::fragment::ControlKind::Select | crate::layout::fragment::ControlKind::Button | crate::layout::fragment::ControlKind::Submit | crate::layout::fragment::ControlKind::File) => {
             let fm = text::font_metrics(&b.style.font);
             let lh = size.height;
-            let half = (lh - fm.content_height()) / 2;
+            let half = text::half_leading(lh, fm.content_height());
             Some(bw.top + p.top + half + fm.ascent)
         }
         _ => Some(h),
@@ -928,7 +985,7 @@ pub fn marker_fragment(ctx: &LayoutContext, m: BoxId, first_baseline: Option<Au>
     let s = &b.style;
     let fm = text::font_metrics(&s.font);
     let lh = s.line_height_au(fm.normal_line_height());
-    let half = (lh - fm.content_height()) / 2;
+    let half = text::half_leading(lh, fm.content_height());
     let ascent = half + fm.ascent;
     let w = text::measure(&s.font, &txt, s.letter_spacing, s.word_spacing);
     let y = first_baseline.map(|bl| bl - ascent).unwrap_or(Au::ZERO);
@@ -972,13 +1029,14 @@ pub fn place_float(ctx: &LayoutContext, id: BoxId, mut pf: PreparedFloat, cb: &C
     let s = ctx.style(id);
     let size = pf.margin_size();
     let side = if s.float == Float::Right { Float::Right } else { Float::Left };
-    let mut ceil = cb_origin.y + ceiling;
+    let flow_y = cb_origin.y + ceiling;
+    let mut ceil = flow_y;
     if s.clear != Clear::None {
         if let Some(cy) = bfc.clear_y(s.clear) {
             ceil = ceil.max(cy);
         }
     }
-    let pos = bfc.place(side, size, ceil, cb_origin.x, cb_origin.x + cb.width);
+    let pos = bfc.place_from(side, size, ceil, flow_y, cb_origin.x, cb_origin.x + cb.width);
     let off = relative_offset(s, cb);
     pf.fragment.rect.origin = Point { x: pos.x - cb_origin.x + pf.margin.left + off.x, y: pos.y - cb_origin.y + pf.margin.top + off.y };
     (pf.fragment, pf.abs)

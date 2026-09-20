@@ -19,7 +19,9 @@
 pub mod block;
 pub mod boxes;
 pub mod debug;
+pub mod flex;
 pub mod fragment;
+pub mod grid;
 pub mod inline;
 pub mod intrinsic;
 pub mod scroll;
@@ -89,12 +91,18 @@ pub struct LayoutCache {
     pub intrinsic: Vec<Option<(Au, Au)>>,
     /// Structural "collapses through" answers (see `block::is_empty_block`).
     pub empty_block: Vec<Option<bool>>,
+    /// Content-box heights imposed on boxes by the formatting context they are items
+    /// of (flex and grid stretch or flexing); `block::layout_block_box` uses one in
+    /// place of the box's own `height` (`None` means "as if auto"). Set and removed
+    /// around the item's layout.
+    pub forced_height: BTreeMap<BoxId, Option<Au>>,
 }
 
 impl LayoutCache {
     pub fn invalidate_all(&mut self) {
         self.intrinsic.clear();
         self.empty_block.clear();
+        self.forced_height.clear();
     }
     fn reserve(&mut self, n: usize) {
         self.intrinsic.resize(n, None);

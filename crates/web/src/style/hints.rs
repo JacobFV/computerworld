@@ -104,7 +104,9 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
                 match a.as_str() {
                     "left" => out.push(kw("text-align", "left")),
                     "right" => out.push(kw("text-align", "right")),
-                    "center" | "middle" => out.push(kw("text-align", "center")),
+                    // `center` is `-webkit-center` (blocks centre too), `middle` is plain.
+                    "center" => out.push(kw("text-align", "-webkit-center")),
+                    "middle" => out.push(kw("text-align", "center")),
                     "justify" => out.push(kw("text-align", "justify")),
                     "start" | "end" if !is_cell => out.push(kw("text-align", &a)),
                     _ => {}
@@ -219,11 +221,8 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
                     out.push(decl("height", vec![h]));
                 }
             }
-            if is_input && matches!(input_type.as_str(), "text" | "search" | "url" | "tel" | "email" | "password" | "number") {
-                if let Some(size) = attr("size").and_then(parse_non_negative_integer).filter(|n| *n > 0) {
-                    out.push(decl("width", vec![tok_dimension(Number::from_i64(size), "ch")]));
-                }
-            }
+            // `size` on a text input is not a hint: it is the control's intrinsic width
+            // (`layout::boxes::text_control_width`), as in Blink.
             if let Some(hs) = attr("hspace").and_then(parse_dimension) {
                 out.push(decl("margin-left", vec![hs.clone()]));
                 out.push(decl("margin-right", vec![hs]));
@@ -574,6 +573,8 @@ mod tests {
     #[test]
     fn alignment_hints() {
         let (d, n) = el("p", &[("align", "CENTER")]);
+        assert_eq!(names(&d, n), vec![("text-align".to_string(), "-webkit-center".to_string())]);
+        let (d, n) = el("td", &[("align", "middle")]);
         assert_eq!(names(&d, n), vec![("text-align".to_string(), "center".to_string())]);
         let (d, n) = el("table", &[("align", "center"), ("width", "80%"), ("border", "1"), ("cellspacing", "0")]);
         let h = names(&d, n);
@@ -620,7 +621,7 @@ mod tests {
     #[test]
     fn form_sizes_and_direction() {
         let (d, n) = el("input", &[("size", "20"), ("type", "text")]);
-        assert!(names(&d, n).contains(&("width".into(), "20ch".into())));
+        assert!(!names(&d, n).iter().any(|(k, _)| k == "width"));
         let (d, n) = el("input", &[("size", "20"), ("type", "checkbox")]);
         assert!(!names(&d, n).iter().any(|(k, _)| k == "width"));
         let (d, n) = el("textarea", &[("cols", "40"), ("rows", "5")]);

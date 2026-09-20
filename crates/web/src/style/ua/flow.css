@@ -16,7 +16,7 @@ ol { list-style-type: decimal; }
 li { display: list-item; }
 :is(dir, dl, menu, ol, ul) :is(dir, dl, menu, ul) { list-style-type: circle; margin-top: 0; margin-bottom: 0; }
 :is(dir, dl, menu, ol, ul) :is(dir, dl, menu, ol, ul) :is(dir, dl, menu, ul) { list-style-type: square; }
-center { text-align: center; }
+center { text-align: -webkit-center; }
 hr { color: gray; border-style: inset; border-width: 1px; margin: 0.5em auto; overflow: hidden; }
 fieldset { margin-left: 2px; margin-right: 2px; border: groove 2px ThreeDFace; padding: 0.35em 0.75em 0.625em; min-width: min-content; }
 legend { padding-left: 2px; padding-right: 2px; }

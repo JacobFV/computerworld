@@ -61,9 +61,13 @@ impl Au {
         let r = if (v >= 0) == (d > 0) { (v + d.abs() / 2) / d } else { (v - d.abs() / 2) / d };
         Au(r.clamp(Self::MIN.0 as i64, Self::MAX.0 as i64) as i32)
     }
-    /// A percentage (in 1/100 of a percent, so 50% is 5000) of a base length.
+    /// A percentage (in 1/100 of a percent, so 50% is 5000) of a base length,
+    /// truncated towards zero like Blink's `LayoutUnit(base * percent)`: a
+    /// `10.638%` of 470px is 49.98px there and must not round up to 50.02px here, or
+    /// Acid1's floats no longer fit side by side.
     pub fn percent_of(self, per_myriad: i32) -> Au {
-        self.scale(per_myriad, 10_000)
+        let v = self.0 as i64 * per_myriad as i64 / 10_000;
+        Au(v.clamp(Self::MIN.0 as i64, Self::MAX.0 as i64) as i32)
     }
     pub fn is_zero(self) -> bool {
         self.0 == 0

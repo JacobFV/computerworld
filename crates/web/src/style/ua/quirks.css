@@ -1,5 +1,6 @@
 /* Applied after the sheet above only when the document is in quirks mode. */
-table { font-size: initial; font-weight: initial; font-style: initial; font-variant: initial; white-space: initial; }
+table { font-size: initial; font-weight: initial; font-style: initial; font-variant: initial; white-space: initial; line-height: initial; text-align: initial; }
+input:not([type=image i]), textarea { box-sizing: border-box; }
 form { margin-bottom: 1em; }
 img[align=left i] { margin-right: 3px; }
 img[align=right i] { margin-left: 3px; }

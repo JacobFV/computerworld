@@ -1,14 +1,14 @@
 {
- "acid1": 0,
+ "acid1": 0.98,
  "acid2": 0,
  "amazon-grid": 0,
- "docs-page": 0,
+ "docs-page": 0.976,
  "github-repo": 0,
- "google-1998": 0,
+ "google-1998": 0.792,
  "google-modern": 0,
- "hn-front": 0,
+ "hn-front": 0.918,
  "slack-shell": 0,
  "stripe-marketing": 0,
- "tables": 0,
- "wikipedia-article": 0
+ "tables": 0.98,
+ "wikipedia-article": 0.947
 }

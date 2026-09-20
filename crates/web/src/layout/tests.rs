@@ -671,7 +671,7 @@ fn pre_preserves_newlines_and_spaces_nowrap_does_not_wrap() {
     let tree = t.layout();
     let ls = lines(&tree);
     assert_eq!(ls.len(), 2);
-    let ts = texts(&tree);
+    let ts: Vec<_> = texts(&tree).into_iter().filter(|(s, _)| !s.is_empty()).collect();
     assert_eq!(ts[0].0, "a  b");
     assert_eq!(ts[1].0, "cd");
     let mut t = T::new();
@@ -692,7 +692,9 @@ fn pre_line_breaks_at_newlines_and_collapses_spaces() {
     t.text(p, "a   b\n  c");
     let tree = t.layout();
     let ts = texts(&tree);
-    assert_eq!(ts.iter().map(|t| t.0.as_str()).collect::<Vec<_>>(), vec!["a b", "c"]);
+    // The segment break is a zero-width run of its own, as in Chromium's client rects.
+    assert_eq!(ts.iter().map(|t| t.0.as_str()).collect::<Vec<_>>(), vec!["a b", "", "c"]);
+    assert_eq!(ts[1].1.size.width, Au::ZERO);
 }
 
 #[test]
@@ -765,9 +767,11 @@ fn line_height_and_vertical_align_of_inline_boxes() {
     let tree = t.layout();
     assert_eq!(t.rect(&tree, p).size.height, px(40));
     let ts = texts(&tree);
-    // The text sits centred in the 40 px line: half-leading above the ascent.
+    // The text sits centred in the 40 px line: half-leading above the ascent,
+    // floored to a whole pixel (19 px content: 10 px above, 11 below).
     let fm = text::font_metrics(&font());
-    let half = (px(40) - fm.content_height()) / 2;
+    let half = text::half_leading(px(40), fm.content_height());
+    assert_eq!(half, Au::from_px_i32(((px(40) - fm.content_height()) / 2).to_px_floor()));
     assert_eq!(ts[0].1.origin.y, half);
 
     // A taller inline child with vertical-align: baseline raises the line.
@@ -796,8 +800,9 @@ fn line_height_and_vertical_align_of_inline_boxes() {
     let tree = t.layout();
     let fm = text::font_metrics(&font());
     let top_rect = t.rect(&tree, top);
-    // The inline box's top (content area) is at the line top plus its half-leading.
-    assert_eq!(top_rect.origin.y, (px(20) - fm.content_height()) / 2);
+    // The inline box's top (content area) is at the line top plus its half-leading
+    // (floored to a whole pixel).
+    assert_eq!(top_rect.origin.y, text::half_leading(px(20), fm.content_height()));
     let ts = texts(&tree);
     let x_y = ts[0].1.origin.y;
     let s_y = ts.iter().find(|(s, _)| s == "s").unwrap().1.origin.y;
@@ -1155,7 +1160,10 @@ fn form_controls_have_intrinsic_sizes() {
     let cv = t.el_attrs(p, "canvas", vec![("width", "10"), ("height", "20")], |s| s.display = Display::Inline);
     let tree = t.layout();
     let ch = text::ch_unit(&font());
-    assert_eq!(t.rect(&tree, ti).size, Size { width: ch * 20 + px(6), height: lh() + px(6) });
+    // A text input is `size` average characters plus the widest glyph's excess
+    // (Blink's formula, `boxes::text_control_width`), not `size` advances of `0`.
+    assert_eq!(t.rect(&tree, ti).size, Size { width: super::boxes::text_control_width(&font(), 20) + px(6), height: lh() + px(6) });
+    assert!(t.rect(&tree, ti).size.width > ch * 20, "wider than 20 zeros");
     assert_eq!(t.rect(&tree, cb).size, Size { width: px(13), height: px(13) });
     assert_eq!(t.rect(&tree, ta).size, Size { width: ch * 10, height: lh() * 3 });
     assert_eq!(t.rect(&tree, sel).size, Size { width: ch * 20, height: lh() });
@@ -1335,8 +1343,8 @@ fn root_scrollable_size_and_body_overflow_propagation() {
     assert_eq!(tree.content_height, px(2000));
     assert_eq!(tree.content_width, px(950));
     assert_eq!(t.rect(&tree, wide).origin.x, px(900));
-    // The viewport reserved a vertical scrollbar: the body is 785 wide.
-    assert_eq!(t.rect(&tree, t.body).size.width, px(785));
+    // The viewport's scrollbar is an overlay bar: the body stays 800 wide.
+    assert_eq!(t.rect(&tree, t.body).size.width, px(800));
     match &tree.root.kind {
         FragmentKind::Box { scroll: Some(info), .. } => assert!(info.shows_y_bar),
         _ => panic!(),
@@ -1794,4 +1802,213 @@ fn zoom_scales_the_viewport() {
     assert_eq!(t.rect(&tree, d).size.width, px(400));
     assert_eq!(tree.viewport_width, px(400));
     let _ = t.layout_sized(100, 100);
+}
+
+// Parity regressions: the face metrics, leading, line-height and float rules that
+// Chromium follows on the wikipedia-article and docs-page fixtures.
+
+fn font_of(face: cw_scene::Typeface, size: Au) -> Font {
+    let mut f = font();
+    f.typeface = face;
+    f.size = size;
+    f
+}
+
+#[test]
+fn line_height_normal_rounds_each_face_metric_to_whole_pixels() {
+    use cw_scene::Typeface;
+    // Arimo (Arial) at 14 px: ascent 12.67, descent 2.97, line gap 0.46 round to
+    // 13 + 3 + 0 = 16, which is what Chromium reports for a 14 px Arial line.
+    let m = text::font_metrics(&font_of(Typeface::Arimo, Au::from_f64_px(14.0)));
+    assert_eq!((m.ascent, m.descent, m.line_gap), (px(13), px(3), px(0)));
+    assert_eq!(m.normal_line_height(), px(16));
+    // Tinos (Times New Roman) at 16 px: 14.26, 3.46, 0.68 round to 14 + 3 + 1 = 18.
+    let m = text::font_metrics(&font_of(Typeface::Tinos, px(16)));
+    assert_eq!((m.ascent, m.descent, m.line_gap), (px(14), px(3), px(1)));
+    assert_eq!(m.normal_line_height(), px(18));
+    // The gap is real: Chromium's `tables` dump has 23 px lines for 20 px Arial
+    // (14.48 + 3.39 + 0.65 -> 18 + 4 + 1) and `acid2` 28 px for 24 px.
+    let m = text::font_metrics(&font_of(Typeface::Arimo, px(20)));
+    assert_eq!(m.normal_line_height(), px(23));
+    let m = text::font_metrics(&font_of(Typeface::Arimo, px(24)));
+    assert_eq!(m.normal_line_height(), px(28));
+    let m = text::font_metrics(&font_of(Typeface::Arimo, px(15)));
+    assert_eq!(m.normal_line_height(), px(17));
+    // Cousine (Courier New) at 13 px: 10.82 and 3.90 round to 11 + 4 = 15.
+    let m = text::font_metrics(&font_of(Typeface::Cousine, px(13)));
+    assert_eq!(m.content_height(), px(15));
+    assert_eq!(m.normal_line_height(), px(15));
+}
+
+#[test]
+fn numeric_line_height_truncates_to_app_units() {
+    let mut s = ComputedStyle::initial();
+    s.font.size = px(14);
+    s.line_height = LineHeight::Number(1600);
+    // 14 * 1.6 = 22.4 px = 1433.6 Au: Blink's LayoutUnit truncates to 1433.
+    assert_eq!(s.line_height_au(Au::ZERO), Au(1433));
+    s.line_height = LineHeight::Number(1200);
+    assert_eq!(s.line_height_au(Au::ZERO), Au(14 * 64 * 12 / 10));
+}
+
+#[test]
+fn half_leading_above_the_baseline_is_floored() {
+    // A 16 px content area in a 22.390625 px line: 6.39 px of leading, 3 px above.
+    assert_eq!(text::half_leading(Au(1433), px(16)), px(3));
+    assert_eq!(text::half_leading(px(20), px(16)), px(2));
+    assert_eq!(text::half_leading(px(19), px(16)), px(1));
+    assert_eq!(text::half_leading(px(10), px(16)), px(-3));
+    let mut t = T::new();
+    let p = t.div(t.body, |s| {
+        s.font.typeface = cw_scene::Typeface::Arimo;
+        s.font.size = px(14);
+        s.line_height = LineHeight::Number(1600);
+    });
+    t.text(p, "x");
+    let tree = t.layout();
+    let (_, r) = texts(&tree)[0].clone();
+    // The text's content area (16 px) starts 3 px below the line top, not 3.195.
+    assert_eq!(r.origin.y, px(3));
+    assert_eq!(r.size.height, px(16));
+    assert_eq!(t.rect(&tree, p).size.height, Au(1433));
+}
+
+#[test]
+fn advances_are_measured_at_the_fractional_font_size() {
+    use cw_scene::Typeface;
+    let a12 = text::advance(&font_of(Typeface::Arimo, px(12)), 'a');
+    let a13 = text::advance(&font_of(Typeface::Arimo, px(13)), 'a');
+    let a125 = text::advance(&font_of(Typeface::Arimo, Au::from_f64_px(12.5)), 'a');
+    assert!(a12 < a125 && a125 < a13, "{a12:?} {a125:?} {a13:?}");
+    // Whole sizes agree with the renderer's tables to the app unit.
+    let whole = cw_scene::metrics::advance(Typeface::Arimo, false, 'a', 12) as i32;
+    assert!((a12.0 - whole).abs() <= 1);
+}
+
+#[test]
+fn a_cleared_float_keeps_the_floats_above_it_live() {
+    // A right float, then a `clear: right` float placed below it: the in-flow lines
+    // that follow the second float are still laid out from the top, beside the first.
+    let mut bfc = Bfc::new();
+    let s = |w, h| Size { width: px(w), height: px(h) };
+    bfc.place(Float::Right, s(100, 200), Au::ZERO, Au::ZERO, px(300));
+    let p = bfc.place_from(Float::Right, s(50, 50), px(200), Au::ZERO, Au::ZERO, px(300));
+    assert_eq!((p.x, p.y), (px(250), px(200)));
+    assert_eq!(bfc.available(px(50), Au::ZERO, px(300)), (px(0), px(200)));
+    assert_eq!(bfc.available(px(220), Au::ZERO, px(300)), (px(0), px(250)));
+    // In a document: the paragraph after the cleared thumbnail wraps beside the infobox.
+    let mut t = T::new();
+    let body = t.body;
+    let _box = t.div(body, |s| {
+        s.float = Float::Right;
+        s.width = len(400);
+        s.height = len(300);
+    });
+    let _thumb = t.div(body, |s| {
+        s.float = Float::Right;
+        s.clear = Clear::Right;
+        s.width = len(100);
+        s.height = len(100);
+    });
+    let p = t.div(body, |_| {});
+    t.text(p, "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word");
+    let tree = t.layout();
+    for (_, r) in texts(&tree) {
+        if r.origin.y < px(300) {
+            assert!(r.size.width <= px(400), "line at {:?} is {:?} wide beside a 400 px float", r.origin.y, r.size.width);
+        }
+    }
+}
+
+#[test]
+fn spanning_cell_minimum_goes_to_columns_with_slack() {
+    // `Common forms` (nowrap header) and a wrapping value cell under a wide colspan=2
+    // cell: the header column keeps its max width, the value column absorbs the rest.
+    let mut t = T::new();
+    let body = t.body;
+    let tb = table(&mut t, body, |s| s.width = len(400));
+    let r1 = row(&mut t, tb);
+    let span_text = "a specimen of placeholder prose in serif";
+    let wide = t.el_attrs(r1, "td", vec![("colspan", "2")], |s| {
+        s.display = Display::TableCell;
+        s.padding = Sides::uniform(lp(1));
+        s.white_space = WhiteSpace::NoWrap;
+    });
+    t.text(wide, span_text);
+    let r2 = row(&mut t, tb);
+    let th_text = "Common forms";
+    let td_text = "Typesetting trade, sixteenth century";
+    let th = cell(&mut t, r2, th_text, |s| s.white_space = WhiteSpace::NoWrap);
+    let td = cell(&mut t, r2, td_text, |_| {});
+    // The spanning cell's minimum exceeds the columns' minimums but not their
+    // maximums, and the table is between the two sums, so slack decides.
+    let inner = px(400) - px(6);
+    assert!(tw(span_text) + px(2) < inner && tw(th_text) + tw(td_text) + px(4) > inner, "{:?} {:?} {:?}", tw(span_text), tw(th_text), tw(td_text));
+    let tree = t.layout();
+    assert_eq!(t.rect(&tree, th).size.width, tw(th_text) + px(2));
+    assert_eq!(t.rect(&tree, td).size.width, inner - tw(th_text) - px(2));
+}
+
+#[test]
+fn preserved_newlines_are_zero_width_runs_at_line_ends() {
+    let mut t = T::new();
+    let pre = t.div(t.body, |s| s.white_space = WhiteSpace::Pre);
+    t.text(pre, "ab\n\ncd");
+    let tree = t.layout();
+    let runs = texts(&tree);
+    let shapes: Vec<(String, Au, Au)> = runs.iter().map(|(s, r)| (s.clone(), r.origin.y, r.size.width)).collect();
+    assert_eq!(
+        shapes,
+        vec![("ab".into(), Au::ZERO, tw("ab")), (String::new(), Au::ZERO, Au::ZERO), (String::new(), lh(), Au::ZERO), ("cd".into(), lh() * 2, tw("cd"))]
+    );
+    assert_eq!(runs[1].1.origin.x, tw("ab"));
+    assert_eq!(t.rect(&tree, pre).size.height, lh() * 3);
+}
+
+#[test]
+fn viewport_scrollbars_are_overlay() {
+    let mut t = T::new();
+    let tall = t.div(t.body, |s| s.height = len(5000));
+    let tree = t.layout();
+    assert_eq!(t.rect(&tree, tall).size.width, px(800));
+    assert_eq!(tree.content_height, px(5000));
+    match &tree.root.kind {
+        FragmentKind::Box { scroll: Some(info), .. } => assert!(info.shows_y_bar && !info.shows_x_bar),
+        _ => panic!("no root scroll info"),
+    }
+}
+
+#[test]
+fn multibyte_text_wraps_on_char_boundaries() {
+    // Accented Latin wraps at spaces, CJK between characters, and forced splits
+    // (`overflow-wrap: anywhere`) cut on char boundaries: no byte-index slicing.
+    let mut t = T::new();
+    let body = t.body;
+    let p = t.div(body, |s| s.width = len(60));
+    t.text(p, "héllo wörld naïve café – déjà vu");
+    let cjk = t.div(body, |s| s.width = len(40));
+    t.text(cjk, "日本語のテキストが折り返す");
+    let forced = t.div(body, |s| {
+        s.width = len(30);
+        s.overflow_wrap = OverflowWrap::Anywhere;
+    });
+    t.text(forced, "ééééééééééééééé");
+    let tree = t.layout();
+    let runs = texts(&tree);
+    let joined: String = runs.iter().map(|(s, _)| s.as_str()).collect();
+    for word in ["héllo", "wörld", "naïve", "café", "déjà"] {
+        assert!(joined.contains(word), "{joined}");
+    }
+    assert_eq!(joined.chars().filter(|c| *c == 'é').count(), 15 + 3);
+    assert_eq!(joined.chars().filter(|c| *c == '日').count(), 1);
+    assert!(tree.rects_of(cjk)[0].size.height > lh() * 3, "CJK did not wrap:\n{}", debug::dump_doc(&t.doc, &tree));
+    assert!(tree.rects_of(forced)[0].size.height > lh() * 2, "forced split did not wrap:\n{}", debug::dump_doc(&t.doc, &tree));
+    // Every run's byte range is a char boundary of its text node.
+    tree.root.walk(Default::default(), &mut |f, _| {
+        if let FragmentKind::Text { node: Some(n), range, .. } = &f.kind {
+            if let crate::dom::NodeKind::Text(src) = t.doc.kind(*n) {
+                assert!(src.is_char_boundary(range.0) && src.is_char_boundary(range.1), "{range:?} in {src:?}");
+            }
+        }
+    });
 }

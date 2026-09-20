@@ -540,6 +540,7 @@ impl ComputedStyle {
                 TextAlign::Right => "right",
                 TextAlign::Center => "center",
                 TextAlign::Justify => "justify",
+                TextAlign::WebkitCenter => "-webkit-center",
             }
             .into(),
             L::TextIndent => lp(s.text_indent),

@@ -120,13 +120,14 @@ pub fn propagate_root_overflow(doc: &Document, tree: &mut crate::layout::boxes::
     (fix(ox), fix(oy))
 }
 
-/// Lays out the document in the initial containing block.
+/// Lays out the document in the initial containing block. The viewport's scrollbars
+/// are overlay bars, as Chromium's are on the platforms the parity dumps come from:
+/// they take no space from the layout viewport, so `<html>` is always the viewport
+/// wide; `ScrollInfo::shows_y_bar` still says whether one should be drawn.
 pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
     let vw = ctx.viewport.width;
     let vh = ctx.viewport.height;
     let (ox, oy) = ctx.root_overflow;
-    let mut hbar = if ox == Overflow::Scroll { BAR } else { Au::ZERO };
-    let mut vbar = if oy == Overflow::Scroll { BAR } else { Au::ZERO };
     let mut root = Fragment::new(
         FragmentKind::Box { source: StyleSource::Anonymous(Document::ROOT), padding: crate::geom::Edges::ZERO, border: crate::geom::Edges::ZERO, replaced: None, scroll: None, baseline: None },
         Rect::new(Au::ZERO, Au::ZERO, vw, vh),
@@ -134,53 +135,37 @@ pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
     root.establishes_stacking_context = true;
     let mut content = Size { width: vw, height: vh };
     if let Some(html) = ctx.tree.root {
-        let mut attempts = 0;
-        loop {
-            let cb = Cb { width: (vw - vbar).max(Au::ZERO), height: Some((vh - hbar).max(Au::ZERO)) };
-            let mut bfc = Bfc::new();
-            let s = ctx.style(html);
-            let (mt, mb) = block::vertical_margins(s, cb.width);
-            let mut r = block::layout_block_level(ctx, html, &cb, &mut bfc, Point::default(), mt);
-            let off = block::relative_offset(s, &cb);
-            r.fragment.rect.origin.x += off.x;
-            r.fragment.rect.origin.y += off.y;
-            block::translate_requests(&mut r.abs, r.fragment.rect.origin.x, r.fragment.rect.origin.y);
-            let o = r.fragment.overflow.translate(r.fragment.rect.origin.x, r.fragment.rect.origin.y);
-            let doc_h = (r.fragment.rect.bottom() + mb).max(o.bottom()).max(Au::ZERO);
-            let doc_w = o.right().max(Au::ZERO);
-            let visible_h = vh - hbar;
-            let visible_w = vw - vbar;
-            let need_v = oy == Overflow::Auto && doc_h > visible_h && vbar.is_zero();
-            let need_h = ox == Overflow::Auto && doc_w > visible_w && hbar.is_zero();
-            if (need_v || need_h) && attempts == 0 {
-                if need_v {
-                    vbar = BAR;
-                }
-                if need_h {
-                    hbar = BAR;
-                }
-                attempts += 1;
-                continue;
-            }
-            root.children.clear();
-            root.children.push(r.fragment);
-            let rest = block::resolve_absolutes(ctx, &mut root, r.abs);
-            debug_assert!(rest.is_empty());
-            content = Size { width: doc_w.max(vw - vbar), height: doc_h.max(vh - hbar) };
-            for c in &root.children[1..] {
-                let o = c.overflow.translate(c.rect.origin.x, c.rect.origin.y);
-                content.width = content.width.max(o.right());
-                content.height = content.height.max(o.bottom());
-            }
-            break;
+        let cb = Cb { width: vw, height: Some(vh) };
+        let mut bfc = Bfc::new();
+        let s = ctx.style(html);
+        let (mt, mb) = block::vertical_margins(s, cb.width);
+        let mut r = block::layout_block_level(ctx, html, &cb, &mut bfc, Point::default(), mt);
+        let off = block::relative_offset(s, &cb);
+        r.fragment.rect.origin.x += off.x;
+        r.fragment.rect.origin.y += off.y;
+        block::translate_requests(&mut r.abs, r.fragment.rect.origin.x, r.fragment.rect.origin.y);
+        let o = r.fragment.overflow.translate(r.fragment.rect.origin.x, r.fragment.rect.origin.y);
+        let doc_h = (r.fragment.rect.bottom() + mb).max(o.bottom()).max(Au::ZERO);
+        let doc_w = o.right().max(Au::ZERO);
+        root.children.push(r.fragment);
+        let rest = block::resolve_absolutes(ctx, &mut root, r.abs);
+        debug_assert!(rest.is_empty());
+        content = Size { width: doc_w.max(vw), height: doc_h.max(vh) };
+        for c in &root.children[1..] {
+            let o = c.overflow.translate(c.rect.origin.x, c.rect.origin.y);
+            content.width = content.width.max(o.right());
+            content.height = content.height.max(o.bottom());
         }
     }
     let scrollable = !matches!(oy, Overflow::Hidden | Overflow::Clip);
     let (sx, sy) = ctx.scroll.get(&Document::ROOT).copied().unwrap_or((Au::ZERO, Au::ZERO));
-    let sx = if matches!(ox, Overflow::Hidden | Overflow::Clip) { Au::ZERO } else { sx.clamp(Au::ZERO, (content.width - (vw - vbar)).max(Au::ZERO)) };
-    let sy = if scrollable { sy.clamp(Au::ZERO, (content.height - (vh - hbar)).max(Au::ZERO)) } else { Au::ZERO };
+    let sx = if matches!(ox, Overflow::Hidden | Overflow::Clip) { Au::ZERO } else { sx.clamp(Au::ZERO, (content.width - vw).max(Au::ZERO)) };
+    let sy = if scrollable { sy.clamp(Au::ZERO, (content.height - vh).max(Au::ZERO)) } else { Au::ZERO };
+    // Overlay bars are drawn over the content when the axis can scroll.
+    let shows_x_bar = ox == Overflow::Scroll || ox == Overflow::Auto && content.width > vw;
+    let shows_y_bar = oy == Overflow::Scroll || oy == Overflow::Auto && content.height > vh;
     if let FragmentKind::Box { scroll, .. } = &mut root.kind {
-        *scroll = Some(ScrollInfo { content_width: content.width, content_height: content.height, scroll_x: sx, scroll_y: sy, shows_x_bar: !hbar.is_zero(), shows_y_bar: !vbar.is_zero() });
+        *scroll = Some(ScrollInfo { content_width: content.width, content_height: content.height, scroll_x: sx, scroll_y: sy, shows_x_bar, shows_y_bar });
     }
     root.overflow = Rect::new(Au::ZERO, Au::ZERO, content.width, content.height);
     apply_sticky(ctx, &mut root);

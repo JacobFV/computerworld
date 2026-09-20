@@ -343,7 +343,12 @@ impl<'a> Engine<'a> {
         let hint_block;
         let inline_block;
         if pseudo.is_none() {
-            let hint_decls = hints::presentational_hints(self.doc, node);
+            let mut hint_decls = hints::presentational_hints(self.doc, node);
+            // `<body link>` colours every `a[href]` at the hint level (the UA sheet's
+            // `:link` colour is below it, author rules above it).
+            if let Some(d) = hints::body_link_color(self.doc, node, "link") {
+                hint_decls.push(d);
+            }
             let mut parsed = Vec::with_capacity(hint_decls.len());
             for d in &hint_decls {
                 match parse_declaration(d) {
@@ -480,6 +485,18 @@ impl<'a> Engine<'a> {
         if matches!(s.position, Position::Absolute | Position::Fixed) {
             s.float = Float::None;
         }
+        // css-overflow-3 §3.1: `visible` on one axis computes to `auto` (and `clip`
+        // to `hidden`) when the other axis is neither `visible` nor `clip`.
+        let scrolls = |o: Overflow| !matches!(o, Overflow::Visible | Overflow::Clip);
+        if scrolls(s.overflow_x) != scrolls(s.overflow_y) {
+            for o in [&mut s.overflow_x, &mut s.overflow_y] {
+                match *o {
+                    Overflow::Visible => *o = Overflow::Auto,
+                    Overflow::Clip => *o = Overflow::Hidden,
+                    _ => {}
+                }
+            }
+        }
         // Blockification: the root, floats, absolutes and flex/grid items.
         let parent_is_flex_or_grid = matches!(parent.display, Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid) && !is_pseudo || (is_pseudo && matches!(parent.display, Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid));
         if is_root {
@@ -489,6 +506,12 @@ impl<'a> Engine<'a> {
             s.display = s.display.blockify();
         } else if (s.is_out_of_flow() || parent_is_flex_or_grid) && !matches!(s.display, Display::Contents | Display::None) {
             s.display = s.display.blockify();
+        }
+        // Blink's `AdjustStyleForDisplay`: a table does not inherit the legacy
+        // `-webkit-center` alignment of a `<center>` or `align=center` ancestor; it
+        // is centred as a block by the ancestor instead, and its cells start `start`.
+        if matches!(s.display, Display::Table | Display::InlineTable) && s.text_align == TextAlign::WebkitCenter {
+            s.text_align = TextAlign::Start;
         }
         // Quirks: tables take the document text colour unless the author says otherwise.
         if self.quirks && !is_pseudo && self.doc.is(node, "table") {
@@ -1348,7 +1371,7 @@ mod tests {
     #[test]
     fn presentational_hints_lose_to_author_css() {
         let (d, s) = styled(r#"<p id="a" align="center">x</p><p id="b" align="center">y</p><table id="t" width="300" bgcolor="red"></table>"#, "#b { text-align: right } table { width: 100px }");
-        assert_eq!(ser(&d, &s, "a", "text-align"), "center");
+        assert_eq!(ser(&d, &s, "a", "text-align"), "-webkit-center");
         assert_eq!(ser(&d, &s, "b", "text-align"), "right");
         assert_eq!(ser(&d, &s, "t", "width"), "100px");
         assert_eq!(ser(&d, &s, "t", "background-color"), "rgb(255, 0, 0)");
@@ -1432,6 +1455,14 @@ mod tests {
         assert_eq!(ser(&d, &s, "a", "border-top-width"), "3px");
         assert_eq!(ser(&d, &s, "a", "border-left-width"), "0px");
         assert_eq!(ser(&d, &s, "a", "outline-width"), "0px");
+    }
+
+    #[test]
+    fn one_scrolling_overflow_axis_makes_the_other_auto() {
+        let (d, s) = styled(r#"<pre id="a" style="overflow-x: auto">x</pre><div id="b" style="overflow-y: clip">y</div><div id="c" style="overflow-x: hidden; overflow-y: clip">z</div>"#, "");
+        assert_eq!(ser(&d, &s, "a", "overflow-y"), "auto");
+        assert_eq!(ser(&d, &s, "b", "overflow-x"), "visible");
+        assert_eq!(ser(&d, &s, "c", "overflow-y"), "hidden");
     }
 
     #[test]

@@ -86,10 +86,11 @@ pub const ALIASES: &[(&str, Typeface)] = &[
     ("georgia", Typeface::Gelasio),
     ("calibri", Typeface::Carlito),
     ("cambria", Typeface::Caladea),
-    // Verdana and Tahoma: wide humanist sans, which DejaVu Sans (Bitstream Vera, of
-    // the same lineage) is.
-    ("verdana", Typeface::DejaVu),
-    ("tahoma", Typeface::DejaVu),
+    // Verdana and Tahoma are not bundled and have no metric-compatible twin; a
+    // Linux Chromium substitutes its default sans (Liberation Sans, Arimo's metrics),
+    // and the web engine's parity fixtures depend on matching that choice.
+    ("verdana", Typeface::Arimo),
+    ("tahoma", Typeface::Arimo),
     ("bitstream vera sans", Typeface::DejaVu),
     ("bitstream vera sans mono", Typeface::Mono),
     // Earlier names of bundled families.
@@ -191,8 +192,8 @@ mod tests {
             ("Georgia", Typeface::Gelasio),
             ("Calibri", Typeface::Carlito),
             ("Cambria", Typeface::Caladea),
-            ("Verdana", Typeface::DejaVu),
-            ("Tahoma", Typeface::DejaVu),
+            ("Verdana", Typeface::Arimo),
+            ("Tahoma", Typeface::Arimo),
             ("sans-serif", Typeface::Arimo),
             ("serif", Typeface::Tinos),
             ("monospace", Typeface::Cousine),

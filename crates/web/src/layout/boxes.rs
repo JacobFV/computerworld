@@ -159,6 +159,9 @@ pub struct LayoutBox {
     /// last pieces carry the start and end edges.
     pub split_first: bool,
     pub split_last: bool,
+    /// The box is a flex or grid item: it establishes an independent formatting
+    /// context and its `z-index` creates a stacking context.
+    pub is_item: bool,
 }
 
 impl LayoutBox {
@@ -184,6 +187,7 @@ impl LayoutBox {
     pub fn establishes_bfc(&self) -> bool {
         let s = &self.style;
         self.is_root
+            || self.is_item
             || s.is_out_of_flow()
             || matches!(self.kind, BoxKind::InlineBlock | BoxKind::Cell(_) | BoxKind::Caption | BoxKind::TableWrapper | BoxKind::Table)
             || matches!(s.display, Display::FlowRoot | Display::InlineBlock | Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid)
@@ -289,6 +293,7 @@ impl<'a> Builder<'a> {
             is_root: false,
             split_first: true,
             split_last: true,
+            is_item: false,
         });
         id
     }
@@ -360,8 +365,13 @@ impl<'a> Builder<'a> {
             self.counters_leave(depth);
             return items;
         }
-        // Blockify floats and absolutes.
-        let style = if style.is_out_of_flow() && style.display.is_inline_level() {
+        // Blockify floats, absolutes, and flex and grid items (css-display §2.7).
+        let is_item = crate::layout::flex::is_flex_or_grid_item(self.doc, self.styles, node);
+        let style = if is_item && crate::layout::flex::blockify_item_display(style.display) != style.display {
+            let mut s = (*style).clone();
+            s.display = crate::layout::flex::blockify_item_display(s.display);
+            Rc::new(s)
+        } else if style.is_out_of_flow() && style.display.is_inline_level() {
             let mut s = (*style).clone();
             s.display = s.display.blockify();
             Rc::new(s)
@@ -539,6 +549,18 @@ impl<'a> Builder<'a> {
         kids.extend(self.build_children(node, style, depth));
         if let Some(b) = self.build_pseudo(node, style, false, depth) {
             kids.push(b);
+        }
+        if matches!(style.display, Display::Flex | Display::InlineFlex) {
+            let items = crate::layout::flex::wrap_flex_items(&mut self.boxes, id, kids);
+            self.boxes[id.index()].children = items;
+            self.boxes[id.index()].inline_children = false;
+            return;
+        }
+        if matches!(style.display, Display::Grid | Display::InlineGrid) {
+            let items = crate::layout::grid::wrap_grid_items(&mut self.boxes, id, kids);
+            self.boxes[id.index()].children = items;
+            self.boxes[id.index()].inline_children = false;
+            return;
         }
         self.make_container(id, kids);
     }
@@ -841,6 +863,9 @@ impl<'a> Builder<'a> {
         if pstyle.is_out_of_flow() {
             display = display.blockify();
         }
+        if matches!(parent.display, Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid) {
+            display = crate::layout::flex::blockify_item_display(display);
+        }
         let level = Self::level_of(display);
         let kind = match display {
             Display::Inline => BoxKind::Inline,
@@ -979,10 +1004,13 @@ impl<'a> Builder<'a> {
                     "range" => (ControlKind::Range, px(129, 20)),
                     "color" => (ControlKind::Color, px(50, 27)),
                     "file" => (ControlKind::File, Some(Size { width: ch * 20 + Au::from_px_i32(80), height: lh })),
-                    "password" => (ControlKind::Password, Some(Size { width: ch * 20, height: lh })),
+                    "password" => {
+                        let size = attr_u32(doc, node, "size", 20).clamp(1, 1000) as i32;
+                        (ControlKind::Password, Some(Size { width: text_control_width(font, size), height: lh }))
+                    }
                     _ => {
                         let size = attr_u32(doc, node, "size", 20).clamp(1, 1000) as i32;
-                        (ControlKind::TextInput, Some(Size { width: ch * size, height: lh }))
+                        (ControlKind::TextInput, Some(Size { width: text_control_width(font, size), height: lh }))
                     }
                 };
                 Some(ReplacedBox { replaced: Replaced::Control(kind), intrinsic, attr_width: None, attr_height: None })
@@ -1007,6 +1035,37 @@ impl<'a> Builder<'a> {
             _ => None,
         }
     }
+}
+
+/// The intrinsic content width of a single-line text control with `size` columns,
+/// the way Blink sizes one (`LayoutTextControlSingleLine::PreferredContentLogicalWidth`):
+/// `ceil(ceil(size * avg) + max - avg)` in whole pixels, where `avg` is
+/// the face's OS/2 `xAvgCharWidth` and `max` its `head` bounding-box width
+/// (`xMax - xMin`). The table holds the values of the faces a Linux Chromium shapes
+/// with (Liberation for the Croscore stand-ins, read with fontTools). Faces without
+/// an entry fall back to `size` advances of `0`.
+pub fn text_control_width(font: &crate::style::Font, size: i32) -> Au {
+    use cw_scene::Typeface;
+    // `(units per em, xAvgCharWidth, xMax - xMin)`.
+    let units: Option<(i64, i64, i64)> = match font.typeface {
+        Typeface::Arimo => Some((2048, 1187, 3780)),
+        Typeface::Tinos => Some((2048, 1137, 4013)),
+        Typeface::Cousine => Some((2048, 1229, 2508)),
+        Typeface::DejaVu => Some((2048, 1038, 5532)),
+        Typeface::Mono => Some((2048, 1233, 2614)),
+        _ => None,
+    };
+    let Some((upem, avg_units, max_units)) = units else {
+        return text::ch_unit(font) * size;
+    };
+    // Everything in Au (1/64 px) as i64, truncated like FreeType's 26.6 metrics
+    // that Skia hands Blink (so 55 columns of 16px Arial are 510px, not 511).
+    let fs = font.size.0 as i64;
+    let avg = (fs * avg_units).div_euclid(upem);
+    let max = (fs * max_units).div_euclid(upem);
+    let columns = (avg * size as i64 + 63).div_euclid(64);
+    let total = columns * 64 + max - avg;
+    Au::from_px_i32(((total + 63).div_euclid(64)).clamp(0, 100_000) as i32)
 }
 
 fn attr_u32(doc: &Document, node: NodeId, name: &str, default: u32) -> u32 {

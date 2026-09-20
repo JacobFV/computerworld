@@ -47,6 +47,12 @@ pub fn margins_h(ctx: &LayoutContext, id: BoxId) -> Au {
 /// `width`: the inline content's runs, or the widest child.
 pub fn content_min_max(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
     let b = &ctx.tree[id];
+    if crate::layout::flex::is_flex_container(b) {
+        return crate::layout::flex::content_min_max(ctx, id);
+    }
+    if crate::layout::grid::is_grid_container(&b.style) {
+        return crate::layout::grid::content_min_max(ctx, id);
+    }
     if b.inline_children {
         let (mut mn, mut mx) = inline::intrinsic_widths(ctx, id);
         if let Some(m) = b.marker {

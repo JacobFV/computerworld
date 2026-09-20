@@ -12,7 +12,9 @@ th { font-weight: bold; text-align: center; }
 td, th, tr, tbody, thead, tfoot { vertical-align: middle; }
 :is(table, thead, tbody, tfoot, tr) > form { display: none !important; }
 table[rules=none i], table[rules=groups i], table[rules=rows i], table[rules=cols i], table[rules=all i] { border-style: hidden; border-collapse: collapse; }
-table[border] { border-style: outset; }
+/* `border`: the table's outset border and the cells' inset borders come from the
+   presentational hints (`hints::presentational_hints`), which apply them only when
+   the value is non-zero; `border="0"` draws nothing, as in Chromium. */
 table[frame=void i] { border-style: hidden; }
 table[frame=above i] { border-style: outset hidden hidden hidden; }
 table[frame=below i] { border-style: hidden hidden outset hidden; }
@@ -21,7 +23,6 @@ table[frame=lhs i] { border-style: hidden hidden hidden outset; }
 table[frame=rhs i] { border-style: hidden outset hidden hidden; }
 table[frame=vsides i] { border-style: hidden outset; }
 table[frame=box i], table[frame=border i] { border-style: outset; }
-table[border] > tr > :is(td, th), table[border] > :is(thead, tbody, tfoot) > tr > :is(td, th) { border-width: 1px; border-style: inset; }
 table[rules=none i] > tr > :is(td, th), table[rules=none i] > :is(thead, tbody, tfoot) > tr > :is(td, th),
 table[rules=groups i] > tr > :is(td, th), table[rules=groups i] > :is(thead, tbody, tfoot) > tr > :is(td, th),
 table[rules=rows i] > tr > :is(td, th), table[rules=rows i] > :is(thead, tbody, tfoot) > tr > :is(td, th) { border-width: 1px; border-style: none; }

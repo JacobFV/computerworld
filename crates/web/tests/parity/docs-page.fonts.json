@@ -5,7 +5,7 @@
   "chromium": []
  },
  {
-  "family": "Georgia, \"Times New Roman\", serif",
+  "family": "\"Times New Roman\", Times, serif",
   "first": "html>body>div:nth-child(3)>p:nth-child(2)",
   "chromium": [
    {

@@ -399,7 +399,7 @@ pub fn text_align(p: &mut Parser) -> Option<Specified> {
             ("right", TextAlign::Right),
             ("center", TextAlign::Center),
             ("justify", TextAlign::Justify),
-            ("-webkit-center", TextAlign::Center),
+            ("-webkit-center", TextAlign::WebkitCenter),
             ("-webkit-left", TextAlign::Left),
             ("-webkit-right", TextAlign::Right),
             ("match-parent", TextAlign::Start),

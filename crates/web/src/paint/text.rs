@@ -99,6 +99,10 @@ fn offset_px(font: &Font, text: &str, at: usize) -> i32 {
 /// Paints one text run fragment.
 pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
     let FragmentKind::Text { source, text, node, range, baseline, ellipsis } = &f.kind else { return };
+    if text.is_empty() && !*ellipsis {
+        // A preserved newline's zero-width run: nothing to draw.
+        return;
+    }
     let Some(key) = p.key(f) else { return };
     let style = p.style(*source).clone();
     let rect = abs_rect(state, f);

@@ -80,7 +80,9 @@ macro_rules! lpa_prop {
 
 fn sizing_value(v: &Specified, c: &ComputeCtx) -> Option<Sizing> {
     Some(match v {
-        Specified::Sizing(SizingSpec::Auto) | Specified::Sizing(SizingSpec::Content) => Sizing::Auto,
+        Specified::Sizing(SizingSpec::Auto) => Sizing::Auto,
+        // `flex-basis: content` sizes the item as max-content (css-flexbox §9.2.3).
+        Specified::Sizing(SizingSpec::Content) => Sizing::MaxContent,
         Specified::Sizing(SizingSpec::None) => Sizing::None,
         Specified::Sizing(SizingSpec::MinContent) => Sizing::MinContent,
         Specified::Sizing(SizingSpec::MaxContent) => Sizing::MaxContent,

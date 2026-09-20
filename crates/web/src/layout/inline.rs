@@ -343,6 +343,13 @@ fn atomic_baseline(s: &ComputedStyle, fragment: &Fragment, margin: &Edges, repla
     if s.overflow_x != Overflow::Visible || s.overflow_y != Overflow::Visible {
         return None;
     }
+    if matches!(s.display, crate::style::Display::Flex | crate::style::Display::InlineFlex) {
+        // A flex container's baseline is its first item's (css-flexbox §8.5).
+        return match &fragment.kind {
+            FragmentKind::Box { baseline, .. } => baseline.map(|b| margin.top + b),
+            _ => None,
+        };
+    }
     last_baseline(fragment).map(|b| margin.top + b)
 }
 
@@ -406,11 +413,29 @@ struct LineNode {
     baseline: Au,
     above: Au,
     below: Au,
+    /// A `<br>` ended the line inside this box (it counts as text for the
+    /// quirks-mode line-height rule).
+    has_br: bool,
 }
 
 impl LineNode {
     fn new(kind: NodeKind, x: Au) -> LineNode {
-        LineNode { kind, x, width: Au::ZERO, children: Vec::new(), baseline: Au::ZERO, above: Au::ZERO, below: Au::ZERO }
+        LineNode { kind, x, width: Au::ZERO, children: Vec::new(), baseline: Au::ZERO, above: Au::ZERO, below: Au::ZERO, has_br: false }
+    }
+    /// Quirks mode (Blink's line-height quirk): an inline box, or the root, adds
+    /// its own font metrics to the line only when it holds text (or a `<br>`)
+    /// directly; a box that only wraps other boxes contributes nothing itself.
+    /// Collapsible white space alone is an "empty item" in Blink and does not
+    /// count (google-1998's `</form>\n<br>\n<font>` lines are 15px, not 18px); a
+    /// preserved newline (empty text over a one-byte range) does. A `<br>` counts
+    /// only on an otherwise empty line (Blink sets a control item's metrics only
+    /// then): `<font>x</font><br>` keeps the font's 15px, a bare `<br>` gets 18px.
+    fn has_text(&self) -> bool {
+        (self.has_br && self.children.is_empty())
+            || self.children.iter().any(|c| match &c.kind {
+                NodeKind::Text { text, range, .. } => !text.trim().is_empty() || (text.is_empty() && range.0 != range.1),
+                _ => false,
+            })
     }
 }
 
@@ -421,13 +446,15 @@ struct Metrics {
     below: Au,
 }
 
+/// The extents of an inline box around its baseline: the content area plus the
+/// leading split in two. The half added above the baseline is floored to a whole
+/// pixel and the rest goes below, as Blink's `FontHeight::AddLeading` does, so a
+/// 16 px content area in a 22.4 px line sits 3 px below the line top.
 fn metrics_of(s: &ComputedStyle) -> Metrics {
     let fm = text::font_metrics(&s.font);
     let lh = s.line_height_au(fm.normal_line_height());
-    let content = fm.content_height();
-    let leading = lh - content;
-    let half = leading / 2;
-    Metrics { fm, above: fm.ascent + half, below: fm.descent + (leading - half) }
+    let above = fm.ascent + text::half_leading(lh, fm.content_height());
+    Metrics { fm, above, below: lh - above }
 }
 
 /// Lays out the inline content of `container` into line boxes. `origin` is the BFC
@@ -781,7 +808,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
         let align_shift = match cs.text_align {
             TextAlign::Left => Au::ZERO,
             TextAlign::Right => free,
-            TextAlign::Center => free / 2,
+            TextAlign::Center | TextAlign::WebkitCenter => free / 2,
             TextAlign::Start => {
                 if self.rtl {
                     free
@@ -861,8 +888,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                     // unless justifying (each word is positioned separately then).
                     let merged = if !justify && !trailing_space {
                         match target.last_mut() {
-                            Some(LineNode { kind: NodeKind::Text { owner, text, range, .. }, width: pw, x: px, .. }) if *owner == u.owner && *px + *pw == ux && !is_space_only(text) || false => {
-                                let _ = owner;
+                            Some(LineNode { kind: NodeKind::Text { owner, text, range, .. }, width: pw, x: px, .. }) if *owner == u.owner && *px + *pw == ux => {
                                 text.push_str(&u.text);
                                 range.1 = range.1.max(u.range.1);
                                 *pw += w;
@@ -887,7 +913,26 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                         None => root.children.push(node),
                     }
                 }
-                UnitKind::Newline | UnitKind::Br(_) | UnitKind::Float(_) | UnitKind::Abs(_) => {}
+                UnitKind::Newline => {
+                    // A preserved segment break is a zero-width run at the line's
+                    // end, so a text node's line rects count its `pre` newlines as
+                    // Chromium's `Range.getClientRects` does.
+                    let ob = &ctx.tree[u.owner];
+                    let (node_id, source) = match &ob.kind {
+                        BoxKind::Text(t) => (t.node, ob.source),
+                        _ => (None, ob.source),
+                    };
+                    let node = LineNode::new(NodeKind::Text { owner: u.owner, text: String::new(), range: u.range, node: node_id, source }, ux);
+                    match stack.last_mut() {
+                        Some(parent) => parent.children.push(node),
+                        None => root.children.push(node),
+                    }
+                }
+                UnitKind::Br(_) => match stack.last_mut() {
+                    Some(parent) => parent.has_br = true,
+                    None => root.has_br = true,
+                },
+                UnitKind::Float(_) | UnitKind::Abs(_) => {}
             }
             x = ux + u.width;
         }
@@ -911,8 +956,9 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
         let root_m = metrics_of(cs);
         root.above = root_m.above;
         root.below = root_m.below;
-        let mut min_top = -root.above;
-        let mut max_bottom = root.below;
+        let quirk = ctx.quirks && !root.has_text();
+        let mut min_top = if quirk { Au::ZERO } else { -root.above };
+        let mut max_bottom = if quirk { Au::ZERO } else { root.below };
         let mut aligned_heights: Vec<Au> = Vec::new();
         self.assign_metrics(&mut root, cs, &root_m);
         self.place_vertical(&mut root, Au::ZERO, cs, &root_m, &mut min_top, &mut max_bottom, &mut aligned_heights);
@@ -1041,8 +1087,11 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                     let shift = baseline_shift(va, cstyle, &cm, pstyle, pm, c.above, c.below);
                     let cb = baseline + shift;
                     self.place_vertical(c, cb, cstyle, &cm, min_top, max_bottom, aligned);
-                    *min_top = (*min_top).min(cb - c.above);
-                    *max_bottom = (*max_bottom).max(cb + c.below);
+                    let counts = !self.ctx.quirks || !matches!(c.kind, NodeKind::Inline { .. }) || c.has_text();
+                    if counts {
+                        *min_top = (*min_top).min(cb - c.above);
+                        *max_bottom = (*max_bottom).max(cb + c.below);
+                    }
                 }
             }
         }
@@ -1159,10 +1208,6 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
     fn finish(self) -> InlineResult {
         InlineResult { fragments: self.fragments, height: self.y, empty: !self.any_line, first_baseline: self.first_baseline, last_baseline: self.last_baseline, abs: self.abs }
     }
-}
-
-fn is_space_only(t: &str) -> bool {
-    t.chars().all(|c| c == ' ')
 }
 
 fn shift_baselines(node: &mut LineNode, d: Au) {
