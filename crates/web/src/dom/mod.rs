@@ -42,7 +42,12 @@ pub struct Attribute {
 pub enum NodeKind {
     Document,
     DocumentFragment,
-    DocType { name: String },
+    DocType {
+        name: String,
+        /// Empty when the doctype had none.
+        public_id: String,
+        system_id: String,
+    },
     Element {
         ns: Namespace,
         /// Lower-cased local name for HTML elements (`div`, `p`), case preserved for SVG.
@@ -138,6 +143,14 @@ impl Document {
     }
     pub fn create_text(&mut self, text: &str) -> NodeId {
         self.create(NodeKind::Text(text.to_owned()))
+    }
+    /// The template contents of a `<template>` element: its DocumentFragment child,
+    /// where the parser puts everything between the template tags.
+    pub fn template_contents(&self, id: NodeId) -> Option<NodeId> {
+        if !self.is(id, "template") {
+            return None;
+        }
+        self.children(id).find(|c| matches!(self.kind(*c), NodeKind::DocumentFragment))
     }
 
     pub fn parent(&self, id: NodeId) -> Option<NodeId> {
