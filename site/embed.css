@@ -3,14 +3,19 @@
    page's title, install box and footer were holding, and gives it to the
    machine. */
 html, body { height: 100%; }
-body { display: grid; align-content: center; }
+/* A frame is a fixed box someone else chose, and this page is one
+   composition. There is nothing below the fold to reach, so a scrollbar
+   here would only be the slideshow admitting it does not fit. */
+body { display: grid; align-content: center; overflow: hidden; }
 main { width: 100%; }
 
 .stage {
   /* The frame is the whole page here, so a machine may have all of it
-     bar the pager and a little air — where index.html has to leave
-     21rem for the type above and the snippet below. */
-  --w-desk: min(1080px, 90vw, (100vh - 5.5rem) * 1.6);
+     bar what sits under it — where index.html has to leave 21rem for the
+     type above and the snippet below. That is the pager (2rem, after the
+     3.6rem it pulls back up through the track's 5.5rem shadow margin)
+     and the link under that, so: 7rem, which leaves a little air too. */
+  --w-desk: min(1080px, 90vw, (100vh - 7rem) * 1.6);
   padding-top: 0;
 }
 
@@ -26,5 +31,5 @@ main { width: 100%; }
 .from:hover { color: var(--ink); }
 
 @media (max-width: 720px) {
-  .stage { --w-desk: 88vw; --h-phone: min(640px, 150vw, 100vh - 7rem); }
+  .stage { --w-desk: 88vw; --h-phone: min(640px, 150vw, 100vh - 8.5rem); }
 }
