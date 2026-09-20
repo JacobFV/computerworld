@@ -625,6 +625,12 @@ fn compute_empty_block(ctx: &LayoutContext, id: BoxId) -> bool {
     if !height_is_auto_or_zero(s, None) || !min_height_is_zero(s) {
         return false;
     }
+    // `aspect-ratio` gives the box a height from its width, so it is not empty even
+    // with `height: auto` and no content: a ratio-sized thumbnail must take its
+    // place in the flow rather than let the next block collapse through it.
+    if s.aspect_ratio.ratio.is_some() {
+        return false;
+    }
     if s.border.top.used_width() > Au::ZERO || s.border.bottom.used_width() > Au::ZERO || !s.padding.top.is_zero() || !s.padding.bottom.is_zero() {
         return false;
     }

@@ -2392,6 +2392,7 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
             "/meta" => html(200, r#"<meta http-equiv="refresh" content="2; url=/second"><p>Soon</p>"#),
             "/plain" => HttpResponse::text(200, "just <text>"),
             "/tabs" => html(200, r#"<a id="l1" href="/">One</a><input id="i1"><button id="b1">B</button><input id="i2" tabindex="1">"#),
+            "/ids" => html(200, r#"<div><span id="doc-title">Documents</span></div><table><tr><td id="sheet-A1">Latency p95</td><td id="sheet-A2">412 ms</td></tr></table><p>plain <span id="inline-id">marked</span> prose</p>"#),
             _ => html(404, "<title>Lost</title><h1>Lost page</h1><p>No such page here.</p>"),
         })
     }
@@ -2448,6 +2449,24 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         assert!(page.elements.iter().any(|e| matches!(e, PageElement::Link { id, url, .. } if id == "next" && url == "http://site.test/second")));
         assert!(page.elements.iter().any(|e| matches!(e, PageElement::Form { children, .. } if children.iter().any(|c| matches!(c, PageElement::Input { id, label, .. } if id == "q" && label == "Query")))));
         assert!(b.has_input("q") && !b.has_input("agree"));
+    }
+
+    #[test]
+    fn ids_on_cells_and_inline_chrome_reach_the_projection() {
+        // The agent is told to read `#sheet-A2`; the projection used to hand it
+        // `text:4`, so the id it was given addressed nothing it could see.
+        let (mut b, mut requests) = browser();
+        b.navigate("http://site.test/ids", &mut |r| serve(&mut requests, r)).unwrap();
+        let page = b.current_page().unwrap();
+        let ids: Vec<(&str, &str)> = page.elements.iter().filter_map(|e| match e { PageElement::Text { id, text } => Some((id.as_str(), text.as_str())), _ => None }).collect();
+        assert!(ids.contains(&("sheet-A1", "Latency p95")), "{ids:?}");
+        assert!(ids.contains(&("sheet-A2", "412 ms")), "{ids:?}");
+        assert!(ids.contains(&("doc-title", "Documents")), "{ids:?}");
+        assert!(ids.contains(&("inline-id", "marked")), "{ids:?}");
+        // And the scene's semantic tree carries them too.
+        let ax = b.semantics(800, 600);
+        assert!(ax.iter().any(|a| a.role == "cell" && a.id == "sheet-A2"), "{:?}", ax.iter().map(|a| (&a.role, &a.id)).collect::<Vec<_>>());
+        assert!(ax.iter().any(|a| a.id == "doc-title"));
     }
 
     #[test]

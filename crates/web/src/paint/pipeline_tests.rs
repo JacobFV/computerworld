@@ -461,3 +461,96 @@ fn an_element_with_an_id_is_addressable_in_the_semantic_tree() {
     assert!(named.contains(&("title", "generic", "Documents")), "{named:?}");
     assert!(!named.iter().any(|(_, _, label)| *label == "plain"), "an id-less span stays out: {named:?}");
 }
+
+// --- The second sweep ---------------------------------------------------------
+
+#[test]
+fn a_box_sized_only_by_aspect_ratio_takes_its_height_in_the_flow() {
+    // `ratio_grows` keeps `own_height` empty so content may push the box past its
+    // ratio height; the self-collapsing test read that as "no height of its own"
+    // and let the next block collapse through, laying it on top.
+    let html = "<!doctype html><style>body{margin:0}.ar{width:160px;aspect-ratio:16/9;background:#080}.after{width:60px;height:20px;background:#008}</style><div class=ar id=a></div><div class=after id=b></div>";
+    let p = render(html);
+    assert_eq!(p.rect("a").size.height, px(90), "16:9 of 160px");
+    assert_eq!(p.rect("b").origin.y, px(90), "the next block starts below it");
+    let f = pixels(&p);
+    assert_eq!(f.at(80, 45), INK, "and nothing paints over it");
+}
+
+#[test]
+fn a_placeholder_takes_the_colour_its_pseudo_element_was_given() {
+    // The hint was painted in a hard-coded grey, so neither the UA sheet's rule nor
+    // an author's `input::placeholder { color: … }` could reach it.
+    let html = "<!doctype html><style>input{width:200px;border:0;font:16px Arial}#g::placeholder{color:#080}</style><input id=g placeholder=hint><input id=d placeholder=hint>";
+    let p = render(html);
+    let colours: Vec<Color> = p.scene.nodes.iter().filter(|n| label(n) == Some("hint")).filter_map(|n| match &n.primitive {
+        Primitive::Text { color, .. } | Primitive::UiText { color, .. } | Primitive::UiTextBold { color, .. } => Some(*color),
+        _ => None,
+    }).collect();
+    assert_eq!(colours, [INK, Color(117, 117, 117, 255)], "the styled one, then the UA grey");
+}
+
+#[test]
+fn an_inset_shadow_with_an_offset_is_a_band_not_a_hairline() {
+    // The four strips used to be a fixed `blur + spread` thick wherever the offset
+    // put them, so `inset 0 40px 0` drew a line at y = 40 instead of a 40px band.
+    let html = "<!doctype html><style>body{margin:0}div{width:160px;height:80px;background:#eee;box-shadow:inset 0 40px 0 0 #080}</style><div id=d></div>";
+    let p = render(html);
+    let f = pixels(&p);
+    assert_eq!(f.at(80, 2), INK, "the band starts at the top of the box");
+    assert_eq!(f.at(80, 38), INK, "and runs the whole 40px");
+    assert_eq!(f.at(80, 50), Color(238, 238, 238, 255), "below it the box shows through");
+}
+
+#[test]
+fn a_dotted_border_follows_the_corner_radius() {
+    // Dots and dashes were laid along the square border box, so a dotted circle
+    // painted as a dotted square.
+    let html = "<!doctype html><style>body{margin:0}span{display:block;width:34px;height:34px;border-radius:50%;border:5px dotted #080}</style><span id=s></span>";
+    let f = pixels(&render(html));
+    assert_eq!(f.at(2, 2), WHITE, "the corner of the border box stays clear");
+    assert_eq!(f.at(41, 41), WHITE);
+    assert!((0..44).any(|y| f.at(22, y) == INK), "and the ring passes through the top of the circle");
+}
+
+#[test]
+fn overflow_wrap_does_not_disable_the_ellipsis() {
+    // `overflow-wrap` offers break opportunities, which `white-space: nowrap` has
+    // none of; taking them anyway wrapped a clamped one-line title onto a second
+    // line, where the box clipped it mid-glyph with no ellipsis.
+    let css = "body{margin:0;font:16px Arial}div{width:200px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}";
+    let html = format!("<!doctype html><style>{css}</style><div id=a>A very long title that will not fit</div><div id=b style='overflow-wrap:break-word'>A very long title that will not fit</div>");
+    let p = render(&html);
+    let lines: Vec<&str> = p.scene.nodes.iter().filter_map(label).collect();
+    assert_eq!(lines.len(), 2, "one line each: {lines:?}");
+    assert_eq!(lines[0], lines[1], "and `overflow-wrap` changed nothing");
+    assert!(lines[0].ends_with('\u{2026}'), "both end in an ellipsis: {lines:?}");
+}
+
+#[test]
+fn scrollbar_width_none_takes_no_gutter_and_paints_no_bar() {
+    let html = "<!doctype html><style>body{margin:0}#s{width:200px;height:100px;overflow-y:auto}#c{height:500px}</style><div id=s><div id=c></div></div>";
+    let bar = |css: &str| {
+        let p = render(&html.replace("overflow-y:auto", &format!("overflow-y:auto;{css}")));
+        let width = p.rect("c").size.width;
+        let painted = p.scene.nodes.iter().any(|n| matches!(&n.primitive, Primitive::Box { fill, .. } if *fill == super::SCROLLBAR_TRACK));
+        (width, painted)
+    };
+    assert_eq!(bar(""), (px(185), true), "a desktop bar takes 15px and is drawn");
+    assert_eq!(bar("scrollbar-width:none"), (px(200), false), "`none` takes nothing and draws nothing");
+    assert_eq!(bar("scrollbar-width:thin"), (px(200) - Au(crate::layout::scroll::BAR.0 / 2), true), "`thin` takes half");
+}
+
+#[test]
+fn shadows_paint_behind_what_they_belong_to() {
+    // Both were reported as painting over their element; neither does. The order is
+    // the emission order, so the test pins it: an unoffset text shadow is completely
+    // hidden by its glyphs, and an offset box shadow by its own background.
+    let html = "<!doctype html><style>body{margin:0;background:#fff;font:48px Arial}p{margin:0;color:#000;text-shadow:0 0 0 #d00}</style><p id=p>Ag</p>";
+    let f = pixels(&render(html));
+    assert!(!(0..60).flat_map(|y| (0..80).map(move |x| (x, y))).any(|(x, y)| f.at(x, y) == Color(221, 0, 0, 255)), "no pixel of the shadow shows");
+    let html = "<!doctype html><style>body{margin:0}div{width:100px;height:60px;background:#eee;box-shadow:20px 20px 0 #080}</style><div id=d></div>";
+    let f = pixels(&render(html));
+    assert_eq!(f.at(60, 40), Color(238, 238, 238, 255), "the box covers the shadow under it");
+    assert_eq!(f.at(110, 70), INK, "which still shows past its corner");
+}

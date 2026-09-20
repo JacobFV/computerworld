@@ -360,11 +360,15 @@ fn paint_scrollbars(p: &mut Painter, f: &Fragment, state: &State) {
     }
     let (source, info) = (*source, *info);
     let Some(key) = p.key(f) else { return };
-    if p.style(source).visibility != Visibility::Visible {
+    let style = p.style(source).clone();
+    if style.visibility != Visibility::Visible {
         return;
     }
     let view = snap(padding.inset(border.inset(box_rect(p, f, state))));
-    let bar = super::upx(crate::layout::scroll::BAR);
+    let bar = super::upx(crate::layout::scroll::bar_thickness(&style));
+    if bar == 0 {
+        return;
+    }
     let (vbar, hbar) = (info.shows_y_bar, info.shows_x_bar);
     let (corner_w, corner_h) = (if vbar { bar } else { 0 }, if hbar { bar } else { 0 });
     // The offset from the start of the scrollable area, which is what a thumb shows.

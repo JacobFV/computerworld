@@ -1794,15 +1794,29 @@ impl Projector<'_> {
             n += 1;
         }
     }
+    /// The element's own `id` attribute, when it has a usable one.
+    fn own_id(&self, node: NodeId) -> Option<String> {
+        self.web.doc.attr(node, "id").map(str::trim).filter(|v| !v.is_empty()).map(str::to_owned)
+    }
     fn text_id(&mut self) -> String {
         self.texts += 1;
         let id = format!("text:{}", self.texts);
         self.unique(id)
     }
     fn flush(&mut self) {
+        self.flush_as(None);
+    }
+    /// Emits the run collected so far. `id` is the id of the element the text came
+    /// straight out of, when it has one: an author who writes `<td id=sheet-A2>` or
+    /// `<span id=title>` means that text to be addressable by that id, so it is not
+    /// given a `text:N` of its own.
+    fn flush_as(&mut self, id: Option<String>) {
         let text = semantics::collapse(&std::mem::take(&mut self.run));
         if !text.is_empty() {
-            let id = self.text_id();
+            let id = match id {
+                Some(id) => self.unique(id),
+                None => self.text_id(),
+            };
             self.out.push(PageElement::Text { id, text });
         }
     }
@@ -1923,15 +1937,25 @@ impl Projector<'_> {
                         self.flush();
                     }
                     "p" | "div" | "section" | "article" | "header" | "footer" | "nav" | "main" | "aside" | "ul" | "ol" | "menu" | "table" | "thead" | "tbody" | "tfoot" | "tr" | "td" | "th" | "caption" | "pre" | "blockquote" | "dl" | "dt" | "dd" | "figure" | "figcaption" | "details" | "summary" | "fieldset" | "legend" | "address" | "hr" | "center" | "body" | "html" | "label" | "option" | "optgroup" | "dialog" => {
+                        let own = self.own_id(node);
                         self.flush();
                         self.walk_children(node);
-                        self.flush();
+                        self.flush_as(own);
                     }
                     _ => {
                         if d.text_content(node).is_empty() && !d.descendants(node).any(|n| d.is(n, "img")) {
                             return;
                         }
-                        self.walk_children(node);
+                        match self.own_id(node) {
+                            // Inline chrome with an id is broken out of the run it
+                            // sits in so the id survives into the projection.
+                            Some(id) => {
+                                self.flush();
+                                self.walk_children(node);
+                                self.flush_as(Some(id));
+                            }
+                            None => self.walk_children(node),
+                        }
                     }
                 }
             }

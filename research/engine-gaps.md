@@ -5,7 +5,8 @@ Every gap below was hit while migrating a service from Page JSON to HTML (milest
 **every entry was re-verified against the working tree on 2026-09-20**, against a `cw-web` rebuilt
 at the end of the sweep. Entries that no longer reproduce are recorded at the bottom rather than
 deleted, so nobody re-opens them — in particular **all nine of the originally reported gaps are
-now fixed**; everything in "Still open" was found during verification.
+now fixed**, and so is everything the verification sweep found bar the property catalogue. Each
+fix carries a regression test in `crates/web/src/paint/pipeline_tests.rs`.
 
 ## Harness
 
@@ -30,142 +31,7 @@ equivalent, or a paint/layout unit test asserting the box the node produces.
 
 # Still open
 
-## 1. A box sized only by `aspect-ratio` contributes no height to the block flow
-
-The box paints at the right height, but its following sibling is laid out as if it were empty, so
-the two overlap completely.
-
-```html
-<!DOCTYPE html><html><head><style>
-body { margin: 0; background: #fff; padding: 10px; }
-.ar    { width: 160px; aspect-ratio: 16 / 9; background: #fa3; }
-.after { width: 60px; height: 20px; background: #0a0; }
-</style></head><body>
-<div class="ar"></div>
-<div class="after"></div>
-</body></html>
-```
-
-Measured from the PNG: the orange box occupies y 10–99 (90px, correct) and the green box also
-starts at y = 10 — it should start at y = 100. Adding `display: flex`, `overflow: hidden`, any
-border or padding, or any child content makes it behave, which is why most migrated sheets get
-away with it (`services/media/src/video.css:89` already carries a comment about a related
-symptom).
-
-The same defect reads as "`aspect-ratio` does nothing" whenever the sibling is opaque, because the
-sibling paints on top of the ratio box:
-
-```html
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>g2</title><style>
-.a { width: 60px; aspect-ratio: 2 / 1; background: #c36 }
-.d { display: flex } .d .e { width: 60px; aspect-ratio: 1 / 1; background: #963; flex: 0 0 60px }
-</style></head><body><div class="a"></div><div class="d"><div class="e"></div></div></body></html>
-```
-
-`.a` appears to paint nothing (the flex row is laid out at y = 0 and covers it); `.e`, a flex item,
-is correct at 60×60.
-
-Likely cause, in `crates/web/src/layout/block.rs`: `ratio_grows` (≈ line 980) deliberately sets
-`own_height = None` so content can grow the box past the ratio height, and the final height at
-line ≈1034 does take `.max(ratio_h)`; but the self-collapsing test at line ≈1085,
-`let empty_box = contents.empty && own_height.is_none_or(|h| h <= Au::ZERO) && …`, still consults
-`own_height`, so a childless ratio-sized box is reported to the BFC as an empty box that collapses
-through. `empty_box` needs to consider `ratio_h` (or the computed `h`).
-
-**Blocks:** every card grid that sizes a thumbnail by ratio —
-`services/social/src/{facebook,mastodon,x,bsky,pinterest}.css`,
-`services/media/src/{tiktok,video,ytmusic}.css`. They only work today because the element also
-carries `display:flex` or `overflow:hidden`. `services/search/src/search.css:135` had to pin
-`.shot .art { height: 128px }` instead of `aspect-ratio: 4 / 3`, so that image grid cannot be
-fluid.
-
-## 2. `text-shadow` paints above the glyphs instead of behind them
-
-```html
-<!doctype html><html><head><style>
-body { margin: 0; background: #fff; font: 48px Arial, sans-serif; }
-p { margin: 20px; text-shadow: 16px 16px 0 #d00; }
-</style></head><body><p>Ag</p></body></html>
-```
-
-The red offset copy is drawn over the black text instead of under it.
-
-**Blocks:** any raised/embossed/legibility shadow. Nothing in the migrated skins depends on it —
-everyone who tried it backed out.
-
-## 3. An outer `box-shadow` paints above the element's own background
-
-```html
-<!doctype html><html><head><style>
-body { margin: 0; background: #fff; }
-div { margin: 20px; width: 160px; height: 80px; background: #ddd; box-shadow: 40px 40px 0 #0a0; }
-</style></head><body><div></div></body></html>
-```
-
-The green shadow covers the bottom-right quadrant of the grey box; it should be entirely behind
-it. Blurred and spread-only shadows (`0 0 0 8px`, `0 10px 12px …`) look right, so the symptom
-needs a hard offset to show.
-
-**Blocks:** correct card and sticky-header elevation. At the 1–2px offsets the migrated sheets use
-it reads as a faint line rather than an obvious error (`services/forum/src/stackoverflow.css`
-`.top` and `.sidebar .card`, `services/forum/src/reddit.css` header), but any larger offset is
-visibly wrong.
-
-## 4. An `inset box-shadow` with an offset paints a hairline instead of a band
-
-```html
-<!doctype html><html><head><style>
-body { margin: 0; background: #fff; }
-div { margin: 20px; width: 160px; height: 80px; background: #ddd; box-shadow: inset 0 40px 0 0 #07c; }
-</style></head><body><div></div></body></html>
-```
-
-Expected a 40px `#07c` band across the top of the padding box; got a thin dark line at y = 40.
-Spread-only insets (`inset 0 0 0 10px #c07`) are correct — those were fixed during this milestone
-— so this is specifically the offset path.
-
-**Blocks:** the inset top highlight on buttons (`services/forum/src/stackoverflow.css`
-`.primary { box-shadow: inset 0 1px 0 0 rgba(255,255,255,.4) }` silently does nothing) and any
-"coloured top rail" drawn with an inset shadow.
-
-## 5. `border-style: dotted` and `dashed` ignore `border-radius`
-
-```html
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>d</title><style>
-.row { display: flex; gap: 24px; padding: 20px }
-.a { width:34px; height:34px; border-radius:50%; border:5px dotted #ff8000 }
-.b { width:34px; height:34px; border-radius:50%; border:5px solid  #ff8000 }
-.c { width:34px; height:34px; border-radius:50%; border:5px dashed #ff8000 }
-</style></head><body><div class="row"><span class="a"></span><span class="b"></span><span class="c"></span></div></body></html>
-```
-
-`solid` paints a ring; `dotted` and `dashed` lay their dots and dashes along the square border box
-and paint a square.
-
-**Blocks:** `services/press/src/reuters.css` `.logo` — the Reuters roundel reads as a dotted
-square instead of a ring of dots.
-
-## 6. `::placeholder { color }` is parsed but never applied
-
-```html
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>g1</title><style>
-input { width: 300px; border: 0 solid transparent; font: 16px Arial }
-input::placeholder { color: #2e8b57 }
-</style></head><body><input placeholder="wwwwwwwwwwwwwww"></body></html>
-```
-
-The darkest painted pixel is `(117, 117, 117)`, never `#2e8b57`. The UA sheet declares
-`input::placeholder, textarea::placeholder { color: #757575 }`
-(`crates/web/src/style/ua/forms.css:20`), but the text is painted with the hard-coded
-`PLACEHOLDER_TEXT` constant (`crates/web/src/paint/replaced.rs:29`, used at lines 77, 191 and 208),
-so no author rule can ever win.
-
-**Blocks:** `services/assistant/src/base.css:67`
-(`.composer input::placeholder { color: var(--muted) }`) is a dead rule — ChatGPT's dark composer
-gets `#757575` where `--muted` `#9b9b9b` was wanted. The same applies to Google's search box and
-the Messages composer.
-
-## 7. Properties the strict parser rejects
+## 1. Properties the strict parser rejects
 
 Not bugs — a catalogue of what a skin cannot ask for, so the engine owners can prioritise. Each
 reproduces as `Unsupported { kind: Property, name: "…", detail: "unknown property" }` from
@@ -183,9 +49,11 @@ reproduces as `Unsupported { kind: Property, name: "…", detail: "unknown prope
 
 Only three cost the migration anything: `mask-image` (Reddit and Quora fade a truncated post body
 with a gradient mask — `-webkit-line-clamp` was used instead, and works, ellipsis included),
-`filter`, and `resize: vertical` on textareas.
+`filter`, and `resize: vertical` on textareas. `scrollbar-width` was on this list and is now
+supported (see below). These three are in `crates/web/src/style/properties/`, which the style
+owner holds.
 
-## 8. `cw_web::page::to_document` can emit a nested `<a>`, which duplicates the outer id
+## 2. `cw_web::page::to_document` can emit a nested `<a>`, which duplicates the outer id
 
 Not an engine bug — the HTML parser is doing exactly what the spec's adoption agency algorithm
 says — but a trap the Page→HTML converter walks into silently.
@@ -205,9 +73,7 @@ says — but a trap the Page→HTML converter walks into silently.
 inner `<a>` with no intervening block element does not trigger it. This is how
 `worlds/company-2026/sites/northstar-status.json` broke: an action-bearing `card` containing a
 `link`. Either `to_document` should drop the card's anchor wrapper when the card contains a link
-descendant, or the seed loader should reject it.
-
----
+descendant, or the seed loader should reject it. Routed separately; not the engine's.
 
 # Fixed since the gap list was first written
 
@@ -240,8 +106,8 @@ forgotten.
    glyph and overlapped the two spans' backgrounds — now renders `👍ABBBB` correctly.
 7. **`box-shadow: inset` on a rounded box** painted an offset square. A spread-only inset
    (`inset 0 0 0 12px`) now paints a ring indistinguishable from the equivalent `border`, and the
-   tab-underline form (`inset 0 -3px 0 var(--accent)`) is correct. Offset insets are still wrong —
-   see open gap 4.
+   tab-underline form (`inset 0 -3px 0 var(--accent)`) is correct. Offset insets were still wrong
+   at the time of that sweep and are fixed in the second round below (12).
 8. **`transform: scale()` appeared to have no effect.** `scale(0.5)` and `rotate(45deg)` are both
    correct, including `border-radius: 50% 50% 50% 0` + `rotate(-45deg)` (the map-pin teardrop
    `services/geo/src/{osm,gmaps}.css` rely on).
@@ -278,3 +144,56 @@ connective words back into the id'd span.
   boxes over black and scanned every scanline: no interior non-white pixel in either box, and the
   corner arcs track the ideal circle to within 1px. Nothing to fix unless it can be reproduced at
   some other size.
+
+# Fixed in the second round (the verification sweep's findings)
+
+10. **A box sized only by `aspect-ratio` contributed no height to the flow.** Two places read it
+    as empty: `compute_empty_block` in `layout/block.rs` classed a childless `height: auto` box as
+    an empty block before layout ran, and the self-collapsing test at the end of `layout_block_box`
+    consulted `own_height`, which `ratio_grows` deliberately leaves empty. Both now account for the
+    ratio, so `.ar { width: 160px; aspect-ratio: 16/9 }` is 90px tall and the next block starts at
+    y = 90 (`a_box_sized_only_by_aspect_ratio_takes_its_height_in_the_flow`). The sheets that
+    worked around it with `display: flex`, `overflow: hidden` or a pinned height can drop that.
+11. **`::placeholder { color }` never applied.** The pseudo-element's rules were dropped by the
+    cascade (`style/cascade.rs` skipped `PseudoElement::Placeholder`) and the hint was painted in a
+    hard-coded grey. `StyleSet` now carries a `placeholder` style per text control, cascaded like
+    `::marker`, and `paint/replaced.rs` paints the hint in its colour; the UA sheet's `#757575`
+    is what an unstyled control still gets
+    (`a_placeholder_takes_the_colour_its_pseudo_element_was_given`).
+12. **An `inset box-shadow` with an offset painted a hairline.** The four strips were a fixed
+    `blur + spread` thick wherever the offset put them. They are now the bands between the padding
+    box and the inner rect (the box moved by the offset and pulled in by the spread), so
+    `inset 0 40px 0` is a 40px band and `inset 0 1px 0 rgba(255,255,255,.4)` is the 1px top
+    highlight it was meant to be (`an_inset_shadow_with_an_offset_is_a_band_not_a_hairline`).
+13. **`dotted` and `dashed` borders ignored `border-radius`.** They are now laid along the same
+    rounded centre line the solid sides use, walked by arc length: dots are round boxes every other
+    `w`, dashes are `3w` strokes every `4w` (`a_dotted_border_follows_the_corner_radius`). The
+    Reuters roundel is a ring of dots again.
+14. **`overflow-wrap: break-word` disabled `text-overflow: ellipsis`.** CSS Text §5 only offers
+    mid-word break opportunities where the line may wrap, so `white-space: nowrap` makes
+    `overflow-wrap` and `word-break` inert; the engine took them anyway and wrapped a clamped
+    one-line title onto a second line the box then clipped mid-glyph
+    (`overflow_wrap_does_not_disable_the_ellipsis`).
+15. **No way to hide a scroll container's scrollbar.** `scrollbar-width: auto | thin | none` is now
+    a supported property: `none` reserves no gutter and paints no bar, `thin` takes half of one.
+    A horizontal chip rail asks for `scrollbar-width: none`
+    (`scrollbar_width_none_takes_no_gutter_and_paints_no_bar`). `::-webkit-scrollbar` is still
+    unsupported and is not planned — `scrollbar-width` is the standard property.
+16. **Reserving one bar could ask for the other.** `auto_bars` was handed the already-narrowed
+    content width as the visible width and subtracted the gutter from it a second time, so any
+    vertically scrolling box also claimed a horizontal bar and lost 15px of height. The scrollport
+    width is passed now and the decision is re-made until it settles. This is what made
+    `clientHeight` 85 where Chromium says 100.
+
+# Checked in the second round and not reproducible
+
+- **`text-shadow` painting above the glyphs** and **an outer `box-shadow` painting above its own
+  background.** Both are emitted before what they sit behind and the scene paints in emission
+  order. Measured: with `text-shadow: 0 0 0 #d00` not one red pixel survives the glyphs, and a
+  `box-shadow: 20px 20px 0` is covered wherever the background reaches it and shows only past its
+  corner (`shadows_paint_behind_what_they_belong_to` pins both).
+- **`box-shadow` with a large blur rendering faintly.** `box-shadow: 0 26px 50px rgba(0,0,0,.55)`
+  over a `#888` background darkens it to 69/255 — within a few counts of the 61 the colour's own
+  alpha allows, so the blur keeps its energy. A black shadow over a genuinely dark background is
+  invisible because it is black on black, which is what Chromium does too; a ground shadow under a
+  dark hero needs a lighter colour or a larger spread, not an engine change.

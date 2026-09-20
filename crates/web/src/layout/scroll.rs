@@ -1,5 +1,6 @@
 //! Scroll containers and the root: `overflow` clipping, content sizes, scrollbar
-//! reservation (15 px for `scroll`, and for `auto` when the content overflows; the
+//! reservation (`scrollbar-width` px — 15 by default, half that for `thin`, none at
+//! all for `none` — for `scroll`, and for `auto` when the content overflows; the
 //! decision is re-made until it settles, since reserving one bar can take the other
 //! away), scroll offsets from the caller's `ScrollState`, the viewport as the root
 //! scroll container with `overflow` propagated from `<body>`, and the
@@ -19,6 +20,7 @@ use crate::layout::block::{self, Bfc, Cb};
 use crate::layout::boxes::BoxId;
 use crate::layout::fragment::{Fragment, FragmentKind, ScrollInfo, StyleSource};
 use crate::layout::{FragmentTree, LayoutContext};
+use crate::style::computed::ScrollbarWidth;
 use crate::style::{ComputedStyle, LengthPercentageAuto, Overflow, Position};
 
 /// Scrollbar thickness in CSS px.
@@ -43,25 +45,40 @@ pub fn auto_bars_in(ctx: &LayoutContext, s: &ComputedStyle, content: Size, visib
     }
 }
 
+/// The thickness of this box's bars: `scrollbar-width: none` gives it none at all,
+/// `thin` half of one (css-scrollbars-1 leaves the value to the UA).
+pub fn bar_thickness(s: &ComputedStyle) -> Au {
+    match s.scrollbar_width {
+        ScrollbarWidth::None => Au::ZERO,
+        ScrollbarWidth::Thin => Au(BAR.0 / 2),
+        ScrollbarWidth::Auto => BAR,
+    }
+}
+
 /// Space reserved before layout: `(horizontal bar height, vertical bar width)`.
 pub fn reserved_bars(s: &ComputedStyle) -> (Au, Au) {
-    let h = if s.overflow_x == Overflow::Scroll { BAR } else { Au::ZERO };
-    let v = if s.overflow_y == Overflow::Scroll { BAR } else { Au::ZERO };
+    let bar = bar_thickness(s);
+    let h = if s.overflow_x == Overflow::Scroll { bar } else { Au::ZERO };
+    let v = if s.overflow_y == Overflow::Scroll { bar } else { Au::ZERO };
     (h, v)
 }
 
 /// Bars needed after a first layout: `auto` shows a bar when the content overflows.
 pub fn auto_bars(s: &ComputedStyle, content: Size, visible: Size, bar_x: Au, bar_y: Au) -> (Au, Au) {
+    let bar = bar_thickness(s);
+    if bar.is_zero() {
+        return (Au::ZERO, Au::ZERO);
+    }
     let mut h = bar_x;
     let mut v = bar_y;
     if s.overflow_y == Overflow::Auto && content.height > visible.height {
-        v = BAR;
+        v = bar;
     }
     if s.overflow_x == Overflow::Auto && content.width > visible.width - v {
-        h = BAR;
+        h = bar;
     }
     if s.overflow_y == Overflow::Auto && v.is_zero() && content.height > visible.height - h {
-        v = BAR;
+        v = bar;
     }
     (h, v)
 }
