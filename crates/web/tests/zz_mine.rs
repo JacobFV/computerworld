@@ -6,13 +6,10 @@ fn probe() {
     use cw_web::dom::Document;
     use cw_web::{Strictness, Viewport};
     let vp = Viewport { width: 320, height: 200, scale: 1, zoom: 100 };
-    let cases: [(&str, &str); 6] = [
-        ("3 text-shadow", "<style>body{margin:0;background:#fff;font:48px Arial}p{margin:10px;text-shadow:16px 16px 0 #d00}</style><p>Ag</p>"),
-        ("4 outer shadow", "<style>body{margin:0;background:#fff}div{margin:20px;width:160px;height:80px;background:#ddd;box-shadow:40px 40px 0 #0a0}</style><div></div>"),
-        ("5 inset offset", "<style>body{margin:0;background:#fff}div{margin:20px;width:160px;height:80px;background:#ddd;box-shadow:inset 0 40px 0 0 #07c}</style><div></div>"),
-        ("6 dotted radius", "<style>body{margin:0;background:#fff}span{display:block;margin:20px;width:34px;height:34px;border-radius:50%;border:5px dotted #f80}</style><span></span>"),
-        ("2 placeholder", "<style>body{margin:0}input{width:300px;border:0 solid transparent;font:16px Arial}input::placeholder{color:#2e8b57}</style><input placeholder=wwwwwwww>"),
-        ("8 ellipsis+break-word", "<style>body{margin:0;font:16px Arial}div{width:290px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.b{overflow-wrap:break-word}</style><div class=a>A very long title that will not fit in this box at all</div><div class=b>A very long title that will not fit in this box at all</div>"),
+    let cases: [(&str, &str); 3] = [
+        ("G text-shadow over", "<style>body{margin:0;background:#fff;font:48px Arial}p{margin:10px;text-shadow:0 0 0 #d00}</style><p>Ag</p>"),
+        ("G outer shadow over", "<style>body{margin:0;background:#fff}div{margin:20px;width:100px;height:60px;background:#ddd;box-shadow:20px 20px 0 #0a0}</style><div></div>"),
+        ("H big blur", "<style>body{margin:0;background:#888}div{margin:20px;width:100px;height:60px;background:#fff;box-shadow:0 26px 50px rgba(0,0,0,.55)}</style><div></div>"),
     ];
     for (label, body) in cases {
         let html = format!("<!doctype html><html><head>{body}");
@@ -39,6 +36,17 @@ fn probe() {
                 o => format!("{:?}", std::mem::discriminant(o)),
             };
             eprintln!("  z{} {:?} {d}", n.z, n.bounds);
+        }
+        {
+            let mut darkest = (255u32, 0usize, 0usize);
+            for y in 0..vp.height as usize {
+                for x in 0..vp.width as usize {
+                    let i = (y * f.width as usize + x) * 4;
+                    let l = f.rgba[i] as u32 + f.rgba[i + 1] as u32 + f.rgba[i + 2] as u32;
+                    if l / 3 < darkest.0 { darkest = (l / 3, x, y); }
+                }
+            }
+            eprintln!("  darkest {darkest:?}");
         }
         for y in 0..60usize {
             let mut row = String::new();

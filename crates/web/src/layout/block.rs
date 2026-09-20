@@ -1086,7 +1086,12 @@ pub fn layout_block_box(ctx: &LayoutContext, id: BoxId, cb: &Cb, bfc: &mut Bfc, 
     let unresolved = if s.is_positioned() || b.is_root { resolve_absolutes(ctx, &mut frag, abs) } else { abs };
     finish_fragment(ctx, id, &mut frag);
     scroll::attach_scroll_info(ctx, id, &mut frag, content_w, h, reserve_h, reserve_v);
-    let empty_box = contents.empty && own_height.is_none_or(|h| h <= Au::ZERO) && ev.is_zero() && b.marker.is_none() && !is_bfc_root && min_height_is_zero(s);
+    // Self-collapsing (§8.3.1): no content, no edges, no height of its own. A box
+    // sized only by `aspect-ratio` has `own_height: None` — the ratio height is kept
+    // aside so content may grow past it — but `h` is the ratio's, so the box is as
+    // tall as any other and must not collapse through, or the next block is laid out
+    // on top of it.
+    let empty_box = contents.empty && h <= Au::ZERO && own_height.is_none_or(|h| h <= Au::ZERO) && ev.is_zero() && b.marker.is_none() && !is_bfc_root && min_height_is_zero(s);
     let bottom_margins = if empty_box { MarginSet::of(mt).union(MarginSet::of(mb)).union(contents.pending_bottom) } else { bottom_margins };
     // A forced width (flex and grid items, cells, floats, absolutes) means the
     // caller owns the horizontal margins and records them itself.

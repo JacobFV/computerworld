@@ -344,6 +344,7 @@ simple!(text_overflow, TextOverflow, |s, x| s.text_overflow = x);
 simple!(white_space, WhiteSpace, |s, x| s.white_space = x);
 simple!(word_break, WordBreak, |s, x| s.word_break = x);
 simple!(overflow_wrap, OverflowWrap, |s, x| s.overflow_wrap = x);
+simple!(scrollbar_width, ScrollbarWidth, |s, x| s.scrollbar_width = x);
 
 fn length_or_normal_value(v: &Specified, c: &ComputeCtx) -> Option<Au> {
     match v {

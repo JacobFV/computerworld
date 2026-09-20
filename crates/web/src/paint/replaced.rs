@@ -26,6 +26,8 @@ use crate::geom::Rect;
 use crate::layout::fragment::{ControlKind, Fragment, FragmentKind, Replaced};
 use crate::style::computed::{ComputedStyle, ObjectFit};
 
+/// The colour a hint is painted in when nothing styled it: the UA sheet's grey. An
+/// `input::placeholder { color: … }` rule wins over it (see [`placeholder_color`]).
 const PLACEHOLDER_TEXT: Color = Color(117, 117, 117, 255);
 const DISABLED_TEXT: Color = Color(109, 109, 109, 255);
 const CONTROL_BORDER: Color = Color(118, 118, 118, 255);
@@ -172,6 +174,13 @@ fn centred_baseline(r: SRect, size: u16) -> i32 {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// The colour the control's hint text takes: its cascaded `::placeholder` colour,
+/// which the UA sheet sets to a grey and an author rule can override. Without a
+/// document (a hand-built fragment tree) the UA grey is used directly.
+fn placeholder_color(p: &Painter, node: NodeId) -> Color {
+    p.styles.placeholder(node).map(|s| s.color).unwrap_or(PLACEHOLDER_TEXT)
+}
+
 fn paint_control(p: &mut Painter, key: (NodeId, u32), state: &State, style: &ComputedStyle, node: NodeId, kind: ControlKind, content: Rect, rect_y: i32, disabled: bool, baseline: Option<crate::geom::Au>) {
     let r = snap(content);
     if r.width == 0 || r.height == 0 || kind == ControlKind::Hidden {
@@ -184,11 +193,12 @@ fn paint_control(p: &mut Painter, key: (NodeId, u32), state: &State, style: &Com
     let font = style.font.clone();
     let size = font.size_px();
     let ink = control_text_color(style, disabled);
+    let hint = placeholder_color(p, node);
     let clipped = state.clipped(r);
     match kind {
         ControlKind::TextInput | ControlKind::Password | ControlKind::File | ControlKind::Color => {
             let shown = if kind == ControlKind::Password { "\u{2022}".repeat(value.chars().count()) } else { value.clone() };
-            let (text_shown, color) = if shown.is_empty() { (placeholder.clone(), PLACEHOLDER_TEXT) } else { (shown.clone(), ink) };
+            let (text_shown, color) = if shown.is_empty() { (placeholder.clone(), hint) } else { (shown.clone(), ink) };
             // Layout's baseline is from the top of the border box; fall back to
             // centring the line in the content box.
             let baseline = baseline.map(|b| rect_y + px(b)).filter(|b| *b >= r.y && *b <= r.bottom()).unwrap_or_else(|| centred_baseline(r, size));
@@ -205,7 +215,7 @@ fn paint_control(p: &mut Painter, key: (NodeId, u32), state: &State, style: &Com
             }
         }
         ControlKind::TextArea => {
-            let (text_shown, color) = if value.is_empty() { (placeholder.clone(), PLACEHOLDER_TEXT) } else { (value.clone(), ink) };
+            let (text_shown, color) = if value.is_empty() { (placeholder.clone(), hint) } else { (value.clone(), ink) };
             let lh = text::line_height_px(size) as i32;
             let lines = cw_scene::metrics::wrap(font.typeface, font.scene_style(), &text_shown, size, r.width.max(1));
             let mut y = r.y + size as i32;

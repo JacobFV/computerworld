@@ -672,6 +672,12 @@ impl ComputedStyle {
                 WordBreak::BreakWord => "break-word",
             }
             .into(),
+            L::ScrollbarWidth => match s.scrollbar_width {
+                ScrollbarWidth::Auto => "auto",
+                ScrollbarWidth::Thin => "thin",
+                ScrollbarWidth::None => "none",
+            }
+            .into(),
             L::OverflowWrap => match s.overflow_wrap {
                 OverflowWrap::Normal => "normal",
                 OverflowWrap::Anywhere => "anywhere",

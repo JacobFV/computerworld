@@ -342,6 +342,17 @@ pub enum WordBreak {
     BreakWord,
 }
 
+/// `scrollbar-width` (css-scrollbars-1): how much of the scrollport a scroll
+/// container gives its bars. `none` reserves nothing and paints nothing, which is
+/// how a horizontal chip rail hides the gutter a desktop browser would take.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ScrollbarWidth {
+    #[default]
+    Auto,
+    Thin,
+    None,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum OverflowWrap {
     #[default]
@@ -994,6 +1005,7 @@ pub struct ComputedStyle {
     pub white_space: WhiteSpace,
     pub word_break: WordBreak,
     pub overflow_wrap: OverflowWrap,
+    pub scrollbar_width: ScrollbarWidth,
     pub letter_spacing: Au,
     pub word_spacing: Au,
     pub vertical_align: VerticalAlign,
@@ -1121,6 +1133,7 @@ impl ComputedStyle {
             white_space: WhiteSpace::Normal,
             word_break: WordBreak::Normal,
             overflow_wrap: OverflowWrap::Normal,
+            scrollbar_width: ScrollbarWidth::Auto,
             letter_spacing: Au::ZERO,
             word_spacing: Au::ZERO,
             vertical_align: VerticalAlign::Baseline,
@@ -1278,6 +1291,9 @@ pub struct StyleSet {
     pub(crate) before: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
     pub(crate) after: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
     pub(crate) marker: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
+    /// `::placeholder` of a text control, for the colour the empty control's hint
+    /// text is painted in.
+    pub(crate) placeholder: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
     /// `@font-face` rules from every sheet, in order, for the fonts module.
     pub font_faces: Vec<crate::style::cascade::FontFace>,
     /// `@keyframes` by name (the last declaration of a name wins).
@@ -1343,6 +1359,12 @@ impl StyleSet {
     pub fn set_marker(&mut self, id: crate::dom::NodeId, style: std::rc::Rc<ComputedStyle>) {
         self.marker.insert(id, style);
     }
+    pub fn set_placeholder(&mut self, id: crate::dom::NodeId, style: std::rc::Rc<ComputedStyle>) {
+        self.placeholder.insert(id, style);
+    }
+    pub fn placeholder(&self, id: crate::dom::NodeId) -> Option<&ComputedStyle> {
+        self.placeholder.get(&id).map(|s| &**s)
+    }
     pub fn before(&self, id: crate::dom::NodeId) -> Option<&ComputedStyle> {
         self.before.get(&id).map(|s| &**s)
     }
@@ -1359,5 +1381,6 @@ impl StyleSet {
         self.before.remove(&id);
         self.after.remove(&id);
         self.marker.remove(&id);
+        self.placeholder.remove(&id);
     }
 }

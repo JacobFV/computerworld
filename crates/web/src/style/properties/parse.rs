@@ -485,6 +485,10 @@ pub fn overflow_wrap(p: &mut Parser) -> Option<Specified> {
     keyword(p, &[("normal", OverflowWrap::Normal), ("anywhere", OverflowWrap::Anywhere), ("break-word", OverflowWrap::BreakWord)]).map(Specified::OverflowWrap)
 }
 
+pub fn scrollbar_width(p: &mut Parser) -> Option<Specified> {
+    keyword(p, &[("auto", ScrollbarWidth::Auto), ("thin", ScrollbarWidth::Thin), ("none", ScrollbarWidth::None)]).map(Specified::ScrollbarWidth)
+}
+
 pub fn length_or_normal(p: &mut Parser) -> Option<Specified> {
     if p.expect_ident_matching("normal").is_some() {
         return Some(Specified::LengthOrNormal(None));

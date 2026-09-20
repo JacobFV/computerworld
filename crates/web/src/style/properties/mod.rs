@@ -59,6 +59,7 @@ pub enum Specified {
     WhiteSpace(WhiteSpace),
     WordBreak(WordBreak),
     OverflowWrap(OverflowWrap),
+    ScrollbarWidth(ScrollbarWidth),
     VerticalAlign(VerticalAlignSpec),
     Shadows(Vec<ShadowSpec>),
 
@@ -355,6 +356,7 @@ longhands! {
     WhiteSpace, "white-space", true, 2, p::white_space, a::white_space, |d, s| d.white_space = s.white_space;
     WordBreak, "word-break", true, 2, p::word_break, a::word_break, |d, s| d.word_break = s.word_break;
     OverflowWrap, "overflow-wrap", true, 2, p::overflow_wrap, a::overflow_wrap, |d, s| d.overflow_wrap = s.overflow_wrap;
+    ScrollbarWidth, "scrollbar-width", false, 2, p::scrollbar_width, a::scrollbar_width, |d, s| d.scrollbar_width = s.scrollbar_width;
     LetterSpacing, "letter-spacing", true, 2, p::length_or_normal, a::letter_spacing, |d, s| d.letter_spacing = s.letter_spacing;
     WordSpacing, "word-spacing", true, 2, p::length_or_normal, a::word_spacing, |d, s| d.word_spacing = s.word_spacing;
     VerticalAlign, "vertical-align", false, 2, p::vertical_align, a::vertical_align, |d, s| d.vertical_align = s.vertical_align;

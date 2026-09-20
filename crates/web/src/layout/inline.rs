@@ -768,9 +768,14 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
         }
     }
 
+    /// Whether a word of this box may be split mid-word to make it fit. CSS Text §5
+    /// only offers these opportunities where the line may wrap at all, so under
+    /// `white-space: nowrap` (or `pre`) `overflow-wrap` and `word-break` are inert;
+    /// splitting anyway turned a `text-overflow: ellipsis` single-line clamp into a
+    /// two-line box clipped mid-glyph.
     fn can_break_inside(&self, owner: BoxId) -> bool {
         let s = self.ctx.style(owner);
-        matches!(s.overflow_wrap, OverflowWrap::Anywhere | OverflowWrap::BreakWord) || s.word_break == WordBreak::BreakWord || s.word_break == WordBreak::BreakAll
+        s.white_space.wraps() && (matches!(s.overflow_wrap, OverflowWrap::Anywhere | OverflowWrap::BreakWord) || s.word_break == WordBreak::BreakWord || s.word_break == WordBreak::BreakAll)
     }
 
     /// Splits the word unit at `j` so the first part fits in `room` (at least one

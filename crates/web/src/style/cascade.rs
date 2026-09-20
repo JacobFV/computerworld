@@ -148,6 +148,7 @@ struct Engine<'a> {
     before: SelectorIndex<RuleData>,
     after: SelectorIndex<RuleData>,
     marker: SelectorIndex<RuleData>,
+    placeholder: SelectorIndex<RuleData>,
     deps: SelectorDeps,
     layer_count: usize,
     unsupported: Vec<Unsupported>,
@@ -172,6 +173,7 @@ impl<'a> Engine<'a> {
             before: SelectorIndex::new(),
             after: SelectorIndex::new(),
             marker: SelectorIndex::new(),
+            placeholder: SelectorIndex::new(),
             deps: SelectorDeps::default(),
             layer_count: 0,
             unsupported: Vec::new(),
@@ -220,7 +222,8 @@ impl<'a> Engine<'a> {
                         Some(PseudoElement::Before) => &mut e.before,
                         Some(PseudoElement::After) => &mut e.after,
                         Some(PseudoElement::Marker) => &mut e.marker,
-                        Some(PseudoElement::Placeholder) | Some(PseudoElement::Selection) => continue,
+                        Some(PseudoElement::Placeholder) => &mut e.placeholder,
+                        Some(PseudoElement::Selection) => continue,
                         Some(p) => {
                             let u = Unsupported { kind: UnsupportedKind::Selector, name: format!("::{}", p.name()), detail: sel.to_string() };
                             if strictness == Strictness::Strict {
@@ -639,6 +642,14 @@ impl<'a> Engine<'a> {
                         set.set_after(node, Rc::new(ps));
                     }
                 }
+            }
+            // `::placeholder` of a text control: the hint text the control paints
+            // when it is empty, which the UA sheet gives a grey and an author rule
+            // can recolour.
+            if matches!(self.doc.tag(node), Some("input" | "textarea")) {
+                let pw = self.winners(node, Some(&self.placeholder), keys, unsupported)?;
+                let ps = self.compute(node, &pw, &style, Some(root_fs), true);
+                set.set_placeholder(node, Rc::new(ps));
             }
             if matches!(style.display, Display::ListItem) {
                 let mw = self.winners(node, Some(&self.marker), keys, unsupported)?;
@@ -1117,6 +1128,7 @@ impl StyleSet {
         self.before.remove(&id);
         self.after.remove(&id);
         self.marker.remove(&id);
+        self.placeholder.remove(&id);
     }
 }
 
@@ -1251,6 +1263,7 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         before: SelectorIndex::new(),
         after: SelectorIndex::new(),
         marker: SelectorIndex::new(),
+        placeholder: SelectorIndex::new(),
         deps: SelectorDeps::default(),
         layer_count: 0,
         unsupported: Vec::new(),

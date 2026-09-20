@@ -44,6 +44,75 @@ enum ClassItem {
     Digit(bool),
     Word(bool),
     Space(bool),
+    /// `\p{…}` / `\P{…}`: a Unicode property and whether it is negated.
+    Property(UnicodeProperty, bool),
+}
+
+/// The Unicode properties `\p{…}` understands. General categories and the binary
+/// properties Rust's `char` answers directly; `Script=` needs tables this engine does
+/// not carry and is reported as unsupported rather than silently mismatching.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum UnicodeProperty {
+    /// `L`, `Letter`.
+    Letter,
+    /// `Lu`, `Uppercase_Letter`, and the binary `Uppercase`.
+    Uppercase,
+    /// `Ll`, `Lowercase_Letter`, and the binary `Lowercase`.
+    Lowercase,
+    /// `N`, `Nd`, `Number`, `Decimal_Number`.
+    Number,
+    /// `Alphabetic`, `Alpha`.
+    Alphabetic,
+    /// `White_Space`, `space`.
+    WhiteSpace,
+    /// `C`, `Cc`, `Control`.
+    Control,
+    /// `ASCII`.
+    Ascii,
+    /// `Any`.
+    Any,
+    /// `Assigned`.
+    Assigned,
+}
+
+impl UnicodeProperty {
+    /// `name` is either `Prop` or `Key=Value`.
+    fn parse(name: &str) -> Option<UnicodeProperty> {
+        let (key, value) = match name.split_once('=') {
+            Some((k, v)) => (k.trim(), v.trim()),
+            None => ("", name.trim()),
+        };
+        if !key.is_empty() && !matches!(key, "General_Category" | "gc") {
+            return None;
+        }
+        Some(match value {
+            "L" | "Letter" => UnicodeProperty::Letter,
+            "Lu" | "Uppercase_Letter" | "Uppercase" => UnicodeProperty::Uppercase,
+            "Ll" | "Lowercase_Letter" | "Lowercase" => UnicodeProperty::Lowercase,
+            "N" | "Nd" | "Number" | "Decimal_Number" | "digit" => UnicodeProperty::Number,
+            "Alphabetic" | "Alpha" => UnicodeProperty::Alphabetic,
+            "White_Space" | "space" => UnicodeProperty::WhiteSpace,
+            "C" | "Cc" | "Control" | "cntrl" => UnicodeProperty::Control,
+            "ASCII" => UnicodeProperty::Ascii,
+            "Any" => UnicodeProperty::Any,
+            "Assigned" => UnicodeProperty::Assigned,
+            _ => return None,
+        })
+    }
+    fn test(self, ch: char) -> bool {
+        match self {
+            UnicodeProperty::Letter => ch.is_alphabetic() && !ch.is_numeric(),
+            UnicodeProperty::Uppercase => ch.is_uppercase(),
+            UnicodeProperty::Lowercase => ch.is_lowercase(),
+            UnicodeProperty::Number => ch.is_numeric(),
+            UnicodeProperty::Alphabetic => ch.is_alphabetic(),
+            UnicodeProperty::WhiteSpace => ch.is_whitespace(),
+            UnicodeProperty::Control => ch.is_control(),
+            UnicodeProperty::Ascii => ch.is_ascii(),
+            UnicodeProperty::Any => true,
+            UnicodeProperty::Assigned => !matches!(ch, '\u{e000}'..='\u{f8ff}') && !ch.is_control(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -690,12 +759,41 @@ impl<'a> Parser<'a> {
             'W' => ClassOrChar::Item(ClassItem::Word(true)),
             's' => ClassOrChar::Item(ClassItem::Space(false)),
             'S' => ClassOrChar::Item(ClassItem::Space(true)),
+            'p' | 'P' if !self.py() && self.flags.unicode => ClassOrChar::Item(self.unicode_property(start, c == 'P')?),
             _ => {
                 let _ = ascii;
                 self.i -= 1;
                 ClassOrChar::Char(self.char_escape(start, true)?)
             }
         })
+    }
+
+    /// `\p{Name}` / `\P{Name}`, with the position just after the `p`. Only valid in
+    /// JavaScript's unicode mode, which is where it is a syntax error not to match.
+    fn unicode_property(&mut self, start: usize, negated: bool) -> Result<ClassItem, Error> {
+        if self.peek() != Some('{') {
+            return Err(self.err("Invalid property name", start));
+        }
+        self.i += 1;
+        let mut name = String::new();
+        loop {
+            match self.peek() {
+                Some('}') => {
+                    self.i += 1;
+                    break;
+                }
+                Some(c) => {
+                    self.i += 1;
+                    name.push(c);
+                }
+                None => return Err(self.err("Invalid property name", start)),
+            }
+        }
+        match UnicodeProperty::parse(&name) {
+            Some(p) => Ok(ClassItem::Property(p, negated)),
+            // `Script=` and the rest need Unicode tables this engine does not carry.
+            None => Err(self.err(format!("Invalid property name \\p{{{name}}}"), start)),
+        }
     }
 
     /// Escapes that denote a single character. Position is just after the backslash.
@@ -815,6 +913,12 @@ impl<'a> Parser<'a> {
                     'w' => ClassItem::Word(neg),
                     _ => ClassItem::Space(neg),
                 }));
+            }
+            'p' | 'P' if !self.py() && self.flags.unicode => {
+                let negated = c == 'P';
+                self.i += 1;
+                let item = self.unicode_property(start, negated)?;
+                return Ok(class(item));
             }
             'b' => {
                 self.i += 1;
@@ -1389,6 +1493,7 @@ impl<'r, 't> Matcher<'r, 't> {
                     };
                     sp != *neg
                 }
+                ClassItem::Property(p, neg) => p.test(ch) != *neg,
             })
         };
         let mut hit = test(c);
