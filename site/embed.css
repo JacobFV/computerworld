@@ -1,0 +1,30 @@
+/* The slideshow on its own, for an iframe on someone else's page.
+   style.css does all the work; this only takes away the room the full
+   page's title, install box and footer were holding, and gives it to the
+   machine. */
+html, body { height: 100%; }
+body { display: grid; align-content: center; }
+main { width: 100%; }
+
+.stage {
+  /* The frame is the whole page here, so a machine may have all of it
+     bar the pager and a little air — where index.html has to leave
+     21rem for the type above and the snippet below. */
+  --w-desk: min(1080px, 90vw, (100vh - 5.5rem) * 1.6);
+  padding-top: 0;
+}
+
+/* Where the slideshow came from, for anyone who meets it inside a frame
+   with no other way out. It sits under the pager, in the small print the
+   rest of the site uses, and stays out of the way until it is wanted. */
+.from {
+  display: block; margin: .25rem auto 0; padding-bottom: 1rem; width: max-content;
+  color: var(--faint); text-decoration: none;
+  font-family: var(--mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase;
+  transition: color .15s ease;
+}
+.from:hover { color: var(--ink); }
+
+@media (max-width: 720px) {
+  .stage { --w-desk: 88vw; --h-phone: min(640px, 150vw, 100vh - 7rem); }
+}

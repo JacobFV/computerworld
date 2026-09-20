@@ -132,18 +132,6 @@ track.classList.add('still');
 go(Math.max(named, 0), { quiet: true });
 requestAnimationFrame(() => requestAnimationFrame(() => track.classList.remove('still')));
 
-// The install line and the snippet follow the language tabs.
-const installs = { py: 'pip install computerworld', js: 'npm install computerworld', rs: 'cargo add computerworld --git https://github.com/JacobFV/computerworld --tag v0.1.1' };
-const install = document.querySelector('#install code');
-const panes = [...document.querySelectorAll('.codebox pre[data-lang]')];
-const langs = [...document.querySelectorAll('.tabs button')];
-langs.forEach(tab => tab.addEventListener('click', () => {
-  const lang = tab.dataset.lang;
-  langs.forEach(b => b.setAttribute('aria-selected', String(b === tab)));
-  install.textContent = installs[lang];
-  panes.forEach(p => (p.hidden = p.dataset.lang !== lang));
-}));
-
 /** Copy some text and say so through `report`, which takes the word and then nothing. */
 async function copy(text, report) {
   try {
@@ -155,21 +143,41 @@ async function copy(text, report) {
   setTimeout(() => report(''), 1600);
 }
 
+// Everything below the slideshow. embed.html is the slideshow on its own — the same
+// stage, the same machines, in an iframe — so none of it is there, and each piece
+// asks for its own elements before wiring itself up.
+
+// The install line and the snippet follow the language tabs.
+const install = document.querySelector('#install code');
 const button = document.getElementById('copy');
-button.addEventListener('click', () =>
-  copy(panes.find(p => !p.hidden).innerText, said => (button.textContent = said || 'Copy')));
-// The install line is the thing most people came to copy, so it copies itself.
-install.parentElement.addEventListener('click', () =>
-  copy(install.textContent, said => (install.dataset.said = said.toLowerCase())));
+if (install && button) {
+  const installs = { py: 'pip install computerworld', js: 'npm install computerworld', rs: 'cargo add computerworld --git https://github.com/JacobFV/computerworld --tag v0.1.1' };
+  const panes = [...document.querySelectorAll('.codebox pre[data-lang]')];
+  const langs = [...document.querySelectorAll('.tabs button')];
+  langs.forEach(tab => tab.addEventListener('click', () => {
+    const lang = tab.dataset.lang;
+    langs.forEach(b => b.setAttribute('aria-selected', String(b === tab)));
+    install.textContent = installs[lang];
+    panes.forEach(p => (p.hidden = p.dataset.lang !== lang));
+  }));
+
+  button.addEventListener('click', () =>
+    copy(panes.find(p => !p.hidden).innerText, said => (button.textContent = said || 'Copy')));
+  // The install line is the thing most people came to copy, so it copies itself.
+  install.parentElement.addEventListener('click', () =>
+    copy(install.textContent, said => (install.dataset.said = said.toLowerCase())));
+}
 
 // The one request this page makes to anything outside itself. It is allowed to fail, and
 // a repository with no stars yet says nothing rather than "0".
-fetch('https://api.github.com/repos/JacobFV/computerworld')
-  .then(response => response.ok ? response.json() : Promise.reject(response.status))
-  .then(({ stargazers_count: stars }) => {
-    if (!stars) return;
-    const badge = document.getElementById('stars');
-    badge.textContent = stars >= 1000 ? `★ ${(stars / 1000).toFixed(1)}k` : `★ ${stars}`;
-    badge.hidden = false;
-  })
-  .catch(() => {});
+const badge = document.getElementById('stars');
+if (badge) {
+  fetch('https://api.github.com/repos/JacobFV/computerworld')
+    .then(response => response.ok ? response.json() : Promise.reject(response.status))
+    .then(({ stargazers_count: stars }) => {
+      if (!stars) return;
+      badge.textContent = stars >= 1000 ? `★ ${(stars / 1000).toFixed(1)}k` : `★ ${stars}`;
+      badge.hidden = false;
+    })
+    .catch(() => {});
+}

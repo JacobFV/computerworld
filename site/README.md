@@ -42,3 +42,23 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/usr/bin/google-chrom
 shows to a browser that cannot run the simulator. The script makes them by booting the
 page itself, so a still is always a frame the machine really draws. `site/demo/` is
 generated and git-ignored.
+
+## The slideshow in someone else's page
+
+`embed.html` is the slideshow alone — the same stage, the same `cast.js`, the same
+`app.js` — with the title, the install box, the corner links and the footer taken
+away, so a machine gets the whole frame. `embed.css` is only that reallocation; the
+look comes from `style.css` either way. It is the hero in an iframe, not a copy of
+one, so a scene added to the cast appears in both.
+
+```html
+<iframe src="https://jacobfv.github.io/computerworld/embed.html#github"
+        loading="lazy" title="ComputerWorld"
+        style="aspect-ratio: 16/10; width: 100%; border: 0"></iframe>
+```
+
+`#<scene id>` picks the machine it opens on, as on the front page. The simulator is
+about 10 MB over the wire, so frame it lazily: a visitor who never scrolls to it
+should never pay for it. Everything below the stage in `app.js` asks for its elements
+before wiring itself up, which is what lets one script serve both pages — keep it
+that way when adding to it.

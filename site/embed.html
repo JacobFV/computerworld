@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ComputerWorld — machines</title>
+<meta name="description" content="The ComputerWorld slideshow on its own: machines running in the page, for embedding in a frame.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0c0b0a">
+<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./embed.css">
+</head>
+<body>
+
+<!-- The slideshow, and nothing else. Same stage, same cast, same app.js as the
+     front page: this is that hero in a frame, not a copy of it. A link like
+     `embed.html#slack` opens on that machine, exactly as it does there. -->
+<main>
+
+<section id="stage" class="stage" aria-roledescription="carousel" aria-label="Machines running in this page">
+  <div class="track" id="track"></div>
+  <nav class="pager" aria-label="Machines">
+    <button id="prev" aria-label="Previous machine">&larr;</button>
+    <div class="ticks" id="ticks" role="tablist"></div>
+    <button id="next" aria-label="Next machine">&rarr;</button>
+  </nav>
+  <noscript><img src="./media/scenes/mac-freecad.jpg" width="960" height="600" alt="FreeCAD on macOS inside the simulation, with a bored mounting plate in the 3D view"></noscript>
+</section>
+
+<a class="from" href="./" target="_blank" rel="noopener">ComputerWorld</a>
+
+</main>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
