@@ -12,7 +12,10 @@ use cw_protocol::{
 use cw_scene::Primitive;
 use cw_scene::{AxNode, Scene};
 mod page_scene;
+mod script_driver;
+pub mod scripted;
 pub mod web_document;
+pub use scripted::{ConsoleEntry, PendingNav};
 pub use web_document::{Inputs, Outcome, SheetSource, WebDocument};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
@@ -355,6 +358,25 @@ pub struct Tab {
     /// How far each sideways-scrolling row of the page is scrolled, by row id.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub scroll_x: BTreeMap<String, i32>,
+    /// Stable identity of the tab (indices shift when a tab closes): names the tab's
+    /// page-script entropy stream. The first tab is 0.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub id: u64,
+    /// What the tab's pages wrote to the console, oldest first, capped.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub console: Vec<ConsoleEntry>,
+    /// `sessionStorage`, by origin: lives and dies with the tab.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub session_storage: BTreeMap<String, BTreeMap<String, String>>,
+    /// The tab's page-script entropy stream (`Math.random`, `crypto`), once drawn from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entropy: Option<cw_determinism::Determinism>,
+}
+fn is_zero(v: &u64) -> bool {
+    *v == 0
+}
+fn is_false(v: &bool) -> bool {
+    !*v
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cookie {
@@ -362,6 +384,9 @@ pub struct Cookie {
     pub value: String,
     pub path: String,
     pub secure: bool,
+    /// Hidden from `document.cookie`, as `HttpOnly` asks.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub http_only: bool,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BrowserState {
@@ -377,6 +402,31 @@ pub struct BrowserState {
     /// it. A site that is not listed is shown at 100%.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub zoom: BTreeMap<String, u16>,
+    /// World clock (microseconds) page scripts see; the environment sets it before it
+    /// acts and on every tick (`set_clock`, `tick`).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub clock: u64,
+    /// The world seed and the scope page-script entropy streams are named under
+    /// (`<scope>/tab/<id>/page-script`), set by the environment (`set_entropy`).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub entropy_seed: u64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub entropy_scope: String,
+    /// The content viewport in scene px scripted pages are laid out for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub viewport: Option<(u32, u32)>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub next_tab_id: u64,
+    /// Show every HTML document through a realm, script or not (tests compare the
+    /// two paths).
+    #[serde(skip)]
+    pub always_script: bool,
+    /// Script-initiated navigations in flight, to stop a page that redirects forever.
+    #[serde(skip)]
+    nav_depth: u32,
+    /// Navigations a document queued while it loaded, performed once it is committed.
+    #[serde(skip)]
+    load_navs: Vec<PendingNav>,
 }
 /// The zoom levels a browser steps through, in percent.
 pub const ZOOM_LEVELS: [u16; 11] = [50, 75, 85, 100, 115, 125, 150, 175, 200, 250, 300];
@@ -390,6 +440,14 @@ impl Default for BrowserState {
             pending: None,
             image_cache: BTreeMap::new(),
             zoom: BTreeMap::new(),
+            clock: 0,
+            entropy_seed: 0,
+            entropy_scope: String::new(),
+            viewport: None,
+            next_tab_id: 0,
+            always_script: false,
+            nav_depth: 0,
+            load_navs: Vec::new(),
         }
     }
 }
@@ -487,13 +545,16 @@ impl BrowserState {
         } else {
             self.zoom.insert(site, next);
         }
+        self.sync_script_viewport();
         Ok(next)
     }
     pub fn url(&self) -> Option<&str> {
         self.entry().map(|e| e.url.as_str())
     }
     pub fn new_tab(&mut self) -> usize {
-        self.tabs.push(Tab::default());
+        self.script_visibility(self.active, true);
+        self.next_tab_id += 1;
+        self.tabs.push(Tab { id: self.next_tab_id, ..Tab::default() });
         self.active = self.tabs.len() - 1;
         self.active
     }
@@ -501,13 +562,19 @@ impl BrowserState {
         if index >= self.tabs.len() {
             return Err(SimError::not_found("tab"));
         }
-        self.active = index;
+        if index != self.active {
+            self.script_visibility(self.active, true);
+            self.active = index;
+            self.script_visibility(index, false);
+        }
         Ok(())
     }
     pub fn close_tab(&mut self, index: usize) -> Result<()> {
         if index >= self.tabs.len() {
             return Err(SimError::not_found("tab"));
         }
+        self.script_unload(index);
+        let was_active = index == self.active;
         self.tabs.remove(index);
         if self.tabs.is_empty() {
             self.tabs.push(Tab::default())
@@ -516,6 +583,9 @@ impl BrowserState {
             self.active -= 1
         }
         self.active = self.active.min(self.tabs.len() - 1);
+        if was_active {
+            self.script_visibility(self.active, false);
+        }
         Ok(())
     }
     fn resolve(&self, url: &str) -> Result<Url> {
@@ -559,26 +629,39 @@ impl BrowserState {
         self.request(HttpRequest::get(url), transport, true)
     }
     /// History traversal restores the received document without issuing a new mutation/request.
-    pub fn back<F>(&mut self, _transport: &mut F) -> Result<()>
+    ///
+    /// A scripted page's own entries (`history.pushState`, fragment changes) come
+    /// first: going back inside one fires `popstate` and leaves the document alone.
+    pub fn back<F>(&mut self, transport: &mut F) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.script_history_go(-1, transport)? {
+            return Ok(());
+        }
         if self.tab().position == 0 {
             return Err(SimError::not_found("previous history entry"));
         }
+        self.script_leave(transport);
         self.tab_mut().position -= 1;
         self.reset_fields();
+        self.script_arrive(transport);
         Ok(())
     }
-    pub fn forward<F>(&mut self, _transport: &mut F) -> Result<()>
+    pub fn forward<F>(&mut self, transport: &mut F) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.script_history_go(1, transport)? {
+            return Ok(());
+        }
         if self.tab().position + 1 >= self.tab().history.len() {
             return Err(SimError::not_found("next history entry"));
         }
+        self.script_leave(transport);
         self.tab_mut().position += 1;
         self.reset_fields();
+        self.script_arrive(transport);
         Ok(())
     }
     fn reset_fields(&mut self) {
@@ -595,10 +678,11 @@ impl BrowserState {
             Some(Content::Web(web)) => web.initial_fields(),
             None => BTreeMap::new(),
         };
+        let (focused, scroll_y) = self.document().filter(|w| w.is_scripted()).map(|w| w.script_focus_and_scroll()).unwrap_or((None, 0));
         let tab = self.tab_mut();
         tab.fields = fields;
-        tab.focused = None;
-        tab.scroll_y = 0;
+        tab.focused = focused;
+        tab.scroll_y = scroll_y;
         tab.scroll_x.clear();
     }
     fn request<F>(&mut self, request: HttpRequest, transport: &mut F, replace: bool) -> Result<()>
@@ -610,6 +694,9 @@ impl BrowserState {
     /// Whether the page on show wants attention at `now`: a refresh that is due, or one
     /// not yet stamped. Read-only, so a caller can skip taking the state mutably.
     pub fn refresh_pending(&self, now: u64) -> bool {
+        self.script_pending(now) || self.page_refresh_pending(now)
+    }
+    fn page_refresh_pending(&self, now: u64) -> bool {
         self.entry()
             .and_then(|e| e.refresh.as_ref())
             .is_some_and(|r| {
@@ -764,6 +851,9 @@ impl BrowserState {
             let kind = media_type(&response);
             let mut document_url = url.clone();
             document_url.set_fragment(fragment.as_deref());
+            // The page on show is about to be left: `beforeunload` (its answer
+            // ignored), `pagehide`, `unload`.
+            self.script_leave(transport);
             let (content, images, image_errors, refresh) = if kind == PAGE_MEDIA_TYPE {
                 let page: Page = serde_json::from_slice(&response.body)?;
                 page.validate()?;
@@ -785,7 +875,7 @@ impl BrowserState {
                 let refresh = response
                     .header("refresh")
                     .map(str::to_owned)
-                    .or_else(|| web.meta_refresh())
+                    .or_else(|| if web.is_scripted() { web.script_meta_refresh() } else { web.meta_refresh() })
                     .and_then(|value| parse_refresh(&value, &url));
                 (Content::Web(web), BTreeMap::new(), BTreeMap::new(), refresh)
             } else if let Some(page) = not_found_page(&url, &response) {
@@ -807,6 +897,11 @@ impl BrowserState {
                 refresh,
             };
             self.commit(entry, replace);
+            if self.document().is_some_and(WebDocument::is_scripted) {
+                // What the page asked for while it loaded (`location.assign` in a
+                // script) happens now that the load is over.
+                return self.script_after_load(transport);
+            }
             if let Some(fragment) = fragment.filter(|f| !f.is_empty()) {
                 if let Some(web) = self.document_mut() {
                     if let Outcome::ScrollTo(y) = web.jump_to(&fragment) {
@@ -831,6 +926,9 @@ impl BrowserState {
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
         let mut web = WebDocument::parse(html, url.as_str());
+        if web.has_script() || self.always_script {
+            return self.load_scripted(html, url, transport, fresh_images);
+        }
         for plan in web.sheet_plan() {
             match plan {
                 web_document::SheetPlan::Inline { media, source } => {
@@ -976,6 +1074,9 @@ impl BrowserState {
         Some((web, fields, focused))
     }
     pub fn fill(&mut self, id: &str, value: &str) -> Result<()> {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_fill::<script_driver::NoTransport>(id, value, None);
+        }
         if self.document().is_some() {
             let (web, fields, focused) = self.web_parts().expect("document");
             let Some(node) = web.node_for(id) else {
@@ -1014,6 +1115,9 @@ impl BrowserState {
         Ok(())
     }
     pub fn text(&mut self, text: &str) -> Result<()> {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_text::<script_driver::NoTransport>(text, None);
+        }
         if self.document().is_some() {
             let (web, fields, focused) = self.web_parts().expect("document");
             return web.insert_text(text, fields, focused);
@@ -1035,6 +1139,9 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_key(key, transport);
+        }
         if self.document().is_some() {
             let (web, fields, focused) = self.web_parts().expect("document");
             let outcome = web.key(key, fields, focused)?;
@@ -1087,6 +1194,9 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_click(id, transport);
+        }
         if self.document().is_some() {
             let (web, fields, focused) = self.web_parts().expect("document");
             let node = web
@@ -1146,6 +1256,9 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_click_at(x, y, width, height, transport);
+        }
         let target = match self.document() {
             Some(web) => web.hit(x, y, self.inputs(width, height)).map(|n| web.id_of(n)),
             None => self
@@ -1163,6 +1276,9 @@ impl BrowserState {
     /// document updates its `:hover` state and answers with the CSS cursor for that
     /// point; a native page answers `None` (its cursor is the shell's business).
     pub fn hover_at(&mut self, x: i32, y: i32, width: u32, height: u32) -> Option<&'static str> {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_hover_at::<script_driver::NoTransport>(x, y, width, height, None);
+        }
         self.document()?;
         let zoom = self.zoom();
         let tab = self.tab_mut();
@@ -1194,6 +1310,9 @@ impl BrowserState {
     /// moved: `page` is the document itself; a native page's `row:<id>` is one of its
     /// sideways shelves; any other name is an HTML scroll container's interaction id.
     pub fn scroll_pane(&mut self, pane: &str, offset: i32, horizontal: bool) -> bool {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_scroll::<script_driver::NoTransport>(pane, offset, horizontal, None);
+        }
         let offset = offset.max(0);
         let is_web = self.document().is_some();
         match (pane, horizontal, is_web) {
@@ -1222,6 +1341,9 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        if self.document().is_some_and(WebDocument::is_scripted) {
+            return self.script_submit(id, transport);
+        }
         if self.document().is_some() {
             let (web, fields, _) = self.web_parts().expect("document");
             let request = web.submit(id, fields)?;
@@ -1550,11 +1672,14 @@ fn parse_cookie(value: &str, request_path: &str) -> Option<Cookie> {
             .unwrap_or("/")
             .into(),
         secure: false,
+        http_only: false,
     };
     for p in parts {
         let p = p.trim();
         if p.eq_ignore_ascii_case("secure") {
             cookie.secure = true
+        } else if p.eq_ignore_ascii_case("httponly") {
+            cookie.http_only = true
         } else if let Some((k, v)) = p.split_once('=') {
             if k.eq_ignore_ascii_case("path") && v.starts_with('/') {
                 cookie.path = v.into()

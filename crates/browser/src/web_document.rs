@@ -30,7 +30,10 @@ use cw_web::{Strictness, Viewport};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::scripted::Scripted;
 use crate::ImageAsset;
+
+mod script_path;
 
 /// `@import` chains deeper than this are dropped, as browsers cap them.
 pub const MAX_IMPORT_DEPTH: u32 = 3;
@@ -107,6 +110,10 @@ struct Cache {
     decoded: Option<BTreeMap<String, RgbaImage>>,
     layout: LayoutCache,
     render: Option<Render>,
+    /// A scripted document's last painted scene, keyed by the realm's epoch.
+    script_render: Option<script_path::ScriptRender>,
+    /// A scripted document projected for the page readers, keyed the same way.
+    projection: Option<(u64, Arc<WebDocument>)>,
 }
 
 /// The derived state behind a lock. `StyleSet` holds `Rc`s, which is why this wrapper
@@ -150,6 +157,9 @@ pub struct WebDocument {
     pub notice: Option<String>,
     /// Bumped by every change the render depends on.
     generation: u64,
+    /// The realm of a document with script. It owns the DOM, the styles and the
+    /// layout; `doc` is then empty and `sheets` unused.
+    script: Option<Scripted>,
     cache: Mutex<SendCache>,
 }
 
@@ -170,6 +180,8 @@ struct SnapshotRef<'a> {
     target: &'a Option<String>,
     caret: Option<usize>,
     notice: &'a Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    script: &'a Option<Scripted>,
 }
 
 #[derive(Deserialize)]
@@ -198,6 +210,8 @@ struct Snapshot {
     caret: Option<usize>,
     #[serde(default)]
     notice: Option<String>,
+    #[serde(default)]
+    script: Option<Scripted>,
 }
 
 impl Serialize for WebDocument {
@@ -217,6 +231,7 @@ impl Serialize for WebDocument {
             target: &self.target,
             caret: self.caret,
             notice: &self.notice,
+            script: &self.script,
         }
         .serialize(s)
     }
@@ -241,6 +256,7 @@ impl<'de> Deserialize<'de> for WebDocument {
             caret: s.caret,
             notice: s.notice,
             generation: 0,
+            script: s.script,
             cache: Mutex::new(SendCache(Cache::default())),
         })
     }
@@ -264,6 +280,7 @@ impl Clone for WebDocument {
             caret: self.caret,
             notice: self.notice.clone(),
             generation: self.generation,
+            script: self.script.clone(),
             cache: Mutex::new(SendCache(Cache::default())),
         }
     }
@@ -285,6 +302,7 @@ impl PartialEq for WebDocument {
             && self.target == o.target
             && self.caret == o.caret
             && self.notice == o.notice
+            && self.script == o.script
     }
 }
 impl Eq for WebDocument {}
@@ -359,6 +377,7 @@ impl WebDocument {
             caret: None,
             notice: None,
             generation: 0,
+            script: None,
             cache: Mutex::new(SendCache(Cache::default())),
         };
         web.base = web.find_base();
@@ -581,6 +600,32 @@ impl WebDocument {
     /// The element an interaction id names: an `id` attribute, or the path the paint
     /// emits for elements without one (`/html/body/div[2]/a[1]`).
     pub fn node_for(&self, id: &str) -> Option<NodeId> {
+        if let Some(s) = &self.script {
+            return s.read(|realm| node_in(&realm.document(), id));
+        }
+        node_in(&self.doc, id)
+    }
+
+    /// The interaction id of an element, as the paint emits it.
+    pub fn id_of(&self, node: NodeId) -> String {
+        if let Some(s) = &self.script {
+            return s.read(|realm| semantics::interaction_id(&realm.document(), node));
+        }
+        semantics::interaction_id(&self.doc, node)
+    }
+}
+
+/// The element an interaction id names in `doc`.
+pub(crate) fn node_in(doc: &Document, id: &str) -> Option<NodeId> {
+    Finder { doc }.node_for(id)
+}
+
+struct Finder<'a> {
+    doc: &'a Document,
+}
+
+impl Finder<'_> {
+    fn node_for(&self, id: &str) -> Option<NodeId> {
         if let Some(n) = self.doc.by_id(id).first() {
             if !self.doc.node(*n).detached {
                 return Some(*n);
@@ -595,12 +640,9 @@ impl WebDocument {
         }
         Some(cur)
     }
+}
 
-    /// The interaction id of an element, as the paint emits it.
-    pub fn id_of(&self, node: NodeId) -> String {
-        semantics::interaction_id(&self.doc, node)
-    }
-
+impl WebDocument {
     /// The form an element belongs to: its `form` attribute, else the nearest ancestor.
     pub fn form_owner(&self, node: NodeId) -> Option<NodeId> {
         if let Some(id) = self.doc.attr(node, "form") {
@@ -615,6 +657,9 @@ impl WebDocument {
 
     /// Text controls the tab's `fields` map holds: `(interaction id, default value)`.
     pub fn initial_fields(&self) -> BTreeMap<String, String> {
+        if self.script.is_some() {
+            return self.script_fields();
+        }
         let mut out = BTreeMap::new();
         for n in self.doc.descendants(Document::ROOT) {
             if self.is_text_control(n) {
@@ -625,6 +670,9 @@ impl WebDocument {
     }
 
     pub fn is_text_control(&self, node: NodeId) -> bool {
+        if let Some(s) = &self.script {
+            return s.read(|realm| realm.layout().is_text_control(node));
+        }
         match self.doc.tag(node) {
             Some("textarea") => true,
             Some("input") => is_text_input_type(&input_type(&self.doc, node)),
@@ -647,6 +695,9 @@ impl WebDocument {
 
     /// `(interaction id, element)` of every focusable element in tab order.
     pub fn tab_order(&self) -> Vec<NodeId> {
+        if self.script.is_some() {
+            return self.projection().tab_order();
+        }
         let mut positive: Vec<(i32, usize, NodeId)> = Vec::new();
         let mut rest: Vec<NodeId> = Vec::new();
         for (i, n) in self.doc.descendants(Document::ROOT).enumerate() {
@@ -1004,6 +1055,9 @@ impl WebDocument {
 
     /// The viewport of the last render, else the engine default.
     pub fn last_viewport(&self) -> (u32, u32, u16) {
+        if self.script.is_some() {
+            return self.cache.lock().ok().and_then(|c| c.0.script_render.as_ref().map(|r| (r.width, r.height, r.zoom))).unwrap_or((1280, 800, 100));
+        }
         self.cache.lock().ok().and_then(|c| c.0.render.as_ref().map(|r| (r.key.width, r.key.height, r.key.zoom))).unwrap_or((1280, 800, 100))
     }
 
@@ -1201,7 +1255,7 @@ impl WebDocument {
         let method = attr("method").map(|m| m.to_ascii_uppercase()).filter(|m| m == "POST" || m == "GET" || m == "DIALOG").unwrap_or_else(|| "GET".into());
         let enctype = attr("enctype").map(|e| e.to_ascii_lowercase()).unwrap_or_default();
         let action = attr("action").unwrap_or_default();
-        let mut url = if action.is_empty() {
+        let url = if action.is_empty() {
             let mut u = Url::parse(&self.url).map_err(|e| SimError::invalid(e.to_string()))?;
             u.set_fragment(None);
             u
@@ -1302,49 +1356,7 @@ impl WebDocument {
                 _ => {}
             }
         }
-        let mut request = HttpRequest::get(url.as_str());
-        if method == "GET" || method == "DIALOG" {
-            let query = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str()))).finish();
-            url.set_query(if entries.is_empty() { None } else { Some(&query) });
-            request.url = url.to_string();
-            return Ok(request);
-        }
-        request.method = "POST".into();
-        match enctype.as_str() {
-            "multipart/form-data" => {
-                let boundary = format!("----computerworld{:016x}", cw_scene::digest(&entries));
-                let mut body = Vec::new();
-                for (name, value, file) in &entries {
-                    body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-                    if *file {
-                        body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n", escape_disposition(name)).as_bytes());
-                    } else {
-                        body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", escape_disposition(name)).as_bytes());
-                        body.extend_from_slice(value.as_bytes());
-                    }
-                    body.extend_from_slice(b"\r\n");
-                }
-                body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
-                request.headers.insert("content-type".into(), format!("multipart/form-data; boundary={boundary}"));
-                request.body = body;
-            }
-            "text/plain" => {
-                let mut body = String::new();
-                for (name, value, _) in &entries {
-                    body.push_str(name);
-                    body.push('=');
-                    body.push_str(value);
-                    body.push_str("\r\n");
-                }
-                request.headers.insert("content-type".into(), "text/plain".into());
-                request.body = body.into_bytes();
-            }
-            _ => {
-                request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
-                request.body = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str()))).finish().into_bytes();
-            }
-        }
-        Ok(request)
+        Ok(encode_submission(url, &method, &enctype, &entries))
     }
 
     // -----------------------------------------------------------------------------
@@ -1368,6 +1380,9 @@ impl WebDocument {
 
     /// The element under `(x, y)` scene px, through the painting order.
     pub fn hit(&self, x: i32, y: i32, inputs: Inputs<'_>) -> Option<NodeId> {
+        if self.script.is_some() {
+            return self.script_hit(x, y, inputs);
+        }
         let guard = self.render(inputs);
         let r = guard.0.render.as_ref()?;
         let zoom = inputs.zoom.max(1) as i64;
@@ -1384,6 +1399,9 @@ impl WebDocument {
     /// resolved to `pointer` over links, `text` over text runs and text controls,
     /// and `default` elsewhere.
     pub fn cursor_at(&self, x: i32, y: i32, inputs: Inputs<'_>) -> &'static str {
+        if self.script.is_some() {
+            return self.script_cursor_at(x, y, inputs);
+        }
         let Some(node) = self.hit(x, y, inputs) else { return "default" };
         let guard = self.render(inputs);
         let Some(r) = guard.0.render.as_ref() else { return "default" };
@@ -1435,6 +1453,9 @@ impl WebDocument {
 
     /// The document's scrollable height in CSS px at the last render.
     pub fn content_height(&self) -> Option<u32> {
+        if let Some(s) = &self.script {
+            return Some(s.read(|realm| realm.fragment_tree().content_height.to_px_ceil().max(0) as u32));
+        }
         self.cache.lock().ok()?.0.render.as_ref().map(|r| r.tree.content_height.to_px_ceil().max(0) as u32)
     }
 
@@ -1444,6 +1465,9 @@ impl WebDocument {
 
     /// The painted scene for `inputs`, in scene px (`width` x `height`).
     pub fn scene(&self, inputs: Inputs<'_>) -> Scene {
+        if self.script.is_some() {
+            return self.script_scene(inputs);
+        }
         let guard = self.render(inputs);
         guard.0.render.as_ref().map(|r| r.scene.clone()).unwrap_or_else(|| Scene::new(inputs.width, inputs.height))
     }
@@ -1644,6 +1668,9 @@ impl WebDocument {
     /// readers take: headings, text runs, links (resolved), forms with their inputs
     /// and buttons, and pictures with a size.
     pub fn to_page(&self, fields: &BTreeMap<String, String>) -> Page {
+        if self.script.is_some() {
+            return self.projection().to_page(fields);
+        }
         let mut page = Page::new(if self.title.is_empty() { self.url.as_str() } else { self.title.as_str() });
         page.lang = self.doc.document_element().and_then(|h| self.doc.attr(h, "lang")).map(str::to_owned).filter(|l| !l.is_empty());
         let mut p = Projector { web: self, fields, tables: semantics::Tables::build(&self.doc), ids: BTreeSet::new(), texts: 0, out: Vec::new(), run: String::new() };
@@ -1675,6 +1702,54 @@ impl WebDocument {
         out.retain(|s| !s.trim().is_empty());
         out.join("\n")
     }
+}
+
+/// The request that carries a form data set (`(name, value, is a file)` entries) to
+/// `url`: a query string for GET, else a body in the form's encoding (HTML §4.10.21).
+pub(crate) fn encode_submission(mut url: Url, method: &str, enctype: &str, entries: &[(String, String, bool)]) -> HttpRequest {
+    let mut request = HttpRequest::get(url.as_str());
+    if method == "GET" || method == "DIALOG" {
+        let query = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str()))).finish();
+        url.set_query(if entries.is_empty() { None } else { Some(&query) });
+        request.url = url.to_string();
+        return request;
+    }
+    request.method = "POST".into();
+    match enctype {
+        "multipart/form-data" => {
+            let boundary = format!("----computerworld{:016x}", cw_scene::digest(&entries));
+            let mut body = Vec::new();
+            for (name, value, file) in entries {
+                body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
+                if *file {
+                    body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n", escape_disposition(name)).as_bytes());
+                } else {
+                    body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", escape_disposition(name)).as_bytes());
+                    body.extend_from_slice(value.as_bytes());
+                }
+                body.extend_from_slice(b"\r\n");
+            }
+            body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+            request.headers.insert("content-type".into(), format!("multipart/form-data; boundary={boundary}"));
+            request.body = body;
+        }
+        "text/plain" => {
+            let mut body = String::new();
+            for (name, value, _) in entries {
+                body.push_str(name);
+                body.push('=');
+                body.push_str(value);
+                body.push_str("\r\n");
+            }
+            request.headers.insert("content-type".into(), "text/plain".into());
+            request.body = body.into_bytes();
+        }
+        _ => {
+            request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+            request.body = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str()))).finish().into_bytes();
+        }
+    }
+    request
 }
 
 /// One entry of the stylesheet plan: what to fetch, or what is already in the page.

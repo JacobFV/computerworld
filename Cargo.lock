@@ -266,6 +266,7 @@ dependencies = [
 name = "cw-browser"
 version = "0.1.2"
 dependencies = [
+ "cw-determinism",
  "cw-protocol",
  "cw-scene",
  "cw-web",
@@ -489,8 +490,11 @@ name = "cw-service-assistant"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -500,8 +504,11 @@ name = "cw-service-bank"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
  "url",
@@ -512,10 +519,14 @@ name = "cw-service-calendar"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
+ "url",
 ]
 
 [[package]]
@@ -523,8 +534,11 @@ name = "cw-service-chat"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -545,8 +559,11 @@ name = "cw-service-discord"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -557,8 +574,11 @@ version = "0.1.2"
 dependencies = [
  "cw-browser",
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -569,8 +589,11 @@ version = "0.1.2"
 dependencies = [
  "cw-browser",
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -580,8 +603,11 @@ name = "cw-service-forum"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -592,8 +618,11 @@ version = "0.1.2"
 dependencies = [
  "cw-map",
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
  "url",
@@ -604,8 +633,11 @@ name = "cw-service-git"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
  "sha2",
@@ -617,8 +649,11 @@ name = "cw-service-issues"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
  "url",
@@ -629,8 +664,11 @@ name = "cw-service-mail"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -641,8 +679,11 @@ version = "0.1.2"
 dependencies = [
  "cw-artwork",
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -652,8 +693,11 @@ name = "cw-service-messages"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -663,8 +707,11 @@ name = "cw-service-press"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -689,8 +736,11 @@ name = "cw-service-shop"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
  "url",
@@ -701,8 +751,11 @@ name = "cw-service-slack"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -712,8 +765,11 @@ name = "cw-service-social"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -722,10 +778,14 @@ dependencies = [
 name = "cw-service-speaker"
 version = "0.1.2"
 dependencies = [
+ "cw-artwork",
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-service-media",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]
@@ -747,8 +807,11 @@ name = "cw-service-wiki"
 version = "0.1.2"
 dependencies = [
  "cw-protocol",
+ "cw-render",
  "cw-sdk",
  "cw-service-common",
+ "cw-web",
+ "png",
  "serde",
  "serde_json",
 ]

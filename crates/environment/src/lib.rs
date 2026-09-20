@@ -400,7 +400,13 @@ impl Environment {
                         machine,
                     )?)?,
                     "browser.v1" => {
-                        json!({"page":machine.browser.current_page(),"url":machine.browser.url(),"fields":machine.browser.tab().fields})
+                        let mut v = json!({"page":machine.browser.current_page(),"url":machine.browser.url(),"fields":machine.browser.tab().fields});
+                        // The tab's console (page script output, uncaught errors,
+                        // budget interruptions): the browser's diagnostics.
+                        if !machine.browser.console().is_empty() {
+                            v["console"] = serde_json::to_value(machine.browser.console())?;
+                        }
+                        v
                     }
                     "filesystem.v1" => {
                         let c = self.runtime.computer(id)?;
@@ -1096,7 +1102,14 @@ impl Environment {
                         .text(text)
                         .map_err(SimError::invalid)?;
                 } else if self.machine_mut(id, machine)?.browser_visible {
-                    self.machine_mut(id, machine)?.browser.text(text)?;
+                    self.prime_browsers(id, machine);
+                    let runtime = &mut self.runtime;
+                    let m = Arc::make_mut(&mut self.sessions)
+                        .get_mut(id)
+                        .and_then(|s| s.machines.get_mut(machine))
+                        .ok_or_else(|| SimError::denied("machine unavailable"))?;
+                    let mut http = |r| runtime.http(machine, actor, r);
+                    m.browser.text_with(text, &mut http)?;
                 } else {
                     let effects = self
                         .machine_mut(id, machine)?
@@ -1869,7 +1882,13 @@ impl Environment {
         }) else {
             return Ok(None);
         };
-        let m = self.machine_mut(id, machine)?;
+        self.prime_browsers(id, machine);
+        let actor = self.session(id)?.config.actor.clone();
+        let runtime = &mut self.runtime;
+        let m = Arc::make_mut(&mut self.sessions)
+            .get_mut(id)
+            .and_then(|s| s.machines.get_mut(machine))
+            .ok_or_else(|| SimError::denied("machine unavailable"))?;
         if !matches!(
             m.desktop.windows.get(&window).map(|w| &w.state),
             Some(AppState::Browser { .. })
@@ -1883,16 +1902,53 @@ impl Environment {
         } else {
             &mut m.browser
         };
+        let mut http = |r| runtime.http(machine, &actor, r);
         let cursor = browser
-            .hover_at(x - bounds.x, y - bounds.y, bounds.width, bounds.height)
+            .hover_at_with(x - bounds.x, y - bounds.y, bounds.width, bounds.height, &mut http)
             .map(|css| CursorKind::from_css(css).css_name().to_owned());
         if cursor.is_some() {
             m.pointer_cursor = cursor.clone();
         }
         Ok(cursor)
     }
+    /// The content viewport (scene px) of the browser window on `machine`: what a
+    /// scripted page is laid out for and sees as `innerWidth`/`innerHeight`.
+    fn browser_viewport(&self, id: &str, machine: &str, window: Option<u64>) -> Option<(u32, u32)> {
+        let theme = self.desktop_theme(id, machine)?;
+        let (width, height) = self.screen_size(id, machine).ok()?;
+        let m = self.session(id).ok()?.machines.get(machine)?;
+        let window = window.or(m.active_browser_window)?;
+        let area = work_area(theme, width, height);
+        let rect = if theme.mobile() { area } else { m.desktop.effective_frame(window, area) };
+        let content = window_content_rect_for_kind(theme, rect, "browser");
+        Some((content.width.max(1), content.height.max(1)))
+    }
+    /// What page scripts on `machine` read from the world before a browser acts: the
+    /// clock, the seeded entropy their streams are named under
+    /// (`computer/<machine>/browser/tab/<id>/page-script`), and the viewport.
+    fn prime_browsers(&mut self, id: &str, machine: &str) {
+        let now = self.runtime.tick();
+        let seed = self.runtime.seed();
+        let viewport = self.browser_viewport(id, machine, None);
+        let scope = format!("computer/{machine}/browser");
+        let Some(m) = Arc::make_mut(&mut self.sessions)
+            .get_mut(id)
+            .and_then(|s| s.machines.get_mut(machine))
+        else {
+            return;
+        };
+        for browser in std::iter::once(&mut m.browser).chain(m.browser_windows.values_mut()) {
+            browser.set_clock(now);
+            browser.set_entropy(seed, &scope);
+        }
+        if let Some((w, h)) = viewport {
+            m.browser.set_viewport(w, h);
+        }
+    }
     /// Refresh every browser page on `machine` whose `refresh` is due (see
-    /// `cw_browser::BrowserState::refresh`). A failed refresh keeps the page it had.
+    /// `cw_browser::BrowserState::refresh`), and advance page script with the world
+    /// clock (`cw_browser::BrowserState::tick`: due timers, animation frames). A failed
+    /// refresh keeps the page it had.
     fn refresh_pages(&mut self, id: &str, machine: &str, actor: &str) {
         let now = self.runtime.tick();
         let wanted = self
@@ -1906,6 +1962,7 @@ impl Environment {
         if !wanted {
             return;
         }
+        self.prime_browsers(id, machine);
         let runtime = &mut self.runtime;
         let Some(state) = Arc::make_mut(&mut self.sessions)
             .get_mut(id)
@@ -1916,10 +1973,13 @@ impl Environment {
         let mut failures = vec![];
         for browser in std::iter::once(&mut state.browser).chain(state.browser_windows.values_mut())
         {
+            let mut http = |r| runtime.http(machine, actor, r);
+            if let Err(e) = browser.tick(now, &mut http) {
+                failures.push(e.message);
+            }
             if !browser.refresh_due(now) {
                 continue;
             }
-            let mut http = |r| runtime.http(machine, actor, r);
             if let Err(e) = browser.refresh(now, &mut http) {
                 failures.push(e.message);
             }
@@ -1944,12 +2004,20 @@ impl Environment {
         offset: i32,
         horizontal: bool,
     ) -> Result<bool> {
-        let m = self.machine_mut(id, machine)?;
-        let browser = matches!(
-            m.desktop.windows.get(&window).map(|w| &w.state),
-            Some(AppState::Browser { .. })
-        );
-        if browser {
+        let is_browser = self.session(id)?.machines.get(machine).is_some_and(|m| {
+            matches!(
+                m.desktop.windows.get(&window).map(|w| &w.state),
+                Some(AppState::Browser { .. })
+            )
+        });
+        if is_browser {
+            self.prime_browsers(id, machine);
+            let actor = self.session(id)?.config.actor.clone();
+            let runtime = &mut self.runtime;
+            let m = Arc::make_mut(&mut self.sessions)
+                .get_mut(id)
+                .and_then(|s| s.machines.get_mut(machine))
+                .ok_or_else(|| SimError::denied("machine unavailable"))?;
             let state = if m.active_browser_window == Some(window) {
                 &mut m.browser
             } else if let Some(state) = m.browser_windows.get_mut(&window) {
@@ -1957,10 +2025,12 @@ impl Environment {
             } else {
                 &mut m.browser
             };
-            let moved = state.scroll_pane(pane, offset, horizontal);
+            let mut http = |r| runtime.http(machine, &actor, r);
+            let moved = state.scroll_pane_with(pane, offset, horizontal, &mut http);
             m.scrolled |= moved;
             return Ok(moved);
         }
+        let m = self.machine_mut(id, machine)?;
         let moved = m
             .desktop
             .scroll_pane(window, pane, offset)
@@ -2281,6 +2351,7 @@ impl Environment {
             return Err(SimError::denied("browser interaction is not permitted"));
         }
         let themed = self.desktop_theme(id, &a.machine).is_some();
+        self.prime_browsers(id, &a.machine);
         let runtime = &mut self.runtime;
         let machine = Arc::make_mut(&mut self.sessions)
             .get_mut(id)
@@ -2331,7 +2402,7 @@ impl Environment {
             "reload" => machine.browser.reload(&mut http)?,
             "fill" => {
                 let input = string(&a.payload, "id")?;
-                machine.browser.fill(input, string(&a.payload, "value")?)?;
+                machine.browser.fill_with(input, string(&a.payload, "value")?, &mut http)?;
                 machine.focused_input = Some(input.into());
             }
             "key" => machine.browser.key(string(&a.payload, "key")?, &mut http)?,
@@ -2368,13 +2439,13 @@ impl Environment {
                     (Some(row), _) => {
                         machine
                             .browser
-                            .scroll_pane(&format!("row:{row}"), to("x"), true);
+                            .scroll_pane_with(&format!("row:{row}"), to("x"), true, &mut http);
                     }
                     (None, Some(pane)) => {
-                        machine.browser.scroll_pane(pane, to("y"), false);
+                        machine.browser.scroll_pane_with(pane, to("y"), false, &mut http);
                     }
                     (None, None) => {
-                        machine.browser.scroll_pane("page", to("y"), false);
+                        machine.browser.scroll_pane_with("page", to("y"), false, &mut http);
                     }
                 }
             }
